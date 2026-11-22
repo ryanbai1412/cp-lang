@@ -2030,15 +2030,14 @@ impl<'a> Lowerer<'a> {
                 };
                 self.cx.as_written = false;
                 let Ty::Opt(inner) = l.ty.clone() else {
-                    if l.ty == Ty::Error {
-                        return self.err_expr(span);
+                    if l.ty != Ty::Error {
+                        let message = format!(
+                            "`??` gives a default for an optional, but the left side is a `{}`",
+                            self.show(&l.ty)
+                        );
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.expr(rhs, None);
                     }
-                    let message = format!(
-                        "`??` gives a default for an optional, but the left side is a `{}`",
-                        self.show(&l.ty)
-                    );
-                    self.error(codes::BAD_OPERANDS, span, message);
-                    self.expr(rhs, None);
                     return self.err_expr(span);
                 };
                 if let ast::ExprKind::Block(block) = &rhs.kind {

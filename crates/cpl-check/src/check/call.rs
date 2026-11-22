@@ -1856,13 +1856,7 @@ impl<'a> Checker<'a> {
                         };
                         if let Some(diag) = self.error(code, name.span, message) {
                             match suggestion {
-                                Some(s) => {
-                                    diag.help = Some(format!("did you mean `{s}`?"));
-                                    diag.fixes.push(cpl_diag::Fix {
-                                        title: format!("change to `{s}`"),
-                                        edits: vec![(name.span, s.to_string())],
-                                    });
-                                }
+                                Some(s) => diag.suggest(name.span, s),
                                 None => {
                                     diag.help =
                                         Some(format!("its {what}s are {}", list_names(&names)));

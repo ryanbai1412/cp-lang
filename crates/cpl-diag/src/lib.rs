@@ -281,6 +281,16 @@ impl Diagnostic {
         self
     }
 
+    /// "did you mean `name`?", with the change at `span` as the fix.
+    pub fn suggest(&mut self, span: Span, name: impl Into<String>) {
+        let name = name.into();
+        self.help = Some(format!("did you mean `{name}`?"));
+        self.fixes.push(Fix {
+            title: format!("change to `{name}`"),
+            edits: vec![(span, name)],
+        });
+    }
+
     pub fn with_help(mut self, help: impl Into<String>) -> Diagnostic {
         self.help = Some(help.into());
         self

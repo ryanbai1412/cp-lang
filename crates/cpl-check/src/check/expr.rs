@@ -1941,9 +1941,12 @@ impl<'a> Checker<'a> {
                 "{base_ty} has no `{}` in the spec: no std module declares it",
                 name.text
             );
+            let suggestion = super::spec_member_typo(&base_ty, &name.text);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
+                } else if let Some(s) = suggestion {
+                    diag.suggest(name.span, s);
                 }
             }
         }
@@ -2880,13 +2883,7 @@ impl<'a> Checker<'a> {
                     let message = format!("{} has no field or method `{}`", base_ty, name.text);
                     if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                         match suggestion {
-                            Some(s) => {
-                                diag.help = Some(format!("did you mean `{s}`?"));
-                                diag.fixes.push(cpl_diag::Fix {
-                                    title: format!("change to `{s}`"),
-                                    edits: vec![(name.span, s)],
-                                });
-                            }
+                            Some(s) => diag.suggest(name.span, s),
                             None if !field_names.is_empty() => {
                                 diag.help =
                                     Some(format!("its fields are {}", list_names(&field_names)));

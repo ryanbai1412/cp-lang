@@ -7530,48 +7530,33 @@ impl<'a> Lowerer<'a> {
         }
         // `List.filled(n, val)`
         if let ast::ExprKind::Name(n) = &base.kind {
-            if n == "List" && self.lookup(n).is_none() {
-                if name.text == "filled" {
-                    let Some(exprs) = self.positional_any("filled", args, 2, span) else {
-                        return self.err_expr(span);
-                    };
-                    let count = self.expect(exprs[0], &Ty::Int);
-                    let val_hint = match hint {
-                        Some(Ty::List(e)) => Some(&**e),
-                        _ => None,
-                    };
-                    // Under a known element type the value is one of it:
-                    // `let a: List<Z> = List.filled(n, 0)` holds `Z(0)`.
-                    let val = match val_hint {
-                        Some(elem) if !matches!(elem, Ty::Error) => {
-                            let elem = elem.clone();
-                            self.expect(exprs[1], &elem)
-                        }
-                        _ => self.expr(exprs[1], None),
-                    };
-                    let list_ty = Ty::list(val.ty.clone());
-                    return self.mk(
-                        ExprKind::Builtin(Builtin::ListFilled, vec![count, val]),
-                        list_ty,
-                        span,
-                    );
-                }
-                let message = format!(
-                    "a `List` has no method `{}` that `cpl run` knows",
-                    name.text
-                );
-                self.error(codes::UNKNOWN_FIELD, name.span, message);
-                if let Some(s) = cpl_check::closest(&name.text, ["filled"].into_iter()) {
-                    let fix_span = self.span(name.span);
-                    if let Some(last) = self.diags.last_mut() {
-                        last.help = Some(format!("did you mean `{s}`?"));
-                        last.fixes.push(cpl_diag::Fix {
-                            title: format!("change to `{s}`"),
-                            edits: vec![(fix_span, s)],
-                        });
+            if n == "List" && self.lookup(n).is_none() && name.text == "filled" {
+                let Some(exprs) = self.positional_any("filled", args, 2, span) else {
+                    return self.err_expr(span);
+                };
+                let count = self.expect(exprs[0], &Ty::Int);
+                let val_hint = match hint {
+                    Some(Ty::List(e)) => Some(&**e),
+                    _ => None,
+                };
+                // Under a known element type the value is one of it:
+                // `let a: List<Z> = List.filled(n, 0)` holds `Z(0)`.
+                let val = match val_hint {
+                    Some(elem) if !matches!(elem, Ty::Error) => {
+                        let elem = elem.clone();
+                        self.expect(exprs[1], &elem)
                     }
-                }
-                return self.err_expr(span);
+                    _ => self.expr(exprs[1], None),
+                };
+                let list_ty = Ty::list(val.ty.clone());
+                return self.mk(
+                    ExprKind::Builtin(Builtin::ListFilled, vec![count, val]),
+                    list_ty,
+                    span,
+                );
+            }
+            if n == "List" && self.lookup(n).is_none() {
+                return self.list_static_typo(name, span);
             }
         }
         // `D.nth(k)` where `D` is bound to `V.cuts`.
@@ -10477,14 +10462,7 @@ impl<'a> Lowerer<'a> {
                     Some(s) => {
                         let message = format!("a domain has no member `{other}`");
                         self.error(codes::UNKNOWN_FIELD, name.span, message);
-                        let at = self.span(name.span);
-                        if let Some(last) = self.diags.last_mut() {
-                            last.help = Some(format!("did you mean `{s}`?"));
-                            last.fixes.push(cpl_diag::Fix {
-                                title: format!("change to `{s}`"),
-                                edits: vec![(at, s)],
-                            });
-                        }
+                        self.suggest_last(name.span, s);
                     }
                     None => {
                         self.unsupported(name.span, &format!("`.{other}` of a domain as a value"))

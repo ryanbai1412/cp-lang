@@ -424,6 +424,15 @@ impl<'a> Checker<'a> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }
 
+    /// The `let` declaring `name`, and its `let` keyword.
+    fn let_decl(&self, name: &str) -> (Option<Span>, Option<Span>) {
+        let decl = self
+            .local(name)
+            .filter(|l| l.keyword == "let")
+            .map(|l| l.span);
+        (decl, decl.and_then(|d| let_before(self.src, d)))
+    }
+
     /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
     pub(crate) fn domain_depth(&self, name: &str) -> Option<(usize, Span)> {
         self.scopes
@@ -800,13 +809,7 @@ impl<'a> Checker<'a> {
                         edits: vec![(Span::point(0), format!("{import}\n"))],
                     });
                 }
-                Some(s) => {
-                    diag.help = Some(format!("did you mean `{s}`?"));
-                    diag.fixes.push(cpl_diag::Fix {
-                        title: format!("change to `{s}`"),
-                        edits: vec![(span, s)],
-                    });
-                }
+                Some(s) => diag.suggest(span, s),
                 None if library.is_some() => {
                     let s = library.unwrap_or_default();
                     let module = prelude::std_module(&s).unwrap_or_default();
@@ -973,6 +976,51 @@ impl<'a> Checker<'a> {
 
 /// The `let` keyword on the line of `name` in `src`, before it: where
 /// "declare it with `var`" edits.
+/// "declare it with `var`", pointing at the `let` and offering the change.
+pub(crate) fn declare_with_var(
+    diag: &mut Diagnostic,
+    root: &str,
+    (decl, var_at): (Option<Span>, Option<Span>),
+) {
+    diag.help = Some(format!("declare it with `var {root}`"));
+    let Some(decl) = decl else { return };
+    diag.labels.push(cpl_diag::Label {
+        span: decl,
+        message: "declared here".into(),
+    });
+    if let Some(at) = var_at {
+        diag.fixes.push(cpl_diag::Fix {
+            title: format!("declare `{root}` with `var`"),
+            edits: vec![(at, "var".into())],
+        });
+    }
+}
+
+/// `xs` of `xs[i]` or `xs.len`: the name a place starts with.
+pub(crate) fn leading_name(text: &str) -> &str {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .next()
+        .unwrap_or(text)
+}
+
+/// The member meant by `.name` of a `base` the spec has no such member on.
+pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
+    use crate::builtins::{builtin_members, Receiver, BUILTIN_MEMBERS};
+    let receiver = match base {
+        Ty::Str => Some(Receiver::Str),
+        Ty::Array { .. } => Some(Receiver::Array),
+        Ty::Named { name, .. } if name == "List" || name == "Range" => Some(Receiver::List),
+        _ => None,
+    };
+    let own = receiver
+        .into_iter()
+        .flat_map(builtin_members)
+        .map(|m| m.name);
+    let spec = prelude::spec_member_names();
+    let all = BUILTIN_MEMBERS.iter().map(|m| m.name);
+    closest(name, own.chain(spec.iter().map(String::as_str)).chain(all))
+}
+
 pub(crate) fn let_before(src: &str, name: Span) -> Option<Span> {
     let head = src.get(..name.start as usize)?;
     let line = head.rfind('\n').map_or(0, |i| i + 1);

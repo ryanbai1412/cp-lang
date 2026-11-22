@@ -1,0 +1,139 @@
+//! The member a mistyped `.name` most likely meant, offered as a fix.
+
+use super::*;
+
+impl<'a> Lowerer<'a> {
+    /// On the error just reported for `.name` of a `ty`: the member it is
+    /// a typo of, with the fix. Candidates are the built-in members (a
+    /// range has a list's too), the record's fields and every fn in reach that takes `self`.
+    pub(super) fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
+        use cpl_check::Receiver;
+        const POS_MEMBERS: [&str; 19] = [
+            "after", "ahead", "back", "before", "count", "cyc", "first", "idx", "is_empty",
+            "label", "len", "next", "offset", "ord", "prev", "rank", "to_idx", "with", "without",
+        ];
+        const BOUND_EXTRA: [&str; 4] = ["l", "left", "r", "right"];
+        const RANGE_MEMBERS: [&str; 10] = [
+            "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
+        ];
+        const DOMAIN_MEMBERS: [&str; 24] = [
+            "after", "all", "any", "at", "before", "bounds", "count", "cuts", "first", "from_idx",
+            "is_empty", "last", "len", "mask", "max", "min", "nth", "rev", "size", "sort",
+            "sorted", "subsets", "sum", "windows",
+        ];
+        const SEQ_EXTRA: [&str; 6] = [
+            "adjacent", "inverse", "items", "resized", "reverse", "reversed",
+        ];
+        const STR_EXTRA: [&str; 6] = [
+            "adjacent", "count", "items", "reverse", "reversed", "to_str",
+        ];
+        const INT_MEMBERS: [&str; 6] = ["abs", "idx", "isqrt", "ord", "sqrt", "to_idx"];
+        const FLOAT_MEMBERS: [&str; 6] = ["abs", "ceil", "floor", "round", "sqrt", "trunc"];
+        let receiver = match ty {
+            Ty::Str | Ty::StrView => Some(Receiver::Str),
+            Ty::List(_) | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
+            Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
+            Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+            Ty::Array { .. } => Some(Receiver::Array),
+            _ => None,
+        };
+        let mut names: Vec<&str> = receiver
+            .into_iter()
+            .flat_map(cpl_check::builtin_members)
+            .map(|m| m.name)
+            .collect();
+        match ty {
+            Ty::Record(fields) => {
+                names.extend(fields.iter().map(|(f, _)| f.as_str()));
+            }
+            Ty::Struct(id) => {
+                let info = &self.structs[*id];
+                names.extend(info.def.fields.iter().map(|(f, _)| f.as_str()));
+                names.extend(info.methods.keys().map(String::as_str));
+                names.extend(info.gen_methods.keys().map(String::as_str));
+                names.extend(info.projections.keys().map(String::as_str));
+                names.extend(info.consts.keys().map(String::as_str));
+                names.extend(info.owned_domains.keys().map(String::as_str));
+                if info.methods.contains_key("range_first") {
+                    names.push("range");
+                }
+            }
+            Ty::Pos(d) => {
+                names.extend(POS_MEMBERS);
+                if self.subset_base(*d).is_some() {
+                    names.push("subsets");
+                }
+            }
+            Ty::Bound(_) => {
+                names.extend(POS_MEMBERS);
+                names.extend(BOUND_EXTRA);
+            }
+            Ty::Range(_) => {
+                names.extend(RANGE_MEMBERS);
+                names.extend(cpl_check::builtin_members(Receiver::List).map(|m| m.name));
+                names.extend(SEQ_EXTRA);
+            }
+            Ty::DomainVal => {
+                names.extend(DOMAIN_MEMBERS);
+            }
+            Ty::List(_) | Ty::Array { .. } | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => {
+                names.extend(SEQ_EXTRA);
+            }
+            Ty::Str | Ty::StrView => {
+                names.extend(STR_EXTRA);
+            }
+            Ty::Int | Ty::I128 | Ty::U64 => {
+                names.extend(INT_MEMBERS);
+            }
+            Ty::Float => {
+                names.extend(FLOAT_MEMBERS);
+            }
+            _ => {}
+        }
+        for (sym_name, sym) in &self.mod_syms[self.cur_mod] {
+            let decl = match *sym {
+                Sym::Fn(fid) => self.sigs[fid].decl,
+                Sym::GenFn(gfid) => self.gen_fns[gfid].decl,
+                _ => continue,
+            };
+            if decl.params.first().is_some_and(|p| p.name.text == "self") {
+                names.push(sym_name.strip_suffix(" of std").unwrap_or(sym_name));
+            }
+        }
+        // Auto-imported stdlib UFCS methods are only pulled into `mod_syms`
+        // when spelled right, so include them as typo candidates too.
+        if !matches!(ty, Ty::Struct(_) | Ty::Enum(_) | Ty::Record(_)) {
+            names.extend(
+                cpl_check::std_methods()
+                    .iter()
+                    .map(|(_, m)| m.text.as_str()),
+            );
+        }
+        let Some(s) = cpl_check::closest(name, names.into_iter()) else {
+            return;
+        };
+        self.suggest_last(span, s);
+    }
+
+    /// `List.name(..)` with no such static fn: one error, and `filled` if
+    /// it is a typo of that.
+    pub(super) fn list_static_typo(&mut self, name: &ast::Name, span: Span) -> Expr {
+        let message = format!(
+            "a `List` has no method `{}` that `cpl run` knows",
+            name.text
+        );
+        self.error(codes::UNKNOWN_FIELD, name.span, message);
+        if let Some(s) = cpl_check::closest(&name.text, ["filled"].into_iter()) {
+            self.suggest_last(name.span, s);
+        }
+        self.err_expr(span)
+    }
+
+    /// Offers `s` for the source at `span` on the error just reported.
+    pub(super) fn suggest_last(&mut self, span: Span, s: String) {
+        let span = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.suggest(span, s);
+        }
+    }
+}
