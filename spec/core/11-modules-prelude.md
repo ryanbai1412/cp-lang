@@ -16,6 +16,7 @@ decisions 72, 94; `spec/std/prelude.cp`.
 
 ## 11.2 `use`
 
+<!-- spec-only: `lib.` imports need a cp.toml library root -->
 ```
 use std.segtree                  // the stdlib: `segtree.SegTree`
 use std.graph.{dijkstra, Paths}

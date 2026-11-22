@@ -199,6 +199,7 @@ enum Ev:
 
 A binding can introduce a type whose identity is the binding:
 
+<!-- spec-only: fragment: `t` and `c` come from the surrounding text -->
 ```
 domain V = 1..=read<1..=2e5>()
 let (domain Piece, piece_of) = t.components(without: c)

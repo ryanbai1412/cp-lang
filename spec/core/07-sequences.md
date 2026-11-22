@@ -63,6 +63,7 @@ How they relate:
   read, never up front. Materializing is the only step that does the work
   once and keeps the result. (R07.2.16)
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 a[l..=r]          // view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
 s[2..5]           // keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
@@ -95,6 +96,7 @@ index names the same element everywhere it is valid.** A slice narrows the
 valid keys and never renames them, for domain arrays, `List` and `Str`
 alike, so an index taken from a view is valid on the source.
 
+<!-- spec-only: expression tour with a `...` body -->
 ```python
 let w = a[l..=r]
 let best = w.argmax()!                   // a position of a, usable anywhere
@@ -147,6 +149,7 @@ A view is a plain library struct built from a lent source: a reference plus the 
 end cuts as Ints. Direction and adapters are in the type, so nothing is
 decided at run time and nothing allocates.
 
+<!-- spec-only: lowering sketch: each line's comment is its C++ shape -->
 ```python
 a[l..=r]                  // Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
 a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own type
@@ -242,6 +245,7 @@ cost isn't O(1) to make.
 
 ## Making containers
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 [f(x) for x in s if p(x)]      // List<U>; reserves exactly when there's no filter
 [V] v => f(v)                  // [V]U, filled by f
@@ -274,6 +278,7 @@ Position queries are folds over `a.keys`, because the keys are a range of
 positions. `argmin`/`argmax` are kept as the named form of the first
 line below (first on ties); there are no `first_at` or `order` twins:
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 a.keys.min(by: i => a[i])!         // argmin, first on ties
 a.keys.find(i => a[i] > x)         // first position with a[i] > x, ?D
@@ -286,12 +291,13 @@ a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of
 `a.scan(op)` gives a `Prefix<D, T>`: n + 1 exclusive folds indexed by `D`'s
 cuts. Walking backwards gives suffix folds, indexed by the same cuts:
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 let pre = a.scan(+)        // pre[c]: fold of everything left of cut c
 let suf = a.rev.scan(+)    // suf[c]: fold of everything right of cut c
 pre[r.r] - pre[r.l]        // any range r
 pre[v]                     // a position: the fold through v, same as pre[v.r]
-prefix(a).fold(r)          // same, as the `Prefix` struct (`+` only)
+Prefix(a).fold(r)          // same, as the `Prefix` struct (`+` only)
 pre[v.l] + a[v] + suf[v.r] // the whole array, split at position v
 ```
 

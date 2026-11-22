@@ -7,6 +7,7 @@ decisions 126, 127, 129, 138, 141, 144.
 
 ## 6.1 Functions
 
+<!-- spec-only: signature tour with a `...` body -->
 ```
 fn dist(a: P, b: P) -> Int = abs(a.x - b.x) + abs(a.y - b.y)
 fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
@@ -44,6 +45,7 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
 Nested `fn`s and lambdas are the same thing for every rule; they differ
 only in spelling (decision 144):
 
+<!-- spec-only: lambda tour over names from the text -->
 ```
 fn go(v: V):                          // nested fn: recursion by name
     seen[v] = true
@@ -78,6 +80,7 @@ by: x =>                              // block lambda
 
 A generator is a function that pushes elements to its caller's loop body:
 
+<!-- spec-only: tour with a `...` loop body -->
 ```
 fn divisors(n: Int) -> yields Int:
     for d in 1..=n.isqrt() if n % d == 0:

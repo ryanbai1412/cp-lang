@@ -10,6 +10,7 @@ cuts, `D.cuts`. A **range** is a contiguous run of positions, and its two
 ends are cuts. Arrays are `[D]T`, indexed only by `D`, so a vertex never
 indexes an edge array and a cut never indexes a position array.
 
+<!-- spec-only: declaration tour over `n`, `xs`, `Row` and `Col` from the text -->
 ```python
 domain V = 1..=n                       // positions 1..n
 domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..=n
@@ -99,6 +100,7 @@ Cuts `j` and `i` bound a piece of the array: the positions between them. So
 a half-open range literal with cut ends, written where a `Range<V>` is
 expected, builds that `Range<V>` directly:
 
+<!-- spec-only: fragment: `dp`, `cost` and `i` come from the text -->
 ```python
 for j in ..i:                        // ..i: no Range<V> expected, so cuts
     dp[i] min= dp[j] + cost(j..i)    // cost takes Range<V>: j..i is the piece
@@ -141,6 +143,7 @@ when `v.next` exists, or `for j in a[v.r..].keys`; see Open. `..i` needs no
 `!`: `i` existing proves its domain is non-empty. Cost: O(1) to build, like
 any range.
 
+<!-- spec-only: fragment: `dp`, `cost`, `i` and `c` come from the text -->
 ```python
 for j in ..i:                        // every cut before i
     dp[i] min= dp[j] + cost(j..i)
@@ -213,6 +216,7 @@ which always exists, for answers that are boundaries: insertion points,
 counts, prefix lengths. They agree: `r.first_true(ok)` is `r.bsearch(ok).r`
 and `r.last_true(ok)` is `r.bsearch(ok, last: true).l`.
 
+<!-- spec-only: fragment over `cost`, `budget`, `pre` and `a` from the text -->
 ```python
 let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      // largest k that fits
 let k = (0..=n).first_true(k => cost(k) >= x)!               // smallest k that reaches x
@@ -229,6 +233,7 @@ they never call `ok` more often than release does (see R09.2.3). Answer spaces t
 anonymous domain whose positions and cuts are both `Int`:
 `(0..=1e18).first_true(t => fits(t))`.
 
+<!-- spec-only: fragment: `cross`, `cost` and `dp` come from the text -->
 ```python
 fn inversions(r: Range<Pos>) -> Int:          // merge-sort shape
     let (left, right) = r.halve() else: return 0
@@ -252,6 +257,7 @@ sentinel end when nothing qualifies (looks like a real answer).
 
 ## Arrays over domains
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 var dist: [V]?Int = None                 // fill
 let deg = [V] v => g.deg(v)              // build from a fn
@@ -272,7 +278,7 @@ ask for an end:
 let m = read<0..=2e5>()
 domain E = 0..m
 let e = E.first!             // traps naming `E` when m == 0
-let e = E.first ?? return    // or handle it
+let first = E.first ?? return    // or handle it
 ```
 
 No `NonEmpty` bound: the checker does not track emptiness. Tried and dropped

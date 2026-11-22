@@ -9,6 +9,7 @@ supersedes the older rule that unproven checks stay in submissions.
 A context is a library-declared record of compile-time values with
 defaults. It replaces a flag per feature with one mechanism:
 
+<!-- spec-only: the prelude's `io` context declaration -->
 ```
 context io:
     base: 0 | 1 = 0
@@ -19,6 +20,7 @@ context io:
 
 Any block sets one:
 
+<!-- spec-only: fragment over `A` with a `...` body -->
 ```
 with io(base: 1)                  // bare line at the top of a block: the rest of it
 with checks(bounds: off):         // block form
@@ -98,6 +100,7 @@ checked builds and, like other checks, skipped in release unless
 
 ## 9.4 Turning checks on and off
 
+<!-- spec-only: tour with `...` bodies -->
 ```
 with checks(ranges: on, overflow: on, bounds: on):   // also in release
     ...
