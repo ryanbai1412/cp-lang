@@ -1,8 +1,8 @@
 // The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
-// its status from the compiler, never by hand. Every snippet must pass
-// `cpl check`. `runs`: the compiler
-// also runs it (matching `.out` when given) and emits C++. `checks`: it does
-// not run yet, so the page shows it without Run and without output.
+// its status from the compiler, never by hand. Every snippet must pass the
+// 0.3 checker. `runs`: the compiler also runs it (matching `.out` when given)
+// and emits C++. `checks`: it does not run yet, so the page shows it without
+// Run and without output.
 // A practice problem's ref.cp must also pass every test in its tests.json.
 // Pages take their programs from content/, never from literals in TSX, so
 // everything a visitor can run is covered. Writes .gate/status.json and
@@ -74,16 +74,23 @@ writeFileSync(join(tmp, 'cp.toml'), `[libs]\nlib = "${join(repo, 'examples/local
 const sh = (args, env = {}, input = '') =>
   spawnSync(cpl, args, { input, encoding: 'utf8', timeout: 20000, env: { ...process.env, ...env } });
 
+const v03 = { CPL_SPEC: '1', CPL_STD: join(repo, 'spec/std') };
 const results = {};
 let failed = 0;
 for (const s of snippets) {
   const file = join(tmp, 'main.cp');
   writeFileSync(file, s.source);
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
-  const check = sh(['check', file]);
-  const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
-  const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], {}, s.stdin) : build;
-  const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
+  const check = sh(['check', file], v03);
+  // Until 0.3 is the compiler's default, a snippet runs only if it runs in 0.3
+  // mode and in the mode the browser build still uses.
+  let build, run, matches;
+  for (const env of [{}, v03]) {
+    build = sh(['build', file, '-o', join(tmp, 'main.cpp')], env);
+    run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], env, s.stdin) : build;
+    matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
+    if (!(build.status === 0 && run.status === 0 && matches)) break;
+  }
   let status = 'fails';
   let note = '';
   if (check.status !== 0) note = first(check);
