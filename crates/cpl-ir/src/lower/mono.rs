@@ -999,7 +999,13 @@ impl<'a> Lowerer<'a> {
                             Some(id),
                             struct_env.clone(),
                         );
+                        let dlen = self.diags.len();
                         self.resolve_fn_sig(fn_id, None);
+                        if self.diags.len() > dlen {
+                            self.diags.truncate(dlen);
+                            self.sigs[fn_id].params.clear();
+                            self.sigs[fn_id].ret = None;
+                        }
                         self.structs[id].methods.insert(f.name.text.clone(), fn_id);
                     }
                 }

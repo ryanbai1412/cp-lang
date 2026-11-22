@@ -6384,6 +6384,9 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        if self.sigs[fn_id].ret.is_none() {
+            self.resolve_fn_sig(fn_id, None);
+        }
         let name = self.sigs[fn_id].decl.name.text.clone();
         let declared_mut = self.sigs[fn_id]
             .decl
