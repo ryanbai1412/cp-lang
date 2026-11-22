@@ -136,8 +136,8 @@ implemented in a completely different manner and structure if we do our
 jobs correctly". And: "we should repeatedly iterate against it. and if
 needed we can also e.g. start out with a quick prototype python compiler or
 smth for fast iteration speeds and fine tuning the language to make it very
-good". `proto/cpc/` is that prototype; use it to try a design change
-quickly before it lands in the Rust compiler.
+good". `proto/cpc/` was that prototype; it was deleted once `cpl` overtook
+it (`research/MIGRATION.md`).
 
 **Performance is key, including the toolchain's.** "oh also performance
 is key. also of the toolchain". Generated code must match hand-written C++
@@ -316,7 +316,7 @@ Tooling:
 
 ## State at the time of writing
 
-- **Prototype:** a Python compiler in `proto/cpc/`. It is partial: no
+- **Prototype:** a Python compiler in `proto/cpc/`, since deleted. It was partial: no
   generators and no rollback, it still parses `pure fn`, and it still runs
   multitest through `fn solve()`.
 - **Research:** `research/NOTES.md` has the data and
@@ -325,7 +325,7 @@ Tooling:
 - **Approved on 2026-11-20:** `plan/19-index-and-lends.md` (1.10): one
   mechanism for `domain`, `Str`, `Grid` and `Perm`, projections (`lends`),
   `law disjoint` and lexical exclusivity; also Euclidean `/` and `%`.
-  Outcomes are in `decisions.md` §9. The prototype implements the surface
+  Outcomes are in `decisions.md` §9. The prototype implemented the surface
   rules (`proto/cpc/lends.py`, `proto/tests/lend/`, the `lend_*`, `proj_*`
   and `index_*` files in `proto/tests/bad/`); 19 §11 lists what it leaves
   out. The Rust compiler does not have any of it yet. A red-team pass
