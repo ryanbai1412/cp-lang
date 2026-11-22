@@ -383,7 +383,7 @@ pub fn select<S: IndexedMut, T, K>(
     cmp: ?((T, T) -> Bool) = None,
 ):
     let n = self.len
-    let _ = self.at(k)
+    let _ = self.nth(k)
     let less = (a: T, b: T) => if let c = cmp: c(a, b) else: by(a) < by(b)
     var (lo, hi) = (0, n)
     var budget = 2
@@ -397,14 +397,14 @@ pub fn select<S: IndexedMut, T, K>(
             return
         budget -= 1
         let mid = lo + (hi - lo) / 2
-        if less(self.at(mid), self.at(lo)): self.swap_idx(mid, lo)
-        if less(self.at(hi - 1), self.at(lo)): self.swap_idx(hi - 1, lo)
-        if less(self.at(hi - 1), self.at(mid)): self.swap_idx(hi - 1, mid)
-        let pivot = self.at(mid)
+        if less(self.nth(mid), self.nth(lo)): self.swap_idx(mid, lo)
+        if less(self.nth(hi - 1), self.nth(lo)): self.swap_idx(hi - 1, lo)
+        if less(self.nth(hi - 1), self.nth(mid)): self.swap_idx(hi - 1, mid)
+        let pivot = self.nth(mid)
         var (i, j) = (lo, hi - 1)
         while i <= j:
-            while less(self.at(i), pivot): i += 1
-            while less(pivot, self.at(j)): j -= 1
+            while less(self.nth(i), pivot): i += 1
+            while less(pivot, self.nth(j)): j -= 1
             if i <= j:
                 self.swap_idx(i, j)
                 i += 1
@@ -432,8 +432,8 @@ fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T
     while true:
         var c = 2 * i + 1
         if c >= m: return
-        if c + 1 < m and less(self.at(lo + c), self.at(lo + c + 1)): c += 1
-        if not less(self.at(lo + i), self.at(lo + c)): return
+        if c + 1 < m and less(self.nth(lo + c), self.nth(lo + c + 1)): c += 1
+        if not less(self.nth(lo + i), self.nth(lo + c)): return
         self.swap_idx(lo + i, lo + c)
         i = c
 
@@ -556,7 +556,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
     if let p = prev, let f = first_val:
         yield (p, f)
 
-/// The pairs `(a.at(i), b.at(i))`, as many as the shorter sequence has.
+/// The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
 /// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). O(min(|a|, |b|)).
 ///
 /// cost: O(min(|a|, |b|))
@@ -1797,7 +1797,7 @@ pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int:
     var mid = 0
     for i in 0..self.len:
-        if keep(self.at(i)):
+        if keep(self.nth(i)):
             self.swap_idx(mid, i)
             mid += 1
     mid
@@ -1813,7 +1813,7 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
     var yes: List<T> = []
     var no: List<T> = []
     for i in 0..self.len:
-        let x = self.at(i)
+        let x = self.nth(i)
         if keep(x): yes.push(x) else: no.push(x)
     let mid = yes.len
     for i in 0..mid: self[i] = yes[i]
@@ -1970,7 +1970,7 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
     let n = self.len
     if n <= 1: return
     var cur: List<(Int, T)> = []
-    for i in 0..n: cur.push((by(self.at(i)), self.at(i)))
+    for i in 0..n: cur.push((by(self.nth(i)), self.nth(i)))
     var lo = cur[0].0
     var hi = cur[0].0
     for p in cur:

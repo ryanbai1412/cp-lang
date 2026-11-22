@@ -75,6 +75,12 @@ keeps it at its stated cost (decision 142):
 | `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment (R12.4.6) |
 | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` (R12.4.7) |
 
+`at(k)` takes a key, the same key as `s[k]`; it is never a walk offset.
+On `w = s[2..]`, `w.at(2)` is `s[2]` and `w.at(0)` traps. Walking by
+position is `nth(k)`, which is `s.at(s.keys.nth(k))`, so generic code that
+counts from 0 over any `Indexed` (`zip`, `select`, `next_permutation`)
+reads with `nth` (see R04b.1.4). (R12.4.13)
+
 Generators are `Seq` only: a yield number is not an identity, so
 `dfs(s).argmax()` is an error suggesting `.keyed(by: v => v)` or `.max()`.
 `s.keyed(keys)` makes any `Seq` `Keyed`, pairing by walk order (`keys`
