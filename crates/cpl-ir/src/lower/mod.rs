@@ -618,6 +618,7 @@ struct Lowerer<'a> {
     /// The `with` settings in force, innermost last: the module that
     /// wrote it, the context, the field and its value. (R09.1.1)
     contexts: Vec<(ModId, String, String, ast::Expr)>,
+    file_contexts_len: usize,
     /// Domains declared by a count alone, `domain E = [m]`: the ones
     /// `io.base` shifts. (R10.2.2)
     counted: HashSet<DomainId>,
@@ -833,6 +834,7 @@ impl<'a> Lowerer<'a> {
             raw_lists: Vec::new(),
             unchecked: 0,
             contexts: Vec::new(),
+            file_contexts_len: 0,
             counted: HashSet::new(),
             overflow_checks_off: 0,
             io_sep: None,
@@ -3692,6 +3694,7 @@ impl<'a> Lowerer<'a> {
             self.cx.new_domain_slots.push(*dom_id);
         }
 
+        let saved_fn_contexts = self.contexts.split_off(self.file_contexts_len);
         let saved_fn_io_sep = self.io_sep.take();
         let saved_fn_io_prec = self.io_precision.take();
         let saved_fn_unchecked = std::mem::replace(&mut self.unchecked, 0);
@@ -3713,6 +3716,8 @@ impl<'a> Lowerer<'a> {
             ast::FnBody::None => {}
         }
 
+        self.contexts.truncate(self.file_contexts_len);
+        self.contexts.extend(saved_fn_contexts);
         self.io_sep = saved_fn_io_sep;
         self.io_precision = saved_fn_io_prec;
         self.unchecked = saved_fn_unchecked;

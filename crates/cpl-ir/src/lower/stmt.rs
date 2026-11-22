@@ -1676,6 +1676,7 @@ impl<'a> Lowerer<'a> {
         for (ctx, args) in &leading {
             self.push_context(ctx, args);
         }
+        self.file_contexts_len = self.contexts.len();
         self.cur_mod = held;
     }
 
