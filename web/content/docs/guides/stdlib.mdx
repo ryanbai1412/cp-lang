@@ -42,7 +42,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.prefix` | `prefix`, `Prefix`, `FillOrder`, `prefix_fold`, `suffix_fold`, `Diff` | 1D/2D/list static (`prefix(a)`) and append-only (`Prefix<...>.filling(order:)`, `.set(...)`) prefix/suffix sums, monoid folds, 1D/2D difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
 | `std.segtree` | `SegTree`, `MergeSortTree`, `SparseSegTree` | Segment tree, orthogonal 2D merge-sort tree, and coordinate-sparse segment tree |
-| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `scan_in_place`, `argmax`, `inversions`, `prev_less`, `next_less`, `sliding_min`, `inverse`, `perm_cycles`, `bsearch_first`, `bsearch_last` | Sequence views, searches, monotone stacks, permutations, folds, `Perm<V>` alias |
+| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `scan_in_place`, `argmax`, `inversions`, `prev_less`, `next_less`, `sliding_min`, `inverse`, `perm_cycles`, `first_true`, `last_true` | Sequence views, searches, monotone stacks, permutations, folds, `Perm<V>` alias |
 | `std.sparse` | `SparseTable`, `DisjointSparseTable`, `idempotent` | O(1) idempotent and non-idempotent associative range folds |
 | `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
 | `std.strings` | `z_function`, `prefix_function`, `manacher`, `SuffixArray`, `SuffixAutomaton`, `PalindromicTree`, `Trie`, `AhoCorasick`, `RollingHash`, `Hash2D` | Pattern matching, palindromes, suffix structures, tries, and rolling hashes |
