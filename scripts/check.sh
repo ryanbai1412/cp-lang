@@ -198,6 +198,8 @@ else
     lib_dirs+=(examples/local-lib/*/)
 fi
 lib_pids=()
+bundle_pid=""
+script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
 site_test_pid=""
@@ -210,8 +212,25 @@ else
         lib_pids+=($!)
     done
 fi
+bundle_cached=0
+if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
+    bundle_cached=1
+else
+    rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
+        || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
+    need python3 "site/bundle.py runs on it"
+    python3 -c 'import mistune' 2>/dev/null \
+        || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
+    # Separate CARGO_TARGET_DIR so the wasm build runs alongside nextest without Cargo lock contention.
+    CARGO_TARGET_DIR="$target/wasm-cargo" python3 site/bundle.py >"$lib_logs/site_bundle.log" 2>&1 &
+    bundle_pid=$!
+fi
+scoreboard_cached=0
+if cache_hit scoreboard_fast; then
+    scoreboard_cached=1
+fi
 cleanup() {
-    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${bundle_pid:+"$bundle_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -222,12 +241,16 @@ trap cleanup EXIT
 #   which other tests running beside them skew;
 # - the recovery and fix-it scoreboards check thousands of broken ports on
 #   every core, which skews the LSP latency test beside them, so they run
-#   after the rest.
+#   after the rest;
+# - committed_scoreboard_ratchet runs the same conformance+corpus+docs ratchet
+#   as `cpl-conform all --check` below (which also checks `diff`), so running
+#   both in --fast would execute ~3,400 cases twice.
 slow_tests=(
     products_and_variable_divisors_are_never_decided_wrongly
     front_end_check_is_under_50_ms
     recovery_scoreboard
     fix_it_scoreboard
+    committed_scoreboard_ratchet
 )
 if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
@@ -284,15 +307,11 @@ echo "prelude: $prelude names"
 step "cpl fmt --check stdlib"
 "$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
-# Fast validation scoreboard runs in background in parallel with site bundle + docs/site tests.
-scoreboard_cached=0
-if cache_hit scoreboard_fast; then
-    scoreboard_cached=1
-else
-    (
-        python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >/dev/null \
-            && "$target/debug/cpl-conform" all --check
-    ) >"$lib_logs/scoreboard.log" 2>&1 &
+# Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
+if [ "$scoreboard_cached" -eq 0 ]; then
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >"$lib_logs/script_tests.log" 2>&1 &
+    script_test_pid=$!
+    "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
 fi
 
@@ -309,17 +328,15 @@ check_bundle_parts() {
         printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
 }
 step "site bundle: compiler under 2,100,000 bytes, docs under 500,000, gallery under 150,000"
-if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
+if [ "$bundle_cached" -eq 1 ]; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
     check_bundle_parts
 else
-    rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
-        || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
-    need python3 "site/bundle.py runs on it"
-    python3 -c 'import mistune' 2>/dev/null \
-        || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
-    python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
+    bundle_status=0
+    wait "$bundle_pid" || bundle_status=1
+    bundle_pid=""
+    [ "$bundle_status" -eq 0 ] || { cat "$lib_logs/site_bundle.log"; fail "site/bundle.py failed; rerun: python3 site/bundle.py"; }
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes"
     check_bundle_parts
@@ -344,11 +361,17 @@ step "cpl-conform ratchet (all --check against research/scoreboard.json)"
 if [ "$scoreboard_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${scoreboard_pid:-}" ]; then
+    script_status=0
+    if [ -n "${script_test_pid:-}" ]; then
+        wait "$script_test_pid" || script_status=1
+        script_test_pid=""
+    fi
     sb_status=0
     wait "$scoreboard_pid" || sb_status=1
-    cat "$lib_logs/scoreboard.log"
+    cat "$lib_logs/script_tests.log" "$lib_logs/scoreboard.log"
     scoreboard_pid=""
-    [ "$sb_status" -eq 0 ] || fail "cpl-conform ratchet or script unit test failure; rerun: cargo run -p cpl-conform -- all --check"
+    [ "$script_status" -eq 0 ] || fail "script unit test failure; rerun: python3 -m unittest scripts/test_*.py"
+    [ "$sb_status" -eq 0 ] || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- all --check"
     cache_save scoreboard_fast
 fi
 
