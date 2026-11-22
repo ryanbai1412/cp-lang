@@ -1349,7 +1349,40 @@ pub struct SuffixTreeEdge(
 /// order: bottom-up: each edge comes after every edge below it, subtrees in rank order
 /// traps: never
 /// example: `suffix_tree_edges("aa") == [SuffixTreeEdge(0, 1, 1, 1, 1..2), SuffixTreeEdge(1, 2, 0, 1, 0..2)]`
-pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge> = todo
+@allow(unproven_list_index)
+pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
+    let n = s.len
+    if n == 0: return []
+    let sa_obj = SuffixArray.new(s)
+    let sa = sa_obj.sa
+    let lcp = sa_obj.lcp
+    var out: List<SuffixTreeEdge> = []
+    var st_depth: List<Int> = []
+    var st_start: List<Int> = []
+    var st_sum: List<Int> = []
+    for i in 0..n:
+        let leaf_d = n - sa[i]
+        if st_depth.is_empty or st_depth[st_depth.len - 1] < leaf_d:
+            st_depth.push(leaf_d)
+            st_start.push(i)
+            st_sum.push(0)
+        let h = if i + 1 < n: lcp[i] else: 0
+        while not st_depth.is_empty and st_depth[st_depth.len - 1] > h:
+            let d = st_depth.pop()!
+            let start = st_start.pop()!
+            let csum = st_sum.pop()!
+            let top_d = if st_depth.is_empty: 0 else: st_depth[st_depth.len - 1]
+            let parent_d = if top_d > h: top_d else: h
+            let elen = d - parent_d
+            let bottom = csum + elen
+            out.push(SuffixTreeEdge(csum, bottom, parent_d, elen, start..(i + 1)))
+            if not st_depth.is_empty and st_depth[st_depth.len - 1] == parent_d:
+                st_sum[st_sum.len - 1] += bottom
+            else if parent_d > 0:
+                st_depth.push(parent_d)
+                st_start.push(start)
+                st_sum.push(bottom)
+    out
 
 @allow(unproven_list_index)
 /// Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)`
