@@ -281,6 +281,7 @@
         "core-05/closure-arg-not-kept.cp": "fail",
         "core-05/closure-captures-at-call.cp": "pass",
         "core-05/closure-not-returned.cp": "fail",
+        "core-05/closure-param-read-twice.cp": "pass",
         "core-05/disjoint-fields.cp": "pass",
         "core-05/elements-maybe-same.cp": "pass",
         "core-05/elements-proved-apart.cp": "pass",
@@ -604,6 +605,7 @@
         "std-dsu/roots-groups.cp": "pass",
         "std-dsu/size.cp": "pass",
         "std-dsu/unite.cp": "pass",
+        "std-flow/arcs.cp": "pass",
         "std-flow/matching-big.cp": "pass",
         "std-flow/matching.cp": "pass",
         "std-geometry/angle.cp": "pass",
@@ -641,6 +643,7 @@
         "std-poly/series.cp": "pass",
         "std-rand/chance-pick.cp": "pass",
         "std-slope/concave.cp": "pass",
+        "std-slope/hinges.cp": "pass",
         "std-strings/automata.cp": "pass",
         "std-strings/case-trim.cp": "pass",
         "std-strings/chars.cp": "pass",
@@ -1302,17 +1305,17 @@
           ]
         },
         {
+          "cause": "R0001: internal: operands of different kinds",
+          "count": 1,
+          "examples": [
+            "core-07/adjacent.cp"
+          ]
+        },
+        {
           "cause": "R0001: the input ended where a number was expected (input line 1, column 1)",
           "count": 1,
           "examples": [
             "core-04/first-is-optional.cp"
-          ]
-        },
-        {
-          "cause": "R0001: the interpreter itself failed; this is a bug in cpl",
-          "count": 1,
-          "examples": [
-            "core-07/adjacent.cp"
           ]
         },
         {
@@ -1773,10 +1776,10 @@
       ],
       "counts": {
         "fail": 344,
-        "pass": 308
+        "pass": 311
       },
-      "passed": 308,
-      "total": 652
+      "passed": 311,
+      "total": 655
     },
     "corpus": {
       "cases": {
@@ -1884,13 +1887,13 @@
       "causes": [
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 11,
+          "count": 13,
           "examples": [
             "btoi17p2",
             "ccc20s4",
             "cco21p4",
-            "coci21c2p5",
-            "etsr23r4p2"
+            "cco21p5",
+            "coci21c2p5"
           ]
         },
         {
@@ -1930,14 +1933,6 @@
           ]
         },
         {
-          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
-          "count": 2,
-          "examples": [
-            "noi02p3",
-            "sdoi17r1p2"
-          ]
-        },
-        {
           "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
           "count": 2,
           "examples": [
@@ -1967,6 +1962,13 @@
           "examples": [
             "noi17p2",
             "noip14p6"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
+          "count": 1,
+          "examples": [
+            "noi02p3"
           ]
         },
         {
@@ -2002,13 +2004,6 @@
           "count": 1,
           "examples": [
             "btoi20p3"
-          ]
-        },
-        {
-          "cause": "E0302: a `<id>` can't walk over a `<id>`",
-          "count": 1,
-          "examples": [
-            "cco21p5"
           ]
         },
         {
@@ -2273,6 +2268,7 @@
         "conformance/core-05/cache-write-through-read-self.cp": "pass",
         "conformance/core-05/closure-arg-called.cp": "pass",
         "conformance/core-05/closure-captures-at-call.cp": "cxx_err",
+        "conformance/core-05/closure-param-read-twice.cp": "pass",
         "conformance/core-05/disjoint-fields.cp": "pass",
         "conformance/core-05/elements-proved-apart.cp": "pass",
         "conformance/core-05/lambda-return-is-local.cp": "pass",
@@ -2478,6 +2474,7 @@
         "conformance/std-dsu/roots-groups.cp": "pass",
         "conformance/std-dsu/size.cp": "pass",
         "conformance/std-dsu/unite.cp": "pass",
+        "conformance/std-flow/arcs.cp": "pass",
         "conformance/std-flow/matching-big.cp": "pass",
         "conformance/std-flow/matching.cp": "pass",
         "conformance/std-geometry/angle.cp": "pass",
@@ -2515,6 +2512,7 @@
         "conformance/std-poly/series.cp": "pass",
         "conformance/std-rand/chance-pick.cp": "cxx_err",
         "conformance/std-slope/concave.cp": "pass",
+        "conformance/std-slope/hinges.cp": "pass",
         "conformance/std-strings/automata.cp": "pass",
         "conformance/std-strings/case-trim.cp": "pass",
         "conformance/std-strings/chars.cp": "pass",
@@ -2618,11 +2616,11 @@
       ],
       "counts": {
         "cxx_err": 6,
-        "pass": 268,
+        "pass": 271,
         "skip": 214
       },
-      "passed": 268,
-      "total": 488
+      "passed": 271,
+      "total": 491
     },
     "docs": {
       "cases": {
@@ -4580,7 +4578,7 @@
         "segtree.cp#b80447a7bb": "todo",
         "segtree.cp#b80447a7bb~2": "todo",
         "segtree.cp#bd41a8325b": "error",
-        "segtree.cp#be818c861e": "trap",
+        "segtree.cp#be818c861e": "error",
         "segtree.cp#c076d340b1": "todo",
         "segtree.cp#c104be08ed": "error",
         "segtree.cp#c218d083c4": "error",
@@ -4806,44 +4804,44 @@
         "seq.cp#fb77f72450": "todo",
         "slope.cp#18ddd82d2f": "todo",
         "slope.cp#1cc3dcaab9": "todo",
-        "slope.cp#1d86e03381": "todo",
+        "slope.cp#1d86e03381": "pass",
         "slope.cp#23b083659f": "error",
-        "slope.cp#28cc2b82f8": "todo",
-        "slope.cp#2bc13b66d8": "todo",
+        "slope.cp#28cc2b82f8": "pass",
+        "slope.cp#2bc13b66d8": "pass",
         "slope.cp#2e21843b3c": "pass",
         "slope.cp#2f80bbc005": "todo",
-        "slope.cp#30c79076c7": "todo",
+        "slope.cp#30c79076c7": "pass",
         "slope.cp#33226c5bdf": "pass",
         "slope.cp#3bbdd52503": "pass",
-        "slope.cp#3e079ea5ed": "todo",
+        "slope.cp#3e079ea5ed": "pass",
         "slope.cp#4632d16fbf": "pass",
-        "slope.cp#46b2dcfdba": "todo",
-        "slope.cp#4b9b14c98e": "todo",
-        "slope.cp#4db01ed7e0": "todo",
-        "slope.cp#54238b8c86": "todo",
-        "slope.cp#5489d8bf6e": "todo",
-        "slope.cp#6d2a1e7d86": "todo",
+        "slope.cp#46b2dcfdba": "pass",
+        "slope.cp#4b9b14c98e": "pass",
+        "slope.cp#4db01ed7e0": "pass",
+        "slope.cp#54238b8c86": "pass",
+        "slope.cp#5489d8bf6e": "pass",
+        "slope.cp#6d2a1e7d86": "pass",
         "slope.cp#726361f37d": "todo",
-        "slope.cp#76afa0646c": "todo",
+        "slope.cp#76afa0646c": "pass",
         "slope.cp#779c524e11": "pass",
         "slope.cp#77fa802f47": "pass",
         "slope.cp#7a628f58cf": "todo",
-        "slope.cp#7c0210d1b2": "todo",
-        "slope.cp#8739f0a135": "todo",
+        "slope.cp#7c0210d1b2": "pass",
+        "slope.cp#8739f0a135": "pass",
         "slope.cp#968e98cd7e": "todo",
         "slope.cp#98b5b340dd": "error",
-        "slope.cp#9d34dbdc76": "todo",
+        "slope.cp#9d34dbdc76": "pass",
         "slope.cp#ac22c5fef6": "todo",
-        "slope.cp#b7a71f88ae": "todo",
+        "slope.cp#b7a71f88ae": "pass",
         "slope.cp#d0a4e0921e": "todo",
-        "slope.cp#d60facc99b": "todo",
-        "slope.cp#d62734241c": "todo",
-        "slope.cp#dae063719c": "trap",
-        "slope.cp#f279380173": "todo",
+        "slope.cp#d60facc99b": "pass",
+        "slope.cp#d62734241c": "pass",
+        "slope.cp#dae063719c": "pass",
+        "slope.cp#f279380173": "pass",
         "slope.cp#f47ee7f492": "pass",
         "slope.cp#f515383dbb": "error",
-        "slope.cp#f6387ab218": "todo",
-        "slope.cp#ff442deb30": "todo",
+        "slope.cp#f6387ab218": "pass",
+        "slope.cp#ff442deb30": "pass",
         "sparse.cp#10a2426b7e": "todo",
         "sparse.cp#1bd2bdfa73": "todo",
         "sparse.cp#27eb05f56e": "todo",
@@ -5293,7 +5291,7 @@
         "window.cp#298f09cbe1": "error",
         "window.cp#2aee1b4da8": "error",
         "window.cp#3ae684188d": "error",
-        "window.cp#41175a1970": "todo",
+        "window.cp#41175a1970": "error",
         "window.cp#6c0261e89d": "error",
         "window.cp#87f0cab08a": "todo",
         "window.cp#9763023feb": "error",
@@ -5312,13 +5310,24 @@
       "causes": [
         {
           "cause": "R0402: `todo` reached",
-          "count": 897,
+          "count": 875,
           "examples": [
             "algebra.cp#2cc66705f6",
             "algebra.cp#58c34ca797",
             "algebra.cp#768f29f0b8",
             "algebra.cp#8d12c905cf",
             "algebra.cp#d5ef2ebc35"
+          ]
+        },
+        {
+          "cause": "E0302: expected `<id>`, found `<id>`",
+          "count": 189,
+          "examples": [
+            "algebra.cp#5e9c1b0196",
+            "algebra.cp#b1abde49c9",
+            "algebra.cp#f83cfaf9d7",
+            "dp.cp#33920d71bf",
+            "dp.cp#4b367b8bba"
           ]
         },
         {
@@ -5330,17 +5339,6 @@
             "dsu.cp#15712e6685",
             "dsu.cp#17a9cc0d5d",
             "dsu.cp#1979de470d"
-          ]
-        },
-        {
-          "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 184,
-          "examples": [
-            "algebra.cp#5e9c1b0196",
-            "algebra.cp#b1abde49c9",
-            "algebra.cp#f83cfaf9d7",
-            "dp.cp#33920d71bf",
-            "dp.cp#4b367b8bba"
           ]
         },
         {
@@ -5367,7 +5365,7 @@
         },
         {
           "cause": "R0001: an array literal needs one value per position",
-          "count": 68,
+          "count": 67,
           "examples": [
             "beats.cp#148e79d4d7",
             "beats.cp#2608a6732d",
@@ -5542,28 +5540,6 @@
           ]
         },
         {
-          "cause": "E0303: `<id>` needs the argument `<id>`",
-          "count": 6,
-          "examples": [
-            "seq.cp#1a682ea42e",
-            "seq.cp#4ebb22663d",
-            "seq.cp#55f8890383",
-            "seq.cp#8a69f3aa18",
-            "window.cp#2aee1b4da8"
-          ]
-        },
-        {
-          "cause": "E0204: `<id>` is not a type `<id>` knows",
-          "count": 5,
-          "examples": [
-            "graph.cp#34cce8806f",
-            "segtree.cp#4cc38c3122",
-            "segtree.cp#9ee143fc28",
-            "window.cp#e5d2d03686",
-            "window.cp#ffba38c469"
-          ]
-        },
-        {
           "cause": "E0201: no `<id>` in scope",
           "count": 4,
           "examples": [
@@ -5571,6 +5547,16 @@
             "search.cp#a36f80442f",
             "search.cp#a58670628c",
             "seq.cp#1770246b4d"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` is not a type `<id>` knows",
+          "count": 4,
+          "examples": [
+            "graph.cp#34cce8806f",
+            "segtree.cp#4cc38c3122",
+            "window.cp#e5d2d03686",
+            "window.cp#ffba38c469"
           ]
         },
         {
@@ -5601,6 +5587,16 @@
             "graph.cp#aecab771fa",
             "graph.cp#c226930cc3",
             "graph.cp#ec6df23ad6"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` needs the argument `<id>`",
+          "count": 4,
+          "examples": [
+            "seq.cp#1a682ea42e",
+            "seq.cp#4ebb22663d",
+            "seq.cp#55f8890383",
+            "seq.cp#8a69f3aa18"
           ]
         },
         {
@@ -5963,23 +5959,16 @@
           "examples": [
             "rand.cp#648c569f57"
           ]
-        },
-        {
-          "cause": "R0001: the interpreter itself failed; this is a bug in cpl",
-          "count": 1,
-          "examples": [
-            "slope.cp#dae063719c"
-          ]
         }
       ],
       "counts": {
-        "error": 858,
-        "pass": 836,
+        "error": 860,
+        "pass": 858,
         "skip": 2,
-        "todo": 897,
-        "trap": 89
+        "todo": 875,
+        "trap": 87
       },
-      "passed": 836,
+      "passed": 858,
       "total": 2682
     },
     "spec-blocks": {
