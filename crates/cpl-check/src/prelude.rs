@@ -137,7 +137,7 @@ pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String
         crate::modules::active_std_modules()
             .iter()
             .flat_map(|(_, text)| scan_top_level_methods(text))
-            .map(str::to_string)
+            .map(|(n, _)| n.to_string())
             .collect()
     })
 }
