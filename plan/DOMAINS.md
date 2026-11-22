@@ -84,8 +84,9 @@ into a test.
 ## 5. C++ codegen and performance
 
 **Goal.** The C++ a world-class contestant would hand-write: runtime p50 at
-or below 1.0x the originals, never above 1.5x, tight layouts with niches
-and narrow storage, one file under 64 KB.
+or below 1.0x the originals, never above 1.5x, and always reachable to
+1.1x by more manual tuning in the language; tight layouts with niches and
+narrow storage; one file, every solution under 32 KB.
 
 **Now.** Every port passes under ASan/UBSan; deep recursion runs on a
 big thread stack; runtime p95 about 3x the originals.
@@ -1066,7 +1067,7 @@ regressions across every goal: correctness (gate pass, zero trap-parity drift),
 expressiveness (contestant-written tokens vs raw and library-stripped original,
 median <= 0.6x, none > 1.0x), performance (runtime p50 <= 1.1x / max <= 1.5x,
 peak RSS p50 <= 1.0x / max <= 1.2x on max-size inputs, interpreter within 10x
-of C++, north star 5x), submission viability (emitted C++ <= 64 KB, p95 <= 32 KB, warning-free
+of C++, north star 5x), submission viability (every emitted C++ file <= 32 KB, 64 KB the hard judge limit, warning-free
 GCC/Clang), and friction (structured `research/frictions/*.md` reports with
 zero open blockers and `friction_lint` zero `wa_trap`). Backed by a replayed
 P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
