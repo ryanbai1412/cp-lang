@@ -66,6 +66,16 @@ impl Trap {
             codes::DIVISION_BY_ZERO
         } else if m.starts_with("`!` on") || m.contains("unwrapped a `None`") || m.contains("there is no value here") {
             codes::UNWRAP_NONE
+        } else if m.starts_with("assertion failed") {
+            codes::ASSERTION_FAILED
+        } else if m.starts_with("the stack ran out") {
+            codes::STACK_EXHAUSTED
+        } else if m.contains(" is outside `") && m.contains("input line") {
+            codes::INPUT_OUT_OF_CONTRACT
+        } else if m.contains(" is outside `") {
+            codes::RANGE_STORE
+        } else if m.starts_with("expected a number, found") {
+            codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
             codes::TODO_REACHED
         } else if m.starts_with("index ") && m.contains("outside") {

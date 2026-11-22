@@ -225,7 +225,7 @@ fn mut_is_required_where_declared_and_where_passed() {
     ));
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0401", "`g` is a `let`, so it can't be passed as `mut`")
+        ("E0403", "`g` is a `let`, so it can't be passed as `mut`")
     );
 }
 
@@ -3266,7 +3266,7 @@ fn recursive_let_lambda_checks_and_var_self_ref_is_error() {
     );
     assert_eq!(
         codes("var fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)\nprint(fact(5))\n"),
-        ["E0201"]
+        ["E0406"]
     );
 }
 
@@ -3304,10 +3304,10 @@ fn chained_comparisons_reject_mixed_direction_and_equality() {
         codes("let x = 3\nprint(1 < x <= 5, 5 >= x > 1, x == 3, x != 4)\n"),
         Vec::<&str>::new()
     );
-    assert_eq!(codes("let x = 3\nprint(1 < x > 2)\n"), ["E0309"]);
-    assert_eq!(codes("let a = 1, b = 1, c = 1\nprint(a == b == c)\n"), ["E0309"]);
-    assert_eq!(codes("let a = 1, b = 2, c = 2\nprint(a < b == c)\n"), ["E0309"]);
-    assert_eq!(codes("let a = 1, b = 2, c = 3\nprint(a != b != c)\n"), ["E0309"]);
+    assert_eq!(codes("let x = 3\nprint(1 < x > 2)\n"), ["E0111"]);
+    assert_eq!(codes("let a = 1, b = 1, c = 1\nprint(a == b == c)\n"), ["E0111"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 2\nprint(a < b == c)\n"), ["E0111"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 3\nprint(a != b != c)\n"), ["E0111"]);
 }
 
 #[test]

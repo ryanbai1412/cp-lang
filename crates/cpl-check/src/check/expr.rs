@@ -155,7 +155,7 @@ impl<'a> Checker<'a> {
                         .any(|(op, _)| matches!(op, ast::CmpOp::Eq | ast::CmpOp::Ne));
                     if has_eq {
                         if let Some(diag) = self.error(
-                            codes::BAD_OPERANDS,
+                            codes::MIXED_COMPARISON_CHAIN,
                             expr.span,
                             "chained comparisons cannot contain `==` or `!=`".to_string(),
                         ) {
@@ -163,7 +163,7 @@ impl<'a> Checker<'a> {
                         }
                     } else if has_lt && has_gt {
                         if let Some(diag) = self.error(
-                            codes::BAD_OPERANDS,
+                            codes::MIXED_COMPARISON_CHAIN,
                             expr.span,
                             "chained comparisons must point in one direction".to_string(),
                         ) {

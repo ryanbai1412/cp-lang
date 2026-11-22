@@ -605,7 +605,7 @@ impl<'a> Checker<'a> {
                         cpl_syntax::visit::walk_expr(body, &mut m);
                         if let Some(at) = m.found {
                             self.error(
-                                codes::UNRESOLVED_NAME,
+                                codes::VAR_LAMBDA_RECURSION,
                                 at,
                                 format!(
                                     "`var {vname}` cannot refer to itself recursively; bind it with `let`"
