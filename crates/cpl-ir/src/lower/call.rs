@@ -5751,6 +5751,18 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `Tr.m(x)`: the `m` of `x`'s `impl Tr`.
+        if let (Some(Sym::Trait(tid)), Some((first, rest))) = (self.sym(base), args.split_first()) {
+            if first.name.is_none() {
+                if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&first.value) {
+                    let key = (self.traits[tid].name.clone(), name.text.clone());
+                    if let Some(&fn_id) = self.structs[sid].trait_methods.get(&key) {
+                        let value = self.expr(&first.value, None);
+                        return self.method_call(fn_id, Some((&first.value, value)), rest, span);
+                    }
+                }
+            }
+        }
         match self.sym(base) {
             Some(Sym::Mod(target_mod)) => {
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();

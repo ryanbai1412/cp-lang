@@ -85,7 +85,6 @@ pub(super) struct ModConstInfo<'a> {
 pub(super) struct TraitInfo<'a> {
     pub mod_id: ModId,
     pub offset: u32,
-    #[allow(dead_code)]
     pub name: String,
     pub methods: Vec<&'a ast::FnDecl>,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
@@ -806,6 +805,7 @@ impl<'a> Lowerer<'a> {
             origin_gen: Some((gid, args.clone())),
             env: env.clone(),
             methods: HashMap::new(),
+            trait_methods: HashMap::new(),
             op_methods: Vec::new(),
             gen_methods: HashMap::new(),
             getters: HashSet::new(),
@@ -1120,10 +1120,17 @@ impl<'a> Lowerer<'a> {
                                     rhs_resolved,
                                     fn_id,
                                 ));
-                            } else if imp_trait.is_none()
-                                || !self.structs[sid].methods.contains_key(&f.name.text)
-                            {
+                            } else if let Some(tname) = imp_trait.as_ref().filter(|_| {
+                                self.structs[sid].methods.contains_key(&f.name.text)
+                            }) {
                                 // An inherent method of the same name wins the lookup (R08.1.4).
+                                let key = (tname.clone(), f.name.text.clone());
+                                self.structs[sid].trait_methods.insert(key, fn_id);
+                            } else {
+                                if let Some(tname) = &imp_trait {
+                                    let key = (tname.clone(), f.name.text.clone());
+                                    self.structs[sid].trait_methods.insert(key, fn_id);
+                                }
                                 self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
                             }
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
@@ -1176,6 +1183,8 @@ impl<'a> Lowerer<'a> {
                             let fn_id = self.declare_fn_in(m, t_mod, t_offset, Some(sid), env.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));
                             self.structs[sid].methods.insert(m.name.text.clone(), fn_id);
+                            let key = (tname.clone(), m.name.text.clone());
+                            self.structs[sid].trait_methods.insert(key, fn_id);
                         }
                     }
                 }
