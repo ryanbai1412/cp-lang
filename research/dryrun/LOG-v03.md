@@ -113,3 +113,21 @@ That makes 9 of 20 pass as the docs teach: p01, p02, p03, p04, p08, p13, p15, p1
 
 Every other row is as in the f605b8a4 recheck. 10 of 20 pass as the docs teach: p01, p02,
 p03, p04, p05, p08, p13, p15, p16, p17.
+
+## Recheck on 2cfe7fa9 (20/20, default v0.3)
+
+Rerun with `CPL_SPEC`, `CPL_STD`, and `CPL_EDITION` all unset using compiled `target/release/cpl` (`v03/loop.sh <name> 100` for p01–p18 and p20; `cpl check`, `cpl test`, `cpl stress --cases 50`, and `--judge codeforces` C++ against `p19_guess_interact.py` for p19).
+
+Of the 10 problems that failed on `b4b4f1e9`, four (`p09_topo`, `p10_matching`, `p11_distances`, `p18_binom`) were already passing on `origin/main` before this pass (`4d2d37ee`). The remaining six were resolved as follows:
+
+| Problem | Failure on `4d2d37ee` | Cause | Fix | Commit |
+|---|---|---|---|---|
+| `p06_labyrinth` | `E0302`: `Str += Char` rejected when RHS is an `if` yielding `Char` | `cpl-ir` `assign` only handled `Str += Char` for direct char literals, not general `Ty::Char` expressions | Allow any `Ty::Char` RHS on `Str +=` in `crates/cpl-ir/src/lower/stmt.rs`; regression `spec/conformance/core-03/str-plus-eq-char-if.cp` | `8b56aaf2` |
+| `p07_dijkstra` | `R0402`: `todo` reached in `std.graph.dijkstra` | `dijkstra` body in `spec/std/graph.cp` was a `todo` stub | Implemented `dijkstra` (single/multi-source, `until:`, weighted adjacency, `Paths` reconstruction) in `spec/std/graph.cp`; regression `spec/conformance/std-graph/dijkstra-multi-source-and-until.cp` | `3155c313` |
+| `p12_rangeupd` | `SegTree(+, ..., act: affine)` rejected (`act:` unimplemented, `affine` was `todo`, C++ emitted `std::optional<Action> != std::optional<Action>`) | `SegTree` lacked lazy tag storage/push-down/`apply`, `Action.of` and stock action markers were `todo`, `F` wasn't inferred from `act:`, and codegen only lowered `x == None` to `.has_value()` for `?Fn` | Implemented `SegTree<D, T, F = Int>` lazy `apply`/`apply_all`/push-down in `spec/std/segtree.cp`, `Action.of` and stock action markers in `spec/std/algebra.cp`, `F` inference and marker `same()` in `cpl-check`/`cpl-ir`, and general `Ty::Opt` `.has_value()` in `cpl-codegen`; regression `spec/conformance/std-segtree/lazy-affine-and-add.cp` | `2cfe7fa9` |
+| `p14_elevator` | `E0301` on `dp[Subset<P>.empty]` (`P.subsets` domain not recognized as `Subset<P>`) and `E0302` (`expected Subset<P>, found Subset<P>`) | `D.subsets` domain lowering didn't bind `Subset<D>`, and `Sym::GenStruct` shadowed `Subset<D>.empty`/`.full` in `cpl-ir` | Supported `D.subsets` domain arrays/loops and generic method return hints in `cpl-check`/`cpl-ir`; regressions `spec/conformance/core-04/domain-subsets-array-and-loop.cp` and `spec/conformance/core-05/generic-method-return-hint.cp` | `52ce17e0` |
+| `p19_guess` | `E0203`: `Range<Int>` has no method `last_true` in `cpl run`, and `wire.ask` return hint didn't infer `Str` | `cpl-check/src/db.rs` didn't scan `{...}` string interpolations when collecting prelude/std method imports, and `wire.ask` needed generic return-type hint propagation | Scanned `{...}` interpolations in `crates/cpl-check/src/db.rs` (`spec/conformance/core-03/interp-std-method-import.cp`) and propagated generic method return hints (`52ce17e0`) | `8d7d2f12`, `52ce17e0` |
+| `p20_point` | `E0201`: no `turn` in scope | `turn` lives in `std.geometry` (not prelude); solution omitted the import | Added `use std.geometry.{turn}` to `research/dryrun/v03/p20_point.cp` | `df84de3f` |
+
+Result on `2cfe7fa9`: **20/20** spec solutions pass end-to-end (`p01_ordinary` through `p20_point`).
+
