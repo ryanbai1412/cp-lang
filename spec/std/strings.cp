@@ -1075,6 +1075,7 @@ pub struct SuffixArray:
     rmq: List<Int>
     log: List<Int>
     dcum: List<Int>
+    toks: List<Int>
 
     /// The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the
     /// suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks
@@ -1124,7 +1125,10 @@ pub struct SuffixArray:
             for r in 0..n:
                 let shared = if r == 0: 0 else: lcp[r - 1]
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
-        SuffixArray(sa, rank, lcp, rmq, log, dcum)
+        var toks = List.filled(n, 0)
+        unchecked:
+            for i in 0..n: toks[i] = s.at(i).hash_token
+        SuffixArray(sa, rank, lcp, rmq, log, dcum, toks)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1153,7 +1157,6 @@ pub struct SuffixArray:
         if i == n or j == n: return 0
         lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
 
-    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
     ///
@@ -1163,9 +1166,39 @@ pub struct SuffixArray:
     /// traps: never
     /// example: `SuffixArray("banana").rank_range("ana") == 1..3`
     /// example: `SuffixArray("banana").rank_range("c") == 4..4`
-    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> = todo
+    @allow(unproven_list_index)
+    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>:
+        let n = sa.len
+        let m = pat.len
+        if m == 0: return 0..n
+        var ptok = List.filled(m, 0)
+        unchecked:
+            for k in 0..m: ptok[k] = pat.at(k).hash_token
+        var lo = 0
+        var hi = n
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                let start = sa[mid]
+                let lim = min(n - start, m)
+                var k = 0
+                while k < lim and toks[start + k] == ptok[k]: k += 1
+                let less = if k < lim: toks[start + k] < ptok[k] else: n - start < m
+                if less: lo = mid + 1 else: hi = mid
+        let left = lo
+        lo = left
+        hi = n
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                let start = sa[mid]
+                let lim = min(n - start, m)
+                var k = 0
+                while k < lim and toks[start + k] == ptok[k]: k += 1
+                let greater = if k < lim: toks[start + k] > ptok[k] else: false
+                if greater: hi = mid else: lo = mid + 1
+        left..lo
 
-    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
     ///
     /// cost: O(|pat| log n + occurrences)
@@ -1174,16 +1207,17 @@ pub struct SuffixArray:
     /// order: suffix-array order (by rank), not by position
     /// traps: never
     /// example: `SuffixArray("banana").find_all("ana").collect() == [3, 1]`
-    pub fn find_all<P: Indexed>(self, pat: P) -> yields Int = todo
+    @allow(unproven_list_index)
+    pub fn find_all<P: Indexed>(self, pat: P) -> yields Int:
+        for r in self.rank_range(pat): yield sa[r]
 
-    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
     ///
     /// cost: O(|pat| log n)
     /// empty: an empty `pat` gives `n`
     /// traps: never
     /// example: `SuffixArray("banana").count("an") == 2`
-    pub fn count<P: Indexed>(self, pat: P) -> Int = todo
+    pub fn count<P: Indexed>(self, pat: P) -> Int = self.rank_range(pat).len
 
     /// The ranks `lo..hi` of the suffixes whose LCP with the suffix at `i` is at least `len`;
     /// always contains `rank[i]`.
