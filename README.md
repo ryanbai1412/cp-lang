@@ -218,3 +218,8 @@ extension, run the slow suites too:
 ```text
 $ scripts/check.sh --full             # adds the prover fuzzer, the budget tests, the wasm smoke test and the VS Code tests
 ```
+
+## License
+
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE), at your
+option.

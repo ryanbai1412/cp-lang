@@ -10,6 +10,7 @@ directory or move one, update this file in the same commit.
 | `mise.toml`, `rust-toolchain.toml`, `justfile` | Unified tool version pins and task runner (`mise install && just check`) |
 | `pyproject.toml`, `uv.lock` | Python dependencies for site, scoreboard, conformance, and corpus scripts |
 | `package.json`, `pnpm-workspace.yaml` | JS/TS workspace covering `web/` and `editors/vscode/` |
+| `LICENSE-MIT`, `LICENSE-APACHE` | The dual license: MIT or Apache 2.0, at your option |
 | `spec/` | The normative 0.3 language: `core/`, `lib/`, `tools/`, `std/` stubs, `diagnostics.md`, `conformance/`, `delta/` (gaps, the hill-climb ledger `hillclimb.md`, dream comparisons), `review/`, gold dreams; `spec/README.md` is the index and `spec/STATUS.md` the current state |
 | `decisions.md` | Every design call, its reason and how to reverse it; newest last |
 | `plan/` | How we build it: `ARCHITECTURE.md`, `OPERATING.md` (settled decisions, the loop), `DOMAINS.md` (every area: a readable map on top, the detailed audit for agents below), `PORTING.md`, `agent-context.md` |

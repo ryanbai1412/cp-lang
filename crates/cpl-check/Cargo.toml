@@ -4,6 +4,7 @@ description = "The incremental front end of the cp language: name resolution, ty
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [dependencies]
 cpl-diag.workspace = true

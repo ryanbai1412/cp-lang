@@ -4,5 +4,6 @@ description = "Prover for invariants and laws: index bounds, overflow freedom, d
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [dependencies]

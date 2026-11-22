@@ -4,6 +4,7 @@ description = "The typed program both back ends run: lowered once from the check
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [dependencies]
 cpl-check.workspace = true

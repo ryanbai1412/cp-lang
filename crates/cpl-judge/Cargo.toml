@@ -4,3 +4,4 @@ description = "Judge profiles: the compiler, flags, stack and limits a submissio
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true

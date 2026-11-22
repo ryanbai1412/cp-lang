@@ -4,6 +4,7 @@ description = "The compiler as a WebAssembly module: check, run, build and hover
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [lib]
 # `cdylib` is the `.wasm` file; `rlib` lets the same code be tested natively.

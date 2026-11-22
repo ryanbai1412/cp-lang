@@ -4,6 +4,7 @@ description = "Lowering of a checked program to a single C++17 file."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [dependencies]
 cpl-diag.workspace = true
