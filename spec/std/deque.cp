@@ -481,7 +481,8 @@ pub struct LinkedList<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.splice_back(LinkedList.from_list([3, 4])); a.each().collect() == [1, 2, 3, 4]`
-    pub fn splice_back(mut self, other: LinkedList<T>) = todo
+    pub fn splice_back(mut self, other: LinkedList<T>):
+        for x in other.each(): self.push(x)
 
     /// Splice all elements of `other` onto the front of `self`, consuming `other`.
     ///
@@ -490,7 +491,8 @@ pub struct LinkedList<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.splice_front(LinkedList.from_list([3, 4])); a.each().collect() == [3, 4, 1, 2]`
-    pub fn splice_front(mut self, other: LinkedList<T>) = todo
+    pub fn splice_front(mut self, other: LinkedList<T>):
+        for x in other.each_rev(): self.push_front(x)
 
     /// Reverse the list in place. O(1) via reversible links.
     ///
