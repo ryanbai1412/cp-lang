@@ -364,6 +364,10 @@ step "bundled skill (scripts/skill-gen.py --check)"
 uv run python scripts/skill-gen.py --check --cpl "$cpl" \
     || fail "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
 
+step "conformance coverage: COVERAGE.md current, no new rule gaps"
+python3 scripts/conformance-coverage.py --check ||
+    fail "rule coverage gate failed; see above, then rerun: python3 scripts/conformance-coverage.py"
+
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \

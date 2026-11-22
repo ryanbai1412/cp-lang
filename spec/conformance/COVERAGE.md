@@ -6,25 +6,50 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1803 (995 passing). Rules: 527.
+Cases: 1831 (995 passing). Rules: 528.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 88 cases; 0 uncovered, 5 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 96 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 91 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 24 rules, 50 cases; 0 uncovered, 7 happy-path only, 4 negative only
-- R04 (04-indices.md): 60 rules, 81 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
+- R04 (04-indices.md): 61 rules, 86 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 49 cases; 0 uncovered, 1 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 59 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 72 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 103 cases; 0 uncovered, 2 happy-path only, 2 negative only
-- R08 (08-traits-generics.md): 29 rules, 68 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R08 (08-traits-generics.md): 29 rules, 71 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 62 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 23 cases; 0 uncovered, 6 happy-path only, 0 negative only
+
+## Accept and reject coverage per chapter
+
+Accept: rules with a positive case. Reject: rules whose text forbids,
+traps or limits something (the reject column's denominator) with a
+negative case. Complete: rules with no gap in `rule-gaps.txt`.
+
+| Chapter | Rules | Accept | Forbidding | Reject | Complete |
+|---|---|---|---|---|---|
+| R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
+| R02 | 50 | 49 (98%) | 29 | 22 (75%) | 42 (84%) |
+| R03 | 24 | 20 (83%) | 17 | 10 (58%) | 13 (54%) |
+| R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
+| R04a | 39 | 35 (89%) | 4 | 3 (75%) | 34 (87%) |
+| R04b | 27 | 24 (88%) | 6 | 6 (100%) | 24 (88%) |
+| R05 | 43 | 40 (93%) | 23 | 20 (86%) | 37 (86%) |
+| R06 | 24 | 23 (95%) | 17 | 16 (94%) | 22 (91%) |
+| R07 | 87 | 85 (97%) | 23 | 21 (91%) | 83 (95%) |
+| R08 | 29 | 24 (82%) | 15 | 13 (86%) | 22 (75%) |
+| R09 | 25 | 25 (100%) | 18 | 12 (66%) | 19 (76%) |
+| R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
+| R11 | 14 | 12 (85%) | 7 | 5 (71%) | 10 (71%) |
+| R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
+| R13 | 22 | 22 (100%) | 7 | 1 (14%) | 16 (72%) |
+| all | 528 | 502 (95%) | 222 | 178 (80%) | 458 (86%) |
 
 ## Rules
 
@@ -61,7 +86,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
 - R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
 - R01.6.1 [1+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
-- R01.6.2 [1+ 0-] *happy-path only*: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
+- R01.6.2 [7+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
 - R01.6.4 [1+ 0-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
 - R01.6.5 [1+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
@@ -167,6 +192,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
+- R04.2.20 [2+ 0-] *happy-path only*: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.3 [1+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
 - R04.2.5 [1+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
@@ -176,12 +202,12 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.9 [1+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
 - R04.2.10 [1+ 1-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [2+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
-- R04.2.11 [1+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
+- R04.2.11 [2+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1)
 - R04.2.14 [2+ 0-] *happy-path only*: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
-- R04.2.16 [3+ 0-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
+- R04.2.16 [4+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
 - R04.2.18 [2+ 3-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
@@ -241,32 +267,32 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.3.2 [1+ 0-]: | B2 search in a range | `a[l..r].bsearch(x)`, `s[l..].search(c)` | ✓ | + / S | ✓ | + / S
 - R04a.3.3 [1+ 0-]: | B3 update parallel arrays | `for (i, x) in a[l..=r].items: dp[i] = …` | ✓ | + / S | ✓ | ...
 - R04a.3.4 [1+ 0-]: | B4 prefix of a range | `a[l..=r].scan(+)[c]` with a source cut `c` | ✓ | + / S | ✓ | + /...
-- R04a.4.1 [1+ 0-]: | C1 source position into a view | `blk[i]` inside a D&C on `blk = a[i.l..end]` | ✓ | + / ...
-- R04a.4.2 [1+ 0-]: | C2 nested slicing | `w[a..b]` with `a`, `b` from the source | ✓ | + / S | ✓ | + / S
+- R04a.4.1 [1+ 1-]: | C1 source position into a view | `blk[i]` inside a D&C on `blk = a[i.l..end]` | ✓ | + / ...
+- R04a.4.2 [1+ 1-]: | C2 nested slicing | `w[a..b]` with `a`, `b` from the source | ✓ | + / S | ✓ | + / S
 - R04a.4.3 [1+ 0-]: | C3 a range cut into halves | `let (x, y) = r.halve()`, then `a[x]`, `a[y]` | ✓ | + / S |...
 - R04a.5.1 [0+ 3-] *negative only*: | D1 literal first or last | `w[0]`, `w[w.len - 1]` | T | ✓ | T (compile) | ✓
 - R04a.5.2 [0+ 2-] *negative only*: | D2 counter loop | `for i in 0..w.len: w[i]` (festival's `rest[i]`) | T | ✓ | T (compile)...
-- R04a.5.3 [1+ 0-]: | D3 relative access by variable | `s[l..][k]`, meaning the k-th char after `l` | S | ✓ | ...
+- R04a.5.3 [1+ 1-]: | D3 relative access by variable | `s[l..][k]`, meaning the k-th char after `l` | S | ✓ | ...
 - R04a.6.1 [1+ 1-]: | E1 a fn written with `xs[0]` / `0..xs.len` gets a slice | user `fn f(xs: List<Int>)` | T...
 - R04a.6.2 [1+ 0-]: | E2 a per-element table from an algorithm on a slice | `let z = z_function(s[l..])`, then...
 - R04a.7.1 [1+ 1-]: | F1 row or column view | `grid[r]`, `grid[r, ..]`, `b[.., bv]` | ✓ (keeps the other domai...
 - R04a.7.2 [2+ 0-]: | F2 sub-rectangle fold | `inside[..n, ..m].sum()` | ✓ | ✓ | ✓
-- R04a.8.1 [1+ 0-] *happy-path only*: | G1 array ↔ list | `[V]Int` becomes `List<Int>` | same meaning | same meaning | slices ch...
+- R04a.8.1 [1+ 1-]: | G1 array ↔ list | `[V]Int` becomes `List<Int>` | same meaning | same meaning | slices ch...
 - R04a.8.2 [1+ 0-]: | G2 add `.rev` | `a[l..r]` becomes `a[l..r].rev` | `w[i]` is the same element | `w[0]` is...
 - R04a.8.3 [1+ 0-]: | G3 widen or narrow a slice | `s[l..r]` becomes `s[l - 1..r]` | every index still valid |...
-- R04a.9.1 [2+ 0-]: | `.drop(k)`, `.take(k)` | source keys | renumbered
-- R04a.9.2 [1+ 0-]: | `.rev` | source keys, walked backwards | renumbered from the far end
+- R04a.9.1 [2+ 1-]: | `.drop(k)`, `.take(k)` | source keys | renumbered
+- R04a.9.2 [1+ 1-]: | `.rev` | source keys, walked backwards | renumbered from the far end
 - R04a.9.3 [1+ 1-]: | `.even`, `.step(k)` | source keys, strided | renumbered `0, 1, 2…`
 - R04a.9.4 [1+ 0-]: | `.map(f)` | source keys | renumbered
 - R04a.9.5 [0+ 1-] *negative only*: | `.filter(p)`, generators | no keys (`Seq`) | no keys
 - R04a.9.6 [1+ 0-]: | `.keyed().items` | `(counter, x)`, counter from 0 | `(counter, x)`
 - R04a.9.7 [1+ 0-]: | `.items` | `(key, x)` | `(offset, x)`
 - R04a.11.1 [3+ 0-]: **Order-based pairing** for every operation that combines two sequences (group A).
-- R04a.11.2 [2+ 0-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
+- R04a.11.2 [2+ 1-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
 - R04a.11.3 [1+ 1-]: **`w.rebase`**: an O(1) view of `w` keyed `0..w.len`, for the rare relative case (D3, or E...
-- R04a.11.4 [1+ 0-]: **Per-element results are keyed like their input** (`[S.keys]T`), so `z_function(s[l..])[i...
+- R04a.11.4 [1+ 1-]: **Per-element results are keyed like their input** (`[S.keys]T`), so `z_function(s[l..])[i...
 - R04a.11.5 [0+ 2-] *negative only*: **Diagnostics:** a literal index into a slice is a lint ("`w` starts at `l`; use `w.first`...
-- R04a.11.6 [1+ 0-]: **Copies count from 0:** `List(w)`, `Str(w)` and `.collect()` build fresh sequences, keyed...
+- R04a.11.6 [1+ 1-]: **Copies count from 0:** `List(w)`, `Str(w)` and `.collect()` build fresh sequences, keyed...
 
 ### R04b: 04b-keys.md
 
@@ -475,7 +501,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
-- R08.2.5 [1+ 0-]: Type-parameter defaults fill omitted trailing arguments.
+- R08.2.5 [3+ 1-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.7 [1+ 0-]: **Associated types** are reached through the implementing type or a value: `S.Item`, `g.Ar...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
@@ -625,16 +651,17 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
-- E0201 Unresolved name: 2 case(s)
+- E0112 else_falls_through *(0.3)*: 1 case(s)
+- E0201 Unresolved name: 3 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 8 case(s)
+- E0203 Unknown field or method: 9 case(s)
 - E0204 Unknown type: 2 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
-- E0301 Wrong index domain: 12 case(s)
-- E0302 Type mismatch: 27 case(s)
+- E0301 Wrong index domain: 15 case(s)
+- E0302 Type mismatch: 29 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -733,7 +760,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 2 case(s)
-- R0101 Index out of range: 16 case(s)
+- R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)
 - R0202 Integer overflow: 8 case(s)
@@ -747,20 +774,23 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-2 of 135 testable codes have no negative case.
+2 of 136 testable codes have no negative case.
 
 ## Spec code blocks
 
 Every fenced block in `spec/core`. A block is covered when one case
-holds all its code lines (comments aside), and spec-only when the
-line above its fence is `<!-- spec-only: reason -->`.
+holds all its code lines (comments aside) or the `spec-blocks` suite
+checks it, and spec-only when the line above its fence is
+`<!-- spec-only: reason -->`. A `<!-- given: code -->` comment there
+holds the declarations the block takes from the prose; `spec-blocks`
+prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
 - 01-lexical-grammar.md: 5 blocks, 1 with a case, 4 spec-only, 0 neither
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
-- 04b-keys.md: 13 blocks, 3 with a case, 10 spec-only, 0 neither
+- 04b-keys.md: 13 blocks, 5 with a case, 8 spec-only, 0 neither
 - 05-ownership.md: 56 blocks, 53 with a case, 3 spec-only, 0 neither
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
