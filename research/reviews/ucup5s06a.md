@@ -1,6 +1,6 @@
 # ucup5s06a
 
-Score: 3/5
+Score: pending cold rescore (adopted full `cyc(B + x) - 2 cyc(B)` derivation header, immutable `b` & `b_or_single` removing in-place `f[1] -= 1` mutation, and `comb.catalan(i - 1)` toward the 4/5 dream; remaining gap is `std.poly.Series`)
 
 Dream: 4/5
 
