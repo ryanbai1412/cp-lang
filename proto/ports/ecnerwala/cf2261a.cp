@@ -1,7 +1,17 @@
-// Codeforces 2261 A: with one '1' the answer is 0, with two it is 1, and with
-// three or more it is the span from the first '1' to the last.
+// Codeforces 2261 A — Binary String Span
+//
+// With `cnt == 1` `'1'`, no move is needed (`0`); with `cnt == 2`, one move
+// suffices (`1`). With `cnt >= 3` `'1'`s, every position strictly between the
+// leftmost `'1'` and rightmost `'1'` must be traversed, so the minimum cost
+// equals the full span `last_one - first_one`.
+
 @!multitest
-let _n: 1..=2e5 = read()
-let s: Str = read()
+let n: 1..=200_000 = read()
+let s: [0..n]Char = read()
 let cnt = s.count('1')
-print(if cnt <= 2: cnt - 1 else: s.rfind('1')! - s.find('1')!)
+if cnt <= 2:
+    print(cnt - 1)
+else:
+    let lo = (0..n).first(i => s[i] == '1')!
+    let hi = (0..n).rev.first(i => s[i] == '1')!
+    print(hi - lo)
