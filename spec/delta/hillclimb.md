@@ -130,4 +130,8 @@ Open questions raised by dreams:
   cut keys of `scan` as counts (`ceoi17p2`, which also fixed an off-by-one in the bet count);
   enum and domain keys (`coci21c1p1` teams, `noip09p4` bands, `ioi19p1` seats). No spec change:
   every form was already decided.
+- apio09p2 (review): interval ends are compressed into `domain X`, each interval is a
+  `Range<X>`, the free gaps are cut ranges keyed by their left cut, and splitting a gap is
+  `g.gap.l..span[i].l` / `span[i].r..g.gap.r` instead of `l - 1` / `r + 1` and `±inf` keys.
+  No spec change.
 
