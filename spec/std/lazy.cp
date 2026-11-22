@@ -374,7 +374,21 @@ pub struct LazyTreap<T, F>(
     /// cost: O(log n) expected
     /// traps: when `k < 0` or `k > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); let u = t.split_at(1); t.to_list() == [1] and u.to_list() == [2, 3]`
-    pub fn split_at(mut self, k: Int) -> LazyTreap<T, F> = todo
+    pub fn split_at(mut self, k: Int) -> LazyTreap<T, F>:
+        assert 0 <= k and k <= self.len, "`split_at` position out of range"
+        let (a, b) = self.split_pos(root, k)
+        root = a
+        var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, [], None, Rng(48))
+        out.root = out.copy_from(self, b)
+        out
+
+    fn copy_from(mut self, src: LazyTreap<T, F>, u: ?Int) -> ?Int:
+        let i = u ?? return None
+        let n = src.nodes[i]
+        let l = self.copy_from(src, n.l)
+        let r = self.copy_from(src, n.r)
+        nodes.push(TreapNode(l, r, n.pri, n.sz, n.val, n.tag))
+        nodes.len - 1
 
     /// Move every element of `other` onto the end of `self`, in order, leaving `other` empty. Both
     /// treaps must use the same functions; `self`'s are kept.
@@ -383,7 +397,12 @@ pub struct LazyTreap<T, F>(
     /// empty: an empty `other` changes nothing
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.append(mut u); t.to_list() == [1, 5] and u.is_empty`
-    pub fn append(mut self, mut other: LazyTreap<T, F>) = todo
+    pub fn append(mut self, mut other: LazyTreap<T, F>):
+        assert self.len + other.len < 2_147_483_648, "a LazyTreap holds fewer than `2^31` elements"
+        let moved = self.copy_from(other, other.root)
+        root = self.merge(root, moved)
+        other.root = None
+        other.nodes = []
 
     /// The element at 0-based position `pos` with every pending tag on its path applied. Tags are
     /// pushed down along the path, which is why it takes `mut self`; the sequence does not change.
