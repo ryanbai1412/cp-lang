@@ -71,6 +71,11 @@ impl<'a> Checker<'a> {
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
         }
+        if matches!(ty, Ty::Unknown) {
+            if let Some(read) = self.read_ty(callee, args) {
+                ty = read;
+            }
+        }
         let fixed_args = match &callee.kind {
             ExprKind::Name(n) if n == "print" => true,
             ExprKind::Name(n) if ["Int", "I128", "U64", "F64", "Char", "Bool"].contains(&n.as_str()) => args.len() == 1,
@@ -90,6 +95,21 @@ impl<'a> Checker<'a> {
         self.mutates_view(call, callee);
         self.mutates_self(callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `read<T>()` is a `T`.
+    fn read_ty(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Generic { base, args: tys } = &callee.kind else {
+            return None;
+        };
+        let (ExprKind::Name(name), [t], []) = (&base.kind, tys.as_slice(), args) else {
+            return None;
+        };
+        if name != "read" || self.local(name).is_some() || self.global(name).is_some() {
+            return None;
+        }
+        let ty = self.quietly(|c| c.type_arg(t));
+        (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty)
     }
 
     /// `List.filled(n, x)` is a list of what `x` is. A whole number
