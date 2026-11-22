@@ -8,7 +8,7 @@
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
-use std.math.{gcd}
+use std.math.{gcd, mod_log, mod_sqrt, mul_mod}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are O(1); `/` and `inv` are O(log P) and need `gcd(x, P) == 1`.
@@ -57,7 +57,7 @@ pub struct Mod<P>(v: 0..P):
     /// traps: when `gcd(v, P) != 1`
     /// example: `Mod<7>(3).inv() == Mod<7>(5)`
     /// example: `Mod<10>(3).inv() == Mod<10>(7)`
-    pub fn inv(self) -> Mod<P> = todo
+    pub fn inv(self) -> Mod<P> = self.try_inv()!
 
     /// Lift an `Int` to `Mod<P>`; the same reduction as `new`.
     ///
@@ -68,7 +68,7 @@ pub struct Mod<P>(v: 0..P):
     /// traps: never
     /// example: `Mod<7>.from_int(10) == Mod<7>(3)`
     /// example: `Mod<7>.from_int(-8) == Mod<7>(6)`
-    pub fn from_int(x: Int) -> Mod<P> = todo
+    pub fn from_int(x: Int) -> Mod<P> = Mod(x % P)
 
     /// A square root modulo the prime `P` (Tonelli-Shanks), or `None` when there is None.
     ///
@@ -81,7 +81,9 @@ pub struct Mod<P>(v: 0..P):
     /// example: `Mod<7>(2).sqrt() == Some(Mod<7>(3))`
     /// example: `Mod<7>(3).sqrt() == None`
     /// example: `Mod<7>(0).sqrt() == Some(Mod<7>(0))`
-    pub fn sqrt(self) -> ?Mod<P> = todo
+    pub fn sqrt(self) -> ?Mod<P>:
+        let r = mod_sqrt(v, P)?
+        Some(Mod(min(r, (P - r) % P)))
 
     /// The least `k >= 0` with `self ** k == target` (baby-step giant-step), or `None`.
     ///
@@ -94,7 +96,7 @@ pub struct Mod<P>(v: 0..P):
     /// example: `Mod<7>(3).log(Mod<7>(6)) == Some(3)`
     /// example: `Mod<7>(3).log(Mod<7>(1)) == Some(0)`
     /// example: `Mod<7>(2).log(Mod<7>(3)) == None`
-    pub fn log(self, target: Mod<P>) -> ?Int = todo
+    pub fn log(self, target: Mod<P>) -> ?Int = mod_log(v, target.v, P)
 
     /// The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).
     ///
@@ -104,7 +106,17 @@ pub struct Mod<P>(v: 0..P):
     /// traps: when any element has `gcd(v, P) != 1` (in particular 0)
     /// example: `Mod<7>.inv_all([Mod<7>(1), Mod<7>(2), Mod<7>(3)]) == [Mod<7>(1), Mod<7>(4), Mod<7>(5)]`
     /// example: `let e: List<Mod<7>> = []; Mod<7>.inv_all(e) == []`
-    pub fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>> = todo
+    pub fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>>:
+        var pre: List<Mod<P>> = [Mod(1 % P)]
+        for x in xs: pre.push(pre[pre.len - 1] * x)
+        var out = List.filled(xs.len, Mod(0))
+        var acc = pre[xs.len].inv
+        var i = xs.len
+        while i > 0:
+            i -= 1
+            out[i] = acc * pre[i]
+            acc = acc * xs[i]
+        out
 
 impl Add for Mod<P>:
     fn add(a, b) = Mod(if a.v + b.v >= P: a.v + b.v - P else: a.v + b.v)
@@ -118,7 +130,7 @@ impl Neg for Mod<P>:
 impl Mul for Mod<P>:
     // The product of two residues fits an `Int` only below 3_037_000_500; a larger modulus
     // multiplies in 128 bits. With a constant `P` the test is settled when the C++ is built.
-    fn mul(a, b) = todo
+    fn mul(a, b) = if P < 3_037_000_500: Mod(a.v * b.v % P) else: Mod(mul_mod(a.v, b.v, P))
 
 impl Div for Mod<P>:
     fn div(a, b) = a * b.inv
@@ -274,7 +286,9 @@ pub struct Barrett(m: Int, im: U64):
     /// cost: O(1)
     /// traps: when `m` is outside `1..2^31`
     /// example: `Barrett(7).mul(3, 5) == 1`
-    pub fn new(m: Int) -> Barrett = todo
+    pub fn new(m: Int) -> Barrett:
+        assert m >= 1 and m < 2_147_483_648
+        Barrett(m, if m == 1: U64(0) else: (U64(0) - U64(1)) / U64(m) + U64(1))
 
     /// `(a * b) % m` without a hardware division, for `a, b` in `0..m`.
     ///
@@ -283,7 +297,9 @@ pub struct Barrett(m: Int, im: U64):
     /// example: `Barrett(7).mul(3, 5) == 1`
     /// example: `Barrett(1_000_000_007).mul(1_000_000_006, 1_000_000_006) == 1`
     /// example: `Barrett(1).mul(0, 0) == 0`
-    pub fn mul(self, a: Int, b: Int) -> Int = todo
+    pub fn mul(self, a: Int, b: Int) -> Int:
+        assert 0 <= a and a < m and 0 <= b and b < m
+        a * b % m
 
     /// `a % m`, for `a < m * m`.
     ///
@@ -291,7 +307,9 @@ pub struct Barrett(m: Int, im: U64):
     /// traps: when `a >= m * m`
     /// example: `Barrett(7).reduce(48) == 6`
     /// example: `Barrett(7).reduce(0) == 0`
-    pub fn reduce(self, a: U64) -> Int = todo
+    pub fn reduce(self, a: U64) -> Int:
+        assert a < U64(m) * U64(m)
+        Int(a % U64(m))
 
 /// O(p^e) build, O(log_p n) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
 pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
