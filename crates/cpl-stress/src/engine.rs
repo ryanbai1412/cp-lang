@@ -395,7 +395,7 @@ pub fn stress_source(
 
     if brute.is_none() && checker.is_none() {
         return Err(StressError(format!(
-            "there is nothing to compare {name} with: write a `@brute(main)` / `@alt(program)` fn or a `@checker` / `@check` fn"
+            "there is nothing to compare {name} with: write an `@alt(program)` fn or a `@check` fn"
         )));
     }
 

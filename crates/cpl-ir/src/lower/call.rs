@@ -1852,7 +1852,7 @@ impl<'a> Lowerer<'a> {
                     self.error(
                         codes::UNRESOLVED_NAME,
                         span,
-                        "`read_output()` reads what the solution printed, which only a `@checker` fn sees",
+                        "`read_output()` reads what the solution printed, which only a `@check` fn sees",
                     );
                     return self.err_expr(span);
                 }

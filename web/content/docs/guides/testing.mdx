@@ -65,7 +65,7 @@ fn make_case(size: Int):
     print(n)
     print([rand(-10, 10) for _ in 0..n])
 
-@alt(main)
+@alt(program)
 fn slow():
     var total = 0
     for x in a: total += x
@@ -100,9 +100,9 @@ print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
 
 ## Visual debugging with Trace
 
-Every run in the [playground](/play) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@alt(main)` side by side when the file defines one — then opens the interactive trace viewer.
+Every run in the [playground](/play) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@alt(program)` side by side when the file defines one — then opens the interactive trace viewer.
 
-You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@alt(main)`.
+You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@alt(program)`.
 
 ## Profiling with `cpl profile`
 

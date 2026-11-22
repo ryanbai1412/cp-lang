@@ -174,7 +174,7 @@ impl Playground {
                     Some((brute_fn, recording))
                 });
                 let note = match &slow {
-                    Some(_) => "The same input through the solution and through its @brute(main), lined up at each print and each debug(...) both ran.",
+                    Some(_) => "The same input through the solution and through its @alt(program), lined up at each print and each debug(...) both ran.",
                     None => "Every change to a top-level variable, every print and every debug(...).",
                 };
                 let trace = document(

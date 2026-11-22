@@ -415,7 +415,7 @@ fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
 
 #[test]
 fn declared_judges_are_found_with_their_lines() {
-    let src = "@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
+    let src = "@check(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
     let found = declared(src);
     let seen: Vec<(&str, &str, u32)> = found
         .iter()
@@ -623,7 +623,7 @@ mod cli {
         let file = dir.join("d.cp");
         std::fs::write(
             &file,
-            format!("{SRC}@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n"),
+            format!("{SRC}@check(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n"),
         )
         .unwrap();
         let file = file.to_str().unwrap();
@@ -2254,7 +2254,7 @@ fn a_swapped_in_brute_builds_once_and_leaves_no_file_beside_the_source() {
     }
     let dir = scratch("part-brute");
     let file = dir.join("p.cp");
-    let src = "fn f(n: Int) -> Int = n * 2\n\n@brute(f)\nfn f_slow(n: Int) -> Int = n + n\n\nlet n: 1..=9 = read()\nprint(f(n))\n";
+    let src = "fn f(n: Int) -> Int = n * 2\n\n@alt(f)\nfn f_slow(n: Int) -> Int = n + n\n\nlet n: 1..=9 = read()\nprint(f(n))\n";
     std::fs::write(&file, src).unwrap();
     let swapped = crate::cli::swap_in_part_brutes(src).unwrap();
     let first = crate::cli::build_part_brute(&file, "p.cp", &swapped).unwrap();

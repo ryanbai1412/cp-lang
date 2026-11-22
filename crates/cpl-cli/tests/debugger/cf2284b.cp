@@ -22,7 +22,7 @@ for _ in 0..(c - 1):
     ans.push(mx)
 print(ans)
 
-@checker
+@check
 fn check():
     let verdict: Str = read_output()
     let top = max(a)

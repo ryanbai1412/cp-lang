@@ -608,7 +608,7 @@ fn stress_judges_with_the_interactor_in_the_file() {
 /// program on case 1.
 #[test]
 fn stress_makes_a_read_int_that_sizes_something_a_count() {
-    let brute = "@brute(main)\nfn slow():\n    print(n)\n";
+    let brute = "@alt(program)\nfn slow():\n    print(n)\n";
     let programs = [
         ("size-domain", "let n: Int = read()\ndomain V = 0..n\nlet a: [V]Int = read()\nassert n >= 1\nprint(n)\n"),
         ("size-array", "let n: Int = read()\nvar dp: [1..=n]Int = 0\nprint(n)\n"),
@@ -647,28 +647,28 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
     let agree = [
         (
             "narrow-minus-one",
-            "let n: Int = read()\n@brute(main)\nfn slow():\n    let m = n - 1\n    var c: [0..m]Int = 0\n    print(c.len)\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n",
+            "let n: Int = read()\n@alt(program)\nfn slow():\n    let m = n - 1\n    var c: [0..m]Int = 0\n    print(c.len)\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n",
             "n is small and 1 or more",
         ),
         (
             "narrow-fn-size",
-            "fn table(k: Int) -> List<Int>:\n    var t: [0..k]Int = 0\n    return [x for x in t]\nlet n: Int = read()\n@brute(main)\nfn slow():\n    print(table(n).len)\nprint(table(n).len)\n",
+            "fn table(k: Int) -> List<Int>:\n    var t: [0..k]Int = 0\n    return [x for x in t]\nlet n: Int = read()\n@alt(program)\nfn slow():\n    print(table(n).len)\nprint(table(n).len)\n",
             "n is small and 1 or more",
         ),
         (
             "narrow-index",
-            "let n: Int = read()\nlet s: [0..5]Int = read()\n@brute(main)\nfn slow():\n    var at = 0\n    for i in 0..n: at = i\n    print(s[at])\nprint(s[n - 1])\n",
+            "let n: Int = read()\nlet s: [0..5]Int = read()\n@alt(program)\nfn slow():\n    var at = 0\n    for i in 0..n: at = i\n    print(s[at])\nprint(s[n - 1])\n",
             "n: 5 or less",
         ),
         // A cell of a list read by a comprehension is used as an index.
         (
             "narrow-cells-read-in-a-comprehension",
-            "let n: Int = read()\nlet a: List<Int> = [read() for _ in 0..n]\n@brute(main)\nfn slow():\n    var c: [0..1001]Int = 0\n    for x in a: c[x] += 1\n    print(max(c))\nvar c: [0..1001]Int = 0\nfor x in a: c[x] += 1\nprint(max(c))\n",
+            "let n: Int = read()\nlet a: List<Int> = [read() for _ in 0..n]\n@alt(program)\nfn slow():\n    var c: [0..1001]Int = 0\n    for x in a: c[x] += 1\n    print(max(c))\nvar c: [0..1001]Int = 0\nfor x in a: c[x] += 1\nprint(max(c))\n",
             "cells of the arrays read: 0 to 8",
         ),
         (
             "narrow-cells-from-one",
-            "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    var seen: [0..8]Int = 0\n    for x in a: seen[x - 1] += 1\n    print(max(seen))\nvar seen: [0..8]Int = 0\nfor x in a: seen[x - 1] += 1\nprint(max(seen))\n",
+            "let n: Int = read()\nlet a: [0..n]Int = read()\n@alt(program)\nfn slow():\n    var seen: [0..8]Int = 0\n    for x in a: seen[x - 1] += 1\n    print(max(seen))\nvar seen: [0..8]Int = 0\nfor x in a: seen[x - 1] += 1\nprint(max(seen))\n",
             "cells of the arrays read: 1 to 8",
         ),
     ];
@@ -699,21 +699,21 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
         assert!(text.contains(learned), "{test}: {text}");
     }
     // Only the solution stops: the brute has an answer, so it is a bug.
-    let only_solution = "let n: Int = read()\n@brute(main)\nfn slow():\n    print(max(n - 1, 0))\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n";
+    let only_solution = "let n: Int = read()\n@alt(program)\nfn slow():\n    print(max(n - 1, 0))\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n";
     let text = stress("narrow-real-stop", only_solution);
     assert!(
         text.contains("FAIL on case") && text.contains("an array can't have length"),
         "{text}"
     );
     // A cell stops only the solution: still a bug, cells are not narrowed.
-    let only_solution = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nvar seen: [0..10]Int = 0\nfor x in a: seen[x] += 1\nprint(sum(a))\n";
+    let only_solution = "let n: Int = read()\nlet a: [0..n]Int = read()\n@alt(program)\nfn slow():\n    print(sum(a))\nvar seen: [0..10]Int = 0\nfor x in a: seen[x] += 1\nprint(sum(a))\n";
     let text = stress("narrow-real-cell-stop", only_solution);
     assert!(
         text.contains("FAIL on case") && !text.contains("thrown away"),
         "{text}"
     );
     // Both run and differ: a wrong answer, never thrown away.
-    let wrong = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nprint(sum(a) - a[0])\n";
+    let wrong = "let n: Int = read()\nlet a: [0..n]Int = read()\n@alt(program)\nfn slow():\n    print(sum(a))\nprint(sum(a) - a[0])\n";
     let text = stress("narrow-real-wrong", wrong);
     assert!(
         text.contains("FAIL on case") && !text.contains("thrown away"),
@@ -737,7 +737,7 @@ for v in V:
     if deg[v] >= 3 and a[v] > 50: bad = true
 print(if bad: 0 else: sum(a[v] for v in V))
 
-@brute(main)
+@alt(program)
 fn slow():
     print(sum(a[v] for v in V))
 
@@ -859,7 +859,7 @@ fn messages_call_the_float_type_f64() {
 }
 
 /// A table above `@!multitest` that takes far more steps than a trace
-/// holds, and a `@checker` as the only judge. Wrong from `n = 3` on.
+/// holds, and a `@check` as the only judge. Wrong from `n = 3` on.
 const TABLE: &str = "\
 var f: [0..3000]Int = 0
 for i in 1..3000: f[i] = f[i - 1] + i
@@ -868,7 +868,7 @@ let n: 1..=20 = read()
 let a: [n](1..=9) = read()
 print(if n >= 3: 0 else: sum(a))
 
-@checker
+@check
 fn check():
     let got: Int = read_output()
     assert got == sum(a)

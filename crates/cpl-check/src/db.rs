@@ -535,7 +535,7 @@ impl Database {
                             !d.directive
                                 && matches!(
                                     d.name.text.as_str(),
-                                    "test" | "checker" | "check" | "interactor" | "brute" | "alt"
+                                    "test" | "check" | "interactor" | "alt"
                                 )
                         })
                     })
@@ -880,6 +880,12 @@ impl Database {
                     .with_help(help),
                 );
             }
+        }
+        // Canonical stress decorator spellings: `@alt(program)`, `@alt(f)`, and `@check`.
+        // Reject legacy `@brute`, `@alt(main)`, and `@checker` with machine-applicable fix-its.
+        for (index, item) in items.iter().enumerate() {
+            let base = ranges[index].span.start;
+            check_stress_decorators(&item.parsed.stmts, base, &mut sink);
         }
         let mut leading = true;
         for (index, item) in items.iter().enumerate() {
@@ -2487,6 +2493,109 @@ fn wide_array(
     (i64::try_from(lo).is_ok() && (hi - lo) < (1 << 31)).then(|| (name.clone(), ty.span, lo, hi))
 }
 
+/// Rejects legacy stress decorator spellings (`@brute`, `@alt(main)`, `@checker`)
+/// with machine-applicable fix-its pointing at `@alt(program)` / `@alt(f)` / `@check`.
+fn check_stress_decorators(stmts: &[cpl_syntax::ast::Stmt], base: u32, sink: &mut cpl_diag::Sink) {
+    use cpl_syntax::ast::{ExprKind, FnBody, StmtKind};
+    for stmt in stmts {
+        for d in &stmt.decorators {
+            if d.directive {
+                continue;
+            }
+            let dspan = d.span.shift(base);
+            let nspan = d.name.span.shift(base);
+            match d.name.text.as_str() {
+                "brute" => {
+                    let (replacement, target_label) = match d.args.first() {
+                        None => ("@alt(program)".to_string(), "@alt(program)".to_string()),
+                        Some(arg) if arg.name.is_none() => match &arg.value.kind {
+                            ExprKind::Name(n) if n == "main" || n == "program" => {
+                                ("@alt(program)".to_string(), "@alt(program)".to_string())
+                            }
+                            ExprKind::Name(f) => (format!("@alt({f})"), format!("@alt({f})")),
+                            _ => ("@alt".to_string(), "@alt".to_string()),
+                        },
+                        _ => ("@alt(program)".to_string(), "@alt(program)".to_string()),
+                    };
+                    let fix_span = if replacement == "@alt" {
+                        Span::new(dspan.start, nspan.end)
+                    } else {
+                        dspan
+                    };
+                    sink.push(
+                        Diagnostic::error(
+                            codes::UNEXPECTED_TOKEN,
+                            dspan,
+                            format!("`@brute` has been replaced by `{target_label}`"),
+                        )
+                        .with_help(format!("use `{target_label}`"))
+                        .with_fix(format!("replace with `{target_label}`"), fix_span, replacement),
+                    );
+                }
+                "alt" => {
+                    if let Some(arg) = d.args.first().filter(|a| a.name.is_none()) {
+                        if matches!(&arg.value.kind, ExprKind::Name(n) if n == "main") {
+                            sink.push(
+                                Diagnostic::error(
+                                    codes::UNEXPECTED_TOKEN,
+                                    dspan,
+                                    "`@alt(main)` has been replaced by `@alt(program)`",
+                                )
+                                .with_help("use `@alt(program)` for a whole-program brute")
+                                .with_fix(
+                                    "replace with `@alt(program)`",
+                                    arg.value.span.shift(base),
+                                    "program",
+                                ),
+                            );
+                        }
+                    }
+                }
+                "checker" => {
+                    sink.push(
+                        Diagnostic::error(
+                            codes::UNEXPECTED_TOKEN,
+                            dspan,
+                            "`@checker` has been replaced by `@check`",
+                        )
+                        .with_help("use `@check` for a custom checker")
+                        .with_fix("replace with `@check`", nspan, "check"),
+                    );
+                }
+                _ => {}
+            }
+        }
+        match &stmt.kind {
+            StmtKind::Fn(f) => {
+                if let FnBody::Block(b) = &f.body {
+                    check_stress_decorators(&b.stmts, base, sink);
+                }
+            }
+            StmtKind::For { body, .. } | StmtKind::While { body, .. } => {
+                check_stress_decorators(&body.stmts, base, sink);
+            }
+            StmtKind::Expr(e) => {
+                if let ExprKind::If {
+                    branches,
+                    otherwise,
+                } = &e.kind
+                {
+                    for (_, b) in branches {
+                        check_stress_decorators(&b.stmts, base, sink);
+                    }
+                    if let Some(b) = otherwise {
+                        check_stress_decorators(&b.stmts, base, sink);
+                    }
+                }
+            }
+            StmtKind::With { body: Some(b), .. } => {
+                check_stress_decorators(&b.stmts, base, sink);
+            }
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2515,5 +2624,33 @@ mod tests {
         assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
         let direct = db.analyze("lib/bad.cp").unwrap();
         assert!(!direct.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn legacy_stress_decorators_error_with_fixits() {
+        let cases = [
+            ("@brute(main)\nfn slow():\n    print(1)\n", "@alt(program)"),
+            ("@brute\nfn slow():\n    print(1)\n", "@alt(program)"),
+            ("fn f() -> Int = 1\n@brute(f)\nfn f_slow() -> Int = 1\n", "@alt(f)"),
+            ("@alt(main)\nfn slow():\n    print(1)\n", "program"),
+            ("@checker\nfn ok():\n    assert true\n", "check"),
+        ];
+        for (src, expected_replacement) in cases {
+            let mut db = Database::new();
+            db.set_file("main.cp", src);
+            let a = db.analyze("main.cp").unwrap();
+            let diag = a
+                .diagnostics
+                .iter()
+                .find(|d| d.message.contains("has been replaced by"))
+                .unwrap_or_else(|| panic!("expected legacy decorator error for:\n{src}\ngot: {:?}", a.diagnostics));
+            assert!(
+                diag.fixes
+                    .iter()
+                    .any(|fix| fix.edits.iter().any(|(_, rep)| rep == expected_replacement)),
+                "expected fix-it with replacement `{expected_replacement}` for:\n{src}\ngot: {:?}",
+                diag.fixes
+            );
+        }
     }
 }

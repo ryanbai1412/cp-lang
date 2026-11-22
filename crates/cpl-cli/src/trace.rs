@@ -92,7 +92,7 @@ pub fn versus(
 ) -> String {
     let name = file_name(path);
     let title = format!("{name} against its brute `{brute_fn}`");
-    let note = "The same input through the solution and through its @brute(main), lined up at each print and each debug(...) both ran.";
+    let note = "The same input through the solution and through its @alt(program), lined up at each print and each debug(...) both ran.";
     document(
         &title,
         note,

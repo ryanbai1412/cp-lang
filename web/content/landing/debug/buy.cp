@@ -14,7 +14,7 @@ fn make_case(size: Int):
     print(n)
     print([rand(1, 20) for _ in 0..n])
 
-@alt(main)
+@alt(program)
 fn slow():
     var best = 0
     for i in 0..n:

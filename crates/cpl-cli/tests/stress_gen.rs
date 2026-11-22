@@ -147,3 +147,56 @@ fn input():
         "shrunk input should still trigger bug: {content:?}"
     );
 }
+
+#[test]
+fn canonical_stress_spellings_only_and_help_text_updated() {
+    let help = cpl().args(["--help"]).output().unwrap();
+    assert!(help.status.success());
+    let help_out = String::from_utf8_lossy(&help.stdout);
+    assert!(help_out.contains("@check"), "{help_out}");
+    assert!(!help_out.contains("@checker"), "{help_out}");
+    assert!(!help_out.contains("@brute"), "{help_out}");
+
+    let stress_help = cpl().args(["stress", "--help"]).output().unwrap();
+    assert!(stress_help.status.success());
+    let stress_out = String::from_utf8_lossy(&stress_help.stdout);
+    assert!(stress_out.contains("@alt(program)"), "{stress_out}");
+    assert!(stress_out.contains("@check"), "{stress_out}");
+    assert!(!stress_out.contains("@brute"), "{stress_out}");
+    assert!(!stress_out.contains("@checker"), "{stress_out}");
+
+    let dir = scratch("legacy_spellings");
+    let cases = [
+        (
+            "brute_main.cp",
+            "let n: 1..=5 = read()\nprint(n)\n@brute(main)\nfn slow():\n    print(n)\n",
+            "@alt(program)",
+        ),
+        (
+            "alt_main.cp",
+            "let n: 1..=5 = read()\nprint(n)\n@alt(main)\nfn slow():\n    print(n)\n",
+            "@alt(program)",
+        ),
+        (
+            "checker.cp",
+            "let n: 1..=5 = read()\nprint(n)\n@checker\nfn ok():\n    let x: Int = read_output()\n    assert x == n\n",
+            "@check",
+        ),
+        (
+            "brute_fn.cp",
+            "fn f(x: Int) -> Int = x\n@brute(f)\nfn f_slow(x: Int) -> Int = x\nprint(f(1))\n",
+            "@alt(f)",
+        ),
+    ];
+    for (name, src, expected) in cases {
+        let p = dir.join(name);
+        fs::write(&p, src).unwrap();
+        let out = cpl().args(["check"]).arg(&p).output().unwrap();
+        assert!(!out.status.success(), "{name} should fail check");
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains(expected),
+            "{name}: expected fix-it mentioning {expected}, got:\n{stderr}"
+        );
+    }
+}

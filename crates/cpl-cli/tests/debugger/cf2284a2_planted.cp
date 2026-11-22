@@ -17,7 +17,7 @@ for w in ws:
 debug("piles", x, y)
 print(x * y)
 
-@brute(main)
+@alt(program)
 fn slow():
     var best = 0
     var total = 0

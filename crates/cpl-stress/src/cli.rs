@@ -18,10 +18,9 @@ Runs the solution and a brute on random inputs made from the file's
 `read()` types, stops at the first case they disagree on, shrinks it, and
 saves it to <file>.tests/ as a regression test.
 
-The brute, the checker and the interactor are the file's own `@brute(main)`
-(or `@alt(program)`), `@checker` (or `@check`) and `@interactor` fns unless
-an option names a program: a .cpp file (built with g++), a .py file, or an
-executable.
+The brute, the checker and the interactor are the file's own `@alt(program)`,
+`@check` and `@interactor` fns unless an option names a program: a .cpp file
+(built with g++), a .py file, or an executable.
 
 options:
   --brute PROG       the slow, obviously right solution to compare with
@@ -38,8 +37,8 @@ options:
   --trace            on a failure, run the solution and the brute on the
                      shrunk case in the debug interpreter and save the two
                      traces side by side as <file>.tests/stress-<seed>.trace.html
-                     (the solution's alone, when a `@checker` is the judge)
-  --explain          on a failure, run the solution and its `@brute(main)` on
+                     (the solution's alone, when a `@check` is the judge)
+  --explain          on a failure, run the solution and its `@alt(program)` on
                      the shrunk case in the debug interpreter and name the
                      first value they give a variable differently, with its line
   --format json      print the result as JSON, for an editor
@@ -223,11 +222,11 @@ pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
             for decorator in stmt
                 .decorators
                 .iter()
-                .filter(|d| !d.directive && matches!(d.name.text.as_str(), "brute" | "alt"))
+                .filter(|d| !d.directive && d.name.text == "alt")
             {
                 if let Some(arg) = decorator.args.first().filter(|a| a.name.is_none()) {
                     if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
-                        if part != "main" && part != "program" {
+                        if part != "program" {
                             pairs.push((
                                 decorator.span.shift(*base),
                                 decl.name.span.shift(*base),
@@ -280,7 +279,7 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
     // the build cache keeps it.
     let path = file.with_file_name(format!(".{stem}.brute.cp"));
     let mut program = Program::resolve_source(&path, swapped).map_err(|e| e.to_string())?;
-    program.name = format!("{name} with its @brute fns swapped in");
+    program.name = format!("{name} with its @alt fns swapped in");
     Ok(program)
 }
 
@@ -477,7 +476,7 @@ pub fn run_with(
         && judge == Judge::Tokens
     {
         return fail(format!(
-            "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
+            "there is nothing to compare {name} with: write an `@alt(program) fn` in it, pass `--brute <program>`, or give it a `@check` or an `@interactor` that can judge an output on its own"
         ));
     }
     // The file's own `@gen` fn, unless `--gen` names another.
@@ -591,7 +590,7 @@ pub fn run_with(
         }
         (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
         (Some(_), _) if args.explain => Some(Err(
-            "`--explain` runs the file against its own `@brute(main)` fn".to_string(),
+            "`--explain` runs the file against its own `@alt(program)` fn".to_string(),
         )),
         _ => None,
     };
@@ -615,7 +614,7 @@ pub fn run_with(
         (true, Some(_), None) => {
             trace_note = Some(match &traced {
                 Some(Err(why)) => format!("no trace: {why}"),
-                _ => "no trace: `--trace` runs the file itself, against its own `@brute(main)` fn or under its own `@checker`".to_string(),
+                _ => "no trace: `--trace` runs the file itself, against its own `@alt(program)` fn or under its own `@check`".to_string(),
             });
             None
         }
@@ -800,11 +799,11 @@ mod tests {
 
     #[test]
     fn a_recursive_brute_calls_itself_by_the_name_it_takes() {
-        let src = "fn ways(n: Int) -> Int = n\n@brute(ways)\nfn slow(n: Int) -> Int = if n <= 1: 1 else: slow(n - 1) + slow(n - 2)\nprint(ways(read()))\n";
+        let src = "fn ways(n: Int) -> Int = n\n@alt(ways)\nfn slow(n: Int) -> Int = if n <= 1: 1 else: slow(n - 1) + slow(n - 2)\nprint(ways(read()))\n";
         let swapped = swap_in_part_brutes(src).expect("a pair");
         assert_eq!(
             swapped,
-            "fn ways_cpl_fast(n: Int) -> Int = n\n            \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
+            "fn ways_cpl_fast(n: Int) -> Int = n\n          \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
         );
     }
 

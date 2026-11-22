@@ -77,7 +77,7 @@ test("trace records a live program for the trace viewer", () => {
     "    debug(i, best)",
     "print(best)",
     "",
-    "@brute(main)",
+    "@alt(program)",
     "fn slow():",
     "    var m = 0",
     "    for x in a: m = max(m, x)",
