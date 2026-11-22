@@ -36,3 +36,13 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `ray_hits_segment`: collinear overlap gives the segment point nearest `o`; traps on a zero `dir`.
 - `Circle.area`, `Circle.circumference`: pinned evaluation order (`PI * r * r`, `2.0 * PI * r`) so results are bit-identical.
 - `Circle.locate`: `Boundary` when `|d - r| <= eps`, tested before inside/outside.
+- `incenter`: pinned the centre (side-weighted mean) and radius formulas so results are bit-identical.
+- `circle_line_intersect`, `circle_intersect`, `circle_tangents`, `circle_circle_tangents`: fixed result orders (along `a -> b`; or the point clockwise of the centre ray first); tangency within `eps` gives one point; identical circles give `[]`.
+- `circle_circle_area`: containment uses the smaller disk's `area` exactly.
+- `invert`: traps when `p` is the centre.
+- `circles_union_area`: equal circles count once; empty gives 0.0.
+- `HalfPlane.through`, `from_line`: trap on a degenerate line; `from_line` pins `p` (nearest point to the origin) and `dir = (b, -a)` so the kept side is the `>= 0` side.
+- `half_plane_intersect`: unbounded, empty and zero-area (`<= eps`) results are all `[]`; parallel planes keep the tighter; result starts at the least `(y, x)`; traps on a zero `dir`.
+- `polygon_cut`: Sutherland-Hodgman walk from `poly[0]`; points within `eps` of the line are kept; result keeps the input orientation.
+- `min_enclosing_circle`: the stub says "deterministic Welzl" with "O(n) expected"; chose input order with no internal shuffle, which makes the expectation hold only for unadversarial order. Contradiction-adjacent: a fixed internal seed would give true expected O(n) and stay deterministic; logged for a decision.
+- `circle_polygon_area`: signed by the polygon's orientation; empty gives 0.0.

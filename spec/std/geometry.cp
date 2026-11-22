@@ -1018,21 +1018,69 @@ pub struct Circle(c: Vec, r: F64):
     /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(6.0, 0.0)) == Location.Outside`
     pub fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location = todo
 
-/// O(1). Inscribed circle of triangle `a b c`, or `None` if collinear.
+/// The inscribed circle of the triangle `a b c`, or `None` when `|(b - a).cross(c - a)| <= eps`
+/// (collinear).
+///
+/// The centre is the side-length-weighted mean `(|bc| a + |ca| b + |ab| c) / (|ab| + |bc| + |ca|)`
+/// and the radius `|(b - a).cross(c - a)| / (|ab| + |bc| + |ca|)`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `incenter(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Circle(Vec(2.0, 2.0), 2.0))`
+/// example: `incenter(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
 pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
 
-/// O(1). Intersection points (0, 1, or 2) of `circle` with the infinite line through `a` and `b`.
+/// The points where `circle` meets the infinite line through `a` and `b`: two when it crosses,
+/// one (the foot of the perpendicular from the centre) when the distance is within `eps` of `r`,
+/// and none otherwise.
+///
+/// cost: O(1)
+/// empty: `[]` when the line misses
+/// order: along the direction `a -> b`; a new `List`, keyed from 0
+/// traps: when `a == b`
+/// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 3.0), Vec(10.0, 3.0)) == [Vec(-4.0, 3.0), Vec(4.0, 3.0)]`
+/// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(10.0, 3.0), Vec(-10.0, 3.0)) == [Vec(4.0, 3.0), Vec(-4.0, 3.0)]`
+/// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 5.0), Vec(10.0, 5.0)) == [Vec(0.0, 5.0)]`
+/// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 9.0), Vec(10.0, 9.0)) == []`
 pub fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(1). Intersection points (0, 1, or 2) of two circles `a` and `b`.
+/// The points where the circles `a` and `b` meet: two when they cross, one when tangent (within
+/// `eps`), none when apart, nested, or identical (infinitely many).
+///
+/// cost: O(1)
+/// empty: `[]`
+/// order: the point clockwise of the ray from `a.c` to `b.c` first; a new `List`, keyed from 0
+/// traps: never
+/// example: `circle_intersect(Circle(Vec(0.0, 0.0), 5.0), Circle(Vec(8.0, 0.0), 5.0)) == [Vec(4.0, -3.0), Vec(4.0, 3.0)]`
+/// example: `circle_intersect(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(2.0, 0.0), 1.0)) == [Vec(1.0, 0.0)]`
+/// example: `circle_intersect(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(5.0, 0.0), 1.0)) == []`
 pub fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(1). Tangent points (0, 1, or 2) from `p` to `circle`.
+/// The points of `circle` where a tangent line through `p` touches it: two when `p` is outside,
+/// `[p]` when `p` is on the circle (within `eps`), none when inside.
+///
+/// cost: O(1)
+/// empty: `[]` when `p` is inside
+/// order: the point clockwise of the ray from the centre to `p` first; a new `List`, keyed from 0
+/// traps: never
+/// example: `circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0)]`
+/// example: `circle_tangents(Circle(Vec(0.0, 0.0), 2.0), Vec(1.0, 0.0)) == []`
+/// example: `let t = circle_tangents(Circle(Vec(0.0, 0.0), 3.0), Vec(5.0, 0.0)); t.len == 2 and close(t[0].x, 1.8) and close(t[0].y, -2.4) and close(t[1].y, 2.4)`
 pub fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(1). Common tangent segments `(p1, p2)` between circles `a` and `b`,
-/// where `p1` lies on `a` and `p2` lies on `b` (outer tangents by default,
-/// or inner tangents when `inner: true`).
+/// The common tangent segments `(p1, p2)` of the circles `a` and `b`, `p1` on `a` and `p2` on
+/// `b`: the outer tangents, or the inner ones (crossing between the centres) with `inner: true`.
+///
+/// Two segments when they exist, one (with `p1 == p2`) when the circles touch on that side, none
+/// otherwise, and none for identical circles.
+///
+/// cost: O(1)
+/// empty: `[]`
+/// order: the tangent clockwise of the ray from `a.c` to `b.c` first; a new `List`, keyed from 0
+/// traps: never
+/// example: `circle_circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(4.0, 0.0), 1.0)) == [(Vec(0.0, -1.0), Vec(4.0, -1.0)), (Vec(0.0, 1.0), Vec(4.0, 1.0))]`
+/// example: `circle_circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(4.0, 0.0), 1.0), inner: true).len == 2`
+/// example: `circle_circle_tangents(Circle(Vec(0.0, 0.0), 2.0), Circle(Vec(1.0, 0.0), 2.0), inner: true) == []`
 pub fn circle_circle_tangents(
     a: Circle,
     b: Circle,
@@ -1040,13 +1088,35 @@ pub fn circle_circle_tangents(
     eps: F64 = 1e-9,
 ) -> List<(Vec, Vec)> = todo
 
-/// O(1). Area of the intersection of two disks `a` and `b`.
+/// The area of the intersection of the disks `a` and `b`: 0.0 when apart, the smaller disk's
+/// `area` when one contains the other (within `eps`), else the sum of the two circular segments.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `circle_circle_area(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(5.0, 0.0), 1.0)) == 0.0`
+/// example: `circle_circle_area(Circle(Vec(0.0, 0.0), 2.0), Circle(Vec(0.0, 0.0), 1.0)) == PI`
+/// example: `close(circle_circle_area(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(1.0, 0.0), 1.0)), 1.228369698608757)`
 pub fn circle_circle_area(a: Circle, b: Circle, eps: F64 = 1e-9) -> F64 = todo
 
-/// O(1). Circle inversion of point `p` across `across`.
+/// The inverse of `p` in the circle `across`: `c + (p - c) * (r * r / (p - c).norm2)`.
+///
+/// cost: O(1)
+/// traps: when `p == across.c`
+/// example: `invert(Vec(4.0, 0.0), Circle(Vec(0.0, 0.0), 2.0)) == Vec(1.0, 0.0)`
+/// example: `invert(Vec(2.0, 0.0), Circle(Vec(0.0, 0.0), 2.0)) == Vec(2.0, 0.0)`
 pub fn invert(p: Vec, across: Circle) -> Vec = todo
 
-/// O(n^2 log n), O(n) memory. Total area of the union of disks via Green's theorem arc sweep.
+/// The area of the union of the disks `circles`, by Green's theorem over the arcs on the union's
+/// boundary.
+///
+/// Equal circles (within `eps`) count once; zero-radius circles add nothing.
+///
+/// cost: O(n^2 log n) time, O(n) memory
+/// empty: 0.0
+/// traps: never
+/// example: `circles_union_area([]) == 0.0`
+/// example: `close(circles_union_area([Circle(Vec(0.0, 0.0), 1.0)]), PI)`
+/// example: `close(circles_union_area([Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(5.0, 0.0), 1.0)]), 2.0 * PI)`
 pub fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64 = todo
 
 // ---- half-plane intersection
@@ -1054,13 +1124,29 @@ pub fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64 = todo
 /// O(1) value type. Directed line through `p` in direction `dir`, keeping the closed left
 /// half-plane `{ q | dir.cross(q - p) >= 0 }`.
 pub struct HalfPlane(p: Vec, dir: Vec):
-    /// O(1). Half-plane keeping the closed left side of directed line `a -> b`.
+    /// The closed half-plane left of the directed line `a -> b`: `HalfPlane(a, b - a)`.
+    ///
+    /// cost: O(1)
+    /// traps: when `a == b`
+    /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)) == HalfPlane(Vec(0.0, 0.0), Vec(1.0, 0.0))`
     pub fn through(a: Vec, b: Vec) -> HalfPlane = todo
 
-    /// O(1). Half-plane keeping `{ (x, y) | a*x + b*y + c >= 0 }`.
+    /// The half-plane `{ (x, y) | a*x + b*y + c >= 0 }`, as `HalfPlane(p, Vec(b, -a))` with `p` the
+    /// line's point nearest the origin, `Vec(-a * c, -b * c) / (a*a + b*b)`.
+    ///
+    /// cost: O(1)
+    /// traps: when `a == 0.0` and `b == 0.0`
+    /// example: `HalfPlane.from_line(0.0, 1.0, -2.0) == HalfPlane(Vec(0.0, 2.0), Vec(1.0, 0.0))`
+    /// example: `HalfPlane.from_line(1.0, 0.0, 0.0).side(Vec(3.0, 7.0)) == 3.0`
     pub fn from_line(a: F64, b: F64, c: F64) -> HalfPlane = todo
 
-    /// O(1). Signed orientation value `dir.cross(q - p)`; `>= 0` inside.
+    /// The signed value `dir.cross(q - p)`: positive left of the line (inside), 0 on it, negative
+    /// outside. It is `|dir|` times the signed distance.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)).side(Vec(3.0, 2.0)) == 2.0`
+    /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)).side(Vec(3.0, -2.0)) == -2.0`
     pub fn side(self, q: Vec) -> F64 = todo
 
 fn hp_out(
@@ -1071,27 +1157,79 @@ fn hp_out(
 
 fn hp_cross(a: (p: Vec, dir: Vec, ang: F64), b: (p: Vec, dir: Vec, ang: F64)) -> Vec = todo
 
-/// O(n log n), O(n) memory. Counter-clockwise polygon of the bounded intersection of `planes`
-/// (with optional `[-bound, bound]^2` clipping box), or `[]` when empty or unbounded.
+/// The intersection of the closed half-planes `planes`, as a counter-clockwise convex polygon
+/// (sort by angle, then a deque sweep).
+///
+/// With `bound: Some(b)` the box `[-b, b]^2` is added as four more half-planes. A region that is
+/// unbounded, empty, or of area at most `eps` gives `[]`. Parallel planes keep the tighter one;
+/// vertices within `eps` merge.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]` (unbounded) without `bound`; the box with one
+/// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// traps: when a plane's `dir` is the zero vector
+/// example: `half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(1.0, 0.0), Vec(1.0, 1.0)), HalfPlane.through(Vec(1.0, 1.0), Vec(0.0, 1.0)), HalfPlane.through(Vec(0.0, 1.0), Vec(0.0, 0.0))]) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]`
+/// example: `half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))]) == []`
+/// example: `half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))], bound: Some(1.0)) == [Vec(-1.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
 pub fn half_plane_intersect(
     planes: List<HalfPlane>,
     bound: ?F64 = None,
     eps: F64 = 1e-9,
 ) -> List<Vec> = todo
 
-/// O(n). Signed area of a floating-point polygon (positive for CCW, negative for CW).
+/// The signed area of the polygon `poly` (half the shoelace sum): positive counter-clockwise,
+/// negative clockwise; 0.0 for fewer than 3 vertices.
+///
+/// cost: O(n)
+/// empty: 0.0
+/// traps: never
+/// example: `polygon_area([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(0.0, 2.0)]) == 2.0`
+/// example: `polygon_area([Vec(0.0, 0.0), Vec(0.0, 2.0), Vec(2.0, 0.0)]) == -2.0`
 pub fn polygon_area(poly: List<Vec>) -> F64 = todo
 
-/// O(n), O(n) memory. Clip `poly` to the closed left half-plane of directed line `a -> b`.
+/// The part of `poly` in the closed half-plane left of the directed line `a -> b`
+/// (Sutherland-Hodgman).
+///
+/// Walking the edges from `poly[0]`, it keeps each vertex with `turn_eps(a, b, v, eps) >= 0`
+/// and adds the crossing point of every edge that strictly crosses the line. The result keeps the
+/// orientation of `poly`.
+///
+/// cost: O(n) time and memory
+/// empty: `[]`
+/// order: the walk from `poly[0]`; a new `List`, keyed from 0
+/// traps: when `a == b`
+/// example: `polygon_cut([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], Vec(1.0, 0.0), Vec(1.0, 2.0)) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 2.0), Vec(0.0, 2.0)]`
+/// example: `polygon_cut([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], Vec(1.0, 2.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(1.0, 2.0)]`
+/// example: `polygon_cut([Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)], Vec(0.0, 5.0), Vec(1.0, 5.0)) == []`
 pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(n) expected. Smallest enclosing circle of `pts` via deterministic Welzl's algorithm.
-/// Returns `Circle(Vec(0.0, 0.0), 0.0)` for empty input.
+/// The smallest circle containing every point of `pts` (Welzl's algorithm, deterministic: points
+/// are processed in input order, with no shuffle).
+///
+/// The circle is unique; its centre is the midpoint of two points or a circumcentre of three.
+/// Without the shuffle the expected O(n) bound needs input not ordered adversarially; shuffle
+/// first with `Rng.shuffle` if it might be.
+///
+/// cost: O(n) expected for unadversarial order
+/// empty: `Circle(Vec(0.0, 0.0), 0.0)`
+/// traps: never
+/// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(2.0, 0.0)]) == Circle(Vec(1.0, 0.0), 1.0)`
+/// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0), Vec(1.0, 1.0)]) == Circle(Vec(3.0, 4.0), 5.0)`
+/// example: `min_enclosing_circle([Vec(2.0, 3.0)]) == Circle(Vec(2.0, 3.0), 0.0)`
 pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle = todo
 
 fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64 = todo
 
-/// O(n). Signed area of intersection of disk `circle` with polygon `poly`.
+/// The signed area of the intersection of the disk `circle` with the simple polygon `poly`:
+/// positive when `poly` is counter-clockwise, negative when clockwise. Summed over the triangles
+/// from the centre to each edge.
+///
+/// cost: O(n)
+/// empty: 0.0
+/// traps: never
+/// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]) == 1.0`
+/// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0`
+/// example: `close(circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), [Vec(-2.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(-2.0, 2.0)]), PI)`
 pub fn circle_polygon_area(circle: Circle, poly: List<Vec>, eps: F64 = 1e-9) -> F64 = todo
 
 // ---- Shamos-Hoey segment intersection detection
