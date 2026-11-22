@@ -41,6 +41,8 @@ and its notes in that record's `notes`.
 - Folds: `sum`, `min`, `max`, `count`, `any`, `all` are now `std.seq` stubs, not checker-only
   builtins (no stdlib privilege). `min`/`max` stay out of the prelude list until a receiver
   picks the fold over the binary form (parser gap).
+- etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
+  `compress` does, and accepts edge records with more fields.
 - noip99p1: one `lis` (the `std.seq` method, now with `by:`); the duplicate free `lis` in
   `std.dp` is gone and `lis_ends` is a method. `read_all<T>()` reads until end of input.
 - noip18p3: `Rooted.children(v)` yields from the stored child layout instead of returning a

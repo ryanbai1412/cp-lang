@@ -8,14 +8,21 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/etsr23r3p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_43/etsr23r3p3.cp",
    "proto/ports/scout_batch_43/today/etsr23r3p3.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "kruskal-tree",
+  "dijkstra",
+  "online"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "kruskal_tree binds its node domain; Rooted.up subtree min; online decode."
 }

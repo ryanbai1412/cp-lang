@@ -97,5 +97,5 @@ use std.strings.{
     starts_with,
     upper,
 }
-use std.tree.{JumpTree, LcaTable, Lift, Rooted}
+use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, Rooted, kruskal_tree}
 

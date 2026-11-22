@@ -857,8 +857,10 @@ pub struct KruskalTree<V, N, W>:
 
 /// O(m log m). The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices
 /// `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain of at
-/// most 2|V| - 1 members.
-pub fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V), w: E -> W) -> KruskalTree<V, _, W> = todo
+/// most 2|V| - 1 members, bound by the caller: `let (domain N, kt) = kruskal_tree(es, w: f)`.
+/// Merging by the largest weight first is `w: e => -e.alt`, and "edges above `p`" is then
+/// `kt.reach(v, limit: -p - 1)`.
+pub fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V, ..), w: E -> W) -> (domain N, KruskalTree<V, N, W>) = todo
 
 /// O(n). The Prüfer code of a tree on `V`, which needs at least two vertices: `V.count - 2`
 /// vertices, in bijection with the labelled trees.
