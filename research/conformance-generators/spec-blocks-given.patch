@@ -1,0 +1,101 @@
+diff --git a/crates/cpl-conform/src/spec_blocks.rs b/crates/cpl-conform/src/spec_blocks.rs
+index 40d03e6d..14b83276 100644
+--- a/crates/cpl-conform/src/spec_blocks.rs
++++ b/crates/cpl-conform/src/spec_blocks.rs
+@@ -19,6 +19,7 @@ fn block_hash(text: &str) -> String {
+ pub struct SpecBlock {
+     pub id: String,
+     pub code: String,
++    pub given: Option<String>,
+ }
+ 
+ /// Extracts fenced ```cp / ```python code blocks from markdown text.
+@@ -43,6 +44,44 @@ pub fn extract_blocks(text: &str) -> Vec<String> {
+     blocks
+ }
+ 
++/// The `<!-- given: code -->` comment right above a fence: declarations the
++/// block takes from the surrounding prose, prepended when it runs.
++fn given_above(before: &str) -> Option<String> {
++    let trimmed = before.trim_end();
++    let body = trimmed.strip_suffix("-->")?;
++    let open = body.rfind("<!--")?;
++    if trimmed[..open].rsplit('\n').next().is_some_and(|l| !l.trim().is_empty()) {
++        return None;
++    }
++    let code = body[open + 4..].trim_start().strip_prefix("given:")?;
++    let code = code.trim();
++    (!code.is_empty()).then(|| format!("{code}\n"))
++}
++
++/// Like `extract_blocks`, but also takes bare fences and each block's
++/// `given:` prelude. Used for `spec/core`, whose bare fences are CP code.
++pub fn extract_blocks_with_given(text: &str, bare: bool) -> Vec<(String, Option<String>)> {
++    let mut blocks = Vec::new();
++    let mut pos = 0;
++    while let Some(rel) = text[pos..].find("```") {
++        let open = pos + rel;
++        let after = &text[open + 3..];
++        let Some(nl) = after.find('\n') else {
++            break;
++        };
++        let lang = after[..nl].trim();
++        let body_start = &after[nl + 1..];
++        let Some(close) = body_start.find("```") else {
++            break;
++        };
++        if lang == "cp" || lang == "python" || (bare && lang.is_empty()) {
++            blocks.push((body_start[..close].to_string(), given_above(&text[..open])));
++        }
++        pos = open + 3 + nl + 1 + close + 3;
++    }
++    blocks
++}
++
+ fn md_files_in(dir: &Path) -> Vec<std::path::PathBuf> {
+     let Ok(entries) = std::fs::read_dir(dir) else {
+         return Vec::new();
+@@ -55,10 +94,11 @@ fn md_files_in(dir: &Path) -> Vec<std::path::PathBuf> {
+     out
+ }
+ 
+-/// Discovers fenced code blocks in `spec/core/*.md` and `spec/lib/*.md`.
++/// Discovers fenced code blocks in `spec/core/*.md` (bare fences too) and `spec/lib/*.md`.
+ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
+     let spec_dir = root.join("spec");
+-    let mut paths = md_files_in(&spec_dir.join("core"));
++    let core = md_files_in(&spec_dir.join("core"));
++    let mut paths = core.clone();
+     paths.extend(md_files_in(&spec_dir.join("lib")));
+ 
+     let mut out = Vec::new();
+@@ -72,7 +112,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
+             .to_string_lossy()
+             .replace('\\', "/");
+         let mut seen: HashMap<String, usize> = HashMap::new();
+-        for code in extract_blocks(&text) {
++        for (code, given) in extract_blocks_with_given(&text, core.contains(&path)) {
+             let base = format!("{rel}#{}", block_hash(&code));
+             let occ = seen.entry(base.clone()).or_insert(0);
+             *occ += 1;
+@@ -86,7 +126,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
+                     continue;
+                 }
+             }
+-            out.push(SpecBlock { id, code });
++            out.push(SpecBlock { id, code, given });
+         }
+     }
+     out
+@@ -94,8 +134,9 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
+ 
+ fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool)) {
+     let vpath = format!("<spec-block:{}>", block.id);
+-    let (spec_diag, spec_failed) = runner::check_spec(db, &vpath, &block.code);
+-    let strict_ok = runner::compile_program(db, &vpath, &block.code).is_ok();
++    let source = format!("{}{}", block.given.as_deref().unwrap_or(""), block.code);
++    let (spec_diag, spec_failed) = runner::check_spec(db, &vpath, &source);
++    let strict_ok = runner::compile_program(db, &vpath, &source).is_ok();
+     let outcome = if !spec_failed {
+         CaseOutcome {
+             status: "pass".into(),

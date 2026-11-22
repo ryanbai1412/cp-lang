@@ -1,0 +1,6 @@
+// expect: ok, output "8"
+domain B = 0..3
+var k = 0
+for x in Subset<B>.rev:
+    k += 1
+print(k)
