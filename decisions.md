@@ -4388,9 +4388,15 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   forward `.to`/`.e`, so it is a `WeightedNext` and keeps `Edged`. On a
   weighted graph it reweights. `f` runs per arc read; no graph is built.
   `.weighted((u, a) => ...)` also passes the source vertex (Johnson).
-- **Still open.** Arcs carrying edge fields (`carry:`) for cache locality;
-  `Source<V, W>` and `from:` taking any `Seq`; inline bounds (`g: WeightedNext<V, W>`); the
-  weight algebra (`op:` monoid vs `Ord + Add`); storage format.
+- **Parameters (agreed).** Every parameter asks for the weakest capability
+  it uses (as §142 for sequences): `from:` is any `Seq<(V, W)>`, no
+  `Source` trait. Inline bounds are core: `g: WeightedNext<V, W>` in a
+  parameter's type is a fresh hidden type parameter (static, per caller);
+  name it with `<G: ...>` when two places must share it. Open to users.
+- **Still open.** Weight algebra: Ryan leans to a monoid-like argument
+  (minimax, bottleneck, reliability) over fixed `Ord + Add`; later.
+  Storage format: proposed immutable CSR, arcs carry every edge field
+  by default with `carry:` to narrow, no `add_edge` (use `[V]List`).
 - **Why.** Ryan asked whether `WeightedNext` could bundle the arc bounds
   and called the long signature "a mouthful"; he accepted `Edged` once its
   reason (multi-edge bridges, `[E]` results) was shown.
