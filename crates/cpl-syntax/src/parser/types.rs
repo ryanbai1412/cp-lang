@@ -258,6 +258,20 @@ impl<'a> Parser<'a> {
                 }
                 TypeKind::Named { name, args }
             }
+            T::Ident if self.text() == "dyn" && self.peek_n(1) == T::Ident => {
+                self.bump();
+                let _trait_ty = self.ty_atom();
+                let span = self.span_from(start);
+                self.error(
+                    Diagnostic::error(
+                        codes::UNSUPPORTED,
+                        span,
+                        "CP Lang has no `dyn` trait objects; use a generic type parameter with a trait bound instead",
+                    )
+                    .with_help("write `fn f<T: Trait>(x: T)`"),
+                );
+                TypeKind::Error
+            }
             // `xs.D`: the domain a value brought with it, as `compress` does.
             T::Ident
                 if self.peek_n(1) == T::Dot

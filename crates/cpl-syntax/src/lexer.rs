@@ -581,6 +581,36 @@ impl<'a> Lexer<'a> {
             }
             (b'.', b'.', b'=') => (DotDotEq, 3),
             (b'.', b'.', _) => (DotDot, 2),
+            (b'.', b'0'..=b'9', _)
+                if !matches!(
+                    self.out.tokens.last().map(|t| t.kind),
+                    Some(
+                        Ident
+                            | RParen
+                            | RBracket
+                            | RBrace
+                            | Int
+                            | Float
+                            | Str
+                            | Char
+                            | SelfKw
+                    )
+                ) =>
+            {
+                self.pos += 1;
+                self.digits();
+                let text = &self.src[start..self.pos];
+                self.out.diagnostics.push(
+                    Diagnostic::error(
+                        codes::BAD_NUMBER,
+                        Span::new(start as u32, self.pos as u32),
+                        format!("`{text}` isn't a number; write a leading zero: `0{text}`"),
+                    )
+                    .with_help("floats start with a digit, like `0.5`"),
+                );
+                self.push(TokenKind::Float, start);
+                return;
+            }
             (b'.', _, _) => (Dot, 1),
             (b',', _, _) => {
                 if self

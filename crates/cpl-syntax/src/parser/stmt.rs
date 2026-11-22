@@ -325,6 +325,19 @@ impl<'a> Parser<'a> {
                     span: self.span_from(start),
                 })
             }
+            T::Ident if self.text() == "macro" && self.peek_n(1) == T::Ident => {
+                let start = self.start();
+                self.skip_line();
+                let span = self.span_from(start);
+                self.error(
+                    Diagnostic::error(
+                        codes::UNSUPPORTED,
+                        span,
+                        "CP Lang has no macros; use a generic fn or inline helper instead",
+                    ),
+                );
+                StmtKind::Error
+            }
             T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
                 self.bump();
                 self.let_stmt()

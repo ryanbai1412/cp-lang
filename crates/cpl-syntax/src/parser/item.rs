@@ -448,6 +448,20 @@ impl<'a> Parser<'a> {
             self.skip_line();
             return methods;
         }
+        if !self.at_line_end() {
+            // Single-line body: `struct T: var x: Int` or `struct Road: w: Int, len: Int`.
+            loop {
+                let before = self.pos;
+                member(self);
+                if !self.eat(T::Comma) {
+                    break;
+                }
+                if self.at_line_end() || self.pos == before {
+                    break;
+                }
+            }
+            return methods;
+        }
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             let at = self.prev_end();
             self.error(
@@ -523,6 +537,15 @@ impl<'a> Parser<'a> {
         if !header && self.at(T::Colon) && !matches!(self.peek_n(1), T::Newline | T::Eof) {
             self.bump();
             loop {
+                let mut cached = false;
+                if self.at(T::At) && self.peek_n(1) == T::Ident {
+                    self.bump();
+                    let attr = self.expect_name("a field attribute");
+                    if attr.text == "cache" {
+                        cached = true;
+                    }
+                }
+                let mutable = self.eat(T::Var);
                 let mut names = vec![self.expect_name("a field name")];
                 while self.eat(T::Comma) {
                     names.push(self.expect_name("a field name"));
@@ -535,8 +558,8 @@ impl<'a> Parser<'a> {
                         name,
                         ty: ty.clone(),
                         default: default.clone(),
-                        mutable: false,
-                        cached: false,
+                        mutable,
+                        cached,
                     });
                 }
                 if !self.eat(T::Comma) || self.at_line_end() {
