@@ -45,6 +45,8 @@ impl<'a> Lowerer<'a> {
         self.cx.present.truncate(present);
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
+        let depth = self.cx.scopes.len();
+        self.cx.recipes.retain(|_, (d, _)| *d <= depth);
         Block { stmts: out }
     }
 
@@ -379,6 +381,49 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `let g = gen(args)` names a generator value, a recipe that runs
+    /// afresh on every walk (R06.3.1). It is kept as the call when the
+    /// arguments read the same at every walk and no closure or fn captures `g`.
+    fn generator_recipe<'s>(
+        &self,
+        stmt: &'s ast::Stmt,
+        rest: &[ast::Stmt],
+    ) -> Option<(String, &'s ast::Expr)> {
+        let ast::StmtKind::Let {
+            mutable: false,
+            pat,
+            ty: None,
+            init: Some(init),
+            otherwise: None,
+            guard: None,
+        } = &stmt.kind
+        else {
+            return None;
+        };
+        let ast::PatternKind::Name(name) = &pat.kind else {
+            return None;
+        };
+        let ast::ExprKind::Call { callee, args } = &init.kind else {
+            return None;
+        };
+        let Some(Sym::Fn(id)) = self.sym(callee) else {
+            return None;
+        };
+        if !self.sigs[id].is_generator {
+            return None;
+        }
+        let steady = args.iter().all(|a| match &a.value.kind {
+            ast::ExprKind::Int(_) | ast::ExprKind::Bool(_) | ast::ExprKind::Char(_) => true,
+            ast::ExprKind::Name(n) => n != name && (a.mutable || !Self::stmts_mutate_name(rest, n)),
+            ast::ExprKind::Mut(inner) => matches!(&inner.kind, ast::ExprKind::Name(n) if n != name),
+            _ => false,
+        });
+        if !steady || Self::stmts_mutate_name(rest, name) || captured(rest, name) {
+            return None;
+        }
+        Some((name.clone(), init))
+    }
+
     fn stmts_mutate_name(stmts: &[ast::Stmt], name: &str) -> bool {
         for (i, s) in stmts.iter().enumerate() {
             match &s.kind {
@@ -484,6 +529,14 @@ impl<'a> Lowerer<'a> {
     }
 
     fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
+        if let Some((name, init)) = self.generator_recipe(stmt, rest) {
+            if let Some(scope) = self.cx.scopes.last_mut() {
+                scope.remove(&name);
+            }
+            let depth = self.cx.scopes.len();
+            self.cx.recipes.insert(name, (depth, init.clone()));
+            return;
+        }
         match &stmt.kind {
             ast::StmtKind::Let {
                 mutable,
@@ -5215,4 +5268,38 @@ fn refutable(pat: &ast::Pattern) -> bool {
         ast::PatternKind::Or(alts) => alts.iter().all(refutable),
         _ => false,
     }
+}
+
+/// Whether a closure or a fn among `stmts` names `name`.
+fn captured(stmts: &[ast::Stmt], name: &str) -> bool {
+    struct Names<'n>(&'n str, bool);
+    impl cpl_syntax::visit::Visitor for Names<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            if matches!(&e.kind, ast::ExprKind::Name(n) if n == self.0) {
+                self.1 = true;
+            }
+        }
+    }
+    struct Bodies<'n>(&'n str, bool);
+    impl cpl_syntax::visit::Visitor for Bodies<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            if let ast::ExprKind::Lambda { body, .. } = &e.kind {
+                let mut names = Names(self.0, false);
+                cpl_syntax::visit::walk_expr(body, &mut names);
+                self.1 |= names.1;
+            }
+        }
+        fn stmt(&mut self, s: &ast::Stmt) {
+            if matches!(s.kind, ast::StmtKind::Fn(_)) {
+                let mut names = Names(self.0, false);
+                cpl_syntax::visit::walk_stmt(s, &mut names);
+                self.1 |= names.1;
+            }
+        }
+    }
+    let mut bodies = Bodies(name, false);
+    for s in stmts {
+        cpl_syntax::visit::walk_stmt(s, &mut bodies);
+    }
+    bodies.1
 }

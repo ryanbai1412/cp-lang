@@ -485,6 +485,9 @@ struct FnCx {
     op_locals: HashMap<String, BareOp>,
     /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
     mut_aliases: HashMap<String, Place>,
+    /// `let g = gen(n)` with `gen` a generator: `g` is the recipe, and each
+    /// read of it walks the generator afresh. By name, with the scope depth.
+    recipes: HashMap<String, (usize, ast::Expr)>,
     /// Local zero-copy range views over `SortedBag<K>` / `SortedSet<K>`.
     sorted_views: HashMap<Slot, SortedView>,
     /// Block-scoped `type Alias = ...` resolved to concrete types (e.g. `type Cell = (Row, Col)`).
@@ -2933,6 +2936,13 @@ impl<'a> Lowerer<'a> {
             .collect()
     }
 
+    /// The generator call `name` stands for, unless a local hides it.
+    fn recipe(&self, name: &str) -> Option<ast::Expr> {
+        let (depth, init) = self.cx.recipes.get(name)?;
+        let local = self.cx.scopes.iter().rposition(|s| s.contains_key(name)).map(|i| i + 1);
+        (*depth <= self.cx.scopes.len() && local.is_none_or(|l| l < *depth)).then(|| init.clone())
+    }
+
     fn lookup(&self, name: &str) -> Option<Slot> {
         self.cx
             .scopes
@@ -2945,6 +2955,7 @@ impl<'a> Lowerer<'a> {
     /// the file, a local anywhere else.
     fn declare(&mut self, name: &str, init: Expr, mutable: bool, out: &mut Vec<Stmt>) {
         if self.cx.is_main && self.cx.scopes.len() == 1 {
+            self.cx.recipes.remove(name);
             let id = self.globals.len();
             self.globals.push(Global {
                 name: name.to_string(),

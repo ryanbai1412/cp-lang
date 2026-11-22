@@ -117,6 +117,9 @@ impl<'a> Lowerer<'a> {
                 if let Some(p) = self.cx.mut_aliases.get(name) {
                     return place_to_expr(p);
                 }
+                if let Some(init) = self.recipe(name) {
+                    return self.expr(&init, None);
+                }
                 self.name(name, inner_hint, span)
             }
             ast::ExprKind::SelfValue => {
