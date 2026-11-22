@@ -4764,7 +4764,6 @@ that change behaviour or a public name. Prose-only fixes are marked in the notes
   and `@get` is only for O(1). Reverse: trim trailing zeros on every write and make them `@get`.
 - **Added `DsuOf.groups()`, `Subset.set`/`shifted` and `Dir8.from`**, cited by containers.md §2.4
   and decisions 62, 16.8 and 16.5. Reverse: delete them.
-||||||| a5bb3d87
 
 
 ## 167. Library contradictions resolved (graphs, strings, math)

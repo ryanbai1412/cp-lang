@@ -11,7 +11,7 @@ One bullet per contradiction or silent choice found while bringing
 - `directed_of_triples` / `undirected_of_triples` -> `Adj<V, (V, W)>`: a positional `(V, W)` is neither a vertex nor a record with `to`/`w`, so it is not `Target`/`Weighted` and `Adj.matrix`, `next`, `transpose` cannot apply. Documented as if the tuple reads as `(to, w)`. (resolved: removed with `Adj`; weighted lists use `Graph`; decision 167)
 - `biconnected_components`, `edge_blocks`, `articulation_points`: graphs-trees.md uses `blocks` and `cut_vertices`. Names left. (resolved: renamed to the chapter's `blocks` and `cut_vertices` (on `EdgedNext`); `biconnected_components` removed; decision 167)
 - `condense`: graphs-trees.md says it returns `Graph<C, _>`; the stub returns `[C]List<(to: C)>`. Documented the stub. (resolved: stub kept, chapter table now says `[C]List<(to: C)>`)
-- `dial` cost: graphs-trees.md says O(n * max_w + m), the stub O(n + m + W). Wrote O(n + m + max_w + d_max) with `d_max <= (n - 1) * max_w`, which both bound.
+- `dial` cost: graphs-trees.md says O(n * max_w + m), the stub O(n + m + W). Wrote O(n + m + max_w + d_max) with `d_max <= (n - 1) * max_w`, which both bound. (resolved: the bound written covers both; graphs-trees.md is the looser form)
 - `kruskal` `by:`: typed `E -> K` but defaults to `e => e.w`, reading a field off an edge key. Example uses `by: e => desc(es[e].w)`. (resolved: `by` now reads the edge record (`R -> K`), example `by: e => desc(e.w)`)
 - `Only<V, G>(g, keep)` stores no `from`, though `only(from:)` needs it. Left. (resolved: struct now stores `from`)
 - `Paths.path` had two cost lines (`O(path length)` twice). Kept one.

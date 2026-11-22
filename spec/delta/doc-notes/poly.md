@@ -40,4 +40,4 @@
   Taylor shift, Bostan-Mori, polynomial GCD and composition stay in
   `examples/local-lib`; the stub declares them all in `std.poly`. (resolved: kept stub; math.md §4 fixed)
 - Contradiction: lib/math.md §2.4 makes `Mod.inv` an `@get`; mod.cp has
-  `pub fn inv(self)`. Not this module's, noted because poly examples divide.
+  `pub fn inv(self)`. Not this module's, noted because poly examples divide. (resolved: already fixed: math.md §2.4 writes `fn inv(self)`, O(log P), so a call is right)

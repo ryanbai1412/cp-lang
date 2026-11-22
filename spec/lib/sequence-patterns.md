@@ -119,14 +119,14 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 | Type | `push` / `pop` | Typical `ok` |
 |---|---|---|
 | `Window(op)` | fold queue | `w.all <= k` |
-| `Counter<K>` | count up / down; `.distinct` kept | `c.distinct <= k` |
+| `Counter<K>` | count up / down; `.len` is the distinct count | `c.len <= k` |
 | `Bag<T>` (sorted multiset) | insert / erase one | `b.max! - b.min! <= d` |
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
 | `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied O(log n) times amortized | `u => not u.state.consistent` |
 
 ```python
 let longest = a.maximal(Window(+), ok: w => w.all <= K).max(by: .len)!
-let atmost_k = a.maximal(Counter<C>(), ok: c => c.distinct <= k)
+let atmost_k = a.maximal(Counter<C>(0), ok: c => c.len <= k)
 let count = atmost_k.map(.len).sum()           // subarrays with <= k distinct
 let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
 ```
@@ -195,7 +195,7 @@ No helper is added for these; each is one or two lines.
 | best subarray sum (Kadane) | `a.fold(MaxSub)` (round 5's summary; the same op answers range queries in a `SegTree`) |
 | maximum and how often | `a.fold(MaxCount)` |
 | prefix records | `a.keys.filter(i => a[i] > pre[i.l])` with `pre = a.scan(max)` |
-| count subarrays with sum `K` | `var seen = Counter<Int>()`; `for c in pre.keys: ans += seen[pre[c] - K]; seen.push(pre[c])` |
+| count subarrays with sum `K` | `var seen = Counter<Int>(0)`; `for c in pre.keys: ans += seen[pre[c] - K]; seen.push(pre[c])` |
 | range sums | `pre = a.scan(+)`; `pre[r.r] - pre[r.l]` |
 | first position where a prefix fold passes `x` | `pre.keys.first_true(c => pre[c] >= x)` (monotone) or `.first(...)` |
 | polygon edges | `poly.cyclic_pairs` |

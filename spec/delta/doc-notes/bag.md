@@ -48,7 +48,7 @@ bringing `spec/std/bag.cp` to the doc standard (`spec/std/README.md`).
   struct docs and decisions.md 103 make `range(r)` (a `SortedRange<K>`
   view) the replacement for `first_ge`/`first_gt`/`last_le`/`last_lt`/
   `count_range`. The private `range_*` helpers are there. Needs a stub (and
-  a `SortedRange<K>` type) to be documented.
+  a `SortedRange<K>` type) to be documented. (resolved: added `range(r: Range<K>) -> SortedRange<K>` to both and the `SortedRange` view, decision 168)
 - `lib/containers.md` 2.2 still lists `first_ge`/`first_gt`/`last_le`/
   `last_lt`/`count_range`/`bsearch_first`/`bsearch_last` on `SortedBag`
   and `OrderedSet` in 44.1; decisions.md 103 removed the first five and
