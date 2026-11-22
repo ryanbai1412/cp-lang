@@ -12,6 +12,7 @@ mod call;
 mod expr;
 mod memo;
 mod mono;
+mod prefix;
 mod range;
 mod stmt;
 mod typo;
@@ -19,17 +20,8 @@ mod typo;
 use crate::*;
 use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
+use prefix::prefix_shape_struct;
 
-pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
-    match (name, arity) {
-        ("Prefix", 1) => Some("_PrefixList"),
-        ("Prefix", 3) => Some("_Prefix2"),
-        ("FillPrefix", 1) => Some("_FillPrefixList"),
-        ("FillPrefix", 3) => Some("_FillPrefix2"),
-        ("Diff", 3) => Some("_Diff2"),
-        _ => None,
-    }
-}
 use cpl_syntax::ast;
 use cpl_syntax::narrow;
 use mono::*;
