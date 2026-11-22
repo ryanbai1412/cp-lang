@@ -655,21 +655,76 @@ pub struct RollbackArray<D, T>:
 /// Path-copying persistent disjoint-set union over domain `V`.
 /// Every version remains readable; `find`, `unite`, `same`, and `size` run in O(log^2 n).
 pub struct PersistentDsu<V>:
-    _parts: Int
+    _parts: Int = 0
+    _kid: List<(Int, Int)> = []
+    _cell: List<(Int, Int)> = []
+    _roots: List<Int> = []
 
     /// A persistent union-find over `V` holding version 0, every position in its own set.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `let d = PersistentDsu<0..3>(); not d.same(d.base, 0, 1)`
-    pub fn new() -> PersistentDsu<V> = todo
+    pub fn new() -> PersistentDsu<V>:
+        var d: PersistentDsu<V> = PersistentDsu(V.count, [], [], [])
+        let root = d.build(0, V.count)
+        d._roots.push(root)
+        d
+
+    fn build(mut self, lo: Int, hi: Int) -> Int:
+        if hi - lo <= 1:
+            _kid.push((-1, -1))
+            _cell.push((lo, 1))
+            return _kid.len - 1
+        let mid = (lo + hi) / 2
+        let l = self.build(lo, mid)
+        let r = self.build(mid, hi)
+        _kid.push((l, r))
+        _cell.push((0, 0))
+        _kid.len - 1
+
+    fn get(self, root: Int, i: Int) -> (Int, Int):
+        var t = root
+        var (lo, hi) = (0, V.count)
+        while hi - lo > 1:
+            let mid = (lo + hi) / 2
+            let (l, r) = _kid[t]
+            if i < mid:
+                t = l
+                hi = mid
+            else:
+                t = r
+                lo = mid
+        _cell[t]
+
+    fn put(mut self, t: Int, lo: Int, hi: Int, i: Int, cell: (Int, Int)) -> Int:
+        if hi - lo <= 1:
+            _kid.push((-1, -1))
+            _cell.push(cell)
+            return _kid.len - 1
+        let mid = (lo + hi) / 2
+        var (l, r) = _kid[t]
+        if i < mid: l = self.put(l, lo, mid, i, cell)
+        else: r = self.put(r, mid, hi, i, cell)
+        _kid.push((l, r))
+        _cell.push((0, 0))
+        _kid.len - 1
+
+    fn root_ord(self, ver: Int, start: Int) -> Int:
+        assert 0 <= ver and ver < _roots.len, "`ver` is not a version of this PersistentDsu"
+        var x = start
+        while true:
+            let (p, _) = self.get(_roots[ver], x)
+            if p == x: return x
+            x = p
+        x
 
     /// The handle of version 0, where every position is alone.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `PersistentDsu<0..3>().base == 0`
-    @get pub fn base(self) -> Int = todo
+    @get pub fn base(self) -> Int = 0
 
     /// The representative of `v`'s set in version `ver`, chosen by union by size as in
     /// [`Dsu.find`](Dsu.find).
@@ -678,21 +733,23 @@ pub struct PersistentDsu<V>:
     /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 2, 1); d.find(v1, 1) == 2 and d.find(d.base, 1) == 1`
-    pub fn find(self, ver: Int, v: V) -> V = todo
+    pub fn find(self, ver: Int, v: V) -> V = V.at(self.root_ord(ver, v.ord))
 
     /// Whether `a` and `b` are in the same set in version `ver`.
     ///
     /// cost: O(log² n)
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); d.same(v1, 0, 1) and not d.same(d.base, 0, 1)`
-    pub fn same(self, ver: Int, a: V, b: V) -> Bool = todo
+    pub fn same(self, ver: Int, a: V, b: V) -> Bool = self.root_ord(ver, a.ord) == self.root_ord(ver, b.ord)
 
     /// The number of positions in `v`'s set in version `ver`, `v` included.
     ///
     /// cost: O(log² n)
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); d.size(v1, 1) == 2 and d.size(d.base, 1) == 1`
-    pub fn size(self, ver: Int, v: V) -> Int = todo
+    pub fn size(self, ver: Int, v: V) -> Int:
+        let (_, n) = self.get(_roots[ver], self.root_ord(ver, v.ord))
+        n
 
     /// A new version equal to `ver` with the sets of `a` and `b` merged; `ver` itself is unchanged.
     ///
@@ -703,7 +760,18 @@ pub struct PersistentDsu<V>:
     /// cost: O(log² n) time and O(log n) memory
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); let v2 = d.unite(d.base, 1, 2); v1 == 1 and v2 == 2 and d.same(v2, 1, 2) and not d.same(v2, 0, 1)`
-    pub fn unite(mut self, ver: Int, a: V, b: V) -> Int = todo
+    pub fn unite(mut self, ver: Int, a: V, b: V) -> Int:
+        var x = self.root_ord(ver, a.ord)
+        var y = self.root_ord(ver, b.ord)
+        var root = _roots[ver]
+        if x != y:
+            let (_, nx) = self.get(root, x)
+            let (_, ny) = self.get(root, y)
+            if nx < ny: (x, y) = (y, x)
+            root = self.put(root, 0, V.count, y, (x, ny))
+            root = self.put(root, 0, V.count, x, (x, nx + ny))
+        _roots.push(root)
+        _roots.len - 1
 
     /// Preallocates room for at least `nodes` persistent-array nodes, so later `unite`s do not
     /// grow the pool. Changes no version.
@@ -711,7 +779,9 @@ pub struct PersistentDsu<V>:
     /// cost: O(nodes)
     /// traps: when `nodes < 0`
     /// example: `var d = PersistentDsu<0..3>(); d.reserve(100); d.size(d.base, 0) == 1`
-    pub fn reserve(mut self, nodes: Int) = todo
+    pub fn reserve(mut self, nodes: Int):
+        _kid.reserve(nodes)
+        _cell.reserve(nodes)
 
 @test
 fn potential_dsu_and_rollback_array():
