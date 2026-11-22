@@ -375,16 +375,19 @@ fn scoreboard_broken_ports(title: &str, edits: &'static [(&'static str, Edit)], 
     total
 }
 
-/// The untagged fenced blocks of `plan/1x-*.md` that hold cp code.
+/// The fenced cp blocks of `spec/core/*.md` and `spec/lib/*.md`.
 fn plan_blocks() -> Vec<(String, String)> {
-    let mut docs: Vec<PathBuf> = std::fs::read_dir(root().join("plan"))
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .filter(|p| {
-            let name = p.file_name().unwrap().to_string_lossy();
-            name.starts_with('1') && name.ends_with(".md")
-        })
-        .collect();
+    let mut docs: Vec<PathBuf> = Vec::new();
+    for dir in ["spec/core", "spec/lib", "spec/lib/rationale", "spec/tools", "docs", "site/content"] {
+        if let Ok(entries) = std::fs::read_dir(root().join(dir)) {
+            for e in entries.flatten() {
+                let p = e.path();
+                if p.extension().and_then(|s| s.to_str()) == Some("md") {
+                    docs.push(p);
+                }
+            }
+        }
+    }
     docs.sort();
     let mut out = Vec::new();
     for doc in docs {
@@ -405,7 +408,7 @@ fn plan_blocks() -> Vec<(String, String)> {
                             out.push((format!("{name}:{}", start + 1), body));
                         }
                     }
-                    None if line.trim() == "```" => block = Some((i, String::new())),
+                    None if matches!(line.trim(), "```" | "```cp") => block = Some((i, String::new())),
                     None => {}
                 }
             } else if let Some((_, body)) = &mut block {
@@ -486,7 +489,7 @@ fn scoreboard_plan() -> PlanTally {
         }
     }
     println!(
-        "\nplan/1x-*.md blocks: {} blocks, {} with errors, {} errors, {} cascaded, \
+        "\nspec/{{core,lib}}/*.md blocks: {} blocks, {} with errors, {} errors, {} cascaded, \
          first error a generic `expected ...` in {}, `not implemented yet` in {}",
         t.blocks, t.failing, t.errors, t.cascaded, t.generic_first, t.planned_first
     );
