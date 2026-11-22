@@ -41,7 +41,7 @@ prover: integer facts and laws; today called only by cpl-lint
 
 ### `crates/cpl-interp` (the checked reference run)
 - `lib.rs` (5615): `run`, `run_with`, `run_observed`, `run_profiled`; `Trap`, `Limits`, `Io`, `Frame`; and the tree-walking evaluator.
-- `vm.rs` (15367): `CompiledProgram` compiles IR to a register VM; any statement or expression it doesn't lower runs on the tree-walker (`fallback_stmts`/`fallback_exprs`), counted by `CPL_VM_STATS`. Compiled out on wasm (`lib.rs:16`). `devin/wip-split-vm` splits it into `vm/{ir,compile,exec,helpers}.rs`.
+- `vm/` (14 files, largest 1771): `CompiledProgram` compiles IR to a register VM; any statement or expression it doesn't lower runs on the tree-walker (`fallback_stmts`/`fallback_exprs`), counted by `CPL_VM_STATS`. `vm/ir.rs` the VM's instructions; `vm/compile/` IR to instructions (`stmt.rs`, `assign.rs`, `expr_i.rs`/`expr_v.rs`/`expr_opt_i.rs` by result kind); `vm/exec/` the run loop (`calls.rs`, `places.rs`, `containers.rs`); `vm/helpers.rs`. Compiled out on wasm (`lib.rs:16`).
 - `value.rs` (1386): run-time values. `input.rs`: one buffered token reader.
 - `trace.rs` (2350) + `trace/log.rs`: the trace document for `cpl run --trace`/`cpl stress --trace` (`tools/trace/trace-schema.json`). `replay.rs`: rerun one recorded call with its fn edited. `profile.rs`: per-statement counts and time.
 
@@ -83,8 +83,8 @@ Contracts each consumer may rely on (and where the test lives today):
 
 | Debt | Where | Fix (milestone) |
 |---|---|---|
-| Two interpreter engines: tree-walker plus VM with fallback; every runnable corpus program (13/13) falls back, top tag `expr:Read` | `crates/cpl-interp/src/lib.rs`, `crates/cpl-interp/src/vm.rs` | VM lowers everything, tree-walker deleted, VM on wasm (M3) |
-| Giant files: 14 owned files over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json` | `lower/call.rs` 13357, `vm.rs` 15367, `lower/stmt.rs` 6470, `lower/mod.rs` 6123, `lower/expr.rs` 6107, `cpl-interp/src/lib.rs` 5615, `lower/mono.rs` 4570, `check/expr.rs` 4323 | split by concern as code is touched; `wip-split-vm` first (M3) |
+| Two interpreter engines: tree-walker plus VM with fallback; every runnable corpus program (13/13) falls back, top tag `expr:Read` | `crates/cpl-interp/src/lib.rs`, `crates/cpl-interp/src/vm/` | VM lowers everything, tree-walker deleted, VM on wasm (M3) |
+| Giant files: 13 owned files over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json` | `lower/call.rs` 13357, `lower/stmt.rs` 6470, `lower/mod.rs` 6123, `lower/expr.rs` 6107, `cpl-interp/src/lib.rs` 5615, `lower/mono.rs` 4570, `check/expr.rs` 4323 | split by concern as code is touched, pure moves first, as `vm.rs` (15367) was (M3) |
 | std privilege: 146 string literals of 35 std type names (`Prefix` 16, `Gen` 16, `Bitset` 12, `Subset` 11, ...) | `cpl-check/src/prelude.rs` 27, `check/call.rs` 21, `check/types.rs` 18, `cpl-ir/src/lower/call.rs` 14, `check/expr.rs` 13, rest scattered | one intrinsics table, then a spec mechanism (M3; tech-debt's builtin-floor question) |
 | Edition switching left over: 120 `is_v03()`/`spec_edition()` call sites, always true | `crates/cpl-check/src/edition.rs` and callers | inline the 0.3 branch, delete the other (M3) |
 | Range facts in two places, prover unused by the compiler | `crates/cpl-ir/src/lower/range.rs`, `crates/cpl-codegen/src/ranges.rs`, `crates/prover/src/interval.rs` | one facts pass in `cpl-ir` over `prover::interval` (after M3) |

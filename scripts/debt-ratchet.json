@@ -1,7 +1,6 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-interp/src/vm.rs": 15367,
     "crates/cpl-ir/src/lower/call.rs": 13357,
     "crates/cpl-ir/src/lower/stmt.rs": 6470,
     "crates/cpl-ir/src/lower/mod.rs": 6123,
