@@ -121,7 +121,9 @@ library or by this spec:
   the cache lives is an error. `cpl explain` shows table bytes. (R06.4.1)
 - `@get`: an O(1) read-only method called without parentheses. (R06.4.2)
 - `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool
-  roles (`tools/stress.md`); the item is otherwise unchanged. (R06.4.3)
+  roles (`tools/stress.md`); the item is otherwise unchanged. The old
+  spellings `@alt(main)`, `@brute(main)` and `@checker` are E0503, naming
+  `@alt(program)` and `@check`. (R06.4.3)
 - `@cache` on a struct field: compiler-safe interior mutability with an
   author promise of logical correctness (chapter 5 §10a). (R06.4.4)
 - `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9).
