@@ -666,6 +666,14 @@ impl<'a> Lowerer<'a> {
                         frame.ty = Some(ty.clone());
                     }
                 }
+                if matches!(ty, Ty::Pos(_)) && updates.len() == 1 && updates[0].0.text == "to" {
+                    if !matches!(base_val.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                        out.push(Stmt::Expr(base_val));
+                    }
+                    let val = lw.expect(&updates[0].1, &ty);
+                    out.push(Stmt::Give(val));
+                    return;
+                }
                 let fields: Vec<(String, Ty)> = match &ty {
                     Ty::Struct(sid) => lw.structs[*sid].def.fields.clone(),
                     Ty::Record(fields) => fields.clone(),

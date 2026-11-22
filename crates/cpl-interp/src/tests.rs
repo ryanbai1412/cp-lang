@@ -1165,3 +1165,16 @@ print(x, y)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "3 8\n");
 }
+
+#[test]
+fn record_spread_to_on_plain_vertex_pos() {
+    let src = "\
+domain V = 0..3
+let a: V = V(2)
+let b: V = (..a, to: V(0))
+print(b)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "0\n");
+}
