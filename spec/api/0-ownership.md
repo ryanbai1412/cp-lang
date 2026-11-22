@@ -294,6 +294,11 @@ a nested fn declared after a `var` may read and write it.
   callee can call it but can't keep it, so every closure argument is
   inlined and costs nothing. Only constructors keep closures (§4).
 - **Recursion.** Nested fns and `let`-bound lambdas may call themselves.
+- **Spelling differences only.** A nested `fn` can take explicit type
+  parameters (`fn go<T>(..)`), attributes (`@memo`) and sibling fns in
+  the same block, so mutual recursion works. A lambda infers its
+  parameter types from where it is used, and its `let` name is visible
+  only from its own body on. Both can be generators (`-> yields T`).
 - **`return`** inside a lambda returns from the lambda. (Non-local exit
   from closures is deferred, decision 126; use a `for` over a generator.)
 - **`@memo`** fns may not capture a `var` they could see change.
