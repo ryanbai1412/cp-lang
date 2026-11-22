@@ -891,7 +891,6 @@ fn nth_element_introselect_handles_median_of_3_killer_in_budget() {
     std::fs::create_dir_all(&dir).unwrap();
     let cp_path = dir.join("killer.cp");
     let src = "\
-
 let n = 200_000
 var a: List<Int> = [i for i in 0..n]
 var lo = n - 2
