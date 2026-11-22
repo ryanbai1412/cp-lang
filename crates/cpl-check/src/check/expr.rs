@@ -631,6 +631,7 @@ impl<'a> Checker<'a> {
                 let mut result = None;
                 for arm in arms {
                     self.moved = saved_moved.clone();
+                    self.capitalized_pattern(&arm.pat, &scrutinee_ty);
                     self.push_scope();
                     self.bind(&arm.pat, &scrutinee_ty, false, "let");
                     if let Some(guard) = &arm.guard {
@@ -830,6 +831,31 @@ impl<'a> Checker<'a> {
         let message = format!("this `match` has no arm for {}", missing.join(", "));
         if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
+        }
+    }
+
+    /// R01.3.3: a capitalized pattern name is a variant or a constant, never
+    /// a binding, so against a scalar with no such constant it is an error.
+    fn capitalized_pattern(&mut self, pat: &cpl_syntax::ast::Pattern, ty: &Ty) {
+        let cpl_syntax::ast::PatternKind::Name(name) = &pat.kind else {
+            return;
+        };
+        if !name.starts_with(|c: char| c.is_ascii_uppercase())
+            || !(ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Str))
+            || self.local(name).is_some()
+            || self.global(name).is_some()
+        {
+            return;
+        }
+        let message = format!(
+            "`{name}` is a variant, but the value matched is a `{}`",
+            ty.widen()
+        );
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, pat.span, message) {
+            diag.help = Some(
+                "a capitalized name in a pattern is a variant or constant; bind with a lowercase name, or write `_`"
+                    .to_string(),
+            );
         }
     }
 
