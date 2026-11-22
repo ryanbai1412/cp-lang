@@ -103,9 +103,9 @@ and its notes in that record's `notes`.
 - noip18p3, coci21c4p4 (review): `Rooted` loses `w:`; lengths come from `Weighted` arcs, as in
   every graph algorithm, so a tree read with a `w` field is weighted with no option.
 - ioi16p6, noi09p4, apio09p2, noi05p4 (review): `desc` instead of `-s.hi`, `with_prev`
-- ioi16p6 (review): diagonals are `domain Diag`; a point needs the range `min..=max`, nesting is dropped with the prefix-records idiom over right cuts, the overlap is `p.clip(s).len`, and the hull argument is `Int(s.r)` instead of `hi + 1`. No spec change.
   instead of `spans[i - 1]`, a comprehension instead of a push loop, `partition_point` and
   `inf` instead of `Int.MIN + 1` sentinels, `g.deg(m)`.
+- ioi16p6 (review): diagonals are `domain Diag`; a point needs the range `min..=max`, nesting is dropped with the prefix-records idiom over right cuts, the overlap is `p.clip(s).len`, and the hull argument is `Int(s.r)` instead of `hi + 1`. No spec change.
 - egoi23p7: `complement(g)`, a `Next` whose searches run in O(n + m) by scanning only
   unvisited vertices; "BFS in the complement graph" is the ordinary `bfs`/`components`.
 
