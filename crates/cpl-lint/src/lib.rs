@@ -575,11 +575,16 @@ pub struct ProvenLoop {
     pub total_count: Option<String>,
 }
 
-/// A fn with a loop in its body, and how many loop iterations one call
-/// makes at most, by the declared bounds.
+/// A fn, and how many loop iterations one call makes at most, by the
+/// declared bounds.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProvenFn {
     pub name: (u32, u32),
+    /// The whole fn, from `fn` to the end of its body.
+    pub body: (u32, u32),
+    /// The parts of its body that run other than once per call: each loop,
+    /// lambda, table or comprehension, and each nested fn.
+    pub runs: Vec<Run>,
     /// The sum over its `for` loops of how often each body runs, nested
     /// loops multiplied, plus each call of a fn in the file times that fn's
     /// count; `None` when a `while`, an unbounded `for`, recursion or a call
@@ -590,7 +595,17 @@ pub struct ProvenFn {
     pub count: Option<String>,
 }
 
-/// Each fn with a loop in its body; a file with a syntax error has none.
+/// A part of a fn's body and how often it runs per call of the fn: `None`
+/// when unknown, `Some(0)` for a nested fn, which runs only when called.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Run {
+    pub span: (u32, u32),
+    pub times: Option<u128>,
+    /// `times` in the source's terms, as `ProvenLoop::total_count`.
+    pub count: Option<String>,
+}
+
+/// Each fn with a body; a file with a syntax error has none.
 pub fn proven_fns(src: &str) -> Vec<ProvenFn> {
     let parsed = cpl_syntax::parse_file(src);
     if !parsed.diagnostics.is_empty() {

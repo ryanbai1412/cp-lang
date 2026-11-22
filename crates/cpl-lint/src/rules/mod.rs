@@ -92,12 +92,24 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
     }
     let mut state: Vec<State> = fns.iter().map(|_| State::Todo).collect();
     (0..fns.len())
-        .map(|i| (fns[i].at, cost(i, &fns, &by_name, &mut state)))
-        .filter(|&(_, (steps, _))| steps != Some(0))
-        .map(|(name, (steps, terms))| crate::ProvenFn {
-            name,
-            steps,
-            count: terms.map(|t| render_sum(file, &t)),
+        .map(|i| {
+            let (steps, terms) = cost(i, &fns, &by_name, &mut state);
+            let f = &fns[i];
+            crate::ProvenFn {
+                name: f.at,
+                body: f.body,
+                runs: f
+                    .runs
+                    .iter()
+                    .map(|(span, times, chain)| crate::Run {
+                        span: *span,
+                        times: *times,
+                        count: chain.as_ref().map(|c| render_count(file, c)),
+                    })
+                    .collect(),
+                steps,
+                count: terms.map(|t| render_sum(file, &t)),
+            }
         })
         .collect()
 }
@@ -124,6 +136,10 @@ fn render_sum(file: &File, terms: &[Vec<Factor>]) -> String {
     parts.join(" + ")
 }
 
+/// A part of a fn's body, how often it runs per call, and its loop-count
+/// chain when that is known.
+type RunCost = ((u32, u32), Option<u128>, Option<Vec<Factor>>);
+
 /// A call by name in a fn, how often it runs, and the counts of the loops
 /// around it (`None` in a lambda, table or comprehension).
 struct Call {
@@ -137,6 +153,8 @@ struct Call {
 struct FnCost {
     name: String,
     at: (u32, u32),
+    body: (u32, u32),
+    runs: Vec<RunCost>,
     own: Option<u128>,
     /// The loop-count chain of each of its own loops.
     own_terms: Vec<Vec<Factor>>,
@@ -147,16 +165,23 @@ struct FnCost {
 /// what runs an unknown number of times or not here: lambdas, tables,
 /// comprehensions and nested fns.
 /// Calls by name with their offsets, and the spans that hide calls.
-type Calls = (Vec<(String, u32)>, Vec<(u32, u32)>);
+/// The calls by name, what runs an unknown number of times or not here,
+/// the nested fns and the loops.
+type Calls = (Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>);
 
 fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
     use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_block, Visitor};
-    struct Found(Vec<(String, u32)>, Vec<(u32, u32)>);
+    struct Found(Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>);
     impl Visitor for Found {
         fn stmt(&mut self, stmt: &Stmt) {
-            if let StmtKind::Fn(_) = stmt.kind {
-                self.1.push((stmt.span.start, stmt.span.end));
+            match stmt.kind {
+                StmtKind::Fn(_) => {
+                    self.1.push((stmt.span.start, stmt.span.end));
+                    self.2.push((stmt.span.start, stmt.span.end));
+                }
+                StmtKind::For { .. } | StmtKind::While { .. } => self.3.push((stmt.span.start, stmt.span.end)),
+                _ => {}
             }
         }
         fn expr(&mut self, expr: &Expr) {
@@ -173,9 +198,9 @@ fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
             }
         }
     }
-    let mut calls = Found(Vec::new(), Vec::new());
+    let mut calls = Found(Vec::new(), Vec::new(), Vec::new(), Vec::new());
     walk_block(block, &mut calls);
-    (calls.0, calls.1)
+    (calls.0, calls.1, calls.2, calls.3)
 }
 
 pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
@@ -853,7 +878,7 @@ fn ranges_of_stmt(
                     let own = (!proven.unbounded)
                         .then(|| loops.iter().try_fold(0u128, |sum, l| sum.checked_add(l.total?)))
                         .flatten();
-                    let (found, hidden) = calls_in(block);
+                    let (found, hidden, nested, all_loops) = calls_in(block);
                     let inside = |at: u32, (start, end): (u32, u32)| start <= at && at < end;
                     let calls = found
                         .into_iter()
@@ -873,9 +898,23 @@ fn ranges_of_stmt(
                             }
                         })
                         .collect();
+                    let shift = |&(s, e): &(u32, u32)| (base + s, base + e);
+                    let stmts = &proven.loop_stmts[first..];
+                    let mut runs: Vec<RunCost> = all_loops
+                        .iter()
+                        .map(shift)
+                        .map(|span| match stmts.iter().position(|&s| s == span) {
+                            Some(i) => (span, loops[i].total, Some(proven.loop_factors[first + i].clone())),
+                            None => (span, None, None),
+                        })
+                        .collect();
+                    runs.extend(hidden.iter().map(shift).filter(|s| !nested.iter().map(shift).any(|n| n == *s)).map(|s| (s, None, None)));
+                    runs.extend(nested.iter().map(shift).map(|s| (s, Some(0), None)));
                     proven.fns.push(FnCost {
                         name: decl.name.text.clone(),
                         at: (base + decl.name.span.start, base + decl.name.span.end),
+                        body: (base + stmt.span.start, base + stmt.span.end),
+                        runs,
                         own,
                         own_terms: proven.loop_factors[first..].to_vec(),
                         calls,

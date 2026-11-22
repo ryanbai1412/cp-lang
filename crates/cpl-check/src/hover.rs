@@ -84,6 +84,40 @@ impl Database {
         Some(Hover { span, text, doc })
     }
 
+    /// Each call in `start..end` whose doc states a cost above `O(1)`:
+    /// where its name is, the name as hovered (`.sorted`, `bfs`) and the
+    /// cost (`O(n log n)`), in file positions.
+    pub fn costs_in(&mut self, path: &str, start: u32, end: u32) -> Vec<(Span, String, String)> {
+        let Some(analysis) = self.analyze(path) else {
+            return Vec::new();
+        };
+        let Some((item, _)) = analysis.item_at(start) else {
+            return Vec::new();
+        };
+        let mut named: Vec<(Span, String)> = item
+            .check
+            .hovers
+            .iter()
+            .filter(|e| e.keyword == "field" || matches!(e.ty, Ty::Fn { .. }))
+            .filter(|e| e.decl != Some(e.span))
+            .map(|e| {
+                let name = if e.keyword == "field" { format!(".{}", e.name) } else { e.name.clone() };
+                (e.span.shift(item.offset), name)
+            })
+            .filter(|(span, _)| start <= span.start && span.end <= end)
+            .collect();
+        named.sort_by_key(|(span, _)| (span.start, span.end));
+        named.dedup_by_key(|(span, _)| *span);
+        named
+            .into_iter()
+            .filter_map(|(span, name)| {
+                let hover = self.hover(path, span.start)?;
+                let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
+                (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)")).then(|| (span, name, cost.to_string()))
+            })
+            .collect()
+    }
+
     /// The innermost index at `offset` that its types prove in bounds, in
     /// file positions; with `on_index`, only when `offset` is on its indices.
     pub fn typed_index(&mut self, path: &str, offset: u32, on_index: bool) -> Option<crate::TypedIndex> {

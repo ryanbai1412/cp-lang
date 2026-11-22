@@ -76,3 +76,8 @@ sca$0n()
 fn re$0scan():
     for i in 0..3:
         scan()
+fn ra$0nked(ys: List<Int>) -> Int:
+    for v in V:
+        print(v, ys.sorted().len)
+    let f = (x: Int) => ys.sorted().len + x
+    ys.sorted().len + f(1)

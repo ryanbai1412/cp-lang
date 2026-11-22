@@ -2412,6 +2412,16 @@ count the same way, as a sum with equal terms gathered (`3 + 3 * n + 3 * n * k =
 only the number past six terms. Reverse by dropping
 `ProvenLoop::count` and `total_count`.
 
+29.43. **A fn's hover lists its calls' documented costs, not a sum.** Each call in the fn's body
+whose doc states a cost above `O(1)` (the same `cost:` its own hover shows) is listed with how
+often it runs per call: once, a loop's count (`n = 200000 (2e5) times`), or `an unknown number of
+times` inside a `while`, an unbounded loop, a lambda, a table or a comprehension; calls in a
+nested fn are left to that fn. The cost's `n` is written as the receiver's size (`ys.sorted
+O(ys.len log ys.len)`), since the `n` of a doc is not the input `n`. They are not added into one
+`O(..)` with steps at max input: most receivers' sizes have no proven bound, and 102 of the 152
+built-in methods document no cost, so a sum would silently leave them out. At most four are
+listed, then `and k more`. Reverse by dropping `Database::costs_in` and `fn_call_costs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

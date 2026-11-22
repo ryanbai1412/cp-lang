@@ -233,14 +233,28 @@ impl Server {
                 let proven = cpl_lint::proven_fns(&analysis.text)
                     .into_iter()
                     .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
-                if let Some((steps, count)) = proven.and_then(|f| Some((f.steps?, f.count))) {
-                    let named = count
-                        .filter(|c| !c.chars().all(|c| c.is_ascii_digit()))
-                        .map_or(String::new(), |c| format!("{c} = "));
-                    hover.text += &format!(
-                        "\n  loops: at most {named}{} iterations per call, with the fns it calls; methods and the stdlib not counted",
-                        count_text(steps)
-                    );
+                if let Some(f) = proven {
+                    let calls = fn_call_costs(&mut self.db, &uri, &f);
+                    let named = |count: Option<&str>| {
+                        count
+                            .filter(|c| !c.chars().all(|c| c.is_ascii_digit()))
+                            .map_or(String::new(), |c| format!("{c} = "))
+                    };
+                    if let Some(steps) = f.steps.filter(|&s| s > 0) {
+                        let rest = if calls.is_empty() {
+                            "; methods and the stdlib not counted"
+                        } else {
+                            ""
+                        };
+                        hover.text += &format!(
+                            "\n  loops: at most {}{} iterations per call, with the fns it calls{rest}",
+                            named(f.count.as_deref()),
+                            count_text(steps)
+                        );
+                    }
+                    if !calls.is_empty() {
+                        hover.text += &format!("\n  documented costs: {}", calls.join("; "));
+                    }
                 }
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 Ok(Reply::result(obj([
@@ -1291,6 +1305,77 @@ fn fix_file(uri: &str, text: &str) -> Option<String> {
 }
 
 /// `n`, and from 1e4 on its size too: `200000 (2e5)`, `249999500000 (2.5e11)`.
+/// The name or field path before the `.` that ends at `at`: `g[u]` is
+/// not one, `self.xs` is.
+fn receiver_before(text: &str, at: usize) -> Option<&str> {
+    let head = text.get(..at)?.strip_suffix('.')?;
+    let start = head
+        .char_indices()
+        .rev()
+        .take_while(|&(_, c)| c.is_alphanumeric() || c == '_' || c == '.')
+        .last()
+        .map(|(i, _)| i)?;
+    let path = &head[start..];
+    (!path.starts_with('.') && !path.starts_with(|c: char| c.is_ascii_digit())).then_some(path)
+}
+
+/// A documented cost with its size `n` written as `size`: `O(n log n)` for
+/// `ys.len` is `O(ys.len log ys.len)`.
+fn size_in(cost: &str, size: &str) -> String {
+    let mut out = String::new();
+    let mut word = String::new();
+    for c in cost.chars().chain(std::iter::once('\0')) {
+        if c.is_alphanumeric() || c == '_' {
+            word.push(c);
+            continue;
+        }
+        out += if word == "n" { size } else { &word };
+        word.clear();
+        if c != '\0' {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// The calls in `f`'s body with a documented cost, each with how often it
+/// runs per call: `.sorted O(n log n) n * q = 2e8 times`.
+fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn) -> Vec<String> {
+    const MOST: usize = 4;
+    let mut out = Vec::new();
+    let costs = db.costs_in(uri, f.body.0, f.body.1);
+    let text = db.analyze(uri).map_or_else(String::new, |a| a.text.to_string());
+    for (span, name, cost) in &costs {
+        let receiver = name
+            .starts_with('.')
+            .then(|| receiver_before(&text, span.start as usize))
+            .flatten();
+        let (name, cost) = match receiver {
+            Some(r) => (format!("{r}{name}"), size_in(cost, &format!("{r}.len"))),
+            None => (name.clone(), cost.clone()),
+        };
+        let inside = |r: &&cpl_lint::Run| r.span.0 <= span.start && span.end <= r.span.1;
+        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        let times = match run {
+            None => "once".to_string(),
+            Some(r) if r.times == Some(0) => continue,
+            Some(cpl_lint::Run { times: Some(1), .. }) => "once".to_string(),
+            Some(cpl_lint::Run { times: Some(t), count, .. }) => match count {
+                Some(c) if !c.chars().all(|c| c.is_ascii_digit()) => format!("{c} = {} times", count_text(*t)),
+                _ => format!("{} times", count_text(*t)),
+            },
+            Some(_) => "an unknown number of times".to_string(),
+        };
+        out.push(format!("{name} {cost} {times}"));
+    }
+    if out.len() > MOST {
+        let more = out.len() - MOST;
+        out.truncate(MOST);
+        out.push(format!("and {more} more"));
+    }
+    out
+}
+
 pub(crate) fn count_text(n: u128) -> String {
     if n < 10_000 {
         return n.to_string();

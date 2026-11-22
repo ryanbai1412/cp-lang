@@ -1786,7 +1786,7 @@ fn a_for_loop_knows_how_often_it_runs() {
 fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
     let fns = |src: &str| -> Vec<(String, Option<u128>)> {
         let name = |f: &crate::ProvenFn| src[f.name.0 as usize..f.name.1 as usize].to_string();
-        crate::proven_fns(src).iter().map(|f| (name(f), f.steps)).collect()
+        crate::proven_fns(src).iter().filter(|f| f.steps != Some(0)).map(|f| (name(f), f.steps)).collect()
     };
     let head = "let n: 1..=200000 = read()\nlet q: 1..=1000 = read()\ndomain V = 1..=n\n";
     let src = format!(
@@ -1807,7 +1807,8 @@ fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
     );
     let found = fns(&calls);
     assert_eq!(found[3..], [some("twice", Some(2 + 2 * 200201000)), some("again", None), some("mapped", None)]);
-    let counts: Vec<Option<String>> = crate::proven_fns(&calls).into_iter().map(|f| f.count).collect();
+    let counts: Vec<Option<String>> =
+        crate::proven_fns(&calls).into_iter().filter(|f| f.steps != Some(0)).map(|f| f.count).collect();
     let s = |t: &str| Some(t.to_string());
     assert_eq!(counts, [s("n + n * q + q"), None, None, s("2 + 2 * n + 2 * n * q + 2 * q"), None, None]);
 }
