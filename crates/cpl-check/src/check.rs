@@ -166,6 +166,8 @@ pub(crate) struct Checker<'a> {
     pub(crate) fn_lends: Vec<bool>,
     /// Sibling local fns and the sibling `let`/`var` names they capture.
     pub(crate) local_fn_captures: Vec<(String, Vec<String>)>,
+    /// `@cache` field names on the enclosing `struct`.
+    pub(crate) cached_fields: Vec<String>,
 }
 
 pub(crate) struct Checked {
@@ -217,6 +219,7 @@ impl<'a> Checker<'a> {
             local_effects: HashMap::new(),
             fn_lends: Vec::new(),
             local_fn_captures: Vec::new(),
+            cached_fields: Vec::new(),
         }
     }
 
@@ -836,6 +839,9 @@ impl<'a> Checker<'a> {
         if mutable || decl.is_some_and(|d| self.sink.is_poisoned(d)) {
             return;
         }
+        if keyword == "self" && self.accesses_cached_field(expr) {
+            return;
+        }
         let (what, help) = match keyword {
             "param" => (
                 "a parameter without `mut`".to_string(),
@@ -883,6 +889,29 @@ impl<'a> Checker<'a> {
                         edits: vec![(at, "var".into())],
                     });
                 }
+            }
+        }
+    }
+
+    fn accesses_cached_field(&self, mut expr: &cpl_syntax::ast::Expr) -> bool {
+        use cpl_syntax::ast::ExprKind;
+        if self.cached_fields.is_empty() {
+            return false;
+        }
+        loop {
+            match &expr.kind {
+                ExprKind::Paren(inner) | ExprKind::Unwrap(inner) => expr = inner,
+                ExprKind::Index { base, .. } => expr = base,
+                ExprKind::Field { base, name } => {
+                    if matches!(base.kind, ExprKind::SelfValue) {
+                        return self.cached_fields.iter().any(|f| f == &name.text);
+                    }
+                    expr = base;
+                }
+                ExprKind::Name(n) => {
+                    return self.cached_fields.iter().any(|f| f == n);
+                }
+                _ => return false,
             }
         }
     }

@@ -466,14 +466,14 @@ impl<'a> Parser<'a> {
         let was_recovering = std::mem::replace(&mut self.recovering, false);
         while !matches!(self.peek(), T::Dedent | T::Eof) {
             let before = self.pos;
-            let tagged_variant = self.at(T::At) && self.peek_n(1) == T::Ident && {
+            let field_attr = self.at(T::At) && self.peek_n(1) == T::Ident && {
                 let at = self.pos;
                 self.pos += 1;
-                let tag = self.text() == "tag";
+                let ok = matches!(self.text(), "tag" | "cache");
                 self.pos = at;
-                tag
+                ok
             };
-            let declaration = !tagged_variant
+            let declaration = !field_attr
                 && (matches!(
                     self.peek(),
                     T::Fn | T::At | T::Pub | T::Const | T::Domain | T::Type | T::Let
@@ -515,6 +515,7 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable: false,
+                    cached: false,
                 }
             });
         }
@@ -535,6 +536,7 @@ impl<'a> Parser<'a> {
                         ty: ty.clone(),
                         default: default.clone(),
                         mutable: false,
+                        cached: false,
                     });
                 }
                 if !self.eat(T::Comma) || self.at_line_end() {
@@ -561,6 +563,14 @@ impl<'a> Parser<'a> {
             });
         }
         let methods = self.members(&format!("`struct {}`", name.text), |p| {
+            let mut cached = false;
+            if p.at(T::At) && p.peek_n(1) == T::Ident {
+                p.bump();
+                let attr = p.expect_name("a field attribute");
+                if attr.text == "cache" {
+                    cached = true;
+                }
+            }
             let mutable = p.eat(T::Var);
             // `u, v: V` declares two fields of one type.
             let mut names = vec![p.expect_name("a field name")];
@@ -583,6 +593,7 @@ impl<'a> Parser<'a> {
                     ty: ty.clone(),
                     default: default.clone(),
                     mutable,
+                    cached,
                 });
             }
         });

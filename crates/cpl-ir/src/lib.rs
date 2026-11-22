@@ -1066,6 +1066,8 @@ pub struct StructDef {
     pub eq_fn: Option<FnId>,
     /// From `impl Ord for S`: `fn lt(a: S, b: S) -> Bool`.
     pub lt_fn: Option<FnId>,
+    /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
+    pub cached_fields: std::collections::BTreeSet<usize>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

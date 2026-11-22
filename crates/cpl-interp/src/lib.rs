@@ -3129,12 +3129,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                         .bool());
                 }
                 let fields = self.program.structs[*id].fields.clone();
+                let cached = self.program.structs[*id].cached_fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
                     let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
-                    for ((_, ft), (lv, rv)) in fields
+                    for (i, ((_, ft), (lv, rv))) in fields
                         .iter()
                         .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                        .enumerate()
                     {
+                        if cached.contains(&i) {
+                            continue;
+                        }
                         if !self.eq_ty_val(ft, lv, rv, span)? {
                             return Ok(false);
                         }

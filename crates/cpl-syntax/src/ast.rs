@@ -251,6 +251,8 @@ pub struct FieldDecl {
     pub default: Option<Expr>,
     /// `var top = 0`: assignable after construction.
     pub mutable: bool,
+    /// `@cache parent: ...`: interior-mutable cache field, skipped by `==`.
+    pub cached: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]

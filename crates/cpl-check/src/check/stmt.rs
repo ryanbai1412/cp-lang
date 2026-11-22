@@ -982,7 +982,16 @@ impl<'a> Checker<'a> {
                     }
                 }
                 self.type_hover(&s.name);
+                let prev_cached = std::mem::replace(
+                    &mut self.cached_fields,
+                    s.fields
+                        .iter()
+                        .filter(|f| f.cached)
+                        .map(|f| f.name.text.clone())
+                        .collect(),
+                );
                 self.methods(&s.methods, &self_ty);
+                self.cached_fields = prev_cached;
                 self.leave_body(body);
             }
             StmtKind::Enum(e) => {

@@ -6594,6 +6594,7 @@ fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
             let s = &program.structs[*id];
             s.eq_fn.is_none()
                 && s.lt_fn.is_none()
+                && s.cached_fields.is_empty()
                 && s.fields.iter().all(|(_, t)| ty_uses_structural_cmp(t, program))
         }
         Ty::Tuple(ts) => ts.iter().all(|t| ty_uses_structural_cmp(t, program)),

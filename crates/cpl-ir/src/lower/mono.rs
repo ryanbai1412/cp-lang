@@ -899,6 +899,7 @@ impl<'a> Lowerer<'a> {
                 show_fn: None,
                 eq_fn: None,
                 lt_fn: None,
+                cached_fields: Default::default(),
             },
             decl: Some(decl),
             mod_id: tpl_mod,
@@ -955,6 +956,13 @@ impl<'a> Lowerer<'a> {
             .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
             .collect();
         self.structs[id].def.fields = fields;
+        self.structs[id].def.cached_fields = decl
+            .fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.cached)
+            .map(|(i, _)| i)
+            .collect();
         self.structs[id].def.fixed = self.fixed_rows(decl);
         self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
         self.collect_struct_field_ranges(id, decl);

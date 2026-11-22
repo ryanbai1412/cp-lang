@@ -802,7 +802,9 @@ impl<'p> Emitter<'p> {
                         name,
                         self.zero_init(field_ty)
                     ));
-                    names.push(name);
+                    if !def.cached_fields.contains(&field_idx) {
+                        names.push(name);
+                    }
                 }
                 if Ty::Struct(*id).is_comparable(program) {
                     out.push_str(&format!(

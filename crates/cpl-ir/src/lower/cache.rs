@@ -14,6 +14,9 @@ use cpl_syntax::visit::{walk_block, walk_expr, Visitor};
 /// Whether `method`, which takes `self` without `mut`, appends to a list
 /// field of `owner`, itself or through another such method.
 pub(super) fn grows_cache(owner: &ast::StructDecl, method: &ast::FnDecl) -> bool {
+    if takes_plain_self(method) && owner.fields.iter().any(|f| f.cached) {
+        return true;
+    }
     grows(owner, method, &mut HashSet::new())
 }
 
