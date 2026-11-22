@@ -387,6 +387,7 @@ impl Lowerer<'_> {
             main_locals: lw.main_locals,
             setup: lw.setup_body,
             multitest: lw.multitest,
+            multitest_span: lw.multitest_span,
             until_eof: lw.until_eof,
             interactive: lw.interactive,
             announce_tests: lw.announce_tests,
@@ -719,6 +720,7 @@ struct Lowerer<'a> {
     /// What is above the `@!multitest` divider.
     setup_body: Block,
     multitest: bool,
+    multitest_span: Span,
     until_eof: bool,
     interactive: bool,
     /// Lowering an `@interactor` as the program, not the solution.
@@ -829,6 +831,7 @@ impl<'a> Lowerer<'a> {
             main_locals: Vec::new(),
             setup_body: Block::default(),
             multitest: false,
+            multitest_span: Span::default(),
             until_eof: false,
             interactive: false,
             judge: false,
@@ -3191,6 +3194,7 @@ impl<'a> Lowerer<'a> {
             return;
         }
         self.multitest = true;
+        self.multitest_span = self.span(decorator.span);
         for arg in &decorator.args {
             match &arg.value.kind {
                 ast::ExprKind::Name(name) if arg.name.is_none() && name == "until_eof" => {

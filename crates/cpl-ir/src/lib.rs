@@ -1116,6 +1116,8 @@ pub struct Program {
     pub setup: Block,
     /// `@!multitest`: `main` runs once per test case, after `setup`.
     pub multitest: bool,
+    /// Where `@!multitest` is written: a bad test count traps there.
+    pub multitest_span: Span,
     /// `@!multitest(until_eof)`: there is no count; cases run until the
     /// input ends.
     pub until_eof: bool,

@@ -60,6 +60,7 @@ impl Trap {
     pub fn code(&self) -> cpl_diag::Code {
         use cpl_diag::codes;
         let m = self.message.as_str();
+        let m = m.strip_prefix("reading the number of tests: ").unwrap_or(m);
         if m.contains("integer overflow") || m.contains("does not fit in") {
             codes::OVERFLOW
         } else if m.starts_with("division by zero") {
@@ -788,7 +789,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Ok((count, _)) => Some(count),
                 Err(error) => {
                     return trap(
-                        Span::default(),
+                        program.multitest_span,
                         format!("reading the number of tests: {}", error.message),
                     )
                 }
