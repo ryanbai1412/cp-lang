@@ -35,6 +35,8 @@ and its notes in that record's `notes`.
 - coci20c6p3 (follow-up): map and `SortedMap` `keys`, `values` and `items` are O(1)-to-make
   getters like `a.keys`/`a.items` on any keyed sequence (map `each()` became `items`); `Dsu.values`
   too. Two stale ports lost their `.last()`/`.values()` drift.
+- dmopc21c4p2: `Sieve.divisors(x)` yields divisors (no allocation, unordered) instead of
+  returning a sorted `List`.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

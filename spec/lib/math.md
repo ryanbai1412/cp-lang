@@ -146,7 +146,7 @@ struct Sieve:                                       // O(n) time and memory
     fn new(n: Int) -> Sieve                         // O(n)
     fn is_prime(self, x: Int) -> Bool               // O(1)
     fn factor(self, x: Int) -> List<(Int, Int)>     // O(log x)
-    fn divisors(self, x: Int) -> List<Int>          // O(d(x) log d(x)); sorted
+    fn divisors(self, x: Int) -> yields Int         // O(1) per divisor; unordered
     fn phi(self, x: Int) -> Int                     // O(log x)
     fn mobius(self, x: Int) -> Int                  // O(log x)
     fn phi_table(self) -> List<Int>                 // O(n); totient[0..=n]

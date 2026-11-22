@@ -5,10 +5,16 @@
   {"id": "4218248", "language": "CPP17", "result": "AC", "time": 1.562359319, "memory_kb": 7472.0, "file": "corpus/submissions/4218248.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "artifacts": {
+  "dream": [
+   "corpus/problems/dmopc21c5p2/dream.cp"
+  ]
+ },
+ "tags": [
+  "constructive"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "chain([1, 3, 2], 4..=n).take(n) prints a constructed permutation."
 }

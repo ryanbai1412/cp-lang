@@ -6,10 +6,17 @@
   {"id": "4563949", "language": "CPP17", "result": "AC", "time": 1.675576367, "memory_kb": 11260.0, "file": "corpus/submissions/4563949.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "artifacts": {
+  "dream": [
+   "corpus/problems/dmopc21c9p1/dream.cp"
+  ]
+ },
+ "tags": [
+  "math",
+  "ad-hoc"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Alternating sign tracking bounds x1; inf as the open upper bound."
 }

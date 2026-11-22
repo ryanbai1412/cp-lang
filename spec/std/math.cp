@@ -76,8 +76,9 @@ pub struct Sieve:
     /// Table of divisor sums `sigma[0..=n]`. O(n).
     pub fn div_sum_table(self) -> List<Int> = todo
 
-    /// O(d(x) log d(x)). Sorted positive divisors of `1 <= x <= n`.
-    pub fn divisors(self, x: Int) -> List<Int> = todo
+    /// O(log x) to start, O(1) per divisor, no allocation: the positive divisors of
+    /// `1 <= x <= n`, built from the factorization, in no fixed order (`.sorted()` for one).
+    pub fn divisors(self, x: Int) -> yields Int = todo
 
     /// O(d(x) + log x). Generator yielding each positive divisor of `1 <= x <= n`.
     pub fn each_divisor(self, x: Int) -> yields Int = todo

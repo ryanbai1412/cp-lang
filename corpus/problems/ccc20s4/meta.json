@@ -22,13 +22,20 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ccc20s4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_33/ccc20s4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "prefix-sums",
+  "greedy",
+  "strings"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Prefix counts over s + s per letter; a [3, 3] mismatch matrix; 2-cycles then 3-cycles."
 }
