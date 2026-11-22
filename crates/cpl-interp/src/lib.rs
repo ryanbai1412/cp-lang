@@ -2509,42 +2509,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             ExprKind::Print(args, end) => {
-                let start = self.out.len();
-                let sparse = args.iter().any(|arg| arg.value.ty.may_show_nothing());
-                for (i, arg) in args.iter().enumerate() {
-                    let value = self.eval(&arg.value)?;
-                    let mut buf = Vec::new();
-                    self.show_val(&mut buf, &value, &arg.value.ty, arg.digits, span)?;
-                    // An empty collection shows nothing and takes no space.
-                    if buf.is_empty() && arg.value.ty.may_show_nothing() {
-                        continue;
-                    }
-                    if i > 0 && (self.out.len() > start || !sparse) {
-                        self.out.push(b' ');
-                    }
-                    self.out.extend_from_slice(&buf);
+                let mut vals = Vec::with_capacity(args.len());
+                for arg in args {
+                    vals.push(self.eval(&arg.value)?);
                 }
-                match end {
-                    Some(end) => {
-                        let value = self.eval(end)?;
-                        let mut buf = Vec::new();
-                        self.show_val(&mut buf, &value, &Ty::Str, 6, span)?;
-                        self.out.extend_from_slice(&buf);
-                    }
-                    None => self.out.push(b'\n'),
-                }
-                if self.tracer.is_some() {
-                    let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..])
-                        .into_owned();
-                    self.traced(|tracer, view| tracer.printed(view, span, &text));
-                }
-                if self.program.interactive {
-                    let _ = self.sink.write_all(&self.out);
-                    let _ = self.sink.flush();
-                    self.out.clear();
-                } else {
-                    self.flush_if_large();
-                }
+                let end = match end {
+                    Some(end) => Some(self.eval(end)?),
+                    None => None,
+                };
+                self.print_values(args, &vals, end.as_ref(), span)?;
                 Value::Unit
             }
             ExprKind::Format(pieces) => {
@@ -3491,6 +3464,49 @@ impl<'p, 'o> Interp<'p, 'o> {
         out.extend_from_slice(&left[i..]);
         out.extend_from_slice(&right[j..]);
         Ok(out)
+    }
+
+    fn print_values(
+        &mut self,
+        args: &'p [FmtArg],
+        vals: &[Value],
+        end: Option<&Value>,
+        span: Span,
+    ) -> Res<()> {
+        let start = self.out.len();
+        let sparse = args.iter().any(|arg| arg.value.ty.may_show_nothing());
+        for (i, (arg, value)) in args.iter().zip(vals).enumerate() {
+            let mut buf = Vec::new();
+            self.show_val(&mut buf, value, &arg.value.ty, arg.digits, span)?;
+            // An empty collection shows nothing and takes no space.
+            if buf.is_empty() && arg.value.ty.may_show_nothing() {
+                continue;
+            }
+            if i > 0 && (self.out.len() > start || !sparse) {
+                self.out.push(b' ');
+            }
+            self.out.extend_from_slice(&buf);
+        }
+        match end {
+            Some(end) => {
+                let mut buf = Vec::new();
+                self.show_val(&mut buf, end, &Ty::Str, 6, span)?;
+                self.out.extend_from_slice(&buf);
+            }
+            None => self.out.push(b'\n'),
+        }
+        if self.tracer.is_some() {
+            let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
+            self.traced(|tracer, view| tracer.printed(view, span, &text));
+        }
+        if self.program.interactive {
+            let _ = self.sink.write_all(&self.out);
+            let _ = self.sink.flush();
+            self.out.clear();
+        } else {
+            self.flush_if_large();
+        }
+        Ok(())
     }
 
     fn show_val(

@@ -24,7 +24,7 @@ use crate::value::{Array, ArrayData, CaptureVal, OptVal, SmallFieldKind, TupleVa
 use crate::{describe, trap, Flow, Interp, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FmtArg, FnId, Iter, Local, LoopId,
     Mutation, Place, PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 use std::rc::Rc;
@@ -483,6 +483,8 @@ pub(crate) enum Op {
     },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
+    ConstV { dst: u16, idx: u32 },
+    Print { idx: u32 },
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
     FallbackExprI { idx: u32, dst: u16, in_loop: bool },
     FallbackExprV { idx: u32, dst: u16, in_loop: bool },
@@ -513,6 +515,12 @@ pub(crate) struct FeedCallSpec {
     pub var_loc: SlotLoc,
 }
 
+pub(crate) struct PrintSpec<'p> {
+    pub args: &'p [FmtArg],
+    pub regs: Vec<u16>,
+    pub end: Option<u16>,
+}
+
 pub(crate) struct Chunk<'p> {
     pub ops: Vec<Op>,
     pub spans: Vec<Span>,
@@ -521,6 +529,8 @@ pub(crate) struct Chunk<'p> {
     pub places: Vec<PlacePath>,
     pub closure_specs: Vec<ClosureMakeSpec>,
     pub feed_calls: Vec<FeedCallSpec>,
+    pub consts_v: Vec<Value>,
+    pub prints: Vec<PrintSpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
     pub fill_tys: Vec<&'p Ty>,
@@ -763,6 +773,8 @@ struct Compiler<'p, 'f> {
     places: Vec<PlacePath>,
     closure_specs: Vec<ClosureMakeSpec>,
     feed_calls: Vec<FeedCallSpec>,
+    consts_v: Vec<Value>,
+    prints: Vec<PrintSpec<'p>>,
     fallback_stmts: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
     fill_tys: Vec<&'p Ty>,
@@ -826,6 +838,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             places: Vec::new(),
             closure_specs: Vec::new(),
             feed_calls: Vec::new(),
+            consts_v: Vec::new(),
+            prints: Vec::new(),
             fallback_stmts: Vec::new(),
             fallback_exprs: Vec::new(),
             fill_tys: Vec::new(),
@@ -854,6 +868,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             places: self.places,
             closure_specs: self.closure_specs,
             feed_calls: self.feed_calls,
+            consts_v: self.consts_v,
+            prints: self.prints,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
             fill_tys: self.fill_tys,
@@ -2260,6 +2276,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 if ScalarKind::of_ty(&expr.ty, self.program).is_some() {
                     let _ = self.compile_expr_i(expr);
+                } else if let ExprKind::Print(args, end) = &expr.kind {
+                    self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
                     if !self.try_compile_mutate_stmt(*op, place, args, expr.span) {
                         self.emit_fallback_stmt(stmt);
@@ -5549,6 +5567,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return dst_v;
         }
         match &expr.kind {
+            ExprKind::Str(bytes) => {
+                let idx = self.consts_v.len() as u32;
+                self.consts_v.push(Value::Str(Rc::new(bytes.clone())));
+                let dst = self.alloc_v();
+                self.emit(Op::ConstV { dst, idx }, span);
+                dst
+            }
             ExprKind::Local(slot) => match self.slot_loc(*slot) {
                 SlotLoc::V(r) => r,
                 SlotLoc::I(src_i, kind) => {
@@ -6359,6 +6384,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    fn compile_print(&mut self, args: &'p [FmtArg], end: Option<&'p Expr>, span: Span) {
+        let regs: Vec<u16> = args.iter().map(|a| self.compile_expr_v(&a.value)).collect();
+        let end = end.map(|e| self.compile_expr_v(e));
+        let idx = self.prints.len() as u32;
+        self.prints.push(PrintSpec { args, regs: regs.clone(), end });
+        self.emit(Op::Print { idx }, span);
+        for reg in regs.into_iter().chain(end) {
+            if reg >= self.num_local_v {
+                self.emit(Op::ClearV { reg }, span);
+            }
+        }
+    }
+
     fn emit_fallback_stmt(&mut self, stmt: &'p Stmt) {
         let idx = self.fallback_stmts.len() as u32;
         self.fallback_stmts.push(stmt);
@@ -6917,25 +6955,25 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::AddI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
-                    match av.checked_add(bv) {
+                    match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::SubI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
-                    match av.checked_sub(bv) {
+                    match av.checked_sub(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} - {bv}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} - {bv}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::MulI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
-                    match av.checked_mul(bv) {
+                    match av.checked_mul(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} * {bv}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} * {bv}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::DivI { dst, a, b } => {
@@ -6944,16 +6982,16 @@ impl<'p, 'io> Interp<'p, 'io> {
                     if bv == 0 {
                         return trap(spans[cur_pc], format!("division by zero: `{av} / 0`"));
                     }
-                    match av.checked_div_euclid(bv) {
+                    match av.checked_div_euclid(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} / {bv}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} / {bv}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::RemI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     if bv == 0 {
-                        return trap(spans[cur_pc], format!("remainder by zero: `{av} % 0`"));
+                        return trap(spans[cur_pc], format!("division by zero: `{av} % 0`"));
                     }
                     regs_i[dst as usize] = av.checked_rem_euclid(bv).unwrap_or(0);
                 }
@@ -6982,26 +7020,41 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::AddImmI { dst, a, imm } => {
                     let av = regs_i[a as usize];
                     let bv = i64::from(imm);
-                    match av.checked_add(bv) {
+                    match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::NegI { dst, a } => {
                     let av = regs_i[a as usize];
-                    match av.checked_neg() {
+                    match av.checked_neg().filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `-{av}`")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `-{av}` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::BitAndI { dst, a, b } => {
-                    regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
+                    let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
+                    let v = av & bv;
+                    if v == i64::MIN {
+                        return trap(spans[cur_pc], format!("integer overflow: `{av} & {bv}` does not fit in an `Int` (64 bits)"));
+                    }
+                    regs_i[dst as usize] = v;
                 }
                 Op::BitOrI { dst, a, b } => {
-                    regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
+                    let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
+                    let v = av | bv;
+                    if v == i64::MIN {
+                        return trap(spans[cur_pc], format!("integer overflow: `{av} | {bv}` does not fit in an `Int` (64 bits)"));
+                    }
+                    regs_i[dst as usize] = v;
                 }
                 Op::BitXorI { dst, a, b } => {
-                    regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
+                    let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
+                    let v = av ^ bv;
+                    if v == i64::MIN {
+                        return trap(spans[cur_pc], format!("integer overflow: `{av} ^ {bv}` does not fit in an `Int` (64 bits)"));
+                    }
+                    regs_i[dst as usize] = v;
                 }
                 Op::ShlI { dst, a, b } => {
                     let av = regs_i[a as usize];
@@ -7010,10 +7063,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                         return trap(spans[cur_pc], format!("shift by {bv} is outside 0..64"));
                     }
                     if av < 0 {
-                        return trap(spans[cur_pc], format!("left shift of negative number {av}"));
+                        return trap(spans[cur_pc], format!("`<<` of the negative number {av}"));
                     }
                     if bv > 0 && av > (i64::MAX >> bv) {
-                        return trap(spans[cur_pc], format!("integer overflow: {av} << {bv}"));
+                        return trap(spans[cur_pc], format!("integer overflow: `{av} << {bv}` does not fit in an `Int` (64 bits)"));
                     }
                     regs_i[dst as usize] = av << bv;
                 }
@@ -7036,9 +7089,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::AbsI { dst, a } => {
                     let av = regs_i[a as usize];
-                    match av.checked_abs() {
+                    match av.checked_abs().filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: abs({av})")),
+                        None => return trap(spans[cur_pc], format!("integer overflow: `abs({av})` does not fit in an `Int` (64 bits)")),
                     }
                 }
                 Op::DomainLen { dst, dom } => {
@@ -7298,7 +7351,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::UnwrapOptI { dst, val, some } => {
                     if regs_i[some as usize] == 0 {
-                        return trap(spans[cur_pc], "unwrapped none");
+                        return trap(spans[cur_pc], "`!` on `none`: there is no value here");
                     }
                     regs_i[dst as usize] = regs_i[val as usize];
                 }
@@ -8947,7 +9000,18 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Map(m) => m.len() as i64,
                         Value::Set(s) => s.len() as i64,
                         Value::Range(lo, hi) => (hi - lo).max(0),
-                        Value::Range128(lo, hi) => (hi - lo).max(0) as i64,
+                        Value::Range128(lo, hi) if lo >= hi => 0,
+                        Value::Range128(lo, hi) => {
+                            match hi.checked_sub(*lo).and_then(|d| i64::try_from(d).ok()) {
+                                Some(d) => d,
+                                None => {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                    );
+                                }
+                            }
+                        }
                         Value::DomainVal(_, len) => *len,
                         _ => 0,
                     };
@@ -10792,6 +10856,15 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::FeedEnd => return Ok(ExecExit::FeedNext),
                 Op::ClearV { reg } => {
                     regs_v[reg as usize] = Value::Unit;
+                }
+                Op::ConstV { dst, idx } => {
+                    regs_v[dst as usize] = chunk.consts_v[idx as usize].clone();
+                }
+                Op::Print { idx } => {
+                    let spec = &chunk.prints[idx as usize];
+                    let vals: Vec<Value> = spec.regs.iter().map(|&r| regs_v[r as usize].clone()).collect();
+                    let end = spec.end.map(|r| regs_v[r as usize].clone());
+                    self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc])?;
                 }
                 Op::FallbackStmt { idx, clear_from_v, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
