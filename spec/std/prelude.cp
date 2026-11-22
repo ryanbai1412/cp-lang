@@ -60,6 +60,7 @@ use std.seq.{
     lis,
     next_permutation,
     select,
+    adjacent,
     pairs,
     partition,
     partition_point,

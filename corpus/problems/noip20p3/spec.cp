@@ -32,7 +32,7 @@ fn split(cols: List<Tube>, colours: Range<1..=n>):
 
     fn bottom_low(t: Tube) = tube[t].first! <= mid
     fn mixed(t: Tube) = 0 < low(t) < m
-    while let (a, b) = cols.pairs().find(p => mixed(p.0) and mixed(p.1) and bottom_low(p.0) == bottom_low(p.1)):
+    while let (a, b) = cols.adjacent.find(p => mixed(p.0) and mixed(p.1) and bottom_low(p.0) == bottom_low(p.1)):
         let side = if bottom_low(a): (t: Tube) => m - low(t) else: low
         mv(a, spare, side(a)); mv(b, spare, side(b))
         mv(b, a, m - tube[a].len)

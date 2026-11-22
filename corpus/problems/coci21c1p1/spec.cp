@@ -6,9 +6,7 @@ domain Player = 1..=8
 var last: [Player]?Int = none
 var score: [Team]Int = 0
 for (t, x, _) in read<[n](Int, Player, Int)>():
-    var points = 100
-    if last[x].map(l => t - l <= 10) ?? false:
-        points = 150
+    let points = if last[x].is_some_and(l => t - l <= 10): 150 else: 100
     last[x] = t
     score[if x <= 4: Team.Home else: Team.Away] += points
 print(score)

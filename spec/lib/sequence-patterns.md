@@ -38,7 +38,7 @@ Everything else is an idiom over these six, shown in section 3.
 ## 2. The pieces
 
 All of these are O(1) to make and lazy, read without parentheses only when
-they are views (`a.pairs`), and yield views of `a` keyed by `a`'s
+they are views (`a.adjacent`), and yield views of `a` keyed by `a`'s
 positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 
 | Form | Pieces | Cost to walk |
@@ -183,8 +183,9 @@ No helper is added for these; each is one or two lines.
 |---|---|
 | run-length encoding | `[(r.first!, r.len) for r in s.runs()]` |
 | longest run | `s.runs().max(by: .len)!.len` |
-| adjacent differences | `a.pairs.map((x, y) => y - x)` |
-| count adjacent pairs with a property | `a.pairs.count((x, y) => x > y)` |
+| adjacent differences | `a.adjacent.map((x, y) => y - x)` |
+| count adjacent pairs with a property | `a.adjacent.count((x, y) => x > y)` |
+| every pair `i < j` (brute force) | `a.pairs()`, O(n²) to walk |
 | best subarray sum (Kadane) | `a.fold(MaxSub)` (round 5's summary; the same op answers range queries in a `SegTree`) |
 | maximum and how often | `a.fold(MaxCount)` |
 | prefix records | `a.keys.filter(i => a[i] > pre[i.l])` with `pre = a.scan(max)` |
@@ -260,7 +261,7 @@ from the front.
 | `prev_less`, `prev_greater`, `next_less`, `next_greater` | `prev_smaller`/`next_smaller` with `by:` |
 | `max_histogram` | `a.spans()` plus a fold |
 | `max_subarray`, `max_count`, `reduce` | `a.fold(MaxSub)`, `a.fold(MaxCount)`, `a.fold(op)` |
-| `diffs`, `adjacent_diff`, `with_next` | `a.pairs.map(...)`, `Diff` (round 5), `a.with_prev` |
+| `diffs`, `adjacent_diff`, `with_next` | `a.adjacent.map(...)`, `Diff` (round 5), `a.with_prev` |
 | `record_highs` | `a.scan(max)` and a filter |
 | `chunk_by`, `run_ranges` (already gone) | `runs` |
 | `mo(add:, remove:)` | `mo(queries, state, answer:)`; `track(s, add:, remove:)` |

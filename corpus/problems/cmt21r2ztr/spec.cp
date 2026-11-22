@@ -15,7 +15,7 @@ for q in qs:
         sat.at_most_one(ps.map(p => on(p, s)).collect())
 for p in P:
     sat.add_or(on(p, Below).flip, on(p, Above).flip)
-for (p, q) in P.pairs() if pins.get(p).v == pins.get(q).v:
+for (p, q) in P.adjacent if pins.get(p).v == pins.get(q).v:
     sat.add_xor(on(p, Above), on(q, Below))
 if let value = sat.solve():
     print("YES")

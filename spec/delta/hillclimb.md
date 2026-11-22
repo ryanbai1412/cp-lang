@@ -229,3 +229,21 @@ Open questions raised by dreams:
   - Open: a row of single-letter enum tokens with no separators (ccc20s4) reads as a `Str`, then
     `parse<Who>()` per character. An enum whose tags are all one character could read like
     `Char`.
+- Fifth blind batch (cco16p4, cco20p4, cco21p2, cco24p1, ceoi17p2, ceoi19pp1, cheerio1s3,
+  cmt21r2ztr, coci20c6p3, coci21c1p1). cco21p2, cco24p1 and cheerio1s3 match their ports almost
+  token for token.
+  - Spec change, decision 154: adjacent pairs are now `a.adjacent` and `a.pairs()` is every pair
+    (O(n²) to walk). Three blind dreams and a gold dream read `pairs()` as every pair, and the
+    ceoi19pp1 port was wrong because of it (it counted only adjacent gaps). Ports using the
+    adjacent meaning were moved: ioi19p6, noip20p3 and cmt21r2ztr.
+  - Rejected:
+    - `read lower_triangle [V, V]` (cco20p4): read `[V.drop(1)]Str` rows.
+    - `rotated(to:)`: use `rotated_left(i)`.
+    - Per-vertex keyed `TwoSat` variables (cmt21r2ztr): the port's `compress` over `(v, x)` pins
+      plus adjacency is cleaner.
+    - The greedy loop (ceoi17p2): kept the port's prefix plus `first_true`. Both are linear-ish
+      and the port says the invariant.
+  - Idiom fix: coci21c1p1 used `map(..) ?? false` and a `var` where `is_some_and` and an `if`
+    expression say it directly.
+  - Dream bugs: `#` comments again, and a guessed `Counter(...)[k]`. `tally()` returns a
+    `HashMap`, so a missing key needs `get(k) ?? 0`.

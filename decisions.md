@@ -4560,3 +4560,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   costs), threshold tricks (`limit: desc(p + 1)`), hand bounds checks on DP states and a
   12-line heap-splitting idiom.
 - **Reverse.** Drop any one addition; its `spec.cp` returns to the previous spelling.
+
+## 154. `a.adjacent` for neighbours, `a.pairs()` for every pair (2026-11-21)
+
+- **Decision.** Adjacent pairs `(prev, x)` are `a.adjacent`, an O(1)-to-make getter. `a.pairs()`
+  yields every pair with `x` before `y` and is O(n²) to walk.
+- **Why.** Three blind dreams (ceoi19pp1, ccc20s4, cmt21r2ztr) and the IOI 2025 Triples gold
+  dream wrote `pairs()` to mean every pair, and the ceoi19pp1 port was wrong because of it.
+  Decision 3.x already spelled adjacent pairs `xs.adjacent`. `combinations(k)` stays for k > 2.
+- **Reverse.** Rename `adjacent` back to `pairs` and drop the all-pairs `pairs()` in
+  `spec/std/seq.cp`, the prelude and chapters 07 and sequence-patterns.

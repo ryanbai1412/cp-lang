@@ -222,7 +222,8 @@ for d in divisors(n):
 | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` | |
 | `s.take(k)`, `s.drop(k)` | an O(1) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` |
 | `chain(a, b)` | `Seq` | |
-| `s.pairs` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step |
+| `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step |
+| `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | O(n²) to walk, so a call |
 | `s.with_prev` | `Seq<(?T, T)>`, starting `(none, first)` | path walks that treat the first step apart |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices |
@@ -231,7 +232,7 @@ for d in divisors(n):
 
 **Parentheses mean work.** Only O(1) members read without `()`: `@get`
 properties such as `.len`, and views and generators, which cost O(1) to
-make and are paid for as you walk them (`.rev`, `.items`, `.pairs`, `.keys`,
+make and are paid for as you walk them (`.rev`, `.items`, `.adjacent`, `.keys`,
 `g.edges`, `t.tour`). Anything that computes or allocates up front is a
 call, however few arguments it takes: `g.transpose()`, `t.centroid()`,
 `a.sorted()`, `.collect()`. The spec check rejects an `@get` whose documented

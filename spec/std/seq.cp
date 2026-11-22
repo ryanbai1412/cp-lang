@@ -92,8 +92,12 @@ pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
 pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
-/// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives
+/// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(1) per step.
+pub @get fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
+
+/// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
+/// `(20, 30)`. O(n²) to walk; for adjacent pairs use `adjacent`.
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// Every element paired with the one before it, starting with `(none, first)`:

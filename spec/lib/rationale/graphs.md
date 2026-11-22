@@ -447,7 +447,7 @@ let at = (c: Char) => first(p for p in (Row, Col) if g[p] == c)!
 let p = bfs(c => [d for d in adj4(c) if g[d] != '#'], from: [at('A')])
 if let path = p.path(at('B')):
     print("YES", path.len - 1)
-    print(String([dir4_between(a, b).letter for (a, b) in path.pairs]))
+    print(String([dir4_between(a, b).letter for (a, b) in path.adjacent]))
 else:
     print("NO")
 ```

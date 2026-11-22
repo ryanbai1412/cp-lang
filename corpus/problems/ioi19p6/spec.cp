@@ -40,7 +40,7 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
     let (domain Stop, at) = compress(stops)
     var links: List<(u: Stop, v: Stop, w: Int)> = []
     for i in walks.keys:
-        for (p, q) in on[i].sorted().dedup().pairs():
+        for (p, q) in on[i].sorted().dedup().adjacent:
             links.push((u: at.at((b: p, y: walks[i].y)), v: at.at((b: q, y: walks[i].y)), w: x[Int(q)] - x[Int(p)]))
     for (p, q) in Stop.with_next:
         if let some(q) = q:
