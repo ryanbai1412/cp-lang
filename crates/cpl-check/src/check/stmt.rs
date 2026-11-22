@@ -2599,6 +2599,8 @@ impl<'a> Checker<'a> {
             .extend(super::types::extract_bounds(&f.bounds));
         self.bounds_exist(&f.bounds);
         self.in_fn += 1;
+        // A move is a fact about one body: a later fn may name a field or global again.
+        let outer_moved = std::mem::take(&mut self.moved);
         self.push_scope();
         // Inside a method the struct's fields can be named without `self.`.
         let receiver = f.params.iter().find(|p| p.name.text == "self");
@@ -2769,6 +2771,7 @@ impl<'a> Checker<'a> {
             self.pop_scope();
         }
         self.in_fn -= 1;
+        self.moved = outer_moved;
         self.generics.truncate(outer);
         self.param_bounds.truncate(outer_bounds);
         self.row_bounds = saved_row_bounds;
