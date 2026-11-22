@@ -1020,68 +1020,57 @@ impl<'a> Lowerer<'a> {
             }
             _ if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
             _ if matches!(name, "min" | "max") => {
-                if let Some(Ty::Fn(ps, r)) = hint {
-                    if ps.len() == 2 {
-                        let a_ty = ps[0].clone();
-                        let op = if name == "min" {
-                            Builtin::Min
-                        } else {
-                            Builtin::Max
-                        };
-                        let mut locals = vec![
-                            Local {
-                                name: "a".into(),
-                                ty: a_ty.clone(),
-                            },
-                            Local {
-                                name: "b".into(),
-                                ty: a_ty.clone(),
-                            },
-                        ];
-                        let body = Block {
-                            stmts: vec![Stmt::Return(Some(Expr {
-                                kind: ExprKind::Builtin(
-                                    op,
-                                    vec![
-                                        Expr {
-                                            kind: ExprKind::Local(0),
-                                            ty: a_ty.clone(),
-                                            span: self.span(span),
-                                        },
-                                        Expr {
-                                            kind: ExprKind::Local(1),
-                                            ty: a_ty.clone(),
-                                            span: self.span(span),
-                                        },
-                                    ],
-                                ),
-                                ty: (**r).clone(),
-                                span: self.span(span),
-                            }))],
-                        };
-                        let cid = self.closures.len();
-                        self.closures.push(ClosureDef {
-                            params: vec![0, 1],
-                            muts: Vec::new(),
-                            captures: Vec::new(),
-                            locals: std::mem::take(&mut locals),
-                            ret: (**r).clone(),
-                            body,
-                        });
-                        return self.mk(
-                            ExprKind::Closure(cid),
-                            Ty::Fn(ps.clone(), r.clone()),
-                            span,
-                        );
-                    }
-                }
-                if !self.reported_an_error() {
-                    self.error(
-                        codes::UNRESOLVED_NAME,
-                        span,
-                        format!("`cpl run` doesn't know the name `{name}` here"),
-                    );
-                }
+                let (ps, r) = match hint {
+                    Some(Ty::Fn(ps, r)) if ps.len() == 2 => (ps.clone(), r.clone()),
+                    _ => (vec![Ty::Int, Ty::Int], Box::new(Ty::Int)),
+                };
+                let a_ty = ps[0].clone();
+                let op = if name == "min" {
+                    Builtin::Min
+                } else {
+                    Builtin::Max
+                };
+                let mut locals = vec![
+                    Local {
+                        name: "a".into(),
+                        ty: a_ty.clone(),
+                    },
+                    Local {
+                        name: "b".into(),
+                        ty: a_ty.clone(),
+                    },
+                ];
+                let body = Block {
+                    stmts: vec![Stmt::Return(Some(Expr {
+                        kind: ExprKind::Builtin(
+                            op,
+                            vec![
+                                Expr {
+                                    kind: ExprKind::Local(0),
+                                    ty: a_ty.clone(),
+                                    span: self.span(span),
+                                },
+                                Expr {
+                                    kind: ExprKind::Local(1),
+                                    ty: a_ty.clone(),
+                                    span: self.span(span),
+                                },
+                            ],
+                        ),
+                        ty: (*r).clone(),
+                        span: self.span(span),
+                    }))],
+                };
+                let cid = self.closures.len();
+                self.closures.push(ClosureDef {
+                    params: vec![0, 1],
+                    muts: Vec::new(),
+                    captures: Vec::new(),
+                    locals: std::mem::take(&mut locals),
+                    ret: (*r).clone(),
+                    body,
+                });
+                return self.mk(ExprKind::Closure(cid), Ty::Fn(ps, r), span);
             }
             _ if name == "todo" => {
                 let at = self.span(span);
