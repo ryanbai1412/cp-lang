@@ -86,4 +86,3 @@ line when the gap closes and the body lands.
 - segtree, `MergeSeg.singleton`/`merge`/`first_alive`: `merge` of two trees in O(overlap) needs both trees' nodes in one shared pool; each struct owns its own lists, so a merge copies `other` (O(other size)).
 - lazy, `LazyTreap.split_at`/`append`: each treap owns its `nodes` list, so returning or absorbing another treap copies its nodes (O(n), not O(log n)); needs a shared node pool.
 - lazy, `LazyTreap.reverse`: `apply(v, k, f)` and `split(f, k)` see the left-subtree size `k`, so a pending tag is position-dependent and can't be carried through a reversal flag without a way to reverse a tag.
-- beats, `HistoricBeatsSegTree` (all methods): historic sums under `chmin`/`chmax` need per-class history tags that are not written yet; no compiler gap, just unwritten.

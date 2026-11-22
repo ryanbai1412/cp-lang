@@ -359,6 +359,17 @@ pub struct BeatsSegTree<D>:
 /// range `chmin`, `chmax`, and `add` (Ji Driver with historic tags).
 pub struct HistoricBeatsSegTree<D>:
     n: Int
+    s: List<Int> = []
+    c: List<Int> = []
+    hm: List<Int> = []
+    mx1: List<Int> = []
+    mx2: List<Int> = []
+    mxc: List<Int> = []
+    mn1: List<Int> = []
+    mn2: List<Int> = []
+    mnc: List<Int> = []
+    tg: List<Int> = []
+    ver: Int = 0
 
     /// A Beats tree that also tracks history, holding `a`, or `fill` everywhere, or zeros. Each
     /// position remembers the greatest value it has held and the running sum of its values over
@@ -370,7 +381,154 @@ pub struct HistoricBeatsSegTree<D>:
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when both `a` and `fill` are given
     /// example: `HistoricBeatsSegTree([1, 2]).hist_sum(0..2) == 3`
-    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D> = todo
+    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>:
+        let n = D.K
+        let sz = max(1, 4 * n)
+        var t = HistoricBeatsSegTree<D>(
+            n, List.filled(sz, 0), List.filled(sz, 0), List.filled(sz, Int.MIN),
+            List.filled(sz, Int.MIN), List.filled(sz, Int.MIN), List.filled(sz, 0),
+            List.filled(sz, Int.MAX), List.filled(sz, Int.MAX), List.filled(sz, 0),
+            List.filled(9 * sz, 0), 0)
+        if n == 0: return t
+        var vals: List<Int> = []
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            vals = [init[i] for i in D]
+        elif let v = fill:
+            vals = List.filled(n, v)
+        else:
+            vals = List.filled(n, 0)
+        t.build(1, 0, n, vals)
+        t
+
+    fn build(mut self, u: Int, nl: Int, nr: Int, vals: List<Int>):
+        if nr - nl == 1:
+            let v = vals[nl]
+            s[u] = v
+            hm[u] = v
+            mx1[u] = v
+            mxc[u] = 1
+            mn1[u] = v
+            mnc[u] = 1
+            return
+        let mid = (nl + nr) / 2
+        self.build(2 * u, nl, mid, vals)
+        self.build(2 * u + 1, mid, nr, vals)
+        self.pull(u)
+
+    fn pull(mut self, u: Int):
+        let (l, r) = (2 * u, 2 * u + 1)
+        s[u] = s[l] + s[r]
+        c[u] = c[l] + c[r]
+        hm[u] = max(hm[l], hm[r])
+        if mx1[l] == mx1[r]:
+            mx1[u] = mx1[l]
+            mxc[u] = mxc[l] + mxc[r]
+            mx2[u] = max(mx2[l], mx2[r])
+        elif mx1[l] > mx1[r]:
+            mx1[u] = mx1[l]
+            mxc[u] = mxc[l]
+            mx2[u] = max(mx2[l], mx1[r])
+        else:
+            mx1[u] = mx1[r]
+            mxc[u] = mxc[r]
+            mx2[u] = max(mx1[l], mx2[r])
+        if mn1[l] == mn1[r]:
+            mn1[u] = mn1[l]
+            mnc[u] = mnc[l] + mnc[r]
+            mn2[u] = min(mn2[l], mn2[r])
+        elif mn1[l] < mn1[r]:
+            mn1[u] = mn1[l]
+            mnc[u] = mnc[l]
+            mn2[u] = min(mn2[l], mn1[r])
+        else:
+            mn1[u] = mn1[r]
+            mnc[u] = mnc[r]
+            mn2[u] = min(mn1[l], mn2[r])
+
+    fn compose(mut self, u: Int, k: Int, a: Int, h: Int, cc: Int):
+        let b = 9 * u + 3 * k
+        tg[b + 1] = max(tg[b + 1], tg[b] + h)
+        tg[b] += a
+        tg[b + 2] += cc
+
+    fn apply(mut self, u: Int, len: Int, a1: Int, h1: Int, c1: Int, a2: Int, h2: Int, c2: Int, a3: Int, h3: Int, c3: Int):
+        if mx1[u] == mn1[u]:
+            hm[u] = max(hm[u], mx1[u] + h1)
+            s[u] += a1 * len
+            c[u] += c1 * len
+            mx1[u] += a1
+            mn1[u] = mx1[u]
+            self.compose(u, 0, a1, h1, c1)
+            self.compose(u, 1, a1, h1, c1)
+            return
+        let rest = len - mxc[u] - mnc[u]
+        let two = mx2[u] == mn1[u]
+        hm[u] = max(hm[u], max(mx1[u] + h1, mn1[u] + h2))
+        if not two: hm[u] = max(hm[u], mx2[u] + h3)
+        s[u] += a1 * mxc[u] + a2 * mnc[u] + a3 * rest
+        c[u] += c1 * mxc[u] + c2 * mnc[u] + c3 * rest
+        mx1[u] += a1
+        mn1[u] += a2
+        if two:
+            mx2[u] = mn1[u]
+            mn2[u] = mx1[u]
+        else:
+            mx2[u] += a3
+            mn2[u] += a3
+        self.compose(u, 0, a1, h1, c1)
+        self.compose(u, 1, a2, h2, c2)
+        self.compose(u, 2, a3, h3, c3)
+
+    fn give(mut self, v: Int, len: Int, u: Int, pmax: Int, pmin: Int):
+        let b = 9 * u
+        let k1 = if mx1[v] == pmax: 0 elif mx1[v] == mn1[v] and mn1[v] == pmin: 1 else: 2
+        let k2 = if mx1[v] == mn1[v]: k1 elif mn1[v] == pmin: 1 else: 2
+        self.apply(v, len, tg[b + 3 * k1], tg[b + 3 * k1 + 1], tg[b + 3 * k1 + 2],
+            tg[b + 3 * k2], tg[b + 3 * k2 + 1], tg[b + 3 * k2 + 2], tg[b + 6], tg[b + 7], tg[b + 8])
+
+    fn push(mut self, u: Int, nl: Int, nr: Int):
+        let b = 9 * u
+        var any = false
+        for k in 0..9: if tg[b + k] != 0: any = true
+        if not any: return
+        let mid = (nl + nr) / 2
+        let (l, r) = (2 * u, 2 * u + 1)
+        let pmax = max(mx1[l], mx1[r])
+        let pmin = min(mn1[l], mn1[r])
+        self.give(l, mid - nl, u, pmax, pmin)
+        self.give(r, nr - mid, u, pmax, pmin)
+        for k in 0..9: tg[b + k] = 0
+
+    fn upd(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, op: Int, x: Int):
+        if qr <= nl or nr <= ql: return
+        if op == 0 and x >= mx1[u]: return
+        if op == 1 and x <= mn1[u]: return
+        if ql <= nl and nr <= qr:
+            let len = nr - nl
+            if op == 2:
+                self.apply(u, len, x, max(0, x), -ver * x, x, max(0, x), -ver * x, x, max(0, x), -ver * x)
+                return
+            if op == 0 and x > mx2[u]:
+                let d = x - mx1[u]
+                if mx1[u] == mn1[u]: self.apply(u, len, d, 0, -ver * d, d, 0, -ver * d, 0, 0, 0)
+                else: self.apply(u, len, d, 0, -ver * d, 0, 0, 0, 0, 0, 0)
+                return
+            if op == 1 and x < mn2[u]:
+                let d = x - mn1[u]
+                if mx1[u] == mn1[u]: self.apply(u, len, d, d, -ver * d, d, d, -ver * d, 0, 0, 0)
+                else: self.apply(u, len, 0, 0, 0, d, d, -ver * d, 0, 0, 0)
+                return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.upd(2 * u, nl, mid, ql, qr, op, x)
+        self.upd(2 * u + 1, mid, nr, ql, qr, op, x)
+        self.pull(u)
+
+    fn update(mut self, r: Range<D>, op: Int, x: Int):
+        ver += 1
+        let (lo, hi) = r.ends
+        if lo < hi: self.upd(1, 0, n, lo, hi, op, x)
 
     /// Replace every `a[i]` in `r` with `min(a[i], x)`, then record a new version.
     ///
@@ -378,23 +536,36 @@ pub struct HistoricBeatsSegTree<D>:
     /// empty: changes no value but still records a version
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([5, 1]); t.chmin(0..2, 2); t.sum(0..2) == 3 and t.hist_max(0..1) == Some(5)`
-    pub fn chmin(mut self, r: Range<D>, x: Int) = todo
-
+    pub fn chmin(mut self, r: Range<D>, x: Int) = self.update(r, 0, x)
     /// Replace every `a[i]` in `r` with `max(a[i], x)`, then record a new version.
     ///
     /// cost: O(log |D|) amortized; O(log^2 |D|) amortized when mixed with `add`
     /// empty: changes no value but still records a version
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([5, 1]); t.chmax(0..2, 3); t.sum(0..2) == 8`
-    pub fn chmax(mut self, r: Range<D>, x: Int) = todo
-
+    pub fn chmax(mut self, r: Range<D>, x: Int) = self.update(r, 1, x)
     /// Add `x` to every `a[i]` in `r`, then record a new version.
     ///
     /// cost: O(log |D|)
     /// empty: changes no value but still records a version
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.sum(0..2) == 6`
-    pub fn add(mut self, r: Range<D>, x: Int) = todo
+    pub fn add(mut self, r: Range<D>, x: Int) = self.update(r, 2, x)
+
+    fn ask(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, what: Int) -> Int:
+        if qr <= nl or nr <= ql: return if what == 2: Int.MIN elif what == 3: Int.MIN else: 0
+        if ql <= nl and nr <= qr:
+            return if what == 0: s[u] elif what == 1: c[u] elif what == 2: mx1[u] else: hm[u]
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        let x = self.ask(2 * u, nl, mid, ql, qr, what)
+        let y = self.ask(2 * u + 1, mid, nr, ql, qr, what)
+        if what <= 1: x + y else: max(x, y)
+
+    fn query(mut self, r: Range<D>, what: Int) -> ?Int:
+        let (lo, hi) = r.ends
+        if lo == hi: return None
+        Some(self.ask(1, 0, n, lo, hi, what))
 
     /// The sum of the current values in `r`.
     ///
@@ -402,8 +573,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// empty: zero
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `HistoricBeatsSegTree([1, 2]).sum(0..2) == 3`
-    pub fn sum(mut self, r: Range<D>) -> Int = todo
-
+    pub fn sum(mut self, r: Range<D>) -> Int = self.query(r, 0) ?? 0
     /// The greatest current value in `r`, or `None` when `r` is empty.
     ///
     /// cost: O(log |D|)
@@ -411,8 +581,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.max_val(0..1) == Some(-4)`
-    pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
-
+    pub fn max_val(mut self, r: Range<D>) -> ?Int = self.query(r, 2)
     /// The greatest value any position in `r` has held in any version, the initial one included;
     /// `None` when `r` is empty.
     ///
@@ -422,8 +591,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.hist_max(0..1) == Some(6)`
     /// example: `HistoricBeatsSegTree([1, 2]).hist_max(1..1) == None`
-    pub fn hist_max(mut self, r: Range<D>) -> ?Int = todo
-
+    pub fn hist_max(mut self, r: Range<D>) -> ?Int = self.query(r, 3)
     /// The sum over positions `i` in `r` of every value `a[i]` has had, one term per version:
     /// the initial array plus the array after each update call.
     ///
@@ -432,7 +600,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(0..2) == 9`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(1..2) == 4`
-    pub fn hist_sum(mut self, r: Range<D>) -> Int = todo
+    pub fn hist_sum(mut self, r: Range<D>) -> Int = (self.query(r, 1) ?? 0) + (ver + 1) * self.sum(r)
 
 @test
 fn beats_segtree_chmin_chmax_add_matches_brute():
