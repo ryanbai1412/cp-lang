@@ -333,9 +333,11 @@ and `plan/domains/compiler/metrics.toml`.
   `cpl-wasm`; `prover` (package `cpl-prover`) is still its own crate.
 - One language: edition 0.2, its `stdlib/` and the `CPL_SPEC`/`CPL_STD`
   switches are deleted (`edition_refs` 0).
-- Conformance 1617/1711; interpreter == C++ on 1242 of 1336 (94 skipped);
-  corpus 12/100 ports pass.
-- The stdlib is 39 modules in `spec/std/` with 294 `todo` stubs.
+- Conformance 1661/1723; interpreter == C++ on 1273 of 1348 (75 skipped);
+  corpus 12/100 ports pass; 19/185 spec blocks pass
+  (`cpl-conform conformance corpus spec-blocks diff` on `e069e99de`).
+- The stdlib is 40 modules in `spec/std/` with 162 `todo` stubs
+  (`ls spec/std/*.cp`; `debt-ratchet.py --show stdlib_todo`).
 
 | Target | Today |
 |---|---|
