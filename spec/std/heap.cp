@@ -690,14 +690,22 @@ pub struct MinMaxHeap<T>:
 /// Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offset `add_all`.
 /// `peek` / `top` is O(1); `push`, `pop`, and `meld` are O(log n).
 pub struct MeldHeap<T>:
-    _len: Int
+    _len: Int = 0
+    _root: Int = -1
+    _keys: List<T> = []
+    _add: List<?T> = []
+    _kids: List<(Int, Int)> = []
+    _rank: List<Int> = []
+    lt: ?((T, T) -> Bool) = None
 
     /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h: MeldHeap<Int> = MeldHeap(); h.push(3); h.push(1); h.pop() == Some(1)`
-    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>:
+        if let f = by: return MeldHeap(lt: Some((a, b) => f(a) < f(b)))
+        MeldHeap()
 
     /// Build a `MeldHeap<T>` from `xs`.
     ///
@@ -707,21 +715,30 @@ pub struct MeldHeap<T>:
     /// empty: an empty heap
     /// traps: never
     /// example: `MeldHeap.of([4, 2, 3]).peek == Some(2)`
-    pub fn of(xs: List<T>) -> MeldHeap<T> = todo
+    pub fn of(xs: List<T>) -> MeldHeap<T>:
+        var h: MeldHeap<T> = MeldHeap()
+        var q = [h.node(x) for x in xs]
+        var i = 0
+        while i + 1 < q.len:
+            q.push(h.merge(q[i], q[i + 1]))
+            i += 2
+        if q.len > 0: h._root = q[q.len - 1]
+        h._len = xs.len
+        h
 
     /// Number of elements currently in the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MeldHeap.of([4, 2]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = _len
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MeldHeap.of([4]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = _len == 0
 
     /// The smallest element, or `None` if empty.
     ///
@@ -731,7 +748,7 @@ pub struct MeldHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MeldHeap.of([4, 2]); h.add_all(1); h.peek == Some(3)`
-    @get pub fn peek(self) -> ?T = todo
+    @get pub fn peek(self) -> ?T = if _root < 0: None else: Some(_keys[_root])
 
     /// The smallest element, or `None` if empty (alias for `peek`).
     ///
@@ -741,7 +758,7 @@ pub struct MeldHeap<T>:
     /// traps: never
     /// see: `peek`
     /// example: `MeldHeap.of([4, 2]).top == Some(2)`
-    @get pub fn top(self) -> ?T = todo
+    @get pub fn top(self) -> ?T = self.peek
 
     /// Push `x` into the heap.
     ///
@@ -750,7 +767,10 @@ pub struct MeldHeap<T>:
     /// cost: O(log n)
     /// traps: never
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.push(3); h.drain() == [3, 11, 15]`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        let t = self.node(x)
+        _root = self.merge(_root, t)
+        _len += 1
 
     /// Push all elements of `items`.
     ///
@@ -758,7 +778,8 @@ pub struct MeldHeap<T>:
     /// empty: an empty `items` does nothing
     /// traps: never
     /// example: `var h = MeldHeap.of([4]); h.push_all([3, 1]); h.drain() == [1, 3, 4]`
-    pub fn push_all(mut self, items: List<T>) = todo
+    pub fn push_all(mut self, items: List<T>):
+        for x in items: self.push(x)
 
     /// Remove and return the smallest element, or `None` if empty.
     ///
@@ -766,7 +787,14 @@ pub struct MeldHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MeldHeap.of([4, 2]); h.pop() == Some(2) and h.pop() == Some(4) and h.pop() == None`
-    pub fn pop(mut self) -> ?T = todo
+    pub fn pop(mut self) -> ?T:
+        if _root < 0: return None
+        let t = _root
+        self.push_down(t)
+        let (a, b) = _kids[t]
+        _root = self.merge(a, b)
+        _len -= 1
+        Some(_keys[t])
 
     /// Meld `other` into `self` (consuming `other`).
     ///
@@ -776,7 +804,17 @@ pub struct MeldHeap<T>:
     /// cost: O(log n)
     /// traps: never
     /// example: `var a = MeldHeap.of([4, 2]); a.meld(MeldHeap.of([3, 1])); a.drain() == [1, 2, 3, 4]`
-    pub fn meld(mut self, other: MeldHeap<T>) = todo
+    pub fn meld(mut self, other: MeldHeap<T>):
+        if other._root < 0: return
+        let base = _keys.len
+        for i in 0..other._keys.len:
+            let (a, b) = other._kids[i]
+            _keys.push(other._keys[i])
+            _add.push(other._add[i])
+            _kids.push((if a < 0: a else: a + base, if b < 0: b else: b + base))
+            _rank.push(other._rank[i])
+        _root = self.merge(_root, other._root + base)
+        _len += other._len
 
     /// Meld `other` into `self`, leaving `other` empty.
     ///
@@ -785,7 +823,9 @@ pub struct MeldHeap<T>:
     /// cost: O(log n)
     /// traps: never
     /// example: `var a = MeldHeap.of([4]); var b = MeldHeap.of([1]); a.absorb(mut b); a.peek == Some(1) and b.is_empty`
-    pub fn absorb(mut self, mut other: MeldHeap<T>) = todo
+    pub fn absorb(mut self, mut other: MeldHeap<T>):
+        self.meld(other)
+        other.clear()
 
     /// Add `delta` lazily to every element (for additive types).
     ///
@@ -797,21 +837,33 @@ pub struct MeldHeap<T>:
     /// empty: does nothing
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
-    pub fn add_all(mut self, delta: T) = todo
+    pub fn add_all(mut self, delta: T):
+        if _root < 0: return
+        _keys[_root] = _keys[_root] + delta
+        _add[_root] = Some(plus(_add[_root], delta))
 
     /// Remove all elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MeldHeap.of([1]); h.clear(); h.pop() == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        _len = 0
+        _root = -1
+        _keys = []
+        _add = []
+        _kids = []
+        _rank = []
 
     /// Move contents out in O(1), leaving `self` empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MeldHeap.of([1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
-    pub fn take(mut self) -> MeldHeap<T> = todo
+    pub fn take(mut self) -> MeldHeap<T>:
+        let out = MeldHeap(_len: _len, _root: _root, _keys: _keys, _add: _add, _kids: _kids, _rank: _rank, lt: lt)
+        self.clear()
+        out
 
     /// Pop and return all elements in ascending order, leaving `self` empty.
     ///
@@ -820,7 +872,50 @@ pub struct MeldHeap<T>:
     /// order: ascending key order, the order `pop` would return them; a new `List`, keyed from 0
     /// traps: never
     /// example: `var h = MeldHeap.of([3, 1, 2]); h.drain() == [1, 2, 3] and h.is_empty`
-    pub fn drain(mut self) -> List<T> = todo
+    pub fn drain(mut self) -> List<T>:
+        var out: List<T> = []
+        while _root >= 0: out.push(self.pop()!)
+        out
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = lt: return f(a, b)
+        a < b
+
+    fn node(mut self, x: T) -> Int:
+        _keys.push(x)
+        _add.push(None)
+        _kids.push((-1, -1))
+        _rank.push(1)
+        _keys.len - 1
+
+    fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _rank[t]
+
+    // A node's pending add is already in its own key; it still owes its children.
+    fn push_down(mut self, t: Int):
+        if let d = _add[t]:
+            let (a, b) = _kids[t]
+            for c in [a, b]:
+                if c >= 0:
+                    _keys[c] = _keys[c] + d
+                    _add[c] = Some(plus(_add[c], d))
+            _add[t] = None
+
+    fn merge(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        let x = if self.less(_keys[b], _keys[a]): b else: a
+        let y = if x == a: b else: a
+        self.push_down(x)
+        let (l, r) = _kids[x]
+        let m = self.merge(r, y)
+        _kids[x] = if self.rank_of(l) < self.rank_of(m): (m, l) else: (l, m)
+        _rank[x] = self.rank_of(_kids[x].1) + 1
+        x
+
+
+fn plus<T>(a: ?T, d: T) -> T:
+    if let x = a: return x + d
+    d
 
 @test
 fn pops_in_sorted_order():
