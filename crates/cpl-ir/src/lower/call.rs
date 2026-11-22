@@ -4029,6 +4029,65 @@ impl<'a> Lowerer<'a> {
             if is_binary_fn {
                 return self.reduce_fold_fn(base, &op.value, optional, span);
             }
+            if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&op.value) {
+                let s = &self.structs[sid];
+                let has_op = s.methods.contains_key("op")
+                    || s.trait_methods.keys().any(|(_, m)| m == "op");
+                let has_id = s.def.fields.iter().any(|(n, _)| n == "id");
+                if has_op && !has_id {
+                    let at = op.value.span;
+                    let mk_name = |text: &str| ast::Expr {
+                        kind: ast::ExprKind::Name(text.to_string()),
+                        span: at,
+                    };
+                    let lambda = ast::Expr {
+                        kind: ast::ExprKind::Lambda {
+                            params: vec![
+                                ast::Pattern {
+                                    kind: ast::PatternKind::Name("__fold_a".to_string()),
+                                    span: at,
+                                },
+                                ast::Pattern {
+                                    kind: ast::PatternKind::Name("__fold_b".to_string()),
+                                    span: at,
+                                },
+                            ],
+                            param_tys: vec![None, None],
+                            param_mut: vec![false, false],
+                            ret_ty: None,
+                            body: Box::new(ast::Expr {
+                                kind: ast::ExprKind::Call {
+                                    callee: Box::new(ast::Expr {
+                                        kind: ast::ExprKind::Field {
+                                            base: Box::new(op.value.clone()),
+                                            name: ast::Name {
+                                                text: "op".to_string(),
+                                                span: at,
+                                            },
+                                        },
+                                        span: at,
+                                    }),
+                                    args: vec![
+                                        ast::Arg {
+                                            name: None,
+                                            mutable: false,
+                                            value: mk_name("__fold_a"),
+                                        },
+                                        ast::Arg {
+                                            name: None,
+                                            mutable: false,
+                                            value: mk_name("__fold_b"),
+                                        },
+                                    ],
+                                },
+                                span: at,
+                            }),
+                        },
+                        span: at,
+                    };
+                    return self.reduce_fold_fn(base, &lambda, optional, span);
+                }
+            }
         }
         let seq = ast::Arg {
             name: None,
