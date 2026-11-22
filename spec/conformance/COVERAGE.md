@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1403 (995 passing). Rules: 521.
+Cases: 1405 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 1403 (995 passing). Rules: 521.
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 87 cases; 0 uncovered, 3 happy-path only, 2 negative only
+- R07 (07-sequences.md): 87 rules, 89 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 38 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 44 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -384,8 +384,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
 - R07.2.9 [1+ 1-]: | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filte...
-- R07.2.10 [1+ 0-] *happy-path only*: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
-- R07.2.11 [1+ 1-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
+- R07.2.10 [1+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
+- R07.2.11 [1+ 2-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
 - R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in O(1): slices...
 - R07.2.14 [1+ 0-]: **Slices are the views that narrow keys.** Every other indexed view keeps its source's key...
@@ -628,7 +628,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 value_name_case *(0.3)*: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 21 case(s)
+- E0302 Type mismatch: 22 case(s)
 - E0303 Wrong number of arguments: 5 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -657,7 +657,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
-- E0606 Missing trait implementation for operator: 18 case(s)
+- E0606 Missing trait implementation for operator: 19 case(s)
 - E0607 Moved while captured by a closure: 2 case(s)
 - E0608 Use of moved value: 7 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
