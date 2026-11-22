@@ -1850,14 +1850,14 @@ pub struct SuffixAutomaton<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("ab").root == 0`
-    @get pub fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = 0
 
     /// The number of states, the root included; at most `max(1, 2n - 1)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = links.len
 
     @allow(unproven_list_index)
     /// The state reached from `state` by the letter `a`, or `None` when that extension is not a
@@ -1941,7 +1941,11 @@ pub struct SuffixAutomaton<A>:
     /// cost: O(states)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").distinct() == 5`
-    pub fn distinct(self) -> Int = todo
+    pub fn distinct(self) -> Int:
+        var total = 0
+        unchecked:
+            for v in 1..links.len: total += max_len[v] - max_len[links[v]]
+        total
 
     @allow(unproven_list_index)
     /// Every state, by non-decreasing `longest` (counting sort), so each state comes after its
@@ -1975,7 +1979,14 @@ pub struct SuffixAutomaton<A>:
     /// order: keyed by state
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").occ_counts() == [3, 1, 1, 1, 2]`
-    pub fn occ_counts(self) -> List<Int> = todo
+    pub fn occ_counts(self) -> List<Int>:
+        let order = self.topo_order()
+        var occ = [if prefix[v]: 1 else: 0 for v in 0..links.len]
+        unchecked:
+            for i in (1..order.len).rev:
+                let v = order[i]
+                occ[links[v]] += occ[v]
+        occ
 
     @allow(unproven_list_index)
     /// A longest common substring of the automaton's string and `other`, as `(len, end)` with
@@ -2009,7 +2020,8 @@ pub struct SuffixAutomaton<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = SuffixAutomaton<Char>.of("ab"); m.reset(); m.push('c'); m.contains("c") and not m.contains("bc")`
-    pub fn reset(mut self) = todo
+    pub fn reset(mut self):
+        last = 0
 
     /// Adds `word` as a separate word of a generalized automaton: `reset()`, then `push` each
     /// letter. Afterwards the automaton holds the substrings of every word added.
@@ -2018,7 +2030,9 @@ pub struct SuffixAutomaton<A>:
     /// empty: an empty `word` only resets
     /// traps: when an element of `word` is not in `A`
     /// example: `var m = SuffixAutomaton<Char>(); m.add_word("ab"); m.add_word("b"); m.distinct() == 3`
-    pub fn add_word<S: Seq>(mut self, word: S) = todo
+    pub fn add_word<S: Seq>(mut self, word: S):
+        last = 0
+        for a in word: self.push(a)
 
     /// Every state in the order of `topo_order`, lazily.
     ///
@@ -2026,7 +2040,8 @@ pub struct SuffixAutomaton<A>:
     /// order: non-decreasing `longest`; ties by smaller state number
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").states().collect() == [0, 1, 4, 2, 3]`
-    pub fn states(self) -> yields Int = todo
+    pub fn states(self) -> yields Int:
+        for v in self.topo_order(): yield v
 
     /// The suffix-link tree as child lists: entry `v` lists the states whose link is `v`.
     /// Rooted at `0`.
@@ -2035,7 +2050,11 @@ pub struct SuffixAutomaton<A>:
     /// order: keyed by state; each child list in increasing state number
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").endpos_tree() == [[1, 4], [], [], [], [2, 3]]`
-    pub fn endpos_tree(self) -> List<List<Int>> = todo
+    pub fn endpos_tree(self) -> List<List<Int>>:
+        var kids = [List<Int>() for _ in 0..links.len]
+        unchecked:
+            for v in 1..links.len: kids[links[v]].push(v)
+        kids
 
     /// The `k`-th (0-based) non-empty substring in lexicographic order, as its letters, or
     /// `None` when there are not that many. With `distinct: false` each substring counts once
@@ -2140,14 +2159,14 @@ pub struct PalindromicTree<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").len == 5`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = slink.len
 
     /// The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
-    @get pub fn distinct(self) -> Int = todo
+    @get pub fn distinct(self) -> Int = slink.len - 2
 
     @allow(unproven_list_index)
     /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.
@@ -2205,7 +2224,12 @@ pub struct PalindromicTree<A>:
     /// order: keyed by state
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").occ_counts() == [0, 0, 2, 1, 1]`
-    pub fn occ_counts(self) -> List<Int> = todo
+    pub fn occ_counts(self) -> List<Int>:
+        var occ = [cnt[v] for v in 0..cnt.len]
+        unchecked:
+            for v in (2..cnt.len).rev:
+                if slink[v] >= 2: occ[slink[v]] += occ[v]
+        occ
 
     /// Prepends the letter `a` (a double-ended tree) and returns the state of the longest
     /// palindromic prefix of the new string, creating it if it is new.
@@ -2230,7 +2254,7 @@ pub struct PalindromicTree<A>:
     /// ties: None; the longest suffix is unique
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").last_state == 4`
-    @get pub fn last_state(self) -> Int = todo
+    @get pub fn last_state(self) -> Int = last
 
     /// True when `word` is a palindrome occurring in the pushed string, that is, a state of the
     /// tree.
@@ -2239,7 +2263,22 @@ pub struct PalindromicTree<A>:
     /// empty: `true` (the even root)
     /// traps: never
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.contains("aba") and not t.contains("ab")`
-    pub fn contains<S: Seq>(self, word: S) -> Bool = todo
+    pub fn contains<S: Seq>(self, word: S) -> Bool:
+        let w = [a for a in word]
+        let m = w.len
+        if m == 0: return true
+        unchecked:
+            for i in 0..m / 2:
+                if w[i] != w[m - 1 - i]: return false
+            var at = if m % 2 == 1: 0 else: 1
+            for i in ((m - 1) / 2 + 1..m):
+                let t = next[at * alpha + w[i].to_idx]
+                if t == -1: return false
+                at = t
+            if m % 2 == 1:
+                let t = next[w[(m - 1) / 2].to_idx]
+                if t == -1: return false
+        true
 
     /// `dp[i]` is the least number of palindromes the first `i` pushed letters split into, for
     /// `i in 0..=n`, by the series-link DP.
@@ -2249,7 +2288,21 @@ pub struct PalindromicTree<A>:
     /// order: keyed by prefix length `0..=n`
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aab").min_palindrome_partition() == [0, 1, 1, 2]`
-    pub fn min_palindrome_partition(self) -> List<Int> = todo
+    pub fn min_palindrome_partition(self) -> List<Int>:
+        let n = chars.len
+        var t = PalindromicTree<A>.new()
+        var dp = List.filled(n + 1, 0)
+        var series = List.filled(slink.len, 0)
+        unchecked:
+            for i in 1..=n:
+                var v = t.push(chars[i - 1])
+                dp[i] = i
+                while plen[v] > 0:
+                    series[v] = dp[i - (plen[ser_link[v]] + diff_val[v])]
+                    if diff_val[v] == diff_val[slink[v]]: series[v] = min(series[v], series[slink[v]])
+                    dp[i] = min(dp[i], series[v] + 1)
+                    v = ser_link[v]
+        dp
 
 /// Dynamic trie over alphabet domain `A`. O(|word|) per operation; flat `|A|`-stride table.
 pub struct Trie<A>:
@@ -2273,7 +2326,7 @@ pub struct Trie<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `Trie<Char>().root == 0`
-    @get pub fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = 0
 
     /// The number of nodes, the root included. `remove` keeps nodes, so this never shrinks
     /// except by `clear`.
@@ -2281,14 +2334,14 @@ pub struct Trie<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.len == 4`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = ends.len
 
     /// True when no words are stored (every count is zero), whatever nodes remain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("a"); t.remove("a"); t.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = pass[0] == 0
 
     @allow(unproven_list_index)
     /// The child of `node` along `a`, or `None` when it was never created.
@@ -2369,7 +2422,7 @@ pub struct Trie<A>:
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.count("ab") == 2 and t.count("a") == 0`
     pub fn count<S: Seq>(self, word: S) -> Int:
         let node = self.find(word)
-        if node == none: 0 else: ends[node!]
+        if node == None: 0 else: ends[node!]
 
     @allow(unproven_list_index)
     /// The number of stored words (with multiplicity) that start with `prefix`.
@@ -2380,7 +2433,7 @@ pub struct Trie<A>:
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.count_prefix("a") == 2`
     pub fn count_prefix<S: Seq>(self, prefix: S) -> Int:
         let node = self.find(prefix)
-        if node == none: 0 else: pass[node!]
+        if node == None: 0 else: pass[node!]
 
     @allow(unproven_list_index)
     /// The number of stored words that end at `node`.
@@ -2404,14 +2457,18 @@ pub struct Trie<A>:
     /// empty: whether the empty word is stored
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.contains("ab") and not t.contains("a")`
-    pub fn contains<S: Seq>(self, word: S) -> Bool = todo
+    pub fn contains<S: Seq>(self, word: S) -> Bool:
+        if let node = self.find(word): ends[node] > 0 else: false
 
     /// Removes every word and node, leaving just the root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.clear(); t.is_empty and t.len == 1`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        next = List.filled(alpha, -1)
+        ends = [0]
+        pass = [0]
 
     /// The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters;
     /// `None` when fewer than `k + 1` words are stored. A word comes before its extensions.
@@ -2429,7 +2486,19 @@ pub struct Trie<A>:
     /// empty: `0` for an empty `word`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.count_less("b") == 2`
-    pub fn count_less<S: Seq>(self, word: S) -> Int = todo
+    pub fn count_less<S: Seq>(self, word: S) -> Int:
+        var total = 0
+        var at = 0
+        unchecked:
+            for a in word:
+                total += ends[at]
+                let c = a.to_idx
+                for d in 0..c:
+                    let t = next[at * alpha + d]
+                    if t != -1: total += pass[t]
+                at = next[at * alpha + c]
+                if at == -1: return total
+        total
 
 /// O(total * |A|) build, O(1) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
 /// Built in O(sum |p| * |A|) flat memory and time; `step`, `link`, and `hit` are O(1).
@@ -2441,6 +2510,7 @@ pub struct AhoCorasick<A>:
     exit: List<-1..=2_000_000_000>
     order: List<0..=2_000_000_000>
     lens: List<0..=2_000_000_000>
+    pat_state: List<0..=2_000_000_000>
 
     @allow(unproven_list_index)
     /// The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`. Pattern
@@ -2456,6 +2526,7 @@ pub struct AhoCorasick<A>:
         var goto: List<-1..=2_000_000_000> = List.filled(k, -1)
         var ends: List<List<0..=2_000_000_000>> = [[]]
         var lens: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
+        var pat_state: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
             var at = 0
             var plen = 0
@@ -2469,6 +2540,7 @@ pub struct AhoCorasick<A>:
                 at = goto[idx]
                 plen += 1
             lens[i] = plen
+            pat_state[i] = at
             ends[at].push(i)
         let n = ends.len
         var fail: List<0..=2_000_000_000> = List.filled(n, 0)
@@ -2491,21 +2563,21 @@ pub struct AhoCorasick<A>:
                     tail += 1
                 else:
                     goto[base + c] = past
-        AhoCorasick(k, goto, fail, ends, exit, order, lens)
+        AhoCorasick(k, goto, fail, ends, exit, order, lens, pat_state)
 
     /// The root state, before any letter is read: always `0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a"]).root == 0`
-    @get pub fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = 0
 
     /// The number of states, the root included.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = fail.len
 
     @allow(unproven_list_index)
     /// The state after reading `a` in `state`: the longest pattern prefix that is a suffix of
@@ -2559,7 +2631,16 @@ pub struct AhoCorasick<A>:
     /// order: by end position
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).find_all("ab").collect() == [(0, 0), (0, 1), (1, 2)]`
-    pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int) = todo
+    pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
+        var state = 0
+        var i = 0
+        for a in text:
+            state = goto[state * alpha + a.to_idx]
+            i += 1
+            var at = state
+            while at != -1:
+                for w in ends[at]: yield (at: i - lens[w], pattern: w)
+                at = exit[at]
 
     @allow(unproven_list_index)
     /// For each pattern, how many times it occurs in `text`, overlaps included: the number of
@@ -2589,7 +2670,7 @@ pub struct AhoCorasick<A>:
     /// order: non-decreasing depth; ties by smaller state number
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).fail_order() == [0, 1, 3, 2]`
-    pub fn fail_order(self) -> List<Int> = todo
+    pub fn fail_order(self) -> List<Int> = [v for v in order]
 
     /// The nearest state strictly up the failure links of `state` at which a pattern ends, or
     /// `None` when there is None.
@@ -2597,14 +2678,18 @@ pub struct AhoCorasick<A>:
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.exit_link(2) == Some(3) and ac.exit_link(1) == None`
-    pub fn exit_link(self, state: Int) -> ?Int = todo
+    pub fn exit_link(self, state: Int) -> ?Int:
+        assert 0 <= state and state < fail.len, "`exit_link(state)` needs `0 <= state < len`"
+        if exit[state] == -1: None else: Some(exit[state])
 
     /// The state where `patterns[pattern]` ends.
     ///
     /// cost: O(1)
     /// traps: when `pattern` is outside `0..patterns.len`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).pattern_state(1) == 2`
-    pub fn pattern_state(self, pattern: Int) -> Int = todo
+    pub fn pattern_state(self, pattern: Int) -> Int:
+        assert 0 <= pattern and pattern < pat_state.len, "`pattern_state(pattern)` needs a pattern index"
+        pat_state[pattern]
 
 /// O(|pat| * |A| * log n) amortized insert/delete, O(|text| * log n) query.
 /// Online multi-pattern Aho-Corasick via log-decomposed static buckets.
