@@ -322,7 +322,4 @@ Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 
 ## Open
 
-- **"The positions after `v`."** Under the ends rule, `for j in v.r..` walks
-  cuts, not positions. Today's spellings: `a[v.r..]` (a slice, so the piece
-  literal applies), `T.range.clip(v.r..)`, or `for j in T if j > v`. None is as
-  direct as the C++ `for (j = i + 1; j < n; j++)`. Seen in ioi25_souvenirs.
+None. (The positions after `v` are `v.after`, decision 186.)

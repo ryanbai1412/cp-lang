@@ -186,5 +186,3 @@ partial function.)
    checked by hand (C++'s way, half the table unused).
 2. **`if` without `else` as `?T`.** Makes partial cost functions one line.
    Alternative: write `if c: x else: None`.
-3. **`peak` / `valley`** for unimodal search, vs `ternary_max` /
-   `ternary_min`. Picked for reading as the question, matching `first_true`.

@@ -306,12 +306,3 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 3. **Tuples as edges.** Builds need named records (`read<[E](u: V, v: V)>`);
    several dreams still pass unnamed `(V, V)` tuples and need the one-line
    `map` that names them.
-4. **Names that drifted (fixed in decision 167):** `articulation_points` → `cut_vertices`,
-   `biconnected_components` / `edge_blocks` → `blocks`, `Adj` and
-   `*_of_triples` gone, `*_of_pairs` builders → `[V]List`, `subtree_sizes` →
-   `t.size(v)`, `preorder` → `t.order` (BFS) plus `t.tour`.
-5. **DFS and trees: agreed (decision 147), stub follows (decision 167).** `step.prune()`,
-   events carry the arc, `Again(from, via)`, shared `seen:`, free
-   `reachable`, `g.dfs_tree` → `(tree: Rooted, tree_edge: [E]Bool)`.
-   Derived tree structures (`LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`)
-   own their data; `t` stays free (05-ownership.md §5).

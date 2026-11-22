@@ -340,12 +340,8 @@ place) are different jobs, not twins.
 
 ## Open
 
-- **`V.all` and `a.all` rename.** `a.all` (the index range) collides with
-  `s.all(p)` (the predicate), and there's no overloading (§127). Proposed:
-  `a.keys` for every indexed sequence (as `Map.keys`), `V.range` for a
-  domain. Round 1 is updated to match.
-- **`.collect()` naming.** Rust's word; `.list()` is the alternative if
-  the target is almost always a `List`.
+None. Indexed sequences use `.keys` and domains `V.range`; `.collect()`
+keeps its name (decision 186).
 
 ## What goes away
 

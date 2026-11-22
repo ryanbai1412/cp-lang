@@ -162,9 +162,5 @@ What comes with it:
 
 ## Open
 
-1. Should `w.rebase` exist, or should the D3/E1 path be a copy
-   (`List(w)`)? An O(1) view costs nothing, so I lean towards having it.
-2. Does `Str` slicing stay key-preserving in printed output and hashing?
-   Yes: printing and hashing are order-only (A1, A2).
-3. Does `.enumerate()` survive at all? (Settled by 142: no; `.keyed()` is the counter form.) It duplicates `.items` on a fresh
-   `List`. I lean towards keeping it for counters over generators.
+None. `w.rebase` exists (decision 186), printing and hashing are
+order-only (A1, A2), and `.enumerate()` is gone (decision 142).

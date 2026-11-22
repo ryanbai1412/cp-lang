@@ -238,12 +238,9 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 
 ## Open
 
-1. **Settled (decision 182): `sorted()` returns a new `List` keyed from
-   0**, since a sort produces a new order. To keep keys, sort the keys:
-   `a[l..r].keys.sorted(by: i => a[i])`.
-2. **Is `rekey` worth a name?** The alternative is writing into
+1. **Is `rekey` worth a name?** The alternative is writing into
    `[s.keys]` through `s.keys.nth(i)`. That's correct, but it puts a key
    lookup in every hot-loop write.
-3. **Should a `List<T>` parameter renumber automatically?** I say no: the
+2. **Should a `List<T>` parameter renumber automatically?** I say no: the
    parameter is lent the caller's slice with its keys, and that's what makes
    B and C safe. A helper that wants 0-based takes `List(w)`.
