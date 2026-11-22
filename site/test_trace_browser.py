@@ -408,6 +408,43 @@ def offline_and_cli(browser, binary, folder):
         print(theme, "offline file:// WASM and parent.cpLiveTrace passed")
 
 
+CALL = """fn evens() -> Int:
+    var picked = [i for i in 1..=4 if i % 2 == 0]
+    var count = 0
+    for i in picked:
+        count += 1
+    return count
+
+print(evens())
+""" + "".join(f"// padding {i}\n" for i in range(60))
+
+
+def call_locals_and_scroll(browser, binary, folder):
+    source = folder / "call.cp"
+    source.write_text(CALL)
+    html = folder / "call.html"
+    with html.open("wb") as output:
+        subprocess.run([binary, "run", source, "--trace", "--format", "html"],
+                       stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.PIPE, check=True)
+    with checked_page(browser, "light", viewport={"width": 1024, "height": 700}) as page:
+        page.goto(html.as_uri())
+        data = json.loads(page.locator("#trace-data").text_content())
+        steps = data["runs"]["fast"]["steps"]
+        jump(page, len(steps))
+        expect(page.locator("#tl-label")).to_have_text("the program ended")
+        counted = next(i for i, s in enumerate(steps) if s["line"] == 3) + 1
+        jump(page, counted)
+        expect(page.locator("#locals")).to_contain_text("[2, 4]")
+        expect(page.locator("#frames")).to_contain_text("evens")
+        visible = page.evaluate("""() => {
+            const box = document.getElementById('source'), on = box.querySelector('.line.on');
+            const a = box.getBoundingClientRect(), b = on.getBoundingClientRect();
+            return b.top >= a.top && b.bottom <= a.bottom;
+        }""")
+        assert visible, "the current source line is scrolled out of view"
+    print("call locals show lists as lists and the source follows the current line")
+
+
 LIVE = """let n: 1..=10 = read()
 var total = 0
 for i in 1..=n:
@@ -464,6 +501,7 @@ def main():
             site_live(browser, base, theme, Path(tmp), args.screenshots)
             samples_and_mobile(browser, base, theme, args.screenshots)
         offline_and_cli(browser, args.cpl.resolve(), Path(tmp))
+        call_locals_and_scroll(browser, args.cpl.resolve(), Path(tmp))
         live_rerun(browser, args.cpl.resolve(), Path(tmp))
         browser.close()
 

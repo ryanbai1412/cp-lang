@@ -771,7 +771,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const svg = (tag, props = {}, ...kids) => el(tag, {...props, svg:true}, ...kids);
   const pad = (n, width) => String(n).padStart(width, "0");
   const key = path => JSON.stringify(path);
-  const display = v => v === null ? "None" : Array.isArray(v) ? `(${v.map(display).join(", ")})` : typeof v === "object" ? `(${Object.entries(v).map(([k, x]) => `${k}: ${display(x)}`).join(", ")})` : String(v);
+  const display = v => v === null ? "None" : Array.isArray(v) ? `[${v.map(display).join(", ")}]` : typeof v === "object" ? `(${Object.entries(v).map(([k, x]) => `${k}: ${display(x)}`).join(", ")})` : String(v);
   const hashParam = name => new URLSearchParams(location.hash.slice(1)).get(name);
   const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
   const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
@@ -1181,8 +1181,8 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     const active = box.children[v.step.line - 1];
     if (active) {
       active.classList.add("on");
-      const top = active.offsetTop - box.clientHeight / 2;
-      if (active.offsetTop < box.scrollTop || active.offsetTop > box.scrollTop + box.clientHeight - 20) box.scrollTop = Math.max(0, top);
+      const at = active.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+      if (at < box.scrollTop || at > box.scrollTop + box.clientHeight - 20) box.scrollTop = Math.max(0, at - box.clientHeight / 2);
     }
     $("src-meta").textContent = `${trace.source.file ?? "source"} · line ${v.step.line}`;
     editor?.step(v.step.line);
