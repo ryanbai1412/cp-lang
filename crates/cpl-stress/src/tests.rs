@@ -2404,3 +2404,27 @@ else:
     let after = "let k: 1..=2 = read()\nif k == 2:\n    let a: Int = read()\n    print(a)\nlet m: Int = read()\nprint(m)\n";
     assert!(InputSpec::from_source(after).is_err());
 }
+
+#[test]
+fn interactor_after_top_level_fn_still_sees_multitest_divider() {
+    let src = "\
+@!interactive
+fn helper(x: Int) -> Int = x
+
+@!multitest
+let n: 1..=5 = read()
+print(helper(n))
+
+@interactor
+fn judge(mut sol: Interactor):
+    let n: 1..=5 = read()
+    let secret: 1..=n = read()
+    sol.send(n)
+    let got: Int = sol.recv()
+    assert got == secret
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let per_case = spec.cases.as_ref().expect("multitest divider must be seen");
+    assert_eq!(per_case.fields.len(), 2);
+}
+

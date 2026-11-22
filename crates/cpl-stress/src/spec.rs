@@ -2596,11 +2596,11 @@ impl InputSpec {
             .map(|span| span.end)
             .max();
         let mut hidden = Vec::new();
+        let mut stmts: Vec<(u32, &Stmt, bool)> = Vec::new();
         for (base, item) in &parsed.items {
-            builder.base = *base;
             // A `@multitest fn` reads one case: its body is read like
             // the lines below an `@!multitest` divider.
-            let stmts = item.stmts.iter().flat_map(|stmt| {
+            let item_stmts = item.stmts.iter().flat_map(|stmt| {
                 let multitest = stmt
                     .decorators
                     .iter()
@@ -2615,19 +2615,17 @@ impl InputSpec {
                 std::iter::once(stmt).chain(body)
             });
             let mut expanded = Vec::new();
-            for stmt in stmts {
+            for stmt in item_stmts {
                 expand(*base, stmt, &readers, 0, &mut expanded);
             }
-            let stmts = expanded
-                .into_iter()
-                .map(|(base, stmt)| (base, stmt, false))
-                .chain(judge.iter().flat_map(|(judge_base, block)| {
-                    block
-                        .stmts
-                        .iter()
-                        .map(move |stmt| (*judge_base, stmt, true))
-                }));
-            for (base, stmt, in_judge) in stmts {
+            stmts.extend(expanded.into_iter().map(|(base, stmt)| (base, stmt, false)));
+        }
+        // The interactor is read once, after every top-level item (so
+        // `@!multitest`, constants and types in later items are seen first).
+        if let Some((judge_base, block)) = judge {
+            stmts.extend(block.stmts.iter().map(|stmt| (judge_base, stmt, true)));
+        }
+        for (base, stmt, in_judge) in stmts {
                 // A reader's lines, like the interactor's, are offset from
                 // its own item.
                 builder.base = base;
@@ -2882,11 +2880,6 @@ impl InputSpec {
                     _ => {}
                 }
             }
-            // The interactor is read once, after the file it is in.
-            if judge.is_some() && !hidden.is_empty() {
-                break;
-            }
-        }
         if judge.is_some() {
             builder.spec.fields = hidden;
         }

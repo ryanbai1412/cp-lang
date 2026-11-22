@@ -206,9 +206,9 @@ impl<'a> Lowerer<'a> {
                 .iter()
                 .filter(move |s| {
                     !s.decorators.iter().any(|d| match d.name.text.as_str() {
-                        "checker" => aside != Some(Aside::Checker),
+                        "checker" | "check" => aside != Some(Aside::Checker),
                         "interactor" => !judge,
-                        "brute" => is_whole_brute(d) && aside != Some(Aside::Brute),
+                        "brute" | "alt" => is_whole_brute(d) && aside != Some(Aside::Brute),
                         _ => false,
                     })
                 })
