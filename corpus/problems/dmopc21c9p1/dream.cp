@@ -3,13 +3,9 @@
 let n = read<2..=1_000_000>()
 var sign = 1
 var c = 0
-var lo = 1
-var hi = inf
+var ok = 1..=inf
 for a in read<[n - 1]Int>():
     sign = -sign
     c = a - c
-    if sign < 0:
-        hi min= c - 1
-    else:
-        lo max= 1 - c
-print(max(hi - lo + 1, 0))
+    ok = ok.clip(if sign < 0: ..c else: 1 - c..)
+print(ok.len)

@@ -121,3 +121,13 @@ Open questions raised by dreams:
   `[D]T` return `[D]Slice` keyed by right end, like the ring forms (coci21c2p5 binary-searches
   the starts); `Rooted.up_arc(v)` returns the arc into `v` with its fields, replacing the
   parent-cost side array built from the edge list (noi02p3).
+- Third idiom pass (review): command streams read as tagged enums (`etsr23r1p4`, `ioi01p1`,
+  `sac22cc2p5`) instead of `read<1..=4>()` and an `if` chain; `mut` lambdas instead of nested `fn`
+  workarounds (`btoi20p3`, `coci21c2p5`), so both now fail only on logged parser gaps; pins in
+  `cmt21r2ztr` are a compressed `(v, x)` domain with adjacent pairs instead of a list plus a
+  `HashMap` of ids; `desc` for rank keys (`ioi09p3`); range `clip` for the feasible interval
+  (`dmopc21c9p1`); `partition_point` and `Prefix.fold` over an open cut range (`dmopc21c2p1`);
+  cut keys of `scan` as counts (`ceoi17p2`, which also fixed an off-by-one in the bet count);
+  enum and domain keys (`coci21c1p1` teams, `noip09p4` bands, `ioi19p1` seats). No spec change:
+  every form was already decided.
+

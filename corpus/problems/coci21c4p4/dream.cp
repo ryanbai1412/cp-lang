@@ -14,14 +14,15 @@ fn centres(limit: Int) -> List<V>:
         var near: ?Int = none
         for c in t.children(v):
             let sub = visit(c)
-            near min= sub.near.map(d => d + t.w(c))
+            let w = t.up_arc(c)!.w
+            near min= sub.near.map(d => d + w)
             if let f = sub.far:
-                if f + t.w(c) > limit:
+                if f + w > limit:
                     open.push(c)
-                    near min= t.w(c)
+                    near min= w
                 else:
-                    far max= f + t.w(c)
-        if far + (near ?? (limit + 1)) <= limit:
+                    far max= f + w
+        if near.map(d => far + d <= limit) ?? false:
             return (none, near)
         (far, near)
     if visit(t.root).far != none:
@@ -29,12 +30,8 @@ fn centres(limit: Int) -> List<V>:
     open
 
 let best = (0..=200_000_000_000_000).first_true(x => centres(x).len <= k)!
-var chosen = centres(best)
-var used: [V]Bool = false
-for v in chosen:
-    used[v] = true
-for v in V:
-    if chosen.len < k and not used[v]:
-        chosen.push(v)
+let chosen = centres(best)
+let picked = chosen.tally()
+let spare = V.filter(v => v not in picked).take(k - chosen.len)
 print(best)
-print(chosen)
+print(chain(chosen, spare))

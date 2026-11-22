@@ -8,6 +8,6 @@ let sb = odds.map(o => o.b).sorted(by: desc).scan(+)
 var best = 0.0
 for i in sa.keys:
     let j = sb.keys.first_true(c => sb[c] >= sa[i]) ?? sb.keys.last!
-    for k in [j, max(j - 1, 0)]:
-        best max= min(sa[i], sb[k]) - (i + k)
+    for k in [j, j.prev ?? j]:
+        best max= min(sa[i], sb[k]) - F64(Int(i) + Int(k))
 print(best, precision: 4)

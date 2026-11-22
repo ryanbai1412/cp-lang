@@ -6,34 +6,25 @@ enum Side: Below, Above
 let (n, m) = read<(1..=100_000, 1..=100_000)>()
 domain V = 1..=n
 let qs = read<[m](i: V, j: V, k: V, x: 1..=1_000_000_000)>()
-var marks: [V]SortedSet<Int> = [V] v => SortedSet()
-for q in qs:
-    for v in [q.i, q.j, q.k]:
-        marks[v].add(q.x)
-var pins: List<(v: V, x: Int)> = []
-var pin_of: HashMap<(V, Int), Int> = HashMap()
-for v in V:
-    for x in marks[v].each():
-        pin_of[(v, x)] = pins.len
-        pins.push((v, x))
-domain P = 0..pins.len
-fn on(p: Int, s: Side) = Lit((P(p), s), true)
+let (domain P, pins) = compress(qs.flat_map(q => [q.i, q.j, q.k].map(v => (v: v, x: q.x))))
+fn on(p: P, s: Side) = Lit((p, s), true)
 var sat = TwoSat<(P, Side)>()
 for q in qs:
-    let ps = [q.i, q.j, q.k].map(v => pin_of[(v, q.x)])
-    for s in [Below, Above]:
+    let ps = [q.i, q.j, q.k].map(v => pins.at((v: v, x: q.x)))
+    for s in Side:
         sat.at_most_one(ps.map(p => on(p, s)).collect())
-for p in 0..pins.len:
+for p in P:
     sat.add_or(on(p, Below).flip, on(p, Above).flip)
-    if p + 1 < pins.len and pins[p + 1].v == pins[p].v:
-        sat.add_xor(on(p, Above), on(p + 1, Below))
+for (p, q) in P.pairs() if pins.get(p).v == pins.get(q).v:
+    sat.add_xor(on(p, Above), on(q, Below))
 if let value = sat.solve():
     print("YES")
     var a: [V]Int = 1
-    for (p, pin) in pins.items:
-        if value[(P(p), Above)]:
+    for p in P:
+        let pin = pins.get(p)
+        if value[(p, Above)]:
             a[pin.v] max= pin.x + 1
-        elif not value[(P(p), Below)]:
+        elif not value[(p, Below)]:
             a[pin.v] max= pin.x
     print(a)
 else:

@@ -7,12 +7,8 @@ domain S = 1..=n
 let iv = read<[S](l: 1..=1_000_000_000, r: 1..=1_000_000_000)>()
 let (domain C, xs) = compress(chain(iv.map(x => x.l), iv.map(x => x.r)))
 fn heights(s: S) -> Range<C> = xs.at(iv[s].l)..=xs.at(iv[s].r)
-fn enter(mut cover: SegTree<C, Int>, s: S):
-    cover.apply(heights(s), 1)
-fn leave(mut cover: SegTree<C, Int>, s: S):
-    cover.apply(heights(s), -1)
 
-let held = track(SegTree(max, [C] c => 0, act: add), add: enter, remove: leave)
+let held = track(SegTree(max, [C] c => 0, act: add), add: (mut cover, s) => cover.apply(heights(s), 1), remove: (mut cover, s) => cover.apply(heights(s), -1))
 let start = iv.keys.maximal(held, ok: h => h.state.all <= 1).map(g => g.first!)
 let jumps = Lift([S] s => start.partition_point(b => b <= s).r.map(t => (t, 1)), op: (a, b) => a + b, identity: 0)
 for (l, r) in read<[read<1..=200_000>()](S, S)>():

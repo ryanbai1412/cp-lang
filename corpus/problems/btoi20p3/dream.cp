@@ -7,9 +7,7 @@ let (n, m, q) = read<(1..=200_000, 1..=200_000, 1..=200_000)>()
 domain V = 1..=n
 domain Street = 1..=m
 let street = read<[Street](V, V)>()
-fn join(mut d: ParityDsu<V>, e: (V, V)):
-    d.unite(e.0, e.1)
-let dsu = undoing(ParityDsu<V>(), add: join)
+let dsu = undoing(ParityDsu<V>(), add: (mut d, e) => d.unite(e.0, e.1))
 let odd = street.ring.minimal(dsu, ok: u => not u.state.consistent)
 for (l, r) in read<[q](Street, Street)>():
     let open = m - (l..=r).len

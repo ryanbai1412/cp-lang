@@ -5,6 +5,6 @@ let (n, a, b) = read<(1..=200_000, 0..=1_000_000, 0..=1_000_000)>()
 let h = read<[n]0..=1_000_000>().sorted()
 let pre = h.scan(+)
 fn cost(i: Int) -> Int:
-    let c = h.first_gt(i) ?? n
-    i * a + b * (pre[n] - pre[c] - (n - c) * i)
+    let above = h.partition_point(x => x <= i)..
+    i * a + b * (pre.fold(above) - h[above].len * i)
 print(chain([0], h).map(cost).min()!)

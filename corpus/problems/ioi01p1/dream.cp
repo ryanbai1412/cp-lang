@@ -2,13 +2,12 @@
 let (_, s) = read<(0..=0, 1..=1_024)>()
 domain X = 0..s
 var phones = Fenwick2D<X, X, Int>()
+enum Cmd:
+    @tag("1") Add(x: X, y: X, a: Int)
+    @tag("2") Ask(l: X, b: X, r: X, t: X)
+    @tag("3") Stop
 while true:
-    let cmd = read<1..=3>()
-    if cmd == 1:
-        let (x, y, a) = read<(X, X, Int)>()
-        phones.add(x, y, a)
-    elif cmd == 2:
-        let (l, b, r, t) = read<(X, X, X, X)>()
-        print(phones.sum(l..=r, b..=t))
-    else:
-        break
+    match read<Cmd>():
+        Add(x, y, a) => phones.add(x, y, a)
+        Ask(l, b, r, t) => print(phones.sum(l..=r, b..=t))
+        Stop => break

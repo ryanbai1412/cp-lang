@@ -7,5 +7,5 @@ domain T = 1..=t
 let solved = read<[C, T]0..=1>()
 let worth = [T] j => n - C.map(c => solved[c, j]).sum()
 let score = [C] c => T.map(j => solved[c, j] * worth[j]).sum()
-let key = c => (-score[c], -solved[c].sum(), c)
+let key = c => (desc(score[c]), desc(solved[c].sum()), c)
 print(score[p], C.count(c => key(c) < key(p)) + 1)
