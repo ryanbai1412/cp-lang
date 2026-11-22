@@ -907,7 +907,8 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     /// A step for local `slot` of a running call, which just changed.
     fn trace_local(&mut self, slot: usize, span: Span) {
-        if self.tracer.is_none() {
+        // Top-level locals are loop counters and the like: no step of their own.
+        if self.tracer.is_none() || self.call_frames.is_empty() {
             return;
         }
         let name = self.locals()[slot].name.as_str();

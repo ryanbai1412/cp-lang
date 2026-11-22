@@ -11163,12 +11163,23 @@ impl<'p, 'io> Interp<'p, 'io> {
                         }
                     }
                     ref point => {
+                        let mut quiet = false;
                         if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
                             self.stack[self.base + slot] = Value::Moved;
+                            // A top-level local takes no step: only its own
+                            // slot needs the register's value.
+                            if let SlotLoc::I(r, kind) = chunk.slot_map[slot] {
+                                if self.call_frames.is_empty() && !self.assignments() {
+                                    self.stack[self.base + slot] = kind.box_val(regs_i[r as usize]);
+                                    quiet = true;
+                                }
+                            }
                         }
-                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
-                        self.trace_point(point);
-                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                        if !quiet {
+                            sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                            self.trace_point(point);
+                            sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                        }
                     }
                 },
                 Op::FallbackExprV { idx, dst, in_loop } => {
