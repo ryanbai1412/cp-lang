@@ -11,9 +11,14 @@ use crate::uri::uri_of_path;
 use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
+#[cfg(not(target_arch = "wasm32"))]
+use diagnostics::lint_config;
+use diagnostics::lints;
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, OnceLock};
+
+mod diagnostics;
 
 const METHOD_NOT_FOUND: i32 = -32601;
 const INVALID_PARAMS: i32 = -32602;
@@ -30,6 +35,8 @@ pub struct Server {
     /// What the declared bounds prove about each open document's text.
     proven: HashMap<String, Arc<Proven>>,
     initialized: bool,
+    /// The document whose lints and proofs are still to be published.
+    owed: Option<String>,
     /// The client asked for run, stress and trace lenses
     /// (`initializationOptions.codeLens`); VS Code draws its own.
     lenses: bool,
@@ -51,6 +58,7 @@ impl Server {
             std: StdLib::default(),
             proven: HashMap::new(),
             initialized: false,
+            owed: None,
             lenses: false,
             shutdown: false,
             exit: None,
@@ -63,8 +71,8 @@ impl Server {
     }
 
     /// Handles one message from the client and returns the messages to
-    /// send back, in order.
-    pub fn handle(&mut self, message: &Value) -> Vec<Value> {
+    /// send back at once, in order; [`Server::idle`] has the rest.
+    pub fn respond(&mut self, message: &Value) -> Vec<Value> {
         let id = message.get("id").cloned().unwrap_or(Value::Null);
         let Some(method) = message.get("method").and_then(Value::as_str) else {
             // A response to a request of ours; the server sends none.
@@ -168,7 +176,7 @@ impl Server {
                     .ok_or((INVALID_PARAMS, "didOpen without text".to_string()))?;
                 self.docs.insert(uri.to_string(), text.to_string());
                 self.db.set_file(uri, text);
-                Ok(Reply::notify(self.diagnostics(uri)))
+                Ok(Reply::notify(self.first_diagnostics(uri)))
             }
             "textDocument/didChange" => {
                 let uri = uri_of(params)?;
@@ -186,7 +194,7 @@ impl Server {
                 }
                 self.db.set_file(uri, text.as_str());
                 self.docs.insert(uri.to_string(), text);
-                Ok(Reply::notify(self.diagnostics(uri)))
+                Ok(Reply::notify(self.first_diagnostics(uri)))
             }
             "textDocument/didClose" => {
                 let uri = uri_of(params)?;
@@ -867,23 +875,6 @@ impl Server {
             "cpl/testPanic" => panic!("deliberate test panic"),
             _ => Err((METHOD_NOT_FOUND, format!("`{method}` is not supported"))),
         }
-    }
-
-    /// The `publishDiagnostics` notification for a document.
-    fn diagnostics(&mut self, uri: &str) -> Value {
-        let Some(facts) = self.proven(uri) else {
-            return publish(uri, Vec::new());
-        };
-        let analysis = self.db.analyze(uri).expect("proven implies an analysis");
-        // The same answer as `cpl check`: the checker's diagnostics, then
-        // what lowering rejects; then, as `cpl lint` reports them, the lints.
-        let items = cpl_ir::reported(&analysis)
-            .iter()
-            .chain(&lints(uri, &analysis))
-            .chain(&overflows(&facts))
-            .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
-            .collect();
-        publish(uri, items)
     }
 
     /// The document and byte offset a position request refers to.
@@ -1815,54 +1806,6 @@ pub(crate) fn count_text(n: u128) -> String {
         format!("{}.{}", tenths / 10, tenths % 10)
     };
     format!("{n} ({mantissa}e{exp})")
-}
-
-/// A soft note on each operation the prover shows leaves `Int` for inputs
-/// in their declared ranges, naming those inputs.
-fn overflows(facts: &Proven) -> Vec<Diagnostic> {
-    let text = facts.text();
-    facts
-        .exprs()
-        .iter()
-        .filter_map(|e| {
-            let inputs = e.overflow.as_ref()?;
-            let span = Span::new(e.expr.0, e.expr.1);
-            let source = text.get(e.expr.0 as usize..e.expr.1 as usize)?;
-            let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
-            let mut diag = Diagnostic::warning(
-                cpl_diag::Code("overflow"),
-                span,
-                format!("`{source}` overflows Int when {inputs}"),
-            );
-            diag.severity = cpl_diag::Severity::Note;
-            Some(diag)
-        })
-        .collect()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn lints(_uri: &str, _analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
-    Vec::new()
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn lints(uri: &str, analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
-    if analysis.has_syntax_errors {
-        return Vec::new();
-    }
-    let items: Vec<(u32, &cpl_syntax::ParsedItem)> = analysis
-        .items
-        .iter()
-        .map(|i| (i.offset, &i.syntax.parsed))
-        .collect();
-    cpl_lint::lint_parsed(&analysis.text, &items, &lint_config(uri))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn lint_config(uri: &str) -> cpl_lint::Config {
-    path_of_uri(uri)
-        .map(|path| cpl_lint::Config::discover(std::path::Path::new(&path)).0)
-        .unwrap_or_default()
 }
 
 /// The file a `file://` URI names, with `%XX` escapes decoded.

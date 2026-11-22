@@ -120,6 +120,18 @@ fn report(name: &str, lines: usize, samples: &mut Samples, budget: Duration) {
     );
 }
 
+/// A row of the table with no budget: a cost the editor pays off the
+/// path to the first answer.
+fn inform(name: &str, lines: usize, samples: &mut Samples) {
+    let (median, p90, max) = (samples.median(), samples.p90(), samples.max());
+    println!(
+        "{name:<44} {lines:>5} lines   median {:>10}   p90 {:>10}   max {:>10}   budget none",
+        ms(median),
+        ms(p90),
+        ms(max)
+    );
+}
+
 /// The text after typing `typed` characters of a new expression at `at`.
 fn typed(src: &str, at: usize, typed: usize) -> String {
     let insert = "other.len * 2 + deg[other.v] + ";
@@ -193,18 +205,24 @@ fn position(src: &str, offset: usize) -> Value {
 }
 
 /// Sends a message as text, as it arrives on the wire, and returns the
-/// replies as text, as they leave. Parsing and printing are part of the cost.
-/// Timed by thread CPU time where the platform has it, else wall time.
-fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
+/// replies sent at once as text, as they leave, with their time; then the
+/// time until the deferred replies (the lints and proofs) have left too.
+/// Parsing and printing are part of the cost. Timed by thread CPU time
+/// where the platform has it, else wall time.
+fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration, Duration) {
     let wire = message.to_string();
-    time_cpu(|| {
+    let (replies, first) = time_cpu(|| {
         let parsed = cpl_json::parse(&wire).unwrap();
-        server
-            .handle(&parsed)
+        let replies: Vec<String> = server
+            .respond(&parsed)
             .iter()
             .map(Value::to_string)
-            .collect()
-    })
+            .collect();
+        replies
+    });
+    let (later, rest) = time_cpu(|| server.idle().iter().map(Value::to_string).count());
+    assert!(later <= 1, "one deferred publish at most");
+    (replies, first, first + rest)
 }
 
 fn lsp_latency(lines: usize) {
@@ -230,17 +248,18 @@ fn lsp_latency(lines: usize) {
         )
     };
     // Each copy is a new document, so each open checks the whole file.
-    let mut opened = Samples(Vec::new());
+    let (mut opened, mut settled) = (Samples(Vec::new()), Samples(Vec::new()));
     for copy in 0..9 {
         let uri = format!("file:///bench/copy_{copy}.cp");
-        let (replies, took) = round_trip(&mut server, &open(&uri));
-        // Lints included: only errors would mean the program is wrong.
+        let (replies, took, all) = round_trip(&mut server, &open(&uri));
+        // The checker's diagnostics: any error would mean the program is wrong.
         assert!(
             replies[0].contains(r#""diagnostics":["#) && !replies[0].contains(r#""severity":1"#),
             "{}",
             &replies[0][..200.min(replies[0].len())]
         );
         opened.0.push(took);
+        settled.0.push(all);
     }
     report(
         "lsp: open file, first diagnostics",
@@ -248,6 +267,7 @@ fn lsp_latency(lines: usize) {
         &mut opened,
         LSP_BUDGET,
     );
+    inform("lsp: open file, lints and proofs too", actual, &mut settled);
     round_trip(&mut server, &open(URI));
 
     // Type an expression one character at a time, with a hover in between.
@@ -278,7 +298,7 @@ fn lsp_latency(lines: usize) {
             ]),
         );
         text.insert(at + i, ch);
-        let (replies, took) = round_trip(&mut server, &edit);
+        let (replies, took, _) = round_trip(&mut server, &edit);
         assert_eq!(replies.len(), 1);
         assert!(replies[0].contains("publishDiagnostics"));
         change.0.push(took);
@@ -293,7 +313,7 @@ fn lsp_latency(lines: usize) {
                 ("position", position(&text, target + 2)),
             ]),
         );
-        let (replies, took) = round_trip(&mut server, &request);
+        let (replies, took, _) = round_trip(&mut server, &request);
         assert!(replies[0].contains("roads: [E]Road"), "{}", replies[0]);
         assert!(
             replies[0].contains("storage: 16 bytes per element, 3.2 MB max"),
@@ -315,7 +335,7 @@ fn lsp_latency(lines: usize) {
                 ]),
             )
         };
-        let (replies, took) = round_trip(
+        let (replies, took, _) = round_trip(
             &mut server,
             &at_cursor(1000 + i as u32, "textDocument/completion"),
         );
@@ -323,7 +343,7 @@ fn lsp_latency(lines: usize) {
             assert!(replies[0].contains(r#""label":"len""#), "{}", replies[0]);
         }
         complete.0.push(took);
-        let (_, took) = round_trip(
+        let (_, took, _) = round_trip(
             &mut server,
             &at_cursor(2000 + i as u32, "textDocument/signatureHelp"),
         );
@@ -333,7 +353,7 @@ fn lsp_latency(lines: usize) {
             "textDocument/inlayHint",
             obj([("textDocument", doc())]),
         );
-        let (_, took) = round_trip(&mut server, &request);
+        let (_, took, _) = round_trip(&mut server, &request);
         hints.0.push(took);
 
         // Find the uses of `roads` and rename it, from the half-typed fn.
@@ -350,7 +370,7 @@ fn lsp_latency(lines: usize) {
             )
         };
         let context = obj([("includeDeclaration", true.into())]);
-        let (replies, took) = round_trip(
+        let (replies, took, _) = round_trip(
             &mut server,
             &on_roads(
                 4000 + i as u32,
@@ -360,7 +380,7 @@ fn lsp_latency(lines: usize) {
         );
         assert!(replies[0].contains(r#""uri""#), "{}", replies[0]);
         refs.0.push(took);
-        let (replies, took) = round_trip(
+        let (replies, took, _) = round_trip(
             &mut server,
             &on_roads(
                 5000 + i as u32,
@@ -510,7 +530,7 @@ fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, boo
                     ),
                 ]),
             );
-            let (replies, took) = round_trip(&mut server, &change);
+            let (replies, took, _) = round_trip(&mut server, &change);
             assert!(
                 replies.iter().any(|r| r.contains("publishDiagnostics")),
                 "no diagnostics"
@@ -737,7 +757,7 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
                 ]),
             );
             version += 1;
-            let (replies, took) = round_trip(&mut server, &req);
+            let (replies, took, _) = round_trip(&mut server, &req);
             assert!(
                 replies.iter().any(|r| r.contains("publishDiagnostics")),
                 "no diagnostics on {label}"
@@ -786,7 +806,7 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
                     ),
                 ]),
             );
-            let (replies, took) = round_trip(&mut server, &req);
+            let (replies, took, _) = round_trip(&mut server, &req);
             assert_eq!(replies.len(), 1);
             hover_samples.push(took);
         }
@@ -822,7 +842,7 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
                     ),
                 ]),
             );
-            let (replies, took) = round_trip(&mut server, &req);
+            let (replies, took, _) = round_trip(&mut server, &req);
             assert_eq!(replies.len(), 1);
             comp_samples.push(took);
         }

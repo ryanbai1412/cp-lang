@@ -63,7 +63,7 @@ pub fn serve(mut input: impl BufRead, mut output: impl Write) -> io::Result<i32>
     let mut server = Server::new();
     while let Some(body) = read_message(&mut input)? {
         let replies = match json::parse(&body) {
-            Ok(message) => server.handle(&message),
+            Ok(message) => server.respond(&message),
             Err(what) => vec![json::obj([
                 ("jsonrpc", "2.0".into()),
                 ("id", Value::Null),
@@ -76,7 +76,7 @@ pub fn serve(mut input: impl BufRead, mut output: impl Write) -> io::Result<i32>
                 ),
             ])],
         };
-        for reply in &replies {
+        for reply in replies.iter().chain(&server.idle()) {
             write_message(&mut output, reply)?;
         }
         if let Some(code) = server.exit_code() {

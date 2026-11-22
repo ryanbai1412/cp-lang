@@ -707,7 +707,7 @@ fn a_whole_session_over_the_wire() {
     let code = serve(std::io::BufReader::new(&input[..]), &mut output).unwrap();
     assert_eq!(code, 0);
     let replies = unframed(&output);
-    assert_eq!(replies.len(), 4);
+    assert_eq!((replies.len(), &replies[2]), (5, &replies[1]));
     assert_eq!(replies[0].at(&["id"]).as_u32(), Some(1));
     let diagnostics = replies[1]
         .at(&["params", "diagnostics"])
@@ -719,10 +719,10 @@ fn a_whole_session_over_the_wire() {
         Some("`dist` is indexed by V, but `n` is a 1..=2e5\nhelp: convert it with `V(n)`, or write `dist.raw[n]` to index by number")
     );
     assert_eq!(
-        replies[2].at(&["result", "contents", "value"]).as_str(),
+        replies[3].at(&["result", "contents", "value"]).as_str(),
         Some("```cp\ndomain V = 1..=n\n  at most 2e5 positions (n <= 2e5)\n  storage: 4 bytes per position\n```")
     );
-    assert_eq!(replies[3].at(&["id"]).as_u32(), Some(3));
+    assert_eq!(replies[4].at(&["id"]).as_u32(), Some(3));
 }
 
 #[test]
