@@ -133,12 +133,14 @@ impl<'a> Checker<'a> {
             },
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
             TypeKind::ConstrainedStr(_) => Ty::Str,
-            TypeKind::Row(fields) => Ty::Record(
-                fields
+            TypeKind::Row(fields) => {
+                let mut fs: Vec<(String, Ty)> = fields
                     .iter()
                     .map(|(n, t)| (n.text.clone(), self.resolve_type(t)))
-                    .collect(),
-            ),
+                    .collect();
+                fs.push(("..".into(), Ty::Unknown));
+                Ty::Record(fs)
+            }
             TypeKind::RowWithout {
                 prefix,
                 base,

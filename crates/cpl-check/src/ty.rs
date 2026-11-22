@@ -270,13 +270,15 @@ impl Ty {
             // A record with more fields fits where fewer are asked for:
             // edges `(u, v, w)` are edges `(u, v)`.
             (Ty::Record(a), Ty::Record(b)) => {
-                if std::env::var_os("CPL_SPEC").is_some() {
-                    a.len() == b.len()
+                let open_b = b.last().is_some_and(|(n, _)| n == "..");
+                let b_fields = if open_b { &b[..b.len() - 1] } else { &b[..] };
+                if std::env::var_os("CPL_SPEC").is_some() && !open_b {
+                    a.len() == b_fields.len()
                         && a.iter()
-                            .zip(b)
+                            .zip(b_fields)
                             .all(|((an, at), (bn, bt))| an == bn && at.fits_in(bt, number))
                 } else {
-                    b.iter().all(|(bn, bt)| {
+                    b_fields.iter().all(|(bn, bt)| {
                         a.iter()
                             .find(|(an, _)| an == bn)
                             .is_some_and(|(_, at)| at.fits_in(bt, number))

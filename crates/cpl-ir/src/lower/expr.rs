@@ -3084,6 +3084,24 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     if value.ty != want && value.ty != Ty::Error {
+                        if want == Ty::Int {
+                            if let Ty::Pos(d) = value.ty {
+                                if let Some(&lo) = self.range_domains.get(&d) {
+                                    let as_int = self.mk(
+                                        ExprKind::Cast(Cast::Trust, Box::new(value)),
+                                        Ty::Int,
+                                        index.span,
+                                    );
+                                    let shifted = if lo == 0 {
+                                        as_int
+                                    } else {
+                                        self.int_add(as_int, lo)
+                                    };
+                                    out.push(shifted);
+                                    continue;
+                                }
+                            }
+                        }
                         if matches!(want, Ty::Bound(_))
                             || matches!(want, Ty::Pos(d) if self.product_domains.contains_key(&d))
                         {
