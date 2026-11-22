@@ -1251,7 +1251,27 @@ pub fn continued_fraction(p: Int, q: Int) -> List<Int>:
 /// example: `best_rational(31_416, 10_000, 10) == Ratio(22, 7)`
 /// example: `best_rational(1, 2, 10) == Ratio(1, 2)`
 /// example: `best_rational(1, 2, 1) == Ratio(0, 1)`
-pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio = todo
+pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio:
+    assert den != 0 and max_den >= 1
+    let x = Ratio.new(num, den)
+    if x.q <= max_den: return x
+    var (p0, q0, p1, q1) = (0, 1, 1, 0)
+    var (n, d) = (x.p, x.q)
+    while true:
+        let a = n / d
+        let q2 = q0 + a * q1
+        if q2 > max_den: break
+        (p0, q0, p1, q1) = (p1, q1, p0 + a * p1, q2)
+        (n, d) = (d, n - a * d)
+    let k = (max_den - q0) / q1
+    let lo = Ratio.new(p0 + k * p1, q0 + k * q1)
+    let hi = Ratio.new(p1, q1)
+    let dlo = (x - lo).abs
+    let dhi = (x - hi).abs
+    if dlo < dhi: return lo
+    if dhi < dlo: return hi
+    if lo.q != hi.q: return if lo.q < hi.q: lo else: hi
+    if lo < hi: lo else: hi
 
 /// O(1) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
 pub struct Ratio(p: Int, q: Int):
@@ -1262,14 +1282,17 @@ pub struct Ratio(p: Int, q: Int):
     /// example: `Ratio(2, 4) == Ratio(1, 2)`
     /// example: `Ratio(3, -6).floor == -1`
     /// example: `Ratio(5) == Ratio.from_int(5)`
-    pub fn new(p: Int, q: Int = 1) -> Ratio = todo
+    pub fn new(p: Int, q: Int = 1) -> Ratio:
+        assert q != 0
+        let g = gcd(p, q)
+        if q < 0: Ratio(-p / g, -q / g) else: Ratio(p / g, q / g)
 
     /// `n` as the fraction `n / 1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Ratio.from_int(3) == Ratio(3, 1)`
-    pub fn from_int(n: Int) -> Ratio = todo
+    pub fn from_int(n: Int) -> Ratio = Ratio.new(n, 1)
 
     /// The multiplicative inverse `q / p`, sign moved to the numerator.
     ///
@@ -1277,7 +1300,7 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: when `p == 0`
     /// example: `Ratio(-2, 3).inv == Ratio(-3, 2)`
     /// example: `Ratio(1, 4).inv == Ratio.from_int(4)`
-    @get pub fn inv(self) -> Ratio = todo
+    @get pub fn inv(self) -> Ratio = Ratio.new(q, p)
 
     /// The floor of `p / q` (Euclidean division).
     ///
@@ -1285,7 +1308,7 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).floor == 3`
     /// example: `Ratio(-7, 2).floor == -4`
-    @get pub fn floor(self) -> Int = todo
+    @get pub fn floor(self) -> Int = p / q
 
     /// The ceiling of `p / q`: `ceil_div(p, q)`.
     ///
@@ -1293,35 +1316,35 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).ceil == 4`
     /// example: `Ratio(-7, 2).ceil == -3`
-    @get pub fn ceil(self) -> Int = todo
+    @get pub fn ceil(self) -> Int = (p + q - 1) / q
 
     /// The absolute value `|p| / q`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
-    @get pub fn abs(self) -> Ratio = todo
+    @get pub fn abs(self) -> Ratio = Ratio.new(abs(p), q)
 
 impl Add for Ratio:
-    fn add(a, b) = todo
+    fn add(a, b) = Ratio.new(a.p * b.q + b.p * a.q, a.q * b.q)
 
 impl Sub for Ratio:
-    fn sub(a, b) = todo
+    fn sub(a, b) = Ratio.new(a.p * b.q - b.p * a.q, a.q * b.q)
 
 impl Neg for Ratio:
-    fn neg(a) = todo
+    fn neg(a) = Ratio.new(-a.p, a.q)
 
 impl Mul for Ratio:
-    fn mul(a, b) = todo
+    fn mul(a, b) = Ratio.new(a.p * b.p, a.q * b.q)
 
 impl Div for Ratio:
-    fn div(a, b) = todo
+    fn div(a, b) = Ratio.new(a.p * b.q, a.q * b.p)
 
 impl Ord for Ratio:
-    fn lt(a, b) = todo
+    fn lt(a, b) = a.p * b.q < b.p * a.q
 
 impl Show for Ratio:
-    fn show(a) = todo
+    fn show(a) = "{a.p}/{a.q}"
 
 /// O(n) storage in base-10^9 limbs. Arbitrary-precision signed integer.
 pub struct BigInt(neg: Bool, limbs: List<Int>):
