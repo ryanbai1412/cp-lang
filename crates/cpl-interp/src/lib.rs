@@ -2786,7 +2786,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 other => other,
             },
             Cast::OrdToEnum(_) => Value::Enum(value.int() as u32, Rc::new(Vec::new())),
-            Cast::Ord | Cast::Trust | Cast::Raw => value,
+            Cast::Ord | Cast::Trust => value,
+            Cast::Raw => match value {
+                Value::U64(u) => Value::Int(u as i64),
+                other => other,
+            },
             Cast::Label(d) => Value::Int(value.int() + self.domains[d].0),
             Cast::FromLabel(d) => {
                 let (lo, len) = self.domains[d];

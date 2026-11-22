@@ -881,6 +881,21 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> Expr {
         let start = self.start();
         let kind = match self.peek() {
+            T::Dot if self.peek_n(1) == T::Int => {
+                self.bump();
+                let digits = self.text().to_string();
+                self.bump();
+                let span = self.span_from(start);
+                self.sink.push(
+                    Diagnostic::error(
+                        codes::BAD_NUMBER,
+                        span,
+                        format!("`.{digits}` isn't a number; write a leading zero: `0.{digits}`"),
+                    )
+                    .with_help("floats start with a digit, like `0.5`"),
+                );
+                ExprKind::Float(format!("0.{digits}"))
+            }
             T::Int => {
                 let value = literal::int_value(self.text()).unwrap_or(0);
                 self.bump();
