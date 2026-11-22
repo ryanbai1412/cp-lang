@@ -25,7 +25,7 @@ let b = Box(1, 2)
 let c = Box("a", "b")
 print(b.v, c.w)
 struct Bag<D, T>(a: [D]T):
-    fn first(self) -> T = self.a[D.first]
+    fn first(self) -> T = self.a[D.first!]
 let n = 3
 domain I = 0..n
 let arr: [I]Int = [I] i => i.to_idx + 7

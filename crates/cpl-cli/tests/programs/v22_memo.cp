@@ -13,12 +13,12 @@ domain I = 1..=n
 fn fib(i: I, twice: Bool) -> Int:
     let base = if i.label <= 2: 1 else: fib(i.prev!, false) + fib(i.prev!.prev!, false)
     if twice: 2 * base else: base
-print(fib(I.last, false), fib(I.last, true))
+print(fib(I.last!, false), fib(I.last!, true))
 
 @memo
 fn collatz(x: Int) -> Int:
     if x == 1: 0 elif x % 2 == 0: 1 + collatz(x / 2) else: 1 + collatz(3 * x + 1)
-print(max(collatz(x) for x in 1..=n)!)
+print([collatz(x) for x in 1..=n].max()!)
 
 @memo
 fn word(k: Int, tag: Str) -> Str:

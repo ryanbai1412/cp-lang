@@ -16,7 +16,7 @@ if let e = best:
 let ids: List<?Id> = [Id(1), none, Id(3)]
 print(yes(ids[0] == ids[2]), yes(ids[1] == none))
 var far: ?Hop = none
-far = Hop(V.first, 7)
+far = Hop(V.first!, 7)
 if let h = far:
     print(Int(h.at), h.cost)
 print((ids[1] ?? Id(9)).v)

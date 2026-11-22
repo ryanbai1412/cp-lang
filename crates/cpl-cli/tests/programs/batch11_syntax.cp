@@ -11,12 +11,12 @@ let (lo, hi): (?Int, ?Int) = read(none: -1)
 
 print([b.ord for v in V if let b = boss[v]])
 print(sum(b.ord for v in V if let b = boss[v] and b.ord > 0))
-print(any(x > 6 for x in [lo, hi] if let x = x), all(x > 6 for x in [lo, hi] if let x = x))
+print(yes([x for x in [lo, hi] if let x = x].any(x => x > 6)), yes([x for x in [lo, hi] if let x = x].all(x => x > 6)))
 print([a.ord + b.ord for v in V if let a = boss[v] and let b = boss[a]])
 
 print(g[R(1), ..])
 print(g[.., C(0)])
-print([count(ok[r, ..]) for r in R], sum(g[.., C(m - 1)]))
+print([count(c for c in C if ok[r, c]) for r in R], sum(g[.., C(m - 1)]))
 var h: [0..n, 1..=m]Int = 0
 for r in R:
     for c in C: h[r.ord, c.ord + 1] = g[r, c] * 2
