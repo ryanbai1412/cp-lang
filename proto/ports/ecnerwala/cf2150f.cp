@@ -28,6 +28,7 @@ let t = Rooted(tree, V.first)
 let d = t.diameter()
 let L = ceil_div(d.len, 2)
 
+// All unordered neighbor pairs (`List.pairs` yields adjacent windows only; see friction #7).
 fn neighbour_pairs(i: V) -> List<(V, V)> =
     [(j, k) for (a, j) in tree[i].items for (b, k) in tree[i].items if a < b]
 let skips = [[j, i, k] for i in V for (j, k) in neighbour_pairs(i) if not joined_by_edge[j, k]]
@@ -39,7 +40,7 @@ fn route(i: V, j: V) -> List<V>:
     if dist >= L:
         let skip = dist - L
         return [x for (z, x) in p[..2 * skip].items if z % 2 == 0] + p[2 * skip..]
-    let far = if t.dist(i, d.u) >= t.dist(i, d.v): d.u else: d.v
+    let far = [d.u, d.v].max(by: f => t.dist(i, f))!
     let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
     let mid = meets[meets.argmax(by: x => t.depth(x))!]
     let stem_len = L - dist + 1
