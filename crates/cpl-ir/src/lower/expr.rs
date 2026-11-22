@@ -2518,7 +2518,7 @@ impl<'a> Lowerer<'a> {
                 if matches!(
                     &e.kind,
                     ast::ExprKind::Call { callee, .. }
-                        if matches!(&callee.kind, ast::ExprKind::Name(n) if n == "Some")
+                        if matches!(&callee.kind, ast::ExprKind::Name(n) if n == "some" || n == "Some")
                 ) {
                     let prev_ty = operands.last().unwrap().0.ty.clone();
                     self.expr(e, Some(&prev_ty))

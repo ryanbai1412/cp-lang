@@ -1093,3 +1093,15 @@ print(a.to, a.w)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "2 9\n");
 }
+
+#[test]
+fn opt_compare_hints_some_array_literal() {
+    let src = "\
+domain X = 0..2
+let a: ?[X]Bool = Some([false, true])
+print(yes(a == Some([false, true])))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "YES\n");
+}
