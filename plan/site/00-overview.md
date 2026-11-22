@@ -463,7 +463,7 @@ lazily on the first run, not on page load.
 
 ## 7. Phases
 
-Each phase lands as small, gated commits on a branch cut from `devin/spec`.
+Each phase lands as small, gated commits on a branch cut from the `spec` branch.
 
 0. **Foundations**: the `web/` skeleton with Fumadocs and shadcn as
    published, the WASM worker, the snippet gate wired into `check.sh`, and

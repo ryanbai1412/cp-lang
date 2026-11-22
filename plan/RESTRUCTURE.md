@@ -5,7 +5,7 @@ the repository. Delete this file once every step is done.
 
 ## Order
 
-1. **Merge.** Merge `main` into `devin/spec`, resolve conflicts, pass
+1. **Merge.** Merge `main` into the `spec` branch, resolve conflicts, pass
    `scripts/check.sh --fast`, then fast-forward `main` to the result. One
    branch from then on: work on `main` or short-lived branches merged daily.
    - `spec/`, `decisions.md` entries 157+ and the spec checker changes keep the

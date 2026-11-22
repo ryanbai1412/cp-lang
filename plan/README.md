@@ -14,7 +14,7 @@ Open items: `../decisions.md`, `18-key-features.md`,
 `../research/RECOMMENDATIONS.md`.
 
 Each document states its status at the top. "Decided" means the user agreed;
-"Proposed" means Devin made the call and it hasn't been reviewed yet.
+"Proposed" means an agent made the call and it hasn't been reviewed yet.
 
 ## Documents
 

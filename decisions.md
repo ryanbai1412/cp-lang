@@ -4349,7 +4349,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 
 ## 133. Number unused
 
-`main` and `devin/spec` both used 133–142 before they merged; `main`'s
+`main` and the `spec` branch both used 133–142 before they merged; `main`'s
 entries were renumbered to 169–178. 133 itself is now §169.
 
 ## 134. Field defaults and constrained string types (2026-11-21)

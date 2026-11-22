@@ -1,6 +1,6 @@
 # Execution plan: the next 12 hours and after
 
-Owner: Devin (parent session). Status: in progress, updated 2026-11-21 23:10 PST.
+Owner: lead agent. Status: in progress, updated 2026-11-21 23:10 PST.
 Companion to `plan/ARCHITECTURE.md` (how the code is built) and
 `plan/DOMAINS.md` (each domain's north star).
 
@@ -47,7 +47,7 @@ against. The fast path follows it after `cpl-ty` (step 4).
 ## 2. Workstreams
 
 Each stream has an owner, a done-test, and its dependencies. "Me" means
-this session; "child" means a child session (allowed since 23:00), reviewed
+this session; "child" means a helper agent (allowed since 23:00), reviewed
 by me before its work counts.
 
 | # | Stream | Owner | Done when | Depends on |
@@ -113,7 +113,7 @@ back:
 
 ## 6. Delegation
 
-Ryan allowed child sessions at 23:00 ("you're the owner and you're on the
+Ryan allowed helper agents at 23:00 ("you're the owner and you're on the
 line if things don't end up getting shipped"). Delegated: tech debt (0),
 stdlib bodies (6), diagnostics (8), stress (10), judges (11), LSP (12),
 site (13). Each has a fixed interface, a done-test and a time box; I review

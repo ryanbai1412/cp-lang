@@ -1,6 +1,6 @@
 # CP Lang toolchain architecture
 
-Owner: Devin (parent session). Status: adopted, 2026-11-21; revised
+Owner: lead agent. Status: adopted, 2026-11-21; revised
 2026-11-21 for maintainability (one IR, one interpreter; see B0).
 
 This file has two halves. Part A is the target: the architecture we would

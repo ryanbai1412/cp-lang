@@ -1,6 +1,6 @@
 # Rust build and test timings (0.2.2)
 
-Measured 2026-11-20 on the Devin Linux VM: 8 cores, 31 GB RAM, rustc 1.100.0,
+Measured 2026-11-20 on a Linux development VM: 8 cores, 31 GB RAM, rustc 1.100.0,
 g++ 11.4, cargo-nextest 0.9.148. The workspace has no crates.io dependencies,
 so every unit in these numbers is one of our own crates.
 
@@ -53,7 +53,7 @@ The large win is the test runner, not the profile: the same tests take
 91.5 s under `cargo test --workspace` and 50.9 s under `cargo nt` (-44%),
 because nextest runs test binaries in parallel instead of one after another.
 
-On the Devin VMs `~/.cargo/config.toml` already set `line-tables-only`; the
+On the development VMs `~/.cargo/config.toml` already set `line-tables-only`; the
 earlier baseline there was 5.91 s clean build, 5.14 s clean test build,
 1.42 s and 1.24 s incremental test builds for `cpl-check` and `cpl-ir`, and
 99.3 s for `cargo test --workspace`.

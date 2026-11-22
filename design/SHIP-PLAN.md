@@ -35,7 +35,7 @@ Each domain has an owner lane, a spec chapter, and a measurable bar.
 **Roles.**
 - **Me (architect/editor).** Own the spec, `decisions.md` and the friction queue; triage; write lane briefs; review
   every batch; only I change the spec. Bring Ryan only core-level decisions, one at a time, with options.
-- **Lane agents (child sessions).** One per domain lane, partitioned by crate so two agents never edit the same
+- **Lane agents.** One per domain lane, partitioned by crate so two agents never edit the same
   crate. Each gets a minimal brief (goal, spec chapters, tests to pass, files owned) to avoid context poisoning.
   They push to `main` behind `scripts/check.sh --fast`, rebasing first (repo convention).
 - **Port agents.** Waves of 4-5 sessions x 5-10 corpus problems. Each port: rethink the solution, write 0.3 code,
