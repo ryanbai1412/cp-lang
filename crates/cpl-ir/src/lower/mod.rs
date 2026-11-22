@@ -1360,6 +1360,7 @@ impl<'a> Lowerer<'a> {
                         if stmt.decorators.iter().any(|d| d.name.text == "test") && m != 0 {
                             continue;
                         }
+                        let decl = self.with_implicit_generics(decl, m);
                         if !decl.generics.is_empty() {
                             let gfid = self.gen_fns.len();
                             self.gen_fns.push(GenFnTemplate {
@@ -2013,6 +2014,55 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.product_factor_from_ord(&factors[idx].1, ord, span)
+    }
+
+    /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
+    /// is a type parameter of the fn (R02.10.3).
+    fn with_implicit_generics(&self, decl: &'a ast::FnDecl, m: usize) -> &'a ast::FnDecl {
+        if !decl.generics.is_empty() {
+            return decl;
+        }
+        let mut names = Vec::new();
+        for p in &decl.params {
+            if let Some(t) = &p.ty {
+                implicit_type_names(t, &mut names);
+            }
+        }
+        if let Some(t) = &decl.ret {
+            implicit_type_names(t, &mut names);
+        }
+        if names.is_empty() {
+            return decl;
+        }
+        let declared: HashSet<&str> = self
+            .mod_items(m)
+            .flat_map(|(_, stmt)| -> Vec<&str> {
+                match &stmt.kind {
+                    ast::StmtKind::Struct(d) => vec![d.name.text.as_str()],
+                    ast::StmtKind::Enum(d) => vec![d.name.text.as_str()],
+                    ast::StmtKind::Domain { name, .. }
+                    | ast::StmtKind::TypeAlias { name, .. }
+                    | ast::StmtKind::Trait { name, .. } => vec![name.text.as_str()],
+                    ast::StmtKind::Use { names, .. } => {
+                        names.iter().map(|n| n.text.as_str()).collect()
+                    }
+                    _ => vec![],
+                }
+            })
+            .collect();
+        names.retain(|n| !declared.contains(n.as_str()) && !self.mod_syms[m].contains_key(n));
+        if names.is_empty() {
+            return decl;
+        }
+        let mut implicit = decl.clone();
+        implicit.generics = names
+            .into_iter()
+            .map(|text| ast::Name {
+                text,
+                span: decl.name.span,
+            })
+            .collect();
+        Box::leak(Box::new(implicit))
     }
 
     /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
@@ -5594,5 +5644,36 @@ fn literal_ty(e: &ast::Expr) -> Ty {
         ast::ExprKind::Str(_) => Ty::Str,
         ast::ExprKind::Unary { expr, .. } | ast::ExprKind::Paren(expr) => literal_ty(expr),
         _ => Ty::Error,
+    }
+}
+
+fn implicit_type_names(ty: &ast::Type, out: &mut Vec<String>) {
+    match &ty.kind {
+        ast::TypeKind::Named { name, args } => {
+            if args.is_empty()
+                && name.text.len() == 1
+                && name.text.as_bytes()[0].is_ascii_uppercase()
+                && !out.contains(&name.text)
+            {
+                out.push(name.text.clone());
+            }
+            args.iter().for_each(|a| implicit_type_names(a, out));
+        }
+        ast::TypeKind::Array { index, elem } => {
+            index.iter().for_each(|a| implicit_type_names(a, out));
+            implicit_type_names(elem, out);
+        }
+        ast::TypeKind::OwnDomain { elem: t, .. }
+        | ast::TypeKind::Optional(t)
+        | ast::TypeKind::Yields(t) => implicit_type_names(t, out),
+        ast::TypeKind::Tuple(ts) => ts.iter().for_each(|a| implicit_type_names(a, out)),
+        ast::TypeKind::Record(fs) | ast::TypeKind::Row(fs) => {
+            fs.iter().for_each(|(_, a)| implicit_type_names(a, out))
+        }
+        ast::TypeKind::Fn { params, ret } => {
+            params.iter().for_each(|a| implicit_type_names(a, out));
+            implicit_type_names(ret, out);
+        }
+        _ => {}
     }
 }

@@ -66,7 +66,6 @@ const NOT_BUILT: &[&str] = &[
     "crates/cpl-cli/tests/cases/lend/slices.cp",
     "crates/cpl-cli/tests/cases/ok/at1.cp",
     "crates/cpl-cli/tests/cases/ok/do2.cp",
-    "crates/cpl-cli/tests/cases/ok/implicit_gen.cp",
     "crates/cpl-cli/tests/cases/ok/subset2.cp",
     "crates/cpl-cli/tests/cases/redteam/empty_slice_reduce.cp",
     "crates/cpl-cli/tests/cases/redteam/hashmap_sentinel.cp",
