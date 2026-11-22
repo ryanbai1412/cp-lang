@@ -17,6 +17,7 @@ use std.segtree.{SegTree}
 use std.algebra.{add}
 use std.seq.{dedup}
 use std.rand.{Rng}
+use std.dsu.{Dsu}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
@@ -1057,7 +1058,72 @@ pub struct Centroids<V>:
     /// ties: of two centroids in a piece, the one nearer the piece's root
     /// traps: when `next` is not a connected tree
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.root == 1 and cd.parent(2) == Some(0)`
-    pub fn new<N>(next: N) -> Centroids<V> = todo
+    pub fn new(next: Next<V>) -> Centroids<V>:
+        var adj: [V]List<V> = []
+        for u in V:
+            for a in next.out(u): adj[u].push(a.to)
+        var dead: [V]Bool = false
+        var cpar: [V]?V = None
+        var cdep: [V]Int = 0
+        var down: [V]List<(c: V, dist: Int, branch: V)> = []
+        var held: [V]List<V> = []
+        var from: [V]V = [V] v => v
+        var dist: [V]Int = 0
+        var via: [V]V = [V] v => v
+        var sz: [V]Int = 0
+        var root = V.nth(0)
+        var work: List<(v: V, p: ?V, d: Int)> = [(v: V.nth(0), p: None, d: 0)]
+        var next_job = 0
+        while next_job < work.len:
+            let job = work[next_job]
+            next_job += 1
+            from[job.v] = job.v
+            var comp = [job.v]
+            var i = 0
+            while i < comp.len:
+                let u = comp[i]
+                i += 1
+                for x in adj[u]:
+                    if not dead[x] and x != from[u]:
+                        from[x] = u
+                        comp.push(x)
+            for u in comp: sz[u] = 1
+            for j in (1..comp.len).rev: sz[from[comp[j]]] += sz[comp[j]]
+            var c = job.v
+            var moved = true
+            while moved:
+                moved = false
+                for x in adj[c]:
+                    if not moved and not dead[x] and x != from[c] and 2 * sz[x] > comp.len:
+                        c = x
+                        moved = true
+            cpar[c] = job.p
+            cdep[c] = job.d
+            if job.d == 0: root = c
+            from[c] = c
+            dist[c] = 0
+            via[c] = c
+            var ring = [c]
+            var k = 0
+            while k < ring.len:
+                let u = ring[k]
+                k += 1
+                down[u].push((c:, dist: dist[u], branch: via[u]))
+                held[c].push(u)
+                for x in adj[u]:
+                    if not dead[x] and x != from[u]:
+                        from[x] = u
+                        dist[x] = dist[u] + 1
+                        via[x] = if u == c: x else: via[u]
+                        ring.push(x)
+            dead[c] = true
+            for x in adj[c]:
+                if not dead[x]: work.push((v: x, p: Some(c), d: job.d + 1))
+        assert work.len == V.count, "`Centroids`: `next` is not a connected tree"
+        var anc: [V]List<(c: V, dist: Int, branch: V)> = []
+        for v in V:
+            for j in (0..down[v].len).rev: anc[v].push(down[v][j])
+        Centroids::<V>(root, cpar, [V] v => cdep[v], anc, held)
 
     /// The parent of centroid `c` in the centroid tree; `None` at `cd.root`.
     ///
@@ -2459,6 +2525,7 @@ pub struct KruskalTree<V, N, W>:
     leaf: [V]N
     /// The merging weight of each node; `None` at a leaf.
     w: [N]?W
+    lift: Lift<N, Int>
 
     /// The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds. The roots, one per
     /// component, are in increasing node order.
@@ -2474,7 +2541,7 @@ pub struct KruskalTree<V, N, W>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.reach(0, 4) == kt.leaf[0] and kt.w[kt.reach(1, 4)] == Some(3) and kt.w[kt.reach(1, 5)] == Some(5)`
-    pub fn reach(self, v: V, limit: W) -> N = todo
+    pub fn reach(self, v: V, limit: W) -> N = lift.climb(leaf[v], ok: x => w[x]! <= limit).at
 
     /// The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`,
     /// which gets the edge's key in the list given to `kruskal_tree`
@@ -2502,7 +2569,10 @@ pub struct KruskalTree<V, N, W>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.bottleneck(0, 2) == Some(5) and kt.bottleneck(1, 2) == Some(3) and kt.bottleneck(0, 0) == None`
-    pub fn bottleneck(self, a: V, b: V) -> ?W = todo
+    pub fn bottleneck(self, a: V, b: V) -> ?W:
+        if a == b: return None
+        if let c = lift.lca(leaf[a], leaf[b]): w[c]
+        else: None
 
 /// The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the
 /// same arguments as `std.graph.kruskal`; its nodes are a fresh domain bound by the caller:
@@ -2518,7 +2588,30 @@ pub struct KruskalTree<V, N, W>:
 /// ties: equal weights merge in edge key order, as `kruskal`
 /// traps: never
 /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 5 and kt.bottleneck(0, 2) == Some(5)`
-pub fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V, ..), w: E -> W) -> (domain N, KruskalTree<V, N, W>) = todo
+pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>):
+    var order = [e for e in E]
+    order.sort(by: e => w(e))
+    var dsu = Dsu<V>()
+    var top: [V]Int = [V] v => v.to_idx
+    var par: List<Int> = [-1 for _ in V]
+    var weight: List<?W> = [None for _ in V]
+    for e in order:
+        let r = edges[e]
+        let a = top[dsu.find(r.u)]
+        let b = top[dsu.find(r.v)]
+        if dsu.unite(r.u, r.v):
+            let x = par.len
+            par[a] = x
+            par[b] = x
+            par.push(-1)
+            weight.push(Some(w(e)))
+            top[dsu.find(r.u)] = x
+    domain N = 0..par.len
+    var up: [N]?(N, Int) = None
+    for x in N:
+        if par[x.to_idx] >= 0: up[x] = Some((N.nth(par[x.to_idx]), 0))
+    let lift = Lift(up, op: (a, b) => a + b, identity: 0)
+    (N, KruskalTree::<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], lift))
 
 /// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
@@ -2529,7 +2622,33 @@ pub fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V, ..), w: E -> W) -> (domain N
 /// traps: when `V` has fewer than two vertices, or `edges` is not a tree
 /// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
 /// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
-pub fn prufer<V>(edges: Tree<V>) -> List<V> = todo
+pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
+    assert V.count >= 2, "`prufer` needs at least two vertices"
+    assert E.count == V.count - 1, "`prufer`: `edges` is not a tree"
+    var adj: [V]List<V> = []
+    var deg: [V]Int = 0
+    for e in edges:
+        adj[e.u].push(e.v)
+        adj[e.v].push(e.u)
+        deg[e.u] += 1
+        deg[e.v] += 1
+    var out: List<V> = []
+    var at = 0
+    while deg[V.nth(at)] != 1: at += 1
+    var leaf = V.nth(at)
+    for _ in 0..V.count - 2:
+        deg[leaf] = 0
+        var nb = leaf
+        for x in adj[leaf]:
+            if deg[x] > 0: nb = x
+        out.push(nb)
+        deg[nb] -= 1
+        if deg[nb] == 1 and nb.to_idx < at: leaf = nb
+        else:
+            at += 1
+            while deg[V.nth(at)] != 1: at += 1
+            leaf = V.nth(at)
+    out
 
 /// The tree whose Prüfer code is `code`. Edges come in removal order as `(u: leaf, v:
 /// neighbour)`, the last joining the two vertices left, smaller first.
@@ -2538,4 +2657,26 @@ pub fn prufer<V>(edges: Tree<V>) -> List<V> = todo
 /// empty: `[]` with two vertices gives the one edge `(u: 0, v: 1)` in `V` order
 /// traps: when `code` does not have `V.count - 2` entries, or `V` has fewer than two vertices
 /// example: `domain V = 0..4; from_prufer<V>([1, 1]) == [(u: 0, v: 1), (u: 2, v: 1), (u: 1, v: 3)]`
-pub fn from_prufer<V>(code: List<V>) -> Tree<V> = todo
+pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
+    assert V.count >= 2 and code.len == V.count - 2, "`from_prufer` needs `V.count - 2` entries"
+    var deg: [V]Int = 1
+    for x in code: deg[x] += 1
+    var out: List<(u: V, v: V)> = []
+    var at = 0
+    while deg[V.nth(at)] != 1: at += 1
+    var leaf = V.nth(at)
+    for x in code:
+        out.push((u: leaf, v: x))
+        deg[leaf] = 0
+        deg[x] -= 1
+        if deg[x] == 1 and x.to_idx < at: leaf = x
+        else:
+            at += 1
+            while deg[V.nth(at)] != 1: at += 1
+            leaf = V.nth(at)
+    deg[leaf] = 0
+    var last = leaf
+    for v in V:
+        if deg[v] == 1: last = v
+    if leaf.to_idx < last.to_idx: out.push((u: leaf, v: last)) else: out.push((u: last, v: leaf))
+    [0..V.count - 1] i => out[i]

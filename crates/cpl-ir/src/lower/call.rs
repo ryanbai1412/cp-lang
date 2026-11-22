@@ -5543,15 +5543,17 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::Array { dims, .. }, "keys") if dims.len() == 1 => match dims[0] {
+                // The bounds are ends, not positions: `hi` is one past the last key
+                // and `lo` is no key at all when the domain is empty.
                 Dim::Pos(d) => {
                     let lo = self.mk(
-                        ExprKind::Cast(Cast::FromOrd(d), Box::new(self.int_lit(0, span))),
+                        ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
                         Ty::Pos(d),
                         span,
                     );
                     let hi = self.mk(
                         ExprKind::Cast(
-                            Cast::FromOrd(d),
+                            Cast::Trust,
                             Box::new(self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
                         ),
                         Ty::Pos(d),

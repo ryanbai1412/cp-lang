@@ -2909,6 +2909,7 @@ impl<'a> Lowerer<'a> {
                             | Ty::HashSet(_)
                             | Ty::Map(..)
                             | Ty::HashMap(..)
+                            | Ty::Struct(_)
                             | Ty::Array { .. }
                     ))
             {
@@ -2969,7 +2970,8 @@ impl<'a> Lowerer<'a> {
                 })
                 .collect();
             if let (ast::ExprKind::List(items), Some(lens)) = (&init.kind, lens) {
-                let holds_cells = !items.is_empty()
+                let holds_cells = (items.is_empty() && lens.len() == 1)
+                    || !items.is_empty()
                     && (lens.len() > 1
                         || !(matches!(elem_ty, Ty::List(_))
                             && items

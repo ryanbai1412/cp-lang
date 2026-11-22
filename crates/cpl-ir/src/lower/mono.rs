@@ -3073,7 +3073,12 @@ impl<'a> Lowerer<'a> {
                             Dim::Bound(did) => {
                                 self.unify_ast_ty(ix, &Ty::Bound(*did), tpl_mod, gen_names, env);
                             }
-                            Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => {}
+                            Dim::Enum(e) => {
+                                self.unify_ast_ty(ix, &Ty::Enum(*e), tpl_mod, gen_names, env);
+                            }
+                            Dim::Int | Dim::IntFrom(_) => {
+                                self.unify_ast_ty(ix, &Ty::Int, tpl_mod, gen_names, env);
+                            }
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
