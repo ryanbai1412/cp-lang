@@ -8,7 +8,7 @@
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
-use std.math.{gcd, mod_log, mod_sqrt, mul_mod}
+use std.math.{crt_all, factor, gcd, inv_mod, mod_log, mod_sqrt, mul_mod}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are O(1); `/` and `inv` are O(log P) and need `gcd(x, P) == 1`.
@@ -313,13 +313,41 @@ pub struct Barrett(m: Int, im: U64):
 
 /// O(p^e) build, O(log_p n) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
 pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
+    free: List<Int>
+
     /// Tables for binomial coefficients modulo `p^e`: the factorials with every factor of `p`
     /// removed, modulo `p^e`.
     ///
     /// cost: O(p^e) time and memory
     /// traps: when `p` is not prime, or `e < 1`, or `p^e` overflows `Int`
     /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
-    pub fn new(p: Int, e: Int) -> PrimePowerComb = todo
+    pub fn new(p: Int, e: Int) -> PrimePowerComb:
+        assert p >= 2 and e >= 1
+        assert factor(p) == [(p, 1)], "`PrimePowerComb(p, e)` needs a prime `p`"
+        var pe = 1
+        for _ in 0..e:
+            assert pe <= Int.MAX / p, "`p^e` overflows `Int`"
+            pe *= p
+        var free = List.filled(pe + 1, 1)
+        for i in 1..=pe: free[i] = if i % p == 0: free[i - 1] else: free[i - 1] * (i % pe) % pe
+        PrimePowerComb(p, e, pe, free)
+
+    fn free_fact(self, n: Int) -> Int:
+        var acc = 1
+        var m = n
+        while m > 0:
+            if (m / pe) % 2 == 1: acc = acc * free[pe] % pe
+            acc = acc * free[m % pe] % pe
+            m /= p
+        acc
+
+    fn p_count(self, n: Int) -> Int:
+        var c = 0
+        var m = n / p
+        while m > 0:
+            c += m
+            m /= p
+        c
 
     /// `C(n, k) mod p^e`, by Granville's generalization of Lucas's theorem; 0 when `k` is outside
     /// `0..=n`.
@@ -329,17 +357,27 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
     /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
     /// example: `PrimePowerComb(3, 2).choose(9, 3) == 3`
     /// example: `PrimePowerComb(3, 2).choose(5, 7) == 0`
-    pub fn choose(self, n: Int, k: Int) -> Int = todo
+    pub fn choose(self, n: Int, k: Int) -> Int:
+        if k < 0 or k > n: return 0
+        let c = self.p_count(n) - self.p_count(k) - self.p_count(n - k)
+        if c >= e: return 0
+        var r = self.free_fact(n) * inv_mod(self.free_fact(k) * self.free_fact(n - k) % pe, pe)! % pe
+        for _ in 0..c: r = r * p % pe
+        r
 
 /// O(sum p_i^e_i) build, O(omega(m) log n) query. Binomial coefficients modulo any `m >= 1` via CRT.
 pub struct ModComb(m: Int):
+    parts: List<PrimePowerComb>
+
     /// Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per
     /// prime power, combined by CRT.
     ///
     /// cost: O(sum p_i^e_i)
     /// traps: when `m < 1`
     /// example: `ModComb(12).choose(6, 3) == 8`
-    pub fn new(m: Int) -> ModComb = todo
+    pub fn new(m: Int) -> ModComb:
+        assert m >= 1, "`ModComb(m)` needs `m >= 1`"
+        ModComb(m, [PrimePowerComb.new(q, k) for (q, k) in factor(m)])
 
     /// `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.
     ///
@@ -350,7 +388,9 @@ pub struct ModComb(m: Int):
     /// example: `ModComb(12).choose(6, 3) == 8`
     /// example: `ModComb(10).choose(5, 2) == 0`
     /// example: `ModComb(1).choose(5, 2) == 0`
-    pub fn choose(self, n: Int, k: Int) -> Int = todo
+    pub fn choose(self, n: Int, k: Int) -> Int:
+        if m == 1 or k < 0 or k > n: return 0
+        crt_all([(q.choose(n, k), q.pe) for q in parts])!.0
 
 @test
 fn values_stay_reduced():
