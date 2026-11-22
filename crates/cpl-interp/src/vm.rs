@@ -6887,10 +6887,13 @@ impl<'p, 'io> Interp<'p, 'io> {
                 self.trace_assigned_local(slot, init.span);
             }
             TracePoint::Assign(place) => {
-                let mut indices = Vec::new();
+                let mut indices = std::mem::take(&mut self.trace_indices);
+                indices.clear();
                 if self.indices(place, &mut indices).is_ok() {
                     self.trace_change(place, &indices);
                 }
+                indices.clear();
+                self.trace_indices = indices;
                 self.trace_assigned(place);
             }
             TracePoint::Loop(slot, span) => {

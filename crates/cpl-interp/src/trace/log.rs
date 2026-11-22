@@ -484,19 +484,28 @@ impl Log {
     }
 
     /// A step ends: its changes are the ones made since the last.
-    pub fn step(&mut self, line: u32, frame: Option<u32>, stage: u32, note: Note) {
+    pub fn step(
+        &mut self,
+        line: u32,
+        frame: Option<u32>,
+        stage: u32,
+        label: Option<String>,
+        checkpoint: Option<String>,
+        focus: Option<(usize, &[usize])>,
+    ) {
         let at = self.entries.len() as u32;
-        let mut note = note;
+        let mut focus = focus;
         let mut line = line;
-        if let Some((var, path)) = &note.focus {
+        if let Some((var, path)) = focus {
             let item = self.item_written(self.changes_start(at as usize)..self.changes.len());
-            if path.len() == 1 && item == Some((*var, path[0])) {
-                note.focus = None;
+            if path.len() == 1 && item == Some((var, path[0])) {
+                focus = None;
                 line |= ITEM_FOCUS;
             }
         }
-        if note.label.is_some() || note.checkpoint.is_some() || note.focus.is_some() {
-            self.notes.push((at, note));
+        if label.is_some() || checkpoint.is_some() || focus.is_some() {
+            let focus = focus.map(|(var, path)| (var, path.to_vec()));
+            self.notes.push((at, Note { label, checkpoint, focus }));
         }
         if stage != self.now.stage || at == 0 {
             self.push(Delta::Stage(stage));

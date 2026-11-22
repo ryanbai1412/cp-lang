@@ -724,7 +724,7 @@ impl Tracer {
         span: Span,
         label: Option<String>,
         checkpoint: Option<&str>,
-        focus: Option<(usize, Vec<usize>)>,
+        focus: Option<(usize, &[usize])>,
     ) {
         if !self.recording(view.depth) {
             return;
@@ -814,7 +814,7 @@ impl Tracer {
         span: Span,
         label: Option<String>,
         checkpoint: Option<&str>,
-        focus: Option<(usize, Vec<usize>)>,
+        focus: Option<(usize, &[usize])>,
     ) {
         let line = self.line(span).max(1);
         let focus = focus.and_then(|(global, path)| {
@@ -833,7 +833,7 @@ impl Tracer {
             self.rec.log.frame(&stack)
         });
         let stage = self.stage_id();
-        self.rec.log.step(line, frame, stage, log::Note { label, checkpoint, focus });
+        self.rec.log.step(line, frame, stage, label, checkpoint, focus);
         if let Some(limit) = self.last_steps.filter(|&limit| limit > 0) {
             if self.rec.log.len() >= 2 * limit {
                 self.rec.log.keep_last(limit);
@@ -945,7 +945,7 @@ impl Tracer {
     }
 
     /// A part of global `id` changed (e.g. an array cell or struct field).
-    pub fn changed(&mut self, id: usize, view: &View, span: Span, path: Vec<usize>) {
+    pub fn changed(&mut self, id: usize, view: &View, span: Span, path: &[usize]) {
         self.touch(id, (path.len() == 1).then(|| path[0]));
         if !self.watched(&view.program.globals[id].name) {
             return;

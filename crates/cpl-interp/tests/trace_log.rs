@@ -138,6 +138,22 @@ fn a_step_changing_one_int_local_logs_only_that_local() {
     assert_eq!(kept[kept.len() - 500..], walked[walked.len() - 500..]);
 }
 
+const GRID: &str = "\
+var g: [0..4, 0..4]Int = 0
+for i in 0..4:
+    g[i, 3 - i] = i + 1
+print(g[0, 3])
+";
+
+/// A write to a cell of a grid focuses the step on that cell.
+#[test]
+fn a_grid_write_focuses_its_cell() {
+    let rec = record(GRID, "", TraceConfig::default());
+    let g = rec.vars.iter().position(|v| v.id == "g").expect("g is traced");
+    let focused: Vec<(usize, Vec<usize>)> = rec.steps(0..rec.len()).filter_map(|s| s.focus).collect();
+    assert_eq!(focused, (0..4).map(|i| (g, vec![i, 3 - i])).collect::<Vec<_>>());
+}
+
 const CELLS: &str = "\
 var a: [0..8]Int = 0
 for i in 0..2000:

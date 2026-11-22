@@ -404,6 +404,8 @@ fn run_io(
         #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
+        trace_indices: Vec::new(),
+        trace_path: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
@@ -646,6 +648,9 @@ struct Interp<'p, 'o> {
     vm_pool_v: Vec<Vec<Value>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
+    /// The indices of the place a trace point writes, kept between steps.
+    trace_indices: Vec<Value>,
+    trace_path: Vec<usize>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
     #[cfg(not(target_arch = "wasm32"))]
     vm_stats: Option<vm::VmStats>,
@@ -896,12 +901,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             let id = *id;
             return self.traced(|tracer, view| tracer.declared(id, view, place.span));
         }
-        let path: Vec<usize> = indices
-            .iter()
-            .take(leading_indices(place))
-            .map(|index| index.int().max(0) as usize)
-            .collect();
-        self.traced(|tracer, view| tracer.changed(global, view, place.span, path));
+        let mut path = std::mem::take(&mut self.trace_path);
+        path.clear();
+        path.extend(indices.iter().take(leading_indices(place)).map(|index| index.int().max(0) as usize));
+        self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
+        self.trace_path = path;
     }
 
     fn assignments(&self) -> bool {
