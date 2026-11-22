@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1229 (296 passing). Rules: 521.
+Cases: 1230 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 1229 (296 passing). Rules: 521.
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 81 cases; 0 uncovered, 7 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
-- R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
+- R09 (09-contexts-checks.md): 25 rules, 33 cases; 4 uncovered, 5 happy-path only, 3 negative only
 - R10 (10-io.md): 16 rules, 43 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -494,7 +494,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
 - R09.1.3 [2+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
 - R09.1.4 [0+ 0-] **uncovered**: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
-- R09.1.5 [1+ 0-] *happy-path only*: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
+- R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [0+ 1-] *negative only*: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
 - R09.2.2 [0+ 0-] **uncovered**: | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless ...
 - R09.2.3 [1+ 0-] *happy-path only*: **Checks never call user code.** A checked build makes exactly the calls to user functions...
@@ -678,7 +678,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: **no case**
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
-- L0001 Unknown lint name: 1 case(s)
+- L0001 Unknown lint name: 2 case(s)
 - L0101 Position arithmetic via `.ord`: 1 case(s)
 - L0201 Mutable binding never reassigned: 1 case(s)
 - L0202 Struct field never read: 1 case(s)
