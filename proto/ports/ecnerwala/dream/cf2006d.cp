@@ -11,14 +11,11 @@ let side = read<[P]1..=k>().map(b => if b <= k.isqrt: Small(Level(b)) else: Big(
 var small, big: [Level]Int = 0
 small[1] += 1
 let days = read<[q]P.closed_ranges>()
-print(days.mo(
-    step: (i, d) =>
-        match side[i]:
-            Small(l) => small[l] += d
-            Big(l) => big[l] += d
-    ,
-    answer: w =>
-        let (need, have) = (big.scan(+), small.scan(+))
-        Level.range.map(l => (need[l] - have[l] + (w.len + 1 > need[l] + have[l]).int + 1) / 2).max() ?? 0
-    ,
-))
+fn step(i: P, d: Int):
+    match side[i]:
+        Small(l) => small[l] += d
+        Big(l) => big[l] += d
+fn answer(w: Range<P>) -> Int:
+    let (need, have) = (big.scan(+), small.scan(+))
+    Level.range.map(l => (need[l] - have[l] + (w.len + 1 > need[l] + have[l]).int + 1) / 2).max() ?? 0
+print(days.mo(step: step, answer: answer))

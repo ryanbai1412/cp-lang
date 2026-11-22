@@ -32,8 +32,8 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
  * and `Counter` (what `counts` returns) are left out: neither is written by name.
  */
 export const PRELUDE_TYPES: readonly string[] = [
-    'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'HashSet', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
-    'Range', 'Set', 'SortedRange', 'Str', 'Subset', 'Sym', 'U64',
+    'Bool', 'Char', 'Cut', 'F64', 'HashMap', 'HashSet', 'I128', 'Indexed', 'Int', 'Interactor', 'Iter',
+    'List', 'Map', 'Range', 'Seq', 'Set', 'SortedRange', 'Str', 'Subset', 'Sym', 'U64',
 ];
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */

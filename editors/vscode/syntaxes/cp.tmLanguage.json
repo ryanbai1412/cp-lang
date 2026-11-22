@@ -369,7 +369,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.cp",
-          "match": "\\b(Bool|Bounds|Char|F64|HashMap|HashSet|I128|Int|Interactor|Iter|List|Map|Range|Set|SortedRange|Str|Subset|Sym|U64)\\b"
+          "match": "\\b(Bool|Char|Cut|F64|HashMap|HashSet|I128|Indexed|Int|Interactor|Iter|List|Map|Range|Seq|Set|SortedRange|Str|Subset|Sym|U64)\\b"
         },
         {
           "name": "support.type.stdlib.cp",
