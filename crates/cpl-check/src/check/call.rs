@@ -1217,6 +1217,44 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                if let ExprKind::Name(fname) = &callee.kind {
+                    if let Some(Def::Fn { row_bounds, .. }) = self.global(fname).as_deref().cloned() {
+                        for (param, req_fields) in row_bounds {
+                            let Some(actual) = bindings.get(&param) else {
+                                continue;
+                            };
+                            match actual {
+                                Ty::Record(actual_fs) => {
+                                    for (req_name, req_ty) in &req_fields {
+                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                                        match found {
+                                            Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
+                                            _ => {
+                                                self.error(
+                                                    cpl_diag::Code("E0704"),
+                                                    call.span,
+                                                    format!(
+                                                        "record `{actual}` does not satisfy row bound for `{param}`: missing or incompatible field `{req_name}: {req_ty}`"
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                Ty::Error | Ty::Unknown | Ty::Param(_) => {}
+                                other => {
+                                    self.error(
+                                        cpl_diag::Code("E0704"),
+                                        call.span,
+                                        format!(
+                                            "row bound on `{param}` requires a record, found `{other}`"
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
                 self.settle(&ret.subst(&bindings))
             }
             Ty::Named {

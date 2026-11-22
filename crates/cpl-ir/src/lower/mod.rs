@@ -2478,6 +2478,19 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
             ast::TypeKind::ConstrainedStr(_) => Spec::Plain(Ty::Str),
+            ast::TypeKind::Row(_) => Spec::Plain(Ty::Error),
+            ast::TypeKind::RowWithout { base, removed } => {
+                let bty = self.resolve_ty(base);
+                let ty = match bty {
+                    Ty::Record(fs) => Ty::Record(
+                        fs.into_iter()
+                            .filter(|(n, _)| !removed.iter().any(|r| r.text == *n))
+                            .collect(),
+                    ),
+                    other => other,
+                };
+                Spec::Plain(ty)
+            }
             ast::TypeKind::LiteralUnion(lits) => {
                 let ty = match lits.first().map(|s| s.as_str()) {
                     Some(s) if s.starts_with('\'') => Ty::Char,

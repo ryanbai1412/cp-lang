@@ -456,6 +456,34 @@ impl<'a> Lowerer<'a> {
                 }
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
+            ast::ExprKind::Without { base, removed } => {
+                let b = self.expr(base, None);
+                match b.ty.clone() {
+                    Ty::Record(fs) => {
+                        let slot = self.temp(b.ty.clone());
+                        let mut stmts = vec![Stmt::Let(slot, Some(b))];
+                        let mut kept_tys = Vec::new();
+                        let mut kept_vals = Vec::new();
+                        for (idx, (fname, fty)) in fs.into_iter().enumerate() {
+                            if removed.iter().any(|r| r.text == fname) {
+                                continue;
+                            }
+                            let base_ref = self.local(slot, span);
+                            kept_vals.push(self.mk(
+                                ExprKind::Field(Box::new(base_ref), idx),
+                                fty.clone(),
+                                span,
+                            ));
+                            kept_tys.push((fname, fty));
+                        }
+                        let out_ty = Ty::Record(kept_tys);
+                        let res = self.mk(ExprKind::Tuple(kept_vals), out_ty.clone(), span);
+                        stmts.push(Stmt::Give(res));
+                        self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
+                    }
+                    _ => b,
+                }
+            }
             ast::ExprKind::With { base, updates } => self.do_expr(hint, span, |lw, out| {
                 let base_val = lw.expr(base, hint);
                 let ty = base_val.ty.clone();

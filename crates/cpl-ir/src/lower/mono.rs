@@ -3632,6 +3632,8 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         | ast::TypeKind::LiteralUnion(_)
         | ast::TypeKind::Infer
         | ast::TypeKind::Error => false,
+        ast::TypeKind::Row(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
+        ast::TypeKind::RowWithout { base, .. } => type_names(base, name),
     }
 }
 

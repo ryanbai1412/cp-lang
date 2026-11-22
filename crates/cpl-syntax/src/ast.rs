@@ -418,6 +418,11 @@ pub enum ExprKind {
         base: Box<Expr>,
         updates: Vec<(Name, Expr)>,
     },
+    /// `(..e without (u, v))`.
+    Without {
+        base: Box<Expr>,
+        removed: Vec<Name>,
+    },
     /// Postfix `?`.
     Try(Box<Expr>),
     /// Postfix `!`: the value of an optional that is known to be there.
@@ -643,6 +648,13 @@ pub enum TypeKind {
     /// `domain P` in a returned tuple, `-> (domain P, [P]Int)`: an
     /// existential fresh domain bound for later elements of the tuple.
     DomainBinder(Name),
+    /// `(lo: Int, hi: Int, ..)`: open row bound on a record type parameter.
+    Row(Vec<(Name, Type)>),
+    /// `(..R without (u, v))`: record type with named fields removed.
+    RowWithout {
+        base: Box<Type>,
+        removed: Vec<Name>,
+    },
     /// `Str of "01"`: string whose characters belong to the given alphabet.
     ConstrainedStr(String),
     /// `'+' | '-'`: finite union of literal values.

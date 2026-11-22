@@ -27,6 +27,7 @@ pub enum Def {
         generics: Vec<String>,
         bounds: Vec<(String, Vec<String>)>,
         lends: bool,
+        row_bounds: Vec<(String, Vec<(String, Ty)>)>,
     },
     Struct {
         generics: Vec<String>,
@@ -208,11 +209,12 @@ impl Def {
     /// (`let a: [V1..=n = read()`), which nothing downstream can trust.
     pub fn recovered(self, annotation_broken: bool) -> Def {
         match self {
-            Def::Fn { generics, bounds, lends, .. } => Def::Fn {
+            Def::Fn { generics, bounds, lends, row_bounds, .. } => Def::Fn {
                 ty: Ty::Error,
                 generics,
                 bounds,
                 lends,
+                row_bounds,
             },
             Def::Value { mutable, keyword, generics, settled, .. } if annotation_broken => Def::Value {
                 ty: Ty::Error,

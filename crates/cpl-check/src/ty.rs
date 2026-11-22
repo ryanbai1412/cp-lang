@@ -33,6 +33,7 @@ pub enum Ty {
     Optional(Box<Ty>),
     Tuple(Vec<Ty>),
     Record(Vec<(String, Ty)>),
+    RowWithout(Box<Ty>, Vec<String>),
     /// A struct, enum, type parameter or library type: `Road`, `List<Int>`.
     Named {
         name: String,
@@ -172,6 +173,7 @@ impl Ty {
             Ty::Optional(t) => t.has_vague(),
             Ty::Tuple(ts) => ts.iter().any(Ty::has_vague),
             Ty::Record(fs) => fs.iter().any(|(_, t)| t.has_vague()),
+            Ty::RowWithout(base, _) => base.has_vague(),
             Ty::Named { args, .. } => args.iter().any(Ty::has_vague),
             Ty::Fn { params, ret } => params.iter().any(|p| p.ty.has_vague()) || ret.has_vague(),
             _ => false,
@@ -187,6 +189,7 @@ impl Ty {
             Ty::Optional(t) => t.has_error(),
             Ty::Tuple(ts) => ts.iter().any(Ty::has_error),
             Ty::Record(fs) => fs.iter().any(|(_, t)| t.has_error()),
+            Ty::RowWithout(base, _) => base.has_error(),
             Ty::Named { args, .. } => args.iter().any(Ty::has_error),
             Ty::Fn { params, ret } => params.iter().any(|p| p.ty.has_error()) || ret.has_error(),
             _ => false,
@@ -262,6 +265,9 @@ impl Ty {
                             .is_some_and(|(_, at)| at.fits_in(bt, number))
                     })
                 }
+            }
+            (Ty::RowWithout(a, ra), Ty::RowWithout(b, rb)) => {
+                ra == rb && a.fits_in(b, number)
             }
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
@@ -368,6 +374,14 @@ impl Ty {
                     .map(|(name, t)| (name.clone(), t.map(leaf)))
                     .collect(),
             ),
+            Ty::RowWithout(base, removed) => match base.map(leaf) {
+                Ty::Record(fs) => Ty::Record(
+                    fs.into_iter()
+                        .filter(|(n, _)| !removed.iter().any(|r| r == n))
+                        .collect(),
+                ),
+                other => Ty::RowWithout(Box::new(other), removed.clone()),
+            },
             Ty::Named { name, args } => Ty::Named {
                 name: name.clone(),
                 args: args.iter().map(|t| t.map(leaf)).collect(),
@@ -441,6 +455,7 @@ impl Ty {
                     ty.collect_domains(out);
                 }
             }
+            Ty::RowWithout(base, _) => base.collect_domains(out),
             Ty::Named { args, .. } => {
                 for arg in args {
                     arg.collect_domains(out);
@@ -674,6 +689,9 @@ impl fmt::Display for Ty {
                     write!(f, "{name}: {ty}")?;
                 }
                 f.write_str(")")
+            }
+            Ty::RowWithout(base, removed) => {
+                write!(f, "(..{base} without ({}))", removed.join(", "))
             }
             Ty::Named { name, args } => {
                 let shown = match name.as_str() {

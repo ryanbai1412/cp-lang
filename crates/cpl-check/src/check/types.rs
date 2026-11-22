@@ -133,6 +133,37 @@ impl<'a> Checker<'a> {
             },
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
             TypeKind::ConstrainedStr(_) => Ty::Str,
+            TypeKind::Row(fields) => Ty::Record(
+                fields
+                    .iter()
+                    .map(|(n, t)| (n.text.clone(), self.resolve_type(t)))
+                    .collect(),
+            ),
+            TypeKind::RowWithout { base, removed } => {
+                let base_ty = self.resolve_type(base);
+                let rem_names: Vec<String> = removed.iter().map(|n| n.text.clone()).collect();
+                if let Ty::Param(p) = &base_ty {
+                    if let Some(req) = self.row_bounds.get(p).cloned() {
+                        for r in removed {
+                            if !req.iter().any(|(fnm, _)| fnm == &r.text) {
+                                self.error(
+                                    codes::UNKNOWN_FIELD,
+                                    r.span,
+                                    format!("row `{p}` has no named field `{}` to remove", r.text),
+                                );
+                            }
+                        }
+                    }
+                }
+                match base_ty {
+                    Ty::Record(fs) => Ty::Record(
+                        fs.into_iter()
+                            .filter(|(n, _)| !rem_names.iter().any(|r| r == n))
+                            .collect(),
+                    ),
+                    other => Ty::RowWithout(Box::new(other), rem_names),
+                }
+            }
             TypeKind::LiteralUnion(lits) => match lits.first().map(|s| s.as_str()) {
                 Some(s) if s.starts_with('\'') => Ty::Char,
                 Some(s) if s.starts_with('"') => Ty::Str,
@@ -896,6 +927,18 @@ impl<'a> Checker<'a> {
                         },
                     ));
                 }
+                let mut row_bounds = Vec::new();
+                for b in &f.bounds {
+                    for t in &b.traits {
+                        if let TypeKind::Row(fields) = &t.kind {
+                            let resolved = fields
+                                .iter()
+                                .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                                .collect();
+                            row_bounds.push((b.name.text.clone(), resolved));
+                        }
+                    }
+                }
                 out.push((
                     f.name.text.clone(),
                     Def::Fn {
@@ -903,6 +946,7 @@ impl<'a> Checker<'a> {
                         generics: f.generics.iter().map(|g| g.text.clone()).collect(),
                         bounds: extract_bounds(&f.bounds),
                         lends: f.lends.is_some(),
+                        row_bounds,
                     },
                 ));
                 out

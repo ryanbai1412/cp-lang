@@ -304,6 +304,12 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
         | TypeKind::LiteralUnion(_)
         | TypeKind::Infer
         | TypeKind::Error => {}
+        TypeKind::Row(fields) => {
+            for (_, t) in fields {
+                walk_ty(v, t);
+            }
+        }
+        TypeKind::RowWithout { base, .. } => walk_ty(v, base),
     }
 }
 
@@ -442,6 +448,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
                 walk_expr(v, value);
             }
         }
+        ExprKind::Without { base, .. } => walk_expr(v, base),
     }
 }
 

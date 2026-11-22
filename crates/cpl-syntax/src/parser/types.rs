@@ -98,7 +98,19 @@ impl<'a> Parser<'a> {
             }
             T::LParen => {
                 self.bump();
-                if self.at(T::Domain) {
+                if self.eat(T::DotDot) {
+                    let base = Box::new(self.ty());
+                    let mut removed = Vec::new();
+                    if self.at_ident("without") {
+                        self.bump();
+                        self.expect(T::LParen, "`(` and the removed field names after `without`");
+                        removed = self.comma_list(T::RParen, "the removed fields", |p| {
+                            p.expect_name("a field name")
+                        });
+                    }
+                    self.expect(T::RParen, "`)`");
+                    TypeKind::RowWithout { base, removed }
+                } else if self.at(T::Domain) {
                     enum Item {
                         Dom(Name, Span),
                         Named(Name, Type),
@@ -161,12 +173,27 @@ impl<'a> Parser<'a> {
                         TypeKind::Tuple(tys)
                     }
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
-                    let fields = self.comma_list(T::RParen, "the record type", |p| {
-                        let name = p.expect_name("a field name");
-                        p.expect(T::Colon, "`:` after the field name");
-                        (name, p.ty())
-                    });
-                    TypeKind::Record(fields)
+                    let mut fields = Vec::new();
+                    let mut open = false;
+                    while !self.at(T::RParen) && !self.at(T::Eof) {
+                        if self.eat(T::DotDot) {
+                            open = true;
+                            self.eat(T::Comma);
+                            break;
+                        }
+                        let name = self.expect_name("a field name");
+                        self.expect(T::Colon, "`:` after the field name");
+                        fields.push((name, self.ty()));
+                        if !self.eat(T::Comma) {
+                            break;
+                        }
+                    }
+                    self.expect(T::RParen, "`)`");
+                    if open {
+                        TypeKind::Row(fields)
+                    } else {
+                        TypeKind::Record(fields)
+                    }
                 } else {
                     let mut items = self.comma_list(T::RParen, "the tuple type", Self::ty);
                     if self.eat(T::Arrow) {

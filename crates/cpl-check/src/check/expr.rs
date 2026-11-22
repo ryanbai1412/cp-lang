@@ -675,6 +675,32 @@ impl<'a> Checker<'a> {
                 }
                 ty
             }
+            ExprKind::Without { base, removed } => {
+                let base_ty = self.infer(base);
+                let rem_names: Vec<String> = removed.iter().map(|n| n.text.clone()).collect();
+                match base_ty {
+                    Ty::Record(fs) => Ty::Record(
+                        fs.into_iter()
+                            .filter(|(n, _)| !rem_names.iter().any(|r| r == n))
+                            .collect(),
+                    ),
+                    Ty::Param(p) => {
+                        if let Some(req) = self.row_bounds.get(&p).cloned() {
+                            for r in removed {
+                                if !req.iter().any(|(fnm, _)| fnm == &r.text) {
+                                    self.error(
+                                        codes::UNKNOWN_FIELD,
+                                        r.span,
+                                        format!("row `{p}` has no named field `{}` to remove", r.text),
+                                    );
+                                }
+                            }
+                        }
+                        Ty::RowWithout(Box::new(Ty::Param(p)), rem_names)
+                    }
+                    other => other,
+                }
+            }
             ExprKind::Try(inner) if self.branch > 0 => {
                 let inner_text = self.quote(inner.span);
                 let message = format!(
@@ -1723,6 +1749,19 @@ impl<'a> Checker<'a> {
     fn member_ty(&mut self, expr: &Expr, name: &ast::Name, base_ty: Ty) -> Ty {
         if name.text.is_empty() {
             return Ty::Error;
+        }
+        if let Ty::Param(p) = &base_ty {
+            if let Some(req) = self.row_bounds.get(p).cloned() {
+                if let Some((_, fty)) = req.iter().find(|(fnm, _)| fnm == &name.text) {
+                    return fty.clone();
+                }
+                self.error(
+                    codes::UNKNOWN_FIELD,
+                    name.span,
+                    format!("row `{p}` does not name field `{}`", name.text),
+                );
+                return Ty::Error;
+            }
         }
         // `tree.Pre`: the domain a value owns, named by the type
         // parameter it fills.

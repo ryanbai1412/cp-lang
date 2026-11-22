@@ -991,15 +991,28 @@ impl<'a> Parser<'a> {
                 self.bump();
                 if self.eat(T::DotDot) {
                     let base = self.expr();
-                    let updates = if self.eat(T::Comma) {
-                        self.comma_list(T::RParen, "the record update", Self::record_field)
-                    } else {
+                    if self.at_ident("without") {
+                        self.bump();
+                        self.expect(T::LParen, "`(` and the removed field names after `without`");
+                        let removed = self.comma_list(T::RParen, "the removed fields", |p| {
+                            p.expect_name("a field name")
+                        });
                         self.expect(T::RParen, "`)`");
-                        Vec::new()
-                    };
-                    ExprKind::With {
-                        base: Box::new(base),
-                        updates,
+                        ExprKind::Without {
+                            base: Box::new(base),
+                            removed,
+                        }
+                    } else {
+                        let updates = if self.eat(T::Comma) {
+                            self.comma_list(T::RParen, "the record update", Self::record_field)
+                        } else {
+                            self.expect(T::RParen, "`)`");
+                            Vec::new()
+                        };
+                        ExprKind::With {
+                            base: Box::new(base),
+                            updates,
+                        }
                     }
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
                     let fields = self.comma_list(T::RParen, "the record", Self::record_field);

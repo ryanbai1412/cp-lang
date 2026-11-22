@@ -170,6 +170,7 @@ pub(crate) struct Checker<'a> {
     pub(crate) cached_fields: Vec<String>,
     /// Variables/params constrained to a finite literal union (`'+' | '-'`).
     pub(crate) lit_unions: HashMap<String, Vec<String>>,
+    pub(crate) row_bounds: HashMap<String, Vec<(String, Ty)>>,
 }
 
 pub(crate) struct Checked {
@@ -223,6 +224,7 @@ impl<'a> Checker<'a> {
             local_fn_captures: Vec::new(),
             cached_fields: Vec::new(),
             lit_unions: HashMap::new(),
+            row_bounds: HashMap::new(),
         }
     }
 

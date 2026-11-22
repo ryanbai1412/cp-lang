@@ -1768,6 +1768,9 @@ impl<'a> Checker<'a> {
     fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
         for bound in bounds {
             for trait_ty in &bound.traits {
+                if matches!(trait_ty.kind, ast::TypeKind::Row(_)) {
+                    continue;
+                }
                 self.trait_exists(trait_ty);
             }
         }
@@ -2022,8 +2025,27 @@ impl<'a> Checker<'a> {
         local: bool,
         memo: Option<(Span, bool)>,
     ) {
+        let saved_row_bounds = self.row_bounds.clone();
+        let outer_for_row = self.generics.len();
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
+        for b in &f.bounds {
+            for t in &b.traits {
+                if let ast::TypeKind::Row(fields) = &t.kind {
+                    let resolved = fields
+                        .iter()
+                        .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                        .collect();
+                    self.row_bounds.insert(b.name.text.clone(), resolved);
+                }
+            }
+        }
+        self.generics.truncate(outer_for_row);
         let sig = self.fn_sig(f, self_ty);
-        let Ty::Fn { params, ret } = &sig else { return };
+        let Ty::Fn { params, ret } = &sig else {
+            self.row_bounds = saved_row_bounds;
+            return;
+        };
         if local {
             self.declare(&f.name.text, f.name.span, sig.clone(), false, "fn");
         } else {
@@ -2203,6 +2225,7 @@ impl<'a> Checker<'a> {
         self.in_fn -= 1;
         self.generics.truncate(outer);
         self.param_bounds.truncate(outer_bounds);
+        self.row_bounds = saved_row_bounds;
     }
 }
 
