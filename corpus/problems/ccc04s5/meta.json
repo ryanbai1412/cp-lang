@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ccc04s5/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_19/ccc04s5.cp",
    "proto/ports/scout_batch_19/today/ccc04s5.cp"
@@ -19,7 +22,7 @@
   "grid"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Per-column generator reach() + chain + filter_map + max; input ends at '0 0' (multitest has only count/until_eof, a while loop is fine)."
 }

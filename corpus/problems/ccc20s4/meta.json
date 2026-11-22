@@ -22,6 +22,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ccc20s4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_33/ccc20s4.cp"
   ],
@@ -35,7 +38,7 @@
   "strings"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Prefix counts over s + s per letter; a [3, 3] mismatch matrix; 2-cycles then 3-cycles."
 }

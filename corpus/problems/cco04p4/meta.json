@@ -16,6 +16,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco04p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_3/cco04p4.cp",
    "proto/ports/scout_batch_3/today/cco04p4.cp"
@@ -29,7 +32,7 @@
   "geometry"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Pt walkers stepping through one lcm period; sign() returns Sign so Int(sign(d)) is needed (minor friction)."
 }
