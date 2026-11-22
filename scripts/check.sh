@@ -343,13 +343,14 @@ else
     cache_save site_bundle
 fi
 
-step "docs gate + site tests (in parallel)"
+step "docs gate, then site tests"
 if cache_hit docs_site; then
     echo "cached (tree unchanged outside its excludes)"
 else
+    # test_site rebuilds site/_build (bundle.bundle()), which check_docs reads, so it starts after.
+    python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
     CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
     site_test_pid=$!
-    python3 site/check_docs.py || { kill "$site_test_pid" 2>/dev/null || true; fail "docs gate failed; rerun: python3 site/check_docs.py"; }
     site_test_status=0
     wait "$site_test_pid" || site_test_status=1
     site_test_pid=""
