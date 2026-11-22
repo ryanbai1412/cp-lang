@@ -91,7 +91,7 @@ fn every_planned_feature_cites_a_section_of_the_design() {
         let doc = fs::read_to_string(root.join(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
         assert!(
             doc.lines()
-                .any(|l| l.starts_with('#') && l.contains(&format!(" {section} "))),
+                .any(|l| l.starts_with('#') && format!("{l} ").contains(&format!(" {section} "))),
             "{path} has no section {section}"
         );
     }

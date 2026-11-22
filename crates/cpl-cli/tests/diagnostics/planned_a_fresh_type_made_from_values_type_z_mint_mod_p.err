@@ -1,4 +1,4 @@
-error[E0504]: not implemented yet: a fresh type made from values, `type Z = Mint(mod: p)` (see design/spec/12-scoped-types.md §12.1)
+error[E0504]: not implemented yet: a fresh type made from values, `type Z = Mint(mod: p)` (see spec/core/02-values-types.md §2.9)
   --> planned_a_fresh_type_made_from_values_type_z_mint_mod_p.cp:1:10
   |
 1 | type Z = Mint(mod: 998244353)

@@ -1,4 +1,4 @@
-error[E0504]: not implemented yet: a domain used as a value, `f(D)` (see design/spec/21-index-spaces.md §21.5)
+error[E0504]: not implemented yet: a domain used as a value, `f(D)` (see spec/core/02-values-types.md §2.9)
   --> planned_a_domain_used_as_a_value_f_d.cp:3:9
   |
 3 | print(f(D))
