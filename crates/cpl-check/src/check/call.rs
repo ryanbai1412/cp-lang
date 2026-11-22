@@ -563,6 +563,15 @@ impl<'a> Checker<'a> {
             ("max" | "min", [Ty::Array { elem, .. }]) if is_slice(&args[0].value) => {
                 Some(Ty::Optional(Box::new(elem.widen())))
             }
+            ("max" | "min", [first, rest @ ..]) if !rest.is_empty() => {
+                if tys.iter().all(|t| t == first) && !matches!(first, Ty::Unknown | Ty::Error) {
+                    Some(first.clone())
+                } else if tys.iter().all(Ty::is_int) {
+                    Some(Ty::Int)
+                } else {
+                    None
+                }
+            }
             ("minmax", [a, b]) => {
                 let elem = if *a == Ty::Unknown { b.clone() } else { a.clone() };
                 Some(Ty::Tuple(vec![elem.clone(), elem]))

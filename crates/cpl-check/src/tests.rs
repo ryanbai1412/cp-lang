@@ -3432,6 +3432,13 @@ fn a_prelude_call_hovers_its_doc_and_the_cost_of_its_shape() {
 }
 
 #[test]
+fn min_and_max_of_scalars_have_their_type() {
+    let src = "let (n, k) = read<(1..=9, 0..=99)>()\nlet m = min(n, k)\nlet b = max(n, n)\nprint(m, b)\n";
+    assert_eq!(hover(src, "m ="), "m: Int");
+    assert!(hover(src, "b =").starts_with("b: 1..=9"), "{}", hover(src, "b ="));
+}
+
+#[test]
 fn a_name_bound_to_read_of_a_type_has_that_type() {
     let src = "let n = read<1..=100>()\nlet xs = read<[n](a: Int, b: Bool)>()\nprint(n, xs.len)\n";
     assert_eq!(hover(src, "n ="), "n: 1..=100\n  storage: 1 byte");
