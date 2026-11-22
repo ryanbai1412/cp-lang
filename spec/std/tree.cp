@@ -55,8 +55,13 @@ pub struct Rooted<V, Pre>:
 
     /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `None` at the
     /// root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one
-    /// missing key is the root.
+    /// missing key is the root. Several roots give a forest, as `forest` does, with the roots in
+    /// key order. Traps if the parents have a cycle; `try_from_parents` is for input that may.
     pub fn from_parents<P: Keyed>(par: P) -> Rooted<V, _> = todo
+
+    /// O(n). `from_parents` for parents that may not form a forest: `None` when they have a
+    /// cycle. `let t = Rooted.try_from_parents(up) else: print("NO"); return`.
+    pub fn try_from_parents<P: Keyed>(par: P) -> ?Rooted<V, _> = todo
 
     /// O(n). One tree per root: `next` must reach every vertex from exactly one of `from`. The
     /// trees sit one after another in `t.Pre`, in the order of `from`; `t.root` is the first root.

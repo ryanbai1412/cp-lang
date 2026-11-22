@@ -7,7 +7,8 @@ Implementation follows and is measured against these files; what is not
 built yet is listed in `delta/`.
 
 Status: being assembled into 0.3.0 (2026-11-21). Chapters marked *draft*
-are written; *planned* ones are placeholders in this index only.
+are written; *planned* ones are placeholders in this index only. Where the
+work stands, the dream/spec loop and the open questions: `STATUS.md`.
 
 ## Reading order
 

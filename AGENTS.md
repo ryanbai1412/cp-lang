@@ -4,6 +4,10 @@ Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
 Then read, in order:
+0. `spec/STATUS.md`: where the 0.3.0 work stands today, how the spec and
+   corpus fit together, the checks to run, and what is open. `spec/` is
+   the normative language; where anything below disagrees with it, `spec/`
+   wins.
 1. `plan/OPERATING.md`: settled decisions and the loop we work in.
 2. `plan/DOMAINS.md`: each domain's north star, status and next steps;
    find yours.

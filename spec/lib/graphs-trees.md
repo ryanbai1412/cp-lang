@@ -217,7 +217,7 @@ Flows and matchings are their own module (`std.flow`), on the same
 ## Trees
 
 ```python
-let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Rooted.forest(g, from:)
+let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Rooted.try_from_parents(par), Rooted.forest(g, from:)
 ```
 
 | Form | Meaning | Cost |

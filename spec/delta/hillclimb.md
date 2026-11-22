@@ -373,9 +373,9 @@ Open questions raised by dreams:
     ioi05p2 port uses `flat_map` instead.
 - egoi23p7 port: bans now go through `tally` per top, and `blocked` is built from the ban
   counts, O(m2). The old `[B] k => B.filter(...)` was O(B²), too slow at 3e5 blocks. The root
-  search is the last vertex a DFS finishes (3 lines, previously a 7-line depth count). Still
-  open: `Rooted.from_parents` has no result for invalid parents (an optional-returning form,
-  following `V.at`/`V(x)`), so the forest check stays hand-written.
+  search is the last vertex a DFS finishes (3 lines, previously a 7-line depth count). The forest
+  check is `Rooted.try_from_parents(up) else: return None` (decision 163), and blocks are the
+  forest's roots, compressed. That replaces a component pass and a top-per-block table.
 - Process notes from the session that were not yet written down:
   - The dreams and the spec have one author, so the dreams are not independent of the spec and
     probably understate friction. The fix is dreams and questions from an agent that reads only

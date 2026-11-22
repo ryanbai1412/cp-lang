@@ -4672,3 +4672,17 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   coordinates. Ryan agreed it is worth having.
 - **Reverse.** Delete `pieces` and `covering` from `spec/std/seq.cp`, drop the paragraph in
   chapter 04, and restore `compress` in `corpus/problems/ioi05p2/spec.cp`.
+
+## 163. `Rooted.try_from_parents` builds a forest from parents that may be invalid (2026-11-21)
+
+- **Decision.** `Rooted.from_parents(par)` builds a forest when several keys have no parent
+  (roots in key order) and traps on a cycle. `Rooted.try_from_parents(par)` returns `?Rooted`,
+  `None` on a cycle. This follows the existing `try_` convention (`try_inv`, `try_fold`,
+  `try_at`): the plain form assumes valid input, and the `try_` form is for input that may not
+  be.
+- **Why.** egoi23p7 must answer NO when the required parent links contain a cycle. Its port
+  checked that by hand with a component pass, a top-per-component table and an `any`. Its blind
+  dream wrote `let Some(forest) = Rooted.from_parents(need) else: ...`. Any problem that gives
+  "parent of each vertex" and allows invalid input needs this. Ryan approved the shape.
+- **Reverse.** Delete `try_from_parents` from `spec/std/tree.cp`, restore the one-root wording of
+  `from_parents`, and restore the `components` version of `corpus/problems/egoi23p7/spec.cp`.

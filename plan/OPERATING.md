@@ -1,5 +1,10 @@
 # Operating manual
 
+> For 0.3.0, `spec/` is normative and `spec/STATUS.md` says where the work
+> stands. The settled list below predates it; where they disagree (for
+> example `None` absorbing arithmetic, or the Python prototype), `spec/` and
+> `decisions.md` win.
+
 How work on CP Lang runs: what is already decided, and the loop that moves
 the project forward. The mission, goals and principles every change follows
 are in `AGENTS.md`; read that first. Where each domain stands, its north star and its

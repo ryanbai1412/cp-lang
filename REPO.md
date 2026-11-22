@@ -7,7 +7,7 @@ directory or move one, update this file in the same commit.
 |---|---|
 | `AGENTS.md` | Start here: mission, goals, rules, reading order, commit convention |
 | `README.md` | For people: what CP Lang is, install, quick start |
-| `spec/` | The normative 0.3 language: `core/`, `lib/`, `tools/`, `std/` stubs, `diagnostics.md`, `conformance/`, `delta/`, gold dreams; `spec/README.md` is the index |
+| `spec/` | The normative 0.3 language: `core/`, `lib/`, `tools/`, `std/` stubs, `diagnostics.md`, `conformance/`, `delta/` (gaps, the hill-climb ledger `hillclimb.md`, dream comparisons), `review/`, gold dreams; `spec/README.md` is the index and `spec/STATUS.md` the current state |
 | `design/` | Design history: `spec/` (older chapters superseded by the top-level `spec/`), `GOALS.md` and `ALIGN.md` (goals and their tests), `CORE-ALIGN.md` (core mechanisms and the options weighed), `DELTA.md` (today vs the spec), exemplars and sketches, `archive/` (superseded drafts) |
 | `decisions.md` | Every design call, its reason and how to reverse it; newest last |
 | `plan/` | How we build it: `OPERATING.md` (settled decisions, the loop), `DOMAINS.md` (north star and status per domain), `STDLIB.md`, and the chapters `1x-*.md` describing the language as implemented |

@@ -1,11 +1,23 @@
 # Writing a dream
 
 A dream is the solution to a problem as it should read in CP Lang: the
-syntax and library we intend, not what compiles today. Dreams are the
-acceptance tests of the spec (`spec/README.md`): the spec is done when
-almost every dream checks against it. A dream is judged only on how good it
-is to read. It is never compiled against today's implementation and has no
-port beside it.
+syntax and library we would most want, not what compiles today. Each
+hill-climb problem in `corpus/problems/<problem>/` has two files:
+
+- `dream.cp`: the ideal version, written blind from the C++ and the
+  editorial idea, **without reading the spec or running the checker**. It
+  is allowed to be wrong about the spec; that is the point.
+- `spec.cp`: the spec-compliant solution, written after comparing the dream
+  with the spec, and checked with `cpl check` against `spec/std`.
+
+Every gap between the two is classified in `spec/delta/hillclimb.md` as a
+spec change (a general mechanism, logged in `decisions.md`), a rejected
+wish (with the reason; one-problem helpers are rejected), a dream bug, a
+parser/checker gap (`spec/delta/parser-gaps.md`), or an idiom fix to
+`spec.cp`. `meta.json` carries separate `dream` and `spec` statuses.
+Writing a dream against the stubs until it checks merges the two steps and
+hides friction; don't. `spec/delta/dream-comparisons.md` shows ten pairs side
+by side.
 
 ## The bar
 

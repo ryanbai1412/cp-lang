@@ -340,3 +340,38 @@ Tooling:
 - **Next steps:** the Rust compiler, stdlib, tools, LSP and editor
   extension, trace viewer, docs, and corpus ports, built in parallel on
   `main`.
+
+## His inputs on 2026-11-21 (the 0.3.0 spec and the hill-climb)
+
+- The plan: "write down this entire spec", "maybe do one review of it with an independent
+  reviewer", "read through like 100 solutions, write the dream, compare it with the spec and
+  hill climb the spec from here (you should be the owner of this)", "then write down the
+  spec-compliant solutions to those 100 things", "build out across all domains, including
+  compiler but also lsp, etc."
+- The two files: "`dream.cp` is the ideal version, written from the C++ and the editorial idea
+  without looking up the spec or running the checker. `spec.cp` is the spec-compliant solution,
+  written after the comparison and checked with `cpl check`."
+- Organization: "we should stay organized. very organized with the spec and also organized with
+  our corpus (e.g. maybe metadata json files and just structured output and stuff). you own the
+  codebase so feel free to clean things up."
+- Ownership: "you own the language. feel free to make large changes and decisions as needed if
+  you feel it's for the better"; "you just own hill climbing the spec yourself honestly".
+- Costs: "i'd prefer we generally adopt a guideline that you need parentheses for anything
+  that's not O(1)" ("g.transpose should be .transpose()").
+- Indexing: "by default all indexing uses the same domain"; "library functions should always
+  return results in S.keys or whatever".
+- Overlapping mutation (`a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!`): "things we should lint
+  for as opposed to flat out ban".
+- Release builds: "we should default to not trapping in release ... when you run on the judge,
+  you kinda only care about perf".
+- Layout: the LSP should make it easy "to see for the user what the size of things being stored
+  actually turns out to be".
+- Naming: asked to think about variant casing "independently and not be bounded by path
+  dependence"; chose PascalCase (`Some`, `None`; decision 157).
+- On the blind dreams: liked a domain-keyed `R.group` ("not this specific version but smth like
+  it"; decision 158), asked for `(V, V).all((u, v) => ...)` (decision 159), and agreed that
+  interval pieces are "a nice concept to have" (decision 162).
+- Asked whether the spec is "solid enough that another agent reading it would be able to
+  basically end up with the same language"; the honest answer is in `spec/STATUS.md`.
+- "please add everything nonsensitive / additional info to the repo and also make sure it's easy
+  for agents to onboard onto."

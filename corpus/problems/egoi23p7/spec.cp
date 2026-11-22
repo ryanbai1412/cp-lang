@@ -1,4 +1,4 @@
-use std.graph.{complement, components}
+use std.graph.complement
 // egoi23p7 Find the Tree: a spanning arborescence that uses every required arc and no
 // forbidden one. Required arcs must already form a forest; each of its trees is one block that
 // must hang from some other block. Block c can hang under block k unless every vertex of k is
@@ -16,19 +16,16 @@ fn solve() -> ?List<(child: V, parent: V)>:
         if up[e.child] != None:
             return None
         up[e.child] = Some(e.parent)
-    let (domain B, block) = components(Graph.undirected(must.map(e => (u: e.child, v: e.parent))))
-    var top: [B]?V = None
-    for v in V if up[v] == None:
-        top[block[v]] = Some(v)
-    if B.any(b => top[b] == None):
-        return None
+    let forest = Rooted.try_from_parents(up) else: return None
+    let (domain B, top) = compress(forest.roots)
+    let block = [V] v => top.at(forest.root_of(v))!
     let members = block.buckets()
     var forbidden: [V]HashSet<V> = HashSet()
     for e in banned:
         forbidden[e.child].add(e.parent)
     var blocked: [B]List<B> = []
     for c in B:
-        for (k, hits) in forbidden[top[c]!].tally(by: v => block[v]).items:
+        for (k, hits) in forbidden[top.get(c)].tally(by: v => block[v]).items:
             if hits == members[k].len:
                 blocked[k].push(c)
     let hang = complement(blocked)
@@ -42,7 +39,7 @@ fn solve() -> ?List<(child: V, parent: V)>:
     var out = List(must)
     for b in B if b != root:
         let k = tree.back[b]!.from
-        let c = top[b]!
+        let c = top.get(b)
         out.push((child: c, parent: members[k].find(x => x not in forbidden[c])!))
     out
 
