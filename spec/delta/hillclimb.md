@@ -25,6 +25,8 @@ and its notes in that record's `notes`.
 - cco21p5: `inf` (the `Int.MAX` that search-dp promised) gets a stub and
   joins the prelude.
 - cmt21r2ztr: `TwoSat` and `Lit` join the prelude.
+- coci21c2p5: `Lift.climb(v, ok)` for greedy binary-lifting jump counts; `Lift`,
+  `LcaTable` and `JumpTree` join the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

@@ -92,5 +92,5 @@ use std.strings.{
     starts_with,
     upper,
 }
-use std.tree.{Rooted}
+use std.tree.{JumpTree, LcaTable, Lift, Rooted}
 

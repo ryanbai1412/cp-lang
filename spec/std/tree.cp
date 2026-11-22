@@ -460,6 +460,11 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// `op` must be associative; it need not commute, since folds run from the lower end up.
     pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T> = todo
 
+    /// O(log n). Climb from `v` while the next vertex up satisfies `ok`, which must hold on a
+    /// prefix of every root path: how many edges were climbed and where it stopped. Greedy
+    /// "jump while the next one still fits" counts are `Lift(next, ...).climb(v, ok).steps`.
+    pub fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V) = todo
+
     /// O(1). The parent of `v`, or `none` at a root.
     pub fn parent(self, v: V) -> ?V = todo
 

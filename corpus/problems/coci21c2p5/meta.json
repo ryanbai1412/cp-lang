@@ -13,13 +13,20 @@
   "draft": [
    "proto/ports/blind_critic_3/coci21c2p5_draft.cp"
   ],
+  "dream": [
+   "corpus/problems/coci21c2p5/dream.cp"
+  ],
   "port": [
    "proto/ports/blind_critic_3/coci21c2p5.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "two-pointers",
+  "binary-lifting",
+  "segtree"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Explicit two-pointer loop over SegTree(max, act: add) on compressed coords (a coverage Track would let maximal() do it); Lift.climb added for greedy jump counts; Lift, LcaTable, JumpTree join the prelude."
 }
