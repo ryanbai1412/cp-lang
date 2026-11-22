@@ -1133,11 +1133,9 @@ impl<'a> Parser<'a> {
                                     T::LParen,
                                     "`(` and the removed field names after `without`",
                                 );
-                                removed = self.comma_list(
-                                    T::RParen,
-                                    "the removed fields",
-                                    |p| p.expect_name("a field name"),
-                                );
+                                removed = self.comma_list(T::RParen, "the removed fields", |p| {
+                                    p.expect_name("a field name")
+                                });
                             }
                             spread = Some((base, removed));
                             self.eat(T::Comma);

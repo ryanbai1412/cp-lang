@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use cpl_conform::conformance;
 use cpl_conform::scoreboard::{self, Scoreboard, SuiteReport};
-use cpl_conform::{Suite, default_scoreboard_path, find_repo_root, run_suites};
+use cpl_conform::{default_scoreboard_path, find_repo_root, run_suites, Suite};
 
 const USAGE: &str = "\
 usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|all]... [options] [filter]

@@ -907,10 +907,7 @@ impl<'a> Checker<'a> {
                             && crate::edition::is_v03()
                         {
                             Ty::Int
-                        } else if !*mutable
-                            && inferred == Ty::Int
-                            && crate::edition::is_v03()
-                        {
+                        } else if !*mutable && inferred == Ty::Int && crate::edition::is_v03() {
                             let (lo, hi) = self.bounds(init);
                             if let (Some(l), Some(h)) = (lo, hi) {
                                 Ty::Range {

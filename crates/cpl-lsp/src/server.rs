@@ -6,10 +6,10 @@
 //! (or an internal-error diagnostic) and the server keeps running.
 
 use crate::complete::{self, Cursor, StdLib};
-use cpl_json::{obj, Value};
 use crate::rename;
 use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
+use cpl_json::{obj, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, OnceLock};
@@ -97,7 +97,12 @@ impl Server {
                     Vec::new()
                 }
             }
-            Err(panic) => self.recover(method, message.get("params").unwrap_or(&Value::Null), id, panic_text(&*panic)),
+            Err(panic) => self.recover(
+                method,
+                message.get("params").unwrap_or(&Value::Null),
+                id,
+                panic_text(&*panic),
+            ),
         }
     }
 
@@ -171,7 +176,11 @@ impl Server {
                     .get(uri)
                     .cloned()
                     .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
-                for change in params.get("contentChanges").and_then(Value::as_array).unwrap_or(&[]) {
+                for change in params
+                    .get("contentChanges")
+                    .and_then(Value::as_array)
+                    .unwrap_or(&[])
+                {
                     apply_change(&mut text, change)?;
                 }
                 self.db.set_file(uri, text.as_str());
@@ -237,28 +246,39 @@ impl Server {
                 if let Some(index) = self.index_hover(&uri, offset, true) {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
-                let sized = hover.text.lines().find_map(|l| l.strip_prefix("cost: ")).and_then(|cost| {
-                    let size = facts.sizes().iter().find(|s| s.receiver.1 + 1 == hover.span.start)?;
-                    let steps = steps_of(cost, size.max as f64)?;
-                    let receiver = &facts.text()[size.receiver.0 as usize..size.receiver.1 as usize];
-                    let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
-                        String::new()
-                    } else {
-                        format!("{} = ", size.count)
-                    };
-                    Some((
-                        format!("cost: {cost}"),
-                        format!(
+                let sized = hover
+                    .text
+                    .lines()
+                    .find_map(|l| l.strip_prefix("cost: "))
+                    .and_then(|cost| {
+                        let size = facts
+                            .sizes()
+                            .iter()
+                            .find(|s| s.receiver.1 + 1 == hover.span.start)?;
+                        let steps = steps_of(cost, size.max as f64)?;
+                        let receiver =
+                            &facts.text()[size.receiver.0 as usize..size.receiver.1 as usize];
+                        let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
+                            String::new()
+                        } else {
+                            format!("{} = ", size.count)
+                        };
+                        Some((
+                            format!("cost: {cost}"),
+                            format!(
                             "cost: {cost}, about {} steps: {receiver} has at most {named}{} items",
                             count_text(steps.ceil() as u128),
                             count_text(size.max)
                         ),
-                    ))
-                });
+                        ))
+                    });
                 if let Some((plain, sized)) = sized {
                     hover.text = hover.text.replacen(&plain, &sized, 1);
                 }
-                let proven = facts.fns().iter().find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
+                let proven = facts
+                    .fns()
+                    .iter()
+                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
                 if let Some(f) = proven {
                     let (calls, total) = fn_call_costs(&mut self.db, &uri, f, &facts);
                     let named = |count: Option<&str>| {
@@ -437,7 +457,11 @@ impl Server {
             }
             "textDocument/rename" => {
                 let (uri, offset) = self.position(params)?;
-                let new_name = params.get("newName").and_then(Value::as_str).unwrap_or("").to_string();
+                let new_name = params
+                    .get("newName")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
                 if let Some(why) = rename::invalid_name(&new_name) {
                     return Err((INVALID_PARAMS, why));
                 }
@@ -456,14 +480,16 @@ impl Server {
                 // Every open file, the declaring file, and each file of the
                 // project on disk that imports the name.
                 let mut files: Vec<String> = self.docs.keys().cloned().collect();
-                let on_disk = std::iter::once(target.path.clone())
-                    .chain(rename::project_files(&uri, &name));
+                let on_disk =
+                    std::iter::once(target.path.clone()).chain(rename::project_files(&uri, &name));
                 for path in on_disk {
                     if files.iter().any(|f| rename::same_file(f, &path)) {
                         continue;
                     }
                     if path != target.path && self.db.file_text(&path).is_none() {
-                        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+                        let Ok(text) = std::fs::read_to_string(&path) else {
+                            continue;
+                        };
                         self.db.set_file(&path, text);
                     }
                     files.push(path);
@@ -548,7 +574,11 @@ impl Server {
                 // VS Code draws its own Run lenses but not the memory one.
                 let lenses = match (self.lenses, path_of_uri(uri)) {
                     (lenses, Some(path)) => {
-                        let mut all = if lenses { code_lenses(&path, text) } else { Vec::new() };
+                        let mut all = if lenses {
+                            code_lenses(&path, text)
+                        } else {
+                            Vec::new()
+                        };
                         all.extend(memory_lens(&mut self.db, uri, &path, text));
                         all
                     }
@@ -582,7 +612,11 @@ impl Server {
                 Ok(Reply::result(Value::Array(items)))
             }
             "workspace/symbol" => {
-                let query = params.get("query").and_then(Value::as_str).unwrap_or("").to_lowercase();
+                let query = params
+                    .get("query")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_lowercase();
                 let mut paths: Vec<String> = self.docs.keys().cloned().collect();
                 for uri in self.docs.keys() {
                     if let Some(analysis) = self.db.analyze(uri) {
@@ -692,7 +726,10 @@ impl Server {
                                 "edit",
                                 obj([(
                                     "changes",
-                                    Value::Object(BTreeMap::from([(uri.to_string(), edits.into())])),
+                                    Value::Object(BTreeMap::from([(
+                                        uri.to_string(),
+                                        edits.into(),
+                                    )])),
                                 )]),
                             ),
                         ]));
@@ -742,8 +779,11 @@ impl Server {
                 };
                 let analysis = self.db.analyze(uri).expect("proven implies an analysis");
                 let mut hints = Vec::new();
-                let proven: HashMap<u32, (i128, i128)> =
-                    facts.ranges().iter().map(|&(at, lo, hi)| (at, (lo, hi))).collect();
+                let proven: HashMap<u32, (i128, i128)> = facts
+                    .ranges()
+                    .iter()
+                    .map(|&(at, lo, hi)| (at, (lo, hi)))
+                    .collect();
                 for item in &analysis.items {
                     for entry in &item.check.hovers {
                         let declares = entry.decl == Some(entry.span)
@@ -886,7 +926,10 @@ impl Server {
     /// many times its body runs, alone and with the loops around it.
     fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
         let facts = self.proven(uri)?;
-        let proven = facts.loops().iter().find(|l| l.head.0 <= offset && offset < l.head.1)?;
+        let proven = facts
+            .loops()
+            .iter()
+            .find(|l| l.head.0 <= offset && offset < l.head.1)?;
         let named = |count: &str| {
             if count.chars().all(|c| c.is_ascii_digit()) {
                 String::new()
@@ -894,11 +937,18 @@ impl Server {
                 format!("{count} = ")
             }
         };
-        let mut text = format!("for: runs at most {}{} times", named(&proven.count), count_text(proven.times));
+        let mut text = format!(
+            "for: runs at most {}{} times",
+            named(&proven.count),
+            count_text(proven.times)
+        );
         match proven.total {
             Some(total) if total != proven.times => {
                 let count = named(proven.total_count.as_deref().unwrap_or_default());
-                text += &format!("\n  {count}{} times in all, with the loops around it", count_text(total));
+                text += &format!(
+                    "\n  {count}{} times in all, with the loops around it",
+                    count_text(total)
+                );
             }
             None => text += "\n  inside a loop with no proven count",
             _ => {}
@@ -933,8 +983,14 @@ impl Server {
                 }
             }
         };
-        let (start, end) = if on_index { proven.index } else { proven.access };
-        let access = analysis.text.get(proven.access.0 as usize..proven.access.1 as usize)?;
+        let (start, end) = if on_index {
+            proven.index
+        } else {
+            proven.access
+        };
+        let access = analysis
+            .text
+            .get(proven.access.0 as usize..proven.access.1 as usize)?;
         let access = access.split_whitespace().collect::<Vec<_>>().join(" ");
         let text = match on_index {
             true => format!("in bounds of {access}: {}", proven.proof),
@@ -952,7 +1008,10 @@ impl Server {
     fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
         let analysis = self.db.analyze(uri)?;
         let facts = self.proven(uri)?;
-        let proven = facts.exprs().iter().find(|e| e.op.0 <= offset && offset < e.op.1)?;
+        let proven = facts
+            .exprs()
+            .iter()
+            .find(|e| e.op.0 <= offset && offset < e.op.1)?;
         let (start, end) = proven.expr;
         let source = analysis.text.get(start as usize..end as usize)?;
         let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -1271,8 +1330,12 @@ fn apply_change(text: &mut String, change: &Value) -> Result<(), (i32, String)> 
         return Ok(());
     };
     let lines = LineIndex::new(text);
-    let start = lines.offset_utf16(position_of(range.get("start").unwrap_or(&Value::Null))?, text) as usize;
-    let end = lines.offset_utf16(position_of(range.get("end").unwrap_or(&Value::Null))?, text) as usize;
+    let start = lines.offset_utf16(
+        position_of(range.get("start").unwrap_or(&Value::Null))?,
+        text,
+    ) as usize;
+    let end =
+        lines.offset_utf16(position_of(range.get("end").unwrap_or(&Value::Null))?, text) as usize;
     if start > end {
         return Err((
             INVALID_PARAMS,
@@ -1376,7 +1439,10 @@ fn receiver_before(text: &str, at: usize) -> Option<&str> {
 /// A documented cost's value when its size `n` is `n`, logs base 2: `O(n
 /// log n)`, `O(n^2)`, `O(log^2 n)`; `None` for any other name in it.
 fn steps_of(cost: &str, n: f64) -> Option<f64> {
-    let body = cost.trim_end_matches(" amortized").strip_prefix("O(")?.strip_suffix(')')?;
+    let body = cost
+        .trim_end_matches(" amortized")
+        .strip_prefix("O(")?
+        .strip_suffix(')')?;
     let mut tokens = Vec::new();
     let mut chars = body.chars().peekable();
     while let Some(&c) = chars.peek() {
@@ -1457,8 +1523,12 @@ fn domain_steps(cost: &str, domains: &[(String, u128)]) -> Option<f64> {
     for (d, size) in domains {
         cost = cost.replace(&format!("|{d}|"), &format!("({size})"));
     }
-    let names_n = cost.split(|c: char| !c.is_alphanumeric() && c != '_').any(|w| w == "n");
-    (!cost.contains('|') && !names_n).then(|| steps_of(&cost, 0.0)).flatten()
+    let names_n = cost
+        .split(|c: char| !c.is_alphanumeric() && c != '_')
+        .any(|w| w == "n");
+    (!cost.contains('|') && !names_n)
+        .then(|| steps_of(&cost, 0.0))
+        .flatten()
 }
 
 /// `cost` with each `xs.len` written as the bound on the list `xs` passed
@@ -1470,7 +1540,9 @@ fn lens_in(cost: &str, after: u32, text: &str, sizes: &[cpl_lint::ProvenSize]) -
     for list in words.filter_map(|w| w.strip_suffix(".len")) {
         let argument = |s: &&cpl_lint::ProvenSize| {
             let (start, end) = (s.receiver.0 as usize, s.receiver.1 as usize);
-            s.receiver.0 >= after && text.get(start..end) == Some(list) && !text[end..].starts_with('.')
+            s.receiver.0 >= after
+                && text.get(start..end) == Some(list)
+                && !text[end..].starts_with('.')
         };
         let Some(size) = sizes.iter().filter(argument).min_by_key(|s| s.receiver.0) else {
             continue;
@@ -1535,7 +1607,9 @@ fn fn_call_costs(
         shown.then_some((loops as f64 + steps, terms.flatten()))
     });
     let total = total.map(|(steps, terms)| {
-        let cost = terms.map(|t: Vec<String>| format!("O({})", t.join(" + "))).filter(|c| c.len() <= LONGEST);
+        let cost = terms
+            .map(|t: Vec<String>| format!("O({})", t.join(" + ")))
+            .filter(|c| c.len() <= LONGEST);
         (steps, cost)
     });
     (out, total)
@@ -1555,8 +1629,16 @@ fn fn_documented(
     let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
     let text = facts.text();
-    let sizes = if costs.is_empty() { &[][..] } else { facts.sizes() };
-    let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) { facts.domains() } else { &[][..] };
+    let sizes = if costs.is_empty() {
+        &[][..]
+    } else {
+        facts.sizes()
+    };
+    let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) {
+        facts.domains()
+    } else {
+        &[][..]
+    };
     for (span, name, cost) in &costs {
         let receiver = name
             .starts_with('.')
@@ -1576,18 +1658,31 @@ fn fn_documented(
             (Some(r), Some(s)) if s.count.chars().all(|c| c.is_alphanumeric() || c == '_') => {
                 (format!("{r}{name}"), size_in(cost, &s.count))
             }
-            (Some(r), Some(s)) => (format!("{r}{name}"), size_in(cost, &format!("({})", s.count))),
+            (Some(r), Some(s)) => (
+                format!("{r}{name}"),
+                size_in(cost, &format!("({})", s.count)),
+            ),
             (Some(r), None) => (format!("{r}{name}"), size_in(cost, &format!("{r}.len"))),
             (None, _) => (name.clone(), cost.clone()),
         };
         let inside = |r: &&cpl_lint::Run| r.span.0 <= span.start && span.end <= r.span.1;
-        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        let run = f
+            .runs
+            .iter()
+            .filter(inside)
+            .min_by_key(|r| r.span.1 - r.span.0);
         let times = match run {
             None => "once".to_string(),
             Some(r) if r.times == Some(0) => continue,
             Some(cpl_lint::Run { times: Some(1), .. }) => "once".to_string(),
-            Some(cpl_lint::Run { times: Some(t), count, .. }) => match count {
-                Some(c) if !c.chars().all(|c| c.is_ascii_digit()) => format!("{c} = {} times", count_text(*t)),
+            Some(cpl_lint::Run {
+                times: Some(t),
+                count,
+                ..
+            }) => match count {
+                Some(c) if !c.chars().all(|c| c.is_ascii_digit()) => {
+                    format!("{c} = {} times", count_text(*t))
+                }
                 _ => format!("{} times", count_text(*t)),
             },
             Some(_) => "an unknown number of times".to_string(),
@@ -1603,7 +1698,9 @@ fn fn_documented(
             evaluated.push((*span, s * r as f64, term));
         }
         let cost = match steps {
-            Some(s) if times == "once" => format!("{cost}, about {} steps,", count_text(s.ceil() as u128)),
+            Some(s) if times == "once" => {
+                format!("{cost}, about {} steps,", count_text(s.ceil() as u128))
+            }
             Some(s) => format!("{cost}, about {} steps each,", count_text(s.ceil() as u128)),
             None => cost,
         };
@@ -1632,7 +1729,10 @@ fn fn_extra(
     let mut steps = 0.0;
     let mut terms = Some(Vec::new());
     for &(start, end) in &f.callees {
-        if let Some((_, s, term)) = evaluated.iter().find(|(span, ..)| span.start == start && span.end == end) {
+        if let Some((_, s, term)) = evaluated
+            .iter()
+            .find(|(span, ..)| span.start == start && span.end == end)
+        {
             steps += s;
             terms = terms.zip(term.clone()).map(|(mut t, term)| {
                 t.push(term);
@@ -1646,16 +1746,28 @@ fn fn_extra(
             return None;
         }
         let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;
-        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        let run = f
+            .runs
+            .iter()
+            .filter(inside)
+            .min_by_key(|r| r.span.1 - r.span.0);
         steps += run.map_or(Some(1), |r| r.times)? as f64;
     }
     for &(start, end) in &f.builds {
         let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;
-        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        let run = f
+            .runs
+            .iter()
+            .filter(inside)
+            .min_by_key(|r| r.span.1 - r.span.0);
         steps += run.map_or(Some(1), |r| r.times)? as f64;
     }
     for helper in &f.helpers {
-        let callee = facts.fns().iter().find(|g| g.name == helper.callee)?.clone();
+        let callee = facts
+            .fns()
+            .iter()
+            .find(|g| g.name == helper.callee)?
+            .clone();
         let (_, evaluated, _) = fn_documented(db, uri, &callee, facts);
         let (each, each_terms) = fn_extra(db, uri, &callee, &evaluated, facts, depth + 1)?;
         steps += each * helper.times? as f64;
@@ -1667,7 +1779,11 @@ fn fn_extra(
                 Some(t)
             }
             (Some(mut t), Some(each), Some(c)) => {
-                let c = if c.contains(' ') { format!("({c})") } else { c.clone() };
+                let c = if c.contains(' ') {
+                    format!("({c})")
+                } else {
+                    c.clone()
+                };
                 t.push(format!("{c} * ({each})"));
                 Some(t)
             }
@@ -1684,7 +1800,11 @@ pub(crate) fn count_text(n: u128) -> String {
     let digits = n.to_string();
     let exp = digits.len() - 1;
     let tenths = (n as f64 / 10f64.powi(exp as i32) * 10.0).round() as u64;
-    let (tenths, exp) = if tenths >= 100 { (10, exp + 1) } else { (tenths, exp) };
+    let (tenths, exp) = if tenths >= 100 {
+        (10, exp + 1)
+    } else {
+        (tenths, exp)
+    };
     let mantissa = if tenths % 10 == 0 {
         (tenths / 10).to_string()
     } else {
@@ -1935,7 +2055,10 @@ impl Proven {
         &self.analysis.text
     }
 
-    fn with_items<T: Default>(&self, f: impl FnOnce(&str, &[(u32, &cpl_syntax::ParsedItem)]) -> T) -> T {
+    fn with_items<T: Default>(
+        &self,
+        f: impl FnOnce(&str, &[(u32, &cpl_syntax::ParsedItem)]) -> T,
+    ) -> T {
         if self.analysis.has_syntax_errors {
             return T::default();
         }

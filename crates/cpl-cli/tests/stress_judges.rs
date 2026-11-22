@@ -22,9 +22,16 @@ fn problem_dir(name: &str) -> PathBuf {
 fn judged() -> Vec<(String, &'static str, PathBuf)> {
     let set = std::fs::read_to_string(root_dir().join("corpus/sets/ecnerwala.txt")).unwrap();
     let mut out = Vec::new();
-    for name in set.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
+    for name in set
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+    {
         let dir = problem_dir(name);
-        for (file, flag) in [("interactor.py", "--interactor"), ("checker.py", "--checker")] {
+        for (file, flag) in [
+            ("interactor.py", "--interactor"),
+            ("checker.py", "--checker"),
+        ] {
             let path = dir.join(file);
             if path.exists() {
                 out.push((name.to_string(), flag, path));

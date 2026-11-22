@@ -143,7 +143,10 @@ impl<'p> Devirt<'p> {
     /// Parameter slots of `id` lowered as C++ template functor parameters
     /// (`template <class F0, ...>`).
     pub fn template_params(&self, id: FnId) -> &[usize] {
-        self.template_params.get(&id).map(Vec::as_slice).unwrap_or(&[])
+        self.template_params
+            .get(&id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
     }
 
     /// Index into `template_params(id)` if `slot` is a template functor param.
@@ -166,7 +169,9 @@ impl<'p> Devirt<'p> {
     pub fn local_rec(&self, slot: usize, cid: ClosureId) -> bool {
         let caps = &self.program.closures[cid].captures;
         caps.iter().any(|c| !c.is_global && c.outer == slot)
-            && caps.iter().all(|c| c.is_global || c.outer != slot || c.by_ref)
+            && caps
+                .iter()
+                .all(|c| c.is_global || c.outer != slot || c.by_ref)
     }
 
     fn compute_elidable(&mut self) {
@@ -175,7 +180,9 @@ impl<'p> Devirt<'p> {
         let mut scan_assigns = |home: Option<FnId>, block: &Block| {
             walk::deep_stmts(block, &mut |stmt| {
                 if let Stmt::Assign(place, _, _) = stmt {
-                    if let (PlaceKind::Field(base, index), Ty::Struct(s)) = (&place.kind, place_base_ty(place)) {
+                    if let (PlaceKind::Field(base, index), Ty::Struct(s)) =
+                        (&place.kind, place_base_ty(place))
+                    {
                         let _ = base;
                         assigned_fields.insert((*s, *index));
                     }
@@ -197,7 +204,9 @@ impl<'p> Devirt<'p> {
                 if let ExprKind::Call(_, args) = &e.kind {
                     for arg in args {
                         if let Arg::Mut(place) = arg {
-                            if let (PlaceKind::Field(_, index), Ty::Struct(s)) = (&place.kind, place_base_ty(place)) {
+                            if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
+                                (&place.kind, place_base_ty(place))
+                            {
                                 assigned_fields.insert((*s, *index));
                             }
                             if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
@@ -367,7 +376,8 @@ impl<'p> Devirt<'p> {
                 let key = (sid, idx);
                 if read.contains(&key)
                     || unskippable.contains(&key)
-                    || (!is_fn_or_opt_fn(ty) && (whole.contains(&sid) || niche == Some(name.as_str())))
+                    || (!is_fn_or_opt_fn(ty)
+                        && (whole.contains(&sid) || niche == Some(name.as_str())))
                 {
                     continue;
                 }
@@ -423,7 +433,9 @@ impl<'p> Devirt<'p> {
                         }
                     }
                     let dead_root = matches!(root, (false, slot) if dead(self, slot));
-                    if (dead_root || self.in_unread_field(place)) && self.skippable_store(place, *op) {
+                    if (dead_root || self.in_unread_field(place))
+                        && self.skippable_store(place, *op)
+                    {
                         let mut skip = |e: &Expr| {
                             walk::deep_expr(e, &mut |inner| {
                                 dropped.insert(inner as *const Expr);
@@ -440,7 +452,9 @@ impl<'p> Devirt<'p> {
             walk::deep_exprs(block, &mut |e| {
                 if let (ExprKind::Tuple(items), Ty::Struct(s)) = (&e.kind, &e.ty) {
                     for (idx, item) in items.iter().enumerate() {
-                        if self.unread_fields.contains(&(*s, idx)) && matches!(item.kind, ExprKind::Local(_)) {
+                        if self.unread_fields.contains(&(*s, idx))
+                            && matches!(item.kind, ExprKind::Local(_))
+                        {
                             feeds.insert(item as *const Expr);
                         }
                     }
@@ -469,9 +483,9 @@ impl<'p> Devirt<'p> {
                         }
                     }
                     ExprKind::Mutate(..) if pushes.contains(&(e as *const Expr)) => {}
-                    ExprKind::MutSlice(place, ..) | ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => {
-                        place_live(place, &mut live)
-                    }
+                    ExprKind::MutSlice(place, ..)
+                    | ExprKind::Mutate(_, place, _)
+                    | ExprKind::Sort(place, ..) => place_live(place, &mut live),
                     ExprKind::Closure(cid) => {
                         for c in &self.program.closures[*cid].captures {
                             if !c.is_global {
@@ -546,7 +560,9 @@ impl<'p> Devirt<'p> {
                     | cpl_ir::Iter::Members(e) => {
                         self.find_escapes_expr(home, e, false, out);
                     }
-                    cpl_ir::Iter::TreeRange { container, lo, hi, .. } => {
+                    cpl_ir::Iter::TreeRange {
+                        container, lo, hi, ..
+                    } => {
                         self.find_escapes_expr(home, container, false, out);
                         if let Some((e, _)) = lo {
                             self.find_escapes_expr(home, e, false, out);
@@ -572,7 +588,13 @@ impl<'p> Devirt<'p> {
         }
     }
 
-    fn find_escapes_expr(&self, home: Option<FnId>, e: &Expr, elided_ctx: bool, out: &mut Vec<Home>) {
+    fn find_escapes_expr(
+        &self,
+        home: Option<FnId>,
+        e: &Expr,
+        elided_ctx: bool,
+        out: &mut Vec<Home>,
+    ) {
         match &e.kind {
             ExprKind::Local(slot) => {
                 if !elided_ctx {
@@ -603,7 +625,9 @@ impl<'p> Devirt<'p> {
                 for arg in args {
                     match arg {
                         Arg::Value(v) => self.find_escapes_expr(home, v, false, out),
-                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| self.find_escapes_expr(home, x, false, out)),
+                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| {
+                            self.find_escapes_expr(home, x, false, out)
+                        }),
                     }
                 }
             }
@@ -615,7 +639,9 @@ impl<'p> Devirt<'p> {
                                 && self.skippable_value(v);
                             self.find_escapes_expr(home, v, ok, out);
                         }
-                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| self.find_escapes_expr(home, x, false, out)),
+                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| {
+                            self.find_escapes_expr(home, x, false, out)
+                        }),
                     }
                 }
             }
@@ -626,8 +652,7 @@ impl<'p> Devirt<'p> {
                 };
                 for (i, item) in items.iter().enumerate() {
                     let ok = s.is_some_and(|s| {
-                        self.elidable.contains(&Home::Field(s, i))
-                            && self.skippable_value(item)
+                        self.elidable.contains(&Home::Field(s, i)) && self.skippable_value(item)
                     });
                     self.find_escapes_expr(home, item, ok, out);
                 }
@@ -636,7 +661,9 @@ impl<'p> Devirt<'p> {
                 self.find_escapes(home, block, out);
             }
             _ => {
-                walk::children(e, &mut |child| self.find_escapes_expr(home, child, false, out));
+                walk::children(e, &mut |child| {
+                    self.find_escapes_expr(home, child, false, out)
+                });
             }
         }
     }
@@ -795,7 +822,9 @@ impl<'p> Devirt<'p> {
     pub(crate) fn skippable_push(&self, e: &Expr) -> Option<usize> {
         match &e.kind {
             ExprKind::Mutate(cpl_ir::Mutation::Push, place, args) => match place.kind {
-                PlaceKind::Local(slot) if args.iter().all(|a| self.skippable_value(a)) => Some(slot),
+                PlaceKind::Local(slot) if args.iter().all(|a| self.skippable_value(a)) => {
+                    Some(slot)
+                }
                 _ => None,
             },
             _ => None,
@@ -837,9 +866,7 @@ impl<'p> Devirt<'p> {
             }
             PlaceKind::Index(base, idxs) => {
                 self.place_captures_unused(base, cap_slots)
-                    && idxs
-                        .iter()
-                        .all(|i| self.expr_captures_unused(i, cap_slots))
+                    && idxs.iter().all(|i| self.expr_captures_unused(i, cap_slots))
             }
         }
     }
@@ -881,10 +908,16 @@ impl<'p> Devirt<'p> {
                     | cpl_ir::Iter::Seq(e, _)
                     | cpl_ir::Iter::Subsets(e)
                     | cpl_ir::Iter::Members(e) => self.expr_captures_unused(e, cap_slots),
-                    cpl_ir::Iter::TreeRange { container, lo, hi, .. } => {
+                    cpl_ir::Iter::TreeRange {
+                        container, lo, hi, ..
+                    } => {
                         self.expr_captures_unused(container, cap_slots)
-                            && lo.as_ref().is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
-                            && hi.as_ref().is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
+                            && lo
+                                .as_ref()
+                                .is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
+                            && hi
+                                .as_ref()
+                                .is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
                     }
                 };
                 iter_ok && self.block_captures_unused(body, cap_slots)
@@ -1035,7 +1068,9 @@ fn place_fields(place: &cpl_ir::Place, out: &mut BTreeSet<(usize, usize)>) {
 /// Indexing an array of type `ty` by `idxs` cannot trap: each index is a
 /// position of the domain its axis is over.
 fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
-    let Ty::Array { dims, .. } = ty else { return false };
+    let Ty::Array { dims, .. } = ty else {
+        return false;
+    };
     dims.len() == idxs.len()
         && dims.iter().zip(idxs).all(|(dim, idx)| {
             matches!((dim, &idx.ty), (cpl_ir::Dim::Pos(d), Ty::Pos(e)) if d == e) && pure_path(idx)
@@ -1218,8 +1253,18 @@ pub fn explain_dropped_fields(program: &Program) -> Vec<String> {
         .unread_fields
         .iter()
         .filter(|&&(sid, idx)| !is_fn_or_opt_fn(&program.structs[sid].fields[idx].1))
-        .filter(|&&(sid, _)| cpp.contains(&format!("struct {} {{", crate::names::ident(&program.structs[sid].name))))
-        .map(|&(sid, idx)| format!("struct {}.{}", program.structs[sid].name, program.structs[sid].fields[idx].0))
+        .filter(|&&(sid, _)| {
+            cpp.contains(&format!(
+                "struct {} {{",
+                crate::names::ident(&program.structs[sid].name)
+            ))
+        })
+        .map(|&(sid, idx)| {
+            format!(
+                "struct {}.{}",
+                program.structs[sid].name, program.structs[sid].fields[idx].0
+            )
+        })
         .collect()
 }
 
@@ -1238,7 +1283,9 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
             let mode = if devirt.unread_fields.contains(&(sid, idx)) {
                 ClosureMode::Unread
             } else if matches!(fty, Ty::Opt(_)) {
-                ClosureMode::DynamicStdFunction { reason: "optional fn field that is read".to_string() }
+                ClosureMode::DynamicStdFunction {
+                    reason: "optional fn field that is read".to_string(),
+                }
             } else if devirt.field_elidable(sid, idx) {
                 let Some(Held::One(cid)) = devirt.held.get(&Home::Field(sid, idx)).copied() else {
                     continue;
@@ -1247,7 +1294,9 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
             } else {
                 let reason = match devirt.held.get(&Home::Field(sid, idx)) {
                     Some(Held::One(_)) => "field escapes or is reassigned".to_string(),
-                    Some(Held::Many) => "multiple or capturing closures stored in field".to_string(),
+                    Some(Held::Many) => {
+                        "multiple or capturing closures stored in field".to_string()
+                    }
                     None => continue,
                 };
                 ClosureMode::DynamicStdFunction { reason }
@@ -1270,7 +1319,8 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
             } else if devirt.template_param_index(fid, slot).is_some() {
                 ClosureMode::StaticTemplate
             } else {
-                let reason = if program.entry_fns.contains(&fid) || program.judge_fns.contains(&fid) {
+                let reason = if program.entry_fns.contains(&fid) || program.judge_fns.contains(&fid)
+                {
                     "judge/entry function boundary".to_string()
                 } else if devirt.recursive_fns.contains(&fid) {
                     "a call in its recursion passes a different closure".to_string()
@@ -1286,36 +1336,61 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
             out.push(ClosureLowering { site, mode });
         }
 
-        explain_locals_in_block(&devirt, &format!("fn {}", f.name), &f.locals, &f.body, &mut out);
+        explain_locals_in_block(
+            &devirt,
+            &format!("fn {}", f.name),
+            &f.locals,
+            &f.body,
+            &mut out,
+        );
     }
 
-    explain_locals_in_block(&devirt, "main", &program.main_locals, &program.main, &mut out);
+    explain_locals_in_block(
+        &devirt,
+        "main",
+        &program.main_locals,
+        &program.main,
+        &mut out,
+    );
 
     for g in &program.globals {
         if matches!(g.ty, Ty::Fn(..)) {
             out.push(ClosureLowering {
                 site: format!("top-level {}", g.name),
-                mode: ClosureMode::DynamicStdFunction { reason: "top-level fn var".to_string() },
+                mode: ClosureMode::DynamicStdFunction {
+                    reason: "top-level fn var".to_string(),
+                },
             });
         }
     }
     for (cid, c) in program.closures.iter().enumerate() {
         let dynamic = |site: String, reason: &str| ClosureLowering {
             site,
-            mode: ClosureMode::DynamicStdFunction { reason: reason.to_string() },
+            mode: ClosureMode::DynamicStdFunction {
+                reason: reason.to_string(),
+            },
         };
         for &slot in &c.params {
             if matches!(c.locals[slot].ty, Ty::Fn(..)) {
-                out.push(dynamic(format!("closure {cid} param {}", c.locals[slot].name), "fn parameter of a closure"));
+                out.push(dynamic(
+                    format!("closure {cid} param {}", c.locals[slot].name),
+                    "fn parameter of a closure",
+                ));
             }
         }
         if matches!(c.ret, Ty::Fn(..)) {
-            out.push(dynamic(format!("closure {cid} result"), "closure returning a closure"));
+            out.push(dynamic(
+                format!("closure {cid} result"),
+                "closure returning a closure",
+            ));
         }
         walk::deep_stmts(&c.body, &mut |stmt| {
             if let Stmt::Let(slot, _) = stmt {
                 if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
-                    out.push(dynamic(format!("closure {cid} local {}", c.locals[*slot].name), "fn local inside a closure"));
+                    out.push(dynamic(
+                        format!("closure {cid} local {}", c.locals[*slot].name),
+                        "fn local inside a closure",
+                    ));
                 }
             }
         });

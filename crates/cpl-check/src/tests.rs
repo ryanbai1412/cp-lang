@@ -3943,14 +3943,35 @@ fn checks_with_field_names_types_and_fn_uses() {
     assert!(diags.is_empty(), "{diags:?}");
 
     db.set_file("bad_field.cp", "with io(nope: 1):\n    print(1)\n");
-    let codes_bf: Vec<_> = db.diagnostics("bad_field.cp").iter().map(|d| d.code).collect();
-    assert!(codes_bf.contains(&cpl_diag::codes::UNKNOWN_FIELD), "{codes_bf:?}");
+    let codes_bf: Vec<_> = db
+        .diagnostics("bad_field.cp")
+        .iter()
+        .map(|d| d.code)
+        .collect();
+    assert!(
+        codes_bf.contains(&cpl_diag::codes::UNKNOWN_FIELD),
+        "{codes_bf:?}"
+    );
 
     db.set_file("bad_type.cp", "with io(base: 2):\n    print(1)\n");
-    let codes_bt: Vec<_> = db.diagnostics("bad_type.cp").iter().map(|d| d.code).collect();
-    assert!(codes_bt.contains(&cpl_diag::codes::TYPE_MISMATCH), "{codes_bt:?}");
+    let codes_bt: Vec<_> = db
+        .diagnostics("bad_type.cp")
+        .iter()
+        .map(|d| d.code)
+        .collect();
+    assert!(
+        codes_bt.contains(&cpl_diag::codes::TYPE_MISMATCH),
+        "{codes_bt:?}"
+    );
 
     db.set_file("bad_uses.cp", "fn f() uses nope:\n    print(1)\n");
-    let codes_bu: Vec<_> = db.diagnostics("bad_uses.cp").iter().map(|d| d.code).collect();
-    assert!(codes_bu.contains(&cpl_diag::codes::UNRESOLVED_NAME), "{codes_bu:?}");
+    let codes_bu: Vec<_> = db
+        .diagnostics("bad_uses.cp")
+        .iter()
+        .map(|d| d.code)
+        .collect();
+    assert!(
+        codes_bu.contains(&cpl_diag::codes::UNRESOLVED_NAME),
+        "{codes_bu:?}"
+    );
 }

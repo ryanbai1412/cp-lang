@@ -125,7 +125,12 @@ impl Session {
         cpl_lsp::transport::write_raw_message(writer, &out)
     }
 
-    fn send_event(&mut self, writer: &mut dyn Write, event: &str, body_json: Option<&str>) -> io::Result<()> {
+    fn send_event(
+        &mut self,
+        writer: &mut dyn Write,
+        event: &str,
+        body_json: Option<&str>,
+    ) -> io::Result<()> {
         let seq = self.next_seq();
         let mut out = format!("{{\"seq\":{seq},\"type\":\"event\",\"event\":");
         json_str(&mut out, event);
@@ -137,7 +142,12 @@ impl Session {
         cpl_lsp::transport::write_raw_message(writer, &out)
     }
 
-    fn send_output(&mut self, writer: &mut dyn Write, category: &str, text: &str) -> io::Result<()> {
+    fn send_output(
+        &mut self,
+        writer: &mut dyn Write,
+        category: &str,
+        text: &str,
+    ) -> io::Result<()> {
         let mut body = String::from("{\"category\":");
         json_str(&mut body, category);
         body.push_str(",\"output\":");
@@ -146,7 +156,12 @@ impl Session {
         self.send_event(writer, "output", Some(&body))
     }
 
-    fn send_stopped(&mut self, writer: &mut dyn Write, reason: &str, text: Option<&str>) -> io::Result<()> {
+    fn send_stopped(
+        &mut self,
+        writer: &mut dyn Write,
+        reason: &str,
+        text: Option<&str>,
+    ) -> io::Result<()> {
         let mut body = String::from("{\"reason\":");
         json_str(&mut body, reason);
         body.push_str(",\"threadId\":1,\"allThreadsStopped\":true");
@@ -160,7 +175,11 @@ impl Session {
 
     fn send_terminated(&mut self, writer: &mut dyn Write) -> io::Result<()> {
         let exit_code = i32::from(self.trap_message.is_some());
-        self.send_event(writer, "exited", Some(&format!("{{\"exitCode\":{exit_code}}}")))?;
+        self.send_event(
+            writer,
+            "exited",
+            Some(&format!("{{\"exitCode\":{exit_code}}}")),
+        )?;
         self.send_event(writer, "terminated", Some("{}"))
     }
 
@@ -241,7 +260,10 @@ impl Session {
             "setBreakpoints" => {
                 self.breakpoints.clear();
                 let mut verified = String::from("{\"breakpoints\":[");
-                if let Some(list) = args.and_then(|a| a.get("breakpoints")).and_then(Json::as_array) {
+                if let Some(list) = args
+                    .and_then(|a| a.get("breakpoints"))
+                    .and_then(Json::as_array)
+                {
                     for (i, bp) in list.iter().enumerate() {
                         if i > 0 {
                             verified.push(',');
@@ -340,7 +362,8 @@ impl Session {
                                 body.push(',');
                             }
                             first = false;
-                            let value = cpl_json::parse(val_json).map_or_else(|_| val_json.to_string(), |v| shown(&v));
+                            let value = cpl_json::parse(val_json)
+                                .map_or_else(|_| val_json.to_string(), |v| shown(&v));
                             emit_variable(&mut body, &var.name, &value, &var.ty);
                         }
                     }
@@ -366,7 +389,11 @@ impl Session {
                         self.send_response(writer, req_seq, command, true, None, Some(&body))?;
                     }
                     None => {
-                        let msg = format!("can't evaluate `{expr}` at step {}: {}", self.cursor + 1, self.eval_error(expr));
+                        let msg = format!(
+                            "can't evaluate `{expr}` at step {}: {}",
+                            self.cursor + 1,
+                            self.eval_error(expr)
+                        );
                         self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     }
                 }
@@ -391,7 +418,8 @@ impl Session {
                 } else {
                     let mut i = self.cursor + 1;
                     while i < self.recording.len() {
-                        let (line, d) = (self.recording.line(i).unwrap_or(0), self.recording.depth(i));
+                        let (line, d) =
+                            (self.recording.line(i).unwrap_or(0), self.recording.depth(i));
                         if self.trap_step == Some(i) {
                             self.cursor = i;
                             let msg = self.trap_message.clone();
@@ -440,7 +468,11 @@ impl Session {
                         return Ok(false);
                     }
                     let d = self.recording.depth(i);
-                    if d <= target_depth || self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
+                    if d <= target_depth
+                        || self
+                            .breakpoints
+                            .contains(&self.recording.line(i).unwrap_or(0))
+                    {
                         found = Some(i);
                         break;
                     }
@@ -448,7 +480,10 @@ impl Session {
                 match found {
                     Some(i) => {
                         self.cursor = i;
-                        let reason = if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
+                        let reason = if self
+                            .breakpoints
+                            .contains(&self.recording.line(i).unwrap_or(0))
+                        {
                             "breakpoint"
                         } else {
                             "step"
@@ -475,7 +510,10 @@ impl Session {
                         self.send_stopped(writer, "divergence", Some(&text))?;
                         return Ok(false);
                     }
-                    if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
+                    if self
+                        .breakpoints
+                        .contains(&self.recording.line(i).unwrap_or(0))
+                    {
                         self.cursor = i;
                         self.send_stopped(writer, "breakpoint", None)?;
                         return Ok(false);
@@ -488,7 +526,8 @@ impl Session {
             // where the old run stood: the same visit to the same line.
             "restart" => {
                 let config = args.and_then(|a| a.get("arguments"));
-                if config.is_some_and(|c| c.get("input").is_some() || c.get("inputText").is_some()) {
+                if config.is_some_and(|c| c.get("input").is_some() || c.get("inputText").is_some())
+                {
                     match read_input(&self.program_path, config) {
                         Ok((bytes, _)) => self.input = bytes,
                         Err(msg) => {
@@ -501,7 +540,8 @@ impl Session {
                 let before = std::mem::take(&mut self.recording);
                 let (trap_message, trap_step) = (self.trap_message.clone(), self.trap_step);
                 if let Err(msg) = self.record(writer)? {
-                    (self.recording, self.trap_message, self.trap_step) = (before, trap_message, trap_step);
+                    (self.recording, self.trap_message, self.trap_step) =
+                        (before, trap_message, trap_step);
                     let msg = format!("{msg}\nkept the last good recording");
                     self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     return Ok(false);
@@ -520,7 +560,9 @@ impl Session {
                 self.send_output(writer, "console", &format!("{note}\n"))?;
                 let line = self.recording.line(self.cursor).unwrap_or(0);
                 let kept = match place {
-                    Some(p) if p.line == line => format!("kept your place: line {line}, visit {}", p.visit),
+                    Some(p) if p.line == line => {
+                        format!("kept your place: line {line}, visit {}", p.visit)
+                    }
                     _ => format!("nearest step to where you were: line {line}"),
                 };
                 self.send_stopped(writer, "goto", Some(&kept))?;
@@ -529,22 +571,50 @@ impl Session {
             // now: the frame's call at the current step, or with `fn`, the
             // call of that fn open there or else its latest before it.
             "replayCall" => {
-                let frame = args.and_then(|a| a.get("frameId")).and_then(Json::as_i64).map_or(0, |id| id.max(1) as usize - 1);
-                let name = args.and_then(|a| a.get("fn")).and_then(Json::as_str).map(str::to_string);
+                let frame = args
+                    .and_then(|a| a.get("frameId"))
+                    .and_then(Json::as_i64)
+                    .map_or(0, |id| id.max(1) as usize - 1);
+                let name = args
+                    .and_then(|a| a.get("fn"))
+                    .and_then(Json::as_str)
+                    .map(str::to_string);
                 let step = self.cursor;
                 let pick = |recorded: &Recording| match &name {
                     None => crate::replay::call_at(recorded, step, frame),
                     Some(name) => {
                         let named = |c: &&cpl_interp::trace::Call| &c.name == name;
-                        let open = recorded.calls.iter().filter(named).filter(|c| c.entry <= step && step < c.exit).max_by_key(|c| c.depth);
-                        let done = || recorded.calls.iter().filter(named).rfind(|c| c.exit <= step);
+                        let open = recorded
+                            .calls
+                            .iter()
+                            .filter(named)
+                            .filter(|c| c.entry <= step && step < c.exit)
+                            .max_by_key(|c| c.depth);
+                        let done = || {
+                            recorded
+                                .calls
+                                .iter()
+                                .filter(named)
+                                .rfind(|c| c.exit <= step)
+                        };
                         let first = || recorded.calls.iter().find(named);
-                        open.or_else(done).or_else(first).cloned().ok_or(format!("the run never calls `{name}`"))
+                        open.or_else(done)
+                            .or_else(first)
+                            .cloned()
+                            .ok_or(format!("the run never calls `{name}`"))
                     }
                 };
                 let replayed = match self.brute {
-                    true => Err("replay runs the solution: this session debugs the @brute".to_string()),
-                    false => crate::replay::replay_call(&self.program_path, &self.source, None, &self.input, &pick),
+                    true => {
+                        Err("replay runs the solution: this session debugs the @brute".to_string())
+                    }
+                    false => crate::replay::replay_call(
+                        &self.program_path,
+                        &self.source,
+                        None,
+                        &self.input,
+                        &pick,
+                    ),
                 };
                 match replayed {
                     Ok(replay) => {
@@ -553,9 +623,20 @@ impl Session {
                         let mut body = String::from("{\"report\":");
                         json_str(&mut body, &report);
                         body.push_str(",\"call\":");
-                        json_str(&mut body, &crate::replay::call_text(&replay.recorded.name, &replay.recorded.args));
-                        body += &format!(",\"ordinal\":{},\"entry\":{}", replay.recorded.ordinal, replay.recorded.entry + 1);
-                        for (key, value) in [("returned", &replay.after.returned), ("before", &replay.before.returned), ("fallback", &replay.fallback)] {
+                        json_str(
+                            &mut body,
+                            &crate::replay::call_text(&replay.recorded.name, &replay.recorded.args),
+                        );
+                        body += &format!(
+                            ",\"ordinal\":{},\"entry\":{}",
+                            replay.recorded.ordinal,
+                            replay.recorded.entry + 1
+                        );
+                        for (key, value) in [
+                            ("returned", &replay.after.returned),
+                            ("before", &replay.before.returned),
+                            ("fallback", &replay.fallback),
+                        ] {
                             if let Some(value) = value {
                                 body += &format!(",\"{key}\":");
                                 json_str(&mut body, value);
@@ -567,7 +648,9 @@ impl Session {
                         body.push('}');
                         self.send_response(writer, req_seq, command, true, None, Some(&body))?;
                     }
-                    Err(msg) => self.send_response(writer, req_seq, command, false, Some(&msg), None)?,
+                    Err(msg) => {
+                        self.send_response(writer, req_seq, command, false, Some(&msg), None)?
+                    }
                 }
             }
             "disconnect" | "terminate" => {
@@ -582,13 +665,20 @@ impl Session {
     }
 
     fn change_at(&self, step: usize) -> Option<String> {
-        self.change.as_ref().filter(|c| c.step == step).map(describe_change)
+        self.change
+            .as_ref()
+            .filter(|c| c.step == step)
+            .map(describe_change)
     }
 
     /// Compiles the file as it is on disk now and records one run of it on
     /// the session's input. On a compile error the old recording stays.
     fn record(&mut self, writer: &mut dyn Write) -> io::Result<Result<(), String>> {
-        let side = if self.brute { Side::Brute } else { Side::Solution };
+        let side = if self.brute {
+            Side::Brute
+        } else {
+            Side::Solution
+        };
         let mut compile_err = String::new();
         let program = self.program_path.clone();
         let compiled = match compile_side(&program, side, &mut compile_err) {
@@ -613,7 +703,10 @@ impl Session {
         );
         self.recording = observed.recording.unwrap_or_default();
         self.source = compiled.text.clone();
-        self.trap_message = observed.trap.as_ref().map(|t| render_trap(&program, &compiled.text, t));
+        self.trap_message = observed
+            .trap
+            .as_ref()
+            .map(|t| render_trap(&program, &compiled.text, t));
         self.trap_step = observed
             .trap
             .as_ref()
@@ -631,7 +724,11 @@ impl Session {
         Ok(Ok(()))
     }
 
-    fn advance_continue(&mut self, writer: &mut dyn Write, include_current: bool) -> io::Result<()> {
+    fn advance_continue(
+        &mut self,
+        writer: &mut dyn Write,
+        include_current: bool,
+    ) -> io::Result<()> {
         let start = if include_current {
             self.cursor
         } else {
@@ -647,7 +744,10 @@ impl Session {
                 self.cursor = i;
                 return self.send_stopped(writer, "divergence", Some(&text));
             }
-            if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
+            if self
+                .breakpoints
+                .contains(&self.recording.line(i).unwrap_or(0))
+            {
                 self.cursor = i;
                 return self.send_stopped(writer, "breakpoint", None);
             }
@@ -661,12 +761,22 @@ impl Session {
     /// arithmetic, comparisons, `and`, `or` and `not`.
     fn eval_expr(&self, expr: &str) -> Option<(String, String)> {
         let step = self.recording.step(self.cursor)?;
-        if let Some(var) = self.recording.vars.iter().find(|v| v.name == expr || v.id == expr) {
-            let (_, value) = step.values.iter().find(|(i, _)| self.recording.vars[*i].id == var.id)?;
+        if let Some(var) = self
+            .recording
+            .vars
+            .iter()
+            .find(|v| v.name == expr || v.id == expr)
+        {
+            let (_, value) = step
+                .values
+                .iter()
+                .find(|(i, _)| self.recording.vars[*i].id == var.id)?;
             let value = cpl_json::parse(value).ok()?;
             return Some((shown(&value), var.ty.clone()));
         }
-        self.evaluate(expr).ok().map(|v| (shown(&v.json), String::new()))
+        self.evaluate(expr)
+            .ok()
+            .map(|v| (shown(&v.json), String::new()))
     }
 
     fn eval_error(&self, expr: &str) -> String {
@@ -677,7 +787,10 @@ impl Session {
     }
 
     fn evaluate(&self, expr: &str) -> Result<Valued, String> {
-        let step = self.recording.step(self.cursor).ok_or("nothing is recorded here")?;
+        let step = self
+            .recording
+            .step(self.cursor)
+            .ok_or("nothing is recorded here")?;
         let mut names = BTreeMap::new();
         for (index, value) in &step.values {
             let var = &self.recording.vars[*index];
@@ -694,7 +807,11 @@ impl Session {
             }
         }
         let tokens = tokens(expr)?;
-        let mut eval = Eval { tokens: &tokens, pos: 0, names: &names };
+        let mut eval = Eval {
+            tokens: &tokens,
+            pos: 0,
+            names: &names,
+        };
         let value = eval.or()?;
         match eval.tokens.get(eval.pos) {
             None => Ok(value),
@@ -708,9 +825,18 @@ pub(crate) fn shown(json: &Json) -> String {
     match json {
         Json::Null => "None".into(),
         Json::String(s) => s.clone(),
-        Json::Array(items) => format!("[{}]", items.iter().map(shown).collect::<Vec<_>>().join(", ")),
+        Json::Array(items) => format!(
+            "[{}]",
+            items.iter().map(shown).collect::<Vec<_>>().join(", ")
+        ),
         Json::Object(map) => {
-            format!("({})", map.iter().map(|(k, v)| format!("{k}: {}", shown(v))).collect::<Vec<_>>().join(", "))
+            format!(
+                "({})",
+                map.iter()
+                    .map(|(k, v)| format!("{k}: {}", shown(v)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
         }
         other => other.to_string(),
     }
@@ -737,7 +863,10 @@ fn tokens(expr: &str) -> Result<Vec<String>, String> {
             while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '_') {
                 i += 1;
             }
-        } else if i + 1 < chars.len() && ["==", "!=", "<=", ">=", "&&", "||"].contains(&format!("{c}{}", chars[i + 1]).as_str()) {
+        } else if i + 1 < chars.len()
+            && ["==", "!=", "<=", ">=", "&&", "||"]
+                .contains(&format!("{c}{}", chars[i + 1]).as_str())
+        {
             i += 2;
         } else if "+-*/%()[].,<>!".contains(c) {
             i += 1;
@@ -813,7 +942,11 @@ impl Eval<'_> {
             };
             self.pos += 1;
             let (a, b) = (int(&left)?, int(&self.product()?)?);
-            left = number(if op == "+" { a.checked_add(b) } else { a.checked_sub(b) })?;
+            left = number(if op == "+" {
+                a.checked_add(b)
+            } else {
+                a.checked_sub(b)
+            })?;
         }
     }
 
@@ -850,10 +983,17 @@ impl Eval<'_> {
                 }
                 value = at(&value, &index)?;
             } else if self.eat(".") {
-                let field = self.tokens.get(self.pos).ok_or("expected a field after `.`")?.clone();
+                let field = self
+                    .tokens
+                    .get(self.pos)
+                    .ok_or("expected a field after `.`")?
+                    .clone();
                 self.pos += 1;
                 value = match value.json.get(&field) {
-                    Some(json) => Valued { json: json.clone(), labels: None },
+                    Some(json) => Valued {
+                        json: json.clone(),
+                        labels: None,
+                    },
                     None => return Err(format!("no field `{field}` here")),
                 };
             } else {
@@ -867,7 +1007,11 @@ impl Eval<'_> {
         self.pos += 1;
         if token == "(" {
             let value = self.or()?;
-            return if self.eat(")") { Ok(value) } else { Err("expected `)`".into()) };
+            return if self.eat(")") {
+                Ok(value)
+            } else {
+                Err("expected `)`".into())
+            };
         }
         if token == "len" && self.eat("(") {
             let value = self.or()?;
@@ -878,12 +1022,23 @@ impl Eval<'_> {
             return number(Some(n as i128));
         }
         if token.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-            return number(Some(token.parse().map_err(|_| format!("`{token}` is not a number"))?));
+            return number(Some(
+                token
+                    .parse()
+                    .map_err(|_| format!("`{token}` is not a number"))?,
+            ));
         }
         match token.as_str() {
             "true" | "false" => Ok(boolean(token == "true")),
-            "None" => Ok(Valued { json: Json::Null, labels: None }),
-            _ => self.names.get(&token).cloned().ok_or(format!("`{token}` is not in scope here")),
+            "None" => Ok(Valued {
+                json: Json::Null,
+                labels: None,
+            }),
+            _ => self
+                .names
+                .get(&token)
+                .cloned()
+                .ok_or(format!("`{token}` is not in scope here")),
         }
     }
 }
@@ -892,27 +1047,42 @@ fn at(list: &Valued, index: &Valued) -> Result<Valued, String> {
     let items = list.json.as_array().ok_or("only a list can be indexed")?;
     let key = index.json.to_string();
     let position = match list.labels.as_ref().and_then(Json::as_array) {
-        Some(labels) => labels.iter().position(|l| l.to_string() == key || shown(l) == key),
+        Some(labels) => labels
+            .iter()
+            .position(|l| l.to_string() == key || shown(l) == key),
         None => usize::try_from(int(index)?).ok(),
     };
-    let json = position.and_then(|p| items.get(p)).ok_or(format!("{key} is out of range"))?;
-    Ok(Valued { json: json.clone(), labels: None })
+    let json = position
+        .and_then(|p| items.get(p))
+        .ok_or(format!("{key} is out of range"))?;
+    Ok(Valued {
+        json: json.clone(),
+        labels: None,
+    })
 }
 
 fn int(value: &Valued) -> Result<i128, String> {
     match &value.json {
         Json::Int(n) => Ok(i128::from(*n)),
-        Json::String(n) => n.parse().map_err(|_| format!("`{}` is not an integer", shown(&value.json))),
+        Json::String(n) => n
+            .parse()
+            .map_err(|_| format!("`{}` is not an integer", shown(&value.json))),
         other => Err(format!("`{}` is not an integer", shown(other))),
     }
 }
 
 fn truth(value: &Valued) -> Result<bool, String> {
-    value.json.as_bool().ok_or(format!("`{}` is not a Bool", shown(&value.json)))
+    value
+        .json
+        .as_bool()
+        .ok_or(format!("`{}` is not a Bool", shown(&value.json)))
 }
 
 fn boolean(b: bool) -> Valued {
-    Valued { json: Json::Bool(b), labels: None }
+    Valued {
+        json: Json::Bool(b),
+        labels: None,
+    }
 }
 
 fn number(n: Option<i128>) -> Result<Valued, String> {
@@ -942,12 +1112,18 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
     if let Some(text) = args.and_then(|a| a.get("inputText")).and_then(Json::as_str) {
         return Ok((text.as_bytes().to_vec(), None));
     }
-    let named = args.and_then(|a| a.get("input")).and_then(Json::as_str).filter(|s| !s.is_empty());
+    let named = args
+        .and_then(|a| a.get("input"))
+        .and_then(Json::as_str)
+        .filter(|s| !s.is_empty());
     let (path, note) = match named {
         Some(path) => (std::path::PathBuf::from(path), None),
         None => match crate::trace::pinned_input(Path::new(program)) {
             Some(path) => {
-                let note = format!("input: {} (the last case saved for this file)\n", path.display());
+                let note = format!(
+                    "input: {} (the last case saved for this file)\n",
+                    path.display()
+                );
                 (path, Some(note))
             }
             None => return Ok((Vec::new(), None)),
@@ -970,11 +1146,16 @@ fn describe_change(change: &Change) -> String {
     let was = source(&change.before, "the run had ended");
     let now = source(&change.after, "the run has ended");
     match &change.variable {
-        Some(var) => format!("first change at line {}: `{var}` = {now} (before the edit: {was})", change.line),
-        None => format!("first change at line {}: {now} (before the edit: {was})", change.line),
+        Some(var) => format!(
+            "first change at line {}: `{var}` = {now} (before the edit: {was})",
+            change.line
+        ),
+        None => format!(
+            "first change at line {}: {now} (before the edit: {was})",
+            change.line
+        ),
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -989,6 +1170,9 @@ mod tests {
             before: Some("[0,1,0]".into()),
             after: Some("[0,0,1]".into()),
         };
-        assert_eq!(describe_change(&change), "first change at line 11: `best` = [0, 0, 1] (before the edit: [0, 1, 0])");
+        assert_eq!(
+            describe_change(&change),
+            "first change at line 11: `best` = [0, 0, 1] (before the edit: [0, 1, 0])"
+        );
     }
 }

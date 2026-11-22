@@ -209,12 +209,19 @@ impl Recording {
 
     /// Step `step`, rebuilt from the snapshot before it and the changes since.
     pub fn step(&self, step: usize) -> Option<Step> {
-        (step < self.len()).then(|| self.log.step_of(step, &self.log.state_at(step), self.vars.len()))
+        (step < self.len()).then(|| {
+            self.log
+                .step_of(step, &self.log.state_at(step), self.vars.len())
+        })
     }
 
     /// The steps `range`, rebuilt one from the last.
     pub fn steps(&self, range: std::ops::Range<usize>) -> Steps<'_> {
-        Steps::new(&self.log, range.start..range.end.min(self.len()), self.vars.len())
+        Steps::new(
+            &self.log,
+            range.start..range.end.min(self.len()),
+            self.vars.len(),
+        )
     }
 
     pub fn line(&self, step: usize) -> Option<u32> {
@@ -233,8 +240,13 @@ impl Recording {
 
     /// Each variable's value at `step`, as JSON, by id.
     pub(crate) fn values_at(&self, step: usize) -> BTreeMap<String, String> {
-        let Some(step) = self.step(step) else { return BTreeMap::new() };
-        step.values.into_iter().map(|(var, json)| (self.vars[var].id.clone(), json.to_string())).collect()
+        let Some(step) = self.step(step) else {
+            return BTreeMap::new();
+        };
+        step.values
+            .into_iter()
+            .map(|(var, json)| (self.vars[var].id.clone(), json.to_string()))
+            .collect()
     }
 
     /// How many bytes the recording holds.
@@ -268,11 +280,14 @@ impl Recording {
     /// The innermost call running at `step`, or the call `frame` levels out
     /// from it.
     pub fn call_at(&self, step: usize, frame: usize) -> Option<&Call> {
-        let open: Vec<&Call> = self.calls.iter().filter(|c| c.entry <= step && step < c.exit).collect();
+        let open: Vec<&Call> = self
+            .calls
+            .iter()
+            .filter(|c| c.entry <= step && step < c.exit)
+            .collect();
         let depth = open.iter().map(|c| c.depth).max()?.checked_sub(frame)?;
         open.into_iter().rev().find(|c| c.depth == depth)
     }
-
 }
 
 /// Where `after`, a run recorded again after an edit, first parts from
@@ -290,7 +305,11 @@ pub fn first_change_in(
     new: std::ops::Range<usize>,
 ) -> Option<Change> {
     let label = |run: &Recording, i: usize| run.step(i).map(|s| s.label);
-    let last = new.end.saturating_sub(1).max(new.start).min(after.len().saturating_sub(1));
+    let last = new
+        .end
+        .saturating_sub(1)
+        .max(new.start)
+        .min(after.len().saturating_sub(1));
     let (mut was, mut now) = (before.log.start(old.start), after.log.start(new.start));
     for i in 0..old.len().max(new.len()) {
         let (b, a) = (old.start + i, new.start + i);
@@ -308,11 +327,19 @@ pub fn first_change_in(
         after.log.advance(&mut now, a);
         // Until now the two held the same: only what this step changed can differ.
         let ids: Vec<&str> = match i {
-            0 => before.vars.iter().chain(&after.vars).map(|v| v.id.as_str()).collect(),
+            0 => before
+                .vars
+                .iter()
+                .chain(&after.vars)
+                .map(|v| v.id.as_str())
+                .collect(),
             _ => {
                 let (old_vars, old_other) = before.log.touched(b);
                 let (new_vars, new_other) = after.log.touched(a);
-                let mut ids: Vec<&str> = old_vars.iter().map(|&v| before.vars[v].id.as_str()).collect();
+                let mut ids: Vec<&str> = old_vars
+                    .iter()
+                    .map(|&v| before.vars[v].id.as_str())
+                    .collect();
                 ids.extend(new_vars.iter().map(|&v| after.vars[v].id.as_str()));
                 if old_other || new_other {
                     ids.push("stdout");
@@ -321,7 +348,10 @@ pub fn first_change_in(
             }
         };
         let value = |run: &Recording, state: &log::State, id: &str| {
-            run.vars.iter().position(|v| v.id == id).and_then(|var| run.log.value_in(state, var))
+            run.vars
+                .iter()
+                .position(|v| v.id == id)
+                .and_then(|var| run.log.value_in(state, var))
         };
         let differs = ids.into_iter().find_map(|id| {
             let (b, a) = (value(before, &was, id), value(after, &now, id));
@@ -330,12 +360,26 @@ pub fn first_change_in(
         let differs = differs.or_else(|| {
             let (was, now) = (before.log.locals_in(&was), after.log.locals_in(&now));
             let (b, a) = (members(&was), members(&now));
-            let (b, a): (BTreeMap<_, _>, BTreeMap<_, _>) = (b.into_iter().collect(), a.into_iter().collect());
-            let id = b.keys().chain(a.keys()).find(|id| b.get(*id) != a.get(*id))?;
-            Some((id.to_string(), b.get(id).map(|v| v.to_string()), a.get(id).map(|v| v.to_string())))
+            let (b, a): (BTreeMap<_, _>, BTreeMap<_, _>) =
+                (b.into_iter().collect(), a.into_iter().collect());
+            let id = b
+                .keys()
+                .chain(a.keys())
+                .find(|id| b.get(*id) != a.get(*id))?;
+            Some((
+                id.to_string(),
+                b.get(id).map(|v| v.to_string()),
+                a.get(id).map(|v| v.to_string()),
+            ))
         });
         if let Some((variable, was, now)) = differs {
-            return Some(Change { step: a, line: after.line(a).unwrap_or(0), variable: Some(variable), before: was, after: now });
+            return Some(Change {
+                step: a,
+                line: after.line(a).unwrap_or(0),
+                variable: Some(variable),
+                before: was,
+                after: now,
+            });
         }
     }
     None
@@ -509,7 +553,11 @@ impl Tracer {
             prints: 0,
             case: None,
             max_steps: config.max_steps.unwrap_or(MAX_STEPS),
-            max_bytes: config.max_steps.map_or(MAX_BYTES, |steps| steps.saturating_mul(64).clamp(MAX_BYTES, u32::MAX as usize / 2)),
+            max_bytes: config.max_steps.map_or(MAX_BYTES, |steps| {
+                steps
+                    .saturating_mul(64)
+                    .clamp(MAX_BYTES, u32::MAX as usize / 2)
+            }),
             stage_of_case: None,
             locals: String::new(),
             local_names: String::new(),
@@ -518,7 +566,10 @@ impl Tracer {
             touched: Vec::new(),
             all_touched: true,
             assignments: config.assignments,
-            rec: Recording { log: log::Log::new(&config.source, config.record_frames), ..Recording::default() },
+            rec: Recording {
+                log: log::Log::new(&config.source, config.record_frames),
+                ..Recording::default()
+            },
             ordinals: HashMap::new(),
             open: Vec::new(),
             stop_after_call: config.stop_after_call,
@@ -551,7 +602,11 @@ impl Tracer {
         let ordinal = self.ordinals.entry(name.to_string()).or_insert(0);
         *ordinal += 1;
         let ordinal = *ordinal;
-        if self.stop_after_call.as_ref().is_some_and(|(n, k)| n == name && *k == ordinal) {
+        if self
+            .stop_after_call
+            .as_ref()
+            .is_some_and(|(n, k)| n == name && *k == ordinal)
+        {
             self.stopping_at = Some(self.open.len());
         }
         let kept = self.last_steps.is_none() && self.rec.calls.len() < MAX_STEPS;
@@ -588,10 +643,10 @@ impl Tracer {
 
     pub fn enter_fn(&mut self, name: &str) -> (bool, bool) {
         self.touch_all();
-        let pos = !self.include_fns.is_empty()
-            && self.include_fns.iter().any(|p| glob_match(p, name));
-        let neg = !self.exclude_fns.is_empty()
-            && self.exclude_fns.iter().any(|p| glob_match(p, name));
+        let pos =
+            !self.include_fns.is_empty() && self.include_fns.iter().any(|p| glob_match(p, name));
+        let neg =
+            !self.exclude_fns.is_empty() && self.exclude_fns.iter().any(|p| glob_match(p, name));
         if pos {
             self.pos_inside += 1;
         }
@@ -693,11 +748,18 @@ impl Tracer {
         }
         let global = &view.program.globals[id];
         // The compiler's own variables have no place in the file.
-        if global.span.end == 0 || matches!(global.ty, Ty::Unit | Ty::Fn(..) | Ty::DomainVal | Ty::Error) {
+        if global.span.end == 0
+            || matches!(global.ty, Ty::Unit | Ty::Fn(..) | Ty::DomainVal | Ty::Error)
+        {
             return None;
         }
         let (kind, extra) = classify(&global.ty, view);
-        let taken = self.rec.vars.iter().filter(|v| v.name == global.name).count();
+        let taken = self
+            .rec
+            .vars
+            .iter()
+            .filter(|v| v.name == global.name)
+            .count();
         let id_text = match taken {
             0 => global.name.clone(),
             n => format!("{} ({})", global.name, n + 1),
@@ -734,7 +796,9 @@ impl Tracer {
         let len = self.rec.log.len();
         if self.last_steps.is_none() {
             let bytes = self.rec.log.bytes();
-            if self.case == Some(0) && (len >= SETUP_STEPS.max(self.max_steps / 10) || bytes >= self.max_bytes / 16) {
+            if self.case == Some(0)
+                && (len >= SETUP_STEPS.max(self.max_steps / 10) || bytes >= self.max_bytes / 16)
+            {
                 return;
             }
             if len >= self.max_steps || bytes >= self.max_bytes {
@@ -747,16 +811,24 @@ impl Tracer {
         if std::mem::replace(&mut self.all_touched, false) {
             (0..view.globals.len()).for_each(|id| self.record_global(id, view, None));
         } else {
-            touched.iter().for_each(|&(id, item)| self.record_global(id, view, item));
+            touched
+                .iter()
+                .for_each(|&(id, item)| self.record_global(id, view, item));
             #[cfg(debug_assertions)]
             self.check_untouched(view);
         }
         touched.clear();
         self.touched = touched;
         let shown = |value: &Value| {
-            !matches!(value, Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_))
+            !matches!(
+                value,
+                Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_)
+            )
         };
-        let (mut names, mut ints) = (std::mem::take(&mut self.local_names), std::mem::take(&mut self.local_ints));
+        let (mut names, mut ints) = (
+            std::mem::take(&mut self.local_names),
+            std::mem::take(&mut self.local_ints),
+        );
         ints.clear();
         let (mut raw, mut same) = (true, true);
         for (name, ty, value) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
@@ -767,14 +839,16 @@ impl Tracer {
                     break;
                 }
             }
-            same &= self.local_name_at.get(ints.len() - 1) == Some(&(name.as_ptr() as usize, name.len()));
+            same &= self.local_name_at.get(ints.len() - 1)
+                == Some(&(name.as_ptr() as usize, name.len()));
         }
         if raw {
             if !same || ints.len() != self.local_name_at.len() {
                 self.local_name_at.clear();
                 names.clear();
                 for (name, _, _) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
-                    self.local_name_at.push((name.as_ptr() as usize, name.len()));
+                    self.local_name_at
+                        .push((name.as_ptr() as usize, name.len()));
                     names.push('\n');
                     string(&mut names, name);
                 }
@@ -835,12 +909,17 @@ impl Tracer {
         });
         let checkpoint = checkpoint.map(|name| self.checkpoint(name));
         let frame = self.record_frames.then(|| {
-            let stack: Vec<(&str, u32)> =
-                view.call_frames.iter().map(|(name, at)| (*name, self.line(*at).max(1))).collect();
+            let stack: Vec<(&str, u32)> = view
+                .call_frames
+                .iter()
+                .map(|(name, at)| (*name, self.line(*at).max(1)))
+                .collect();
             self.rec.log.frame(&stack)
         });
         let stage = self.stage_id();
-        self.rec.log.step(line, frame, stage, label, checkpoint, focus);
+        self.rec
+            .log
+            .step(line, frame, stage, label, checkpoint, focus);
         if let Some(limit) = self.last_steps.filter(|&limit| limit > 0) {
             if self.rec.log.len() >= 2 * limit {
                 self.rec.log.keep_last(limit);
@@ -886,12 +965,18 @@ impl Tracer {
                 return self.rec.log.set_int(var, *v);
             }
         }
-        if let Some((i, v)) = item.filter(|_| self.kinds[var] == Kind::Array).and_then(|i| Some((i, int_item(value, ty, i)?))) {
+        if let Some((i, v)) = item
+            .filter(|_| self.kinds[var] == Kind::Array)
+            .and_then(|i| Some((i, int_item(value, ty, i)?)))
+        {
             if self.rec.log.set_int_item(var, i, v) {
                 return;
             }
         }
-        if let Some(json) = item.filter(|_| self.kinds[var] == Kind::Array).and_then(|i| item_json(value, ty, i, view)) {
+        if let Some(json) = item
+            .filter(|_| self.kinds[var] == Kind::Array)
+            .and_then(|i| item_json(value, ty, i, view))
+        {
             if self.rec.log.set_item(var, item.unwrap_or_default(), &json) {
                 return;
             }
@@ -911,13 +996,19 @@ impl Tracer {
     #[cfg(debug_assertions)]
     fn check_untouched(&self, view: &View) {
         for id in 0..view.globals.len() {
-            let (Some(var), value) = (self.of_global[id], &view.globals[id]) else { continue };
+            let (Some(var), value) = (self.of_global[id], &view.globals[id]) else {
+                continue;
+            };
             if !self.visible[id] || matches!(value, Value::Moved | Value::Unit) {
                 continue;
             }
             let (json, _) = snapshot(value, &view.program.globals[id].ty, self.kinds[var], view);
             let name = &view.program.globals[id].name;
-            assert_eq!(self.rec.log.value_now(var).as_deref(), Some(json.as_str()), "`{name}` changed unseen");
+            assert_eq!(
+                self.rec.log.value_now(var).as_deref(),
+                Some(json.as_str()),
+                "`{name}` changed unseen"
+            );
         }
     }
 
@@ -1003,7 +1094,11 @@ impl Tracer {
             render(&mut text, value, ty, view, Mode::Text);
         }
         let line = self.line(span).max(1);
-        self.rec.assigned.push(Assigned { line, name: name.to_string(), value: text });
+        self.rec.assigned.push(Assigned {
+            line,
+            name: name.to_string(),
+            value: text,
+        });
     }
 
     /// `print(...)` wrote `text`.
@@ -1017,7 +1112,13 @@ impl Tracer {
         self.prints += 1;
         let shown: String = text.trim_end().chars().take(60).collect();
         let name = format!("print {}", self.prints);
-        self.step(view, span, Some(format!("print → {shown}")), Some(&name), None);
+        self.step(
+            view,
+            span,
+            Some(format!("print → {shown}")),
+            Some(&name),
+            None,
+        );
     }
 
     /// `debug(...)` ran: `name` is its label or its arguments as written,
@@ -1047,8 +1148,19 @@ impl Tracer {
         };
         self.rec.log.set(var, &json);
         let checkpoint = format!("debug {name}");
-        self.step(view, span, Some(format!("debug: {text}")), Some(&checkpoint), None);
-        let name = match self.rec.log.last().and_then(|(_, note, _)| note?.checkpoint.clone()) {
+        self.step(
+            view,
+            span,
+            Some(format!("debug: {text}")),
+            Some(&checkpoint),
+            None,
+        );
+        let name = match self
+            .rec
+            .log
+            .last()
+            .and_then(|(_, note, _)| note?.checkpoint.clone())
+        {
             Some(checkpoint) => checkpoint,
             None => checkpoint,
         };
@@ -1064,19 +1176,40 @@ impl Tracer {
             }
             None if self.stopped => {}
             None => {
-                let last = view.program.main.stmts.iter().rev().find_map(cpl_ir::Stmt::span);
+                let last = view
+                    .program
+                    .main
+                    .stmts
+                    .iter()
+                    .rev()
+                    .find_map(cpl_ir::Stmt::span);
                 let at = last.map_or(self.source.trim_end().len() as u32, |span| span.end);
                 let end = Span::new(at, at);
-                self.step(view, end, Some("the program ended".to_string()), Some("end"), None)
+                self.step(
+                    view,
+                    end,
+                    Some("the program ended".to_string()),
+                    Some("end"),
+                    None,
+                )
             }
         }
         if self.rec.log.len() == 0 {
-            self.step(view, Span::default(), Some("nothing was recorded".to_string()), None, None);
+            self.step(
+                view,
+                Span::default(),
+                Some("nothing was recorded".to_string()),
+                None,
+                None,
+            );
         }
         while !self.open.is_empty() {
             self.leave_call(None);
         }
-        if let Some(limit) = self.last_steps.filter(|&limit| limit > 0 && self.rec.log.len() > limit) {
+        if let Some(limit) = self
+            .last_steps
+            .filter(|&limit| limit > 0 && self.rec.log.len() > limit)
+        {
             self.rec.log.keep_last(limit);
             self.rec.truncated = true;
         }
@@ -1084,7 +1217,10 @@ impl Tracer {
         for id in 0..view.globals.len() {
             let global = &view.program.globals[id];
             let value = &view.globals[id];
-            if global.span.end == 0 || !self.visible[id] || matches!(value, Value::Unit | Value::Moved) {
+            if global.span.end == 0
+                || !self.visible[id]
+                || matches!(value, Value::Unit | Value::Moved)
+            {
                 continue;
             }
             if matches!(global.ty, Ty::Unit | Ty::Fn(..) | Ty::DomainVal | Ty::Error) {
@@ -1135,7 +1271,10 @@ fn is_cell(ty: &Ty, program: &Program) -> bool {
     match ty {
         Ty::Int | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Bound(_) => true,
         Ty::Opt(inner) => is_cell(inner, program),
-        Ty::Enum(id) => program.enums[*id].variants.iter().all(|(_, fields)| fields.is_empty()),
+        Ty::Enum(id) => program.enums[*id]
+            .variants
+            .iter()
+            .all(|(_, fields)| fields.is_empty()),
         _ => false,
     }
 }
@@ -1219,12 +1358,16 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
                 extra = format!(",\"labels\":{}", labels(dim, len, view));
             }
             match &**elem {
-                Ty::Opt(inner) if matches!(dim, Dim::Pos(d) if **inner == Ty::Pos(d)) => (Kind::Parents, extra),
+                Ty::Opt(inner) if matches!(dim, Dim::Pos(d) if **inner == Ty::Pos(d)) => {
+                    (Kind::Parents, extra)
+                }
                 elem if is_cell(elem, program) => (Kind::Array, extra),
                 // A row of named cells per index: the viewer draws a table
                 // with the index's labels down the side.
                 elem if field_names(elem, program).is_some()
-                    && field_tys(elem, program).iter().all(|ty| is_cell(ty, program)) =>
+                    && field_tys(elem, program)
+                        .iter()
+                        .all(|ty| is_cell(ty, program)) =>
                 {
                     (Kind::Json, extra)
                 }
@@ -1233,9 +1376,10 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
         }
         Ty::Array { dims, elem } if dims.len() == 2 && is_cell(elem, program) => {
             let mut extra = String::new();
-            for (dim, labels_key, domain_key) in
-                [(dims[0], "rowLabels", "rowDomain"), (dims[1], "colLabels", "colDomain")]
-            {
+            for (dim, labels_key, domain_key) in [
+                (dims[0], "rowLabels", "rowDomain"),
+                (dims[1], "colLabels", "colDomain"),
+            ] {
                 if let Some(len) = dim_len(dim, view) {
                     extra += &format!(",\"{labels_key}\":{}", labels(dim, len, view));
                 }
@@ -1246,7 +1390,9 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
             }
             let kind = match &**elem {
                 Ty::Char | Ty::Bool | Ty::Enum(_) => Kind::Grid,
-                Ty::Opt(inner) if matches!(**inner, Ty::Char | Ty::Bool | Ty::Enum(_)) => Kind::Grid,
+                Ty::Opt(inner) if matches!(**inner, Ty::Char | Ty::Bool | Ty::Enum(_)) => {
+                    Kind::Grid
+                }
                 _ => Kind::Dp,
             };
             (kind, extra)
@@ -1254,7 +1400,12 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
         Ty::List(elem) if is_cell(elem, program) => (Kind::Array, String::new()),
         Ty::Struct(id) => {
             let def = &program.structs[*id];
-            let field = |name: &str| def.fields.iter().find(|(field, _)| field == name).map(|(_, ty)| ty);
+            let field = |name: &str| {
+                def.fields
+                    .iter()
+                    .find(|(field, _)| field == name)
+                    .map(|(_, ty)| ty)
+            };
             // Drawn by shape, not by name, so a program's own struct laid
             // out the same way is drawn the same way: offsets into a flat
             // list of arcs that each start with a vertex is a graph, and
@@ -1264,12 +1415,18 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
                 _ => false,
             };
             let parent_per = |ty: &Ty| match ty {
-                Ty::Array { elem, .. } => matches!(&**elem, Ty::Opt(of) if matches!(**of, Ty::Pos(_))),
+                Ty::Array { elem, .. } => {
+                    matches!(&**elem, Ty::Opt(of) if matches!(**of, Ty::Pos(_)))
+                }
                 _ => false,
             };
-            if field("start") == Some(&Ty::List(Box::new(Ty::Int))) && field("arcs").is_some_and(arcs_from) {
+            if field("start") == Some(&Ty::List(Box::new(Ty::Int)))
+                && field("arcs").is_some_and(arcs_from)
+            {
                 (Kind::Csr, ",\"directed\":true".to_string())
-            } else if matches!(field("root"), Some(Ty::Pos(_))) && field("par").is_some_and(parent_per) {
+            } else if matches!(field("root"), Some(Ty::Pos(_)))
+                && field("par").is_some_and(parent_per)
+            {
                 (Kind::Rooted, String::new())
             } else {
                 (Kind::Json, String::new())
@@ -1286,9 +1443,7 @@ fn cells(value: &Value) -> usize {
             crate::value::ArrayData::Values(v) => v.iter().map(cells).sum(),
             _ => array.len(),
         },
-        Value::List(items) | Value::Enum(_, items) => {
-            1 + items.iter().map(cells).sum::<usize>()
-        }
+        Value::List(items) | Value::Enum(_, items) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Tuple(TupleVal::OneInt(_)) => 2,
         Value::Tuple(TupleVal::Boxed(items)) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Map(entries) => entries.iter().map(|(k, v)| cells(k) + cells(v)).sum(),
@@ -1328,14 +1483,24 @@ fn label(value: i64, ty: &Ty, view: &View) -> i64 {
 fn field_names(ty: &Ty, program: &Program) -> Option<Vec<String>> {
     match ty {
         Ty::Record(fields) => Some(fields.iter().map(|(name, _)| name.clone()).collect()),
-        Ty::Struct(id) => Some(program.structs[*id].fields.iter().map(|(name, _)| name.clone()).collect()),
+        Ty::Struct(id) => Some(
+            program.structs[*id]
+                .fields
+                .iter()
+                .map(|(name, _)| name.clone())
+                .collect(),
+        ),
         _ => None,
     }
 }
 
 fn field_tys(ty: &Ty, program: &Program) -> Vec<Ty> {
     match ty {
-        Ty::Struct(id) => program.structs[*id].fields.iter().map(|(_, ty)| ty.clone()).collect(),
+        Ty::Struct(id) => program.structs[*id]
+            .fields
+            .iter()
+            .map(|(_, ty)| ty.clone())
+            .collect(),
         other => other.fields().unwrap_or_default(),
     }
 }
@@ -1344,7 +1509,10 @@ fn field_tys(ty: &Ty, program: &Program) -> Vec<Ty> {
 fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
     let json = mode == Mode::Json;
     let sep = if json { "," } else { ", " };
-    let list = |out: &mut String, items: &mut dyn Iterator<Item = (&Value, &Ty)>, open: char, close: char| {
+    let list = |out: &mut String,
+                items: &mut dyn Iterator<Item = (&Value, &Ty)>,
+                open: char,
+                close: char| {
         out.push(open);
         for (i, (item, ty)) in items.enumerate() {
             if i > 0 {
@@ -1425,7 +1593,8 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
                         out.push_str(name.split(['<', '_']).next().unwrap_or(name));
                     }
                     out.push(if json { '{' } else { '(' });
-                    for (i, ((field, ty), name)) in fields.iter().zip(&tys).zip(&names).enumerate() {
+                    for (i, ((field, ty), name)) in fields.iter().zip(&tys).zip(&names).enumerate()
+                    {
                         if i > 0 {
                             out.push_str(sep);
                         }
@@ -1465,7 +1634,14 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
         }
         (Value::Array(array), Ty::Array { elem, .. }) => {
             // Rows of rows, the last dimension innermost.
-            fn rows(out: &mut String, data: &[Value], dims: &[i64], elem: &Ty, view: &View, mode: Mode) {
+            fn rows(
+                out: &mut String,
+                data: &[Value],
+                dims: &[i64],
+                elem: &Ty,
+                view: &View,
+                mode: Mode,
+            ) {
                 let sep = if mode == Mode::Json { "," } else { ", " };
                 out.push('[');
                 match dims {
@@ -1492,10 +1668,17 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
             let vals = array.to_values();
             rows(out, &vals, &array.dims, elem, view, mode);
         }
-        (Value::List(items), Ty::List(elem)) => list(out, &mut items.iter().map(|item| (item, &**elem)), '[', ']'),
+        (Value::List(items), Ty::List(elem)) => {
+            list(out, &mut items.iter().map(|item| (item, &**elem)), '[', ']')
+        }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
             let (open, close) = if json { ('[', ']') } else { ('{', '}') };
-            list(out, &mut items.iter().map(|item| (item, &**elem)), open, close)
+            list(
+                out,
+                &mut items.iter().map(|item| (item, &**elem)),
+                open,
+                close,
+            )
         }
         (Value::Map(entries), Ty::Map(key, val) | Ty::HashMap(key, val)) => {
             out.push(if json { '[' } else { '{' });
@@ -1533,7 +1716,11 @@ pub(crate) fn text_of(value: &Value, ty: &Ty, view: &View) -> String {
 /// The named `params` among the locals, as a JSON object.
 pub(crate) fn args_json(view: &View, params: &[&str]) -> String {
     let mut out = String::from("{");
-    for (name, ty, value) in view.locals.iter().filter(|(name, ..)| params.contains(name)) {
+    for (name, ty, value) in view
+        .locals
+        .iter()
+        .filter(|(name, ..)| params.contains(name))
+    {
         if out.len() > 1 {
             out.push(',');
         }
@@ -1623,8 +1810,7 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
     };
     let vals = array.to_values();
     Some(
-        vals
-            .iter()
+        vals.iter()
             .map(|cell| match cell {
                 Value::Opt(OptVal::Int(parent)) => Some(*parent),
                 Value::Opt(OptVal::Boxed(parent)) => Some(parent.int()),
@@ -1640,7 +1826,9 @@ const MAX_EXACT: u64 = 9_007_199_254_740_991;
 /// Item `index` of a one-dimensional array of `Int`s, when its JSON is
 /// the number itself.
 fn int_item(value: &Value, ty: &Ty, index: usize) -> Option<i64> {
-    let (Value::Array(array), Ty::Array { dims, elem }) = (value, ty) else { return None };
+    let (Value::Array(array), Ty::Array { dims, elem }) = (value, ty) else {
+        return None;
+    };
     if dims.len() != 1 || !matches!(**elem, Ty::Int) || array.len() > MAX_CELLS {
         return None;
     }
@@ -1654,7 +1842,9 @@ fn int_item(value: &Value, ty: &Ty, index: usize) -> Option<i64> {
 /// the JSON of the whole.
 fn item_json(value: &Value, ty: &Ty, index: usize, view: &View) -> Option<String> {
     let (item, elem) = match (value, ty) {
-        (Value::Array(array), Ty::Array { dims, elem }) if dims.len() == 1 => (array.get(index)?, &**elem),
+        (Value::Array(array), Ty::Array { dims, elem }) if dims.len() == 1 => {
+            (array.get(index)?, &**elem)
+        }
         (Value::List(items), Ty::List(elem)) => (items.get(index)?.clone(), &**elem),
         _ => return None,
     };
@@ -1684,7 +1874,9 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
         // viewer still takes the trace.
         match kind {
             Kind::Array | Kind::Parents | Kind::Grid | Kind::Dp => out.push_str("[]"),
-            Kind::Adjacency | Kind::Csr | Kind::Rooted => out.push_str("{\"nodes\":[],\"edges\":[]}"),
+            Kind::Adjacency | Kind::Csr | Kind::Rooted => {
+                out.push_str("{\"nodes\":[],\"edges\":[]}")
+            }
             Kind::Scalar | Kind::Json => string(&mut out, &format!("{} values", cells(value))),
         }
         return (out, None);
@@ -1740,7 +1932,8 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
                     .collect();
                 // The root first: the viewer roots a tree at its first node.
                 let root = parents.iter().position(Option::is_none)? as i64;
-                let nodes = std::iter::once(root).chain((0..parents.len() as i64).filter(move |v| *v != root));
+                let nodes = std::iter::once(root)
+                    .chain((0..parents.len() as i64).filter(move |v| *v != root));
                 Some(graph(nodes.map(|v| v + lo), &edges))
             });
             (plain(), tree)
@@ -1800,14 +1993,18 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
             let edges: Vec<_> = parents
                 .iter()
                 .enumerate()
-                .filter_map(|(child, parent)| parent.map(|parent| (parent + lo, child as i64 + lo, None)))
+                .filter_map(|(child, parent)| {
+                    parent.map(|parent| (parent + lo, child as i64 + lo, None))
+                })
                 .collect();
             let nodes = std::iter::once(root).chain(
                 (0..parents.len() as i64).filter(|v| *v != root && parents[*v as usize].is_some()),
             );
             (graph(nodes.map(|v| v + lo), &edges), None)
         }
-        (Kind::Grid | Kind::Dp, Value::Array(array), _) if array.dims.len() != 2 || array.is_empty() => {
+        (Kind::Grid | Kind::Dp, Value::Array(array), _)
+            if array.dims.len() != 2 || array.is_empty() =>
+        {
             ("[]".to_string(), None)
         }
         _ => (plain(), None),
@@ -1815,7 +2012,12 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
 }
 
 /// One run of a trace document: `{"label": .., "steps": [..]}`.
-fn run_json(label: &str, rec: &Recording, ids: &[String], dropped: &dyn Fn(&str) -> bool) -> String {
+fn run_json(
+    label: &str,
+    rec: &Recording,
+    ids: &[String],
+    dropped: &dyn Fn(&str) -> bool,
+) -> String {
     let mut out = String::from("{\"label\":");
     string(&mut out, label);
     out.push_str(",\"steps\":[");
@@ -1887,9 +2089,9 @@ pub fn document(
     let mut dropped = std::collections::HashSet::new();
     if let Some((_, slow)) = slow {
         for var in &slow.vars {
-            let same = vars
-                .iter()
-                .find(|known| known.id == var.id && known.kind == var.kind && known.extra == var.extra);
+            let same = vars.iter().find(|known| {
+                known.id == var.id && known.kind == var.kind && known.extra == var.extra
+            });
             match same {
                 Some(_) => slow_ids.push(var.id.clone()),
                 None if vars.iter().any(|known| known.id == var.id) => {
@@ -1906,7 +2108,8 @@ pub fn document(
         }
         // Shared checkpoints must come in one order in both runs: one
         // that does not is left as a plain step.
-        let position: HashMap<&str, usize> = slow.checkpoints().map(|(i, name)| (name, i)).collect();
+        let position: HashMap<&str, usize> =
+            slow.checkpoints().map(|(i, name)| (name, i)).collect();
         let mut reached = None;
         for (_, name) in fast.checkpoints() {
             match position.get(name) {
@@ -1995,7 +2198,10 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
         let mut out: HashMap<&str, Vec<(usize, &Assigned)>> = HashMap::new();
         for (at, assigned) in rec.assigned.iter().enumerate() {
             let history = out.entry(assigned.name.as_str()).or_default();
-            if history.last().is_none_or(|(_, last)| last.value != assigned.value) {
+            if history
+                .last()
+                .is_none_or(|(_, last)| last.value != assigned.value)
+            {
                 history.push((at, assigned));
             }
         }
@@ -2008,7 +2214,10 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
             continue;
         };
         let values = |history: &[(usize, &Assigned)]| -> Vec<String> {
-            history.iter().map(|(_, assigned)| assigned.value.clone()).collect()
+            history
+                .iter()
+                .map(|(_, assigned)| assigned.value.clone())
+                .collect()
         };
         let (va, vb) = (values(a), values(b));
         if va == vb {
@@ -2028,7 +2237,9 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
     }
     let (_, name, nth) = best?;
     let side = |history: &Vec<(usize, &Assigned)>| {
-        history.get(nth).map(|(_, assigned)| (assigned.line, assigned.value.clone()))
+        history
+            .get(nth)
+            .map(|(_, assigned)| (assigned.line, assigned.value.clone()))
     };
     Some(Divergence {
         name: name.to_string(),
@@ -2042,7 +2253,11 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
 /// order, and the last line each printed: where the two first differ is
 /// where to look.
 pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
-    let theirs: HashMap<&str, &Shown> = slow.shown.iter().map(|shown| (shown.name.as_str(), shown)).collect();
+    let theirs: HashMap<&str, &Shown> = slow
+        .shown
+        .iter()
+        .map(|shown| (shown.name.as_str(), shown))
+        .collect();
     fast.shown
         .iter()
         .filter_map(|shown| {
@@ -2065,7 +2280,11 @@ mod tests {
         Recording {
             assigned: assigned
                 .iter()
-                .map(|&(line, name, value)| Assigned { line, name: name.to_string(), value: value.to_string() })
+                .map(|&(line, name, value)| Assigned {
+                    line,
+                    name: name.to_string(),
+                    value: value.to_string(),
+                })
                 .collect(),
             ..Recording::default()
         }
@@ -2073,7 +2292,13 @@ mod tests {
 
     #[test]
     fn the_first_divergence_is_the_earliest_value_the_solution_gives_differently() {
-        let fast = run(&[(1, "i", "0"), (2, "s", "0"), (3, "s", "0"), (3, "t", "5"), (4, "s", "7")]);
+        let fast = run(&[
+            (1, "i", "0"),
+            (2, "s", "0"),
+            (3, "s", "0"),
+            (3, "t", "5"),
+            (4, "s", "7"),
+        ]);
         let slow = run(&[(1, "i", "0"), (9, "s", "0"), (9, "t", "6"), (10, "s", "8")]);
         // `s` repeats 0 and stays in step; `t` is the first value that differs.
         assert_eq!(
@@ -2091,18 +2316,35 @@ mod tests {
     fn a_value_one_side_never_gives_is_a_divergence_and_loop_order_is_not() {
         // The same values in another order, ending the same, are a loop in another order.
         let fast = run(&[(1, "x", "1"), (1, "x", "2"), (1, "x", "3"), (2, "s", "1")]);
-        let slow = run(&[(5, "x", "2"), (5, "x", "1"), (5, "x", "3"), (6, "s", "1"), (6, "s", "3")]);
+        let slow = run(&[
+            (5, "x", "2"),
+            (5, "x", "1"),
+            (5, "x", "3"),
+            (6, "s", "1"),
+            (6, "s", "3"),
+        ]);
         let d = first_divergence(&fast, &slow).unwrap();
         assert_eq!((d.name.as_str(), d.nth, d.fast), ("s", 2, None));
         assert_eq!(d.brute, Some((6, "3".to_string())));
         // Names only one side has say nothing.
-        assert_eq!(first_divergence(&run(&[(1, "a", "1")]), &run(&[(1, "b", "2")])), None);
+        assert_eq!(
+            first_divergence(&run(&[(1, "a", "1")]), &run(&[(1, "b", "2")])),
+            None
+        );
     }
 
     #[test]
     fn members_splits_a_written_object_at_its_top_level() {
         let object = r#"{"a":1,"b":[1,{"c":2}],"s":"x,\"}y","e":{}}"#;
-        assert_eq!(members(object), [("a", "1"), ("b", "[1,{\"c\":2}]"), ("s", r#""x,\"}y""#), ("e", "{}")]);
+        assert_eq!(
+            members(object),
+            [
+                ("a", "1"),
+                ("b", "[1,{\"c\":2}]"),
+                ("s", r#""x,\"}y""#),
+                ("e", "{}")
+            ]
+        );
         assert!(members("{}").is_empty());
     }
 }

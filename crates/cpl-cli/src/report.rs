@@ -35,8 +35,7 @@ const CHANNEL: &str = env!("CPL_CHANNEL");
 const MAX_INPUT_BYTES: usize = 4096;
 const MAX_OUTPUT_BYTES: usize = 8192;
 const PREFILL_URL_LIMIT: usize = 6144;
-const ISSUE_BASE_URL: &str =
-    "https://github.com/ryanbai1412/cp-lang/issues/new?template=bug.yml";
+const ISSUE_BASE_URL: &str = "https://github.com/ryanbai1412/cp-lang/issues/new?template=bug.yml";
 
 #[derive(Default, Clone)]
 struct CrashContext {
@@ -110,10 +109,7 @@ pub fn install_ice_hook() {
             .location()
             .map(|l| format!("{}:{}:{}", basename(l.file()), l.line(), l.column()))
             .unwrap_or_else(|| "unknown".to_string());
-        let ctx = context_cell()
-            .lock()
-            .map(|g| g.clone())
-            .unwrap_or_default();
+        let ctx = context_cell().lock().map(|g| g.clone()).unwrap_or_default();
         let _ = write_crash_bundle(&crash_dir(), &ctx, &msg, &location, &bt);
         eprintln!("this is a cpl bug: run `cpl report --last`");
     }));
@@ -585,8 +581,12 @@ fn compare_runs(ir: &RunCapture, cr: &RunCapture) -> DiffSummary {
         let b = c_lines.get(idx).copied();
         if a != b {
             let line_no = idx + 1;
-            let a_disp = a.map(|s| format!("`{s}`")).unwrap_or_else(|| "<EOF>".into());
-            let b_disp = b.map(|s| format!("`{s}`")).unwrap_or_else(|| "<EOF>".into());
+            let a_disp = a
+                .map(|s| format!("`{s}`"))
+                .unwrap_or_else(|| "<EOF>".into());
+            let b_disp = b
+                .map(|s| format!("`{s}`"))
+                .unwrap_or_else(|| "<EOF>".into());
             return DiffSummary {
                 disagree: true,
                 headline: format!(
@@ -885,7 +885,10 @@ fn strip_unix_abs_paths(text: &str) -> String {
     while i < bytes.len() {
         let prev = if i > 0 { Some(bytes[i - 1]) } else { None };
         let at_path_start = bytes[i] == b'/'
-            && !matches!(prev, Some(b':' | b'/' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-' | b'.'));
+            && !matches!(
+                prev,
+                Some(b':' | b'/' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-' | b'.')
+            );
         if at_path_start {
             let mut j = i + 1;
             let mut slashes = 0usize;

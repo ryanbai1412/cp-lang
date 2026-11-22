@@ -40,8 +40,12 @@ pub(crate) fn replay_call(
     let before = compile_text(path, original.to_string(), Side::Solution, &mut errors)
         .map_err(|_| format!("the recorded source does not build:\n{errors}"))?;
     let config = trace::config(original, None);
-    let observed =
-        cpl_interp::run_observed(&before.program, cpl_interp::Io::fixed(input), &mut Vec::new(), Some(config));
+    let observed = cpl_interp::run_observed(
+        &before.program,
+        cpl_interp::Io::fixed(input),
+        &mut Vec::new(),
+        Some(config),
+    );
     let recorded = observed.recording.unwrap_or_default();
     let call = pick(&recorded)?;
     let mut errors = String::new();
@@ -68,7 +72,10 @@ fn value(json: &str) -> String {
 /// The call as source: `add(i: 2)`.
 pub(crate) fn call_text(name: &str, args: &str) -> String {
     let args = value(args);
-    let args = args.strip_prefix('(').and_then(|a| a.strip_suffix(')')).unwrap_or(&args);
+    let args = args
+        .strip_prefix('(')
+        .and_then(|a| a.strip_suffix(')'))
+        .unwrap_or(&args);
     format!("{name}({args})")
 }
 
@@ -79,7 +86,11 @@ pub(crate) fn report(replay: &Replay) -> String {
         true => format!("steps {}-{}", call.entry + 1, call.exit),
         false => format!("returning into step {}", call.exit + 1),
     };
-    let mut out = format!("replayed call {} of `{}`, {at} of the recording\n", call.ordinal, call_text(&call.name, &call.args));
+    let mut out = format!(
+        "replayed call {} of `{}`, {at} of the recording\n",
+        call.ordinal,
+        call_text(&call.name, &call.args)
+    );
     if let Some(why) = &replay.fallback {
         out += &format!("note: {why}\n");
     }
@@ -92,16 +103,29 @@ pub(crate) fn report(replay: &Replay) -> String {
     } else {
         out += &format!("returns {} (before the edit: {})\n", shown(now), shown(was));
     }
-    let mut ids: Vec<&str> = replay.before.writes.iter().chain(&replay.after.writes).map(|(id, _)| id.as_str()).collect();
+    let mut ids: Vec<&str> = replay
+        .before
+        .writes
+        .iter()
+        .chain(&replay.after.writes)
+        .map(|(id, _)| id.as_str())
+        .collect();
     ids.sort_unstable();
     ids.dedup();
     for id in ids {
-        let get = |writes: &[(String, String)]| writes.iter().find(|(i, _)| i == id).map(|(_, v)| value(v));
+        let get = |writes: &[(String, String)]| {
+            writes.iter().find(|(i, _)| i == id).map(|(_, v)| value(v))
+        };
         match (get(&replay.before.writes), get(&replay.after.writes)) {
-            (b, a) if b == a => out += &format!("writes {id} = {} (as before)\n", a.unwrap_or_default()),
+            (b, a) if b == a => {
+                out += &format!("writes {id} = {} (as before)\n", a.unwrap_or_default())
+            }
             (b, a) => {
                 let a = a.unwrap_or_else(|| "nothing".into());
-                out += &format!("writes {id} = {a} (before the edit: {})\n", b.unwrap_or_else(|| "nothing".into()));
+                out += &format!(
+                    "writes {id} = {a} (before the edit: {})\n",
+                    b.unwrap_or_else(|| "nothing".into())
+                );
             }
         }
     }
@@ -114,11 +138,20 @@ pub(crate) fn report(replay: &Replay) -> String {
     }
     match &replay.change {
         Some(change) => {
-            let at = format!("first change: step {} line {}", change.step + 1, change.line);
+            let at = format!(
+                "first change: step {} line {}",
+                change.step + 1,
+                change.line
+            );
             out += &match &change.variable {
                 Some(var) => {
-                    let shown = |json: &Option<String>| json.as_deref().map_or("nothing".into(), value);
-                    format!("{at}: `{var}` = {} (before the edit: {})\n", shown(&change.after), shown(&change.before))
+                    let shown =
+                        |json: &Option<String>| json.as_deref().map_or("nothing".into(), value);
+                    format!(
+                        "{at}: `{var}` = {} (before the edit: {})\n",
+                        shown(&change.after),
+                        shown(&change.before)
+                    )
                 }
                 None => {
                     let was = change.before.as_deref().unwrap_or("the call had returned");
@@ -150,7 +183,11 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
     while let Some(arg) = args.next() {
         match *arg {
             "--trace" => trace_path = args.next(),
-            "--step" => match args.next().and_then(|n| n.parse::<usize>().ok()).filter(|n| *n > 0) {
+            "--step" => match args
+                .next()
+                .and_then(|n| n.parse::<usize>().ok())
+                .filter(|n| *n > 0)
+            {
                 Some(n) => step = Some(n - 1),
                 None => return usage("--step takes a step number, from 1"),
             },
@@ -175,9 +212,15 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
     };
     let Some(original) = cpl_json::parse(trace::data(&recorded))
         .ok()
-        .and_then(|json| json.get("source")?.get("code")?.as_str().map(str::to_string))
+        .and_then(|json| {
+            json.get("source")?
+                .get("code")?
+                .as_str()
+                .map(str::to_string)
+        })
     else {
-        *stderr += &format!("cpl: `{trace_path}` is not a trace: write one with `cpl run --trace`\n");
+        *stderr +=
+            &format!("cpl: `{trace_path}` is not a trace: write one with `cpl run --trace`\n");
         return EXIT_USAGE;
     };
     let pinned = trace::pinned_input(std::path::Path::new(file));
@@ -192,7 +235,9 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
             }
         },
     };
-    match replay_call(file, &original, None, &input, &|recorded| call_at(recorded, step, frame)) {
+    match replay_call(file, &original, None, &input, &|recorded| {
+        call_at(recorded, step, frame)
+    }) {
         Ok(replay) => {
             let _ = stdout.write_all(report(&replay).as_bytes());
             0

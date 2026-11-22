@@ -21,7 +21,9 @@ pub struct CodeInfo {
 
 /// Look up a diagnostic code (e.g. `"E0301"` or `"e0301"`).
 pub fn lookup(code: &str) -> Option<&'static CodeInfo> {
-    REGISTRY.iter().find(|info| info.code.0.eq_ignore_ascii_case(code))
+    REGISTRY
+        .iter()
+        .find(|info| info.code.0.eq_ignore_ascii_case(code))
 }
 
 /// Every diagnostic code defined in [`crate::codes`], in code order.
@@ -940,7 +942,11 @@ mod tests {
             assert!(seen.insert(info.code.0), "duplicate code {}", info.code.0);
             assert!(!info.title.is_empty(), "{}: empty title", info.code.0);
             assert!(!info.summary.is_empty(), "{}: empty summary", info.code.0);
-            assert!(!info.explanation.is_empty(), "{}: empty explanation", info.code.0);
+            assert!(
+                !info.explanation.is_empty(),
+                "{}: empty explanation",
+                info.code.0
+            );
             if matches!(info.mode, "check" | "run") {
                 assert!(!info.trigger.is_empty(), "{}: missing trigger", info.code.0);
                 assert!(!info.fix.is_empty(), "{}: missing fix", info.code.0);
@@ -949,4 +955,3 @@ mod tests {
         }
     }
 }
-

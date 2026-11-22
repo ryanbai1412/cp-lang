@@ -1,8 +1,8 @@
 //! Reading and writing protocol messages over a byte stream, framed with
 //! `Content-Length` headers.
 
-use cpl_json::{self as json, Value};
 use crate::server::Server;
+use cpl_json::{self as json, Value};
 use std::io::{self, BufRead, Write};
 
 /// The largest message body accepted. A document sync of a huge file is a
@@ -69,7 +69,10 @@ pub fn serve(mut input: impl BufRead, mut output: impl Write) -> io::Result<i32>
                 ("id", Value::Null),
                 (
                     "error",
-                    json::obj([("code", (-32700i64).into()), ("message", what.to_string().into())]),
+                    json::obj([
+                        ("code", (-32700i64).into()),
+                        ("message", what.to_string().into()),
+                    ]),
                 ),
             ])],
         };

@@ -200,7 +200,11 @@ pub(super) struct Log {
 
 impl Log {
     pub fn new(source: &str, record_frames: bool) -> Log {
-        let mut log = Log { source: source.to_string(), record_frames, ..Log::default() };
+        let mut log = Log {
+            source: source.to_string(),
+            record_frames,
+            ..Log::default()
+        };
         log.locals_changed("{}");
         log
     }
@@ -257,11 +261,16 @@ impl Log {
                     same
                 };
                 next(b"[")
-                    && items.iter().enumerate().all(|(i, item)| (i == 0 || next(b",")) && next(self.raw(*item)))
+                    && items
+                        .iter()
+                        .enumerate()
+                        .all(|(i, item)| (i == 0 || next(b",")) && next(self.raw(*item)))
                     && next(b"]")
                     && at == json.len()
             }
-            Slot::Int(_) | Slot::Ints(_) => slot_json(&self.text, slot) == std::str::from_utf8(json).unwrap_or_default(),
+            Slot::Int(_) | Slot::Ints(_) => {
+                slot_json(&self.text, slot) == std::str::from_utf8(json).unwrap_or_default()
+            }
         }
     }
 
@@ -272,7 +281,13 @@ impl Log {
 
     /// `var` holds `json` now; a change only if it held something else.
     pub fn set(&mut self, var: usize, json: &str) {
-        if !self.now.values.get(var).and_then(Option::as_ref).is_some_and(|slot| self.holds(slot, json)) {
+        if !self
+            .now
+            .values
+            .get(var)
+            .and_then(Option::as_ref)
+            .is_some_and(|slot| self.holds(slot, json))
+        {
             let text = self.keep(json);
             self.push(Delta::Set(narrow(var), text));
         }
@@ -295,15 +310,21 @@ impl Log {
     /// Item `index` of the array of `Int`s `var` holds `value` now. False
     /// when `var` does not hold such an array with that item.
     pub fn set_int_item(&mut self, var: usize, index: usize, value: i64) -> bool {
-        let (Ok(small), Ok(at)) = (Var::try_from(var), i64::try_from(index)) else { return false };
-        let Some(Some(slot)) = self.now.values.get_mut(var) else { return false };
+        let (Ok(small), Ok(at)) = (Var::try_from(var), i64::try_from(index)) else {
+            return false;
+        };
+        let Some(Some(slot)) = self.now.values.get_mut(var) else {
+            return false;
+        };
         if let Slot::Whole(text) = slot {
             match ints_of(&self.text, piece_of(&self.text, *text)) {
                 Some(items) => *slot = Slot::Ints(Arc::new(items)),
                 None => return false,
             }
         }
-        let Slot::Ints(items) = slot else { return false };
+        let Slot::Ints(items) = slot else {
+            return false;
+        };
         match items.get(index) {
             None => false,
             Some(&now) if now == value => true,
@@ -328,7 +349,9 @@ impl Log {
     /// Item `index` of array `var` holds `json` now. False when `var` does
     /// not hold an array with that item, so the whole value is wanted.
     pub fn set_item(&mut self, var: usize, index: usize, json: &str) -> bool {
-        let (Ok(small), Ok(at)) = (Var::try_from(var), u32::try_from(index)) else { return false };
+        let (Ok(small), Ok(at)) = (Var::try_from(var), u32::try_from(index)) else {
+            return false;
+        };
         let item = match self.now.values.get(var) {
             Some(Some(Slot::Items(items))) => items.get(index).copied(),
             Some(Some(Slot::Whole(text))) => match split(&self.text, self.piece_of(*text)) {
@@ -362,7 +385,13 @@ impl Log {
     }
 
     pub fn set_tree(&mut self, var: usize, json: &str) {
-        let now = self.now.trees.get(var).copied().flatten().map(|t| self.get(t));
+        let now = self
+            .now
+            .trees
+            .get(var)
+            .copied()
+            .flatten()
+            .map(|t| self.get(t));
         if now != Some(json) {
             let text = self.keep(json);
             self.push(Delta::Tree(narrow(var), text));
@@ -392,7 +421,14 @@ impl Log {
             }
         };
         if self.now.locals == Locals::Ints(named) && self.now.local_ints.len() == values.len() {
-            let changed = || self.now.local_ints.iter().zip(values).enumerate().filter(|(_, (now, v))| now != v);
+            let changed = || {
+                self.now
+                    .local_ints
+                    .iter()
+                    .zip(values)
+                    .enumerate()
+                    .filter(|(_, (now, v))| now != v)
+            };
             if changed().all(|(k, (_, &v))| u16::try_from(k).is_ok() && i32::try_from(v).is_ok())
                 && changed().count() <= 1 + values.len() / 2
             {
@@ -405,7 +441,8 @@ impl Log {
             }
         }
         let at = self.ints.len() as u32;
-        self.ints.push(((named.0 as i64) << 32) | values.len() as i64);
+        self.ints
+            .push(((named.0 as i64) << 32) | values.len() as i64);
         self.ints.extend_from_slice(values);
         self.push(Delta::IntLocals(at));
     }
@@ -414,7 +451,10 @@ impl Log {
     fn int_locals(&self, at: u32) -> (Text, &[i64]) {
         let at = at as usize;
         let head = self.ints[at];
-        (Text((head >> 32) as u32), &self.ints[at + 1..at + 1 + (head as u32) as usize])
+        (
+            Text((head >> 32) as u32),
+            &self.ints[at + 1..at + 1 + (head as u32) as usize],
+        )
     }
 
     fn locals_json(&self, state: &State) -> String {
@@ -453,7 +493,9 @@ impl Log {
             .stack
             .iter()
             .zip(stack)
-            .take_while(|(&(at, _, line, _), (name, called))| at == name.as_ptr() as usize && line == *called)
+            .take_while(|(&(at, _, line, _), (name, called))| {
+                at == name.as_ptr() as usize && line == *called
+            })
             .count();
         self.stack.truncate(kept);
         let mut parent = self.stack.last().map_or(NONE, |top| top.3);
@@ -465,8 +507,17 @@ impl Log {
                     self.names.len() as u32 - 1
                 }
             };
-            let depth = if parent == NONE { 1 } else { self.frames[parent as usize].depth + 1 };
-            self.frames.push(Frame { parent, name: id, line: *line, depth });
+            let depth = if parent == NONE {
+                1
+            } else {
+                self.frames[parent as usize].depth + 1
+            };
+            self.frames.push(Frame {
+                parent,
+                name: id,
+                line: *line,
+                depth,
+            });
             parent = self.frames.len() as u32 - 1;
             self.stack.push((name.as_ptr() as usize, id, *line, parent));
         }
@@ -505,16 +556,30 @@ impl Log {
         }
         if label.is_some() || checkpoint.is_some() || focus.is_some() {
             let focus = focus.map(|(var, path)| (var, path.to_vec()));
-            self.notes.push((at, Note { label, checkpoint, focus }));
+            self.notes.push((
+                at,
+                Note {
+                    label,
+                    checkpoint,
+                    focus,
+                },
+            ));
         }
         if stage != self.now.stage || at == 0 {
             self.push(Delta::Stage(stage));
         }
         let frame = frame.unwrap_or(NONE);
-        if self.frame_runs.last().is_none_or(|&(_, last)| last != frame) {
+        if self
+            .frame_runs
+            .last()
+            .is_none_or(|&(_, last)| last != frame)
+        {
             self.frame_runs.push((at, frame));
         }
-        self.entries.push(Entry { line, changes: self.changes.len() as u32 });
+        self.entries.push(Entry {
+            line,
+            changes: self.changes.len() as u32,
+        });
     }
 
     /// A snapshot before the next step, when one is due: every
@@ -522,23 +587,36 @@ impl Log {
     /// last one outweigh it four times, so snapshots hold a fifth of the log at most.
     pub fn snapshot_if_due(&mut self) {
         let step = self.entries.len() as u32;
-        let (since, changes) = self.snapshots.last().map_or((step, self.changes.len()), |s| {
-            (step - s.step, self.changes.len() - s.change as usize)
-        });
+        let (since, changes) = self
+            .snapshots
+            .last()
+            .map_or((step, self.changes.len()), |s| {
+                (step - s.step, self.changes.len() - s.change as usize)
+            });
         if (since as usize) < SNAPSHOT_EVERY {
             return;
         }
-        let items: usize = self.now.values.iter().flatten().map(|slot| match slot {
-            Slot::Items(items) => items.len(),
-            Slot::Ints(items) => items.len(),
-            Slot::Whole(_) | Slot::Int(_) => 0,
-        }).sum();
+        let items: usize = self
+            .now
+            .values
+            .iter()
+            .flatten()
+            .map(|slot| match slot {
+                Slot::Items(items) => items.len(),
+                Slot::Ints(items) => items.len(),
+                Slot::Whole(_) | Slot::Int(_) => 0,
+            })
+            .sum();
         let bytes = (self.now.values.len() + self.now.trees.len() + self.now.local_ints.len()) * 8
             + items * std::mem::size_of::<Piece>();
         if changes * std::mem::size_of::<Delta>() >= 4 * bytes {
             let state = self.now.clone();
             self.snapshot_bytes += bytes;
-            self.snapshots.push(Snapshot { step, change: self.changes.len() as u32, state });
+            self.snapshots.push(Snapshot {
+                step,
+                change: self.changes.len() as u32,
+                state,
+            });
         }
     }
 
@@ -549,7 +627,11 @@ impl Log {
             if self.notes.last().is_some_and(|&(step, _)| step == at) {
                 self.notes.pop();
             }
-            if self.frame_runs.last().is_some_and(|&(start, _)| start == at) {
+            if self
+                .frame_runs
+                .last()
+                .is_some_and(|&(start, _)| start == at)
+            {
                 self.frame_runs.pop();
             }
         }
@@ -564,13 +646,18 @@ impl Log {
 
     /// The array item the last [`Delta::Item`] of `changes` wrote.
     fn item_written(&self, changes: std::ops::Range<usize>) -> Option<(usize, usize)> {
-        self.changes[changes].iter().rev().find_map(|delta| match *delta {
-            Delta::Item(var, text) => Some((var as usize, item_of(&self.text, text).0 as usize)),
-            Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
-                Some((var as usize, int_item(*delta, &self.ints).0))
-            }
-            _ => None,
-        })
+        self.changes[changes]
+            .iter()
+            .rev()
+            .find_map(|delta| match *delta {
+                Delta::Item(var, text) => {
+                    Some((var as usize, item_of(&self.text, text).0 as usize))
+                }
+                Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
+                    Some((var as usize, int_item(*delta, &self.ints).0))
+                }
+                _ => None,
+            })
     }
 
     /// Gives back what the buffers hold beyond their contents.
@@ -586,12 +673,17 @@ impl Log {
     }
 
     fn note(&self, step: usize) -> Option<&Note> {
-        let at = self.notes.binary_search_by_key(&(step as u32), |&(at, _)| at).ok()?;
+        let at = self
+            .notes
+            .binary_search_by_key(&(step as u32), |&(at, _)| at)
+            .ok()?;
         Some(&self.notes[at].1)
     }
 
     pub fn checkpoints(&self) -> impl Iterator<Item = (usize, &str)> {
-        self.notes.iter().filter_map(|(at, note)| Some((*at as usize, note.checkpoint.as_deref()?)))
+        self.notes
+            .iter()
+            .filter_map(|(at, note)| Some((*at as usize, note.checkpoint.as_deref()?)))
     }
 
     pub fn last(&self) -> Option<(u32, Option<&Note>, u32)> {
@@ -623,7 +715,8 @@ impl Log {
             let (names, values) = self.int_locals(at);
             let names = log.keep(self.get(names));
             let to = log.ints.len() as u32;
-            log.ints.push(((names.0 as i64) << 32) | values.len() as i64);
+            log.ints
+                .push(((names.0 as i64) << 32) | values.len() as i64);
             log.ints.extend_from_slice(values);
             to
         };
@@ -631,8 +724,12 @@ impl Log {
             Locals::Text(text) => Locals::Text(moved(text, &mut log)),
             Locals::Ints(names) => Locals::Ints(moved(names, &mut log)),
         };
-        let mut start =
-            State { locals, local_ints: state.local_ints.clone(), stage: state.stage, ..State::default() };
+        let mut start = State {
+            locals,
+            local_ints: state.local_ints.clone(),
+            stage: state.stage,
+            ..State::default()
+        };
         for slot in &state.values {
             let slot = slot.as_ref().map(|slot| match slot {
                 Slot::Whole(text) => Slot::Whole(moved(*text, &mut log)),
@@ -651,13 +748,21 @@ impl Log {
             });
             start.values.push(slot);
         }
-        start.trees = state.trees.iter().map(|t| t.map(|t| moved(t, &mut log))).collect();
+        start.trees = state
+            .trees
+            .iter()
+            .map(|t| t.map(|t| moved(t, &mut log)))
+            .collect();
         for line in &self.out[state.out.0 as usize..] {
             let text = moved(*line, &mut log);
             log.out.push(text);
         }
         start.out = (0, state.out.1 - state.out.0);
-        log.snapshots.push(Snapshot { step: 0, change: 0, state: start.clone() });
+        log.snapshots.push(Snapshot {
+            step: 0,
+            change: 0,
+            state: start.clone(),
+        });
         log.now = start;
         for delta in &self.changes[first..] {
             let delta = match *delta {
@@ -690,15 +795,23 @@ impl Log {
         }
         let shift = first as u32;
         for entry in &self.entries[drop..] {
-            log.entries.push(Entry { changes: entry.changes - shift, ..*entry });
+            log.entries.push(Entry {
+                changes: entry.changes - shift,
+                ..*entry
+            });
         }
         log.notes = std::mem::take(&mut self.notes)
             .into_iter()
             .filter(|&(step, _)| step as usize >= drop)
             .map(|(step, note)| (step - drop as u32, note))
             .collect();
-        let kept = self.frame_runs.partition_point(|&(start, _)| start as usize <= drop).max(1) - 1;
-        log.frame_runs = self.frame_runs[kept..].iter()
+        let kept = self
+            .frame_runs
+            .partition_point(|&(start, _)| start as usize <= drop)
+            .max(1)
+            - 1;
+        log.frame_runs = self.frame_runs[kept..]
+            .iter()
             .map(|&(start, frame)| ((start as usize).saturating_sub(drop) as u32, frame))
             .collect();
         *self = log;
@@ -732,7 +845,11 @@ impl Log {
     /// The state when step `step` has run.
     pub fn state_at(&self, step: usize) -> State {
         let mut state = self.state_before(step);
-        self.replay_into(&mut state, self.changes_start(step), self.entries[step].changes as usize);
+        self.replay_into(
+            &mut state,
+            self.changes_start(step),
+            self.entries[step].changes as usize,
+        );
         state
     }
 
@@ -740,7 +857,9 @@ impl Log {
         if step >= self.entries.len() {
             return None;
         }
-        let run = self.frame_runs.partition_point(|&(start, _)| start as usize <= step);
+        let run = self
+            .frame_runs
+            .partition_point(|&(start, _)| start as usize <= step);
         Some(self.frame_runs[run - 1].1)
     }
 
@@ -771,7 +890,11 @@ impl Log {
     }
 
     pub fn advance(&self, state: &mut State, step: usize) {
-        self.replay_into(state, self.changes_start(step), self.entries[step].changes as usize);
+        self.replay_into(
+            state,
+            self.changes_start(step),
+            self.entries[step].changes as usize,
+        );
     }
 
     pub fn start(&self, step: usize) -> State {
@@ -782,7 +905,10 @@ impl Log {
     pub fn value_in(&self, state: &State, var: usize) -> Option<String> {
         if var == STDOUT {
             let mut json = String::from("[");
-            for (i, line) in self.out[state.out.0 as usize..state.out.1 as usize].iter().enumerate() {
+            for (i, line) in self.out[state.out.0 as usize..state.out.1 as usize]
+                .iter()
+                .enumerate()
+            {
                 if i > 0 {
                     json.push(',');
                 }
@@ -806,7 +932,10 @@ impl Log {
     pub fn step_of(&self, step: usize, state: &State, vars: usize) -> Step {
         let entry = &self.entries[step];
         let note = self.note(step);
-        let mut values = vec![(STDOUT, Arc::from(self.value_in(state, STDOUT).unwrap_or_default()))];
+        let mut values = vec![(
+            STDOUT,
+            Arc::from(self.value_in(state, STDOUT).unwrap_or_default()),
+        )];
         for var in 1..vars {
             if let Some(json) = self.value_in(state, var) {
                 values.push((var, Arc::from(json)));
@@ -815,7 +944,10 @@ impl Log {
         let mut frames = Vec::new();
         let mut at = self.frame_at(step).unwrap_or(NONE);
         if at != NONE {
-            frames.push((self.names[self.frames[at as usize].name as usize].clone(), entry.line()));
+            frames.push((
+                self.names[self.frames[at as usize].name as usize].clone(),
+                entry.line(),
+            ));
             while at != NONE {
                 let frame = &self.frames[at as usize];
                 let caller = match frame.parent {
@@ -829,17 +961,30 @@ impl Log {
             frames.push(("main".to_string(), entry.line()));
         }
         let item_focus = || {
-            let (var, index) = self.item_written(self.changes_start(step)..self.changes_start(step + 1))?;
+            let (var, index) =
+                self.item_written(self.changes_start(step)..self.changes_start(step + 1))?;
             Some((var, vec![index]))
         };
         let focus = note
             .and_then(|n| n.focus.clone())
-            .or_else(|| if entry.line & ITEM_FOCUS != 0 { item_focus() } else { None })
+            .or_else(|| {
+                if entry.line & ITEM_FOCUS != 0 {
+                    item_focus()
+                } else {
+                    None
+                }
+            })
             .filter(|(var, _)| !self.drawn_as_tree.get(*var).copied().unwrap_or(false));
         Step {
             line: entry.line(),
-            label: note.and_then(|n| n.label.clone()).unwrap_or_else(|| line_text(&self.source, entry.line())),
-            stage: self.stages.get(state.stage as usize).cloned().unwrap_or_default(),
+            label: note
+                .and_then(|n| n.label.clone())
+                .unwrap_or_else(|| line_text(&self.source, entry.line())),
+            stage: self
+                .stages
+                .get(state.stage as usize)
+                .cloned()
+                .unwrap_or_default(),
             values,
             locals: self.locals_in(state),
             checkpoint: note.and_then(|n| n.checkpoint.clone()),
@@ -913,24 +1058,34 @@ fn split(bytes: &[u8], whole: Piece) -> Option<Vec<Piece>> {
             b'[' | b'{' => depth += 1,
             b']' | b'}' => depth = depth.checked_sub(1)?,
             b',' if depth == 0 => {
-                items.push(Piece { at: (base + start) as u32, len: (i - start) as u32 });
+                items.push(Piece {
+                    at: (base + start) as u32,
+                    len: (i - start) as u32,
+                });
                 start = i + 1;
             }
             _ => {}
         }
     }
-    items.push(Piece { at: (base + start) as u32, len: (inner.len() - start) as u32 });
+    items.push(Piece {
+        at: (base + start) as u32,
+        len: (inner.len() - start) as u32,
+    });
     Some(items)
 }
 
 /// A slot's value as JSON.
 fn slot_json(bytes: &[u8], slot: &Slot) -> String {
-    let raw = |piece: &Piece| std::str::from_utf8(&bytes[piece.at as usize..(piece.at + piece.len) as usize]).unwrap_or_default();
+    let raw = |piece: &Piece| {
+        std::str::from_utf8(&bytes[piece.at as usize..(piece.at + piece.len) as usize])
+            .unwrap_or_default()
+    };
     match slot {
         Slot::Whole(text) => raw(&piece_of(bytes, *text)).to_string(),
         Slot::Int(v) => v.to_string(),
         Slot::Items(items) => {
-            let mut json = String::with_capacity(2 + items.iter().map(|i| i.len as usize + 1).sum::<usize>());
+            let mut json =
+                String::with_capacity(2 + items.iter().map(|i| i.len as usize + 1).sum::<usize>());
             json.push('[');
             for (i, item) in items.iter().enumerate() {
                 if i > 0 {
@@ -963,7 +1118,8 @@ fn ints_of(bytes: &[u8], whole: Piece) -> Option<Vec<i64>> {
     split(bytes, whole)?
         .iter()
         .map(|item| {
-            let text = std::str::from_utf8(&bytes[item.at as usize..(item.at + item.len) as usize]).ok()?;
+            let text = std::str::from_utf8(&bytes[item.at as usize..(item.at + item.len) as usize])
+                .ok()?;
             let v: i64 = text.parse().ok()?;
             (v.to_string() == text).then_some(v)
         })
@@ -1022,7 +1178,9 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             let (index, value) = int_item(delta, ints);
             let slot = &mut state.values[var as usize];
             if let Some(Slot::Whole(whole)) = slot {
-                *slot = Some(Slot::Ints(Arc::new(ints_of(bytes, piece_of(bytes, *whole)).expect("an array of Ints"))));
+                *slot = Some(Slot::Ints(Arc::new(
+                    ints_of(bytes, piece_of(bytes, *whole)).expect("an array of Ints"),
+                )));
             }
             if let Some(Slot::Ints(items)) = slot {
                 Arc::make_mut(items)[index] = value;
@@ -1046,7 +1204,9 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             let (at, head) = (at as usize, ints[at as usize]);
             state.locals = Locals::Ints(Text((head >> 32) as u32));
             state.local_ints.clear();
-            state.local_ints.extend_from_slice(&ints[at + 1..at + 1 + (head as u32) as usize]);
+            state
+                .local_ints
+                .extend_from_slice(&ints[at + 1..at + 1 + (head as u32) as usize]);
         }
         Delta::IntLocal(k, value) => state.local_ints[k as usize] = value.into(),
         // `out.1` is how many lines the run has printed.
@@ -1066,8 +1226,18 @@ pub struct Steps<'a> {
 
 impl<'a> Steps<'a> {
     pub(super) fn new(log: &'a Log, range: std::ops::Range<usize>, vars: usize) -> Steps<'a> {
-        let state = if range.is_empty() { State::default() } else { log.start(range.start) };
-        Steps { log, state, next: range.start, end: range.end, vars }
+        let state = if range.is_empty() {
+            State::default()
+        } else {
+            log.start(range.start)
+        };
+        Steps {
+            log,
+            state,
+            next: range.start,
+            end: range.end,
+            vars,
+        }
     }
 }
 

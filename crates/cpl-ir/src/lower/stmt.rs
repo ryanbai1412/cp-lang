@@ -2992,12 +2992,12 @@ impl<'a> Lowerer<'a> {
             if let (ast::ExprKind::List(items), Some(lens)) = (&init.kind, lens) {
                 let holds_cells = (items.is_empty() && lens.len() == 1)
                     || !items.is_empty()
-                    && (lens.len() > 1
-                        || !(matches!(elem_ty, Ty::List(_))
-                            && items
-                                .first()
-                                .and_then(|item| self.probe_ty_silent(item))
-                                .is_some_and(|ty| !matches!(ty, Ty::List(_)))));
+                        && (lens.len() > 1
+                            || !(matches!(elem_ty, Ty::List(_))
+                                && items
+                                    .first()
+                                    .and_then(|item| self.probe_ty_silent(item))
+                                    .is_some_and(|ty| !matches!(ty, Ty::List(_)))));
                 let shape = if holds_cells {
                     literal_shape(init, lens.len())
                 } else {

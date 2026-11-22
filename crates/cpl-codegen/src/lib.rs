@@ -14,7 +14,7 @@ mod stmt;
 mod unordered;
 mod walk;
 
-pub use devirt::{ClosureLowering, ClosureMode, explain_closures, explain_dropped_fields};
+pub use devirt::{explain_closures, explain_dropped_fields, ClosureLowering, ClosureMode};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -41,7 +41,11 @@ pub struct Target {
 
 impl Default for Target {
     fn default() -> Target {
-        Target { stamp: None, thread_stack: Some(1 << 30), windows: false }
+        Target {
+            stamp: None,
+            thread_stack: Some(1 << 30),
+            windows: false,
+        }
     }
 }
 
@@ -117,11 +121,19 @@ pub fn sizes(
     let mut sizes: Vec<Size> = chunks
         .iter()
         .filter(|(_, _, text)| !text.is_empty())
-        .map(|(part, name, text)| Size { part: *part, name: unmangled(name), bytes: fit(*part, text) })
+        .map(|(part, name, text)| Size {
+            part: *part,
+            name: unmangled(name),
+            bytes: fit(*part, text),
+        })
         .filter(|size| size.bytes > 0)
         .collect();
     let named: usize = sizes.iter().map(|size| size.bytes).sum();
-    sizes.push(Size { part: Part::Glue, name: "namespaces and main".into(), bytes: total.saturating_sub(named) });
+    sizes.push(Size {
+        part: Part::Glue,
+        name: "namespaces and main".into(),
+        bytes: total.saturating_sub(named),
+    });
     sizes
 }
 
@@ -132,7 +144,9 @@ fn unmangled(name: &str) -> String {
     let cut = |segment: &str| {
         let bytes = segment.as_bytes();
         let at = (1..bytes.len())
-            .find(|&at| bytes[at - 1] == b'_' && bytes[at].is_ascii_uppercase() | bytes[at].is_ascii_digit())
+            .find(|&at| {
+                bytes[at - 1] == b'_' && bytes[at].is_ascii_uppercase() | bytes[at].is_ascii_digit()
+            })
             .map_or(segment.len(), |at| at - 1);
         segment[..at].to_string()
     };
@@ -140,7 +154,12 @@ fn unmangled(name: &str) -> String {
 }
 
 /// [`emit`] for a judge.
-pub fn emit_for(program: &cpl_ir::Program, name: &str, source: Option<&str>, target: &Target) -> String {
+pub fn emit_for(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: Option<&str>,
+    target: &Target,
+) -> String {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     let mut emitter = emit::Emitter::new(&program);
@@ -153,7 +172,11 @@ pub fn emit_for(program: &cpl_ir::Program, name: &str, source: Option<&str>, tar
 /// written when the program exits, to the file named by `CPL_PROFILE`, a
 /// line `site hits nanos` for each site that ran; the spans are the sites
 /// by number.
-pub fn emit_profiled(program: &cpl_ir::Program, name: &str, target: &Target) -> (String, Vec<cpl_diag::Span>) {
+pub fn emit_profiled(
+    program: &cpl_ir::Program,
+    name: &str,
+    target: &Target,
+) -> (String, Vec<cpl_diag::Span>) {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     let mut emitter = emit::Emitter::new(&program);
@@ -263,7 +286,12 @@ impl Fitted {
 /// reader gives way to what the judge accepts: first the comments on the
 /// C++, then the source in the header, then half of what indentation is left. `Err` is the length of
 /// the shortest file when even that is over.
-pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
+pub fn emit_within(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: &str,
+    limit: usize,
+) -> Result<Fitted, usize> {
     emit_within_for(program, name, source, limit, &Target::default())
 }
 
@@ -279,19 +307,43 @@ pub fn emit_within_for(
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
     if full <= limit {
-        return Ok(Fitted { cpp, full, comments: true, header: true, narrow: false });
+        return Ok(Fitted {
+            cpp,
+            full,
+            comments: true,
+            header: true,
+            narrow: false,
+        });
     }
     let cpp = uncommented(&cpp, true);
     if cpp.len() <= limit {
-        return Ok(Fitted { cpp, full, comments: false, header: true, narrow: false });
+        return Ok(Fitted {
+            cpp,
+            full,
+            comments: false,
+            header: true,
+            narrow: false,
+        });
     }
     let cpp = uncommented(&emit(program, name, None), true);
     if cpp.len() <= limit {
-        return Ok(Fitted { cpp, full, comments: false, header: false, narrow: false });
+        return Ok(Fitted {
+            cpp,
+            full,
+            comments: false,
+            header: false,
+            narrow: false,
+        });
     }
     let narrowed = narrow(&cpp);
     match narrowed.len() <= limit {
-        true => Ok(Fitted { cpp: narrowed, full, comments: false, header: false, narrow: true }),
+        true => Ok(Fitted {
+            cpp: narrowed,
+            full,
+            comments: false,
+            header: false,
+            narrow: true,
+        }),
         false => Err(narrowed.len()),
     }
 }

@@ -35,8 +35,8 @@ pub use db::{
 pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Symbol};
 pub use modules::{FsLoader, Loader};
-pub use ty::{human_bytes, Param, Ty};
 pub use prelude::{import_edit, std_method, std_module, std_names};
+pub use ty::{human_bytes, Param, Ty};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name
 /// anyone types, so completion and the editor tables leave it out.

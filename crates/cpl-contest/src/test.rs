@@ -11,8 +11,8 @@
 //!   2/3 passed
 //! ```
 
-use cpl_stress::args::Args;
 use crate::problem::{cases_in, find_tests_dir, source_path, Limits, TestCase};
+use cpl_stress::args::Args;
 use cpl_stress::cli::{select_judge, solution};
 use cpl_stress::{Judge, Program, Verdict};
 use std::io::Write;
@@ -78,7 +78,10 @@ pub fn run_cases(
             // A judge stops a program at its memory limit, whatever it
             // would have printed.
             if judged.verdict != Verdict::TimeLimit
-                && judged.outcome.peak_kb.is_some_and(|kb| kb > limits.memory_kb)
+                && judged
+                    .outcome
+                    .peak_kb
+                    .is_some_and(|kb| kb > limits.memory_kb)
             {
                 judged.verdict = Verdict::MemoryLimit;
             }
@@ -212,8 +215,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(args, VALUED, &[])
-    .and_then(|args| {
+    let parsed = Args::parse(args, VALUED, &[]).and_then(|args| {
         args.file("test")
             .map(source_path)
             .map(|source| (args, source))

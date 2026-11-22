@@ -11,7 +11,14 @@ fn traced(program: &Path, tree: bool) -> (Vec<u8>, Vec<u8>) {
         Err(_) => Stdio::null(),
     };
     let mut cpl = Command::new(env!("CARGO_BIN_EXE_cpl"));
-    cpl.args(["run", program.to_str().unwrap(), "--trace", "--format", "json"]).stdin(stdin);
+    cpl.args([
+        "run",
+        program.to_str().unwrap(),
+        "--trace",
+        "--format",
+        "json",
+    ])
+    .stdin(stdin);
     if tree {
         cpl.env("CPL_TRACE_ENGINE", "tree");
     } else {
@@ -46,7 +53,13 @@ fn the_vm_records_what_the_tree_walker_records() {
                 })
             })
             .collect();
-        workers.into_iter().flat_map(|worker| worker.join().unwrap()).collect()
+        workers
+            .into_iter()
+            .flat_map(|worker| worker.join().unwrap())
+            .collect()
     });
-    assert!(differ.is_empty(), "the VM's trace differs from the tree-walker's: {differ:?}");
+    assert!(
+        differ.is_empty(),
+        "the VM's trace differs from the tree-walker's: {differ:?}"
+    );
 }

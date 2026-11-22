@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use cpl_conform::conformance::{Expect, parse_header};
-use cpl_conform::scoreboard::{CaseOutcome, Scoreboard, SuiteReport, check_ratchet};
-use cpl_conform::{Suite, default_scoreboard_path, find_repo_root, run_suites};
+use cpl_conform::conformance::{parse_header, Expect};
+use cpl_conform::scoreboard::{check_ratchet, CaseOutcome, Scoreboard, SuiteReport};
+use cpl_conform::{default_scoreboard_path, find_repo_root, run_suites, Suite};
 
 fn make_board(suite_name: &str, cases: &[(&str, &str)]) -> Scoreboard {
     let mut map = BTreeMap::new();
@@ -172,18 +172,14 @@ fn ratchet_respects_filtered_runs() {
         &[("a.cp", "pass"), ("b.cp", "pass"), ("c.cp", "fail")],
     );
     let filtered_ok = make_board("conformance", &[("a.cp", "pass")]);
-    assert!(
-        check_ratchet(&baseline, &filtered_ok, true)
-            .regressions
-            .is_empty()
-    );
+    assert!(check_ratchet(&baseline, &filtered_ok, true)
+        .regressions
+        .is_empty());
 
     let filtered_bad = make_board("conformance", &[("a.cp", "fail")]);
-    assert!(
-        !check_ratchet(&baseline, &filtered_bad, true)
-            .regressions
-            .is_empty()
-    );
+    assert!(!check_ratchet(&baseline, &filtered_bad, true)
+        .regressions
+        .is_empty());
 }
 
 #[test]

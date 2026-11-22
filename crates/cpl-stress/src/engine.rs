@@ -95,9 +95,7 @@ impl Engine for ProcessEngine<'_> {
             )));
         }
         if let Some(cold) = self.cold {
-            let cold_out = cold
-                .run(input, self.limit * 10)
-                .map_err(|e| io(cold, e))?;
+            let cold_out = cold.run(input, self.limit * 10).map_err(|e| io(cold, e))?;
             if !cold_out.ok() {
                 return Ok(Some((
                     Verdict::Wrong(format!(
@@ -189,7 +187,12 @@ fn observe_ir(
             },
             Some(config),
         ),
-        None => cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), &mut sink, Some(config)),
+        None => cpl_interp::run_observed(
+            program,
+            cpl_interp::Io::fixed(input),
+            &mut sink,
+            Some(config),
+        ),
     }
 }
 
@@ -199,12 +202,21 @@ impl Engine for InterpEngine {
     }
 
     fn stops(&self, input: &str) -> bool {
-        run_ir(&self.fast, cpl_interp::Io::fixed(input.as_bytes()), self.stack_limit).is_err()
+        run_ir(
+            &self.fast,
+            cpl_interp::Io::fixed(input.as_bytes()),
+            self.stack_limit,
+        )
+        .is_err()
     }
 
     fn run(&self, input: &str) -> Result<Wrong, StressError> {
         let expected = match &self.brute {
-            Some(brute) => match run_ir(brute, cpl_interp::Io::fixed(input.as_bytes()), self.stack_limit) {
+            Some(brute) => match run_ir(
+                brute,
+                cpl_interp::Io::fixed(input.as_bytes()),
+                self.stack_limit,
+            ) {
                 Ok(out) => Some(out),
                 Err((_, trap)) => {
                     return Err(StressError(format!(
@@ -215,7 +227,11 @@ impl Engine for InterpEngine {
             },
             None => None,
         };
-        let got = match run_ir(&self.fast, cpl_interp::Io::fixed(input.as_bytes()), self.stack_limit) {
+        let got = match run_ir(
+            &self.fast,
+            cpl_interp::Io::fixed(input.as_bytes()),
+            self.stack_limit,
+        ) {
             Ok(out) => out,
             Err((out, trap)) => {
                 return Ok(Some((
@@ -251,7 +267,11 @@ pub struct InterpChoices {
 
 impl ChoiceSource for InterpChoices {
     fn draw(&self, seed: u64) -> Result<Drawn, StressError> {
-        match run_ir(&self.program, cpl_interp::Io::fixed(b"").seeded(seed), self.stack_limit) {
+        match run_ir(
+            &self.program,
+            cpl_interp::Io::fixed(b"").seeded(seed),
+            self.stack_limit,
+        ) {
             Ok(input) => Ok(Drawn {
                 choices: Vec::new(),
                 sites: Vec::new(),
@@ -360,14 +380,16 @@ pub fn stress_source(
     };
 
     let checker = match cpl_ir::checker(&analysis) {
-        Some((checker_fn, _)) => Some(cpl_ir::lower_checker(&analysis, &checker_fn).map_err(|diags| {
-            let lines = cpl_diag::LineIndex::new(source);
-            let text: String = diags
-                .iter()
-                .map(|d| cpl_diag::render(d, name, source, &lines))
-                .collect();
-            StressError(text)
-        })?),
+        Some((checker_fn, _)) => Some(cpl_ir::lower_checker(&analysis, &checker_fn).map_err(
+            |diags| {
+                let lines = cpl_diag::LineIndex::new(source);
+                let text: String = diags
+                    .iter()
+                    .map(|d| cpl_diag::render(d, name, source, &lines))
+                    .collect();
+                StressError(text)
+            },
+        )?),
         None => None,
     };
 
@@ -432,12 +454,24 @@ pub fn stress_source(
     let mut explained = None;
     if let (Some(failure), Some(brute_prog)) = (&report.failure, &engine.brute) {
         if own_brute.is_some() {
-            let fast_rec = observe_ir(&engine.fast, failure.input.as_bytes(), source, stack_limit, explain)
-                .recording
-                .unwrap_or_default();
-            let slow_rec = observe_ir(brute_prog, failure.input.as_bytes(), source, stack_limit, explain)
-                .recording
-                .unwrap_or_default();
+            let fast_rec = observe_ir(
+                &engine.fast,
+                failure.input.as_bytes(),
+                source,
+                stack_limit,
+                explain,
+            )
+            .recording
+            .unwrap_or_default();
+            let slow_rec = observe_ir(
+                brute_prog,
+                failure.input.as_bytes(),
+                source,
+                stack_limit,
+                explain,
+            )
+            .recording
+            .unwrap_or_default();
             stages = trace_stages(&fast_rec, &slow_rec)
                 .into_iter()
                 .map(|s| Stage {

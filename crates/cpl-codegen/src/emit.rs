@@ -1718,7 +1718,9 @@ impl<'p> Emitter<'p> {
                     .strip_prefix("template <")
                     .and_then(|t| t.split_once(">\n"))
                     .map_or(String::new(), |(t, _)| format!("{t}, "));
-                let head = format!("template <{tparams}class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
+                let head = format!(
+                    "template <{tparams}class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)"
+                );
                 protos.push(Proto {
                     name: format!("cpl_each_{name}"),
                     line: format!("{head};\n"),

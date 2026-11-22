@@ -33,8 +33,13 @@ fn cpl() -> &'static Path {
             .current_dir(&root)
             .status()
             .expect("cargo runs");
-        assert!(status.success(), "`cargo build --release -p cpl-cli` failed");
-        target.join("release").join(format!("cpl{}", std::env::consts::EXE_SUFFIX))
+        assert!(
+            status.success(),
+            "`cargo build --release -p cpl-cli` failed"
+        );
+        target
+            .join("release")
+            .join(format!("cpl{}", std::env::consts::EXE_SUFFIX))
     })
 }
 

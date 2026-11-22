@@ -120,7 +120,14 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
 
 /// What only a set kept in order answers.
 const ORDERED: &[&str] = &[
-    "first", "last", "first_ge", "first_gt", "last_le", "last_lt", "pop_first", "pop_last",
+    "first",
+    "last",
+    "first_ge",
+    "first_gt",
+    "last_le",
+    "last_lt",
+    "pop_first",
+    "pop_last",
 ];
 
 /// The names `x` of the file with an `x.first`, `x.pop_last()` and so on.
@@ -129,7 +136,9 @@ fn ordered(file: &File) -> HashSet<String> {
     impl Visitor for Ordered {
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Field { base, name } = &expr.kind {
-                if let (ExprKind::Name(set), true) = (&unparen(base).kind, ORDERED.contains(&name.text.as_str())) {
+                if let (ExprKind::Name(set), true) =
+                    (&unparen(base).kind, ORDERED.contains(&name.text.as_str()))
+                {
                     self.0.insert(set.clone());
                 }
             }
@@ -242,7 +251,10 @@ impl Visitor for Types<'_> {
         // `var free: Set<V> = Set<V>()` with a `free.first` below.
         if let StmtKind::Let { pat, ty, init, .. } = &stmt.kind {
             if matches!(&pat.kind, PatternKind::Name(name) if self.ordered.contains(name)) {
-                let spans = ty.iter().map(|ty| ty.span).chain(init.iter().map(|init| init.span));
+                let spans = ty
+                    .iter()
+                    .map(|ty| ty.span)
+                    .chain(init.iter().map(|init| init.span));
                 for span in spans {
                     self.inner.insert(span.shift(self.base).start);
                 }
@@ -344,10 +356,8 @@ impl Visitor for Types<'_> {
                         };
                         let span = expr.span.shift(self.base);
                         let after = self.src.get(span.end as usize..).unwrap_or("");
-                        let wrap_whole = matches!(
-                            after.chars().next(),
-                            Some('.' | '[' | '!' | '*')
-                        );
+                        let wrap_whole =
+                            matches!(after.chars().next(), Some('.' | '[' | '!' | '*'));
                         let replacement = if wrap_whole {
                             format!("({lhs} ** {rhs})")
                         } else {

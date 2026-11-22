@@ -813,7 +813,10 @@ mod tests {
         let part = "fn ways(n: Int) -> Int = n\n@alt(ways, n: ..=8)\nfn slow(n: Int) -> Int = n + 1\nprint(ways(read()))\n";
         let swapped = swap_in_part_brutes(part).expect("an alt pair");
         assert!(swapped.contains("fn ways_cpl_fast("), "{swapped}");
-        assert!(swapped.contains("fn ways(n: Int) -> Int = n + 1"), "{swapped}");
+        assert!(
+            swapped.contains("fn ways(n: Int) -> Int = n + 1"),
+            "{swapped}"
+        );
 
         let whole = "@alt(program, n: ..=10)\nfn brute():\n    print(0)\n";
         assert!(swap_in_part_brutes(whole).is_none());

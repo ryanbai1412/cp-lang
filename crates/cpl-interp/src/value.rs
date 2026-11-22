@@ -1145,16 +1145,13 @@ pub(crate) fn ty_has_cached(ty: &Ty, program: &Program) -> bool {
     match ty {
         Ty::Struct(id) => {
             let s = &program.structs[*id];
-            !s.cached_fields.is_empty()
-                || s.fields.iter().any(|(_, t)| ty_has_cached(t, program))
+            !s.cached_fields.is_empty() || s.fields.iter().any(|(_, t)| ty_has_cached(t, program))
         }
         Ty::Tuple(ts) => ts.iter().any(|t| ty_has_cached(t, program)),
         Ty::Record(fs) => fs.iter().any(|(_, t)| ty_has_cached(t, program)),
         Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) => ty_has_cached(t, program),
         Ty::Array { elem, .. } => ty_has_cached(elem, program),
-        Ty::Map(k, v) | Ty::HashMap(k, v) => {
-            ty_has_cached(k, program) || ty_has_cached(v, program)
-        }
+        Ty::Map(k, v) | Ty::HashMap(k, v) => ty_has_cached(k, program) || ty_has_cached(v, program),
         Ty::Enum(id) => program.enums[*id]
             .variants
             .iter()

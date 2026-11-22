@@ -171,8 +171,7 @@ fn generate_input(dir: &Path, input_path: &Path) -> Result<(), String> {
                 String::from_utf8_lossy(&out.stderr)
             ));
         }
-        std::fs::write(input_path, &out.stdout)
-            .map_err(|e| format!("write input: {e}"))?;
+        std::fs::write(input_path, &out.stdout).map_err(|e| format!("write input: {e}"))?;
         return Ok(());
     }
     std::fs::write(input_path, b"").map_err(|e| e.to_string())
@@ -365,7 +364,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 match args.get(i).and_then(|s| s.parse::<usize>().ok()) {
                     Some(n) if n > 0 => reps = n,
                     _ => {
-                        let _ = writeln!(stderr, "cpl bench --zero-cost: --reps expects a positive integer");
+                        let _ = writeln!(
+                            stderr,
+                            "cpl bench --zero-cost: --reps expects a positive integer"
+                        );
                         return 2;
                     }
                 }
@@ -375,7 +377,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 match args.get(i).and_then(|s| s.parse::<f64>().ok()) {
                     Some(r) if r > 0.0 => max_ratio = r,
                     _ => {
-                        let _ = writeln!(stderr, "cpl bench --zero-cost: --max-ratio expects a positive number");
+                        let _ = writeln!(
+                            stderr,
+                            "cpl bench --zero-cost: --max-ratio expects a positive number"
+                        );
                         return 2;
                     }
                 }
@@ -386,7 +391,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     Some("json") => as_json = true,
                     Some("text") => as_json = false,
                     _ => {
-                        let _ = writeln!(stderr, "cpl bench --zero-cost: --format must be `text` or `json`");
+                        let _ = writeln!(
+                            stderr,
+                            "cpl bench --zero-cost: --format must be `text` or `json`"
+                        );
                         return 2;
                     }
                 }
@@ -403,7 +411,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let entries = match std::fs::read_dir(&dir) {
         Ok(e) => e,
         Err(e) => {
-            let _ = writeln!(stderr, "cpl bench --zero-cost: can't read {}: {e}", dir.display());
+            let _ = writeln!(
+                stderr,
+                "cpl bench --zero-cost: can't read {}: {e}",
+                dir.display()
+            );
             return 2;
         }
     };
@@ -422,10 +434,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         return 2;
     }
 
-    let results: Vec<PairResult> = pairs
-        .iter()
-        .map(|p| run_pair(p, reps, max_ratio))
-        .collect();
+    let results: Vec<PairResult> = pairs.iter().map(|p| run_pair(p, reps, max_ratio)).collect();
     let all_pass = results.iter().all(|r| r.passed);
 
     if as_json {
@@ -506,5 +515,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
-    if all_pass { 0 } else { 1 }
+    if all_pass {
+        0
+    } else {
+        1
+    }
 }

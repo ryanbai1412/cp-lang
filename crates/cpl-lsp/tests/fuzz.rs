@@ -14,16 +14,22 @@ const PORTS: usize = 12;
 const EDITS_PER_PORT: usize = 30;
 
 fn edits_per_port() -> usize {
-    std::env::var("CPL_LSP_FUZZ_EDITS").ok().and_then(|n| n.parse().ok()).unwrap_or(EDITS_PER_PORT)
+    std::env::var("CPL_LSP_FUZZ_EDITS")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(EDITS_PER_PORT)
 }
 
 fn port_count() -> usize {
-    std::env::var("CPL_LSP_FUZZ_PORTS").ok().and_then(|n| n.parse().ok()).unwrap_or(PORTS)
+    std::env::var("CPL_LSP_FUZZ_PORTS")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(PORTS)
 }
 const SNIPPETS: &[&str] = &[
-    "(", ")", "[", "]", "{", "}", "=>", "++", ".", ":", ",", "\n    ", "\n", "let ", "var ",
-    "fn ", "if ", "for ", "in ", "\"", "'", "?", "!", "..", "..=", "**", "@", "#", "\t", "é",
-    "x.", "_", "0", "-",
+    "(", ")", "[", "]", "{", "}", "=>", "++", ".", ":", ",", "\n    ", "\n", "let ", "var ", "fn ",
+    "if ", "for ", "in ", "\"", "'", "?", "!", "..", "..=", "**", "@", "#", "\t", "é", "x.", "_",
+    "0", "-",
 ];
 
 struct Rng(u64);
@@ -82,7 +88,10 @@ fn mutate(src: &str, rng: &mut Rng) -> String {
             let lines: Vec<&str> = src.lines().collect();
             let i = rng.below(lines.len());
             let mut out: Vec<&str> = lines.clone();
-            out.insert(rng.below(lines.len() + 1), lines.get(i).copied().unwrap_or(""));
+            out.insert(
+                rng.below(lines.len() + 1),
+                lines.get(i).copied().unwrap_or(""),
+            );
             out.join("\n")
         }
         _ => {
@@ -121,10 +130,16 @@ fn requests(src: &str, rng: &mut Rng) -> Vec<(&'static str, Value)> {
         out.push(("textDocument/documentHighlight", with_pos(vec![])));
         out.push((
             "textDocument/references",
-            with_pos(vec![("context", obj([("includeDeclaration", true.into())]))]),
+            with_pos(vec![(
+                "context",
+                obj([("includeDeclaration", true.into())]),
+            )]),
         ));
         out.push(("textDocument/prepareRename", with_pos(vec![])));
-        out.push(("textDocument/rename", with_pos(vec![("newName", "renamed".into())])));
+        out.push((
+            "textDocument/rename",
+            with_pos(vec![("newName", "renamed".into())]),
+        ));
         out.push((
             "textDocument/codeAction",
             obj([
@@ -138,16 +153,28 @@ fn requests(src: &str, rng: &mut Rng) -> Vec<(&'static str, Value)> {
         ("start", obj([("line", 0.into()), ("character", 0.into())])),
         ("end", position(src, src.len())),
     ]);
-    out.push(("textDocument/inlayHint", obj([("textDocument", doc()), ("range", whole)])));
-    out.push(("textDocument/semanticTokens/full", obj([("textDocument", doc())])));
+    out.push((
+        "textDocument/inlayHint",
+        obj([("textDocument", doc()), ("range", whole)]),
+    ));
+    out.push((
+        "textDocument/semanticTokens/full",
+        obj([("textDocument", doc())]),
+    ));
     out.push(("textDocument/foldingRange", obj([("textDocument", doc())])));
-    out.push(("textDocument/documentSymbol", obj([("textDocument", doc())])));
+    out.push((
+        "textDocument/documentSymbol",
+        obj([("textDocument", doc())]),
+    ));
     out.push(("textDocument/codeLens", obj([("textDocument", doc())])));
     out.push((
         "textDocument/formatting",
         obj([
             ("textDocument", doc()),
-            ("options", obj([("tabSize", 4.into()), ("insertSpaces", true.into())])),
+            (
+                "options",
+                obj([("tabSize", 4.into()), ("insertSpaces", true.into())]),
+            ),
         ]),
     ));
     out.push(("workspace/symbol", obj([("query", "a".into())])));
@@ -159,7 +186,9 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
     let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
     let mut files = Vec::new();
     for author in std::fs::read_dir(&ports).unwrap().flatten() {
-        let Ok(entries) = std::fs::read_dir(author.path()) else { continue };
+        let Ok(entries) = std::fs::read_dir(author.path()) else {
+            continue;
+        };
         for file in entries.flatten() {
             if file.path().extension().is_some_and(|e| e == "cp") {
                 files.push(file.path());
@@ -197,13 +226,23 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
         ));
         let mut src = original.clone();
         for edit in 0..edits_per_port() {
-            src = if edit % 3 == 0 { mutate(&original, &mut rng) } else { mutate(&src, &mut rng) };
+            src = if edit % 3 == 0 {
+                mutate(&original, &mut rng)
+            } else {
+                mutate(&src, &mut rng)
+            };
             let change = message(
                 None,
                 "textDocument/didChange",
                 obj([
-                    ("textDocument", obj([("uri", URI.into()), ("version", (edit as u32 + 2).into())])),
-                    ("contentChanges", Value::Array(vec![obj([("text", src.as_str().into())])])),
+                    (
+                        "textDocument",
+                        obj([("uri", URI.into()), ("version", (edit as u32 + 2).into())]),
+                    ),
+                    (
+                        "contentChanges",
+                        Value::Array(vec![obj([("text", src.as_str().into())])]),
+                    ),
                 ]),
             );
             let mut replies: Vec<(&str, Vec<Value>)> = vec![("didChange", server.handle(&change))];
@@ -218,7 +257,9 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
                     .map(Value::to_string)
                     .find(|r| r.contains("internal error in cpl"))
                 {
-                    failures.push(format!("{name} edit {edit} {method}: {text}\n--- source ---\n{src}"));
+                    failures.push(format!(
+                        "{name} edit {edit} {method}: {text}\n--- source ---\n{src}"
+                    ));
                 }
             }
         }
@@ -228,6 +269,14 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
             obj([("textDocument", obj([("uri", URI.into())]))]),
         ));
     }
-    println!("lsp fuzz: {answered} requests on {} broken files", ports * edits_per_port());
-    assert!(failures.is_empty(), "{} internal errors; first:\n{}", failures.len(), failures[0]);
+    println!(
+        "lsp fuzz: {answered} requests on {} broken files",
+        ports * edits_per_port()
+    );
+    assert!(
+        failures.is_empty(),
+        "{} internal errors; first:\n{}",
+        failures.len(),
+        failures[0]
+    );
 }

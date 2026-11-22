@@ -256,10 +256,7 @@ for i in 0..s.len:
 let idx = find_first(s, s[2], 0) ?? -1
 print(st.a, st.b ?? 0, idx)
 ";
-    assert_eq!(
-        outcome(source, "abc\n"),
-        ("3 294 2\n".to_string(), None)
-    );
+    assert_eq!(outcome(source, "abc\n"), ("3 294 2\n".to_string(), None));
 }
 
 #[test]
@@ -363,7 +360,10 @@ print(bad.to_idx)
 ";
     let (_, trap) = outcome(source, "3\n");
     let msg = trap.expect("expected out-of-range trap");
-    assert!(msg.contains("4 is not in `P`, which is 0..=3"), "unexpected trap: {msg}");
+    assert!(
+        msg.contains("4 is not in `P`, which is 0..=3"),
+        "unexpected trap: {msg}"
+    );
 }
 
 #[test]
@@ -505,7 +505,11 @@ print(gtot, local_driver(2), glob[0])
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
-    assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
@@ -1037,14 +1041,30 @@ print(x, a[0])
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
-    assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true);
-    let in_loop = |op: &crate::vm::Op| matches!(op, crate::vm::Op::FallbackStmt { in_loop: true, .. });
-    assert!(!compiled.main.ops.iter().any(in_loop), "a traced write in the loop fell back");
-    let traces = compiled.main.ops.iter().filter(|op| matches!(op, crate::vm::Op::Trace { .. })).count();
-    assert!(traces >= 3, "the loop variable and both writes are reported: {traces}");
+    let in_loop =
+        |op: &crate::vm::Op| matches!(op, crate::vm::Op::FallbackStmt { in_loop: true, .. });
+    assert!(
+        !compiled.main.ops.iter().any(in_loop),
+        "a traced write in the loop fell back"
+    );
+    let traces = compiled
+        .main
+        .ops
+        .iter()
+        .filter(|op| matches!(op, crate::vm::Op::Trace { .. }))
+        .count();
+    assert!(
+        traces >= 3,
+        "the loop variable and both writes are reported: {traces}"
+    );
 }
 
 #[test]

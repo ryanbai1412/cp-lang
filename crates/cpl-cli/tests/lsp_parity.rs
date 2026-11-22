@@ -14,11 +14,16 @@ use std::process::{Command, Stdio};
 type Diag = (String, String, usize, usize, String);
 
 fn repo() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").canonicalize().unwrap()
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap()
 }
 
 fn cp_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -35,7 +40,12 @@ fn v03_files() -> Vec<PathBuf> {
     cp_files(&root.join("spec/conformance"), &mut files);
     cp_files(&root.join("examples"), &mut files);
     let ports = std::fs::read_dir(root.join("corpus/problems")).unwrap();
-    files.extend(ports.flatten().map(|p| p.path().join("spec.cp")).filter(|p| p.is_file()));
+    files.extend(
+        ports
+            .flatten()
+            .map(|p| p.path().join("spec.cp"))
+            .filter(|p| p.is_file()),
+    );
     files.sort();
     files
 }
@@ -49,7 +59,8 @@ fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Dia
         .env("CPL_STD", repo().join("spec/std"))
         .output()
         .expect("cpl runs");
-    let text = String::from_utf8_lossy(&run.stderr).into_owned() + &String::from_utf8_lossy(&run.stdout);
+    let text =
+        String::from_utf8_lossy(&run.stderr).into_owned() + &String::from_utf8_lossy(&run.stdout);
     let lines: Vec<&str> = text.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         let Some((severity, rest)) = ["error", "warning", "note"]
@@ -58,12 +69,21 @@ fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Dia
         else {
             continue;
         };
-        let Some((code, message)) = rest.split_once("]: ") else { continue };
-        let Some(at) = lines.get(i + 1).and_then(|l| l.trim_start().strip_prefix("--> ")) else {
+        let Some((code, message)) = rest.split_once("]: ") else {
+            continue;
+        };
+        let Some(at) = lines
+            .get(i + 1)
+            .and_then(|l| l.trim_start().strip_prefix("--> "))
+        else {
             continue;
         };
         let mut parts = at.rsplitn(3, ':');
-        let (col, line_no, path) = (parts.next().unwrap(), parts.next().unwrap(), parts.next().unwrap());
+        let (col, line_no, path) = (
+            parts.next().unwrap(),
+            parts.next().unwrap(),
+            parts.next().unwrap(),
+        );
         out.entry(path.to_string()).or_default().push((
             severity.into(),
             code.into(),
@@ -99,7 +119,9 @@ fn published(files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
         );
         session.extend(frame(&open));
     }
-    session.extend(frame(r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#));
+    session.extend(frame(
+        r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#,
+    ));
     session.extend(frame(r#"{"jsonrpc":"2.0","method":"exit","params":null}"#));
     let writer = std::thread::spawn(move || stdin.write_all(&session));
     let out = child.wait_with_output().expect("cpl lsp exits");
@@ -113,18 +135,27 @@ fn published(files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
         }
         let params = message.at(&["params"]);
         let uri = params.at(&["uri"]).as_str().unwrap();
-        let diags = params.at(&["diagnostics"]).as_array().unwrap().iter().map(|d| {
-            let severity = ["", "error", "warning", "note"][d.at(&["severity"]).as_usize().unwrap()];
-            let message = d.at(&["message"]).as_str().unwrap();
-            (
-                severity.to_string(),
-                d.at(&["code"]).as_str().unwrap().to_string(),
-                d.at(&["range", "start", "line"]).as_usize().unwrap() + 1,
-                d.at(&["range", "start", "character"]).as_usize().unwrap() + 1,
-                message.lines().next().unwrap_or("").to_string(),
-            )
-        });
-        found.insert(uri.strip_prefix("file://").unwrap().to_string(), diags.collect());
+        let diags = params
+            .at(&["diagnostics"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| {
+                let severity =
+                    ["", "error", "warning", "note"][d.at(&["severity"]).as_usize().unwrap()];
+                let message = d.at(&["message"]).as_str().unwrap();
+                (
+                    severity.to_string(),
+                    d.at(&["code"]).as_str().unwrap().to_string(),
+                    d.at(&["range", "start", "line"]).as_usize().unwrap() + 1,
+                    d.at(&["range", "start", "character"]).as_usize().unwrap() + 1,
+                    message.lines().next().unwrap_or("").to_string(),
+                )
+            });
+        found.insert(
+            uri.strip_prefix("file://").unwrap().to_string(),
+            diags.collect(),
+        );
     }
     found
 }
@@ -136,8 +167,14 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     let mut want = BTreeMap::new();
     rendered("check", &files, &mut want);
     rendered("lint", &files, &mut want);
-    let chunks: Vec<Vec<PathBuf>> = files.chunks(files.len().div_ceil(8)).map(<[_]>::to_vec).collect();
-    let workers: Vec<_> = chunks.into_iter().map(|c| std::thread::spawn(move || published(&c))).collect();
+    let chunks: Vec<Vec<PathBuf>> = files
+        .chunks(files.len().div_ceil(8))
+        .map(<[_]>::to_vec)
+        .collect();
+    let workers: Vec<_> = chunks
+        .into_iter()
+        .map(|c| std::thread::spawn(move || published(&c)))
+        .collect();
     let mut got = BTreeMap::new();
     for worker in workers {
         got.extend(worker.join().unwrap());
@@ -155,8 +192,16 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
         want.sort();
         got.sort();
         if want != got {
-            differ.push(format!("{key}:\n  cpl check + lint: {want:?}\n  cpl lsp:          {got:?}"));
+            differ.push(format!(
+                "{key}:\n  cpl check + lint: {want:?}\n  cpl lsp:          {got:?}"
+            ));
         }
     }
-    assert!(differ.is_empty(), "{} of {} files differ:\n{}", differ.len(), files.len(), differ.join("\n"));
+    assert!(
+        differ.is_empty(),
+        "{} of {} files differ:\n{}",
+        differ.len(),
+        files.len(),
+        differ.join("\n")
+    );
 }

@@ -738,7 +738,8 @@ impl<'a> Checker<'a> {
         // likely a library type that doesn't exist yet than a typo.
         let near_builtin = !value
             && suggestion.as_deref().is_some_and(|s| {
-                prelude::TYPE_NAMES.contains(&s) || prelude::std_names().iter().any(|(n, _)| *n == s)
+                prelude::TYPE_NAMES.contains(&s)
+                    || prelude::std_names().iter().any(|(n, _)| *n == s)
             });
         let unknown = (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()

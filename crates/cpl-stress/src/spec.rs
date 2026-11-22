@@ -1570,13 +1570,19 @@ impl Builder<'_> {
         // A tag named twice is ambiguous: which one the branch tests
         // depends on scope the fields no longer carry.
         let mut named = HashSet::new();
-        let names = self.spec.fields.iter().flat_map(|field| field.names.iter().flatten());
+        let names = self
+            .spec
+            .fields
+            .iter()
+            .flat_map(|field| field.names.iter().flatten());
         if !names.into_iter().all(|name| named.insert(name)) {
             return Ok(false);
         }
         let fields = std::mem::take(&mut self.spec.fields);
-        let (mut parts, mut binds): (Vec<_>, Vec<_>) =
-            fields.iter().map(|field| (field.shape.clone(), field.names.clone())).unzip();
+        let (mut parts, mut binds): (Vec<_>, Vec<_>) = fields
+            .iter()
+            .map(|field| (field.shape.clone(), field.names.clone()))
+            .unzip();
         let mut inside = HashSet::new();
         let chose = self.choice(expr, &mut inside, &mut parts, &mut binds);
         match chose {
@@ -2628,239 +2634,172 @@ impl InputSpec {
             stmts.extend(block.stmts.iter().map(|stmt| (judge_base, stmt, true)));
         }
         for (base, stmt, in_judge) in stmts {
-                // A reader's lines, like the interactor's, are offset from
-                // its own item.
-                builder.base = base;
-                // Decorated fns (`@brute`, `@checker`, `@interactor`)
-                // read for themselves; the divider splits the input.
-                if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
-                    if above.is_none() {
-                        let mut setup = std::mem::take(&mut builder.spec);
-                        builder.spec.consts = setup.consts.clone();
-                        builder.spec.sizes = setup.sizes.clone();
-                        setup.until_eof = divider
+            // A reader's lines, like the interactor's, are offset from
+            // its own item.
+            builder.base = base;
+            // Decorated fns (`@brute`, `@checker`, `@interactor`)
+            // read for themselves; the divider splits the input.
+            if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
+                if above.is_none() {
+                    let mut setup = std::mem::take(&mut builder.spec);
+                    builder.spec.consts = setup.consts.clone();
+                    builder.spec.sizes = setup.sizes.clone();
+                    setup.until_eof = divider
                             .args
                             .iter()
                             .any(|arg| matches!(&arg.value.kind, ExprKind::Name(name) if name == "until_eof"));
-                        above = Some(setup);
+                    above = Some(setup);
+                }
+            }
+            match &stmt.kind {
+                StmtKind::Const {
+                    name,
+                    init: Some(init),
+                    ..
+                } => {
+                    if let Some(value) = eval(init, &builder.spec.consts) {
+                        builder.spec.consts.insert(name.text.clone(), value);
                     }
                 }
-                match &stmt.kind {
-                    StmtKind::Const {
-                        name,
-                        init: Some(init),
-                        ..
-                    } => {
-                        if let Some(value) = eval(init, &builder.spec.consts) {
-                            builder.spec.consts.insert(name.text.clone(), value);
-                        }
-                    }
-                    StmtKind::Domain { name, def } => {
-                        if let ExprKind::Range {
-                            lo: Some(lo),
-                            hi: Some(hi),
-                            inclusive,
-                            step: None,
-                        } = &def.kind
-                        {
-                            let bounds = Builder::inclusive(lo, hi, *inclusive);
-                            names_in(&bounds.0, &mut builder.spec.sizes);
-                            names_in(&bounds.1, &mut builder.spec.sizes);
-                            builder.domains.insert(name.text.clone(), bounds);
-                        } else if let Some((lo, hi, inclusive)) = read_size(def) {
-                            let (lo, hi) = Builder::inclusive(lo, hi, inclusive);
-                            names_in(&lo, &mut builder.spec.sizes);
-                            names_in(&hi, &mut builder.spec.sizes);
-                            builder.spec.sizes.insert(name.text.clone());
-                            builder
-                                .domains
-                                .insert(name.text.clone(), counted(&name.text));
-                            let field = Field {
-                                names: vec![Some(name.text.clone())],
-                                shape: Shape::Int { lo, hi },
-                                line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
-                            };
-                            match (in_judge, judge.is_some()) {
-                                (true, _) => hidden.push(field),
-                                (false, false) => builder.spec.fields.push(field),
-                                (false, true) => {}
-                            }
-                        }
-                    }
-                    StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
-                        builder
-                            .aliases
-                            .insert(name.text.clone(), (builder.base, ty.clone()));
-                    }
-                    StmtKind::Use {
-                        path, names, glob, ..
-                    } if path.first().is_some_and(|root| root.text == "std") => {
-                        let module: Vec<String> = path.iter().map(|n| n.text.clone()).collect();
-                        let names: Vec<&str> = names.iter().map(|n| n.text.as_str()).collect();
-                        for (name, parts) in std_structs(&module, &names, *glob) {
-                            builder
-                                .records
-                                .entry(name)
-                                .or_insert((0, Record::Shaped(parts)));
-                        }
-                    }
-                    StmtKind::Struct(decl) if decl.generics.is_empty() => {
-                        let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();
-                        builder.records.insert(
-                            decl.name.text.clone(),
-                            (builder.base, Record::Struct(fields)),
-                        );
-                    }
-                    StmtKind::Enum(decl) if decl.generics.is_empty() => {
-                        if let Some(record) = Record::tagged(stmt, decl) {
-                            builder
-                                .records
-                                .insert(decl.name.text.clone(), (builder.base, record));
-                        }
-                    }
-                    StmtKind::Let {
-                        init: Some(init), ..
-                    } if !in_judge
-                        && judge.is_none()
-                        && above.is_none()
-                        && !multitest
-                        && read_gen(init).is_some() =>
+                StmtKind::Domain { name, def } => {
+                    if let ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                        step: None,
+                    } = &def.kind
                     {
-                        let func = read_gen(init).expect("tested above");
-                        let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
-                        let program = gen_program(src, &func, line).ok_or_else(|| {
+                        let bounds = Builder::inclusive(lo, hi, *inclusive);
+                        names_in(&bounds.0, &mut builder.spec.sizes);
+                        names_in(&bounds.1, &mut builder.spec.sizes);
+                        builder.domains.insert(name.text.clone(), bounds);
+                    } else if let Some((lo, hi, inclusive)) = read_size(def) {
+                        let (lo, hi) = Builder::inclusive(lo, hi, inclusive);
+                        names_in(&lo, &mut builder.spec.sizes);
+                        names_in(&hi, &mut builder.spec.sizes);
+                        builder.spec.sizes.insert(name.text.clone());
+                        builder
+                            .domains
+                            .insert(name.text.clone(), counted(&name.text));
+                        let field = Field {
+                            names: vec![Some(name.text.clone())],
+                            shape: Shape::Int { lo, hi },
+                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                        };
+                        match (in_judge, judge.is_some()) {
+                            (true, _) => hidden.push(field),
+                            (false, false) => builder.spec.fields.push(field),
+                            (false, true) => {}
+                        }
+                    }
+                }
+                StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
+                    builder
+                        .aliases
+                        .insert(name.text.clone(), (builder.base, ty.clone()));
+                }
+                StmtKind::Use {
+                    path, names, glob, ..
+                } if path.first().is_some_and(|root| root.text == "std") => {
+                    let module: Vec<String> = path.iter().map(|n| n.text.clone()).collect();
+                    let names: Vec<&str> = names.iter().map(|n| n.text.as_str()).collect();
+                    for (name, parts) in std_structs(&module, &names, *glob) {
+                        builder
+                            .records
+                            .entry(name)
+                            .or_insert((0, Record::Shaped(parts)));
+                    }
+                }
+                StmtKind::Struct(decl) if decl.generics.is_empty() => {
+                    let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();
+                    builder.records.insert(
+                        decl.name.text.clone(),
+                        (builder.base, Record::Struct(fields)),
+                    );
+                }
+                StmtKind::Enum(decl) if decl.generics.is_empty() => {
+                    if let Some(record) = Record::tagged(stmt, decl) {
+                        builder
+                            .records
+                            .insert(decl.name.text.clone(), (builder.base, record));
+                    }
+                }
+                StmtKind::Let {
+                    init: Some(init), ..
+                } if !in_judge
+                    && judge.is_none()
+                    && above.is_none()
+                    && !multitest
+                    && read_gen(init).is_some() =>
+                {
+                    let func = read_gen(init).expect("tested above");
+                    let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
+                    let program = gen_program(src, &func, line).ok_or_else(|| {
                             builder.error(stmt.span, format!("`cpl stress` can't run `{func}` on its own to make this input; check that the file builds"))
                         })?;
-                        builder.spec.fields.push(Field {
-                            names: vec![None],
-                            shape: Shape::Gen {
-                                func,
-                                program: std::sync::Arc::new(program),
-                            },
-                            line,
-                        });
-                    }
-                    StmtKind::Let {
-                        pat,
-                        ty,
-                        init: Some(init),
-                        ..
-                    } if typed_read(ty.as_ref(), init).is_some() || read_none(init).is_some() => {
-                        let Some((ty, none)) = typed_read(ty.as_ref(), init) else {
-                            return Err(builder.error(
+                    builder.spec.fields.push(Field {
+                        names: vec![None],
+                        shape: Shape::Gen {
+                            func,
+                            program: std::sync::Arc::new(program),
+                        },
+                        line,
+                    });
+                }
+                StmtKind::Let {
+                    pat,
+                    ty,
+                    init: Some(init),
+                    ..
+                } if typed_read(ty.as_ref(), init).is_some() || read_none(init).is_some() => {
+                    let Some((ty, none)) = typed_read(ty.as_ref(), init) else {
+                        return Err(builder.error(
                                 stmt.span,
                                 "this `read()` has no type, so there is nothing to generate from; write `let n: 1..=100 = read()`".into(),
                             ));
-                        };
-                        let shape = builder.shape_written(&ty, none)?;
-                        let field = Field {
-                            names: Builder::names(pat, &shape),
-                            shape,
-                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
-                        };
-                        match (in_judge, judge.is_some()) {
-                            (true, _) => hidden.push(field),
-                            (false, false) => builder.spec.fields.push(field),
-                            // The solution's own reads are answers
-                            // from the interactor, not input.
-                            (false, true) => {}
-                        }
+                    };
+                    let shape = builder.shape_written(&ty, none)?;
+                    let field = Field {
+                        names: Builder::names(pat, &shape),
+                        shape,
+                        line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                    };
+                    match (in_judge, judge.is_some()) {
+                        (true, _) => hidden.push(field),
+                        (false, false) => builder.spec.fields.push(field),
+                        // The solution's own reads are answers
+                        // from the interactor, not input.
+                        (false, true) => {}
                     }
-                    // `let a: List<Int> = [read() for _ in 0..n]`: `n`
-                    // values of the list's element type.
-                    StmtKind::Let {
-                        pat,
-                        ty: Some(ty),
-                        init: Some(init),
-                        ..
-                    } if read_count(init).is_some() && builder.cell(ty).is_some() => {
-                        let len = read_count(init).expect("tested above");
-                        names_in(&len, &mut builder.spec.sizes);
-                        let shape = Shape::Array {
-                            len,
-                            elem: Box::new(builder.shape(builder.cell(ty).expect("tested above"))?),
-                            index: None,
-                        };
-                        let field = Field {
-                            names: Builder::names(pat, &shape),
-                            shape,
-                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
-                        };
-                        match (in_judge, judge.is_some()) {
-                            (true, _) => hidden.push(field),
-                            (false, false) => builder.spec.fields.push(field),
-                            (false, true) => {}
-                        }
+                }
+                // `let a: List<Int> = [read() for _ in 0..n]`: `n`
+                // values of the list's element type.
+                StmtKind::Let {
+                    pat,
+                    ty: Some(ty),
+                    init: Some(init),
+                    ..
+                } if read_count(init).is_some() && builder.cell(ty).is_some() => {
+                    let len = read_count(init).expect("tested above");
+                    names_in(&len, &mut builder.spec.sizes);
+                    let shape = Shape::Array {
+                        len,
+                        elem: Box::new(builder.shape(builder.cell(ty).expect("tested above"))?),
+                        index: None,
+                    };
+                    let field = Field {
+                        names: Builder::names(pat, &shape),
+                        shape,
+                        line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                    };
+                    match (in_judge, judge.is_some()) {
+                        (true, _) => hidden.push(field),
+                        (false, false) => builder.spec.fields.push(field),
+                        (false, true) => {}
                     }
-                    StmtKind::For { .. }
-                        if (in_judge || judge.is_none()) && builder.reads(stmt) =>
-                    {
-                        let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
-                            if let Some(shapes) = builder.inlined(stmt)? {
-                                let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
-                                let fields = shapes.into_iter().map(|shape| Field {
-                                    names: vec![None],
-                                    shape,
-                                    line,
-                                });
-                                match in_judge {
-                                    true => hidden.extend(fields),
-                                    false => builder.spec.fields.extend(fields),
-                                }
-                                continue;
-                            }
-                            return Err(builder.error(
-                                stmt.span,
-                                "this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
-                            ));
-                        };
-                        let field = Field {
-                            names: vec![None],
-                            shape,
-                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
-                        };
-                        match in_judge {
-                            true => hidden.push(field),
-                            false => builder.spec.fields.push(field),
-                        }
-                    }
-                    // A fn the program calls reads input no field
-                    // describes; `@brute`, `@checker` and the like read for
-                    // themselves.
-                    StmtKind::Fn(decl)
-                        if (in_judge || judge.is_none())
-                            && !readers.contains_key(decl.name.text.as_str())
-                            && !builder.values.contains_key(&decl.name.text)
-                            && stmt
-                                .decorators
-                                .iter()
-                                .all(|d| matches!(d.name.text.as_str(), "memo" | "allow"))
-                            && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
-                    {
-                        return Err(builder.error(
-                            stmt.span,
-                            "this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in".into(),
-                        ));
-                    }
-                    StmtKind::Fn(_) => {}
-                    // A `read()` anywhere else (in an expression, a loop
-                    // or a branch) reads input no field describes: a case
-                    // made without it would be cut short.
-                    _ if (in_judge || judge.is_none())
-                        && reads_with_options(&src[span_range(stmt.span.shift(builder.base))]) =>
-                    {
-                        return Err(builder.error(
-                            stmt.span,
-                            "`cpl stress` makes a `read(gen: ..)` or `read(none: ..)` only as a top-level `let name: Type = read(..)` outside a test case, so a generated input would leave this one out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
-                        ));
-                    }
-                    _ if (in_judge || judge.is_none()) && builder.reads(stmt) => {
-                        if let StmtKind::Expr(expr) = &stmt.kind {
-                            let last = Some(stmt.span.shift(builder.base).end) == last_read;
-                            if !in_judge && last && readers.is_empty() && builder.top_choice(expr)? {
-                                continue;
-                            }
-                        }
+                }
+                StmtKind::For { .. } if (in_judge || judge.is_none()) && builder.reads(stmt) => {
+                    let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
                         if let Some(shapes) = builder.inlined(stmt)? {
                             let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                             let fields = shapes.into_iter().map(|shape| Field {
@@ -2875,13 +2814,78 @@ impl InputSpec {
                             continue;
                         }
                         return Err(builder.error(
+                                stmt.span,
+                                "this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
+                            ));
+                    };
+                    let field = Field {
+                        names: vec![None],
+                        shape,
+                        line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                    };
+                    match in_judge {
+                        true => hidden.push(field),
+                        false => builder.spec.fields.push(field),
+                    }
+                }
+                // A fn the program calls reads input no field
+                // describes; `@brute`, `@checker` and the like read for
+                // themselves.
+                StmtKind::Fn(decl)
+                    if (in_judge || judge.is_none())
+                        && !readers.contains_key(decl.name.text.as_str())
+                        && !builder.values.contains_key(&decl.name.text)
+                        && stmt
+                            .decorators
+                            .iter()
+                            .all(|d| matches!(d.name.text.as_str(), "memo" | "allow"))
+                        && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
+                {
+                    return Err(builder.error(
+                            stmt.span,
+                            "this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in".into(),
+                        ));
+                }
+                StmtKind::Fn(_) => {}
+                // A `read()` anywhere else (in an expression, a loop
+                // or a branch) reads input no field describes: a case
+                // made without it would be cut short.
+                _ if (in_judge || judge.is_none())
+                    && reads_with_options(&src[span_range(stmt.span.shift(builder.base))]) =>
+                {
+                    return Err(builder.error(
+                            stmt.span,
+                            "`cpl stress` makes a `read(gen: ..)` or `read(none: ..)` only as a top-level `let name: Type = read(..)` outside a test case, so a generated input would leave this one out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
+                        ));
+                }
+                _ if (in_judge || judge.is_none()) && builder.reads(stmt) => {
+                    if let StmtKind::Expr(expr) = &stmt.kind {
+                        let last = Some(stmt.span.shift(builder.base).end) == last_read;
+                        if !in_judge && last && readers.is_empty() && builder.top_choice(expr)? {
+                            continue;
+                        }
+                    }
+                    if let Some(shapes) = builder.inlined(stmt)? {
+                        let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
+                        let fields = shapes.into_iter().map(|shape| Field {
+                            names: vec![None],
+                            shape,
+                            line,
+                        });
+                        match in_judge {
+                            true => hidden.extend(fields),
+                            false => builder.spec.fields.extend(fields),
+                        }
+                        continue;
+                    }
+                    return Err(builder.error(
                             stmt.span,
                             "this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
                         ));
-                    }
-                    _ => {}
                 }
+                _ => {}
             }
+        }
         if judge.is_some() {
             builder.spec.fields = hidden;
         }

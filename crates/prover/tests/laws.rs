@@ -636,5 +636,8 @@ fn a_law_about_a_fn_the_prover_cannot_read_is_not_proved() {
         "fn clamp(x: Int) -> Int:\n    if x < 0: return 0\n    return x\n\
          @law idem(x: Int) = clamp(clamp(x)) == clamp(x)\n",
     );
-    assert!(matches!(report.verdict("idem"), Verdict::Unknown(_)), "{report}");
+    assert!(
+        matches!(report.verdict("idem"), Verdict::Unknown(_)),
+        "{report}"
+    );
 }

@@ -573,12 +573,14 @@ impl<'a> Scanner<'a> {
                 });
                 let saved = self.mods.clone();
                 if let PatternKind::Name(n) = &pat.kind {
-                    if let Some(elem) = self.mods.mod_seq_of(iter, self.src, self.base).or_else(
-                        || match &unparen(iter).kind {
-                            ExprKind::Name(arr) => self.mods.seqs.get(arr).cloned(),
-                            _ => None,
-                        },
-                    ) {
+                    if let Some(elem) =
+                        self.mods
+                            .mod_seq_of(iter, self.src, self.base)
+                            .or_else(|| match &unparen(iter).kind {
+                                ExprKind::Name(arr) => self.mods.seqs.get(arr).cloned(),
+                                _ => None,
+                            })
+                    {
                         self.mods.names.insert(n.clone(), elem);
                     } else {
                         self.mods.names.remove(n);
@@ -636,8 +638,7 @@ impl<'a> Scanner<'a> {
                     if let Some(ty) = &param.ty {
                         if let Some(m) = self.mods.mod_type_name(ty, self.src, self.base) {
                             self.mods.names.insert(param.name.text.clone(), m);
-                        } else if let Some(m) =
-                            self.mods.mod_seq_elem_type(ty, self.src, self.base)
+                        } else if let Some(m) = self.mods.mod_seq_elem_type(ty, self.src, self.base)
                         {
                             self.mods.seqs.insert(param.name.text.clone(), m);
                         }
@@ -956,9 +957,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         if hit.fixable {
             let key = (hit.hoist_span.start, hit.inv_expr.clone());
             if first_idx.get(&key) == Some(&i) {
-                if let (Some(group), Some(indent)) =
-                    (hoisted.get(&key), line_indent(file.src, hit.hoist_span.start))
-                {
+                if let (Some(group), Some(indent)) = (
+                    hoisted.get(&key),
+                    line_indent(file.src, hit.hoist_span.start),
+                ) {
                     let var_name = &group.var_name;
                     let mut edits = Vec::with_capacity(group.sites.len() + 1);
                     edits.push((

@@ -148,7 +148,10 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
             .current_dir(prob_dir)
             .output()
             .ok()?;
-        if out.status.success() && !out.stdout.is_empty() && std::fs::write(&out_path, &out.stdout).is_ok() {
+        if out.status.success()
+            && !out.stdout.is_empty()
+            && std::fs::write(&out_path, &out.stdout).is_ok()
+        {
             return Some((out_path, "gen.py".to_string()));
         }
     }
@@ -179,7 +182,9 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
     if let Ok(source) = std::fs::read_to_string(port_path) {
         if let Ok(spec) = cpl_stress::InputSpec::from_source(&source) {
             if !spec.is_empty() {
-                if let Some(case) = crate::bench::worst_case(&spec, crate::bench::WorstShape::Random, 1) {
+                if let Some(case) =
+                    crate::bench::worst_case(&spec, crate::bench::WorstShape::Random, 1)
+                {
                     let rendered = case.render();
                     if !rendered.is_empty() {
                         let out_path = scratch.join("worst.in");
@@ -259,7 +264,8 @@ fn tokens_equal(a: &[u8], b: &[u8]) -> bool {
                     continue;
                 }
                 match (x.parse::<f64>(), y.parse::<f64>()) {
-                    (Ok(fx), Ok(fy)) if (fx - fy).abs() <= 1e-6 * fx.abs().max(fy.abs()).max(1.0) => {}
+                    (Ok(fx), Ok(fy))
+                        if (fx - fy).abs() <= 1e-6 * fx.abs().max(fy.abs()).max(1.0) => {}
                     _ => return false,
                 }
             }
@@ -292,7 +298,8 @@ fn verify_perf_tests(bin: &Path, prob_dir: &Path) -> Result<(), String> {
             continue;
         };
         let expected = std::fs::read(&expected_path).map_err(|e| e.to_string())?;
-        let (_, got) = run_bin(bin, &inp).map_err(|e| format!("perf.cp failed on {}: {e}", inp.display()))?;
+        let (_, got) =
+            run_bin(bin, &inp).map_err(|e| format!("perf.cp failed on {}: {e}", inp.display()))?;
         if !tokens_equal(&got, &expected) {
             return Err(format!("perf.cp WA on {}", inp.display()));
         }
@@ -565,7 +572,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 match args.get(i).and_then(|s| s.parse::<usize>().ok()) {
                     Some(n) if n > 0 => runs = n,
                     _ => {
-                        let _ = writeln!(stderr, "cpl bench --corpus: --runs expects a positive integer");
+                        let _ = writeln!(
+                            stderr,
+                            "cpl bench --corpus: --runs expects a positive integer"
+                        );
                         return 2;
                     }
                 }
@@ -573,10 +583,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             "--ports" => {
                 i += 1;
                 let Some(list) = args.get(i) else {
-                    let _ = writeln!(stderr, "cpl bench --corpus: --ports needs a comma-separated list");
+                    let _ = writeln!(
+                        stderr,
+                        "cpl bench --corpus: --ports needs a comma-separated list"
+                    );
                     return 2;
                 };
-                filter_ports = Some(list.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect());
+                filter_ports = Some(
+                    list.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect(),
+                );
             }
             "--dir" => {
                 i += 1;
@@ -609,7 +627,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let entries = match std::fs::read_dir(&corpus_dir) {
         Ok(e) => e,
         Err(e) => {
-            let _ = writeln!(stderr, "cpl bench --corpus: can't read {}: {e}", corpus_dir.display());
+            let _ = writeln!(
+                stderr,
+                "cpl bench --corpus: can't read {}: {e}",
+                corpus_dir.display()
+            );
             return 2;
         }
     };
@@ -675,10 +697,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
-    let bars_ok = dist.n > 0
-        && dist.median <= BAR_P50
-        && dist.p95 <= BAR_P95
-        && tuned_failures.is_empty();
+    let bars_ok =
+        dist.n > 0 && dist.median <= BAR_P50 && dist.p95 <= BAR_P95 && tuned_failures.is_empty();
 
     let _ = writeln!(
         stdout,
@@ -694,13 +714,21 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         dist.median, dist.p90, dist.p95, dist.worst
     );
     if !tuned_failures.is_empty() {
-        let _ = writeln!(stdout, "  perf.cp bar failures: {}", tuned_failures.join("; "));
+        let _ = writeln!(
+            stdout,
+            "  perf.cp bar failures: {}",
+            tuned_failures.join("; ")
+        );
     }
 
     if !no_write {
         let json = build_json(&records, runs, total_problems, bars_ok);
         if let Err(e) = std::fs::write(&out_json, json) {
-            let _ = writeln!(stderr, "cpl bench --corpus: can't write {}: {e}", out_json.display());
+            let _ = writeln!(
+                stderr,
+                "cpl bench --corpus: can't write {}: {e}",
+                out_json.display()
+            );
             return 1;
         }
         let _ = writeln!(stdout, "  wrote {}", out_json.display());
@@ -708,5 +736,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 
     // Keep Duration imported cleanly if needed later
     let _ = Duration::from_secs(0);
-    if bars_ok { 0 } else { 1 }
+    if bars_ok {
+        0
+    } else {
+        1
+    }
 }

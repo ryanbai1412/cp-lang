@@ -128,12 +128,18 @@ impl Visitor for Scopes<'_> {
             // that ends before `var i` is written hides nothing.
             // What is below `@!multitest` belongs to one test: a fn above
             // the line can't name it, so hides nothing there.
-            let per_test = |b: &&Binding| self.divider.is_some_and(|at| span.start < at && at < b.span.start);
+            let per_test = |b: &&Binding| {
+                self.divider
+                    .is_some_and(|at| span.start < at && at < b.span.start)
+            };
             // `let (i, j) = first((i, j) for i in 0..n ..)!`: the names the
             // statement declares are not there yet on its right side.
-            let own = |b: &&Binding| self.statement.start <= b.span.start && b.span.start < self.statement.end;
-            let in_reach =
-                |b: &&Binding| (self.fns > 0 && !per_test(b)) || (b.span.start < span.start && !own(b));
+            let own = |b: &&Binding| {
+                self.statement.start <= b.span.start && b.span.start < self.statement.end
+            };
+            let in_reach = |b: &&Binding| {
+                (self.fns > 0 && !per_test(b)) || (b.span.start < span.start && !own(b))
+            };
             if let Some(hidden) = hidden.filter(|b| b.top_level).filter(in_reach) {
                 let what = match how {
                     Bind::Param => "parameter",
@@ -230,7 +236,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         divider: file
             .src
             .match_indices("@!multitest")
-            .find(|(at, _)| file.src[..*at].rsplit('\n').next().is_some_and(|before| before.trim().is_empty()))
+            .find(|(at, _)| {
+                file.src[..*at]
+                    .rsplit('\n')
+                    .next()
+                    .is_some_and(|before| before.trim().is_empty())
+            })
             .map(|(at, _)| at as u32),
         findings: Vec::new(),
     };

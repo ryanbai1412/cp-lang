@@ -96,7 +96,13 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
     }
     corpus_ports.sort();
     for path in corpus_ports {
-        let id = path.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let id = path
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let is_sketch = sketches.contains(id);
         checked += 1;
         let out = check(&path);
@@ -159,14 +165,38 @@ const NOT_YET: &[&str] = &[
 /// of its own: the prototype says `expected Int, got ?Int`, this checker
 /// names the variable. Each is held to the wording given here.
 const REWORDED: &[(&str, &str)] = &[
-    ("s3_inv1_bool_alias", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv2_array_place", "`y` is declared an Int, but `a[i]` is an ?Int"),
-    ("s3_inv2_struct_field", "`y` is declared an Int, but `b.x` is an ?Int"),
-    ("s3_inv3_after_join", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_after_mut_arg", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_after_reassign", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_closure_mutation", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv4_bang_non_opt", "`!` takes the value out of an optional, but this is a `Int`"),
+    (
+        "s3_inv1_bool_alias",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv2_array_place",
+        "`y` is declared an Int, but `a[i]` is an ?Int",
+    ),
+    (
+        "s3_inv2_struct_field",
+        "`y` is declared an Int, but `b.x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_join",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_mut_arg",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_reassign",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_closure_mutation",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv4_bang_non_opt",
+        "`!` takes the value out of an optional, but this is a `Int`",
+    ),
 ];
 
 /// Failing tests that state a limit of the prototype's code generator,

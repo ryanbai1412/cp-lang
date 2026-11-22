@@ -27,17 +27,26 @@ pub fn data(page: &str) -> &str {
     let Some(start) = page.find(open).map(|at| at + open.len()) else {
         return page;
     };
-    page[start..].find("</script>").map_or(page, |end| &page[start..start + end])
+    page[start..]
+        .find("</script>")
+        .map_or(page, |end| &page[start..start + end])
 }
 
 /// The viewer with one trace in it and no samples: a self-contained
 /// page. Trace JSON never holds a `<`, so it cannot end the element.
 pub fn html(trace_json: &str) -> String {
-    fill(&fill(VIEWER, "trace-samples", "[]"), "trace-data", trace_json)
+    fill(
+        &fill(VIEWER, "trace-samples", "[]"),
+        "trace-data",
+        trace_json,
+    )
 }
 
 fn file_name(path: &str) -> &str {
-    Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path)
+    Path::new(path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(path)
 }
 
 /// The newest `.in` in the file's `<name>.tests/`: the failing case
@@ -74,11 +83,24 @@ pub fn single(path: &str, source: &str, recording: &Recording) -> String {
 }
 
 /// The trace document of a solution and its brute on one input.
-pub fn versus(path: &str, source: &str, brute_fn: &str, fast: &Recording, slow: &Recording) -> String {
+pub fn versus(
+    path: &str,
+    source: &str,
+    brute_fn: &str,
+    fast: &Recording,
+    slow: &Recording,
+) -> String {
     let name = file_name(path);
     let title = format!("{name} against its brute `{brute_fn}`");
     let note = "The same input through the solution and through its @brute(main), lined up at each print and each debug(...) both ran.";
-    document(&title, note, name, source, ("solution", fast), Some((brute_fn, slow)))
+    document(
+        &title,
+        note,
+        name,
+        source,
+        ("solution", fast),
+        Some((brute_fn, slow)),
+    )
 }
 
 /// Runs the solution and the `@brute(main)` of the file at `path` on
@@ -87,7 +109,11 @@ pub fn versus(path: &str, source: &str, brute_fn: &str, fast: &Recording, slow: 
 /// line up with, and its trace is the solution's own run. With `explain`,
 /// every value each run gives a variable is logged too, for the first one
 /// they give differently.
-pub fn against_brute(path: &Path, input: &str, explain: bool) -> Result<cpl_stress::cli::Traced, String> {
+pub fn against_brute(
+    path: &Path,
+    input: &str,
+    explain: bool,
+) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.display().to_string();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
     let mut db = cpl_check::Database::new();
@@ -95,7 +121,9 @@ pub fn against_brute(path: &Path, input: &str, explain: bool) -> Result<cpl_stre
     let analysis = db.analyze(&name).ok_or("the file can't be checked")?;
     let brute_fn = cpl_ir::brute(&analysis).map(|(name, _)| name);
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
-        diagnostics.first().map_or("the file does not build".to_string(), |d| d.message.clone())
+        diagnostics
+            .first()
+            .map_or("the file does not build".to_string(), |d| d.message.clone())
     };
     let fast = cpl_ir::lower(&analysis).map_err(first)?;
     let slow = match &brute_fn {
@@ -167,7 +195,10 @@ pub fn run_report(
         cpl_json::escape_script_safe_string(&String::from_utf8_lossy(stdout))
     );
     if let Some((line, message)) = error {
-        out += &format!(",\"error\":{{\"line\":{line},\"message\":{}}}", cpl_json::escape_script_safe_string(message));
+        out += &format!(
+            ",\"error\":{{\"line\":{line},\"message\":{}}}",
+            cpl_json::escape_script_safe_string(message)
+        );
     }
     out.push_str("}\n");
     out

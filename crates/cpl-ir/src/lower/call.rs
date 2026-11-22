@@ -226,9 +226,7 @@ impl<'a> Lowerer<'a> {
                         self.probe_ty_silent(&args[0].value),
                         self.probe_ty_silent(&args[1].value),
                     ) {
-                        let is_marker = |t: &Ty| {
-                            matches!(t, Ty::Struct(s) if self.structs[*s].def.fields.is_empty())
-                        };
+                        let is_marker = |t: &Ty| matches!(t, Ty::Struct(s) if self.structs[*s].def.fields.is_empty());
                         if is_marker(&ta) || is_marker(&tb) {
                             return self.mk(ExprKind::Bool(ta == tb), Ty::Bool, span);
                         }
@@ -961,8 +959,9 @@ impl<'a> Lowerer<'a> {
             }
         }
         if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
-            if let Some(act_arg) =
-                args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
+            if let Some(act_arg) = args
+                .iter()
+                .find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
             {
                 if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&act_arg.value) {
                     let sname = self.structs[sid].def.name.as_str();
@@ -1247,7 +1246,10 @@ impl<'a> Lowerer<'a> {
                     }
                     let mut place = place;
                     let synthetic_dom = self.range_domain_of(&param.ty, &place.ty).or_else(|| {
-                        if self.list_given(&param.ty).is_some_and(|list| list == place.ty) {
+                        if self
+                            .list_given(&param.ty)
+                            .is_some_and(|list| list == place.ty)
+                        {
                             if let Ty::Array { dims, .. } = &param.ty {
                                 if let [Dim::Pos(d)] = dims.as_slice() {
                                     return Some((*d, 0));
@@ -4110,8 +4112,8 @@ impl<'a> Lowerer<'a> {
             }
             if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&op.value) {
                 let s = &self.structs[sid];
-                let has_op = s.methods.contains_key("op")
-                    || s.trait_methods.keys().any(|(_, m)| m == "op");
+                let has_op =
+                    s.methods.contains_key("op") || s.trait_methods.keys().any(|(_, m)| m == "op");
                 let has_id = s.def.fields.iter().any(|(n, _)| n == "id");
                 if has_op && !has_id {
                     let at = op.value.span;
@@ -5622,14 +5624,12 @@ impl<'a> Lowerer<'a> {
             // `xs.items` kept as a value: the list of `(index, element)`.
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
-            (
-                Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView,
-                "keys",
-            ) => {
+            (Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView, "keys") => {
                 let lo = match &value.kind {
-                    ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
-                        args.get(1).cloned().unwrap_or_else(|| self.int_lit(0, span))
-                    }
+                    ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => args
+                        .get(1)
+                        .cloned()
+                        .unwrap_or_else(|| self.int_lit(0, span)),
                     ExprKind::Local(slot) => self
                         .cx
                         .view_lo
@@ -7898,10 +7898,8 @@ impl<'a> Lowerer<'a> {
                     {
                         Some(tag) => self.variant(id, tag, args, span),
                         None => {
-                            let message = format!(
-                                "`{}` has no variant `{}`",
-                                self.enums[id].name, name.text
-                            );
+                            let message =
+                                format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
                             self.error(codes::UNKNOWN_FIELD, name.span, message);
                             self.err_expr(span)
                         }

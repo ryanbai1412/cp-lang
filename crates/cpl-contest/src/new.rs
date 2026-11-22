@@ -13,9 +13,9 @@
 //! let queries: [0..q](1..=n, 1..=n) = read()
 //! ```
 
-use cpl_stress::args::Args;
-use cpl_json::{self as json, Value as Json};
 use crate::problem::{tests_dir, Limits};
+use cpl_json::{self as json, Value as Json};
+use cpl_stress::args::Args;
 use cpl_stress::InputSpec;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -51,7 +51,9 @@ fn read_post(stream: &mut std::net::TcpStream) -> Result<String, String> {
     let mut bytes = Vec::new();
     let mut chunk = [0u8; 4096];
     let (head_end, length) = loop {
-        let n = stream.read(&mut chunk).map_err(|e| format!("the request stopped: {e}"))?;
+        let n = stream
+            .read(&mut chunk)
+            .map_err(|e| format!("the request stopped: {e}"))?;
         if n == 0 {
             return Err("the request ended before its headers did".to_string());
         }
@@ -73,7 +75,9 @@ fn read_post(stream: &mut std::net::TcpStream) -> Result<String, String> {
         return Err("the request is too large to be a problem".to_string());
     }
     while bytes.len() < head_end + length {
-        let n = stream.read(&mut chunk).map_err(|e| format!("the request stopped: {e}"))?;
+        let n = stream
+            .read(&mut chunk)
+            .map_err(|e| format!("the request stopped: {e}"))?;
         if n == 0 {
             return Err("the request ended before its body did".to_string());
         }
@@ -107,7 +111,9 @@ pub fn listen(
     );
     let (mut got, mut want) = (0, 1);
     while got < want {
-        let (mut stream, _) = listener.accept().map_err(|e| format!("can't accept: {e}"))?;
+        let (mut stream, _) = listener
+            .accept()
+            .map_err(|e| format!("can't accept: {e}"))?;
         match read_post(&mut stream) {
             Ok(text) => {
                 want = want.max(batch_size(&text));
@@ -434,7 +440,11 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
         2
     };
     if args.value("--companion").is_some() || args.value("--constraints").is_some() {
-        return usage(stderr, "`--listen` gets the problem from the browser: drop `--companion` and `--constraints`".into());
+        return usage(
+            stderr,
+            "`--listen` gets the problem from the browser: drop `--companion` and `--constraints`"
+                .into(),
+        );
     }
     let port = match args.number("--port") {
         Ok(None) => COMPANION_PORT,
@@ -443,7 +453,10 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
         Err(message) => return usage(stderr, message),
     };
     if args.positional.len() > 1 {
-        return usage(stderr, format!("`new` takes one name; `{}` is a second", args.positional[1]));
+        return usage(
+            stderr,
+            format!("`new` takes one name; `{}` is a second", args.positional[1]),
+        );
     }
     let mut named = args.positional.first().cloned();
     let mut code = 0;
@@ -456,9 +469,17 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
             .or_else(|| scaffold.short_name())
             .ok_or("the problem has no URL to name it after: give a name, `cpl new d --listen`")?;
         let mut errors = Vec::new();
-        code = code.max(report(&scaffold, &crate::problem::source_path(&name), stdout, &mut errors));
+        code = code.max(report(
+            &scaffold,
+            &crate::problem::source_path(&name),
+            stdout,
+            &mut errors,
+        ));
         if !errors.is_empty() {
-            return Err(String::from_utf8_lossy(&errors).trim_start_matches("error: ").trim_end().to_string());
+            return Err(String::from_utf8_lossy(&errors)
+                .trim_start_matches("error: ")
+                .trim_end()
+                .to_string());
         }
         Ok(())
     });
@@ -472,7 +493,12 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
 }
 
 /// Creates the problem and says what was made.
-fn report(scaffold: &Scaffold, source: &Path, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+fn report(
+    scaffold: &Scaffold,
+    source: &Path,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> u8 {
     match scaffold.create(source) {
         Ok(created) => {
             let _ = writeln!(stdout, "  created {}", created[0].display());

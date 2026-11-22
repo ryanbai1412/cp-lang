@@ -25,7 +25,12 @@ struct Run {
 
 /// Serves until interrupted. `record` turns the file as it is now into a
 /// trace document, or says why it can't.
-pub fn serve(path: &str, input: &[u8], input_note: &str, record: &dyn Fn() -> Result<String, String>) -> u8 {
+pub fn serve(
+    path: &str,
+    input: &[u8],
+    input_note: &str,
+    record: &dyn Fn() -> Result<String, String>,
+) -> u8 {
     let first = match record() {
         Ok(document) => document,
         Err(error) => {
@@ -33,8 +38,14 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: &dyn Fn() -> Re
             return crate::EXIT_FAILED;
         }
     };
-    let shown = Arc::new(Mutex::new(Shown { version: 1, document: first, error: None }));
-    let listener = match TcpListener::bind(("127.0.0.1", 7357)).or_else(|_| TcpListener::bind(("127.0.0.1", 0))) {
+    let shown = Arc::new(Mutex::new(Shown {
+        version: 1,
+        document: first,
+        error: None,
+    }));
+    let listener = match TcpListener::bind(("127.0.0.1", 7357))
+        .or_else(|_| TcpListener::bind(("127.0.0.1", 0)))
+    {
         Ok(listener) => listener,
         Err(error) => {
             eprintln!("cpl: can't serve the trace: {error}");
@@ -45,7 +56,10 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: &dyn Fn() -> Re
     eprintln!("cpl: serving the trace of {path} at http://127.0.0.1:{port}/");
     eprintln!("cpl: input: {input_note}; save the file to record it again (Ctrl-C stops)");
     let served = Arc::clone(&shown);
-    let run = Arc::new(Run { path: path.to_string(), input: input.to_vec() });
+    let run = Arc::new(Run {
+        path: path.to_string(),
+        input: input.to_vec(),
+    });
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
             let (shown, run) = (Arc::clone(&served), Arc::clone(&run));
@@ -97,25 +111,44 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
     let posted = request.starts_with("POST ");
     let (kind, body) = if posted && target == "/replay" {
         let mut body = vec![0; length.min(1 << 24)];
-        let body = reader.read_exact(&mut body).map(|_| String::from_utf8_lossy(&body).into_owned()).unwrap_or_default();
+        let body = reader
+            .read_exact(&mut body)
+            .map(|_| String::from_utf8_lossy(&body).into_owned())
+            .unwrap_or_default();
         ("application/json", replay(run, &body))
     } else {
         let shown = shown.lock().unwrap();
         match target {
             "/" | "/index.html" => {
                 let page = crate::trace::html(&shown.document);
-                let meta = format!("<head>\n<meta name=\"cpl-live\" content=\"{}\">", shown.version);
-                ("text/html; charset=utf-8", page.replacen("<head>", &meta, 1))
+                let meta = format!(
+                    "<head>\n<meta name=\"cpl-live\" content=\"{}\">",
+                    shown.version
+                );
+                (
+                    "text/html; charset=utf-8",
+                    page.replacen("<head>", &meta, 1),
+                )
             }
             "/trace.json" => ("application/json", shown.document.clone()),
             "/live" => {
-                let error = shown.error.as_deref().map_or("null".to_string(), cpl_json::escape_script_safe_string);
-                ("application/json", format!("{{\"version\":{},\"error\":{error}}}", shown.version))
+                let error = shown
+                    .error
+                    .as_deref()
+                    .map_or("null".to_string(), cpl_json::escape_script_safe_string);
+                (
+                    "application/json",
+                    format!("{{\"version\":{},\"error\":{error}}}", shown.version),
+                )
             }
             _ => ("text/plain", String::new()),
         }
     };
-    let status = if kind == "text/plain" { "404 Not Found" } else { "200 OK" };
+    let status = if kind == "text/plain" {
+        "404 Not Found"
+    } else {
+        "200 OK"
+    };
     let mut stream = &stream;
     let _ = write!(
         stream,
@@ -130,17 +163,32 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
 /// or `{"error": ...}`.
 fn replay(run: &Run, body: &str) -> String {
     use crate::dap::Json;
-    let error = |message: &str| format!("{{\"error\":{}}}", cpl_json::escape_script_safe_string(message.trim_end()));
-    let Ok(request) = cpl_json::parse(body) else { return error("the replay request is not JSON") };
+    let error = |message: &str| {
+        format!(
+            "{{\"error\":{}}}",
+            cpl_json::escape_script_safe_string(message.trim_end())
+        )
+    };
+    let Ok(request) = cpl_json::parse(body) else {
+        return error("the replay request is not JSON");
+    };
     let (Some(original), Some(step)) = (
         request.get("original").and_then(Json::as_str),
-        request.get("step").and_then(Json::as_i64).and_then(|n| usize::try_from(n).ok()),
+        request
+            .get("step")
+            .and_then(Json::as_i64)
+            .and_then(|n| usize::try_from(n).ok()),
     ) else {
         return error("a replay needs the recorded source and a step");
     };
     let edited = request.get("edited").and_then(Json::as_str);
-    let frame = request.get("frame").and_then(Json::as_i64).and_then(|n| usize::try_from(n).ok()).unwrap_or(0);
-    let pick = |recorded: &cpl_interp::trace::Recording| crate::replay::call_at(recorded, step, frame);
+    let frame = request
+        .get("frame")
+        .and_then(Json::as_i64)
+        .and_then(|n| usize::try_from(n).ok())
+        .unwrap_or(0);
+    let pick =
+        |recorded: &cpl_interp::trace::Recording| crate::replay::call_at(recorded, step, frame);
     match crate::replay::replay_call(&run.path, original, edited, &run.input, &pick) {
         Ok(replay) => replay.json(),
         Err(message) => error(&message),

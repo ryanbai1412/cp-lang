@@ -7,7 +7,8 @@ use std::net::TcpStream;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const SOURCE: &str = "let n: 1..=10 = read()\nvar total = 0\nfor i in 1..=n:\n    total += i\nprint(total)\n";
+const SOURCE: &str =
+    "let n: 1..=10 = read()\nvar total = 0\nfor i in 1..=n:\n    total += i\nprint(total)\n";
 
 fn get(base: &str, path: &str) -> String {
     let address = base.trim_start_matches("http://").trim_end_matches('/');
@@ -31,7 +32,8 @@ fn until(base: &str, wanted: &str) -> String {
 
 #[test]
 fn live_trace_records_each_save_on_the_pinned_input() {
-    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("trace_live_{}", std::process::id()));
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("trace_live_{}", std::process::id()));
     std::fs::create_dir_all(dir.join("live.tests")).unwrap();
     let file = dir.join("live.cp");
     std::fs::write(&file, SOURCE).unwrap();
@@ -56,12 +58,18 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     assert!(get(&base, "/trace.json").contains("total += i"));
 
     std::fs::write(&file, SOURCE.replace("total += i", "total += 2 * i")).unwrap();
-    assert_eq!(until(&base, r#""version":2"#), r#"{"version":2,"error":null}"#);
+    assert_eq!(
+        until(&base, r#""version":2"#),
+        r#"{"version":2,"error":null}"#
+    );
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
 
     std::fs::write(&file, format!("{SOURCE}fn (\n")).unwrap();
     let broken = until(&base, "E0101");
-    assert!(broken.starts_with(r#"{"version":2,"error":"error[E0101]"#), "{broken}");
+    assert!(
+        broken.starts_with(r#"{"version":2,"error":"error[E0101]"#),
+        "{broken}"
+    );
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
     server.kill().unwrap();
     server.wait().unwrap();
@@ -73,15 +81,23 @@ fn trace_at_a_terminal_records_the_pinned_case() {
     if Command::new("script").arg("--version").output().is_err() {
         return;
     }
-    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("trace_tty_{}", std::process::id()));
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("trace_tty_{}", std::process::id()));
     std::fs::create_dir_all(dir.join("live.tests")).unwrap();
     std::fs::write(dir.join("live.cp"), SOURCE).unwrap();
     std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
     let command = format!("{} run live.cp --trace", env!("CARGO_BIN_EXE_cpl"));
-    let out = Command::new("script").args(["-qec", &command, "/dev/null"]).current_dir(&dir).output().unwrap();
+    let out = Command::new("script")
+        .args(["-qec", &command, "/dev/null"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
     let shown = String::from_utf8_lossy(&out.stdout);
     assert!(shown.contains("10"), "ran on the pinned 4: {shown}");
-    assert!(shown.contains("input live.tests/stress-1.in"), "says which case: {shown}");
+    assert!(
+        shown.contains("input live.tests/stress-1.in"),
+        "says which case: {shown}"
+    );
     let piped = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["run", "live.cp", "--trace"])
         .current_dir(&dir)
@@ -91,5 +107,9 @@ fn trace_at_a_terminal_records_the_pinned_case() {
         .unwrap();
     piped.stdin.as_ref().unwrap().write_all(b"3\n").unwrap();
     let piped = piped.wait_with_output().unwrap();
-    assert_eq!(String::from_utf8_lossy(&piped.stdout).trim(), "6", "piped input wins over the pinned case");
+    assert_eq!(
+        String::from_utf8_lossy(&piped.stdout).trim(),
+        "6",
+        "piped input wins over the pinned case"
+    );
 }

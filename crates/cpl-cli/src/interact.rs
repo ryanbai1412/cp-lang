@@ -36,7 +36,10 @@ struct End {
 
 impl End {
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
-        self.wire.state.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.wire
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// The next bytes the other side printed; `None` when there will be none.

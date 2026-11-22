@@ -55,7 +55,10 @@ fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
 }
 
 fn unquote(v: &str) -> String {
-    let body = v.strip_prefix('"').and_then(|q| q.strip_suffix('"')).unwrap_or(v);
+    let body = v
+        .strip_prefix('"')
+        .and_then(|q| q.strip_suffix('"'))
+        .unwrap_or(v);
     unescape_python_like(body)
 }
 
@@ -92,7 +95,11 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
             let rest = l.trim_start().strip_prefix("//").map(str::trim_start);
             match rest {
                 Some(r) if r.starts_with("has:") || r.starts_with("lacks:") => {
-                    if l.ends_with('\n') { "//\n" } else { "//" }
+                    if l.ends_with('\n') {
+                        "//\n"
+                    } else {
+                        "//"
+                    }
                 }
                 _ => l,
             }
@@ -114,7 +121,9 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(&header_input(text));
     }
-    let out = child.wait_with_output().map_err(|e| format!("cpl failed: {e}"))?;
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("cpl failed: {e}"))?;
     let _ = std::fs::remove_dir_all(&dir);
     Ok(ToolRun {
         status: out.status.code().unwrap_or(-1),
@@ -125,7 +134,13 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
 
 /// A `// tool:` case: runs the tool twice (tool output is deterministic),
 /// then checks the expectation and every `// has:` / `// lacks:` string.
-fn run_tool_case(case: &ConformanceCase, text: &str, args: &str, expect: Expect, offset: usize) -> CaseOutcome {
+fn run_tool_case(
+    case: &ConformanceCase,
+    text: &str,
+    args: &str,
+    expect: Expect,
+    offset: usize,
+) -> CaseOutcome {
     let fail = |detail: String| CaseOutcome {
         status: "fail".into(),
         detail,
@@ -142,12 +157,20 @@ fn run_tool_case(case: &ConformanceCase, text: &str, args: &str, expect: Expect,
     let met = match &expect {
         Expect::Ok => first.status == 0,
         Expect::OkOutput(want) => first.status == 0 && first.stdout.trim_end_matches('\n') == want,
-        Expect::Diag { code, line } => all.contains(code.as_str()) && all.contains(&format!(":{}:", line + offset)),
-        Expect::Trap { code, line } => all.contains(code.as_str()) && all.contains(&format!(":{}", line + offset)),
+        Expect::Diag { code, line } => {
+            all.contains(code.as_str()) && all.contains(&format!(":{}:", line + offset))
+        }
+        Expect::Trap { code, line } => {
+            all.contains(code.as_str()) && all.contains(&format!(":{}", line + offset))
+        }
         Expect::Exit(code) => first.status == *code,
     };
     if !met {
-        return fail(format!("wanted {expect:?} (exit {}); got: {}", first.status, got()));
+        return fail(format!(
+            "wanted {expect:?} (exit {}); got: {}",
+            first.status,
+            got()
+        ));
     }
     for want in header_values(text, "has:") {
         let want = unquote(want);

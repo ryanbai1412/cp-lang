@@ -1,10 +1,10 @@
 use super::*;
 use crate::bench::{bench, worst_case, WorstShape};
-use cpl_json::{self as json, Value as Json};
 use crate::new::{reads, Scaffold};
 use crate::problem::{cases, source_path, Limits};
 use crate::test::{render, run_cases};
 use crate::watch::{Stamp, Watch};
+use cpl_json::{self as json, Value as Json};
 use cpl_stress::{InputSpec, Judge, Program, Verdict};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -64,12 +64,21 @@ fn json_reads_values_escapes_and_nesting() {
     )
     .unwrap();
     assert_eq!(value.get("a").unwrap().as_array().unwrap().len(), 3);
-    assert_eq!(value.get("a").unwrap().as_array().unwrap()[0].as_u64(), Some(1));
-    assert_eq!(value.get("a").unwrap().as_array().unwrap()[1].as_u64(), None);
+    assert_eq!(
+        value.get("a").unwrap().as_array().unwrap()[0].as_u64(),
+        Some(1)
+    );
+    assert_eq!(
+        value.get("a").unwrap().as_array().unwrap()[1].as_u64(),
+        None
+    );
     assert_eq!(value.get("s").unwrap().as_str(), Some("x\n\"y\"A"));
     assert_eq!(value.get("t"), Some(&Json::Bool(true)));
     assert_eq!(value.get("n"), Some(&Json::Null));
-    assert_eq!(value.get("o"), Some(&Json::Object(std::collections::BTreeMap::new())));
+    assert_eq!(
+        value.get("o"),
+        Some(&Json::Object(std::collections::BTreeMap::new()))
+    );
     assert_eq!(value.get("missing"), None);
     for bad in ["", "{", "[1,", "{\"a\" 1}", "\"open", "1 2", "tru"] {
         assert!(json::parse(bad).is_err(), "{bad}");
@@ -249,9 +258,15 @@ fn a_problem_without_limits_gets_its_judges_usual_ones() {
     let dir = scratch("judge-limits");
     let source = dir.join("d.cp");
     let cses = Limits::of(&source, "// judge: cses\n");
-    assert_eq!((cses.time, cses.memory_kb), (Duration::from_millis(1000), 512 * 1024));
+    assert_eq!(
+        (cses.time, cses.memory_kb),
+        (Duration::from_millis(1000), 512 * 1024)
+    );
     let own = Limits::of(&source, "// judge: cses\n// limits: 3000 ms, 64 MB\n");
-    assert_eq!((own.time, own.memory_kb), (Duration::from_millis(3000), 64 * 1024));
+    assert_eq!(
+        (own.time, own.memory_kb),
+        (Duration::from_millis(3000), 64 * 1024)
+    );
     std::fs::remove_dir_all(dir).unwrap();
 }
 
@@ -604,7 +619,10 @@ fn the_bench_command_prints_a_report_or_json() {
     );
     std::fs::write(&source, "let x: Set<Int> = read()\n").unwrap();
     let (_, _, err) = cli(bench::run, &[path, "--fast", &solution]);
-    assert!(err.contains("d.cp:1: can't generate a `Set<Int>` yet"), "{err}");
+    assert!(
+        err.contains("d.cp:1: can't generate a `Set<Int>` yet"),
+        "{err}"
+    );
     let (code, _, err) = cli(bench::run, &[path, "--format", "xml"]);
     assert_eq!(code, 2);
     assert!(
@@ -689,7 +707,11 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
 fn listen_takes_a_problem_posted_by_the_extension() {
     use std::io::{Read, Write};
     // A free port: bind to 0, read the port, release it.
-    let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let client = std::thread::spawn(move || {
         let mut stream = loop {
             match std::net::TcpStream::connect(("127.0.0.1", port)) {
@@ -701,7 +723,10 @@ fn listen_takes_a_problem_posted_by_the_extension() {
         stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
         drop(stream);
         let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
-        let head = format!("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n", COMPANION.len());
+        let head = format!(
+            "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+            COMPANION.len()
+        );
         stream.write_all(head.as_bytes()).unwrap();
         stream.write_all(COMPANION.as_bytes()).unwrap();
         let mut answer = String::new();
@@ -718,7 +743,10 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     assert!(client.join().unwrap().starts_with("HTTP/1.1 200"));
     assert_eq!(got, [Scaffold::from_companion(COMPANION).unwrap()]);
     let notes = String::from_utf8(notes).unwrap();
-    assert!(notes.contains("waiting for Competitive Companion"), "{notes}");
+    assert!(
+        notes.contains("waiting for Competitive Companion"),
+        "{notes}"
+    );
     assert!(notes.contains("ignored a request"), "{notes}");
 }
 
@@ -740,8 +768,21 @@ fn test_judges_memory_against_the_problems_limit() {
         .map(|r| r.verdict.as_ref().map(Verdict::code))
         .collect();
     assert_eq!(verdicts, [Some("MLE"); 3], "{results:?}");
-    assert!(render(&results).contains("     peak memory "), "{}", render(&results));
-    let roomy = run_cases(&sh(&hungry), &Judge::Tokens, &cases(&source), Limits { memory_kb: 1 << 30, ..tight }).unwrap();
+    assert!(
+        render(&results).contains("     peak memory "),
+        "{}",
+        render(&results)
+    );
+    let roomy = run_cases(
+        &sh(&hungry),
+        &Judge::Tokens,
+        &cases(&source),
+        Limits {
+            memory_kb: 1 << 30,
+            ..tight
+        },
+    )
+    .unwrap();
     assert_eq!(roomy[0].verdict, Some(Verdict::Accepted));
     let path = source.to_str().unwrap();
     let hungry = script(
@@ -749,10 +790,16 @@ fn test_judges_memory_against_the_problems_limit() {
         "hungry",
         "exec awk 'BEGIN { s = sprintf(\"%64000000s\", \"\"); system(\"sleep 0.1\") } NR == 1'",
     );
-    let (_, out, err) = cli(test::run, &[path, "--fast", &hungry, "--memory-limit", "16"]);
+    let (_, out, err) = cli(
+        test::run,
+        &[path, "--fast", &hungry, "--memory-limit", "16"],
+    );
     assert_eq!(err, "");
     assert!(out.starts_with("  1     MLE"), "{out}");
-    let (_, out, err) = cli(test::run, &[path, "--fast", &hungry, "--memory-limit", "1024"]);
+    let (_, out, err) = cli(
+        test::run,
+        &[path, "--fast", &hungry, "--memory-limit", "1024"],
+    );
     assert_eq!(err, "");
     assert!(!out.contains("MLE"), "{out}");
 }
@@ -761,7 +808,11 @@ fn test_judges_memory_against_the_problems_limit() {
 fn test_discovers_sibling_tests_dir_and_ans_files_and_supports_tests_flag() {
     let dir = scratch("sibling-ans");
     let source = dir.join("sol.cp");
-    std::fs::write(&source, "let a: Int = read()\nlet b: Int = read()\nprint(a + b)\n").unwrap();
+    std::fs::write(
+        &source,
+        "let a: Int = read()\nlet b: Int = read()\nprint(a + b)\n",
+    )
+    .unwrap();
     let tests = dir.join("tests");
     std::fs::create_dir_all(&tests).unwrap();
     std::fs::write(tests.join("01.in"), "2 3\n").unwrap();
@@ -787,7 +838,11 @@ fn test_discovers_sibling_tests_dir_and_ans_files_and_supports_tests_flag() {
     std::fs::copy(&source, &other_src).unwrap();
     let (code, out, err) = cli(
         test::run,
-        &[other_src.to_str().unwrap(), "--tests", tests.to_str().unwrap()],
+        &[
+            other_src.to_str().unwrap(),
+            "--tests",
+            tests.to_str().unwrap(),
+        ],
     );
     assert_eq!(code, 0, "{out}{err}");
     assert!(out.contains("2/2 passed"), "{out}");

@@ -30,7 +30,10 @@ fn main() -> ExitCode {
         for line in report.to_string().lines() {
             println!("  {line}");
         }
-        broken |= report.results.iter().any(|result| result.verdict.counterexample().is_some());
+        broken |= report
+            .results
+            .iter()
+            .any(|result| result.verdict.counterexample().is_some());
     }
     if broken {
         ExitCode::FAILURE

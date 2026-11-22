@@ -581,13 +581,15 @@ impl Database {
                                         let mut inner_prev_dot = false;
                                         for itok in cpl_syntax::lex(inner).tokens {
                                             if itok.kind == cpl_syntax::TokenKind::Ident {
-                                                let is = &inner[itok.span.start as usize..itok.span.end as usize];
+                                                let is = &inner[itok.span.start as usize
+                                                    ..itok.span.end as usize];
                                                 ident_tokens.insert(is);
                                                 if inner_prev_dot {
                                                     dot_ident_tokens.insert(is);
                                                 }
                                             }
-                                            inner_prev_dot = itok.kind == cpl_syntax::TokenKind::Dot;
+                                            inner_prev_dot =
+                                                itok.kind == cpl_syntax::TokenKind::Dot;
                                         }
                                     }
                                     continue;

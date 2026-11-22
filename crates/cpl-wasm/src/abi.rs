@@ -147,8 +147,12 @@ pub extern "C" fn cpl_run(stack: u32) {
 /// `STDIN`, `frame` callers out, with the fns of `EDITED`.
 #[no_mangle]
 pub extern "C" fn cpl_replay(step: u32, frame: u32, stack: u32) {
-    let edited = STATE.with(|state| String::from_utf8_lossy(&state.borrow().inputs[EDITED as usize]).into_owned());
-    command(|playground, name, text, stdin, _| playground.replay(name, text, &edited, stdin, step, frame, stack));
+    let edited = STATE.with(|state| {
+        String::from_utf8_lossy(&state.borrow().inputs[EDITED as usize]).into_owned()
+    });
+    command(|playground, name, text, stdin, _| {
+        playground.replay(name, text, &edited, stdin, step, frame, stack)
+    });
 }
 
 /// Runs `TEXT` on `STDIN` like `cpl_run` and records it: the result has

@@ -39,7 +39,8 @@ pub fn with_law_tests(src: &str) -> Option<(String, Vec<String>)> {
             let StmtKind::Law { name, params, body } = &stmt.kind else {
                 continue;
             };
-            let text = |start: u32, end: u32| &src[(offset + start) as usize..(offset + end) as usize];
+            let text =
+                |start: u32, end: u32| &src[(offset + start) as usize..(offset + end) as usize];
             let mut loops = String::new();
             let mut shown = Vec::new();
             let mut depth = 1;
@@ -58,10 +59,13 @@ pub fn with_law_tests(src: &str) -> Option<(String, Vec<String>)> {
                     Some(TypeKind::Named { .. }) | None => samples(ty),
                     Some(_) => None,
                 };
-                let values = values.unwrap_or_else(|| {
-                    format!("__law_needs_samples_for_{}", param.name.text)
-                });
-                loops += &format!("{}for {} in {values}:\n", "    ".repeat(depth), param.name.text);
+                let values = values
+                    .unwrap_or_else(|| format!("__law_needs_samples_for_{}", param.name.text));
+                loops += &format!(
+                    "{}for {} in {values}:\n",
+                    "    ".repeat(depth),
+                    param.name.text
+                );
                 shown.push(format!("{} = {{{}}}", param.name.text, param.name.text));
                 depth += 1;
             }

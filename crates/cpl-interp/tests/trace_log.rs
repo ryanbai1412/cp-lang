@@ -37,14 +37,27 @@ fn program(source: &str) -> cpl_ir::Program {
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
-    assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
     cpl_ir::lower(&analysis).expect("lowers")
 }
 
 fn record(source: &str, input: &str, config: TraceConfig) -> Recording {
-    let config = TraceConfig { source: source.into(), record_frames: true, ..config };
+    let config = TraceConfig {
+        source: source.into(),
+        record_frames: true,
+        ..config
+    };
     let mut out = Vec::new();
-    let observed = cpl_interp::run_observed(&program(source), cpl_interp::Io::fixed(input.as_bytes()), &mut out, Some(config));
+    let observed = cpl_interp::run_observed(
+        &program(source),
+        cpl_interp::Io::fixed(input.as_bytes()),
+        &mut out,
+        Some(config),
+    );
     assert!(observed.trap.is_none());
     observed.recording.expect("it was traced")
 }
@@ -65,16 +78,31 @@ for i in 0..900:
 #[test]
 fn any_step_rebuilt_alone_is_the_step_the_run_took() {
     let rec = record(CALLS, "", TraceConfig::default());
-    assert!(rec.len() > 3000, "{} steps: more than a few snapshots apart", rec.len());
+    assert!(
+        rec.len() > 3000,
+        "{} steps: more than a few snapshots apart",
+        rec.len()
+    );
     let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
     for k in (0..rec.len()).rev() {
         assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
     }
     let end = rec.step(rec.len() - 1).unwrap();
-    let stdout = &end.values.iter().find(|(var, _)| rec.vars[*var].id == "stdout").unwrap().1;
-    assert!(stdout.starts_with("[\"0\",\"7\",") && stdout.ends_with("\"896\"]"), "{stdout}");
+    let stdout = &end
+        .values
+        .iter()
+        .find(|(var, _)| rec.vars[*var].id == "stdout")
+        .unwrap()
+        .1;
+    assert!(
+        stdout.starts_with("[\"0\",\"7\",") && stdout.ends_with("\"896\"]"),
+        "{stdout}"
+    );
     assert!(end.frames.is_empty() || end.frames == [("main".to_string(), end.line)]);
-    let inside = rec.steps(0..rec.len()).find(|s| s.frames.len() == 2).expect("a step inside the call");
+    let inside = rec
+        .steps(0..rec.len())
+        .find(|s| s.frames.len() == 2)
+        .expect("a step inside the call");
     assert_eq!(inside.frames[0].0, "sum_below");
 }
 
@@ -105,8 +133,16 @@ fn raw_and_json_locals_read_back_from_any_step() {
         assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
     }
     let locals: Vec<String> = rec.steps(0..rec.len()).map(|s| s.locals).collect();
-    assert!(locals.iter().any(|l| l == "{\"k\":3,\"s\":9000000000000,\"j\":2}"), "{locals:?}");
-    assert!(locals.iter().any(|l| l.contains("\"ys\":[0,1]")), "{locals:?}");
+    assert!(
+        locals
+            .iter()
+            .any(|l| l == "{\"k\":3,\"s\":9000000000000,\"j\":2}"),
+        "{locals:?}"
+    );
+    assert!(
+        locals.iter().any(|l| l.contains("\"ys\":[0,1]")),
+        "{locals:?}"
+    );
 }
 
 const ONE_LOCAL: &str = "\
@@ -126,14 +162,34 @@ print(walk(5000))
 fn a_step_changing_one_int_local_logs_only_that_local() {
     let rec = record(ONE_LOCAL, "", TraceConfig::default());
     let per_step = rec.bytes() as f64 / rec.len() as f64;
-    assert!(per_step < 20.0, "{per_step:.1} bytes a step over {} steps", rec.len());
+    assert!(
+        per_step < 20.0,
+        "{per_step:.1} bytes a step over {} steps",
+        rec.len()
+    );
     let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
     for k in (0..rec.len()).step_by(97).chain([rec.len() - 1]) {
         assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
     }
-    assert!(walked.iter().any(|s| s.contains(r#"{\"n\":5000,\"a\":1,\"b\":2,\"c\":13,\"j\":4}"#)), "{:?}", &walked[..12]);
-    let last = record(ONE_LOCAL, "", TraceConfig { last_steps: Some(1000), ..TraceConfig::default() });
-    let kept: Vec<String> = last.steps(0..last.len()).map(|s| format!("{s:?}")).collect();
+    assert!(
+        walked
+            .iter()
+            .any(|s| s.contains(r#"{\"n\":5000,\"a\":1,\"b\":2,\"c\":13,\"j\":4}"#)),
+        "{:?}",
+        &walked[..12]
+    );
+    let last = record(
+        ONE_LOCAL,
+        "",
+        TraceConfig {
+            last_steps: Some(1000),
+            ..TraceConfig::default()
+        },
+    );
+    let kept: Vec<String> = last
+        .steps(0..last.len())
+        .map(|s| format!("{s:?}"))
+        .collect();
     assert_eq!(kept.last(), walked.last());
     assert_eq!(kept[kept.len() - 500..], walked[walked.len() - 500..]);
 }
@@ -149,9 +205,17 @@ print(g[0, 3])
 #[test]
 fn a_grid_write_focuses_its_cell() {
     let rec = record(GRID, "", TraceConfig::default());
-    let g = rec.vars.iter().position(|v| v.id == "g").expect("g is traced");
-    let focused: Vec<(usize, Vec<usize>)> = rec.steps(0..rec.len()).filter_map(|s| s.focus).collect();
-    assert_eq!(focused, (0..4).map(|i| (g, vec![i, 3 - i])).collect::<Vec<_>>());
+    let g = rec
+        .vars
+        .iter()
+        .position(|v| v.id == "g")
+        .expect("g is traced");
+    let focused: Vec<(usize, Vec<usize>)> =
+        rec.steps(0..rec.len()).filter_map(|s| s.focus).collect();
+    assert_eq!(
+        focused,
+        (0..4).map(|i| (g, vec![i, 3 - i])).collect::<Vec<_>>()
+    );
 }
 
 const CELLS: &str = "\
@@ -164,8 +228,19 @@ print(a[0])
 #[test]
 fn array_cells_rebuilt_from_single_changes_hold_every_write() {
     let rec = record(CELLS, "", TraceConfig::default());
-    let a = rec.vars.iter().position(|v| v.id == "a").expect("a is traced");
-    let value = |k: usize| rec.step(k).unwrap().values.iter().find(|(var, _)| *var == a).map(|(_, v)| v.to_string());
+    let a = rec
+        .vars
+        .iter()
+        .position(|v| v.id == "a")
+        .expect("a is traced");
+    let value = |k: usize| {
+        rec.step(k)
+            .unwrap()
+            .values
+            .iter()
+            .find(|(var, _)| *var == a)
+            .map(|(_, v)| v.to_string())
+    };
     let show = |a: &[usize; 8]| format!("[{}]", a.map(|x| x.to_string()).join(","));
     let mut cells = [0; 8];
     let mut states = vec![show(&cells)];
@@ -186,33 +261,62 @@ fn array_cells_rebuilt_from_single_changes_hold_every_write() {
     assert_eq!(seen, states);
     for k in 1..rec.len() {
         let (before, now) = (value(k - 1), value(k));
-        let (Some(was), Some(is)) = (&before, &now) else { continue };
+        let (Some(was), Some(is)) = (&before, &now) else {
+            continue;
+        };
         if was != is {
             let focus = rec.step(k).unwrap().focus.expect("a write shows its cell");
             assert_eq!(focus.0, a, "step {k}");
-            let cell = |v: &str| v.trim_matches(['[', ']']).split(',').map(str::to_string).collect::<Vec<_>>();
+            let cell = |v: &str| {
+                v.trim_matches(['[', ']'])
+                    .split(',')
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            };
             let (was, is) = (cell(was), cell(is));
             let changed: Vec<usize> = (0..8).filter(|&i| was[i] != is[i]).collect();
             assert_eq!(focus.1, changed, "step {k}");
         }
     }
     assert_eq!(seen.last().unwrap(), "[249,250,251,249,250,251,249,250]");
-    let tail = record(CELLS, "", TraceConfig { last_steps: Some(1500), ..TraceConfig::default() });
+    let tail = record(
+        CELLS,
+        "",
+        TraceConfig {
+            last_steps: Some(1500),
+            ..TraceConfig::default()
+        },
+    );
     let skipped = rec.len() - tail.len();
     for (k, step) in tail.steps(0..tail.len()).enumerate() {
-        assert_eq!(format!("{step:?}"), format!("{:?}", rec.step(skipped + k).unwrap()), "step {k}");
+        assert_eq!(
+            format!("{step:?}"),
+            format!("{:?}", rec.step(skipped + k).unwrap()),
+            "step {k}"
+        );
     }
 }
 
 #[test]
 fn the_last_steps_kept_are_the_last_steps_of_the_whole_run() {
     let whole = record(CALLS, "", TraceConfig::default());
-    let tail = record(CALLS, "", TraceConfig { last_steps: Some(1500), ..TraceConfig::default() });
+    let tail = record(
+        CALLS,
+        "",
+        TraceConfig {
+            last_steps: Some(1500),
+            ..TraceConfig::default()
+        },
+    );
     assert!(tail.truncated);
     assert_eq!(tail.len(), 1500);
     let skipped = whole.len() - tail.len();
     for (k, step) in tail.steps(0..tail.len()).enumerate() {
-        assert_eq!(format!("{step:?}"), format!("{:?}", whole.step(skipped + k).unwrap()), "step {k}");
+        assert_eq!(
+            format!("{step:?}"),
+            format!("{:?}", whole.step(skipped + k).unwrap()),
+            "step {k}"
+        );
     }
 }
 
@@ -222,7 +326,12 @@ fn each_test_case_prints_anew() {
     let rec = record(source, "2\n5\n8\n", TraceConfig::default());
     let stdout = |k: usize| {
         let step = rec.step(k).unwrap();
-        step.values.iter().find(|(var, _)| rec.vars[*var].id == "stdout").unwrap().1.to_string()
+        step.values
+            .iter()
+            .find(|(var, _)| rec.vars[*var].id == "stdout")
+            .unwrap()
+            .1
+            .to_string()
     };
     assert_eq!(stdout(rec.len() - 1), "[\"8\",\"9\"]");
     let first = (0..rec.len()).find(|&k| stdout(k) == "[\"5\",\"6\"]");
@@ -245,8 +354,21 @@ fn raw_ints_read_back_as_written() {
     let rec = record(WIDE, "", TraceConfig::default());
     let var = |name: &str| rec.vars.iter().position(|v| v.id == name).unwrap();
     let (x, a) = (var("x"), var("a"));
-    let value = |k: usize, var: usize| rec.step(k).unwrap().values.iter().find(|(v, _)| *v == var).map(|(_, v)| v.to_string());
-    let json = |v: i64| if v.unsigned_abs() > 9_007_199_254_740_991 { format!("\"{v}\"") } else { v.to_string() };
+    let value = |k: usize, var: usize| {
+        rec.step(k)
+            .unwrap()
+            .values
+            .iter()
+            .find(|(v, _)| *v == var)
+            .map(|(_, v)| v.to_string())
+    };
+    let json = |v: i64| {
+        if v.unsigned_abs() > 9_007_199_254_740_991 {
+            format!("\"{v}\"")
+        } else {
+            v.to_string()
+        }
+    };
     let mut xs = Vec::new();
     for k in 0..rec.len() {
         if let Some(got) = value(k, x) {
@@ -261,7 +383,10 @@ fn raw_ints_read_back_as_written() {
     assert_eq!(xs, want);
     let last = (2996..3000i64).map(|i| json(((i - 1500) * 3_000_000_000_000 + i) * (i % 2) + i));
     let cells: Vec<String> = last.collect();
-    assert_eq!(value(rec.len() - 1, a).unwrap(), format!("[{}]", cells.join(",")));
+    assert_eq!(
+        value(rec.len() - 1, a).unwrap(),
+        format!("[{}]", cells.join(","))
+    );
     let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
     for k in (0..rec.len()).rev().step_by(7) {
         assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
@@ -277,8 +402,14 @@ fn raw_ints_read_back_as_written() {
 fn ten_million_steps_fit_the_debugging_budgets() {
     let mut over = Vec::new();
     for (name, source) in [
-        ("scalar", "var x = 0\nfor i in 0..10000000:\n    x += i % 7\nprint(x)\n"),
-        ("array", "var a: [0..1000]Int = 0\nfor i in 0..10000000:\n    a[i % 1000] += 1\nprint(a[0])\n"),
+        (
+            "scalar",
+            "var x = 0\nfor i in 0..10000000:\n    x += i % 7\nprint(x)\n",
+        ),
+        (
+            "array",
+            "var a: [0..1000]Int = 0\nfor i in 0..10000000:\n    a[i % 1000] += 1\nprint(a[0])\n",
+        ),
     ] {
         let program = program(source);
         let started = Instant::now();
@@ -286,20 +417,42 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, None);
         let plain = started.elapsed();
         // The tracer runs on the tree-walking engine: the same run, observed but not recorded.
-        let observed = TraceConfig { source: source.into(), only_fn: Some("not_a_fn".into()), ..TraceConfig::default() };
+        let observed = TraceConfig {
+            source: source.into(),
+            only_fn: Some("not_a_fn".into()),
+            ..TraceConfig::default()
+        };
         let started = Instant::now();
-        cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, Some(observed));
+        cpl_interp::run_observed(
+            &program,
+            cpl_interp::Io::fixed(b""),
+            &mut out,
+            Some(observed),
+        );
         let walked = started.elapsed();
-        let config = TraceConfig { source: source.into(), record_frames: true, max_steps: Some(10_000_000), ..TraceConfig::default() };
+        let config = TraceConfig {
+            source: source.into(),
+            record_frames: true,
+            max_steps: Some(10_000_000),
+            ..TraceConfig::default()
+        };
         out.clear();
         let before = IN_USE.load(Ordering::Relaxed);
         let started = Instant::now();
-        let observed = cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config));
+        let observed =
+            cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config));
         let traced = started.elapsed();
         let rec = observed.recording.unwrap();
         let held = IN_USE.load(Ordering::Relaxed) - before;
         let mut back = std::time::Duration::ZERO;
-        for k in [rec.len() - 1, rec.len() - 2, rec.len() / 2, 1023, 1024, 1025] {
+        for k in [
+            rec.len() - 1,
+            rec.len() - 2,
+            rec.len() / 2,
+            1023,
+            1024,
+            1025,
+        ] {
             let one = Instant::now();
             rec.step(k).unwrap();
             back = back.max(one.elapsed());

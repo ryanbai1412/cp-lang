@@ -57,7 +57,9 @@ fn golden_diagnostics() {
         let stem = src.file_stem().unwrap().to_string_lossy();
         assert!(
             !stem.starts_with("planned_")
-                || cpl_syntax::planned::PLANNED.iter().any(|p| planned_name(p.feature) == stem),
+                || cpl_syntax::planned::PLANNED
+                    .iter()
+                    .any(|p| planned_name(p.feature) == stem),
             "{} is not in `PLANNED` any more; delete it and its .err",
             src.display()
         );
@@ -111,7 +113,11 @@ fn golden_fixes() {
         let path = src.to_string_lossy();
         let (fixed, applied) = cpl_cli::apply_error_fixes(&path, &fs::read_to_string(src).unwrap());
         assert!(applied > 0, "{path}: no fix applied");
-        assert_eq!(fixed, fs::read_to_string(src.with_extension("fixed")).unwrap(), "{path}");
+        assert_eq!(
+            fixed,
+            fs::read_to_string(src.with_extension("fixed")).unwrap(),
+            "{path}"
+        );
         let (_, again) = cpl_cli::apply_error_fixes(&path, &fixed);
         assert_eq!(again, 0, "{path}: the fixed file still has a fix to apply");
     }

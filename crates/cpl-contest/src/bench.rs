@@ -6,10 +6,10 @@
 //! all equal, sorted, reversed or alternating, and edge lists shaped as a
 //! path and a star.
 
-use cpl_stress::args::Args;
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
 use cpl_json::escape_string as json_string;
+use cpl_stress::args::Args;
 use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value};
 use std::io::Write;
 use std::time::Duration;
@@ -250,7 +250,12 @@ pub fn bench(
 
 /// Why a run that did not exit cleanly failed.
 fn crash_reason(outcome: &cpl_stress::Outcome) -> String {
-    let last = outcome.stderr.lines().rev().find(|line| !line.trim().is_empty()).map(str::trim);
+    let last = outcome
+        .stderr
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .map(str::trim);
     match (&outcome.exit, last) {
         (_, Some(line)) => line.to_string(),
         (Exit::Code(code), None) => format!("exit code {code}"),
@@ -303,12 +308,28 @@ pub fn render(runs: &[Run], limits: Limits) -> String {
         out.push_str(&format!("  runtime error on {shape}: {why}\n"));
     }
     let crashed = runs.iter().filter(|run| run.status == "RE").count();
-    let over = runs.iter().filter(|run| run.status != "ok" && run.status != "RE").count();
-    let shapes = |n: usize| if n == 1 { "1 shape".to_string() } else { format!("{n} shapes") };
+    let over = runs
+        .iter()
+        .filter(|run| run.status != "ok" && run.status != "RE")
+        .count();
+    let shapes = |n: usize| {
+        if n == 1 {
+            "1 shape".to_string()
+        } else {
+            format!("{n} shapes")
+        }
+    };
     out.push_str(&match (over, crashed) {
         (0, 0) => "  within limits on every shape\n".to_string(),
         (0, c) => format!("  {} crashed\n", shapes(c)),
-        (o, 0) => format!("  {} over the limits\n", if o == 1 { "1 shape is".to_string() } else { format!("{o} shapes are") }),
+        (o, 0) => format!(
+            "  {} over the limits\n",
+            if o == 1 {
+                "1 shape is".to_string()
+            } else {
+                format!("{o} shapes are")
+            }
+        ),
         (o, c) => format!("  {} over the limits, {} crashed\n", shapes(o), shapes(c)),
     });
     out

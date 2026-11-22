@@ -121,7 +121,12 @@ impl Profile {
 
     /// One line for the header of the C++ written for this judge.
     pub fn stamp(&self) -> String {
-        format!("judge `{}`: {}; {}", self.name, self.command(), self.stack.describe())
+        format!(
+            "judge `{}`: {}; {}",
+            self.name,
+            self.command(),
+            self.stack.describe()
+        )
     }
 
     /// What the file uses that this judge's compiler lacks.
@@ -169,7 +174,11 @@ impl Profile {
     /// The judge's build as a program run on this machine: the compiler
     /// here, for a Windows judge too, with the judge's flags it accepts.
     pub fn host(&self) -> Local {
-        let compiler = if accepts(&self.compiler, None) { self.compiler.clone() } else { "g++".into() };
+        let compiler = if accepts(&self.compiler, None) {
+            self.compiler.clone()
+        } else {
+            "g++".into()
+        };
         self.local_with(compiler)
     }
 
@@ -194,7 +203,11 @@ impl Profile {
     }
 
     fn local_with(&self, compiler: String) -> Local {
-        let mut local = Local { compiler: compiler.clone(), flags: Vec::new(), dropped: Vec::new() };
+        let mut local = Local {
+            compiler: compiler.clone(),
+            flags: Vec::new(),
+            dropped: Vec::new(),
+        };
         if accepts_all(&compiler, &self.flags) {
             local.flags = self.flags.clone();
             return local;
@@ -204,7 +217,8 @@ impl Profile {
                 local.flags.extend(flag);
                 continue;
             }
-            let older = older_spelling(&flag[0]).filter(|older| accepts_all(&compiler, std::slice::from_ref(older)));
+            let older = older_spelling(&flag[0])
+                .filter(|older| accepts_all(&compiler, std::slice::from_ref(older)));
             local.flags.extend(older.clone());
             local.dropped.push((flag.join(" "), older));
         }
@@ -223,7 +237,8 @@ fn groups(flags: &[String]) -> Vec<Vec<String>> {
             Some(last) if open || takes_value => last.push(flag.clone()),
             _ => groups.push(vec![flag.clone()]),
         }
-        takes_value = !takes_value && matches!(flag.as_str(), "-x" | "-include" | "-I" | "-L" | "-D" | "-U");
+        takes_value =
+            !takes_value && matches!(flag.as_str(), "-x" | "-include" | "-I" | "-L" | "-D" | "-U");
         if flag == "-Wl,--whole-archive" {
             open = true;
         } else if flag == "-Wl,--no-whole-archive" {
@@ -264,7 +279,10 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     }
     let memo = std::env::var_os("CPL_JUDGE_PROBE_DIR").map(std::path::PathBuf::from);
     let ok = probe(compiler, flags, memo.as_deref());
-    SEEN.get_or_init(Default::default).lock().unwrap().insert(key, ok);
+    SEEN.get_or_init(Default::default)
+        .lock()
+        .unwrap()
+        .insert(key, ok);
     ok
 }
 
@@ -277,10 +295,21 @@ fn probe(compiler: &str, flags: &[String], memo: Option<&Path>) -> bool {
     let marker = memo.and_then(|memo| {
         let path = which(compiler)?;
         let meta = std::fs::metadata(&path).ok()?;
-        let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+        let modified = meta
+            .modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?;
         use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        (path, meta.len(), modified.as_nanos(), flags, std::env::var("CPL_CXX_SYSTEM_KEY").ok()).hash(&mut hasher);
+        (
+            path,
+            meta.len(),
+            modified.as_nanos(),
+            flags,
+            std::env::var("CPL_CXX_SYSTEM_KEY").ok(),
+        )
+            .hash(&mut hasher);
         Some(memo.join(format!("{:016x}", hasher.finish())))
     });
     if marker.as_ref().is_some_and(|m| m.is_file()) {
@@ -291,9 +320,16 @@ fn probe(compiler: &str, flags: &[String], memo: Option<&Path>) -> bool {
     let main = dir.join("main.cpp");
     let _ = std::fs::write(&main, "int main() { return 0; }\n");
     let mut command = std::process::Command::new(compiler);
-    command.args(flags).arg(&main).arg("-o").arg(dir.join(format!("probe{}", hash(&key))));
+    command
+        .args(flags)
+        .arg(&main)
+        .arg("-o")
+        .arg(dir.join(format!("probe{}", hash(&key))));
     // -Werror: a flag the compiler only warns about does nothing.
-    command.arg("-Werror").stderr(std::process::Stdio::null()).stdout(std::process::Stdio::null());
+    command
+        .arg("-Werror")
+        .stderr(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null());
     let ok = command.status().is_ok_and(|status| status.success());
     if let (true, Some(marker)) = (ok, marker) {
         if let Some(memo) = marker.parent() {
@@ -477,14 +513,20 @@ pub fn resolve(path: &Path, source: &str, chosen: Option<&str>) -> Result<Profil
         (Some(name), _, _) => (name.to_string(), "`--judge`".to_string()),
         (None, Some(name), _) => (name.to_string(), "the `// judge:` line".to_string()),
         (None, None, Some(name)) => {
-            let file = project.as_ref().map(|(f, _)| f.display().to_string()).unwrap_or_default();
+            let file = project
+                .as_ref()
+                .map(|(f, _)| f.display().to_string())
+                .unwrap_or_default();
             (name.clone(), format!("`{file}`"))
         }
         (None, None, None) => ("generic".to_string(), String::new()),
     };
     config.profile(&name).ok_or_else(|| {
         let known: Vec<String> = config.names();
-        format!("{from} names judge `{name}`, which is not one of: {}", known.join(", "))
+        format!(
+            "{from} names judge `{name}`, which is not one of: {}",
+            known.join(", ")
+        )
     })
 }
 
@@ -499,7 +541,11 @@ pub fn project_config(path: &Path) -> Result<Config, String> {
 /// The nearest `cp.toml` above `path`, and its text.
 fn project(path: &Path) -> Option<(std::path::PathBuf, String)> {
     let start = path.parent()?;
-    let start = if start.as_os_str().is_empty() { Path::new(".") } else { start };
+    let start = if start.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        start
+    };
     start.ancestors().find_map(|dir| {
         let file = dir.join("cp.toml");
         std::fs::read_to_string(&file).ok().map(|text| (file, text))
@@ -534,7 +580,9 @@ impl Config {
             }
             let err = |message: String| format!("line {}: {message}", at + 1);
             if let Some(head) = line.strip_prefix('[') {
-                let head = head.strip_suffix(']').ok_or_else(|| err("a table header ends with `]`".into()))?;
+                let head = head
+                    .strip_suffix(']')
+                    .ok_or_else(|| err("a table header ends with `]`".into()))?;
                 let head = head.trim();
                 table = if head == "judge" {
                     Some(None)
@@ -548,7 +596,9 @@ impl Config {
                 continue;
             }
             let Some(table) = &table else { continue };
-            let (key, value) = line.split_once('=').ok_or_else(|| err(format!("`{line}` is not `key = value`")))?;
+            let (key, value) = line
+                .split_once('=')
+                .ok_or_else(|| err(format!("`{line}` is not `key = value`")))?;
             let key = key.trim().to_string();
             let value = parse_value(value.trim()).map_err(&err)?;
             match table {
@@ -556,7 +606,11 @@ impl Config {
                     Value::Str(name) => config.default = Some(name),
                     _ => return Err(err("`judge` is a profile's name in quotes".into())),
                 },
-                None => return Err(err(format!("`[judge]` has `judge = \"<name>\"`, not `{key}`"))),
+                None => {
+                    return Err(err(format!(
+                        "`[judge]` has `judge = \"<name>\"`, not `{key}`"
+                    )))
+                }
                 Some(_) => {
                     check_key(&key, &value).map_err(&err)?;
                     config.tables.last_mut().unwrap().1.push((key, value));
@@ -593,8 +647,12 @@ impl Config {
         if depth > 16 {
             return None;
         }
-        let keys: Vec<&(String, Value)> =
-            self.tables.iter().filter(|(n, _)| n == name).flat_map(|(_, keys)| keys).collect();
+        let keys: Vec<&(String, Value)> = self
+            .tables
+            .iter()
+            .filter(|(n, _)| n == name)
+            .flat_map(|(_, keys)| keys)
+            .collect();
         let base = keys.iter().find_map(|(k, v)| match (k.as_str(), v) {
             ("extends", Value::Str(base)) if base != name => Some(base.clone()),
             _ => None,
@@ -623,7 +681,10 @@ const KEYS: &[(&str, &str)] = &[
     ("flags", "a list of flags in quotes"),
     ("os", "\"linux\" or \"windows\""),
     ("stack_mb", "a whole number of MB, or \"unlimited\""),
-    ("thread_stack_mb", "a whole number of MB, 0 for a judge that allows no threads"),
+    (
+        "thread_stack_mb",
+        "a whole number of MB, 0 for a judge that allows no threads",
+    ),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
     ("time_ms", "a whole number of milliseconds"),
@@ -633,7 +694,10 @@ const KEYS: &[(&str, &str)] = &[
 fn check_key(key: &str, value: &Value) -> Result<(), String> {
     let Some((_, wants)) = KEYS.iter().find(|(k, _)| *k == key) else {
         let keys: Vec<&str> = KEYS.iter().map(|(k, _)| *k).collect();
-        return Err(format!("a judge has no `{key}`; its keys are {}", keys.join(", ")));
+        return Err(format!(
+            "a judge has no `{key}`; its keys are {}",
+            keys.join(", ")
+        ));
     };
     let fits = matches!(
         (key, value),
@@ -645,7 +709,8 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
             | ("int128", Value::Bool(_))
             | ("time_ms" | "memory_mb", Value::Int(_))
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
-    let fits = fits && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows");
+    let fits =
+        fits && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows");
     match fits {
         true => Ok(()),
         false => Err(format!("`{key}` is {wants}")),
@@ -657,7 +722,13 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("title", Value::Str(s)) => profile.title = s.clone(),
         ("compiler", Value::Str(s)) => profile.compiler = s.clone(),
         ("flags", Value::List(flags)) => profile.flags = flags.clone(),
-        ("os", Value::Str(s)) => profile.os = if s == "windows" { Os::Windows } else { Os::Linux },
+        ("os", Value::Str(s)) => {
+            profile.os = if s == "windows" {
+                Os::Windows
+            } else {
+                Os::Linux
+            }
+        }
         ("stack_mb", Value::Int(mb)) => profile.stack = Stack::Bytes(mb << 20),
         ("stack_mb", Value::Str(_)) => profile.stack = Stack::Unlimited,
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
@@ -683,7 +754,9 @@ fn strip_comment(line: &str) -> &str {
 
 fn parse_value(text: &str) -> Result<Value, String> {
     if let Some(inner) = text.strip_prefix('[') {
-        let inner = inner.strip_suffix(']').ok_or("a list is `[\"a\", \"b\"]` on one line")?;
+        let inner = inner
+            .strip_suffix(']')
+            .ok_or("a list is `[\"a\", \"b\"]` on one line")?;
         let mut items = Vec::new();
         for item in inner.split(',').map(str::trim).filter(|s| !s.is_empty()) {
             match parse_value(item)? {

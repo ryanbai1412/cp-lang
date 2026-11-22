@@ -128,7 +128,10 @@ print(s)
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stdout.contains("[perf.cp]"), "stdout={stdout}\nstderr={stderr}");
+    assert!(
+        stdout.contains("[perf.cp]"),
+        "stdout={stdout}\nstderr={stderr}"
+    );
     let json = std::fs::read_to_string(&out_json).unwrap();
     assert!(json.contains("\"tuned\":true"), "json={json}");
     assert!(json.contains("\"time_above_floor\":"), "json={json}");
@@ -136,7 +139,11 @@ print(s)
     assert!(json.contains("\"target_met\":"), "json={json}");
 
     // Now break perf.cp on tests/1.ans and verify corpus bench rejects it
-    std::fs::write(prob.join("perf.cp"), "let n: Int = read()\nprint(n + 999)\n").unwrap();
+    std::fs::write(
+        prob.join("perf.cp"),
+        "let n: Int = read()\nprint(n + 999)\n",
+    )
+    .unwrap();
     let bad = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args([
             "bench",

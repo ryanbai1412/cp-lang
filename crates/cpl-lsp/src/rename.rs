@@ -227,7 +227,11 @@ pub fn project_files(uri: &str, name: &str) -> Vec<String> {
             }
             let path = entry.path();
             let hidden = entry.file_name().to_string_lossy().starts_with('.');
-            if hidden || ["target", "node_modules", "dist"].iter().any(|d| path.ends_with(d)) {
+            if hidden
+                || ["target", "node_modules", "dist"]
+                    .iter()
+                    .any(|d| path.ends_with(d))
+            {
                 continue;
             }
             if path.is_dir() {
@@ -269,7 +273,9 @@ pub fn changed_meaning(
     };
     let mut expected = Vec::new();
     for (file, _) in edits {
-        let Some(text) = db.file_text(file) else { continue };
+        let Some(text) = db.file_text(file) else {
+            continue;
+        };
         for at in words(&text, old).chain(words(&text, new)) {
             if let Some(def) = db.definition_location(file, at) {
                 let def_at = moved(&def.path, def.span.start);
@@ -283,7 +289,9 @@ pub fn changed_meaning(
     for (file, spans) in edits {
         let alias = crate::server::path_of_uri(file).filter(|p| p != file);
         for path in std::iter::once(file.clone()).chain(alias) {
-            let Some(text) = db.file_text(&path) else { continue };
+            let Some(text) = db.file_text(&path) else {
+                continue;
+            };
             let mut edited = text.to_string();
             for span in spans.iter().rev() {
                 edited.replace_range(span.start as usize..span.end as usize, new);

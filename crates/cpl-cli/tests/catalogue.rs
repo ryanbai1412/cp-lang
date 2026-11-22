@@ -22,14 +22,24 @@ fn catalogue() -> Vec<(String, bool)> {
     let mut out = Vec::new();
     for line in text.lines() {
         let cells: Vec<&str> = line.split('|').map(str::trim).collect();
-        let (Some(code), Some(name)) = (cells.get(1), cells.get(2)) else { continue };
-        if !code.starts_with(['E', 'W', 'R', 'L']) || !code[1..].starts_with(|c: char| c.is_ascii_digit()) {
+        let (Some(code), Some(name)) = (cells.get(1), cells.get(2)) else {
+            continue;
+        };
+        if !code.starts_with(['E', 'W', 'R', 'L'])
+            || !code[1..].starts_with(|c: char| c.is_ascii_digit())
+        {
             continue;
         }
-        let emitted = !["*(0.3)*", "*(retired)*", "*(reserved)*"].iter().any(|m| name.contains(m));
+        let emitted = !["*(0.3)*", "*(retired)*", "*(reserved)*"]
+            .iter()
+            .any(|m| name.contains(m));
         match code.split_once('-') {
             Some((lo, hi)) => {
-                let (p, lo, hi) = (&lo[..1], lo[1..].parse::<u32>().unwrap(), hi[1..].parse::<u32>().unwrap());
+                let (p, lo, hi) = (
+                    &lo[..1],
+                    lo[1..].parse::<u32>().unwrap(),
+                    hi[1..].parse::<u32>().unwrap(),
+                );
                 out.extend((lo..=hi).map(|n| (format!("{p}{n:04}"), emitted)));
             }
             None => out.push((code.to_string(), emitted)),
@@ -41,7 +51,11 @@ fn catalogue() -> Vec<(String, bool)> {
 /// Every code `cpl_diag::codes` defines.
 fn defined() -> BTreeSet<String> {
     let src = std::fs::read_to_string(root().join("crates/cpl-diag/src/lib.rs")).unwrap();
-    src.split("Code(\"").skip(1).filter_map(|s| s.split_once('"')).map(|(c, _)| c.to_string()).collect()
+    src.split("Code(\"")
+        .skip(1)
+        .filter_map(|s| s.split_once('"'))
+        .map(|(c, _)| c.to_string())
+        .collect()
 }
 
 /// The codes `cpl <mode>` reports for `src`: errors, then warnings.
@@ -50,8 +64,15 @@ fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec
 }
 
 /// [`reported`], in the 0.3 edition (`CPL_SPEC=1`) when `spec` is set.
-fn reported_in(spec: bool, mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec<String>) {
-    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("catalogue_{}", std::process::id()));
+fn reported_in(
+    spec: bool,
+    mode: &str,
+    src: &str,
+    input: &str,
+    name: &str,
+) -> (Vec<String>, Vec<String>) {
+    let dir =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("catalogue_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join(format!("{name}.cp"));
     std::fs::write(&file, src).unwrap();
@@ -69,9 +90,15 @@ fn reported_in(spec: bool, mode: &str, src: &str, input: &str, name: &str) -> (V
         .stderr(Stdio::piped())
         .spawn()
         .expect("cpl starts");
-    child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
     let out = child.wait_with_output().expect("cpl exits");
-    let text = String::from_utf8_lossy(&out.stderr).to_string() + &String::from_utf8_lossy(&out.stdout);
+    let text =
+        String::from_utf8_lossy(&out.stderr).to_string() + &String::from_utf8_lossy(&out.stdout);
     let codes = |kind: &str| -> Vec<String> {
         text.lines()
             .filter_map(|l| l.strip_prefix(kind)?.strip_prefix('[')?.split_once(']'))
@@ -101,7 +128,10 @@ fn apply_first_fix_it(src: &str) -> Option<String> {
 fn every_defined_code_is_catalogued() {
     let listed: BTreeSet<String> = catalogue().into_iter().map(|(c, _)| c).collect();
     let missing: Vec<String> = defined().difference(&listed).cloned().collect();
-    assert!(missing.is_empty(), "defined but not in spec/diagnostics.md: {missing:?}");
+    assert!(
+        missing.is_empty(),
+        "defined but not in spec/diagnostics.md: {missing:?}"
+    );
 }
 
 #[test]
@@ -113,8 +143,17 @@ fn codes_marked_not_emitted_are_not_defined() {
     let edition_only = |c: &str| {
         cpl_diag::registry::lookup(c).is_some_and(|i| {
             i.mode == "check"
-                && reported_in(true, "check", i.trigger, i.input, &format!("{c}_spec_trigger")).0 == [c]
-                && reported_in(true, "check", i.fix, i.input, &format!("{c}_spec_fix")).0.is_empty()
+                && reported_in(
+                    true,
+                    "check",
+                    i.trigger,
+                    i.input,
+                    &format!("{c}_spec_trigger"),
+                )
+                .0 == [c]
+                && reported_in(true, "check", i.fix, i.input, &format!("{c}_spec_fix"))
+                    .0
+                    .is_empty()
         })
     };
     let stale: Vec<String> = catalogue()
@@ -122,7 +161,10 @@ fn codes_marked_not_emitted_are_not_defined() {
         .filter(|(c, emitted)| !emitted && defined.contains(c) && !reserved(c) && !edition_only(c))
         .map(|(c, _)| c)
         .collect();
-    assert!(stale.is_empty(), "marked (0.3) or (retired) but defined, so emitted: {stale:?}");
+    assert!(
+        stale.is_empty(),
+        "marked (0.3) or (retired) but defined, so emitted: {stale:?}"
+    );
 }
 
 #[test]
@@ -130,7 +172,10 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
     let mut failures = Vec::new();
     let (mut tested, mut with_fix_it, mut emitted) = (0, 0, 0);
     let mut no_fix_it = Vec::new();
-    let catalogue: Vec<(String, bool)> = catalogue().into_iter().filter(|(c, _)| !c.starts_with('L')).collect();
+    let catalogue: Vec<(String, bool)> = catalogue()
+        .into_iter()
+        .filter(|(c, _)| !c.starts_with('L'))
+        .collect();
     for (code, is_emitted) in catalogue.clone() {
         if !is_emitted {
             continue;
@@ -146,18 +191,23 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
             "run" => "run",
             "build" => "build",
             other => {
-                failures.push(format!("{code}: emitted, but its registry mode is {other:?}"));
+                failures.push(format!(
+                    "{code}: emitted, but its registry mode is {other:?}"
+                ));
                 continue;
             }
         };
-        let (errors, warnings) = reported(mode, info.trigger, info.input, &format!("{code}_trigger"));
+        let (errors, warnings) =
+            reported(mode, info.trigger, info.input, &format!("{code}_trigger"));
         let exact = if code.starts_with('W') {
             errors.is_empty() && warnings.iter().all(|w| *w == code) && !warnings.is_empty()
         } else {
             errors == [code.clone()]
         };
         if !exact {
-            failures.push(format!("{code}: trigger reports errors {errors:?}, warnings {warnings:?}"));
+            failures.push(format!(
+                "{code}: trigger reports errors {errors:?}, warnings {warnings:?}"
+            ));
             continue;
         }
         let fix_mode = if mode == "build" { "check" } else { mode };
@@ -182,6 +232,9 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
     }
     let listed = catalogue.len();
     println!("catalogue: {listed} codes, {emitted} emitted, {tested} with an exact trigger and clean fix, {with_fix_it} with a fix-it");
-    println!("compile-time codes without a fix-it on their trigger: {}", no_fix_it.join(" "));
+    println!(
+        "compile-time codes without a fix-it on their trigger: {}",
+        no_fix_it.join(" ")
+    );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

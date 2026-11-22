@@ -107,10 +107,14 @@ impl<'p> Facts<'p> {
             facts.nonneg_vars = nonneg.clone();
             let mut changed = false;
             nonneg.retain(|v| {
-                let ok = facts.var_stores[v].iter().all(|&(home, sop, rhs)| match sop {
-                    StoreOp::Rem | StoreOp::BitAnd => true,
-                    StoreOp::Set | StoreOp::KeepNonNeg => facts.sign(home, rhs) != Sign::Unknown,
-                });
+                let ok = facts.var_stores[v]
+                    .iter()
+                    .all(|&(home, sop, rhs)| match sop {
+                        StoreOp::Rem | StoreOp::BitAnd => true,
+                        StoreOp::Set | StoreOp::KeepNonNeg => {
+                            facts.sign(home, rhs) != Sign::Unknown
+                        }
+                    });
                 if !ok {
                     changed = true;
                 }
@@ -145,7 +149,10 @@ impl<'p> Facts<'p> {
                     *self.stores.entry(v).or_default() += 1;
                     if let Some(init) = init {
                         self.init.insert(v, init);
-                        self.var_stores.entry(v).or_default().push((fn_id, StoreOp::Set, init));
+                        self.var_stores
+                            .entry(v)
+                            .or_default()
+                            .push((fn_id, StoreOp::Set, init));
                         self.expr(fn_id, init);
                     } else {
                         self.tainted.insert(v);
@@ -173,7 +180,10 @@ impl<'p> Facts<'p> {
                             _ => None,
                         };
                         if let Some(sop) = sop {
-                            self.var_stores.entry(v).or_default().push((fn_id, sop, value));
+                            self.var_stores
+                                .entry(v)
+                                .or_default()
+                                .push((fn_id, sop, value));
                         } else {
                             self.tainted.insert(v);
                         }
@@ -204,10 +214,13 @@ impl<'p> Facts<'p> {
                                 self.expr(fn_id, step);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-                            self.expr(fn_id, e)
-                        }
-                        Iter::TreeRange { container, lo, hi, .. } => {
+                        Iter::RangeVal(e, _)
+                        | Iter::Seq(e, _)
+                        | Iter::Subsets(e)
+                        | Iter::Members(e) => self.expr(fn_id, e),
+                        Iter::TreeRange {
+                            container, lo, hi, ..
+                        } => {
                             self.expr(fn_id, container);
                             if let Some((e, _)) = lo {
                                 self.expr(fn_id, e);
@@ -434,7 +447,10 @@ impl<'p> Facts<'p> {
         if depth > 8 || e.ty != Ty::Int {
             return false;
         }
-        if self.upper_bound(fn_id, e, depth).is_some_and(|hi| hi < i64::MAX) {
+        if self
+            .upper_bound(fn_id, e, depth)
+            .is_some_and(|hi| hi < i64::MAX)
+        {
             return true;
         }
         let set_once = |v: Var| {

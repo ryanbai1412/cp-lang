@@ -35,7 +35,6 @@ pub const EXIT_ERRORS: u8 = 1;
 /// index out of range, input outside its declared range.
 pub const EXIT_FAILED: u8 = 3;
 
-
 /// Bytes of stack a program's calls may take in the browser, unless the
 /// caller of [`Playground::run_with_stack`] says otherwise. Only the bytes
 /// are limited, never how deep calls nest.
@@ -138,7 +137,13 @@ impl Playground {
     /// errors), and `debug`, what the program's `debug(...)`s showed.
     /// A file with a `@brute(main)` fn is traced through it too, as the
     /// document's `slow` run, lined up with the solution's.
-    pub fn trace_with_stack(&mut self, name: &str, source: &str, input: &[u8], stack: u32) -> (Vec<u8>, String) {
+    pub fn trace_with_stack(
+        &mut self,
+        name: &str,
+        source: &str,
+        input: &[u8],
+        stack: u32,
+    ) -> (Vec<u8>, String) {
         use cpl_interp::trace::{document, TraceConfig};
         let mut stdout = Vec::new();
         let (result, trace, debug) = match self.compile(name, source) {
@@ -164,7 +169,8 @@ impl Playground {
                     let (brute_fn, _) = cpl_ir::brute(&analysis)?;
                     let program = cpl_ir::lower_brute(&analysis, &brute_fn).ok()?;
                     let mut sink = Vec::new();
-                    let recording = observe(&program, input, &mut sink, stack, config()).recording?;
+                    let recording =
+                        observe(&program, input, &mut sink, stack, config()).recording?;
                     Some((brute_fn, recording))
                 });
                 let note = match &slow {
@@ -177,10 +183,15 @@ impl Playground {
                     name,
                     source,
                     (if slow.is_some() { "solution" } else { "run" }, &fast),
-                    slow.as_ref().map(|(brute_fn, recording)| (brute_fn.as_str(), recording)),
+                    slow.as_ref()
+                        .map(|(brute_fn, recording)| (brute_fn.as_str(), recording)),
                 );
                 let debug = String::from_utf8_lossy(&observed.debug).into_owned();
-                (outcome(code, &compiled.diagnostics, source, compiled.stderr, []), trace, debug)
+                (
+                    outcome(code, &compiled.diagnostics, source, compiled.stderr, []),
+                    trace,
+                    debug,
+                )
             }
         };
         // The trace is JSON text already: it goes in as it is.
@@ -207,8 +218,14 @@ impl Playground {
         stack: u32,
     ) -> String {
         use cpl_interp::trace::TraceConfig;
-        let error = |message: &str| obj([("error", Value::from(message.trim_end().to_string()))]).to_string();
-        let config = |source: &str| TraceConfig { source: source.to_string(), record_frames: true, ..TraceConfig::default() };
+        let error = |message: &str| {
+            obj([("error", Value::from(message.trim_end().to_string()))]).to_string()
+        };
+        let config = |source: &str| TraceConfig {
+            source: source.to_string(),
+            record_frames: true,
+            ..TraceConfig::default()
+        };
         let before = match self.compile(name, original) {
             Ok(compiled) => compiled.program,
             Err(_) => return error("the recorded source does not build"),
@@ -216,29 +233,39 @@ impl Playground {
         let after = match self.compile(name, edited) {
             Ok(compiled) => compiled.program,
             Err(errors) => {
-                let stderr = errors.get("stderr").and_then(Value::as_str).unwrap_or_default().to_string();
+                let stderr = errors
+                    .get("stderr")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
                 return error(&format!("the edited file does not build:\n{stderr}"));
             }
         };
-        let recorded = observe(&before, input, &mut Vec::new(), stack, config(original)).recording.unwrap_or_default();
+        let recorded = observe(&before, input, &mut Vec::new(), stack, config(original))
+            .recording
+            .unwrap_or_default();
         let call = match cpl_interp::replay::call_at(&recorded, step as usize, frame as usize) {
             Ok(call) => call,
             Err(message) => return error(&message),
         };
-        let limits = cpl_interp::Limits { stack_bytes: stack as usize };
-        cpl_interp::replay::replay_on_this_thread(&recorded, &before, &after, input, &call, config(edited), limits).json()
+        let limits = cpl_interp::Limits {
+            stack_bytes: stack as usize,
+        };
+        cpl_interp::replay::replay_on_this_thread(
+            &recorded,
+            &before,
+            &after,
+            input,
+            &call,
+            config(edited),
+            limits,
+        )
+        .json()
     }
 
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
     /// with the same generator, shrinker and JSON report as the CLI.
-    pub fn stress(
-        &mut self,
-        name: &str,
-        source: &str,
-        cases: u32,
-        seed: u64,
-        size: u32,
-    ) -> String {
+    pub fn stress(&mut self, name: &str, source: &str, cases: u32, seed: u64, size: u32) -> String {
         self.stress_with_stack(name, source, cases, seed, size, MAX_STACK)
     }
 
@@ -300,7 +327,13 @@ impl Playground {
                 cpl_judge::named_in(source).unwrap_or_default(),
                 cpl_judge::Config::default().names().join(", ")
             );
-            return outcome(2, &compiled.diagnostics, source, stderr, [("cpp", Value::Null)]);
+            return outcome(
+                2,
+                &compiled.diagnostics,
+                source,
+                stderr,
+                [("cpp", Value::Null)],
+            );
         };
         let limit = profile.source_limit;
         let target = cpl_codegen::Target {
@@ -308,7 +341,13 @@ impl Playground {
             thread_stack: profile.thread_stack,
             windows: profile.os == cpl_judge::Os::Windows,
         };
-        let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, source, limit, &target) {
+        let cpp = match cpl_codegen::emit_within_for(
+            &compiled.program,
+            name,
+            source,
+            limit,
+            &target,
+        ) {
             Ok(fitted) => {
                 stderr += &fitted.note(name, limit, &profile.name).unwrap_or_default();
                 fitted.cpp

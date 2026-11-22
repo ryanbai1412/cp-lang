@@ -40,8 +40,14 @@ fn key(e: &Expr) -> Option<Key> {
 
 fn expr_path(e: &Expr) -> Option<Row> {
     match &e.kind {
-        ExprKind::Local(slot) => Some(Row { root: (false, *slot), at: Vec::new() }),
-        ExprKind::Global(id) => Some(Row { root: (true, *id), at: Vec::new() }),
+        ExprKind::Local(slot) => Some(Row {
+            root: (false, *slot),
+            at: Vec::new(),
+        }),
+        ExprKind::Global(id) => Some(Row {
+            root: (true, *id),
+            at: Vec::new(),
+        }),
         ExprKind::Index(base, indices) if indices.len() == 1 && single(&base.ty) => {
             let mut row = expr_path(base)?;
             row.at.push(key(&indices[0])?);
@@ -53,8 +59,14 @@ fn expr_path(e: &Expr) -> Option<Row> {
 
 fn place_path(p: &Place) -> Option<Row> {
     match &p.kind {
-        PlaceKind::Local(slot) => Some(Row { root: (false, *slot), at: Vec::new() }),
-        PlaceKind::Global(id) => Some(Row { root: (true, *id), at: Vec::new() }),
+        PlaceKind::Local(slot) => Some(Row {
+            root: (false, *slot),
+            at: Vec::new(),
+        }),
+        PlaceKind::Global(id) => Some(Row {
+            root: (true, *id),
+            at: Vec::new(),
+        }),
         PlaceKind::Index(base, indices) if indices.len() == 1 && single(&base.ty) => {
             let mut row = place_path(base)?;
             row.at.push(key(&indices[0])?);
@@ -169,22 +181,33 @@ impl<'p> Emitter<'p> {
                 let (root, d) = depth(p);
                 root == row.root && d < row.at.len()
             });
-            fixed && !rebound && !reached && !moved && call_ok(row.root)
+            fixed
+                && !rebound
+                && !reached
+                && !moved
+                && call_ok(row.root)
                 && !self.row_ptrs.iter().any(|(r, ..)| r == row)
         };
         let uses: Vec<(Row, Use<'b>)> = uses.into_iter().filter(|(row, _)| kept(row)).collect();
         let inner = |q: &Row| {
-            uses.iter().any(|(p, _)| p.root == q.root && p.at.len() > q.at.len() && p.at.starts_with(&q.at))
+            uses.iter().any(|(p, _)| {
+                p.root == q.root && p.at.len() > q.at.len() && p.at.starts_with(&q.at)
+            })
         };
         let shallow: Vec<bool> = uses.iter().map(|(q, _)| inner(q)).collect();
-        let uses = uses.into_iter().zip(shallow).filter(|(_, s)| !s).map(|(u, _)| u);
+        let uses = uses
+            .into_iter()
+            .zip(shallow)
+            .filter(|(_, s)| !s)
+            .map(|(u, _)| u);
         uses.filter_map(|(row, at)| {
             let code = match at {
                 Use::Expr(e) => self.expr(e).text,
                 Use::Place(p) => self.place(p),
             };
             // A row reached without a check is as cheap to reach again.
-            code.contains("at(").then(|| (row, self.unique("row"), code))
+            code.contains("at(")
+                .then(|| (row, self.unique("row"), code))
         })
         .collect()
     }

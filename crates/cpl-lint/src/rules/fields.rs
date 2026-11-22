@@ -35,7 +35,11 @@ impl Visitor for Fields {
                 // In the struct's own fns a field is read by its bare
                 // name, `jdist[p]` for `self.jdist[p]`.
                 let mut own = Own {
-                    fields: decl.fields.iter().map(|field| field.name.text.as_str()).collect(),
+                    fields: decl
+                        .fields
+                        .iter()
+                        .map(|field| field.name.text.as_str())
+                        .collect(),
                     ..Own::default()
                 };
                 for method in &decl.methods {
@@ -86,7 +90,12 @@ struct Own<'a> {
 
 impl Visitor for Own<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        if let StmtKind::Assign { target, op: AssignOp::Set, .. } = &stmt.kind {
+        if let StmtKind::Assign {
+            target,
+            op: AssignOp::Set,
+            ..
+        } = &stmt.kind
+        {
             if matches!(target.kind, ExprKind::Name(_)) {
                 self.written.insert(target.span);
             }
@@ -110,7 +119,8 @@ impl Visitor for Own<'_> {
     fn expr(&mut self, expr: &Expr) {
         if let ExprKind::Name(name) = &expr.kind {
             let hidden = self.locals.iter().any(|scope| scope.contains(name));
-            if self.fields.contains(name.as_str()) && !hidden && !self.written.contains(&expr.span) {
+            if self.fields.contains(name.as_str()) && !hidden && !self.written.contains(&expr.span)
+            {
                 self.read.insert(name.clone());
             }
         }

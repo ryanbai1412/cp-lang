@@ -200,7 +200,10 @@ impl Visitor for Indexes<'_> {
         let (ExprKind::Name(list), [index]) = (&base.kind, indices.as_slice()) else {
             return;
         };
-        if self.loop_depth() < HOT_DEPTH || !self.is_list(list) || self.base + expr.span.start < self.test_ends {
+        if self.loop_depth() < HOT_DEPTH
+            || !self.is_list(list)
+            || self.base + expr.span.start < self.test_ends
+        {
             return;
         }
         match &unparen(index).kind {

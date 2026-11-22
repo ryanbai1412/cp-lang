@@ -893,7 +893,12 @@ impl<'a> Lexer<'a> {
         let first = chars.next();
         let char_len = match first {
             Some('\\') => match chars.next() {
-                Some('x') if rest.len() >= 4 && rest.as_bytes()[2..4].iter().all(u8::is_ascii_hexdigit) => Some(4),
+                Some('x')
+                    if rest.len() >= 4
+                        && rest.as_bytes()[2..4].iter().all(u8::is_ascii_hexdigit) =>
+                {
+                    Some(4)
+                }
                 c => c.map(|c| 1 + c.len_utf8()),
             },
             Some(c) if c != '\n' && c != '\'' => Some(c.len_utf8()),

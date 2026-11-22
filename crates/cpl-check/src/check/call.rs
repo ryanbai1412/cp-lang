@@ -1729,13 +1729,16 @@ impl<'a> Checker<'a> {
                         self.move_ctor_args(args);
                     }
                     if generics.iter().any(|g| g == "F") && !bindings.contains_key("F") {
-                        if let Some(act_arg) =
-                            args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
+                        if let Some(act_arg) = args
+                            .iter()
+                            .find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
                         {
                             let act_ty = self.quietly(|c| c.infer(&act_arg.value));
                             let elem_ty = bindings.get("T").cloned().unwrap_or(Ty::Int);
                             let inferred_f = match &act_ty {
-                                Ty::Named { name: n, args: aa } if n == "Action" && aa.len() == 2 => {
+                                Ty::Named { name: n, args: aa }
+                                    if n == "Action" && aa.len() == 2 =>
+                                {
                                     Some(aa[1].clone())
                                 }
                                 Ty::Named { name: n, .. } if n == "AddAction" => Some(elem_ty),

@@ -2596,8 +2596,7 @@ impl<'a> Lowerer<'a> {
                     (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_) | Ty::Array { .. }) => {
                         self.expr(e, Some(&prev.ty))
                     }
-                    (Some((prev, _)), _)
-                        if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_) | Ty::Array { .. })) =>
+                    (Some((prev, _)), _) if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_) | Ty::Array { .. })) =>
                     {
                         let Ty::Opt(inner) = &prev.ty else {
                             unreachable!()

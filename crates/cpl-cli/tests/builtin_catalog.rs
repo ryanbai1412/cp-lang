@@ -16,7 +16,11 @@ fn run(name: &str, body: &str) -> Result<(), String> {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join(format!("{name}.cp"));
     std::fs::write(&path, format!("{FIXTURE}{body}\n")).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&path).output().unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&path)
+        .output()
+        .unwrap();
     if out.status.success() {
         Ok(())
     } else {
@@ -33,23 +37,40 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
             MemberKind::Get => format!(".{}", member.name),
             MemberKind::Method => format!(".{}(", member.name),
         };
-        if !member.example.contains(&written) || member.example.contains(&format!(".{}()", member.name)) && member.kind == MemberKind::Get {
-            wrong.push(format!("{who}: the example `{}` does not write it as a {:?}", member.example, member.kind));
+        if !member.example.contains(&written)
+            || member.example.contains(&format!(".{}()", member.name))
+                && member.kind == MemberKind::Get
+        {
+            wrong.push(format!(
+                "{who}: the example `{}` does not write it as a {:?}",
+                member.example, member.kind
+            ));
         }
         if member.ret.is_empty() != member.example_ty.is_empty() {
-            wrong.push(format!("{who}: `ret` and `example_ty` disagree on whether it gives a value"));
+            wrong.push(format!(
+                "{who}: `ret` and `example_ty` disagree on whether it gives a value"
+            ));
         }
         let body = if member.example_ty.is_empty() {
             member.example.to_string()
         } else {
-            format!("let got: {} = {}\nprint(got)", member.example_ty, member.example)
+            format!(
+                "let got: {} = {}\nprint(got)",
+                member.example_ty, member.example
+            )
         };
         if let Err(why) = run(&format!("row{i}"), &body) {
-            wrong.push(format!("{who}: `{}` does not run as written:\n{why}", member.example));
+            wrong.push(format!(
+                "{who}: `{}` does not run as written:\n{why}",
+                member.example
+            ));
         }
         // Built-in `Get` properties are read without parentheses.
         if member.kind == MemberKind::Get {
-            let called = format!("let got: {} = {}()\nprint(got)", member.example_ty, member.example);
+            let called = format!(
+                "let got: {} = {}()\nprint(got)",
+                member.example_ty, member.example
+            );
             match run(&format!("row{i}_called"), &called) {
                 Ok(()) => wrong.push(format!(
                     "{who}: `{}()` should be rejected (getters are read without parentheses)",
@@ -69,59 +90,92 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
 #[test]
 fn every_built_in_type_has_rows_and_no_name_twice() {
     for receiver in Receiver::ALL {
-        let names: Vec<&str> = cpl_check::builtin_members(receiver).map(|m| m.name).collect();
+        let names: Vec<&str> = cpl_check::builtin_members(receiver)
+            .map(|m| m.name)
+            .collect();
         assert!(names.contains(&"len"), "{receiver:?} has `len`");
         let mut unique = names.clone();
         unique.sort_unstable();
         unique.dedup();
         assert_eq!(unique.len(), names.len(), "{receiver:?} lists a name twice");
     }
-    let push = cpl_check::builtin_members(Receiver::List).find(|m| m.name == "push").unwrap();
+    let push = cpl_check::builtin_members(Receiver::List)
+        .find(|m| m.name == "push")
+        .unwrap();
     assert_eq!(push.signature(), "push(x: T)");
-    let first = cpl_check::builtin_members(Receiver::Map).find(|m| m.name == "first").unwrap();
+    let first = cpl_check::builtin_members(Receiver::Map)
+        .find(|m| m.name == "first")
+        .unwrap();
     assert_eq!(first.signature(), "first: ?(K, V)");
 }
 
 #[test]
 fn the_prelude_names_are_the_ones_a_file_can_use() {
     let names = prelude_names();
-    for (name, kind) in [("Int", PreludeKind::Type), ("F64", PreludeKind::Type), ("print", PreludeKind::Value), ("sum", PreludeKind::Value), ("read", PreludeKind::Value)] {
+    for (name, kind) in [
+        ("Int", PreludeKind::Type),
+        ("F64", PreludeKind::Type),
+        ("print", PreludeKind::Value),
+        ("sum", PreludeKind::Value),
+        ("read", PreludeKind::Value),
+    ] {
         assert!(names.contains(&(name, kind)), "`{name}` is a {kind:?}");
     }
-    assert!(names.iter().any(|(name, kind)| *name == "SegTree" && matches!(kind, PreludeKind::Std(_))));
+    assert!(names
+        .iter()
+        .any(|(name, kind)| *name == "SegTree" && matches!(kind, PreludeKind::Std(_))));
     for name in ["Interactor", "Subset"] {
-        assert!(names.contains(&(name, PreludeKind::Type)), "`{name}` is a type");
+        assert!(
+            names.contains(&(name, PreludeKind::Type)),
+            "`{name}` is a type"
+        );
     }
     // Only what `stdlib/prelude.cp` lists, which `scripts/check.sh` holds to 80.
-    let std = names.iter().filter(|(_, kind)| matches!(kind, PreludeKind::Std(_))).count();
+    let std = names
+        .iter()
+        .filter(|(_, kind)| matches!(kind, PreludeKind::Std(_)))
+        .count();
     assert!((1..=80).contains(&std), "{std} names from the prelude");
     assert!(!names.iter().any(|(name, _)| *name == "INF"));
     let mut seen = std::collections::HashSet::new();
     // `List` is a type and, called, a value: once of each kind.
     for (name, kind) in &names {
-        assert!(seen.insert((*name, std::mem::discriminant(kind))), "`{name}` is listed twice as a {kind:?}");
+        assert!(
+            seen.insert((*name, std::mem::discriminant(kind))),
+            "`{name}` is listed twice as a {kind:?}"
+        );
     }
 }
 
 #[test]
 fn sequence_method_parity_across_list_array_str_and_views() {
     use std::collections::BTreeSet;
-    let list_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::List).map(|m| m.name).collect();
-    let str_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Str).map(|m| m.name).collect();
-    let arr_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Array).map(|m| m.name).collect();
+    let list_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::List)
+        .map(|m| m.name)
+        .collect();
+    let str_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Str)
+        .map(|m| m.name)
+        .collect();
+    let arr_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Array)
+        .map(|m| m.name)
+        .collect();
 
     // Every general sequence method on `List` must also exist on `Str`
     // (excluding List-only `to_list`, `extend`, `reserve`, `insert`, `remove`,
     // and numeric-only `sum`/`prod` — `Char` is not numeric).
-    let list_only_vs_str: BTreeSet<&str> =
-        ["to_list", "extend", "reserve", "insert", "remove", "sum", "prod"]
-            .into_iter()
-            .collect();
+    let list_only_vs_str: BTreeSet<&str> = [
+        "to_list", "extend", "reserve", "insert", "remove", "sum", "prod",
+    ]
+    .into_iter()
+    .collect();
     let missing_on_str: Vec<&&str> = list_names
         .iter()
         .filter(|n| !list_only_vs_str.contains(*n) && !str_names.contains(*n))
         .collect();
-    assert!(missing_on_str.is_empty(), "`Str` is missing List sequence methods: {missing_on_str:?}");
+    assert!(
+        missing_on_str.is_empty(),
+        "`Str` is missing List sequence methods: {missing_on_str:?}"
+    );
 
     // Every non-growable sequence method on `List` must also exist on `[D]T`.
     let growable_only: BTreeSet<&str> = [
@@ -134,12 +188,15 @@ fn sequence_method_parity_across_list_array_str_and_views() {
         .iter()
         .filter(|n| !growable_only.contains(*n) && !arr_names.contains(*n))
         .collect();
-    assert!(missing_on_arr.is_empty(), "`Array` is missing List sequence methods: {missing_on_arr:?}");
+    assert!(
+        missing_on_arr.is_empty(),
+        "`Array` is missing List sequence methods: {missing_on_arr:?}"
+    );
 
     // Run the full sequence parity program (List, [D]T, Str, ListView, StrView) in both
     // interpreter and compiled C++17 and verify identical output.
-    let prog = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/programs/seq_str_parity.cp");
+    let prog =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/seq_str_parity.cp");
     let interp = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("run")
         .arg(&prog)
@@ -172,32 +229,70 @@ fn sequence_method_parity_across_list_array_str_and_views() {
 #[test]
 fn ordered_container_method_parity_and_range_len_guard() {
     use std::collections::BTreeSet;
-    let set_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Set).map(|m| m.name).collect();
-    let map_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Map).map(|m| m.name).collect();
+    let set_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Set)
+        .map(|m| m.name)
+        .collect();
+    let map_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Map)
+        .map(|m| m.name)
+        .collect();
 
     // Every ordered range/bound primitive shared by `Set` and `Map` must be present on both.
-    for required in ["first", "last", "first_ge", "first_gt", "last_le", "last_lt", "range", "len", "is_empty", "contains", "remove", "clear"] {
-        assert!(set_names.contains(required), "`Set` is missing ordered member `{required}`");
-        assert!(map_names.contains(required), "`Map` is missing ordered member `{required}`");
+    for required in [
+        "first", "last", "first_ge", "first_gt", "last_le", "last_lt", "range", "len", "is_empty",
+        "contains", "remove", "clear",
+    ] {
+        assert!(
+            set_names.contains(required),
+            "`Set` is missing ordered member `{required}`"
+        );
+        assert!(
+            map_names.contains(required),
+            "`Map` is missing ordered member `{required}`"
+        );
     }
-    assert!(set_names.contains("set"), "`Set` is missing `set(x, on: Bool)`");
-    assert!(set_names.contains("drain"), "`Set` is missing `drain(after:/before:, while:)`");
+    assert!(
+        set_names.contains("set"),
+        "`Set` is missing `set(x, on: Bool)`"
+    );
+    assert!(
+        set_names.contains("drain"),
+        "`Set` is missing `drain(after:/before:, while:)`"
+    );
 
     // `SortedSet` and `SortedBag` in `stdlib/bag.cp` must expose the ordered API surface.
     let bag_src = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib/bag.cp"),
     )
     .unwrap();
-    for required in ["fn bsearch_first(", "fn bsearch_last(", "fn drain(", "fn range_first(", "fn range_last(", "fn range_len("] {
-        assert!(bag_src.contains(required), "`stdlib/bag.cp` is missing `{required}`");
+    for required in [
+        "fn bsearch_first(",
+        "fn bsearch_last(",
+        "fn drain(",
+        "fn range_first(",
+        "fn range_last(",
+        "fn range_len(",
+    ] {
+        assert!(
+            bag_src.contains(required),
+            "`stdlib/bag.cp` is missing `{required}`"
+        );
     }
-    assert!(!bag_src.contains("fn first_where("), "`stdlib/bag.cp` must not expose removed `first_where`");
+    assert!(
+        !bag_src.contains("fn first_where("),
+        "`stdlib/bag.cp` must not expose removed `first_where`"
+    );
 
     // `Set.range(r).len` and `Map.range(r).len` must fail typecheck with help naming SortedSet/SortedBag.
     for (idx, (label, code)) in [
         ("Set", "var s: Set<Int> = Set()\nprint(s.range(1..5).len)\n"),
-        ("Map", "var m: Map<Int, Int> = Map()\nprint(m.range(1..5).len)\n"),
-        ("Set.rev", "var s: Set<Int> = Set()\nprint(s.range(1..5).rev.len)\n"),
+        (
+            "Map",
+            "var m: Map<Int, Int> = Map()\nprint(m.range(1..5).len)\n",
+        ),
+        (
+            "Set.rev",
+            "var s: Set<Int> = Set()\nprint(s.range(1..5).rev.len)\n",
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -213,7 +308,10 @@ fn ordered_container_method_parity_and_range_len_guard() {
             .output()
             .unwrap();
         let _ = std::fs::remove_file(&path);
-        assert!(!out.status.success(), "{label}.range(r).len unexpectedly passed `cpl check`");
+        assert!(
+            !out.status.success(),
+            "{label}.range(r).len unexpectedly passed `cpl check`"
+        );
         let stderr = String::from_utf8_lossy(&out.stderr);
         assert!(
             stderr.contains("SortedSet") && stderr.contains("SortedBag"),

@@ -31,7 +31,11 @@ fn find_report_file(dir: &Path) -> PathBuf {
                 .is_some_and(|n| n.starts_with("cpl-report-") && n.ends_with(".md"))
         })
         .collect();
-    assert_eq!(found.len(), 1, "expected 1 cpl-report-*.md in {dir:?}, got {found:?}");
+    assert_eq!(
+        found.len(),
+        1,
+        "expected 1 cpl-report-*.md in {dir:?}, got {found:?}"
+    );
     found.pop().unwrap()
 }
 
@@ -72,7 +76,8 @@ print(a[i])
     assert!(stdout.contains("wrote cpl-report-"), "stdout:\n{stdout}");
     assert!(stdout.contains("included:"), "stdout:\n{stdout}");
     assert!(
-        stdout.contains("https://github.com/ryanbai1412/cp-lang/issues/new?template=bug.yml&title="),
+        stdout
+            .contains("https://github.com/ryanbai1412/cp-lang/issues/new?template=bug.yml&title="),
         "expected prefilled issue URL for small report:\n{stdout}"
     );
 
@@ -92,7 +97,10 @@ print(a[i])
 
     // `--shrink` reduced the input.
     assert!(md.contains("shrunk from"), "expected shrink note:\n{md}");
-    assert!(!md.contains("extra_line_two"), "expected shrunk input:\n{md}");
+    assert!(
+        !md.contains("extra_line_two"),
+        "expected shrunk input:\n{md}"
+    );
 
     // Privacy: no absolute paths or secret_folder anywhere in the report.
     assert!(
@@ -164,7 +172,10 @@ fn ice_hook_saves_crash_bundle_and_report_last_includes_backtrace() {
         rep.status.success(),
         "cpl report --last failed:\nstdout:\n{rep_stdout}\nstderr:\n{rep_stderr}"
     );
-    assert!(rep_stdout.contains("ICE backtrace"), "stdout:\n{rep_stdout}");
+    assert!(
+        rep_stdout.contains("ICE backtrace"),
+        "stdout:\n{rep_stdout}"
+    );
 
     let report_path = find_report_file(&dir);
     let md = std::fs::read_to_string(&report_path).unwrap();

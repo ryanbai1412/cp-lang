@@ -215,7 +215,6 @@ pub mod codes {
     pub const INPUT_OUT_OF_CONTRACT: Code = Code("R0502");
     pub const STACK_EXHAUSTED: Code = Code("R0601");
 
-
     pub const INTERNAL: Code = Code("E9999");
 }
 

@@ -343,7 +343,11 @@ fn lsp_latency(lines: usize) {
                 ("position".to_string(), position(&text, target + 2)),
             ];
             params.extend(extra);
-            message(Some(id), method, Value::Object(params.into_iter().collect()))
+            message(
+                Some(id),
+                method,
+                Value::Object(params.into_iter().collect()),
+            )
         };
         let context = obj([("includeDeclaration", true.into())]);
         let (replies, took) = round_trip(
@@ -456,14 +460,21 @@ fn the_keystroke_clock_does_not_count_time_off_the_cpu() {
     let Some(before) = on_cpu() else { return };
     std::thread::sleep(Duration::from_millis(200));
     let slept = on_cpu().unwrap() - before;
-    assert!(slept < Duration::from_millis(20), "sleeping 200 ms took {} on the CPU", ms(slept));
+    assert!(
+        slept < Duration::from_millis(20),
+        "sleeping 200 ms took {} on the CPU",
+        ms(slept)
+    );
     let before = on_cpu().unwrap();
     let start = Instant::now();
     let mut x = 0u64;
     while start.elapsed() < Duration::from_millis(50) {
         x = std::hint::black_box(x.wrapping_mul(31).wrapping_add(7));
     }
-    assert!(on_cpu().unwrap() - before > Duration::from_millis(5), "a busy loop took no CPU time");
+    assert!(
+        on_cpu().unwrap() - before > Duration::from_millis(5),
+        "a busy loop took no CPU time"
+    );
 }
 
 /// The 95th percentile of the keystroke-to-diagnostics round trip while typing
@@ -478,7 +489,11 @@ fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, boo
             ("text", text.into()),
         ])
     };
-    server.handle(&message(None, "textDocument/didOpen", obj([("textDocument", doc(1, src))])));
+    server.handle(&message(
+        None,
+        "textDocument/didOpen",
+        obj([("textDocument", doc(1, src))]),
+    ));
     let mut samples = Samples(Vec::new());
     let mut errors = false;
     for round in 0..3 {
@@ -489,11 +504,17 @@ fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, boo
                 "textDocument/didChange",
                 obj([
                     ("textDocument", doc(2 + round * insert.len() + typed, "")),
-                    ("contentChanges", Value::Array(vec![obj([("text", text.as_str().into())])])),
+                    (
+                        "contentChanges",
+                        Value::Array(vec![obj([("text", text.as_str().into())])]),
+                    ),
                 ]),
             );
             let (replies, took) = round_trip(&mut server, &change);
-            assert!(replies.iter().any(|r| r.contains("publishDiagnostics")), "no diagnostics");
+            assert!(
+                replies.iter().any(|r| r.contains("publishDiagnostics")),
+                "no diagnostics"
+            );
             errors |= replies.iter().any(|r| r.contains(r#""severity":1"#));
             samples.0.push(took);
         }
@@ -523,7 +544,9 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
     let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
     let mut files = Vec::new();
     for author in std::fs::read_dir(&ports).unwrap().flatten() {
-        let Ok(entries) = std::fs::read_dir(author.path()) else { continue };
+        let Ok(entries) = std::fs::read_dir(author.path()) else {
+            continue;
+        };
         for file in entries.flatten() {
             let path = file.path();
             if path.extension().is_some_and(|e| e == "cp") {
@@ -549,7 +572,12 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
     let mut worst = Duration::ZERO;
     let mut cases: Vec<(String, String)> = files
         .into_iter()
-        .map(|(_, path, src)| (path.file_name().unwrap().to_string_lossy().into_owned(), src))
+        .map(|(_, path, src)| {
+            (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                src,
+            )
+        })
         .collect();
     cases.push(("300-line file with errors".into(), broken));
     for (index, (name, src)) in cases.iter().enumerate() {
@@ -571,7 +599,11 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
             assert!(errors, "the broken file has no errors");
         }
         worst = worst.max(p95);
-        assert!(p95 < budget, "a keystroke on {name} took {} at the 95th percentile", ms(p95));
+        assert!(
+            p95 < budget,
+            "a keystroke on {name} took {} at the 95th percentile",
+            ms(p95)
+        );
     }
     println!("lsp: worst keystroke p95 {}", ms(worst));
 }

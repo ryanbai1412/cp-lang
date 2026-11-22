@@ -100,9 +100,9 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
             }
         }
         StmtKind::Domain { def, .. } => walk_expr(def, v),
-        StmtKind::Trait { body, .. }
-        | StmtKind::Impl { body, .. }
-        | StmtKind::Mod { body, .. } => walk_block(body, v),
+        StmtKind::Trait { body, .. } | StmtKind::Impl { body, .. } | StmtKind::Mod { body, .. } => {
+            walk_block(body, v)
+        }
         StmtKind::Law { body, .. } => walk_expr(body, v),
         StmtKind::Lend { place, .. } => walk_expr(place, v),
         StmtKind::Expr(expr) => walk_expr(expr, v),

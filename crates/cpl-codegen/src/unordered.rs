@@ -96,12 +96,19 @@ impl Found {
             | ExprKind::Call(..)
             | ExprKind::CallExpr(..)
             | ExprKind::Closure(_) => true,
-            ExprKind::Builtin(Builtin::Contains | Builtin::MapGet | Builtin::Len | Builtin::Copy, _) => true,
+            ExprKind::Builtin(
+                Builtin::Contains | Builtin::MapGet | Builtin::Len | Builtin::Copy,
+                _,
+            ) => true,
             ExprKind::Mutate(op, place, _) => {
                 self.see(program, &place.ty);
                 let blind = matches!(
                     op,
-                    Mutation::Insert | Mutation::Remove | Mutation::Clear | Mutation::Take | Mutation::Push
+                    Mutation::Insert
+                        | Mutation::Remove
+                        | Mutation::Clear
+                        | Mutation::Take
+                        | Mutation::Push
                 );
                 if !blind {
                     self.order(program, &place.ty);
@@ -125,9 +132,7 @@ impl Found {
                     | Iter::RangeVal(seq, _)
                     | Iter::Subsets(seq)
                     | Iter::Members(seq)
-                    | Iter::TreeRange { container: seq, .. } => {
-                        self.order(program, &seq.ty)
-                    }
+                    | Iter::TreeRange { container: seq, .. } => self.order(program, &seq.ty),
                     Iter::Range { .. } => {}
                 }
             }
@@ -150,7 +155,12 @@ pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
     }
     found.block(program, &program.main);
     found.block(program, &program.setup);
-    let Found { mut maps, mut sets, ordered_maps, ordered_sets } = found;
+    let Found {
+        mut maps,
+        mut sets,
+        ordered_maps,
+        ordered_sets,
+    } = found;
     maps.retain(|k| !ordered_maps.contains(k));
     sets.retain(|k| !ordered_sets.contains(k));
     (maps, sets)

@@ -794,9 +794,7 @@ impl<'a> Checker<'a> {
         let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
             return;
         };
-        if !crate::edition::is_v03()
-            && variants.iter().any(|(_, fields)| !fields.is_empty())
-        {
+        if !crate::edition::is_v03() && variants.iter().any(|(_, fields)| !fields.is_empty()) {
             return;
         }
         fn irrefutable(pat: &Pattern) -> bool {
@@ -1875,8 +1873,7 @@ impl<'a> Checker<'a> {
                     Some(def) => def.value_ty(&name.text),
                     None if name.text.is_empty() => Ty::Error,
                     None if self.env.is_private_member(alias, &name.text) => {
-                        let message =
-                            format!("`{}` is private to module `{alias}`", name.text);
+                        let message = format!("`{}` is private to module `{alias}`", name.text);
                         self.error(codes::PRIVATE_NAME, name.span, message);
                         Ty::Error
                     }
@@ -2046,9 +2043,7 @@ impl<'a> Checker<'a> {
                     self.error(codes::MISSING_IMPL, name.span, message);
                     return Ty::Error;
                 }
-                "items" | "keys"
-                    if crate::edition::is_v03() && !base_ty.is_keyed() =>
-                {
+                "items" | "keys" if crate::edition::is_v03() && !base_ty.is_keyed() => {
                     let message = format!(
                         "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
                         name.text
@@ -2474,10 +2469,7 @@ impl<'a> Checker<'a> {
                 if type_name == "Pair" && name.text == "count" {
                     return Ty::Int;
                 }
-                if crate::edition::is_v03()
-                    && type_name == "Gen"
-                    && name.text == "next"
-                {
+                if crate::edition::is_v03() && type_name == "Gen" && name.text == "next" {
                     let message =
                         format!("{base_ty} has no method `next`; walk a generator with `for`");
                     self.error(codes::UNKNOWN_FIELD, name.span, message);
@@ -3264,8 +3256,7 @@ impl<'a> Checker<'a> {
                         continue;
                     }
                     if self.literal_position(index_expr, want)
-                        && !(crate::edition::is_v03()
-                            && self.view_kind(base) == Some("slice"))
+                        && !(crate::edition::is_v03() && self.view_kind(base) == Some("slice"))
                     {
                         if crate::edition::is_v03() {
                             if let (ExprKind::Int(v), Ty::Pos(d)) = (&index_expr.kind, want) {

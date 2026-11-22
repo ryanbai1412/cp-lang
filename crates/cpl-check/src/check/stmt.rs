@@ -863,9 +863,7 @@ impl<'a> Checker<'a> {
             }
         }
         if let StmtKind::Expr(expr) = &stmt.kind {
-            if let (ExprKind::Try(inner), true) =
-                (&expr.kind, crate::edition::is_v03())
-            {
+            if let (ExprKind::Try(inner), true) = (&expr.kind, crate::edition::is_v03()) {
                 let message = format!(
                     "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
                     self.quote(expr.span)

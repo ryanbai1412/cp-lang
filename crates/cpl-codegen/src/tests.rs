@@ -88,7 +88,13 @@ fn the_file_opens_with_its_source_as_comments() {
     let source = "// ends in a backslash \\\nprint(1)\n";
     let cpp = cpp(source);
     assert!(cpp.starts_with("// t.cp: C++17 written by cpl "), "{cpp}");
-    assert!(cpp.lines().next().unwrap().contains("(https://cp-lang.org)"), "{cpp}");
+    assert!(
+        cpp.lines()
+            .next()
+            .unwrap()
+            .contains("(https://cp-lang.org)"),
+        "{cpp}"
+    );
     assert!(cpp.contains("//     print(1)\n"), "{cpp}");
     // A `\` at the end of a `//` line would make the next line a comment too.
     assert!(cpp.lines().all(|line| !line.ends_with('\\')), "{cpp}");
@@ -128,7 +134,8 @@ fn bool_elements_are_bytes_not_vector_bool() {
         fixed.contains("std::array<char, 10>") && !fixed.contains("std::vector<bool>"),
         "{fixed}"
     );
-    let dyn_len = cpp("let n: Int = read()\nvar seen: [n]Bool = false\nseen[0] = true\nprint(seen[0])\n");
+    let dyn_len =
+        cpp("let n: Int = read()\nvar seen: [n]Bool = false\nseen[0] = true\nprint(seen[0])\n");
     assert!(
         dyn_len.contains("std::vector<char>") && !dyn_len.contains("std::vector<bool>"),
         "{dyn_len}"
@@ -289,20 +296,38 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
     // Whatever is stored: unbounded input, sums, other tables.
     assert_eq!(table("dp[V.first] = any"), PACKED);
     assert_eq!(table("dp[V.first] = Int.MIN"), PACKED);
-    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"), PACKED);
+    assert_eq!(
+        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"),
+        PACKED
+    );
     assert_eq!(table("fn f() -> Int: any\ndp[V.first] = f()"), PACKED);
     // Used as a whole value: passed, mutated through, looped over, copied.
-    assert_eq!(table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"), PACKED);
-    assert_eq!(table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"), PACKED);
+    assert_eq!(
+        table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"),
+        PACKED
+    );
+    assert_eq!(
+        table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"),
+        PACKED
+    );
     assert_eq!(table("for x in dp: print(x ?? 0)"), PACKED);
-    assert_eq!(table("let copy = dp.copy()\nprint(copy[V.first] ?? 0)"), PACKED);
+    assert_eq!(
+        table("let copy = dp.copy()\nprint(copy[V.first] ?? 0)"),
+        PACKED
+    );
     // A list filled by `push`, a grid, a local, a parameter and a result.
     let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
     assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
     assert_eq!(decl(&cpp, "best"), "cpl::OptInt", "{cpp}");
-    assert!(cpp.contains("cpl::OptInt half(const cpl::OptInt& x)"), "{cpp}");
-    assert!(cpp.contains("using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;"), "{cpp}");
+    assert!(
+        cpp.contains("cpl::OptInt half(const cpl::OptInt& x)"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;"),
+        "{cpp}"
+    );
     assert!(!cpp.contains("std::optional<ll>"), "{cpp}");
 }
 
@@ -348,10 +373,7 @@ fn a_map_whose_order_never_shows_is_a_hash_table() {
         blind.contains("cpl::HashMap<ll, ll, cpl::CpHash>"),
         "{blind}"
     );
-    assert!(
-        blind.contains("cpl::HashSet<ll, cpl::CpHash>"),
-        "{blind}"
-    );
+    assert!(blind.contains("cpl::HashSet<ll, cpl::CpHash>"), "{blind}");
     assert!(!blind.contains("std::map<ll, ll>"), "{blind}");
     for ordered in [
         "for (k, v) in m: print(k, v)",
@@ -364,17 +386,17 @@ fn a_map_whose_order_never_shows_is_a_hash_table() {
     ] {
         let seen = cpp(&format!("var m = Map<Int, Int>()\nm[42] = 7\n{ordered}\n"));
         assert!(seen.contains("std::map<ll, ll>"), "{ordered}: {seen}");
-        assert!(
-            !seen.contains("cpl::HashMap<ll, ll"),
-            "{ordered}: {seen}"
-        );
+        assert!(!seen.contains("cpl::HashMap<ll, ll"), "{ordered}: {seen}");
     }
 }
 
 #[test]
 fn a_memo_over_bounded_ranges_is_a_flat_table_alone() {
     let bounded = cpp("let a: 0..=8000 = read()\nlet b: 0..=399 = read()\n@memo\nfn f(k: 0..=a, s: 0..=b) -> Int:\n    if k == 0 or s == 0: return 1\n    f(k - 1, s) + f(k, s - 1)\nprint(f(a, b))\n");
-    assert!(!bounded.contains("HashMap") && !bounded.contains("CpHash"), "{bounded}");
+    assert!(
+        !bounded.contains("HashMap") && !bounded.contains("CpHash"),
+        "{bounded}"
+    );
     let open = cpp("let a: Int = read()\n@memo\nfn f(k: 0..=a) -> Int:\n    if k == 0: return 1\n    f(k - 1)\nprint(f(a))\n");
     assert!(open.contains("cpl::HashMap"), "{open}");
 }
@@ -396,8 +418,16 @@ fn a_product_domain_loop_is_nested_int_loops() {
     let nested = cpp(&format!(
         "{head}for r in Row:\n    for c in Col if g[r, c] == '#':\n        n += 1\nprint(n)\n"
     ));
-    assert!(!product.contains("ediv") && !product.contains("emod"), "{product}");
-    assert!(product.len() <= nested.len() + 200, "{} vs {}\n{product}", product.len(), nested.len());
+    assert!(
+        !product.contains("ediv") && !product.contains("emod"),
+        "{product}"
+    );
+    assert!(
+        product.len() <= nested.len() + 200,
+        "{} vs {}\n{product}",
+        product.len(),
+        nested.len()
+    );
 }
 
 #[test]
@@ -408,9 +438,14 @@ fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     let backward = size("var s = 0\nfor x in xs.rev: s = s * 31 + x\nprint(s)\n");
     assert!(backward <= forward + 256, "{forward} -> {backward}");
     let plain = size("let ys = xs\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n");
-    let view = cpp(&format!("{read}let ys = xs.rev\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n"));
+    let view = cpp(&format!(
+        "{read}let ys = xs.rev\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n"
+    ));
     assert!(view.len() <= plain + 3200, "{plain} -> {}", view.len());
-    assert!(!view.contains("list_concat") && !view.contains("list_slice"), "{view}");
+    assert!(
+        !view.contains("list_concat") && !view.contains("list_slice"),
+        "{view}"
+    );
 }
 
 #[test]
@@ -466,9 +501,16 @@ fn a_bounded_optional_list_is_stored_in_four_bytes() {
     let code = cpp(
         "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [none]\nvar d: List<?Int> = [none]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
     );
-    let decl = |ty: &str| code.lines().filter(|l| l.trim_start().starts_with(&format!("std::vector<{ty}> "))).count();
+    let decl = |ty: &str| {
+        code.lines()
+            .filter(|l| l.trim_start().starts_with(&format!("std::vector<{ty}> ")))
+            .count()
+    };
     assert_eq!((decl("cpl::OptI32"), decl("cpl::OptInt")), (3, 1), "{code}");
-    assert!(code.contains(", 0, 2147483647, \"0..2_147_483_648\")"), "{code}");
+    assert!(
+        code.contains(", 0, 2147483647, \"0..2_147_483_648\")"),
+        "{code}"
+    );
 }
 
 #[test]
@@ -530,7 +572,10 @@ for r in 0..3:
 print(zs)
 ");
     assert!(cpp.contains("zs = std::move(t0);"), "{cpp}");
-    assert!(cpp.contains("zs = std::move(ys);"), "ys is not read again: {cpp}");
+    assert!(
+        cpp.contains("zs = std::move(ys);"),
+        "ys is not read again: {cpp}"
+    );
 }
 
 #[test]
@@ -598,7 +643,10 @@ fn an_if_let_payload_nothing_changes_is_a_reference_not_a_copy() {
     );
     assert!(cpp.contains("const std::vector<ll>& e = *t0;"), "{cpp}");
     // `swap` changes `best`: the optional is copied before the test.
-    assert!(cpp.contains("std::optional<std::vector<ll>> t0 = best;"), "{cpp}");
+    assert!(
+        cpp.contains("std::optional<std::vector<ll>> t0 = best;"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -641,7 +689,9 @@ fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list
 #[test]
 fn read_int_scans_digits_without_a_bound_check_per_char() {
     let out = cpp("let n: Int = read()\nprint(n)\n");
-    let start = out.find("inline ll read_int()").expect("read_int is emitted");
+    let start = out
+        .find("inline ll read_int()")
+        .expect("read_int is emitted");
     let read_int = &out[start..start + out[start..].find("\n}").unwrap()];
     assert!(read_int.contains("while (digit(in[in_at]))"), "{read_int}");
     assert!(!read_int.contains("in.size()"), "{read_int}");
@@ -658,10 +708,7 @@ fn an_optional_struct_with_an_int_field_has_no_flag() {
         "t = Tag('a')\n",
         "print(best == none, t == none)\n",
     ));
-    assert!(
-        cpp.contains("cpl::OptField<&Edge::to> best"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("cpl::OptField<&Edge::to> best"), "{cpp}");
     // A `Char` has no free value, so `?Tag` keeps its flag.
     assert!(cpp.contains("std::optional<Tag> t"), "{cpp}");
 }
@@ -822,11 +869,15 @@ fn static_struct_and_param_ops_eliminate_std_function() {
     assert!(out.contains("cpl_fn0("), "{out}");
     let explained = crate::explain_closures(&program);
     assert!(
-        explained.iter().any(|e| matches!(e.mode, crate::ClosureMode::StaticDirect { .. })),
+        explained
+            .iter()
+            .any(|e| matches!(e.mode, crate::ClosureMode::StaticDirect { .. })),
         "{explained:?}"
     );
     assert!(
-        explained.iter().all(|e| !matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+        explained
+            .iter()
+            .all(|e| !matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
         "{explained:?}"
     );
 }
@@ -846,21 +897,21 @@ fn multi_closure_fn_param_lowers_to_template_functor() {
     assert!(!out.contains("std::function"), "{out}");
     let explained = crate::explain_closures(&program);
     assert!(
-        explained.iter().any(|e| e.mode == crate::ClosureMode::StaticTemplate),
+        explained
+            .iter()
+            .any(|e| e.mode == crate::ClosureMode::StaticTemplate),
         "{explained:?}"
     );
 }
 
 #[test]
 fn non_escaping_closure_borrows_immutable_non_scalar_captures() {
-    let out = cpp(
-        "struct Box(xs: List<Int>):
+    let out = cpp("struct Box(xs: List<Int>):
     fn find_first(self, target: Int) -> ?Int:
         bsearch_first(0..xs.len, i => self.xs[i] >= target)
 let b = Box([1, 3, 5, 7])
 print(b.find_first(4) ?? -1)
-",
-    );
+");
     assert!(
         out.contains("[&self_2 = self"),
         "expected non-escaping closure passed to bsearch_first to capture `self` by reference:\n{out}"
@@ -885,13 +936,20 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
     let out = cpp(src);
     let acc = &out[out.find("struct Acc {").expect("Acc")..];
     assert!(!acc[..acc.find("};").unwrap()].contains("hook"), "{out}");
-    assert!(out.contains("std::optional<std::function<ll(ll)>> pick;"), "{out}");
+    assert!(
+        out.contains("std::optional<std::function<ll(ll)>> pick;"),
+        "{out}"
+    );
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
     let mode = |site: &str| &explained.iter().find(|e| e.site == site).expect(site).mode;
-    assert_eq!(mode("struct Acc.hook"), &crate::ClosureMode::Unread, "{explained:?}");
+    assert_eq!(
+        mode("struct Acc.hook"),
+        &crate::ClosureMode::Unread,
+        "{explained:?}"
+    );
     assert!(
         matches!(mode("struct Tagged.pick"), crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("read")),
         "{explained:?}"
@@ -920,8 +978,14 @@ fn recursive_fn_threads_its_closure_param_as_a_template() {
     );
     let out = cpp(src);
     assert!(out.contains("ll walk(ll n, F0&& f)"), "{out}");
-    assert!(out.contains("ll even(ll n, F0&& f)") && out.contains("ll odd(ll n, F0&& f)"), "{out}");
-    assert!(out.contains("ll wrap(ll n, const std::function<ll(ll)>& f)"), "{out}");
+    assert!(
+        out.contains("ll even(ll n, F0&& f)") && out.contains("ll odd(ll n, F0&& f)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("ll wrap(ll n, const std::function<ll(ll)>& f)"),
+        "{out}"
+    );
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
@@ -952,7 +1016,10 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
         "print(count(10))\n",
     );
     let out = cpp(src);
-    assert!(!out.contains("std::function") && !out.contains("<functional>"), "{out}");
+    assert!(
+        !out.contains("std::function") && !out.contains("<functional>"),
+        "{out}"
+    );
     assert!(out.contains("auto go = cpl::rec(["), "{out}");
     assert!(out.contains("](auto& go_2, ll u)"), "{out}");
     let mut db = cpl_check::Database::new();
@@ -960,7 +1027,9 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
-        explained.iter().all(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
+        explained
+            .iter()
+            .all(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
         "{explained:?}"
     );
 }
@@ -985,7 +1054,9 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
     assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
     let explained = crate::explain_closures(&program);
     assert!(
-        explained.iter().any(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
+        explained
+            .iter()
+            .any(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
         "{explained:?}"
     );
     assert!(
@@ -1017,9 +1088,18 @@ fn ranged_int_struct_fields_narrow_to_32_bits() {
         "bump(mut b.x)\n",
         "print(Z(998244352) * Z(998244352), BigZ(5), Edge(-7).w, DynZ(3), b.x)\n",
     ));
-    assert!(cpp.contains("uint32_t v = 0;"), "Mod<998244353> should narrow to uint32_t: {cpp}");
-    assert!(cpp.contains("int32_t w = 0;"), "signed range should narrow to int32_t: {cpp}");
-    assert!(cpp.contains("ll(a.v)"), "narrowed field reads should widen to ll: {cpp}");
+    assert!(
+        cpp.contains("uint32_t v = 0;"),
+        "Mod<998244353> should narrow to uint32_t: {cpp}"
+    );
+    assert!(
+        cpp.contains("int32_t w = 0;"),
+        "signed range should narrow to int32_t: {cpp}"
+    );
+    assert!(
+        cpp.contains("ll(a.v)"),
+        "narrowed field reads should widen to ll: {cpp}"
+    );
     assert!(
         cpp.contains("struct MutBox {\n  ll x = 0;"),
         "field taken by mut reference should stay ll: {cpp}"
@@ -1038,12 +1118,21 @@ fn a_row_a_loop_never_moves_is_checked_once_per_loop() {
         )
     };
     let once = cpp(&src(""));
-    assert!(once.contains("auto row = cpl::lazy([&] { return &cpl::at(g, i); });"), "{once}");
+    assert!(
+        once.contains("auto row = cpl::lazy([&] { return &cpl::at(g, i); });"),
+        "{once}"
+    );
     assert!(once.contains("cpl::at(row(), j)"), "{once}");
     let moved = cpp(&src("").replace("g[i][j] += j", "g[i][j] += j\n    g.push([j])"));
-    assert!(!moved.contains("cpl::lazy("), "a push onto g may move g[i]: {moved}");
+    assert!(
+        !moved.contains("cpl::lazy("),
+        "a push onto g may move g[i]: {moved}"
+    );
     let shifted = cpp(&src("").replace("g[i][j] += j", "g[i][j] += j\n    i = j"));
-    assert!(!shifted.contains("cpl::lazy("), "the row index changes in the loop: {shifted}");
+    assert!(
+        !shifted.contains("cpl::lazy("),
+        "the row index changes in the loop: {shifted}"
+    );
 }
 
 #[test]
@@ -1069,7 +1158,10 @@ fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
         "print((a & b & c).len)\n",
     ));
     assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
-    assert!(cpp.contains("cpl::Row<unsigned long long, 5>::filled("), "{cpp}");
+    assert!(
+        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
+        "{cpp}"
+    );
     assert!(
         !cpp.contains("std::vector<unsigned long long>("),
         "Bitset.new() return must construct cpl::Row directly without temp std::vector: {cpp}"
@@ -1127,16 +1219,25 @@ fn global_stored_once_with_a_literal_is_constexpr() {
     assert!(out.contains("static constexpr ll M = 1000000007;"), "{out}");
     assert!(out.contains("static constexpr ll n = 500000;"), "{out}");
     assert!(out.contains("static constexpr bool big = true;"), "{out}");
-    assert!(!out.contains("  M = 1000000007;"), "constexpr M must not be stored again: {out}");
+    assert!(
+        !out.contains("  M = 1000000007;"),
+        "constexpr M must not be stored again: {out}"
+    );
     let stored_twice = cpp(concat!("var m = 5\n", "m += read<Int>()\n", "print(m)\n"));
     assert!(!stored_twice.contains("constexpr ll m"), "{stored_twice}");
-    let closure_mut = cpp(concat!("var c = 0\n", "let inc = () => c += 1\n", "inc()\n", "print(c)\n"));
+    let closure_mut = cpp(concat!(
+        "var c = 0\n",
+        "let inc = () => c += 1\n",
+        "inc()\n",
+        "print(c)\n"
+    ));
     assert!(!closure_mut.contains("constexpr ll c"), "{closure_mut}");
 }
 
 #[test]
 fn a_str_grows_in_place_when_appended_to() {
-    let body = body("let s: Str = read()\nvar t = \"\"\nfor c in s: t += c\nprint(t, s[1..], s[..=1])\n");
+    let body =
+        body("let s: Str = read()\nvar t = \"\"\nfor c in s: t += c\nprint(t, s[1..], s[..=1])\n");
     assert!(body.contains("t.push_back((char)c)"), "{body}");
     assert!(!body.contains("Capture"), "{body}");
 }
@@ -1205,11 +1306,26 @@ let p = make(n)
 let q = twice(p.xs)
 print(p.xs.len + p.ys.len, q.xs.len)
 ");
-    assert!(cpp.contains("Pack pack(std::vector<ll> xs, std::vector<ll> ys) {"), "{cpp}");
-    assert!(cpp.contains("return Pack{std::move(xs), std::move(ys)};"), "{cpp}");
-    assert!(cpp.contains("return ::prog::pack(std::move(a), std::move(b));"), "{cpp}");
-    assert!(cpp.contains("Pack twice(const std::vector<ll>& xs) {"), "named twice: copied, not sunk: {cpp}");
-    assert!(cpp.contains("::prog::twice(p.xs)"), "a global is not moved from: {cpp}");
+    assert!(
+        cpp.contains("Pack pack(std::vector<ll> xs, std::vector<ll> ys) {"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("return Pack{std::move(xs), std::move(ys)};"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("return ::prog::pack(std::move(a), std::move(b));"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("Pack twice(const std::vector<ll>& xs) {"),
+        "named twice: copied, not sunk: {cpp}"
+    );
+    assert!(
+        cpp.contains("::prog::twice(p.xs)"),
+        "a global is not moved from: {cpp}"
+    );
 }
 #[test]
 fn closure_mutating_a_captured_local_is_not_hoisted_static() {
@@ -1240,7 +1356,6 @@ print(d.sum())
     assert!(cpp.contains("d = std::move(t"), "{cpp}");
 }
 
-
 #[test]
 fn map_keys_and_values_iterate_without_copying() {
     let out = body(concat!(
@@ -1264,7 +1379,10 @@ fn discarded_map_remove_emits_single_erase_without_map_get() {
         "print(v ?? 0)\n",
     ));
     assert!(out.contains("m.erase(1);"), "expected direct erase: {out}");
-    assert!(out.contains("cpl::map_take(m, 2)"), "expected map_take: {out}");
+    assert!(
+        out.contains("cpl::map_take(m, 2)"),
+        "expected map_take: {out}"
+    );
     assert!(
         !out.contains("map_get"),
         "Map.remove must not emit map_get + erase: {out}"
@@ -1273,21 +1391,18 @@ fn discarded_map_remove_emits_single_erase_without_map_get() {
 
 #[test]
 fn range_typed_stores_emit_check_only_when_unproven() {
-    let unchecked_store = cpp(
-        "struct S(a: 0..=1_000_000, b: Int)
+    let unchecked_store = cpp("struct S(a: 0..=1_000_000, b: Int)
 let k: Int = read()
 var s = S(0, 1)
 s.a = k
 print(s.a)
-",
-    );
+");
     assert!(
         unchecked_store.contains("cpl::check_range(k, 0, 1000000, \"0..=1_000_000\")"),
         "{unchecked_store}"
     );
 
-    let proven_store = cpp(
-        "const P = 998244353
+    let proven_store = cpp("const P = 998244353
 struct M(v: 0..P)
 let k: Int = read()
 let r: 0..=100 = read()
@@ -1295,8 +1410,7 @@ var x: 0..=1_000_000 = 0
 x = r
 let m = M(k % P)
 print(x, m.v)
-",
-    );
+");
     assert!(
         !proven_store.contains("cpl::check_range"),
         "proven stores (literal, narrower range var, k % P into 0..P) must elide check_range:\n{proven_store}"
@@ -1305,8 +1419,7 @@ print(x, m.v)
 
 #[test]
 fn ranged_array_elements_narrow_to_32_bit_and_widen_on_plain_flow() {
-    let top_level = cpp(
-        "let n: 1..=100 = read()
+    let top_level = cpp("let n: 1..=100 = read()
 domain V = 1..=n
 var a: [V]0..=1_000_000 = 0
 var b: [V]-1_000_000..=1_000_000 = 0
@@ -1317,8 +1430,7 @@ var total = 0
 for v in V:
     total += a[v] * a[v] + b[v]
 print(total)
-",
-    );
+");
     assert!(
         top_level.contains("std::vector<uint32_t> a"),
         "expected [V]0..=1_000_000 to emit std::vector<uint32_t>:\n{top_level}"
@@ -1332,8 +1444,7 @@ print(total)
         "expected narrowed array read to widen to ll before arithmetic:\n{top_level}"
     );
 
-    let generic_field = cpp(
-        "struct Tree<V>(dep: [V]0..=V.count, far: [V]Int)
+    let generic_field = cpp("struct Tree<V>(dep: [V]0..=V.count, far: [V]Int)
 fn make<V>() -> Tree<V>:
     var dep: [V]0..=V.count = 0
     var far: [V]Int = 0
@@ -1348,8 +1459,7 @@ var ans = 0
 for v in V:
     ans += t.dep[v] * t.dep[v] + t.far[v]
 print(ans)
-",
-    );
+");
     assert!(
         generic_field.contains("std::vector<uint32_t> dep;"),
         "expected generic struct field [V]0..=V.count to emit std::vector<uint32_t>:\n{generic_field}"
@@ -1359,8 +1469,7 @@ print(ans)
         "expected plain [V]Int field to stay std::vector<ll>:\n{generic_field}"
     );
 
-    let widened = cpp(
-        "fn sum_all<V>(xs: [V]Int) -> Int:
+    let widened = cpp("fn sum_all<V>(xs: [V]Int) -> Int:
     var s = 0
     for v in V:
         s += xs[v]
@@ -1371,8 +1480,7 @@ var a: [V]0..=1_000_000 = 0
 for v in V:
     a[v] = v.ord
 print(sum_all<V>(a))
-",
-    );
+");
     assert!(
         widened.contains("std::vector<ll> a"),
         "expected array passed to [V]Int param to widen to std::vector<ll>:\n{widened}"
@@ -1385,8 +1493,7 @@ print(sum_all<V>(a))
 
 #[test]
 fn unchecked_nested_index_assign_keeps_raw_cast() {
-    let out = cpp(
-        "@allow(unproven_list_index)
+    let out = cpp("@allow(unproven_list_index)
 fn scatter(mut sa: List<Int>, mut bkt: List<Int>, vec: List<Int>):
     unchecked:
         for k in 0..vec.len:
@@ -1397,9 +1504,11 @@ var sa = [0, 0, 0]
 var bkt = [3]
 scatter(mut sa, mut bkt, [0, 0, 0])
 print(sa[0])
-",
-    );
-    let scatter_body = out.split("void scatter").nth(1).expect("scatter fn emitted");
+");
+    let scatter_body = out
+        .split("void scatter")
+        .nth(1)
+        .expect("scatter fn emitted");
     let scatter_body = scatter_body.split("\n}").next().unwrap();
     assert!(
         !scatter_body.contains("cpl::at"),
@@ -1413,13 +1522,15 @@ fn fact(n: Int) -> Int = if n <= 1: 1 else: n * fact(n - 1)
 print(sq(7) + fact(5))
 ");
     assert!(out.contains("inline ll sq("), "{out}");
-    assert!(out.contains("\nll fact("), "a recursive fn keeps a plain definition:\n{out}");
+    assert!(
+        out.contains("\nll fact("),
+        "a recursive fn keeps a plain definition:\n{out}"
+    );
     assert!(!out.contains("inline void solve("), "{out}");
 }
 #[test]
 fn ranged_2d_nested_and_tuple_elements_narrow_and_widen_conservatively() {
-    let grid = cpp(
-        "let n: 1..=50 = read()
+    let grid = cpp("let n: 1..=50 = read()
 let m: 1..=50 = read()
 domain R = 0..n
 domain C = 0..m
@@ -1434,8 +1545,7 @@ for r in R:
     for c in C:
         total += g[r, c] * g[r, c] + s[r, c]
 print(total)
-",
-    );
+");
     assert!(
         grid.contains("cpl::Grid<uint32_t, 2> g"),
         "expected [R, C]0..=1_000_000 to emit cpl::Grid<uint32_t, 2>:\n{grid}"
@@ -1449,8 +1559,7 @@ print(total)
         "expected 2D grid read to widen to ll before arithmetic:\n{grid}"
     );
 
-    let nested = cpp(
-        "let n: 1..=50 = read()
+    let nested = cpp("let n: 1..=50 = read()
 let m: 1..=50 = read()
 domain D = 0..n
 domain E = 0..m
@@ -1468,8 +1577,7 @@ for i in D:
     for x in adj[i]:
         ans += x
 print(ans)
-",
-    );
+");
     assert!(
         nested.contains("std::vector<std::vector<uint32_t>> mat"),
         "expected [D][E]0..=1_000_000 to emit std::vector<std::vector<uint32_t>>:\n{nested}"
@@ -1479,8 +1587,7 @@ print(ans)
         "expected [D]List<0..=1_000_000> to emit std::vector<std::vector<uint32_t>>:\n{nested}"
     );
 
-    let tuples = cpp(
-        "let n: 1..=50 = read()
+    let tuples = cpp("let n: 1..=50 = read()
 domain V = 0..n
 var pts: [V](0..=1_000_000, -100..=100) = (0, 0)
 for v in V:
@@ -1490,15 +1597,13 @@ for v in V:
     let (x, y) = pts[v]
     ans += x * x + y
 print(ans)
-",
-    );
+");
     assert!(
         tuples.contains("std::vector<std::tuple<uint32_t, int32_t>> pts"),
         "expected [V](0..=1_000_000, -100..=100) to emit std::vector<std::tuple<uint32_t, int32_t>>:\n{tuples}"
     );
 
-    let widened = cpp(
-        "fn sum_grid<R, C>(g: [R, C]Int) -> Int:
+    let widened = cpp("fn sum_grid<R, C>(g: [R, C]Int) -> Int:
     var s = 0
     for x in g: s += x
     return s
@@ -1516,8 +1621,7 @@ var g: [D, D]0..=1_000 = 0
 var mat: [D][D]0..=1_000 = 0
 var pts: [D](0..=1_000, -100..=100) = (0, 0)
 print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
-",
-    );
+");
     assert!(
         widened.contains("cpl::Grid<ll, 2> g"),
         "expected 2D grid passed to [R, C]Int to widen:\n{widened}"
@@ -1533,14 +1637,12 @@ print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
 }
 #[test]
 fn u32_struct_field_proves_nonneg_for_mod_mul() {
-    let out = cpp(
-        "use std.mod.{Mod}
+    let out = cpp("use std.mod.{Mod}
 type Z = Mod<998_244_353>
 let a: Int = read()
 let b: Int = read()
 print((Z(a) * Z(b)).v)
-",
-    );
+");
     let mul = out
         .split("\ninline ")
         .find(|s| s.contains("_mul("))
@@ -1552,17 +1654,18 @@ print((Z(a) * Z(b)).v)
 }
 #[test]
 fn solve_only_globals_and_const_domain_lo_stay_internal_and_local() {
-    let out = cpp(
-        "let n: Int = read()
+    let out = cpp("let n: Int = read()
 domain D = 0..n
 var acc = 0
 for i in D:
     acc += i.ord
 print(acc)
-",
-    );
+");
     assert!(out.contains("static ll D_len = 0;"), "{out}");
-    assert!(!out.contains("D_lo = 0;"), "dead D_lo should be omitted:\n{out}");
+    assert!(
+        !out.contains("D_lo = 0;"),
+        "dead D_lo should be omitted:\n{out}"
+    );
     let solve_start = out.find("void solve()").expect("solve");
     let before_solve = &out[..solve_start];
     let in_solve = &out[solve_start..];
@@ -1578,8 +1681,7 @@ print(acc)
 
 #[test]
 fn first_gt_and_last_lt_on_views_do_not_copy() {
-    let out = cpp(
-        "use std.seq.{first_gt, last_lt}
+    let out = cpp("use std.seq.{first_gt, last_lt}
 let xs = [1, 2, 3, 3, 5, 7, 9]
 let a = xs[1..6].first_gt(3)
 let b = xs[1..6].last_lt(3)
@@ -1590,8 +1692,7 @@ let s = \"abcde\"
 let e = s[1..4].first_gt('c')
 let f = s[1..4].last_lt('c')
 print(a ?? -1, b ?? -1, c ?? -1, d ?? -1, e ?? -1, f ?? -1)
-",
-    );
+");
     let solve = out.split("void solve()").nth(1).expect("solve() emitted");
     assert!(
         !solve.contains("cpl::to_list(") && !solve.contains("cpl::to_str("),
@@ -1627,13 +1728,11 @@ print(m.len, z.len, c.len, inv, r.len, smn.len, smx.len)
 
 #[test]
 fn seq_take_is_o1_move_without_copy() {
-    let out = cpp(
-        "use std.seq
+    let out = cpp("use std.seq
 var a = [1, 2, 3]
 let b = seq.take(mut a)
 print(a.len, b.len)
-",
-    );
+");
     let take_fn = out
         .split("inline std::vector<ll> m1_take_")
         .nth(1)
@@ -1651,8 +1750,7 @@ print(a.len, b.len)
 
 #[test]
 fn multi_store_nonneg_var_drops_modp_and_sub_taints() {
-    let out = cpp(
-        "let n: 1..=100 = read()
+    let out = cpp("let n: 1..=100 = read()
 var s = 123
 var x = 10
 var acc = 0
@@ -1661,8 +1759,7 @@ for _ in 0..n:
     x -= 1
     acc += s % 1000 + x % 1000
 print(acc)
-",
-    );
+");
     let body = out.split("void solve()").nth(1).expect("solve emitted");
     assert!(
         body.contains("s % 1000") && body.contains("cpl::modp(x, 1000)"),
@@ -1672,8 +1769,7 @@ print(acc)
 
 #[test]
 fn inline_hint_ignores_braces_for_tuple_swap_helper() {
-    let out = cpp(
-        "fn gcd_ext(a: Int, b: Int) -> (Int, Int):
+    let out = cpp("fn gcd_ext(a: Int, b: Int) -> (Int, Int):
     var (r0, r1, x0, x1) = (a, b, 1, 0)
     while r1 != 0:
         let q = r0 / r1
@@ -1684,8 +1780,7 @@ fn inline_hint_ignores_braces_for_tuple_swap_helper() {
 let (a, b): (Int, Int) = read()
 let (g, x) = gcd_ext(a, b)
 print(g, x)
-",
-    );
+");
     assert!(
         out.contains("inline std::tuple<ll, ll> gcd_ext("),
         "short tuple-destructuring helper should receive inline hint:\n{out}"
@@ -1705,8 +1800,14 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
     };
     let moved = cpp(&src(""));
     assert!(moved.contains("dp = std::move(next);"), "{moved}");
-    let read = cpp(&src("").replace("    dp = next\n", "    dp = next.copy()\n    print(next[0])\n"));
-    assert!(!read.contains("dp = std::move(next);"), "next is read after the store: {read}");
+    let read = cpp(&src("").replace(
+        "    dp = next\n",
+        "    dp = next.copy()\n    print(next[0])\n",
+    ));
+    assert!(
+        !read.contains("dp = std::move(next);"),
+        "next is read after the store: {read}"
+    );
 }
 
 #[test]
@@ -1718,7 +1819,10 @@ fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
-    let wrapper = explained.iter().find(|e| e.site == "fn solve local fib").expect("wrapper");
+    let wrapper = explained
+        .iter()
+        .find(|e| e.site == "fn solve local fib")
+        .expect("wrapper");
     assert!(
         matches!(&wrapper.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("@memo")),
         "{explained:?}"
@@ -1757,7 +1861,10 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
             _ => None,
         })
         .collect();
-    assert!(reasons.iter().any(|r| r == "fn parameter of a closure"), "{reasons:?}");
+    assert!(
+        reasons.iter().any(|r| r == "fn parameter of a closure"),
+        "{reasons:?}"
+    );
 }
 
 #[test]
@@ -1783,10 +1890,16 @@ fn a_field_nothing_reads_is_dropped_with_its_stores_and_the_local_feeding_it() {
     let out = cpp(src);
     let def = &out[out.find("struct Paths {").expect("Paths")..];
     let def = &def[..def.find("};").unwrap()];
-    assert!(!def.contains("back") && def.contains("dist") && def.contains("order"), "{out}");
+    assert!(
+        !def.contains("back") && def.contains("dist") && def.contains("order"),
+        "{out}"
+    );
     let walk = &out[out.find("inline Paths walk").expect("walk")..];
     let walk = &walk[..walk.find("\n}\n").unwrap()];
-    assert!(!walk.contains(" back") && walk.contains("order.push_back"), "{out}");
+    assert!(
+        !walk.contains(" back") && walk.contains("order.push_back"),
+        "{out}"
+    );
     let dropped = crate::explain_dropped_fields(&lower(src));
     assert_eq!(dropped, vec!["struct Paths.back".to_string()], "{out}");
 }
@@ -1804,7 +1917,10 @@ fn a_field_is_kept_when_a_store_can_trap_or_the_whole_value_is_seen() {
         "print(make(read::<Int>()).a)\n",
     );
     let out = cpp(traps);
-    assert!(out.contains("cpl::at(b, k"), "an index that can trap stays: {out}");
+    assert!(
+        out.contains("cpl::at(b, k"),
+        "an index that can trap stays: {out}"
+    );
     let compared = concat!(
         "struct Q:\n",
         "    a: Int\n",
@@ -1827,4 +1943,3 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
     assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
     assert!(out.contains("std::optional<std::vector<char>>"), "{out}");
 }
-

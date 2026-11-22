@@ -66,7 +66,13 @@ fn sites(src: &str) -> (Vec<usize>, Vec<usize>) {
 /// failed reply, each diagnostic outside the text, and each request slower
 /// than a second (a hang) in `failures`; returns whether some hover reports
 /// storage.
-fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut Vec<String>) -> bool {
+fn walk(
+    server: &mut Server,
+    id: &mut u32,
+    name: &str,
+    src: &str,
+    failures: &mut Vec<String>,
+) -> bool {
     let uri = format!("file:///ports/{name}");
     let doc = || obj([("uri", uri.as_str().into())]);
     let open = server.handle(&message(
@@ -90,7 +96,10 @@ fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut
         failures.push(format!("{name}: no diagnostics published on open"));
     }
     let lines: Vec<&str> = src.split('\n').collect();
-    for diagnostic in published.iter().flat_map(|m| m.at(&["params", "diagnostics"]).as_array().unwrap_or(&[])) {
+    for diagnostic in published
+        .iter()
+        .flat_map(|m| m.at(&["params", "diagnostics"]).as_array().unwrap_or(&[]))
+    {
         for end in ["start", "end"] {
             let at = diagnostic.at(&["range", end]);
             let (line, col) = (at.at(&["line"]).as_u32(), at.at(&["character"]).as_u32());
@@ -101,7 +110,9 @@ fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut
                 _ => false,
             };
             if !fits {
-                failures.push(format!("{name}: diagnostic {end} outside the text: {diagnostic}"));
+                failures.push(format!(
+                    "{name}: diagnostic {end} outside the text: {diagnostic}"
+                ));
             }
         }
     }
@@ -115,9 +126,16 @@ fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut
         *id += 1;
         let params = obj([("textDocument", doc()), ("position", position(src, at))]);
         let start = Instant::now();
-        let reply: String = server.handle(&message(Some(*id), method, params)).iter().map(Value::to_string).collect();
+        let reply: String = server
+            .handle(&message(Some(*id), method, params))
+            .iter()
+            .map(Value::to_string)
+            .collect();
         let took = start.elapsed();
-        if reply.is_empty() || reply.contains("internal error in cpl") || reply.contains("\"error\"") {
+        if reply.is_empty()
+            || reply.contains("internal error in cpl")
+            || reply.contains("\"error\"")
+        {
             failures.push(format!("{name}: {method} at byte {at}: {reply:.200}"));
         }
         if took > Duration::from_secs(1) {
@@ -125,7 +143,11 @@ fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut
         }
         stores |= method == "textDocument/hover" && reply.contains("storage:");
     }
-    server.handle(&message(None, "textDocument/didClose", obj([("textDocument", doc())])));
+    server.handle(&message(
+        None,
+        "textDocument/didClose",
+        obj([("textDocument", doc())]),
+    ));
     stores
 }
 
@@ -141,7 +163,13 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let list = std::fs::read_to_string(root.join("corpus/hillclimb.json")).unwrap();
     let list = cpl_json::parse(&list).unwrap();
-    let ids: Vec<&str> = list.at(&["problems"]).as_array().unwrap_or(&[]).iter().filter_map(|p| p.as_str()).collect();
+    let ids: Vec<&str> = list
+        .at(&["problems"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|p| p.as_str())
+        .collect();
     assert_eq!(ids.len(), 100);
 
     let mut server = server();
@@ -149,11 +177,26 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let mut failures = Vec::new();
     let mut storage = 0;
     for pid in &ids {
-        let src = std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
-        storage += usize::from(walk(&mut server, &mut id, &format!("{pid}.cp"), &src, &mut failures));
+        let src =
+            std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
+        storage += usize::from(walk(
+            &mut server,
+            &mut id,
+            &format!("{pid}.cp"),
+            &src,
+            &mut failures,
+        ));
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    assert!(storage >= 88, "only {storage} of 100 ports show storage on some hover");
+    assert!(
+        failures.is_empty(),
+        "{} failures:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+    assert!(
+        storage >= 88,
+        "only {storage} of 100 ports show storage on some hover"
+    );
 }
 
 fn cp_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
@@ -177,10 +220,16 @@ fn every_corpus_program_and_conformance_case_is_served() {
     cp_files(&root.join("corpus/problems"), &mut files);
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);
-    assert!(corpus >= 1000 && files.len() - corpus >= 500, "{corpus} corpus files, {} cases", files.len() - corpus);
+    assert!(
+        corpus >= 1000 && files.len() - corpus >= 500,
+        "{corpus} corpus files, {} cases",
+        files.len() - corpus
+    );
     files.sort();
 
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);
+    let threads = std::thread::available_parallelism()
+        .map_or(4, |n| n.get())
+        .min(8);
     let chunk = files.len().div_ceil(threads);
     let failures: Vec<String> = std::thread::scope(|scope| {
         let workers: Vec<_> = files
@@ -193,14 +242,26 @@ fn every_corpus_program_and_conformance_case_is_served() {
                     let mut failures = Vec::new();
                     for path in files {
                         let src = std::fs::read_to_string(path).unwrap();
-                        let name = path.strip_prefix(root).unwrap().to_string_lossy().replace('/', "_");
+                        let name = path
+                            .strip_prefix(root)
+                            .unwrap()
+                            .to_string_lossy()
+                            .replace('/', "_");
                         walk(&mut server, &mut id, &name, &src, &mut failures);
                     }
                     failures
                 })
             })
             .collect();
-        workers.into_iter().flat_map(|w| w.join().unwrap()).collect()
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
     });
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} failures:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }

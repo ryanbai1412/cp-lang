@@ -67,22 +67,26 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     };
     // A library module is lowered only through the programs that use it,
     // where its generic code has its types.
-    let runs = analysis.items.iter().flat_map(|item| &item.syntax.parsed.stmts).any(|stmt| {
-        !matches!(
-            stmt.kind,
-            cpl_syntax::ast::StmtKind::Fn(_)
-                | cpl_syntax::ast::StmtKind::Struct { .. }
-                | cpl_syntax::ast::StmtKind::Enum { .. }
-                | cpl_syntax::ast::StmtKind::Domain { .. }
-                | cpl_syntax::ast::StmtKind::TypeAlias { .. }
-                | cpl_syntax::ast::StmtKind::Trait { .. }
-                | cpl_syntax::ast::StmtKind::Impl { .. }
-                | cpl_syntax::ast::StmtKind::Law { .. }
-                | cpl_syntax::ast::StmtKind::Use { .. }
-                | cpl_syntax::ast::StmtKind::Const { .. }
-                | cpl_syntax::ast::StmtKind::Context { .. }
-        )
-    });
+    let runs = analysis
+        .items
+        .iter()
+        .flat_map(|item| &item.syntax.parsed.stmts)
+        .any(|stmt| {
+            !matches!(
+                stmt.kind,
+                cpl_syntax::ast::StmtKind::Fn(_)
+                    | cpl_syntax::ast::StmtKind::Struct { .. }
+                    | cpl_syntax::ast::StmtKind::Enum { .. }
+                    | cpl_syntax::ast::StmtKind::Domain { .. }
+                    | cpl_syntax::ast::StmtKind::TypeAlias { .. }
+                    | cpl_syntax::ast::StmtKind::Trait { .. }
+                    | cpl_syntax::ast::StmtKind::Impl { .. }
+                    | cpl_syntax::ast::StmtKind::Law { .. }
+                    | cpl_syntax::ast::StmtKind::Use { .. }
+                    | cpl_syntax::ast::StmtKind::Const { .. }
+                    | cpl_syntax::ast::StmtKind::Context { .. }
+            )
+        });
     let mut out = if runs || !cpl_check::edition::is_v03() {
         check(analysis)
     } else {

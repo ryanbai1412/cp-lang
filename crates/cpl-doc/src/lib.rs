@@ -38,7 +38,11 @@ pub mod json {
     }
 
     fn example(example: &Example) -> String {
-        format!("{{\"code\":{},\"line\":{}}}", string(&example.code), example.line)
+        format!(
+            "{{\"code\":{},\"line\":{}}}",
+            string(&example.code),
+            example.line
+        )
     }
 
     fn item(item: &Item) -> String {

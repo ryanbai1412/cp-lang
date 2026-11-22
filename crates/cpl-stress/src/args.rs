@@ -29,9 +29,7 @@ impl Args {
             } else if let Some(flag) = switches.iter().find(|flag| *flag == arg) {
                 parsed.switches.push(flag);
             } else if arg.starts_with("--")
-                || (arg.starts_with('-')
-                    && arg.len() > 1
-                    && !arg.as_bytes()[1].is_ascii_digit())
+                || (arg.starts_with('-') && arg.len() > 1 && !arg.as_bytes()[1].is_ascii_digit())
             {
                 return Err(format!("unknown option `{arg}`"));
             } else {

@@ -61,13 +61,18 @@ impl Trap {
         use cpl_diag::codes;
         let m = self.message.as_str();
         let m = m.strip_prefix("reading the number of tests: ").unwrap_or(m);
-        if m.contains("input line") && (m.contains(" is outside `") || m.contains("does not fit in")) {
+        if m.contains("input line")
+            && (m.contains(" is outside `") || m.contains("does not fit in"))
+        {
             codes::INPUT_OUT_OF_CONTRACT
         } else if m.contains("integer overflow") || m.contains("does not fit in") {
             codes::OVERFLOW
         } else if m.starts_with("division by zero") {
             codes::DIVISION_BY_ZERO
-        } else if m.starts_with("`!` on") || m.contains("unwrapped a `None`") || m.contains("there is no value here") {
+        } else if m.starts_with("`!` on")
+            || m.contains("unwrapped a `None`")
+            || m.contains("there is no value here")
+        {
             codes::UNWRAP_NONE
         } else if m.starts_with("assertion failed") {
             codes::ASSERTION_FAILED
@@ -77,7 +82,8 @@ impl Trap {
             codes::RANGE_STORE
         } else if m.starts_with("expected a number, found")
             || m.starts_with("the input ended")
-            || (m.starts_with("expected a `") && m.ends_with("variant in the input")) {
+            || (m.starts_with("expected a `") && m.ends_with("variant in the input"))
+        {
             codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
             codes::TODO_REACHED
@@ -366,11 +372,7 @@ fn run_io(
             .iter()
             .map(|c| program.fn_guarded_domains(&c.ret, &c.body))
             .collect(),
-        fast_closures: program
-            .closures
-            .iter()
-            .map(classify_fast_closure)
-            .collect(),
+        fast_closures: program.closures.iter().map(classify_fast_closure).collect(),
         stack: Vec::new(),
         base: 0,
         input: match io.input {
@@ -695,7 +697,9 @@ fn root_local(place: &Place) -> Option<usize> {
 /// `dp[i][j]` and in `dp[i, j]`, `1` in `a[i].x`.
 /// Empties `locals` and gives back its allocation for borrows of another
 /// lifetime; collecting in place keeps the buffer.
-fn relifetime<'a, 'b>(mut locals: Vec<(&'a str, &'a Ty, &'a Value)>) -> Vec<(&'b str, &'b Ty, &'b Value)> {
+fn relifetime<'a, 'b>(
+    mut locals: Vec<(&'a str, &'a Ty, &'a Value)>,
+) -> Vec<(&'b str, &'b Ty, &'b Value)> {
     locals.clear();
     locals.into_iter().map(|_| unreachable!()).collect()
 }
@@ -771,7 +775,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
             if self.profiler.is_none() && !has_mut_view && !tree {
                 let traced = self.tracer.is_some();
-                self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds, traced)));
+                self.vm = Some(Rc::new(vm::CompiledProgram::compile(
+                    program,
+                    &self.feeds,
+                    traced,
+                )));
             }
         }
         if !program.multitest {
@@ -903,13 +911,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         let mut path = std::mem::take(&mut self.trace_path);
         path.clear();
-        path.extend(indices.iter().take(leading_indices(place)).map(|index| index.int().max(0) as usize));
+        path.extend(
+            indices
+                .iter()
+                .take(leading_indices(place))
+                .map(|index| index.int().max(0) as usize),
+        );
         self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
         self.trace_path = path;
     }
 
     fn assignments(&self) -> bool {
-        self.tracer.as_ref().is_some_and(|tracer| tracer.assignments)
+        self.tracer
+            .as_ref()
+            .is_some_and(|tracer| tracer.assignments)
     }
 
     /// With [`trace::TraceConfig::assignments`], the value of the
@@ -1089,7 +1104,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }};
         }
-        let is_enum_slot = matches!(self.locals().get(slot), Some(l) if matches!(l.ty, Ty::Enum(_)));
+        let is_enum_slot =
+            matches!(self.locals().get(slot), Some(l) if matches!(l.ty, Ty::Enum(_)));
         let wrap = |v: i64| {
             if is_enum_slot {
                 Value::Enum(v as u32, Rc::new(Vec::new()))
@@ -1249,7 +1265,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                     left &= left - 1;
                 }
             }
-            Iter::TreeRange { container, lo, hi, rev } => {
+            Iter::TreeRange {
+                container,
+                lo,
+                hi,
+                rev,
+            } => {
                 use std::ops::Bound;
                 let held = self.eval(container)?;
                 let lo_b = match lo {
@@ -1957,28 +1978,28 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Unary(op, operand) => {
                 let value = self.eval(operand)?;
                 match (op, value) {
-                    (UnOp::Neg, Value::Int(v)) => {
-                        match v.checked_neg() {
-                            Some(v) => Value::Int(v),
-                            None => return trap(
+                    (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
+                        Some(v) => Value::Int(v),
+                        None => {
+                            return trap(
                                 span,
                                 format!(
                                     "integer overflow: `-{v}` does not fit in an `Int` (64 bits)"
                                 ),
-                            ),
+                            )
                         }
-                    }
-                    (UnOp::Neg, Value::I128(v)) => {
-                        match v.checked_neg() {
-                            Some(v) => Value::I128(v),
-                            None => return trap(
+                    },
+                    (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
+                        Some(v) => Value::I128(v),
+                        None => {
+                            return trap(
                                 span,
                                 format!(
                                     "integer overflow: `-{v}` does not fit in an `I128` (128 bits)"
                                 ),
-                            ),
+                            )
                         }
-                    }
+                    },
                     (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
                     (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
                     (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
@@ -2073,9 +2094,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                     // profiler counts the same calls in both.
                     if let Ty::Struct(id) = &lhs.ty {
                         if let Some(lt_fn) = self.program.structs[*id].lt_fn {
-                            let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) { (l, r) } else { (r, l) };
+                            let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) {
+                                (l, r)
+                            } else {
+                                (r, l)
+                            };
                             let less = self.call_direct(lt_fn, vec![a, b], span)?.bool();
-                            return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) { less } else { !less }));
+                            return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) {
+                                less
+                            } else {
+                                !less
+                            }));
                         }
                     }
                     let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
@@ -2167,7 +2196,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                 },
                 _ => return trap(span, "`!` on `none`: there is no value here"),
             },
-            ExprKind::RangeCheck { value, lo, hi, text } => {
+            ExprKind::RangeCheck {
+                value,
+                lo,
+                hi,
+                text,
+            } => {
                 let v = self.eval(value)?.int();
                 let lo = match lo {
                     Some(lo) => self.eval(lo)?.int(),
@@ -2456,7 +2490,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                             Value::Array(Rc::new(Array::from_values(dims, items_vec)));
                     }
                     SortKind::List => {
-                        *self.resolve(place, &mut indices.iter())? = Value::List(Rc::new(items_vec));
+                        *self.resolve(place, &mut indices.iter())? =
+                            Value::List(Rc::new(items_vec));
                     }
                     SortKind::Str => {
                         let bytes: Vec<u8> = items_vec
@@ -2752,10 +2787,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Some(byte) => Ok(Value::Char(byte)),
                     None => trap(
                         span,
-                        format!(
-                            "index {index} is outside a string of length {}",
-                            view.len
-                        ),
+                        format!("index {index} is outside a string of length {}", view.len),
                     ),
                 }
             }
@@ -2776,7 +2808,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                         let key: String = key.iter().map(|b| *b as char).collect();
                         trap(
                             span,
-                            format!("the key `{key}` is not in the map; `m.get(k)` gives an optional"),
+                            format!(
+                                "the key `{key}` is not in the map; `m.get(k)` gives an optional"
+                            ),
                         )
                     }
                 }
@@ -3016,8 +3050,13 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.call_frames.push((f.name.as_str(), span));
         let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
         if self.tracer.is_some() {
-            let params: Vec<&str> = f.locals[..f.params.len()].iter().map(|l| l.name.as_str()).collect();
-            self.traced(|tracer, view| tracer.enter_call(&f.name, || trace::args_json(view, &params)));
+            let params: Vec<&str> = f.locals[..f.params.len()]
+                .iter()
+                .map(|l| l.name.as_str())
+                .collect();
+            self.traced(|tracer, view| {
+                tracer.enter_call(&f.name, || trace::args_json(view, &params))
+            });
         }
         let feeding = fed.is_some();
         if let Some(fed) = fed {
@@ -3467,7 +3506,11 @@ impl<'p, 'o> Interp<'p, 'o> {
         let out = self.merge_sort_by(xs, cmp, desc, span)?;
         let saved_profiler = self.profiler.take();
         for i in 1..out.len() {
-            let checks = [(&out[i], &out[i - 1]), (&out[i], &out[0]), (out.last().unwrap(), &out[i - 1])];
+            let checks = [
+                (&out[i], &out[i - 1]),
+                (&out[i], &out[0]),
+                (out.last().unwrap(), &out[i - 1]),
+            ];
             for (lhs, rhs) in checks {
                 let pair = if desc {
                     vec![rhs.clone(), lhs.clone()]
@@ -3737,30 +3780,32 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 best
             }
-            Builtin::Abs => {
-                match first {
-                    Value::Int(v) => match v.checked_abs() {
-                        Some(v) => Value::Int(v),
-                        None => return trap(
+            Builtin::Abs => match first {
+                Value::Int(v) => match v.checked_abs() {
+                    Some(v) => Value::Int(v),
+                    None => {
+                        return trap(
                             span,
                             format!(
                                 "integer overflow: `abs({v})` does not fit in an `Int` (64 bits)"
                             ),
-                        ),
-                    },
-                    Value::I128(v) => match v.checked_abs() {
-                        Some(v) => Value::I128(v),
-                        None => return trap(
+                        )
+                    }
+                },
+                Value::I128(v) => match v.checked_abs() {
+                    Some(v) => Value::I128(v),
+                    None => {
+                        return trap(
                             span,
                             format!(
                                 "integer overflow: `abs({v})` does not fit in an `I128` (128 bits)"
                             ),
-                        ),
-                    },
-                    Value::Float(v) => Value::Float(v.abs()),
-                    other => other,
-                }
-            }
+                        )
+                    }
+                },
+                Value::Float(v) => Value::Float(v.abs()),
+                other => other,
+            },
             Builtin::Sqrt => {
                 let x = first.float();
                 if x < 0.0 {
@@ -3926,15 +3971,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                         Some(i) => Some(self.mut_view_get(mv, i, span)?),
                         None => None,
                     },
-                    Value::Str(bytes) => {
-                        usize::try_from(at).ok().and_then(|i| bytes.get(i)).map(|b| Value::Char(*b))
-                    }
-                    Value::StrView(view) => {
-                        usize::try_from(at).ok().and_then(|i| view.get(i)).map(Value::Char)
-                    }
-                    Value::Array(array) if array.dims.len() == 1 => {
-                        (at >= 0 && at < array.dims[0]).then(|| array.get_unchecked_val(at as usize))
-                    }
+                    Value::Str(bytes) => usize::try_from(at)
+                        .ok()
+                        .and_then(|i| bytes.get(i))
+                        .map(|b| Value::Char(*b)),
+                    Value::StrView(view) => usize::try_from(at)
+                        .ok()
+                        .and_then(|i| view.get(i))
+                        .map(Value::Char),
+                    Value::Array(array) if array.dims.len() == 1 => (at >= 0 && at < array.dims[0])
+                        .then(|| array.get_unchecked_val(at as usize)),
                     Value::Range(lo, hi) => {
                         let len = (hi - lo).max(0);
                         (at >= 0 && at < len).then_some(Value::Int(lo + at))
@@ -3971,9 +4017,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Str(bytes) => {
                     Value::List(Rc::new(bytes.iter().copied().map(Value::Char).collect()))
                 }
-                Value::StrView(view) => {
-                    Value::List(Rc::new(view.to_vec().into_iter().map(Value::Char).collect()))
-                }
+                Value::StrView(view) => Value::List(Rc::new(
+                    view.to_vec().into_iter().map(Value::Char).collect(),
+                )),
                 other => other,
             },
             Builtin::ListToStr => match first {
@@ -4014,9 +4060,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 other => other,
             },
             Builtin::ListToArray => match first {
-                Value::List(items) => {
-                    Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items.to_vec())))
-                }
+                Value::List(items) => Value::Array(Rc::new(Array::from_values(
+                    vec![items.len() as i64],
+                    items.to_vec(),
+                ))),
                 Value::ListView(view) => {
                     let items = view.to_vec();
                     Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items)))
@@ -4072,9 +4119,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
                 Value::ListView(view) => optional(view.get(0).cloned()),
-                Value::MutView(mv) => {
-                    optional(if mv.len > 0 { Some(self.mut_view_get(mv, 0, span)?) } else { None })
-                }
+                Value::MutView(mv) => optional(if mv.len > 0 {
+                    Some(self.mut_view_get(mv, 0, span)?)
+                } else {
+                    None
+                }),
                 Value::Str(bytes) => optional(bytes.first().copied().map(Value::Char)),
                 Value::StrView(view) => optional(view.get(0).map(Value::Char)),
                 Value::Array(array) => optional(array.first()),
@@ -4092,9 +4141,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                     None => None,
                 }),
                 Value::Str(bytes) => optional(bytes.last().copied().map(Value::Char)),
-                Value::StrView(view) => {
-                    optional(view.len.checked_sub(1).and_then(|i| view.get(i)).map(Value::Char))
-                }
+                Value::StrView(view) => optional(
+                    view.len
+                        .checked_sub(1)
+                        .and_then(|i| view.get(i))
+                        .map(Value::Char),
+                ),
                 Value::Array(array) => optional(array.last()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*hi - 1))),
@@ -4387,7 +4439,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                     while j < lim {
                         let idx = if cyclic { j % m } else { j };
                         let ok = self
-                            .call_value(pred.clone(), vec![elems[i].clone(), elems[idx].clone()], span)?
+                            .call_value(
+                                pred.clone(),
+                                vec![elems[i].clone(), elems[idx].clone()],
+                                span,
+                            )?
                             .bool();
                         if !ok {
                             break;
@@ -4399,17 +4455,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::List(Rc::new(out))
             }
             Builtin::Reversed => match first {
-                Value::List(items) => {
-                    Value::ListView(Rc::new(ListViewVal::whole(items, true)))
-                }
+                Value::List(items) => Value::ListView(Rc::new(ListViewVal::whole(items, true))),
                 Value::ListView(view) => Value::ListView(Rc::new(view.reversed())),
                 Value::MutView(mv) => Value::ListView(Rc::new(ListViewVal::whole(
                     Rc::new(self.mut_view_to_vec(&mv, span)?),
                     true,
                 ))),
-                Value::Str(bytes) => {
-                    Value::StrView(Rc::new(StrViewVal::whole(bytes, true)))
-                }
+                Value::Str(bytes) => Value::StrView(Rc::new(StrViewVal::whole(bytes, true))),
                 Value::StrView(view) => Value::StrView(Rc::new(view.reversed())),
                 Value::Array(arr) => {
                     Value::ListView(Rc::new(ListViewVal::whole(Rc::new(arr.to_values()), true)))
@@ -4452,7 +4504,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 };
                 Value::Int(if op == Builtin::KeyPos {
                     let i = at - lo;
-                    if i < 0 || i >= len { -1 } else if rev { len - 1 - i } else { i }
+                    if i < 0 || i >= len {
+                        -1
+                    } else if rev {
+                        len - 1 - i
+                    } else {
+                        i
+                    }
                 } else {
                     lo + if rev { len - 1 - at } else { at }
                 })
@@ -4484,7 +4542,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let lo = values.next().unwrap_or_default().int();
                 let hi = values.next().unwrap_or_default().int();
                 let first = match first {
-                    Value::List(items) => Value::ListView(Rc::new(ListViewVal::whole(items, false))),
+                    Value::List(items) => {
+                        Value::ListView(Rc::new(ListViewVal::whole(items, false)))
+                    }
                     Value::Array(a) if a.dims.len() == 1 => {
                         Value::ListView(Rc::new(ListViewVal::whole(Rc::new(a.to_values()), false)))
                     }
@@ -4498,7 +4558,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 if lo < first_key || hi < lo || hi > first_key + len {
                     return trap(
                         span,
-                        format!("slice {lo}..{hi} is outside the keys {first_key}..{}", first_key + len),
+                        format!(
+                            "slice {lo}..{hi} is outside the keys {first_key}..{}",
+                            first_key + len
+                        ),
                     );
                 }
                 let rel = (lo - first_key) as usize..(hi - first_key) as usize;
@@ -4920,9 +4983,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Pop, Value::List(items)) => {
                 Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()))
             }
-            (Mutation::Pop, Value::Str(bytes)) => {
-                Value::Opt(OptVal::from_option(Rc::make_mut(bytes).pop().map(Value::Char)))
-            }
+            (Mutation::Pop, Value::Str(bytes)) => Value::Opt(OptVal::from_option(
+                Rc::make_mut(bytes).pop().map(Value::Char),
+            )),
             (Mutation::PopFirst, Value::Set(items)) => {
                 Value::Opt(OptVal::from_option(Rc::make_mut(items).pop_first()))
             }
@@ -5179,15 +5242,19 @@ impl<'p, 'o> Interp<'p, 'o> {
                         let (lo, len) = self.domains[*d];
                         if l_label < lo || l_label - lo >= len {
                             let name = &self.program.domains[*d];
-                            let message =
-                                format!("{l_label} is not in `{name}`, which is {}", describe(lo, len));
+                            let message = format!(
+                                "{l_label} is not in `{name}`, which is {}",
+                                describe(lo, len)
+                            );
                             return Err(fail(self.input.fail(l_start, message)));
                         }
                         let (r_label, r_start) = self.input.int().map_err(fail)?;
                         if r_label < lo || r_label - lo >= len {
                             let name = &self.program.domains[*d];
-                            let message =
-                                format!("{r_label} is not in `{name}`, which is {}", describe(lo, len));
+                            let message = format!(
+                                "{r_label} is not in `{name}`, which is {}",
+                                describe(lo, len)
+                            );
                             return Err(fail(self.input.fail(r_start, message)));
                         }
                         if l_label > r_label {
@@ -5453,17 +5520,19 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Shl if a < 0 => {
                     return trap(span, format!("`<<` of the negative number {a}"))
                 }
-                BinOp::Shl => match Some(a << b)
-                    .filter(|shifted| *shifted >= 0 && shifted >> b == a)
-                {
-                    Some(value) => Value::I128(value),
-                    None => return trap(
-                        span,
-                        format!(
+                BinOp::Shl => {
+                    match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
+                        Some(value) => Value::I128(value),
+                        None => {
+                            return trap(
+                                span,
+                                format!(
                             "integer overflow: `{a} << {b}` does not fit in an `I128` (128 bits)"
                         ),
-                    ),
-                },
+                            )
+                        }
+                    }
+                }
                 _ => Value::I128(a >> b),
             }
         }

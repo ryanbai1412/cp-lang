@@ -2004,19 +2004,20 @@ impl<'a> Lowerer<'a> {
                         && !inferred.contains_key(&name.text)
                     {
                         if lparams.len() == 1 {
-                            let dom_ty = inferred.get("V").or_else(|| inferred.get("D")).and_then(
-                                |ga| match ga {
-                                    GenArg::Domain(d) => Some(Ty::Pos(*d)),
-                                    GenArg::Ty(t) => Some(t.clone()),
-                                    _ => None,
-                                },
-                            );
+                            let dom_ty =
+                                inferred
+                                    .get("V")
+                                    .or_else(|| inferred.get("D"))
+                                    .and_then(|ga| match ga {
+                                        GenArg::Domain(d) => Some(Ty::Pos(*d)),
+                                        GenArg::Ty(t) => Some(t.clone()),
+                                        _ => None,
+                                    });
                             // `peel(v => adj[v])`: with nothing else to say what a
                             // vertex is, it is what the lambda indexes with `v`.
                             let dom_ty =
                                 dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
-                            if let (Some(Ty::Pos(d)), false) =
-                                (&dom_ty, inferred.contains_key("V"))
+                            if let (Some(Ty::Pos(d)), false) = (&dom_ty, inferred.contains_key("V"))
                             {
                                 if gen_names.iter().any(|g| g == "V") {
                                     inferred.insert("V".to_string(), GenArg::Domain(*d));
@@ -2484,9 +2485,8 @@ impl<'a> Lowerer<'a> {
                     self.probe_ty_silent(arg).and_then(|t| t.seq_elem()),
                     Some(Ty::Int)
                 )
-                && of.is_some_and(|(_, ret)| {
-                    ret.is_some_and(|r| type_uses_as_index(r, &ename.text))
-                })
+                && of
+                    .is_some_and(|(_, ret)| ret.is_some_and(|r| type_uses_as_index(r, &ename.text)))
             {
                 inferred.insert(ename.text.clone(), GenArg::Domain(d));
             }
@@ -2838,8 +2838,11 @@ impl<'a> Lowerer<'a> {
             GenArg::Ty(t) => t.clone(),
             _ => return None,
         };
-        let ret =
-            self.probe_lambda_ret(std::slice::from_ref(param), std::slice::from_ref(&pty), body)?;
+        let ret = self.probe_lambda_ret(
+            std::slice::from_ref(param),
+            std::slice::from_ref(&pty),
+            body,
+        )?;
         Some(Ty::Fn(vec![pty], Box::new(ret)))
     }
 
@@ -3056,52 +3059,60 @@ impl<'a> Lowerer<'a> {
                                 }
                             }
                         } else {
-                        // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
-                        // their first generic arg is `T`!
-                        for (pa, actual) in args.iter().zip(actual_args) {
-                            match actual {
-                                GenArg::Ty(t) => self.unify_ast_ty(pa, t, tpl_mod, gen_names, env),
-                                GenArg::Domain(d) => {
-                                    self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
-                                }
-                                GenArg::Int(v) => {
-                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
-                                        if a.is_empty() && gen_names.contains(&n.text) {
-                                            env.entry(n.text.clone()).or_insert(GenArg::Int(*v));
+                            // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
+                            // their first generic arg is `T`!
+                            for (pa, actual) in args.iter().zip(actual_args) {
+                                match actual {
+                                    GenArg::Ty(t) => {
+                                        self.unify_ast_ty(pa, t, tpl_mod, gen_names, env)
+                                    }
+                                    GenArg::Domain(d) => {
+                                        self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
+                                    }
+                                    GenArg::Int(v) => {
+                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
+                                        {
+                                            if a.is_empty() && gen_names.contains(&n.text) {
+                                                env.entry(n.text.clone())
+                                                    .or_insert(GenArg::Int(*v));
+                                            }
+                                        } else if let ast::TypeKind::Value(e) = &pa.kind {
+                                            if let ast::ExprKind::Name(n) = &e.kind {
+                                                if gen_names.contains(n) {
+                                                    env.entry(n.clone()).or_insert(GenArg::Int(*v));
+                                                }
+                                            }
                                         }
-                                    } else if let ast::TypeKind::Value(e) = &pa.kind {
-                                        if let ast::ExprKind::Name(n) = &e.kind {
-                                            if gen_names.contains(n) {
-                                                env.entry(n.clone()).or_insert(GenArg::Int(*v));
+                                    }
+                                    GenArg::RuntimeInt(gid) => {
+                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
+                                        {
+                                            if a.is_empty() && gen_names.contains(&n.text) {
+                                                env.entry(n.text.clone())
+                                                    .or_insert(GenArg::RuntimeInt(*gid));
+                                            }
+                                        }
+                                    }
+                                    GenArg::Op(op) => {
+                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
+                                        {
+                                            if a.is_empty() && gen_names.contains(&n.text) {
+                                                env.entry(n.text.clone())
+                                                    .or_insert(GenArg::Op(*op));
+                                            }
+                                        }
+                                    }
+                                    GenArg::Range(lo, hi) => {
+                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
+                                        {
+                                            if a.is_empty() && gen_names.contains(&n.text) {
+                                                env.entry(n.text.clone())
+                                                    .or_insert(GenArg::Range(*lo, *hi));
                                             }
                                         }
                                     }
                                 }
-                                GenArg::RuntimeInt(gid) => {
-                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
-                                        if a.is_empty() && gen_names.contains(&n.text) {
-                                            env.entry(n.text.clone())
-                                                .or_insert(GenArg::RuntimeInt(*gid));
-                                        }
-                                    }
-                                }
-                                GenArg::Op(op) => {
-                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
-                                        if a.is_empty() && gen_names.contains(&n.text) {
-                                            env.entry(n.text.clone()).or_insert(GenArg::Op(*op));
-                                        }
-                                    }
-                                }
-                                GenArg::Range(lo, hi) => {
-                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
-                                        if a.is_empty() && gen_names.contains(&n.text) {
-                                            env.entry(n.text.clone())
-                                                .or_insert(GenArg::Range(*lo, *hi));
-                                        }
-                                    }
-                                }
                             }
-                        }
                         }
                     }
                 }
@@ -3352,8 +3363,7 @@ impl<'a> Lowerer<'a> {
                 ast::PatternKind::Name(n) => n.clone(),
                 _ => format!("_p{i}"),
             };
-            let is_mut =
-                param_mut.get(i).copied().unwrap_or(false) || matches!(&*ty, Ty::Mut(_));
+            let is_mut = param_mut.get(i).copied().unwrap_or(false) || matches!(&*ty, Ty::Mut(_));
             let local_ty = match &*ty {
                 Ty::Mut(inner) => (**inner).clone(),
                 other => other.clone(),
@@ -3428,7 +3438,9 @@ impl<'a> Lowerer<'a> {
         let keep = match hint {
             Some(Ty::Fn(ps, _))
                 if ps.len() < all.len()
-                    && all[ps.len()..].iter().all(|p| p.default.is_some() && !p.mutable) =>
+                    && all[ps.len()..]
+                        .iter()
+                        .all(|p| p.default.is_some() && !p.mutable) =>
             {
                 ps.len()
             }
@@ -3889,9 +3901,7 @@ impl<'a> Lowerer<'a> {
             if let Some(p) = decl.params.get(i) {
                 if let Some(pty) = &p.ty {
                     if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
-                        if targs.is_empty()
-                            && decl.generics.iter().any(|g| g.text == name.text)
-                        {
+                        if targs.is_empty() && decl.generics.iter().any(|g| g.text == name.text) {
                             new_env.insert(name.text.clone(), GenArg::Ty(val.ty.clone()));
                         }
                     }
@@ -3910,7 +3920,11 @@ impl<'a> Lowerer<'a> {
             for (p, val) in decl.params.iter().zip(arg_vals) {
                 let slot = lw.temp(val.ty.clone());
                 out.push(Stmt::Let(slot, Some(val)));
-                lw.cx.scopes.last_mut().unwrap().insert(p.name.text.clone(), slot);
+                lw.cx
+                    .scopes
+                    .last_mut()
+                    .unwrap()
+                    .insert(p.name.text.clone(), slot);
             }
             match &decl.body {
                 ast::FnBody::Expr(e) => {
@@ -3918,7 +3932,14 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(v));
                 }
                 ast::FnBody::Block(b) => {
-                    let blk = lw.block(b, if ret_ty == Ty::Unit { Tail::Discard } else { Tail::Give });
+                    let blk = lw.block(
+                        b,
+                        if ret_ty == Ty::Unit {
+                            Tail::Discard
+                        } else {
+                            Tail::Give
+                        },
+                    );
                     out.extend(blk.stmts);
                 }
                 ast::FnBody::None => {}
@@ -4462,7 +4483,16 @@ fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) -> bool {
                 if matches!(&base.kind, ast::ExprKind::Name(n) if n == name)
                     && matches!(
                         m.text.as_str(),
-                        "count" | "len" | "all" | "first" | "last" | "start" | "end" | "cuts" | "mask" | "size"
+                        "count"
+                            | "len"
+                            | "all"
+                            | "first"
+                            | "last"
+                            | "start"
+                            | "end"
+                            | "cuts"
+                            | "mask"
+                            | "size"
                     ) =>
             {
                 true

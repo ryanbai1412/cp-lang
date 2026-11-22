@@ -372,7 +372,9 @@ fn a_solution_over_its_query_limit_is_blamed_not_the_starved_interactor() {
         "read guess || { echo \"the solution's output ended where a word was expected\" >&2; exit 1; }",
     ));
     let over = sh("echo 'query limit exceeded: the limit is 30' >&2; exit 3");
-    let judged = interactor.run(&over, "2\n", None, Duration::from_secs(10)).unwrap();
+    let judged = interactor
+        .run(&over, "2\n", None, Duration::from_secs(10))
+        .unwrap();
     assert_eq!(
         judged.verdict,
         Verdict::RuntimeError("exit code 3: query limit exceeded: the limit is 30".to_string())
@@ -2422,7 +2424,10 @@ else:
         let text = generate(&spec, &mut Rng::new(seed), Size::Small(4))
             .unwrap()
             .render();
-        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
         let (k, n) = (tokens[0], tokens[1]);
         seen.insert(k);
         match k {
@@ -2458,4 +2463,3 @@ fn judge(mut sol: Interactor):
     let per_case = spec.cases.as_ref().expect("multitest divider must be seen");
     assert_eq!(per_case.fields.len(), 2);
 }
-

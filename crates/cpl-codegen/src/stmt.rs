@@ -5,7 +5,8 @@ use crate::expr::string_literal;
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
+    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec,
+    Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -100,7 +101,9 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Print(args, end) => self.print_stmts(args, end.as_deref(), out),
-            ExprKind::Sort(place, sort_by, desc) => self.sort_stmts(place, sort_by, desc.as_deref(), out),
+            ExprKind::Sort(place, sort_by, desc) => {
+                self.sort_stmts(place, sort_by, desc.as_deref(), out)
+            }
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;
                 self.line(out, &format!("if ({cond}) {{"));
@@ -119,7 +122,10 @@ impl<'p> Emitter<'p> {
             // `x` was there is not asked, so what answers it is not written.
             ExprKind::Mutate(Mutation::Remove | Mutation::Insert, _, _) => {
                 let text = self.expr(e).text;
-                let text = text.strip_suffix(" != 0").or_else(|| text.strip_suffix(".second")).unwrap_or(&text);
+                let text = text
+                    .strip_suffix(" != 0")
+                    .or_else(|| text.strip_suffix(".second"))
+                    .unwrap_or(&text);
                 self.line(out, &format!("{text};"));
             }
             // A value named and dropped, as what is left of a flattened
@@ -135,7 +141,13 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, desc: Option<&Expr>, out: &mut String) {
+    pub fn sort_stmts(
+        &mut self,
+        place: &Place,
+        sort_by: &SortBy,
+        desc: Option<&Expr>,
+        out: &mut String,
+    ) {
         // Evaluate `desc` before binding `auto& r = p` so a side-effecting `desc`
         // cannot rehash/reallocate the outer container holding `place`.
         let desc = desc.map(|desc| {
@@ -189,7 +201,10 @@ impl<'p> Emitter<'p> {
                 );
                 if is_cheap_pure_key(key) {
                     let (a, b) = (self.temp(), self.temp());
-                    let cmp = turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"));
+                    let cmp = turned(
+                        format!("{kf}({a}) < {kf}({b})"),
+                        format!("{kf}({b}) < {kf}({a})"),
+                    );
                     self.line(
                         out,
                         &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
@@ -227,7 +242,9 @@ impl<'p> Emitter<'p> {
         let fused = found_entry(cond, then);
         if let Some((map, key)) = fused {
             let (m, k, it) = (self.expr(map).text, self.expr(key).text, self.temp());
-            out.push_str(&format!("{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"));
+            out.push_str(&format!(
+                "{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"
+            ));
             self.found.push((map.clone(), key.clone(), it));
         } else {
             let c = self.expr(cond).text;
@@ -290,7 +307,15 @@ impl<'p> Emitter<'p> {
     /// `for x in f(..)` over a `yields` fn as `cpl_each_f(.., body)`: the
     /// body runs on each value as `f` makes it and no list is built.
     /// False when the loop has to walk the list instead.
-    fn pushed_loop(&mut self, id: LoopId, decl: &str, first: &[String], seq: &Expr, body: &Block, out: &mut String) -> bool {
+    fn pushed_loop(
+        &mut self,
+        id: LoopId,
+        decl: &str,
+        first: &[String],
+        seq: &Expr,
+        body: &Block,
+        out: &mut String,
+    ) -> bool {
         let ExprKind::Call(callee, _) = &seq.kind else {
             return false;
         };
@@ -310,12 +335,17 @@ impl<'p> Emitter<'p> {
         let returns = cpl_ir::pushed::returns(body);
         let call = self.expr(seq).text;
         let name = fn_name(&self.program.fns[*callee].name);
-        let Some(call) = call.strip_prefix(&format!("{name}(")).and_then(|rest| rest.strip_suffix(')')) else {
+        let Some(call) = call
+            .strip_prefix(&format!("{name}("))
+            .and_then(|rest| rest.strip_suffix(')'))
+        else {
             return false;
         };
         let sep = if call.is_empty() { "" } else { ", " };
         let ret = match self.fn_id {
-            Some(f) if self.program.fns[f].ret != Ty::Unit => Some(self.ty(&self.program.fns[f].ret)),
+            Some(f) if self.program.fns[f].ret != Ty::Unit => {
+                Some(self.ty(&self.program.fns[f].ret))
+            }
             _ => None,
         };
         let outermost = self.bodies.is_empty();
@@ -331,12 +361,19 @@ impl<'p> Emitter<'p> {
             _ => None,
         };
         let open = if returns { "if (" } else { "" };
-        self.line(out, &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"));
+        self.line(
+            out,
+            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+        );
         self.indent += 1;
         for line in first {
             self.line(out, line);
         }
-        self.bodies.push(Pushed { id, depth: 0, result: result.clone() });
+        self.bodies.push(Pushed {
+            id,
+            depth: 0,
+            result: result.clone(),
+        });
         self.block(body, out);
         self.bodies.pop();
         self.line(out, "return 0;");
@@ -579,7 +616,12 @@ impl<'p> Emitter<'p> {
                 first.insert(0, format!("{cpp} {var} = ({cpp})__builtin_ctzll({left});"));
                 self.loop_body(id, &first, body, out);
             }
-            Iter::TreeRange { container, lo, hi, rev } => {
+            Iter::TreeRange {
+                container,
+                lo,
+                hi,
+                rev,
+            } => {
                 let effects = Effects::of_block(body);
                 let untouched = match walk::path_root(container) {
                     Some((false, local)) => !effects.locals.contains(&local),
@@ -615,7 +657,11 @@ impl<'p> Emitter<'p> {
                     (v, *inc)
                 });
                 let it = self.temp();
-                let key_expr = if is_map { format!("{it}->first") } else { format!("*{it}") };
+                let key_expr = if is_map {
+                    format!("{it}->first")
+                } else {
+                    format!("*{it}")
+                };
                 let bind_line = if is_map {
                     format!("{cpp} {var} = {cpp}{{{it}->first, {it}->second}};")
                 } else {
@@ -634,7 +680,10 @@ impl<'p> Emitter<'p> {
                         Some((v, false)) => format!("{it} != {c_name}.end() && ({key_expr} < {v})"),
                         None => format!("{it} != {c_name}.end()"),
                     };
-                    self.line(out, &format!("for (auto {it} = {start}; {cond}; ++{it}) {{"));
+                    self.line(
+                        out,
+                        &format!("for (auto {it} = {start}; {cond}; ++{it}) {{"),
+                    );
                     self.loop_body(id, &opening, body, out);
                 } else {
                     let start = match &hi_var {
@@ -642,7 +691,10 @@ impl<'p> Emitter<'p> {
                         Some((v, false)) => format!("{c_name}.lower_bound({v})"),
                         None => format!("{c_name}.end()"),
                     };
-                    self.line(out, &format!("for (auto {it} = {start}; {it} != {c_name}.begin(); ) {{"));
+                    self.line(
+                        out,
+                        &format!("for (auto {it} = {start}; {it} != {c_name}.begin(); ) {{"),
+                    );
                     let mut rev_opening = vec![format!("--{it};")];
                     if let Some((v, inc)) = &lo_var {
                         let stop = if *inc {
@@ -676,13 +728,14 @@ impl<'p> Emitter<'p> {
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
                 if !rev && matches!(seq.kind, ExprKind::Call(..)) {
-                    let (decl, pushed_first): (String, &[String]) = if matches!(ty, Ty::Struct(_)) && !hoisted {
-                        (format!("auto&& {name}"), &[])
-                    } else if ty.is_scalar() || var != name {
-                        (format!("{cpp} {var}"), &first)
-                    } else {
-                        (format!("const {cpp}& {var}"), &first)
-                    };
+                    let (decl, pushed_first): (String, &[String]) =
+                        if matches!(ty, Ty::Struct(_)) && !hoisted {
+                            (format!("auto&& {name}"), &[])
+                        } else if ty.is_scalar() || var != name {
+                            (format!("{cpp} {var}"), &first)
+                        } else {
+                            (format!("const {cpp}& {var}"), &first)
+                        };
                     if self.pushed_loop(id, &decl, pushed_first, seq, body, out) {
                         return;
                     }
@@ -735,13 +788,18 @@ impl<'p> Emitter<'p> {
                                 for arg in args {
                                     match arg {
                                         cpl_ir::Arg::Value(e)
-                                            if matches!(e.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str)
-                                                && walk::path_root(e).is_none() =>
+                                            if matches!(
+                                                e.ty,
+                                                Ty::List(_) | Ty::Array { .. } | Ty::Str
+                                            ) && walk::path_root(e).is_none() =>
                                         {
                                             let owner = self.temp();
                                             let owner_ty = self.ty(&e.ty);
                                             let init = self.expr(e).text;
-                                            self.line(out, &format!("{owner_ty} {owner} = {init};"));
+                                            self.line(
+                                                out,
+                                                &format!("{owner_ty} {owner} = {init};"),
+                                            );
                                             rendered.push(owner);
                                         }
                                         cpl_ir::Arg::Value(e) => rendered.push(self.expr(e).text),
@@ -766,10 +824,7 @@ impl<'p> Emitter<'p> {
                         self.ty_with_elem_layout(&seq.ty, self.expr_elem_layout(seq))
                     };
                     if untouched {
-                        self.line(
-                            out,
-                            &format!("const {holder_ty}& {held} = {seq_text};"),
-                        );
+                        self.line(out, &format!("const {holder_ty}& {held} = {seq_text};"));
                     } else {
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                     }
@@ -905,7 +960,9 @@ impl<'p> Emitter<'p> {
         if let (AssignOp::Set, ExprKind::Local(built)) = (op, &value.kind) {
             let made_here = last && std::ptr::eq(value, whole)
                 || flat(whole).is_some_and(|(stmts, _)| {
-                    stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
+                    stmts
+                        .iter()
+                        .any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
                 });
             if made_here && !value.ty.is_scalar() && !matches!(value.ty, Ty::Fn(..)) {
                 v.text = format!("std::move({})", v.text);
@@ -1016,7 +1073,11 @@ impl<'p> Emitter<'p> {
                     twice(self, out, &|p, v| format!("{p} = cpl::ipow({p}, {v});"));
                 }
                 (Ty::I128, BinOp::Div | BinOp::Rem) => {
-                    let helper = if bop == BinOp::Div { "ediv128" } else { "emod128" };
+                    let helper = if bop == BinOp::Div {
+                        "ediv128"
+                    } else {
+                        "emod128"
+                    };
                     self.need(helper);
                     twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
                 }
@@ -1078,7 +1139,9 @@ impl<'p> Emitter<'p> {
             // A temporary set once is read only by the pattern that takes
             // it apart, and a reference it holds was checked for all the
             // statements after it, which cover this name.
-            return temp(root) && !self.spent.contains(&root) && self.facts.stores((self.fn_id, false, root)) == 1;
+            return temp(root)
+                && !self.spent.contains(&root)
+                && self.facts.stores((self.fn_id, false, root)) == 1;
         }
         if !global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)) {
             return false;
@@ -1104,7 +1167,10 @@ impl<'p> Emitter<'p> {
             true => {
                 !effects.globals.contains(&root)
                     && effects.locals.iter().all(|local| *local >= params)
-                    && !effects.calls.iter().any(|f| self.summaries[*f].writes.contains(&root))
+                    && !effects
+                        .calls
+                        .iter()
+                        .any(|f| self.summaries[*f].writes.contains(&root))
             }
             false => !effects.locals.contains(&root) && !tail.calls,
         }
@@ -1120,17 +1186,25 @@ impl<'p> Emitter<'p> {
         }
         let program = self.program;
         match stmt {
-            Stmt::Let(slot, _) if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot) => {}
-            Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => self.dropped_value(value, out),
+            Stmt::Let(slot, _)
+                if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot) => {}
+            Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => {
+                self.dropped_value(value, out)
+            }
             Stmt::Expr(e)
                 if self.closure_id.is_none()
-                    && self.devirt.skippable_push(e).is_some_and(|slot| self.devirt.dead_local(self.fn_id, slot)) => {}
+                    && self
+                        .devirt
+                        .skippable_push(e)
+                        .is_some_and(|slot| self.devirt.dead_local(self.fn_id, slot)) => {}
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
-            Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
-                if self.pushing.is_some()
-                    && self.closure_id.is_none()
-                    && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
+            Stmt::Expr(Expr {
+                kind: ExprKind::Mutate(how, place, items),
+                ..
+            }) if self.pushing.is_some()
+                && self.closure_id.is_none()
+                && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
                 let item = self.flatten(&items[0], out);
                 let text = self.expr(item).text;
@@ -1139,10 +1213,15 @@ impl<'p> Emitter<'p> {
                         let x = self.temp();
                         self.line(out, &format!("for (auto&& {x} : {text}) if (int cpl_r = cpl_f({x})) return cpl_r;"));
                     }
-                    _ => self.line(out, &format!("if (int cpl_r = cpl_f({text})) return cpl_r;")),
+                    _ => self.line(
+                        out,
+                        &format!("if (int cpl_r = cpl_f({text})) return cpl_r;"),
+                    ),
                 }
             }
-            Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => self.line(out, "return 0;"),
+            Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => {
+                self.line(out, "return 0;")
+            }
             // In the body of a loop over a `yields` fn, which is a callback.
             Stmt::Return(value) if !self.bodies.is_empty() => {
                 if let Some(value) = value {
@@ -1157,10 +1236,20 @@ impl<'p> Emitter<'p> {
                 }
                 self.line(out, "return 2;");
             }
-            Stmt::Break(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+            Stmt::Break(to)
+                if self
+                    .bodies
+                    .last()
+                    .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
+            {
                 self.line(out, "return 1;")
             }
-            Stmt::Continue(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+            Stmt::Continue(to)
+                if self
+                    .bodies
+                    .last()
+                    .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
+            {
                 self.line(out, "return 0;")
             }
             Stmt::Let(slot, Some(init))
@@ -1170,7 +1259,9 @@ impl<'p> Emitter<'p> {
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
                     && self.facts.stores((self.fn_id, false, *slot)) <= 1 =>
             {
-                let ExprKind::Closure(cid) = init.kind else { unreachable!() };
+                let ExprKind::Closure(cid) = init.kind else {
+                    unreachable!()
+                };
                 self.need("rec");
                 self.rec_slot = Some(*slot);
                 let text = self.emit_closure(cid, false).text;
@@ -1191,7 +1282,11 @@ impl<'p> Emitter<'p> {
                         if hoisted {
                             self.line(out, &format!("{name} = {cpp}();"));
                         } else {
-                            let z = if fixed_len.is_some() { "{}" } else { self.zero_init(&ty) };
+                            let z = if fixed_len.is_some() {
+                                "{}"
+                            } else {
+                                self.zero_init(&ty)
+                            };
                             self.line(out, &format!("{cpp} {name}{z};"));
                         }
                     }
@@ -1258,17 +1353,21 @@ impl<'p> Emitter<'p> {
                         ExprKind::Local(of) if self.spent.contains(of) => {
                             format!("std::get<{index}>(std::move({}))", self.names[*of])
                         }
-                        _ => if fixed_len.is_some() {
+                        _ => {
+                            if fixed_len.is_some() {
+                                self.expr_with_fixed_len(init, fixed_len).text
+                            } else {
+                                self.expr_with_elem_layout(init, elem_l.as_ref()).text
+                            }
+                        }
+                    },
+                    _ => {
+                        if fixed_len.is_some() {
                             self.expr_with_fixed_len(init, fixed_len).text
                         } else {
                             self.expr_with_elem_layout(init, elem_l.as_ref()).text
-                        },
-                    },
-                    _ => if fixed_len.is_some() {
-                        self.expr_with_fixed_len(init, fixed_len).text
-                    } else {
-                        self.expr_with_elem_layout(init, elem_l.as_ref()).text
-                    },
+                        }
+                    }
                 };
                 let auto = matches!(ty, Ty::Fn(..))
                     && self.closure_id.is_none()
@@ -1317,12 +1416,15 @@ impl<'p> Emitter<'p> {
                     let lead = pad(self.indent);
                     let mut head = format!("{lead}{{\n");
                     for (_, name, code) in &rows {
-                        head.push_str(&format!("{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"));
+                        head.push_str(&format!(
+                            "{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"
+                        ));
                     }
                     out.insert_str(start, &head);
                     self.line(out, "}");
                 }
-                self.inside.truncate(self.inside.len() - usize::from(inside.is_some()));
+                self.inside
+                    .truncate(self.inside.len() - usize::from(inside.is_some()));
             }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
@@ -1341,15 +1443,23 @@ impl<'p> Emitter<'p> {
                         && matches!(value.kind, ExprKind::Call(..));
                     let text = if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
-                            if !items.is_empty() && !matches!(value.ty, Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)) {
-                                let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+                            if !items.is_empty()
+                                && !matches!(
+                                    value.ty,
+                                    Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)
+                                )
+                            {
+                                let params =
+                                    self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
                                 let ty = self.ty(&value.ty);
                                 let struct_id = match value.ty {
                                     Ty::Struct(s) => Some(s),
                                     _ => None,
                                 };
                                 let dropped: Vec<bool> = (0..items.len())
-                                    .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                                    .map(|idx| {
+                                        struct_id.is_some_and(|s| self.devirt.unread_field(s, idx))
+                                    })
                                     .collect();
                                 let rendered: Vec<String> = items
                                     .iter()
@@ -1482,7 +1592,11 @@ impl<'p> Emitter<'p> {
             Stmt::DefDomain { id, lo, len } => {
                 let d = ident(&program.domains[*id]);
                 let lo_const = self.facts.const_domain_lo(*id).is_some();
-                let lo = if lo_const { String::new() } else { self.expr(lo).text };
+                let lo = if lo_const {
+                    String::new()
+                } else {
+                    self.expr(lo).text
+                };
                 let len = self.expr(len).text;
                 if !lo_const {
                     self.line(out, &format!("{d}_lo = {lo};"));
@@ -1548,12 +1662,22 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     }
     let (mut reads, mut quiet) = (false, true);
     walk::deep_exprs(then, &mut |e| match &e.kind {
-        ExprKind::Index(base, at) if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind => reads = true,
-        ExprKind::Mutate(..) | ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => quiet = false,
+        ExprKind::Index(base, at)
+            if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind =>
+        {
+            reads = true
+        }
+        ExprKind::Mutate(..)
+        | ExprKind::Call(..)
+        | ExprKind::CallExpr(..)
+        | ExprKind::Closure(_) => quiet = false,
         _ => {}
     });
     walk::deep_stmts(then, &mut |stmt| {
-        if !matches!(stmt, Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)) {
+        if !matches!(
+            stmt,
+            Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)
+        ) {
             quiet = false;
         }
     });
@@ -1564,19 +1688,31 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
 /// block declared and never mentions again. The next pass of a loop
 /// declares `y` afresh, so nothing can read it after the store.
 fn last_read(block: &Block, k: usize) -> bool {
-    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else { return false };
-    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) = (&value.kind, &place.kind) else {
+    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
+        return false;
+    };
+    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) =
+        (&value.kind, &place.kind)
+    else {
         return false;
     };
     if walk::root(place) == (false, *slot)
-        || !block.stmts[..k].iter().any(|stmt| matches!(stmt, Stmt::Let(s, _) if s == slot))
+        || !block.stmts[..k]
+            .iter()
+            .any(|stmt| matches!(stmt, Stmt::Let(s, _) if s == slot))
     {
         return false;
     }
     let mut seen = false;
-    walk::deep_exprs(block, &mut |e| seen |= matches!(e.kind, ExprKind::Closure(_)));
-    let rest = Block { stmts: block.stmts[k + 1..].to_vec() };
-    walk::deep_exprs(&rest, &mut |e| seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot));
+    walk::deep_exprs(block, &mut |e| {
+        seen |= matches!(e.kind, ExprKind::Closure(_))
+    });
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    walk::deep_exprs(&rest, &mut |e| {
+        seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot)
+    });
     !seen && !Effects::of_block(&rest).locals.contains(slot)
 }
 
@@ -1593,7 +1729,9 @@ pub(crate) struct Tail {
 
 impl Tail {
     fn of(stmts: &[Stmt]) -> Tail {
-        let block = Block { stmts: stmts.to_vec() };
+        let block = Block {
+            stmts: stmts.to_vec(),
+        };
         let (mut calls, mut opaque) = (false, false);
         walk::deep_exprs(&block, &mut |e| match e.kind {
             ExprKind::Call(..) => calls = true,
@@ -1603,7 +1741,11 @@ impl Tail {
             }
             _ => {}
         });
-        Tail { effects: Effects::of_block(&block), calls, opaque }
+        Tail {
+            effects: Effects::of_block(&block),
+            calls,
+            opaque,
+        }
     }
 }
 
@@ -1611,7 +1753,10 @@ impl Tail {
 /// a container of the declared type built with a size. The size cast
 /// first means the arguments can't be read as a declaration.
 fn sized_ctor<'t>(cpp: &str, text: &'t str) -> Option<&'t str> {
-    let args = text.strip_prefix(cpp)?.strip_prefix('(')?.strip_suffix(')')?;
+    let args = text
+        .strip_prefix(cpp)?
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
     if !args.starts_with("(size_t)(") {
         return None;
     }
@@ -1643,10 +1788,10 @@ fn is_cheap_pure_key(e: &Expr) -> bool {
         | ExprKind::Local(_)
         | ExprKind::Global(_) => true,
         ExprKind::Some(inner) | ExprKind::Field(inner, _) => is_cheap_pure_key(inner),
-        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot, inner) => is_cheap_pure_key(inner),
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => {
-            items.iter().all(is_cheap_pure_key)
+        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot, inner) => {
+            is_cheap_pure_key(inner)
         }
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
         _ => false,
     }
 }

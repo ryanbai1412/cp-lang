@@ -70,7 +70,12 @@ impl Value {
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             Value::Int(n) => Some(*n),
-            Value::Float(f) if f.is_finite() && f.fract() == 0.0 && *f >= i64::MIN as f64 && *f < 9223372036854775808.0 => {
+            Value::Float(f)
+                if f.is_finite()
+                    && f.fract() == 0.0
+                    && *f >= i64::MIN as f64
+                    && *f < 9223372036854775808.0 =>
+            {
                 Some(*f as i64)
             }
             _ => None,
@@ -80,7 +85,12 @@ impl Value {
     pub fn as_u64(&self) -> Option<u64> {
         match self {
             Value::Int(n) if *n >= 0 => Some(*n as u64),
-            Value::Float(f) if f.is_finite() && *f >= 0.0 && f.fract() == 0.0 && *f < 18446744073709551616.0 => {
+            Value::Float(f)
+                if f.is_finite()
+                    && *f >= 0.0
+                    && f.fract() == 0.0
+                    && *f < 18446744073709551616.0 =>
+            {
                 Some(*f as u64)
             }
             _ => None,
@@ -505,8 +515,10 @@ impl<'a> Parser<'a> {
         let Some(slice) = self.bytes.get(self.pos..self.pos + 4) else {
             return Err(self.err_at(start, "incomplete `\\u` escape"));
         };
-        let s = std::str::from_utf8(slice).map_err(|_| self.err_at(start, "invalid `\\u` escape"))?;
-        let v = u16::from_str_radix(s, 16).map_err(|_| self.err_at(start, "invalid `\\u` escape"))?;
+        let s =
+            std::str::from_utf8(slice).map_err(|_| self.err_at(start, "invalid `\\u` escape"))?;
+        let v =
+            u16::from_str_radix(s, 16).map_err(|_| self.err_at(start, "invalid `\\u` escape"))?;
         self.pos += 4;
         Ok(v)
     }
@@ -552,14 +564,16 @@ impl<'a> Parser<'a> {
                                 let cp = 0x10000
                                     + (((u32::from(code) - 0xD800) << 10)
                                         | (u32::from(low) - 0xDC00));
-                                let ch = char::from_u32(cp)
-                                    .ok_or_else(|| self.err_at(esc_pos, "invalid unicode scalar"))?;
+                                let ch = char::from_u32(cp).ok_or_else(|| {
+                                    self.err_at(esc_pos, "invalid unicode scalar")
+                                })?;
                                 out.push(ch);
                             } else if (0xDC00..=0xDFFF).contains(&code) {
                                 return Err(self.err_at(esc_pos, "unpaired low surrogate"));
                             } else {
-                                let ch = char::from_u32(u32::from(code))
-                                    .ok_or_else(|| self.err_at(esc_pos, "invalid unicode scalar"))?;
+                                let ch = char::from_u32(u32::from(code)).ok_or_else(|| {
+                                    self.err_at(esc_pos, "invalid unicode scalar")
+                                })?;
                                 out.push(ch);
                             }
                         }
@@ -661,10 +675,7 @@ mod tests {
         );
         let serialized = to_string(&v);
         assert_eq!(parse(&serialized).unwrap(), v);
-        assert_eq!(
-            escape_string("a\tb\u{1}\x08\x0c"),
-            "\"a\\tb\\u0001\\b\\f\""
-        );
+        assert_eq!(escape_string("a\tb\u{1}\x08\x0c"), "\"a\\tb\\u0001\\b\\f\"");
     }
 
     #[test]
@@ -688,11 +699,20 @@ mod tests {
         assert_eq!(parse("-0").unwrap(), Value::Int(0));
         assert_eq!(parse("9223372036854775807").unwrap(), Value::Int(i64::MAX));
         assert_eq!(parse("-9223372036854775808").unwrap(), Value::Int(i64::MIN));
-        assert_eq!(parse("9223372036854775807").unwrap().as_i64(), Some(i64::MAX));
-        assert_eq!(parse("-9223372036854775808").unwrap().as_i64(), Some(i64::MIN));
+        assert_eq!(
+            parse("9223372036854775807").unwrap().as_i64(),
+            Some(i64::MAX)
+        );
+        assert_eq!(
+            parse("-9223372036854775808").unwrap().as_i64(),
+            Some(i64::MIN)
+        );
         assert_eq!(to_string(&Value::Int(i64::MAX)), "9223372036854775807");
         assert_eq!(to_string(&Value::Int(i64::MIN)), "-9223372036854775808");
-        assert!(matches!(parse("9223372036854775808").unwrap(), Value::Float(_)));
+        assert!(matches!(
+            parse("9223372036854775808").unwrap(),
+            Value::Float(_)
+        ));
         assert_eq!(parse("1.5e2").unwrap(), Value::Float(150.0));
         assert_eq!(parse("-3.25").unwrap(), Value::Float(-3.25));
     }
@@ -711,7 +731,10 @@ mod tests {
             ("", 0),
         ] {
             let err = parse(bad).unwrap_err();
-            assert_eq!(err.offset, expected_offset, "wrong offset for {bad:?}: {err}");
+            assert_eq!(
+                err.offset, expected_offset,
+                "wrong offset for {bad:?}: {err}"
+            );
         }
     }
 
@@ -720,7 +743,11 @@ mod tests {
         let ok = format!("{}1{}", "[".repeat(64), "]".repeat(64));
         assert!(parse(&ok).is_ok());
 
-        let too_deep = format!("{}1{}", "[".repeat(MAX_DEPTH + 1), "]".repeat(MAX_DEPTH + 1));
+        let too_deep = format!(
+            "{}1{}",
+            "[".repeat(MAX_DEPTH + 1),
+            "]".repeat(MAX_DEPTH + 1)
+        );
         let err = parse(&too_deep).unwrap_err();
         assert!(err.message.contains("depth"), "unexpected error: {err}");
     }

@@ -317,10 +317,20 @@ fn formats_the_whole_corpus() {
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
-    for dir in ["corpus/problems", "corpus/lib", "crates/cpl-cli/tests/cases", "examples", "stdlib"] {
+    for dir in [
+        "corpus/problems",
+        "corpus/lib",
+        "crates/cpl-cli/tests/cases",
+        "examples",
+        "stdlib",
+    ] {
         walk(&root.join(dir), &mut files);
     }
-    assert!(files.len() >= 1000, "found only {} corpus files", files.len());
+    assert!(
+        files.len() >= 1000,
+        "found only {} corpus files",
+        files.len()
+    );
     let mut formatted = 0;
     for file in &files {
         let src = std::fs::read_to_string(file).unwrap();
@@ -473,8 +483,14 @@ mod cli {
 fn keeps_an_inner_attribute_tight() {
     assert_eq!(fmt("@! multitest\nprint(1)\n"), "@!multitest\nprint(1)\n");
     assert_eq!(fmt("@!multitest\nprint(1)\n"), "@!multitest\nprint(1)\n");
-    assert_eq!(fmt("@! interactive\n@!multitest\nprint(1)\n"), "@!interactive\n@!multitest\nprint(1)\n");
-    assert_eq!(fmt("@ memo\nfn f(n: Int) -> Int = n\n"), "@memo\nfn f(n: Int) -> Int = n\n");
+    assert_eq!(
+        fmt("@! interactive\n@!multitest\nprint(1)\n"),
+        "@!interactive\n@!multitest\nprint(1)\n"
+    );
+    assert_eq!(
+        fmt("@ memo\nfn f(n: Int) -> Int = n\n"),
+        "@memo\nfn f(n: Int) -> Int = n\n"
+    );
     assert_eq!(fmt("let y = o ! + 1\n"), "let y = o! + 1\n");
 }
 

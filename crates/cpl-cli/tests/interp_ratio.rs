@@ -77,23 +77,74 @@ fn cf2183f_tree_2d_dp_parity_and_speed() {
 #[test]
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
     let cases = [
-        ("corpus/problems/cf2262e/port.cp", "corpus/problems/cf2262e/tests/sample1.in"),
-        ("corpus/problems/cf2150d/port.cp", "corpus/problems/cf2150d/tests/sample1.in"),
-        ("corpus/problems/cf2124f2/port.cp", "corpus/problems/cf2124f2/tests/1.in"),
-        ("corpus/problems/cf2096f/port.cp", "corpus/problems/cf2096f/tests/1.in"),
-        ("corpus/problems/cf2089c1/port.cp", "corpus/problems/cf2089c1/tests/1.in"),
-        ("corpus/problems/cf2084g1/port.cp", "corpus/problems/cf2084g1/tests/sample1.in"),
-        ("corpus/problems/cf2084h/port.cp", "corpus/problems/cf2084h/tests/sample1.in"),
-        ("corpus/problems/cf2101c/port.cp", "corpus/problems/cf2101c/tests/1.in"),
-        ("corpus/problems/cf2237b/port.cp", "corpus/problems/cf2237b/tests/sample1.in"),
-        ("corpus/problems/ucup5s06g/port.cp", "corpus/problems/ucup5s06g/tests/s1.in"),
-        ("corpus/problems/cf2180g/port.cp", "corpus/problems/cf2180g/tests/sample1.in"),
-        ("corpus/problems/cf2207f/port.cp", "corpus/problems/cf2207f/tests/1.in"),
-        ("corpus/problems/cf2261g/port.cp", "corpus/problems/cf2261g/tests/sample1.in"),
-        ("corpus/problems/cf2138f/port.cp", "corpus/problems/cf2138f/tests/1.in"),
-        ("corpus/problems/cf2150c/port.cp", "corpus/problems/cf2150c/tests/sample1.in"),
-        ("corpus/problems/cf2127h/port.cp", "corpus/problems/cf2127h/tests/sample1.in"),
-        ("corpus/problems/cf2062f/port.cp", "corpus/problems/cf2062f/tests/sample1.in"),
+        (
+            "corpus/problems/cf2262e/port.cp",
+            "corpus/problems/cf2262e/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2150d/port.cp",
+            "corpus/problems/cf2150d/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2124f2/port.cp",
+            "corpus/problems/cf2124f2/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2096f/port.cp",
+            "corpus/problems/cf2096f/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2089c1/port.cp",
+            "corpus/problems/cf2089c1/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2084g1/port.cp",
+            "corpus/problems/cf2084g1/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2084h/port.cp",
+            "corpus/problems/cf2084h/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2101c/port.cp",
+            "corpus/problems/cf2101c/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2237b/port.cp",
+            "corpus/problems/cf2237b/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/ucup5s06g/port.cp",
+            "corpus/problems/ucup5s06g/tests/s1.in",
+        ),
+        (
+            "corpus/problems/cf2180g/port.cp",
+            "corpus/problems/cf2180g/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2207f/port.cp",
+            "corpus/problems/cf2207f/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2261g/port.cp",
+            "corpus/problems/cf2261g/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2138f/port.cp",
+            "corpus/problems/cf2138f/tests/1.in",
+        ),
+        (
+            "corpus/problems/cf2150c/port.cp",
+            "corpus/problems/cf2150c/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2127h/port.cp",
+            "corpus/problems/cf2127h/tests/sample1.in",
+        ),
+        (
+            "corpus/problems/cf2062f/port.cp",
+            "corpus/problems/cf2062f/tests/sample1.in",
+        ),
     ];
     for (port_rel, sample_rel) in cases {
         let port = repo_root().join(port_rel);

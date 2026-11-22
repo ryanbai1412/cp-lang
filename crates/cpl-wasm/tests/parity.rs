@@ -261,7 +261,11 @@ fn error_and_trap_stderr_matches_cli_verbatim() {
         let cli = cpl_cli::run_with_input(&["run", name], input);
         let run = playground.run(name, source, input);
         assert_eq!(run.stdout, cli.stdout, "{case}: trap stdout");
-        assert_eq!(text(&run.result, "stderr"), cli.stderr, "{case}: trap stderr");
+        assert_eq!(
+            text(&run.result, "stderr"),
+            cli.stderr,
+            "{case}: trap stderr"
+        );
         assert_eq!(exit_code(&run.result), cli.code, "{case}: trap exit status");
     }
 }
@@ -340,18 +344,8 @@ fn slow():
     std::fs::write(&clean_path, &clean).unwrap();
     let clean_name = clean_path.to_str().unwrap();
     let cli_ok = cpl_cli::run(&[
-        "stress",
-        clean_name,
-        "--cases",
-        "20",
-        "--seed",
-        "1",
-        "--size",
-        "6",
-        "--jobs",
-        "1",
-        "--format",
-        "json",
+        "stress", clean_name, "--cases", "20", "--seed", "1", "--size", "6", "--jobs", "1",
+        "--format", "json",
     ]);
     assert_eq!(cli_ok.code, 0, "{}", cli_ok.stderr);
     let wasm_ok = playground.stress(clean_name, &clean, 20, 1, 6);
@@ -359,4 +353,3 @@ fn slow():
 
     let _ = std::fs::remove_dir_all(&dir);
 }
-

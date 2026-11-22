@@ -3,8 +3,8 @@
 use crate::{
     apply_fixes, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config, LINTS,
 };
-use std::collections::BTreeMap;
 use cpl_diag::Severity;
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -26,7 +26,10 @@ options:
 /// Runs `cpl fix` as an alias for `cpl lint --fix`.
 pub fn run_fix(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     if args.iter().any(|a| a == "-h" || a == "--help") {
-        let _ = write!(stdout, "usage: cpl fix [path]...\n\nAlias for `cpl lint --fix`.\n");
+        let _ = write!(
+            stdout,
+            "usage: cpl fix [path]...\n\nAlias for `cpl lint --fix`.\n"
+        );
         return 0;
     }
     let mut forwarded = Vec::with_capacity(args.len() + 1);
@@ -84,9 +87,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     files.dedup();
 
     let (mut warnings, mut errors, mut fixed, mut failed) = (0usize, 0usize, 0usize, 0usize);
-    let keep = |d: &cpl_diag::Diagnostic| {
-        !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l))
-    };
+    let keep =
+        |d: &cpl_diag::Diagnostic| !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l));
     let (mut tasteful, mut by_lint) = (0usize, BTreeMap::<&str, usize>::new());
     let mut bad_configs: Vec<PathBuf> = Vec::new();
     for file in &files {
@@ -173,7 +175,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     *by_lint.entry(d.code.0).or_default() += 1;
                 }
                 let parts: Vec<String> = here.iter().map(|(c, n)| format!("{c}:{n}")).collect();
-                let _ = writeln!(stdout, "{:>4}  {name}  {}", diagnostics.len(), parts.join(" "));
+                let _ = writeln!(
+                    stdout,
+                    "{:>4}  {name}  {}",
+                    diagnostics.len(),
+                    parts.join(" ")
+                );
                 tasteful += 1;
             }
         } else if !diagnostics.is_empty() {

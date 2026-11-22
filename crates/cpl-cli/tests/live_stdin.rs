@@ -28,7 +28,10 @@ fn cpl_run_answers_before_standard_input_ends() {
     let (answered, waiting) = std::sync::mpsc::channel();
     let pid = child.id();
     std::thread::spawn(move || {
-        if waiting.recv_timeout(std::time::Duration::from_secs(10)).is_err() {
+        if waiting
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .is_err()
+        {
             let _ = Command::new("kill").arg(pid.to_string()).status();
         }
     });
@@ -37,7 +40,10 @@ fn cpl_run_answers_before_standard_input_ends() {
     let mut line = String::new();
     stdout.read_line(&mut line).unwrap();
     answered.send(()).unwrap();
-    assert_eq!(line, "42\n", "the first answer arrives while the pipe is open");
+    assert_eq!(
+        line, "42\n",
+        "the first answer arrives while the pipe is open"
+    );
     stdin.write_all(b"9\n").unwrap();
     drop(stdin);
     line.clear();

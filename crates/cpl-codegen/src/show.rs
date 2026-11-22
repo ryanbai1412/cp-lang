@@ -293,7 +293,9 @@ impl<'p> Emitter<'p> {
                     ));
                 } else {
                     self.need("put_int");
-                    b.push_str("    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n");
+                    b.push_str(
+                        "    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n",
+                    );
                 }
             }
             _ => {}
@@ -369,11 +371,18 @@ impl<'p> Emitter<'p> {
         };
         match spec {
             Spec::Line => plain(self, "read_line"),
-            Spec::Int { lo: None, hi: None, .. } | Spec::Plain(Ty::Int) => plain(self, "read_int"),
+            Spec::Int {
+                lo: None, hi: None, ..
+            }
+            | Spec::Plain(Ty::Int) => plain(self, "read_int"),
             Spec::Int { lo, hi, .. } => {
                 self.need("read_in");
-                let lo = lo.as_ref().map_or("INT64_MIN".to_string(), |e| self.expr(e).text);
-                let hi = hi.as_ref().map_or("INT64_MAX".to_string(), |e| self.expr(e).text);
+                let lo = lo
+                    .as_ref()
+                    .map_or("INT64_MIN".to_string(), |e| self.expr(e).text);
+                let hi = hi
+                    .as_ref()
+                    .map_or("INT64_MAX".to_string(), |e| self.expr(e).text);
                 Code::primary(format!("cpl::read_in({lo}, {hi})"))
             }
             Spec::Plain(Ty::I128) => plain(self, "read_i128"),
@@ -405,14 +414,22 @@ impl<'p> Emitter<'p> {
                 self.lambda(&ty, |this, out| {
                     let lead = pad(this.indent);
                     if let Some(d) = dom_ident {
-                        out.push_str(&format!("{lead}int l = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"));
-                        out.push_str(&format!("{lead}int r = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"));
-                        out.push_str(&format!("{lead}if (l > r) cpl::fail(\"range end is before start\");\n"));
+                        out.push_str(&format!(
+                            "{lead}int l = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                        ));
+                        out.push_str(&format!(
+                            "{lead}int r = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                        ));
+                        out.push_str(&format!(
+                            "{lead}if (l > r) cpl::fail(\"range end is before start\");\n"
+                        ));
                         out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
                     } else {
                         out.push_str(&format!("{lead}ll l = cpl::read_int();\n"));
                         out.push_str(&format!("{lead}ll r = cpl::read_int();\n"));
-                        out.push_str(&format!("{lead}if (l > r) cpl::fail(\"range end is before start\");\n"));
+                        out.push_str(&format!(
+                            "{lead}if (l > r) cpl::fail(\"range end is before start\");\n"
+                        ));
                         out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
                     }
                 })

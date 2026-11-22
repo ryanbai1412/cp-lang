@@ -286,7 +286,10 @@ fn one_line_fn(def: &str) -> Option<(&str, String)> {
         .map(|param| param.split(':').next().unwrap_or(param).trim())
         .filter(|param| !param.is_empty())
         .collect();
-    Some((name.trim(), format!("({}) => {}", names.join(", "), body.trim())))
+    Some((
+        name.trim(),
+        format!("({}) => {}", names.join(", "), body.trim()),
+    ))
 }
 
 /// The equation of `body` that the counterexample of `verdict` breaks.

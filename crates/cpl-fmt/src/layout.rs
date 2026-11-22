@@ -347,7 +347,9 @@ struct Emitter<'a, 'b> {
 impl<'a, 'b> Emitter<'a, 'b> {
     fn continuation_indent(&self) -> usize {
         if self.cont == self.base_indent
-            && self.prev.is_some_and(|p| self.toks[p].kind.continues_line())
+            && self
+                .prev
+                .is_some_and(|p| self.toks[p].kind.continues_line())
         {
             self.cont + INDENT
         } else {

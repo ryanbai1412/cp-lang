@@ -115,7 +115,11 @@ fn prover_text(expr: &Expr, names: &mut Vec<String>) -> Option<String> {
                 BinOp::Pow => "**",
                 _ => return None,
             };
-            format!("({} {op} {})", prover_text(lhs, names)?, prover_text(rhs, names)?)
+            format!(
+                "({} {op} {})",
+                prover_text(lhs, names)?,
+                prover_text(rhs, names)?
+            )
         }
         _ => return None,
     })
@@ -145,7 +149,9 @@ impl Bounds {
                     ty: None,
                     init: Some(init),
                     ..
-                } if read_type(init).is_some() => bounds.declare(base, &super::binding(pat), read_type(init).unwrap()),
+                } if read_type(init).is_some() => {
+                    bounds.declare(base, &super::binding(pat), read_type(init).unwrap())
+                }
                 StmtKind::Let {
                     mutable: false,
                     pat,
@@ -153,7 +159,9 @@ impl Bounds {
                     init: Some(init),
                     ..
                 } => {
-                    if let (PatternKind::Name(name), Some(value)) = (&super::binding(pat).kind, bounds.expr(init)) {
+                    if let (PatternKind::Name(name), Some(value)) =
+                        (&super::binding(pat).kind, bounds.expr(init))
+                    {
                         bounds.values.insert(name.clone(), value);
                         bounds.define(name, init);
                     }
@@ -234,7 +242,9 @@ impl Bounds {
                 match &pat.kind {
                     PatternKind::Name(n) => self.0.push((n.clone(), pat.span.start)),
                     PatternKind::Domain(n) => self.0.push((n.text.clone(), pat.span.start)),
-                    PatternKind::Tuple(parts) | PatternKind::Or(parts) => parts.iter().for_each(|p| self.pattern(p)),
+                    PatternKind::Tuple(parts) | PatternKind::Or(parts) => {
+                        parts.iter().for_each(|p| self.pattern(p))
+                    }
                     PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.pattern(p)),
                     PatternKind::Var(inner) => self.pattern(inner),
                     PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
@@ -247,7 +257,9 @@ impl Bounds {
                     out.insert((n.clone(), e.span.start));
                 }
                 ExprKind::Paren(inner) => written(inner, out),
-                ExprKind::Tuple(items) | ExprKind::List(items) => items.iter().for_each(|i| written(i, out)),
+                ExprKind::Tuple(items) | ExprKind::List(items) => {
+                    items.iter().for_each(|i| written(i, out))
+                }
                 _ => {}
             }
         }
@@ -293,13 +305,23 @@ impl Bounds {
                         // the fn's own local, which no call can see.
                         let mut writes = HashSet::new();
                         walk_stmt(stmt, &mut Writes(&mut writes));
-                        let mut decls = Decls(decl.params.iter().map(|p| (p.name.text.clone(), 0)).collect());
+                        let mut decls = Decls(
+                            decl.params
+                                .iter()
+                                .map(|p| (p.name.text.clone(), 0))
+                                .collect(),
+                        );
                         walk_stmt(stmt, &mut decls);
-                        let local = |(n, at): &(String, u32)| decls.0.iter().any(|(d, from)| d == n && from < at);
-                        self.1.extend(writes.iter().filter(|w| !local(w)).map(|(n, _)| n.clone()));
+                        let local = |(n, at): &(String, u32)| {
+                            decls.0.iter().any(|(d, from)| d == n && from < at)
+                        };
+                        self.1
+                            .extend(writes.iter().filter(|w| !local(w)).map(|(n, _)| n.clone()));
                     }
                     StmtKind::Const { name, .. } => self.add(&name.text),
-                    StmtKind::Let { pat, .. } if matches!(pat.kind, PatternKind::Variant { .. }) => {
+                    StmtKind::Let { pat, .. }
+                        if matches!(pat.kind, PatternKind::Variant { .. }) =>
+                    {
                         if let PatternKind::Name(n) = &super::binding(pat).kind {
                             self.add(n);
                         }
@@ -387,7 +409,9 @@ impl Bounds {
                                 self.empty.insert(n.clone());
                             }
                         }
-                        if let (PatternKind::Tuple(ps), ExprKind::Tuple(es)) = (&pat.kind, &init.kind) {
+                        if let (PatternKind::Tuple(ps), ExprKind::Tuple(es)) =
+                            (&pat.kind, &init.kind)
+                        {
                             for (p, e) in ps.iter().zip(es) {
                                 if let PatternKind::Name(n) = &p.kind {
                                     self.record_source(n.clone(), e);
@@ -408,8 +432,12 @@ impl Bounds {
                                     self.change(n, at);
                                     if let ExprKind::Name(n) = &base.kind {
                                         match (name.text.as_str(), args.len()) {
-                                            ("push", 1) => *self.pushes.entry(n.clone()).or_default() += 1,
-                                            ("pop", 0) => *self.pops.entry(n.clone()).or_default() += 1,
+                                            ("push", 1) => {
+                                                *self.pushes.entry(n.clone()).or_default() += 1
+                                            }
+                                            ("pop", 0) => {
+                                                *self.pops.entry(n.clone()).or_default() += 1
+                                            }
                                             _ => {}
                                         }
                                     }
@@ -476,14 +504,20 @@ impl Bounds {
             }
             /// Whether only statements of `name`'s own scope change its length.
             fn local(&self, name: &str) -> bool {
-                let mut starts = self.changes.iter().filter(|(n, ..)| n == name).map(|c| c.1).peekable();
+                let mut starts = self
+                    .changes
+                    .iter()
+                    .filter(|(n, ..)| n == name)
+                    .map(|c| c.1)
+                    .peekable();
                 if starts.peek().is_none() {
                     return true;
                 }
                 let Some(&decl) = self.decls.get(name.strip_suffix("[]").unwrap_or(name)) else {
                     return false;
                 };
-                let outside = |&(s, e): &(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
+                let outside =
+                    |&(s, e): &(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
                 !starts.any(|at| self.bodies.iter().any(|b| outside(b, at)))
             }
         }
@@ -508,7 +542,8 @@ impl Bounds {
             .filter_map(|n| {
                 let pushes = scan.pushes.get(n).copied().unwrap_or(0);
                 let changes = scan.changes.iter().filter(|c| c.0 == *n).count();
-                (changes == pushes + scan.pops.get(n).copied().unwrap_or(0)).then(|| (n.clone(), pushes))
+                (changes == pushes + scan.pops.get(n).copied().unwrap_or(0))
+                    .then(|| (n.clone(), pushes))
             })
             .collect();
         {
@@ -541,18 +576,14 @@ impl Bounds {
             ExprKind::Name(n) => Some(n.clone()),
             ExprKind::Paren(inner) => self.atom(inner),
             ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
-                ExprKind::Name(n) if self.file.tracked.contains(n) => {
-                    Some(format!("{n}.len"))
-                }
+                ExprKind::Name(n) if self.file.tracked.contains(n) => Some(format!("{n}.len")),
                 ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
-                    (ExprKind::Name(g), [row]) => {
-                        match &row.kind {
-                            ExprKind::Name(u) if self.file.tracked.contains(&format!("{g}[]")) => {
-                                Some(format!("{g}[{u}].len"))
-                            }
-                            _ => None,
+                    (ExprKind::Name(g), [row]) => match &row.kind {
+                        ExprKind::Name(u) if self.file.tracked.contains(&format!("{g}[]")) => {
+                            Some(format!("{g}[{u}].len"))
                         }
-                    }
+                        _ => None,
+                    },
                     _ => None,
                 },
                 _ => None,
@@ -724,7 +755,10 @@ impl Bounds {
 
     /// Every relation, as `(a, b, what a - b is in)`.
     pub(crate) fn relations(&self) -> Vec<(String, String, Interval)> {
-        self.diffs.iter().map(|((a, b), d)| (a.clone(), b.clone(), *d)).collect()
+        self.diffs
+            .iter()
+            .map(|((a, b), d)| (a.clone(), b.clone(), *d))
+            .collect()
     }
 
     /// Every `var` with a `now` value.
@@ -757,7 +791,10 @@ impl Bounds {
     pub(crate) fn current_diff(&self, a: &str, b: &str) -> Option<Interval> {
         let d = self.value_diff(a, b)?;
         let d = match self.name_diff(a, b) {
-            Some(r) => Interval { lo: d.lo.max(r.lo), hi: d.hi.min(r.hi) },
+            Some(r) => Interval {
+                lo: d.lo.max(r.lo),
+                hi: d.hi.min(r.hi),
+            },
             None => d,
         };
         (d.lo <= d.hi).then_some(d)
@@ -773,7 +810,10 @@ impl Bounds {
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         match name.strip_suffix(".len") {
             Some(seq) if self.file.tracked.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
-            Some(_) if row_of(name).is_some_and(|(g, _)| self.file.tracked.contains(&format!("{g}[]"))) => {
+            Some(_)
+                if row_of(name)
+                    .is_some_and(|(g, _)| self.file.tracked.contains(&format!("{g}[]"))) =>
+            {
                 Some(Interval { lo: 0, hi: LEN_MAX })
             }
             _ => self.values.get(name).copied(),
@@ -931,7 +971,10 @@ impl Bounds {
                 } else if a.hi <= 0 {
                     Interval { lo: hi, hi: lo }
                 } else {
-                    Interval { lo: 0, hi: lo.max(hi) }
+                    Interval {
+                        lo: 0,
+                        hi: lo.max(hi),
+                    }
                 })
             }
             _ => None,
@@ -947,7 +990,12 @@ impl Bounds {
 
     /// How many values the domain `name` has, at most.
     pub(crate) fn domains(&self) -> Vec<(String, u128)> {
-        let mut out: Vec<(String, u128)> = self.file.domains.iter().map(|(d, n)| (d.clone(), *n)).collect();
+        let mut out: Vec<(String, u128)> = self
+            .file
+            .domains
+            .iter()
+            .map(|(d, n)| (d.clone(), *n))
+            .collect();
         out.sort();
         out
     }

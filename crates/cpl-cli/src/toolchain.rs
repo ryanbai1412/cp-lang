@@ -67,7 +67,11 @@ impl Selector {
                 return Ok(Selector::Dated(text.to_string()));
             }
             if let Some((date, commit)) = rest.split_at_checked(10) {
-                if is_date(date) && commit.len() > 1 && commit[1..].bytes().all(|b| b.is_ascii_hexdigit()) && commit.starts_with('-') {
+                if is_date(date)
+                    && commit.len() > 1
+                    && commit[1..].bytes().all(|b| b.is_ascii_hexdigit())
+                    && commit.starts_with('-')
+                {
                     return Ok(Selector::Toolchain(text.to_string()));
                 }
             }
@@ -95,19 +99,30 @@ impl std::fmt::Display for Selector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Selector::Channel(name) => f.write_str(name),
-            Selector::Version(text) | Selector::Dated(text) | Selector::Toolchain(text) => f.write_str(text),
+            Selector::Version(text) | Selector::Dated(text) | Selector::Toolchain(text) => {
+                f.write_str(text)
+            }
         }
     }
 }
 
 fn is_version(text: &str) -> bool {
     let parts: Vec<&str> = text.split('.').collect();
-    parts.len() == 3 && parts.iter().all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+    parts.len() == 3
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
 }
 
 fn is_date(text: &str) -> bool {
     text.len() == 10
-        && text.bytes().enumerate().all(|(i, b)| if i == 4 || i == 7 { b == b'-' } else { b.is_ascii_digit() })
+        && text.bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
 }
 
 /// `key = "value"` lines before the first `[section]`; `#` starts a comment.
@@ -123,7 +138,10 @@ fn top_level_keys(text: &str) -> Vec<(String, String)> {
         }
         if let Some((key, value)) = line.split_once('=') {
             let value = value.trim();
-            let value = value.strip_prefix('"').and_then(|v| v.strip_suffix('"')).unwrap_or(value);
+            let value = value
+                .strip_prefix('"')
+                .and_then(|v| v.strip_suffix('"'))
+                .unwrap_or(value);
             keys.push((key.trim().to_string(), value.to_string()));
         }
     }
@@ -238,18 +256,36 @@ fn parse_release(text: &str) -> Result<Release, String> {
     use cpl_json::Value;
     let bad = |what: &str| format!("the release manifest is malformed ({what})");
     let json = cpl_json::parse(text).map_err(|e| bad(&e.to_string()))?;
-    let toolchain = json.at(&["toolchain"]).as_str().ok_or_else(|| bad("no toolchain"))?.to_string();
-    let safe = |s: &str| !s.is_empty() && !s.starts_with('.') && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b));
+    let toolchain = json
+        .at(&["toolchain"])
+        .as_str()
+        .ok_or_else(|| bad("no toolchain"))?
+        .to_string();
+    let safe = |s: &str| {
+        !s.is_empty()
+            && !s.starts_with('.')
+            && s.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+    };
     if !safe(&toolchain) {
         return Err(bad("toolchain id"));
     }
-    let tags = json.at(&["tags"]).as_array().unwrap_or_default().iter().filter_map(Value::as_str).map(str::to_string).collect();
+    let tags = json
+        .at(&["tags"])
+        .as_array()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect();
     let Value::Object(members) = json.at(&["assets"]) else {
         return Err(bad("no assets"));
     };
     let mut assets = Vec::new();
     for (target, asset) in members {
-        let (Some(file), Some(sha)) = (asset.at(&["file"]).as_str(), asset.at(&["sha256"]).as_str()) else {
+        let (Some(file), Some(sha)) =
+            (asset.at(&["file"]).as_str(), asset.at(&["sha256"]).as_str())
+        else {
             return Err(bad(target));
         };
         if !safe(file) {
@@ -257,7 +293,11 @@ fn parse_release(text: &str) -> Result<Release, String> {
         }
         assets.push((target.clone(), file.to_string(), sha.to_ascii_lowercase()));
     }
-    Ok(Release { toolchain, tags, assets })
+    Ok(Release {
+        toolchain,
+        tags,
+        assets,
+    })
 }
 
 fn release_tags(home: &Path, id: &str) -> Vec<String> {
@@ -284,14 +324,24 @@ fn fetch(url: &str, dest: &Path) -> Result<(), String> {
     if !url.starts_with("http://") {
         curl.args(["--proto", "=https,file", "--proto-redir", "=https"]);
     }
-    let out = curl.arg("-o").arg(dest).arg(url).output().map_err(|e| match e.kind() {
-        std::io::ErrorKind::NotFound => "downloading toolchains needs curl on the PATH".to_string(),
-        _ => format!("could not run curl: {e}"),
-    })?;
+    let out = curl
+        .arg("-o")
+        .arg(dest)
+        .arg(url)
+        .output()
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                "downloading toolchains needs curl on the PATH".to_string()
+            }
+            _ => format!("could not run curl: {e}"),
+        })?;
     if out.status.success() {
         Ok(())
     } else {
-        Err(format!("could not download {url}: {}", String::from_utf8_lossy(&out.stderr).trim()))
+        Err(format!(
+            "could not download {url}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ))
     }
 }
 
@@ -304,23 +354,34 @@ fn install(home: &Path, selector: &Selector, log: &mut String) -> Result<String,
         None => format!("{base}/latest/download"),
     };
     let tmp = home.join("tmp");
-    std::fs::create_dir_all(&tmp).map_err(|e| format!("could not create {}: {e}", tmp.display()))?;
+    std::fs::create_dir_all(&tmp)
+        .map_err(|e| format!("could not create {}: {e}", tmp.display()))?;
     let stamp = format!(
         "{}-{}",
         std::process::id(),
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos())
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
     );
     let scratch = tmp.join(stamp);
-    std::fs::create_dir_all(scratch.join("unpack")).map_err(|e| format!("could not create {}: {e}", scratch.display()))?;
+    std::fs::create_dir_all(scratch.join("unpack"))
+        .map_err(|e| format!("could not create {}: {e}", scratch.display()))?;
     let result = install_into(home, &dir_url, &scratch, selector, log);
     let _ = std::fs::remove_dir_all(&scratch);
     result
 }
 
-fn install_into(home: &Path, dir_url: &str, scratch: &Path, selector: &Selector, log: &mut String) -> Result<String, String> {
+fn install_into(
+    home: &Path,
+    dir_url: &str,
+    scratch: &Path,
+    selector: &Selector,
+    log: &mut String,
+) -> Result<String, String> {
     let manifest = scratch.join("latest.json");
     fetch(&format!("{dir_url}/latest.json"), &manifest)?;
-    let text = std::fs::read_to_string(&manifest).map_err(|e| format!("could not read the manifest: {e}"))?;
+    let text = std::fs::read_to_string(&manifest)
+        .map_err(|e| format!("could not read the manifest: {e}"))?;
     let release = parse_release(&text)?;
     if is_installed(home, &release.toolchain) {
         return Ok(release.toolchain);
@@ -340,7 +401,11 @@ fn install_into(home: &Path, dir_url: &str, scratch: &Path, selector: &Selector,
         return Err(format!("{file} does not match its checksum (expected {sha}, got {actual}); nothing was installed"));
     }
     let unpack = scratch.join("unpack");
-    let flag = if file.ends_with(".zip") { "-xf" } else { "-xzf" };
+    let flag = if file.ends_with(".zip") {
+        "-xf"
+    } else {
+        "-xzf"
+    };
     let out = Command::new("tar")
         .arg(flag)
         .arg(&archive)
@@ -349,14 +414,19 @@ fn install_into(home: &Path, dir_url: &str, scratch: &Path, selector: &Selector,
         .output()
         .map_err(|e| format!("could not run tar: {e}"))?;
     if !out.status.success() {
-        return Err(format!("could not unpack {file}: {}", String::from_utf8_lossy(&out.stderr).trim()));
+        return Err(format!(
+            "could not unpack {file}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
     }
     if !binary(&unpack).is_file() {
         return Err(format!("{file} has no bin/cpl{EXE}"));
     }
-    std::fs::write(unpack.join("release.json"), &text).map_err(|e| format!("could not write release.json: {e}"))?;
+    std::fs::write(unpack.join("release.json"), &text)
+        .map_err(|e| format!("could not write release.json: {e}"))?;
     let dest = toolchain_dir(home, &release.toolchain);
-    std::fs::create_dir_all(home.join("toolchains")).map_err(|e| format!("could not create toolchains/: {e}"))?;
+    std::fs::create_dir_all(home.join("toolchains"))
+        .map_err(|e| format!("could not create toolchains/: {e}"))?;
     if let Err(e) = std::fs::rename(&unpack, &dest) {
         // Another cpl may have installed the same toolchain meanwhile.
         if !is_installed(home, &release.toolchain) {
@@ -369,14 +439,26 @@ fn install_into(home: &Path, dir_url: &str, scratch: &Path, selector: &Selector,
 /// The installed toolchain `selector` names, if any.
 fn find_installed(home: &Path, settings: &Settings, selector: &Selector) -> Option<String> {
     match selector {
-        Selector::Channel(channel) => settings.get(channel).filter(|id| is_installed(home, id)).map(str::to_string),
-        Selector::Version(id) | Selector::Toolchain(id) => is_installed(home, id).then(|| id.clone()),
-        Selector::Dated(tag) => installed_ids(home).into_iter().find(|id| release_tags(home, id).contains(tag)),
+        Selector::Channel(channel) => settings
+            .get(channel)
+            .filter(|id| is_installed(home, id))
+            .map(str::to_string),
+        Selector::Version(id) | Selector::Toolchain(id) => {
+            is_installed(home, id).then(|| id.clone())
+        }
+        Selector::Dated(tag) => installed_ids(home)
+            .into_iter()
+            .find(|id| release_tags(home, id).contains(tag)),
     }
 }
 
 /// The toolchain `selector` names, installed first if it isn't yet.
-fn ensure(home: &Path, settings: &mut Settings, selector: &Selector, log: &mut String) -> Result<String, String> {
+fn ensure(
+    home: &Path,
+    settings: &mut Settings,
+    selector: &Selector,
+    log: &mut String,
+) -> Result<String, String> {
     if let Some(id) = find_installed(home, settings, selector) {
         return Ok(id);
     }
@@ -389,29 +471,56 @@ fn ensure(home: &Path, settings: &mut Settings, selector: &Selector, log: &mut S
 }
 
 /// The selector a command runs with, and why.
-fn choose(plus: Option<&str>, cwd: &Path, settings: &Settings) -> Result<(Selector, String), String> {
+fn choose(
+    plus: Option<&str>,
+    cwd: &Path,
+    settings: &Settings,
+) -> Result<(Selector, String), String> {
     if let Some(text) = plus {
-        return Ok((Selector::parse(text)?, format!("`+{text}` on the command line")));
+        return Ok((
+            Selector::parse(text)?,
+            format!("`+{text}` on the command line"),
+        ));
     }
-    if let Some(text) = std::env::var("CPL_VERSION").ok().filter(|v| !v.trim().is_empty()) {
+    if let Some(text) = std::env::var("CPL_VERSION")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+    {
         let selector = Selector::parse(&text).map_err(|e| format!("{e} (in $CPL_VERSION)"))?;
         return Ok((selector, format!("CPL_VERSION={text}")));
     }
     for dir in cwd.ancestors() {
         let path = dir.join("cpl.toml");
-        let Ok(text) = std::fs::read_to_string(&path) else { continue };
-        let pins: Vec<(String, String)> =
-            top_level_keys(&text).into_iter().filter(|(k, _)| k == "version" || k == "channel").collect();
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let pins: Vec<(String, String)> = top_level_keys(&text)
+            .into_iter()
+            .filter(|(k, _)| k == "version" || k == "channel")
+            .collect();
         match pins.as_slice() {
             [] => continue,
             [(key, value)] => {
-                let selector = Selector::parse(value).map_err(|e| format!("{e} (in {})", path.display()))?;
-                return Ok((selector, format!("{key} = \"{value}\" in {}", path.display())));
+                let selector =
+                    Selector::parse(value).map_err(|e| format!("{e} (in {})", path.display()))?;
+                return Ok((
+                    selector,
+                    format!("{key} = \"{value}\" in {}", path.display()),
+                ));
             }
-            _ => return Err(format!("{} sets both version and channel; keep one", path.display())),
+            _ => {
+                return Err(format!(
+                    "{} sets both version and channel; keep one",
+                    path.display()
+                ))
+            }
         }
     }
-    let why = if settings.get("default").is_some() { "the default (cpl self channel)" } else { "the default channel" };
+    let why = if settings.get("default").is_some() {
+        "the default (cpl self channel)"
+    } else {
+        "the default channel"
+    };
     Ok((settings.default_selector()?, why.to_string()))
 }
 
@@ -447,8 +556,9 @@ pub fn launch(args: &[String]) -> Option<u8> {
     let mut settings = Settings::load(&home);
     let cwd = std::env::current_dir().unwrap_or_default();
     let mut log = String::new();
-    let chosen = choose(plus, &cwd, &settings)
-        .and_then(|(selector, why)| ensure(&home, &mut settings, &selector, &mut log).map(|id| (id, why)));
+    let chosen = choose(plus, &cwd, &settings).and_then(|(selector, why)| {
+        ensure(&home, &mut settings, &selector, &mut log).map(|id| (id, why))
+    });
     eprint!("{log}");
     let (id, why) = match chosen {
         Ok(chosen) => chosen,
@@ -467,7 +577,12 @@ pub fn launch(args: &[String]) -> Option<u8> {
         let status = command.status();
         let _ = std::io::stdout().flush();
         println!("toolchain {id}, chosen by {why}");
-        return Some(status.ok().and_then(|s| s.code()).map_or(EXIT_ERRORS, |c| c as u8));
+        return Some(
+            status
+                .ok()
+                .and_then(|s| s.code())
+                .map_or(EXIT_ERRORS, |c| c as u8),
+        );
     }
     hand_over(command, &bin)
 }
@@ -531,7 +646,13 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
     }
 }
 
-fn update(home: &Path, settings: &mut Settings, channel: Option<&str>, out: &mut String, log: &mut String) -> Result<(), String> {
+fn update(
+    home: &Path,
+    settings: &mut Settings,
+    channel: Option<&str>,
+    out: &mut String,
+    log: &mut String,
+) -> Result<(), String> {
     let default = settings.default_selector()?;
     let channel = match channel.map(Selector::parse).transpose()? {
         Some(Selector::Channel(channel)) => channel,
@@ -558,7 +679,9 @@ fn update(home: &Path, settings: &mut Settings, channel: Option<&str>, out: &mut
         refresh_launcher(home, &id)?;
     }
     match current {
-        Some(old) => *out += &format!("{channel} updated: {old} -> {id} (`cpl self rollback` goes back)\n"),
+        Some(old) => {
+            *out += &format!("{channel} updated: {old} -> {id} (`cpl self rollback` goes back)\n")
+        }
         None => *out += &format!("{channel} installed: {id}\n"),
     }
     Ok(())
@@ -571,7 +694,8 @@ fn refresh_launcher(home: &Path, id: &str) -> Result<(), String> {
         return Ok(());
     }
     let fresh = home.join("bin").join(format!("cpl.new{EXE}"));
-    let failed = |e: std::io::Error| format!("could not update the launcher {}: {e}", launcher.display());
+    let failed =
+        |e: std::io::Error| format!("could not update the launcher {}: {e}", launcher.display());
     std::fs::copy(binary(&toolchain_dir(home, id)), &fresh).map_err(failed)?;
     if cfg!(windows) {
         // A running .exe can be renamed but not overwritten.
@@ -591,7 +715,13 @@ fn show_default(home: &Path, settings: &Settings, out: &mut String) -> Result<()
     Ok(())
 }
 
-fn set_default(home: &Path, settings: &mut Settings, text: &str, out: &mut String, log: &mut String) -> Result<(), String> {
+fn set_default(
+    home: &Path,
+    settings: &mut Settings,
+    text: &str,
+    out: &mut String,
+    log: &mut String,
+) -> Result<(), String> {
     let selector = Selector::parse(text)?;
     let id = ensure(home, settings, &selector, log)?;
     settings.checkpoint(None);
@@ -617,19 +747,26 @@ fn rollback(home: &Path, settings: &mut Settings, out: &mut String) -> Result<()
     }
     settings.save(home)?;
     let selector = settings.default_selector()?;
-    let now = find_installed(home, settings, &selector).unwrap_or_else(|| "not installed".to_string());
+    let now =
+        find_installed(home, settings, &selector).unwrap_or_else(|| "not installed".to_string());
     *out += &format!("rolled back: {selector} is {now} (`cpl self rollback` again undoes this)\n");
     Ok(())
 }
 
 fn list(home: &Path, settings: &Settings, out: &mut String) {
-    let default = settings.default_selector().ok().and_then(|s| find_installed(home, settings, &s));
+    let default = settings
+        .default_selector()
+        .ok()
+        .and_then(|s| find_installed(home, settings, &s));
     let ids = installed_ids(home);
     if ids.is_empty() {
         *out += "no toolchains installed\n";
     }
     for id in ids {
-        let mut marks: Vec<&str> = ["stable", "edge"].into_iter().filter(|c| settings.get(c) == Some(id.as_str())).collect();
+        let mut marks: Vec<&str> = ["stable", "edge"]
+            .into_iter()
+            .filter(|c| settings.get(c) == Some(id.as_str()))
+            .collect();
         if default.as_deref() == Some(id.as_str()) {
             marks.push("default");
         }
@@ -651,14 +788,31 @@ mod tests {
     fn selectors_name_channels_versions_and_dated_edge_builds() {
         assert_eq!(Selector::parse("stable"), Ok(Selector::Channel("stable")));
         assert_eq!(Selector::parse(" edge "), Ok(Selector::Channel("edge")));
-        assert_eq!(Selector::parse("0.3.0"), Ok(Selector::Version("0.3.0".into())));
-        assert_eq!(Selector::parse("v0.3.0"), Ok(Selector::Version("0.3.0".into())));
-        assert_eq!(Selector::parse("edge-2026-11-22"), Ok(Selector::Dated("edge-2026-11-22".into())));
+        assert_eq!(
+            Selector::parse("0.3.0"),
+            Ok(Selector::Version("0.3.0".into()))
+        );
+        assert_eq!(
+            Selector::parse("v0.3.0"),
+            Ok(Selector::Version("0.3.0".into()))
+        );
+        assert_eq!(
+            Selector::parse("edge-2026-11-22"),
+            Ok(Selector::Dated("edge-2026-11-22".into()))
+        );
         assert_eq!(
             Selector::parse("edge-2026-11-22-1a2b3c4d"),
             Ok(Selector::Toolchain("edge-2026-11-22-1a2b3c4d".into()))
         );
-        for bad in ["nightly", "0.3", "edge-2026-11", "edge-2026-11-22-", "edge-2026-11-22-xyz", "1.2.3.4", ""] {
+        for bad in [
+            "nightly",
+            "0.3",
+            "edge-2026-11",
+            "edge-2026-11-22-",
+            "edge-2026-11-22-xyz",
+            "1.2.3.4",
+            "",
+        ] {
             assert!(Selector::parse(bad).is_err(), "{bad}");
         }
     }
@@ -670,7 +824,9 @@ mod tests {
         assert_eq!(tag("edge"), Ok(Some("edge".into())));
         assert_eq!(tag("0.3.0"), Ok(Some("v0.3.0".into())));
         assert_eq!(tag("edge-2026-11-22"), Ok(Some("edge-2026-11-22".into())));
-        assert!(tag("edge-2026-11-22-1a2b3c4d").unwrap_err().contains("use edge or edge-2026-11-22"));
+        assert!(tag("edge-2026-11-22-1a2b3c4d")
+            .unwrap_err()
+            .contains("use edge or edge-2026-11-22"));
     }
 
     #[test]
@@ -678,17 +834,25 @@ mod tests {
         let text = "# pins\nversion = \"0.3.0\"  # for the contest\nchannel=edge\n[libs]\nversion = \"9.9.9\"\n";
         assert_eq!(
             top_level_keys(text),
-            vec![("version".into(), "0.3.0".into()), ("channel".into(), "edge".into())]
+            vec![
+                ("version".into(), "0.3.0".into()),
+                ("channel".into(), "edge".into())
+            ]
         );
     }
 
     #[test]
     fn manifests_reject_paths_outside_the_toolchain_folder() {
         let manifest = |id: &str, file: &str| {
-            format!(r#"{{"toolchain": "{id}", "tags": ["edge"], "assets": {{"x": {{"file": "{file}", "sha256": "AB"}}}}}}"#)
+            format!(
+                r#"{{"toolchain": "{id}", "tags": ["edge"], "assets": {{"x": {{"file": "{file}", "sha256": "AB"}}}}}}"#
+            )
         };
         let ok = parse_release(&manifest("edge-2026-11-22-1a2b3c4d", "cpl-x.tar.gz")).unwrap();
-        assert_eq!(ok.assets, vec![("x".into(), "cpl-x.tar.gz".into(), "ab".into())]);
+        assert_eq!(
+            ok.assets,
+            vec![("x".into(), "cpl-x.tar.gz".into(), "ab".into())]
+        );
         assert_eq!(ok.tags, vec!["edge".to_string()]);
         assert!(parse_release(&manifest("../evil", "cpl-x.tar.gz")).is_err());
         assert!(parse_release(&manifest("0.3.0", "../cpl-x.tar.gz")).is_err());
