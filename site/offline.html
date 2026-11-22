@@ -121,6 +121,7 @@
     page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");
     page = page.replace('<script src="assets/course.js" defer><' + '/script>', "");
     page = page.replace('<script src="assets/compiler.js" defer><' + '/script>', "");
+    page = page.replace('<script src="assets/compiler.js"><' + '/script>', "");
     page = page.replace('<script src="assets/playground.js" defer><' + '/script>', "");
     if (name !== "trace.html") {
       const index = '<script id="search-index" type="application/json">' + data.search.replace(/</g, "\\u003c") + "<" + "/script>";

@@ -363,6 +363,7 @@ def trace_html():
     parts = {
         '<html lang="en" data-context="standalone">': '<html lang="en" data-context="site">',
         '<nav hidden data-site-nav': '<nav data-site-nav',
+        "</head>": '<script src="assets/compiler.js"></script>\n</head>',
         '<script id="trace-samples" type="application/json">[]</script>':
             f'<script id="trace-samples" type="application/json">{payload}</script>',
     }

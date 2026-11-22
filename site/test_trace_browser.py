@@ -146,6 +146,7 @@ def layout(page, label):
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
     dims = page.evaluate("""() => {
         const rect = s => document.querySelector(s).getBoundingClientRect();
+        const shown = [...document.querySelectorAll('#view-state > :not([hidden])')].at(-1);
         const controls = ['#open', '#save-json', '#save-html', '#theme', '#step-number',
             '#first', '#last', '#checkpoint-prev', '#checkpoint', '#checkpoint-next'];
         const boxes = controls.map(s => [s, ...['left','top','right','bottom']
@@ -154,7 +155,7 @@ def layout(page, label):
             .map(dt => dt.offsetHeight / parseFloat(getComputedStyle(dt).lineHeight));
         return {width:innerWidth, height:innerHeight, scrollWidth:document.documentElement.scrollWidth,
             top:rect('.top').height, footer:rect('.timeline').height,
-            clear:rect('.timeline').top - rect('#view-state .split:last-child').bottom,
+            clear:rect('.timeline').top - shown.getBoundingClientRect().bottom,
             boxes, statLines};
     }""")
     assert dims["scrollWidth"] == dims["width"] and dims["clear"] >= 0, dims
@@ -486,6 +487,74 @@ def live_rerun(browser, binary, folder):
     print("live re-run on the pinned input keeps the place and shows the first change")
 
 
+REPLAY = """let n: 1..=10 = read()
+var total = 0
+fn add(i: Int) -> Int:
+    total += i
+    return total
+for i in 1..=n:
+    print(add(i))
+"""
+
+
+def replay_second_call(page, data):
+    steps = data["runs"]["fast"]["steps"]
+    second = next(i for i, s in enumerate(steps)
+                  if (s.get("frames") or [{}])[0].get("fn") == "add" and s["values"].get("total") == 3)
+    jump(page, second + 1)
+    page.get_by_role("button", name="Replay this call").click()
+    expect(page.locator("#replay-title")).to_have_text("Replay this call of add")
+    box = page.locator("#replay-source")
+    box.fill(REPLAY.replace("return total", "return total * 10"))
+    box.press("Control+Enter")
+    report = page.locator("#replay-report")
+    expect(report).to_contain_text("replayed call 2 of `add(i: 2)`")
+    expect(report).to_contain_text("returns 30 (before the edit: 3)")
+    expect(report).to_contain_text("first change: step")
+    clear = page.evaluate("""() => document.querySelector('.timeline').getBoundingClientRect().top
+        - document.getElementById('replay-report').getBoundingClientRect().bottom""")
+    assert clear >= 0, f"the replay report is {-clear}px under the timeline"
+    box.fill("fn (\n")
+    page.locator("#replay-run").click()
+    expect(report.locator(".bad")).to_contain_text("edited file does not build")
+
+
+def live_replay(browser, binary, folder):
+    source = folder / "replay.cp"
+    source.write_text(REPLAY)
+    (folder / "replay.tests").mkdir()
+    (folder / "replay.tests/stress-1.in").write_text("3\n")
+    server = subprocess.Popen([binary, "run", source, "--trace", "--live"],
+                              stderr=subprocess.PIPE, text=True)
+    try:
+        url = re.search(r"http://\S+", server.stderr.readline()).group(0)
+        with checked_page(browser, "light", origin=url.rstrip("/")) as page:
+            page.goto(url)
+            replay_second_call(page, json.loads(page.locator("#trace-data").text_content()))
+            assert source.read_text() == REPLAY, "replaying never touches the file"
+            at = page.locator("#step-number").input_value()
+            source.write_text(REPLAY.replace("add", "plus"))
+            expect(page.locator("#source")).to_contain_text("fn plus", timeout=10_000)
+            expect(page.locator("#replay-panel")).to_be_hidden()
+            expect(page.locator("#step-number")).to_have_value(at)
+    finally:
+        server.kill()
+        server.wait()
+    print("replay this call reruns one invocation with the edited fn and reports the change")
+
+
+def wasm_replay(browser, base):
+    with checked_page(browser, "dark", origin=base) as page:
+        page.goto(f"{base}/playground.html")
+        page.locator("[data-source]").fill(REPLAY)
+        page.locator("[data-stdin]").fill("3\n")
+        page.locator("[data-trace]").click()
+        expect(page).to_have_url(f"{base}/trace.html#live", timeout=15_000)
+        expect(page.locator("#source")).to_contain_text("fn add")
+        replay_second_call(page, page.evaluate('JSON.parse(sessionStorage.getItem("cp-live-trace"))'))
+    print("replay this call in the browser runs the same engine through WebAssembly")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chrome", required=True, help="path to installed Google Chrome")
@@ -503,6 +572,8 @@ def main():
         offline_and_cli(browser, args.cpl.resolve(), Path(tmp))
         call_locals_and_scroll(browser, args.cpl.resolve(), Path(tmp))
         live_rerun(browser, args.cpl.resolve(), Path(tmp))
+        live_replay(browser, args.cpl.resolve(), Path(tmp))
+        wasm_replay(browser, base)
         browser.close()
 
 

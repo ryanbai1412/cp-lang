@@ -292,8 +292,8 @@
     function openTrace(trace) {
       const text = JSON.stringify(trace), offline = window.parent !== window;
       try {
-        if (offline) window.parent.cpLiveTrace = text;
-        else sessionStorage.setItem("cp-live-trace", text);
+        if (offline) { window.parent.cpLiveTrace = text; window.parent.cpLiveInput = stdin.value; }
+        else { sessionStorage.setItem("cp-live-trace", text); sessionStorage.setItem("cp-live-input", stdin.value); }
       } catch (_) {
         status.dataset.error = "true";
         status.textContent = "The trace is too large to hand to the debugger. Use a smaller input.";

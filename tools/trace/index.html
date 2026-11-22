@@ -111,6 +111,11 @@ main { min-width: 0; padding: 20px 24px 148px; display: flex; flex-direction: co
 .panel { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); min-width: 0; }
 .panel-head { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
 .panel-title { font-weight: 600; }
+.replay-source { display: block; width: 100%; min-height: 220px; box-sizing: border-box; margin: 0; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--border); background: var(--bg); color: var(--ink); font: 12px/1.5 var(--mono); resize: vertical; tab-size: 4; }
+.replay-report { margin: 0; padding: 8px 12px; font: 12px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.replay-report:empty { display: none; }
+.replay-report .bad { color: var(--bad, #b42318); }
+.frames li button { margin-left: 8px; height: 20px; padding: 0 6px; font-size: 11px; box-shadow: none; }
 .panel-meta { margin-left: auto; font: 11px var(--mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lanes { display: grid; grid-template-columns: minmax(0, 1fr); }
 .lanes.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -384,6 +389,11 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
         <section class="panel" aria-label="Source"><div class="panel-head"><span class="panel-title">Source</span><span class="panel-meta" id="src-meta"></span></div><pre class="code" id="source"></pre></section>
         <section class="panel" aria-label="Locals"><div class="panel-head"><span class="panel-title">In scope</span><span class="panel-meta" id="locals-meta"></span></div><ol class="frames" id="frames" aria-label="Call stack, innermost first" hidden></ol><dl class="kv" id="locals"></dl></section>
       </div>
+      <section class="panel" id="replay-panel" aria-label="Replay a call" style="margin-top:12px" hidden>
+        <div class="panel-head"><span class="panel-title" id="replay-title">Replay a call</span><span class="panel-meta" id="replay-meta"></span><button class="btn primary" id="replay-run" type="button" title="Replay (Ctrl / ⌘ + Enter)">Replay</button><button class="btn" id="replay-close" type="button">Close</button></div>
+        <textarea class="replay-source" id="replay-source" spellcheck="false" aria-label="The source to replay the call with"></textarea>
+        <pre class="replay-report" id="replay-report" aria-live="polite"></pre>
+      </section>
     </div>
     <div id="view-log" role="tabpanel" aria-labelledby="tab-log" hidden>
       <section class="panel">
@@ -787,6 +797,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   function load(next, index = -1) {
     T.validate(next);
     trace = next; sampleIndex = index; analysis = T.analyze(trace); search = null; selected = null; rerun = null;
+    closeReplay();
     tab = "state";
     isolate = false; $("renderer").value = "auto";
     for (const id of ["save-json", "save-html", "scrub", "step-number"]) $(id).disabled = false;
@@ -905,6 +916,81 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     renderStatic();
     player.go(T.findPlace(trace.runs.fast, where, at));
     toast("Re-ran after your edit");
+  }
+  // One call replayed with its fn edited, the same engine as `cpl replay`:
+  // `cpl run --trace --live` serves it; a page (or its parent) that loaded
+  // the compiler (`CpCompiler`) and handed over the run's input
+  // (`cpLiveInput`) runs it in WebAssembly. Null when neither is there.
+  function replayer() {
+    if (document.querySelector('meta[name="cpl-live"]')) {
+      return async request => (await fetch("replay", {method:"POST", cache:"no-store", body:JSON.stringify(request)})).json();
+    }
+    let input = null, compiler = globalThis.CpCompiler;
+    try {
+      const outer = window.parent && window.parent !== window ? window.parent : window;
+      input = outer.cpLiveInput ?? sessionStorage.getItem("cp-live-input");
+      compiler ??= outer.CpCompiler;
+    } catch { /* no access to the page around it */ }
+    if (!compiler || input === null) return null;
+    return request => compiler.call("replay", request.original, request.edited, input, request.step, request.frame);
+  }
+  let replaying = null;
+  // A new recording renumbers its steps, so a call picked in the old one is gone.
+  function closeReplay() {
+    replaying = null;
+    $("replay-panel").hidden = true;
+    $("replay-report").textContent = "";
+  }
+  function openReplay(frame) {
+    const i = player.state().index, f = (view().step.frames ?? [])[frame], box = $("replay-source");
+    if (!f) return;
+    replaying = {step:i, frame};
+    if (!box.dataset.edited) box.value = trace.source.code;
+    $("replay-title").textContent = `Replay this call of ${f.fn}`;
+    $("replay-meta").textContent = `step ${i + 1} · edit the fn, then replay`;
+    $("replay-report").textContent = "";
+    $("replay-panel").hidden = false;
+    box.focus({preventScroll:true});
+    reveal($("replay-panel"));
+  }
+  // Scrolls `node` up out from under the fixed timeline, keeping its top on screen.
+  function reveal(node) {
+    const r = node.getBoundingClientRect(), floor = document.querySelector(".timeline").getBoundingClientRect().top - 12;
+    if (r.bottom > floor) window.scrollBy({top:Math.max(0, Math.min(r.bottom - floor, r.top - 12))});
+  }
+  async function runReplay() {
+    const run = replayer(), report = $("replay-report");
+    if (!run || !replaying) return;
+    report.textContent = "Replaying the call…";
+    try {
+      const result = await run({original:trace.source.code, edited:$("replay-source").value, step:replaying.step, frame:replaying.frame});
+      report.replaceChildren(...replayLines(result));
+    } catch (error) {
+      report.replaceChildren(el("div", {class:"bad", text:`The replay failed: ${error.message}`}));
+    }
+    reveal(report);
+  }
+  // The report `cpl replay` prints, from the JSON every replayer answers.
+  function replayLines(r) {
+    if (r.error) return [el("div", {class:"bad", text:r.error})];
+    const name = id => trace.variables[id]?.name ?? id, c = r.call, lines = [];
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b), shown = v => v === null || v === undefined ? "nothing" : display(v);
+    const span = c.exit > c.entry ? `steps ${c.entry + 1}-${c.exit}` : `returning into step ${c.exit + 1}`;
+    lines.push(`replayed call ${c.ordinal} of \`${c.name}${display(c.args)}\`, ${span} of the recording`);
+    if (r.fallback) lines.push(`note: ${r.fallback}`);
+    const {before, after} = r.returned;
+    lines.push(!r.replayed ? "the edited run never made the call"
+      : same(before, after) ? `returns ${shown(after)} (as before)` : `returns ${shown(after)} (before the edit: ${shown(before)})`);
+    for (const w of r.writes) lines.push(`writes ${name(w.id)} = ${shown(w.after)} ${same(w.before, w.after) ? "(as before)" : `(before the edit: ${shown(w.before)})`}`);
+    if (r.earlier) lines.push(`warning: the run already differs before the call, at step ${r.earlier.step + 1} line ${r.earlier.line}: the edit changes an earlier call`);
+    const ch = r.change;
+    if (ch) {
+      const at = `first change: step ${ch.step + 1} line ${ch.line}`;
+      lines.push(ch.variable ? `${at}: \`${name(ch.variable)}\` = ${shown(ch.after)} (before the edit: ${shown(ch.before)})`
+        : `${at}: ${ch.after ?? "the call has returned"} (before the edit: ${ch.before ?? "the call had returned"})`);
+    } else if (r.replayed) lines.push("the call runs as recorded");
+    if (r.trap) lines.push(`the replay stopped: ${r.trap}`);
+    return lines.map(text => el("div", {text}));
   }
   const chevron = d => svg("svg", {viewBox:"0 0 16 16", fill:"none", stroke:"currentColor", "stroke-width":"1.6", "aria-hidden":"true"}, svg("path", {d}));
 
@@ -1192,7 +1278,9 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     $("locals-meta").textContent = v.step.stage ?? "";
     const frames = v.step.frames ?? [];
     $("frames").hidden = frames.length < 2;
-    $("frames").replaceChildren(...frames.map((f, i) => el("li", {class:i ? null : "on", text:`${f.fn} · line ${f.line}`})));
+    const replays = replayer() !== null;
+    $("frames").replaceChildren(...frames.map((f, i) => el("li", {class:i ? null : "on"}, `${f.fn} · line ${f.line}`,
+      replays && i < frames.length - 1 ? el("button", {class:"btn", type:"button", "data-frame":String(i), onclick:() => openReplay(i), text:"Replay this call"}) : null)));
     $("locals").replaceChildren(...(entries.length ? entries.flatMap(([k, x]) => [el("dt", {text:k}), el("dd", {text:display(x)})]) : [el("dt", {text:"—"}), el("dd", {text:"no locals captured"})]));
   }
 
@@ -1322,6 +1410,10 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     };
     $("checkpoint").onchange = e => { if (e.target.value !== "") player.go(Number(e.target.value)); };
     $("difference-focus").onclick = () => { isolate = !isolate; render(); };
+    $("replay-run").onclick = runReplay;
+    $("replay-close").onclick = closeReplay;
+    $("replay-source").addEventListener("input", e => { e.target.dataset.edited = "true"; });
+    $("replay-source").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runReplay(); } });
     $("renderer").onchange = () => render();
     $("mode-single").onclick = () => { comparing = false; render(); };
     $("mode-compare").onclick = () => { if (analysis.pairs.length) { comparing = true; render(); } };
