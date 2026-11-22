@@ -10,7 +10,7 @@ a[..2] = 5
 a[4..] = 1
 print(a)
 on[1 - 1..3] = true
-print(on)
+print([yes(x) for x in on])
 xs[1..3] = 0
 xs[4..=5] = 8
 print(xs)
@@ -21,7 +21,7 @@ g[.., 0] = 9
 g[0..2, 3] = 4
 print(g)
 struct S:
-    lo: [0..4]Int
+    var lo: [0..4]Int
 var cur = S([1, 2, 3, 4])
 cur.lo[..] = 6
 cur.lo[1..3] = 0

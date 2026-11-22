@@ -6,7 +6,7 @@ enum Event:
     Query(x: Int, id: Int)
     Close(x: Int)
 
-print(Dir.N < Dir.S, Dir.W < Dir.E, max(Dir.E, Dir.S))
+print(yes(Dir.N < Dir.S), yes(Dir.W < Dir.E), max(Dir.E, Dir.S))
 var es = [Event.Close(1), Event.Query(5, 0), Event.Open(3), Event.Open(1), Event.Query(2, 7)]
 es.sort()
 for e in es:

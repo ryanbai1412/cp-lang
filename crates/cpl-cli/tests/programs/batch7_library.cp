@@ -7,4 +7,5 @@ print(r.int(1, 6), r.int(1, 6), r.next())
 domain R = 0..3
 domain C = 0..3
 let p = (R(1), C(1))
-print([p.step(d) for d in Dir8.all()].len, p.step(Dir8(1)), find_all("abab", "ab"))
+let q = p.step(Dir8(1))!
+print([p.step(d) for d in Dir8.all()].len, q.0.ord, q.1.ord, find_all("abab", "ab"))

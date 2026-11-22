@@ -31,17 +31,18 @@ fn rebound(x: ?Int) -> ?Int:
         return y
     y
 
+fn fmt_opt(x: ?Int) -> Str = if let v = x: "{v}" else: "none"
 let at = find([4, 5, 6], 5)
 if at != none: print(at + 1)
 if not (at == none): print(at * 10)
 let gone = find([4, 5, 6], 7)
 print(if gone == none: -1 else: gone + 1)
-print(bump(3), bump(none), pick(none, none), pick(none, 2), pick(3, none), pick(3, 4))
-print(old(4), old(none), local(5), local(none), rebound(1))
+print(fmt_opt(bump(3)), fmt_opt(bump(none)), pick(none, none), pick(none, 2), pick(3, none), pick(3, 4))
+print(old(4), old(none), local(5), local(none), fmt_opt(rebound(1)))
 var cur: ?Int = 3
 while cur != none and cur > 0:
     cur = if cur == 1: none else: cur - 1
-print(cur)
+print(fmt_opt(cur))
 var total = 0
 for want in [4, 6, 9]:
     let hit = find([4, 5, 6], want)
@@ -51,4 +52,4 @@ print(total)
 var best: ?Int = none
 for x in [4, 2, 7]:
     if best == none or x < best: best = x
-print(best)
+print(fmt_opt(best))

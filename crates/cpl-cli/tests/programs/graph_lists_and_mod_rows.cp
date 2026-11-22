@@ -2,11 +2,11 @@
 // list or array of `Mod`s prints on one line, as numbers do.
 domain V = 0..4
 let g = Graph.directed([(V(0), V(1)), (V(1), V(2)), (V(0), V(3))])
-print(topo(g)!)
-print(peel(g))
+print([v.ord for v in topo(g)!])
+print([v.ord for v in peel(g)])
 let u = Graph.undirected([(V(0), V(1)), (V(2), V(3))])
 let dist = bfs(u, [V(0)])
-print(dist.dist)
+print([if let d = x: "{d}" else: "none" for x in dist.dist])
 type Z = Mod<998244353>
 let zs: List<Z> = [1, 2, 3]
 print(zs)

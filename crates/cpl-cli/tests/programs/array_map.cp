@@ -32,7 +32,7 @@ let arr: [D]Int = [D] i => i.ord + 1
 let doubled: [D]Int = arr.map(x => x * 2)
 let even: [D]Bool = arr.map(x => x % 2 == 0)
 print(sum_d(doubled))
-print(even)
+print([yes(x) for x in even])
 
 // 3. 1-based range-indexed array `[1..=4]Int` -> `[1..=4]Int`.
 let one_based: [1..=4]Int = [1..=4] i => i * 10

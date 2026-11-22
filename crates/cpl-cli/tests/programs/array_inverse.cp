@@ -8,7 +8,7 @@ var a: [Pos]?Val = none
 a[Pos(1)] = Val(2)
 a[Pos(4)] = Val(0)
 let inv_a = a.inverse()
-print(inv_a[Val(0)]!.label, inv_a[Val(1)] == none, inv_a[Val(2)]!.label, inv_a[Val(3)] == none)
+print(inv_a[Val(0)]!.label, yes(inv_a[Val(1)] == none), inv_a[Val(2)]!.label, yes(inv_a[Val(3)] == none))
 
 // Partial injection into a bounded Int range (1-based and 0-based):
 let n = 5
@@ -17,20 +17,20 @@ var b: [P]?(1..=n) = none
 b[P(2)] = 5
 b[P(5)] = 1
 let inv_b = b.inverse()
-print(inv_b[1]!.label, inv_b[3] == none, inv_b[5]!.label)
+print(inv_b[1]!.label, yes(inv_b[3] == none), inv_b[5]!.label)
 
 var c: [Pos]?(0..Pos.count) = none
 c[Pos(3)] = 0
 c[Pos(5)] = 4
 let inv_c = c.inverse()
-print(inv_c[0]!.label, inv_c[2] == none, inv_c[4]!.label)
+print(inv_c[0]!.label, yes(inv_c[2] == none), inv_c[4]!.label)
 
 // Partial injection into a fieldless enum: `[Pos]?Dir -> [Dir]?Pos`
 var d: [Pos]?Dir = none
 d[Pos(2)] = W
 d[Pos(5)] = N
 let inv_d = d.inverse()
-print(inv_d[N]!.label, inv_d[E] == none, inv_d[W]!.label)
+print(inv_d[N]!.label, yes(inv_d[E] == none), inv_d[W]!.label)
 
 // Total bijection `[I]V -> [V]I` without importing `std.seq.inverse`:
 domain I = 0..3
