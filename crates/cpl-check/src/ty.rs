@@ -59,7 +59,7 @@ pub enum Ty {
 
 /// True when checking against the 0.3 spec (`CPL_SPEC`).
 pub fn spec_edition() -> bool {
-    std::env::var_os("CPL_SPEC").is_some()
+    crate::edition::is_v03()
 }
 
 /// What each type parameter stands for at one use.
@@ -246,7 +246,7 @@ impl Ty {
             // code is checked again with real types at each use.
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
-            (a, Ty::Float) if a.is_int() => std::env::var_os("CPL_SPEC").is_none(),
+            (a, Ty::Float) if a.is_int() => !crate::edition::is_v03(),
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
             (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
@@ -278,7 +278,7 @@ impl Ty {
             (Ty::Record(a), Ty::Record(b)) => {
                 let open_b = b.last().is_some_and(|(n, _)| n == "..");
                 let b_fields = if open_b { &b[..b.len() - 1] } else { &b[..] };
-                if std::env::var_os("CPL_SPEC").is_some() && !open_b {
+                if crate::edition::is_v03() && !open_b {
                     a.len() == b_fields.len()
                         && a.iter()
                             .zip(b_fields)

@@ -8,7 +8,10 @@ fn binary_reports_its_version() {
         .expect("cpl runs");
     assert!(out.status.success());
     let line = String::from_utf8(out.stdout).unwrap();
-    assert!(line.starts_with(&format!("cpl {} (dev, ", env!("CARGO_PKG_VERSION"))), "{line}");
+    assert!(
+        line.starts_with(&format!("cpl {} (dev, ", env!("CARGO_PKG_VERSION"))),
+        "{line}"
+    );
     assert!(line.ends_with(")\n") && line.lines().count() == 1, "{line}");
 }
 
@@ -87,7 +90,7 @@ fn lsp_reports_what_check_reports_against_the_spec() {
         .env("CPL_STD", std_dir)
         .output()
         .expect("cpl check runs");
-    assert!(check.status.success(), "{}", String::from_utf8_lossy(&check.stderr));
+    let check_err = String::from_utf8_lossy(&check.stderr).into_owned();
 
     let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["lsp", "--stdio"])
@@ -115,7 +118,20 @@ fn lsp_reports_what_check_reports_against_the_spec() {
     let out = child.wait_with_output().expect("cpl lsp exits");
     let stdout = String::from_utf8(out.stdout).unwrap();
     assert!(stdout.contains("publishDiagnostics"), "{stdout}");
-    assert!(!stdout.contains(r#""severity":1"#), "{stdout}");
+    assert_eq!(
+        stdout.contains(r#""severity":1"#),
+        !check.status.success(),
+        "check:\n{check_err}\nlsp:\n{stdout}"
+    );
+    for code in check_err
+        .lines()
+        .filter_map(|l| l.strip_prefix("error[")?.split(']').next())
+    {
+        assert!(
+            stdout.contains(&format!(r#""code":"{code}""#)),
+            "check reports {code}; lsp:\n{stdout}"
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -145,11 +161,22 @@ fn a_read_that_names_a_domain_inside_a_tuple_is_an_error() {
     std::fs::create_dir_all(&dir).unwrap();
     for ty in ["([domain Pos]Char, Int)", "([domain Pos]Int, Int)"] {
         let path = dir.join("tuple_read.cp");
-        std::fs::write(&path, format!("let (s, k): {ty} = read()\nprint(Pos.K, k)\n")).unwrap();
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("check").arg(&path).output().expect("cpl runs");
+        std::fs::write(
+            &path,
+            format!("let (s, k): {ty} = read()\nprint(Pos.K, k)\n"),
+        )
+        .unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("check")
+            .arg(&path)
+            .output()
+            .expect("cpl runs");
         assert_eq!(out.status.code(), Some(1));
         let stderr = String::from_utf8(out.stderr).unwrap();
-        assert!(stderr.contains("error[E0501]: `read()` can't size a domain named inside"), "{stderr}");
+        assert!(
+            stderr.contains("error[E0501]: `read()` can't size a domain named inside"),
+            "{stderr}"
+        );
     }
 }
 
@@ -163,10 +190,17 @@ fn a_range_of_u64_is_unsupported_not_a_mismatch() {
     ] {
         let path = dir.join("wide_range.cp");
         std::fs::write(&path, src).unwrap();
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("check").arg(&path).output().expect("cpl runs");
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("check")
+            .arg(&path)
+            .output()
+            .expect("cpl runs");
         assert_eq!(out.status.code(), Some(1));
         let stderr = String::from_utf8(out.stderr).unwrap();
-        assert!(stderr.contains("can't handle a range of `U64` values"), "{stderr}");
+        assert!(
+            stderr.contains("can't handle a range of `U64` values"),
+            "{stderr}"
+        );
         assert!(!stderr.contains("expected `U64`, found `U64`"), "{stderr}");
     }
 }
@@ -179,21 +213,65 @@ fn a_statement_that_only_works_out_a_value_is_a_warning() {
     let check = |body: &str| {
         let source = format!("domain V = 0..4\nvar xs = [3, 1, 2]\nvar s = Subset<V>.empty\nvar heap = MinHeap<Int>()\nfn loud(v: Int) -> Int:\n    print(v)\n    v + 1\n{body}\nprint(xs, s.len, heap.len)\n");
         std::fs::write(&path, source).unwrap();
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("check").arg(&path).output().expect("cpl runs");
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("check")
+            .arg(&path)
+            .output()
+            .expect("cpl runs");
         assert_eq!(out.status.code(), Some(0), "{body}");
         String::from_utf8(out.stderr).unwrap()
     };
-    for dropped in ["xs.rev", "xs.sorted()", "sorted(xs)", "s.set(V(1), true)", "s.with(V(1))", "xs.deduped()", "xs.len", "xs[0] + 1"] {
+    for dropped in [
+        "xs.rev",
+        "xs.sorted()",
+        "sorted(xs)",
+        "s.set(V(1), true)",
+        "s.with(V(1))",
+        "xs.deduped()",
+        "xs.len",
+        "xs[0] + 1",
+    ] {
         let stderr = check(dropped);
         assert!(stderr.contains("warning[W0101]"), "{dropped}: {stderr}");
     }
-    for kept in ["xs.sort()", "xs.reverse()", "xs.pop()", "heap.push(3)\nheap.pop()", "loud(3)", "xs.swap(0, 1)", "let ys = xs.sorted()"] {
+    for kept in [
+        "xs.sort()",
+        "xs.reverse()",
+        "xs.pop()",
+        "heap.push(3)\nheap.pop()",
+        "loud(3)",
+        "xs.swap(0, 1)",
+        "let ys = xs.sorted()",
+    ] {
         let stderr = check(kept);
         assert_eq!(stderr, "", "{kept}");
     }
 }
 
 /// A fresh directory holding `name` with `source` in it.
+#[test]
+fn the_default_edition_checks_what_the_spec_rejects() {
+    let path = scratch(
+        "the_default_edition_checks_what_the_spec_rejects",
+        "a.cp",
+        b"let a: ?Int = None\nprint(a)\nprint(a, none: -1)\n",
+    );
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("check")
+        .arg(&path)
+        .env_remove("CPL_SPEC")
+        .env_remove("CPL_EDITION")
+        .output()
+        .expect("cpl runs");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(1), "{stderr}");
+    assert!(
+        stderr.contains("`a` has type `?Int`, which does not implement `Print`"),
+        "{stderr}"
+    );
+    assert_eq!(stderr.matches("error[").count(), 1, "{stderr}");
+}
+
 fn scratch(test: &str, name: &str, source: &[u8]) -> std::path::PathBuf {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);
     let _ = std::fs::remove_dir_all(&dir);
@@ -351,7 +429,10 @@ fn build_drops_the_source_header_before_it_passes_64_kb() {
         "{cpp}"
     );
     let stderr = String::from_utf8(out.stderr).unwrap();
-    assert!(stderr.contains("the source in the header is left out"), "{stderr}");
+    assert!(
+        stderr.contains("the source in the header is left out"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -412,10 +493,17 @@ fn guess(test: &str, limit: &str, answer: &str) -> std::path::PathBuf {
 fn run_plays_the_solution_against_the_interactor_in_its_file() {
     let path = guess("interactor-accepts", "10", "lo");
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
-    assert_eq!(out.status.code(), Some(0), "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     // The hidden test is the judge's: the solution hears `8` from it.
     assert_eq!(out.stdout, b"? 4\n? 2\n? 3\n! 3\n");
-    assert!(String::from_utf8_lossy(&out.stderr).contains("the interactor `judge` accepted the run"));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("the interactor `judge` accepted the run")
+    );
 }
 
 #[test]
@@ -424,7 +512,10 @@ fn run_reports_the_interactor_rejecting_a_wrong_answer() {
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
     assert_eq!(out.status.code(), Some(3));
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("the interactor `judge` rejected the run"), "{stderr}");
+    assert!(
+        stderr.contains("the interactor `judge` rejected the run"),
+        "{stderr}"
+    );
     assert!(stderr.contains("assertion failed: x == secret"), "{stderr}");
 }
 
@@ -444,12 +535,17 @@ fn run_stops_a_solution_that_asks_more_than_its_limit() {
 #[test]
 fn run_ends_a_conversation_where_both_sides_wait() {
     // The solution reads a second number the judge never sends.
-    let source = GUESS.replace("LIMIT", "10").replace("ask(\"!\", ANSWER)", "let more: Int = read()");
+    let source = GUESS
+        .replace("LIMIT", "10")
+        .replace("ask(\"!\", ANSWER)", "let more: Int = read()");
     let path = scratch("interactor-deadlock", "guess.cp", source.as_bytes());
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
     assert_eq!(out.status.code(), Some(3));
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("the input ended where a number was expected"), "{stderr}");
+    assert!(
+        stderr.contains("the input ended where a number was expected"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -474,7 +570,8 @@ fn stress_judges_with_the_interactor_in_the_file() {
         let script = path.with_file_name("gen.sh");
         std::fs::write(&script, gen).unwrap();
         #[cfg(unix)]
-        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+            .unwrap();
         let args = [
             "stress".as_ref(),
             path.as_os_str(),
@@ -484,15 +581,25 @@ fn stress_judges_with_the_interactor_in_the_file() {
             "12".as_ref(),
         ];
         let out = cpl(&args, b"");
-        format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr))
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
     };
     let right = stress("interactor-stress-ok", "10", "lo");
     assert!(right.contains("12 cases agree"), "{right}");
     let wrong = stress("interactor-stress-wa", "10", "lo + 1");
-    assert!(wrong.contains("interactor: assertion failed: x == secret"), "{wrong}");
+    assert!(
+        wrong.contains("interactor: assertion failed: x == secret"),
+        "{wrong}"
+    );
     // research/dryrun/LOG.md p19: the judge starving was all stress said.
     let over = stress("interactor-stress-limit", "3", "lo");
-    assert!(over.contains("query limit exceeded: the limit is 3"), "{over}");
+    assert!(
+        over.contains("query limit exceeded: the limit is 3"),
+        "{over}"
+    );
     assert!(!over.contains("output ended"), "{over}");
 }
 
@@ -513,8 +620,20 @@ fn stress_makes_a_read_int_that_sizes_something_a_count() {
     ];
     for (test, source) in programs {
         let path = scratch(test, "sized.cp", format!("{source}{brute}").as_bytes());
-        let out = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "40".as_ref()], b"");
-        let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+        let out = cpl(
+            &[
+                "stress".as_ref(),
+                path.as_os_str(),
+                "--cases".as_ref(),
+                "40".as_ref(),
+            ],
+            b"",
+        );
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
         assert!(text.contains("40 cases agree"), "{test}: {text}");
     }
 }
@@ -555,27 +674,51 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
     ];
     let stress = |test: &str, source: &str| {
         let path = scratch(test, "narrow.cp", source.as_bytes());
-        let out = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "40".as_ref()], b"");
-        format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr))
+        let out = cpl(
+            &[
+                "stress".as_ref(),
+                path.as_os_str(),
+                "--cases".as_ref(),
+                "40".as_ref(),
+            ],
+            b"",
+        );
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
     };
     for (test, source, learned) in agree {
         let text = stress(test, source);
         assert!(text.contains("40 cases agree"), "{test}: {text}");
-        assert!(text.contains("stopped the program thrown away"), "{test}: {text}");
+        assert!(
+            text.contains("stopped the program thrown away"),
+            "{test}: {text}"
+        );
         assert!(text.contains(learned), "{test}: {text}");
     }
     // Only the solution stops: the brute has an answer, so it is a bug.
     let only_solution = "let n: Int = read()\n@brute(main)\nfn slow():\n    print(max(n - 1, 0))\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n";
     let text = stress("narrow-real-stop", only_solution);
-    assert!(text.contains("FAIL on case") && text.contains("an array can't have length"), "{text}");
+    assert!(
+        text.contains("FAIL on case") && text.contains("an array can't have length"),
+        "{text}"
+    );
     // A cell stops only the solution: still a bug, cells are not narrowed.
     let only_solution = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nvar seen: [0..10]Int = 0\nfor x in a: seen[x] += 1\nprint(sum(a))\n";
     let text = stress("narrow-real-cell-stop", only_solution);
-    assert!(text.contains("FAIL on case") && !text.contains("thrown away"), "{text}");
+    assert!(
+        text.contains("FAIL on case") && !text.contains("thrown away"),
+        "{text}"
+    );
     // Both run and differ: a wrong answer, never thrown away.
     let wrong = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nprint(sum(a) - a[0])\n";
     let text = stress("narrow-real-wrong", wrong);
-    assert!(text.contains("FAIL on case") && !text.contains("thrown away"), "{text}");
+    assert!(
+        text.contains("FAIL on case") && !text.contains("thrown away"),
+        "{text}"
+    );
 }
 
 /// Wrong on a tree with a vertex of degree 3 whose value is above 50.
@@ -610,11 +753,22 @@ fn make_tree(size: Int):
 #[test]
 fn stress_makes_inputs_with_the_gen_fn_in_the_file_and_shrinks_them() {
     let path = scratch("gen-stress", "tree.cp", TREE.as_bytes());
-    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--size".as_ref(), "30".as_ref()], b"");
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--size".as_ref(),
+            "30".as_ref(),
+        ],
+        b"",
+    );
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{stdout}");
     // The smallest such tree: a star of four, one value just above 50.
-    assert!(stdout.contains(" numbers to 11:\n    4\n    1 2\n    1 3\n    1 4\n    51 1 1 1\n"), "{stdout}");
+    assert!(
+        stdout.contains(" numbers to 11:\n    4\n    1 2\n    1 3\n    1 4\n    51 1 1 1\n"),
+        "{stdout}"
+    );
 }
 
 #[test]
@@ -622,9 +776,16 @@ fn a_gen_fn_that_uses_the_input_is_an_error() {
     let source = "let n: 1..=9 = read()\nprint(n)\n\n@gen\nfn make():\n    print(n)\n";
     let path = scratch("gen-input", "a.cp", source.as_bytes());
     let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
-    let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert_eq!(out.status.code(), Some(1), "{text}");
-    assert!(text.contains("`n` is read from the input, which a `@gen` fn is there to make"), "{text}");
+    assert!(
+        text.contains("`n` is read from the input, which a `@gen` fn is there to make"),
+        "{text}"
+    );
 }
 
 /// research/dryrun/LOG.md p07: `(a: V, b: V)` edges gave no hint, and
@@ -635,9 +796,16 @@ fn edges_with_other_field_names_are_told_which_to_rename() {
                   let flights: [0..m](a: V, b: V, c: 1..=1e9) = read()\nlet g = Graph.directed(flights)\nprint(n)\n";
     let path = scratch("graph-field-names", "a.cp", source.as_bytes());
     let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
-    let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert_eq!(out.status.code(), Some(1), "{text}");
-    assert!(text.contains("help: the fields are read by name: rename `a` to `u`, `b` to `v`"), "{text}");
+    assert!(
+        text.contains("help: the fields are read by name: rename `a` to `u`, `b` to `v`"),
+        "{text}"
+    );
     assert!(text.contains("3 | let flights"), "{text}");
     assert_eq!(text.matches("4 | let g").count(), 1, "{text}");
 }
@@ -658,7 +826,10 @@ fn test_checks_each_law_and_a_valid_law_passes() {
     let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_eq!(out.status.code(), Some(0), "{stdout}");
-    assert!(stdout.contains("::law_comm") && stdout.contains("::law_clamp_idem"), "{stdout}");
+    assert!(
+        stdout.contains("::law_comm") && stdout.contains("::law_clamp_idem"),
+        "{stdout}"
+    );
     assert!(stdout.contains("2 passed, 0 failed"), "{stdout}");
 }
 
@@ -681,7 +852,10 @@ fn messages_call_the_float_type_f64() {
     let path = scratch("f64-name", "f.cp", b"let x: F64 = 1.5\nlet y: Int = x\n");
     let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("F64") && !stderr.contains("Float"), "{stderr}");
+    assert!(
+        stderr.contains("F64") && !stderr.contains("Float"),
+        "{stderr}"
+    );
 }
 
 /// A table above `@!multitest` that takes far more steps than a trace
@@ -703,13 +877,23 @@ fn check():
 #[test]
 fn stress_traces_the_failing_test_case_of_a_file_judged_by_its_checker() {
     let path = scratch("checker-trace", "table.cp", TABLE.as_bytes());
-    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--trace".as_ref()], b"");
+    let out = cpl(
+        &["stress".as_ref(), path.as_os_str(), "--trace".as_ref()],
+        b"",
+    );
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("  got:\n    0\n  checker: assertion failed: got == sum(a)"), "{stdout}");
+    assert!(
+        stdout.contains("  got:\n    0\n  checker: assertion failed: got == sum(a)"),
+        "{stdout}"
+    );
     assert!(!stdout.contains("expected:"), "{stdout}");
-    let trace = std::fs::read_to_string(path.with_extension("tests").join("stress-1.trace.html")).unwrap();
+    let trace =
+        std::fs::read_to_string(path.with_extension("tests").join("stress-1.trace.html")).unwrap();
     // The steps of the test case are there, past the table's.
-    assert!(trace.contains("\"line\":6"), "the trace stops above `@!multitest`");
+    assert!(
+        trace.contains("\"line\":6"),
+        "the trace stops above `@!multitest`"
+    );
 }
 
 /// `cpl build --checked` stops on what `cpl run` stops on, where the
@@ -760,7 +944,12 @@ fn a_checked_build_stops_on_wide_int_mistakes() {
             .stderr(Stdio::piped())
             .spawn()
             .expect("the checked binary runs");
-        child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
         let out = child.wait_with_output().unwrap();
         let stderr = String::from_utf8_lossy(&out.stderr);
         assert!(!out.status.success(), "{name} went on: {out:?}");
@@ -798,7 +987,12 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
             .stderr(Stdio::piped())
             .spawn()
             .expect("spawn");
-        child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
         child.wait_with_output().unwrap()
     };
 
@@ -809,7 +1003,10 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
         let interp = run_bin(&mut interp_cmd, input);
         let mut chk_cmd = Command::new(dir.join("s.checked"));
         let chk = run_bin(&mut chk_cmd, input);
-        assert!(interp.status.success(), "interp failed on {input:?}: {interp:?}");
+        assert!(
+            interp.status.success(),
+            "interp failed on {input:?}: {interp:?}"
+        );
         assert!(chk.status.success(), "checked failed on {input:?}: {chk:?}");
         assert_eq!(
             String::from_utf8_lossy(&interp.stdout),
@@ -828,8 +1025,14 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
     assert_eq!(chk.status.code(), Some(3), "checked: {chk:?}");
     let interp_err = String::from_utf8_lossy(&interp.stderr);
     let chk_err = String::from_utf8_lossy(&chk.stderr);
-    assert!(interp_err.contains("sqrt(-1) of a negative number"), "interp: {interp_err}");
-    assert!(chk_err.contains("sqrt(-1) of a negative number"), "checked: {chk_err}");
+    assert!(
+        interp_err.contains("sqrt(-1) of a negative number"),
+        "interp: {interp_err}"
+    );
+    assert!(
+        chk_err.contains("sqrt(-1) of a negative number"),
+        "checked: {chk_err}"
+    );
 
     // Release C++ (no -DLOCAL) stays raw and does not trap.
     let rel_bin = dir.join("s.release");
@@ -852,11 +1055,22 @@ fn cpl_run_still_checks_an_index_inside_unchecked() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-unchecked-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("u.cp");
-    std::fs::write(&path, "var xs = [1, 2, 3]\nunchecked:\n    xs[5] = 1\nprint(xs)\n").unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&path).output().expect("cpl runs");
+    std::fs::write(
+        &path,
+        "var xs = [1, 2, 3]\nunchecked:\n    xs[5] = 1\nprint(xs)\n",
+    )
+    .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&path)
+        .output()
+        .expect("cpl runs");
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert_eq!(out.status.code(), Some(3), "{stderr}");
-    assert!(stderr.contains("index 5 is outside a list of length 3"), "{stderr}");
+    assert!(
+        stderr.contains("index 5 is outside a list of length 3"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -864,8 +1078,16 @@ fn cpl_run_still_checks_a_domain_position_inside_unchecked() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-unchecked-pos-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("u.cp");
-    std::fs::write(&path, "domain D = 1..=10\nvar a: [D]Int = 0\nunchecked:\n    a[D.nth(50)] = 1\nprint(a)\n").unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&path).output().expect("cpl runs");
+    std::fs::write(
+        &path,
+        "domain D = 1..=10\nvar a: [D]Int = 0\nunchecked:\n    a[D.nth(50)] = 1\nprint(a)\n",
+    )
+    .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&path)
+        .output()
+        .expect("cpl runs");
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert_eq!(out.status.code(), Some(3), "{stderr}");
     assert!(stderr.contains("`D` has no position 50"), "{stderr}");
@@ -881,7 +1103,8 @@ fn check_errors(test: &str, source: &str) -> String {
 
 #[test]
 fn an_error_inside_library_code_is_shown_at_the_call_that_asked_for_it() {
-    let source = "domain S = 0..3\nlet s: [S]Char = read()\nlet h = RollingHash.new(s)\nprint(h.get(3))\n";
+    let source =
+        "domain S = 0..3\nlet s: [S]Char = read()\nlet h = RollingHash.new(s)\nprint(h.get(3))\n";
     let stderr = check_errors("library-span", source);
     assert!(stderr.contains("a.cp:4:7"), "{stderr}");
     assert!(!stderr.contains("a.cp:1:1"), "{stderr}");
@@ -891,7 +1114,10 @@ fn an_error_inside_library_code_is_shown_at_the_call_that_asked_for_it() {
 fn the_users_own_error_hides_the_ones_it_causes_in_library_code() {
     let source = "domain S = 0..3\nlet s: [S]Char = read()\nlet h = RollingHash.new(s)\nprint(h.get(S.first!..))\n";
     let stderr = check_errors("library-noise", source);
-    assert!(stderr.contains("`!` takes the value out of an optional"), "{stderr}");
+    assert!(
+        stderr.contains("`!` takes the value out of an optional"),
+        "{stderr}"
+    );
     assert!(!stderr.contains("has no member"), "{stderr}");
 }
 
@@ -909,7 +1135,10 @@ fn an_end_of_another_domain_or_a_changed_name_proves_no_step() {
 
 #[test]
 fn a_parameter_type_sees_only_the_parameters_before_it() {
-    let stderr = check_errors("param-size-later", "fn valid(seq: [0..n]Int, n: Int) -> Int: n\nprint(valid([1], 1))\n");
+    let stderr = check_errors(
+        "param-size-later",
+        "fn valid(seq: [0..n]Int, n: Int) -> Int: n\nprint(valid([1], 1))\n",
+    );
     assert!(stderr.contains("no `n` in scope"), "{stderr}");
 }
 
@@ -917,39 +1146,70 @@ fn a_parameter_type_sees_only_the_parameters_before_it() {
 fn an_arm_leaves_only_where_the_match_is_the_whole_value() {
     let source = "for i in 0..3:\n    let x = 1 + match i:\n        1 => continue\n        v => v\n    print(x)\n";
     let stderr = check_errors("leaving-arm-inside", source);
-    assert!(stderr.contains("`continue` out of a block that is used as a value"), "{stderr}");
+    assert!(
+        stderr.contains("`continue` out of a block that is used as a value"),
+        "{stderr}"
+    );
 }
 
 #[test]
 fn a_fn_inside_a_fn_says_which_arguments_are_mut() {
     let head = "fn main_like():\n    var xs: List<Int> = []\n    fn add(mut ys: List<Int>, x: Int):\n        ys.push(x)\n";
-    let stderr = check_errors("nested-mut-missing", &format!("{head}    add(xs, 1)\nmain_like()\n"));
-    assert!(stderr.contains("the argument must be passed as `mut xs`"), "{stderr}");
-    let stderr = check_errors("nested-mut-extra", &format!("{head}    var k = 1\n    add(mut xs, mut k)\nmain_like()\n"));
-    assert!(stderr.contains("`add` doesn't change `x`, so `mut` doesn't belong here"), "{stderr}");
+    let stderr = check_errors(
+        "nested-mut-missing",
+        &format!("{head}    add(xs, 1)\nmain_like()\n"),
+    );
+    assert!(
+        stderr.contains("the argument must be passed as `mut xs`"),
+        "{stderr}"
+    );
+    let stderr = check_errors(
+        "nested-mut-extra",
+        &format!("{head}    var k = 1\n    add(mut xs, mut k)\nmain_like()\n"),
+    );
+    assert!(
+        stderr.contains("`add` doesn't change `x`, so `mut` doesn't belong here"),
+        "{stderr}"
+    );
 }
 
 #[test]
 fn an_arc_without_a_record_says_how_to_read_it() {
     let pairs = "use std.graph.{undirected_of_pairs}\ndomain V = 0..3\nlet adj = undirected_of_pairs([(V(0), V(1))])\nfor a in adj[V(0)]: print(a.e)\n";
     let stderr = check_errors("arc-e", pairs);
-    assert!(stderr.contains("a graph built from a list of pairs numbers no edges"), "{stderr}");
-    let weighted = "domain V = 0..3\nlet adj: [V]List<(V, Int)> = []\nfor b in adj[V(0)]: print(b.e)\n";
+    assert!(
+        stderr.contains("a graph built from a list of pairs numbers no edges"),
+        "{stderr}"
+    );
+    let weighted =
+        "domain V = 0..3\nlet adj: [V]List<(V, Int)> = []\nfor b in adj[V(0)]: print(b.e)\n";
     let stderr = check_errors("arc-tuple", weighted);
-    assert!(stderr.contains("the parts of a tuple have numbers, not names: `.0` to `.1`"), "{stderr}");
+    assert!(
+        stderr.contains("the parts of a tuple have numbers, not names: `.0` to `.1`"),
+        "{stderr}"
+    );
 }
 
 #[test]
 fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
-    let indices = check_errors("list_indices", "let xs = [5, 6]\nfor i in xs.indices: print(i)\n");
-    assert!(indices.contains("`List<Int>` has no member `indices`"), "{indices}");
+    let indices = check_errors(
+        "list_indices",
+        "let xs = [5, 6]\nfor i in xs.indices: print(i)\n",
+    );
+    assert!(
+        indices.contains("`List<Int>` has no member `indices`"),
+        "{indices}"
+    );
     assert!(indices.contains("write `0..xs.len`"), "{indices}");
 
     let sort = check_errors(
         "sort_a_range",
         "domain E = 0..3\nlet w: [E]Int = [E] e => 3 - e.ord\nvar order = E.all\nsort(mut order, by: e => w[e])\nprint(order)\n",
     );
-    assert!(sort.contains("`sort` orders a list or an array, not a `Range<E>`"), "{sort}");
+    assert!(
+        sort.contains("`sort` orders a list or an array, not a `Range<E>`"),
+        "{sort}"
+    );
     assert!(sort.contains("`sorted(r, by: ..)`"), "{sort}");
 
     let sum = check_errors("sum_of_text", "let xs = [\"a\", \"b\"]\nprint(sum(xs))\n");
@@ -960,7 +1220,10 @@ fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
 #[test]
 fn reading_an_optional_says_how_none_is_written() {
     let bare = check_errors("read_optional", "let a: ?Int = read()\nprint(a ?? 0)\n");
-    assert!(bare.contains("`read()` has no input format for a `?Int`"), "{bare}");
+    assert!(
+        bare.contains("`read()` has no input format for a `?Int`"),
+        "{bare}"
+    );
     assert!(bare.contains("`read(none: 0)`"), "{bare}");
 
     let stray = check_errors("read_none_of_int", "let b: Int = read(none: 0)\nprint(b)\n");
@@ -974,7 +1237,10 @@ fn a_part_of_a_row_past_its_end_is_not_called_a() {
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"7\n");
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert_eq!(out.status.code(), Some(3), "{stderr}");
-    assert!(stderr.contains("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length"), "{stderr}");
+    assert!(
+        stderr.contains("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length"),
+        "{stderr}"
+    );
     assert!(!stderr.contains("a["), "{stderr}");
 }
 
@@ -982,11 +1248,20 @@ fn a_part_of_a_row_past_its_end_is_not_called_a() {
 /// what to write instead of only that the type has no order.
 #[test]
 fn max_assign_on_a_grid_or_optional_rows_says_what_to_write() {
-    let grid = check_errors("max_grid", "var g: [0..2, 0..3]Int = 0\nvar h: [0..2, 0..3]Int = 1\ng max= h\nprint(g)\n");
-    assert!(grid.contains("`max=` works on one row at a time, not on a whole grid"), "{grid}");
+    let grid = check_errors(
+        "max_grid",
+        "var g: [0..2, 0..3]Int = 0\nvar h: [0..2, 0..3]Int = 1\ng max= h\nprint(g)\n",
+    );
+    assert!(
+        grid.contains("`max=` works on one row at a time, not on a whole grid"),
+        "{grid}"
+    );
     assert!(grid.contains("`g[r, ..] max= h[r, ..]`"), "{grid}");
 
-    let rows = check_errors("min_opt_rows", "var a: [0..3]?Int = none\nvar b: [0..3]?Int = none\na min= b\nprint(a[1] ?? 0)\n");
+    let rows = check_errors(
+        "min_opt_rows",
+        "var a: [0..3]?Int = none\nvar b: [0..3]?Int = none\na min= b\nprint(a[1] ?? 0)\n",
+    );
     assert!(rows.contains("a `?Int` cell may be `none`"), "{rows}");
     assert!(rows.contains("`a[i] min= b[i]`"), "{rows}");
 }
@@ -999,7 +1274,11 @@ fn a_million_calls_deep_run_in_the_built_cpp_on_an_8_mb_stack() {
     if Command::new("g++").arg("--version").output().is_err() {
         return;
     }
-    let source = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stack/path_dfs.cp")).unwrap();
+    let source = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/stack/path_dfs.cp"
+    ))
+    .unwrap();
     let path = scratch("deep-dfs", "path_dfs.cp", &source);
     let built = cpl(&["build".as_ref(), path.as_os_str()], b"");
     assert!(built.status.success(), "{built:?}");
@@ -1032,13 +1311,30 @@ fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
     let out = cpl(&["build".as_ref(), path.as_os_str()], b"");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(out.status.success(), "{out:?}");
-    assert!(stderr.contains("warning: judge `olympiad` allows no threads"), "{stderr}");
+    assert!(
+        stderr.contains("warning: judge `olympiad` allows no threads"),
+        "{stderr}"
+    );
     let cpp = std::fs::read_to_string(path.with_extension("cpp")).unwrap();
-    assert!(!cpp.contains("pthread") && cpp.contains("int main() {"), "{cpp}");
-    let out = cpl(&["build".as_ref(), path.as_os_str(), "--judge".as_ref(), "generic".as_ref()], b"");
+    assert!(
+        !cpp.contains("pthread") && cpp.contains("int main() {"),
+        "{cpp}"
+    );
+    let out = cpl(
+        &[
+            "build".as_ref(),
+            path.as_os_str(),
+            "--judge".as_ref(),
+            "generic".as_ref(),
+        ],
+        b"",
+    );
     assert!(out.status.success() && out.stderr.is_empty(), "{out:?}");
     let cpp = std::fs::read_to_string(path.with_extension("cpp")).unwrap();
-    assert!(cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"), "{cpp}");
+    assert!(
+        cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -1087,18 +1383,33 @@ fn user_library_sees_prelude_in_check_run_and_build() {
 /// and `cpl explain` says so (decision 178).
 #[test]
 fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
-    let port = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems/cf2178h/port.cp");
+    let port = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../corpus/problems/cf2178h/port.cp");
     let explained = cpl(&["explain".as_ref(), port.as_os_str()], b"");
     assert!(explained.status.success(), "{explained:?}");
     let explained = String::from_utf8_lossy(&explained.stdout);
     assert!(explained.contains(".back -> never read"), "{explained}");
-    let built = cpl(&["build".as_ref(), port.as_os_str(), "-o".as_ref(), "-".as_ref()], b"");
+    let built = cpl(
+        &[
+            "build".as_ref(),
+            port.as_os_str(),
+            "-o".as_ref(),
+            "-".as_ref(),
+        ],
+        b"",
+    );
     assert!(built.status.success(), "{built:?}");
     let cpp = String::from_utf8_lossy(&built.stdout);
     let paths = &cpp[cpp.find("struct Paths").expect("Paths")..];
     let paths = &paths[..paths.find("};").unwrap()];
-    assert!(paths.contains(" dist;") && !paths.contains("back"), "{paths}");
-    assert!(!cpp.contains("Grid<std::optional<std::tuple<std::tuple<int, int>, Move>>"), "{cpp}");
+    assert!(
+        paths.contains(" dist;") && !paths.contains("back"),
+        "{paths}"
+    );
+    assert!(
+        !cpp.contains("Grid<std::optional<std::tuple<std::tuple<int, int>, Move>>"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -1148,16 +1459,39 @@ fn lsp_completes_and_hovers_the_v03_stdlib_with_no_edition_set() {
             replies.insert(id, message.at(&["result"]).clone());
         }
     }
-    let hover = |id: u64| replies[&id].at(&["contents", "value"]).as_str().unwrap_or("").to_string();
+    let hover = |id: u64| {
+        replies[&id]
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
     let labels = |id: u64| -> Vec<String> {
-        let items = replies[&id].get("items").unwrap_or(&replies[&id]).as_array().unwrap_or(&[]);
-        items.iter().filter_map(|i| i.at(&["label"]).as_str().map(str::to_string)).collect()
+        let items = replies[&id]
+            .get("items")
+            .unwrap_or(&replies[&id])
+            .as_array()
+            .unwrap_or(&[]);
+        items
+            .iter()
+            .filter_map(|i| i.at(&["label"]).as_str().map(str::to_string))
+            .collect()
     };
     assert!(hover(2).contains("struct MinMaxHeap<T>"), "{}", hover(2));
     assert!(hover(3).contains("MinMaxHeap.of([2, 5])"), "{}", hover(3));
     let lazy = labels(4);
     assert!(lazy.iter().any(|l| l == "LazyTreap"), "{lazy:?}");
-    assert!(!lazy.iter().any(|l| l == "LazySegTree" || l == "DualSegTree"), "{lazy:?}");
+    assert!(
+        !lazy
+            .iter()
+            .any(|l| l == "LazySegTree" || l == "DualSegTree"),
+        "{lazy:?}"
+    );
     let search = labels(5);
-    assert!(!search.iter().any(|l| l == "bsearch_first" || l == "bsearch_last"), "{search:?}");
+    assert!(
+        !search
+            .iter()
+            .any(|l| l == "bsearch_first" || l == "bsearch_last"),
+        "{search:?}"
+    );
 }

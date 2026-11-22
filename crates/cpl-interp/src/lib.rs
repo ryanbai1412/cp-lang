@@ -4400,6 +4400,46 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::StrView(Rc::new(view.slice(lo as usize, hi as usize)))
             }
+            Builtin::KeyLo => Value::Int(match &first {
+                Value::ListView(v) => v.lo as i64,
+                Value::StrView(v) => v.lo as i64,
+                _ => 0,
+            }),
+            Builtin::KeyPos | Builtin::PosKey => {
+                let at = values.next().unwrap_or_default().int();
+                let (lo, len, rev) = match &first {
+                    Value::ListView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    _ => return trap(span, "keys need a slice"),
+                };
+                Value::Int(if op == Builtin::KeyPos {
+                    let i = at - lo;
+                    if i < 0 || i >= len { -1 } else if rev { len - 1 - i } else { i }
+                } else {
+                    lo + if rev { len - 1 - at } else { at }
+                })
+            }
+            Builtin::KeySlice => {
+                let lo = values.next().unwrap_or_default().int();
+                let hi = values.next().unwrap_or_default().int();
+                let (first_key, len) = match &first {
+                    Value::ListView(v) => (v.lo as i64, v.len as i64),
+                    Value::StrView(v) => (v.lo as i64, v.len as i64),
+                    _ => return trap(span, "keys need a slice"),
+                };
+                if lo < first_key || hi < lo || hi > first_key + len {
+                    return trap(
+                        span,
+                        format!("slice {lo}..{hi} is outside the keys {first_key}..{}", first_key + len),
+                    );
+                }
+                let rel = (lo - first_key) as usize..(hi - first_key) as usize;
+                match first {
+                    Value::ListView(v) => Value::ListView(Rc::new(v.slice_storage(rel))),
+                    Value::StrView(v) => Value::StrView(Rc::new(v.slice_storage(rel))),
+                    _ => unreachable!(),
+                }
+            }
             Builtin::ListSlice => {
                 let lo = values.next().unwrap_or_default().int();
                 let hi = values.next().unwrap_or_default().int();

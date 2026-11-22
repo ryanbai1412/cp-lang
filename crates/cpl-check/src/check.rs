@@ -738,7 +738,7 @@ impl<'a> Checker<'a> {
         // likely a library type that doesn't exist yet than a typo.
         let near_builtin = !value
             && suggestion.as_deref().is_some_and(|s| {
-                prelude::TYPE_NAMES.contains(&s) || prelude::STD_NAMES.iter().any(|(n, _)| *n == s)
+                prelude::TYPE_NAMES.contains(&s) || prelude::std_names().iter().any(|(n, _)| *n == s)
             });
         let unknown = (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
@@ -747,7 +747,7 @@ impl<'a> Checker<'a> {
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
         let library = if unknown {
-            closest(name, prelude::STD_NAMES.iter().map(|(n, _)| *n))
+            closest(name, prelude::std_names().iter().map(|(n, _)| *n))
         } else {
             None
         };

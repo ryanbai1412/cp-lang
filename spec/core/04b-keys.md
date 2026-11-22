@@ -228,7 +228,7 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` (R04b.5.1) |
 | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K` (R04b.5.2) |
 | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed by `s.keys` (R04b.5.3) |
-| `min_rotation`, `max_rotation` | `-> Int` | `-> K`, the start (R04b.5.4) |
+| `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty (R04b.5.4) |
 | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts (R04b.5.5) |
 | `Palindromes.longest_at(i)` | `i: Int` | `i: K` (R04b.5.6) |
 | `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged (R04b.5.7) |

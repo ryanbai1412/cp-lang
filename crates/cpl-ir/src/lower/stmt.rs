@@ -2952,6 +2952,7 @@ impl<'a> Lowerer<'a> {
                             Some(&elem_ty),
                             Some(bounds),
                             init.span,
+                            None,
                         ));
                     }
                 }
@@ -3973,9 +3974,9 @@ impl<'a> Lowerer<'a> {
         if matches!(rows, Ty::List(_)) {
             return vec![self.local(at, span)];
         }
-        self.whole_axis = Some(at);
+        self.whole_axes = vec![at];
         let (cell, _) = self.index_args(rows, indices, span);
-        self.whole_axis = None;
+        self.whole_axes.clear();
         cell
     }
 

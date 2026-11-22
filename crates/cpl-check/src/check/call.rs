@@ -737,8 +737,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         if self.local(name).is_some()
-            || (self.global(name).is_some()
-                && !(name == "zip" && std::env::var_os("CPL_SPEC").is_some()))
+            || (self.global(name).is_some() && !(name == "zip" && crate::edition::is_v03()))
         {
             return None;
         }
@@ -791,7 +790,7 @@ impl<'a> Checker<'a> {
                 args: vec![first.clone()],
             }),
             ("read_line", _) => Some(Ty::Str),
-            ("print", _) if std::env::var_os("CPL_SPEC").is_some() => {
+            ("print", _) if crate::edition::is_v03() => {
                 let allow_none = args
                     .iter()
                     .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
@@ -874,11 +873,11 @@ impl<'a> Checker<'a> {
                 })
             }
             ("max" | "min", [Ty::Array { elem, .. }])
-                if std::env::var_os("CPL_SPEC").is_none() && is_slice(&args[0].value) =>
+                if !crate::edition::is_v03() && is_slice(&args[0].value) =>
             {
                 Some(Ty::Optional(Box::new(elem.widen())))
             }
-            ("max" | "min", [_]) if std::env::var_os("CPL_SPEC").is_some() => {
+            ("max" | "min", [_]) if crate::edition::is_v03() => {
                 let message = format!(
                     "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
                 );
@@ -1059,14 +1058,20 @@ impl<'a> Checker<'a> {
                             param_tys,
                             body,
                             ..
-                        } if params.len() == 1 => self.quietly(|c| {
+                        } if !params.is_empty() => self.quietly(|c| {
                             c.push_scope();
                             let pty = param_tys
                                 .first()
+                                .filter(|_| params.len() == 1)
                                 .and_then(|t| t.as_ref())
                                 .map(|t| c.resolve_type(t))
                                 .unwrap_or_else(|| (**elem).clone());
-                            c.bind(&params[0], &pty, false, "param");
+                            c.bind(
+                                &Pattern::single_param(params).expect("a parameter"),
+                                &pty,
+                                false,
+                                "param",
+                            );
                             let ret = c.infer(body).widen();
                             c.pop_scope();
                             ret
@@ -1105,20 +1110,30 @@ impl<'a> Checker<'a> {
                                 param_tys,
                                 body,
                                 ..
-                            } if params.len() == 1 => self.quietly(|c| {
-                                c.push_scope();
-                                let pty = param_tys
-                                    .first()
-                                    .and_then(|t| t.as_ref())
-                                    .map(|t| c.resolve_type(t))
-                                    .unwrap_or_else(|| elem.clone());
-                                c.bind(&params[0], &pty, false, "param");
-                                let ret = c.infer(body).widen();
-                                c.pop_scope();
-                                ret
-                            }),
+                            } if params.len() == 1
+                                || matches!(&elem, Ty::Tuple(items) if items.len() == params.len()) =>
+                            {
+                                self.quietly(|c| {
+                                    c.push_scope();
+                                    let pty = param_tys
+                                        .first()
+                                        .filter(|_| params.len() == 1)
+                                        .and_then(|t| t.as_ref())
+                                        .map(|t| c.resolve_type(t))
+                                        .unwrap_or_else(|| elem.clone());
+                                    c.bind(
+                                        &Pattern::single_param(params).expect("a parameter"),
+                                        &pty,
+                                        false,
+                                        "param",
+                                    );
+                                    let ret = c.infer(body).widen();
+                                    c.pop_scope();
+                                    ret
+                                })
+                            }
                             ExprKind::Lambda { params, .. }
-                                if std::env::var_os("CPL_SPEC").is_some() && params.len() > 1 =>
+                                if crate::edition::is_v03() && params.len() > 1 =>
                             {
                                 let expected_arity = match &elem {
                                     Ty::Tuple(items) => items.len(),
@@ -1162,7 +1177,7 @@ impl<'a> Checker<'a> {
                 {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" if std::env::var_os("CPL_SPEC").is_some() => {
+                "filter" if crate::edition::is_v03() => {
                     return Some(Ty::Named {
                         name: "Filter".into(),
                         args: vec![elem],
@@ -1174,9 +1189,7 @@ impl<'a> Checker<'a> {
                     }
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin"
-                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() =>
-                {
+                "argmax" | "argmin" if crate::edition::is_v03() && !base_ty.is_keyed() => {
                     let message = format!(
                         "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
                         name.text,
@@ -1186,8 +1199,7 @@ impl<'a> Checker<'a> {
                     return Some(Ty::Error);
                 }
                 "sort" | "reverse" | "shuffle"
-                    if std::env::var_os("CPL_SPEC").is_some()
-                        && !matches!(base_ty, Ty::Domain(_)) =>
+                    if crate::edition::is_v03() && !matches!(base_ty, Ty::Domain(_)) =>
                 {
                     if !base_ty.is_indexed_mut() {
                         let message = format!(
@@ -1206,7 +1218,7 @@ impl<'a> Checker<'a> {
                 _ => {}
             }
         }
-        if std::env::var_os("CPL_SPEC").is_some() && name.text == "fold" {
+        if crate::edition::is_v03() && name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
                 if args.len() == 1
                     && args[0].name.is_none()
@@ -1232,14 +1244,20 @@ impl<'a> Checker<'a> {
                                 param_tys,
                                 body,
                                 ..
-                            } if params.len() == 1 => {
+                            } if !params.is_empty() => {
                                 self.push_scope();
                                 let pty = param_tys
                                     .first()
+                                    .filter(|_| params.len() == 1)
                                     .and_then(|o| o.as_ref())
                                     .map(|t| self.resolve_type(t))
                                     .unwrap_or_else(|| (**inner).clone());
-                                self.bind(&params[0], &pty, false, "param");
+                                self.bind(
+                                    &Pattern::single_param(params).expect("a parameter"),
+                                    &pty,
+                                    false,
+                                    "param",
+                                );
                                 let r = self.infer(body);
                                 self.pop_scope();
                                 r
@@ -1345,7 +1363,7 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
-                if std::env::var_os("CPL_SPEC").is_some() {
+                if crate::edition::is_v03() {
                     if let Some(fn_name) = callee_name {
                         if let Some(Def::Fn { bounds, .. }) =
                             self.global(fn_name).as_deref().cloned()
@@ -1501,7 +1519,7 @@ impl<'a> Checker<'a> {
                     }
                     if args.len() == 1 && args[0].name.is_none() {
                         let arg_ty = self.infer(&args[0].value);
-                        if std::env::var_os("CPL_SPEC").is_some() {
+                        if crate::edition::is_v03() {
                             if let Ty::Tuple(elems) = &arg_ty {
                                 if elems.len() == factors.len()
                                     && elems
@@ -1792,7 +1810,7 @@ impl<'a> Checker<'a> {
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
-                        let code = if std::env::var_os("CPL_SPEC").is_some()
+                        let code = if crate::edition::is_v03()
                             && callee == "Fenwick"
                             && name.text == "act"
                         {
@@ -1896,7 +1914,7 @@ impl<'a> Checker<'a> {
                     continue;
                 }
             }
-            if std::env::var_os("CPL_SPEC").is_some()
+            if crate::edition::is_v03()
                 && callee != "List"
                 && callee != "zip"
                 && matches!(slot, Ty::Named { name, .. } if name == "List")

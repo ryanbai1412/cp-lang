@@ -5642,3 +5642,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   semiring literature.
 - **Reverse.** Rename `reach_sets` back and drop the matrix `closure`
   or rename it instead.
+
+## 212. 0.3 is the default edition (2026-11-22)
+
+- **Decision.** `cpl` checks, builds and runs CP Lang 0.3 by default, with `spec/std` built in as its standard library; `CPL_EDITION=0.2` selects the old language and `stdlib/`. The edition is read once, in `cpl-check/src/edition.rs`. The 0.2 test suites pin `CPL_EDITION=0.2` (`.cargo/config.toml`, `scripts/gate-env.sh`) until they move to 0.3; then the pin, `stdlib/` and the 0.2 paths are deleted.
+- **Why.** 0.3 is the only language we ship. A spec-only checker beside a 0.2 runtime let the site and editors show one language and run another.
+- **Reverse.** Make `Edition::V02` the default in `edition.rs`.

@@ -133,7 +133,7 @@ pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
     // `STD_NAMES` is every name of the library; a file gets only the ones
     // the prelude lists.
     let std = prelude::names().iter().filter_map(|(_, name)| {
-        let (name, module) = prelude::STD_NAMES
+        let (name, module) = prelude::std_names()
             .iter()
             .find(|(known, _)| *known == name.text)?;
         Some((*name, PreludeKind::Std(module)))

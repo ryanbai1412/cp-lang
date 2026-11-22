@@ -52,7 +52,7 @@ pub struct Dsu<V>:
     /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(2, 3); d.find(3) == 2 and d.find(0) == 0`
-    pub fn find(self, v: V) -> V = V.at(self.find_ord(v.ord))
+    pub fn find(self, v: V) -> V = V.nth(self.find_ord(v.ord))
 
     /// The present, to return to with [`undo_to`](Dsu.undo_to). The first call switches path
     /// shortening off for good.
@@ -115,7 +115,7 @@ pub struct Dsu<V>:
             if marked:
                 joined.push(y)
                 joined.push(neg_sy)
-        Some((kept: V.at(x), merged: V.at(y)))
+        Some((kept: V.nth(x), merged: V.nth(y)))
 
     /// Whether `a` and `b` are in the same set.
     ///

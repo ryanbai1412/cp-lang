@@ -8,4 +8,6 @@ case "$target" in
     /*) ;;
     *) target="$PWD/$target" ;;
 esac
+# The 0.2 suites pin their edition and library until they move to 0.3 (decisions.md 188).
+export CPL_EDITION="${CPL_EDITION:-0.2}"
 export CPL_STD="$PWD/stdlib"

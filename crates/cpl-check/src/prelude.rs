@@ -527,10 +527,10 @@ pub const VALUE_NAMES: &[&str] = &[
 /// The standard library module that declares the public name `name`, for
 /// the hint on a name that was used without its `use`.
 pub fn std_module(name: &str) -> Option<&'static str> {
-    STD_NAMES
+    std_names()
         .binary_search_by(|(known, _)| (*known).cmp(name))
         .ok()
-        .map(|at| STD_NAMES[at].1)
+        .map(|at| std_names()[at].1)
 }
 
 /// The edit that brings `name` in from `std.<module>`: into the braces of
@@ -575,9 +575,16 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
     }
 }
 
-/// Every public name of `stdlib/` and its module, sorted by name.
-/// `build.rs` reads it off the files.
-pub const STD_NAMES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
+/// Every public name of the active edition's standard library and its
+/// module, sorted by name. `build.rs` reads it off the files.
+pub fn std_names() -> &'static [(&'static str, &'static str)] {
+    const V02: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
+    const V03: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/spec_std_names.rs"));
+    match crate::edition::edition() {
+        crate::edition::Edition::V02 => V02,
+        crate::edition::Edition::V03 => V03,
+    }
+}
 
 #[cfg(test)]
 mod tests {

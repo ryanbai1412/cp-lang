@@ -49,7 +49,9 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
             let trimmed = l.trim_start();
             if let Some(rest) = trimmed.strip_prefix("//") {
                 let rest = rest.trim_start();
-                !(rest.starts_with("expect:") || rest.starts_with("rule:") || rest.starts_with("input:"))
+                !(rest.starts_with("expect:")
+                    || rest.starts_with("rule:")
+                    || rest.starts_with("input:"))
             } else {
                 true
             }
@@ -431,4 +433,17 @@ fn extract_rule_defs(line: &str) -> Vec<String> {
         i += 1;
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn input_header_is_stdin_and_not_a_source_line() {
+        let text = "// expect: ok, output \"1\"\n// input: \"3 4\\n\"\nprint(1)\n";
+        assert_eq!(header_input(text), b"3 4\n");
+        assert_eq!(parse_header(text).unwrap().1, 2);
+        assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
+    }
 }

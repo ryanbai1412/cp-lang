@@ -6,6 +6,36 @@ use crate::ty::{human_int, Param};
 use cpl_syntax::ast::{self, ExprKind, TypeKind};
 
 impl<'a> Checker<'a> {
+    /// R04.2.11: for `P = (A, B)`, `[P]T` and `[A, B]T` are one type, kept
+    /// as one index per factor.
+    pub(crate) fn flat_index(&mut self, index: Vec<Ty>) -> Vec<Ty> {
+        let mut flat = Vec::with_capacity(index.len());
+        for ty in index {
+            match self.position_factors(&ty) {
+                Some(parts) => flat.extend(parts),
+                None => flat.push(ty),
+            }
+        }
+        flat
+    }
+
+    /// The factor positions of a product-domain position, when every
+    /// factor is itself a position.
+    pub(crate) fn position_factors(&mut self, ty: &Ty) -> Option<Vec<Ty>> {
+        let Ty::Pos(dom) = ty else {
+            return None;
+        };
+        let parts: Vec<Ty> = self
+            .product_factors(dom)?
+            .into_iter()
+            .map(|(_, t)| t)
+            .collect();
+        parts
+            .iter()
+            .all(|t| matches!(t, Ty::Pos(_)))
+            .then_some(parts)
+    }
+
     pub(crate) fn resolve_type(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
             TypeKind::Named { name, args } => {
@@ -13,10 +43,13 @@ impl<'a> Checker<'a> {
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 self.named_type(&name.text, name.span, args)
             }
-            TypeKind::Array { index, elem } => Ty::Array {
-                index: index.iter().map(|i| self.resolve_type(i)).collect(),
-                elem: Box::new(self.resolve_type(elem)),
-            },
+            TypeKind::Array { index, elem } => {
+                let index = index.iter().map(|i| self.resolve_type(i)).collect();
+                Ty::Array {
+                    index: self.flat_index(index),
+                    elem: Box::new(self.resolve_type(elem)),
+                }
+            }
             TypeKind::OwnDomain { name, elem } => {
                 // `[domain S]Char` declares `S` where it is written.
                 if self.local(&name.text).is_none() && !self.scopes.is_empty() {
@@ -871,12 +904,12 @@ impl<'a> Checker<'a> {
                             rebased
                         } else if *mutable
                             && matches!(inferred, Ty::Range { .. })
-                            && std::env::var_os("CPL_SPEC").is_some()
+                            && crate::edition::is_v03()
                         {
                             Ty::Int
                         } else if !*mutable
                             && inferred == Ty::Int
-                            && std::env::var_os("CPL_SPEC").is_some()
+                            && crate::edition::is_v03()
                         {
                             let (lo, hi) = self.bounds(init);
                             if let (Some(l), Some(h)) = (lo, hi) {
@@ -1818,9 +1851,9 @@ impl<'a> Checker<'a> {
             | Ty::Range { .. }
             | Ty::Pos(_)
             | Ty::Unit => true,
-            Ty::Bool => std::env::var_os("CPL_SPEC").is_none(),
+            Ty::Bool => !crate::edition::is_v03(),
             Ty::Optional(inner) => {
-                if std::env::var_os("CPL_SPEC").is_none() || matches!(inner.as_ref(), Ty::Pos(_)) {
+                if !crate::edition::is_v03() || matches!(inner.as_ref(), Ty::Pos(_)) {
                     return true;
                 }
                 allow_none && self.derives_print(inner, allow_none, seen)

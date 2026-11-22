@@ -233,7 +233,12 @@ pub(crate) struct StrViewVal {
 impl StrViewVal {
     pub fn whole(base: Rc<Vec<u8>>, rev: bool) -> StrViewVal {
         let len = base.len();
-        StrViewVal { base, lo: 0, len, rev }
+        StrViewVal {
+            base,
+            lo: 0,
+            len,
+            rev,
+        }
     }
 
     #[inline]
@@ -247,6 +252,16 @@ impl StrViewVal {
             self.lo + idx
         };
         Some(self.base[pos])
+    }
+
+    /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
+    pub fn slice_storage(&self, rel: std::ops::Range<usize>) -> StrViewVal {
+        StrViewVal {
+            base: Rc::clone(&self.base),
+            lo: self.lo + rel.start,
+            len: rel.len(),
+            rev: self.rev,
+        }
     }
 
     pub fn slice(&self, lo: usize, hi: usize) -> StrViewVal {
@@ -338,7 +353,12 @@ pub(crate) struct ListViewVal {
 impl ListViewVal {
     pub fn whole(base: Rc<Vec<Value>>, rev: bool) -> ListViewVal {
         let len = base.len();
-        ListViewVal { base, lo: 0, len, rev }
+        ListViewVal {
+            base,
+            lo: 0,
+            len,
+            rev,
+        }
     }
 
     #[inline]
@@ -352,6 +372,16 @@ impl ListViewVal {
             self.lo + idx
         };
         Some(&self.base[pos])
+    }
+
+    /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
+    pub fn slice_storage(&self, rel: std::ops::Range<usize>) -> ListViewVal {
+        ListViewVal {
+            base: Rc::clone(&self.base),
+            lo: self.lo + rel.start,
+            len: rel.len(),
+            rev: self.rev,
+        }
     }
 
     pub fn slice(&self, lo: usize, hi: usize) -> ListViewVal {
@@ -527,7 +557,11 @@ impl Array {
                     for _ in 0..cells {
                         data.extend_from_slice(&vals[..s]);
                     }
-                    ArrayData::SmallIntTuple { stride, kinds, data }
+                    ArrayData::SmallIntTuple {
+                        stride,
+                        kinds,
+                        data,
+                    }
                 } else {
                     ArrayData::Values(vec![other; cells])
                 }
@@ -597,7 +631,11 @@ impl Array {
                     }
                 }
                 if ok {
-                    ArrayData::SmallIntTuple { stride, kinds, data }
+                    ArrayData::SmallIntTuple {
+                        stride,
+                        kinds,
+                        data,
+                    }
                 } else {
                     ArrayData::Values(values)
                 }
@@ -626,9 +664,10 @@ impl Array {
     pub fn get(&self, idx: usize) -> Option<Value> {
         match &self.data {
             ArrayData::Int(v) => v.get(idx).copied().map(Value::Int),
-            ArrayData::OneIntStruct(v) => {
-                v.get(idx).copied().map(|x| Value::Tuple(TupleVal::OneInt(x)))
-            }
+            ArrayData::OneIntStruct(v) => v
+                .get(idx)
+                .copied()
+                .map(|x| Value::Tuple(TupleVal::OneInt(x))),
             ArrayData::OptInt(v) => v.get(idx).copied().map(|o| match o {
                 Some(x) => Value::Opt(OptVal::Int(x)),
                 None => Value::Opt(OptVal::None),
@@ -636,7 +675,11 @@ impl Array {
             ArrayData::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
             ArrayData::Char(v) => v.get(idx).copied().map(Value::Char),
             ArrayData::Float(v) => v.get(idx).copied().map(Value::Float),
-            ArrayData::SmallIntTuple { stride, kinds, data } => {
+            ArrayData::SmallIntTuple {
+                stride,
+                kinds,
+                data,
+            } => {
                 let s = *stride as usize;
                 let off = idx.checked_mul(s)?;
                 let slice = data.get(off..off + s)?;
@@ -658,7 +701,11 @@ impl Array {
             ArrayData::Bool(v) => Value::Bool(v[idx] != 0),
             ArrayData::Char(v) => Value::Char(v[idx]),
             ArrayData::Float(v) => Value::Float(v[idx]),
-            ArrayData::SmallIntTuple { stride, kinds, data } => {
+            ArrayData::SmallIntTuple {
+                stride,
+                kinds,
+                data,
+            } => {
                 let s = *stride as usize;
                 let off = idx * s;
                 box_small_tuple(*stride, kinds, &data[off..off + s])
@@ -717,7 +764,11 @@ impl Array {
             (ArrayData::Char(v), Value::Char(c)) => v[idx] = c,
             (ArrayData::Float(v), Value::Float(f)) => v[idx] = f,
             (
-                ArrayData::SmallIntTuple { stride, kinds, data },
+                ArrayData::SmallIntTuple {
+                    stride,
+                    kinds,
+                    data,
+                },
                 other,
             ) => {
                 let s = *stride as usize;
@@ -753,7 +804,9 @@ impl Array {
             (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v.contains(&Some(*x)),
             (ArrayData::Bool(v), Value::Bool(b)) => v.contains(&u8::from(*b)),
             (ArrayData::Char(v), Value::Char(c)) => v.contains(c),
-            (ArrayData::Float(v), Value::Float(f)) => v.iter().any(|x| x.total_cmp(f) == Ordering::Equal),
+            (ArrayData::Float(v), Value::Float(f)) => {
+                v.iter().any(|x| x.total_cmp(f) == Ordering::Equal)
+            }
             (ArrayData::Values(v), _) => v.contains(needle),
             _ => (0..self.len()).any(|i| &self.get_unchecked_val(i) == needle),
         }
@@ -807,7 +860,14 @@ impl Array {
             (ArrayData::Bool(v), Value::Bool(b)) => v.fill(u8::from(b)),
             (ArrayData::Char(v), Value::Char(c)) => v.fill(c),
             (ArrayData::Float(v), Value::Float(f)) => v.fill(f),
-            (ArrayData::SmallIntTuple { stride, kinds, data }, other) => {
+            (
+                ArrayData::SmallIntTuple {
+                    stride,
+                    kinds,
+                    data,
+                },
+                other,
+            ) => {
                 let s = *stride as usize;
                 if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
                     if st == *stride && ks[..s] == kinds[..s] {
@@ -845,7 +905,11 @@ impl Array {
             ArrayData::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
             ArrayData::Char(v) => v.iter().copied().map(Value::Char).collect(),
             ArrayData::Float(v) => v.iter().copied().map(Value::Float).collect(),
-            ArrayData::SmallIntTuple { stride, kinds, data } => {
+            ArrayData::SmallIntTuple {
+                stride,
+                kinds,
+                data,
+            } => {
                 let s = *stride as usize;
                 data.chunks_exact(s)
                     .map(|chunk| box_small_tuple(*stride, kinds, chunk))
@@ -1151,9 +1215,14 @@ pub(crate) fn show(
             let sep = sep_of(elem, &program.structs);
             // The last dimension is a row; rows are one per line.
             let row = match dims.last() {
-                Some(Dim::Pos(_) | Dim::Bound(_) | Dim::Sym(_) | Dim::Enum(_) | Dim::Int | Dim::IntFrom(_)) if dims.len() > 1 => {
-                    array.dims.last().copied().unwrap_or(0).max(1) as usize
-                }
+                Some(
+                    Dim::Pos(_)
+                    | Dim::Bound(_)
+                    | Dim::Sym(_)
+                    | Dim::Enum(_)
+                    | Dim::Int
+                    | Dim::IntFrom(_),
+                ) if dims.len() > 1 => array.dims.last().copied().unwrap_or(0).max(1) as usize,
                 _ => usize::MAX,
             };
             for i in 0..array.len() {

@@ -1467,9 +1467,10 @@ struct StrView {
     using value_type = u8;
     std::string_view sv;
     bool rev = false;
+    ll k0 = 0;
     StrView() = default;
     StrView(const std::string& s, bool r = false) noexcept : sv(s), rev(r) {}
-    StrView(std::string_view v, bool r = false) noexcept : sv(v), rev(r) {}
+    StrView(std::string_view v, bool r = false, ll k = 0) noexcept : sv(v), rev(r), k0(k) {}
     void cpl_str_view_tag() const {}
     size_t size() const noexcept { return sv.size(); }
     bool empty() const noexcept { return sv.empty(); }
@@ -1479,9 +1480,9 @@ struct StrView {
     StrView slice(ll lo, ll hi) const {
         if (lo < 0 || hi < lo || (size_t)hi > sv.size()) fail(\"slice outside the string\");
         size_t n = (size_t)(hi - lo), off = rev ? (sv.size() - (size_t)hi) : (size_t)lo;
-        return StrView(sv.substr(off, n), rev);
+        return StrView(sv.substr(off, n), rev, k0 + (ll)off);
     }
-    StrView reversed() const noexcept { return StrView(sv, !rev); }
+    StrView reversed() const noexcept { return StrView(sv, !rev, k0); }
     std::string to_str() const { return !rev ? std::string(sv) : std::string(sv.rbegin(), sv.rend()); }
     struct Iter {
         const char* d; size_t i, n; bool rev;
@@ -1511,6 +1512,10 @@ struct StrView {
 };
 inline StrView str_slice(StrView s, ll lo, ll hi) { return s.slice(lo, hi); }
 inline StrView str_rev(StrView s) noexcept { return s.reversed(); }
+inline ll key_lo(StrView s) noexcept { return s.k0; }
+inline ll key_pos(StrView s, ll k) noexcept { ll i = k - s.k0, n = (ll)s.size(); return i < 0 || i >= n ? -1 : (s.rev ? n - 1 - i : i); }
+inline ll pos_key(StrView s, ll p) noexcept { return s.k0 + (s.rev ? (ll)s.size() - 1 - p : p); }
+inline StrView key_slice(StrView s, ll lo, ll hi) { if (lo < s.k0 || hi < lo || hi > s.k0 + (ll)s.size()) fail(\"slice outside the string's keys\"); return StrView(s.sv.substr((size_t)(lo - s.k0), (size_t)(hi - lo)), s.rev, lo); }
 inline std::string to_str(StrView s) { return s.to_str(); }
 inline void append_str_view(std::string& o, StrView v) { if (!v.rev) o.append(v.sv.data(), v.sv.size()); else for (size_t i = v.sv.size(); i-- > 0;) o.push_back(v.sv[i]); }
 inline std::string str_concat(StrView a, StrView b) { std::string o; o.reserve(a.size() + b.size()); append_str_view(o, a); append_str_view(o, b); return o; }
@@ -1538,16 +1543,17 @@ template <class T> struct ListView {
     const T* ptr = nullptr;
     size_t n = 0;
     bool rev = false;
+    ll k0 = 0;
     ListView() = default;
     ListView(const std::vector<T>& v, bool r = false) noexcept : ptr(v.data()), n(v.size()), rev(r) {}
-    ListView(const T* p, size_t sz, bool r = false) noexcept : ptr(p), n(sz), rev(r) {}
+    ListView(const T* p, size_t sz, bool r = false, ll k = 0) noexcept : ptr(p), n(sz), rev(r), k0(k) {}
     void cpl_list_view_tag() const {}
     size_t size() const noexcept { return n; }
     bool empty() const noexcept { return n == 0; }
     const T& operator[](size_t i) const noexcept { return rev ? ptr[n - 1 - i] : ptr[i]; }
     const T& front() const noexcept { return (*this)[0]; }
     const T& back() const noexcept { return (*this)[n - 1]; }
-    ListView reversed() const noexcept { return ListView(ptr, n, !rev); }
+    ListView reversed() const noexcept { return ListView(ptr, n, !rev, k0); }
     struct Iter {
         const T* d; size_t i, n; bool rev;
         const T& operator*() const noexcept { return rev ? d[n - 1 - i] : d[i]; }
@@ -1571,7 +1577,11 @@ template <class T> struct ListView {
     friend bool operator>(ListView a, ListView b) { return a.cmp(b) > 0; }
     friend bool operator>=(ListView a, ListView b) { return a.cmp(b) >= 0; }
 };
-template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return ListView<T>(v.ptr + (v.rev ? v.n - (size_t)hi : (size_t)lo), (size_t)(hi - lo), v.rev); }
+template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); size_t off = v.rev ? v.n - (size_t)hi : (size_t)lo; return ListView<T>(v.ptr + off, (size_t)(hi - lo), v.rev, v.k0 + (ll)off); }
+template <class T> ll key_lo(ListView<T> v) noexcept { return v.k0; }
+template <class T> ll key_pos(ListView<T> v, ll k) noexcept { ll i = k - v.k0, n = (ll)v.n; return i < 0 || i >= n ? -1 : (v.rev ? n - 1 - i : i); }
+template <class T> ll pos_key(ListView<T> v, ll p) noexcept { return v.k0 + (v.rev ? (ll)v.n - 1 - p : p); }
+template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), v.rev, lo); }
 template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
 template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { return ListView<T>(v, true); }
 template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
@@ -1667,23 +1677,34 @@ pub(crate) fn unused_lines(file: &str) -> Vec<&str> {
     let Some(start) = file.find("namespace cpl {\n") else {
         return Vec::new();
     };
-    let end = file[start..].find("}  // namespace cpl\n").map_or(file.len(), |at| start + at);
-    let mut defs: Vec<(&str, &str)> = file[start..end].lines().filter_map(|line| Some((one_line_fn(line)?, line))).collect();
+    let end = file[start..]
+        .find("}  // namespace cpl\n")
+        .map_or(file.len(), |at| start + at);
+    let mut defs: Vec<(&str, &str)> = file[start..end]
+        .lines()
+        .filter_map(|line| Some((one_line_fn(line)?, line)))
+        .collect();
     let mut unused = Vec::new();
     loop {
         let dead: Vec<&str> = defs
             .iter()
             .map(|&(name, _)| name)
             .filter(|&name| {
-                !file.lines().any(|line| !unused.contains(&line) && one_line_fn(line) != Some(name) && mentions(line, name))
+                !file.lines().any(|line| {
+                    !unused.contains(&line)
+                        && one_line_fn(line) != Some(name)
+                        && mentions(line, name)
+                })
             })
             .collect();
         if dead.is_empty() {
             return unused;
         }
-        defs.retain(|&(name, line)| !dead.contains(&name) || {
-            unused.push(line);
-            false
+        defs.retain(|&(name, line)| {
+            !dead.contains(&name) || {
+                unused.push(line);
+                false
+            }
         });
     }
 }
@@ -1710,7 +1731,9 @@ fn one_line_fn(line: &str) -> Option<&str> {
     let paren = head.iter().position(|&c| c == b'(')?;
     let before = &head[..paren];
     let at = before.iter().rposition(|&c| !word(c))? + 1;
-    let kind = before.starts_with(b"struct ") || before.starts_with(b"class ") || before.starts_with(b"using ");
+    let kind = before.starts_with(b"struct ")
+        || before.starts_with(b"class ")
+        || before.starts_with(b"using ");
     let name = std::str::from_utf8(&before[at..]).ok()?;
     (!kind && !name.is_empty() && !before.windows(8).any(|w| w == b"operator")).then_some(name)
 }
@@ -1718,6 +1741,8 @@ fn one_line_fn(line: &str) -> Option<&str> {
 fn mentions(line: &str, name: &str) -> bool {
     let (l, n) = (line.as_bytes(), name.as_bytes());
     (0..=l.len().saturating_sub(n.len())).any(|at| {
-        l[at..].starts_with(n) && (at == 0 || !word(l[at - 1])) && l.get(at + n.len()).is_none_or(|&c| !word(c))
+        l[at..].starts_with(n)
+            && (at == 0 || !word(l[at - 1]))
+            && l.get(at + n.len()).is_none_or(|&c| !word(c))
     })
 }

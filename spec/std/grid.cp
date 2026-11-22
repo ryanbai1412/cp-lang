@@ -149,8 +149,8 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir8.all()[3]) == Some((R(2), C(2)))`
 pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
-    let r = self.0 + dr
-    let c = self.1 + dc
+    let r = R.at(self.0 + dr)
+    let c = C.at(self.1 + dc)
     if r == None or c == None: None else: (r!, c!)
 
 /// The cells from `self` (not included) to the edge of the grid in direction `d`, nearest

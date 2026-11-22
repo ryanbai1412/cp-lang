@@ -1,6 +1,6 @@
 //! Fenwick tree (binary indexed tree) over a domain: point add, range sum.
 use std.algebra.{Group}
-use std.seq.{ends}
+use std.seq.{deduped, ends}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in O(n).

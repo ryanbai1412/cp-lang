@@ -298,7 +298,18 @@ impl<'p> Emitter<'p> {
         let cpp = cty(self.program, self.niches, ty);
         // A packed optional can be the type of an expression alone, so
         // what the file needs is noted where the type is written.
-        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple", "cpl::OptInt", "cpl::OptField", "cpl::OptI32"].iter().enumerate() {
+        for (at, name) in [
+            "cpl::OptPos",
+            "cpl::OptBool",
+            "cpl::OptChar",
+            "cpl::OptTuple",
+            "cpl::OptInt",
+            "cpl::OptField",
+            "cpl::OptI32",
+        ]
+        .iter()
+        .enumerate()
+        {
             if cpp.contains(name) {
                 self.niche_types.set(self.niche_types.get() | 1 << at);
             }
@@ -345,7 +356,9 @@ impl<'p> Emitter<'p> {
             Ty::Map(k, v) if self.program.unordered_maps.contains(k) => {
                 self.need_ty(&Ty::HashMap(k.clone(), v.clone()))
             }
-            Ty::Set(e) if self.program.unordered_sets.contains(e) => self.need_ty(&Ty::HashSet(e.clone())),
+            Ty::Set(e) if self.program.unordered_sets.contains(e) => {
+                self.need_ty(&Ty::HashSet(e.clone()))
+            }
             Ty::HashMap(k, v) => {
                 self.need("cphashmap");
                 self.need_ty(k);
@@ -437,10 +450,16 @@ impl<'p> Emitter<'p> {
         {
             return false;
         }
-        let Ty::Struct(sid) = f.locals[0].ty else { return false };
-        let Ty::Range(ref dom) = f.locals[1].ty else { return false };
+        let Ty::Struct(sid) = f.locals[0].ty else {
+            return false;
+        };
+        let Ty::Range(ref dom) = f.locals[1].ty else {
+            return false;
+        };
         let val_ty = &f.locals[2].ty;
-        let Ty::Fn(ref fp, ref fr) = f.locals[3].ty else { return false };
+        let Ty::Fn(ref fp, ref fr) = f.locals[3].ty else {
+            return false;
+        };
         if fp.as_slice() != [Ty::Range(dom.clone()), val_ty.clone()] || **fr != Ty::Unit {
             return false;
         }
@@ -479,15 +498,17 @@ impl<'p> Emitter<'p> {
                         format!("F{ti}&& {name}")
                     };
                 }
-                let cpp = self.ty_for_loc(
-                    ty,
-                    cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot),
-                );
+                let cpp =
+                    self.ty_for_loc(ty, cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot));
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {
                     // g++ warns of a parameter the body never names.
-                    let by = if ty.is_scalar() { cpp } else { format!("const {cpp}&") };
+                    let by = if ty.is_scalar() {
+                        cpp
+                    } else {
+                        format!("const {cpp}&")
+                    };
                     format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
@@ -579,9 +600,10 @@ impl<'p> Emitter<'p> {
                 Some(NarrowLayout::Seq(inner)) => Some(inner.as_ref()),
                 _ => None,
             },
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
-                args.first().and_then(|a| self.expr_elem_layout(a))
-            }
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                args,
+            ) => args.first().and_then(|a| self.expr_elem_layout(a)),
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => self.expr_elem_layout(inner),
                 _ => None,
@@ -652,11 +674,7 @@ impl<'p> Emitter<'p> {
         self.ty_with_elem_layout(ty, self.elem_layout(loc))
     }
 
-    pub fn ty_with_elem_layout(
-        &self,
-        ty: &Ty,
-        layout: Option<&cpl_ir::NarrowLayout>,
-    ) -> String {
+    pub fn ty_with_elem_layout(&self, ty: &Ty, layout: Option<&cpl_ir::NarrowLayout>) -> String {
         if let Some(l) = layout {
             let mut leaf = l;
             while let cpl_ir::NarrowLayout::Seq(inner) = leaf {
@@ -711,7 +729,9 @@ impl<'p> Emitter<'p> {
     /// The initializer that gives a new variable its type's zero.
     pub fn zero_init(&self, ty: &Ty) -> &'static str {
         match ty {
-            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => " = 0",
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => {
+                " = 0"
+            }
             Ty::Bool => " = false",
             Ty::Enum(id) if is_plain_enum(self.program, *id) => "{}",
             _ => "",
@@ -785,14 +805,16 @@ impl<'p> Emitter<'p> {
                     let cells = self.rows.get(&(*id, field_idx));
                     if let (Some(k), Some(cell)) = (
                         cells,
-                        cpp.strip_prefix("std::vector<").and_then(|c| c.strip_suffix('>')),
+                        cpp.strip_prefix("std::vector<")
+                            .and_then(|c| c.strip_suffix('>')),
                     ) {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
                     } else if let Some(w) = self.narrow_ints.get(&(*id, field_idx)) {
                         cpp = w.cpp().into();
-                    } else if let Some(l) =
-                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, field_idx))
+                    } else if let Some(l) = self
+                        .narrow_elems
+                        .get(&cpl_ir::ElemLoc::Field(*id, field_idx))
                     {
                         cpp = self.ty_with_elem_layout(field_ty, Some(l));
                     }
@@ -885,7 +907,11 @@ impl<'p> Emitter<'p> {
     }
 
     /// [`Emitter::file`], with the text of each part of it.
-    pub fn file_with_chunks(mut self, name: &str, source: Option<&str>) -> (String, Vec<(crate::Part, String, String)>) {
+    pub fn file_with_chunks(
+        mut self,
+        name: &str,
+        source: Option<&str>,
+    ) -> (String, Vec<(crate::Part, String, String)>) {
         let cpp = self.write(name, source);
         (cpp, self.chunks)
     }
@@ -899,7 +925,9 @@ impl<'p> Emitter<'p> {
             return out;
         }
         let keep = |text: &str| -> String {
-            text.split_inclusive('\n').filter(|line| !unused.contains(&line.trim_end_matches('\n'))).collect()
+            text.split_inclusive('\n')
+                .filter(|line| !unused.contains(&line.trim_end_matches('\n')))
+                .collect()
         };
         for (part, _, text) in &mut self.chunks {
             if *part == crate::Part::Runtime {
@@ -934,7 +962,14 @@ impl<'p> Emitter<'p> {
                     if reachable_structs.insert(*sid) {
                         let s = &program.structs[*sid];
                         for (_, fty) in &s.fields {
-                            mark_ty(fty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                            mark_ty(
+                                fty,
+                                program,
+                                reachable,
+                                fn_work,
+                                reachable_structs,
+                                reachable_enums,
+                            );
                         }
                         for hook in [s.eq_fn, s.lt_fn].into_iter().flatten() {
                             if reachable.insert(hook) {
@@ -947,7 +982,14 @@ impl<'p> Emitter<'p> {
                     if reachable_enums.insert(*eid) {
                         for (_, fields) in &program.enums[*eid].variants {
                             for fty in fields {
-                                mark_ty(fty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                                mark_ty(
+                                    fty,
+                                    program,
+                                    reachable,
+                                    fn_work,
+                                    reachable_structs,
+                                    reachable_enums,
+                                );
                             }
                         }
                     }
@@ -957,28 +999,84 @@ impl<'p> Emitter<'p> {
                 | Ty::List(t)
                 | Ty::Set(t)
                 | Ty::HashSet(t)
-                | Ty::Mut(t) => mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums),
+                | Ty::Mut(t) => mark_ty(
+                    t,
+                    program,
+                    reachable,
+                    fn_work,
+                    reachable_structs,
+                    reachable_enums,
+                ),
                 Ty::Array { elem, .. } => {
-                    mark_ty(elem, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    mark_ty(
+                        elem,
+                        program,
+                        reachable,
+                        fn_work,
+                        reachable_structs,
+                        reachable_enums,
+                    );
                 }
                 Ty::Map(k, v) | Ty::HashMap(k, v) => {
-                    mark_ty(k, program, reachable, fn_work, reachable_structs, reachable_enums);
-                    mark_ty(v, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    mark_ty(
+                        k,
+                        program,
+                        reachable,
+                        fn_work,
+                        reachable_structs,
+                        reachable_enums,
+                    );
+                    mark_ty(
+                        v,
+                        program,
+                        reachable,
+                        fn_work,
+                        reachable_structs,
+                        reachable_enums,
+                    );
                 }
                 Ty::Fn(args, ret) => {
                     for a in args {
-                        mark_ty(a, program, reachable, fn_work, reachable_structs, reachable_enums);
+                        mark_ty(
+                            a,
+                            program,
+                            reachable,
+                            fn_work,
+                            reachable_structs,
+                            reachable_enums,
+                        );
                     }
-                    mark_ty(ret, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    mark_ty(
+                        ret,
+                        program,
+                        reachable,
+                        fn_work,
+                        reachable_structs,
+                        reachable_enums,
+                    );
                 }
                 Ty::Tuple(ts) => {
                     for t in ts {
-                        mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums);
+                        mark_ty(
+                            t,
+                            program,
+                            reachable,
+                            fn_work,
+                            reachable_structs,
+                            reachable_enums,
+                        );
                     }
                 }
                 Ty::Record(fs) => {
                     for (_, t) in fs {
-                        mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums);
+                        mark_ty(
+                            t,
+                            program,
+                            reachable,
+                            fn_work,
+                            reachable_structs,
+                            reachable_enums,
+                        );
                     }
                 }
                 _ => {}
@@ -1003,7 +1101,14 @@ impl<'p> Emitter<'p> {
                             }
                         } else {
                             for (_, fty) in &s.fields {
-                                mark_show_ty(fty, program, reachable, fn_work, visited_structs, visited_enums);
+                                mark_show_ty(
+                                    fty,
+                                    program,
+                                    reachable,
+                                    fn_work,
+                                    visited_structs,
+                                    visited_enums,
+                                );
                             }
                         }
                     }
@@ -1012,7 +1117,14 @@ impl<'p> Emitter<'p> {
                     if visited_enums.insert(*eid) {
                         for (_, fields) in &program.enums[*eid].variants {
                             for fty in fields {
-                                mark_show_ty(fty, program, reachable, fn_work, visited_structs, visited_enums);
+                                mark_show_ty(
+                                    fty,
+                                    program,
+                                    reachable,
+                                    fn_work,
+                                    visited_structs,
+                                    visited_enums,
+                                );
                             }
                         }
                     }
@@ -1022,22 +1134,64 @@ impl<'p> Emitter<'p> {
                 | Ty::List(t)
                 | Ty::Set(t)
                 | Ty::HashSet(t)
-                | Ty::Mut(t) => mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums),
+                | Ty::Mut(t) => mark_show_ty(
+                    t,
+                    program,
+                    reachable,
+                    fn_work,
+                    visited_structs,
+                    visited_enums,
+                ),
                 Ty::Array { elem, .. } => {
-                    mark_show_ty(elem, program, reachable, fn_work, visited_structs, visited_enums);
+                    mark_show_ty(
+                        elem,
+                        program,
+                        reachable,
+                        fn_work,
+                        visited_structs,
+                        visited_enums,
+                    );
                 }
                 Ty::Map(k, v) | Ty::HashMap(k, v) => {
-                    mark_show_ty(k, program, reachable, fn_work, visited_structs, visited_enums);
-                    mark_show_ty(v, program, reachable, fn_work, visited_structs, visited_enums);
+                    mark_show_ty(
+                        k,
+                        program,
+                        reachable,
+                        fn_work,
+                        visited_structs,
+                        visited_enums,
+                    );
+                    mark_show_ty(
+                        v,
+                        program,
+                        reachable,
+                        fn_work,
+                        visited_structs,
+                        visited_enums,
+                    );
                 }
                 Ty::Tuple(ts) => {
                     for t in ts {
-                        mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums);
+                        mark_show_ty(
+                            t,
+                            program,
+                            reachable,
+                            fn_work,
+                            visited_structs,
+                            visited_enums,
+                        );
                     }
                 }
                 Ty::Record(fs) => {
                     for (_, t) in fs {
-                        mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums);
+                        mark_show_ty(
+                            t,
+                            program,
+                            reachable,
+                            fn_work,
+                            visited_structs,
+                            visited_enums,
+                        );
                     }
                 }
                 _ => {}
@@ -1073,7 +1227,14 @@ impl<'p> Emitter<'p> {
                               reachable_structs: &mut BTreeSet<usize>,
                               reachable_enums: &mut BTreeSet<usize>| {
             walk::deep_exprs(b, &mut |e| {
-                mark_ty(&e.ty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                mark_ty(
+                    &e.ty,
+                    program,
+                    reachable,
+                    fn_work,
+                    reachable_structs,
+                    reachable_enums,
+                );
                 match &e.ty {
                     Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _)
                         if has_adt(k) =>
@@ -1093,7 +1254,10 @@ impl<'p> Emitter<'p> {
                     ExprKind::Sort(place, by, _) => match by {
                         cpl_ir::SortBy::Natural if has_adt(&place.ty) => needs_tie = true,
                         cpl_ir::SortBy::Key(_, k) if has_adt(&k.ty) => needs_tie = true,
-                        cpl_ir::SortBy::Fn { func, is_order: false } => {
+                        cpl_ir::SortBy::Fn {
+                            func,
+                            is_order: false,
+                        } => {
                             if let Ty::Fn(_, ret) = &func.ty {
                                 if has_adt(ret) {
                                     needs_tie = true;
@@ -1121,14 +1285,28 @@ impl<'p> Emitter<'p> {
                     ExprKind::Print(args, _) => {
                         let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
                         for a in args {
-                            mark_show_ty(&a.value.ty, program, reachable, fn_work, &mut vs, &mut ve);
+                            mark_show_ty(
+                                &a.value.ty,
+                                program,
+                                reachable,
+                                fn_work,
+                                &mut vs,
+                                &mut ve,
+                            );
                         }
                     }
                     ExprKind::Format(pieces) => {
                         let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
                         for p in pieces {
                             if let cpl_ir::FmtPiece::Value(a) = p {
-                                mark_show_ty(&a.value.ty, program, reachable, fn_work, &mut vs, &mut ve);
+                                mark_show_ty(
+                                    &a.value.ty,
+                                    program,
+                                    reachable,
+                                    fn_work,
+                                    &mut vs,
+                                    &mut ve,
+                                );
                             }
                         }
                     }
@@ -1144,10 +1322,24 @@ impl<'p> Emitter<'p> {
         };
 
         for g in &program.globals {
-            mark_ty(&g.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+            mark_ty(
+                &g.ty,
+                program,
+                &mut reachable,
+                &mut fn_work,
+                &mut reachable_structs,
+                &mut reachable_enums,
+            );
         }
         for l in &program.main_locals {
-            mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+            mark_ty(
+                &l.ty,
+                program,
+                &mut reachable,
+                &mut fn_work,
+                &mut reachable_structs,
+                &mut reachable_enums,
+            );
         }
         for &entry in &program.entry_fns {
             if reachable.insert(entry) {
@@ -1175,9 +1367,23 @@ impl<'p> Emitter<'p> {
         while !fn_work.is_empty() || !closure_work.is_empty() {
             while let Some(fid) = fn_work.pop() {
                 let f = &program.fns[fid];
-                mark_ty(&f.ret, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                mark_ty(
+                    &f.ret,
+                    program,
+                    &mut reachable,
+                    &mut fn_work,
+                    &mut reachable_structs,
+                    &mut reachable_enums,
+                );
                 for l in &f.locals {
-                    mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                    mark_ty(
+                        &l.ty,
+                        program,
+                        &mut reachable,
+                        &mut fn_work,
+                        &mut reachable_structs,
+                        &mut reachable_enums,
+                    );
                 }
                 scan_block(
                     &f.body,
@@ -1191,9 +1397,23 @@ impl<'p> Emitter<'p> {
             }
             while let Some(cid) = closure_work.pop() {
                 let c = &program.closures[cid];
-                mark_ty(&c.ret, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                mark_ty(
+                    &c.ret,
+                    program,
+                    &mut reachable,
+                    &mut fn_work,
+                    &mut reachable_structs,
+                    &mut reachable_enums,
+                );
                 for l in &c.locals {
-                    mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                    mark_ty(
+                        &l.ty,
+                        program,
+                        &mut reachable,
+                        &mut fn_work,
+                        &mut reachable_structs,
+                        &mut reachable_enums,
+                    );
                 }
                 scan_block(
                     &c.body,
@@ -1324,7 +1544,10 @@ impl<'p> Emitter<'p> {
             let loc = cpl_ir::ElemLoc::Global(id);
             let cpp = self.ty_for_loc(&global.ty, loc);
             if let Some(value) = self.const_global(id) {
-                vars.push_str(&format!("static constexpr {cpp} {} = {value};\n", ident(&global.name)));
+                vars.push_str(&format!(
+                    "static constexpr {cpp} {} = {value};\n",
+                    ident(&global.name)
+                ));
                 self.const_globals.insert(id);
                 continue;
             }
@@ -1337,12 +1560,7 @@ impl<'p> Emitter<'p> {
             if !is_fixed && !shared_globals.contains(&id) && read_in_main.contains(&id) {
                 solve_locals.push_str(&format!("  {} {}{};\n", cpp, ident(&global.name), init));
             } else {
-                vars.push_str(&format!(
-                    "{} {}{};\n",
-                    cpp,
-                    ident(&global.name),
-                    init
-                ));
+                vars.push_str(&format!("{} {}{};\n", cpp, ident(&global.name), init));
             }
         }
 
@@ -1355,10 +1573,17 @@ impl<'p> Emitter<'p> {
                 continue;
             }
             let start = fns.len();
-            let part = if program.library_fns.get(id).copied().unwrap_or(false) { crate::Part::Library } else { crate::Part::Yours };
+            let part = if program.library_fns.get(id).copied().unwrap_or(false) {
+                crate::Part::Library
+            } else {
+                crate::Part::Yours
+            };
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
-            let hook = program.structs.iter().any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
+            let hook = program
+                .structs
+                .iter()
+                .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
             protos.push(Proto {
                 name: fn_name(&f.name),
                 line: format!("{signature};\n"),
@@ -1385,7 +1610,8 @@ impl<'p> Emitter<'p> {
                     _ => format!("return cpl::Judge<{}>::from({call});", self.ty(&f.ret)),
                 };
                 fns.push_str(&format!("\n{signature} {{\n    {body}\n}}\n"));
-                self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
+                self.chunks
+                    .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
             if program.entry_fns.contains(&id) {
@@ -1434,7 +1660,8 @@ impl<'p> Emitter<'p> {
                     self.names[0], self.names[1], self.names[2]
                 ));
                 fns.push_str("}\n");
-                self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
+                self.chunks
+                    .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
             for d in program.fn_guarded_domains(&f.ret, &f.body) {
@@ -1454,7 +1681,10 @@ impl<'p> Emitter<'p> {
                 // with no list. It may be running twice (a loop body can
                 // walk it again), so it keeps no buffer of its own.
                 let name = fn_name(&f.name);
-                let params = signature.split_once(&format!(" {name}(")).map(|(_, p)| p.trim_end_matches(')')).unwrap_or("");
+                let params = signature
+                    .split_once(&format!(" {name}("))
+                    .map(|(_, p)| p.trim_end_matches(')'))
+                    .unwrap_or("");
                 let sep = if params.is_empty() { "" } else { ", " };
                 let tparams = signature
                     .strip_prefix("template <")
@@ -1475,7 +1705,8 @@ impl<'p> Emitter<'p> {
                 self.pushing = None;
                 fns.push_str("}\n");
             }
-            self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
+            self.chunks
+                .push((part, f.name.clone(), fns[start..].to_string()));
         }
         let start = fns.len();
         if program.multitest {
@@ -1497,18 +1728,31 @@ impl<'p> Emitter<'p> {
         self.hoisted_decls(&mut fns, 0);
         self.block(&program.main, &mut fns);
         fns.push_str("}\n");
-        self.chunks.push((crate::Part::Yours, "top-level code".into(), fns[start..].to_string()));
+        self.chunks.push((
+            crate::Part::Yours,
+            "top-level code".into(),
+            fns[start..].to_string(),
+        ));
 
         // `main` writes through the runtime; what reads asks for the input itself.
         self.need("out");
         if program.multitest {
-            self.need(if program.until_eof { "at_eof" } else { "read_int" });
+            self.need(if program.until_eof {
+                "at_eof"
+            } else {
+                "read_int"
+            });
         }
 
         let mut out = String::new();
         out.push_str(&header(name, source, self.target.stamp.as_deref()));
-        let what = if source.is_some() { "the source" } else { "the note" };
-        self.chunks.push((crate::Part::Header, what.into(), out.clone()));
+        let what = if source.is_some() {
+            "the source"
+        } else {
+            "the note"
+        };
+        self.chunks
+            .push((crate::Part::Header, what.into(), out.clone()));
         let includes = out.len();
         // Closures that are called by name (see `devirt`): emit dependencies
         // before callers so higher-order combinators (e.g. `flip_action`) can
@@ -1573,7 +1817,11 @@ impl<'p> Emitter<'p> {
             out.push_str("#include <chrono>\n");
         }
         out.push_str("\nusing ll = long long;\n\n");
-        self.chunks.push((crate::Part::Includes, "#include".into(), out[includes..].to_string()));
+        self.chunks.push((
+            crate::Part::Includes,
+            "#include".into(),
+            out[includes..].to_string(),
+        ));
         if !judge_decls.is_empty() {
             out.push_str("// The judge's grader supplies these.\n");
             out.push_str(&judge_decls);
@@ -1583,7 +1831,18 @@ impl<'p> Emitter<'p> {
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
-        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple", "niche_int", "niche_field", "niche_i32"].into_iter().enumerate() {
+        for (at, piece) in [
+            "niche",
+            "niche_bool",
+            "niche_char",
+            "niche_tuple",
+            "niche_int",
+            "niche_field",
+            "niche_i32",
+        ]
+        .into_iter()
+        .enumerate()
+        {
             if self.niche_types.get() & 1 << at != 0 {
                 self.need(piece);
             }
@@ -1592,13 +1851,15 @@ impl<'p> Emitter<'p> {
             if self.used.contains(piece.name) {
                 let code = self.piece_code(piece);
                 out.push_str(&code);
-                self.chunks.push((crate::Part::Runtime, piece.name.into(), code));
+                self.chunks
+                    .push((crate::Part::Runtime, piece.name.into(), code));
             }
         }
         out.push_str("}  // namespace cpl\n\n// The program.\nnamespace prog {\n");
         if has_tie {
             out.push_str(TIE_OPS);
-            self.chunks.push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
+            self.chunks
+                .push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
         }
         let mut dom_vars = String::new();
         for (id, d) in program.domains.iter().enumerate() {
@@ -1638,9 +1899,12 @@ impl<'p> Emitter<'p> {
             vars = dom_vars;
         }
         out.push_str(&types);
-        self.chunks.push((crate::Part::Types, "types".into(), types.clone()));
-        self.chunks.push((crate::Part::Globals, "globals".into(), vars.clone()));
-        self.chunks.push((crate::Part::Yours, "closures".into(), direct.clone()));
+        self.chunks
+            .push((crate::Part::Types, "types".into(), types.clone()));
+        self.chunks
+            .push((crate::Part::Globals, "globals".into(), vars.clone()));
+        self.chunks
+            .push((crate::Part::Yours, "closures".into(), direct.clone()));
         if !types.is_empty() {
             out.push('\n');
         }
@@ -1653,10 +1917,17 @@ impl<'p> Emitter<'p> {
         // comes first. The rest are defined before they are used.
         for proto in &protos {
             let above = [direct.as_str(), &fns[..proto.at]];
-            let named = above.into_iter().chain(self.shows.iter().map(String::as_str)).any(|text| names(text, &proto.name));
+            let named = above
+                .into_iter()
+                .chain(self.shows.iter().map(String::as_str))
+                .any(|text| names(text, &proto.name));
             if proto.always || named {
                 out.push_str(&proto.line);
-                self.chunks.push((crate::Part::Glue, "declarations ahead".into(), proto.line.clone()));
+                self.chunks.push((
+                    crate::Part::Glue,
+                    "declarations ahead".into(),
+                    proto.line.clone(),
+                ));
             }
         }
         out.push_str(&direct);
@@ -1687,7 +1958,8 @@ impl<'p> Emitter<'p> {
         for show in &self.shows {
             out.push_str(show);
             out.push('\n');
-            self.chunks.push((crate::Part::Runtime, "show".into(), format!("{show}\n")));
+            self.chunks
+                .push((crate::Part::Runtime, "show".into(), format!("{show}\n")));
         }
         out.push_str(&fns);
         if !program.entry_fns.is_empty() {
@@ -1713,7 +1985,9 @@ impl<'p> Emitter<'p> {
             "prog::solve();"
         };
         if program.until_eof {
-            out.push_str(&format!("    if (prog::setup()) while (!cpl::at_eof()) {case}\n"));
+            out.push_str(&format!(
+                "    if (prog::setup()) while (!cpl::at_eof()) {case}\n"
+            ));
         } else if program.multitest {
             out.push_str(&format!(
                 "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) {case}\n",
@@ -1729,9 +2003,12 @@ impl<'p> Emitter<'p> {
                     true => format!("\n#ifdef _WIN32{WINDOWS_THREAD}#else{POSIX_THREAD}#endif\n"),
                     false => POSIX_THREAD.to_string(),
                 };
-                runner.push_str(&THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)));
+                runner.push_str(
+                    &THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)),
+                );
                 out.push_str(&runner);
-                self.chunks.push((crate::Part::Runtime, "thread stack".into(), runner));
+                self.chunks
+                    .push((crate::Part::Runtime, "thread stack".into(), runner));
             }
             None => out.push_str("    cpl::flush();\n    return 0;\n}\n"),
         }
@@ -1830,7 +2107,10 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 /// gets the hint; recursion and long bodies are left to the compiler.
 fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
     const MAX_LINES: usize = 16;
-    let body = def.trim_start_matches('\n').split_once('\n').map_or("", |(_, b)| b);
+    let body = def
+        .trim_start_matches('\n')
+        .split_once('\n')
+        .map_or("", |(_, b)| b);
     let stmts = body
         .lines()
         .map(str::trim)
@@ -1845,11 +2125,17 @@ fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
 fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
     let version = match (option_env!("CPL_CHANNEL"), option_env!("CPL_COMMIT")) {
         (Some(channel), Some(commit)) => {
-            format!("{} ({channel} {})", env!("CARGO_PKG_VERSION"), &commit[..commit.len().min(8)])
+            format!(
+                "{} ({channel} {})",
+                env!("CARGO_PKG_VERSION"),
+                &commit[..commit.len().min(8)]
+            )
         }
         _ => env!("CARGO_PKG_VERSION").to_string(),
     };
-    let stamp = stamp.map(|stamp| format!("// For {stamp}.\n")).unwrap_or_default();
+    let stamp = stamp
+        .map(|stamp| format!("// For {stamp}.\n"))
+        .unwrap_or_default();
     let Some(source) = source else {
         return format!(
             "// {name}: C++17 written by cpl {version} (https://cp-lang.org) from CP Lang source, which is left out\n\

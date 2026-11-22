@@ -157,7 +157,7 @@ impl Read for Mod<P>:
         for c in s:
             if c != '-':
                 assert c.is_digit, "`read<Mod<P>>()` reads an integer token"
-                r = (r * 10 + c.digit) % P
+                r = (r * 10 + Int(c) - Int('0')) % P
         return Mod(if s[0] == '-' and r > 0: P - r else: r)
 
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).

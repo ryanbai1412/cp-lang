@@ -131,7 +131,7 @@ impl<'a> Checker<'a> {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        if std::env::var_os("CPL_SPEC").is_some()
+                        if crate::edition::is_v03()
                             && matches!(&right, Ty::Named { name, .. } if name == "List")
                         {
                             let message = format!(
@@ -220,7 +220,7 @@ impl<'a> Checker<'a> {
                     // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
                     // except when the enclosing context explicitly expects `Range<V.cuts>`.
                     (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
-                        let spec = std::env::var_os("CPL_SPEC").is_some();
+                        let spec = crate::edition::is_v03();
                         let both_cuts =
                             bounds_domain(&lo_ty).is_some() && bounds_domain(&hi_ty).is_some();
                         if self.expected_bounds_range
@@ -418,7 +418,7 @@ impl<'a> Checker<'a> {
                 let elem = self.infer(body).widen();
                 self.pop_scope();
                 Ty::Array {
-                    index,
+                    index: self.flat_index(index),
                     elem: Box::new(elem),
                 }
             }
@@ -444,7 +444,7 @@ impl<'a> Checker<'a> {
                 ret_ty,
                 body,
             } => {
-                let given = match self
+                let mut given = match self
                     .lambda_params
                     .iter()
                     .position(|(at, _)| *at == expr.span)
@@ -452,6 +452,11 @@ impl<'a> Checker<'a> {
                     Some(i) => self.lambda_params.swap_remove(i).1,
                     None => Vec::new(),
                 };
+                if let [Ty::Tuple(items)] = given.as_slice() {
+                    if params.len() > 1 && items.len() == params.len() {
+                        given = items.clone();
+                    }
+                }
                 self.push_scope();
                 let mut sig_params = Vec::with_capacity(params.len());
                 let any_typed = param_tys.iter().any(Option::is_some);
@@ -789,7 +794,7 @@ impl<'a> Checker<'a> {
         let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
             return;
         };
-        if std::env::var_os("CPL_SPEC").is_none()
+        if !crate::edition::is_v03()
             && variants.iter().any(|(_, fields)| !fields.is_empty())
         {
             return;
@@ -1181,7 +1186,7 @@ impl<'a> Checker<'a> {
         } else {
             self.infer(lhs)
         };
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if crate::edition::is_v03() {
             if let Ty::Param(param) = &left {
                 let trait_name = match op {
                     BinOp::Add => Some("Add"),
@@ -1394,7 +1399,7 @@ impl<'a> Checker<'a> {
             BinOp::Add | BinOp::Sub
                 if right.is_int() && matches!(&left, Ty::Pos(d) if !d.contains('.')) =>
             {
-                if std::env::var_os("CPL_SPEC").is_some() {
+                if crate::edition::is_v03() {
                     Ty::Int
                 } else {
                     Ty::Optional(Box::new(left))
@@ -1462,7 +1467,7 @@ impl<'a> Checker<'a> {
             Some(Ty::Named { name, .. }) if name == "Cut" => true,
             _ => false,
         };
-        let spec = std::env::var_os("CPL_SPEC").is_some();
+        let spec = crate::edition::is_v03();
         if !spec && inclusive && hi_is_bounds && !self.expected_bounds_range {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
@@ -1542,7 +1547,7 @@ impl<'a> Checker<'a> {
         right: &Ty,
         right_expr: &Expr,
     ) {
-        if std::env::var_os("CPL_SPEC").is_some()
+        if crate::edition::is_v03()
             && !tests_none
             && matches!(
                 op,
@@ -1563,7 +1568,7 @@ impl<'a> Checker<'a> {
             }
             return;
         }
-        if std::env::var_os("CPL_SPEC").is_some()
+        if crate::edition::is_v03()
             && !tests_none
             && !left.is_vague()
             && !right.is_vague()
@@ -1899,7 +1904,7 @@ impl<'a> Checker<'a> {
             }
         }
         let base_ty = self.infer(base);
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if crate::edition::is_v03() {
             if name.text == "bounds" && matches!(&base_ty, Ty::Domain(_)) {
                 let message = "`D.bounds` was renamed to `D.cuts`".to_string();
                 self.error(codes::REMOVED_SYNTAX, name.span, message);
@@ -1922,7 +1927,7 @@ impl<'a> Checker<'a> {
         let generator = matches!(&base_ty, Ty::Named { name, .. } if name == "Gen");
         if ty == Ty::Unknown
             && (built_in || generator)
-            && std::env::var_os("CPL_SPEC").is_some()
+            && crate::edition::is_v03()
             && !(if generator {
                 crate::prelude::spec_receiver_method_names().contains(&name.text)
             } else {
@@ -2023,7 +2028,7 @@ impl<'a> Checker<'a> {
         if let Some(elem) = base_ty.seq_elem() {
             match name.text.as_str() {
                 "len" => {
-                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_sized() {
+                    if crate::edition::is_v03() && !base_ty.is_sized() {
                         let message = format!(
                             "`.len` requires `Sized`, which `{base_ty}` does not implement"
                         );
@@ -2033,7 +2038,7 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 "is_empty" => return Ty::Bool,
-                "last" | "rev" if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_bidir() => {
+                "last" | "rev" if crate::edition::is_v03() && !base_ty.is_bidir() => {
                     let message = format!(
                         "`.{}` requires `Bidir`, which `{base_ty}` does not implement",
                         name.text
@@ -2042,7 +2047,7 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 "items" | "keys"
-                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() =>
+                    if crate::edition::is_v03() && !base_ty.is_keyed() =>
                 {
                     let message = format!(
                         "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
@@ -2075,7 +2080,7 @@ impl<'a> Checker<'a> {
                                 Ty::Tuple(vec![Ty::Unknown; factors.len()]),
                                 Ty::Optional(Box::new(elem)),
                             ),
-                            None if std::env::var_os("CPL_SPEC").is_some() => {
+                            None if crate::edition::is_v03() => {
                                 (Ty::Int, Ty::Optional(Box::new(elem)))
                             }
                             None => (Ty::Int, elem),
@@ -2315,7 +2320,7 @@ impl<'a> Checker<'a> {
             if let Ty::Array { index, elem } = &base_ty {
                 if index.len() == 1 {
                     self.note_readonly_view(expr, "reverse view");
-                    if std::env::var_os("CPL_SPEC").is_some() {
+                    if crate::edition::is_v03() {
                         return base_ty;
                     }
                     return Ty::Named {
@@ -2433,7 +2438,7 @@ impl<'a> Checker<'a> {
             }
             if let Ty::Array { index, elem } = &base_ty {
                 if index.len() == 1 {
-                    if name.text == "keys" && std::env::var_os("CPL_SPEC").is_some() {
+                    if name.text == "keys" && crate::edition::is_v03() {
                         return Ty::Named {
                             name: "Range".into(),
                             args: vec![index[0].clone()],
@@ -2469,7 +2474,7 @@ impl<'a> Checker<'a> {
                 if type_name == "Pair" && name.text == "count" {
                     return Ty::Int;
                 }
-                if std::env::var_os("CPL_SPEC").is_some()
+                if crate::edition::is_v03()
                     && type_name == "Gen"
                     && name.text == "next"
                 {
@@ -2478,7 +2483,7 @@ impl<'a> Checker<'a> {
                     self.error(codes::UNKNOWN_FIELD, name.span, message);
                     return Ty::Error;
                 }
-                if std::env::var_os("CPL_SPEC").is_some()
+                if crate::edition::is_v03()
                     && matches!(type_name.as_str(), "List" | "Str" | "Map" | "Set")
                     && name.text == "buf"
                 {
@@ -2598,7 +2603,7 @@ impl<'a> Checker<'a> {
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
-                    "first" | "last" if std::env::var_os("CPL_SPEC").is_some() => {
+                    "first" | "last" if crate::edition::is_v03() => {
                         Ty::Optional(Box::new(Ty::Pos(domain.clone())))
                     }
                     "first" | "last" => Ty::Pos(domain.clone()),
@@ -2857,7 +2862,7 @@ impl<'a> Checker<'a> {
                 None if self.own_method(&base_ty, &name.text).is_some() => {
                     match self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown) {
                         Ty::Fn { params, ret }
-                            if std::env::var_os("CPL_SPEC").is_some()
+                            if crate::edition::is_v03()
                                 && !self.in_call_callee
                                 && params.is_empty() =>
                         {
@@ -2990,7 +2995,7 @@ impl<'a> Checker<'a> {
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if crate::edition::is_v03() {
             if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
                 let idx_owner = match &idx_expr.kind {
                     ExprKind::Call { callee, .. } => match &callee.kind {
@@ -3126,6 +3131,21 @@ impl<'a> Checker<'a> {
                     && (index_tys[0].is_vague()
                         || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == index.len())) =>
             {
+                if let (ExprKind::Tuple(parts), Ty::Tuple(got)) = (&indices[0].kind, &index_tys[0])
+                {
+                    for ((got, want), part) in got.iter().zip(index.iter()).zip(parts) {
+                        self.expect_fits(got, want, part, |c, got, want| {
+                            format!(
+                                "`{}` is indexed by {}, but `{}` is {}",
+                                c.quote(base.span),
+                                want,
+                                c.quote(part.span),
+                                got.with_article()
+                            )
+                        });
+                    }
+                    return (**elem).clone();
+                }
                 let want = Ty::Tuple(index.clone());
                 self.note_typed_index(expr, base, indices, &index_tys, std::slice::from_ref(&want));
                 self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
@@ -3153,6 +3173,11 @@ impl<'a> Checker<'a> {
                 }
             }
             Ty::Array { index, elem } => {
+                if let [whole] = index_tys.as_slice() {
+                    if index.len() > 1 && self.position_factors(whole).as_ref() == Some(index) {
+                        return (**elem).clone();
+                    }
+                }
                 if index.len() != indices.len() {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();
                     let message = format!(
@@ -3213,7 +3238,7 @@ impl<'a> Checker<'a> {
                     }
                     if let Ty::Named { name, args } = got {
                         if name == "Range" {
-                            if std::env::var_os("CPL_SPEC").is_some()
+                            if crate::edition::is_v03()
                                 && matches!(args.as_slice(), [Ty::Pos(d)] if d.ends_with(".cuts"))
                                 && !matches!(want, Ty::Pos(w) if w.ends_with(".cuts"))
                             {
@@ -3233,10 +3258,10 @@ impl<'a> Checker<'a> {
                         continue;
                     }
                     if self.literal_position(index_expr, want)
-                        && !(std::env::var_os("CPL_SPEC").is_some()
+                        && !(crate::edition::is_v03()
                             && self.view_kind(base) == Some("slice"))
                     {
-                        if std::env::var_os("CPL_SPEC").is_some() {
+                        if crate::edition::is_v03() {
                             if let (ExprKind::Int(v), Ty::Pos(d)) = (&index_expr.kind, want) {
                                 let is_cuts = d.ends_with(".cuts");
                                 let base_dom = d.strip_suffix(".cuts").unwrap_or(d);
@@ -3426,7 +3451,7 @@ impl<'a> Checker<'a> {
                         return true;
                     }
                 }
-                if std::env::var_os("CPL_SPEC").is_some()
+                if crate::edition::is_v03()
                     && matches!(&aa[0], Ty::Int | Ty::Range { .. })
                     && matches!(&ba[0], Ty::Pos(_))
                 {
@@ -3601,7 +3626,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if crate::edition::is_v03() {
             if let Ty::Range {
                 lo: want_lo,
                 hi: want_hi,
@@ -3672,7 +3697,7 @@ impl<'a> Checker<'a> {
             );
             let help = self.step_help(at);
             // R04.8.4: a `?V` where a `V` is wanted is the wrong type, not the wrong domain.
-            let code = if crate::ty::spec_edition() {
+            let code = if crate::edition::is_v03() {
                 codes::TYPE_MISMATCH
             } else {
                 codes::WRONG_DOMAIN
@@ -3687,7 +3712,7 @@ impl<'a> Checker<'a> {
             return false;
         }
         let text = message(self, got, want);
-        let is_empty_fold = std::env::var_os("CPL_SPEC").is_some()
+        let is_empty_fold = crate::edition::is_v03()
             && matches!(got, Ty::Optional(_))
             && !matches!(want, Ty::Optional(_))
             && matches!(
@@ -3699,7 +3724,7 @@ impl<'a> Checker<'a> {
         let code = if is_empty_fold {
             cpl_diag::Code("E0706")
         } else if matches!((got, want), (Ty::Pos(_), Ty::Pos(_)))
-            || (std::env::var_os("CPL_SPEC").is_none()
+            || (!crate::edition::is_v03()
                 && matches!((got, want), (Ty::Pos(_), _) | (_, Ty::Pos(_))))
         {
             codes::WRONG_DOMAIN
@@ -3789,6 +3814,26 @@ impl Checker<'_> {
     /// An integer literal written where a position or cut of an integer
     /// domain is expected (or fills an array of them) is that position.
     fn literal_position(&mut self, at: &Expr, want: &Ty) -> bool {
+        // R04.4.26: a literal `j..i` where a `Range<V>` is wanted is the piece between them.
+        if let (
+            ExprKind::Range {
+                lo, hi, step: None, ..
+            },
+            Ty::Named { name, args },
+        ) = (&at.kind, want)
+        {
+            let [elem @ Ty::Pos(_)] = args.as_slice() else {
+                return false;
+            };
+            if name != "Range" || (lo.is_none() && hi.is_none()) || !crate::edition::is_v03() {
+                return false;
+            }
+            let elem = elem.clone();
+            return [lo, hi]
+                .into_iter()
+                .flatten()
+                .all(|end| self.literal_position(end, &elem));
+        }
         let ExprKind::Int(_) = at.kind else {
             return false;
         };

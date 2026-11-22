@@ -1764,7 +1764,7 @@ fn an_import_joins_its_module_line_or_the_file_header() {
 /// the names that more than one module declares.
 #[test]
 fn the_std_name_table_is_read_off_the_standard_library() {
-    let names = crate::prelude::STD_NAMES;
+    let names = crate::prelude::std_names();
     assert!(names.windows(2).all(|pair| pair[0].0 < pair[1].0));
     assert_eq!(crate::prelude::std_module("Fenwick"), Some("fenwick"));
     assert_eq!(crate::prelude::std_module("no_such_name"), None);
@@ -1797,7 +1797,7 @@ fn the_stdlib_design_names_every_public_name() {
     let design = include_str!("../../../spec/std/README.md");
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
     let words: std::collections::HashSet<&str> = design.split(|c: char| !word(c)).collect();
-    let missing: Vec<&str> = crate::prelude::STD_NAMES
+    let missing: Vec<&str> = crate::prelude::std_names()
         .iter()
         .map(|(name, _)| *name)
         .filter(|name| !words.contains(name))
@@ -2543,7 +2543,7 @@ fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name
         messages(&diags),
         ["no `heap_free_search` in scope, and not in the stdlib (yet)"]
     );
-    let name = crate::prelude::STD_NAMES
+    let name = crate::prelude::std_names()
         .iter()
         .map(|(n, _)| *n)
         .find(|n| {

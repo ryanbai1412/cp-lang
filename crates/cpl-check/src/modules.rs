@@ -59,23 +59,32 @@ impl Loader for FsLoader {
 
 /// The modules of `stdlib/` as they were when the compiler was built, by
 /// their path below it (`"seq"`).
-const BUNDLED_STD: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
+const BUNDLED_V02: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
+const BUNDLED_V03: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/spec_std_modules.rs"));
+
+/// The standard library built into the compiler for the active edition.
+fn bundled() -> &'static [(&'static str, &'static str)] {
+    match crate::edition::edition() {
+        crate::edition::Edition::V02 => BUNDLED_V02,
+        crate::edition::Edition::V03 => BUNDLED_V03,
+    }
+}
 
 /// The text of the standard library module `module` (`["segtree"]`) that
 /// is built into the compiler.
 pub fn bundled_std(module: &[String]) -> Option<&'static str> {
     let name = module.join("/");
-    BUNDLED_STD
+    bundled()
         .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
         .ok()
-        .map(|at| BUNDLED_STD[at].1)
+        .map(|at| bundled()[at].1)
 }
 
 /// Every module of the standard library that is built into the compiler,
 /// by name (`"segtree"`), with its text.
 #[cfg(test)]
 pub fn bundled_std_modules() -> &'static [(&'static str, &'static str)] {
-    BUNDLED_STD
+    bundled()
 }
 
 /// The modules of the standard library programs are checked against: the
@@ -86,7 +95,7 @@ pub fn active_std_modules() -> &'static [(&'static str, &'static str)] {
         std::sync::OnceLock::new();
     ACTIVE.get_or_init(|| {
         let Some(root) = std::env::var_os("CPL_STD").map(PathBuf::from) else {
-            return BUNDLED_STD.to_vec();
+            return bundled().to_vec();
         };
         let mut found = Vec::new();
         let mut stack = vec![root.clone()];
@@ -124,6 +133,10 @@ fn std_roots(start: &Path) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Some(dir) = std::env::var_os("CPL_STD") {
         roots.push(PathBuf::from(dir));
+    }
+    // A checkout's `stdlib/` is the 0.2 library; 0.3's is built in.
+    if crate::edition::is_v03() {
+        return roots;
     }
     let above = |from: &Path, roots: &mut Vec<PathBuf>| {
         let from = from.canonicalize().unwrap_or_else(|_| from.to_path_buf());

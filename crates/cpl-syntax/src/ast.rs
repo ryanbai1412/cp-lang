@@ -608,6 +608,21 @@ pub struct Pattern {
     pub span: Span,
 }
 
+impl Pattern {
+    /// The one parameter of a lambda given where a one-argument fn is
+    /// wanted: `(a, b) => ..` takes a pair apart (R06.1.4).
+    pub fn single_param(params: &[Pattern]) -> Option<Pattern> {
+        match params {
+            [] => None,
+            [one] => Some(one.clone()),
+            [first, .., last] => Some(Pattern {
+                kind: PatternKind::Tuple(params.to_vec()),
+                span: Span::new(first.span.start, last.span.end),
+            }),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum PatternKind {
     Wildcard,

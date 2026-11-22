@@ -9,6 +9,7 @@
 //! `@memo`. Each optimization names the law it needs; `std.spec` checks it
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
 //! `convexity_break`). A sliding-window optimum is `a.windows(k).fold(op)` or `std.window.Window(op)`.
+use std.algebra.{Monoid}
 
 /// O(1) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.

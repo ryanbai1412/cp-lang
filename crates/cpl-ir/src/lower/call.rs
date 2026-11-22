@@ -223,6 +223,14 @@ impl<'a> Lowerer<'a> {
                         );
                     }
                 }
+                // A plain call of two values is the core binary `min`/`max`, even
+                // where the `Seq` fold of that name is in scope (std.seq).
+                if matches!(name.as_str(), "min" | "max")
+                    && args.len() >= 2
+                    && args.iter().all(|a| a.name.is_none())
+                {
+                    return self.prelude(name, args, hint, span);
+                }
                 match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
                     Some(Sym::GenFn(gfid))
@@ -3470,10 +3478,10 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let ast::ExprKind::Lambda { params, body, .. } = &key_ast.kind {
-            if params.len() == 1 {
+            if let Some(param) = ast::Pattern::single_param(params) {
                 self.cx.scopes.push(HashMap::new());
                 let mut pre = Vec::new();
-                let slot = self.loop_var(&params[0], elem_expr.ty.clone(), &mut pre);
+                let slot = self.loop_var(&param, elem_expr.ty.clone(), &mut pre);
                 out.push(Stmt::Let(slot, Some(elem_expr)));
                 out.extend(pre);
                 let key = self.expr(body, None);
@@ -4369,14 +4377,8 @@ impl<'a> Lowerer<'a> {
         let at = test.value.span;
         let mk = |kind: ast::ExprKind| ast::Expr { kind, span: at };
         let (pat, body) = match &test.value.kind {
-            ast::ExprKind::Lambda { params, body, .. } if params.len() == 1 => {
-                (params[0].clone(), (**body).clone())
-            }
-            ast::ExprKind::Lambda { params, body, .. } if params.len() > 1 => (
-                ast::Pattern {
-                    kind: ast::PatternKind::Tuple(params.clone()),
-                    span: at,
-                },
+            ast::ExprKind::Lambda { params, body, .. } if !params.is_empty() => (
+                ast::Pattern::single_param(params).expect("a parameter"),
                 (**body).clone(),
             ),
             _ => {
@@ -4939,7 +4941,7 @@ impl<'a> Lowerer<'a> {
                         self.int_add((**hi).clone(), -1)
                     };
                     let end = self.cast(Cast::Trust, end, (**cut).clone());
-                    if std::env::var_os("CPL_SPEC").is_some() {
+                    if cpl_check::edition::is_v03() {
                         return self.spec_opt(None, end, span);
                     }
                     return end;
@@ -5304,7 +5306,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span)
             }
-            (Ty::Range(inner), "mid") => {
+            (Ty::Range(inner), "mid") if !cpl_check::edition::is_v03() => {
                 let inner_ty = (**inner).clone();
                 let res_ty = Ty::opt(inner_ty.clone());
                 let r_ty = value.ty.clone();
@@ -5667,6 +5669,28 @@ impl<'a> Lowerer<'a> {
             (Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem), "last") => {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::Last, vec![value], opt)
+            }
+            (Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_), "keys") => {
+                let seq = if Self::keyed_view(&ty) {
+                    self.hold_view(value, span)
+                } else {
+                    value
+                };
+                let lo = self.key_lo(&seq, span);
+                let len = self.len_of(seq, span);
+                let hi = if matches!(lo.kind, ExprKind::Int(0)) {
+                    len
+                } else {
+                    self.int_sum(lo.clone(), len)
+                };
+                self.mk(
+                    ExprKind::Range {
+                        lo: Box::new(lo),
+                        hi: Box::new(hi),
+                    },
+                    Ty::Range(Box::new(Ty::Int)),
+                    span,
+                )
             }
             (Ty::Str | Ty::StrView, "first") => {
                 builtin(self, Builtin::First, vec![value], Ty::opt(Ty::Char))
@@ -6323,11 +6347,13 @@ impl<'a> Lowerer<'a> {
             Dim::IntFrom(first) => (self.len_of(seq.clone(), span), Ty::Int, first),
             _ => return None,
         };
+        let keyed = Self::keyed_view(&seq.ty);
         Some(Items {
             seq: seq.clone(),
             len,
             index,
             first,
+            keyed,
             elem,
         })
     }
@@ -6668,6 +6694,14 @@ impl<'a> Lowerer<'a> {
                     span,
                 );
                 (at.clone(), at)
+            }
+            _ if items.keyed => {
+                let at = self.mk(
+                    ExprKind::Builtin(Builtin::PosKey, vec![items.seq.clone(), k.clone()]),
+                    Ty::Int,
+                    span,
+                );
+                (at, k)
             }
             _ if items.first == 0 => (k.clone(), k),
             _ => (self.int_add(k.clone(), items.first), k),
@@ -7739,6 +7773,18 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
+                "wrap" => {
+                    return match self.one_arg("wrap", args, &Ty::Int, span) {
+                        Some(label) => self.domain_wrap(id, label, span),
+                        None => self.err_expr(span),
+                    };
+                }
+                "at" if cpl_check::edition::is_v03() => {
+                    return match self.one_arg("at", args, &Ty::Int, span) {
+                        Some(label) => self.domain_try_label(id, label, span),
+                        None => self.err_expr(span),
+                    };
+                }
                 "at" | "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
@@ -8044,6 +8090,26 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (ty, "at") if Self::keyed_view(ty) => {
+                let elem = ty.seq_elem().unwrap();
+                match self.one_arg("at", args, &Ty::Int, span) {
+                    Some(at) => {
+                        let view = self.hold_view(value, span);
+                        self.key_index(view, at, elem, span)
+                    }
+                    None => self.err_expr(span),
+                }
+            }
+            (ty, "nth")
+                if ty.is_indexed()
+                    && matches!(ty, Ty::List(_) | Ty::ListView(_) | Ty::Str | Ty::StrView) =>
+            {
+                let elem = ty.seq_elem().unwrap();
+                match self.one_arg("nth", args, &Ty::Int, span) {
+                    Some(at) => self.mk(ExprKind::Index(Box::new(value), vec![at]), elem, span),
+                    None => self.err_expr(span),
+                }
+            }
             (ty, "at") if ty.is_indexed() => {
                 let elem = ty.seq_elem().unwrap();
                 match self.one_arg("at", args, &Ty::Int, span) {
@@ -8145,7 +8211,7 @@ impl<'a> Lowerer<'a> {
             (
                 Ty::List(_) | Ty::Str | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..),
                 "take",
-            ) => match self.positional_any(method, args, 0, span) {
+            ) if args.is_empty() => match self.positional_any(method, args, 0, span) {
                 Some(_) => mutate(self, Mutation::Take, Vec::new(), ty.clone()),
                 None => self.err_expr(span),
             },
@@ -8834,6 +8900,9 @@ impl<'a> Lowerer<'a> {
                     },
                 };
                 match dom_id {
+                    Some(d) if method == "at" && cpl_check::edition::is_v03() => {
+                        self.domain_try_label(d, idx_expr, span)
+                    }
                     Some(d) => self.mk(
                         ExprKind::Cast(Cast::Trust, Box::new(idx_expr)),
                         Ty::Pos(d),
@@ -9118,6 +9187,22 @@ impl<'a> Lowerer<'a> {
                     span,
                 };
                 self.expr(&at, None)
+            }
+            // `r.nth(k)` on an Int range: its `k`-th value, `r.start + k` (R04b.5.9).
+            (Ty::Range(inner), "nth") if **inner == Ty::Int && args.len() == 1 => {
+                let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                let lo = self.mk(
+                    ExprKind::Builtin(Builtin::RangeLo, vec![value]),
+                    Ty::Int,
+                    span,
+                );
+                self.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(lo), Box::new(k)),
+                    Ty::Int,
+                    span,
+                )
             }
             // `(lo..hi).clamp(D)`: the part of an Int range that lies in
             // `D`, as a range of D's positions; empty when none does.
@@ -9589,6 +9674,29 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
             }
+            // `v.next(k)`, `v.prev(k)`: step k positions, `None` past an end (R04.8.1).
+            (Ty::Pos(d), "next" | "prev") if args.len() == 1 => {
+                let d = *d;
+                let op = if method == "next" {
+                    BinOp::Add
+                } else {
+                    BinOp::Sub
+                };
+                let Some(k) = self.one_arg(method, args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                let ord = self.cast(Cast::Ord, value, Ty::Int);
+                let at = self.mk(
+                    ExprKind::Binary(op, Box::new(ord), Box::new(k)),
+                    Ty::Int,
+                    span,
+                );
+                self.mk(
+                    ExprKind::Builtin(Builtin::PosTryOrd(d), vec![at]),
+                    Ty::opt(Ty::Pos(d)),
+                    span,
+                )
+            }
             // `Reversible.rev`: a value that is not a sequence and has no
             // `rev` of its own is its own reverse.
             (_, "rev") if args.is_empty() => value,
@@ -10007,7 +10115,7 @@ impl<'a> Lowerer<'a> {
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
         if matches!(name.text.as_str(), "first" | "last")
             && self.subset_base(id).is_none()
-            && std::env::var_os("CPL_SPEC").is_some()
+            && cpl_check::edition::is_v03()
         {
             let ord = if name.text == "first" {
                 self.int_lit(0, span)
@@ -10087,7 +10195,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Bound(id),
                 span,
             ),
-            "all" => {
+            "all" | "range" => {
                 if let Some(Ty::Struct(sid)) = hint {
                     if self.is_bitset_of(*sid, id) {
                         return self.domain_bitset_full(id, span);
@@ -10132,9 +10240,9 @@ impl<'a> Lowerer<'a> {
                 )
             }
             other => {
-                const MEMBERS: [&str; 13] = [
+                const MEMBERS: [&str; 14] = [
                     "len", "size", "count", "empty", "full", "first", "pairs", "last", "start",
-                    "end", "all", "rev", "bounds",
+                    "end", "all", "rev", "bounds", "range",
                 ];
                 match cpl_check::closest(other, MEMBERS.into_iter()) {
                     Some(s) => {
@@ -10241,9 +10349,9 @@ impl<'a> Lowerer<'a> {
 
         let mut then_stmts = vec![Stmt::Let(val_slot, Some(unwrapped))];
         let applied = if let ast::ExprKind::Lambda { params, body, .. } = &fn_ast.kind {
-            if params.len() == 1 {
+            if let Some(param) = ast::Pattern::single_param(params) {
                 self.cx.scopes.push(HashMap::new());
-                let p_slot = self.loop_var(&params[0], (*inner_ty).clone(), &mut then_stmts);
+                let p_slot = self.loop_var(&param, (*inner_ty).clone(), &mut then_stmts);
                 let init_p = self.local(val_slot, span);
                 then_stmts.push(Stmt::Let(p_slot, Some(init_p)));
                 let res = if is_map {
@@ -10852,10 +10960,10 @@ impl<'a> Lowerer<'a> {
         let mut pre_stmts = vec![Stmt::Let(arr_slot, Some(arr_val))];
         let (out_elem, mut inner_stmts, mapped) =
             if let ast::ExprKind::Lambda { params, body, .. } = &func_ast.kind {
-                if params.len() == 1 {
+                if let Some(param) = ast::Pattern::single_param(params) {
                     self.cx.scopes.push(HashMap::new());
                     let mut bind_stmts = Vec::new();
-                    let item = self.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                    let item = self.loop_var(&param, elem_ty.clone(), &mut bind_stmts);
                     let mut inner = vec![Stmt::Let(item, Some(cell))];
                     inner.extend(bind_stmts);
                     let mapped = self.expr(body, None);
@@ -11099,10 +11207,10 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         if let ast::ExprKind::Lambda { params, body, .. } = &func_ast.kind {
-            if params.len() == 1 {
+            if let Some(param) = ast::Pattern::single_param(params) {
                 self.cx.scopes.push(HashMap::new());
                 let mut bind_stmts = Vec::new();
-                let item = self.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                let item = self.loop_var(&param, elem_ty.clone(), &mut bind_stmts);
                 let mapped = self.expr(body, None);
                 self.cx.scopes.pop();
                 if matches!(mapped.ty, Ty::Error) {
@@ -11177,11 +11285,11 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         if let ast::ExprKind::Lambda { params, body, .. } = &pred_ast.kind {
-            if params.len() == 1 {
+            if let Some(param) = ast::Pattern::single_param(params) {
                 return self.collected(elem_ty.clone(), span, |lw, out, push| {
                     lw.cx.scopes.push(HashMap::new());
                     let mut bind_stmts = Vec::new();
-                    let item = lw.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                    let item = lw.loop_var(&param, elem_ty.clone(), &mut bind_stmts);
                     let keep = lw.expect(body, &Ty::Bool);
                     lw.cx.scopes.pop();
                     let lid = lw.fresh_loop();
@@ -11357,10 +11465,14 @@ impl<'a> Lowerer<'a> {
         let mut item = self.temp(elem_ty.clone());
         // Evaluate the key expression for `item`: supports `x => expr`, a 1D array `a` (`a[x]`), or a callable `f` (`f(x)`).
         let (pre_stmts, key_expr): (Vec<Stmt>, Expr) = match &key_ast.kind {
-            ast::ExprKind::Lambda { params, body, .. } if params.len() == 1 => {
+            ast::ExprKind::Lambda { params, body, .. } if !params.is_empty() => {
                 self.cx.scopes.push(HashMap::new());
                 let mut bind_stmts = Vec::new();
-                item = self.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                item = self.loop_var(
+                    &ast::Pattern::single_param(params).expect("a parameter"),
+                    elem_ty.clone(),
+                    &mut bind_stmts,
+                );
                 let ke = self.expr(body, None);
                 self.cx.scopes.pop();
                 (bind_stmts, ke)
@@ -12286,6 +12398,8 @@ pub(super) struct Items {
     len: Expr,
     index: Ty,
     first: i64,
+    /// The view names its cells by source keys, not walk positions.
+    keyed: bool,
     elem: Ty,
 }
 

@@ -236,7 +236,12 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
         DiffTarget::Conformance { id, path } => (
             id.clone(),
             path.clone(),
-            vec![(String::new(), Vec::new())],
+            vec![(
+                String::new(),
+                std::fs::read_to_string(path)
+                    .map(|t| conformance::header_input(&t))
+                    .unwrap_or_default(),
+            )],
             false,
         ),
         DiffTarget::Corpus {

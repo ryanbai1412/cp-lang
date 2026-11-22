@@ -121,9 +121,12 @@ impl<'p> Emitter<'p> {
             ExprKind::Global(id) => {
                 touch.reads.insert((true, *id));
             }
-            ExprKind::Read(_) | ExprKind::Parse(..)
+            ExprKind::Read(_)
+            | ExprKind::Parse(..)
             | ExprKind::Print(..)
-            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => touch.io = true,
+            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
+                touch.io = true
+            }
             ExprKind::CallExpr(_, args) => {
                 touch.io = true;
                 for arg in args {
@@ -305,7 +308,9 @@ impl<'p> Emitter<'p> {
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => {
+                    Ty::List(_) | Ty::MutView(_)
+                        if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) =>
+                    {
                         format!("{b}[{}]", at[0])
                     }
                     Ty::List(_) | Ty::MutView(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) =>
@@ -468,7 +473,10 @@ impl<'p> Emitter<'p> {
                             }
                         })
                         .collect();
-                    Code::primary(format!("std::vector<{cpp_cell}>{{{}}}", rendered.join(", ")))
+                    Code::primary(format!(
+                        "std::vector<{cpp_cell}>{{{}}}",
+                        rendered.join(", ")
+                    ))
                 }
             }
             ExprKind::Read(spec) => {
@@ -649,13 +657,22 @@ impl<'p> Emitter<'p> {
                 code
             }
             ExprKind::Cast(Cast::Raw, inner)
-                if matches!(inner.kind, ExprKind::Cast(Cast::FromOrd(_) | Cast::FromLabel(_), _)) =>
+                if matches!(
+                    inner.kind,
+                    ExprKind::Cast(Cast::FromOrd(_) | Cast::FromLabel(_), _)
+                ) =>
             {
-                let ExprKind::Cast(cast, ord) = &inner.kind else { unreachable!() };
+                let ExprKind::Cast(cast, ord) = &inner.kind else {
+                    unreachable!()
+                };
                 let code = self.expr(ord);
                 match cast {
                     Cast::FromLabel(d) => Code::new(
-                        format!("(int)({} - {}_lo)", code.at(ADD), ident(&program.domains[*d])),
+                        format!(
+                            "(int)({} - {}_lo)",
+                            code.at(ADD),
+                            ident(&program.domains[*d])
+                        ),
                         UNARY,
                     ),
                     _ => Code::new(format!("(int){}", code.at(UNARY)), UNARY),
@@ -824,16 +841,22 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if raw_list && **elem == Ty::Bool => {
+                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)
+                            if raw_list && **elem == Ty::Bool =>
+                        {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
                         Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) if raw_list => {
                             Code::primary(format!("{b}[{}]", at[0]))
                         }
-                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if **elem == Ty::Bool => Code::new(
-                            format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
-                            UNARY,
-                        ),
+                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)
+                            if **elem == Ty::Bool =>
+                        {
+                            Code::new(
+                                format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
+                                UNARY,
+                            )
+                        }
                         Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
@@ -851,7 +874,9 @@ impl<'p> Emitter<'p> {
                         Ty::Array { elem, .. } if **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::Str | Ty::StrView => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
+                        Ty::Str | Ty::StrView => {
+                            Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY)
+                        }
                         Ty::Range(_) if checked => {
                             Code::primary(format!("cpl::range_at({}, {})", codes[0].text, at[0]))
                         }
@@ -1009,7 +1034,12 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }
-            ExprKind::RangeCheck { value, lo, hi, text } => {
+            ExprKind::RangeCheck {
+                value,
+                lo,
+                hi,
+                text,
+            } => {
                 self.need("check_range");
                 let v = self.expr(value);
                 let lo_code = match lo {
@@ -1049,10 +1079,8 @@ impl<'p> Emitter<'p> {
                     self.need("map_take");
                     let p = self.place(place);
                     let k = self.expr(key_val).text;
-                    return self.packed_result(
-                        &e.ty,
-                        Code::primary(format!("cpl::map_take({p}, {k})")),
-                    );
+                    return self
+                        .packed_result(&e.ty, Code::primary(format!("cpl::map_take({p}, {k})")));
                 }
                 let ret = if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
@@ -1298,7 +1326,10 @@ impl<'p> Emitter<'p> {
                     })
                 } else {
                     let p = self.place(place);
-                    let arg = args.first().map(|arg| self.expr(arg).text).unwrap_or_default();
+                    let arg = args
+                        .first()
+                        .map(|arg| self.expr(arg).text)
+                        .unwrap_or_default();
                     let arg2 = args
                         .get(1)
                         .map(|arg| self.expr(arg).text)
@@ -1811,9 +1842,7 @@ impl<'p> Emitter<'p> {
             .enumerate()
             .filter_map(|(slot, arg)| match arg {
                 Arg::Value(value) => {
-                    if self.devirt.param_elidable(id, slot)
-                        && self.devirt.skippable_value(value)
-                    {
+                    if self.devirt.param_elidable(id, slot) && self.devirt.skippable_value(value) {
                         None
                     } else {
                         Some(value)
@@ -1925,12 +1954,17 @@ impl<'p> Emitter<'p> {
     /// local the caller owns and names nowhere else in the call, passed to a
     /// parameter taken by value: moving it in skips a copy.
     fn moves_in(&self, id: usize, slot: usize, value: &Expr, args: &[Arg], text: &str) -> bool {
-        let ExprKind::Local(local) = value.kind else { return false };
-        let Some(caller) = self.fn_id else { return false };
+        let ExprKind::Local(local) = value.kind else {
+            return false;
+        };
+        let Some(caller) = self.fn_id else {
+            return false;
+        };
         let cf = &self.program.fns[caller];
         let owned = local >= cf.params.len()
             || (!cf.params[local].mutable
-                && (self.sunk[caller].contains(&local) || self.facts.stores((Some(caller), false, local)) > 2));
+                && (self.sunk[caller].contains(&local)
+                    || self.facts.stores((Some(caller), false, local)) > 2));
         if !owned
             || value.ty.is_scalar()
             || matches!(value.ty, Ty::Fn(..))
@@ -2060,7 +2094,11 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Copy => {
                 let l = args.first().and_then(|a| self.expr_elem_layout(a));
-                Code::primary(format!("{}({})", self.ty_with_elem_layout(&e.ty, l), text(0)))
+                Code::primary(format!(
+                    "{}({})",
+                    self.ty_with_elem_layout(&e.ty, l),
+                    text(0)
+                ))
             }
             Builtin::ListFilled => {
                 let lty = self.ty(&e.ty);
@@ -2068,7 +2106,10 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Join => {
                 let elem = match &args[1].ty {
-                    Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    Ty::List(elem)
+                    | Ty::ListView(elem)
+                    | Ty::MutView(elem)
+                    | Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
                 let (sep, seq) = (codes[0].text.clone(), codes[1].text.clone());
@@ -2273,11 +2314,36 @@ impl<'p> Emitter<'p> {
             },
             Builtin::StrSlice => {
                 self.need("str_view");
-                Code::primary(format!("cpl::str_slice({}, {}, {})", text(0), text(1), text(2)))
+                Code::primary(format!(
+                    "cpl::str_slice({}, {}, {})",
+                    text(0),
+                    text(1),
+                    text(2)
+                ))
             }
             Builtin::ListSlice => {
                 self.need("list_view");
-                Code::primary(format!("cpl::list_slice({}, {}, {})", text(0), text(1), text(2)))
+                Code::primary(format!(
+                    "cpl::list_slice({}, {}, {})",
+                    text(0),
+                    text(1),
+                    text(2)
+                ))
+            }
+            Builtin::KeyLo | Builtin::KeyPos | Builtin::PosKey | Builtin::KeySlice => {
+                self.need(if matches!(args[0].ty, Ty::StrView) {
+                    "str_view"
+                } else {
+                    "list_view"
+                });
+                let name = match op {
+                    Builtin::KeyLo => "key_lo",
+                    Builtin::KeyPos => "key_pos",
+                    Builtin::PosKey => "pos_key",
+                    _ => "key_slice",
+                };
+                let all: Vec<String> = (0..args.len()).map(|i| text(i).to_string()).collect();
+                Code::primary(format!("cpl::{name}({})", all.join(", ")))
             }
             Builtin::ToStr => {
                 self.need("str_view");
@@ -2418,7 +2484,11 @@ impl<'p> Emitter<'p> {
                             && non_scalar
                             && self.const_globals.contains(&cap.outer))
                     {
-                        let constant = if self.const_globals.contains(&cap.outer) { "const " } else { "" };
+                        let constant = if self.const_globals.contains(&cap.outer) {
+                            "const "
+                        } else {
+                            ""
+                        };
                         global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
                         cap_parts.push(format!("{inner} = {gname}"));
@@ -2688,25 +2758,31 @@ fn proven(indices: &[Expr]) -> bool {
 /// Recognizes the IR `Do` block emitted for `m.remove(k)` on a `Map` or `HashMap`:
 /// `[...settled_indexes, let key = k, let held = map_get(m, key), if remove(m, key) {}, give held]`.
 pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
-    let ExprKind::Do(block) = &e.kind else { return None };
+    let ExprKind::Do(block) = &e.kind else {
+        return None;
+    };
     let n = block.stmts.len();
     if n < 4 {
         return None;
     }
     let (prefix, tail) = block.stmts.split_at(n - 4);
-    let [
-        Stmt::Let(key_id, Some(key_val)),
-        Stmt::Let(
-            held_id,
-            Some(Expr { kind: ExprKind::Builtin(Builtin::MapGet, get_args), .. }),
-        ),
-        Stmt::If(
-            Expr { kind: ExprKind::Mutate(Mutation::Remove, place, rem_args), .. },
-            then_b,
-            else_b,
-        ),
-        Stmt::Give(Expr { kind: ExprKind::Local(give_id), .. }),
-    ] = tail
+    let [Stmt::Let(key_id, Some(key_val)), Stmt::Let(
+        held_id,
+        Some(Expr {
+            kind: ExprKind::Builtin(Builtin::MapGet, get_args),
+            ..
+        }),
+    ), Stmt::If(
+        Expr {
+            kind: ExprKind::Mutate(Mutation::Remove, place, rem_args),
+            ..
+        },
+        then_b,
+        else_b,
+    ), Stmt::Give(Expr {
+        kind: ExprKind::Local(give_id),
+        ..
+    })] = tail
     else {
         return None;
     };

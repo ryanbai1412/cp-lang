@@ -17,3 +17,7 @@ debug = 0
 [alias]
 # Same tests as `cargo test --workspace`, run in parallel across binaries.
 nt = "nextest run --workspace"
+
+[env]
+# The 0.2 test suites pin their edition until they move to 0.3 (decisions.md).
+CPL_EDITION = "0.2"

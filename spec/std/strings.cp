@@ -29,7 +29,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
     assert 0 <= at and at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
     if at + pat.len > self.len: return false
     for i in 0..pat.len:
-        if self.at(at + i) != pat.at(i): return false
+        if self.nth(at + i) != pat.nth(i): return false
     true
 
 @allow(unproven_list_index)
@@ -46,7 +46,7 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
     let d = self.len - pat.len
     if d < 0: return false
     for i in 0..pat.len:
-        if self.at(d + i) != pat.at(i): return false
+        if self.nth(d + i) != pat.nth(i): return false
     true
 
 /// The key where `p` first stands in `self`, or `None`. `p` is a `Str` or one `Char`.
@@ -63,9 +63,8 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// example: `"banana".search('n') == Some(2)`
 /// example: `"banana"[2..].search('a') == Some(3)`
 /// example: `"banana".search("x") == None`
-pub fn search<P>(self: Str, p: P) -> ?Int:
-    let base = if self.is_empty: 0 else: self.keys.first!
-    for i in find_all(self, "" + p): return Some(base + i)
+pub fn search<S: Indexed, K, P>(self: S, p: P) -> ?K:
+    for k in find_all(self, "" + p): return Some(k)
     None
 
 /// How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
@@ -93,10 +92,9 @@ pub fn count(self: Str, c: Char) -> Int:
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
 /// example: `"ab".rsearch("") == Some(2)`
-pub fn rsearch<P>(self: Str, p: P) -> ?Int:
-    let base = if self.is_empty: 0 else: self.keys.first!
-    var last: ?Int = None
-    for i in find_all(self, "" + p): last = Some(base + i)
+pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
+    var last: ?K = None
+    for k in find_all(self, "" + p): last = Some(k)
     last
 
 /// The lowercase letter of an ASCII capital; any other character is returned as it is.
@@ -425,8 +423,8 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
     for i in 1..s.len:
         var k = p[i - 1]
-        while k > 0 and s.at(i) != s.at(k): k = p[k - 1]
-        if s.at(i) == s.at(k): k += 1
+        while k > 0 and s.nth(i) != s.nth(k): k = p[k - 1]
+        if s.nth(i) == s.nth(k): k += 1
         p[i] = k
     p
 
@@ -446,15 +444,16 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
 /// example: `"ab".find_all("").collect() == [0, 1, 2]`
 pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
     if pat.is_empty:
-        for i in 0..=self.len: yield i
+        for k in self.keys: yield k
+        yield self.keys.end
         return
     let p = failure_lengths(pat)
     var k = 0
     for i in 0..self.len:
-        while k > 0 and self.at(i) != pat.at(k): k = p[k - 1]
-        if self.at(i) == pat.at(k): k += 1
+        while k > 0 and self.nth(i) != pat.nth(k): k = p[k - 1]
+        if self.nth(i) == pat.nth(k): k += 1
         if k == pat.len:
-            yield i + 1 - k
+            yield self.keys.nth(i + 1 - k)
             k = p[k - 1]
 
 @allow(unproven_list_index)
@@ -468,7 +467,7 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
 pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
     let lim = min(self.len, other.len)
     var i = 0
-    while i < lim and self.at(i) == other.at(i): i += 1
+    while i < lim and self.nth(i) == other.nth(i): i += 1
     i
 
 @allow(unproven_list_index)
@@ -483,7 +482,7 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
     let (na, nb) = (self.len, other.len)
     let lim = min(na, nb)
     var i = 0
-    while i < lim and self.at(na - 1 - i) == other.at(nb - 1 - i): i += 1
+    while i < lim and self.nth(na - 1 - i) == other.nth(nb - 1 - i): i += 1
     i
 
 /// The shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` wherever both
@@ -508,7 +507,7 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
     let n = s.len
     for i in 0..n / 2:
-        if s.at(i) != s.at(n - 1 - i): return false
+        if s.nth(i) != s.nth(n - 1 - i): return false
     true
 
 @allow(unproven_list_index)
@@ -567,11 +566,11 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
     let keep = min(a.len, b.len)
     if keep == 0: return 0
-    let pi = failure_lengths([b.at(i) for i in 0..keep])
+    let pi = failure_lengths([b.nth(i) for i in 0..keep])
     var k = 0
     for i in a.len - keep..a.len:
-        while k > 0 and (k == keep or a.at(i) != b.at(k)): k = pi[k - 1]
-        if a.at(i) == b.at(k): k += 1
+        while k > 0 and (k == keep or a.nth(i) != b.nth(k)): k = pi[k - 1]
+        if a.nth(i) == b.nth(k): k += 1
     k
 
 @allow(unproven_list_index)
@@ -585,18 +584,18 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
 /// example: `lyndon_factorization("banana") == [0, 1, 3, 5]`
 pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>:
     let n = s.len
-    var starts: List<Int> = []
+    var starts: List<K> = []
     var i = 0
     unchecked:
         while i < n:
             var j = i + 1
             var k = i
-            while j < n and s.at(k) <= s.at(j):
-                if s.at(k) < s.at(j): k = i else: k += 1
+            while j < n and s.nth(k) <= s.nth(j):
+                if s.nth(k) < s.nth(j): k = i else: k += 1
                 j += 1
             let step = j - k
             while i <= k:
-                starts.push(i)
+                starts.push(s.keys.nth(i))
                 i += step
     starts
 
@@ -611,22 +610,22 @@ pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>:
 /// example: `min_rotation("abab") == Some(0)`
 pub fn min_rotation<S: Indexed, K>(s: S) -> ?K:
     let n = s.len
-    if n <= 1: return 0
+    if n == 0: return None
     var (a, b) = (0, 1)
     var k = 0
     unchecked:
         while a < n and b < n and k < n:
             let ai = a + k
             let bi = b + k
-            let x = s.at(if ai < n: ai else: ai - n)
-            let y = s.at(if bi < n: bi else: bi - n)
+            let x = s.nth(if ai < n: ai else: ai - n)
+            let y = s.nth(if bi < n: bi else: bi - n)
             if x == y:
                 k += 1
             else:
                 if x > y: a += k + 1 else: b += k + 1
                 if a == b: b += 1
                 k = 0
-    min(a, b)
+    Some(s.keys.nth(min(a, b)))
 
 /// The key at which the lexicographically greatest cyclic rotation of `s` starts.
 ///
@@ -636,26 +635,24 @@ pub fn min_rotation<S: Indexed, K>(s: S) -> ?K:
 /// traps: never
 /// example: `max_rotation("baca") == Some(2)`
 /// example: `max_rotation("abab") == Some(1)`
-@allow(unproven_list_index)
 pub fn max_rotation<S: Indexed, K>(s: S) -> ?K:
     let n = s.len
     if n == 0: return None
-    if n == 1: return Some(0)
     var (a, b) = (0, 1)
     var k = 0
     unchecked:
         while a < n and b < n and k < n:
             let ai = a + k
             let bi = b + k
-            let x = s.at(if ai < n: ai else: ai - n)
-            let y = s.at(if bi < n: bi else: bi - n)
+            let x = s.nth(if ai < n: ai else: ai - n)
+            let y = s.nth(if bi < n: bi else: bi - n)
             if x == y:
                 k += 1
             else:
                 if x < y: a += k + 1 else: b += k + 1
                 if a == b: b += 1
                 k = 0
-    Some(min(a, b))
+    Some(s.keys.nth(min(a, b)))
 
 /// O(|pat| * |A|). Prefix (KMP) automaton over alphabet domain `A`, for O(1) transitions in DP.
 pub struct KmpAutomaton<A>:
@@ -902,13 +899,13 @@ pub fn manacher<S: Indexed>(s: S) -> Palindromes:
     unchecked:
         for i in 0..n:
             var k = if i > r: 1 else: min(odd[l + r - i], r - i + 1)
-            while i - k >= 0 and i + k < n and s.at(i - k) == s.at(i + k): k += 1
+            while i - k >= 0 and i + k < n and s.nth(i - k) == s.nth(i + k): k += 1
             odd[i] = k
             if i + k - 1 > r: (l, r) = (i - k + 1, i + k - 1)
         (l, r) = (0, -1)
         for i in 0..n:
             var k = if i > r: 0 else: min(even[l + r - i + 1], r - i + 1)
-            while i - k - 1 >= 0 and i + k < n and s.at(i - k - 1) == s.at(i + k): k += 1
+            while i - k - 1 >= 0 and i + k < n and s.nth(i - k - 1) == s.nth(i + k): k += 1
             even[i] = k
             if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
     Palindromes(odd, even)
@@ -1019,12 +1016,12 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
     if n <= 1: return [i for i in 0..n]
     var vec = List.filled(n + 1, 0)
     var alpha = 0
-    var uniq = [s.at(0)]
+    var uniq = [s.nth(0)]
     var ids = [0]
     var small = true
     unchecked:
         for i in 1..n:
-            let x = s.at(i)
+            let x = s.nth(i)
             var (lo, hi) = (0, uniq.len)
             while lo < hi:
                 let mid = (lo + hi) >> 1
@@ -1053,12 +1050,12 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
             for i in 0..n: vec[i] = remap[vec[i]]
     else:
         var order = [i for i in 0..n]
-        order.sort(by: i => s.at(i))
+        order.sort(by: i => s.nth(i))
         alpha = 1
         unchecked:
             vec[order[0]] = 1
             for j in 1..n:
-                if s.at(order[j - 1]) < s.at(order[j]): alpha += 1
+                if s.nth(order[j - 1]) < s.nth(order[j]): alpha += 1
                 vec[order[j]] = alpha
         if alpha == n: return order
     var sa = sa_is(vec, alpha + 1)
@@ -1103,7 +1100,7 @@ pub struct SuffixArray:
                     k = 0
                     continue
                 let j = sa[rank[i] + 1]
-                while i + k < n and j + k < n and s.at(i + k) == s.at(j + k): k += 1
+                while i + k < n and j + k < n and s.nth(i + k) == s.nth(j + k): k += 1
                 lcp[rank[i]] = k
                 if k > 0: k -= 1
         let m = lcp.len
@@ -1398,9 +1395,9 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
 pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
     let n = s.len
     if n < 2: return []
-    let fwd = [s.at(i) for i in 0..n]
+    let fwd = [s.nth(i) for i in 0..n]
     let sa = SuffixArray.new(fwd)
-    let rev = [s.at(i) for i in (0..n).rev]
+    let rev = [s.nth(i) for i in (0..n).rev]
     let rsa = SuffixArray.new(rev)
     var raw = List<(l: Int, r: Int, period: Int)>()
     unchecked:
@@ -3248,10 +3245,11 @@ fn lyndon_factorization_and_min_rotation_match_definitions():
     assert lyndon_factorization("") == []
     assert lyndon_factorization("abab") == [0, 2]
     assert lyndon_factorization("cba") == [0, 1, 2]
-    assert min_rotation("") == 0
-    assert min_rotation("cba") == 2
-    assert min_rotation("baca") == 3
-    assert min_rotation("aaaa") == 0
+    assert min_rotation("") == None
+    assert min_rotation("cba") == Some(2)
+    assert min_rotation("baca") == Some(3)
+    assert min_rotation("aaaa") == Some(0)
+    assert max_rotation("baca") == Some(2)
     for _ in 0..40:
         let s = random_word(rand(1, 14), 3)
         let n = s.len
@@ -3275,7 +3273,7 @@ fn lyndon_factorization_and_min_rotation_match_definitions():
             if rot < best_rot:
                 best = r
                 best_rot = rot
-        assert min_rotation(s) == best
+        assert min_rotation(s) == Some(best)
 
 @test
 fn manacher_and_is_palindrome_match_brute():

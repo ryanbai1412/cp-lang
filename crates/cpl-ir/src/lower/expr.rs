@@ -295,60 +295,99 @@ impl<'a> Lowerer<'a> {
                 if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
                     return self.slice_expr(base_expr, &indices[0], span);
                 }
-                // `g[r, ..]`, `g[.., c]`: one row or column, as a list.
+                // `g[r]` on `[R, C]T` is the row `g[r, ..]`.
+                let padded;
+                let indices = match &base_expr.ty {
+                    Ty::Array { dims, .. }
+                        if indices.len() + 1 == dims.len()
+                            && !indices.iter().any(is_whole)
+                            && !self.indexes_whole_grid(&indices[0]) =>
+                    {
+                        padded = indices
+                            .iter()
+                            .cloned()
+                            .chain([ast::Expr {
+                                kind: ast::ExprKind::Range {
+                                    lo: None,
+                                    hi: None,
+                                    inclusive: false,
+                                    step: None,
+                                },
+                                span,
+                            }])
+                            .collect::<Vec<_>>();
+                        &padded[..]
+                    }
+                    _ => indices,
+                };
+                // `g[r, ..]`, `g[.., c]`, `g[..2, ..2]`: the cells a row,
+                // column or sub-rectangle names, as a list.
                 if let Ty::Array { dims, elem } = &base_expr.ty {
                     let whole: Vec<usize> = (0..indices.len())
                         .filter(|&k| is_whole(&indices[k]))
                         .collect();
-                    if let ([axis], true) = (whole.as_slice(), dims.len() == indices.len()) {
-                        let (axis, elem) = (*axis, (**elem).clone());
-                        let dims_at_axis = dims[axis];
-                        let at_ty = match dims[axis] {
-                            Dim::Pos(d) => Ty::Pos(d),
-                            Dim::Bound(d) => Ty::Bound(d),
-                            Dim::Enum(e) => Ty::Enum(e),
-                            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                        };
+                    if !whole.is_empty() && dims.len() == indices.len() {
+                        let (dims, elem) = (dims.clone(), (**elem).clone());
                         return self.collected(elem, span, |lw, out, push| {
                             let base = lw.hold(base_expr, out);
-                            let at = lw.temp(at_ty);
-                            lw.whole_axis = Some(at);
+                            let ats: Vec<Slot> = whole
+                                .iter()
+                                .map(|&axis| {
+                                    lw.temp(match dims[axis] {
+                                        Dim::Pos(d) => Ty::Pos(d),
+                                        Dim::Bound(d) => Ty::Bound(d),
+                                        Dim::Enum(e) => Ty::Enum(e),
+                                        Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                                    })
+                                })
+                                .collect();
+                            lw.whole_axes = ats.clone();
                             let (cell, ty) = lw.index_args(&base.ty, indices, span);
-                            lw.whole_axis = None;
+                            lw.whole_axes.clear();
                             let cell: Vec<Expr> = cell
                                 .into_iter()
                                 .enumerate()
                                 .map(|(k, index)| {
-                                    if k == axis {
+                                    if whole.contains(&k) {
                                         index
                                     } else {
                                         lw.hold(index, out)
                                     }
                                 })
                                 .collect();
-                            let len = lw.mk(
-                                ExprKind::Builtin(
-                                    Builtin::AxisLen,
-                                    vec![base.clone(), lw.int_lit(axis as i64, span)],
-                                ),
-                                Ty::Int,
-                                span,
-                            );
+                            let parts: Vec<(Expr, Expr)> = whole
+                                .iter()
+                                .map(|&axis| {
+                                    let len = lw.mk(
+                                        ExprKind::Builtin(
+                                            Builtin::AxisLen,
+                                            vec![base.clone(), lw.int_lit(axis as i64, span)],
+                                        ),
+                                        Ty::Int,
+                                        span,
+                                    );
+                                    // `g[r, 1..3]`: the part of the row the range names.
+                                    lw.axis_part(&indices[axis], dims[axis], len, out)
+                                })
+                                .collect();
                             let value = lw.mk(ExprKind::Index(Box::new(base), cell), ty, span);
-                            let lid = lw.fresh_loop();
-                            // `g[r, 1..3]`: the part of the row the range names.
-                            let (lo, hi) = lw.axis_part(&indices[axis], dims_at_axis, len, out);
-                            let iter = Iter::Range {
-                                lo,
-                                hi,
-                                step: None,
-                                rev: false,
-                                closed: false,
-                            };
-                            let body = Block {
+                            let mut body = Block {
                                 stmts: vec![push(lw, value)],
                             };
-                            out.push(Stmt::For(lid, at, iter, body));
+                            for (at, (lo, hi)) in ats.into_iter().zip(parts).rev() {
+                                let lid = lw.fresh_loop();
+                                let iter = Iter::Range {
+                                    lo,
+                                    hi,
+                                    step: None,
+                                    rev: false,
+                                    closed: false,
+                                };
+                                body = Block {
+                                    stmts: vec![Stmt::For(lid, at, iter, body)],
+                                };
+                            }
+                            out.extend(body.stmts);
                         });
                     }
                 }
@@ -374,6 +413,13 @@ impl<'a> Lowerer<'a> {
                         }
                         return self.slice_by_range_val(base_expr, range_val, span);
                     }
+                }
+                if indices.len() == 1 && Self::keyed_view(&base_expr.ty) {
+                    let view = self.hold_view(base_expr, span);
+                    let (indices, ty) = self.index_args(&view.ty, indices, span);
+                    let out = self.key_index(view, indices.into_iter().next().unwrap(), ty, span);
+                    let plain = self.plain_ty(&out.ty);
+                    return self.try_coerce(out, &plain).unwrap_or_else(|e| e);
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
                 let indices = self.vouched(&base_expr.ty, indices);
@@ -1292,6 +1338,62 @@ impl<'a> Lowerer<'a> {
         self.err_expr(span)
     }
 
+    /// `j..i` with integer literal ends where a `Range<V>` is wanted: the
+    /// piece between the cuts they label (R04.4.26, R04.8.8).
+    fn literal_piece(
+        &mut self,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
+        inclusive: bool,
+        expected: Option<&Ty>,
+        span: Span,
+    ) -> Option<Expr> {
+        let Some(Ty::Range(of)) = expected else {
+            return None;
+        };
+        let Ty::Pos(d) = **of else {
+            return None;
+        };
+        let literal =
+            |e: Option<&ast::Expr>| e.is_none_or(|e| matches!(e.kind, ast::ExprKind::Int(_)));
+        if !cpl_check::edition::is_v03()
+            || (lo.is_none() && hi.is_none())
+            || !literal(lo)
+            || !literal(hi)
+        {
+            return None;
+        }
+        let ord = |lw: &mut Self, e: &ast::Expr| {
+            let label = lw.expr(e, None);
+            let first = lw.domain_first_label(d, span);
+            lw.mk(
+                ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(first)),
+                Ty::Int,
+                span,
+            )
+        };
+        let lo = match lo {
+            Some(e) => ord(self, e),
+            None => self.int_lit(0, span),
+        };
+        let hi = match hi {
+            Some(e) if inclusive => {
+                let at = ord(self, e);
+                self.int_add(at, 1)
+            }
+            Some(e) => ord(self, e),
+            None => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+        };
+        Some(self.mk(
+            ExprKind::Range {
+                lo: Box::new(lo),
+                hi: Box::new(hi),
+            },
+            Ty::Range(Box::new(Ty::Pos(d))),
+            span,
+        ))
+    }
+
     fn range_val(
         &mut self,
         lo: Option<&ast::Expr>,
@@ -1300,6 +1402,9 @@ impl<'a> Lowerer<'a> {
         expected: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        if let Some(piece) = self.literal_piece(lo, hi, inclusive, expected, span) {
+            return piece;
+        }
         let lo_e = lo.map(|e| self.expr(e, None));
         let hi_e = hi.map(|e| self.expr(e, None));
         match (lo_e, hi_e) {
@@ -1396,11 +1501,8 @@ impl<'a> Lowerer<'a> {
             },
             (Some(l), None) => match l.ty {
                 Ty::Pos(d) | Ty::Bound(d) => {
-                    let want_bound = matches!(l.ty, Ty::Bound(_))
-                        && matches!(
-                            expected,
-                            Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
-                        );
+                    let want_bound =
+                        matches!(l.ty, Ty::Bound(_)) && Self::cut_range_wanted(expected, d);
                     let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
                     let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     let hi_ord = if want_bound {
@@ -1467,10 +1569,7 @@ impl<'a> Lowerer<'a> {
                     )
                 }
                 Ty::Bound(d) => {
-                    let want_bound = matches!(
-                        expected,
-                        Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
-                    );
+                    let want_bound = Self::cut_range_wanted(expected, d);
                     let lo_ord = self.int_lit(0, span);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
                     let hi_ord = if want_bound && inclusive {
@@ -2306,6 +2405,10 @@ impl<'a> Lowerer<'a> {
                 let r = self.cast(Cast::Ord, r, Ty::Int);
                 (l, r, Ty::Int)
             }
+            (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) && cpl_check::edition::is_v03() => {
+                let d = *d;
+                (self.cast(Cast::Label(d), l, Ty::Int), r, Ty::Int)
+            }
             (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) => {
                 let d = *d;
                 let step = if op == Sub {
@@ -2866,6 +2969,19 @@ impl<'a> Lowerer<'a> {
             .collect()
     }
 
+    /// Whether a lone index names a whole cell of a grid: a tuple or a
+    /// product position. Lowered once to see its type; nothing is kept.
+    fn indexes_whole_grid(&mut self, index: &ast::Expr) -> bool {
+        let diags = self.diags.len();
+        let value = self.expr(index, None);
+        self.diags.truncate(diags);
+        match value.ty {
+            Ty::Tuple(_) | Ty::Record(_) => true,
+            Ty::Pos(p) => self.product_grid(p).is_some(),
+            _ => false,
+        }
+    }
+
     pub(super) fn index_args(
         &mut self,
         base: &Ty,
@@ -2951,6 +3067,21 @@ impl<'a> Lowerer<'a> {
                 if dims.len() > 1 && indices.len() == 1 {
                     // Allow indexing a multi-D array with a single tuple/record coordinate `g[p]` where `p: (Row, Col)`.
                     let tuple_val = self.expr(&indices[0], None);
+                    if let Ty::Pos(p) = tuple_val.ty {
+                        if self.product_grid(p).as_deref() == Some(dims.as_slice()) {
+                            let parts = (0..dims.len())
+                                .map(|i| {
+                                    self.decode_product_field(
+                                        p,
+                                        tuple_val.clone(),
+                                        i,
+                                        indices[0].span,
+                                    )
+                                })
+                                .collect();
+                            return (parts, (**elem).clone());
+                        }
+                    }
                     let field_tys: Option<Vec<Ty>> = match &tuple_val.ty {
                         Ty::Tuple(ts) if ts.len() == dims.len() => Some(ts.clone()),
                         Ty::Record(fs) if fs.len() == dims.len() => {
@@ -2997,6 +3128,7 @@ impl<'a> Lowerer<'a> {
                     return (vec![self.err_expr(span)], (**elem).clone());
                 }
                 let mut out = Vec::new();
+                let mut axes = self.whole_axes.clone().into_iter();
                 for (dim, index) in dims.iter().zip(indices) {
                     let want = match dim {
                         Dim::Pos(d) => Ty::Pos(*d),
@@ -3004,7 +3136,7 @@ impl<'a> Lowerer<'a> {
                         Dim::Enum(e) => Ty::Enum(*e),
                         Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                     };
-                    if let (Some(slot), true) = (self.whole_axis, is_whole(index)) {
+                    if let Some(slot) = is_whole(index).then(|| axes.next()).flatten() {
                         out.push(self.mk(ExprKind::Local(slot), want, index.span));
                         continue;
                     }
@@ -3109,6 +3241,14 @@ impl<'a> Lowerer<'a> {
                                     continue;
                                 }
                             }
+                        }
+                        // R04.8.8: an integer literal is the position it labels.
+                        if let (true, ExprKind::Int(_), Ty::Pos(d)) =
+                            (cpl_check::edition::is_v03(), &value.kind, &want)
+                        {
+                            let d = *d;
+                            out.push(self.cast(Cast::FromLabel(d), value, want.clone()));
+                            continue;
                         }
                         if matches!(want, Ty::Bound(_))
                             || matches!(want, Ty::Pos(d) if self.product_domains.contains_key(&d))
@@ -3367,6 +3507,88 @@ impl<'a> Lowerer<'a> {
     /// Ensures the base of a borrowed view outlives the view expression in C++.
     /// Places (locals, globals, fields) and existing views are passed directly
     /// with zero copies; temporary owned values are hoisted into `self.cx.pending`.
+    /// Whether indexing `ty` names source keys rather than positions: in
+    /// v0.3 a slice keeps its source's keys (R04b.1).
+    pub(super) fn keyed_view(ty: &Ty) -> bool {
+        matches!(ty, Ty::StrView | Ty::ListView(_)) && cpl_check::edition::is_v03()
+    }
+
+    /// `view` in a form that can be read more than once.
+    pub(super) fn hold_view(&mut self, view: Expr, span: Span) -> Expr {
+        if matches!(view.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+            return view;
+        }
+        let slot = self.temp(view.ty.clone());
+        self.cx.pending.push(Stmt::Let(slot, Some(view)));
+        self.local(slot, span)
+    }
+
+    /// `view[key]`, reading the cell that holds the source key `key`.
+    pub(super) fn key_index(&mut self, view: Expr, key: Expr, elem: Ty, span: Span) -> Expr {
+        let pos = self.mk(
+            ExprKind::Builtin(Builtin::KeyPos, vec![view.clone(), key]),
+            Ty::Int,
+            span,
+        );
+        self.mk(ExprKind::Index(Box::new(view), vec![pos]), elem, span)
+    }
+
+    /// The smallest key of a view, `0` for a whole list or string.
+    pub(super) fn key_lo(&mut self, seq: &Expr, span: Span) -> Expr {
+        if Self::keyed_view(&seq.ty) {
+            self.mk(
+                ExprKind::Builtin(Builtin::KeyLo, vec![seq.clone()]),
+                Ty::Int,
+                span,
+            )
+        } else {
+            self.int_lit(0, span)
+        }
+    }
+
+    /// Whether a `for` over an open-ended range ending in `end` walks cuts:
+    /// a range's elements are the kind of its ends in v0.3 (R04.4.10).
+    fn walks_cuts(end: &Ty) -> bool {
+        matches!(end, Ty::Bound(_)) && cpl_check::edition::is_v03()
+    }
+
+    /// Whether an open-ended range with a cut end of `d` walks cuts: always in
+    /// v0.3 unless a piece (`Range<V>`) is expected (R04.4.10); in v0.2 only
+    /// where cuts are expected.
+    fn cut_range_wanted(expected: Option<&Ty>, d: DomainId) -> bool {
+        let wants = |want: fn(&Ty, DomainId) -> bool| matches!(expected, Some(Ty::Range(inner)) if want(inner, d));
+        if cpl_check::edition::is_v03() {
+            !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
+        } else {
+            wants(|t, d| matches!(t, Ty::Bound(ed) if *ed == d))
+        }
+    }
+
+    /// `base[lo..hi]` in key terms on a view and positions otherwise.
+    fn slice_builtin(&mut self, base: Expr, lo: Expr, hi: Expr, span: Span) -> Expr {
+        let keyed = Self::keyed_view(&base.ty);
+        let (op, ty) = match &base.ty {
+            Ty::Str | Ty::StrView => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::StrSlice
+                },
+                Ty::StrView,
+            ),
+            Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::ListSlice
+                },
+                Ty::ListView(e.clone()),
+            ),
+            _ => unreachable!(),
+        };
+        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
+    }
+
     pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
         if matches!(base.ty, Ty::StrView | Ty::ListView(_) | Ty::MutView(_))
             || matches!(
@@ -3416,22 +3638,7 @@ impl<'a> Lowerer<'a> {
             } else {
                 hi_bound
             };
-            return match &base.ty {
-                Ty::Str | Ty::StrView => self.mk(
-                    ExprKind::Builtin(Builtin::StrSlice, vec![base, lo, hi]),
-                    Ty::StrView,
-                    span,
-                ),
-                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => {
-                    let elem = (**e).clone();
-                    self.mk(
-                        ExprKind::Builtin(Builtin::ListSlice, vec![base, lo, hi]),
-                        Ty::ListView(Box::new(elem)),
-                        span,
-                    )
-                }
-                _ => unreachable!(),
-            };
+            return self.slice_builtin(base, lo, hi, span);
         }
         let is_str = base.ty == Ty::Str;
         let (elem_ty, dim_dom) = match &base.ty {
@@ -3680,34 +3887,32 @@ impl<'a> Lowerer<'a> {
                     _ => lw.coerce(v, &Ty::Int, e.span),
                 }
             };
+            let base = if Self::keyed_view(&base.ty) {
+                self.hold_view(base, span)
+            } else {
+                base
+            };
             let lo_e = match lo {
                 Some(l) => to_idx(self, l, false),
-                None => self.int_lit(0, span),
+                None => self.key_lo(&base, span),
             };
             let hi_e = match hi {
                 Some(h) => to_idx(self, h, true),
-                None => self.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![base.clone()]),
-                    Ty::Int,
-                    span,
-                ),
-            };
-            return match &base.ty {
-                Ty::Str | Ty::StrView => self.mk(
-                    ExprKind::Builtin(Builtin::StrSlice, vec![base, lo_e, hi_e]),
-                    Ty::StrView,
-                    span,
-                ),
-                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => {
-                    let elem = (**e).clone();
-                    self.mk(
-                        ExprKind::Builtin(Builtin::ListSlice, vec![base, lo_e, hi_e]),
-                        Ty::ListView(Box::new(elem)),
+                None => {
+                    let len = self.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![base.clone()]),
+                        Ty::Int,
                         span,
-                    )
+                    );
+                    let first = self.key_lo(&base, span);
+                    if Self::keyed_view(&base.ty) {
+                        self.int_sum(first, len)
+                    } else {
+                        len
+                    }
                 }
-                _ => unreachable!(),
             };
+            return self.slice_builtin(base, lo_e, hi_e, span);
         }
         let is_str = base.ty == Ty::Str;
         // `a[2..=4]` of a `[1..=4]T` is said in the array's own indices.
@@ -4267,8 +4472,12 @@ impl<'a> Lowerer<'a> {
                 let lo = self.expr(lo, None);
                 match lo.ty {
                     Ty::Pos(d) | Ty::Bound(d) => {
+                        let cuts = Self::walks_cuts(&lo.ty);
                         let lo_ord = self.cast(Cast::Ord, lo, Ty::Int);
-                        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let mut hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        if cuts {
+                            hi = self.int_add(hi, 1);
+                        }
                         let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
                         (
                             Iter::Range {
@@ -4278,7 +4487,7 @@ impl<'a> Lowerer<'a> {
                                 rev: false,
                                 closed: false,
                             },
-                            Ty::Pos(d),
+                            if cuts { Ty::Bound(d) } else { Ty::Pos(d) },
                         )
                     }
                     // `for i in 3..:` counts up until the body leaves.
@@ -4316,6 +4525,7 @@ impl<'a> Lowerer<'a> {
                 let hi = self.expr(hi, None);
                 match hi.ty {
                     Ty::Pos(d) | Ty::Bound(d) => {
+                        let cuts = Self::walks_cuts(&hi.ty);
                         let lo_ord = self.int_lit(0, span);
                         let mut hi_ord = self.cast(Cast::Ord, hi, Ty::Int);
                         if *inclusive {
@@ -4330,7 +4540,7 @@ impl<'a> Lowerer<'a> {
                                 rev: false,
                                 closed: false,
                             },
-                            Ty::Pos(d),
+                            if cuts { Ty::Bound(d) } else { Ty::Pos(d) },
                         )
                     }
                     _ => {
@@ -5034,7 +5244,15 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let pats = std::slice::from_ref(&clause.pat);
-        Some(self.build_table(dims.to_vec(), pats, body, Some(elem), elem_range, init.span))
+        Some(self.build_table(
+            dims.to_vec(),
+            pats,
+            body,
+            Some(elem),
+            elem_range,
+            init.span,
+            None,
+        ))
     }
 
     fn table(
@@ -5053,7 +5271,23 @@ impl<'a> Lowerer<'a> {
             Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
             _ => None,
         };
-        self.build_table(dims, params, body, elem.as_ref(), None, span)
+        // `[P] p => f(p)` where an `[A, B]T` is wanted fills the grid.
+        if let (Some(Ty::Array { dims: want, .. }), [DimSpec::Pos(p)], [_]) =
+            (hint, dims.as_slice(), params)
+        {
+            let p = *p;
+            if self.product_grid(p).as_ref() == Some(want) {
+                let grid = want
+                    .iter()
+                    .map(|d| match d {
+                        Dim::Pos(d) => DimSpec::Pos(*d),
+                        _ => unreachable!("a product grid has position dimensions"),
+                    })
+                    .collect();
+                return self.build_table(grid, params, body, elem.as_ref(), None, span, Some(p));
+            }
+        }
+        self.build_table(dims, params, body, elem.as_ref(), None, span, None)
     }
 
     pub(super) fn build_table(
@@ -5064,8 +5298,10 @@ impl<'a> Lowerer<'a> {
         elem: Option<&Ty>,
         elem_range: Option<&RangeBounds>,
         span: Span,
+        whole: Option<DomainId>,
     ) -> Expr {
-        if params.len() != dims.len() {
+        let named = if whole.is_some() { 1 } else { dims.len() };
+        if params.len() != named {
             let message = format!(
                 "this table runs over {} domains but names {} positions",
                 dims.len(),
@@ -5110,7 +5346,7 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         let mut loops = Vec::new();
         let mut indices = Vec::new();
-        for (dim, param) in dims.iter().zip(params) {
+        for (i, dim) in dims.iter().enumerate() {
             let (ty, hi) = match dim {
                 DimSpec::Pos(d) => (Ty::Pos(*d), self.mk(ExprKind::DomainLen(*d), Ty::Int, span)),
                 DimSpec::Bound(d) => {
@@ -5140,7 +5376,10 @@ impl<'a> Lowerer<'a> {
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => (Ty::Int, (**len).clone()),
             };
             let mut pre = Vec::new();
-            let slot = self.loop_var(param, ty.clone(), &mut pre);
+            let slot = match whole {
+                Some(_) => self.temp(ty.clone()),
+                None => self.loop_var(&params[i], ty.clone(), &mut pre),
+            };
             let id = self.next_loop;
             self.next_loop += 1;
             // Over `lo..=hi` the builder's `i` runs from `lo`, and cell
@@ -5179,6 +5418,25 @@ impl<'a> Lowerer<'a> {
                 self.int_add(index, -from)
             });
             loops.push((id, slot, iter, pre));
+        }
+        if let Some(p) = whole {
+            let parts = loops
+                .iter()
+                .zip(&dims)
+                .map(|((_, slot, _, _), dim)| {
+                    let DimSpec::Pos(d) = dim else {
+                        unreachable!("a product grid has position dimensions")
+                    };
+                    self.mk(ExprKind::Local(*slot), Ty::Pos(*d), span)
+                })
+                .collect();
+            let encoded = self.encode_product(p, parts, span);
+            let mut pre = Vec::new();
+            let slot = self.loop_var(&params[0], Ty::Pos(p), &mut pre);
+            if let Some((_, _, _, inner)) = loops.last_mut() {
+                inner.push(Stmt::Let(slot, Some(encoded)));
+                inner.extend(pre);
+            }
         }
         let value = match elem {
             Some(elem) => self.expect(body, elem),

@@ -73,7 +73,7 @@ pub struct Rng(s: U64):
     /// example: `let e: List<Int> = []; var r = Rng(1); r.pick(e) == None`
     pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T:
         if xs.len == 0: return None
-        Some(xs.nth(self.int(0, xs.len - 1)))
+        Some(xs.at(self.int(0, xs.len - 1)))
     /// Shuffle `a` in place, uniformly (Fisher-Yates).
     ///
     /// For `i` from `a.len - 1` down to `1`, swap positions `i` and `int(0..=i)`. Positions are
@@ -118,4 +118,4 @@ pub struct Rng(s: U64):
         assert 0 <= k and k <= n
         var pos = [i for i in 0..n]
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
-        [from.nth(pos[i]) for i in 0..k]
+        [from.at(pos[i]) for i in 0..k]

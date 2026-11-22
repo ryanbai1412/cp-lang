@@ -454,17 +454,17 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < a.len and j < b.len:
-        if b.at(j) < a.at(i):
-            out.push(b.at(j))
+        if b.nth(j) < a.nth(i):
+            out.push(b.nth(j))
             j += 1
         else:
-            out.push(a.at(i))
+            out.push(a.nth(i))
             i += 1
     while i < a.len:
-        out.push(a.at(i))
+        out.push(a.nth(i))
         i += 1
     while j < b.len:
-        out.push(b.at(j))
+        out.push(b.nth(j))
         j += 1
     out
 
@@ -477,8 +477,7 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
 /// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
 pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
     assert k >= 1, "a window holds at least one element"
-    for i in 0..self.len - k + 1:
-        yield self[i..i + k]
+    for i in 0..self.len - k + 1: yield piece(self, i, i + k)
 
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
 ///
@@ -491,7 +490,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
     assert k >= 1, "a chunk holds at least one element"
     var i = 0
     while i < self.len:
-        yield self[i..min(i + k, self.len)]
+        yield piece(self, i, if i + k < self.len: i + k else: self.len)
         i += k
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
@@ -565,7 +564,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = [(a.at(i), b.at(i)) for i in 0..min(a.len, b.len)]
+pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = [(a.nth(i), b.nth(i)) for i in 0..min(a.len, b.len)]
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
@@ -673,12 +672,12 @@ pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
 /// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
 pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
     var i = self.len - 2
-    while i >= 0 and not (self.at(i) < self.at(i + 1)): i -= 1
+    while i >= 0 and not (self.nth(i) < self.nth(i + 1)): i -= 1
     if i < 0:
         reverse(mut self)
         return false
     var j = self.len - 1
-    while not (self.at(i) < self.at(j)): j -= 1
+    while not (self.nth(i) < self.nth(j)): j -= 1
     self.swap_idx(i, j)
     var (l, r) = (i + 1, self.len - 1)
     while l < r:
@@ -697,12 +696,12 @@ pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
 pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
     var i = self.len - 2
-    while i >= 0 and not (self.at(i + 1) < self.at(i)): i -= 1
+    while i >= 0 and not (self.nth(i + 1) < self.nth(i)): i -= 1
     if i < 0:
         reverse(mut self)
         return false
     var j = self.len - 1
-    while not (self.at(j) < self.at(i)): j -= 1
+    while not (self.nth(j) < self.nth(i)): j -= 1
     self.swap_idx(i, j)
     var (l, r) = (i + 1, self.len - 1)
     while l < r:
@@ -721,15 +720,14 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
-pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
+pub fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
     let n = self.len
     var i = 0
     while i < n:
-        let k = by(self[i])
+        let k = by(self.nth(i))
         var j = i + 1
-        while j < n and by(self[j]) == k:
-            j += 1
-        yield self[i..j]
+        while j < n and by(self.nth(j)) == k: j += 1
+        yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
         i = j
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
@@ -976,8 +974,8 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 /// order: left half first
 pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
     if self.len <= 1: return None
-    let m = self[self.len / 2]
-    Some((self.first!..m, m..=self.last!))
+    let m = self.mid
+    Some((self.start..m, m..self.end))
 
 /// O(1). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
 /// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
@@ -987,9 +985,9 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// traps: never
 /// example: `(0..5).mid.r == Some(2)`
 @get pub fn mid<D>(self: Range<D>) -> Cut<D>:
-    if self.is_empty: return self.start
-    let m = self[self.len / 2]
-    (m..m).start
+    let n = self.len
+    if n == 0: return self.end
+    (self[n / 2]..self[n / 2]).start
 
 /// O(1). The positions in both ranges.
 ///
@@ -1370,7 +1368,7 @@ pub struct Slice<S>():
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
-pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
+pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(self, clamp_count(k, self.len), self.len)
 
 /// O(1). The view without its last `k` elements, clamped (traps if `k < 0`).
 ///
@@ -1379,7 +1377,7 @@ pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop_last(2).collect() == [1]`
-pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
+pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(self, 0, self.len - clamp_count(k, self.len))
 
 /// O(1). The first `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
@@ -1388,7 +1386,7 @@ pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take(5).collect() == [1, 2, 3]`
-pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
+pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
 
 /// O(1). The last `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
@@ -1397,11 +1395,7 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
-pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>:
-    assert k >= 0, "take_last requires k >= 0"
-    let n = self.len
-    let start = if k >= n: 0 else: n - k
-    self[start..n]
+pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, self.len - clamp_count(k, self.len), self.len)
 
 /// O(1). The element `k` steps from the start, 0-based whatever the keys: `s[l..].nth(k)` is
 /// `s[l + k]`, `w.nth(0)` is `w.first!`. Traps when `k` is outside `0..len`.
@@ -2929,16 +2923,14 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// order: left to right; each run keeps the keys of `self`
 /// traps: never
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs_linked((x, y) => y == x + 1)] == [2, 3]`
-@allow(unproven_list_index)
 pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S>:
     let n = self.len
-    if n == 0: return
-    var start = 0
-    for i in 1..n:
-        if not link(self[i - 1], self[i]):
-            yield self[start..i]
-            start = i
-    yield self[start..n]
+    var i = 0
+    while i < n:
+        var j = i + 1
+        while j < n and link(self.nth(j - 1), self.nth(j)): j += 1
+        yield piece(self, i, j)
+        i = j
 
 /// Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
 ///
@@ -2947,7 +2939,28 @@ pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice
 /// order: left to right; each piece keeps the keys of `self`
 /// traps: never
 /// example: `[p.len for p in [1, 0, 0, 2].split(x => x == 0)] == [1, 0, 1]`
-pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
+pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S>:
+    var i = 0
+    for j in 0..self.len:
+        if sep(self.nth(j)):
+            yield piece(self, i, j)
+            i = j + 1
+    yield piece(self, i, self.len)
+
+/// The ordinals `i..j` of `s` as a slice keeping its keys; an empty piece sits at key `i` when there is one.
+fn clamp_count(k: Int, n: Int) -> Int:
+    assert k >= 0, "a count must not be negative"
+    if k < n: k else: n
+
+fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
+    let n = s.len
+    if i < j: return s[s.keys.nth(i)..=s.keys.nth(j - 1)]
+    if i < n:
+        let k = s.keys.nth(i)
+        return s[k..k]
+    if n == 0: return s[..]
+    let k = s.keys.nth(n - 1)
+    s[k..k]
 
 /// Which end of a piece a two-pointer result is keyed by.
 pub enum Anchor = Start | End

@@ -483,7 +483,7 @@ impl<'a> Lowerer<'a> {
                 RangeInfo::Elem(inner) => Some(*inner),
                 _ => None,
             },
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList, args) => {
                 args.first().and_then(|a| self.expr_range(a))
             }
             ExprKind::Do(blk) => match blk.stmts.last() {

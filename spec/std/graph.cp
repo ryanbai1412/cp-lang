@@ -18,6 +18,7 @@ use std.heap.{MinHeap}
 use std.dsu.{Dsu}
 use std.seq.{reverse}
 use std.deque.{Deque}
+use std.bitset.{Bitset}
 
 /// O(deg u) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -2535,7 +2536,7 @@ impl<V> Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn new(next: [V]V) -> Functional<V>:
         let n = V.count
-        let nx = [next[V.at(i)].ord for i in 0..n]
+        let nx = [next[V.nth(i)].ord for i in 0..n]
         var root = List.filled(n, -1)
         var depth = List.filled(n, 0)
         var cyc = List.filled(n, -1)
@@ -2590,7 +2591,7 @@ impl<V> Functional<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.root_of(4) == 0 and f.root_of(1) == 1`
-    pub fn root_of(self, v: V) -> V = V.at(_root[v.ord])
+    pub fn root_of(self, v: V) -> V = V.nth(_root[v.ord])
 
     /// The steps from `v` to `root_of(v)`; `0` on a cycle.
     ///
@@ -2615,10 +2616,10 @@ impl<V> Functional<V>:
     pub fn after(self, v: V, k: Int) -> V:
         assert k >= 0, "`after` needs `k >= 0`"
         let x = v.ord
-        if k < _depth[x]: return V.at(self.lift(x, k))
+        if k < _depth[x]: return V.nth(self.lift(x, k))
         let r = _root[x]
         let c = _cycles[_cyc[r]]
-        V.at(c[(_pos[r] + (k - _depth[x]) % c.len) % c.len])
+        V.nth(c[(_pos[r] + (k - _depth[x]) % c.len) % c.len])
 
     /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
     /// None appears. `pred` must be monotone along every walk (once true, true onward).
@@ -2634,8 +2635,8 @@ impl<V> Functional<V>:
         while k > 0:
             k -= 1
             let y = _up[k][x]
-            if not pred(V.at(y)): x = y
-        let c = V.at(_nx[x])
+            if not pred(V.nth(y)): x = y
+        let c = V.nth(_nx[x])
         if pred(c): Some(c) else: None
 
     /// The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`;
@@ -2674,10 +2675,10 @@ impl<V> Functional<V>:
         for i in 0.._nx.len:
             if _depth[i] != 0 or done[_cyc[i]]: continue
             done[_cyc[i]] = true
-            var c: List<V> = [V.at(i)]
+            var c: List<V> = [V.nth(i)]
             var y = _nx[i]
             while y != i:
-                c.push(V.at(y))
+                c.push(V.nth(y))
                 y = _nx[y]
             out.push(c)
         out

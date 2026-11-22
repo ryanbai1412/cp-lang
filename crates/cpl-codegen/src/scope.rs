@@ -28,7 +28,10 @@ pub(crate) fn hoisted(body: &Block, params: usize) -> BTreeSet<usize> {
 /// The parameters, of the first `params` slots, that the body names.
 pub(crate) fn named_params(body: &Block, params: usize) -> BTreeSet<usize> {
     // With no parameter in sight, each one the body names is "hoisted".
-    hoisted(body, 0).into_iter().filter(|slot| *slot < params).collect()
+    hoisted(body, 0)
+        .into_iter()
+        .filter(|slot| *slot < params)
+        .collect()
 }
 
 impl Scopes {
@@ -87,8 +90,13 @@ impl Scopes {
                         self.expr(hi);
                         step.iter().for_each(|e| self.expr(e));
                     }
-                    Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => self.expr(e),
-                    Iter::TreeRange { container, lo, hi, .. } => {
+                    Iter::RangeVal(e, _)
+                    | Iter::Seq(e, _)
+                    | Iter::Subsets(e)
+                    | Iter::Members(e) => self.expr(e),
+                    Iter::TreeRange {
+                        container, lo, hi, ..
+                    } => {
                         self.expr(container);
                         if let Some((e, _)) = lo {
                             self.expr(e);
@@ -260,7 +268,8 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
     let mut twice: BTreeSet<usize> = BTreeSet::new();
     walk::deep_stmts(body, &mut |stmt| {
         if let Stmt::Let(slot, Some(init)) = stmt {
-            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) && matches!(init.ty, Ty::List(_))
+            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
+                && matches!(init.ty, Ty::List(_))
                 || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1);
             if !empty || starts.contains(slot) {
                 twice.insert(*slot);
@@ -300,7 +309,10 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
 /// can be kept inside the struct: `(struct, field)` to the count. A field
 /// that is somewhere sorted, grown, filled, updated as a whole or handed
 /// to a call as `mut` stays a `std::vector`, which those work on.
-pub(crate) fn rows(program: &Program, facts: &crate::ranges::Facts<'_>) -> BTreeMap<(usize, usize), u32> {
+pub(crate) fn rows(
+    program: &Program,
+    facts: &crate::ranges::Facts<'_>,
+) -> BTreeMap<(usize, usize), u32> {
     let mut rows = BTreeMap::new();
     for (id, def) in program.structs.iter().enumerate() {
         for (field, cells) in &def.fixed {
@@ -397,13 +409,22 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
         .map(|f| {
             let mut sunk = BTreeSet::new();
             walk::deep_stmts(&f.body, &mut |stmt| {
-                let Stmt::Return(Some(value)) = stmt else { return };
-                let ExprKind::Tuple(items) = &value.kind else { return };
-                if matches!(value.ty, Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)) {
+                let Stmt::Return(Some(value)) = stmt else {
+                    return;
+                };
+                let ExprKind::Tuple(items) = &value.kind else {
+                    return;
+                };
+                if matches!(
+                    value.ty,
+                    Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)
+                ) {
                     return;
                 }
                 for (idx, item) in items.iter().enumerate() {
-                    let ExprKind::Local(slot) = item.kind else { continue };
+                    let ExprKind::Local(slot) = item.kind else {
+                        continue;
+                    };
                     if slot >= f.params.len()
                         || f.params[slot].mutable
                         || item.ty.is_scalar()
@@ -464,7 +485,9 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
             }
         });
         crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => widen(place, &mut narrow),
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
+                widen(place, &mut narrow)
+            }
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 for arg in args {
                     if let cpl_ir::Arg::Mut(place) = arg {
@@ -479,10 +502,16 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
 }
 
 fn is_narrowable_seq(ty: &Ty) -> bool {
-    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_))
+    matches!(
+        ty,
+        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
+    )
 }
 
-fn peel_layout(layout: Option<&cpl_ir::NarrowLayout>, depth: usize) -> Option<&cpl_ir::NarrowLayout> {
+fn peel_layout(
+    layout: Option<&cpl_ir::NarrowLayout>,
+    depth: usize,
+) -> Option<&cpl_ir::NarrowLayout> {
     let mut cur = layout?;
     for _ in 0..depth {
         match cur {
@@ -525,11 +554,26 @@ pub(crate) fn narrow_elems(
     // that needs it wide undoes that. A local stored into element-wise, mutated
     // or given a fresh value keeps its declared width, since those stores are
     // not range-checked against the source's range.
-    let scopes: Vec<(ScopeId, &cpl_ir::Block)> = [(ScopeId::Main, &program.setup), (ScopeId::Main, &program.main)]
-        .into_iter()
-        .chain(program.fns.iter().enumerate().map(|(i, f)| (ScopeId::Fn(i), &f.body)))
-        .chain(program.closures.iter().enumerate().map(|(i, c)| (ScopeId::Closure(i), &c.body)))
-        .collect();
+    let scopes: Vec<(ScopeId, &cpl_ir::Block)> = [
+        (ScopeId::Main, &program.setup),
+        (ScopeId::Main, &program.main),
+    ]
+    .into_iter()
+    .chain(
+        program
+            .fns
+            .iter()
+            .enumerate()
+            .map(|(i, f)| (ScopeId::Fn(i), &f.body)),
+    )
+    .chain(
+        program
+            .closures
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (ScopeId::Closure(i), &c.body)),
+    )
+    .collect();
     let mut stored: BTreeSet<ElemLoc> = BTreeSet::new();
     for &(scope, body) in &scopes {
         crate::walk::deep_stmts(body, &mut |stmt| {
@@ -549,7 +593,9 @@ pub(crate) fn narrow_elems(
             }
         });
         crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => stored.extend(place_loc(scope, place)),
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => {
+                stored.extend(place_loc(scope, place))
+            }
             _ => {}
         });
     }
@@ -570,8 +616,12 @@ pub(crate) fn narrow_elems(
                     _ => return,
                 };
                 {
-                    if is_narrowable_seq(&val.ty) && !stored.contains(&dst) && !narrow.contains_key(&dst) {
-                        if let Some(w) = expr_loc(scope, val).and_then(|l| narrow.get(&l)).cloned() {
+                    if is_narrowable_seq(&val.ty)
+                        && !stored.contains(&dst)
+                        && !narrow.contains_key(&dst)
+                    {
+                        if let Some(w) = expr_loc(scope, val).and_then(|l| narrow.get(&l)).cloned()
+                        {
                             narrow.insert(dst, w);
                             grew = true;
                         }
@@ -606,9 +656,10 @@ pub(crate) fn narrow_elems(
                 _ => None,
             },
             ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
-                args.first().and_then(|a| expr_loc(scope, a))
-            }
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                args,
+            ) => args.first().and_then(|a| expr_loc(scope, a)),
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => expr_loc(scope, inner),
                 _ => None,
@@ -620,24 +671,28 @@ pub(crate) fn narrow_elems(
     // Propagate outer layouts into closure captures so closures capturing a narrowed
     // container can stay narrow if all uses inside the closure are compatible.
     let mut cap_links: Vec<(ElemLoc, ElemLoc)> = Vec::new();
-    let collect_caps = |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, ElemLoc)>| {
-        crate::walk::deep_exprs(body, &mut |e| {
-            if let ExprKind::Closure(cid) = &e.kind {
-                let c = &program.closures[*cid];
-                for cap in &c.captures {
-                    if c.locals.get(cap.inner).is_some_and(|l| is_narrowable_seq(&l.ty)) {
-                        let outer = if cap.is_global {
-                            ElemLoc::Global(cap.outer)
-                        } else {
-                            ElemLoc::Local(scope, cap.outer)
-                        };
-                        let inner = ElemLoc::Local(ScopeId::Closure(*cid), cap.inner);
-                        links.push((outer, inner));
+    let collect_caps =
+        |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, ElemLoc)>| {
+            crate::walk::deep_exprs(body, &mut |e| {
+                if let ExprKind::Closure(cid) = &e.kind {
+                    let c = &program.closures[*cid];
+                    for cap in &c.captures {
+                        if c.locals
+                            .get(cap.inner)
+                            .is_some_and(|l| is_narrowable_seq(&l.ty))
+                        {
+                            let outer = if cap.is_global {
+                                ElemLoc::Global(cap.outer)
+                            } else {
+                                ElemLoc::Local(scope, cap.outer)
+                            };
+                            let inner = ElemLoc::Local(ScopeId::Closure(*cid), cap.inner);
+                            links.push((outer, inner));
+                        }
                     }
                 }
-            }
-        });
-    };
+            });
+        };
     collect_caps(ScopeId::Main, &program.setup, &mut cap_links);
     collect_caps(ScopeId::Main, &program.main, &mut cap_links);
     for (fid, f) in program.fns.iter().enumerate() {
@@ -708,9 +763,10 @@ pub(crate) fn narrow_elems(
                 let (loc, d) = expr_root(scope, base)?;
                 Some((loc, d + 1))
             }
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
-                args.first().and_then(|a| expr_root(scope, a))
-            }
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                args,
+            ) => args.first().and_then(|a| expr_root(scope, a)),
             ExprKind::MutSlice(place, _, _) => place_root(scope, place),
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => expr_root(scope, inner),
@@ -722,17 +778,18 @@ pub(crate) fn narrow_elems(
 
     // Seed `for row in nested_arr` loop variables from their sequence's inner layout.
     let mut for_links: Vec<(ElemLoc, usize, ElemLoc)> = Vec::new();
-    let collect_fors = |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, usize, ElemLoc)>| {
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::For(_, slot, Iter::Seq(e, _), _) = stmt {
-                if is_narrowable_seq(&e.ty) {
-                    if let Some((src_loc, depth)) = expr_root(scope, e) {
-                        links.push((src_loc, depth + 1, ElemLoc::Local(scope, *slot)));
+    let collect_fors =
+        |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, usize, ElemLoc)>| {
+            crate::walk::deep_stmts(body, &mut |stmt| {
+                if let Stmt::For(_, slot, Iter::Seq(e, _), _) = stmt {
+                    if is_narrowable_seq(&e.ty) {
+                        if let Some((src_loc, depth)) = expr_root(scope, e) {
+                            links.push((src_loc, depth + 1, ElemLoc::Local(scope, *slot)));
+                        }
                     }
                 }
-            }
-        });
-    };
+            });
+        };
     collect_fors(ScopeId::Main, &program.setup, &mut for_links);
     collect_fors(ScopeId::Main, &program.main, &mut for_links);
     for (fid, f) in program.fns.iter().enumerate() {
@@ -859,7 +916,10 @@ pub(crate) fn narrow_elems(
                     check_val(program, scope, &p.value, narrow, changed);
                 }
             }
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                args,
+            ) => {
                 // When reached via check_val (not as a safe consumer), widen the base.
                 for a in args {
                     check_val(program, scope, a, narrow, changed);
@@ -890,7 +950,10 @@ pub(crate) fn narrow_elems(
                 if safe_mut && is_narrowable_seq(&place.ty) {
                     if matches!(m, Mutation::Pop) {
                         if let Some((loc, depth)) = place_root(scope, place) {
-                            if matches!(peel_layout(narrow.get(&loc), depth), Some(NarrowLayout::Seq(_))) {
+                            if matches!(
+                                peel_layout(narrow.get(&loc), depth),
+                                Some(NarrowLayout::Seq(_))
+                            ) {
                                 widen_loc(loc, narrow, changed);
                             }
                         }
@@ -910,7 +973,10 @@ pub(crate) fn narrow_elems(
                             check_val(program, scope, a, narrow, changed);
                         }
                     }
-                } else if matches!(m, Mutation::Extend) && is_narrowable_seq(&place.ty) && args.len() == 1 {
+                } else if matches!(m, Mutation::Extend)
+                    && is_narrowable_seq(&place.ty)
+                    && args.len() == 1
+                {
                     check_place_nested(program, scope, place, narrow, changed);
                     if let Some((dst, depth)) = place_root(scope, place) {
                         check_flow_at(scope, &args[0], dst, depth, narrow, changed);
@@ -982,7 +1048,9 @@ pub(crate) fn narrow_elems(
                         Arg::Mut(p) => {
                             if p_ty.is_some_and(is_narrowable_seq) {
                                 if let Some((src_loc, src_depth)) = place_root(scope, p) {
-                                    if peel_layout(narrow.get(&src_loc), src_depth) != narrow.get(&p_loc) {
+                                    if peel_layout(narrow.get(&src_loc), src_depth)
+                                        != narrow.get(&p_loc)
+                                    {
                                         widen_loc(src_loc, narrow, changed);
                                         widen_loc(p_loc, narrow, changed);
                                     }
@@ -1122,7 +1190,10 @@ pub(crate) fn narrow_elems(
                     }
                 }
             }
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                args,
+            ) => {
                 if let Some((first, rest)) = args.split_first() {
                     check_nested_base(program, scope, first, narrow, changed);
                     for a in rest {
@@ -1265,7 +1336,9 @@ pub(crate) fn narrow_elems(
                         | Iter::Members(e) => {
                             check_val(program, scope, e, narrow, changed);
                         }
-                        Iter::TreeRange { container, lo, hi, .. } => {
+                        Iter::TreeRange {
+                            container, lo, hi, ..
+                        } => {
                             check_val(program, scope, container, narrow, changed);
                             if let Some((e, _)) = lo {
                                 check_val(program, scope, e, narrow, changed);
@@ -1304,13 +1377,41 @@ pub(crate) fn narrow_elems(
                 widen_loc(inner, &mut narrow, &mut changed);
             }
         }
-        check_block(program, ScopeId::Main, &program.setup, &mut narrow, &mut changed, false);
-        check_block(program, ScopeId::Main, &program.main, &mut narrow, &mut changed, false);
+        check_block(
+            program,
+            ScopeId::Main,
+            &program.setup,
+            &mut narrow,
+            &mut changed,
+            false,
+        );
+        check_block(
+            program,
+            ScopeId::Main,
+            &program.main,
+            &mut narrow,
+            &mut changed,
+            false,
+        );
         for (fid, f) in program.fns.iter().enumerate() {
-            check_block(program, ScopeId::Fn(fid), &f.body, &mut narrow, &mut changed, false);
+            check_block(
+                program,
+                ScopeId::Fn(fid),
+                &f.body,
+                &mut narrow,
+                &mut changed,
+                false,
+            );
         }
         for (cid, c) in program.closures.iter().enumerate() {
-            check_block(program, ScopeId::Closure(cid), &c.body, &mut narrow, &mut changed, false);
+            check_block(
+                program,
+                ScopeId::Closure(cid),
+                &c.body,
+                &mut narrow,
+                &mut changed,
+                false,
+            );
         }
         if !changed {
             break;
@@ -1331,7 +1432,10 @@ pub(crate) fn fixed_arrays(
     let is_1d = |ty: &Ty| matches!(ty, Ty::Array { dims, .. } if dims.len() == 1);
     let get = |v: &[(ElemLoc, u8)], l: ElemLoc| v.iter().find(|(x, _)| *x == l).map(|(_, k)| *k);
     let del = |v: &mut Vec<(ElemLoc, u8)>, l: ElemLoc| -> bool {
-        v.iter().position(|(x, _)| *x == l).map(|i| v.swap_remove(i)).is_some()
+        v.iter()
+            .position(|(x, _)| *x == l)
+            .map(|i| v.swap_remove(i))
+            .is_some()
     };
     let fill_k = |dims: &[DimSpec]| -> Option<u8> {
         if dims.len() != 1 {
@@ -1392,8 +1496,20 @@ pub(crate) fn fixed_arrays(
         (ScopeId::Main, &program.main),
     ]
     .into_iter()
-    .chain(program.fns.iter().enumerate().map(|(i, f)| (ScopeId::Fn(i), &f.body)))
-    .chain(program.closures.iter().enumerate().map(|(i, c)| (ScopeId::Closure(i), &c.body)))
+    .chain(
+        program
+            .fns
+            .iter()
+            .enumerate()
+            .map(|(i, f)| (ScopeId::Fn(i), &f.body)),
+    )
+    .chain(
+        program
+            .closures
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (ScopeId::Closure(i), &c.body)),
+    )
     .collect();
     for &(scope, body) in &bodies {
         crate::walk::deep_exprs(body, &mut |e| {
@@ -1463,7 +1579,9 @@ pub(crate) fn fixed_arrays(
                 }
             });
             crate::walk::deep_exprs(body, &mut |e| {
-                let ExprKind::Call(fid, args) = &e.kind else { return };
+                let ExprKind::Call(fid, args) = &e.kind else {
+                    return;
+                };
                 let f = &program.fns[*fid];
                 for (slot, arg) in args.iter().enumerate() {
                     if slot >= f.params.len() || !is_1d(&f.locals[slot].ty) {
@@ -1567,7 +1685,8 @@ pub(crate) fn fixed_arrays(
                 }
             }
             Stmt::For(_, _, Iter::Seq(seq, _), _)
-                if is_1d(&seq.ty) && matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
+                if is_1d(&seq.ty)
+                    && matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
             {
                 allowed_exprs.push(seq as *const Expr);
             }

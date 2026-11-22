@@ -5,15 +5,15 @@
 //! the end (`xs.` is a field access with an empty name). Signatures and
 //! doc comments come from the declarations, through [`Outline`].
 
-use cpl_json::{obj, Value};
-use std::collections::BTreeMap;
 use crate::outline::{Entry, Kind, Outline, Param};
 use cpl_check::{
-    builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, DeclKind, FsLoader, HoverEntry,
-    Loader, MemberKind, PreludeKind, Receiver, Ty,
+    builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, DeclKind, FsLoader,
+    HoverEntry, Loader, MemberKind, PreludeKind, Receiver, Ty,
 };
+use cpl_json::{obj, Value};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
+use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -452,7 +452,13 @@ fn hover_at(item: &AnalyzedItem, span: cpl_diag::Span) -> Option<&Ty> {
 
 /// What the checker found `expr` to be, from the types it left behind.
 fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
-    if let Some((_, ty)) = item.check.shapes.iter().rev().find(|(span, _)| *span == expr.span) {
+    if let Some((_, ty)) = item
+        .check
+        .shapes
+        .iter()
+        .rev()
+        .find(|(span, _)| *span == expr.span)
+    {
         return (!matches!(ty, Ty::Error | Ty::Unknown)).then(|| ty.clone());
     }
     let ty = match &expr.kind {
@@ -812,11 +818,15 @@ fn scope_completion(
     // A stdlib name the file doesn't import yet comes with its `use`.
     if word.len() >= 2 {
         let text = &cursor.analysis.text;
-        for (name, module) in cpl_check::STD_NAMES {
-            if !name.starts_with(word) || seen.contains(*name) || cpl_check::is_list_form_hook(name) {
+        for (name, module) in cpl_check::std_names() {
+            if !name.starts_with(word) || seen.contains(*name) || cpl_check::is_list_form_hook(name)
+            {
                 continue;
             }
-            let Some(entry) = std.module(cursor.uri, module).and_then(|o| o.find(name).cloned()) else {
+            let Some(entry) = std
+                .module(cursor.uri, module)
+                .and_then(|o| o.find(name).cloned())
+            else {
                 continue;
             };
             if !seen.insert(entry.name.clone()) {
@@ -832,7 +842,10 @@ fn scope_completion(
                 members.insert(
                     "additionalTextEdits".to_string(),
                     vec![obj([
-                        ("range", crate::server::range_json(span, text, &cursor.analysis.lines)),
+                        (
+                            "range",
+                            crate::server::range_json(span, text, &cursor.analysis.lines),
+                        ),
                         ("newText", new_text.into()),
                     ])]
                     .into(),

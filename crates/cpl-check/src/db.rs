@@ -513,13 +513,13 @@ impl Database {
                 }
             }
         }
-        // The prelude (`stdlib/prelude.cp`): every module — root, std and
-        // user libraries alike — sees the same prelude. A name the prelude
-        // lists that the file uses and neither declares nor imports is
-        // imported for it, so `Deque<Int>` and `Mod<P>` work everywhere.
-        // A `use` that failed may have been meant to bring a name it lists,
-        // so the prelude leaves those names alone (all of them for a glob).
-        if !prelude_off && !is_prelude(path) {
+        // The prelude: a name it lists that the file uses and neither
+        // declares nor imports is imported for it. In 0.3 only the program
+        // gets it (spec 11.3); in 0.2 every module does. A `use` that failed
+        // may have been meant to bring a name it lists, so the prelude
+        // leaves those names alone (all of them for a glob).
+        let library = self.analyzing.len() > 1 && crate::edition::is_v03();
+        if !prelude_off && !library && !is_prelude(path) {
             let declared: std::collections::HashSet<&str> = items
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
@@ -856,7 +856,7 @@ impl Database {
                 .iter()
                 .find(|d| d.name == decl.name);
             // R02.11.3, R06.1.6: a second `fn f` is an overload, which 0.3 has not.
-            let overload = crate::ty::spec_edition()
+            let overload = crate::edition::is_v03()
                 && decl.kind == DeclKind::Fn
                 && first.is_some_and(|f| f.kind == DeclKind::Fn);
             let mut diag = if overload {
@@ -885,7 +885,7 @@ impl Database {
             }
             sink.push(diag);
         }
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if crate::edition::is_v03() {
             for (index, item) in items.iter().enumerate() {
                 for stmt in &item.parsed.stmts {
                     if let StmtKind::Use { names, alias, .. } = &stmt.kind {
@@ -1068,7 +1068,7 @@ impl Database {
                 } else {
                     format!("`{}` is used here before it is set on line {line}", r.name)
                 };
-                let code = if r.in_lambda && std::env::var_os("CPL_SPEC").is_some() {
+                let code = if r.in_lambda && crate::edition::is_v03() {
                     codes::UNRESOLVED_NAME
                 } else {
                     codes::USED_BEFORE_SET

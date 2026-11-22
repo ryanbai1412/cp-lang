@@ -95,7 +95,7 @@ pub struct Subset<B>(bits: U64):
     /// example: `domain B = 0..4; Subset<B>.empty.first() == None`
     pub fn first(self) -> ?B:
         if bits == U64(0): return None
-        Some(B.at(ctz(bits)))
+        Some(B.nth(ctz(bits)))
 
     /// The members in `B`'s order; `for b in s` walks the same sequence.
     ///
@@ -107,7 +107,7 @@ pub struct Subset<B>(bits: U64):
     @get pub fn items(self) -> yields B:
         var m = bits
         while m != U64(0):
-            yield B.at(ctz(m))
+            yield B.nth(ctz(m))
             m &= m - U64(1)
 
     /// Every subset of `self`, `self` first and `{}` last: the submask walk

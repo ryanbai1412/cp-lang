@@ -88,7 +88,7 @@ pub struct Pt(x: Int, y: Int):
     /// example: `Pt(0, 0).unit_dir() == Pt(0, 0)`
     pub fn unit_dir(self) -> Pt:
         if x == 0 and y == 0: return Pt(0, 0)
-        let g = gcd(abs(x), abs(y))
+        let g = igcd(abs(x), abs(y))
         Pt(x / g, y / g)
 
     /// `self` as a floating-point `Vec(F64(x), F64(y))`: the explicit way across.
@@ -1437,7 +1437,7 @@ pub fn pick_boundary(poly: List<Pt>) -> Int:
     var b = 0
     for i in 0..poly.len:
         let d = poly[(i + 1) % poly.len] - poly[i]
-        b += gcd(abs(d.x), abs(d.y))
+        b += igcd(abs(d.x), abs(d.y))
     b
 
 // ---- careful floating-point geometry

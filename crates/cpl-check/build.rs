@@ -7,18 +7,29 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
-    let stdlib = manifest.join("../../stdlib");
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed={}", stdlib.display());
-    let mut modules = Vec::new();
-    collect(&stdlib, &stdlib, &mut modules);
-    modules.sort();
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
+    bundle(&manifest.join("../../stdlib"), &out, "stdlib", "std");
+    bundle(
+        &manifest.join("../../spec/std"),
+        &out,
+        "spec_std",
+        "spec_std",
+    );
+}
+
+/// Writes `<prefix>_modules.rs`, the table of every module under `root`,
+/// and `<prefix>_names.rs`, every public name with its module.
+fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str) {
+    println!("cargo:rerun-if-changed={}", root.display());
+    let mut modules = Vec::new();
+    collect(root, root, &mut modules);
+    modules.sort();
     let mut table = String::from("&[\n");
     for (name, path) in &modules {
         println!("cargo:rerun-if-changed={}", path.display());
         let text = std::fs::read_to_string(path).expect("a readable module");
-        let bundled = out.join("stdlib").join(format!("{name}.cp"));
+        let bundled = out.join(folder).join(format!("{name}.cp"));
         std::fs::create_dir_all(bundled.parent().expect("under OUT_DIR"))
             .expect("a writable OUT_DIR");
         std::fs::write(&bundled, without_tests(&text)).expect("a writable OUT_DIR");
@@ -30,8 +41,9 @@ fn main() {
         .expect("writing to a string");
     }
     table.push_str("]\n");
-    std::fs::write(out.join("std_modules.rs"), table).expect("a writable OUT_DIR");
-    std::fs::write(out.join("std_names.rs"), std_names(&modules)).expect("a writable OUT_DIR");
+    std::fs::write(out.join(format!("{prefix}_modules.rs")), table).expect("a writable OUT_DIR");
+    std::fs::write(out.join(format!("{prefix}_names.rs")), std_names(&modules))
+        .expect("a writable OUT_DIR");
 }
 
 /// `text` with each `@test` fn blanked to empty lines. A program that

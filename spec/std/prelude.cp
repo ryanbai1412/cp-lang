@@ -99,9 +99,15 @@ use std.strings.{
     find,
     find_all,
     lower,
+    lyndon_factorization,
+    manacher,
+    min_rotation,
+    period,
+    prefix_function,
     repeat,
     starts_with,
     upper,
+    z_function,
 }
 use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, PreferredPaths, Rooted, kruskal_tree}
 

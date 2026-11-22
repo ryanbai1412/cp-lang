@@ -643,7 +643,7 @@ struct Lowerer<'a> {
     io_global: Option<GlobalId>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
-    whole_axis: Option<Slot>,
+    whole_axes: Vec<Slot>,
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
@@ -856,7 +856,7 @@ impl<'a> Lowerer<'a> {
             counted_domains: HashSet::new(),
             io_global: None,
             context_defs: HashMap::new(),
-            whole_axis: None,
+            whole_axes: Vec::new(),
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
             memo_into: HashMap::new(),
@@ -2038,6 +2038,19 @@ impl<'a> Lowerer<'a> {
         parts
     }
 
+    /// The grid dimensions `[A, B]` a position of the product domain `id`
+    /// indexes whole: `[P]T` and `[A, B]T` are one type (R04.2.11).
+    pub(super) fn product_grid(&self, id: DomainId) -> Option<Vec<Dim>> {
+        let factors = self.product_domains.get(&id).filter(|fs| fs.len() > 1)?;
+        factors
+            .iter()
+            .map(|(_, f)| match f {
+                ProductFactor::Domain(d) => Some(Dim::Pos(*d)),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub(super) fn decode_product_field(
         &mut self,
         id: DomainId,
@@ -2876,6 +2889,14 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // `Slice<S>` is the view a slice of `S` is.
+        if name.text == "Slice" && args.len() == 1 {
+            match self.resolve_ty(&args[0]) {
+                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => return Spec::Plain(Ty::ListView(e)),
+                Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
+                _ => {}
+            }
+        }
         let ty = match name.text.as_str() {
             // The solution an `@interactor` talks to holds nothing.
             "Interactor" if self.judge => Ty::Unit,
@@ -4000,25 +4021,20 @@ impl<'a> Lowerer<'a> {
                 let body = self.block(block, tail);
                 out.extend(body.stmts);
             }
-            // `-> yields T = expr`: the body is the sequence, as `yield from expr`.
-            ast::FnBody::Expr(expr) if is_gen && !matches!(&expr.kind, ast::ExprKind::Name(n) if n == "todo") => {
-                let (acc, elem_ty) = self.cx.yield_slot.clone().expect("set for a generator");
-                let seq = self.expr(expr, Some(&Ty::list(elem_ty.clone())));
-                let acc_place = Place {
-                    kind: PlaceKind::Local(acc),
-                    ty: Ty::list(elem_ty),
-                    span: self.span(expr.span),
+            // `-> yields T = e` yields each element of `e`.
+            ast::FnBody::Expr(expr) if is_gen => {
+                let each = ast::Stmt {
+                    kind: ast::StmtKind::Yield {
+                        value: expr.clone(),
+                        from: true,
+                    },
+                    span: expr.span,
+                    decorators: Vec::new(),
+                    public: false,
                 };
-                out.push(Stmt::Expr(self.mk(
-                    ExprKind::Mutate(Mutation::Extend, Box::new(acc_place), vec![seq]),
-                    Ty::Unit,
-                    expr.span,
-                )));
+                self.stmt(&each, &mut out);
             }
-            ast::FnBody::Expr(expr) => {
-                let tail = if is_gen { Tail::Discard } else { Tail::Return };
-                self.tail(expr, tail, &mut out);
-            }
+            ast::FnBody::Expr(expr) => self.tail(expr, Tail::Return, &mut out),
             // The judge's grader supplies the body: the signature is all
             // there is.
             ast::FnBody::None => {}
@@ -4325,6 +4341,53 @@ impl<'a> Lowerer<'a> {
             kind: ExprKind::Int(value),
             ty: Ty::Int,
             span: self.span(span),
+        }
+    }
+
+    /// `V.at(x)`: the position labelled `x`, `None` outside `V` (R04.8.9).
+    /// The label of `V`'s first position, even when `V` is empty.
+    pub(super) fn domain_first_label(&mut self, id: DomainId, span: Span) -> Expr {
+        let zero = self.int_lit(0, span);
+        let first = self.mk(ExprKind::Cast(Cast::Trust, Box::new(zero)), Ty::Pos(id), span);
+        self.mk(ExprKind::Cast(Cast::Label(id), Box::new(first)), Ty::Int, span)
+    }
+
+    /// `V.wrap(x)`: the position labelled `x` modulo `V.count` (R04.2.13).
+    fn domain_wrap(&mut self, id: DomainId, label: Expr, span: Span) -> Expr {
+        let lo = self.domain_first_label(id, span);
+        let off = self.mk(ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(lo)), Ty::Int, span);
+        let rem = |lw: &mut Self, e: Expr| {
+            let len = lw.mk(ExprKind::DomainLen(id), Ty::Int, span);
+            lw.mk(ExprKind::Binary(BinOp::Rem, Box::new(e), Box::new(len)), Ty::Int, span)
+        };
+        let once = rem(self, off);
+        let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+        let shifted = self.mk(ExprKind::Binary(BinOp::Add, Box::new(once), Box::new(len)), Ty::Int, span);
+        let ord = rem(self, shifted);
+        self.mk(ExprKind::Cast(Cast::FromOrd(id), Box::new(ord)), Ty::Pos(id), span)
+    }
+
+    fn domain_try_label(&mut self, id: DomainId, label: Expr, span: Span) -> Expr {
+        let lo = self.domain_first_label(id, span);
+        let ord = self.mk(
+            ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(lo)),
+            Ty::Int,
+            span,
+        );
+        self.mk(
+            ExprKind::Builtin(Builtin::PosTryOrd(id), vec![ord]),
+            Ty::opt(Ty::Pos(id)),
+            span,
+        )
+    }
+
+    /// `a + b` on two `Int` expressions.
+    fn int_sum(&self, a: Expr, b: Expr) -> Expr {
+        let span = a.span;
+        Expr {
+            kind: ExprKind::Binary(BinOp::Add, Box::new(a), Box::new(b)),
+            ty: Ty::Int,
+            span,
         }
     }
 

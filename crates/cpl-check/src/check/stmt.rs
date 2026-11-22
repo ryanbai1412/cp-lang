@@ -864,7 +864,7 @@ impl<'a> Checker<'a> {
         }
         if let StmtKind::Expr(expr) = &stmt.kind {
             if let (ExprKind::Try(inner), true) =
-                (&expr.kind, std::env::var_os("CPL_SPEC").is_some())
+                (&expr.kind, crate::edition::is_v03())
             {
                 let message = format!(
                     "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
@@ -1122,7 +1122,7 @@ impl<'a> Checker<'a> {
                 };
                 let view = match (&declared, init) {
                     (Some(Ty::Named { name, .. }), Some(init))
-                        if name == "List" && std::env::var_os("CPL_SPEC").is_some() =>
+                        if name == "List" && crate::edition::is_v03() =>
                     {
                         self.view_kind(init)
                     }
@@ -1205,13 +1205,13 @@ impl<'a> Checker<'a> {
                 } else if declared.is_none()
                     && *mutable
                     && matches!(init_ty, Some(Ty::Range { .. }))
-                    && std::env::var_os("CPL_SPEC").is_some()
+                    && crate::edition::is_v03()
                 {
                     Ty::Int
                 } else if declared.is_none()
                     && !*mutable
                     && init_ty.as_ref() == Some(&Ty::Int)
-                    && std::env::var_os("CPL_SPEC").is_some()
+                    && crate::edition::is_v03()
                 {
                     if let Some(init_expr) = init {
                         let (lo, hi) = self.bounds(init_expr);
@@ -1282,7 +1282,7 @@ impl<'a> Checker<'a> {
                                 Some(Def::Variant { .. })
                             ) =>
                     {
-                        if std::env::var_os("CPL_SPEC").is_some() {
+                        if crate::edition::is_v03() {
                             let message = format!(
                                 "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
                             );
@@ -1534,7 +1534,7 @@ impl<'a> Checker<'a> {
                 self.self_ty = Some(self_ty.clone());
                 self.impl_home(trait_name.as_ref(), target);
                 self.bounds_exist(bounds);
-                if std::env::var_os("CPL_SPEC").is_some() {
+                if crate::edition::is_v03() {
                     if trait_name.is_none() && self.quote(target.span).contains('.') {
                         self.error(
                             codes::UNSUPPORTED,
@@ -1666,7 +1666,7 @@ impl<'a> Checker<'a> {
                 let before_mutable = self.sink.len();
                 self.require_mutable(target, "assigned");
                 let not_assignable = self.sink.len() > before_mutable;
-                if std::env::var_os("CPL_SPEC").is_some() {
+                if crate::edition::is_v03() {
                     if let ExprKind::Field { base, name } = &target.kind {
                         let base_ty = self.quietly(|c| c.infer(base));
                         if let Ty::Named { name: sname, .. } = &base_ty {
@@ -1967,7 +1967,7 @@ impl<'a> Checker<'a> {
                     self.declare(&param.name.text, param.name.span, ty, false, "param");
                 }
                 let ty = self.infer(body);
-                if std::env::var_os("CPL_SPEC").is_some() {
+                if crate::edition::is_v03() {
                     self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
                         format!(
                             "a `law` must return a `Bool`, but `{}` is {}",
