@@ -679,6 +679,22 @@ fn an_unclosed_paren_fix_lands_where_the_closer_belongs() {
     }
 }
 
+#[test]
+fn a_condition_with_a_bare_equals_gets_the_comparison_fix() {
+    let src = "let n = 1\nif n = 1:\n    print(n)\n";
+    let d = one_diag(src);
+    assert_eq!(d.code.0, "E0103");
+    let at = src.find(" = 1:").unwrap() + 1;
+    let eq = cpl_diag::Span {
+        start: at as u32,
+        end: at as u32 + 1,
+    };
+    assert_eq!(d.fixes[0].edits[0], (eq, "==".to_string()));
+    // The line already ends in `:`, so inserting another is no fix.
+    let d = one_diag("let n = 1\nwhile n n:\n    print(n)\n");
+    assert!(d.fixes.is_empty(), "{:?}", d.fixes);
+}
+
 // --- Parser: one root cause, one diagnostic --------------------------------
 
 #[test]

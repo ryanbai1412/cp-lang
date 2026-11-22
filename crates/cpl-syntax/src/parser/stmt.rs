@@ -1497,14 +1497,26 @@ impl<'a> Parser<'a> {
                     ),
                 );
             } else {
-                self.error(
-                    Diagnostic::error(
-                        codes::EXPECTED_TOKEN,
-                        at,
-                        format!("expected `:` after {after}, found {found}"),
-                    )
-                    .with_fix("insert `:`", Span::point(at.start), ":"),
+                let mut diag = Diagnostic::error(
+                    codes::EXPECTED_TOKEN,
+                    at,
+                    format!("expected `:` after {after}, found {found}"),
                 );
+                // A line that already ends in `:` lost something else, so
+                // a second `:` would not fix it.
+                let ends_in_colon = self.tokens[self.pos..]
+                    .iter()
+                    .take_while(|t| !matches!(t.kind, T::Newline | T::Eof))
+                    .last()
+                    .is_some_and(|t| t.kind == T::Colon);
+                if self.at(T::Eq) && after.contains("condition") {
+                    diag = diag
+                        .with_help("`=` assigns; to compare, write `==`")
+                        .with_fix("change to `==`", at, "==");
+                } else if !ends_in_colon {
+                    diag = diag.with_fix("insert `:`", Span::point(at.start), ":");
+                }
+                self.error(diag);
             }
             // The body is still read if it is there.
             if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
