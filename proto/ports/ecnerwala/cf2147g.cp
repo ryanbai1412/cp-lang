@@ -1,10 +1,18 @@
+// Codeforces 2147 G — Multiplicative Order Prime-Factor Probability
+//
+// For `M = xs[0] * xs[1] * xs[2]`, let `pset` be the distinct prime divisors
+// of `M`. Starting from `phi(M) / M = prod_{p in pset} (p - 1) / M`, each
+// prime `q` dividing `prod_{p in pset} (p - 1)` with total multiplicity `e`
+// independently fails to divide the random order with probability `q^(-e)`,
+// and otherwise contributes an extra factor `0` (if `q | M`) or `q^(-1)`.
+
 use std.math.{factor}
 
-const MOD = 998244353
+const MOD = 998_244_353
 type Z = Mod<MOD>
 
 @!multitest
-let xs: [0..3]Int = read()
+let xs: [0..3]1..=10 ** 6 = read()
 var pset: Set<Int> = Set()
 for x in xs:
     for (p, _) in factor(x):
