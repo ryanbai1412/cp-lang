@@ -704,7 +704,7 @@ impl Database {
                     }
                     diag.labels.retain(|l| !l.span.is_empty());
                 }
-                if diag.code == codes::ASSIGN_TO_LET {
+                if diag.code == codes::ASSIGN_TO_LET || diag.code == codes::MUT_OF_IMMUTABLE {
                     if diag.labels.is_empty() {
                         declare_with_var(&mut diag, &text, &scope, &items, &ranges);
                     }
@@ -1335,7 +1335,19 @@ impl FileCtx<'_> {
             for stmt in &item.parsed.stmts {
                 let found = checker.defs_of(stmt);
                 if head_is_poisoned(&item.text, stmt, &item.parsed.poisoned) {
-                    defs.extend(found.into_iter().map(|(name, def)| (name, def.recovered())));
+                    let annotation_broken = match &stmt.kind {
+                        ast::StmtKind::Let { ty: Some(ty), .. } => item
+                            .parsed
+                            .poisoned
+                            .iter()
+                            .any(|p| p.start < ty.span.end && p.end > ty.span.start),
+                        _ => false,
+                    };
+                    defs.extend(
+                        found
+                            .into_iter()
+                            .map(|(name, def)| (name, def.recovered(annotation_broken))),
+                    );
                 } else {
                     defs.extend(found);
                 }

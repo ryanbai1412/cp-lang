@@ -1,0 +1,15 @@
+error[E0203]: a `List<Int>` has no method `sorte` that `cpl run` knows
+  --> unknown_method_is_one_error.cp:2:13
+  |
+2 | let ys = xs.sorte(by: x => -x.w)
+  |             ^^^^^
+  = help: did you mean `sorted`?
+
+error[E0203]: a `[Int](a: Int, b: Int)` has no method `sorte` that `cpl run` knows
+  --> unknown_method_is_one_error.cp:3:37
+  |
+3 | let e = read<[2](a: Int, b: Int)>().sorte(by: c => c.a - c.b)
+  |                                     ^^^^^
+  = help: did you mean `sorted`?
+
+unknown_method_is_one_error.cp: 2 errors

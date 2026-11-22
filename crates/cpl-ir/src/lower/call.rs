@@ -7238,9 +7238,13 @@ impl<'a> Lowerer<'a> {
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
                 self.member_typo(&ty, method, name.span);
+                // Without the method's signature the arguments (and the
+                // lambdas' parameters) have no types to check against.
+                let reported = self.diags.len();
                 for arg in args {
                     self.expr(&arg.value, None);
                 }
+                self.diags.truncate(reported);
                 self.err_expr(span)
             }
         }

@@ -1,0 +1,10 @@
+error[E0101]: this `[` is never closed
+  --> broken_annotation_is_one_error.cp:3:8
+  |
+3 | let a: [Pos1..=n = read()
+  |        ^
+4 | for i in Pos: print(a[i])
+  | - a new statement starts here
+  = help: add `]` at the end of the expression
+
+broken_annotation_is_one_error.cp: 1 error
