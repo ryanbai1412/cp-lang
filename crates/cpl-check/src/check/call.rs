@@ -1317,7 +1317,7 @@ impl<'a> Checker<'a> {
             }
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Str | Ty::Char | Ty::Pos(_)) => {
                 self.plain_args(args);
-                let message = format!("`{callee_text}` is {}, not a fn", ty.with_article());
+                let message = format!("`{callee_text}` is {}, not a fn", ty.widen().with_article());
                 self.error(codes::NOT_CALLABLE, callee.span, message);
                 Ty::Error
             }

@@ -1144,7 +1144,7 @@ impl<'a> Checker<'a> {
         let quoted = self.quote(expr.span);
         let message = format!(
             "{what} needs a Bool, but `{quoted}` is {}",
-            ty.with_article()
+            ty.widen().with_article()
         );
         if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
             diag.help = Some(match ty {
@@ -3321,7 +3321,7 @@ impl<'a> Checker<'a> {
                 let message = format!(
                     "`{}` is {} and can't be indexed",
                     self.quote(base.span),
-                    ty.with_article()
+                    ty.widen().with_article()
                 );
                 self.error(codes::NOT_INDEXABLE, base.span, message);
                 Ty::Error

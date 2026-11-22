@@ -293,7 +293,7 @@ fn declared_types_are_checked_against_values_and_returns() {
     let d = one("let n = 3\nif n:\n    print(n)\n");
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0307", "the condition needs a Bool, but `n` is a 3..=3")
+        ("E0307", "the condition needs a Bool, but `n` is an Int")
     );
     assert_eq!(d.help.as_deref(), Some("compare it: `n != 0`"));
 }
