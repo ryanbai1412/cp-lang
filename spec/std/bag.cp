@@ -1566,34 +1566,120 @@ pub struct SortedMap<K, V>:
 /// per copy, starting from `id`; `op` need not be commutative. An empty selection folds to `id`.
 pub struct AugSortedBag<K, T>:
     _len: Int
+    op: (T, T) -> T
+    id: T
+    leaf: K -> T
+    keys: List<K> = []
+    pri: List<Int> = []
+    ls: List<Int> = []
+    rs: List<Int> = []
+    sz: List<Int> = []
+    agg: List<T> = []
+    root: Int = -1
+    seed: Int = 1
+    lo_k: ?K = None
+    hi_k: ?K = None
+
+    fn sub(self, t: Int) -> T = if t < 0: id else: agg[t]
+    fn size(self, t: Int) -> Int = if t < 0: 0 else: sz[t]
+
+    fn pull(mut self, t: Int):
+        sz[t] = self.size(ls[t]) + 1 + self.size(rs[t])
+        agg[t] = op(op(self.sub(ls[t]), leaf(keys[t])), self.sub(rs[t]))
+
+    // (keys < x, keys >= x)
+    fn split(mut self, t: Int, x: K) -> (Int, Int):
+        if t < 0: return (-1, -1)
+        if keys[t] < x:
+            let (a, b) = self.split(rs[t], x)
+            rs[t] = a
+            self.pull(t)
+            (t, b)
+        else:
+            let (a, b) = self.split(ls[t], x)
+            ls[t] = b
+            self.pull(t)
+            (a, t)
+
+    fn merge(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        if pri[a] > pri[b]:
+            rs[a] = self.merge(rs[a], b)
+            self.pull(a)
+            a
+        else:
+            ls[b] = self.merge(a, ls[b])
+            self.pull(b)
+            b
+
+    fn drop_min(mut self, t: Int) -> Int:
+        if ls[t] < 0: return rs[t]
+        ls[t] = self.drop_min(ls[t])
+        self.pull(t)
+        t
+
+    fn extreme(self, right: Bool) -> ?K:
+        var t = root
+        if t < 0: return None
+        while (if right: rs[t] else: ls[t]) >= 0: t = if right: rs[t] else: ls[t]
+        Some(keys[t])
+
+    fn rank_le(self, k: K) -> Int:
+        var (t, n) = (root, 0)
+        while t >= 0:
+            if keys[t] <= k:
+                n += self.size(ls[t]) + 1
+                t = rs[t]
+            else: t = ls[t]
+        n
+
+    fn fold_from(self, start: Int, lo: K, strict: Bool) -> T:
+        var (t, res) = (start, id)
+        while t >= 0:
+            if keys[t] > lo or (not strict and keys[t] == lo):
+                res = op(op(leaf(keys[t]), self.sub(rs[t])), res)
+                t = ls[t]
+            else: t = rs[t]
+        res
+
+    fn fold_upto(self, start: Int, hi: K, strict: Bool) -> T:
+        var (t, res) = (start, id)
+        while t >= 0:
+            if keys[t] < hi or (not strict and keys[t] == hi):
+                res = op(res, op(self.sub(ls[t]), leaf(keys[t])))
+                t = rs[t]
+            else: t = ls[t]
+        res
 
     /// Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.all == 0`
-    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T> = todo
+    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T> = AugSortedBag<K, T>(_len: 0, op:, id:, leaf:)
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
     /// cost: O(cap) when the pool grows, O(1) otherwise
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        assert cap >= 0
 
     /// Total number of elements (with multiplicity).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = _len
 
     /// Whether the bag is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = _len == 0
 
     /// Fold of all elements in the bag.
     ///
@@ -1601,28 +1687,49 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.all == 7`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T = self.sub(root)
 
     /// Insert one copy of `x`.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2`
-    pub fn add(mut self, x: K) = todo
+    pub fn add(mut self, x: K):
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        keys.push(x)
+        pri.push(seed)
+        ls.push(-1)
+        rs.push(-1)
+        sz.push(1)
+        agg.push(leaf(x))
+        let (a, b) = self.split(root, x)
+        let m = self.merge(a, keys.len - 1)
+        root = self.merge(m, b)
+        _len += 1
+        if lo_k == None or x < lo_k!: lo_k = Some(x)
+        if hi_k == None or hi_k! < x: hi_k = Some(x)
 
     /// Remove one copy of `x`; returns false if absent.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.remove(3) and b.all == 4 and not b.remove(2)`
-    pub fn remove(mut self, x: K) -> Bool = todo
+    pub fn remove(mut self, x: K) -> Bool:
+        if self.count(x) == 0: return false
+        let (a, b) = self.split(root, x)
+        let c = self.drop_min(b)
+        root = self.merge(a, c)
+        _len -= 1
+        lo_k = self.extreme(false)
+        hi_k = self.extreme(true)
+        true
 
     /// Multiplicity of `x`.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2 and b.count(1) == 0`
-    pub fn count(self, x: K) -> Int = todo
+    pub fn count(self, x: K) -> Int = self.rank_le(x) - self.rank(x)
 
     /// Number of elements strictly less than `k`.
     ///
@@ -1630,7 +1737,14 @@ pub struct AugSortedBag<K, T>:
     /// empty: `0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.rank(3) == 1`
-    pub fn rank(self, k: K) -> Int = todo
+    pub fn rank(self, k: K) -> Int:
+        var (t, n) = (root, 0)
+        while t >= 0:
+            if keys[t] < k:
+                n += self.size(ls[t]) + 1
+                t = rs[t]
+            else: t = ls[t]
+        n
 
     /// The `i`-th smallest element (0-based), or `None`.
     ///
@@ -1640,7 +1754,17 @@ pub struct AugSortedBag<K, T>:
     /// empty: `None`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.nth(2) == Some(3) and b.nth(3) == None`
-    pub fn nth(self, i: Int) -> ?K = todo
+    pub fn nth(self, i: Int) -> ?K:
+        if i < 0 or i >= _len: return None
+        var (t, j) = (root, i)
+        while true:
+            let l = self.size(ls[t])
+            if j < l: t = ls[t]
+            elif j == l: return Some(keys[t])
+            else:
+                j -= l + 1
+                t = rs[t]
+        None
 
     /// Smallest element, or `None`. O(1), kept current by every update.
     ///
@@ -1649,7 +1773,7 @@ pub struct AugSortedBag<K, T>:
     /// ties: none: copies of the least key are equal
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.first == Some(1)`
-    @get pub fn first(self) -> ?K = todo
+    @get pub fn first(self) -> ?K = lo_k
 
     /// Largest element, or `None`. O(1), kept current by every update.
     ///
@@ -1658,7 +1782,7 @@ pub struct AugSortedBag<K, T>:
     /// ties: none: copies of the greatest key are equal
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.last == Some(3)`
-    @get pub fn last(self) -> ?K = todo
+    @get pub fn last(self) -> ?K = hi_k
 
     /// Fold elements with key `< hi`.
     ///
@@ -1666,7 +1790,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_lt(3) == 1`
-    pub fn fold_lt(self, hi: K) -> T = todo
+    pub fn fold_lt(self, hi: K) -> T = self.fold_upto(root, hi, true)
 
     /// Fold elements with key `<= hi`.
     ///
@@ -1674,7 +1798,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_le(3) == 7`
-    pub fn fold_le(self, hi: K) -> T = todo
+    pub fn fold_le(self, hi: K) -> T = self.fold_upto(root, hi, false)
 
     /// Fold elements with key `>= lo`.
     ///
@@ -1682,7 +1806,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_ge(2) == 6`
-    pub fn fold_ge(self, lo: K) -> T = todo
+    pub fn fold_ge(self, lo: K) -> T = self.fold_from(root, lo, false)
 
     /// Fold elements with key `> lo`.
     ///
@@ -1690,7 +1814,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_gt(1) == 6 and b.fold_gt(3) == 0`
-    pub fn fold_gt(self, lo: K) -> T = todo
+    pub fn fold_gt(self, lo: K) -> T = self.fold_from(root, lo, true)
 
     /// Fold elements with key in `[lo, hi)`.
     ///
@@ -1700,7 +1824,13 @@ pub struct AugSortedBag<K, T>:
     /// empty: `id`, also when `lo >= hi`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_between(1, 3) == 1 and b.fold_between(2, 4) == 6`
-    pub fn fold_between(self, lo: K, hi: K) -> T = todo
+    pub fn fold_between(self, lo: K, hi: K) -> T:
+        if not (lo < hi): return id
+        var t = root
+        while t >= 0 and not (lo <= keys[t] and keys[t] < hi):
+            t = if keys[t] < lo: rs[t] else: ls[t]
+        if t < 0: return id
+        op(op(self.fold_from(ls[t], lo, false), leaf(keys[t])), self.fold_upto(rs[t], hi, true))
 
     /// Yield all elements in ascending order.
     ///
@@ -1709,7 +1839,16 @@ pub struct AugSortedBag<K, T>:
     /// order: ascending, each key repeated by its count
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.each().collect() == [1, 3, 3]`
-    pub fn each(self) -> yields K = todo
+    pub fn each(self) -> yields K:
+        var stack: List<Int> = []
+        var t = root
+        while t >= 0 or stack.len > 0:
+            while t >= 0:
+                stack.push(t)
+                t = ls[t]
+            let u = stack.pop()!
+            yield keys[u]
+            t = rs[u]
 
 /// Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Covers dynamic range sums and consecutive-gap monoids (`cf2066e`) in O(log n).
@@ -1718,34 +1857,35 @@ pub struct AugSortedBag<K, T>:
 /// `op` need not be commutative. An empty selection folds to `id`.
 pub struct AugSortedSet<K, T>:
     _len: Int
+    bag: AugSortedBag<K, T>
 
     /// Create an empty `AugSortedSet<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.all == 0`
-    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T> = todo
+    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T> = AugSortedSet<K, T>(_len: 0, bag: AugSortedBag(op, id, leaf))
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///
     /// cost: O(cap) when the pool grows, O(1) otherwise
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.reserve(100); s.len == 0`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int) = bag.reserve(cap)
 
     /// Number of distinct keys.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(3); s.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = bag.len
 
     /// Whether the set is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = bag.is_empty
 
     /// Fold of all keys in the set.
     ///
@@ -1753,28 +1893,31 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.add(3); s.all == 4`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T = bag.all
 
     /// Insert `x`; returns true if `x` was new.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3) and not s.add(3)`
-    pub fn add(mut self, x: K) -> Bool = todo
+    pub fn add(mut self, x: K) -> Bool:
+        if bag.count(x) > 0: return false
+        bag.add(x)
+        true
 
     /// Remove `x`; returns true if `x` was present.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.remove(3) and not s.remove(3) and s.all == 0`
-    pub fn remove(mut self, x: K) -> Bool = todo
+    pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
 
     /// Whether `x` is present.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.contains(3) and not s.contains(1)`
-    pub fn contains(self, x: K) -> Bool = todo
+    pub fn contains(self, x: K) -> Bool = bag.count(x) > 0
 
     /// Number of keys strictly less than `k`.
     ///
@@ -1782,7 +1925,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `0`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.rank(3) == 1 and s.rank(4) == 2`
-    pub fn rank(self, k: K) -> Int = todo
+    pub fn rank(self, k: K) -> Int = bag.rank(k)
 
     /// The `i`-th smallest key (0-based), or `None`.
     ///
@@ -1792,7 +1935,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `None`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.nth(1) == Some(3) and s.nth(2) == None`
-    pub fn nth(self, i: Int) -> ?K = todo
+    pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
     /// Smallest key, or `None`. O(1), kept current by every update.
     ///
@@ -1801,7 +1944,7 @@ pub struct AugSortedSet<K, T>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.first == Some(1)`
-    @get pub fn first(self) -> ?K = todo
+    @get pub fn first(self) -> ?K = bag.first
 
     /// Largest key, or `None`. O(1), kept current by every update.
     ///
@@ -1810,7 +1953,7 @@ pub struct AugSortedSet<K, T>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.last == Some(3)`
-    @get pub fn last(self) -> ?K = todo
+    @get pub fn last(self) -> ?K = bag.last
 
     /// Fold keys `< hi`.
     ///
@@ -1818,7 +1961,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_lt(5) == 4`
-    pub fn fold_lt(self, hi: K) -> T = todo
+    pub fn fold_lt(self, hi: K) -> T = bag.fold_lt(hi)
 
     /// Fold keys `<= hi`.
     ///
@@ -1826,7 +1969,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_le(5) == 9`
-    pub fn fold_le(self, hi: K) -> T = todo
+    pub fn fold_le(self, hi: K) -> T = bag.fold_le(hi)
 
     /// Fold keys `>= lo`.
     ///
@@ -1834,7 +1977,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_ge(3) == 8`
-    pub fn fold_ge(self, lo: K) -> T = todo
+    pub fn fold_ge(self, lo: K) -> T = bag.fold_ge(lo)
 
     /// Fold keys `> lo`.
     ///
@@ -1842,7 +1985,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_gt(3) == 5`
-    pub fn fold_gt(self, lo: K) -> T = todo
+    pub fn fold_gt(self, lo: K) -> T = bag.fold_gt(lo)
 
     /// Fold keys in `[lo, hi)`.
     ///
@@ -1852,7 +1995,7 @@ pub struct AugSortedSet<K, T>:
     /// empty: `id`, also when `lo >= hi`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_between(1, 5) == 4 and s.fold_between(4, 2) == 0`
-    pub fn fold_between(self, lo: K, hi: K) -> T = todo
+    pub fn fold_between(self, lo: K, hi: K) -> T = bag.fold_between(lo, hi)
 
     /// Yield all keys in ascending order.
     ///
@@ -1861,7 +2004,8 @@ pub struct AugSortedSet<K, T>:
     /// order: ascending
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.each().collect() == [1, 3]`
-    pub fn each(self) -> yields K = todo
+    pub fn each(self) -> yields K:
+        for x in bag.each(): yield x
 
 /// O(1) point add, O(sqrt(N)) k-th order statistic over an integer value range `r`.
 /// Designed as a Mo's algorithm companion for value-range frequency tables.

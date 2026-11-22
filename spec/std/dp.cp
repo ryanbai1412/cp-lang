@@ -346,9 +346,6 @@ pub fn subset_sums(xs: List<Int>) -> List<Int>:
 struct Counted(k: Int, m: Int, used: Int):
     fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used:)
 
-// Online LARSCH over nodes 0..n; the engine of `monge_path` and `monge_paths`.
-fn larsch<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>) = todo
-
 /// The shortest path from `nodes.first` to `nodes.last` along increasing edges
 /// `nodes[j] -> nodes[i]`, `j < i`, of weight `cost(nodes[j], nodes[i])`: its total and its number
 /// of edges, the shape `aliens` asks `solve` for
@@ -362,7 +359,13 @@ fn larsch<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>) = to
 /// ties: among paths of equal total the one found by LARSCH, not necessarily the fewest edges
 /// traps: when `nodes` is empty
 /// example: `monge_path([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: 2, count: 2)`
-pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int) = todo
+pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int):
+    let p = monge_paths(nodes, cost)
+    var (i, count) = (nodes.len - 1, 0)
+    while i > 0:
+        i = p.prev[i]
+        count += 1
+    (val: p.val[nodes.len - 1], count:)
 
 /// Every shortest path from `nodes.first`: `val[i]` is the least total weight to `nodes[i]` and
 /// `prev[i]` the index before it on that path (`val[0] == 0`, `prev[0] == 0`). Same law as
@@ -374,13 +377,43 @@ pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: In
 /// order: both lists are indexed like `nodes`
 /// traps: when `nodes` is empty
 /// example: `monge_paths([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: [0, 1, 2], prev: [0, 0, 1])`
-pub fn monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, prev: List<Int>) = todo
+pub fn monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, prev: List<Int>):
+    assert nodes.len > 0
+    var p = MongePath(nodes, cost)
+    var prev = [0]
+    while p.len < nodes.len: prev.push(p.next().prev)
+    (val: [p.val(i) for i in 0..nodes.len], prev:)
 
 /// O(1) per step; the next cut's optimum after O(1) amortized calls of `cost`.
 /// `monge_path` one node at a time, for a DP whose next weight depends on the
 /// optimum just found. `next()` returns the optimum at the next node and the
 /// node before it; `val(i)` reads any node already reached.
 pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
+    // Online LARSCH: row r is node r + 1, column c is node c. Level l keeps a
+    // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
+    // the stack slot the best column for level l's next odd row starts at.
+    vals: List<K> = []
+    top: Int = -1
+    sv: List<List<K>> = []
+    sc: List<List<Int>> = []
+    bv: List<K> = []
+    bc: List<Int> = []
+    bat: List<Int> = []
+
+    fn w(self, j: Int, i: Int) -> K = cost(nodes[j], nodes[i])
+
+    fn setup(mut self):
+        if top >= 0: return
+        assert nodes.len > 0
+        vals = [K.zero]
+        top = 0
+        while (2 << top) <= nodes.len - 1: top += 1
+        sv = [[] for _ in 0..top]
+        sc = [[] for _ in 0..top]
+        bv = [K.zero for _ in 0..top]
+        bc = [0 for _ in 0..top]
+        bat = [0 for _ in 0..top]
+
     /// Reach the next node: return the optimum at node `len` and the index of the node before it, then
     /// grow `len` by one. `cost` may read values already reached through `val`, so the weights can
     /// depend on earlier optima.
@@ -389,19 +422,87 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
     /// ties: among equal totals the predecessor found by LARSCH
     /// traps: when every node has been reached (`len == nodes.len`)
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next() == (val: 2, prev: 1)`
-    pub fn next(mut self) -> (val: K, prev: Int) = todo
+    pub fn next(mut self) -> (val: K, prev: Int):
+        self.setup()
+        assert vals.len < nodes.len, "`MongePath.next`: every node has been reached"
+        let rows = nodes.len - 1
+        let inp = vals.len - 1
+        var l = 0
+        var nv = K.zero
+        var nc = 0
+        while true:
+            let r = inp >> l
+            let col = if l == 0: inp else: sc[l - 1][r]
+            if l == top:
+                (nv, nc) = (if l == 0: (vals[col] + self.w(col, 0 + 1)) else: sv[l - 1][r], col)
+                l -= 1
+                break
+            if r % 2 == 1:
+                let row = ((r + 1) << l) - 1
+                let pv = if l == 0: (vals[col] + self.w(col, row + 1)) else: sv[l - 1][r]
+                if bat[l] == r or pv <= bv[l]:
+                    (bv[l], bc[l], bat[l]) = (pv, col, r)
+            let keep = (r + 1) / 2
+            if bat[l] == r:
+                sv[l].truncate(keep)
+                sc[l].truncate(keep)
+                if l + 1 < top: bat[l + 1] = keep
+            var pushed = false
+            var (tv, tc) = (K.zero, 0)
+            while sv[l].len > keep:
+                let v = (vals[col] + self.w(col, (sv[l].len << (l + 1)) - 1 + 1))
+                if not (v <= sv[l].last!): break
+                let _ = sv[l].pop()
+                let _ = sc[l].pop()
+                (tv, tc, pushed) = (v, col, true)
+            if pushed:
+                sv[l].push(tv)
+                sc[l].push(tc)
+            else:
+                let row = ((sv[l].len + 1) << (l + 1)) - 1
+                if row < rows:
+                    sv[l].push((vals[col] + self.w(col, row + 1)))
+                    sc[l].push(col)
+            if r % 2 == 1:
+                (nv, nc) = (bv[l], bc[l])
+                l -= 1
+                break
+            if ((r + 2) << l) - 1 >= rows:
+                nc = col
+                break
+            l += 1
+        while l >= 0:
+            let r = inp >> l
+            let row = ((r + 1) << l) - 1
+            let end = nc
+            (bv[l], bc[l]) = (nv, end)
+            var set = false
+            while true:
+                let idx = bat[l]
+                let col = if l == 0: idx else: sc[l - 1][idx]
+                let v = if l > 0 and idx == r: sv[l - 1][r] else: (vals[col] + self.w(col, row + 1))
+                if not set or v <= nv:
+                    (nv, nc, set) = (v, col, true)
+                if col == end: break
+                bat[l] += 1
+            l -= 1
+        vals.push(nv)
+        (val: nv, prev: nc)
     /// The optimum at node `i`, which must already be reached; `val(0)` is 0.
     ///
     /// cost: O(1)
     /// traps: when `i < 0` or `i >= len`
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.val(1) == 1`
-    pub fn val(self, i: Int) -> K = todo
+    pub fn val(self, i: Int) -> K:
+        assert 0 <= i and i < self.len
+        if i == 0: K.zero else: vals[i]
     /// The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        if vals.len > 1: vals.len else: 1
 
 fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: List<Int>):
     if rows.is_empty: return
@@ -559,32 +660,157 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
 /// no coordinate range needed (KACTL's line container). Use `LiChao` for
 /// segment adds or non-line functions.
 pub struct LineContainer(pick: (Int, Int) -> Int = min):
+    // A max-hull treap keyed by slope; `min` stores negated lines. `ps[t]` is the last `x` at which
+    // line `t` beats its successor, so queries descend by `ps` (KACTL's line container).
+    ks: List<Int> = []
+    ms: List<Int> = []
+    ps: List<Int> = []
+    pri: List<Int> = []
+    ls: List<Int> = []
+    rs: List<Int> = []
+    root: Int = -1
+    seed: Int = 1
+    count: Int = 0
+
+    fn sign(self) -> Int = if pick(0, 1) == 0: -1 else: 1
+
+    fn floor_div(a: Int, b: Int) -> Int:
+        let (n, d) = if b < 0: (-a, -b) else: (a, b)
+        var q = n / d
+        if q * d > n: q -= 1
+        q
+
+    fn meet(self, x: Int, y: Int) -> Int:
+        if y < 0: return Int.MAX
+        if ks[x] == ks[y]: return if ms[x] > ms[y]: Int.MAX else: Int.MIN
+        LineContainer.floor_div(ms[y] - ms[x], ks[x] - ks[y])
+
+    // (slopes < k, slopes >= k)
+    fn split(mut self, t: Int, k: Int) -> (Int, Int):
+        if t < 0: return (-1, -1)
+        if ks[t] < k:
+            let (a, b) = self.split(rs[t], k)
+            rs[t] = a
+            (t, b)
+        else:
+            let (a, b) = self.split(ls[t], k)
+            ls[t] = b
+            (a, t)
+
+    fn merge(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        if pri[a] > pri[b]:
+            rs[a] = self.merge(rs[a], b)
+            a
+        else:
+            ls[b] = self.merge(a, ls[b])
+            b
+
+    fn end(self, t: Int, right: Bool) -> Int:
+        var u = t
+        if u < 0: return -1
+        while (if right: rs[u] else: ls[u]) >= 0: u = if right: rs[u] else: ls[u]
+        u
+
+    fn drop_end(mut self, t: Int, right: Bool) -> Int:
+        if right:
+            if rs[t] < 0:
+                let c = ls[t]
+                ls[t] = -1
+                return c
+            rs[t] = self.drop_end(rs[t], right)
+        else:
+            if ls[t] < 0:
+                let c = rs[t]
+                rs[t] = -1
+                return c
+            ls[t] = self.drop_end(ls[t], right)
+        t
+
+    fn best(self, x: Int) -> Int:
+        var (t, at) = (root, -1)
+        while t >= 0:
+            if ps[t] >= x:
+                at = t
+                t = ls[t]
+            else: t = rs[t]
+        at
     /// Add `line`; slopes may arrive in any order. Lines that are never best are dropped.
     ///
     /// cost: O(log n) amortized
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.at(0) == Some(4) and c.at(3) == Some(3)`
-    pub fn add(mut self, line: Line) = todo
+    pub fn add(mut self, line: Line):
+        let sg = self.sign()
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        ks.push(sg * line.k)
+        ms.push(sg * line.m)
+        ps.push(Int.MAX)
+        pri.push(seed)
+        ls.push(-1)
+        rs.push(-1)
+        let y = ks.len - 1
+        let (lo, hi) = self.split(root, ks[y])
+        var (eq, right) = self.split(hi, ks[y] + 1)
+        var left = lo
+        if eq >= 0:
+            if ms[eq] >= ms[y]:
+                root = self.merge(self.merge(left, eq), right)
+                return
+            count -= 1
+        var z = self.end(right, false)
+        ps[y] = self.meet(y, z)
+        while z >= 0 and ps[y] >= ps[z]:
+            right = self.drop_end(right, false)
+            count -= 1
+            z = self.end(right, false)
+            ps[y] = self.meet(y, z)
+        var keep = true
+        var x = self.end(left, true)
+        if x >= 0:
+            ps[x] = self.meet(x, y)
+            if ps[x] >= ps[y]:
+                keep = false
+                ps[x] = self.meet(x, z)
+        var after = if keep: y else: z
+        while x >= 0:
+            left = self.drop_end(left, true)
+            let w = self.end(left, true)
+            if w < 0 or ps[w] < ps[x]:
+                left = self.merge(left, x)
+                break
+            count -= 1
+            ps[w] = self.meet(w, after)
+            x = w
+        if keep:
+            count += 1
+            left = self.merge(left, y)
+        root = self.merge(left, right)
     /// The best value at `x`, or `None` when empty.
     ///
     /// cost: O(log n)
     /// ties: only the value is kept
     /// traps: never
     /// example: `var c = LineContainer(min); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.at(0) == Some(0) and c.at(3) == Some(1)`
-    pub fn at(self, x: Int) -> ?Int = todo
+    pub fn at(self, x: Int) -> ?Int:
+        let t = self.best(x)
+        if t < 0: None else: Some(self.sign() * (ks[t] * x + ms[t]))
     /// The line attaining `at(x)`, or `None` when empty.
     ///
     /// cost: O(log n)
     /// ties: unspecified among lines with equal values at `x`
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.line_at(3) == Some(Line(1, 0))`
-    pub fn line_at(self, x: Int) -> ?Line = todo
+    pub fn line_at(self, x: Int) -> ?Line:
+        let t = self.best(x)
+        if t < 0: None else: Some(Line(self.sign() * ks[t], self.sign() * ms[t]))
     /// The number of lines kept (dominated lines are not counted).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = count
 
 /// The length of the longest increasing subsequence ending at each position, compared by `by`;
 /// `strict: false` allows equal neighbours (non-decreasing). `xs.lis_ends().max()` is the LIS
