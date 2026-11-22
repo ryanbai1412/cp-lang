@@ -37,16 +37,16 @@ DEFAULT_MANIFEST = ROOT / "research/writable-from-docs-set.json"
 DEFAULT_RATCHET = ROOT / "research/writable-from-docs.json"
 
 DOC_FILES = [
-    "docs/one-page-cheat-sheet.md",
-    "site/content/tour.md",
-    "site/content/types-and-control.md",
-    "site/content/io-and-formatting.md",
-    "site/content/indices.md",
-    "site/content/borrowing.md",
-    "site/content/strings.md",
-    "site/content/stdlib.md",
-    "site/content/cpp-guide.md",
-    "site/content/idioms.md",
+    "web/content/docs/guides/cheatsheet.mdx",
+    "web/content/docs/guides/tour.mdx",
+    "web/content/docs/guides/types-and-control.mdx",
+    "web/content/docs/guides/io-and-formatting.mdx",
+    "web/content/docs/guides/indices.mdx",
+    "web/content/docs/guides/borrowing.mdx",
+    "web/content/docs/guides/strings.mdx",
+    "web/content/docs/guides/stdlib.mdx",
+    "web/content/docs/guides/cpp-guide.mdx",
+    "web/content/docs/guides/idioms.mdx",
 ]
 
 

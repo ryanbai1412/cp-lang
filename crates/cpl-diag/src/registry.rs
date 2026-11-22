@@ -1,7 +1,7 @@
 //! Single source of truth for every diagnostic code: title, summary, explanation,
 //! and verified trigger/fix examples.
 //!
-//! Used by `cpl explain <CODE>`, `cpl explain --json`, and `site/errors.py`.
+//! Used by `cpl explain <CODE>` and `cpl explain --json`.
 
 use crate::Code;
 

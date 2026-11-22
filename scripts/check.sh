@@ -20,11 +20,8 @@
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
-#         7. the offline site bundle (python3 site/bundle.py) builds; parts
-#            over their caps (compiler 2,100,000 bytes, docs 500,000,
-#            gallery 150,000) warn
-#            and site/test_site.py passes (links, reader copy, documented
-#            programs compiled natively; about two minutes)
+#         7. the site's snippet gate (node web/scripts/gate.mjs): every
+#            program on the site is at least at its declared status
 # --full  8. the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
@@ -32,10 +29,8 @@
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #
-# Needs cargo with clippy, python3 with mistune (python3 -m pip install -r
-# site/requirements.txt) and the wasm target (rustup target add
-# wasm32-unknown-unknown, for the site bundle); --full also needs node, npm
-# and g++.
+# Needs cargo with clippy, python3 and node; --full also needs npm, g++ and
+# the wasm target (rustup target add wasm32-unknown-unknown).
 set -euo pipefail
 
 gate_t0=$(date +%s)
@@ -198,11 +193,9 @@ else
     lib_dirs+=(examples/local-lib/*/)
 fi
 lib_pids=()
-bundle_pid=""
 script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
-site_test_pid=""
 stdlib_cached=0
 if cache_hit stdlib_test; then
     stdlib_cached=1
@@ -212,25 +205,12 @@ else
         lib_pids+=($!)
     done
 fi
-bundle_cached=0
-if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
-    bundle_cached=1
-else
-    rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
-        || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
-    need python3 "site/bundle.py runs on it"
-    python3 -c 'import mistune' 2>/dev/null \
-        || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
-    # Separate CARGO_TARGET_DIR so the wasm build runs alongside nextest without Cargo lock contention.
-    CARGO_TARGET_DIR="$target/wasm-cargo" python3 site/bundle.py >"$lib_logs/site_bundle.log" 2>&1 &
-    bundle_pid=$!
-fi
 scoreboard_cached=0
 if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 fi
 cleanup() {
-    kill "${lib_pids[@]}" ${bundle_pid:+"$bundle_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -305,7 +285,7 @@ echo "prelude: $prelude names"
 [ "$prelude" -le 80 ] || echo "check: WARNING: spec/std/prelude.cp has $prelude names, over the target of 80" >&2
 
 
-# Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
+# Fast validation scoreboard + script unit tests run in parallel with the site gate.
 if [ "$scoreboard_cached" -eq 0 ]; then
     python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
@@ -318,42 +298,13 @@ step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
 
-# The offline edition is one file people download; site/test_site.py holds
-# the same cap. The WASM build is a cargo no-op when nothing changed.
-check_bundle_parts() {
-    # Size caps are targets, not correctness: an overrun warns and never blocks a landing.
-    python3 site/bundle.py --check-caps ||
-        printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
-}
-step "site bundle: compiler under 2,100,000 bytes, docs under 500,000, gallery under 150,000"
-if [ "$bundle_cached" -eq 1 ]; then
-    bundle_bytes=$(wc -c <dist/cp-lang.html)
-    echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
-    check_bundle_parts
-else
-    bundle_status=0
-    wait "$bundle_pid" || bundle_status=1
-    bundle_pid=""
-    [ "$bundle_status" -eq 0 ] || { cat "$lib_logs/site_bundle.log"; fail "site/bundle.py failed; rerun: python3 site/bundle.py"; }
-    bundle_bytes=$(wc -c <dist/cp-lang.html)
-    echo "dist/cp-lang.html: $bundle_bytes bytes"
-    check_bundle_parts
-    cache_save site_bundle
-fi
-
-step "docs gate, then site tests"
-if cache_hit docs_site; then
+step "site snippet gate (node web/scripts/gate.mjs)"
+if cache_hit site_gate; then
     echo "cached (tree unchanged outside its excludes)"
 else
-    # test_site rebuilds site/_build (bundle.bundle()), which check_docs reads, so it starts after.
-    python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
-    CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
-    site_test_pid=$!
-    site_test_status=0
-    wait "$site_test_pid" || site_test_status=1
-    site_test_pid=""
-    [ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
-    cache_save docs_site
+    need node "the site's snippet gate runs on it"
+    CPL="$cpl" node web/scripts/gate.mjs || fail "site snippet gate failed; rerun: CPL=$cpl node web/scripts/gate.mjs"
+    cache_save site_gate
 fi
 
 step "cpl-conform ratchet (all --check against research/scoreboard.json)"

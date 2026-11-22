@@ -438,14 +438,7 @@ fn scoreboard_broken_ports(
 /// The fenced cp blocks of `spec/core/*.md` and `spec/lib/*.md`.
 fn plan_blocks() -> Vec<(String, String)> {
     let mut docs: Vec<PathBuf> = Vec::new();
-    for dir in [
-        "spec/core",
-        "spec/lib",
-        "spec/lib/rationale",
-        "spec/tools",
-        "docs",
-        "site/content",
-    ] {
+    for dir in ["spec/core", "spec/lib", "spec/lib/rationale", "spec/tools"] {
         if let Ok(entries) = std::fs::read_dir(root().join(dir)) {
             for e in entries.flatten() {
                 let p = e.path();

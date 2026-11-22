@@ -32,16 +32,6 @@ bench-corpus *args:
     cargo build --release -p cpl-cli
     target/release/cpl bench --corpus {{args}}
 
-# Build and verify the offline docs + playground bundle.
-docs:
-    python3 site/bundle.py
-    python3 site/check_docs.py
-
-# Build the offline site bundle and run site unit tests.
-site:
-    python3 site/bundle.py
-    python3 site/test_site.py
-
 # Build the Next.js web app (web/).
 web-build:
     pnpm --dir web build
