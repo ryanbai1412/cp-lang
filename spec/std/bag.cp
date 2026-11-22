@@ -373,17 +373,17 @@ pub struct SortedMap<K, V>:
     /// Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting. O(min(n, m) log(n + m)).
     pub fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = none) = todo
 
-    /// Yield `(key, val)` pairs in ascending key order. O(n).
-    pub fn each(self) -> yields (K, V) = todo
+    /// O(1) to make. Yields `(key, val)` pairs in ascending key order. O(n).
+    pub @get fn items(self) -> yields (K, V) = todo
 
     /// Yield `(key, val)` pairs in descending key order. O(n).
     pub fn each_rev(self) -> yields (K, V) = todo
 
-    /// Yield keys in ascending order. O(n).
-    pub fn keys(self) -> yields K = todo
+    /// O(1) to make. Yields keys in ascending order. O(n).
+    pub @get fn keys(self) -> yields K = todo
 
-    /// Yield values in ascending key order. O(n).
-    pub fn values(self) -> yields V = todo
+    /// O(1) to make. Yields values in ascending key order. O(n).
+    pub @get fn values(self) -> yields V = todo
 
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Supports O(log n) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and O(1) `all`.

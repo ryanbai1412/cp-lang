@@ -107,8 +107,8 @@ pub struct DsuOf<V, T>:
     /// Yield the representative root of each connected component. O(n), zero allocations.
     pub fn roots(self) -> yields V = todo
 
-    /// Yield each connected component's payload once (one per root). O(n), zero allocations.
-    pub fn values(self) -> yields T = todo
+    /// O(1) to make. Yields each connected component's payload once (one per root). O(n), zero allocations.
+    pub @get fn values(self) -> yields T = todo
 
     /// The present, to return to with `undo_to`. O(1).
     pub fn mark(mut self) -> Mark = todo

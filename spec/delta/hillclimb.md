@@ -32,6 +32,9 @@ and its notes in that record's `notes`.
   7 say; `Rooted.new`/`from_parents`/`forest`, `virtual` and `PermTree.new` declare their
   fresh-domain results with `_`; `spec-stub.py --check` now fails a pub fn that mutates
   nothing and declares no return type, since methods on its result went unchecked.
+- coci20c6p3 (follow-up): map and `SortedMap` `keys`, `values` and `items` are O(1)-to-make
+  getters like `a.keys`/`a.items` on any keyed sequence (map `each()` became `items`); `Dsu.values`
+  too. Two stale ports lost their `.last()`/`.values()` drift.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

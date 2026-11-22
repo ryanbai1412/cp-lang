@@ -10,4 +10,4 @@ fn canon() -> Int:
                 for (di, dj) in [(0, 0), (0, 1), (1, 0), (1, 1)]:
                     g[i + di, j + dj] ^= true
     chain(g[.., n - 1], g[n - 1, ..]).fold((m, b) => m * 2 + b.int, 0)
-print([canon() for _ in 0..q].tally().values().map(c => c * (c - 1) / 2).sum())
+print([canon() for _ in 0..q].tally().values.map(c => c * (c - 1) / 2).sum())

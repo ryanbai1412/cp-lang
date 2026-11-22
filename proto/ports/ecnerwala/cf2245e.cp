@@ -16,7 +16,7 @@ for (e, (u, v)) in edges.items:
     if not odd[v - 1]: pieces.unite(X(n + e), X(v - 1))
 
 var ans = 0
-for diff in pieces.values():
+for diff in pieces.values:
     let extra = diff + 1
     ans += extra * (extra - 1) / 2
 print(ans)

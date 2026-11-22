@@ -54,14 +54,14 @@ pub struct FlatMap<V>:
     /// Move the map's contents out in O(1), leaving `self` empty.
     pub fn take(mut self) -> FlatMap<V> = todo
 
-    /// Yield every live `(key, val)` pair. O(capacity).
-    pub fn each(self) -> yields (Int, V) = todo
+    /// O(1) to make. Yields every live `(key, val)` pair. O(capacity).
+    pub @get fn items(self) -> yields (Int, V) = todo
 
-    /// Yield every live key. O(capacity).
-    pub fn keys(self) -> yields Int = todo
+    /// O(1) to make. Yields every live key. O(capacity).
+    pub @get fn keys(self) -> yields Int = todo
 
-    /// Yield every live value. O(capacity).
-    pub fn values(self) -> yields V = todo
+    /// O(1) to make. Yields every live value. O(capacity).
+    pub @get fn values(self) -> yields V = todo
 
     /// Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting. O(min(|self|, |other|)) expected.
     pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = none) = todo
@@ -116,14 +116,14 @@ pub struct Counter<K, V>:
     /// Top `k` entries sorted by descending value. O(n log n).
     pub fn most_common(self, k: Int) -> List<(K, V)> = todo
 
-    /// Yield every stored `(key, val)` pair. O(n).
-    pub fn each(self) -> yields (K, V) = todo
+    /// O(1) to make. Yields every stored `(key, val)` pair. O(n).
+    pub @get fn items(self) -> yields (K, V) = todo
 
-    /// Yield every stored key. O(n).
-    pub fn keys(self) -> yields K = todo
+    /// O(1) to make. Yields every stored key. O(n).
+    pub @get fn keys(self) -> yields K = todo
 
-    /// Yield every stored value. O(n).
-    pub fn values(self) -> yields V = todo
+    /// O(1) to make. Yields every stored value. O(n).
+    pub @get fn values(self) -> yields V = todo
 
 @test
 fn flat_map_matches_builtin_hash_map() = todo

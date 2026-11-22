@@ -3,7 +3,7 @@
 // and c(c - 1) / 2 pairs, a knapsack over the classes.
 type Z = Mod<1_000_000_007>
 let (n, k) = read<(1..=2_000, 0..=2_000)>()
-let sizes = read<[n]Str>().tally(by: s => s.sorted()).values().collect()
+let sizes = read<[n]Str>().tally(by: s => s.sorted()).values.collect()
 domain G = sizes.keys
 let comb = Comb<Z>(n)
 @memo(array)

@@ -24,7 +24,7 @@ fn random_mobile() -> [Bar]Kids:
         if v != Bar.first:
             let i = rand(0, free.len - 1)
             let (u, left) = free[i]
-            free[i] = free.last()!
+            free[i] = free.last!
             free.pop()
             if left: kids[u].l = v else: kids[u].r = v
             free.push((v, true))
