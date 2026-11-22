@@ -11,8 +11,8 @@ pub struct Pair<V>(lo: V, hi: V):
     ///
     /// cost: O(1)
     /// traps: when `u == v`
-    /// example: `Pair<0..4>.new(3, 1).lo == 1`
-    /// example: `Pair<0..4>.new(3, 1) == Pair<0..4>.new(1, 3)`
+    /// example: `Pair<0..4>(3, 1).lo == 1`
+    /// example: `Pair<0..4>(3, 1) == Pair<0..4>(1, 3)`
     pub fn new(u: V, v: V) -> Pair<V> = todo
 
     /// The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping
@@ -21,14 +21,14 @@ pub struct Pair<V>(lo: V, hi: V):
     /// cost: O(1)
     /// traps: never
     /// example: `Pair<0..4>.at(2, 2) == None`
-    /// example: `Pair<0..4>.at(2, 0) == Some(Pair<0..4>.new(0, 2))`
+    /// example: `Pair<0..4>.at(2, 0) == Some(Pair<0..4>(0, 2))`
     pub fn at(u: V, v: V) -> ?Pair<V> = todo
 
     /// The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.
     ///
     /// cost: O(1)
     /// traps: when `v` is neither `self.lo` nor `self.hi`
-    /// example: `Pair<0..4>.new(1, 3).other(3) == 1`
+    /// example: `Pair<0..4>(1, 3).other(3) == 1`
     pub fn other(self, v: V) -> V = todo
 
 /// The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for

@@ -1695,10 +1695,10 @@ impl<'a> Checker<'a> {
                 show(&place),
                 show(target),
             );
-            if let Some(diag) = self.error(codes::LENT_TWICE, place.span, message) {
-                diag.help =
-                    Some("compute the right side first (`let t = ...`), then assign".into());
-            }
+            self.sink.push(
+                Diagnostic::warning(codes::SAME_PLACE_READ_WRITE, place.span, message)
+                    .with_help("compute the right side first (`let t = ...`), then assign"),
+            );
         }
     }
 

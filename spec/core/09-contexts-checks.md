@@ -28,27 +28,27 @@ read(base: 0)                     // a call argument beats every context
 
 - Precedence: call argument, then the innermost `with`, then outer ones,
   then the default. A bare `with` line must come first in its block
-  (the formatter enforces it).
+  (the formatter enforces it). (R09.1.1)
 - Values are compile-time constants. A runtime value is a parameter or a
   fresh type (`type Z = Mod(p)`), never a context: a table built under
-  one modulus must not be read under another.
+  one modulus must not be read under another. (R09.1.2)
 - Contexts are **lexical**: a body sees the contexts where it is written.
   A function that should follow its caller declares `uses ctx`; the
   caller's value is then an implicit compile-time argument, passed on to
   further `uses` callees. `uses` is inferred only for nested fns and
-  lambdas; public fns, trait methods and modules declare it.
+  lambdas; public fns, trait methods and modules declare it. (R09.1.3)
 - Cost: one specialized copy of each `uses` function per distinct value;
-  `cpl explain` lists them and the bundle-size warning counts them.
+  `cpl explain` lists them and the bundle-size warning counts them. (R09.1.4)
 - Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one
   field per lint: `with lint(float_eq: allow)`), `stress` (default sizes,
-  time budget). User libraries declare their own.
+  time budget). User libraries declare their own. (R09.1.5)
 
 ## 9.2 Build modes
 
 | Mode | Used by | Checks |
 |---|---|---|
-| checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C++ with `-DLOCAL` | every unproven check traps |
-| release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless opted in |
+| checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C++ with `-DLOCAL` | every unproven check traps (R09.2.1) |
+| release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless opted in (R09.2.2) |
 
 **The rule for every check** (decision 148): on the judge only valid
 programs matter, so release optimizes for them. Valid programs behave
@@ -70,15 +70,15 @@ compiler can prove, and what each build does.
 
 | Check | Proved away when | Checked build | Release |
 |---|---|---|---|
-| index `a[i]` with `i: D` on `[D]T` | always (the type is the proof) | none | none |
-| `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with value and bounds | unchecked |
-| store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming value and range | truncates to the width |
-| `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wraps |
-| `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value |
-| division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 | trap | defined fallback (0) |
-| `assert c` | n/a | trap with the message | skipped |
-| `@cache` cold-mode check | n/a | stress compares cold and cached runs | none |
-| `law` promises | n/a | stress samples them | none |
+| index `a[i]` with `i: D` on `[D]T` | always (the type is the proof) | none | none (R09.3.1) |
+| `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with value and bounds | unchecked (R09.3.2) |
+| store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming value and range | truncates to the width (R09.3.3) |
+| `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wraps (R09.3.4) |
+| `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value (R09.3.5) |
+| division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 | trap | defined fallback (0) (R09.3.6) |
+| `assert c` | n/a | trap with the message | skipped (R09.3.7) |
+| `@cache` cold-mode check | n/a | stress compares cold and cached runs | none (R09.3.8) |
+| `law` promises | n/a | stress samples them | none (R09.3.9) |
 
 Each row has one check name, used by `with checks(...)`,
 `release_checks:` and diagnostics: `bounds` (the first two rows),
@@ -103,29 +103,29 @@ unchecked:                                           // every check off, every b
 
 - `with checks(...: on)` keeps those checks in release for a block or
   file. A judge profile can keep them for a whole submission with
-  `release_checks: [ranges, overflow]`.
+  `release_checks: [ranges, overflow]`. (R09.4.1)
 - `with checks(...: off)` removes a check in checked builds too, for a
-  hot loop whose stress runs are too slow.
+  hot loop whose stress runs are too slow. (R09.4.2)
 - `unchecked:` is the greppable escape: a statement block with every
-  check off in every build.
+  check off in every build. (R09.4.3)
 - Lints are contexts: `with lint(name: allow)` silences one in a scope.
   Lints are declared by the library that owns the names they mention;
-  the linter has no hard-coded stdlib names.
+  the linter has no hard-coded stdlib names. (R09.4.4)
 
 ## 9.5 Trust tiers
 
 Every fact the compiler relies on is in one tier (`05-ownership.md`):
 
 1. **proved**: the type checker, range analysis or borrow rules
-   establish it; no runtime cost.
-2. **trapped**: not proved; checked builds trap, release assumes it.
+   establish it; no runtime cost. (R09.5.1)
+2. **trapped**: not proved; checked builds trap, release assumes it. (R09.5.2)
 3. **promised**: the author states it and tooling samples it: `law`
    declarations, `@cache` correctness. Codegen never optimizes on a
    promise alone beyond the documented specialization it selects; a
-   false promise gives a wrong answer, never undefined behaviour.
+   false promise gives a wrong answer, never undefined behaviour. (R09.5.3)
 4. **unsafe**: `@trusted:` blocks and `@cpp` inline C++. These are the
    only places a contestant can write undefined behaviour, and
-   `cpl explain` lists every site.
+   `cpl explain` lists every site. (R09.5.4)
 
 ## 9.6 Recursion and the stack
 

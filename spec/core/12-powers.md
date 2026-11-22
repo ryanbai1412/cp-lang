@@ -67,13 +67,13 @@ keeps it at its stated cost (decision 142):
 
 | Needs | Operations |
 |---|---|
-| `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `keyed()`, `collect()`, `sorted()` |
-| `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys |
-| `Sized` | `.len` |
-| `Bidir` | `.rev`, `.last` as an O(1) property |
-| `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip` |
-| `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment |
-| `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` |
+| `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `keyed()`, `collect()`, `sorted()` (R12.4.1) |
+| `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys (R12.4.2) |
+| `Sized` | `.len` (R12.4.3) |
+| `Bidir` | `.rev`, `.last` as an O(1) property (R12.4.4) |
+| `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip` (R12.4.5) |
+| `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment (R12.4.6) |
+| `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` (R12.4.7) |
 
 Generators are `Seq` only: a yield number is not an identity, so
 `dfs(s).argmax()` is an error suggesting `.keyed(by: v => v)` or `.max()`.
@@ -87,18 +87,18 @@ Every value is owned or lent (read or `mut`); the mode is not part of the
 type. Five rules, with no lifetime annotations (decisions 141, 144; the
 full model with exercises is `spec/core/05-ownership.md`):
 
-1. Parameters are lent: a fn never owns its arguments.
+1. Parameters are lent: a fn never owns its arguments. (R12.4.8)
 2. A value is lent if any part is: a struct's fields, a closure's captures,
    a generator value's arguments. It is `mut`-lent if any part is, and it
-   borrows every source its parts borrow.
+   borrows every source its parts borrow. (R12.4.9)
 3. A lent value lives until its last use. It may be kept in a `let`, `var`,
    field or container that dies no later than its sources (same or inner
    block, declared after them); never returned except by a fn declared
-   `lends`, stored through a parameter, or stored in a top-level `var`.
+   `lends`, stored through a parameter, or stored in a top-level `var`. (R12.4.10)
 4. While it lives its sources are lent: a read lend forbids writing,
    resizing or moving them, and a `mut` lend excludes every other access.
-   A closure's captures are borrowed per call, not for its life.
-5. Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies.
+   A closure's captures are borrowed per call, not for its life. (R12.4.11)
+5. Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies. (R12.4.12)
 
 A view is a `Seq` (and `Indexed` when reads stay O(1)) built from a lent
 source. There is no `View` trait and no marker on the struct: the same
@@ -247,22 +247,22 @@ Graphs (decision 146) need five mechanisms; each is open to user code.
           fn out(self, u: V) -> yields Self.Arc
 
 - **Trait aliases.** `pub trait WeightedNext<V, W> = Next<V> where
-  Self.Arc: Weighted<W>` names a bound; it has no members and no impls.
+  Self.Arc: Weighted<W>` names a bound; it has no members and no impls. (R12.11.1)
 - **Inline bounds.** A trait in a parameter's type is a fresh hidden type
   parameter, static per caller, like `P: T -> Bool` for fns:
   `fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>)`. Name it
   (`<G: Next<V>>(g: G)`) when a return type or a second parameter mentions
-  it.
+  it. (R12.11.2)
 - **Field traits.** A trait whose members are all `@get` is satisfied by
   any record with fields of those names and types: `(to: V, w: Int)` is a
   `Target<V> + Weighted<Int>`. A named struct opts in with a bodiless
-  `impl Weighted<Int> for Road`.
+  `impl Weighted<Int> for Road`. (R12.11.3)
 - **Row bounds and record update.** `R: (u: V, v: V, ..)` bounds a type
   parameter to records with at least those fields; `(to: V, ..R without
   (u, v))` is R's other fields after new ones, in R's order; `(..a, to: u)`
   is `a` with `to` replaced (heap fields move). No record subtyping: rows
   only bound type parameters, matched by monomorphization. A generic body
-  sees only the named fields.
+  sees only the named fields. (R12.11.4)
 
 Needs: `Graph.directed`/`undirected` over any edge record, `keep:`,
 `transpose`, every graph algorithm's signature, `.weighted(f)`.

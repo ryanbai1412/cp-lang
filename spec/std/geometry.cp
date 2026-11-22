@@ -356,7 +356,7 @@ pub struct OnlineHull:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `OnlineHull.new().is_empty == true`
+    /// example: `OnlineHull().is_empty == true`
     pub fn new() -> OnlineHull = todo
 
     /// Insert `p` and report whether the hull changed (whether `p` is now a corner).
@@ -365,9 +365,9 @@ pub struct OnlineHull:
     ///
     /// cost: O(log n) amortized
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)) == true`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)) == true`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
     pub fn add(mut self, p: Pt) -> Bool = todo
 
     /// Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
@@ -377,9 +377,9 @@ pub struct OnlineHull:
     ///
     /// cost: O(log n)
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(1, 1)) == Location.Inside`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
-    /// example: `OnlineHull.new().locate(Pt(0, 0)) == Location.Outside`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(1, 1)) == Location.Inside`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
+    /// example: `OnlineHull().locate(Pt(0, 0)) == Location.Outside`
     pub fn locate(self, p: Pt) -> Location = todo
 
     /// The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
@@ -389,32 +389,32 @@ pub struct OnlineHull:
     /// cost: O(log n)
     /// ties: the first in `vertices()` order
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
-    /// example: `OnlineHull.new().extreme(Pt(1, 0)) == None`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
+    /// example: `OnlineHull().extreme(Pt(1, 0)) == None`
     pub fn extreme(self, dir: Pt) -> ?Pt = todo
 
     /// Twice the area of the current hull; 0 with fewer than 3 non-collinear points.
     ///
     /// cost: O(1)
     /// traps: when the value overflows `Int`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.area2 == 16`
-    /// example: `OnlineHull.new().area2 == 0`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.area2 == 16`
+    /// example: `OnlineHull().area2 == 0`
     pub @get fn area2(self) -> Int = todo
 
     /// The number of hull corners.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
     pub @get fn len(self) -> Int = todo
 
     /// Whether no point has been added since creation or the last `clear`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `OnlineHull.new().is_empty == true`
-    /// example: `var h = OnlineHull.new(); h.add(Pt(1, 1)); h.is_empty == false`
+    /// example: `OnlineHull().is_empty == true`
+    /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
     /// The current hull corners, counter-clockwise from the least `(x, y)`.
@@ -422,7 +422,7 @@ pub struct OnlineHull:
     /// cost: O(n) time and memory
     /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
     pub fn vertices(self) -> List<Pt> = todo
 
     /// The current hull corners, yielded in `vertices()` order without building a list.
@@ -430,14 +430,14 @@ pub struct OnlineHull:
     /// cost: O(n)
     /// order: counter-clockwise, starting at the least `(x, y)`
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.iter().collect() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
+    /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.iter().collect() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
     pub fn iter(self) -> yields Pt = todo
 
     /// Remove every point; the hull is then empty.
     ///
     /// cost: O(n)
     /// traps: never
-    /// example: `var h = OnlineHull.new(); h.add(Pt(1, 1)); h.clear(); h.is_empty`
+    /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.clear(); h.is_empty`
     pub fn clear(mut self) = todo
 
 fn min_yx_idx(poly: List<Pt>) -> Int = todo

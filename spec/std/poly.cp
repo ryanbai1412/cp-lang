@@ -197,7 +197,7 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n)
     /// empty: `Poly.new([])` is the zero polynomial
     /// traps: never
-    /// example: `Poly<Int>.new([1, 2, 0]).len == 3`
+    /// example: `Poly<Int>([1, 2, 0]).len == 3`
     pub fn new(c: List<T>) -> Poly<T> = todo
 
     /// The constant polynomial `v`, with one coefficient `T.from_int(v)`.
@@ -232,7 +232,7 @@ pub struct Poly<T>(c: List<T>):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Poly<Int>.new([1, 0]).len == 2`
+    /// example: `Poly<Int>([1, 0]).len == 2`
     pub @get fn len(self) -> Int = todo
 
     /// The degree: the highest index with a nonzero coefficient, `-1` for the zero polynomial. Stored
@@ -240,43 +240,43 @@ pub struct Poly<T>(c: List<T>):
     ///
     /// cost: O(1) plus the number of stored trailing zeros
     /// traps: never
-    /// example: `Poly<Int>.new([1, 2, 0]).deg() == 1`
-    /// example: `Poly<Int>.new([0, 0]).deg() == -1`
+    /// example: `Poly<Int>([1, 2, 0]).deg() == 1`
+    /// example: `Poly<Int>([0, 0]).deg() == -1`
     pub fn deg(self) -> Int = todo
 
     /// Whether all coefficients are zero (including when there are none).
     ///
     /// cost: O(1) plus the number of stored trailing zeros
     /// traps: never
-    /// example: `Poly<Int>.new([0, 0]).is_zero() and not Poly<Int>.one.is_zero()`
+    /// example: `Poly<Int>([0, 0]).is_zero() and not Poly<Int>.one.is_zero()`
     pub fn is_zero(self) -> Bool = todo
 
     /// Read coefficient `i` (0 when `i >= self.len`).
     ///
     /// cost: O(1)
     /// traps: when `i < 0`
-    /// example: `Poly<Int>.new([1, 2]).at(1) == 2 and Poly<Int>.new([1, 2]).at(5) == 0`
+    /// example: `Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0`
     pub fn at(self, i: Int) -> T = todo
 
     /// Write coefficient `i`, growing with zeros if needed.
     ///
     /// cost: O(1), or O(i) when it grows
     /// traps: when `i < 0`
-    /// example: `var p = Poly<Int>.new([1]); p.set(3, 7); p.len == 4 and p.at(2) == 0 and p.at(3) == 7`
+    /// example: `var p = Poly<Int>([1]); p.set(3, 7); p.len == 4 and p.at(2) == 0 and p.at(3) == 7`
     pub fn set(mut self, i: Int, v: T) = todo
 
     /// The formal derivative `f'(x)`, as the free `deriv` does on the coefficients.
     ///
     /// cost: O(n)
     /// traps: never
-    /// example: `Poly<Int>.new([1, 2, 3]).deriv().at(1) == 6`
+    /// example: `Poly<Int>([1, 2, 3]).deriv().at(1) == 6`
     pub fn deriv(self) -> Poly<T> = todo
 
     /// The formal integral with zero constant term, as the free `integral`.
     ///
     /// cost: O(n)
     /// traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([1, 2, 3]).integral().at(3) == Z(1)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 3]).integral().at(3) == Z(1)`
     pub fn integral(self) -> Poly<T> = todo
 
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
@@ -284,65 +284,65 @@ pub struct Poly<T>(c: List<T>):
     ///
     /// cost: O((n + m) log(n + m))
     /// traps: never
-    /// example: `Poly<Int>.new([1, 2, 3, 4]).transposed_mul(Poly<Int>.new([1, 1])).len == 3`
-    /// example: `Poly<Int>.new([1, 2, 3, 4]).transposed_mul(Poly<Int>.new([1, 1])).at(2) == 7`
+    /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).len == 3`
+    /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).at(2) == 7`
     pub fn transposed_mul(self, b: Poly<T>) -> Poly<T> = todo
 
     /// Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).
     ///
     /// cost: O(n)
     /// traps: when `n < 0`
-    /// example: `Poly<Int>.new([1, 2, 3]).truncated(2).len == 2`
-    /// example: `Poly<Int>.new([1]).truncated(3).at(2) == 0`
+    /// example: `Poly<Int>([1, 2, 3]).truncated(2).len == 2`
+    /// example: `Poly<Int>([1]).truncated(3).at(2) == 0`
     pub fn truncated(self, n: Int) -> Poly<T> = todo
 
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([1, -1]).inv(3).at(2) == Z(1)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
     pub fn inv(self, n: Int) -> Poly<T> = todo
 
     /// The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([1, 2, 1]).log(3).at(2) == Z(-1)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
     pub fn log(self, n: Int) -> Poly<T> = todo
 
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([0, 2]).exp(3).at(2) == Z(2)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
     pub fn exp(self, n: Int) -> Poly<T> = todo
 
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([1, 1]).pow(3, 4).at(2) == Z(3)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
     pub fn pow(self, k: Int, n: Int) -> Poly<T> = todo
 
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
     /// cost: O(n log n + log^2 P)
     /// traps: when `n < 0`
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
     pub fn sqrt(self, n: Int) -> ?Poly<T> = todo
 
     /// The value at `x` by Horner's rule.
     ///
     /// cost: O(n)
     /// traps: never
-    /// example: `Poly<Int>.new([1, 2, 3]).eval(2) == 17`
+    /// example: `Poly<Int>([1, 2, 3]).eval(2) == 17`
     pub fn eval(self, x: T) -> T = todo
 
     /// The Taylor shift `self(x + c)`, as `taylor_shift`.
     ///
     /// cost: O(n log n)
     /// traps: when `T` cannot divide by the factorials below `n` (`n > P` for `Mod<P>`)
-    /// example: `type Z = Mod<998244353>; Poly<Z>.new([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
+    /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
     pub fn shift(self, c: T) -> Poly<T> = todo
 
 impl Add for Poly<T>:
@@ -373,7 +373,7 @@ pub struct SubproductTree<P>:
     /// cost: O(m log^2 m) time, O(m log m) space
     /// empty: a tree over no points
     /// traps: when a transform length exceeds what `P` supports
-    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; let t = SubproductTree.new(xs); t.eval([Z(1), Z(2), Z(3)]) == [Z(1), Z(6), Z(17)]`
+    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; let t = SubproductTree(xs); t.eval([Z(1), Z(2), Z(3)]) == [Z(1), Z(6), Z(17)]`
     pub fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P> = todo
 
     /// Evaluate `f` at every point in the tree: `[f(x) for x in xs]`.
@@ -382,7 +382,7 @@ pub struct SubproductTree<P>:
     /// empty: `[]` for a tree over no points
     /// order: one value per point, in `xs` order
     /// traps: when the tree was built with `keep >= 0`
-    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree.new(xs).eval([Z(0), Z(0), Z(1)]) == [Z(1), Z(4)]`
+    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree(xs).eval([Z(0), Z(0), Z(1)]) == [Z(1), Z(4)]`
     pub fn eval(self, f: List<Mod<P>>) -> List<Mod<P>> = todo
 
     /// Transposed multipoint evaluation (Bostan-Lecerf-Schost / Tellegen's principle): the transpose
@@ -392,7 +392,7 @@ pub struct SubproductTree<P>:
     /// empty: `[]` for a tree over no points
     /// order: by power `k`, increasing
     /// traps: when `c.len != m`, or `keep` is in `0..m`
-    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree.new(xs).eval_transposed([Z(1), Z(1)]) == [Z(2), Z(3)]`
+    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree(xs).eval_transposed([Z(1), Z(1)]) == [Z(2), Z(3)]`
     pub fn eval_transposed(self, c: List<Mod<P>>) -> List<Mod<P>> = todo
 
     /// The unique polynomial of degree `< m` taking values `ys` at the tree's points, as exactly `m`
@@ -402,7 +402,7 @@ pub struct SubproductTree<P>:
     /// empty: `[]`
     /// order: lowest degree first
     /// traps: when `ys.len != m`, two points are equal, or the tree was built with `keep >= 0`
-    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; SubproductTree.new(xs).interpolate([Z(1), Z(4), Z(9)]) == [Z(1), Z(2), Z(1)]`
+    /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; SubproductTree(xs).interpolate([Z(1), Z(4), Z(9)]) == [Z(1), Z(2), Z(1)]`
     pub fn interpolate(self, ys: List<Mod<P>>) -> List<Mod<P>> = todo
 
 /// The exact coefficient `[x^n] (P(x) / Q(x))` via Bostan-Mori (`q[0] != 0`): the `n`-th term of

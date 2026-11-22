@@ -140,6 +140,7 @@ pub mod codes {
     pub const DEBUG_CHANGES: Code = Code("E0312");
     /// A value mentioning a fresh domain escapes its declaring block.
     pub const DOMAIN_ESCAPES: Code = Code("E0313");
+    pub const NON_EXHAUSTIVE_MATCH: Code = Code("E0314");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
@@ -161,6 +162,11 @@ pub mod codes {
     pub const BAD_PROJECTION: Code = Code("E0604");
     pub const BAD_INDEX_IMPL: Code = Code("E0605");
     pub const MISSING_IMPL: Code = Code("E0606");
+    /// A warning: an assignment whose right side changes the place it writes.
+    pub const SAME_PLACE_READ_WRITE: Code = Code("L0601");
+
+    /// A fixed-width integer type name; widths come from ranges.
+    pub const NO_NARROW_INT: Code = Code("E0901");
 
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");

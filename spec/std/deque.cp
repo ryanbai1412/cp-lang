@@ -2,7 +2,7 @@
 
 use std.seq.{remove}
 
-/// A queue with both ends open: `var q = Deque<Int>.new()`. `push` / `pop` work at the back,
+/// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized O(1); `q[i]` is the `i`-th element
 /// from the front in O(1). Memory is a ring of at most twice the largest length.
 pub struct Deque<T>:
@@ -12,11 +12,11 @@ pub struct Deque<T>:
     mask: Int
     want: Int
 
-    /// Create an empty `Deque<T>`. O(1).
+    /// Create an empty `Deque<T>`.
     ///
     /// cost: O(1); nothing is allocated until the first push
     /// traps: never
-    /// example: `var q: Deque<Int> = Deque.new(); q.len == 0`
+    /// example: `var q: Deque<Int> = Deque(); q.len == 0`
     pub fn new() -> Deque<T> = todo
 
     /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
@@ -42,20 +42,20 @@ pub struct Deque<T>:
     /// example: `var q = Deque.of([1, 2]); q.reserve(100); q.to_list() == [1, 2]`
     pub fn reserve(mut self, cap: Int) = todo
 
-    /// Number of elements currently in the deque. O(1).
+    /// Number of elements currently in the deque.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([4, 5]).len == 2`
     pub @get fn len(self) -> Int = todo
-    /// Whether the deque is empty. O(1).
+    /// Whether the deque is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([7]).is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// Remove all elements from the deque. O(1).
+    /// Remove all elements from the deque.
     ///
     /// The capacity is kept, so refilling does not reallocate.
     ///
@@ -73,14 +73,14 @@ pub struct Deque<T>:
 
     fn grow_to(mut self, cap: Int, fill: T) = todo
 
-    /// Append `x` to the back of the deque. O(1) amortized.
+    /// Append `x` to the back of the deque.
     ///
     /// cost: O(1) amortized; a full ring doubles
     /// traps: never
     /// example: `var q = Deque.of([1]); q.push(2); q.to_list() == [1, 2]`
     pub fn push(mut self, x: T) = todo
 
-    /// Prepend `x` to the front of the deque. O(1) amortized.
+    /// Prepend `x` to the front of the deque.
     ///
     /// Every existing element moves one place back: `q[0]` is now `x`.
     ///
@@ -164,7 +164,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([7, 8]).items.collect() == [(0, 7), (1, 8)]`
     pub @get fn items(self) -> yields (Int, T) = todo
 
-    /// The `i`-th element from the front. O(1).
+    /// The `i`-th element from the front.
     ///
     /// `q[i]` calls this; place `0` is the front and `len - 1` the back.
     ///
@@ -174,14 +174,14 @@ pub struct Deque<T>:
     /// example: `var q = Deque.of([1]); q.push_front(0); q[0] == 0`
     pub fn get(self, i: Int) -> T = todo
 
-    /// Overwrite the `i`-th element from the front (W8 `IndexSet` backing `dq[i] = x`). O(1).
+    /// Overwrite the `i`-th element from the front (W8 `IndexSet` backing `dq[i] = x`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..len`
     /// example: `var q = Deque.of([7, 8]); q[0] = 9; q.to_list() == [9, 8]`
     pub fn set(mut self, i: Int, x: T) = todo
 
-    /// Materialize the elements front to back as a `List<T>`. O(n).
+    /// Materialize the elements front to back as a `List<T>`.
     ///
     /// cost: O(n), one new `List`
     /// empty: `[]`
@@ -190,7 +190,7 @@ pub struct Deque<T>:
     /// example: `var q = Deque.of([2]); q.push_front(1); q.to_list() == [1, 2]`
     pub fn to_list(self) -> List<T> = todo
 
-    /// Yield elements front to back without allocating. O(n).
+    /// Yield elements front to back without allocating.
     ///
     /// `for x in q` uses this.
     ///
@@ -201,7 +201,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([1, 2]).each().collect() == [1, 2]`
     pub fn each(self) -> yields T = todo
 
-    /// Yield elements back to front without allocating. O(n).
+    /// Yield elements back to front without allocating.
     ///
     /// cost: O(1) per step
     /// empty: yields nothing
@@ -210,7 +210,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([1, 2]).each_rev().collect() == [2, 1]`
     pub fn each_rev(self) -> yields T = todo
 
-    /// Rotate elements left by `k` positions (`k` mod `len`). O(min(k, n - k)).
+    /// Rotate elements left by `k` positions (`k` mod `len`).
     ///
     /// The element at place `k` becomes the front. `k` is reduced with Euclidean `%`, so a
     /// negative `k` rotates right: `rotate_left(-1)` is `rotate_right(1)`.
@@ -222,7 +222,7 @@ pub struct Deque<T>:
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(-1); q.to_list() == [4, 1, 2, 3]`
     pub fn rotate_left(mut self, k: Int) = todo
 
-    /// Rotate elements right by `k` positions (`k` mod `len`). O(min(k, n - k)).
+    /// Rotate elements right by `k` positions (`k` mod `len`).
     ///
     /// The back `k` elements move to the front, in order. `rotate_right(k)` is
     /// `rotate_left(-k)`.
@@ -238,21 +238,21 @@ pub struct Deque<T>:
 pub struct LinkedList<T>:
     _len: Int
 
-    /// Create an empty `LinkedList<T>`. O(1).
+    /// Create an empty `LinkedList<T>`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var l: LinkedList<Int> = LinkedList.new(); l.len == 0`
+    /// example: `var l: LinkedList<Int> = LinkedList(); l.len == 0`
     pub fn new() -> LinkedList<T> = todo
 
-    /// Create a singleton `LinkedList<T>` containing `x`. O(1).
+    /// Create a singleton `LinkedList<T>` containing `x`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.of(5).each().collect() == [5]`
     pub fn of(x: T) -> LinkedList<T> = todo
 
-    /// Build a `LinkedList<T>` from `xs`, front to back. O(n).
+    /// Build a `LinkedList<T>` from `xs`, front to back.
     ///
     /// cost: O(n)
     /// empty: an empty list
@@ -260,21 +260,21 @@ pub struct LinkedList<T>:
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
     pub fn from_list(xs: List<T>) -> LinkedList<T> = todo
 
-    /// Number of elements currently in the list. O(1).
+    /// Number of elements currently in the list.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.from_list([1, 2, 3]).len == 3`
     pub @get fn len(self) -> Int = todo
 
-    /// Whether the list is empty. O(1).
+    /// Whether the list is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.of(1).is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The front element, or `None` when the list is empty (as `Deque.first`). O(1).
+    /// The front element, or `None` when the list is empty (as `Deque.first`).
     ///
     /// cost: O(1)
     /// empty: `None`
@@ -283,7 +283,7 @@ pub struct LinkedList<T>:
     /// example: `LinkedList.from_list([1, 2]).first == Some(1)`
     pub @get fn first(self) -> ?T = todo
 
-    /// The back element, or `None` when the list is empty (as `Deque.last`). O(1).
+    /// The back element, or `None` when the list is empty (as `Deque.last`).
     ///
     /// cost: O(1)
     /// empty: `None`
@@ -292,21 +292,21 @@ pub struct LinkedList<T>:
     /// example: `LinkedList.from_list([1, 2]).last == Some(2)`
     pub @get fn last(self) -> ?T = todo
 
-    /// Append `x` to the back. O(1).
+    /// Append `x` to the back.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push(2); l.each().collect() == [1, 2]`
     pub fn push(mut self, x: T) = todo
 
-    /// Prepend `x` to the front. O(1).
+    /// Prepend `x` to the front.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push_front(0); l.each().collect() == [0, 1]`
     pub fn push_front(mut self, x: T) = todo
 
-    /// Remove and return the back element, or `None` if empty. O(1).
+    /// Remove and return the back element, or `None` if empty.
     ///
     /// cost: O(1)
     /// empty: `None`
@@ -315,7 +315,7 @@ pub struct LinkedList<T>:
     pub fn pop(mut self) -> ?T = todo
 
 
-    /// Remove and return the front element, or `None` if empty. O(1).
+    /// Remove and return the front element, or `None` if empty.
     ///
     /// cost: O(1)
     /// empty: `None`
@@ -323,7 +323,7 @@ pub struct LinkedList<T>:
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop_front() == Some(1) and l.first == 2`
     pub fn pop_front(mut self) -> ?T = todo
 
-    /// Splice all elements of `other` onto the back of `self`, consuming `other`. O(1).
+    /// Splice all elements of `other` onto the back of `self`, consuming `other`.
     ///
     /// The elements keep their order: `self`'s first, then `other`'s. No element is copied.
     ///
@@ -332,7 +332,7 @@ pub struct LinkedList<T>:
     /// example: `var a = LinkedList.from_list([1, 2]); a.splice_back(LinkedList.from_list([3, 4])); a.each().collect() == [1, 2, 3, 4]`
     pub fn splice_back(mut self, other: LinkedList<T>) = todo
 
-    /// Splice all elements of `other` onto the front of `self`, consuming `other`. O(1).
+    /// Splice all elements of `other` onto the front of `self`, consuming `other`.
     ///
     /// The elements keep their order: `other`'s first, then `self`'s.
     ///
@@ -349,14 +349,14 @@ pub struct LinkedList<T>:
     /// example: `var a = LinkedList.from_list([1, 2, 3]); a.reverse(); a.each().collect() == [3, 2, 1]`
     pub fn reverse(mut self) = todo
 
-    /// Remove all elements. O(1).
+    /// Remove all elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.clear(); a.is_empty`
     pub fn clear(mut self) = todo
 
-    /// Yield elements front to back. O(n).
+    /// Yield elements front to back.
     ///
     /// cost: O(1) per step
     /// empty: yields nothing
@@ -365,7 +365,7 @@ pub struct LinkedList<T>:
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
     pub fn each(self) -> yields T = todo
 
-    /// Yield elements back to front. O(n).
+    /// Yield elements back to front.
     ///
     /// cost: O(1) per step
     /// empty: yields nothing

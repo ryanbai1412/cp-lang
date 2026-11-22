@@ -6,7 +6,7 @@
   non-commutative op such as matrix product.
 - Contradiction: lib/sequence-patterns.md says `Window(op)` implements
   `Track<T>`, whose `pop` takes the leaving element (`pop(mut self, x: T)`);
-  `Window.pop` takes none. Left the signature; one side should change.
+  `Window.pop` takes none. Left the signature; one side should change. (resolved: `impl Track<T> for Window<T, M>` in window.cp; `pop(x)` ignores `x` and calls `pop()`)
 - Contradiction: lib/ops-ranges.md §16 still shows the old API
   (`w.push(i, a[i])`, `w.drop_before(i - k)`, `w.fold`) and §10 a `drop` method;
   the stub has `push(x)`, `pop()` and `all`. Documented the stub. (resolved: kept stub; ops-ranges §10 and §16 fixed)
@@ -28,3 +28,9 @@
   never undoes past (its own `mark` is taken at creation).
 - `Window.all`, `Tracked.state` examples use an `Int` state; `track` closures
   are written `(mut s, x) => s += x`, as `(mut d, e) => ...` in core.
+- (resolved) `Track` said `Counter<K>` and `Bag<T>` implement it, but neither had
+  `push`/`pop`, and `Window.pop()` takes no argument while `Track.pop(x)` takes
+  one. Outcome: `impl Track<K> for Counter<K, Int>` (count up and down, so `len`
+  is the distinct count) and `impl Track<T> for Window<T, M>` (`pop(x)` ignores
+  `x`); `Bag<T>` dropped from the list. The `seq.cp` two-pointer examples that
+  used undefined `Distinct()` and `Sum()` now use these.

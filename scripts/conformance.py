@@ -17,7 +17,7 @@ CPL = os.path.join(ROOT, "target", "debug", "cpl")
 ENV = dict(os.environ, CPL_SPEC="1", CPL_STD=os.path.join(ROOT, "spec", "std"))
 EXPECT = re.compile(r'^//\s*expect:\s*(ok(?:,\s*output\s+"(.*)")?|([ELRW]\d{4})\s+at\s+(\d+)(?:\s*\((\w+)\))?)\s*$')
 RULE_REF = re.compile(r"^//\s*rule:\s*(.+)$", re.M)
-RULE_DEF = re.compile(r"\(R(\d\d(?:\.\d+)+)\)")
+RULE_DEF = re.compile(r"\(R(\d\d[a-z]?(?:\.\d+)+)\)")
 
 
 def run_case(path):
