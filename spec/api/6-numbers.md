@@ -78,14 +78,25 @@ decides the element type of the folds:
 | Structure | `a: [V]0..=1e9` stores | Why |
 |---|---|---|
 | `SegTree(max, a)` | 4-byte nodes | `max` is `Selective`: the result is one of the inputs, so it stays in `0..=1e9` |
-| `SegTree(+, a)` | 8-byte nodes | `+` is not closed on a range; its `Monoid` exists on `Int`, so `T` is `Int` |
+| `SegTree(+, a)` | 8-byte nodes | `+` is not closed on a range; with `n <= 2e5` sums reach `2e14`, so `T` is `Int` |
+| `SegTree(+, b)`, `b: [V]1..=1e4`, `n <= 2e5` | 4-byte nodes | a node sums at most `V.count` inputs: `0..=2e9`, proven |
+| `SegTree<0..=4e9>(+, a)` | 4-byte nodes | you named the node type; node writes are range stores |
 | `SegTree(+, a.map(Z))` | 4-byte nodes | `Mod<P>` is closed under `+` |
 | `Prefix(+, a)` | `[V.cuts]Int` | sums |
 | `Heap(by: .d)` of `(d: Int, v: V)` | 16 bytes (12 + padding) | each field at its own width |
 
 This is the law machinery of round 5 doing layout work: `Selective`
 already promised "returns one of its operands", which is exactly the fact
-that keeps a range closed. No width annotations on structures exist.
+that keeps a range closed. `+` gets the same treatment from its interval
+rule: a fold of at most `V.count` inputs in `lo..=hi` lies in
+`V.count.lo * min(lo, 0) ..= V.count.hi * hi`, and the node type narrows
+when that fits. The bound comes from the static bound of `V.count`, so it
+holds for every input; with `act:` or point writes of unbounded values
+there is no bound and nodes stay `Int`.
+
+To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every
+node write is then a range store under decision 148: checked builds trap
+with the node and the value, release truncates.
 
 ### Seeing and steering it
 
