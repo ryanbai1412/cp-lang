@@ -373,7 +373,7 @@ pub struct RelaxedConvolve<P>:
     /// cost: O(1)
     /// traps: never
     /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(0), Z(0)) == Z(0)`
-    pub fn new() -> RelaxedConvolve<P> = todo
+    pub fn new() -> RelaxedConvolve<P> = RelaxedConvolve([], [], [])
 
     /// Append `a[k] = ai` and `b[k] = bi` at the next index `k` and return `c[k] = sum_{i=0..=k}
     /// a[i] * b[k - i]`.
@@ -385,7 +385,21 @@ pub struct RelaxedConvolve<P>:
     /// traps: when `k` reaches the largest NTT length `P` supports
     /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(1), Z(3)) == Z(3)`
     /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(1), Z(3)); rc.push(Z(2), Z(4)) == Z(10)`
-    pub fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P> = todo
+    pub fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P>:
+        a.push(ai)
+        b.push(bi)
+        let i = a.len - 1
+        while c.len <= i: c.push(Mod<P>(0))
+        c[i] = c[i] + a[0] * b[i]
+        if i > 0: c[i] = c[i] + a[i] * b[0]
+        let q = i + 1
+        var w = 1
+        while q % w == 0 and q / w >= 2:
+            let j = q / w - 1
+            add_block(mut c, a, w, b, j * w, w, q)
+            if j != 1: add_block(mut c, b, w, a, j * w, w, q)
+            w *= 2
+        c[i]
 
 /// O(log^2 n) amortized per step. Semi-relaxed NTT convolution against a fixed `b`
 /// (supply `a[k]` online and immediately receive `c[k] = sum_{i=0..=k} a[i] * b[k - i]`).
@@ -404,14 +418,24 @@ pub struct SemiRelaxedConvolve<P>:
     /// traps: never
     /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
     /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>(e); sc.push(Z(5)) == Z(0)`
-    pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = todo
+    pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = SemiRelaxedConvolve(b, [], [])
 
     /// Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
     ///
     /// cost: O(log^2 k) amortized
     /// traps: when `k` reaches the largest NTT length `P` supports
     /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)); sc.push(Z(2)); sc.push(Z(5)) == Z(9)`
-    pub fn push(mut self, ai: Mod<P>) -> Mod<P> = todo
+    pub fn push(mut self, ai: Mod<P>) -> Mod<P>:
+        a.push(ai)
+        let i = a.len - 1
+        while c.len <= i: c.push(Mod<P>(0))
+        if not b.is_empty: c[i] = c[i] + ai * b[0]
+        let q = i + 1
+        var w = 1
+        while q % w == 0 and w < b.len:
+            add_block(mut c, a, q - w, b, w, w, q)
+            w *= 2
+        c[i]
 
 /// The product of every polynomial in `polys`, multiplied as a balanced tree.
 ///
@@ -425,7 +449,18 @@ pub struct SemiRelaxedConvolve<P>:
 /// example: `type Z = Mod<17>; convolve_all([[Z(1), Z(1)], [Z(1), Z(1)]]) == [Z(1), Z(2), Z(1)]`
 /// example: `type Z = Mod<17>; let e: List<List<Z>> = []; convolve_all(e) == [Z(1)]`
 /// example: `type Z = Mod<17>; let e: List<Z> = []; convolve_all([[Z(1), Z(1)], e]) == []`
-pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>> = todo
+pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
+    if polys.is_empty: return [Mod<P>(1)]
+    var layer = polys
+    while layer.len > 1:
+        var up = List<List<Mod<P>>>()
+        var k = 0
+        while k + 1 < layer.len:
+            up.push(times(layer[k], layer[k + 1]))
+            k += 2
+        if k < layer.len: up.push(layer[k])
+        layer = up
+    layer[0]
 
 /// The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.
 ///
@@ -439,7 +474,10 @@ pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>> = todo
 /// traps: when `a.len` is not a power of two, or `a[0] != 0`
 /// example: `type Z = Mod<17>; subset_exp([Z(0), Z(1), Z(1), Z(0)]) == [Z(1), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<17>; subset_exp([Z(0), Z(1), Z(1), Z(1)]) == [Z(1), Z(1), Z(1), Z(2)]`
-pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>>:
+    assert a.len.is_pow2, "subset_exp needs a power-of-two length"
+    assert a[0] == Mod<P>(0), "subset_exp needs `a[0] == 0`"
+    ranked(a, true)
 
 /// The set power series logarithm of `a`, length `2^k`, with `a[0] == 1`: the inverse of
 /// `subset_exp`, so `subset_exp(subset_log(a)) == a`.
@@ -450,7 +488,81 @@ pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 /// traps: when `a.len` is not a power of two, or `a[0] != 1`
 /// example: `type Z = Mod<17>; subset_log([Z(1), Z(1), Z(1), Z(2)]) == [Z(0), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<17>; subset_log([Z(1), Z(0)]) == [Z(0), Z(0)]`
-pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
+    assert a.len.is_pow2, "subset_log needs a power-of-two length"
+    assert a[0] == Mod<P>(1), "subset_log needs `a[0] == 1`"
+    ranked(a, false)
+
+@allow(unproven_list_index)
+fn add_block<P>(mut c: List<Mod<P>>, x: List<Mod<P>>, xs: Int, y: List<Mod<P>>, ys: Int, w: Int, at: Int):
+    let ylen = min(w, y.len - ys)
+    if ylen <= 0: return
+    let xa = [x[xs + t] for t in 0..w]
+    let ya = [y[ys + t] for t in 0..ylen]
+    let prod = times(xa, ya)
+    let base = xs + ys
+    while c.len < base + prod.len: c.push(Mod<P>(0))
+    unchecked:
+        for t in 0..prod.len:
+            if base + t >= at: c[base + t] = c[base + t] + prod[t]
+
+@allow(unproven_list_index)
+fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    if a.is_empty or b.is_empty: return []
+    let n = a.len + b.len - 1
+    if min(a.len, b.len) <= 32:
+        var out = List.filled(n, Mod<P>(0))
+        unchecked:
+            for i in 0..a.len:
+                for j in 0..b.len: out[i + j] = out[i + j] + a[i] * b[j]
+        return out
+    let m = bit_ceil(n)
+    var fa = List.filled(m, Mod<P>(0))
+    var fb = List.filled(m, Mod<P>(0))
+    unchecked:
+        for i in 0..a.len: fa[i] = a[i]
+        for i in 0..b.len: fb[i] = b[i]
+    ntt(mut fa)
+    ntt(mut fb)
+    unchecked:
+        for i in 0..m: fa[i] = fa[i] * fb[i]
+    ntt(mut fa, inverse: true)
+    fa.truncate(n)
+    fa
+
+@allow(unproven_list_index)
+fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
+    let n = a.len
+    let k = ctz(n)
+    var f = List.filled((k + 1) * n, Mod<P>(0))
+    unchecked:
+        for m in 0..n: f[popcount(m) * n + m] = a[m]
+        for r in 0..=k:
+            for bit in 0..k:
+                for m in 0..n:
+                    if m >> bit & 1 == 1: f[r * n + m] = f[r * n + m] + f[r * n + (m ^ (1 << bit))]
+        var p = List.filled(k + 1, Mod<P>(0))
+        var q = List.filled(k + 1, Mod<P>(0))
+        for m in 0..n:
+            for r in 0..=k: p[r] = f[r * n + m]
+            if exp:
+                q[0] = Mod<P>(1)
+                for t in 1..=k:
+                    var acc = Mod<P>(0)
+                    for j in 1..=t: acc = acc + Mod<P>(j) * p[j] * q[t - j]
+                    q[t] = acc * Mod<P>(t).inv()
+            else:
+                q[0] = Mod<P>(0)
+                for t in 1..=k:
+                    var acc = Mod<P>(0)
+                    for j in 1..t: acc = acc + Mod<P>(j) * q[j] * p[t - j]
+                    q[t] = p[t] - acc * Mod<P>(t).inv()
+            for r in 0..=k: f[r * n + m] = q[r]
+        for r in 0..=k:
+            for bit in 0..k:
+                for m in 0..n:
+                    if m >> bit & 1 == 1: f[r * n + m] = f[r * n + m] - f[r * n + (m ^ (1 << bit))]
+    [f[popcount(m) * n + m] for m in 0..n]
 
 @test
 fn ntt_round_trip_and_convolve():
