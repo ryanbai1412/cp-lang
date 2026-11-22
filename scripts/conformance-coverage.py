@@ -80,6 +80,8 @@ def diag_codes():
     reg = (ROOT / "crates/cpl-diag/src/registry.rs").read_text()
     for m in re.finditer(r'code: Code\("(\w+)"\),\s*title: "([^"]*)"', reg):
         codes[m.group(1)] = m.group(2)
+    for m in re.finditer(r'code: Code\("(\w+)"\),(?:(?!code: Code).)*?mode: "reserved"', reg, re.S):
+        UNTESTABLE.setdefault(m.group(1), "reserved in the registry")
     lint = (ROOT / "crates/cpl-lint/src/lib.rs").read_text()
     for m in re.finditer(r'code: Code\("(L\d{4})"\),(?:\s*\w+: [^\n]*\n)*?\s*title: "([^"]*)"', lint):
         codes.setdefault(m.group(1), m.group(2))
@@ -91,6 +93,8 @@ def diag_codes():
         if not m:
             continue
         name = m.group(3).strip()
+        if line.split("|")[3].strip().startswith("retired"):
+            UNTESTABLE.setdefault(m.group(1), "retired")
         if m.group(2):
             lo, hi = int(m.group(1)[1:]), int(m.group(2)[1:])
             for n in range(lo, hi + 1):

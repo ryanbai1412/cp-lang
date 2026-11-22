@@ -1,0 +1,3 @@
+// expect: R0601 at 1 (checked)
+fn f(k: Int) -> Int = if k == 0: 0 else: 1 + f(k - 1)
+print(f(100_000_000))

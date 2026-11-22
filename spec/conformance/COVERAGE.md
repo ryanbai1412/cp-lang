@@ -6,18 +6,18 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 656 (296 passing). Rules: 519.
+Cases: 675 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 49 rules, 57 cases; 0 uncovered, 12 happy-path only, 14 negative only
-- R02 (02-values-types.md): 50 rules, 63 cases; 0 uncovered, 10 happy-path only, 16 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 64 cases; 0 uncovered, 11 happy-path only, 14 negative only
+- R02 (02-values-types.md): 50 rules, 65 cases; 0 uncovered, 10 happy-path only, 16 negative only
 - R03 (03-numbers-layout.md): 23 rules, 26 cases; 2 uncovered, 9 happy-path only, 7 negative only
-- R04 (04-indices.md): 58 rules, 60 cases; 3 uncovered, 3 happy-path only, 1 negative only
+- R04 (04-indices.md): 59 rules, 61 cases; 3 uncovered, 3 happy-path only, 1 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 42 cases; 0 uncovered, 0 happy-path only, 4 negative only
 - R05 (05-ownership.md): 41 rules, 63 cases; 0 uncovered, 4 happy-path only, 17 negative only
-- R06 (06-control-functions.md): 23 rules, 43 cases; 0 uncovered, 6 happy-path only, 3 negative only
+- R06 (06-control-functions.md): 23 rules, 44 cases; 0 uncovered, 6 happy-path only, 3 negative only
 - R07 (07-sequences.md): 87 rules, 77 cases; 0 uncovered, 10 happy-path only, 4 negative only
 - R08 (08-traits-generics.md): 29 rules, 50 cases; 0 uncovered, 2 happy-path only, 8 negative only
 - R09 (09-contexts-checks.md): 25 rules, 24 cases; 5 uncovered, 5 happy-path only, 9 negative only
@@ -35,9 +35,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
 - R01.1.2 [0+ 1-] *negative only*: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
 - R01.1.3 [1+ 0-] *happy-path only*: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
-- R01.2.1 [0+ 1-] *negative only*: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
-- R01.2.2 [1+ 0-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
-- R01.2.3 [0+ 1-] *negative only*: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
+- R01.2.1 [0+ 2-] *negative only*: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
+- R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
+- R01.2.3 [0+ 2-] *negative only*: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
 - R01.2.4 [1+ 0-] *happy-path only*: **Continuation.** A line indented deeper than the previous logical line, where that line d...
 - R01.2.5 [1+ 0-] *happy-path only*: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
@@ -51,7 +51,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.4.1 [1+ 0-]: **Integers**: decimal with `_` separators, `0x...`, `0b...`. Scientific literals that deno...
 - R01.4.2 [0+ 1-] *negative only*: **Floats** need a fraction or a non-integer value: `0.5`, `1.5e-9`. `.5` and `5.` are erro...
 - R01.4.3 [0+ 1-] *negative only*: **Chars**: `'c'`, exactly one ASCII character or one escape (`\n \t \r \0 \\ \' \xHH`, `HH...
-- R01.4.4 [1+ 0-] *happy-path only*: **Strings**: `"..."` with the same escapes plus `\"`. Every string literal interpolates: `...
+- R01.4.4 [1+ 1-]: **Strings**: `"..."` with the same escapes plus `\"`. Every string literal interpolates: `...
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
 - R01.4.6 [0+ 1-] *negative only*: `++` is a lex error ("CP Lang concatenates with `+`").
 - R01.5.1 [3+ 0-] *happy-path only*: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
@@ -59,6 +59,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
+- R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
 - R01.6.1 [1+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [1+ 0-] *happy-path only*: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
@@ -131,7 +132,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.10.1 [0+ 2-] *negative only*: Inference is local. Siblings in one expression (list elements, `if`/`else` branches, `matc...
 - R02.10.2 [0+ 1-] *negative only*: `let` keeps the computed range of its initializer; an unannotated `var` widens to `Int`; `...
 - R02.10.3 [1+ 0-]: Function signatures are written in full except that a single-capital type parameter used i...
-- R02.11.1 [0+ 1-] *negative only*: No implicit numeric conversions except into a wider range of the same type and `T` into `?...
+- R02.11.1 [0+ 3-] *negative only*: No implicit numeric conversions except into a wider range of the same type and `T` into `?...
 - R02.11.2 [0+ 1-] *negative only*: No implicit copies of heap values (`.clone()`), no implicit allocation behind an O(1)-look...
 - R02.11.3 [0+ 1-] *negative only*: No inheritance, no subtyping, no overloading by argument type (decision 127), no user-defi...
 
@@ -184,6 +185,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [1+ 2-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
+- R04.3.3 [1+ 0-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
 - R04.4.1 [2+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.5 [1+ 2-]: Only the literal `a..b` does it. A stored cut range never becomes a piece: `let s = j..i; ...
@@ -344,7 +346,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.2 [1+ 2-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
 - R06.1.3 [1+ 0-]: A parameter of a `fn` or a lambda may be a pattern, as in `for`: `(mut d, (u, v)) => d.uni...
 - R06.1.4 [1+ 0-] *happy-path only*: A lambda with k parameters, passed where the callee expects a function of one k-tuple, unp...
-- R06.1.5 [1+ 1-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
+- R06.1.5 [1+ 2-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [2+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R06.2.1 [4+ 0-] *happy-path only*: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
@@ -600,27 +602,27 @@ Codes from `crates/cpl-diag/src/registry.rs`, `crates/cpl-lint/src/lib.rs`
 and `spec/diagnostics.md`, with the cases that expect each.
 
 - E0001 Tab character in indentation: 1 case(s)
-- E0002 Inconsistent dedent: **no case**
-- E0003 Unterminated string literal: **no case**
+- E0002 Inconsistent dedent: 1 case(s)
+- E0003 Unterminated string literal: 1 case(s)
 - E0004 Unknown character: 2 case(s)
 - E0005 Malformed number literal: 1 case(s)
 - E0006 Unexpected indentation: 1 case(s)
 - E0007 Malformed character literal: 1 case(s)
-- E0101 Unclosed delimiter: **no case**
+- E0101 Unclosed delimiter: 1 case(s)
 - E0102 Expected expression: 3 case(s)
 - E0103 Expected token: 3 case(s)
-- E0104 Expected indented block: **no case**
-- E0105 Expected type: **no case**
-- E0106 Expected pattern: **no case**
-- E0107 Unexpected token: **no case**
-- E0108 Expected identifier: **no case**
-- E0109 Unmatched closing delimiter: **no case**
-- E0110 Unparenthesized `??` with arithmetic: **no case**
+- E0104 Expected indented block: 1 case(s)
+- E0105 Expected type: 1 case(s)
+- E0106 Expected pattern: 1 case(s)
+- E0107 Unexpected token: 1 case(s)
+- E0108 Expected identifier: 1 case(s)
+- E0109 Unmatched closing delimiter: 1 case(s)
+- E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 mixed_comparison_chain *(0.3)*: 2 case(s)
 - E0201 Unresolved name: 1 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 3 case(s)
-- E0204 Unknown type: **no case**
+- E0204 Unknown type: 1 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
@@ -630,19 +632,19 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0303 Wrong number of arguments: 2 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
-- E0306 Invalid arithmetic on domain position (reserved): **no case**
-- E0307 Condition is not `Bool`: **no case**
+- E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
+- E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
-- E0309 Incompatible operands for operator: **no case**
-- E0310 Unknown named argument: **no case**
+- E0309 Incompatible operands for operator: 1 case(s)
+- E0310 Unknown named argument: 1 case(s)
 - E0311 Invalid `@memo` function: 2 case(s)
-- E0312 Mutating expression inside `debug(...)`: **no case**
+- E0312 Mutating expression inside `debug(...)`: 1 case(s)
 - E0313 Fresh domain escapes its declaring block: 1 case(s)
 - E0314 Match is not exhaustive: 4 case(s)
 - E0401 Assignment to immutable `let` binding: 1 case(s)
 - E0402 Missing `mut` at call site: 1 case(s)
-- E0403 Mutable borrow of immutable value (reserved): 2 case(s)
-- E0404 Top-level `var` referenced inside `fn` (reserved): **no case**
+- E0403 Mutable borrow of immutable value (reserved): exempt (reserved in the registry)
+- E0404 Top-level `var` referenced inside `fn` (reserved): exempt (reserved in the registry)
 - E0405 assign_fixed_field *(0.3)*: 1 case(s)
 - E0406 var_lambda_recursion *(0.3)*: 1 case(s)
 - E0407 duplicate_variant_tag *(0.3)*: 1 case(s)
@@ -654,7 +656,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0602 Variable mutated while lent: 17 case(s)
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
-- E0605 Invalid `Index` implementation: **no case**
+- E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 18 case(s)
 - E0607 moved_while_captured *(0.3)*: 1 case(s)
 - E0608 Use of moved value: 7 case(s)
@@ -734,11 +736,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0402 todo reached: 1 case(s)
 - R0501 bad input token (position and expected type): 2 case(s)
 - R0502 input out of its read contract: **no case**
-- R0601 stack exhausted: **no case**
+- R0601 stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-65 of 136 testable codes have no negative case.
+46 of 133 testable codes have no negative case.
 
 ## Standard library
 
@@ -780,8 +782,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Wire`, `Wire.new`, `Wire.ask`
 - **lazy** (11/30 named by a case)
   - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap`, `LazyTreap.new`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_all`, `LazyTreap.apply_range`, `LazyTreap.apply`, `LazyTreap.erase_at`, `LazyTreap.erase_range`, `LazyTreap.split_at`, `LazyTreap.append`, `LazyTreap.to_list`, `Rope`, `Rope.new`, `Rope.apply`, `Rope.to_array`
-- **marks** (33/46 named by a case)
-  - uncovered: `Marks`, `Marks.new`, `MarkMap`, `MarkMap.new`, `Interner`, `Interner.new`, `Interner.key`, `SparseSet`, `SparseSet.new`, `Id`, `Arena`, `Arena.new`, `Arena.alloc`
+- **marks** (34/46 named by a case)
+  - uncovered: `Marks`, `Marks.new`, `MarkMap`, `MarkMap.new`, `Interner`, `Interner.new`, `Interner.key`, `SparseSet`, `SparseSet.new`, `Arena`, `Arena.new`, `Arena.alloc`
 - **math** (34/83 named by a case)
   - uncovered: `lcm`, `fixed`, `choose`, `choose2`, `ext_gcd`, `ceil_div`, `divmod`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `bit_len`, `digits`, `to_str`, `bit`, `is_pow2`, `splitmix64`, `factor`, `divisors`, `divisors_from_factors`, `inv_mod`, `crt`, `crt_all`, `mul_mod`, `pow_mod`, `is_prime`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `floor_sum`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.divmod`, `BigInt.gcd`, `inf`
 - **matrix** (51/63 named by a case)
@@ -825,7 +827,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (9/22 named by a case)
   - uncovered: `Window`, `Window.new`, `Track`, `track`, `Tracked`, `Tracked.state`, `Undo`, `Undoing`, `Undoing.state`, `undoing`, `Sweep`, `Sweep.new`, `Sweep.move`
 
-1185 of 2222 std items are named by a case.
+1186 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -837,5 +839,6 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-05/heap-move.cp
 - core-05/rb1-q07-sort-closure-reads-target.cp
 - core-05/same-place-lint.cp
+- core-09/deep-recursion-trap.cp
 - core-10/rb1-q25-optional-not-print.cp
 - core-10/rb1-q39-bool-not-print.cp
