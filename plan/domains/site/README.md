@@ -39,7 +39,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 
 | Metric | Command | Today | Target | M |
 |---|---|---|---|---|
-| Snippets by status | `node web/scripts/gate.mjs` | 197: runs 186, checks 4, spec 7 | spec 0, checks 0 | M3 |
+| Snippets by status | `node web/scripts/gate.mjs` | 197: runs 190, spec 7 (was runs 186, checks 4) | spec 0, checks 0 | M3 |
 | Site build | `pnpm --filter cp-lang-web build` | pass, 28.9 s, 239 pages | pass | M1 |
 | Typecheck + unit | `pnpm --dir web typecheck && pnpm --dir web test` | pass, 4/4 tests | pass | M1 |
 | Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |

@@ -5,7 +5,7 @@
 [[metric]]
 name = "snippets_spec"
 command = "node web/scripts/gate.mjs"
-today = "197 snippets: runs 186, checks 4, spec 7"
+today = "197 snippets: runs 190, spec 7"
 target = "spec 0, checks 0"
 
 [[metric]]

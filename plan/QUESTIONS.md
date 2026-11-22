@@ -45,7 +45,7 @@ How to reverse it: switch the ratchet step to warn in `scripts/check.sh`.
 Meanwhile: (a).
 
 ### site: should the landing show 0.3 programs the compiler cannot run yet?
-Options: (a) keep them as tabs with a "0.3 spec" badge and no Run, as today; the syntax and library tabs are all `checks` or `spec` (`web/content/landing/syntax/records.spec.cp`, `web/content/landing/library/ioi05p2.spec.cp`); (b) show only programs that run, adding the rest as the compiler catches up; (c) lead each tab group with runnable programs, spec ones after.
+Options: (a) keep them as tabs with a "0.3 spec" badge and no Run, as today; the syntax and library tabs show no Run button; 4 of their 8 programs now run with a sample input (`web/content/landing/syntax/records.cp`), 4 are still `spec` (`web/content/landing/library/ioi05p2.spec.cp`); (b) show only programs that run, adding the rest as the compiler catches up; (c) lead each tab group with runnable programs, spec ones after.
 Recommendation: (c). The first thing a visitor clicks should run; the 0.3 shape still shows, labelled.
 How to reverse it: tab order lives in `web/lib/landing.ts`; one edit.
 Meanwhile: (c).

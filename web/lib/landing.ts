@@ -73,10 +73,11 @@ async function load(group: string, items: { id: string; title: string; caption: 
   const status = gate();
   return Promise.all(
     items.map(async (t): Promise<Showcase> => {
-      const source = readFileSync(join(dir, group, `${t.id}.spec.cp`), 'utf8').trimEnd();
+      const file = existsSync(join(dir, group, `${t.id}.cp`)) ? `${t.id}.cp` : `${t.id}.spec.cp`;
+      const source = readFileSync(join(dir, group, file), 'utf8').trimEnd();
       return {
         ...t,
-        status: status[`content/landing/${group}/${t.id}.spec.cp`].status,
+        status: status[`content/landing/${group}/${file}`].status,
         lines: source.split('\n').length,
         html: await highlight(source, 'cp'),
         href: link && existsSync(join(process.cwd(), '../corpus/problems', t.id)) ? `/corpus/${t.id}` : undefined,
