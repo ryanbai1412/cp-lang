@@ -10,13 +10,13 @@ and its notes in that record's `notes`.
   `Mat(over:, a)` replace `Semiring.min_plus()` and `mul_semiring`.
 - btoi17p6: `Rooted.from_parents` takes any keyed parents, so the
   "parents of 2..n" input is `read<[V.drop(1)]V>()`.
+- btoi17p2: `Mat` and `Semiring` join the prelude, next to `SegTree` and `each`.
+- btoi20p3: `ParityDsu` joins the prelude beside `PotentialDsu`; `yes(b)`
+  gets a stub (`std.io`) and returns the answer `Str`.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 
 Open questions raised by dreams:
 
-- No conditional expression (`a if c else b`) in the grammar; dreams use
-  statements. Decide whether to add one.
-- `Mat` and `Semiring` are not in the prelude, unlike `SegTree`.
 - Legacy `directed_of_pairs` and friends in `std.graph` predate
   `Graph.directed`; remove.

@@ -9,13 +9,20 @@
   "draft": [
    "proto/ports/blind_critic_2/ccc02s4_draft.cp"
   ],
+  "dream": [
+   "corpus/problems/ccc02s4/dream.cp"
+  ],
   "port": [
    "proto/ports/blind_critic_2/ccc02s4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "dp",
+  "partition",
+  "reconstruct"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Cuts as DP state: (c.next..).take(m) enumerates group ends; reconstruction re-runs min(by:)."
 }
