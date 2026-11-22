@@ -6127,7 +6127,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let by_key: Option<&ast::Expr> = if method != "find" {
+        let by_key: Option<&ast::Expr> = if method != "find" && method != "rfind" {
             match args {
                 [first, second]
                     if first.name.is_none()
@@ -6185,7 +6185,7 @@ impl<'a> Lowerer<'a> {
                     None => i,
                 }
             };
-            if method == "find" {
+            if method == "find" || method == "rfind" {
                 let res_slot = lw.temp(out_ty.clone());
                 out.push(Stmt::Let(
                     res_slot,
@@ -6213,7 +6213,7 @@ impl<'a> Lowerer<'a> {
                         lo: lw.int_lit(0, span),
                         hi: n_ref,
                         step: None,
-                        rev: false,
+                        rev: method == "rfind",
                         closed: false,
                     },
                     Block {
@@ -8194,15 +8194,112 @@ impl<'a> Lowerer<'a> {
                 let elem = ty.seq_elem().unwrap();
                 self.find_first(value, elem, &args[0].value, span)
             }
-            (ty, "first_ge" | "first_gt" | "last_le" | "last_lt" | "find")
-                if ty.is_indexed()
-                    && !(method == "find"
-                        && matches!(ty, Ty::Str | Ty::StrView)
-                        && args.len() == 1
-                        && matches!(
-                            self.probe_ty_silent(&args[0].value),
-                            Some(Ty::Str | Ty::StrView)
-                        )) =>
+            (ty, "find" | "rfind")
+                if matches!(ty, Ty::Str | Ty::StrView)
+                    && args.len() == 1
+                    && args[0].name.is_none()
+                    && matches!(self.probe_ty_silent(&args[0].value), Some(Ty::Str | Ty::StrView)) =>
+            {
+                let pat = self.expr(&args[0].value, None);
+                let rev = method == "rfind";
+                let out_ty = Ty::opt(Ty::Int);
+                let out_ty_hint = out_ty.clone();
+                self.do_expr(Some(&out_ty_hint), span, |lw, out| {
+                    let s_slot = lw.temp(value.ty.clone());
+                    out.push(Stmt::Let(s_slot, Some(value)));
+                    let s_ref = lw.local(s_slot, span);
+                    let p_slot = lw.temp(pat.ty.clone());
+                    out.push(Stmt::Let(p_slot, Some(pat)));
+                    let p_ref = lw.local(p_slot, span);
+                    let n_slot = lw.temp(Ty::Int);
+                    let s_len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![s_ref.clone()]), Ty::Int, span);
+                    out.push(Stmt::Let(n_slot, Some(s_len)));
+                    let m_slot = lw.temp(Ty::Int);
+                    let p_len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![p_ref.clone()]), Ty::Int, span);
+                    out.push(Stmt::Let(m_slot, Some(p_len)));
+                    let res_slot = lw.temp(out_ty.clone());
+                    out.push(Stmt::Let(res_slot, Some(lw.mk(ExprKind::None, out_ty.clone(), span))));
+                    let diff = lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(lw.local(n_slot, span)), Box::new(lw.local(m_slot, span))),
+                        Ty::Int,
+                        span,
+                    );
+                    let hi = lw.int_add(diff, 1);
+                    let i_slot = lw.temp(Ty::Int);
+                    let i_ref = lw.local(i_slot, span);
+                    let ok_slot = lw.temp(Ty::Bool);
+                    let j_slot = lw.temp(Ty::Int);
+                    let j_ref = lw.local(j_slot, span);
+                    let ij = lw.mk(ExprKind::Binary(BinOp::Add, Box::new(i_ref.clone()), Box::new(j_ref.clone())), Ty::Int, span);
+                    let sc = lw.mk(ExprKind::Index(Box::new(s_ref), vec![ij]), Ty::Char, span);
+                    let pc = lw.mk(ExprKind::Index(Box::new(p_ref), vec![j_ref]), Ty::Char, span);
+                    let ne = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(sc), Box::new(pc)), Ty::Bool, span);
+                    let inner_lid = lw.next_loop;
+                    lw.next_loop += 1;
+                    let outer_lid = lw.next_loop;
+                    lw.next_loop += 1;
+                    out.push(Stmt::For(
+                        outer_lid,
+                        i_slot,
+                        Iter::Range {
+                            lo: lw.int_lit(0, span),
+                            hi,
+                            step: None,
+                            rev,
+                            closed: false,
+                        },
+                        Block {
+                            stmts: vec![
+                                Stmt::Let(ok_slot, Some(lw.mk(ExprKind::Bool(true), Ty::Bool, span))),
+                                Stmt::For(
+                                    inner_lid,
+                                    j_slot,
+                                    Iter::Range {
+                                        lo: lw.int_lit(0, span),
+                                        hi: lw.local(m_slot, span),
+                                        step: None,
+                                        rev: false,
+                                        closed: false,
+                                    },
+                                    Block {
+                                        stmts: vec![Stmt::If(
+                                            ne,
+                                            Block {
+                                                stmts: vec![
+                                                    Stmt::Assign(
+                                                        Place { kind: PlaceKind::Local(ok_slot), ty: Ty::Bool, span },
+                                                        AssignOp::Set,
+                                                        lw.mk(ExprKind::Bool(false), Ty::Bool, span),
+                                                    ),
+                                                    Stmt::Break(None),
+                                                ],
+                                            },
+                                            Block::default(),
+                                        )],
+                                    },
+                                ),
+                                Stmt::If(
+                                    lw.local(ok_slot, span),
+                                    Block {
+                                        stmts: vec![
+                                            Stmt::Assign(
+                                                Place { kind: PlaceKind::Local(res_slot), ty: out_ty.clone(), span },
+                                                AssignOp::Set,
+                                                lw.mk(ExprKind::Some(Box::new(i_ref)), out_ty.clone(), span),
+                                            ),
+                                            Stmt::Break(None),
+                                        ],
+                                    },
+                                    Block::default(),
+                                ),
+                            ],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(res_slot, span)));
+                })
+            }
+            (ty, "first_ge" | "first_gt" | "last_le" | "last_lt" | "find" | "rfind")
+                if ty.is_indexed() =>
             {
                 let dom = match &ty {
                     Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
