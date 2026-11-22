@@ -275,7 +275,10 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             }
             walk_ty(v, elem);
         }
-        TypeKind::OwnDomain { elem, .. } | TypeKind::Optional(elem) | TypeKind::Yields(elem) => {
+        TypeKind::OwnDomain { elem, .. }
+        | TypeKind::Optional(elem)
+        | TypeKind::Mut(elem)
+        | TypeKind::Yields(elem) => {
             walk_ty(v, elem)
         }
         TypeKind::Record(fields) => {

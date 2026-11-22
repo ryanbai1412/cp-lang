@@ -115,18 +115,25 @@ impl<'a> Checker<'a> {
             TypeKind::Fn { params, ret } => Ty::Fn {
                 params: params
                     .iter()
-                    .map(|p| Param {
-                        name: String::new(),
-                        ty: self.resolve_type(p),
-                        mutable: false,
-                        has_default: false,
-                        named_only: false,
-                        variadic: false,
-                        lazy: false,
+                    .map(|p| {
+                        let (mutable, inner) = match &p.kind {
+                            TypeKind::Mut(inner) => (true, inner.as_ref()),
+                            _ => (false, p),
+                        };
+                        Param {
+                            name: String::new(),
+                            ty: self.resolve_type(inner),
+                            mutable,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }
                     })
                     .collect(),
                 ret: Box::new(self.resolve_type(ret)),
             },
+            TypeKind::Mut(inner) => self.resolve_type(inner),
             TypeKind::Yields(elem) => Ty::Named {
                 name: "Gen".into(),
                 args: vec![self.resolve_type(elem)],
@@ -816,7 +823,9 @@ impl<'a> Checker<'a> {
                     self.collect_impl_generics(arg, out);
                 }
             }
-            TypeKind::Optional(inner) => self.collect_impl_generics(inner, out),
+            TypeKind::Optional(inner) | TypeKind::Mut(inner) => {
+                self.collect_impl_generics(inner, out)
+            }
             TypeKind::Tuple(items) => {
                 for item in items {
                     self.collect_impl_generics(item, out);
@@ -1535,7 +1544,7 @@ pub(crate) fn own_domains(ty: &ast::Type, f: &mut dyn FnMut(&ast::Name)) {
             index.iter().for_each(|i| own_domains(i, f));
             own_domains(elem, f);
         }
-        TypeKind::Optional(inner) => own_domains(inner, f),
+        TypeKind::Optional(inner) | TypeKind::Mut(inner) => own_domains(inner, f),
         TypeKind::Tuple(items) => items.iter().for_each(|i| own_domains(i, f)),
         TypeKind::Record(fields) => fields.iter().for_each(|(_, t)| own_domains(t, f)),
         TypeKind::Named { args, .. } => args.iter().for_each(|a| own_domains(a, f)),

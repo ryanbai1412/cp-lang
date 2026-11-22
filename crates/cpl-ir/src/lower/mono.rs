@@ -1949,7 +1949,11 @@ impl<'a> Lowerer<'a> {
                                 all_known = false;
                                 break;
                             }
-                            p_tys.push(self.resolve_ty(fp));
+                            let pt = match self.resolve_ty(fp) {
+                                Ty::Mut(inner) => *inner,
+                                other => other,
+                            };
+                            p_tys.push(pt);
                         }
                         self.cur_mod = saved_mod;
                         self.offset = saved_offset;
@@ -2768,7 +2772,7 @@ impl<'a> Lowerer<'a> {
                     .any(|d| self.ast_ty_has_unbound(d, gen_names, env))
                     || self.ast_ty_has_unbound(elem, gen_names, env)
             }
-            ast::TypeKind::Optional(t) | ast::TypeKind::Yields(t) => {
+            ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) | ast::TypeKind::Yields(t) => {
                 self.ast_ty_has_unbound(t, gen_names, env)
             }
             ast::TypeKind::Tuple(ts) => ts
@@ -3080,6 +3084,13 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            ast::TypeKind::Mut(inner) => {
+                let c = match concrete {
+                    Ty::Mut(c) => c.as_ref(),
+                    c => c,
+                };
+                self.unify_ast_ty(inner, c, tpl_mod, gen_names, env);
+            }
             ast::TypeKind::Fn { params, ret } => {
                 if let Ty::Fn(cp, cr) = concrete {
                     for (p, c) in params.iter().zip(cp) {
@@ -3097,6 +3108,7 @@ impl<'a> Lowerer<'a> {
         &mut self,
         params: &[ast::Pattern],
         ann_tys: &[Option<ast::Type>],
+        param_mut: &[bool],
         body: &ast::Expr,
         hint: Option<&Ty>,
         span: Span,
@@ -3114,7 +3126,7 @@ impl<'a> Lowerer<'a> {
                 kind: ast::PatternKind::Tuple(params.to_vec()),
                 span,
             };
-            return self.lower_lambda(&[whole], &[None], body, hint, span);
+            return self.lower_lambda(&[whole], &[None], &[], body, hint, span);
         }
         let (mut param_tys, ret_hint) = match hint {
             Some(Ty::Fn(ps, r)) if ps.len() == params.len() => {
@@ -3131,15 +3143,28 @@ impl<'a> Lowerer<'a> {
         for (i, ann) in ann_tys.iter().enumerate() {
             if let (Some(ann_ty), Some(slot)) = (ann, param_tys.get_mut(i)) {
                 let resolved = self.resolve_ty(ann_ty);
-                if has_hint && *slot != resolved && *slot != Ty::Error && resolved != Ty::Error {
+                let is_mut_slot = matches!(&*slot, Ty::Mut(_));
+                let slot_base = match &*slot {
+                    Ty::Mut(inner) => inner.as_ref(),
+                    other => other,
+                };
+                if has_hint
+                    && *slot_base != resolved
+                    && *slot_base != Ty::Error
+                    && resolved != Ty::Error
+                {
                     let msg = format!(
                         "lambda parameter has type `{}`, but `{}` is expected",
                         self.show(&resolved),
-                        self.show(slot),
+                        self.show(slot_base),
                     );
                     self.error(codes::TYPE_MISMATCH, ann_ty.span, msg);
                 }
-                *slot = resolved;
+                *slot = if is_mut_slot {
+                    Ty::Mut(Box::new(resolved))
+                } else {
+                    resolved
+                };
             }
         }
 
@@ -3151,17 +3176,31 @@ impl<'a> Lowerer<'a> {
             ..FnCx::default()
         };
         let mut param_slots = Vec::with_capacity(params.len());
+        let mut mut_slots = Vec::new();
         let mut pre_stmts = Vec::new();
-        for (i, ty) in param_tys.iter().enumerate() {
+        for (i, ty) in param_tys.iter_mut().enumerate() {
             let pname = match &params[i].kind {
                 ast::PatternKind::Name(n) => n.clone(),
                 _ => format!("_p{i}"),
             };
+            let is_mut =
+                param_mut.get(i).copied().unwrap_or(false) || matches!(&*ty, Ty::Mut(_));
+            let local_ty = match &*ty {
+                Ty::Mut(inner) => (**inner).clone(),
+                other => other.clone(),
+            };
+            if is_mut && !matches!(&*ty, Ty::Mut(_)) {
+                *ty = Ty::Mut(Box::new(local_ty.clone()));
+            }
             let slot = child_cx.locals.len();
             child_cx.locals.push(Local {
                 name: pname.clone(),
-                ty: ty.clone(),
+                ty: local_ty,
             });
+            if is_mut {
+                child_cx.mut_slots.insert(slot);
+                mut_slots.push(slot);
+            }
             if matches!(params[i].kind, ast::PatternKind::Name(_)) {
                 child_cx.scopes[0].insert(pname, slot);
             }
@@ -3198,7 +3237,7 @@ impl<'a> Lowerer<'a> {
         );
         self.closures.push(ClosureDef {
             params: param_slots,
-            muts: Vec::new(),
+            muts: mut_slots,
             captures: finished.captures,
             locals: finished.locals,
             ret: ret_ty.clone(),
@@ -4050,6 +4089,7 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         }
         ast::TypeKind::OwnDomain { elem, .. }
         | ast::TypeKind::Optional(elem)
+        | ast::TypeKind::Mut(elem)
         | ast::TypeKind::Yields(elem) => type_names(elem, name),
         ast::TypeKind::Tuple(items) => items.iter().any(|i| type_names(i, name)),
         ast::TypeKind::Record(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
@@ -4175,6 +4215,7 @@ fn ty_mentions(t: &ast::Type, name: &str) -> bool {
         }
         ast::TypeKind::OwnDomain { elem, .. }
         | ast::TypeKind::Optional(elem)
+        | ast::TypeKind::Mut(elem)
         | ast::TypeKind::Yields(elem) => ty_mentions(elem, name),
         ast::TypeKind::Tuple(items) => items.iter().any(|i| ty_mentions(i, name)),
         ast::TypeKind::Record(fields) => fields.iter().any(|(_, f)| ty_mentions(f, name)),

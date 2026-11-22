@@ -1905,7 +1905,9 @@ fn type_names(ty: &Type, out: &mut HashSet<String>) {
             index.iter().for_each(|ty| type_names(ty, out));
             type_names(elem, out);
         }
-        TypeKind::OwnDomain { elem: ty, .. } | TypeKind::Optional(ty) => type_names(ty, out),
+        TypeKind::OwnDomain { elem: ty, .. } | TypeKind::Optional(ty) | TypeKind::Mut(ty) => {
+            type_names(ty, out)
+        }
         TypeKind::Tuple(tys) => tys.iter().for_each(|ty| type_names(ty, out)),
         TypeKind::Record(fields) => fields.iter().for_each(|(_, ty)| type_names(ty, out)),
         _ => {}

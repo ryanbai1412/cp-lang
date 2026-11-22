@@ -658,6 +658,8 @@ pub enum TypeKind {
         params: Vec<Type>,
         ret: Box<Type>,
     },
+    /// `mut T`: a mutable parameter in a fn type `(mut S, T) -> ()`.
+    Mut(Box<Type>),
     /// `yields T`: the return type of a generator.
     Yields(Box<Type>),
     /// A value in a type argument list: the `7` of `Mod<7>`.

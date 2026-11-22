@@ -2781,7 +2781,7 @@ impl<'a> Lowerer<'a> {
                         ast::ExprKind::Lambda {
                             params,
                             param_tys: ann_tys,
-                            param_mut: _,
+                            param_mut,
                             body,
                             ..
                         },
@@ -2791,7 +2791,14 @@ impl<'a> Lowerer<'a> {
             {
                 if let Some(param_tys) = self.peek_fn_arg_types(vname, params.len(), rest) {
                     let hint = Ty::Fn(param_tys, Box::new(Ty::Error));
-                    return Some(self.lower_lambda(params, ann_tys, body, Some(&hint), *lspan));
+                    return Some(self.lower_lambda(
+                        params,
+                        ann_tys,
+                        param_mut,
+                        body,
+                        Some(&hint),
+                        *lspan,
+                    ));
                 }
             }
         }

@@ -121,14 +121,16 @@ pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> 
     /// cost: one call of `add`
     /// traps: never (beyond what `add` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.state == 3`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        add(mut state, x)
     /// Take the front element `x` back out: one call of `remove(state, x)`. `x` is passed through
     /// as given; nothing checks that it is the oldest element.
     ///
     /// cost: one call of `remove`
     /// traps: never (beyond what `remove` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
-    pub fn pop(mut self, x: T) = todo
+    pub fn pop(mut self, x: T):
+        remove(mut state, x)
 
     /// The structure with exactly the window's elements applied.
     ///

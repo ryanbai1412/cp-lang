@@ -2708,6 +2708,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.resolve_ty(ret);
                 Spec::Plain(Ty::Fn(ps, Box::new(r)))
             }
+            ast::TypeKind::Mut(inner) => Spec::Plain(Ty::Mut(Box::new(self.resolve_ty(inner)))),
             ast::TypeKind::Value(_) => Spec::Plain(Ty::Int),
             ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
@@ -5821,6 +5822,7 @@ fn implicit_type_names(ty: &ast::Type, out: &mut Vec<String>) {
         }
         ast::TypeKind::OwnDomain { elem: t, .. }
         | ast::TypeKind::Optional(t)
+        | ast::TypeKind::Mut(t)
         | ast::TypeKind::Yields(t) => implicit_type_names(t, out),
         ast::TypeKind::Tuple(ts) => ts.iter().for_each(|a| implicit_type_names(a, out)),
         ast::TypeKind::Record(fs) | ast::TypeKind::Row(fs) => {
@@ -5838,7 +5840,7 @@ fn type_has_hole(ty: &ast::Type) -> bool {
     match &ty.kind {
         ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"),
         ast::TypeKind::Named { args, .. } => args.iter().any(type_has_hole),
-        ast::TypeKind::Optional(t) => type_has_hole(t),
+        ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) => type_has_hole(t),
         _ => false,
     }
 }

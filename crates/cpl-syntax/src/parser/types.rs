@@ -253,6 +253,10 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            T::Mut => {
+                self.bump();
+                TypeKind::Mut(Box::new(self.ty()))
+            }
             T::Fn => {
                 self.bump();
                 self.expect(T::LParen, "`(` after `fn` in a fn type");
