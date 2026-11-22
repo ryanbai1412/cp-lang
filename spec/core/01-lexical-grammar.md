@@ -178,6 +178,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   operation values (`xs.fold(or)`, `SegTree(max, a)`; `lib/ops-ranges.md`).
   `add` is the prelude name of `+` as a value: the same value, so `act: +`
   and `act: add` are one argument. (R01.5.5)
+- `??` written next to `+ - * / %` without parentheses is an error:
+  `a ?? 0 + 1` must be written `(a ?? 0) + 1` or `a ?? (0 + 1)`, since
+  either reading is a common slip. (R01.5.6)
 
 ## 1.6 Statements
 
