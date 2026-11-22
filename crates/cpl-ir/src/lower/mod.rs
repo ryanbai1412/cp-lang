@@ -2843,6 +2843,12 @@ impl<'a> Lowerer<'a> {
             "Char" => Ty::Char,
             "Str" => Ty::Str,
             "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
+            "Slice" => match arg(self, 0) {
+                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => Ty::ListView(e),
+                Ty::Str | Ty::StrView => Ty::StrView,
+                Ty::Array { elem, .. } => Ty::ListView(elem),
+                other => other,
+            },
             "Opt" => Ty::opt(arg(self, 0)),
             "Set" => Ty::Set(Box::new(arg(self, 0))),
             "HashSet" => Ty::HashSet(Box::new(arg(self, 0))),

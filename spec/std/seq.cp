@@ -478,9 +478,7 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
 pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1:
-        var w: List<T> = []
-        for j in i..i + k: w.push(self.at(j))
-        yield w
+        yield self[i..i + k]
 
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
 ///
@@ -493,9 +491,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
     assert k >= 1, "a chunk holds at least one element"
     var i = 0
     while i < self.len:
-        var c: List<T> = []
-        for j in i..min(i + k, self.len): c.push(self.at(j))
-        yield c
+        yield self[i..min(i + k, self.len)]
         i += k
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
