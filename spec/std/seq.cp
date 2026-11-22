@@ -838,7 +838,14 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
 /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
 /// example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 /// ties: none: a monotone `ok` has one first true position
-pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
+pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
+    var lo = 0
+    var hi = self.len
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if ok(self[m]): hi = m
+        else: lo = m + 1
+    if lo < self.len: Some(self[lo]) else: None
 
 /// O(log n) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
 /// `None` when it never does. Checked builds check the probes agree (R09.2.3).
@@ -848,7 +855,14 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
 /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: none: a monotone `ok` has one last true position
-pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
+pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
+    var lo = 0
+    var hi = self.len
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if ok(self[m]): lo = m + 1
+        else: hi = m
+    if lo > 0: Some(self[lo - 1]) else: None
 
 /// O(log n) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
 /// (`r.l` when it always holds, `r.r` when it never does), true then false with `last: true`
@@ -859,7 +873,15 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
 /// empty: `r.l`
 /// traps: never
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
-pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> = todo
+pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
+    let n = self.len
+    var lo = 0
+    var hi = n
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if ok(self[m]) != last: hi = m
+        else: lo = m + 1
+    if lo < n: self[lo].l else: self[n - 1].r
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
@@ -869,7 +891,11 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> =
 /// empty: `(lo, lo)`
 /// traps: when the range is written backwards
 /// example: `(2..5).ends == (2, 5)`
-@get pub fn ends<D>(self: Range<D>) -> (Int, Int) = todo
+@get pub fn ends<D>(self: Range<D>) -> (Int, Int):
+    let lo = self.start.ord
+    let hi = self.end.ord
+    assert lo <= hi, "the range is written backwards"
+    (lo, hi)
 
 /// First index in sorted `self` with `by(self[i]) > target`, or `None`.
 ///

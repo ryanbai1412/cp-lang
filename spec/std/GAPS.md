@@ -44,3 +44,26 @@ line when the gap closes and the body lands.
 - window, `Window.pop`: `w.pop()` resolves to `Track.pop(x)` (`pop needs the argument x`) instead of the inherent zero-argument `pop`; the body is verified through its private helper.
 - prefix, most examples (`p.fold(1..=2)`, `p.prefix(2)`, `p.get(1)`): an integer literal is not converted to a `D` position, `Cut<D>` or `Range<D>` at a call; the bodies run when written with `D(1)` (see `spec/conformance/std-prefix`).
 - prefix, `scan` / `cyclic_sum`: left `todo`; `scan` returns `Prefix<D, T>` for any op, which has no field for a non-`+` fold yet, and `RingRange`'s accessors are themselves unimplemented.
+- heap, `MeldHeap` (all methods): `meld`/`absorb` in O(log n) need recursive node storage (a struct holding `?Box<Node>` or a shared arena); the stub has only `_len`, and adding a per-heap arena makes `meld` O(other.len).
+- hashmap, `Counter.reserve`: the builtin `HashMap` has no `reserve` in `cpl run` (waits on the `Map` stub).
+- hashmap, `Counter.get`/`set` index forms (`c[k]`, `c[k] = v`): structs cannot implement indexing (same as `Deque.set`).
+- marks, examples like `Marks<0..5>()`: a range is not accepted where a domain is named; bodies verified over a declared `domain` (`spec/conformance/std-marks`).
+- window, `impl Track<K> for Counter<K, Int>`: an impl in `window.cp` for a type from `hashmap.cp` is not found at the call (`Counter has no method push`); body is `add(x, ±1)`, untested end to end.
+- seq, `ends` on an `Int` range (`(2..5).ends`): a literal `Int` range has `Int` ends, not cuts with `.ord`; the body serves `Range<D>` (used by `IntervalMap`, `SegTree`).
+- interval, `IntervalMap`/`IntervalSet` examples (`IntervalMap.from([1, 1, 2])`, `IntervalSet<0..10>()`): list literals are not `[D]T` and a range is not a domain; bodies verified over a declared `domain` (`spec/conformance/std-interval`).
+- seq, `bsearch`: the returned `Cut<D>` has no usable `.l`/`.r`/`.ord` in `cpl run` (`expected Range<Int>, found P.cuts`); body written, doc example unrunnable.
+- search, `gallop_first`: a generic `I` has no `+ Int` step and no "end of `I`" test; needs a numeric/domain-position bound on `I`.
+- search, `split_best`: `Range<Int>` closures see `r.start` as `Int`, not a position; and a lazy best-first stream needs a heap of closure-produced ranges.
+- search, real-valued examples using `close(...)`: `close` is not in scope for a bare doc example; verified with `abs(...) < eps` in `spec/conformance/std-search`.
+- io, `yes`: the `io` context (`io.answers`) is not in scope in the checker or `cpl run`.
+- io, `Wire.new`/`Wire.ask`: no CP Lang primitive to switch stdout to flush-before-read mode.
+- io, `read_all`: no end-of-input test (`read` traps past the end), so "read to end" is not expressible.
+- pair, examples like `Pair<0..4>(3, 1)`: a range is not accepted where a domain is named; bodies verified over a declared `domain` (`spec/conformance/std-pair`).
+- pair, `symmetric`: `[Pair<V>]T` is not an indexable domain array in `cpl run` (`a Int can't be indexed`).
+- timetree, `TimeTree.add_range` doc example: `TimeTree<Str>(3); add_range(1..3, "e")` gives 7 steps under `add_interval` (nodes [1,2) and [2,3)), not the documented 5; the example needs correcting by the doc owner.
+- mo, examples on `Int` ranges (`mo_order([0..3, ...])`): `cpl run` cannot bind `D` for `Range<Int>`, and `Int` ends have no `.ord`; bodies verified over a declared `domain` against brute force (`spec/conformance/std-mo`).
+- mo, `mo_rollback` doc: an in-block query answered with only `mark`/`undo` sees the previous block's right part unless the structure is reset first; the body resets on entering a block that the previous one left dirty (still at most one `reset` per block).
+- bag, `SortedBag.range`/`drain_range`, `SortedSet.range`/`sum(keys:)`, `SortedRange.*`: no way to read an open bound of a generic `Range<K>` (`..b`, `a..`, `..`), and `..` alone is rejected by `cpl run`.
+- bag, `SortedBag.split_at`/`join`, `SortedSet.split_at`/`join`: each bag owns its node pool, so O(log n) split/join between two bags needs a shared pool (or node moves) the struct layout does not have.
+- bag, `SortedBag.reserve`/`SortedSet.reserve`: `List.reserve` is not available to stdlib bodies yet (waits on the `List` stub).
+- bag, `SortedMap`, `AugSortedBag`: the stubs have no storage fields (`SortedMap` only `_len`), so there is nothing to implement against without changing the declared layout.

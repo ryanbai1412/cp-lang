@@ -50,14 +50,16 @@ pub struct IntervalMap<D, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `IntervalMap.from([1, 2, 2, 1]).runs == 3`
-    @get pub fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int:
+        segs.len
 
     /// The value at position `i`.
     ///
     /// cost: O(log runs)
     /// traps: when `i` is outside `D`
     /// example: `IntervalMap.from([1, 1, 2]).get(2) == 2`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T:
+        segs.last_le(i.to_idx)!.1.val
 
     /// The maximal run containing position `i` and its value.
     ///
@@ -167,7 +169,8 @@ pub struct IntervalMap<D, T>:
     /// cost: O(log runs)
     /// traps: when `i` is outside `D`
     /// example: `var m = IntervalMap.from([1, 1]); m.set(1, 3); m.runs == 2`
-    pub fn set(mut self, i: D, val: T) = todo
+    pub fn set(mut self, i: D, val: T):
+        self.assign(i.l..i.r, val)
 
     /// Every run overlapping `r`, clipped to `r`, with its value. Clipping can make the first and
     /// last pieces shorter than their runs; they are not merged with anything.
@@ -177,7 +180,14 @@ pub struct IntervalMap<D, T>:
     /// order: ascending positions
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `IntervalMap.from([1, 1, 2]).range(1..3).map(p => p.range).collect() == [1..2, 2..3]`
-    pub fn range(self, r: Range<D>) -> yields (range: Range<D>, val: T) = todo
+    pub fn range(self, r: Range<D>) -> yields (range: Range<D>, val: T):
+        let (lo, hi) = r.ends
+        var pos = lo
+        while pos < hi:
+            let (sl, seg) = segs.last_le(pos)!
+            let b = min(seg.hi, hi)
+            yield (range: D.nth(pos).l..D.nth(b - 1).r, val: seg.val)
+            pos = b
 
     /// Every maximal run with its value, last first.
     ///
@@ -186,7 +196,12 @@ pub struct IntervalMap<D, T>:
     /// order: descending positions
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).each_rev().map(p => p.val).collect() == [2, 1]`
-    pub fn each_rev(self) -> yields (range: Range<D>, val: T) = todo
+    pub fn each_rev(self) -> yields (range: Range<D>, val: T):
+        var pos = D.K
+        while pos > 0:
+            let (sl, seg) = segs.last_lt(pos)!
+            yield (range: D.nth(sl).l..D.nth(seg.hi - 1).r, val: seg.val)
+            pos = sl
 
     /// The first position right of the cut `from` whose value satisfies `ok`, or `None`. Calls
     /// `ok` once per run, not per position.
@@ -197,19 +212,27 @@ pub struct IntervalMap<D, T>:
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..0).r, v => v == 2) == Some(2)`
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..1).r, v => v == 1) == Some(1)`
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..3).r, v => true) == None`
-    pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D = todo
+    pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D:
+        var pos = from.ord
+        while pos < D.K:
+            let (sl, seg) = segs.last_le(pos)!
+            if ok(seg.val): return Some(D.nth(pos))
+            pos = seg.hi
+        None
 
 /// O(runs) space. Dynamic union of disjoint maximal half-open intervals over domain `D`
 /// (KACTL `IntervalContainer`). Maintains total `covered` length in O(1).
 pub struct IntervalSet<D>:
     segs: Map<Int, Int>
+    total: Int
 
     /// An empty set of positions of `D`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `IntervalSet<0..10>().covered == 0`
-    pub fn new() -> IntervalSet<D> = todo
+    pub fn new() -> IntervalSet<D>:
+        IntervalSet(Map<Int, Int>(), 0)
 
     /// Add every position of `r`, merging runs that overlap or touch it into one maximal run.
     ///
@@ -217,7 +240,22 @@ pub struct IntervalSet<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(3..5); s.runs == 1 and s.covered == 4`
-    pub fn add(mut self, r: Range<D>) = todo
+    pub fn add(mut self, r: Range<D>):
+        var (lo, hi) = r.ends
+        if lo >= hi: return
+        if let (pl, ph) = segs.last_le(lo):
+            if ph >= lo:
+                lo = pl
+                hi = max(hi, ph)
+                total -= ph - pl
+                let _ = segs.remove(pl)
+        while let (nl, nh) = segs.last_le(hi):
+            if nl < lo: break
+            hi = max(hi, nh)
+            total -= nh - nl
+            let _ = segs.remove(nl)
+        segs[lo] = hi
+        total += hi - lo
 
     /// Remove every position of `r`; a run straddling an end of `r` is cut there.
     ///
@@ -225,14 +263,33 @@ pub struct IntervalSet<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(0..5); s.remove(1..2); s.runs == 2 and s.covered == 4`
-    pub fn remove(mut self, r: Range<D>) = todo
+    pub fn remove(mut self, r: Range<D>):
+        let (lo, hi) = r.ends
+        if lo >= hi: return
+        if let (pl, ph) = segs.last_lt(lo):
+            if ph > lo:
+                segs[pl] = lo
+                total -= ph - lo
+                if ph > hi:
+                    segs[hi] = ph
+                    total += ph - hi
+        while let (nl, nh) = segs.last_lt(hi):
+            if nl < lo: break
+            let _ = segs.remove(nl)
+            total -= nh - nl
+            if nh > hi:
+                segs[hi] = nh
+                total += nh - hi
 
     /// Whether position `i` is in the set.
     ///
     /// cost: O(log runs)
     /// traps: when `i` is outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains(3) and not s.contains(4)`
-    pub fn contains(self, i: D) -> Bool = todo
+    pub fn contains(self, i: D) -> Bool:
+        let x = i.to_idx
+        if let (_, h) = segs.last_le(x): return x < h
+        false
 
     /// Whether every position of `r` is in the set, i.e. one run covers `r`.
     ///
@@ -241,7 +298,11 @@ pub struct IntervalSet<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.add(4..6); s.contains_range(3..6) == true`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains_range(3..5) == false`
-    pub fn contains_range(self, r: Range<D>) -> Bool = todo
+    pub fn contains_range(self, r: Range<D>) -> Bool:
+        let (lo, hi) = r.ends
+        if lo >= hi: return true
+        if let (_, h) = segs.last_le(lo): return hi <= h
+        false
 
     /// The maximal run containing position `i`, or `None` when `i` is not in the set.
     ///
@@ -250,7 +311,11 @@ pub struct IntervalSet<D>:
     /// traps: when `i` is outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.run_at(3) == Some(2..4)`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.run_at(4) == None`
-    pub fn run_at(self, i: D) -> ?Range<D> = todo
+    pub fn run_at(self, i: D) -> ?Range<D>:
+        let x = i.to_idx
+        if let (l, h) = segs.last_le(x):
+            if x < h: return Some(D.nth(l).l..D.nth(h - 1).r)
+        None
 
     /// The first position at or after `from` that is in the set, or `None`.
     ///
@@ -258,7 +323,11 @@ pub struct IntervalSet<D>:
     /// traps: when `from` is outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(5..7); s.next_covered(2) == Some(5)`
     /// example: `var s = IntervalSet<0..10>(); s.add(5..7); s.next_covered(7) == None`
-    pub fn next_covered(self, from: D) -> ?D = todo
+    pub fn next_covered(self, from: D) -> ?D:
+        let x = from.to_idx
+        if self.contains(from): return Some(from)
+        if let (l, _) = segs.first_gt(x): return Some(D.nth(l))
+        None
 
     /// The first position at or after `from` that is not in the set (a dynamic mex), or `None`
     /// when every position from `from` to the end of `D` is covered.
@@ -267,21 +336,28 @@ pub struct IntervalSet<D>:
     /// traps: when `from` is outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(0..3); s.next_gap(1) == Some(3)`
     /// example: `var s = IntervalSet<0..10>(); s.add(5..10); s.next_gap(6) == None`
-    pub fn next_gap(self, from: D) -> ?D = todo
+    pub fn next_gap(self, from: D) -> ?D:
+        let x = from.to_idx
+        var g = x
+        if let (_, h) = segs.last_le(x):
+            if x < h: g = h
+        if g < D.K: Some(D.nth(g)) else: None
 
     /// The number of positions in the set.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(6..7); s.covered == 3`
-    @get pub fn covered(self) -> Int = todo
+    @get pub fn covered(self) -> Int:
+        total
 
     /// The number of maximal runs.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(6..7); s.runs == 2`
-    @get pub fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int:
+        segs.len
 
     /// Every maximal run.
     ///
@@ -290,18 +366,21 @@ pub struct IntervalSet<D>:
     /// order: ascending positions
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(6..7); s.add(1..3); s.each().collect() == [1..3, 6..7]`
-    pub fn each(self) -> yields Range<D> = todo
+    pub fn each(self) -> yields Range<D>:
+        for (l, h) in segs.items: yield D.nth(l).l..D.nth(h - 1).r
 
 /// O(runs) space. Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int` coordinates.
 pub struct SparseIntervalSet:
     segs: Map<Int, Int>
+    total: Int
 
     /// An empty set of `Int` coordinates, unbounded in both directions.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SparseIntervalSet().covered == 0`
-    pub fn new() -> SparseIntervalSet = todo
+    pub fn new() -> SparseIntervalSet:
+        SparseIntervalSet(Map<Int, Int>(), 0)
 
     /// Add every coordinate of the half-open `r`, merging runs that overlap or touch it.
     ///
@@ -309,7 +388,23 @@ pub struct SparseIntervalSet:
     /// empty: changes nothing
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(-5..0); s.add(0..5); s.runs == 1 and s.covered == 10`
-    pub fn add(mut self, r: Range<Int>) = todo
+    pub fn add(mut self, r: Range<Int>):
+        var lo = r.start
+        var hi = r.end
+        if lo >= hi: return
+        if let (pl, ph) = segs.last_le(lo):
+            if ph >= lo:
+                lo = pl
+                hi = max(hi, ph)
+                total -= ph - pl
+                let _ = segs.remove(pl)
+        while let (nl, nh) = segs.last_le(hi):
+            if nl < lo: break
+            hi = max(hi, nh)
+            total -= nh - nl
+            let _ = segs.remove(nl)
+        segs[lo] = hi
+        total += hi - lo
 
     /// Remove every coordinate of the half-open `r`; a run straddling an end of `r` is cut there.
     ///
@@ -317,14 +412,33 @@ pub struct SparseIntervalSet:
     /// empty: changes nothing
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..10); s.remove(3..4); s.runs == 2 and s.covered == 9`
-    pub fn remove(mut self, r: Range<Int>) = todo
+    pub fn remove(mut self, r: Range<Int>):
+        let lo = r.start
+        let hi = r.end
+        if lo >= hi: return
+        if let (pl, ph) = segs.last_lt(lo):
+            if ph > lo:
+                segs[pl] = lo
+                total -= ph - lo
+                if ph > hi:
+                    segs[hi] = ph
+                    total += ph - hi
+        while let (nl, nh) = segs.last_lt(hi):
+            if nl < lo: break
+            let _ = segs.remove(nl)
+            total -= nh - nl
+            if nh > hi:
+                segs[hi] = nh
+                total += nh - hi
 
     /// Whether the coordinate `x` is in the set.
     ///
     /// cost: O(log runs)
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(10..20); s.contains(19) and not s.contains(20)`
-    pub fn contains(self, x: Int) -> Bool = todo
+    pub fn contains(self, x: Int) -> Bool:
+        if let (_, h) = segs.last_le(x): return x < h
+        false
 
     /// The least coordinate `>= x` that is not in the set; always exists, since the set is finite.
     ///
@@ -332,21 +446,26 @@ pub struct SparseIntervalSet:
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..3); s.next_gap(1) == 3`
     /// example: `SparseIntervalSet().next_gap(-7) == -7`
-    pub fn next_gap(self, x: Int) -> Int = todo
+    pub fn next_gap(self, x: Int) -> Int:
+        if let (_, h) = segs.last_le(x):
+            if x < h: return h
+        x
 
     /// The total number of coordinates in the set.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..3); s.add(10..12); s.covered == 5`
-    @get pub fn covered(self) -> Int = todo
+    @get pub fn covered(self) -> Int:
+        total
 
     /// The number of maximal intervals.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..3); s.add(10..12); s.runs == 2`
-    @get pub fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int:
+        segs.len
 
     /// Every maximal interval.
     ///
@@ -355,7 +474,8 @@ pub struct SparseIntervalSet:
     /// order: ascending coordinates
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(10..12); s.add(0..3); s.each().collect() == [0..3, 10..12]`
-    pub fn each(self) -> yields Range<Int> = todo
+    pub fn each(self) -> yields Range<Int>:
+        for (l, h) in segs.items: yield l..h
 
 @test
 fn interval_map_basic_and_coalescing() = todo
