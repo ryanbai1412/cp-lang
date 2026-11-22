@@ -1280,14 +1280,18 @@ pub struct TwoSat<X>:
     /// cost: O(1) amortized
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_xor(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
-    pub fn add_xor(mut self, a: Lit<X>, b: Lit<X>) = todo
+    pub fn add_xor(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a, b)
+        self.add_or(a.flip, b.flip)
 
     /// Adds "`a` and `b` hold together or not at all" (two clauses).
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
-    pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>) = todo
+    pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a.flip, b)
+        self.add_or(a, b.flip)
 
     /// An assignment satisfying every clause, or `None` if there is None.
     ///
