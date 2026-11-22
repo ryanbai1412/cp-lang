@@ -1,6 +1,6 @@
 ---
 title: "Memoization, stress testing & Trace"
-description: "@memo caching, @brute/@checker/@interactor verification, and the visual Trace debugger."
+description: "@memo caching, @alt/@check/@interactor verification, and the visual Trace debugger."
 ---
 
 Contest bugs rarely come from the algorithm idea — they come from an edge case you did not construct by hand. CP Lang puts memoization, input generators, brute-force oracles, constructive checkers, and local interactors right inside the same `.cp` file, then strips all verification code automatically when `cpl build` emits your submission.
@@ -47,10 +47,10 @@ For input `4`, `f(3)` evaluates to `45`.
 
 There is one assertion keyword, so a sanity check is never silently stripped in release mode:
 
-- `assert cond` — checked in both local runs and compiled C++17, and also informs range and disjointness checks. Input constraints belong in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker` rather than assertions.
+- `assert cond` — checked in both local runs and compiled C++17, and also informs range and disjointness checks. Input constraints belong in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@check` rather than assertions.
 - `debug(x, dp)` — prints checkpoints during local runs, records structured snapshots in `cpl run --trace` and the playground's **Trace** button, and replays side by side when stress testing catches a failing case. `cpl build` omits `debug(...)` from the final judge C++17, so the compiler rejects any `debug(...)` expression that mutates program state (`E0312`).
 
-## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
+## Co-located `@alt`, `@check`, `@interactor`, and `@gen`
 
 Write your slow reference, constructive validator, or interactive judge in the same file as your solution:
 
@@ -65,13 +65,13 @@ fn make_case(size: Int):
     print(n)
     print([rand(-10, 10) for _ in 0..n])
 
-@brute(main)
+@alt(main)
 fn slow():
     var total = 0
     for x in a: total += x
     print(total)
 
-@checker
+@check
 fn check():
     let ans: Int = read_output()
     assert ans == a.sum()
@@ -81,7 +81,7 @@ This complete sum program uses `print()` inside `@gen` to produce test input. Fo
 
 ## Pattern and DP structure discovery (`std.spec`)
 
-When you have a slow `@brute` solution and want to check whether a sequence obeys a linear recurrence or whether a DP transition satisfies monotonicity, convexity (Aliens/WQS), or the quadrangle inequality (Knuth / divide-and-conquer DP), `std.spec` and local spec helpers let you test hypotheses empirically on small inputs before writing the fast algorithm:
+When you have a slow `@alt` solution and want to check whether a sequence obeys a linear recurrence or whether a DP transition satisfies monotonicity, convexity (Aliens/WQS), or the quadrangle inequality (Knuth / divide-and-conquer DP), `std.spec` and local spec helpers let you test hypotheses empirically on small inputs before writing the fast algorithm:
 
 ```cp
 use lib.spec.recurrence.{integer_recurrence, show_recurrence}
@@ -100,9 +100,9 @@ print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
 
 ## Visual debugging with Trace
 
-Every run in the [playground](/play) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@brute(main)` side by side when the file defines one — then opens the interactive trace viewer.
+Every run in the [playground](/play) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@alt(main)` side by side when the file defines one — then opens the interactive trace viewer.
 
-You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@brute(main)`.
+You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@alt(main)`.
 
 ## Profiling with `cpl profile`
 

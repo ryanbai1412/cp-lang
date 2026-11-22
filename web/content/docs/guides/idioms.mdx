@@ -144,26 +144,189 @@ print(yes(dsu.same(V(1), V(3))), yes(dsu.same(V(1), V(4))), bit.prefix(V(3).r))
 
 ## 8. Quick idiom reference
 
-| Pattern | Idiomatic CP Lang |
-| --- | --- |
-| Read `n` and 1-based array | `let n: 1..=2e5 = read()`, `domain V = 1..=n`, `let a: [V]Int = read()` (use structural `[0..n]Int` or `[0..=n]Int` when indexing by raw integer arithmetic `n - k + t`) |
-| Array bounds `[0..n]` vs `[0..=n]` | `[0..n]T` has length `n` (indices `0..n-1`); `[0..=n]T` has length `n + 1` (indices `0..n`, use whenever `n` is a valid DP state); `a.sorted()` always returns 0-indexed `List<T>` (`0..n`) |
-| Multi-line expressions, `let`, & `match` | Never break a line after `=`, `=>`, `and`, `or`, or `+` outside `(...)` (`E0102`); `x => expr` and `pat => expr` are single-line value expressions only (no `continue`/`break` in `match =>`; use a local `fn` or `if`/`elif`) |
-| `mut` parameters vs local copy | `fn f(mut x: T)` requires `f(mut arg)` at every call site (`E0402`); to reassign a scalar locally, take `x: Int` and bind `var cur = x` inside `f` |
-| Character range test | Write `'a' <= c and c <= 'z'` (never `c in 'a'..='z'`; ranges are `Int`-only) |
-| Map lookup & lazy-insert | `m[k]` traps on read if `k` is absent (`R0001`); use `m.get(k) -> ?V` to test/read safely, `m[k] += 1` to auto-insert from identity, or parenthesized `(m[k] ??= Set()).add(y)` (never `let ys = m[k] ??= Set()`) |
-| Printing `[D]Char` | `print(chars)` prints a `[D]Char` array as a contiguous string (`abc`); pass `print(chars, sep: " ")` when space-separated characters (`a b c`) are required |
-| 2D arrays | Write `[R, C]T` (one pair of brackets) and index `g[r, c]`, never `[R][C]T` with `g[r, c]` (`E0305`) |
-| String slices (`s[l..r]`) | `s[l..r]` is an O(1) lent view; call `s[l..r].to_str()` when returning it from a `fn` or appending with `out += s[..k].to_str()` |
-| Modular integer raw value | `z.v` returns `Int` in `0..P` (not `.val` or `.raw`); `print(z)` prints directly; power is `z ** e`; inverse is `z.inv` (no parens) |
-| Read unknown-length line or string | `let s: Str = read()` (ASCII bytes: `s[i]` is `Char`, `s[i] - 'a'` is `Int`) |
-| Convert integer `n` to string | `"{n}"` (or `std.math.digits(n)` for base-10 digits) |
-| Print space-separated values | `print(a, b)` or `print(x, end: " ")` |
-| Print `YES` / `NO` or `Yes` / `No` | `print(yes(ok))` prints `YES`/`NO`; for AtCoder `Yes`/`No`, write `print(if ok: "Yes" else: "No")` (colons, never `then` or Python `a if c else b`) |
-| Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
-| Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`); every `mut` parameter also requires `mut` at the call site (`f(mut x)`) |
-| Adjacent pairs in a list | `for (a, b) in xs.adjacent:` |
-| Reverse a list or array in place | `a.reverse()` (method, not free `reverse(a)`); reverse iteration uses `(0..n).rev` or `V.rev` |
-| Free math functions | `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` |
-| Multi-test file | `@!multitest` above per-case code; `return` exits current test case |
-| Stress-test against brute force | Add `@brute` + `@gen` in the same `.cp` file and run `cpl stress` |
+Every block below is a complete program checked by the compiler when this site is built.
+
+### Read `n` and a 1-based array
+
+Name the index space once; the array, its loops and its queries all use it.
+
+```cp input="3\n5 6 7\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+print(a[V(1)], a.sum())
+```
+
+### `[0..n]` or `[0..=n]`
+
+`[0..n]T` has `n` cells; `[0..=n]T` has `n + 1`, so use it when `n` itself is a DP state. `sorted()` returns a 0-indexed list.
+
+```cp
+let n = 4
+var count: [0..n]Int = 0
+var dp: [0..=n]Int = 0
+dp[n] = 1
+let sorted = [3, 1, 2].sorted()
+print(count.len, dp.len, sorted[0])
+```
+
+### Strings and characters
+
+A `Str` is ASCII: `s[i]` is a `Char`, and `c - 'a'` is an `Int`. Compare characters with two comparisons. A slice is a view; `.to_str()` copies it when it must outlive the string or be appended.
+
+```cp input="banana\n"
+let s: Str = read()
+let c = s[0]
+fn head(s: Str, k: Int) -> Str: s[..k].to_str()
+var out = ""
+out += s[2..4].to_str()
+print(s.len, yes('a' <= c and c <= 'z'), c - 'a', head(s, 3), out)
+```
+
+### Printing
+
+`print` separates arguments with a space and ends the line; `end:` and `sep:` change that. A `[D]Char` prints as one word. Interpolate with `"{n}"`.
+
+```cp input="abc\n"
+let chars: [3]Char = read()
+let n = 4096
+print(chars)
+print(chars, sep: " ")
+for x in [1, 2, 3]:
+    print(x, end: " ")
+print()
+print("{n}".len, n.digits())
+```
+
+### YES and NO
+
+`print` does not take a `Bool`. `yes(ok)` gives `YES` or `NO`; `with io(answers: ...)` changes the words for a scope, and `answers:` for one call.
+
+```cp
+let ok = 3 > 2
+print(yes(ok))
+with io(answers: ("Yes", "No")):
+    print(yes(ok))
+print(yes(ok, answers: ("Possible", "Impossible")))
+```
+
+### Maps
+
+`m[k] += 1` starts an absent key from zero. Reading an absent `m[k]` traps (`R0001`), so read with `m.get(k)`, which is optional. `??=` fills an absent entry and hands it back.
+
+```cp
+var cnt: Map<Int, Int> = Map()
+cnt[7] += 1
+cnt[7] += 1
+var groups: Map<Int, Set<Int>> = Map()
+(groups[1] ??= Set()).add(5)
+print(cnt[7], cnt.get(8) ?? 0, groups[1].len)
+```
+
+### Grids
+
+One pair of brackets, comma-separated indices.
+
+```cp
+var g: [2, 3]Int = 0
+g[1, 2] = 5
+print(g[1, 2])
+```
+
+### Modular arithmetic
+
+The modulus is part of the type. `**` is power and `.inv` is the inverse.
+
+```cp
+type Z = Mod<998244353>
+let z = Z(3)
+print(z, z ** 2, z.inv * z)
+```
+
+### Swap, reverse, adjacent pairs
+
+Swap with a tuple assignment. `reverse()` works in place; `.rev` iterates backwards.
+
+```cp
+var (a, b) = (1, 2)
+(a, b) = (b, a)
+var xs = [1, 4, 9]
+(xs[0], xs[2]) = (xs[2], xs[0])
+xs.reverse()
+for (p, q) in xs.adjacent:
+    print(q - p, end: " ")
+for i in (0..3).rev:
+    print(i, end: " ")
+print(a, b)
+```
+
+### Clearing between tests
+
+`fill` resets an array in place.
+
+```cp
+var a: [0..4]Int = 7
+var seen: [0..4]?Int = None
+seen[1] = 3
+a.fill(0)
+seen.fill(None)
+print(a, seen[1] ?? -1)
+```
+
+### `mut` parameters
+
+A function that changes its argument says `mut`, and so does the caller. To change a value locally, copy it into a `var`.
+
+```cp
+fn bump(mut x: Int): x += 1
+fn twice(x: Int) -> Int:
+    var cur = x
+    cur *= 2
+    cur
+var v = 1
+bump(mut v)
+print(v, twice(v))
+```
+
+### Long expressions and `match`
+
+Break a line inside parentheses. A `match` arm is `pattern => expression`.
+
+```cp
+let total = (1 + 2
+    + 3)
+let kind = 2
+let name = match kind:
+    1 => "one"
+    _ => "many"
+print(total, name, abs(-3), min(2, 5), max(2, 5), gcd(12, 18), lcm(4, 6))
+```
+
+### Multiple test cases
+
+`@!multitest` reads the count and runs the rest of the file once per test. `return` ends the current test.
+
+```cp input="2\n1\n5\n"
+@!multitest
+let n: 1..=100 = read()
+if n == 1:
+    print(0)
+    return
+print(n * 2)
+```
+
+### Stress test against a brute force
+
+Mark the slow version `@alt(main)` in the same file and run `cpl stress`. Inputs are generated from the types at `read`.
+
+```cp input="3\n4 9 2\n"
+let n: 1..=8 = read()
+let a: [n]1..=20 = read()
+print(a.max()!)
+
+@alt(main)
+fn slow():
+    var best = 0
+    for x in a: best max= x
+    print(best)
+```
