@@ -3879,6 +3879,21 @@ impl<'a> Lowerer<'a> {
                 let body = self.block(block, tail);
                 out.extend(body.stmts);
             }
+            // `-> yields T = expr`: the body is the sequence, as `yield from expr`.
+            ast::FnBody::Expr(expr) if is_gen && !matches!(&expr.kind, ast::ExprKind::Name(n) if n == "todo") => {
+                let (acc, elem_ty) = self.cx.yield_slot.clone().expect("set for a generator");
+                let seq = self.expr(expr, Some(&Ty::list(elem_ty.clone())));
+                let acc_place = Place {
+                    kind: PlaceKind::Local(acc),
+                    ty: Ty::list(elem_ty),
+                    span: self.span(expr.span),
+                };
+                out.push(Stmt::Expr(self.mk(
+                    ExprKind::Mutate(Mutation::Extend, Box::new(acc_place), vec![seq]),
+                    Ty::Unit,
+                    expr.span,
+                )));
+            }
             ast::FnBody::Expr(expr) => {
                 let tail = if is_gen { Tail::Discard } else { Tail::Return };
                 self.tail(expr, tail, &mut out);
