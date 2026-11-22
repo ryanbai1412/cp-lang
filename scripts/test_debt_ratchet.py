@@ -64,9 +64,9 @@ class DebtRatchetTest(unittest.TestCase):
             "pending_tests": 2,
         }
         errs, warns, _ = dr.evaluate(worse, baseline)
-        self.assertEqual(len(errs), 4)
-        self.assertEqual(len(warns), 1)
-        self.assertIn("new_big.rs", warns[0])
+        self.assertEqual(len(errs), 5)
+        self.assertEqual(warns, [])
+        self.assertTrue(any("new_big.rs" in e for e in errs))
 
     def test_evaluate_allows_shrinking(self) -> None:
         baseline = {
@@ -87,6 +87,52 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(errs, [])
         self.assertEqual(warns, [])
         self.assertEqual(len(notes), 4)
+
+    def _write(self, root: Path, rel: str, text: str) -> None:
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text)
+
+    def test_architecture_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-ir/src/lower/call.rs",
+                        'match n {\n    "prefix" | "sum" => 1,\n    "sum" => 2,\n    x => 3,\n}\n')
+            self._write(root, "crates/cpl-codegen/src/a.rs", 'if t == "Bitset" { Edition::V02 }\n')
+            self._write(root, "crates/cpl-codegen/src/tests.rs", 'let _ = "Bitset";\n')
+            body = "fn helper() {\n" + "".join(f"    let x{i} = {i};\n" for i in range(6)) + "}\n"
+            self._write(root, "crates/cpl-fmt/src/cli.rs", body)
+            self._write(root, "crates/cpl-doc/src/cli.rs", "// copy\n" + body)
+            self._write(root, "crates/cpl-lint/Cargo.toml",
+                        '[package]\nname = "cpl-lint"\n[dependencies]\ncpl-check = "0"\n'
+                        '[target.\'cfg(not(target_arch = "wasm32"))\'.dependencies]\ncpl-prover = "0"\n'
+                        '[dev-dependencies]\ncpl-cli = "0"\n')
+            self._write(root, "plan/ARCHITECTURE.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
+            self.assertEqual(dr.ir_builtin_names(root), ["prefix", "sum"])
+            self.assertEqual(dr.backend_std_names(root), ["crates/cpl-codegen/src/a.rs:1 Bitset"])
+            self.assertEqual(dr.edition_refs(root), ["crates/cpl-codegen/src/a.rs:1"])
+            self.assertEqual(len(dr.dup_fn_bodies(root)), 1)
+            self.assertEqual(dr.crate_edges(root), ["cpl-lint -> cpl-check", "cpl-lint -> cpl-prover"])
+            self.assertEqual(dr.dev_crate_edges(root), ["cpl-lint -> cpl-cli"])
+            self.assertEqual(dr.layer_violations(root), ["cpl-lint -> cpl-prover"])
+            self.assertEqual(dr.stale_arch_paths(root), ["plan/ARCHITECTURE.md:1 crates/gone/x.rs"])
+
+    def test_evaluate_counters_and_edges(self) -> None:
+        baseline = {"edition_refs": 3, "crate_edges": ["a -> b", "a -> c"]}
+        actual = {"edition_refs": 4, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> d"]}
+        errs, _, notes = dr.evaluate(actual, baseline)
+        # dup_fn_bodies has no baseline yet, so it is not gated.
+        self.assertEqual(len(errs), 2)
+        self.assertIn("edition", errs[0])
+        self.assertIn("a -> d", errs[1])
+        self.assertEqual(notes, ["crate edge a -> c removed"])
+
+    def test_cli_show_and_list(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_repo(root)
+            self.assertEqual(dr.main(["--show", "rust_ignore", "--root", str(root)]), 0)
+            self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
+            self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
 
     def test_cli_roundtrip_update_and_check(self) -> None:
         with tempfile.TemporaryDirectory() as d:

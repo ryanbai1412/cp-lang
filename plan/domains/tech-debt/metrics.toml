@@ -1,102 +1,102 @@
-# Architecture & tech-debt metrics. Every value measured 2026-11-22 on main 4e2de3cd
+# Architecture & tech-debt metrics. Values measured 2026-11-22 on main (4e2de3cd, then 92943ae4)
 # from the repo root. `today` is the measured count; `target` is the v0.3 goal.
-# `--list NAME` on measure.py prints the offenders behind a count.
+# `python3 scripts/debt-ratchet.py --list NAME` prints the offenders behind a count.
 
 [[metric]]
 name = "rs_over_cap"
-command = "python3 plan/domains/tech-debt/measure.py rs_over_cap"
+command = "python3 scripts/debt-ratchet.py --show rs_over_cap"
 today = 24
 target = "<= 8, none new"
 milestone = "M3"
 
 [[metric]]
 name = "edition_refs"
-command = "python3 plan/domains/tech-debt/measure.py edition_refs"
+command = "python3 scripts/debt-ratchet.py --show edition_refs"
 today = 92
 target = "0"
 milestone = "M1"
 
 [[metric]]
 name = "rust_ignore"
-command = "python3 plan/domains/tech-debt/measure.py rust_ignore"
+command = "python3 scripts/debt-ratchet.py --show rust_ignore"
 today = 19
 target = "<= 3"
 milestone = "M3"
 
 [[metric]]
 name = "ir_builtin_names"
-command = "python3 plan/domains/tech-debt/measure.py ir_builtin_names"
+command = "python3 scripts/debt-ratchet.py --show ir_builtin_names"
 today = 89
 target = "<= signed floor (Q1; proposed 30)"
 milestone = "M3"
 
 [[metric]]
 name = "backend_std_names"
-command = "python3 plan/domains/tech-debt/measure.py backend_std_names"
+command = "python3 scripts/debt-ratchet.py --show backend_std_names"
 today = 17
 target = "0"
 milestone = "M3"
 
 [[metric]]
 name = "dup_fn_bodies"
-command = "python3 plan/domains/tech-debt/measure.py dup_fn_bodies"
+command = "python3 scripts/debt-ratchet.py --show dup_fn_bodies"
 today = 5
 target = "0"
 milestone = "M3"
 
 [[metric]]
 name = "crate_edges"
-command = "python3 plan/domains/tech-debt/measure.py crate_edges"
+command = "python3 scripts/debt-ratchet.py --show crate_edges"
 today = 75
 target = "no new edge without plan/ARCHITECTURE.md in the same commit"
 milestone = "M2"
 
 [[metric]]
 name = "dev_crate_edges"
-command = "python3 plan/domains/tech-debt/measure.py dev_crate_edges"
+command = "python3 scripts/debt-ratchet.py --show dev_crate_edges"
 today = 3
 target = "informational: test-only edges that would be layer violations if shipped"
 milestone = "M2"
 
 [[metric]]
 name = "layer_violations"
-command = "python3 plan/domains/tech-debt/measure.py layer_violations"
+command = "python3 scripts/debt-ratchet.py --show layer_violations"
 today = 1
 target = "0"
 milestone = "M3"
 
 [[metric]]
 name = "tree_walker"
-command = "python3 plan/domains/tech-debt/measure.py tree_walker"
+command = "python3 scripts/debt-ratchet.py --show tree_walker"
 today = 1
 target = "0"
 milestone = "M3"
 
 [[metric]]
 name = "v02_port_files"
-command = "python3 plan/domains/tech-debt/measure.py v02_port_files"
+command = "python3 scripts/debt-ratchet.py --show v02_port_files"
 today = 877
 target = "0"
 milestone = "M1"
 
 [[metric]]
 name = "spec_std_refs"
-command = "python3 plan/domains/tech-debt/measure.py spec_std_refs"
-today = 151
+command = "python3 scripts/debt-ratchet.py --show spec_std_refs"
+today = 149
 target = "0"
 milestone = "M1"
 
 [[metric]]
 name = "direct_python"
-command = "python3 plan/domains/tech-debt/measure.py direct_python"
+command = "python3 scripts/debt-ratchet.py --show direct_python"
 today = 13
 target = "0"
 milestone = "M1"
 
 [[metric]]
 name = "stale_arch_paths"
-command = "python3 plan/domains/tech-debt/measure.py stale_arch_paths"
-today = 0
+command = "python3 scripts/debt-ratchet.py --show stale_arch_paths"
+today = 11
 target = "0"
 milestone = "M2"
 

@@ -16,11 +16,12 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    57 branches with unlanded commits: those owned by another lane go to that
    lane's worklog; the rest are landed or deleted with the `git cherry` output
    in the worklog.
-2. **Ratchets (M2).** Fold `measure.py` into `scripts/debt-ratchet.py` (one
+2. **Ratchets (M2; landed 2026-11-22).** Fold the counts into `scripts/debt-ratchet.py` (one
    script, one baseline, its unit tests in `scripts/test_debt_ratchet.py`) and
    ratchet: files over the cap (no new allowlist entry), `edition_refs`,
    `ir_builtin_names`, `backend_std_names`, `dup_fn_bodies`,
-   `layer_violations`, `tree_walker`, `direct_python`, `stale_arch_paths`.
+   `layer_violations`, `tree_walker`, `direct_python`; `stale_arch_paths` is
+   counted and becomes gated once round 1 findings are fixed.
    The crate-edge list becomes a baseline that may only grow in a commit that
    also edits `plan/ARCHITECTURE.md`. Hook it into the gate step that already
    runs the ratchet, so infra's gate time is not affected (0.4 s today).
@@ -35,7 +36,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    stdlib), one bound analysis (lint-fmt + compiler), std names out of the
    back ends (compiler + perf), one member catalog (compiler + tools), wasm
    lints (lint-fmt). This lane does the pure-move file splits (Q2).
-5. **Keep `plan/ARCHITECTURE.md` true.** Rewrite part B1 from `measure.py`
+5. **Keep `plan/ARCHITECTURE.md` true.** Rewrite part B1 from `debt-ratchet.py --show`
    output; every path it cites is checked by `stale_arch_paths`.
 
 ## Why these milestones
@@ -66,7 +67,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
   it in the affected worklogs first.
 - Text-based counts can be gamed (renaming a builtin past the regex).
   Mitigation: the cold review checks the intent; the regexes are listed in
-  `measure.py` for anyone to tighten.
+  `scripts/debt-ratchet.py` for anyone to tighten.
 - `ir_builtin_names` has no agreed floor until Q1 is answered; until then the
   target is "only down".
 - Old branches may contain work a lane still wants; deleting needs the

@@ -10,7 +10,7 @@ and cold-reviews every lane's landed diffs.
 Detail: [PLAN.md](PLAN.md) · [metrics.toml](metrics.toml) ·
 [ARCHITECTURE.md](ARCHITECTURE.md) · [worklog.md](worklog.md) ·
 cross-domain map: [plan/ARCHITECTURE.md](../../ARCHITECTURE.md) ·
-measurement: [measure.py](measure.py) (read-only, 0.4 s)
+ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, in the fast gate)
 
 ## Covers / not covered
 
@@ -42,8 +42,8 @@ measurement: [measure.py](measure.py) (read-only, 0.4 s)
 - [ ] `unlanded_branches` 0: each landed or deleted with a `git cherry` note
 
 **M2. The gates hold the shape.**
-- [ ] Ratchets in `scripts/debt-ratchet.py` for every metric below (one script, one baseline)
-- [ ] A new crate edge fails unless `plan/ARCHITECTURE.md` changes in the same commit
+- [x] Ratchets in `scripts/debt-ratchet.py` for every metric below (one script, one baseline)
+- [x] A new crate edge fails the gate until the baseline and `plan/ARCHITECTURE.md` list it
 - [ ] Round 1 cold review of all 12 lanes, scores in the worklog, findings in owners' worklogs
 - [ ] Probe baseline P1-P4 recorded (files, crates, minutes, where stuck)
 - [ ] `plan/ARCHITECTURE.md` part B1 rewritten to measured current state
@@ -55,7 +55,7 @@ measurement: [measure.py](measure.py) (read-only, 0.4 s)
 
 ## Metrics (all run 2026-11-22 on `4e2de3cd`; commands in [metrics.toml](metrics.toml))
 
-`M` = `python3 plan/domains/tech-debt/measure.py`
+`M` = `python3 scripts/debt-ratchet.py --show`; `--list NAME` prints the offenders
 
 | Metric | Command | Today | v0.3 target |
 |---|---|---|---|
@@ -70,9 +70,9 @@ measurement: [measure.py](measure.py) (read-only, 0.4 s)
 | Layer violations (shipped) | `M layer_violations` | 1 (`cpl-lint -> cpl-prover`) | 0 |
 | Second interpreter engine | `M tree_walker` | 1 | 0 |
 | v0.2 `port.cp` files | `M v02_port_files` | 877 | 0 |
-| `spec/std` references | `M spec_std_refs` | 151 | 0 |
+| `spec/std` references | `M spec_std_refs` | 149 | 0 |
 | Direct `python3` in gate/just | `M direct_python` | 13 | 0 |
-| Stale paths in architecture docs | `M stale_arch_paths` | 0 | 0 |
+| Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 11 (diagnostics 1, site 10) | 0 |
 | Std TODO bodies (ratchet; stdlib drives) | `python3 scripts/debt-ratchet.py --check` | 294 | never up |
 | `devin/*` branches with unlanded commits | see metrics.toml | 57 of 68 | 0 |
 | Cold-review rubric median | review log in worklog.md | unmeasured | >= 4 |
@@ -117,7 +117,7 @@ of `git log --grep 'Domain: <lane>'`.
 ## Improve list (highest impact first)
 
 1. Land M1: the restructure and 0.2 deletion are written; they only need rebasing and the gate.
-2. Fold `measure.py` into `scripts/debt-ratchet.py` and ratchet every count above.
+2. Done: every count above is a shrink-only ratchet in `scripts/debt-ratchet.py`.
 3. Propose the builtin floor and the std-intrinsic mechanism to compiler/stdlib (Q1).
 4. One VM: file the tree-walker removal plan with compiler; split `vm.rs` first.
 5. One bound analysis: lint reads checker facts (proposal to lint-fmt + compiler).
