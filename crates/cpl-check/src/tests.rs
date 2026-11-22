@@ -1020,11 +1020,11 @@ fn a_bad_import_is_one_error_on_the_use() {
         ["no `hidden` in scope, and not in the stdlib (yet)"]
     );
     let cycle = [
-        ("a.x", "use a.y.{g}\npub fn f() -> Int = 1\n"),
-        ("a.y", "use a.x.{f}\npub fn g() -> Int = 2\n"),
+        ("x", "use y.{g}\npub fn f() -> Int = 1\n"),
+        ("y", "use x.{f}\npub fn g() -> Int = 2\n"),
     ];
-    let diags = check_with(&cycle, "use a.x.{f}\nprint(f())\n");
-    assert_eq!(diags, vec![], "the cycle is reported in the modules");
+    let diags = check_with(&cycle, "use x.{f}\nprint(f())\n");
+    assert_eq!(messages(&diags), ["`x` is in an import cycle: x -> y -> x"]);
 }
 
 #[test]
