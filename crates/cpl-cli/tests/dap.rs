@@ -321,3 +321,62 @@ print(total)
     assert!(total.contains("\"result\":\"4\""), "{total}");
     dap.finish();
 }
+
+#[test]
+fn dap_evaluates_watch_expressions_in_source_terms() {
+    let path = write_temp(
+        "watch_dap",
+        "\
+let (n, cap): (1..=6, 0..=12) = read()
+domain Item = 1..=n
+let items: [Item](w: 1..=6, v: 1..=9) = read()
+var best: [0..=cap]Int = 0
+for i in Item:
+    let (w, v) = (items[i].w, items[i].v)
+    for c in 0..=cap:
+        if c >= w: best[c] max= best[c - w] + v
+print(best[cap])
+",
+    );
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!(
+            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"inputText\":\"1 2\\n1 1\\n\"}}"
+        )),
+    );
+    let launch = dap.recv_until("\"command\":\"launch\"");
+    assert!(launch.contains("\"success\":true"), "launch failed: {launch}");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!("{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{{\"line\":8}}]}}")),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+
+    let mut eval = |expr: &str| {
+        dap.send("evaluate", Some(&format!("{{\"expression\":\"{expr}\"}}")));
+        dap.recv_until("\"command\":\"evaluate\"")
+    };
+    let item = eval("items[1]");
+    assert!(item.contains("\"result\":\"(v: 1, w: 1)\""), "a record in source terms, by its domain label: {item}");
+    let c = eval("c");
+    assert!(c.contains("\"result\":\"2\""), "second hit of line 8 is c = 2: {c}");
+    let best = eval("best");
+    assert!(best.contains("\"result\":\"[0, 1, 2]\""), "the planted reuse of the item: {best}");
+    let candidate = eval("best[c - w] + v");
+    assert!(candidate.contains("\"result\":\"2\""), "index arithmetic over the recorded state: {candidate}");
+    let test = eval("c >= w and len(best) == 3");
+    assert!(test.contains("\"result\":\"true\""), "comparisons and len: {test}");
+    let missing = eval("items[2]");
+    assert!(missing.contains("2 is out of range"), "an index outside the domain says so: {missing}");
+    let unknown = eval("nope + 1");
+    assert!(unknown.contains("`nope` is not in scope here"), "names the unknown variable: {unknown}");
+    dap.finish();
+}

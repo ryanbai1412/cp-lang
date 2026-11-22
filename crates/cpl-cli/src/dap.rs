@@ -326,7 +326,7 @@ impl Session {
                                     body.push(',');
                                 }
                                 first = false;
-                                emit_variable(&mut body, &name, &val.to_compact_string(), "");
+                                emit_variable(&mut body, &name, &shown(&val), "");
                             }
                         }
                     } else if reference == 2 {
@@ -339,7 +339,8 @@ impl Session {
                                 body.push(',');
                             }
                             first = false;
-                            emit_variable(&mut body, &var.name, val_json, &var.ty);
+                            let value = Json::parse(val_json).map_or_else(|_| val_json.to_string(), |v| shown(&v));
+                            emit_variable(&mut body, &var.name, &value, &var.ty);
                         }
                     }
                 }
@@ -364,7 +365,7 @@ impl Session {
                         self.send_response(writer, req_seq, command, true, None, Some(&body))?;
                     }
                     None => {
-                        let msg = format!("`{expr}` is not in scope at step {}", self.cursor);
+                        let msg = format!("can't evaluate `{expr}` at step {}: {}", self.cursor + 1, self.eval_error(expr));
                         self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     }
                 }
@@ -608,24 +609,267 @@ impl Session {
         self.send_terminated(writer)
     }
 
+    /// A watch or console expression over the recorded state at the cursor:
+    /// names, integers, `a[i]` by the index's own labels, `a.field`, `len(a)`,
+    /// arithmetic, comparisons, `and`, `or` and `not`.
     fn eval_expr(&self, expr: &str) -> Option<(String, String)> {
         let step = self.recording.steps.get(self.cursor)?;
-        if expr.is_empty() {
-            return None;
+        if let Some(var) = self.recording.vars.iter().find(|v| v.name == expr || v.id == expr) {
+            let (_, value) = step.values.iter().find(|(i, _)| self.recording.vars[*i].id == var.id)?;
+            let value = Json::parse(value).ok()?;
+            return Some((shown(&value), var.ty.clone()));
+        }
+        self.evaluate(expr).ok().map(|v| (shown(&v.json), String::new()))
+    }
+
+    fn eval_error(&self, expr: &str) -> String {
+        match self.evaluate(expr) {
+            Err(why) => why,
+            Ok(_) => "nothing is recorded here".into(),
+        }
+    }
+
+    fn evaluate(&self, expr: &str) -> Result<Valued, String> {
+        let step = self.recording.steps.get(self.cursor).ok_or("nothing is recorded here")?;
+        let mut names = BTreeMap::new();
+        for (index, value) in &step.values {
+            let var = &self.recording.vars[*index];
+            let labels = Json::parse(&format!("{{\"_\":0{}}}", var.extra))
+                .ok()
+                .and_then(|extra| extra.get("labels").cloned());
+            if let Ok(json) = Json::parse(value) {
+                names.insert(var.name.clone(), Valued { json, labels });
+            }
         }
         if let Ok(Json::Object(map)) = Json::parse(&step.locals) {
-            if let Some(v) = map.get(expr) {
-                return Some((v.to_compact_string(), String::new()));
+            for (name, json) in map {
+                names.insert(name, Valued { json, labels: None });
             }
         }
-        for (var_idx, val_json) in &step.values {
-            let var = &self.recording.vars[*var_idx];
-            if var.name == expr || var.id == expr {
-                return Some((val_json.to_string(), var.ty.clone()));
-            }
+        let tokens = tokens(expr)?;
+        let mut eval = Eval { tokens: &tokens, pos: 0, names: &names };
+        let value = eval.or()?;
+        match eval.tokens.get(eval.pos) {
+            None => Ok(value),
+            Some(token) => Err(format!("unexpected `{token}`")),
         }
-        None
     }
+}
+
+/// A recorded value as the source would write it: `(w: 1, v: 1)`, `None`.
+fn shown(json: &Json) -> String {
+    match json {
+        Json::Null => "None".into(),
+        Json::Str(s) => s.clone(),
+        Json::Array(items) => format!("[{}]", items.iter().map(shown).collect::<Vec<_>>().join(", ")),
+        Json::Object(map) => {
+            format!("({})", map.iter().map(|(k, v)| format!("{k}: {}", shown(v))).collect::<Vec<_>>().join(", "))
+        }
+        other => other.to_compact_string(),
+    }
+}
+
+#[derive(Clone)]
+struct Valued {
+    json: Json,
+    /// The index's labels, position by position, when they don't start at 0.
+    labels: Option<Json>,
+}
+
+fn tokens(expr: &str) -> Result<Vec<String>, String> {
+    let chars: Vec<char> = expr.chars().collect();
+    let (mut out, mut i) = (Vec::new(), 0);
+    while i < chars.len() {
+        let c = chars[i];
+        if c.is_whitespace() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        if c.is_ascii_alphanumeric() || c == '_' {
+            while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '_') {
+                i += 1;
+            }
+        } else if i + 1 < chars.len() && ["==", "!=", "<=", ">=", "&&", "||"].contains(&format!("{c}{}", chars[i + 1]).as_str()) {
+            i += 2;
+        } else if "+-*/%()[].,<>!".contains(c) {
+            i += 1;
+        } else {
+            return Err(format!("`{c}` is not part of a watch expression"));
+        }
+        out.push(chars[start..i].iter().collect());
+    }
+    Ok(out)
+}
+
+struct Eval<'a> {
+    tokens: &'a [String],
+    pos: usize,
+    names: &'a BTreeMap<String, Valued>,
+}
+
+impl Eval<'_> {
+    fn peek(&self) -> Option<&str> {
+        self.tokens.get(self.pos).map(String::as_str)
+    }
+
+    fn eat(&mut self, token: &str) -> bool {
+        let found = self.peek() == Some(token);
+        self.pos += found as usize;
+        found
+    }
+
+    fn or(&mut self) -> Result<Valued, String> {
+        let mut left = self.and()?;
+        while self.eat("or") || self.eat("||") {
+            let right = self.and()?;
+            left = boolean(truth(&left)? || truth(&right)?);
+        }
+        Ok(left)
+    }
+
+    fn and(&mut self) -> Result<Valued, String> {
+        let mut left = self.compare()?;
+        while self.eat("and") || self.eat("&&") {
+            let right = self.compare()?;
+            left = boolean(truth(&left)? && truth(&right)?);
+        }
+        Ok(left)
+    }
+
+    fn compare(&mut self) -> Result<Valued, String> {
+        let left = self.sum()?;
+        for op in ["==", "!=", "<=", ">=", "<", ">"] {
+            if self.eat(op) {
+                let right = self.sum()?;
+                if matches!(op, "==" | "!=") {
+                    return Ok(boolean((left.json == right.json) == (op == "==")));
+                }
+                let (a, b) = (int(&left)?, int(&right)?);
+                return Ok(boolean(match op {
+                    "<=" => a <= b,
+                    ">=" => a >= b,
+                    "<" => a < b,
+                    _ => a > b,
+                }));
+            }
+        }
+        Ok(left)
+    }
+
+    fn sum(&mut self) -> Result<Valued, String> {
+        let mut left = self.product()?;
+        loop {
+            let op = match self.peek() {
+                Some(op @ ("+" | "-")) => op.to_string(),
+                _ => return Ok(left),
+            };
+            self.pos += 1;
+            let (a, b) = (int(&left)?, int(&self.product()?)?);
+            left = number(if op == "+" { a.checked_add(b) } else { a.checked_sub(b) })?;
+        }
+    }
+
+    fn product(&mut self) -> Result<Valued, String> {
+        let mut left = self.unary()?;
+        loop {
+            let op = match self.peek() {
+                Some(op @ ("*" | "/" | "%")) => op.to_string(),
+                _ => return Ok(left),
+            };
+            self.pos += 1;
+            let (a, b) = (int(&left)?, int(&self.unary()?)?);
+            left = number(match op.as_str() {
+                "*" => a.checked_mul(b),
+                "/" => a.checked_div_euclid(b),
+                _ => a.checked_rem_euclid(b),
+            })?;
+        }
+    }
+
+    fn unary(&mut self) -> Result<Valued, String> {
+        if self.eat("-") {
+            return number(int(&self.unary()?)?.checked_neg());
+        }
+        if self.eat("not") || self.eat("!") {
+            return Ok(boolean(!truth(&self.unary()?)?));
+        }
+        let mut value = self.atom()?;
+        loop {
+            if self.eat("[") {
+                let index = self.or()?;
+                if !self.eat("]") {
+                    return Err("expected `]`".into());
+                }
+                value = at(&value, &index)?;
+            } else if self.eat(".") {
+                let field = self.tokens.get(self.pos).ok_or("expected a field after `.`")?.clone();
+                self.pos += 1;
+                value = match value.json.get(&field) {
+                    Some(json) => Valued { json: json.clone(), labels: None },
+                    None => return Err(format!("no field `{field}` here")),
+                };
+            } else {
+                return Ok(value);
+            }
+        }
+    }
+
+    fn atom(&mut self) -> Result<Valued, String> {
+        let token = self.peek().ok_or("the expression ends early")?.to_string();
+        self.pos += 1;
+        if token == "(" {
+            let value = self.or()?;
+            return if self.eat(")") { Ok(value) } else { Err("expected `)`".into()) };
+        }
+        if token == "len" && self.eat("(") {
+            let value = self.or()?;
+            if !self.eat(")") {
+                return Err("expected `)`".into());
+            }
+            let n = value.json.as_array().ok_or("`len` needs a list")?.len();
+            return number(Some(n as i128));
+        }
+        if token.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return number(Some(token.parse().map_err(|_| format!("`{token}` is not a number"))?));
+        }
+        match token.as_str() {
+            "true" | "false" => Ok(boolean(token == "true")),
+            "None" => Ok(Valued { json: Json::Null, labels: None }),
+            _ => self.names.get(&token).cloned().ok_or(format!("`{token}` is not in scope here")),
+        }
+    }
+}
+
+fn at(list: &Valued, index: &Valued) -> Result<Valued, String> {
+    let items = list.json.as_array().ok_or("only a list can be indexed")?;
+    let key = index.json.to_compact_string();
+    let position = match list.labels.as_ref().and_then(Json::as_array) {
+        Some(labels) => labels.iter().position(|l| l.to_compact_string() == key || shown(l) == key),
+        None => usize::try_from(int(index)?).ok(),
+    };
+    let json = position.and_then(|p| items.get(p)).ok_or(format!("{key} is out of range"))?;
+    Ok(Valued { json: json.clone(), labels: None })
+}
+
+fn int(value: &Valued) -> Result<i128, String> {
+    match &value.json {
+        Json::Num(n) | Json::Str(n) => n.parse().map_err(|_| format!("`{}` is not an integer", shown(&value.json))),
+        other => Err(format!("`{}` is not an integer", shown(other))),
+    }
+}
+
+fn truth(value: &Valued) -> Result<bool, String> {
+    value.json.as_bool().ok_or(format!("`{}` is not a Bool", shown(&value.json)))
+}
+
+fn boolean(b: bool) -> Valued {
+    Valued { json: Json::Bool(b), labels: None }
+}
+
+fn number(n: Option<i128>) -> Result<Valued, String> {
+    let n = n.ok_or("the arithmetic overflows")?;
+    Ok(Valued { json: Json::Num(n.to_string()), labels: None })
 }
 
 fn emit_variable(out: &mut String, name: &str, value: &str, ty: &str) {
@@ -706,7 +950,7 @@ fn write_frame(writer: &mut dyn Write, body: &str) -> io::Result<()> {
 
 // ----- Minimal self-contained JSON parser -----
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Json {
     Null,
     Bool(bool),
