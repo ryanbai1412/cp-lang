@@ -51,7 +51,9 @@ bytes, never slower), and `cpl explain` prints every layout.
   one zero-extending load; arithmetic is in `Int`, so `a[i] * a[j]` can't
   overflow 32 bits. Storing into a range-typed slot checks the range
   unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
-  type is a contract.
+  type is a contract: `cpl run` and checked builds trap on a violation;
+  release builds don't check (decision 100), the same deal as `Int`
+  overflow, so valid programs pay nothing on the judge.
 - **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is
   one byte per element, `[V]0..=4e9` four. Decision 1.7 keeps the number
   types to `Int`, `U64`, `I128` and `F64`; a byte of text is `Char`.
@@ -182,8 +184,9 @@ removes padding. `cpl explain` shows the storage order.
   conditional move.
 - **Producing a spare value is an overflow.** `Int` arithmetic that lands
   on `INT64_MIN` traps in debug like any overflow; in release it is part
-  of the wrap contract (a wrapped value may read as `none`). Range and
-  `Mod` stores check their range, so they can never write a spare.
+  of the wrap contract (a wrapped value may read as `none`). An
+  out-of-range store is the same: checked builds trap before it writes a
+  spare; release truncates, and the result may read as `none`.
 - **Reading input** rejects a value equal to a spare (`read<Int>` of
   `-9223372036854775808` is an input error naming the bound).
 - **Generic code** sees no difference: `?T` inside `SegTree<T>` or a user
@@ -197,7 +200,7 @@ Ranges carry the proofs; the build decides what an unproven step does.
 |---|---|---|
 | `Int` arithmetic proven in range | no check | no check |
 | `Int` arithmetic unproven | trap with values | wraps |
-| store into a range type, unproven | trap | trap (contract); `with checks(ranges: off)` removes it |
+| store into a range type, unproven | trap | no check: truncates to the width |
 | `U64` | wraps | wraps |
 | `I128` arithmetic unproven | trap with values | wraps |
 | `wrapping_add` and friends | wraps | wraps |
