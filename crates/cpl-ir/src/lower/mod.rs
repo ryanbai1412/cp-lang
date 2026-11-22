@@ -2456,6 +2456,8 @@ impl<'a> Lowerer<'a> {
                 self.sigs[id].is_generator = true;
                 Some(Ty::list(self.resolve_ty(inner)))
             }
+            // `-> Rooted<V, _>`: the body's value says what `_` is, a fresh domain made there.
+            (Some(ty), _) if type_has_hole(ty) => None,
             (Some(ty), _) => {
                 // Check for `-> (domain C, comp: [V]C)` or `-> (domain P, [P]Int)` returning fresh domain(s).
                 let mut binders: Vec<String> = Vec::new();
@@ -5695,5 +5697,13 @@ fn implicit_type_names(ty: &ast::Type, out: &mut Vec<String>) {
             implicit_type_names(ret, out);
         }
         _ => {}
+    }
+}
+
+fn type_has_hole(ty: &ast::Type) -> bool {
+    match &ty.kind {
+        ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"),
+        ast::TypeKind::Named { args, .. } => args.iter().any(type_has_hole),
+        _ => false,
     }
 }

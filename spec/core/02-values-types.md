@@ -215,7 +215,9 @@ type Z = Mod(read<Prime>())         // runtime modulus
   `fn components(...) -> (domain P, [V]P)`; the caller binds it with
   `let (domain P, ...) = ...`. User code can write such functions: the
   body returns a tuple whose `domain` slot is a domain declared in the
-  body, `(J, [J] j => 0)`. (R02.9.3)
+  body, `(J, [J] j => 0)`. A struct return may leave a domain parameter
+  as `_`, `-> Rooted<V, _>`: the body's value fixes it, and the caller
+  reads it as a member, `t.Pre`. (R02.9.3)
 - A fresh type carries runtime data (a domain's count, a modulus) in one
   static slot per declaration site, saved and restored when a recursive
   block re-enters. Generic code reads the slot; nothing is passed
