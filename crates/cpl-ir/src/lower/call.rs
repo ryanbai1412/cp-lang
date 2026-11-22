@@ -7293,7 +7293,7 @@ impl<'a> Lowerer<'a> {
         // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order (v0.2;
         // v0.3 dispatches to `std.seq.group` returning `HashMap<K, List<U>>`).
         if let ([key], "group") = (args, name.text.as_str()) {
-            if std::env::var_os("CPL_SPEC").is_none()
+            if !cpl_check::edition::is_v03()
                 && key.name.as_ref().is_none_or(|n| n.text == "by")
                 && base_is_seq
             {
@@ -11190,7 +11190,7 @@ impl<'a> Lowerer<'a> {
         let base_ty = self.probe_ty_silent(base)?;
         if !matches!(
             base_ty,
-            Ty::List(_) | Ty::Array { .. } | Ty::ListView(_) | Ty::MutView(_) | Ty::Str
+            Ty::List(_) | Ty::Array { .. } | Ty::ListView(..) | Ty::MutView(_) | Ty::Str
         ) {
             return None;
         }
@@ -11230,7 +11230,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        if std::env::var_os("CPL_SPEC").is_some() {
+        if cpl_check::edition::is_v03() {
             if let ast::ExprKind::Call { callee, args } = &base.kind {
                 if let ast::ExprKind::Field { base: inner, name } = &callee.kind {
                     if name.text == "map"
@@ -11246,7 +11246,7 @@ impl<'a> Lowerer<'a> {
                             Some(
                                 Ty::List(_)
                                     | Ty::Array { .. }
-                                    | Ty::ListView(_)
+                                    | Ty::ListView(..)
                                     | Ty::MutView(_)
                                     | Ty::Str
                             )
@@ -11319,7 +11319,7 @@ impl<'a> Lowerer<'a> {
             return self.lower_array_map_expr(base_expr, &view.func, span);
         }
         let elem_ty = match &base_expr.ty {
-            Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => (**e).clone(),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) => (**e).clone(),
             Ty::Str => Ty::Char,
             _ => return self.err_expr(span),
         };
