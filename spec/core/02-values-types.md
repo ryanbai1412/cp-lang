@@ -13,17 +13,17 @@ Every value is one of:
 - a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a
   domain, `?T` of a plain `T`, and tuples, records, structs and enums
   built only from plain values. Plain values copy on assignment and fit
-  in registers or a few words.
+  in registers or a few words. (R02.1.1)
 - a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every
   library container, and any struct holding one. Heap values move on
-  assignment and are copied only by `.clone()` (decision 128).
+  assignment and are copied only by `.clone()` (decision 128). (R02.1.2)
 - a **function value**: `fn` items, lambdas and operation values. They
   are zero-size when they capture nothing and are always inlined; there
-  is no boxed function type (chapter 13).
+  is no boxed function type (chapter 13). (R02.1.3)
 - a **generator value**: a recipe that pushes elements to a loop body
   (chapter 6, `07-sequences.md`).
 
-Whether a value is owned or lent is not part of its type (chapter 5).
+Whether a value is owned or lent is not part of its type (chapter 5). (R02.1.4)
 
 ## 2.2 Scalars
 
@@ -41,24 +41,24 @@ Whether a value is owned or lent is not part of its type (chapter 5).
 
 There are exactly four number types (decision 1.7). Narrow storage is a
 range type, never a separate integer type: `[V]0..=255` stores one byte
-per element.
+per element. (R02.2.1)
 
 Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has
 exactly those values, reads validate them, and `match` is exhaustive over
-them (decision 135).
+them (decision 135). (R02.2.2)
 
 ## 2.3 Strings
 
 `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence
 capabilities of chapter 7 (it is `Indexed`, `Sized` and `Bidir`). Slices
-keep source positions, as for every sequence (`04b-keys.md`).
+keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 
 - `Str of "01?"` is a string whose characters come from the literal's
   alphabet. The alphabet is a domain, so `[Alpha]Int` is a table over it
   and reads validate it. `Str(len: 1..=2e5)` bounds the length, checked
-  on read like a range (decision 134).
+  on read like a range (decision 134). (R02.3.2)
 - `+` concatenates (allocating; the cost is visible as a new value);
-  `s.push(c)` appends in place.
+  `s.push(c)` appends in place. (R02.3.3)
 - Interpolation `"{x}"` formats through the `Print` trait (chapter 10).
 
 ## 2.4 Optionals
@@ -67,22 +67,22 @@ keep source positions, as for every sequence (`04b-keys.md`).
 
 - `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`);
   `x.is_none_or(p)` is its dual (`true` on `None`). `x.map(f)` and `x.and_then(f)`
-  (for `f: T -> ?U`) transform the value and keep `None`.
+  (for `f: T -> ?U`) transform the value and keep `None`. (R02.4.1)
 - `T` converts to `?T` implicitly; the other way is explicit: `x ?? d`
   (lazy fallback), `x!` (unwrap or trap, naming the place), `if let`,
-  `while let`, `let ... else`, `match`.
+  `while let`, `let ... else`, `match`. (R02.4.2)
 - When `T` has a spare value (a niche), `?T` takes no more bytes than `T`
   (chapter 3). Otherwise it adds a flag byte, rounded to alignment.
-  `?(?T)` is legal and adds a flag around `?T`.
+  `?(?T)` is legal and adds a flag around `?T`. (R02.4.3)
 - **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`,
   `None` if either side is. Lifting is three ordinary impls, not a
-  language rule (`impl<T: Add> Add for ?T`).
+  language rule (`impl<T: Add> Add for ?T`). (R02.4.4)
 - **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best`
   with an optional left side is an error, never a silent `false`. `==` is
-  structural (`None == None`).
+  structural (`None == None`). (R02.4.5)
 - `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None`
   target takes the right side, a `None` right side changes nothing. With
-  lifted arithmetic this is "skip unreachable states":
+  lifted arithmetic this is "skip unreachable states": (R02.4.6)
 
   ```
   dist[v] min= dist[u] + w          // dist[u] none: nothing happens
