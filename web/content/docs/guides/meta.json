@@ -2,6 +2,7 @@
   "title": "Guides",
   "pages": [
     "getting-started",
+    "cheatsheet",
     "tour",
     "types-and-control",
     "io-and-formatting",

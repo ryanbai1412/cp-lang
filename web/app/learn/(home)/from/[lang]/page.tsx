@@ -32,8 +32,9 @@ export default async function Page({ params }: Props) {
       <p className="text-sm text-muted-foreground">Quickstart · about 15 minutes</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">CP Lang for {languages[l].name} programmers</h1>
       <p className="mt-2 text-muted-foreground">
-        Six short problems. Each shows how you&apos;d write it in {languages[l].name}, then the CP Lang solution, judged in
-        your browser. Edit it, break it, submit it.
+        Six short problems. Each shows how you&apos;d write it in {languages[l].name}, then the CP Lang solution. Edit
+        it, break it, submit it: your browser judges it. A solution marked check-only is shown without a judge until
+        the compiler runs it.
       </p>
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         {Object.entries(languages).map(([k, v]) => (
@@ -86,7 +87,7 @@ export default async function Page({ params }: Props) {
         ))}
       </ol>
       <section className="mt-16 rounded-xl border bg-card p-6">
-        <h2 className="text-xl font-semibold">You&apos;ve written six programs</h2>
+        <h2 className="text-xl font-semibold">You&apos;ve read six programs</h2>
         <p className="mt-1 text-muted-foreground">Next: problems with verdicts, or look things up.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild>

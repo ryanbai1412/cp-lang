@@ -1,0 +1,144 @@
+---
+title: "Cheat sheet"
+description: "One page of CP Lang: input, output, control flow, optionals, collections, functions and tools."
+---
+
+Every block on this page is a complete program that runs. For the reasoning behind each line, read the [tour](/docs/guides/tour) or take the [course](/learn).
+
+## Input
+
+The type says what to read. A range type is the statement's constraint: it is checked on input and picks the storage width.
+
+```cp status=runs input="3 2\n1 2 3\nabc\ndef\nryan\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+let grid: [2, 3]Char = read()
+let name: Str = read()
+print(n, q, a.sum(), grid[0, 1], name)
+```
+
+| You write | It reads |
+| --- | --- |
+| `let n: 1..=2e5 = read()` | one integer, checked against the range |
+| `let (n, m): (Int, Int) = read()` | two integers |
+| `let a: [V]Int = read()` | one value per element of `V` |
+| `let g: [h, w]Char = read()` | `h` rows of `w` characters |
+| `let s: Str = read()` | one whitespace-separated token |
+| `@!multitest` | the number of test cases; the code below it runs once per case |
+
+```cp status=runs input="2\n3\n1 5 2\n1\n7\n"
+@!multitest
+let n: 1..=100 = read()
+let a: [0..n]Int = read()
+print(a.max()! - a.min()!)
+```
+
+## Output
+
+```cp
+let xs = [3, 1, 4, 1, 5]
+let dist: [0..3]?Int = [0, None, 2]
+let ok = xs.len > 3
+let x = 3.14159
+print(xs)
+print(xs, sep: "\n")
+print(dist, none: "-1")
+print(ok)
+print("sum={xs.sum()} pi={x:.2f} n={xs.len:03}")
+```
+
+`print` puts spaces between arguments and ends the line. Lists and arrays print on one line. `Bool` prints `YES` or `NO`.
+
+## Control flow, arithmetic and optionals
+
+```cp
+var best: ?Int = None
+for x in [4, 9, 2]:
+    best max= x
+print(best ?? -1)
+if let b = best:
+    print(b + 1)
+var total = 0
+for i in 0..5 if i % 2 == 0:
+    total += i
+var k = 10
+while k > 1: k /= 2
+print(total, k, 7 / 2, -7 % 3, 2 ** 10, min(3, 5))
+```
+
+- `0..n` excludes `n`; `0..=n` includes it.
+- `/` and `%` are Euclidean: `-7 % 3` is `2`.
+- Write `and`, `or`, `not`, and `elif`.
+- `?T` is a `T` or `None`. `??` gives a fallback, `x!` unwraps, `if let` binds, and `min=` / `max=` skip `None`.
+
+## Arrays, domains and sequences
+
+```cp
+let a = [5, 2, 8, 2]
+print(a.sum(), a.min()!, a.max()!, a.sorted(), a.count(x => x == 2))
+print(a.any(x => x > 7), a.all(x => x > 1))
+print(sum(x * x for x in a), [x for x in a if x % 2 == 0])
+domain V = 1..=4
+let b: [V]Int = [V] v => v.to_idx * 10
+for v in V: print(v, b[v], end: " ")
+print()
+```
+
+- `domain V = 1..=n` names an index space. `[V]T` is an array over it, and `a[v]` needs a `V`.
+- `V(3)` makes an index from an integer; `v.to_idx` goes back to a 0-based integer.
+- `a.min()` and `a.max()` return `?T`, because the sequence may be empty.
+
+## Collections
+
+```cp
+var xs: List<Int> = []
+xs.push(5)
+xs.push(2)
+xs.push(8)
+let ys = xs.sorted()
+print(ys, ys.rev, xs.pop() ?? 0)
+var seen: Set<Int> = Set()
+seen.add(3)
+var cnt: Map<Int, Int> = Map()
+cnt[7] += 1
+cnt[7] += 1
+print(3 in seen, cnt[7])
+var h = MinHeap<Int>()
+h.push(4)
+h.push(1)
+print(h.pop() ?? -1)
+```
+
+## Functions, records and enums
+
+```cp
+type P = (x: Int, y: Int)
+fn norm(p: P) -> Int = p.x * p.x + p.y * p.y
+fn bump(mut a: [0..3]Int, i: 0..3):
+    a[i] += 1
+var a: [0..3]Int = 0
+bump(mut a, 1)
+enum Op:
+    Add(k: Int)
+    Clear
+fn apply(x: Int, op: Op) -> Int:
+    match op:
+        Add(k) => x + k
+        Clear => 0
+print(norm((x: 3, y: 4)), a, apply(5, Add(2)), apply(5, Clear))
+```
+
+A function that changes an argument takes it as `mut`, and the caller writes `mut` too.
+
+## Tools
+
+| Command | What it does |
+| --- | --- |
+| `cpl run a.cp` | run with the interpreter, reading stdin |
+| `cpl check a.cp` | type-check only |
+| `cpl build a.cp -o a.cpp` | write one C++17 file to submit |
+| `cpl run a.cp --trace` | record the run to `a.trace.html`, the time-step viewer |
+| `cpl stress a.cp` | compare against `@brute` on random inputs and shrink the first failure |
+
+The [playground](/play) has the same Run, Trace and Stress buttons. See the [stress guide](/docs/guides/stress) and the [CLI reference](/tools).

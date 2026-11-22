@@ -27,7 +27,7 @@ Bare `@memo` chooses its storage layout automatically (`@memo(into: table)` expo
 - `@memo` can also wrap `ask(...)` or an extern `@grader fn` so repeated queries with the same arguments cost only one judge query.
 - If you want manual hash storage instead, declare `var dp = HashMap<Key, Val>()`.
 
-Try a live cached `@memo` DP in the [DP course chapter](/docs/guides/course-dp#cached-recursion-with-memo) or [playground](/docs/guides/playground). Here is a small recursive recurrence you can run directly:
+Try a live cached `@memo` DP in the [playground](/play). Here is a small recursive recurrence you can run directly:
 
 ```cp
 let n: 1..=20 = read()
@@ -77,7 +77,7 @@ fn check():
     assert ans == a.sum()
 ```
 
-This complete sum program uses `print()` inside `@gen` to produce test input. For an interactive program, use the separate `@interactor` example in [the verification course](/docs/guides/course-verification#co-located-interactor-and-query-budgets); do not combine its protocol with the sum program. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.
+This complete sum program uses `print()` inside `@gen` to produce test input. For an interactive program, use the separate `@interactor` example in the [stress guide](/docs/guides/stress); do not combine its protocol with the sum program. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.
 
 ## Pattern and DP structure discovery (`std.spec`)
 
@@ -100,7 +100,7 @@ print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
 
 ## Visual debugging with Trace
 
-Every run in the [playground](/docs/guides/playground) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@brute(main)` side by side when the file defines one — then opens the interactive [Trace debugger](/docs/guides/trace).
+Every run in the [playground](/play) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@brute(main)` side by side when the file defines one — then opens the interactive trace viewer.
 
 You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@brute(main)`.
 

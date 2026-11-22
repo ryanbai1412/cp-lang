@@ -26,7 +26,7 @@ if s.len >= 2 and s[..2] == "ab":
     print(out)
 ```
 
-Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the offline [playground](/docs/guides/playground) (pick **ASCII string scan**).
+Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the [playground](/play).
 
 ## Common string helpers
 
@@ -67,7 +67,7 @@ For input `5` and `abaca`, the result is `3`. Each subscript touches one contigu
 
 ## String algorithms in `std`
 
-The standard library provides `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and double-salted `RollingHash(s)` (`.get(l..r)`), all operating directly on flat ASCII bytes. For a real multi-DP string port using `0..n`-indexed `Str`, see the [Cheerio '1 S5 showcase](/docs/guides/index#showcase-cheerio1s5).
+The standard library provides `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and double-salted `RollingHash(s)` (`.get(l..r)`), all operating directly on flat ASCII bytes. For a real multi-DP string port using `0..n`-indexed `Str`, see the [corpus](/corpus).
 
 ## Prefix, suffix, and search helpers
 

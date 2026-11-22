@@ -3,7 +3,7 @@ title: "Getting started & CLI"
 description: "Install the cpl toolchain, run programs locally, and compile submittable C++17."
 ---
 
-You can try CP Lang immediately with zero setup in the [browser playground](/docs/guides/playground), or install the local `cpl` CLI to run programs natively, emit standalone C++17 for online judges, and enable editor support (`cpl lsp`).
+You can try CP Lang immediately with zero setup in the [browser playground](/play), or install the local `cpl` CLI to run programs natively, emit standalone C++17 for online judges, and enable editor support (`cpl lsp`).
 
 ## Install
 
@@ -58,7 +58,6 @@ The `cpl` CLI ships with a built-in Language Server Protocol server (`cpl lsp`) 
 
 ## What works today
 
-- **Available now in `cpl` and the browser WebAssembly playground:** `cpl check`, `cpl run`, `cpl build` (readable C++17 emission), `cpl lsp`, live execution traces (`Trace` button in the playground and [Trace debugger](/docs/guides/trace)), `@!multitest`, top-level `return`, nominal domains, `.l`/`.r` boundaries, multi-dimensional arrays, enums and `match`, Tropical Optionals (`?T`, `min=`, `max=`, `??`, `??=`), cached `@memo` DP, `lends mut` projections, and standard library modules including `List`, `MinHeap`, `Fenwick`, `SegTree`, `LazySegTree`, `Dsu`, `Mod<P>`, and `Comb<M>`.
-- **In progress for upcoming CLI releases:** automated `cpl stress` with structure-aware shrinking for `@brute` / `@checker` / `@interactor`, `cpl bench` worst-case judge timing and RSS checks, `cpl new` constraint scaffolding, and `cpl test` / `cpl doc` for local libraries.
+CP Lang is in beta. `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl lsp` and the trace viewer all work, in the CLI and in the browser. Parts of the standard library are still being implemented: an example on this site marked **check-only** passes the type checker but does not run yet.
 
-Next, work through the [interactive course](/docs/guides/course), take the [language tour](/docs/guides/tour), or jump straight to the [C++17 migration guide](/docs/guides/cpp-guide).
+Next: the [course for your language](/learn), the [cheat sheet](/docs/guides/cheatsheet), the [language tour](/docs/guides/tour), or the [C++17 migration guide](/docs/guides/cpp-guide).

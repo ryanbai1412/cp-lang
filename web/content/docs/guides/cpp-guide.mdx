@@ -160,4 +160,4 @@ print(acc)
 
 - **`O(1)` cleared arrays (`std.marks.Marks<D>`):** in multi-query algorithms where each query touches a few indices, use `Marks<D>` (32-bit generation stamp) or a touched-list instead of `a.fill(false)`.
 - **Explicit iterative DP:** when a tight 2D DP needs a rolling 1D buffer for cache locality or memory limits, write the iterative loop directly with `[0..=cap]Int` — `@memo` is optional.
-- **Inspect the C++17 anytime:** click **C++17** in the [playground](/docs/guides/playground) or run `cpl build solve.cp` locally to verify the exact loop and memory layout `g++ -O2` will compile.
+- **Inspect the C++17 anytime:** click **C++17** in the [playground](/play) or run `cpl build solve.cp` locally to verify the exact loop and memory layout `g++ -O2` will compile.
