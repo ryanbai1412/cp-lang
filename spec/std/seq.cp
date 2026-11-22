@@ -204,7 +204,10 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 /// ties: the last in sequence order
 /// traps: never (beyond what `p` traps on)
 /// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
-pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T = todo
+pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
+    for x in self.rev:
+        if p(x): return Some(x)
+    None
 
 /// Sort `self` in place by `by` (descending when `desc`). Stable: equal keys keep their order.
 /// Works on any `IndexedMut`, including slices: `a[l..=r].sort()`.
@@ -236,7 +239,18 @@ pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = fals
 /// empty: does nothing
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3]; a.reverse(); a == [3, 2, 1]`
-pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None) = todo
+pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None):
+    var lo = 0
+    var hi = self.len
+    if let r = range:
+        if r.is_empty: return
+        lo = r.first!
+        hi = r.last! + 1
+    var (i, j) = (lo, hi - 1)
+    while i < j:
+        self.swap_idx(i, j)
+        i += 1
+        j -= 1
 
 /// O(n). Drop each value equal to the one before it, in place: a sorted list keeps one of each.
 ///
@@ -331,7 +345,61 @@ pub fn select<S: IndexedMut, T, K>(
     k: Int,
     by: T -> K = x => x,
     cmp: ?((T, T) -> Bool) = None,
-) = todo
+):
+    let n = self.len
+    let _ = self.at(k)
+    let less = (a: T, b: T) => if let c = cmp: c(a, b) else: by(a) < by(b)
+    var (lo, hi) = (0, n)
+    var budget = 2
+    var m = n
+    while m > 1:
+        budget += 2
+        m /= 2
+    while hi - lo > 1:
+        if budget == 0:
+            heap_select(mut self, lo, hi, k, less)
+            return
+        budget -= 1
+        let mid = lo + (hi - lo) / 2
+        if less(self.at(mid), self.at(lo)): self.swap_idx(mid, lo)
+        if less(self.at(hi - 1), self.at(lo)): self.swap_idx(hi - 1, lo)
+        if less(self.at(hi - 1), self.at(mid)): self.swap_idx(hi - 1, mid)
+        let pivot = self.at(mid)
+        var (i, j) = (lo, hi - 1)
+        while i <= j:
+            while less(self.at(i), pivot): i += 1
+            while less(pivot, self.at(j)): j -= 1
+            if i <= j:
+                self.swap_idx(i, j)
+                i += 1
+                j -= 1
+        if k <= j: hi = j + 1
+        elif k >= i: lo = i
+        else: return
+
+fn heap_select<S: IndexedMut, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T, T) -> Bool):
+    let m = hi - lo
+    var start = m / 2 - 1
+    while start >= 0:
+        sift_down(mut self, lo, start, m, less)
+        start -= 1
+    var end = m - 1
+    while end > k - lo:
+        self.swap_idx(lo, lo + end)
+        sift_down(mut self, lo, 0, end, less)
+        end -= 1
+    if end >= 0:
+        self.swap_idx(lo, lo + end)
+
+fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T, T) -> Bool):
+    var i = from
+    while true:
+        var c = 2 * i + 1
+        if c >= m: return
+        if c + 1 < m and less(self.at(lo + c), self.at(lo + c + 1)): c += 1
+        if not less(self.at(lo + i), self.at(lo + c)): return
+        self.swap_idx(lo + i, lo + c)
+        i = c
 
 /// O(|a| + |b|), O(|a| + |b|) memory. Stable merge of two sorted sequences (keyed by `by:`),
 /// taking from `a` before `b` on ties. Works on any `Indexed` sequences.
@@ -797,7 +865,12 @@ pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T) = todo
 /// traps: never; a non-permutation that never returns to `from` walks forever
 /// example: `[1, 2, 0].cycle(from: 0).collect() == [0, 1, 2]`
 /// empty: never empty: yields at least `from`
-pub fn cycle<D>(self: [D]D, from: D) -> yields D = todo
+pub fn cycle<D>(self: [D]D, from: D) -> yields D:
+    var x = from
+    while true:
+        yield x
+        x = self[x]
+        if x == from: return
 
 // ---- Range boundary cuts, keyed sorted lookup, ordered Map 4-lookups, and List/Array helpers
 
@@ -807,7 +880,7 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D = todo
 /// empty: the same cut as `r`
 /// traps: never
 /// example: `(2..5).l.r == Some(2)`
-@get pub fn l<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn l<D>(self: Range<D>) -> Cut<D> = self.start
 
 /// Right boundary cut of a range (valid even when empty).
 ///
@@ -815,7 +888,7 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D = todo
 /// empty: the same cut as `l`
 /// traps: never
 /// example: `(2..5).r.l == Some(4)`
-@get pub fn r<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn r<D>(self: Range<D>) -> Cut<D> = self.end
 
 /// O(1). `(r.l..r.mid, r.mid..r.r)`: two non-empty halves, or `None` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
@@ -843,7 +916,12 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
 /// traps: never
 /// example: `(0..5).clip(3..9) == 3..5`
 /// order: increasing, a sub-range of both
-pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
+pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
+    if self.is_empty: return self
+    if other.is_empty: return other
+    let lo = if self.first! < other.first!: other.first! else: self.first!
+    let hi = if self.last! < other.last!: self.last! else: other.last!
+    if hi < lo: lo..lo else: lo..=hi
 
 /// O(log n) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
 /// `None` when it never does. Checked builds check the probes agree (R09.2.3).
@@ -896,7 +974,7 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
         let m = lo + (hi - lo) / 2
         if ok(self[m]) != last: hi = m
         else: lo = m + 1
-    if lo < n: self[lo].l else: self[n - 1].r
+    if lo < n: (self[lo]..self[lo]).start else: self.end
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
@@ -1013,7 +1091,31 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 /// ties: equal values are not an inversion
 /// traps: never
 /// example: `inversions([3, 1, 2]) == 2`
-pub fn inversions<S: Seq, T>(a: S) -> Int = todo
+pub fn inversions<S: Seq, T>(a: S) -> Int:
+    var cur: List<T> = [x for x in a]
+    let n = cur.len
+    var tmp = cur.copy()
+    var total = 0
+    var w = 1
+    while w < n:
+        var lo = 0
+        while lo < n:
+            let mid = if lo + w < n: lo + w else: n
+            let hi = if lo + 2 * w < n: lo + 2 * w else: n
+            var (i, j, k) = (lo, mid, lo)
+            while i < mid or j < hi:
+                if j == hi or (i < mid and not (cur[j] < cur[i])):
+                    tmp[k] = cur[i]
+                    i += 1
+                else:
+                    total += mid - i
+                    tmp[k] = cur[j]
+                    j += 1
+                k += 1
+            lo = hi
+        (cur, tmp) = (tmp, cur)
+        w *= 2
+    total
 
 /// Swap two positions of a domain array in place; safely a no-op when `i == j`.
 ///
@@ -1035,7 +1137,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = todo
+pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [if i < self.len: self.nth(i) else: fill for i in 0..n]
 
 /// O(1). Pop the last element if `ok` holds for it, else leave `self` alone and give `None`.
 /// A monotonic stack is `while let top = st.pop_if(t => t.h >= h): ...`.
@@ -1044,7 +1146,7 @@ pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = todo
 /// empty: `None`
 /// traps: never
 /// example: `var s = [1, 5]; s.pop_if(x => x > 3) == Some(5)`
-pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = todo
+pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = if self.len > 0 and ok(self[self.len - 1]): self.pop() else: None
 
 /// O(popped). Pop from the back while `ok` holds for the last element; the popped
 /// elements, last first. The back twin of `Deque.pop_front_while`.
@@ -1054,14 +1156,17 @@ pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = todo
 /// order: last element first
 /// traps: never
 /// example: `var s = [1, 4, 5]; s.pop_while(x => x > 3) == [5, 4] and s == [1]`
-pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T> = todo
+pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>:
+    var out: List<T> = []
+    while self.len > 0 and ok(self[self.len - 1]): out.push(self.pop()!)
+    out
 
 /// O(n), allocates. A separate copy: `let b = a` moves, `let b = a.clone()` copies.
 ///
 /// cost: O(size of the value), allocates for heap values
 /// traps: never
 /// example: `let a = [1]; var b = a.clone(); b.push(2); a == [1]`
-pub fn clone<T>(self: T) -> T = todo
+pub fn clone<T>(self: T) -> T = self.copy()
 
 /// Move all elements out of `self` in O(1), leaving it empty.
 ///
@@ -1070,7 +1175,7 @@ pub fn clone<T>(self: T) -> T = todo
 /// order: unchanged; `self` is left empty
 /// traps: never
 /// example: `var a = [1, 2]; a.take_all() == [1, 2] and a == []`
-pub fn take_all<T>(mut self: List<T>) -> List<T> = todo
+pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 
 /// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.
 ///
@@ -1219,7 +1324,7 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 /// empty: traps for every `k`
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
-pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = todo
+pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 
 /// O(1). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
@@ -1400,7 +1505,12 @@ pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T:
 /// order: left to right, ending `(last, None)`
 /// traps: never
 /// example: `[1, 2].with_next().collect() == [(1, Some(2)), (2, None)]`
-pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T) = todo
+pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T):
+    var prev: ?T = None
+    for x in self:
+        if let p = prev: yield (p, Some(x))
+        prev = Some(x)
+    if let p = prev: yield (p, None)
 
 /// O(1) per step. Zero-alloc zipped view of equal-length sequences; traps if `a.len != b.len`.
 ///
@@ -1409,7 +1519,9 @@ pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T) = todo
 /// order: position by position
 /// traps: when `a.len != b.len`
 /// example: `zip_exact([1, 2], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip_exact<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
+pub fn zip_exact<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+    assert a.len == b.len
+    for i in 0..a.len: yield (a.nth(i), b.nth(i))
 
 /// O(n). Non-overlapping length-`k` chunks, padding the last chunk with `pad` when shorter.
 ///
@@ -1453,7 +1565,20 @@ pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
 /// ties: `val` is the first maximal element; `count` counts every element with an equal key
 /// traps: never
 /// example: `[3, 1, 3].max_count() == Some((val: 3, count: 2))`
-pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int) = todo
+pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+    var best: ?(T, K) = None
+    var count = 0
+    for x in self:
+        let k = by(x)
+        if let (_, b) = best:
+            if b < k:
+                best = Some((x, k))
+                count = 1
+            elif k == b: count += 1
+        else:
+            best = Some((x, k))
+            count = 1
+    if let (v, _) = best: Some((val: v, count:)) else: None
 
 /// O(n). Minimum element (under `by:`) together with its multiplicity, or `None` when empty.
 ///
@@ -1462,7 +1587,20 @@ pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// ties: `val` is the first minimal element; `count` counts every element with an equal key
 /// traps: never
 /// example: `[1, 2, 1].min_count() == Some((val: 1, count: 2))`
-pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int) = todo
+pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+    var best: ?(T, K) = None
+    var count = 0
+    for x in self:
+        let k = by(x)
+        if let (_, b) = best:
+            if k < b:
+                best = Some((x, k))
+                count = 1
+            elif k == b: count += 1
+        else:
+            best = Some((x, k))
+            count = 1
+    if let (v, _) = best: Some((val: v, count:)) else: None
 
 /// The value held by more than half the elements, with its count, or `None`. Only `eq` is
 /// asked, never order or hashing, so it works with an equality oracle (Boyer-Moore: one
@@ -1472,7 +1610,22 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// empty: `None`
 /// traps: never
 /// example: `[2, 1, 2].majority() == Some((val: 2, count: 2))`
-pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int) = todo
+pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int):
+    var cand: ?T = None
+    var votes = 0
+    var n = 0
+    for x in self:
+        n += 1
+        if votes == 0:
+            cand = Some(x)
+            votes = 1
+        elif eq(cand!, x): votes += 1
+        else: votes -= 1
+    let c = cand else: return None
+    var count = 0
+    for x in self:
+        if eq(c, x): count += 1
+    if 2 * count > n: Some((val: c, count:)) else: None
 
 /// O(n) expected, O(distinct) memory. Frequency map of keys `by(x)` across `self`.
 ///
@@ -1511,7 +1664,11 @@ pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashM
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = todo
+pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+    var ps: List<(K, Int, T)> = []
+    for x in self: ps.push((by(x), ps.len, x))
+    if k < ps.len and k > 0: select(mut ps, k - 1, by: p => (p.0, p.1))
+    [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
 
 /// O(n) expected, O(k) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
 ///
@@ -1521,7 +1678,11 @@ pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = to
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = todo
+pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+    var ps: List<(K, Int, T)> = []
+    for x in self: ps.push((by(x), ps.len, x))
+    if k < ps.len and k > 0: select(mut ps, k - 1, cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
+    [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
 
 /// O(n). Unstable in-place partition moving `keep(x)` elements to `0..mid`; returns `mid`.
 ///
@@ -1530,7 +1691,13 @@ pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = to
 /// order: kept elements in `0..mid`, the rest after, each side in unspecified order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.partition_in_place(x => x % 2 == 0) == 2`
-pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int = todo
+pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int:
+    var mid = 0
+    for i in 0..self.len:
+        if keep(self.at(i)):
+            self.swap_idx(mid, i)
+            mid += 1
+    mid
 
 /// O(n), O(n) memory. Stable in-place partition preserving relative order in both halves; returns `mid`.
 ///
@@ -1539,7 +1706,16 @@ pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int
 /// order: kept elements in `0..mid`, the rest after, each side in input order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.stable_partition_in_place(x => x % 2 == 0); a == [2, 4, 1, 3]`
-pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int = todo
+pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int:
+    var yes: List<T> = []
+    var no: List<T> = []
+    for i in 0..self.len:
+        let x = self.at(i)
+        if keep(x): yes.push(x) else: no.push(x)
+    let mid = yes.len
+    for i in 0..mid: self[i] = yes[i]
+    for i in 0..no.len: self[mid + i] = no[i]
+    mid
 
 // --- Differences and cut-indexed forms (decision 124) ---
 
@@ -1609,7 +1785,15 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `sorted_union([1, 3], [2, 3]) == [1, 2, 3]`
-pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
+pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+    var out: List<T> = []
+    var (i, j) = (0, 0)
+    while i < a.len or j < b.len:
+        let x = if j == b.len or (i < a.len and a.nth(i) < b.nth(j)): a.nth(i) else: b.nth(j)
+        if out.len == 0 or out[out.len - 1] != x: out.push(x)
+        if i < a.len and a.nth(i) == x: i += 1
+        else: j += 1
+    out
 
 ///
 ///
@@ -1619,7 +1803,17 @@ pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `sorted_intersect([1, 2, 2, 3], [2, 2, 4]) == [2, 2]`
-pub fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
+pub fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+    var out: List<T> = []
+    var (i, j) = (0, 0)
+    while i < a.len and j < b.len:
+        if a.nth(i) < b.nth(j): i += 1
+        elif b.nth(j) < a.nth(i): j += 1
+        else:
+            out.push(a.nth(i))
+            i += 1
+            j += 1
+    out
 
 /// O(|a| + |b|), O(|a| + |b|) memory. Sorted elements in `a` not in `b`.
 ///
@@ -1629,7 +1823,15 @@ pub fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `sorted_diff([1, 2, 2, 3], [2]) == [1, 2, 3]`
-pub fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
+pub fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+    var out: List<T> = []
+    var j = 0
+    for i in 0..a.len:
+        let x = a.nth(i)
+        while j < b.len and b.nth(j) < x: j += 1
+        if j < b.len and b.nth(j) == x: j += 1
+        else: out.push(x)
+    out
 
 /// O(N log k), O(N) memory. Merge `k` sorted sequences via min-heap.
 ///
@@ -1639,7 +1841,18 @@ pub fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
 /// order: non-decreasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `kway_merge([[1, 4], [2], [3]]) == [1, 2, 3, 4]`
-pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T> = todo
+pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
+    if lists.len == 0: return []
+    var parts: List<List<T>> = [[x for x in l] for l in lists]
+    while parts.len > 1:
+        var next: List<List<T>> = []
+        var i = 0
+        while i + 1 < parts.len:
+            next.push(merge_sorted(parts[i], parts[i + 1]))
+            i += 2
+        if i < parts.len: next.push(parts[i].copy())
+        parts = next
+    parts[0].copy()
 
 /// O(n), O(n) memory. Stable LSD radix sort in place by integer key `by:` (signed `Int` supported).
 ///
@@ -1648,7 +1861,31 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T> = todo
 /// ties: stable
 /// traps: never
 /// example: `var a = [3, -1, 2]; a.radix_sort(); a == [-1, 2, 3]`
-pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x) = todo
+pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
+    let n = self.len
+    if n <= 1: return
+    var cur: List<(Int, T)> = []
+    for i in 0..n: cur.push((by(self.at(i)), self.at(i)))
+    var lo = cur[0].0
+    var hi = cur[0].0
+    for p in cur:
+        if p.0 < lo: lo = p.0
+        if hi < p.0: hi = p.0
+    var span = hi - lo
+    var shift = 0
+    while span > 0:
+        var count = [0 for _ in 0..257]
+        for p in cur: count[((p.0 - lo) >> shift) % 256 + 1] += 1
+        for d in 0..256: count[d + 1] += count[d]
+        var out = cur.copy()
+        for p in cur:
+            let d = ((p.0 - lo) >> shift) % 256
+            out[count[d]] = p
+            count[d] += 1
+        cur = out
+        shift += 8
+        span = span >> 8
+    for i in 0..n: self[i] = cur[i].1
 
 /// O(n + |K|), O(n + |K|) memory. Stable counting sort in place by domain or bounded-range key `by:`.
 ///
@@ -1665,15 +1902,33 @@ pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K) = todo
 /// empty: `true` when both are empty
 /// traps: never
 /// example: `is_permutation([1, 2, 2], [2, 1, 2]) == true`
-pub fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool = todo
+pub fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool:
+    var left = HashMap<T, Int>()
+    var n = 0
+    for x in a:
+        let c = left.get(x)
+        left[x] = if c == None: 1 else: c! + 1
+        n += 1
+    for y in b:
+        let c = left.get(y)
+        if c == None or c! == 0: return false
+        left[y] = c! - 1
+        n -= 1
+    n == 0
 
-/// O(|self| + |needle|). Whether `needle` occurs as a subsequence of `self`.
+/// O(|self| + |of|). Whether `self` occurs as a subsequence of `of`.
 ///
-/// cost: O(|self| + |needle|)
-/// empty: `true` for an empty `needle`
+/// cost: O(|self| + |of|)
+/// empty: `true` for an empty `self`
 /// traps: never
-/// example: `"abcde".is_subsequence("ace") == true`
-pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, needle: N) -> Bool = todo
+/// example: `"ace".is_subsequence("abcde") == true`
+pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
+    var j = 0
+    for x in self:
+        while j < of.len and of.nth(j) != x: j += 1
+        if j == of.len: return false
+        j += 1
+    true
 
 // --- Permutations, combinatorics, subsequences, and monotone-stack trees ---
 
@@ -1801,7 +2056,18 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// order: lexicographic by position
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
-pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T> = todo
+pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
+    assert k >= 0
+    let n = self.len
+    if k > n: return
+    var idx = [i for i in 0..k]
+    while true:
+        yield [self.nth(i) for i in idx]
+        var i = k - 1
+        while i >= 0 and idx[i] == n - k + i: i -= 1
+        if i < 0: return
+        idx[i] += 1
+        for j in i + 1..k: idx[j] = idx[j - 1] + 1
 
 /// O(1) per pair. Zero-alloc unordered index pairs `(i, j)` with `i < j` over `self: Range<D>`.
 ///
@@ -1810,7 +2076,9 @@ pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T> = todo
 /// order: by the first key, then the second
 /// traps: never
 /// example: `(0..3).index_pairs().collect() == [(0, 1), (0, 2), (1, 2)]`
-pub fn index_pairs<D>(self: Range<D>) -> yields (D, D) = todo
+pub fn index_pairs<D>(self: Range<D>) -> yields (D, D):
+    for i in 0..self.len:
+        for j in i + 1..self.len: yield (self[i], self[j])
 
 /// O(k) per permutation. All `k`-permutations of `self` (default `k = self.len`).
 ///
@@ -1820,7 +2088,28 @@ pub fn index_pairs<D>(self: Range<D>) -> yields (D, D) = todo
 /// order: lexicographic by position
 /// traps: when `k` is not in `0..=self.len`
 /// example: `[1, 2].permutations().collect() == [[1, 2], [2, 1]]`
-pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T> = todo
+pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>:
+    let n = self.len
+    let m = k ?? n
+    let _ = [0 for _ in 0..n + 1][m]
+    var used = [false for _ in 0..n]
+    var pick: List<Int> = []
+    var next = 0
+    while true:
+        if pick.len == m:
+            yield [self.nth(i) for i in pick]
+            if m == 0: return
+            next = pick.pop()! + 1
+            used[next - 1] = false
+        while next < n and used[next]: next += 1
+        if next < n:
+            used[next] = true
+            pick.push(next)
+            next = 0
+        elif pick.len == 0: return
+        else:
+            next = pick.pop()! + 1
+            used[next - 1] = false
 
 /// O(1). Steerable item yielded by `subsequences` (decision 126, W6).
 pub struct SubseqStep<T>(items: List<T>):
@@ -1881,7 +2170,23 @@ pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> Lis
 /// order: increasing `(i, j)`
 /// traps: never
 /// example: `lcs("abc", "acb").len == 2`
-pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)> = todo
+pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
+    let (n, m) = (a.len, b.len)
+    var f = [[0 for _ in 0..m + 1] for _ in 0..n + 1]
+    for i in 0..n:
+        for j in 0..m:
+            f[i + 1][j + 1] = if a.nth(i) == b.nth(j): f[i][j] + 1 elif f[i][j + 1] < f[i + 1][j]: f[i + 1][j] else: f[i][j + 1]
+    var out: List<(Int, Int)> = []
+    var (i, j) = (n, m)
+    while i > 0 and j > 0:
+        if a.nth(i - 1) == b.nth(j - 1):
+            out.push((i - 1, j - 1))
+            i -= 1
+            j -= 1
+        elif f[i - 1][j] == f[i][j]: i -= 1
+        else: j -= 1
+    reverse(mut out)
+    out
 
 /// O(n), O(n) memory. Min-heap (or max-heap when `min_root: false`) Cartesian tree in one monotone-stack pass.
 ///
@@ -2235,7 +2540,15 @@ fn cyclic_pairs_close_the_ring():
 /// ties: the first in key order
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
-pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
+pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
+    var best: ?D = None
+    var high: ?K = None
+    for (i, x) in self.items:
+        let k = by(x)
+        if high == None or high! < k:
+            best = Some(i)
+            high = Some(k)
+    best
 
 /// The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 ///
@@ -2244,7 +2557,15 @@ pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 /// ties: the first in key order
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
-pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
+pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
+    var best: ?D = None
+    var low: ?K = None
+    for (i, x) in self.items:
+        let k = by(x)
+        if low == None or k < low!:
+            best = Some(i)
+            low = Some(k)
+    best
 
 @test
 fn argmax_and_argmin_give_the_first_best_index() = todo
@@ -2665,7 +2986,14 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// order: by left end; a new `List`, keyed from 0
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
-pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>> = todo
+pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
+    var rs: List<(Int, Range<D>)> = []
+    for r in self: rs.push((rs.len, r))
+    rs.sort(by: p => (p.1.start, -Int(p.1.end), p.0))
+    var out: List<Range<D>> = []
+    for (_, r) in rs:
+        if out.len == 0 or out[out.len - 1].end < r.end: out.push(r)
+    out
 
 /// O(1). A list's keys: `0..xs.len`, in increasing order.
 ///

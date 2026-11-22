@@ -31,7 +31,6 @@ line when the gap closes and the body lands.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - algebra: `Semiring(min, +)` (site `tables.spec.cp`): operation values don't resolve in `cpl run` (E0201 "doesn't know the name `min` here"; `+` is typed `Int`, E0302 "expected `Int`, found `(Int, Int) -> Int`"); the struct itself needs no body.
 - dsu: the site's `content/landing/lib/dsu.cp` reaching `todo`: plain `Dsu<V>` (`new`/`unite`/`same`/`size`/`find`/`components`) runs in this tree (`spec/conformance/std-dsu`); the remaining `todo`s are `PersistentDsu` and `@cache`-blocked bodies, so the snippet likely calls one of those.
-||||||| parent of 111ff8a4 (stdlib: give seq folds and stream generators bodies)
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
 - seq, `flatten`: inference binds the element type `T` to the inner sequence (`expected List<Int>, found Int`).
 - seq, `fold`: a method call `xs.fold(f, init)` is not resolved to the stdlib function (`no method fold that cpl run knows`).
@@ -71,3 +70,10 @@ line when the gap closes and the body lands.
 - fenwick, test `xor_matches_a_plain_array`: `Fenwick<D, T>` sums with `+`/`-` on `T` and a struct cannot define `+`/`-`, so there is no xor Fenwick to test; needs operator overloading or an `op:` parameter.
 - seq, `RingRange` (`len`, `start`, `end`, `keys`, `contains`) and so `Ring.span`, `Ring.windows`, `Ring.maximal`, `Ring.minimal`: `RingRange<D>()` and `RingSlice` declare no fields, so a span has nothing to store its start and length in without changing the declared layout.
 - pair, `symmetric`: `cpl run` rejects `[Pair<V>]T` as an array type (E0204 "an array is indexed by a domain or a length"), so no program can build the argument.
+- seq, `argmax`/`argmin` on a slice (`a[2..5].argmax()`): the builtin slice's `.items` and `.keys` start at 0 instead of the source keys (R04b.1.2), so the body returns a slice offset; needs slices to keep their keys in cpl-ir.
+- seq, `with_domain`: a library fn cannot mint a fresh `domain I` and return it in `(domain I, [I]T)`; needs a core mechanism for returning a new domain.
+- seq, `subsequences` / `SubseqStep.prune`: the yielded step is a copy, so `prune()` in the consumer cannot reach the generator; item-steered generators (decision 126) need compiler support.
+- io, `read_all`: no stdlib-visible end-of-input test (the interpreter's `at_eof` is only reachable from `@!multitest(until_eof)`), so there is no way to stop reading.
+- seq, `valleys`: the doc example `[3, 1, 2, 5].valleys() == [1..2, 1..3, 2..3]` contradicts the prose (position 2 holds 2, not below its left neighbour 1); needs the intended definition before a body.
+- seq, `zip_exact` doc example `zip_exact([1, 2], "ab")`: the checker binds `T` and `U` to one element type when both come from `Indexed` bounds ("expected `Int`, found `Char`"); the body works for equal element types.
+- seq, `cycle` doc example `[1, 2, 0].cycle(from: 0)`: a list literal passed as `[D]D` gets an empty domain (R0001); the body works on a declared domain.
