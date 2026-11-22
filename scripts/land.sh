@@ -11,8 +11,10 @@
 # is the waiter's HEAD, so the lock holder can carry waiters in a train: it
 # rebases up to CPL_LAND_TRAIN queued lanes onto its own commits, gates the
 # train once and pushes it, marking each rider refs/locks/done/<ticket>. If
-# the train fails, the holder binary-searches the longest passing prefix,
-# lands it, and marks only the breaking rider refs/locks/solo/<ticket>.
+# the train fails, the holder binary-searches for the first breaking rider,
+# marks it refs/locks/solo/<ticket>, rebases the riders behind it onto the
+# passing prefix and gates again, so one bad lane drops out and the rest
+# land in the same cycle.
 # Remote calls retry, so one dropped connection does not lose a turn.
 #
 # Each landing appends one JSON line per lane (queue wait, gate time, train
@@ -87,6 +89,8 @@ for attempt in 1 2 3 4 5; do
         exit 0
     fi
     riders=()
+    rider_cand=()
+    rider_from=()
     tip=$own
     prefix=("$own")
     [ "$train_max" -gt 0 ] && board
@@ -97,7 +101,7 @@ for attempt in 1 2 3 4 5; do
     gate_t0=$(date +%s)
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
-        $gate || bisect
+        $gate || isolate
     else
         $gate
     fi
@@ -254,7 +258,7 @@ heartbeat() {
         exit 1
     elif ! carried; then
         queued=$(git ls-remote "$remote" "$ticket" 2>/dev/null | cut -f1) || queued=""
-        echo "land: heartbeat failed, still waiting: $(tail -n1 <<<"$out")" >&2
+        echo "land: heartbeat failed, still waiting: $(grep -m1 -e '^ ! ' -e 'error:' <<<"$out" | sed 's/^ *//')" >&2
     fi
 }
 
@@ -389,32 +393,70 @@ relock() {
     fi
 }
 
-# The full train failed: binary-search the longest prefix that passes, land
-# it, and mark only the first rider past it solo. If the holder alone fails,
-# exit without marking anyone.
-bisect() {
-    local lo=-1 hi=${#riders[@]} mid
+# The train failed: find the first breaking rider, mark it solo, drop it,
+# rebase the riders behind it onto the passing prefix and gate again, until
+# a train passes. If the holder alone fails, exit without marking anyone.
+isolate() {
+    local good=-1 lo hi mid bad n rest i
     echo "land: the train failed the gate; splitting it" >&2
-    while [ $((hi - lo)) -gt 1 ]; do
-        mid=$(( (lo + hi) / 2 ))
-        git checkout -q -f --detach "${prefix[$mid]}"
-        phase="splitting a failed train of ${#riders[@]}: gating ${mid} rider(s)"
+    while :; do
+        lo=$good
+        hi=${#riders[@]}
+        while [ $((hi - lo)) -gt 1 ]; do
+            mid=$(( (lo + hi) / 2 ))
+            git checkout -q -f --detach "${prefix[$mid]}"
+            phase="splitting a failed train of ${#riders[@]}: gating ${mid} rider(s)"
+            relock
+            start_lock_heartbeat
+            echo "land: gating the holder with ${mid} rider(s)" >&2
+            splits=$((splits + 1))
+            if $gate; then lo=$mid; else hi=$mid; fi
+            stop_lock_heartbeat
+        done
+        if [ "$lo" -lt 0 ]; then
+            echo "land: the holder fails the gate alone; nobody is marked solo" >&2
+            exit 1
+        fi
+        bad=${riders[$lo]}
+        echo "land: ${bad} broke the train; marking it solo" >&2
+        mark solo "$bad"
+        n=${#riders[@]}
+        rest=()
+        for ((i = lo + 1; i < n; i++)); do rest+=("$i"); done
+        local cands=("${rider_cand[@]}") froms=("${rider_from[@]}") names=("${riders[@]}")
+        tip=${prefix[$lo]}
+        riders=("${names[@]:0:$lo}")
+        rider_cand=("${cands[@]:0:$lo}")
+        rider_from=("${froms[@]:0:$lo}")
+        prefix=("${prefix[@]:0:$((lo + 1))}")
+        good=$lo
+        for i in "${rest[@]}"; do
+            board_one "${names[$i]}" "${cands[$i]}" "${froms[$i]}"
+        done
+        git checkout -q -f --detach "$tip"
+        [ ${#riders[@]} -gt "$good" ] || return 0
+        phase="gating ${#riders[@]} rider(s) without ${bad##*-}"
         relock
         start_lock_heartbeat
-        echo "land: gating the holder with ${mid} rider(s)" >&2
+        echo "land: gating ${#riders[@]} rider(s) without ${bad}" >&2
         splits=$((splits + 1))
-        if $gate; then lo=$mid; else hi=$mid; fi
+        if $gate; then stop_lock_heartbeat; return 0; fi
         stop_lock_heartbeat
     done
-    if [ "$lo" -lt 0 ]; then
-        echo "land: the holder fails the gate alone; nobody is marked solo" >&2
-        exit 1
+}
+
+# Rebase one queued lane's commits ($3..$2) onto $tip; on success it rides.
+board_one() {
+    if git rebase -q --onto "$tip" "$3" "$2" >/dev/null 2>&1; then
+        tip=$(git rev-parse HEAD)
+        riders+=("$1")
+        rider_cand+=("$2")
+        rider_from+=("$3")
+        prefix+=("$tip")
+    else
+        git rebase --abort 2>/dev/null || true
+        echo "land: ${1} does not apply on top of the train; it lands on its own turn" >&2
     fi
-    echo "land: ${riders[$lo]} broke the train; marking it solo" >&2
-    mark solo "${riders[$lo]}"
-    tip=${prefix[$lo]}
-    riders=("${riders[@]:0:$lo}")
-    git checkout -q -f --detach "$tip"
 }
 
 # Rebase queued lanes, oldest first, onto $tip; a lane that does not apply
@@ -430,14 +472,7 @@ board() {
         git fetch -q "$remote" "$ref" 2>/dev/null || continue
         cand=$(git rev-parse -q --verify FETCH_HEAD^1) || continue
         from=$(git merge-base "$cand" "$base") || continue
-        if git rebase -q --onto "$tip" "$from" "$cand" >/dev/null 2>&1; then
-            tip=$(git rev-parse HEAD)
-            riders+=("$r")
-            prefix+=("$tip")
-        else
-            git rebase --abort 2>/dev/null || true
-            echo "land: ${r} does not apply on top of the train; it lands on its own turn" >&2
-        fi
+        board_one "$r" "$cand" "$from"
     done
     git checkout -q -f "$back"
 }

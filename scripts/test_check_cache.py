@@ -296,9 +296,12 @@ class CheckCacheTest(unittest.TestCase):
         self.assertEqual(out["first"][2], 0, out["first"][1])
         self.assertIn("breaker", out["first"][1].split("broke the train")[0].splitlines()[-1])
         self.assertIn("pushed", out["first"][0])
-        self.assertIn("with 1 rider(s)", out["first"][0])
+        # The lane behind the breaker lands in the same cycle, not on a turn of its own.
+        self.assertIn("with 2 rider(s)", out["first"][0])
+        self.assertIn("gating 2 rider(s) without", out["first"][1])
         self.assertNotEqual(out["breaker"][2], 0)
         self.assertEqual(out["after"][2], 0, out["after"][1])
+        self.assertIn("carried to main in a train", out["after"][0])
         self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
         self.assertNotIn("-after", locks)
 
