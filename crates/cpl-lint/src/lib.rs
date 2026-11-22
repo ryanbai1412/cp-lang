@@ -791,6 +791,8 @@ pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> 
 
 fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
     let allows = Allows::collect(file);
+    // A library module is where Fenwick and segment-tree loops belong.
+    let library = file.top_level().any(|(_, stmt)| stmt.public);
     let mut findings = allows.unknown;
     findings.extend(rules::run(file, config));
 
@@ -801,7 +803,8 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
             .regions
             .iter()
             .any(|(span, name)| *name == lint.name && span.contains(diag.span));
-        if level == Level::Allow || allowed {
+        let library_only = library && lint.code == HAND_ROLLED_RANGE_TREE.code;
+        if level == Level::Allow || allowed || library_only {
             continue;
         }
         diag.severity = if level == Level::Deny {
@@ -1090,3 +1093,6 @@ mod tests;
 
 #[cfg(test)]
 mod record_tests;
+
+#[cfg(test)]
+mod std_tests;

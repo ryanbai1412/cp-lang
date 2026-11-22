@@ -145,16 +145,3 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     out
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::{lint, Config};
-
-    #[test]
-    fn the_prelude_file_is_not_its_own_redundant_import() {
-        let prelude = include_str!("../../../../spec/std/prelude.cp");
-        assert!(lint(prelude, &Config::default())
-            .iter()
-            .all(|d| d.code.0 != "L0208"));
-    }
-}
