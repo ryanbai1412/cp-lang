@@ -105,7 +105,13 @@ Tests:
 - One language mode: v0.3 behaviour without the `CPL_SPEC` env switch;
   old behaviour, if needed, behind an explicit edition flag.
 - The random program generator moves into `crates/` as an interpreter vs
-  C++ differential test with shrinking.
+  C++ differential test with shrinking. It also runs the bytecode VM
+  against the tree-walker: `cpl-interp`'s `vm.rs` serves plain runs and
+  falls back to `lib.rs` for what it does not lower, while traced and
+  profiled runs use only the tree-walker, so a bug can live in one engine.
+  This parity test lands before the interpreter consolidation below.
+- Timing tests measure the release `cpl`, never the dev-profile binary
+  `cargo test` builds (the budget test does this now).
 - Conformance ratchet: the met count never drops; newly met cases are
   recorded automatically.
 
@@ -135,6 +141,13 @@ Language tools on our own code:
 ## Other cleanup items
 
 - Conformance gate: the number of met cases never drops.
+- One perf harness: keep `bench/rust_latency_audit.py` and
+  `bench/rust_max_n_audit.py`. Delete `bench/max_n_audit.py`,
+  `tools/bench/` and `proto/bench.py`, which build ports with the
+  prototype, and `cpl-verify bench`, which overlaps the latency audit.
+- `crates/cpl-verify` tests only the prototype (`proto_fuzz`,
+  `proto_tools`): keep its program generator and reference evaluator as
+  the generator above, delete the rest with `proto/`.
 - Rename `stdlib/spec.cp` to `stdlib/brute.cp`.
 - Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
 - Deferred until after the merge: interpreter consolidation, removing stdlib
