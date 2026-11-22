@@ -26,7 +26,12 @@ pub fn repeat(self: Str, n: Int) -> Str:
 /// example: `"banana".starts_with("ban") == true`
 /// example: `"banana".starts_with("nan", at: 2) == true`
 /// example: `[1, 2, 3].starts_with([2]) == false`
-pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool = todo
+pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool:
+    assert 0 <= at and at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
+    if at + pat.len > self.len: return false
+    for i in 0..pat.len:
+        if self.at(at + i) != pat.at(i): return false
+    true
 
 @allow(unproven_list_index)
 /// True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of
@@ -38,7 +43,12 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// traps: never
 /// example: `[1, 2, 3].ends_with([2, 3]) == true`
 /// example: `"banana".ends_with("nab") == false`
-pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
+pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
+    let d = self.len - pat.len
+    if d < 0: return false
+    for i in 0..pat.len:
+        if self.at(d + i) != pat.at(i): return false
+    true
 
 /// The key where `p` first stands in `self`, or `None`. `p` is a `Str` or one `Char`.
 ///
@@ -54,7 +64,10 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 /// example: `"banana".search('n') == Some(2)`
 /// example: `"banana"[2..].search('a') == Some(3)`
 /// example: `"banana".search("x") == None`
-pub fn search<P>(self: Str, p: P) -> ?Int = todo
+pub fn search<P>(self: Str, p: P) -> ?Int:
+    let base = if self.is_empty: 0 else: self.keys.first!
+    for i in find_all(self, "" + p): return Some(base + i)
+    None
 
 /// How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
 ///
@@ -81,7 +94,11 @@ pub fn count(self: Str, c: Char) -> Int:
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
 /// example: `"ab".rsearch("") == Some(2)`
-pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
+pub fn rsearch<P>(self: Str, p: P) -> ?Int:
+    let base = if self.is_empty: 0 else: self.keys.first!
+    var last: ?Int = None
+    for i in find_all(self, "" + p): last = Some(base + i)
+    last
 
 /// The lowercase letter of an ASCII capital; any other character is returned as it is.
 ///
@@ -389,6 +406,15 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
 pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
 
+fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
+    var p = List.filled(s.len, 0)
+    for i in 1..s.len:
+        var k = p[i - 1]
+        while k > 0 and s.at(i) != s.at(k): k = p[k - 1]
+        if s.at(i) == s.at(k): k += 1
+        p[i] = k
+    p
+
 @allow(unproven_list_index)
 /// The start key of every occurrence of `pat` in `self`, overlapping ones included
 /// (Knuth-Morris-Pratt).
@@ -407,7 +433,7 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
     if pat.is_empty:
         for i in 0..=self.len: yield i
         return
-    let p = prefix_function(pat)
+    let p = failure_lengths(pat)
     var k = 0
     for i in 0..self.len:
         while k > 0 and self.at(i) != pat.at(k): k = p[k - 1]
@@ -454,7 +480,7 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// example: `period("abcabca") == 3`
 /// example: `period("aaaa") == 1`
 /// example: `period("abc") == 3`
-pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
+pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_lengths(s).last
 
 @allow(unproven_list_index)
 /// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence.
@@ -482,7 +508,7 @@ pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
 /// example: `borders("aaa").collect() == [2, 1]`
 pub fn borders<S: Indexed>(s: S) -> yields Int:
     if s.is_empty: return
-    let pi = prefix_function(s)
+    let pi = failure_lengths(s)
     var k = pi[s.len - 1]
     while k > 0:
         yield k
@@ -514,7 +540,7 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
     let keep = min(a.len, b.len)
     if keep == 0: return 0
-    let pi = prefix_function([b.at(i) for i in 0..keep])
+    let pi = failure_lengths([b.at(i) for i in 0..keep])
     var k = 0
     for i in a.len - keep..a.len:
         while k > 0 and (k == keep or a.at(i) != b.at(k)): k = pi[k - 1]
