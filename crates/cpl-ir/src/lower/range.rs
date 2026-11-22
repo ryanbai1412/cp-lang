@@ -943,4 +943,80 @@ impl<'a> Lowerer<'a> {
             }
         }
     }
+
+    pub(super) fn lower_with(
+        &mut self,
+        base: &ast::Expr,
+        updates: &[(ast::Name, ast::Expr)],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        self.do_expr(hint, span, |lw, out| {
+            let base_val = lw.expr(base, hint);
+            let ty = base_val.ty.clone();
+            if let Some(frame) = lw.cx.dos.last_mut() {
+                if frame.ty.is_none() {
+                    frame.ty = Some(ty.clone());
+                }
+            }
+            if matches!(ty, Ty::Pos(_)) && updates.len() == 1 && updates[0].0.text == "to" {
+                if !matches!(base_val.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                    out.push(Stmt::Expr(base_val));
+                }
+                let val = lw.expect(&updates[0].1, &ty);
+                out.push(Stmt::Give(val));
+                return;
+            }
+            let fields: Vec<(String, Ty)> = match &ty {
+                Ty::Struct(sid) => lw.structs[*sid].def.fields.clone(),
+                Ty::Record(fields) => fields.clone(),
+                Ty::Error => {
+                    out.push(Stmt::Give(lw.err_expr(span)));
+                    return;
+                }
+                other => {
+                    let msg = format!(
+                        "`with` updates fields of a struct or record, not `{}`",
+                        lw.show(other)
+                    );
+                    lw.error(codes::TYPE_MISMATCH, span, msg);
+                    out.push(Stmt::Give(lw.err_expr(span)));
+                    return;
+                }
+            };
+            for (name, _) in updates {
+                if !fields.iter().any(|(f, _)| f == &name.text) {
+                    lw.error(
+                        codes::UNKNOWN_FIELD,
+                        name.span,
+                        format!("`{}` has no field `{}`", lw.show(&ty), name.text),
+                    );
+                }
+            }
+            let needs_tmp = fields
+                .iter()
+                .any(|(fname, _)| !updates.iter().any(|(n, _)| &n.text == fname));
+            let tmp = if needs_tmp {
+                let tmp = lw.temp(ty.clone());
+                out.push(Stmt::Let(tmp, Some(base_val)));
+                Some(tmp)
+            } else {
+                if !matches!(base_val.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                    out.push(Stmt::Expr(base_val));
+                }
+                None
+            };
+            let mut values = Vec::with_capacity(fields.len());
+            for (idx, (fname, fty)) in fields.iter().enumerate() {
+                if let Some((_, val_expr)) = updates.iter().rev().find(|(n, _)| &n.text == fname) {
+                    values.push(lw.expect(val_expr, fty));
+                } else {
+                    let base_ref = lw.local(tmp.expect("needs_tmp"), span);
+                    values.push(lw.mk(ExprKind::Field(Box::new(base_ref), idx), fty.clone(), span));
+                }
+            }
+            let built = lw.mk(ExprKind::Tuple(values), ty, span);
+            out.push(Stmt::Give(built));
+        })
+    }
 }
