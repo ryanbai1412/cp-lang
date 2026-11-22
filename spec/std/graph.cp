@@ -355,7 +355,10 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))])[0] == [2, 1]`
-pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> = todo
+pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
+    var adj: [V]List<V> = []
+    for (u, v) in edges: adj[u].push(v)
+    adj
 
 /// `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways,
 /// each arc the target vertex itself.
@@ -365,7 +368,12 @@ pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> = todo
 /// order: each vertex's arcs in the order of their pairs
 /// traps: never
 /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))])[1] == [0, 2]`
-pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> = todo
+pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
+    var adj: [V]List<V> = []
+    for (u, v) in edges:
+        adj[u].push(v)
+        adj[v].push(u)
+    adj
 
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.
@@ -1290,6 +1298,27 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V = todo
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]; triangles(g).count() == 4`
 pub fn triangles<V>(g: Next<V>) -> yields (V, V, V) = todo
 
+fn clique_rec<V>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, mut best: List<V>):
+    if p.is_empty and x.is_empty:
+        var c = [y for y in r]
+        sort(mut c)
+        if c.len > best.len or (c.len == best.len and c < best): best = c
+        return
+    if r.len + p.count < best.len: return
+    let px = p.bitor(x)
+    var pivot = px.first!
+    for u in px.each():
+        if p.bitand(adj[u]).count > p.bitand(adj[pivot]).count: pivot = u
+    var pp = p.bitand(adj[pivot].complement())
+    var xx = x.bitand(Bitset<V>.full())
+    var rest = p.bitand(Bitset<V>.full())
+    for v in pp.each():
+        r.push(v)
+        clique_rec(adj, mut r, rest.bitand(adj[v]), xx.bitand(adj[v]), mut best)
+        r.pop()
+        rest.remove(v)
+        xx.add(v)
+
 /// A maximum clique of the undirected graph given as bitset rows (Bron-Kerbosch with
 /// pivoting); `n` up to about 64 in contests.
 ///
@@ -1299,7 +1328,11 @@ pub fn triangles<V>(g: Next<V>) -> yields (V, V, V) = todo
 /// order: ascending
 /// traps: never
 /// example: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1), V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1, 2]`
-pub fn max_clique<V>(adj: [V]Bitset<V>) -> List<V> = todo
+pub fn max_clique<V>(adj: [V]Bitset<V>) -> List<V>:
+    var best = List<V>()
+    var r = List<V>()
+    clique_rec(adj, mut r, Bitset<V>.full(), Bitset<V>.empty(), mut best)
+    best
 
 /// The fewest colours such that no edge joins two vertices of one colour, by
 /// inclusion-exclusion over independent sets.
@@ -1309,7 +1342,30 @@ pub fn max_clique<V>(adj: [V]Bitset<V>) -> List<V> = todo
 /// traps: never
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1)])]; chromatic_number(adj) == 3`
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.empty(), Bitset.empty(), Bitset.empty()]; chromatic_number(adj) == 1`
-pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int = todo
+pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
+    let n = V.K
+    if n == 0: return 0
+    assert n <= 30, "`chromatic_number` needs at most 30 vertices"
+    var nb = List.filled(n, 0)
+    for v in V:
+        for u in adj[v].each(): nb[v.to_idx] |= 1 << u.to_idx
+    let full = (1 << n) - 1
+    var ind = List.filled(1 << n, 0)
+    ind[0] = 1
+    for s in 1..(1 << n):
+        let v = ctz(s)
+        ind[s] = ind[s & (s - 1)] + ind[s & (s - 1) & ~nb[v]]
+    let ps = [1_000_000_007, 998_244_353]
+    for k in 1..n:
+        for p in ps:
+            var sum = 0
+            for s in 0..(1 << n):
+                var t = 1
+                let b = ind[s] % p
+                for _ in 0..k: t = t * b % p
+                if (n - popcount(s)) % 2 == 1: sum = (sum - t + p) % p else: sum = (sum + t) % p
+            if sum != 0: return k
+    n
 
 /// The de Bruijn sequence over `0..k` of order `n`: a cyclic sequence of length `k^n` in
 /// which every length-`n` word appears once. Returns the lexicographically least one (the
@@ -1321,7 +1377,18 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int = todo
 /// example: `de_bruijn(2, 2) == [0, 0, 1, 1]`
 /// example: `de_bruijn(2, 3) == [0, 0, 0, 1, 0, 1, 1, 1]`
 /// example: `de_bruijn(3, 1) == [0, 1, 2]`
-pub fn de_bruijn(k: Int, n: Int) -> List<Int> = todo
+pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
+    assert k >= 1 and n >= 1, "`de_bruijn` needs `k >= 1` and `n >= 1`"
+    var out = List<Int>()
+    var w = [-1]
+    while w.len > 0:
+        w[w.len - 1] += 1
+        let m = w.len
+        if n % m == 0:
+            for x in w: out.push(x)
+        while w.len < n: w.push(w[w.len - m])
+        while w.len > 0 and w[w.len - 1] == k - 1: w.pop()
+    out
 
 /// A minimum spanning forest by Kruskal, as its total weight and the chosen edges. Edges
 /// are taken in `by:` order (`by` reads the edge record) with a stable sort, so `by: e => desc(e.w)` gives a maximum
@@ -1344,7 +1411,31 @@ pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R ->
 /// ties: the smallest vertex among equally cheap ones joins first; its parent is the tree vertex that first offered that cost
 /// traps: never
 /// example: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[1, 2] = Some(2); w[2, 1] = Some(2); w[0, 2] = Some(5); w[2, 0] = Some(5); prim(w) == Some((total: 3, parent: [None, Some(0), Some(1)]))`
-pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V) = todo
+pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
+    var parent: [V]?V = None
+    var best: [V]?W = None
+    var done: [V]Bool = false
+    var total = W.zero
+    if V.K == 0: return Some((total:, parent:))
+    var at = V.first!
+    for _ in 0..V.K:
+        done[at] = true
+        for v in V:
+            if done[v]: continue
+            if let c = w[at, v]:
+                if best[v] == none or c < best[v]!:
+                    best[v] = Some(c)
+                    parent[v] = Some(at)
+        var next: ?V = None
+        for v in V:
+            if done[v] or best[v] == none: continue
+            if next == none or best[v]! < best[next!]!: next = Some(v)
+        if next == none: break
+        at = next!
+        total = total + best[at]!
+    for v in V:
+        if not done[v]: return None
+    Some((total:, parent:))
 
 /// A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST,
 /// Manhattan MST). Each round passes `comp`, the component label of every vertex
@@ -1590,7 +1681,10 @@ pub struct Edge<V, E>(e: E, u: V, v: V)
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
-pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V> = todo
+pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
+    var adj: [V]List<V> = []
+    for a in arcs: adj[a.u].push(a.v)
+    adj
 
 /// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex
 /// are skipped as `out` walks. `from` drops only the arcs leaving a vertex it rejects, so
