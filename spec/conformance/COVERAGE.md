@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1150 (296 passing). Rules: 521.
+Cases: 1160 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 4 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 6 case(s)
+- R0401 Assertion failed: 7 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 7 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -810,8 +810,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (22/23 named by a case)
   - uncovered: `idempotent`
-- **strings** (139/195 named by a case)
-  - uncovered: `repeat`, `starts_with`, `ends_with`, `search`, `rsearch`, `parse`, `find_all`, `common_prefix_len`, `common_suffix_len`, `is_palindrome`, `prefix_matches`, `overlap`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (145/195 named by a case)
+  - uncovered: `starts_with`, `ends_with`, `search`, `rsearch`, `parse`, `prefix_matches`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (12/15 named by a case)
   - uncovered: `Subset`, `Subset.subsets`, `Subset.supersets`
 - **timetree** (8/11 named by a case)
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1621 of 2222 std items are named by a case.
+1627 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
