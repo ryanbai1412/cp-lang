@@ -64,7 +64,7 @@ the repository. Delete this file once every step is done.
 | `plan/STDLIB.md` | `spec/std/README.md` |
 | `proto/ports/*` | `corpus/problems/<id>/port.cp` |
 | `proto/` | deleted, except the random program generator, which moves into `crates/` for interpreter-vs-C++ parity |
-| `subs/` | deleted (exact copy of `corpus/submissions/`) |
+| `subs/` | deleted (done) |
 
 - Before deleting, repoint live references: `crates/cpl-check/src/tests.rs`
   and `scripts/scoreboard.py` (`plan/STDLIB.md`), `site/exemplars.py`
