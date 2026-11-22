@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1203 (296 passing). Rules: 521.
+Cases: 1206 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -17,8 +17,8 @@ Cases: 1203 (296 passing). Rules: 521.
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 23 rules, 49 cases; 0 uncovered, 4 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 79 cases; 0 uncovered, 9 happy-path only, 3 negative only
+- R06 (06-control-functions.md): 23 rules, 51 cases; 0 uncovered, 2 happy-path only, 1 negative only
+- R07 (07-sequences.md): 87 rules, 80 cases; 0 uncovered, 8 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
 - R10 (10-io.md): 16 rules, 42 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -353,14 +353,14 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
-- R06.2.5 [2+ 0-] *happy-path only*: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
+- R06.2.5 [2+ 1-]: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
 - R06.3.1 [3+ 1-]: A generator **value** is a recipe: a call with every argument but the loop body filled in....
 - R06.3.2 [0+ 1-] *negative only*: A generator value built from lent arguments holds those lends until its last use, like a s...
 - R06.3.3 [2+ 0-] *happy-path only*: The loop body may `break`, `continue`, `return`, use labels and loop `else`, even when the...
 - R06.3.4 [1+ 0-]: A body steers its generator through the yielded item, read after `yield` returns: `step.pr...
 - R06.3.5 [1+ 1-]: Generators are push-only; there is no cursor. Lockstep over two generators is `List(g)` fi...
 - R06.4.1 [2+ 2-]: `@memo(array)` / `@memo(map)`: cache a function. The storage is spelled, never picked (rou...
-- R06.4.2 [1+ 0-] *happy-path only*: `@get`: an O(1) read-only method called without parentheses.
+- R06.4.2 [1+ 1-]: `@get`: an O(1) read-only method called without parentheses.
 - R06.4.3 [1+ 0-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
@@ -368,7 +368,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R07: 07-sequences.md
 
-- R07.1.1 [1+ 0-] *happy-path only*: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
+- R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [1+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has O(1) `.len`; `Bid...
 - R07.1.3 [1+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
@@ -621,14 +621,14 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0111 Mixed comparison chain: 2 case(s)
 - E0201 Unresolved name: 1 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 4 case(s)
+- E0203 Unknown field or method: 5 case(s)
 - E0204 Unknown type: 1 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 value_name_case *(0.3)*: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 19 case(s)
+- E0302 Type mismatch: 20 case(s)
 - E0303 Wrong number of arguments: 4 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -685,7 +685,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0203 Local shadows top-level binding: 1 case(s)
 - L0204 Turbofish `::<...>` on generic call: **no case**
 - L0205 Power written with `.pow(e)`: **no case**
-- L0206 Built-in getter called with `()`: **no case**
+- L0206 Built-in getter called with `()`: 1 case(s)
 - L0207 Pattern test `x is p` in `if`/`elif`/`while` header: 1 case(s)
 - L0208 `use` of a name the prelude already provides: 1 case(s)
 - L0209 Named argument or record field repeating its own name: 1 case(s)
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-14 of 134 testable codes have no negative case.
+13 of 134 testable codes have no negative case.
 
 ## Standard library
 
