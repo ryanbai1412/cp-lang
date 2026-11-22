@@ -1,18 +1,17 @@
 # ucup5s02e
 
-Score: pending cold rescore (added dream, replaced hand inversion loop with rank[y].inverse(), derived why running max reach[i] == i implies equal prefix sets; emitted C++ 8,550 -> 9,852 B from .inverse() helper, <48 KB)
-Dream: pending cold rescore (new dream: rank[y].inverse(), reach[i] == i bijection derivation)
+Score: 5/5
+Dream: 5/5
 
-Baseline review, cold, on main 6566cb18. The port checks with zero errors. The header (lines 1-3) states the rule, and the pair loop is short. No dream exists, so the port is capped at 3.
+Rescore of the rewrite, cold, on main e1345392. Port and dream are the same file and check with zero errors. `rank[y].inverse()` (line 20) replaces the hand inversion, and the header (lines 7-10) proves why `reach[i] == i` means equal prefix sets.
 
 ## Checklist failures
 
-- Lines 12-13 invert `rank[y]` by hand; `rank[y].inverse()` does it (I probed it on a `[0..n]P`).
-- Why `reach[i] == i` (line 15), a running max of positions, means equal prefix sets isn't said.
+- None.
 
 ## Rewrites owed with today's language
 
-- Write a dream using `.inverse()`.
+- None.
 
 ## Gaps that need the language
 
