@@ -79,6 +79,11 @@ impl<'a> Parser<'a> {
                 }
             }
             T::Ident => PatternKind::Name(self.name().text),
+            // `none` is reserved only up to v2.2; v0.3 code may bind it as a name.
+            T::None if matches!(self.prev_kind(), Some(T::Let | T::Var)) => {
+                self.bump();
+                PatternKind::Name("none".into())
+            }
             T::Var => {
                 self.bump();
                 PatternKind::Var(Box::new(self.pattern()))

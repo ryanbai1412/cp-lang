@@ -40,6 +40,7 @@ impl<'a> Checker<'a> {
             ExprKind::Float(_) => Ty::Float,
             ExprKind::Char(_) => Ty::Char,
             ExprKind::Bool(_) => Ty::Bool,
+            ExprKind::None if self.local("none").is_some() => self.name_ty("none", expr.span),
             ExprKind::None => Ty::Unknown,
             ExprKind::Str(pieces) => {
                 for piece in pieces {
