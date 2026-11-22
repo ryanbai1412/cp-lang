@@ -301,6 +301,19 @@ pub fn run_on_this_thread(
     }
 }
 
+/// [`run_with`] on the calling thread, for a host that cannot start one.
+pub fn run_with_on_this_thread(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+) -> Result<(), Trap> {
+    match run_io(program, io, output, limits, None, false).trap {
+        Some(trap) => Err(trap),
+        None => Ok(()),
+    }
+}
+
 /// [`run_on_this_thread`], keeping what [`run_observed`] keeps.
 pub fn observe_on_this_thread(
     program: &Program,

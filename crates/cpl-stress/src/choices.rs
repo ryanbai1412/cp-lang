@@ -6,6 +6,7 @@
 //! of them, so a tree or a sorted list stays a tree or a sorted list
 //! while it shrinks. A choice past the end of a list is 0, the low end.
 
+use crate::engine::{ChoiceSource, ProcessChoices};
 use crate::program::Program;
 use crate::run::StressError;
 use std::collections::HashMap;
@@ -18,7 +19,7 @@ use std::time::Duration;
 pub struct Drawn {
     pub choices: Vec<u64>,
     /// The line of the generator each choice was made on.
-    sites: Vec<u32>,
+    pub(crate) sites: Vec<u32>,
     pub input: String,
 }
 
@@ -96,6 +97,16 @@ pub fn shrink(
     budget: usize,
     still_fails: &mut dyn FnMut(&str) -> bool,
 ) -> Drawn {
+    shrink_with(&ProcessChoices(generator), first, budget, still_fails)
+}
+
+/// [`shrink`], driven by any [`ChoiceSource`].
+pub fn shrink_with(
+    source: &dyn ChoiceSource,
+    first: &Drawn,
+    budget: usize,
+    still_fails: &mut dyn FnMut(&str) -> bool,
+) -> Drawn {
     let mut best = first.clone();
     let mut left = budget;
     let mut attempt = |best: &mut Drawn, choices: Vec<u64>| -> bool {
@@ -103,7 +114,7 @@ pub fn shrink(
             return false;
         }
         left -= 1;
-        match replay(generator, &choices) {
+        match source.replay(&choices) {
             Some(candidate) if candidate.rank() < best.rank() && still_fails(&candidate.input) => {
                 *best = candidate;
                 true

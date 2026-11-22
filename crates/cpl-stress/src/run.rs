@@ -2,6 +2,7 @@
 //! and on the first failure shrink it and save it.
 
 use crate::choices::{self, Drawn};
+use crate::engine::{ChoiceSource, Engine, ProcessChoices, ProcessEngine, Wrong};
 use crate::gen::{generate, Case, Size};
 use crate::judge::{Judge, Verdict};
 use crate::program::Program;
@@ -11,7 +12,7 @@ use crate::spec::{InputSpec, DEFAULT_INT};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// Where inputs come from.
+/// Where inputs come from (process-based CLI form).
 #[derive(Clone, Debug)]
 pub enum Source {
     /// Made from the program's own `read()` types, and shrinkable.
@@ -21,6 +22,16 @@ pub enum Source {
     /// The file's own `@gen` fn, built for one size. It shrinks through
     /// the choices its `rand` and `shuffle` made.
     InFile(Program),
+}
+
+/// Engine-agnostic input source for [`stress_with`].
+pub enum InputSource<'a> {
+    /// Made from the program's own `read()` types, and shrinkable.
+    Typed(&'a InputSpec),
+    /// An external generator run as `gen <seed> <size>`; its output is the input.
+    Generator(&'a Program),
+    /// An in-file `@gen` fn behind a [`ChoiceSource`].
+    Choices(&'a dyn ChoiceSource),
 }
 
 #[derive(Clone, Debug)]
@@ -93,13 +104,6 @@ impl std::fmt::Display for StressError {
     }
 }
 
-struct Runner<'a> {
-    fast: &'a Program,
-    brute: Option<&'a Program>,
-    judge: &'a Judge,
-    limit: Duration,
-}
-
 /// What a case was made from, kept to shrink it.
 enum Made {
     Typed(Case),
@@ -107,9 +111,6 @@ enum Made {
     /// An outside generator's output: there is nothing to shrink it by.
     Opaque,
 }
-
-/// One run: `None` when the solution is right.
-type Wrong = Option<(Verdict, String, String)>;
 
 /// How a run on an input that may be no input at all went.
 enum Tried {
@@ -120,67 +121,20 @@ enum Tried {
     Stopped,
 }
 
-impl Runner<'_> {
-    /// True when `input` stops the solution. Asked once the brute has
-    /// stopped on it: both stopping is what a number outside what the
-    /// problem allows does, and a solution that answers where the brute
-    /// stops leaves the brute's failure to report.
-    fn stops(&self, input: &str) -> bool {
-        self.fast
-            .run(input, self.limit)
-            .is_ok_and(|outcome| !outcome.ok())
-    }
-
-    /// Like `run`, for an input made from guessed ranges.
-    fn attempt(&self, input: &str) -> Result<Tried, StressError> {
-        match self.run(input) {
-            Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _)))
-                if self.brute.is_none() =>
-            {
-                Ok(Tried::Stopped)
-            }
-            Ok(wrong) => Ok(Tried::Judged(wrong)),
-            Err(_) if self.stops(input) => Ok(Tried::Stopped),
-            Err(e) => Err(e),
+/// Like `engine.run`, for an input made from guessed ranges.
+fn attempt(engine: &dyn Engine, input: &str) -> Result<Tried, StressError> {
+    match engine.run(input) {
+        Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _))) if !engine.has_brute() => {
+            Ok(Tried::Stopped)
         }
-    }
-
-    fn run(&self, input: &str) -> Result<Wrong, StressError> {
-        let io = |program: &Program, e: std::io::Error| {
-            StressError(format!("can't run {}: {e}", program.name))
-        };
-        let expected = match self.brute {
-            Some(brute) => {
-                // A brute is slow by design; it gets ten times the limit.
-                let outcome = brute
-                    .run(input, self.limit * 10)
-                    .map_err(|e| io(brute, e))?;
-                if !outcome.ok() {
-                    return Err(StressError(format!(
-                        "the brute {} failed on this input ({:?}), so there is nothing to compare with:\n{input}",
-                        brute.name, outcome.exit
-                    )));
-                }
-                Some(outcome.stdout)
-            }
-            None => None,
-        };
-        let judged = self
-            .judge
-            .run(self.fast, input, expected.as_deref(), self.limit)
-            .map_err(|e| io(self.fast, e))?;
-        Ok((!judged.verdict.accepted()).then(|| {
-            (
-                judged.verdict,
-                expected.unwrap_or_default(),
-                judged.outcome.stdout,
-            )
-        }))
+        Ok(wrong) => Ok(Tried::Judged(wrong)),
+        Err(_) if engine.stops(input) => Ok(Tried::Stopped),
+        Err(e) => Err(e),
     }
 }
 
-/// Runs `options.cases` cases. Stops at the first one, by case number,
-/// that the solution gets wrong.
+/// Runs `options.cases` cases using OS processes. Stops at the first one, by
+/// case number, that the solution gets wrong.
 pub fn stress(
     source: &Source,
     fast: &Program,
@@ -188,17 +142,36 @@ pub fn stress(
     judge: &Judge,
     options: &Options,
 ) -> Result<Report, StressError> {
-    let runner = Runner {
+    let engine = ProcessEngine {
         fast,
         brute,
         judge,
         limit: options.limit,
     };
+    let choices;
+    let input_source = match source {
+        Source::Typed(spec) => InputSource::Typed(spec),
+        Source::Generator(program) => InputSource::Generator(program),
+        Source::InFile(program) => {
+            choices = ProcessChoices(program);
+            InputSource::Choices(&choices)
+        }
+    };
+    stress_with(&input_source, &engine, options)
+}
+
+/// Engine-agnostic stress loop: generates inputs from `source`, evaluates them
+/// through `engine`, narrows guessed ranges, and shrinks the first failure.
+pub fn stress_with(
+    source: &InputSource<'_>,
+    engine: &dyn Engine,
+    options: &Options,
+) -> Result<Report, StressError> {
     let size_arg = options.size.to_string();
     // The ranges cases are drawn from: the program's own, narrowed where
     // a guessed one let through numbers the program stops on.
     let mut typed = match source {
-        Source::Typed(spec) => Some(spec.clone()),
+        InputSource::Typed(spec) => Some((*spec).clone()),
         _ => None,
     };
     let mut discarded = 0;
@@ -206,13 +179,17 @@ pub fn stress(
     let mut skipped = 0;
     let mut done = 0;
     'narrow: loop {
-        let source = match &typed {
-            Some(spec) => &Source::Typed(spec.clone()),
-            None => source,
+        let current = match &typed {
+            Some(spec) => InputSource::Typed(spec),
+            None => match source {
+                InputSource::Typed(spec) => InputSource::Typed(spec),
+                InputSource::Generator(p) => InputSource::Generator(p),
+                InputSource::Choices(c) => InputSource::Choices(*c),
+            },
         };
         let make = |seed: u64| -> Result<Option<(Made, String)>, StressError> {
-            match source {
-                Source::Typed(spec) => Ok(generate(
+            match &current {
+                InputSource::Typed(spec) => Ok(generate(
                     spec,
                     &mut Rng::new(seed),
                     Size::Small(options.size),
@@ -221,7 +198,7 @@ pub fn stress(
                     let input = case.render();
                     (Made::Typed(case), input)
                 })),
-                Source::Generator(generator) => {
+                InputSource::Generator(generator) => {
                     let outcome = generator
                         .with_args(&[&seed.to_string(), &size_arg])
                         .run("", Duration::from_secs(10))
@@ -234,15 +211,19 @@ pub fn stress(
                     }
                     Ok(Some((Made::Opaque, outcome.stdout)))
                 }
-                Source::InFile(generator) => {
-                    let drawn = choices::draw(generator, seed)?;
+                InputSource::Choices(generator) => {
+                    let drawn = generator.draw(seed)?;
                     let input = drawn.input.clone();
                     Ok(Some((Made::Drawn(drawn), input)))
                 }
             }
         };
 
-        let jobs = options.jobs.max(1);
+        let jobs = if cfg!(target_family = "wasm") {
+            1
+        } else {
+            options.jobs.max(1)
+        };
         let round = done;
         while done < options.cases {
             // The first case of a round runs alone: when it stops the
@@ -250,24 +231,38 @@ pub fn stress(
             // the ranges it refutes, would only have been waited for.
             let jobs = if done == round { 1 } else { jobs };
             let batch: Vec<usize> = (done..options.cases.min(done + jobs)).collect();
-            // A batch runs at once; results are read in case order, so the
-            // failure reported is the same whatever `jobs` is.
-            let results: Vec<_> = std::thread::scope(|scope| {
-                let handles: Vec<_> = batch
+            type BatchItem = Result<Option<(Made, Tried, String)>, StressError>;
+            let results: Vec<BatchItem> = if jobs <= 1 {
+                batch
                     .iter()
                     .map(|index| {
                         let seed = options.seed.wrapping_add(*index as u64);
-                        let (make, runner) = (&make, &runner);
-                        scope.spawn(move || -> Result<_, StressError> {
-                            let Some((case, input)) = make(seed)? else {
-                                return Ok(None);
-                            };
-                            Ok(Some((case, runner.attempt(&input)?, input)))
-                        })
+                        let Some((case, input)) = make(seed)? else {
+                            return Ok(None);
+                        };
+                        Ok(Some((case, attempt(engine, &input)?, input)))
                     })
-                    .collect();
-                handles.into_iter().map(|h| h.join().unwrap()).collect()
-            });
+                    .collect()
+            } else {
+                // A batch runs at once; results are read in case order, so the
+                // failure reported is the same whatever `jobs` is.
+                std::thread::scope(|scope| {
+                    let handles: Vec<_> = batch
+                        .iter()
+                        .map(|index| {
+                            let seed = options.seed.wrapping_add(*index as u64);
+                            let make = &make;
+                            scope.spawn(move || -> Result<_, StressError> {
+                                let Some((case, input)) = make(seed)? else {
+                                    return Ok(None);
+                                };
+                                Ok(Some((case, attempt(engine, &input)?, input)))
+                            })
+                        })
+                        .collect();
+                    handles.into_iter().map(|h| h.join().unwrap()).collect()
+                })
+            };
             for (index, result) in batch.iter().zip(results) {
                 let Some((case, tried, input)) = result? else {
                     skipped += 1;
@@ -281,7 +276,7 @@ pub fn stress(
                         // and the cases from here on are made again from it.
                         let found = match (&typed, &case) {
                             (Some(spec), Made::Typed(case)) => {
-                                narrow(spec, case, seed, options.size, &runner)
+                                narrow(spec, case, seed, options.size, engine)
                             }
                             _ => None,
                         };
@@ -295,7 +290,7 @@ pub fn stress(
                             continue 'narrow;
                         }
                         // Nothing explains it away: it is reported as it is.
-                        runner.run(&input)?
+                        engine.run(&input)?
                     }
                 };
                 let Some((verdict, expected, got)) = wrong else {
@@ -313,7 +308,7 @@ pub fn stress(
                 };
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
-                if let (Source::Typed(spec), Made::Typed(case)) = (source, &case) {
+                if let (InputSource::Typed(spec), Made::Typed(case)) = (&current, &case) {
                     let case = case.clone();
                     let mut error = None;
                     let smallest =
@@ -321,7 +316,7 @@ pub fn stress(
                             spec,
                             &case,
                             options.shrink_budget,
-                            &mut |candidate| match runner.run(&candidate.render()) {
+                            &mut |candidate| match engine.run(&candidate.render()) {
                                 Ok(Some((verdict, _, _))) => {
                                     std::mem::discriminant(&verdict) == kind
                                 }
@@ -333,7 +328,7 @@ pub fn stress(
                             },
                         );
                     if smallest != case {
-                        if let Some((verdict, expected, got)) = runner.run(&smallest.render())? {
+                        if let Some((verdict, expected, got)) = engine.run(&smallest.render())? {
                             failure.verdict = verdict;
                             failure.expected = expected;
                             failure.got = got;
@@ -343,15 +338,15 @@ pub fn stress(
                     failure.shrunk = Some((case.weight().0, smallest.weight().0));
                     failure.described = Some(smallest.describe(spec));
                 }
-                if let (Source::InFile(generator), Made::Drawn(drawn)) = (source, &case) {
-                    let smallest = choices::shrink(
-                        generator,
+                if let (InputSource::Choices(generator), Made::Drawn(drawn)) = (&current, &case) {
+                    let smallest = choices::shrink_with(
+                        *generator,
                         drawn,
                         options.shrink_budget,
-                        &mut |input| matches!(runner.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind),
+                        &mut |input| matches!(engine.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind),
                     );
                     if smallest != *drawn {
-                        if let Some((verdict, expected, got)) = runner.run(&smallest.input)? {
+                        if let Some((verdict, expected, got)) = engine.run(&smallest.input)? {
                             failure.verdict = verdict;
                             failure.expected = expected;
                             failure.got = got;
@@ -391,11 +386,11 @@ fn narrow(
     case: &Case,
     seed: u64,
     size: i128,
-    runner: &Runner,
+    engine: &dyn Engine,
 ) -> Option<(InputSpec, String)> {
     let runs = |spec: &InputSpec| {
         generate(spec, &mut Rng::new(seed), Size::Small(size))
-            .is_some_and(|case| matches!(runner.attempt(&case.render()), Ok(Tried::Judged(_))))
+            .is_some_and(|case| matches!(attempt(engine, &case.render()), Ok(Tried::Judged(_))))
     };
     let outside = |name: &str, lo: i128, hi: i128| {
         case.values_of(spec, name)
@@ -444,7 +439,9 @@ fn narrow(
     }
     // A size too large for something the program holds. Only a brute
     // that stops on it too says the input is at fault.
-    runner.brute?;
+    if !engine.has_brute() {
+        return None;
+    }
     let mut all = spec.clone();
     for name in spec.loose() {
         all = all.counting(&name);

@@ -3,6 +3,7 @@
 
 pub mod choices;
 pub mod cli;
+pub mod engine;
 pub mod explain;
 pub mod gen;
 pub mod judge;
@@ -12,6 +13,10 @@ pub mod run;
 pub mod shrink;
 pub mod spec;
 
+pub use engine::{
+    stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices,
+    ProcessEngine, SourceStressResult, Wrong,
+};
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};
 pub use program::{BuildError, Exit, Outcome, Program};

@@ -291,7 +291,7 @@ pub fn json_string(text: &str) -> String {
 }
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
-fn json(
+pub fn report_json(
     report: &Report,
     saved: Option<&Path>,
     stages: &[Stage],
@@ -592,7 +592,7 @@ pub fn run_with(
         let _ = write!(
             stdout,
             "{}",
-            json(
+            report_json(
                 &report,
                 saved.as_deref(),
                 stages,
