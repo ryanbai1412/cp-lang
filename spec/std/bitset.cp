@@ -566,83 +566,113 @@ pub struct Bitset<D>:
 pub struct DynBitset:
     _w: List<U64>
     _cap: Int
+    _n: Int
 
     /// Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.
     ///
     /// cost: O(cap / 64) time and space
     /// traps: when `cap < 0`
     /// example: `DynBitset(10).len == 0`
-    pub fn new(cap: Int) -> DynBitset = todo
+    fn recount(mut self):
+        _n = 0
+        for x in _w: _n += popcount(x)
+
+    fn trim(mut self):
+        let full_words = _cap / 64
+        if _cap % 64 != 0: _w[full_words] &= low(_cap % 64)
+
+    pub fn new(cap: Int) -> DynBitset:
+        assert cap >= 0
+        DynBitset(List.filled((cap + 63) / 64, U64(0)), cap, 0)
 
     /// Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.
     ///
     /// cost: O(cap / 64) time and space
     /// traps: when `cap < 0`
     /// example: `DynBitset.full(10).len == 10`
-    pub fn full(cap: Int) -> DynBitset = todo
+    pub fn full(cap: Int) -> DynBitset:
+        assert cap >= 0
+        var d = DynBitset(List.filled((cap + 63) / 64, ~U64(0)), cap, cap)
+        d.trim()
+        d
 
     /// The bit capacity: valid indices are `0..cap`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynBitset(10).cap == 10`
-    @get pub fn cap(self) -> Int = todo
+    @get pub fn cap(self) -> Int = _cap
 
     /// The number of set bits, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = _n
 
     /// Whether no bits are set, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynBitset(10).is_empty and not DynBitset.full(1).is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = _n == 0
 
     /// Whether bit `i` is set.
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
-    pub fn contains(self, i: Int) -> Bool = todo
+    pub fn contains(self, i: Int) -> Bool:
+        assert 0 <= i and i < _cap
+        (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
 
     /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.set(4); d.set(5, true); d.set(4, false); d.each().collect() == [5]`
-    pub fn set(mut self, i: Int, on: Bool = true) = todo
+    pub fn set(mut self, i: Int, on: Bool = true):
+        if on: self.add(i) else: self.remove(i)
 
     /// Set bit `i` to 1; returns `true` if bit `i` was previously 0 (matches `Bitset.add`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); let x = d.add(2); let y = d.add(2); x and not y`
-    pub fn add(mut self, i: Int) -> Bool = todo
+    pub fn add(mut self, i: Int) -> Bool:
+        if self.contains(i): return false
+        _w[i / 64] |= bit(i % 64)
+        _n += 1
+        true
 
     /// Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(2); let x = d.remove(2); let y = d.remove(2); x and not y and d.is_empty`
-    pub fn remove(mut self, i: Int) -> Bool = todo
+    pub fn remove(mut self, i: Int) -> Bool:
+        if not self.contains(i): return false
+        _w[i / 64] &= ~bit(i % 64)
+        _n -= 1
+        true
 
     /// Flip bit `i`.
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.toggle(6); d.toggle(6); d.toggle(7); d.each().collect() == [7]`
-    pub fn toggle(mut self, i: Int) = todo
+    pub fn toggle(mut self, i: Int):
+        _n += if self.contains(i): -1 else: 1
+        _w[i / 64] ^= bit(i % 64)
 
     /// Clear all bits; the capacity is unchanged.
     ///
     /// cost: O(cap / 64)
     /// traps: never
     /// example: `var d = DynBitset.full(10); d.clear(); d.is_empty and d.cap == 10`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for k in 0.._w.len: _w[k] = U64(0)
+        _n = 0
 
     /// Resize to `new_cap` bits, zero-filling any new high bits. Shrinking drops the bits at or above
     /// `new_cap` (and `len` drops with them).
@@ -651,7 +681,14 @@ pub struct DynBitset:
     /// traps: when `new_cap < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
     /// example: `var d = DynBitset.full(2); d.resize(5); d.each().collect() == [0, 1]`
-    pub fn resize(mut self, new_cap: Int) = todo
+    pub fn resize(mut self, new_cap: Int):
+        assert new_cap >= 0
+        let words = (new_cap + 63) / 64
+        while _w.len > words: _w.pop()
+        while _w.len < words: _w.push(U64(0))
+        _cap = new_cap
+        self.trim()
+        self.recount()
 
     /// The smallest set bit index, or `None` if empty.
     ///
@@ -661,7 +698,7 @@ pub struct DynBitset:
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.first() == Some(3)`
     /// example: `DynBitset(10).first() == None`
-    pub fn first(self) -> ?Int = todo
+    pub fn first(self) -> ?Int = self.next(0)
 
     /// The largest set bit index, or `None` if empty.
     ///
@@ -670,7 +707,9 @@ pub struct DynBitset:
     /// ties: None possible; the largest index wins
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.last() == Some(8)`
-    pub fn last(self) -> ?Int = todo
+    pub fn last(self) -> ?Int:
+        if _cap == 0: return None
+        self.prev(_cap - 1)
 
     /// The smallest set bit `>= i`, or `None`.
     ///
@@ -678,7 +717,17 @@ pub struct DynBitset:
     /// empty: `None`
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
-    pub fn next(self, i: Int) -> ?Int = todo
+    pub fn next(self, i: Int) -> ?Int:
+        assert 0 <= i and i <= _cap
+        if i == _cap: return None
+        var k = i / 64
+        var x = _w[k] & ~low(i % 64)
+        while true:
+            if x != U64(0): return 64 * k + ctz(x)
+            k += 1
+            if k == _w.len: return None
+            x = _w[k]
+        None
 
     /// The largest set bit `<= i`, or `None`; `i` itself counts, as in `Bitset.prev`.
     ///
@@ -686,7 +735,16 @@ pub struct DynBitset:
     /// empty: `None`
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
-    pub fn prev(self, i: Int) -> ?Int = todo
+    pub fn prev(self, i: Int) -> ?Int:
+        assert 0 <= i and i < _cap
+        var k = i / 64
+        var x = _w[k] & low(i % 64 + 1)
+        while true:
+            if x != U64(0): return 64 * k + msb(x)
+            if k == 0: return None
+            k -= 1
+            x = _w[k]
+        None
 
     /// The number of set bits strictly below `i`.
     ///
@@ -694,7 +752,9 @@ pub struct DynBitset:
     /// empty: zero
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
-    pub fn count_below(self, i: Int) -> Int = todo
+    pub fn count_below(self, i: Int) -> Int:
+        assert 0 <= i and i <= _cap
+        self.count_range(0..i)
 
     /// The number of set bits in `r`.
     ///
@@ -702,7 +762,13 @@ pub struct DynBitset:
     /// empty: zero
     /// traps: when `r` is non-empty and reaches outside `0..cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
-    pub fn count_range(self, r: Range<Int>) -> Int = todo
+    pub fn count_range(self, r: Range<Int>) -> Int:
+        let (lo, hi) = (r.start, r.end)
+        if lo >= hi: return 0
+        assert 0 <= lo and hi <= _cap
+        var c = 0
+        for k in lo / 64..=(hi - 1) / 64: c += popcount(_w[k] & span(k, lo, hi))
+        c
 
     /// The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.
     ///
@@ -710,63 +776,121 @@ pub struct DynBitset:
     /// empty: `None`
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
-    pub fn nth(self, k: Int) -> ?Int = todo
+    pub fn nth(self, k: Int) -> ?Int:
+        assert k >= 0
+        var left = k
+        for i in 0.._w.len:
+            let c = popcount(_w[i])
+            if left < c:
+                var x = _w[i]
+                for _ in 0..left: x &= x - U64(1)
+                return 64 * i + ctz(x)
+            left -= c
+        None
 
     /// In-place bitwise OR (`self |= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
     /// example: `var a = DynBitset(4); a.add(0); var b = DynBitset(4); b.add(2); a.union(b); a.each().collect() == [0, 2]`
-    pub fn union(mut self, other: DynBitset) = todo
+    pub fn union(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] |= other._w[k]
+        self.recount()
 
     /// In-place bitwise AND (`self &= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
     /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.intersect(b); a.each().collect() == [2]`
-    pub fn intersect(mut self, other: DynBitset) = todo
+    pub fn intersect(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] &= other._w[k]
+        self.recount()
 
     /// In-place set difference (`self &= ~other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
     /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.subtract(b); a.each().collect() == [0, 1, 3]`
-    pub fn subtract(mut self, other: DynBitset) = todo
+    pub fn subtract(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] &= ~other._w[k]
+        self.recount()
 
     /// In-place bitwise XOR (`self ^= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
     /// example: `var a = DynBitset(4); a.add(1); a.add(2); var b = DynBitset(4); b.add(2); b.add(3); a.symmetric(b); a.each().collect() == [1, 3]`
-    pub fn symmetric(mut self, other: DynBitset) = todo
+    pub fn symmetric(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] ^= other._w[k]
+        self.recount()
 
     /// Whether `self` and `other` share a set bit; stops at the first shared word.
     ///
     /// cost: O(cap / 64), less on an early hit
     /// traps: when `other.cap != self.cap`
     /// example: `var a = DynBitset(4); a.add(1); var b = DynBitset.full(4); a.meets(b) and not a.meets(DynBitset(4))`
-    pub fn meets(self, other: DynBitset) -> Bool = todo
+    pub fn meets(self, other: DynBitset) -> Bool:
+        assert other.cap == _cap
+        for k in 0.._w.len:
+            if _w[k] & other._w[k] != U64(0): return true
+        false
 
     /// Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_up(2); d.each().collect() == [3, 5]`
-    pub fn shift_up(mut self, k: Int) = todo
+    pub fn shift_up(mut self, k: Int):
+        assert k >= 0
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        for i in (0..n).rev:
+            var x = U64(0)
+            if i >= words:
+                x = _w[i - words] << bits
+                if bits > 0 and i > words: x |= _w[i - words - 1] >> (64 - bits)
+            _w[i] = x
+        self.trim()
+        self.recount()
 
     /// Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_down(2); d.each().collect() == [1, 6]`
-    pub fn shift_down(mut self, k: Int) = todo
+    pub fn shift_down(mut self, k: Int):
+        assert k >= 0
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        for i in 0..n:
+            var x = U64(0)
+            if i + words < n:
+                x = _w[i + words] >> bits
+                if bits > 0 and i + words + 1 < n: x |= _w[i + words + 1] << (64 - bits)
+            _w[i] = x
+        self.recount()
 
     /// In-place `self |= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_or(2); d.each().collect() == [1, 3, 5, 8]`
-    pub fn shift_or(mut self, k: Int) = todo
+    pub fn shift_or(mut self, k: Int):
+        assert k >= 0
+        if k == 0: return
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        if words >= n: return
+        for i in (words..n).rev:
+            var x = _w[i - words] << bits
+            if bits > 0 and i > words: x |= _w[i - words - 1] >> (64 - bits)
+            _w[i] |= x
+        self.trim()
+        self.recount()
 
     /// The set bit indices in ascending order; `for i in d` walks the same sequence.
     ///
@@ -775,7 +899,13 @@ pub struct DynBitset:
     /// order: increasing
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
-    pub fn each(self) -> yields Int = todo
+    pub fn each(self) -> yields Int:
+        for k in 0.._w.len:
+            var x = _w[k]
+            while x != U64(0):
+                let b = ctz(x)
+                yield 64 * k + b
+                x &= ~bit(b)
 
     /// The set bit indices in descending order.
     ///
@@ -784,7 +914,13 @@ pub struct DynBitset:
     /// order: decreasing
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each_rev().collect() == [8, 1]`
-    pub fn each_rev(self) -> yields Int = todo
+    pub fn each_rev(self) -> yields Int:
+        for k in (0.._w.len).rev:
+            var x = _w[k]
+            while x != U64(0):
+                let b = msb(x)
+                yield 64 * k + b
+                x &= ~bit(b)
 
     /// All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some
     /// sub-multiset of `weights` sums to `s`. The empty sub-multiset makes `0` reachable (when
@@ -795,7 +931,21 @@ pub struct DynBitset:
     /// empty: just bit 0 (None when `cap == 0`)
     /// traps: when `cap < 0` or a weight is negative
     /// example: `DynBitset.subset_sums(11, [3, 5, 5]).each().collect() == [0, 3, 5, 8, 10]`
-    pub fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset = todo
+    pub fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset:
+        var reach = DynBitset.new(cap)
+        if cap == 0: return reach
+        reach.add(0)
+        var cnt = List.filled(cap, 0)
+        for w in weights:
+            if w > 0 and w < cap: cnt[w] += 1
+        for w in 1..cap:
+            let c = cnt[w]
+            if c > 2:
+                let carry = (c - 1) / 2
+                cnt[w] -= 2 * carry
+                if 2 * w < cap: cnt[2 * w] += carry
+            for _ in 0..cnt[w]: reach.shift_or(w)
+        reach
 
 /// O(bits) per op. Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
 pub struct XorTrie:
