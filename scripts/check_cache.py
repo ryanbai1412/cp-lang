@@ -48,7 +48,6 @@ STAGES = {
         "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
         "!tools/trace/*",
     ],
-    "stdlib_test": _TESTS,
     "nextest_doc": _TESTS,
     "recovery": _TESTS,
     # The public-history scan reads every tracked file.
