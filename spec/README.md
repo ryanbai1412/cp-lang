@@ -14,10 +14,10 @@ are written; *planned* ones are placeholders in this index only.
 Core language, read in order:
 
 1. `core/00-overview.md`: the model in one page, the trust tiers, the
-   build modes. *planned*
-2. `core/01-lexical-grammar.md`: tokens, layout, the grammar. *planned*
+   build modes. *draft*
+2. `core/01-lexical-grammar.md`: tokens, layout, the grammar. *draft*
 3. `core/02-values-types.md`: values, records, structs, enums, optionals,
-   generics. *planned*
+   generics. *draft*
 4. `core/03-numbers-layout.md`: the four number types, ranges, storage
    widths, niches, layout, overflow. *draft (aligned)*
 5. `core/04-indices.md`, `04a-identity-vs-offset.md`, `04b-keys.md`:
@@ -26,19 +26,19 @@ Core language, read in order:
 6. `core/05-ownership.md`: owned and lent values, `mut`, lends, closures,
    generators, `@cache`, exercises. *draft (aligned, authoritative)*
 7. `core/06-control-functions.md`: statements, loops, functions,
-   closures, generators. *planned*
+   closures, generators. *draft*
 8. `core/07-sequences.md`: generators, views, the six capabilities.
    *draft (aligned)*
 9. `core/08-traits-generics.md`: traits, associated types, aliases, laws,
-   row types. *planned*
+   row types. *draft*
 10. `core/09-contexts-checks.md`: contexts, `with`, what each build
-    checks. *planned*
+    checks. *draft*
 11. `core/10-io.md`: `read<T>`, printing, multitest, interaction.
-    *planned*
-12. `core/11-modules-prelude.md`: modules, pins, the prelude. *planned*
+    *draft*
+12. `core/11-modules-prelude.md`: modules, pins, the prelude. *draft*
 13. `core/12-powers.md`: what user libraries can define (no stdlib
     privilege). *draft*
-14. `core/13-lowering.md`: how each form becomes C++. *planned*
+14. `core/13-lowering.md`: how each form becomes C++. *draft*
 
 Library design, one chapter per family (the stubs in `std/` are the
 signatures and costs; these chapters are the model and the examples):
