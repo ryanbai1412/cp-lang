@@ -25,19 +25,20 @@ fn base_mat(is_e: Bool) -> Mat =
     if is_e: Mat(1, 1, 0, 1) else: Mat(1, 0, 1, 1)
 
 struct Node:
-    is_e: Bool
-    sz: Int = 1
+    var is_e: Bool
+    var sz: Int = 1
     pri: Int
-    flip: Bool = false
-    rev: Bool = false
-    data: Mat
-    lc: ?Id = none
-    rc: ?Id = none
+    var flip: Bool = false
+    var rev: Bool = false
+    var data: Mat
+    var lc: ?Id = none
+    var rc: ?Id = none
 
 var arena: List<Node> = []
 
 fn make_node(is_e: Bool) -> Id:
-    let id: Id = arena.push_id(Node(is_e: is_e, pri: rand(0, 2_000_000_000), data: base_mat(is_e)))
+    let id: Id = arena.len
+    arena.push(Node(is_e: is_e, pri: rand(0, 2_000_000_000), data: base_mat(is_e)))
     id
 
 fn size_of(t: ?Id) -> Int = if let u = t: arena[u].sz else: 0

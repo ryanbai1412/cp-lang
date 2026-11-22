@@ -5,7 +5,7 @@
 // original: corpus/submissions/4691224.cpp
 
 use std.algebra.{desc}
-use std.seq.{scan, reverse}
+use std.seq.{reverse}
 
 const B = 300
 
@@ -19,11 +19,12 @@ struct TopK:
         var psum: List<List<Int>> = []
         var gaps: List<List<(Int, Int)>> = []
         for ind in (0..=a.len).step(B):
-            let s = sorted(a[..ind], by: desc)
+            let s = a[..ind].sorted(by: desc)
             sorted_pref.push(s)
-            psum.push([0] + scan(s, +))
+            let ps = scan(s, +)
+            psum.push([ps.prefix(k) for k in 0..=s.len])
             let hi = min(a.len, ind + B)
-            gaps.push(sorted([(a[j], j) for j in ind..hi], by: desc))
+            gaps.push([(a[j], j) for j in ind..hi].sorted(by: desc))
         TopK(sorted_pref, psum, gaps)
 
     fn query(self, i: Int, k: Int) -> Int:
@@ -62,7 +63,7 @@ fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
     ans
 
 fn one_way(start: Int, d: Int, a: List<Int>) -> Int:
-    let right = solve_side(2, d, a[start + 1..])
+    let right = solve_side(2, d, a[start + 1..].to_list())
     var left_a = a[..start].to_list()
     reverse(mut left_a)
     let left = solve_side(1, d, left_a)
