@@ -144,3 +144,33 @@ Open questions raised by dreams:
   `spec.cp` idiom bugs the diff exposed (spec already allowed the dream's form): count-prefixed
   `List` fields in noi09p4, `IntervalMap` and `Lift.climb` in apio09p2, `g.next` in noi05p4,
   `Range` reads in btoi20p3.
+- Second blind batch (19 dreams; 16 `spec.cp` so far, ioi19p3, ioi19p6 and btoi18p4 pending).
+  - Adopted, general:
+    - `Seq.majority(eq:)` (ioi15p6): Boyer-Moore with only an equality oracle.
+    - `Rooted.roots` (egoi22p3): the roots of a `forest`.
+    - `PreferredPaths(t).access(v)` (sdoi17r1p2): the access half of a link-cut tree over a
+      static tree, yielding each path switch. That is the shape of "colours painted along
+      root paths".
+  - Rejected:
+    - `@journal` + `timeline` (cco20p5): an online segment tree over coordinates is simpler
+      than offline deletion.
+    - `PolyHash` (noi17p2): `RollingHash.hash_of` and `push` + `all` cover it.
+    - A `_` field in a read record (sdoi17r2p4): name the column.
+    - Calling an `LcaTable` as a function: write `lca.lca(a, b)`.
+    - `cur.flip()` on a two-variant enum (noi06p3): the solution defines it if needed.
+    - `T.counts(by:)`: `tally` then sort.
+    - `T.max_by`/`min(of:)`: `max(by:)`, `map(...).min()`.
+    - `Fenwick` over a product domain (noi08p5): `Fenwick2D` already exists.
+    - `sorting_swaps` (ioi15p5): `perm_cycles`.
+  - Dream bugs:
+    - `in` used as a field name (ioi14p5io).
+    - `.pow` for `**`, plus an O(cap) sum with cap up to 1e9 (shoi16p3): interpolate with
+      `lagrange_at`.
+    - Missing binary search on rounds (ioi15p5).
+    - O(deg²) turn arcs (sdoi17r2p4): two preorder chains with one cross arc per gap.
+    - `Fenwick(max)` with removals (cco20p5).
+    - `where` used as a loop filter (ioi22p5).
+  - Existing idioms:
+    - Position arithmetic returns `?H`, so `(h + step).map(...)` (noi06p3).
+    - `[edges.keys] e => (u:, v:)` builds keyed edges from grader lists (egoi22p3).
+    - `extern fn` + `@grader` for interactive entry points.
