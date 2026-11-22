@@ -516,7 +516,7 @@ convolve(a, b, over: Semiring(max, +), concave: .b)   // max-plus, b concave
 ```
 
 - The index op is an operation value (`on:`), so the eight
-  `convolve_or`/`_and`/`_xor`/... names collapse to one.
+  `convolve_or`/`_and`/`_xor`/... names collapse to one (done in 0.3.0; `std.ntt`).
 - The value type picks the algorithm, which is visible in its type: `Mod<P>`
   with an NTT prime uses NTT; any other `Mod` or `Int` uses three primes and
   CRT; `F64` uses FFT. `cpl explain` names it.

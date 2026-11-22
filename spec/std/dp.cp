@@ -142,21 +142,6 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
 /// be `none`: it needs only monotone argmins.
 pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)> = todo
 
-/// Which arguments of a min-plus or max-plus convolution have the shape that
-/// makes it fast: both, only the right one, or neither.
-pub enum Shape = Both | Right | Neither
-
-/// O(n + m) for `Both`, O((n + m) log n) for `Right`, O(n m) for `Neither`.
-/// `c[k]` is the least `a[i] + b[j]` over `i + j = k`; `convex` says which
-/// arguments are convex (`Both` merges the slopes; `Right` runs
-/// `monotone_minima`).
-pub fn min_plus_convolve(a: List<Int>, b: List<Int>, convex: Shape = Both) -> List<Int> = todo
-
-/// O(n + m) for `Both`, O((n + m) log n) for `Right`, O(n m) for `Neither`.
-/// `c[k]` is the largest `a[i] + b[j]` over `i + j = k`; `concave` says
-/// which arguments are concave.
-pub fn max_plus_convolve(a: List<Int>, b: List<Int>, concave: Shape = Both) -> List<Int> = todo
-
 /// O(1) amortized per `add` and per `at_next`, O(log n) per `at`.
 /// The convex hull trick for lines added in slope order: falling slopes for
 /// `pick: min`, rising for `max` (an out-of-order slope traps). The online

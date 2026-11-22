@@ -69,11 +69,12 @@ Lucas's theorem when `n >= P`), `arrange`, `multichoose`, `multinomial`, and
 Fifth, **polynomial and bitwise convolutions**: NTT appears in 7 ecnerwala
 submissions and 9 corpus ports (`lib.math.poly`). Contests need four closely
 related operations: in-place `ntt`, polynomial multiplication over an
-NTT-friendly `Mod<P>` (`convolve`), arbitrary-modulus multiplication via
-3-prime CRT (`convolve_mod`), and exact signed integer convolution
-(`convolve_int`, requested by `research/frictions/cf2201e.md`). Both linear
+NTT-friendly `Mod<P>`, arbitrary-modulus multiplication via 3-prime CRT,
+and exact signed integer convolution (requested by
+`research/frictions/cf2201e.md`), all one `convolve` whose value type picks
+the algorithm. Both linear
 and cyclic convolutions (`cyclic: true`) occur regularly. Alongside NTT,
-bitwise convolutions (`convolve_or`, `convolve_and`, `convolve_xor`) and
+bitwise convolutions (`convolve(a, b, on: |)`, `on: &`, `on: ^`) and
 subset/superset zeta-Mobius transforms (`sos_sub`, `sos_sup`, `sos_sub_inv`,
 `sos_sup_inv`) cover `O(n 2^n)` bitmask DP.
 
@@ -229,47 +230,25 @@ fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false)
     // 469762049, 167772161, 754974721) and primitive_root(P) for any other
     // NTT-friendly prime P.
 
-fn convolve<P>(
-    a: List<Mod<P>>,
-    b: List<Mod<P>>,
+fn convolve<T, O, R>(
+    a: List<T>,
+    b: List<T>,
+    on: O = (x, y) => x + y,      // ^ | & subset gcd lcm
+    over: R = Semiring(+, *),     // Semiring(min, +) needs shape:
+    shape: ?Curved = none,        // Both | Right | Neither
     cyclic: Bool = false,
-) -> List<Mod<P>>
-    // O((n + m) log(n + m)); schoolbook below 64 terms.
-    // Linear: length n + m - 1 (empty if either is empty).
-    // Cyclic: requires a.len == b.len == n; returns length n folded mod x^n - 1.
+) -> List<T>
+    // The value type picks the algorithm: NTT for an NTT-prime Mod<P>, three
+    // primes and CRT for any other Mod (runtime moduli too) or Int (exact when
+    // every output fits), FFT for F64. Bitwise `on:` needs equal powers of two.
 
-fn convolve_mod(
-    a: List<Int>,
-    b: List<Int>,
-    m: Int,
-    cyclic: Bool = false,
-) -> List<Int>
-    // O((n + m) log(n + m)); 3-prime NTT + Garner CRT for any 1 <= m < 2^31.
-
-fn convolve_int(
-    a: List<Int>,
-    b: List<Int>,
-    cyclic: Bool = false,
-) -> List<Int>
-    // O((n + m) log(n + m)); exact signed integer convolution when every
-    // output fits in about +-2^62. Uses 1-prime fast path when the bound
-    // min(n, m) * max(|a|) * max(|b|) < P1 / 2, else 3-prime CRT.
-
-// Bitwise convolutions and subset/superset zeta-Mobius transforms (n = 2^k)
+// Subset/superset zeta-Mobius transforms in place (n = 2^k)
 enum SosOver = Sub | Sup
 fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false)
-    // O(n log n); subset (Sub) or superset (Sup) zeta/Mobius transform in place
-fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T>
-    // O(n log n); c[k] = sum_{i | j == k} a[i] * b[j]
-fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T>
-    // O(n log n); c[k] = sum_{i & j == k} a[i] * b[j]
-fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T>
-    // O(n log n); c[k] = sum_{i ^ j == k} a[i] * b[j]; requires / 2 on T
 ```
 
-Notice the uniform design: `cyclic: Bool = false` is a named argument on all
-three polynomial convolutions (`convolve`, `convolve_mod`, `convolve_int`),
-matching `plan/STDLIB.md` section 2. All bitwise transforms infer the number
+Notice the uniform design: one `convolve` (ops-ranges §13), with `cyclic:`,
+`on:` and `over:` as named arguments. All bitwise transforms infer the number
 of bits from `a.len` (asserting `a.len.is_pow2`), avoiding a redundant `bits`
 argument that can go out of sync with `a.len`.
 
@@ -400,10 +379,9 @@ Every module enforces its mathematical laws in `@test`:
   `gcd(x.v, P) == 1`; `Comb<P>.choose` satisfies Pascal's identity and
   Lucas's theorem; `fact(n) * inv_fact(n) == one`; `inv(i) * Mod(i) == one`.
 - `std.ntt`: `ntt(mut a, inverse: true)` is the exact inverse of `ntt(mut a)`;
-  `convolve`, `convolve_mod`, and `convolve_int` agree with naive `O(n m)`
-  convolution for both `cyclic: false` and `cyclic: true`; `sos_sub_inv` and
-  `sos_sup_inv` invert `sos_sub` and `sos_sup`; `convolve_or`, `convolve_and`,
-  and `convolve_xor` agree with naive `O(n^2)` loops.
+  `convolve` agrees with the naive `O(n m)` loop for every value type, `on:`
+  and `over:`, both `cyclic: false` and `cyclic: true`; `sos(inverse: true)`
+  inverts `sos`.
 - `std.poly`: `convolve(a, inv(a, n))[0..n] == [1, 0, ...]`; `exp(log(a, n), n) == a[0..n]`
   for `a[0] == 1`; `log(exp(a, n), n) == a[0..n]` for `a[0] == 0`;
   `pow(a, k, n)` agrees with repeated `convolve` (including leading zeros and `k == 0`);
@@ -457,7 +435,6 @@ agreements and doubly-fixed pairs for every shift at once.
 // convolution to count agreements and doubly-fixed pairs per shift.
 @!multitest
 use std.math.{divisors, factor}
-use std.ntt.{convolve_int}
 
 type Z = Mod<998_244_353>
 
@@ -495,8 +472,8 @@ var ans: Z = 0
             fix1[i] = 1
             tot_fix += 1
 
-    let diff_conv = convolve_int(sign0, sign1, cyclic: true)
-    let both_conv = convolve_int(fix0, fix1, cyclic: true)
+    let diff_conv = convolve(sign0, sign1, cyclic: true)
+    let both_conv = convolve(fix0, fix1, cyclic: true)
     var ways: Z = 0
     for i in 0..len:
         if diff_conv[i] == both_conv[i]:

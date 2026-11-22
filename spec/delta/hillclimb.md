@@ -43,6 +43,10 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- noi02p3: one `convolve(a, b, on:, over:, shape:, cyclic:)` as ops-ranges §13 already said;
+  `convolve_mod`/`_int`/`_real`/`_or`/`_and`/`_xor`/`_subset`/`_gcd`/`_lcm` and
+  `min_plus_convolve`/`max_plus_convolve` are gone. `Curved.Neither` names the O(n m) loop that
+  a small tree knapsack wants.
 - noip99p1: one `lis` (the `std.seq` method, now with `by:`); the duplicate free `lis` in
   `std.dp` is gone and `lis_ends` is a method. `read_all<T>()` reads until end of input.
 - noip18p3: `Rooted.children(v)` yields from the stored child layout instead of returning a

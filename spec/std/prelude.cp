@@ -15,6 +15,7 @@ use std.bag.{BucketCount, SortedBag, SortedMap, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
 use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
+use std.ntt.{Curved, convolve}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}

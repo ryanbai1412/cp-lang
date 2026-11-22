@@ -15,13 +15,19 @@
  ],
  "cpp_ac": 6,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi02p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_4/noi02p3.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "tree-dp",
+  "knapsack"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "one convolve over Semiring(min, +) with shape: Curved.Neither; Rooted.children yields."
 }

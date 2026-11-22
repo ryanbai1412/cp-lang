@@ -1,10 +1,13 @@
 //! Number-theoretic transform, exact and modular convolution, SOS, and bitwise transforms.
 //!
 //! Polynomials are coefficient lists, lowest degree first (`p[k]` is the coefficient of `x^k`).
-//! `convolve`, `convolve_mod`, and `convolve_int` take `cyclic: Bool = false`:
+//! There is one `convolve`: `on:` says how indices combine and `over:` which semiring the values
+//! live in; the value type picks the algorithm (NTT for an NTT-prime `Mod<P>`, three primes and CRT
+//! for any other `Mod` or `Int`, FFT for `F64`), and `cpl explain` names it. `cyclic: Bool = false`:
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.math.{is_pow2, mul_mod, pow_mod, primitive_root}
+use std.algebra.{Semiring}
 use std.mod.{Mod}
 
 const P1 = 998_244_353
@@ -28,17 +31,32 @@ fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>
 /// Set `bit_reversed: true` to stay in DIF/DIT bit-reversed frequency order (skips bit-reversal). O(n log n).
 pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false) = todo
 
-/// Convolution of `a` and `b` over `Mod<P>`. O(n log n) via NTT (O(na * nb) when small).
-/// With `cyclic: true`, requires `a.len == b.len` and wraps indices modulo `a.len`.
-pub fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> List<Mod<P>> = todo
+/// Which arguments of a convolution over a semiring other than `(+, *)` have the shape that makes
+/// it fast: convex for `min`, concave for `max`. `Neither` asks for the O(n m) loop by name.
+pub enum Curved = Both | Right | Neither
 
-/// Convolution of integer lists modulo an arbitrary modulus `m >= 1` via 3-prime NTT + Garner CRT.
-/// Exact for `m <= 10^9 + 7` and `a.len + b.len <= 2^23`. O(n log n).
-pub fn convolve_mod(a: List<Int>, b: List<Int>, m: Int, cyclic: Bool = false) -> List<Int> = todo
+/// The index op of a subset convolution: `i | j` over disjoint pairs `i & j == 0`. A value with a
+/// transform impl, so user libraries can define more index ops the same way.
+pub struct Disjoint
 
-/// Exact integer convolution (supports negative values) via 3-prime NTT + Garner CRT.
-/// Exact whenever every output coefficient fits in `Int`. O(n log n).
-pub fn convolve_int(a: List<Int>, b: List<Int>, cyclic: Bool = false) -> List<Int> = todo
+/// `on: subset` in `convolve`.
+pub const subset = Disjoint()
+
+/// `c[on(i, j)] = over.add` of `over.mul(a[i], b[j])`. The default is the polynomial product,
+/// O((n + m) log(n + m)). `on: ^`, `|`, `&` use the bitwise transforms (lengths equal powers of
+/// two, O(n log n)); `on: subset` is O(k^2 2^k); `on: gcd` and `on: lcm` index from 1 and cost
+/// O(n log log n). Any `over:` but `Semiring(+, *)` needs `shape:` (`Both` merges slopes in
+/// O(n + m), `Right` runs `monotone_minima` in O((n + m) log n), `Neither` is the O(n m) loop);
+/// leaving it out is an error, not a hidden O(n m). With `cyclic: true`, `a.len == b.len` and
+/// indices wrap modulo it.
+pub fn convolve<T, O, R>(
+    a: List<T>,
+    b: List<T>,
+    on: O = (x, y) => x + y,
+    over: R = Semiring(+, *),
+    shape: ?Curved = none,
+    cyclic: Bool = false,
+) -> List<T> = todo
 
 /// Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
 pub enum SosOver = Sub | Sup
@@ -47,23 +65,9 @@ pub enum SosOver = Sub | Sup
 /// (`inverse: false`) or Mobius inverse (`inverse: true`) on any `IndexedMut` of power-of-two length `2^k`.
 pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false) = todo
 
-/// Bitwise OR convolution: `out[i | j] += a[i] * b[j]`. Lengths must be equal powers of two. O(n log n).
-pub fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T> = todo
-
-/// Bitwise AND convolution: `out[i & j] += a[i] * b[j]`. Lengths must be equal powers of two. O(n log n).
-pub fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T> = todo
-
 /// O(n log n). In-place Walsh-Hadamard (XOR) transform (`inverse: false` or `inverse: true`)
 /// on any `IndexedMut` of power-of-two length `2^k` (`List<T>`, `[D]T`, mutable slices).
 pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false) = todo
-
-/// Bitwise XOR convolution: `out[i ^ j] += a[i] * b[j]`. Lengths must be equal powers of two.
-/// Works on `Int`, `Mod<P>`, and `Float`. O(n log n).
-pub fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> = todo
-
-/// Subset convolution: `out[i | j] += a[i] * b[j]` over disjoint pairs `i & j == 0`.
-/// Lengths must be equal powers of two `2^k`. O(k^2 * 2^k).
-pub fn convolve_subset<T>(a: List<T>, b: List<T>) -> List<T> = todo
 
 /// O(log^2 n) amortized per step, O(n log^2 n) total. Online (relaxed) NTT convolution:
 /// supply `(a[k], b[k])` one step at a time and immediately receive `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
@@ -94,15 +98,6 @@ pub struct SemiRelaxedConvolve<P>:
 /// O(S log^2 S) for total degree `S`. Product of all polynomials in `polys` (returns `[1]` if empty).
 pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>> = todo
 
-/// O((n + m) log(n + m)). Floating-point FFT convolution (linear or cyclic).
-pub fn convolve_real(a: List<F64>, b: List<F64>, cyclic: Bool = false) -> List<F64> = todo
-
-/// O(n log log n). GCD convolution: `out[g] = sum_{gcd(i, j) == g} a[i] * b[j]` (1-indexed, index 0 unused).
-pub fn convolve_gcd<T>(a: List<T>, b: List<T>) -> List<T> = todo
-
-/// O(n log log n). LCM convolution: `out[l] = sum_{lcm(i, j) == l} a[i] * b[j]` (1-indexed, index 0 unused).
-pub fn convolve_lcm<T>(a: List<T>, b: List<T>) -> List<T> = todo
-
 /// O(k^2 * 2^k) for `n = 2^k`. Set power series exponential (`a[0] == 0`).
 pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 
@@ -113,7 +108,7 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 fn ntt_round_trip_and_convolve() = todo
 
 @test
-fn convolve_mod_and_int_match_brute_force() = todo
+fn convolve_matches_brute_force_for_every_value_type() = todo
 
 @test
 fn sos_and_bitwise_convolutions() = todo

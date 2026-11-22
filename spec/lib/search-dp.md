@@ -149,7 +149,7 @@ brute in `cpl stress`.
 | `LiChao(max, over: r)`, `.add(line, on:)`, `.at(x)` | max of lines / segments at x | O(log \|r\|) |
 | `LineContainer(max)` | max of lines, any order | O(log n) |
 | `MonotoneHull(max)` | lines and queries both monotone | O(1) amortized |
-| `min_plus_convolve(a, b, convex:)` | `c[k] = min a[i] + b[k - i]` | O(n + m) or O(n m) by shape |
+| `convolve(a, b, over: Semiring(min, +), shape:)` | `c[k] = min a[i] + b[k - i]` | O(n + m) or O(n m) by shape |
 | `SlopeTrick` (std.slope) | piecewise-linear convex DP | O(log n) per op |
 
 D&C optimisation as a library call, the same layer cf868f writes by hand:
