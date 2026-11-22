@@ -200,3 +200,120 @@ fn canonical_stress_spellings_only_and_help_text_updated() {
         );
     }
 }
+
+#[test]
+fn inner_alt_fn_with_gen_shrinks_and_saves_counterexample() {
+    let dir = scratch("inner_alt_gen");
+    let sol = dir.join("sol.cp");
+    let src = r#"let n: 1..=8 = read()
+domain V = 1..=n
+let a: [V]1..=100 = read()
+
+fn solve() -> Int:
+    fn fast_sum() -> Int:
+        var s = a.sum()
+        if n >= 3 and a.any(x => x > 5): s -= 1
+        s
+    @alt(fast_sum)
+    fn slow_sum() -> Int:
+        var s = 0
+        for i in V: s += a[i]
+        s
+    fast_sum()
+
+print(solve())
+
+@gen
+fn input():
+    let n = gen(1..=8)
+    domain V = 1..=n
+    let a = gen<[V]1..=100>()
+    print(n)
+    print(a)
+"#;
+    fs::write(&sol, src).unwrap();
+
+    let out = cpl()
+        .args(["stress"])
+        .arg(&sol)
+        .args(["--cases", "50", "--seed", "1"])
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "expected stress to find planted bug, stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("with its @alt fns swapped in"), "{stdout}");
+    assert!(stdout.contains("FAIL"), "stdout:\n{stdout}");
+    assert!(stdout.contains("shrunk"), "expected shrinking:\n{stdout}");
+
+    let tests_dir = dir.join("sol.tests");
+    let saved_in: Vec<_> = fs::read_dir(&tests_dir)
+        .expect("sol.tests/ should be created")
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("stress-") && n.ends_with(".in"))
+        })
+        .collect();
+    assert_eq!(saved_in.len(), 1, "expected one sol.tests/stress-<seed>.in");
+    let content = fs::read_to_string(&saved_in[0]).unwrap();
+    let nums: Vec<i64> = content
+        .split_whitespace()
+        .map(|t| t.parse().unwrap())
+        .collect();
+    assert_eq!(nums[0], 3, "shrunk n should be minimal (3), got {content:?}");
+    assert!(
+        nums[1..].iter().any(|&x| x > 5),
+        "shrunk input should still trigger bug: {content:?}"
+    );
+
+    // Interp and built C++ agree on the saved counterexample.
+    let interp = cpl()
+        .args(["run"])
+        .arg(&sol)
+        .arg(&saved_in[0])
+        .output()
+        .unwrap();
+    assert!(
+        interp.status.success(),
+        "interp failed: {}",
+        String::from_utf8_lossy(&interp.stderr)
+    );
+    let cpp = dir.join("sol.cpp");
+    let bin = dir.join("sol_bin");
+    let build = cpl().args(["build"]).arg(&sol).arg("-o").arg(&cpp).output().unwrap();
+    assert!(build.status.success(), "{}", String::from_utf8_lossy(&build.stderr));
+    let gpp = Command::new("g++")
+        .args(["-O2", "-std=c++17"])
+        .arg(&cpp)
+        .arg("-o")
+        .arg(&bin)
+        .output()
+        .unwrap();
+    assert!(gpp.status.success(), "{}", String::from_utf8_lossy(&gpp.stderr));
+    let mut child = Command::new(&bin)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    use std::io::Write;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(content.as_bytes())
+        .unwrap();
+    let cpp_out = child.wait_with_output().unwrap();
+    assert!(cpp_out.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&interp.stdout),
+        String::from_utf8_lossy(&cpp_out.stdout),
+        "interp and C++ outputs should agree"
+    );
+}

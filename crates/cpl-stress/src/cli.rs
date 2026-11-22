@@ -209,39 +209,89 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
 /// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
 /// where they were, so `debug(...)` lines still pair up. `None` when the
 /// file pairs no fn with a brute.
-pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
-    let parsed = cpl_syntax::parse_file(src);
-    let mut fns: HashMap<&str, Span> = HashMap::new();
-    let mut pairs = Vec::new();
-    for (base, item) in &parsed.items {
-        for stmt in &item.stmts {
-            let cpl_syntax::ast::StmtKind::Fn(decl) = &stmt.kind else {
-                continue;
-            };
-            fns.insert(decl.name.text.as_str(), decl.name.span.shift(*base));
+fn collect_part_brutes<'a>(
+    stmts: &'a [cpl_syntax::ast::Stmt],
+    base: u32,
+    outer_fns: &HashMap<&'a str, Span>,
+    pairs: &mut Vec<(Span, Span, Span, &'a str)>,
+) {
+    use cpl_syntax::ast::{ExprKind, FnBody, StmtKind};
+    let mut local_fns = outer_fns.clone();
+    for stmt in stmts {
+        if let StmtKind::Fn(decl) = &stmt.kind {
+            local_fns.insert(decl.name.text.as_str(), decl.name.span.shift(base));
+        }
+    }
+    for stmt in stmts {
+        if let StmtKind::Fn(decl) = &stmt.kind {
             for decorator in stmt
                 .decorators
                 .iter()
                 .filter(|d| !d.directive && d.name.text == "alt")
             {
                 if let Some(arg) = decorator.args.first().filter(|a| a.name.is_none()) {
-                    if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
+                    if let ExprKind::Name(part) = &arg.value.kind {
                         if part != "program" {
-                            pairs.push((
-                                decorator.span.shift(*base),
-                                decl.name.span.shift(*base),
-                                part.as_str(),
-                            ));
+                            if let Some(&fast_span) = local_fns.get(part.as_str()) {
+                                pairs.push((
+                                    decorator.span.shift(base),
+                                    decl.name.span.shift(base),
+                                    fast_span,
+                                    part.as_str(),
+                                ));
+                            }
                         }
                     }
                 }
             }
+            if let FnBody::Block(b) = &decl.body {
+                collect_part_brutes(&b.stmts, base, &local_fns, pairs);
+            }
+        } else {
+            match &stmt.kind {
+                StmtKind::For { body, .. } | StmtKind::While { body, .. } => {
+                    collect_part_brutes(&body.stmts, base, &local_fns, pairs);
+                }
+                StmtKind::Expr(e) => {
+                    if let ExprKind::If {
+                        branches,
+                        otherwise,
+                    } = &e.kind
+                    {
+                        for (_, b) in branches {
+                            collect_part_brutes(&b.stmts, base, &local_fns, pairs);
+                        }
+                        if let Some(b) = otherwise {
+                            collect_part_brutes(&b.stmts, base, &local_fns, pairs);
+                        }
+                    }
+                }
+                StmtKind::With { body: Some(b), .. } => {
+                    collect_part_brutes(&b.stmts, base, &local_fns, pairs);
+                }
+                _ => {}
+            }
         }
+    }
+}
+
+pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
+    let parsed = cpl_syntax::parse_file(src);
+    let mut top_fns: HashMap<&str, Span> = HashMap::new();
+    for (base, item) in &parsed.items {
+        for stmt in &item.stmts {
+            if let cpl_syntax::ast::StmtKind::Fn(decl) = &stmt.kind {
+                top_fns.insert(decl.name.text.as_str(), decl.name.span.shift(*base));
+            }
+        }
+    }
+    let mut pairs = Vec::new();
+    for (base, item) in &parsed.items {
+        collect_part_brutes(&item.stmts, *base, &top_fns, &mut pairs);
     }
     let tokens = cpl_syntax::lex(src).tokens;
     let mut edits: Vec<(Span, String)> = Vec::new();
-    for (decorator, brute, part) in pairs {
-        let Some(&fast) = fns.get(part) else { continue };
+    for (decorator, brute, fast, part) in pairs {
         let blank = src[decorator.start as usize..decorator.end as usize]
             .chars()
             .map(|c| if c == '\n' { c } else { ' ' })
