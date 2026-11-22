@@ -836,7 +836,23 @@ fn agrees_with_labels_on_random_unions():
             assert d.same(a, v) == (label[v] == la)
 
 @test
-fn undo_to_returns_to_every_mark() = todo
+fn undo_to_returns_to_every_mark():
+    domain V = 0..10
+    var d = Dsu<V>()
+    var marks: List<Mark> = []
+    var reps: List<List<V>> = []
+    var parts: List<Int> = []
+    for step in 0..30:
+        if step % 5 == 0:
+            marks.push(d.mark())
+            reps.push([d.find(v) for v in V])
+            parts.push(d.components)
+        d.unite(V.nth(rand(0, 9)), V.nth(rand(0, 9)))
+    var i = marks.len - 1
+    while i >= 0:
+        d.undo_to(marks[i])
+        assert [d.find(v) for v in V] == reps[i] and d.components == parts[i]
+        i -= 1
 
 @test
 fn groups_partitions_all_vertices_by_component():
@@ -878,7 +894,40 @@ fn merge_says_which_root_stayed():
     assert total[d.find(V(0))] == 6 and total[d.find(V(5))] == 9 and d.components == 2
 
 @test
-fn values_follow_merges_and_roll_back() = todo
+fn values_follow_merges_and_roll_back():
+    domain V = 0..8
+    var d = DsuOf<V, Int>(v => v.idx, (x, y) => x + y)
+    var label = [V] v => v
+    var total = [V] v => v.idx
+    var saved_label = [V] v => v
+    var saved_total = [V] v => 0
+    var snap = d.mark()
+    for step in 0..24:
+        if step == 12:
+            snap = d.mark()
+            for v in V:
+                saved_label[v] = label[v]
+                saved_total[v] = total[v]
+        let a = V.nth(rand(0, 7))
+        if step % 4 == 3:
+            let x = rand(-5, 5)
+            d.set(a, x)
+            total[label[a]] = x
+        else:
+            let b = V.nth(rand(0, 7))
+            let (la, lb) = (label[a], label[b])
+            assert d.unite(a, b) == (la != lb)
+            if la != lb:
+                total[la] += total[lb]
+                for v in V:
+                    if label[v] == lb: label[v] = la
+        for v in V:
+            assert d.get(v) == total[label[v]]
+    d.undo_to(snap)
+    for v in V:
+        assert d.get(v) == saved_total[saved_label[v]]
+        for u in V:
+            assert d.same(u, v) == (saved_label[u] == saved_label[v])
 
 @test
 fn a_directional_join_keeps_the_second_value():
@@ -895,7 +944,49 @@ fn a_directional_join_keeps_the_second_value():
     assert d.get(V(4)) == None and d.get(V(2)) == Some(V(1)) and d.components == 3
 
 @test
-fn parity_matches_a_brute_colouring_and_rolls_back() = todo
+fn parity_matches_a_brute_colouring_and_rolls_back():
+    domain V = 0..7
+    var d = ParityDsu<V>()
+    var label = [V] v => v
+    var side = [V] v => false
+    var conflicts = 0
+    var saved_label = [V] v => v
+    var saved_side = [V] v => false
+    var saved_conflicts = 0
+    var snap = d.mark()
+    for step in 0..30:
+        if step == 15:
+            snap = d.mark()
+            for v in V:
+                saved_label[v] = label[v]
+                saved_side[v] = side[v]
+            saved_conflicts = conflicts
+        let a = V.nth(rand(0, 6))
+        let b = V.nth(rand(0, 6))
+        let differ = rand(0, 1) == 1
+        let (la, lb) = (label[a], label[b])
+        if la == lb:
+            let ok = (side[a] != side[b]) == differ
+            if not ok: conflicts += 1
+            assert d.unite(a, b, differ: differ) == ok
+        else:
+            assert d.unite(a, b, differ: differ)
+            let flip = (side[a] != side[b]) != differ
+            for v in V:
+                if label[v] == lb:
+                    label[v] = la
+                    side[v] = side[v] != flip
+        assert d.consistent == (conflicts == 0)
+        for u in V:
+            for v in V:
+                let want: ?Bool = if label[u] == label[v]: Some(side[u] != side[v]) else: None
+                assert d.diff(u, v) == want
+    d.undo_to(snap)
+    assert d.consistent == (saved_conflicts == 0)
+    for u in V:
+        for v in V:
+            let want: ?Bool = if saved_label[u] == saved_label[v]: Some(saved_side[u] != saved_side[v]) else: None
+            assert d.diff(u, v) == want
 
 @test
 fn roots_and_values_yield_one_entry_per_component():
