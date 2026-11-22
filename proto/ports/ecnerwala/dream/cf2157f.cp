@@ -79,7 +79,7 @@ var layer_ops: [0..best.d]List<(Pos, Int)> = [0..best.d] _ => []
 for cl in 0..best.d:
     for group in placed.chunk_by((a, b) => a.1[..cl] == b.1[..cl]):
         let start = placed[group.first!].0
-        for idx in group if idx > group.first!:
+        for idx in group if idx > group.first! and placed[idx].1[cl] != placed[idx.prev!].1[cl]:
             let pos = placed[idx].0
             layer_ops[cl].push((pos, start - pos))
 
