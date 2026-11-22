@@ -482,6 +482,9 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 
 /// O(n) memory. Incremental 2D convex hull of integer points backed by upper and lower chains.
 pub struct OnlineHull:
+    hull: List<Pt>
+    area: Int
+
     /// An empty online convex hull.
     ///
     /// The hull keeps strict corners only: points on an edge or inside are absorbed.
@@ -489,7 +492,7 @@ pub struct OnlineHull:
     /// cost: O(1)
     /// traps: never
     /// example: `OnlineHull().is_empty == true`
-    pub fn new() -> OnlineHull = todo
+    pub fn new() -> OnlineHull = OnlineHull([], 0)
 
     /// Insert `p` and report whether the hull changed (whether `p` is now a corner).
     ///
@@ -500,7 +503,18 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)) == true`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
-    pub fn add(mut self, p: Pt) -> Bool = todo
+    @allow(unproven_list_index)
+    pub fn add(mut self, p: Pt) -> Bool:
+        if self.locate(p) != Location.Outside: return false
+        var pts = [q for q in hull]
+        pts.push(p)
+        hull = convex_hull(pts, collinear: false)
+        var a2: I128 = 0
+        let m = hull.len
+        if m >= 3:
+            for i in 0..m: a2 += hull[i].cross128(hull[(i + 1) % m])
+        area = Int(a2)
+        true
 
     /// Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
     ///
@@ -512,7 +526,26 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(1, 1)) == Location.Inside`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
     /// example: `OnlineHull().locate(Pt(0, 0)) == Location.Outside`
-    pub fn locate(self, p: Pt) -> Location = todo
+    @allow(unproven_list_index)
+    pub fn locate(self, p: Pt) -> Location:
+        let m = hull.len
+        if m == 0: return Location.Outside
+        if m == 1: return if p == hull[0]: Location.Boundary else: Location.Outside
+        if m == 2: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
+        let c1 = cross128_3(hull[0], hull[1], p)
+        let c2 = cross128_3(hull[0], hull[m - 1], p)
+        if c1 < 0 or c2 > 0: return Location.Outside
+        if c1 == 0: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
+        if c2 == 0: return if on_segment(p, hull[0], hull[m - 1]): Location.Boundary else: Location.Outside
+        var lo = 1
+        var hi = m - 1
+        while hi - lo > 1:
+            let mid = (lo + hi) / 2
+            if cross128_3(hull[0], hull[mid], p) >= 0: lo = mid else: hi = mid
+        let s = cross128_3(hull[lo], hull[hi], p)
+        if s < 0: Location.Outside
+        else if s == 0: Location.Boundary
+        else: Location.Inside
 
     /// The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
     ///
@@ -524,7 +557,17 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
     /// example: `OnlineHull().extreme(Pt(1, 0)) == None`
-    pub fn extreme(self, dir: Pt) -> ?Pt = todo
+    @allow(unproven_list_index)
+    pub fn extreme(self, dir: Pt) -> ?Pt:
+        if hull.is_empty: return None
+        var best = hull[0]
+        var best_v = best.dot128(dir)
+        for i in 1..hull.len:
+            let v = hull[i].dot128(dir)
+            if v > best_v:
+                best_v = v
+                best = hull[i]
+        Some(best)
 
     /// Twice the area of the current hull; 0 with fewer than 3 non-collinear points.
     ///
@@ -532,14 +575,14 @@ pub struct OnlineHull:
     /// traps: when the value overflows `Int`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.area2 == 16`
     /// example: `OnlineHull().area2 == 0`
-    @get pub fn area2(self) -> Int = todo
+    @get pub fn area2(self) -> Int = area
 
     /// The number of hull corners.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = hull.len
 
     /// Whether no point has been added since creation or the last `clear`.
     ///
@@ -547,7 +590,7 @@ pub struct OnlineHull:
     /// traps: never
     /// example: `OnlineHull().is_empty == true`
     /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = hull.is_empty
 
     /// The current hull corners, counter-clockwise from the least `(x, y)`.
     ///
@@ -555,7 +598,7 @@ pub struct OnlineHull:
     /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
-    pub fn vertices(self) -> List<Pt> = todo
+    pub fn vertices(self) -> List<Pt> = [p for p in hull]
 
     /// The current hull corners, yielded in `vertices()` order without building a list.
     ///
@@ -563,14 +606,17 @@ pub struct OnlineHull:
     /// order: counter-clockwise, starting at the least `(x, y)`
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.iter().collect() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
-    pub fn iter(self) -> yields Pt = todo
+    pub fn iter(self) -> yields Pt:
+        for p in hull: yield p
 
     /// Remove every point; the hull is then empty.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.clear(); h.is_empty`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        hull = []
+        area = 0
 
 fn min_yx_idx(poly: List<Pt>) -> Int:
     var best = 0
@@ -1329,7 +1375,43 @@ fn edge_planes(poly: List<Vec>) -> List<HalfPlane>:
 /// traps: when `poly` is not counter-clockwise
 /// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
 /// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
-pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)> = todo
+@allow(unproven_list_index)
+pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
+    let n = poly.len
+    if n < 3: return []
+    var area2: I128 = 0
+    for i in 0..n: area2 += poly[i].cross128(poly[(i + 1) % n])
+    assert area2 > 0, "polygon_triangulate: polygon must be counter-clockwise"
+    var rem: List<Int> = [i for i in 0..n]
+    var tris: List<(Int, Int, Int)> = []
+    while rem.len > 3:
+        let m = rem.len
+        var clipped = -1
+        for i in 0..m:
+            let ai = rem[(i + m - 1) % m]
+            let bi = rem[i]
+            let ci = rem[(i + 1) % m]
+            let (a, b, c) = (poly[ai], poly[bi], poly[ci])
+            if cross128_3(a, b, c) <= 0: continue
+            var ok = true
+            for j in 0..m:
+                let qi = rem[j]
+                if qi == ai or qi == bi or qi == ci: continue
+                let q = poly[qi]
+                if cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(c, a, q) >= 0:
+                    ok = false
+                    break
+            if ok:
+                tris.push((ai, bi, ci))
+                clipped = i
+                break
+        assert clipped != -1, "polygon_triangulate: polygon is not simple"
+        var next_rem: List<Int> = []
+        for i in 0..m:
+            if i != clipped: next_rem.push(rem[i])
+        rem = next_rem
+    tris.push((rem[0], rem[1], rem[2]))
+    tris
 
 /// The number of lattice points strictly inside the simple lattice polygon `poly`, either
 /// orientation, by Pick's theorem: `I = (|area2| - B) / 2 + 1` with `B = pick_boundary(poly)`.
