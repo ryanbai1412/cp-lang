@@ -74,14 +74,16 @@ pub struct Marks<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.add(1); m.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        cnt
 
     /// Whether no position is marked; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(0); m.remove(0); m.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        cnt == 0
 
 /// Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
 pub struct MarkMap<D, T>:
@@ -106,14 +108,16 @@ pub struct MarkMap<D, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(1, 7); m.set(1, 8); m.set(4, 0); m.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        cnt
 
     /// Whether no key is present; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 1); m.remove(2); m.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        cnt == 0
 
     /// Whether `v` has a value. A key set to `default_val` is present.
     ///
@@ -183,14 +187,16 @@ pub struct Interner<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.id("b"); t.id("a"); t.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        keys.len
 
     /// Whether no key has been interned; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.clear(); t.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        keys.len == 0
 
     /// Forget every key, so the next new key gets id `0` again.
     ///
@@ -232,7 +238,8 @@ pub struct Interner<K>:
     /// cost: O(1) expected
     /// traps: never
     /// example: `var t = Interner<Int>(); t.id(40); t.contains(40) and not t.contains(41)`
-    pub fn contains(self, k: K) -> Bool = todo
+    pub fn contains(self, k: K) -> Bool:
+        to_id.get(k) != None
 
     /// Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not
     /// reallocate. Changes no ids.
@@ -240,12 +247,16 @@ pub struct Interner<K>:
     /// cost: O(cap)
     /// traps: when `cap < 0`
     /// example: `var t = Interner<Int>(); t.reserve(100); t.id(5); t.len == 1`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        assert cap >= 0
+        keys.reserve(cap)
 
 /// Briggs-Torczon sparse set over domain `D`.
 /// O(1) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
 pub struct SparseSet<D>:
     _len: Int
+    dense: List<D>
+    pos: [D]Int
 
     /// An empty sparse set over `D`.
     ///
@@ -253,28 +264,33 @@ pub struct SparseSet<D>:
     /// empty: an empty `D` gives a set that can never hold an element
     /// traps: never
     /// example: `SparseSet<0..5>().is_empty`
-    pub fn new() -> SparseSet<D> = todo
+    pub fn new() -> SparseSet<D>:
+        SparseSet(0, [], [D] _ => -1)
 
     /// The number of elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.add(4); s.add(1); s.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        _len
 
     /// Whether the set has no elements; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.remove(1); s.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        _len == 0
 
     /// Whether `v` is in the set.
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.contains(3) and not s.contains(2)`
-    pub fn contains(self, v: D) -> Bool = todo
+    pub fn contains(self, v: D) -> Bool:
+        let p = pos[v]
+        p >= 0 and p < _len and dense[p] == v
 
     /// Add `v` at the end of the dense order. Returns `true` when `v` was absent, `false` when it
     /// was present (and nothing changes).
@@ -282,7 +298,13 @@ pub struct SparseSet<D>:
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3) and not s.add(3)`
-    pub fn add(mut self, v: D) -> Bool = todo
+    pub fn add(mut self, v: D) -> Bool:
+        if self.contains(v): return false
+        if _len < dense.len: dense[_len] = v
+        else: dense.push(v)
+        pos[v] = _len
+        _len += 1
+        true
 
     /// Remove `v`, moving the last element of the dense order into its slot. Returns `true` when `v`
     /// was present, `false` when it was absent (and nothing changes).
@@ -290,14 +312,22 @@ pub struct SparseSet<D>:
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.add(1); s.add(4); s.remove(3); s.each().collect() == [4, 1]`
-    pub fn remove(mut self, v: D) -> Bool = todo
+    pub fn remove(mut self, v: D) -> Bool:
+        if not self.contains(v): return false
+        let p = pos[v]
+        let last = dense[_len - 1]
+        dense[p] = last
+        pos[last] = p
+        _len -= 1
+        true
 
     /// Remove every element by resetting the length; the sparse table is not touched.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.clear(); s.is_empty and not s.contains(3)`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        _len = 0
 
     /// Every element, in dense order: insertion order, except that each `remove` moved the then-last
     /// element into the removed one's slot.
@@ -307,7 +337,8 @@ pub struct SparseSet<D>:
     /// order: dense order (insertion order adjusted by removals, as above)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(2); s.add(0); s.add(4); s.each().collect() == [2, 0, 4]`
-    pub fn each(self) -> yields D = todo
+    pub fn each(self) -> yields D:
+        for i in 0.._len: yield dense[i]
 
 /// Compact 4-byte typed handle into an `Arena<T>`.
 pub struct Id<T>(raw: 0..=2_000_000_000)
@@ -321,7 +352,10 @@ pub struct Arena<T>:
     /// cost: O(cap)
     /// traps: when `cap < 0`
     /// example: `Arena<Int>(cap: 8).is_empty`
-    pub fn new(cap: Int = 0) -> Arena<T> = todo
+    pub fn new(cap: Int = 0) -> Arena<T>:
+        var xs: List<T> = []
+        xs.reserve(cap)
+        Arena(xs)
 
     /// The number of nodes allocated since creation or the last `clear`; valid handles have raw
     /// values `0..len`.
@@ -329,21 +363,25 @@ pub struct Arena<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.alloc(6); a.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        _xs.len
 
     /// Whether no node is allocated; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        _xs.len == 0
 
     /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
     ///
     /// cost: O(1) amortized
     /// traps: when the arena already holds `2_000_000_001` nodes
     /// example: `var a = Arena<Str>(); a.alloc("p"); a.alloc("q") == Id<Str>(1)`
-    pub fn alloc(mut self, x: T) -> Id<T> = todo
+    pub fn alloc(mut self, x: T) -> Id<T>:
+        _xs.push(x)
+        Id(_xs.len - 1)
 
     /// The node behind `id`; also `arena[id]`.
     ///
@@ -351,21 +389,24 @@ pub struct Arena<T>:
     /// traps: when `id` is not below `len`. A handle issued before a `clear` is not detected while
     /// it is below `len`; it reads whatever node now holds that slot
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.alloc(6); a.get(i) == 5`
-    pub fn get(self, id: Id<T>) -> T = todo
+    pub fn get(self, id: Id<T>) -> T:
+        _xs[id.raw]
 
     /// Overwrite the node behind `id` with `x`; also `arena[id] = x`.
     ///
     /// cost: O(1)
     /// traps: when `id` is not below `len` (stale handles as in `get`)
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.set(i, 9); a[i] == 9`
-    pub fn set(mut self, id: Id<T>, x: T) = todo
+    pub fn set(mut self, id: Id<T>, x: T):
+        _xs[id.raw] = x
 
     /// Allocate room for at least `cap` nodes in total; changes no handle or node.
     ///
     /// cost: O(cap)
     /// traps: when `cap < 0`
     /// example: `var a = Arena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        _xs.reserve(cap)
 
     /// Drop every node, so the next `alloc` returns handle `0` again. Every handle issued before is
     /// invalidated.
@@ -373,7 +414,8 @@ pub struct Arena<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.alloc(7) == Id<Int>(0)`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        _xs.clear()
 
 @test
 fn mark_map_and_interner():
