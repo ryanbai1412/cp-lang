@@ -1,7 +1,7 @@
 # ceoi22p3
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (port = dream: adopted `read<[V]?V>(none: -1)`, `picked.pairs`, `[one.at[one.Pre.at(i)] for i in 0..k]` without `E0603`, `_` for unused `q`, and noted one-per-line judge format; both check 0 errors, 0 lints, verified `cpl run` == `g++`)
+Dream: pending cold rescore (fixed `E0603` lent slice, unified one-per-line `picked` output with port, dropped unused `q`; checks 0 errors)
 
 Baseline review, cold, on main 96359635. Reads like the editorial. The header (lines 7-14) states the auxiliary-tree insight and why the ties are connected. But the trees are read by hand with a `-1` root sentinel, and depths come from a hand stack traversal with a `known` flag array. No dream exists, so the score is capped at 3.
 

@@ -1,9 +1,9 @@
 // CEOI '22 P3 - Prize (25pt, interactive): two rooted trees on the same n
-// vertices with hidden positive edge lengths. Pick k vertices, then ask k - 1
-// questions "? a b"; after "!" each is answered with four numbers: the
-// distances from a and from b to their lowest common ancestor, in tree 1
-// and in tree 2. Then t pairs of picked vertices arrive and the distance of
-// each pair in both trees must be printed.
+// vertices with hidden positive edge lengths. Pick k vertices (one per line),
+// then ask k - 1 questions "? a b"; after "!" each is answered with four
+// numbers: the distances from a and from b to their lowest common ancestor,
+// in tree 1 and in tree 2. Then t pairs of picked vertices arrive and the
+// distance of each pair in both trees must be printed.
 //
 // Pick the first k vertices of a preorder of tree 1 (closed under parents)
 // and ask about adjacent pairs in tree 2's preorder. Those adjacent pairs'
@@ -13,15 +13,16 @@
 // graphs are connected, so one BFS fixes every depth up to a shift, and each
 // query distance is `depth[a] + depth[b] - 2 * depth[lca(a, b)]`.
 
-let (n, k, q, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
+let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 domain Ask = 0..k - 1
 
 let one = Rooted.from_parents(read<[V]?V>(none: -1))
 let two = Rooted.from_parents(read<[V]?V>(none: -1))
 
-var picked: List<V> = [v for v in one.at][..k]
-print(picked)
+var picked: List<V> = [one.at[one.Pre.at(i)] for i in 0..k]
+// CEOI '22 judge expects the k chosen vertices one per line before queries.
+for v in picked: print(v)
 picked.sort(by: v => two.tin[v].ord)
 let ask_pairs = [(a, b) for (a, b) in picked.pairs]
 for (a, b) in ask_pairs: print("?", a, b)
@@ -34,9 +35,10 @@ fn depths(
     proj: ((Int, Int, Int, Int)) -> (Int, Int),
 ) -> [V]Int:
     var ties: [V]List<(to: V, d: Int)> = []
-    for (i, (a, b)) in ask_pairs.items:
+    for i in Ask:
+        let (a, b) = ask_pairs[i.ord]
         let top = lca(a, b)
-        let (da, db) = proj(replies[Ask(i)])
+        let (da, db) = proj(replies[i])
         ties[top].push((to: a, d: da))
         ties[a].push((to: top, d: -da))
         ties[top].push((to: b, d: db))

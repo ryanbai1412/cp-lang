@@ -1,9 +1,9 @@
 // CEOI '22 P3 - Prize (25pt, interactive): two rooted trees on the same n
-// vertices with hidden positive edge lengths. Pick k vertices, then ask k - 1
-// questions "? a b"; after "!" each is answered with four numbers: the
-// distances from a and from b to their lowest common ancestor, in tree 1
-// and in tree 2. Then t pairs of picked vertices arrive and the distance of
-// each pair in both trees must be printed.
+// vertices with hidden positive edge lengths. Pick k vertices (one per line),
+// then ask k - 1 questions "? a b"; after "!" each is answered with four
+// numbers: the distances from a and from b to their lowest common ancestor,
+// in tree 1 and in tree 2. Then t pairs of picked vertices arrive and the
+// distance of each pair in both trees must be printed.
 //
 // Pick the first k vertices of a preorder of tree 1 (closed under parents)
 // and ask about adjacent pairs in tree 2's preorder. Those adjacent pairs'
@@ -14,19 +14,18 @@
 // query distance is `depth[a] + depth[b] - 2 * depth[lca(a, b)]`.
 // original: corpus/submissions/4728198.cpp
 
-let (n, k, q, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
+let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 domain Ask = 0..k - 1
 
-let boss_one: [V]Int = read()
-let one = Rooted.from_parents([V] v => if boss_one[v] == -1: none else: some(V(boss_one[v])))
-let boss_two: [V]Int = read()
-let two = Rooted.from_parents([V] v => if boss_two[v] == -1: none else: some(V(boss_two[v])))
+let one = Rooted.from_parents(read<[V]?V>(none: -1))
+let two = Rooted.from_parents(read<[V]?V>(none: -1))
 
 var picked: List<V> = [one.at[one.Pre.at(i)] for i in 0..k]
+// CEOI '22 judge expects the k chosen vertices one per line before queries.
 for v in picked: print(v)
 picked.sort(by: v => two.tin[v].ord)
-let ask_pairs = [(picked[i.ord], picked[i.ord + 1]) for i in Ask]
+let ask_pairs = [(a, b) for (a, b) in picked.pairs]
 for (a, b) in ask_pairs: print("?", a, b)
 print("!")
 
