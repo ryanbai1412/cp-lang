@@ -317,14 +317,14 @@ print(n * 2)
 
 ### Stress test against a brute force
 
-Mark the slow version `@alt(main)` in the same file and run `cpl stress`. Inputs are generated from the types at `read`.
+Mark the slow version `@alt(program)` in the same file and run `cpl stress`. Inputs are generated from the types at `read`.
 
 ```cp input="3\n4 9 2\n"
 let n: 1..=8 = read()
 let a: [n]1..=20 = read()
 print(a.max()!)
 
-@alt(main)
+@alt(program)
 fn slow():
     var best = 0
     for x in a: best max= x
