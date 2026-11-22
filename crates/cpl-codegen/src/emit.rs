@@ -260,6 +260,30 @@ impl<'p> Emitter<'p> {
         emitter
     }
 
+    /// A piece's code; with `parse_str` in the program, a failed read of a
+    /// string throws to its `parse` and the string's end is the end of input.
+    fn piece_code(&self, piece: &crate::runtime::Piece) -> String {
+        if !self.used.contains("parse_str") {
+            return piece.code.to_string();
+        }
+        match piece.name {
+            "fail" => format!(
+                "struct parse_failed {{}};\ninline int parsing = 0;\n{}",
+                piece.code.replacen(
+                    "{ flush();",
+                    "{ if (parsing) throw parse_failed{}; flush();",
+                    1
+                )
+            ),
+            "in" => piece.code.replacen(
+                "inline bool more() { ",
+                "inline bool more() { if (parsing) return false; ",
+                1,
+            ),
+            _ => piece.code.to_string(),
+        }
+    }
+
     pub fn need(&mut self, piece: &'static str) {
         if self.used.insert(piece) {
             if let Some(found) = PIECES.iter().find(|p| p.name == piece) {
@@ -1560,8 +1584,9 @@ impl<'p> Emitter<'p> {
         }
         for piece in PIECES {
             if self.used.contains(piece.name) {
-                out.push_str(piece.code);
-                self.chunks.push((crate::Part::Runtime, piece.name.into(), piece.code.into()));
+                let code = self.piece_code(piece);
+                out.push_str(&code);
+                self.chunks.push((crate::Part::Runtime, piece.name.into(), code));
             }
         }
         out.push_str("}  // namespace cpl\n\n// The program.\nnamespace prog {\n");

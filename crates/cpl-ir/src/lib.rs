@@ -340,6 +340,9 @@ pub enum Spec {
     Opt(Box<Spec>, Option<Box<Expr>>),
     /// A type its own `impl Read` reads: the call to its `read()`.
     Call(Box<Expr>),
+    /// `s.parse<T>()`: the inner spec read from the string `s` instead of
+    /// the input, `none` on a bad or leftover token.
+    Parse(Box<Expr>, Box<Spec>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -378,6 +381,7 @@ impl Spec {
             },
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
+            Spec::Parse(_, inner) => Ty::opt(inner.ty()),
         }
     }
 }

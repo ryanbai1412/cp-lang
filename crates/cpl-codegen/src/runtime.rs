@@ -182,6 +182,21 @@ inline bool digit(char c) { return (unsigned char)(c - '0') <= 9; }
 inline void need_digit(bool end = false) { if (end ? in_at < in.size() && !is_space(in[in_at]) : !digit(in[in_at])) fail(\"the input has something else where a number was expected\"); }
 ",
     },
+    // `s.parse<T>()` reads from `s` as if it were the input. With it in the
+    // program, `fail` throws while a string is being read and `more` stops
+    // at its end (see `Emitter::piece_code`).
+    Piece {
+        name: "parse_str",
+        needs: &["in"],
+        code: "\
+struct parse_scope {
+    std::string held; size_t held_at;
+    explicit parse_scope(const std::string& s) : held(std::move(in)), held_at(in_at) { in = s; in_at = 0; parsing++; }
+    ~parse_scope() { in = std::move(held); in_at = held_at; parsing--; }
+    bool whole() { skip_space(); return in_at >= in.size(); }
+};
+",
+    },
     Piece {
         name: "at_eof",
         needs: &["in"],

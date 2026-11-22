@@ -832,6 +832,28 @@ impl<'a> Parser<'a> {
                         args,
                     }
                 }
+                // `s.parse<Int>()`: a method takes type arguments as a
+                // lowercase fn does, when they are all types and a call
+                // follows, so `p.x < y` stays a comparison.
+                T::Lt if matches!(expr.kind, ExprKind::Field { .. }) => {
+                    let args = self.speculate(|p| {
+                        let args = p.type_args();
+                        if args.is_empty()
+                            || p.peek() != T::LParen
+                            || !args.iter().all(names_a_type)
+                        {
+                            p.speculation_failed = true;
+                        }
+                        args
+                    });
+                    match args {
+                        Some(args) => ExprKind::Generic {
+                            base: Box::new(expr),
+                            args,
+                        },
+                        None => break,
+                    }
+                }
                 _ => break,
             };
             expr = Expr {
@@ -1645,7 +1667,14 @@ pub(crate) fn unescape(text: &str) -> String {
 fn names_a_type(ty: &crate::ast::Type) -> bool {
     use crate::ast::TypeKind;
     match &ty.kind {
-        TypeKind::Named { name, args } => name.is_type_like() && args.iter().all(names_a_type),
+        // The `7` of `Mod<7>` is a value, but only a type takes it.
+        TypeKind::Named { name, args } => {
+            name.is_type_like()
+                && args.iter().all(|arg| {
+                    names_a_type(arg)
+                        || matches!(&arg.kind, TypeKind::Value(v) if matches!(v.kind, crate::ast::ExprKind::Int(_)))
+                })
+        }
         TypeKind::Tuple(items) => items.iter().all(names_a_type),
         TypeKind::Optional(t) => names_a_type(t),
         TypeKind::Array { elem, .. } => names_a_type(elem),

@@ -29,6 +29,16 @@ impl<'a> Input<'a> {
         }
     }
 
+    /// The bytes of a string, for `s.parse<T>()`.
+    pub fn owned(data: Vec<u8>) -> Input<'a> {
+        Input {
+            data: std::borrow::Cow::Owned(data),
+            pos: 0,
+            more: None,
+            name: "the string",
+        }
+    }
+
     /// An input that starts empty and is fed by `more`.
     pub fn live(more: More<'a>) -> Input<'a> {
         Input {

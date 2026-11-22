@@ -155,6 +155,10 @@ fn spec_p<'p>(s: &'p Spec, f: &mut dyn FnMut(&'p Expr)) {
         }
         Spec::Fields(_, fields) => fields.iter().for_each(|field| spec_p(field, f)),
         Spec::Call(call) => f(call),
+        Spec::Parse(text, inner) => {
+            f(text);
+            spec_p(inner, f);
+        }
         Spec::Array { dims: ds, elem } => {
             for dim in ds {
                 if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {

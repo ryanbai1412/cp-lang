@@ -367,6 +367,11 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         // Check `base.method::<T>(...)`.
         if let ast::ExprKind::Field { base: recv, name } = &base.kind {
+            if let ("parse", [ty], []) = (name.text.as_str(), types, args) {
+                if self.probe_ty_silent(recv) == Some(Ty::Str) {
+                    return self.parse_str(recv, ty, span);
+                }
+            }
             if let Some(Sym::Mod(target_mod)) = self.sym(recv) {
                 let saved_mod = std::mem::replace(&mut self.cur_mod, target_mod);
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();
@@ -2610,8 +2615,64 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Ty::Opt(inner) => Spec::Opt(Box::new(self.spec_of(inner)?), None),
+            // `l r`, the inclusive `l..=r`, checked `l <= r`. (R10.2.3)
+            Ty::Range(inner) if **inner == Ty::Int => {
+                let span = Span::default();
+                let range = ty.clone();
+                let call = self.do_expr(Some(&range), span, |lw, out| {
+                    let mut end = || {
+                        let slot = lw.temp(Ty::Int);
+                        let read = lw.mk(
+                            ExprKind::Read(Box::new(Spec::Plain(Ty::Int))),
+                            Ty::Int,
+                            span,
+                        );
+                        out.push(Stmt::Let(slot, Some(read)));
+                        lw.local(slot, span)
+                    };
+                    let (l, r) = (end(), end());
+                    let bad = lw.mk(
+                        ExprKind::Cmp(CmpOp::Gt, Box::new(l.clone()), Box::new(r.clone())),
+                        Ty::Bool,
+                        span,
+                    );
+                    let trap = Stmt::Trap(
+                        "a `Range` is read as `l r` with `l <= r`".into(),
+                        lw.span(span),
+                    );
+                    out.push(Stmt::If(bad, Block { stmts: vec![trap] }, Block::default()));
+                    let hi = lw.int_add(r, 1);
+                    let value = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(l),
+                            hi: Box::new(hi),
+                        },
+                        range.clone(),
+                        span,
+                    );
+                    out.push(Stmt::Give(value));
+                });
+                Spec::Call(Box::new(call))
+            }
             other => Spec::Plain(other.clone()),
         })
+    }
+
+    /// `s.parse<T>()`: a `T` read from `s` by the rules of `read<T>()`.
+    /// (R10.2.4)
+    fn parse_str(&mut self, text: &ast::Expr, ty: &ast::Type, span: Span) -> Expr {
+        let spec = self.resolve(ty, true);
+        let text = self.expect(text, &Ty::Str);
+        let read = self.read(spec, span);
+        let ExprKind::Read(spec) = read.kind else {
+            return read;
+        };
+        let opt = Ty::opt(read.ty);
+        self.mk(
+            ExprKind::Read(Box::new(Spec::Parse(Box::new(text), spec))),
+            opt,
+            span,
+        )
     }
 
     /// `read()` of a value shaped like `spec`.
@@ -2696,7 +2757,24 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// A spec with each `Range<Int>` inside spelled out as its read of `l r`.
+    fn readable(&mut self, spec: Spec) -> Spec {
+        match spec {
+            Spec::Plain(ty @ Ty::Range(_)) => self.spec_of(&ty).unwrap_or(Spec::Plain(ty)),
+            Spec::Fields(ty, fields) => {
+                Spec::Fields(ty, fields.into_iter().map(|f| self.readable(f)).collect())
+            }
+            Spec::Array { dims, elem } => Spec::Array {
+                dims,
+                elem: Box::new(self.readable(*elem)),
+            },
+            Spec::Opt(inner, absent) => Spec::Opt(Box::new(self.readable(*inner)), absent),
+            other => other,
+        }
+    }
+
     pub(super) fn read(&mut self, spec: Spec, span: Span) -> Expr {
+        let spec = self.readable(spec);
         fn unreadable(spec: &Spec) -> Option<Ty> {
             match spec {
                 Spec::Plain(ty) => match ty {
@@ -2712,6 +2790,7 @@ impl<'a> Lowerer<'a> {
                     other => Some(other.clone()),
                 },
                 Spec::Int { .. } | Spec::Call(_) => None,
+                Spec::Parse(_, inner) => unreadable(inner),
                 Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
                 Spec::Array { elem, .. } => unreadable(elem),
                 Spec::Opt(inner, absent) => match (&**inner, absent) {
@@ -10873,7 +10952,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 /// `?T`.
 pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
     match spec {
-        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) => false,
+        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) | Spec::Parse(..) => false,
         Spec::Fields(_, fields) => {
             let mut any = false;
             for field in fields {

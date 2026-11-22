@@ -148,6 +148,18 @@ impl Pow for Mod<P>:
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
 
+/// One signed integer token of any length, reduced modulo `P`, so a
+/// 10^4-digit coefficient is `read<Mod<P>>()`. (R10.2.3)
+impl Read for Mod<P>:
+    fn read() -> Mod<P>:
+        let s: Str = read()
+        var r = 0
+        for c in s:
+            if c != '-':
+                assert c.is_digit, "`read<Mod<P>>()` reads an integer token"
+                r = (r * 10 + c.digit) % P
+        return Mod(if s[0] == '-' and r > 0: P - r else: r)
+
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 /// Its tables are `@cache` fields that grow on demand, so an immutable
 /// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in O(1)

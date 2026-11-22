@@ -5095,6 +5095,10 @@ fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
     match spec {
         Spec::Plain(_) => {}
         Spec::Call(call) => collect_expr_calls(call, out),
+        Spec::Parse(text, inner) => {
+            collect_expr_calls(text, out);
+            collect_spec_calls(inner, out);
+        }
         Spec::Int { lo, hi, .. } => {
             if let Some(e) = lo {
                 collect_expr_calls(e, out);

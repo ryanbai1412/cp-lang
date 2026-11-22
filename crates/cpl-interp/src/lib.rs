@@ -4997,6 +4997,20 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Int(value)
             }
             Spec::Call(call) => self.eval(call)?,
+            Spec::Parse(text, inner) => {
+                let text = match self.eval(text)? {
+                    Value::Str(bytes) => bytes.to_vec(),
+                    _ => Vec::new(),
+                };
+                let held = std::mem::replace(&mut self.input, Input::owned(text));
+                let value = self.read(inner, span);
+                let whole = value.is_ok() && self.input.at_eof();
+                self.input = held;
+                match value {
+                    Ok(value) if whole => Value::some(value),
+                    _ => Value::Opt(OptVal::None),
+                }
+            }
             Spec::Fields(_, fields) => {
                 let mut values = Vec::with_capacity(fields.len());
                 for field in fields {

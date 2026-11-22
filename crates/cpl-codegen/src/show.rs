@@ -399,6 +399,25 @@ impl<'p> Emitter<'p> {
             }
             Spec::Opt(..) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
             Spec::Call(call) => self.expr(call),
+            // A bad token throws instead of stopping the program while the
+            // string is the input; see `parse_str` in the runtime.
+            Spec::Parse(text, inner) => {
+                self.need("parse_str");
+                let ty = self.ty(&spec.ty());
+                let text = self.expr(text).text;
+                let value = self.read(inner).text;
+                self.lambda(&ty, |this, out| {
+                    let lead = pad(this.indent);
+                    out.push_str(&format!("{lead}cpl::parse_scope scope({text});\n"));
+                    out.push_str(&format!("{lead}try {{\n"));
+                    out.push_str(&format!("{lead}    auto value = {value};\n"));
+                    out.push_str(&format!(
+                        "{lead}    if (scope.whole()) return {ty}(std::move(value));\n"
+                    ));
+                    out.push_str(&format!("{lead}}} catch (const cpl::parse_failed&) {{}}\n"));
+                    out.push_str(&format!("{lead}return {ty}();\n"));
+                })
+            }
             Spec::Fields(ty, fields) => {
                 // `{...}` runs its elements in order: so are the fields read.
                 let struct_id = match ty {
