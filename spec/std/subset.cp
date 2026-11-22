@@ -2,9 +2,9 @@
 
 /// A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP
-/// table, and `{}` is the empty subset. Every operation here is O(1) unless it says otherwise.
+/// table, and `Subset<B>.empty` is the empty subset (there is no `{}` literal). Every operation here is O(1) unless it says otherwise.
 pub struct Subset<B>(bits: U64):
-    /// The empty subset, also written `{}`.
+    /// The empty subset. There is no `{}` literal: `{}` is an empty block.
     ///
     /// cost: O(1)
     /// traps: never
@@ -85,7 +85,7 @@ pub struct Subset<B>(bits: U64):
     pub fn complement(self) -> Subset<B> = Subset(bits ^ Subset<B>.full.bits)
 
     /// The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None`
-    /// for `{}`. Peels one member per step in a mask DP: `s.first()` then `s.without(b)`.
+    /// for the empty subset. Peels one member per step in a mask DP: `s.first()` then `s.without(b)`.
     ///
     /// cost: O(1)
     /// empty: `None`
@@ -110,12 +110,12 @@ pub struct Subset<B>(bits: U64):
             yield B.nth(ctz(m))
             m &= m - U64(1)
 
-    /// Every subset of `self`, `self` first and `{}` last: the submask walk
+    /// Every subset of `self`, `self` first and the empty subset last: the submask walk
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
     ///
     /// cost: O(1) per subset, `2^s.len` subsets
-    /// empty: `{}.subsets` yields `{}` once
-    /// order: decreasing as words: `self` first, `{}` last
+    /// empty: `Subset<B>.empty.subsets` yields the empty subset once
+    /// order: decreasing as words: `self` first, the empty subset last
     /// traps: never
     /// example: `domain B = 0..3; let s = Subset<B>.single(B(0)).with(B(1)); s.subsets.map(g => g.first()).collect() == [Some(B(0)), Some(B(1)), Some(B(0)), None]`
     @get pub fn subsets(self) -> yields Subset<B>:
@@ -130,7 +130,7 @@ pub struct Subset<B>(bits: U64):
     /// supersets.
     ///
     /// cost: O(1) per superset, `2^(|B| - s.len)` supersets
-    /// empty: `{}.supersets` yields every subset of `B`, `{}` first
+    /// empty: `Subset<B>.empty.supersets` yields every subset of `B`, the empty one first
     /// order: increasing as words: `self` first, `Subset<B>.full` last
     /// traps: never
     /// example: `domain B = 0..3; Subset<B>.single(B(1)).supersets.map(g => g.len).collect() == [1, 2, 2, 3]`

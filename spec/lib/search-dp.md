@@ -106,9 +106,9 @@ last) and `s.supersets`.
 
 ```python
 var best: [Group.subsets]?Int = None
-best[{}] = 0
+best[Subset<Group>.empty] = 0
 for s in Group.subsets:
-    for g in s.subsets if g != {}: best[s] max= score[g] + best[s - g]
+    for g in s.subsets if g != Subset<Group>.empty: best[s] max= score[g] + best[s - g]
 ```
 
 `a.fold_subsets(op)` / `a.fold_supersets(op)` over `[B.subsets]T` are the
