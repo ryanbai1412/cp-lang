@@ -1140,7 +1140,24 @@ pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
 /// example: `mod_kth_root(2, 3, 7) == None`
 /// example: `mod_kth_root(4, 2, 7) == Some(2)`
 /// example: `mod_kth_root(0, 5, 7) == Some(0)`
-pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int = todo
+pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
+    assert k >= 1, "`mod_kth_root` needs `k >= 1`"
+    assert is_prime(p), "`mod_kth_root` needs a prime `p`"
+    let x = (a % p + p) % p
+    if x == 0: return 0
+    let g = primitive_root(p)
+    let e = mod_log(g, x, p)!
+    let d = gcd(k, p - 1)
+    if e % d != 0: return None
+    let m = (p - 1) / d
+    let (_, inv) = ext_gcd_x(k / d % m, m)
+    let w = pow_mod(g, m, p)
+    var cur = pow_mod(g, mul_mod(e / d, inv, m), p)
+    var best = cur
+    for _ in 1..d:
+        cur = mul_mod(cur, w, p)
+        best = min(best, cur)
+    best
 
 /// The multiplicative order of `a` modulo `m >= 1`: the least `k >= 1` with `a^k = 1 (mod m)`,
 /// or `None` if `gcd(a, m) != 1`. Modulo 1 the order is 1.
