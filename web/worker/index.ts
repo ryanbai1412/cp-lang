@@ -3,6 +3,7 @@ import { type Bucket, create, read } from './share';
 interface Env {
   SHARES: Bucket;
   ASSETS: { fetch(request: Request | string): Promise<Response> };
+  SHARE_LIMIT: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -10,7 +11,11 @@ const escape = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === '/api/share' && request.method === 'POST') return create(request, env.SHARES);
+    if (url.pathname === '/api/share' && request.method === 'POST') {
+      const { success } = await env.SHARE_LIMIT.limit({ key: request.headers.get('cf-connecting-ip') ?? '' });
+      if (!success) return new Response('Too many shares; try again in a minute.', { status: 429 });
+      return create(request, env.SHARES);
+    }
     const api = /^\/api\/p\/([^/]+)$/.exec(url.pathname);
     if (api) {
       const snapshot = await read(api[1], env.SHARES);

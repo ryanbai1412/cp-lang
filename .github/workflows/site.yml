@@ -1,18 +1,15 @@
 name: site
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      branch:
-        description: Cloudflare Pages branch; main is the production deployment, anything else a preview
-        type: string
-        default: main
 
 permissions:
   contents: read
 
 concurrency:
-  group: site-${{ inputs.branch }}
+  group: site
   cancel-in-progress: true
 
 jobs:
@@ -42,11 +39,12 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::set the CLOUDFLARE_API_TOKEN repository secret"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::set the CLOUDFLARE_ACCOUNT_ID repository secret"; exit 1; }
-      - name: Deploy to Cloudflare Pages
-        env:
-          BRANCH: ${{ inputs.branch }}
-        run: $WRANGLER pages deploy web/out --project-name=cp-lang --branch="$BRANCH" --commit-hash="$GITHUB_SHA" --commit-dirty=true
-      - name: Deploy the Worker
-        if: hashFiles('web/worker/wrangler.toml', 'web/worker/wrangler.json', 'web/worker/wrangler.jsonc') != ''
+      - name: Deploy
         working-directory: web/worker
-        run: $WRANGLER deploy
+        run: $WRANGLER deploy --message "$GITHUB_SHA"
+      - name: Smoke
+        run: |
+          for path in / /docs/ /play/ /install.sh; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --retry 5 --retry-all-errors "https://cp-lang.org$path")
+            echo "$path $code"; test "$code" = 200
+          done
