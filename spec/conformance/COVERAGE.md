@@ -6,22 +6,22 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1087 (296 passing). Rules: 521.
+Cases: 1091 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 80 cases; 0 uncovered, 8 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 81 cases; 0 uncovered, 9 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 82 cases; 0 uncovered, 8 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 33 cases; 0 uncovered, 8 happy-path only, 4 negative only
 - R04 (04-indices.md): 59 rules, 66 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 41 rules, 76 cases; 0 uncovered, 4 happy-path only, 4 negative only
+- R05 (05-ownership.md): 41 rules, 77 cases; 0 uncovered, 3 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 47 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 79 cases; 0 uncovered, 9 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
-- R10 (10-io.md): 16 rules, 39 cases; 0 uncovered, 4 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 41 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 13 cases; 3 uncovered, 2 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
@@ -97,7 +97,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.4.1 [2+ 0-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
 - R02.4.2 [1+ 1-]: `T` converts to `?T` implicitly; the other way is explicit: `x ?? d` (lazy fallback), `x!`...
 - R02.4.3 [1+ 0-] *happy-path only*: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
-- R02.4.4 [1+ 0-] *happy-path only*: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
+- R02.4.4 [1+ 1-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
 - R02.4.5 [1+ 2-]: **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best` with an optional left...
 - R02.4.6 [2+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
 - R02.4.7 [1+ 2-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
@@ -317,7 +317,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.8 [1+ 2-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [1+ 1-]: stored in a top-level `var`.
-- R05.8.1 [1+ 0-] *happy-path only*: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
+- R05.8.1 [1+ 1-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
 - R05.8.2 [2+ 2-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
 - R05.8.4 [1+ 3-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
@@ -518,12 +518,12 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.1.1 [6+ 0-] *happy-path only*: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
+- R10.1.1 [6+ 1-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
 - R10.1.2 [2+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [3+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [4+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [4+ 0-] *happy-path only*: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [4+ 1-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [2+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 0-] *happy-path only*: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -628,7 +628,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 value_name_case *(0.3)*: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 16 case(s)
+- E0302 Type mismatch: 17 case(s)
 - E0303 Wrong number of arguments: 3 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -652,7 +652,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 3 case(s)
 - E0504 Planned syntax, not implemented yet: **no case**
-- E0601 Aliased mutable lend: 6 case(s)
+- E0601 Aliased mutable lend: 7 case(s)
 - E0602 Variable mutated while lent: 17 case(s)
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
@@ -734,7 +734,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0301 Unwrap of None: 4 case(s)
 - R0401 Assertion failed: 3 case(s)
 - R0402 todo reached: 1 case(s)
-- R0501 Bad input token: 5 case(s)
+- R0501 Bad input token: 7 case(s)
 - R0502 Input outside its read contract: 2 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
