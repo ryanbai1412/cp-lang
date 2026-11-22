@@ -1,47 +1,39 @@
 // Codeforces 2178 G — Circle Chords Zobrist Parity
 //
-// Chords (a, b) on 1..=2n are inserted one by one; after each insertion we ask
-// whether the crossing graph satisfies the even-crossing parity condition.
+// Chords (a, b) with distinct endpoints on 1..=2n are inserted one by one;
+// after each insertion we output '1' iff the current chord set is valid (all
+// active parity-tagged chords cancel out under crossing XOR), else '0'.
 //
-// Maintain a XOR Fenwick tree over circle points 1..=2n where bit 0 tracks
-// endpoint parity and bits 1..64 hold a random 63-bit Zobrist tag. When chord
-// (a, b) arrives, `pred = 1 ^ xor_prefix(a.ord) ^ xor_prefix(b.ord)` has bit 0
-// set iff the new chord toggles parity; when set, we attach a fresh 63-bit tag
-// `rng.next() << 1` and XOR `pred` at both endpoints and into `tot`. All tags
-// cancel iff `tot == (tot & 1)`.
+// Maintain `bit: XorFenwick<P, U64>` over circle points `P = 1..=2n`, where
+// each inserted chord stores its 64-bit mask `pred` at both endpoints `a` and
+// `b`. Because endpoints are distinct, `bit.xor(..a) ^ bit.xor(..b)` is the
+// XOR of `pred` over all earlier chords with exactly one endpoint strictly
+// between `a` and `b` — i.e., all earlier chords crossing `(a, b)`.
+//
+// Bit 0 of `pred = 1 ^ bit.xor(..a) ^ bit.xor(..b)` is 1 iff `(a, b)` toggles
+// the parity of its crossing set; whenever bit 0 is set, we mix in a fresh
+// 63-bit Zobrist tag `rng.next() << 1` so non-cancelling chords cannot collide.
+// XORing `pred` at `a` and `b` and into `tot` makes all Zobrist tags cancel
+// (leaving `tot == (tot & 1)`) iff the current prefix is valid.
 
+use std.fenwick.{XorFenwick}
 use std.rand.Rng
 
 var rng = Rng.new(48)
 
 @!multitest
 let n: 1..=200_000 = read()
-let m = 2 * n
-domain P = 1..=m
+domain P = 1..=2 * n
 let chords: [0..n](a: P, b: P) = read()
-var bit: [0..m]U64 = U64(0)
 
-fn xor_prefix(x0: Int) -> U64:
-    var res = U64(0)
-    var x = x0
-    while x > 0:
-        res ^= bit[x - 1]
-        x &= x - 1
-    res
-
-fn xor_add(i0: Int, v: U64):
-    var i = i0
-    while i < m:
-        bit[i] ^= v
-        i |= i + 1
-
+var bit = XorFenwick<P, U64>()
 var tot = U64(0)
 var out: List<Char> = []
 for (a, b) in chords:
-    var pred = U64(1) ^ xor_prefix(a.ord) ^ xor_prefix(b.ord)
+    var pred = U64(1) ^ bit.xor(..a) ^ bit.xor(..b)
     if (pred & U64(1)) != U64(0): pred ^= rng.next() << 1
-    xor_add(a.ord, pred)
-    xor_add(b.ord, pred)
+    bit.flip(a, pred)
+    bit.flip(b, pred)
     tot ^= pred
     out.push(if tot == (tot & U64(1)): '1' else: '0')
 
