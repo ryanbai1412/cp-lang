@@ -146,13 +146,15 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
-        Some(command @ ("check" | "fix" | "build" | "judge" | "submit" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+        Some(command @ ("check" | "fix" | "build" | "judge" | "submit" | "judges" | "explain" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let help = match command {
                 "check" => CHECK_USAGE,
                 "fix" => FIX_USAGE,
                 "build" => BUILD_USAGE,
                 "judge" => JUDGE_USAGE,
                 "submit" => SUBMIT_USAGE,
+                "judges" => JUDGES_USAGE,
+                "explain" => EXPLAIN_USAGE,
                 "dap" => DAP_USAGE,
                 _ => LSP_USAGE,
             };
@@ -303,6 +305,22 @@ options:
 
 Over 32 KB it warns; over 64 KB, or the judge's own smaller limit, it fails
 and says where the bytes go. The same file and judge give the same bytes.
+";
+
+const JUDGES_USAGE: &str = "\
+usage: cpl judges [file.cp]
+
+Lists the judge profiles: compiler, flags, stack and source limit. With a
+file, marks the one its build uses (the `// judge:` line, else the nearest
+cp.toml, else `generic`).
+";
+
+const EXPLAIN_USAGE: &str = "\
+usage: cpl explain <CODE | file.cp | --json>
+
+With a code such as E0302, explains that diagnostic or lint: what triggers
+it and how to fix it. With a file, shows how each value is represented and
+what its views cost. `--json` prints every explanation as JSON.
 ";
 
 const SUBMIT_USAGE: &str = "\
@@ -2116,7 +2134,7 @@ mod tests {
     #[test]
     fn tooling_commands_reach_their_crates() {
         for command in [
-            "check", "fix", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
+            "check", "fix", "run", "build", "judge", "submit", "judges", "explain", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
             "watch",
         ] {
             let out = run(&[command, "--help"]);
