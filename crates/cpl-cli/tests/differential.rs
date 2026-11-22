@@ -1,6 +1,6 @@
 //! The interpreter against the C++ back end, end to end.
 //!
-//! Every program under `tests/programs` and `proto/tests/program` is run by `cpl run`, and built by
+//! Every program under `tests/programs` and `crates/cpl-cli/tests/cases/program` is run by `cpl run`, and built by
 //! `cpl build`, compiled with `g++ -std=c++17 -fsanitize=address,undefined`
 //! and run. Both must print the bytes in the program's `.out` file and
 //! exit with the same status, and the sanitizers must stay silent: C++
@@ -121,7 +121,7 @@ fn programs() -> Vec<PathBuf> {
     // The prototype's program-structure cases (decision 20: the
     // `@!multitest` divider and top-level `return`) are held to the same
     // `.out` files here.
-    let structure = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/tests/program");
+    let structure = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/cases/program");
     let mut found: Vec<PathBuf> = [&dir, &structure]
         .into_iter()
         .flat_map(|dir| {

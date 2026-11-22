@@ -58,7 +58,7 @@ Proposed: hash any record of hashable fields. 1 of 10; in the corpus, 5
 problems keep a map as a cache (pattern: `static map<`, or a
 `map<pair<int, int>, ...>` named `cache` or `memo`).
 
-*Fixed.* A record whose fields are numbers, positions, `Bool`, `Char` or such records hashes field by field, so `HashMap<(Int, Int), V>` and `HashSet<(Row, Col)>` build; a key that cannot be hashed is a compile error from `cp.py build`, not from `g++`. Locked by `proto/tests/redteam/pair_key_map.cp`.
+*Fixed.* A record whose fields are numbers, positions, `Bool`, `Char` or such records hashes field by field, so `HashMap<(Int, Int), V>` and `HashSet<(Row, Col)>` build; a key that cannot be hashed is a compile error from `cp.py build`, not from `g++`. Locked by `crates/cpl-cli/tests/cases/redteam/pair_key_map.cp`.
 
 ## K2. `print` writes its first word before a later argument asks (fixed in Stage-2 sprint #2; cco18p4)
 
@@ -76,7 +76,7 @@ the line, and the local judge only reports a wrong conversation, with
 nothing that points at the `print`. 1 of 10; any interactive problem
 whose last answer may need one more question.
 
-*Fixed.* `print` evaluates every argument, left to right, before it writes anything (decision 15.1). Locked by `proto/tests/redteam/print_args_first.cp`.
+*Fixed.* `print` evaluates every argument, left to right, before it writes anything (decision 15.1). Locked by `crates/cpl-cli/tests/cases/redteam/print_args_first.cp`.
 
 ## K3. A bound that is read is not enforced (fixed in `722c0ea`; ioi06p2)
 
@@ -120,7 +120,7 @@ input". So a symmetric relation could not be generated, and
 `gen:` function's value is written by the same code as the default
 generator's. 1 of 10.
 
-*Fixed.* The value of a `gen:` function is written in the format `read()` reads for that type: a list after its length, a table row by row. Locked by `proto/tests/gen/gen_fn_lists.cp`, which `proto/run_all.sh` now generates from and reads back.
+*Fixed.* The value of a `gen:` function is written in the format `read()` reads for that type: a list after its length, a table row by row. Locked by `crates/cpl-cli/tests/cases/gen/gen_fn_lists.cp`, which `proto/run_all.sh` now generates from and reads back.
 
 ## K5. `@memo` over two large domains allocates the whole table (fixed in Stage-2 sprint #2; cco18p4)
 
@@ -139,7 +139,7 @@ function asks, since the number of questions is bounded), and warns at
 build time otherwise, as the loop-size warning already does. 1 of 10;
 the same 5 corpus problems as K1.
 
-*Fixed.* A `@memo` whose domains multiply to more than 2^26 points at their declared maximum sizes stores only the points asked for, as `@memo(hash)` does (decision 15.3); `into:` and `order:` on such a function are a compile error that gives the size. Locked by `proto/tests/redteam/memo_sparse.cp`.
+*Fixed.* A `@memo` whose domains multiply to more than 2^26 points at their declared maximum sizes stores only the points asked for, as `@memo(hash)` does (decision 15.3); `into:` and `order:` on such a function are a compile error that gives the size. Locked by `crates/cpl-cli/tests/cases/redteam/memo_sparse.cp`.
 
 ## K6. Searching a range of numbers or positions (3 of 10; batch 1 F10)
 

@@ -3,8 +3,8 @@
 Run on `main` at `aaaa4fa` with the debug build of `cpl`, on copies of the
 repository's own examples in a scratch directory. The examples are
 `crates/cpl-cli/tests/debugger/*.cp` (planted bugs, a `@checker` and an
-`@interactor`), `proto/tests/cheatsheet/s8_*.cp` and
-`proto/tests/fn/range_sum*.cp`. `cpl bench` was also run on 40 ports from
+`@interactor`), `crates/cpl-cli/tests/cases/cheatsheet/s8_*.cp` and
+`crates/cpl-cli/tests/cases/fn/range_sum*.cp`. `cpl bench` was also run on 40 ports from
 `proto/ports/`.
 
 ## What works

@@ -95,7 +95,7 @@ the `justfile`, not mise tasks, so dropping mise never breaks a command.
 
 Tests:
 - One home per kind: `spec/conformance/` for language meaning (rule IDs),
-  per-crate golden dirs for tool behaviour. Fold `proto/tests/*` and
+  per-crate golden dirs for tool behaviour. Fold `crates/cpl-cli/tests/cases/*` and
   `crates/cpl-cli/tests/programs` into those.
 - Expectations live in the test file (`// error:` header), never in a Rust
   `match` beside it. One `just bless` updates every golden kind.

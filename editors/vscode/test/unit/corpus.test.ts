@@ -1,4 +1,4 @@
-// Runs the grammar over every `.cp` file in `proto/ports/`, `proto/tests/`,
+// Runs the grammar over every `.cp` file in `proto/ports/`, `crates/cpl-cli/tests/cases/`,
 // `stdlib/` and `examples/local-lib/`: real programs, not lines written to
 // suit the grammar.
 
