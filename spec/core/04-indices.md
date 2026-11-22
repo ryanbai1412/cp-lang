@@ -85,8 +85,8 @@ below is generic over `D`: it means the same thing on both.
 |---|---|---|
 | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends (R04.4.1) |
 | elements (`for`, `in`, `len`) | positions | cuts (R04.4.2) |
-| typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n (R04.4.3) |
-| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in ..i`, `for k in a..=b` (R04.4.4) |
+| typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n |
+| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in ..i`, `for k in a..=b` |
 
 **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out:
 `for k in a..=b` walks cuts a through b, `for j in ..i` walks the cuts before i.
@@ -112,7 +112,7 @@ expected. Consequences:
   `Range<V>` is expected. (R04.4.6)
 - It's safe because the two readings are the same set: cut `c` in `j..i`
   stands for the position `c.r`, and the cuts j..i-1 are exactly the left
-  edges of the positions between `j` and `i`. (R04.4.7)
+  edges of the positions between `j` and `i`.
 
 ### Open-ended ranges
 

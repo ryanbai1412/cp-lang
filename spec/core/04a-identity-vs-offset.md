@@ -9,15 +9,15 @@ Examples cite the gold solutions and dreams where possible.
 
 | | Domain slice `a[l..=r]` of `[V]T` | `List`/`Str` slice `s[l..r]` |
 |---|---|---|
-| **I. Identity everywhere** | keeps `V`'s positions | keeps the source's `Int` keys `l..r` (R04a.1.1) |
-| **O. Offset everywhere** | renumbered `0..len`, keyed by `Int` | renumbered `0..len` (R04a.1.2) |
-| **H. Hybrid** (current round 2 text) | keeps `V`'s positions | renumbered `0..len` (R04a.1.3) |
+| **I. Identity everywhere** | keeps `V`'s positions | keeps the source's `Int` keys `l..r` |
+| **O. Offset everywhere** | renumbered `0..len`, keyed by `Int` | renumbered `0..len` |
+| **H. Hybrid** (current round 2 text) | keeps `V`'s positions | renumbered `0..len` |
 
 Scores in the tables:
-- ✓ works as written (R04a.1.4)
-- \+ needs extra code that is easy to forget (an `+ l` or `- l`) (R04a.1.5)
-- T wrong code traps, at compile time or on the first wrong access (R04a.1.6)
-- S wrong code reads the wrong element and keeps going (R04a.1.7)
+- ✓ works as written
+- \+ needs extra code that is easy to forget (an `+ l` or `- l`)
+- T wrong code traps, at compile time or on the first wrong access
+- S wrong code reads the wrong element and keeps going
 
 S is the score that matters. The design rules rank a compile error over a
 trap, and a trap over silent wrongness.
@@ -123,20 +123,20 @@ this is a stdlib convention, not a new feature.
 
 | Group | I | O | H |
 |---|---|---|---|
-| A order-only (most uses) | ✓ | ✓ | ✓ (R04a.10.1) |
-| B index out, C index in | ✓ | silent | ✓ domain, silent List/Str (R04a.10.2) |
-| D counters and literals | traps, except rare D3 | ✓ | ✓ (R04a.10.3) |
-| E generic algorithms | traps, ✓ with keyed results | ✓ | ✓ (R04a.10.4) |
-| F grids | ✓ | breaks | ✓ (R04a.10.5) |
-| G revision | stable | unstable | unstable for List/Str (R04a.10.6) |
+| A order-only (most uses) | ✓ | ✓ | ✓ |
+| B index out, C index in | ✓ | silent | ✓ domain, silent List/Str |
+| D counters and literals | traps, except rare D3 | ✓ | ✓ |
+| E generic algorithms | traps, ✓ with keyed results | ✓ | ✓ |
+| F grids | ✓ | breaks | ✓ |
+| G revision | stable | unstable | unstable for List/Str |
 
-- **O** is silently wrong on B, C and F, which are core CP shapes. Out. (R04a.10.7)
+- **O** is silently wrong on B, C and F, which are core CP shapes. Out.
 - **H** is safe on domain arrays but silent on B and C for `List`/`Str`. It
   also makes the same expression mean different things depending on the
-  source's key type, which shows up in G. (R04a.10.8)
+  source's key type, which shows up in G.
 - **I** fails loudly almost everywhere it fails. Its one silent case, D3, is
   rare and has an obvious spelling (`s[l + k]`). Its cost is unfamiliarity:
-  `s[2..5][0]` traps, where Python returns `s[2]`. (R04a.10.9)
+  `s[2..5][0]` traps, where Python returns `s[2]`.
 
 ## Recommendation: identity everywhere (I)
 

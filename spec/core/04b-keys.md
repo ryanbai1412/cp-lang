@@ -234,7 +234,7 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = none) -> Prefix<K, T> =
 | `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged (R04b.5.7) |
 | `seq.cp` | `nth_element` | renamed `select(k)`, so `nth` means one thing (R04b.5.8) |
 | `seq.cp` | none | `nth`, `rebase`, `rekey` added (R04b.5.9) |
-| sequences doc §"Slices" | the hybrid | rule 1; the pending note goes (R04b.5.10) |
+| sequences doc §"Slices" | the hybrid | rule 1; the pending note goes |
 
 ## Open
 
