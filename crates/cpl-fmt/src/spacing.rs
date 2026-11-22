@@ -27,13 +27,19 @@ pub(crate) enum Role {
     /// The second half of a C spelling the parser explains only when its
     /// halves touch (`&&`, `||`, `..<`): kept tight to the first half.
     Glued,
-    /// `without` between a row and the fields it drops: `..R without (u)`.
-    WordOperator,
+    /// A word whose operand follows after a space: `..R without (u)`,
+    /// `read [n]Int`.
+    Word,
+    /// A keyword used as a member name: `sat.var()`.
+    Member,
+    /// The `!` of `x !in xs`, kept tight to the `in`.
+    NotIn,
 }
 
 fn ends_value(kind: K, role: Role) -> bool {
     match kind {
-        K::Ident => role != Role::WordOperator,
+        K::Ident => role != Role::Word,
+        _ if role == Role::Member => true,
         K::Int
         | K::Float
         | K::Str
@@ -137,7 +143,31 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             K::Lt if !tok.space_before && prev.is_some_and(|(kind, _)| kind == K::DotDot) => {
                 Role::Glued
             }
-            K::Ident if tok.text == "without" && after_value => Role::WordOperator,
+            K::Ident if tok.text == "without" && after_value => Role::Word,
+            K::Ident
+                if tok.text == "read"
+                    && !prev.is_some_and(|(kind, _)| matches!(kind, K::Fn | K::Dot))
+                    // `read(none: -1)` is a call, `read (Int, Int)` a type:
+                    // only the source knows.
+                    && toks.get(i + 1).is_some_and(|n| {
+                        n.kind == K::LBracket || n.kind == K::LParen && n.space_before
+                    }) =>
+            {
+                Role::Word
+            }
+            _ if prev.is_some_and(|(kind, _)| kind == K::Dot) && K::keyword(tok.text).is_some() => {
+                Role::Member
+            }
+            K::Bang
+                if after_value
+                    && tok.space_before
+                    && toks
+                        .get(i + 1)
+                        .is_some_and(|n| n.kind == K::In && !n.space_before) =>
+            {
+                Role::NotIn
+            }
+            K::QuestionQuestion if !after_value => Role::Prefix,
             K::Minus | K::Plus | K::Amp if !after_value => Role::Prefix,
             K::Tilde => Role::Prefix,
             // `@!multitest`, and C's `!x`, which the parser explains.
@@ -198,6 +228,12 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
     if prev_role == Role::ImportOpen || next_role == Role::ImportClose {
         return false;
     }
+    if next_role == Role::NotIn {
+        return true;
+    }
+    if prev_role == Role::NotIn {
+        return false;
+    }
     match next.kind {
         K::Comma | K::Semi | K::RParen | K::RBracket | K::Colon => return false,
         K::RBrace => return prev.kind != K::LBrace,
@@ -208,11 +244,16 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         K::LBrace => return true,
         _ => {}
     }
+    // `sorted(by: .len)`, `_ => .empty`: a leading-dot shorthand.
+    if next.kind == K::Dot && !after_value && !matches!(prev.kind, K::Dot | K::ColonColon) {
+        return prev_role != Role::Prefix;
+    }
     if matches!(prev.kind, K::Dot | K::ColonColon) || matches!(next.kind, K::Dot | K::ColonColon) {
         return false;
     }
-    if prev.kind == K::Minus && next.kind == K::Minus && !next.space_before {
-        return false;
+    if prev.kind == K::Minus && next.kind == K::Minus {
+        // `- -4`, not `--4`.
+        return prev_role == Role::Prefix || next.space_before;
     }
     if next.kind == K::At || matches!(prev.kind, K::Comma | K::Semi | K::Colon) {
         return true;
@@ -229,6 +270,8 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         // the way the source had it.
         K::Question if after_value => return next.space_before,
         K::Bang if next_role != Role::Prefix => return false,
+        // `f"{x}"`: a prefix glued to its string.
+        K::Str | K::RawStr if prev.kind == K::Ident && !next.space_before => return false,
         // `-> yields (v: V, d: Int)` names a type; `yields(x)` would read as a call.
         K::LParen if prev.kind == K::Ident && prev.text == "yields" => return true,
         K::LParen | K::LBracket if after_value => {
@@ -261,7 +304,13 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         Role::Prefix | Role::GenericOpen => return false,
         Role::Postfix => return next.space_before,
         Role::GenericClose => return true,
-        Role::Plain | Role::ImportOpen | Role::ImportClose | Role::Glued | Role::WordOperator => {}
+        Role::Plain
+        | Role::ImportOpen
+        | Role::ImportClose
+        | Role::Glued
+        | Role::Word
+        | Role::Member
+        | Role::NotIn => {}
     }
     if is_binary(prev.kind) {
         return true;

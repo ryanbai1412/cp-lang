@@ -575,3 +575,33 @@ fn spaces_impl_generics_lends_and_without_like_the_spec() {
     );
     assert_eq!(fmt("let k = without(3)\n"), "let k = without(3)\n");
 }
+
+#[test]
+fn spaces_shorthands_reads_and_member_keywords_like_the_spec() {
+    let cases = [
+        (
+            "let e = es.sorted(by:.len)\n",
+            "let e = es.sorted(by: .len)\n",
+        ),
+        ("let f = _ =>.empty\n", "let f = _ => .empty\n"),
+        ("let g = f(.x)\n", "let g = f(.x)\n"),
+        (
+            "let (n, k) = read (Int, Int)\n",
+            "let (n, k) = read (Int, Int)\n",
+        ),
+        ("let n = read(1..=5000)\n", "let n = read(1..=5000)\n"),
+        ("let a = read[n]Int\n", "let a = read [n]Int\n"),
+        ("let a = read()\n", "let a = read()\n"),
+        ("let a = self.read(x)\n", "let a = self.read(x)\n"),
+        ("fn read(x: Int) = x\n", "fn read(x: Int) = x\n"),
+        ("let x = sat.var () + 1\n", "let x = sat.var() + 1\n"),
+        ("print(- - 4, 5 - -3)\n", "print(- -4, 5 - -3)\n"),
+        ("var b: ?? Int = none\n", "var b: ??Int = none\n"),
+        ("let c = a ?? b\n", "let c = a ?? b\n"),
+        ("print((s !in reach).int)\n", "print((s !in reach).int)\n"),
+        ("out.push(f\"{x} \")\n", "out.push(f\"{x} \")\n"),
+    ];
+    for (src, want) in cases {
+        assert_eq!(fmt(src), want, "{src:?}");
+    }
+}
