@@ -22,7 +22,7 @@ broken-ports recovery scoreboard.
 - Lint rules and their wording: lint-fmt (codes still go in the catalogue).
 - Editor presentation of diagnostics: tools (LSP) / editors.
 - Trace and debugger views of a failure: tools.
-- Error-index pages on the site: site renders from `REGISTRY`.
+- Error-index pages on the web site: site (none today; nothing under `web/` reads `REGISTRY`).
 
 ## Success criteria for v0.3
 1. Broken-ports benchmark: first error on the broken line >= 99.5%,
@@ -49,23 +49,23 @@ bars in `recovery.rs` raised to these numbers.
 common-mistake cascades <= 3; benchmark base = every clean `spec.cp`
 (not a hand list); golden errors with help >= 90%.
 
-## Metrics (today on main → target)
+## Metrics (main at 80a47142 → target; packet was at 4b8f504f)
 | Metric | Today | Target | M |
 |---|---|---|---|
-| Broken ports: first error on broken line | 98.6% | >= 99.5% | M1 |
-| Broken ports: cascaded | 8.9% (43/483) | <= 2% | M1/M3 |
+| Broken ports: first error on broken line | 100.0% (414) | >= 99.5% | M1 |
+| Broken ports: cascaded | 0.2% (1/414) | <= 2% | M1/M3 |
 | Broken ports: silent | 0 | 0 | M1 |
-| Broken ports: fix-it | 72.4% | >= 80% | M2 |
-| Common mistakes: fix-it | 59.2% (84/142) | >= 95% | M1/M2 |
-| Common mistakes: fix restores | 63.8% | >= 95% | M1/M2 |
-| Common mistakes: cascaded | 14/130 | <= 3 | M3 |
+| Broken ports: fix-it | 78.6% | >= 80% | M2 |
+| Common mistakes: fix-it | 100.0% (106/106) | >= 95% | M1/M2 |
+| Common mistakes: fix restores | 97.2% | >= 95% | M1/M2 |
+| Common mistakes: cascaded | 1/107 | <= 3 | M3 |
 | Spec blocks: first error generic `expected` | 75/137 | <= 20 | M2 |
-| Scoreboards gated | 0 of 2 | 2 of 2 | M1 |
+| Scoreboards gated | 2 of 2 | 2 of 2 | M1 |
 | Benchmark base (clean `spec.cp`) | 37 of 100 | all clean, auto | M3 |
-| Emitted codes with trigger + clean fix | 74 of 75 | all | M1 |
-| Emitted codes whose trigger has a fix-it | 17 of 75 | >= 45 | M2 |
-| Catalogue rows without example | 33 of 93 | 0 | M2 |
-| Raw `Code("…")` sites outside `codes::` | 12 | 0 | M1 |
+| Emitted codes with trigger + clean fix | 83 of 84 | all | M1 |
+| Emitted codes whose trigger has a fix-it | 22 of 84 | >= 45 | M2 |
+| Catalogue rows without example | 0 of 93 | 0 | M2 |
+| Raw `Code("…")` sites outside `codes::` | 2 (lint, LSP) | 0 | M1 |
 | Codes with no conformance case | 2 | 0 | M2 |
 | Golden errors with help | 38/58 | >= 90% | M3 |
 | Front end cold, 5002 lines (release) | 34 ms | < 50 ms | guard |

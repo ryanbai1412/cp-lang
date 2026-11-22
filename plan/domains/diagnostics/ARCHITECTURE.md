@@ -11,7 +11,7 @@ tool reports in. It decides nothing about the language; the error sites do.
 | File | Lines | What it is for |
 |---|---|---|
 | `crates/cpl-diag/src/lib.rs` | 490 | `Span` (byte range, item-relative until `shift`), `Severity`, `Code`, `codes::*` (90 named constants), `Label`, `Fix` (title + edits), `Diagnostic` (builder: `error`, `warning`, `with_label/note/help/fix`, `shift`), `Sink` (dedup + poisoning) |
-| `crates/cpl-diag/src/registry.rs` | 957 | `REGISTRY: &[CodeInfo]` (91 entries): title, summary, explanation, verified trigger and fix, mode (`check`/`run`/`build`/`reserved`/`internal`), stdin. Source of `cpl explain` and the site's error pages |
+| `crates/cpl-diag/src/registry.rs` | 987 | `REGISTRY: &[CodeInfo]` (94 entries): title, summary, explanation, verified trigger and fix, mode (`check`/`run`/`build`/`reserved`/`internal`), stdin. Source of `cpl explain` |
 | `crates/cpl-diag/src/render.rs` | 170 | `render`, `render_all`: the `error[E0301]: ... --> f.cp:7:17` text form with carets, labels, notes, help |
 | `crates/cpl-diag/src/source.rs` | 154 | `LineIndex`, `LineCol`: offsets to lines/columns, UTF-16 for the LSP |
 
@@ -39,7 +39,7 @@ Runtime traps (`R` codes) are built by `Trap::to_diagnostic` in
 |---|---|---|
 | `Diagnostic`, `Span`, `Severity`, `Fix`, `Sink` | every front-end and tool crate: cpl-syntax, cpl-check, cpl-ir, cpl-interp, cpl-codegen, cpl-lint, cpl-fmt, cpl-lsp, cpl-cli, cpl-stress, cpl-contest, cpl-doc, cpl-conform, cpl-wasm | `crates/cpl-diag/src/lib.rs` unit tests (15 tests in the crate) |
 | `codes::*` | the error sites above | `crates/cpl-cli/tests/catalogue.rs` |
-| `REGISTRY`, `lookup` | `cpl explain` (`crates/cpl-cli/src/lib.rs` `explain_code`), site error pages, `site/check_docs.py` (index drift), `scripts/conformance-coverage.py` | `catalogue.rs` (every trigger emits exactly its code, every fix runs clean) |
+| `REGISTRY`, `lookup` | `cpl explain` (`crates/cpl-cli/src/lib.rs`), `crates/cpl-cli/tests/catalogue.rs`, `scripts/conformance-coverage.py` (parses `registry.rs` as text; debt). Nothing under `web/` reads it | `catalogue.rs` (every trigger emits exactly its code, every fix runs clean) |
 | `render`, `render_all` | `cpl check/run/build`, goldens | `crates/cpl-cli/tests/diagnostics.rs` (53 `.err` goldens + 2 `cpl fix` goldens) |
 | `LineIndex::utf16` | cpl-lsp | cpl-lsp tests |
 | `Diagnostic.fixes` | `cpl fix` (`apply_error_fixes`, `crates/cpl-cli/src/lib.rs`), LSP quick fixes (`crates/cpl-lsp/src/server.rs`) | `tests/fixes/*.fixed`, recovery `fix_it_scoreboard` |
@@ -68,9 +68,9 @@ fenced cp blocks of `spec/{core,lib,tools}`.
 
 ## Known debt
 
-1. Both recovery scoreboards are `#[ignore]`d since 954d6842 (edition 0.2
-   deleted): `crates/cpl-cli/tests/recovery.rs:562`, `:589`. Nothing gates
-   recovery today.
+1. Fixed: both recovery scoreboards gate again (2bb28653), after being
+   `#[ignore]`d since 954d6842. The broken-ports base is a hand-kept list
+   of clean ports in `crates/cpl-cli/tests/recovery.rs`.
 2. Raw code literals outside `codes::`: the E-code sites now use `codes::`
    (E0703, E0704, E0705 gained constants and registry triggers). Left:
    `crates/cpl-check/src/check/stmt.rs:1623` emits lint `L0609` raw (see 4),

@@ -1,20 +1,20 @@
 # diagnostics metrics. Every `today` was measured by running `command` on
-# main at 4b8f504f (2026-11-22); never hand-typed. The scoreboard numbers
-# come from one run of the recovery test:
-#   cargo test -p cpl-cli --test recovery -- --ignored --nocapture
-# (both scoreboards are #[ignore]d on main today; see README).
+# main (packet at 4b8f504f; rows marked 80a47142 re-measured there,
+# 2026-11-22); never hand-typed. The scoreboard numbers come from one run of
+#   cargo test -p cpl-cli --test recovery -- --nocapture
+# (both scoreboards gate again since 2bb28653).
 
 [[metric]]
 name = "broken ports: first error on the broken line"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "98.6% (476/483)"
+today = "100.0% of 414 copies (80a47142)"
 target = ">= 99.5%"
 milestone = "M1"
 
 [[metric]]
 name = "broken ports: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "43 per 483 files (8.9%)"
+today = "1 per 414 files (0.2%) (80a47142)"
 target = "<= 2% (M1: <= 5%)"
 milestone = "M1"
 
@@ -28,28 +28,28 @@ milestone = "M1"
 [[metric]]
 name = "broken ports: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "72.4%"
+today = "78.6% (80a47142)"
 target = ">= 80% (cut-the-value rows have no right fix and stay 0%)"
 milestone = "M2"
 
 [[metric]]
 name = "common mistakes: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "59.2% (84/142)"
+today = "100.0% (106/106) (80a47142)"
 target = ">= 95%"
 milestone = "M1 (>= 88%), M2 (>= 95%)"
 
 [[metric]]
 name = "common mistakes: fixes restore the program"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "63.8%"
+today = "97.2% (80a47142)"
 target = ">= 95%"
 milestone = "M1"
 
 [[metric]]
 name = "common mistakes: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "14 per 130 files"
+today = "1 per 107 files (80a47142)"
 target = "<= 3"
 milestone = "M2"
 
@@ -63,7 +63,7 @@ milestone = "M2"
 [[metric]]
 name = "scoreboards gated (not #[ignore]d)"
 command = "grep -c '^#\\[ignore' crates/cpl-cli/tests/recovery.rs"
-today = "0 of 2 gated (2 ignored)"
+today = "2 of 2 gated (80a47142)"
 target = "2 of 2"
 milestone = "M1"
 
@@ -77,14 +77,14 @@ milestone = "M1"
 [[metric]]
 name = "catalogue: emitted codes with an exact trigger and a clean fix"
 command = "cargo test -p cpl-cli --test catalogue -- --nocapture | grep '^catalogue:'"
-today = "74 of 75"
+today = "83 of 84 (80a47142)"
 target = "all"
 milestone = "M1"
 
 [[metric]]
 name = "catalogue: compile-time codes whose trigger carries a fix-it"
 command = "cargo test -p cpl-cli --test catalogue -- --nocapture | grep '^catalogue:'"
-today = "17 of 75 emitted (44 compile-time codes listed without one)"
+today = "22 of 84 emitted (80a47142)"
 target = ">= 45"
 milestone = "M2"
 
