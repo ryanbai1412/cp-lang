@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1405 (995 passing). Rules: 521.
+Cases: 1410 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -683,8 +683,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0201 Mutable binding never reassigned: 1 case(s)
 - L0202 Struct field never read: 1 case(s)
 - L0203 Local shadows top-level binding: 1 case(s)
-- L0204 Turbofish `::<...>` on generic call: **no case**
-- L0205 Power written with `.pow(e)`: **no case**
+- L0204 Turbofish `::<...>` on generic call: 1 case(s)
+- L0205 Power written with `.pow(e)`: 1 case(s)
 - L0206 Built-in getter called with `()`: 1 case(s)
 - L0207 Pattern test `x is p` in `if`/`elif`/`while` header: 1 case(s)
 - L0208 `use` of a name the prelude already provides: 1 case(s)
@@ -703,12 +703,12 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0507 Loop that only pushes: 1 case(s)
 - L0508 Check for `none`, then unwrap: 1 case(s)
 - L0509 Fold or sort of a sequence written as a free function: 1 case(s)
-- L0510 `_by` twin instead of a `by:` option: **no case**
+- L0510 `_by` twin instead of a `by:` option: 1 case(s)
 - L0511 `preorder` or `postorder` of a rooted tree: 1 case(s)
 - L0512 Non-canonical domain/sequence method spelling: 1 case(s)
-- L0513 Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`: **no case**
+- L0513 Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`: 1 case(s)
 - L0514 Hand-rolled Fenwick or segment tree: 1 case(s)
-- L0515 Removed bound-query method on `SortedBag` or `SortedSet`: **no case**
+- L0515 Removed bound-query method on `SortedBag` or `SortedSet`: 1 case(s)
 - L0516 Hand-rolled string algorithm: 1 case(s)
 - L0517 Hand-rolled union-find (DSU): 1 case(s)
 - L0518 Hand-rolled prime or SPF sieve: 1 case(s)
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-13 of 134 testable codes have no negative case.
+8 of 134 testable codes have no negative case.
 
 ## Standard library
 
@@ -750,8 +750,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - **algebra** (34/46 named by a case)
   - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
-- **bag** (147/161 named by a case)
-  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.drain_range`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
+- **bag** (148/161 named by a case)
+  - uncovered: `BagCursor`, `SortedBag.drain_range`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
   - uncovered: `BeatsSegTree.min_val`
 - **bitset** (89/92 named by a case)
@@ -789,8 +789,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **pair** (5/5 named by a case)
 - **persistent** (34/38 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`, `PMultiset.cmp`
-- **poly** (31/57 named by a case)
-  - uncovered: `exp`, `pow`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
+- **poly** (33/57 named by a case)
+  - uncovered: `exp`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
 - **prefix** (46/56 named by a case)
   - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1925 of 2222 std items are named by a case.
+1928 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
