@@ -2853,7 +2853,6 @@ pub struct Trie<A>:
         ends = [0]
         pass = [0]
 
-    // blocked: no inverse of `to_idx` on a generic domain (GAPS.md strings `Trie.kth`)
     /// The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters;
     /// `None` when fewer than `k + 1` words are stored. A word comes before its extensions.
     ///
@@ -2862,7 +2861,23 @@ pub struct Trie<A>:
     /// order: the letters of the word, first to last
     /// traps: when `k < 0`
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.kth(1) == Some(['a', 'b']) and t.kth(3) == None`
-    pub fn kth(self, k: Int) -> ?List<A> = todo
+    pub fn kth(self, k: Int) -> ?List<A>:
+        assert k >= 0, "`kth(k)` needs `k >= 0`"
+        if k >= pass[0]: return None
+        var left = k
+        var node = 0
+        var word: List<A> = []
+        while left >= ends[node]:
+            left -= ends[node]
+            for c in 0..alpha:
+                let child = next[node * alpha + c]
+                if child == -1: continue
+                if left < pass[child]:
+                    word.push(A.from_idx(c)!)
+                    node = child
+                    break
+                left -= pass[child]
+        Some(word)
 
     /// The number of stored words (with multiplicity) lexicographically smaller than `word`.
     ///
