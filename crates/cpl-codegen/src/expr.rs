@@ -124,6 +124,9 @@ impl<'p> Emitter<'p> {
             ExprKind::Read(_)
             | ExprKind::Parse(..)
             | ExprKind::Print(..)
+            | ExprKind::DomainLen(_)
+            | ExprKind::DomainLo(_)
+            | ExprKind::Cast(Cast::Label(_) | Cast::FromLabel(_) | Cast::FromOrd(_), _)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
                 touch.io = true
             }
