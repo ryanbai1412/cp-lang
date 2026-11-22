@@ -345,11 +345,13 @@ impl Bounds {
                 match &expr.kind {
                     ExprKind::Lambda { .. } => self.bodies.push(at),
                     ExprKind::Call { callee, args } => {
-                        if let ExprKind::Field { base, .. } = &callee.kind {
-                            if let Some(n) = root(base) {
-                                self.change(n, at);
+                        if let ExprKind::Field { base, name } = &callee.kind {
+                            if !keeps_len(&name.text) {
+                                if let Some(n) = root(base) {
+                                    self.change(n, at);
+                                }
+                                self.change_row(base, at);
                             }
-                            self.change_row(base, at);
                         }
                         for a in args.iter().filter(|a| a.mutable) {
                             if let Some(n) = root(&a.value) {
@@ -869,4 +871,22 @@ pub(crate) fn row_root(e: &Expr) -> Option<&str> {
         ExprKind::Index { base, indices } if indices.len() == 1 => root(base),
         _ => root(e),
     }
+}
+
+/// Whether every built-in list or string method called `method` leaves its
+/// receiver as it was, so a call to it changes no length.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn keeps_len(method: &str) -> bool {
+    use cpl_check::{builtin_members, Receiver};
+    let mut members = [Receiver::List, Receiver::Str]
+        .into_iter()
+        .flat_map(builtin_members)
+        .filter(|m| m.name == method)
+        .peekable();
+    members.peek().is_some() && members.all(|m| !m.mutates)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn keeps_len(_: &str) -> bool {
+    false
 }

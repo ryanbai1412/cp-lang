@@ -1275,8 +1275,8 @@ fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
     writes.1
 }
 
-/// Whether `stmts` assign, lend, pass `mut` or call a method on a place
-/// `root` traces to `seq`.
+/// Whether `stmts` assign, lend, pass `mut` or call a method that may change
+/// it on a place `root` traces to `seq`.
 fn resized_in(
     seq: &str,
     root: fn(&cpl_syntax::ast::Expr) -> Option<&str>,
@@ -1293,8 +1293,8 @@ fn resized_in(
         }
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Call { callee, args } = &expr.kind {
-                if let ExprKind::Field { base, .. } = &callee.kind {
-                    self.2 |= (self.1)(base) == Some(self.0);
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    self.2 |= !bounds::keeps_len(&name.text) && (self.1)(base) == Some(self.0);
                 }
                 self.2 |= args.iter().any(|a| a.mutable && (self.1)(&a.value) == Some(self.0));
             }

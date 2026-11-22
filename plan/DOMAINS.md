@@ -793,7 +793,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Index types inferred through `Rooted` and graph helpers, so `white[tree.parent(v)!]` is proven too, and with a method call that leaves the length alone (`contains`) not counted as a change; publish the Zed extension.
+**Next.** Publish the Zed extension; computed cost on hover for fns and stdlib calls. Waiting on §1: `Rooted` and graph helpers give their vertices the domain type, after which `white[tree.parent(v)!]` is proven by type with no editor change.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

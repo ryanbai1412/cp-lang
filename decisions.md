@@ -2378,8 +2378,10 @@ in the relations everywhere, and a statement that assigns, lends, passes `mut` o
 `xs` (`g` or `g[e]` for `g[u].len`) drops what was known about it, the way an assignment drops a
 `var`'s. A length changed inside a statement is dropped before anything in that statement reads it,
 so `q.pop()! + q[head]` gets no proof. This proves the breadth-first queue, `while head < q.len:
-let u = q[head]` followed by pushes, and a search re-run after each pop. Every method call counts as
-a change, `contains` included. Ports and examples with an index proof: 137 to 177, none lost.
+let u = q[head]` followed by pushes, and a search re-run after each pop. A method call counts as a change
+unless every built-in list or string method of that name leaves its receiver alone (`contains`,
+`sum`; not `sort`, whose length stays but which the catalog marks as mutating; on wasm, every call
+counts). Ports and examples with an index proof: 137 to 177, none lost.
 Reverse by restoring `Bounds::stable` from 29.37.
 
 29.40. **A domain array's index is proven by its type.** The checker records each index of a

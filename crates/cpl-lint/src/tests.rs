@@ -1908,6 +1908,11 @@ print(head)
     assert_eq!(proofs(&late), Vec::<String>::new());
     let same = queue.replace("    let u = q[head]\n", "    let u = q.pop()! + q[head]\n");
     assert_eq!(proofs(&same), Vec::<String>::new());
+    // Reading the queue between the test and the index changes nothing.
+    let read = queue.replace("    let u = q[head]\n", "    let seen = q.contains(9)\n    let u = q[head]\n");
+    assert_eq!(proofs(&read), ["0 <= head < q.len"]);
+    let sorted = queue.replace("    let u = q[head]\n", "    q.sort()\n    let u = q[head]\n");
+    assert_eq!(proofs(&sorted), Vec::<String>::new());
     assert!([&late, &same].iter().all(|src| cpl_syntax::parse_file(src).diagnostics.is_empty()));
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_14/noi19p1.cp");
     let port = &std::fs::read_to_string(path).unwrap();
