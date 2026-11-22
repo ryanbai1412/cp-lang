@@ -5702,10 +5702,7 @@ impl<'a> Lowerer<'a> {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::Last, vec![value], opt)
             }
-            (
-                Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _),
-                "keys",
-            ) => {
+            (Ty::Keyed(_, _), "keys") => {
                 let seq = if Self::keyed_view(&ty) {
                     self.hold_view(value, span)
                 } else {

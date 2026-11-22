@@ -5376,6 +5376,7 @@ impl<'a> Lowerer<'a> {
         self.build_table(dims, params, body, elem.as_ref(), None, span, None)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn build_table(
         &mut self,
         dims: Vec<DimSpec>,
