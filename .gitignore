@@ -10,3 +10,5 @@ corpus/problems/*/*_ref
 /editors/zed/target/
 
 node_modules/
+/examples/debugging/*.tests/
+/examples/debugging/*.trace.html
