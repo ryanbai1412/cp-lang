@@ -147,5 +147,5 @@ added here.
 - Interpreter and C++ must agree, including on rejected input. Test both
   whenever semantics change.
 - `cpl` is the command; sources end in `.cp`.
-- Accepted solutions live in `corpus/` and `subs/`; existing ports in
+- Accepted solutions live in `corpus/`; existing ports in
   `proto/ports/`; each port sits beside its original C++.

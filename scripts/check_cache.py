@@ -34,7 +34,7 @@ ENV_PREFIXES = ("RUSTFLAGS", "RUSTDOCFLAGS", "CARGO_", "CPL_", "CHECK_", "CXX", 
 # (open/stat/exec of every path, followed into child processes): the stage
 # opened none of the excluded paths. Re-run that before adding one; grep is
 # not enough (the tests open design/spec/ through cpl-syntax's planned.rs).
-_PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*", "archive/*", "subs/*"]
+_PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*", "archive/*"]
 _TESTS = _PROSE + [
     "corpus/*", "plan/*", "!plan/STDLIB.md", "!plan/1*.md", "!plan/stdlib*"
 ]
@@ -52,8 +52,8 @@ STAGES = {
     "recovery": _TESTS,
     # The public-history scan reads every tracked file.
     "scoreboard_fast": [],
-    "site_bundle": ["archive/*", "subs/*"],
-    "docs_site": ["archive/*", "subs/*"],
+    "site_bundle": ["archive/*"],
+    "docs_site": ["archive/*"],
 }
 
 

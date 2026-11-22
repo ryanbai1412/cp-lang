@@ -194,7 +194,7 @@ The docs site labels every snippet as either runnable or specification.
   [the site README](site/README.md).
 - `bench/`, `tools/bench/`: the corpus registry and the harness that
   measures every port against its original.
-- `corpus/`, `subs/`: Ryan's accepted submissions, used for ports,
+- `corpus/`: Ryan's accepted submissions, used for ports,
   benchmarks and design mining.
 - `archive/`: superseded design docs.
 
