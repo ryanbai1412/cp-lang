@@ -127,6 +127,14 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "spec/std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
+    def test_unrun_script_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "scripts/check.sh", "python3 -m unittest scripts/test_a.py\n")
+            self._write(root, "scripts/test_a.py", "")
+            self._write(root, "scripts/test_b.py", "")
+            self.assertEqual(dr.unrun_script_tests(root), ["scripts/test_b.py"])
+
     def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

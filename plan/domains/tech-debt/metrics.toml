@@ -101,6 +101,13 @@ target = "0"
 milestone = "M1"
 
 [[metric]]
+name = "unrun_script_tests"
+command = "python3 scripts/debt-ratchet.py --show unrun_script_tests"
+today = 3
+target = "0"
+milestone = "M2"
+
+[[metric]]
 name = "stale_arch_paths"
 command = "python3 scripts/debt-ratchet.py --show stale_arch_paths"
 today = 10

@@ -235,6 +235,13 @@ def direct_python(root: Path) -> list[str]:
     return out
 
 
+def unrun_script_tests(root: Path) -> list[str]:
+    """`scripts/test_*.py` files the gate never names, so nothing runs them."""
+    gate = root / "scripts/check.sh"
+    text = gate.read_text() if gate.is_file() else ""
+    return sorted(_rel(root, p) for p in (root / "scripts").glob("test_*.py") if p.name not in text)
+
+
 def _git_env() -> dict[str, str]:
     """The environment without GIT_*: a hook's GIT_DIR must not redirect `git -C`."""
     return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -290,6 +297,7 @@ COUNTERS = {
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
+    "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
