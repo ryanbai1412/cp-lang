@@ -113,6 +113,10 @@ impl<'a> Lowerer<'a> {
                         return self.call(whole, callee, &args, hint);
                     }
                 }
+                // Local generic function (`fn id<T>(x: T) -> T = x`)?
+                if let Some(decl) = self.cx.local_gen_fns.get(name).cloned() {
+                    return self.call_local_gen_fn(&decl, args, span);
+                }
                 // Local variable, receiver field, or captured fn value?
                 if self.lookup(name).is_some() {
                     let fv = self.name(name, None, callee.span);
@@ -172,7 +176,7 @@ impl<'a> Lowerer<'a> {
                 {
                     let inner_h = match hint {
                         Some(Ty::Opt(inner)) => Some(&**inner),
-                        _ => None,
+                        other => other,
                     };
                     let val = self.expr(&args[0].value, inner_h);
                     let ty = Ty::opt(val.ty.clone());
@@ -1970,7 +1974,7 @@ impl<'a> Lowerer<'a> {
                 Some(exprs) => {
                     let inner_h = match hint {
                         Some(Ty::Opt(inner)) => Some(&**inner),
-                        _ => None,
+                        other => other,
                     };
                     let val = self.expr(exprs[0], inner_h);
                     let ty = Ty::opt(val.ty.clone());
@@ -4923,7 +4927,8 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx" | "idx") => {
                 self.cast(Cast::Ord, value, Ty::Int)
             }
-            (Ty::Int, "ord" | "to_idx" | "idx") => value,
+            (Ty::Int, "ord" | "to_idx" | "idx" | "r" | "right") => value,
+            (Ty::Int, "l" | "left") => self.int_add(value, -1),
             (Ty::Pos(d), "label") => self.cast(Cast::Label(*d), value, Ty::Int),
             (Ty::Pos(_), "rank") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);

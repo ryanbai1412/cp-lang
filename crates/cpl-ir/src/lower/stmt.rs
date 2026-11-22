@@ -13,6 +13,15 @@ impl<'a> Lowerer<'a> {
         let held = (self.contexts.len(), self.unchecked);
         let mut out = Vec::new();
         if !self.at_top_level() {
+            for s in &block.stmts {
+                if let ast::StmtKind::Fn(decl) = &s.kind {
+                    if !decl.generics.is_empty() {
+                        self.cx
+                            .local_gen_fns
+                            .insert(decl.name.text.clone(), decl.clone());
+                    }
+                }
+            }
             self.predeclare_local_fns(&block.stmts, &mut out);
         }
         match block.stmts.split_last() {

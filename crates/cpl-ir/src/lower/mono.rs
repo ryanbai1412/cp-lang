@@ -2333,6 +2333,12 @@ impl<'a> Lowerer<'a> {
         into: Option<&str>,
         out: &mut Vec<Stmt>,
     ) {
+        if !decl.generics.is_empty() {
+            self.cx
+                .local_gen_fns
+                .insert(decl.name.text.clone(), decl.clone());
+            return;
+        }
         let (param_tys, ret_ty, fn_ty) = self.local_fn_ty(decl);
         let predeclared = self.cx.predeclared.remove(&decl.name.text);
         let fn_slot = match predeclared {
@@ -3565,6 +3571,59 @@ impl<'a> Lowerer<'a> {
         self.self_struct = saved_self;
     }
 
+    pub(super) fn call_local_gen_fn(
+        &mut self,
+        decl: &ast::FnDecl,
+        args: &[ast::Arg],
+        span: Span,
+    ) -> Expr {
+        let mut arg_vals: Vec<Expr> = Vec::with_capacity(args.len());
+        let mut new_env = self.gen_env.clone();
+        for (i, arg) in args.iter().enumerate() {
+            let val = self.expr(&arg.value, None);
+            if let Some(p) = decl.params.get(i) {
+                if let Some(pty) = &p.ty {
+                    if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                        if targs.is_empty()
+                            && decl.generics.iter().any(|g| g.text == name.text)
+                        {
+                            new_env.insert(name.text.clone(), GenArg::Ty(val.ty.clone()));
+                        }
+                    }
+                }
+            }
+            arg_vals.push(val);
+        }
+        let saved_env = std::mem::replace(&mut self.gen_env, new_env);
+        let ret_ty = decl
+            .ret
+            .as_ref()
+            .map(|r| self.resolve_ty(r))
+            .unwrap_or(Ty::Unit);
+        let res = self.do_expr(Some(&ret_ty), span, |lw, out| {
+            lw.cx.scopes.push(HashMap::new());
+            for (p, val) in decl.params.iter().zip(arg_vals) {
+                let slot = lw.temp(val.ty.clone());
+                out.push(Stmt::Let(slot, Some(val)));
+                lw.cx.scopes.last_mut().unwrap().insert(p.name.text.clone(), slot);
+            }
+            match &decl.body {
+                ast::FnBody::Expr(e) => {
+                    let v = lw.expr(e, Some(&ret_ty));
+                    out.push(Stmt::Give(v));
+                }
+                ast::FnBody::Block(b) => {
+                    let blk = lw.block(b, if ret_ty == Ty::Unit { Tail::Discard } else { Tail::Give });
+                    out.extend(blk.stmts);
+                }
+                ast::FnBody::None => {}
+            }
+            lw.cx.scopes.pop();
+        });
+        self.gen_env = saved_env;
+        res
+    }
+
     /// Lowers `laws_hold(obj, samples_or_kw...)` into nested assertion loops checking every `law`.
     pub(super) fn lower_laws_hold(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.is_empty() {
@@ -3576,6 +3635,93 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let obj = self.expr(&args[0].value, None);
+        if let Ty::Fn(param_tys, ret_ty) = &obj.ty {
+            if param_tys.len() == 2 && param_tys[0] == param_tys[1] && **ret_ty == param_tys[0] {
+                let elem_ty = param_tys[0].clone();
+                let samples = if args.len() >= 2 {
+                    self.expr(&args[1].value, None)
+                } else {
+                    return self.mk(ExprKind::Bool(true), Ty::Bool, span);
+                };
+                return self.do_expr(Some(&Ty::Bool), span, |lw, out| {
+                    let fn_slot = lw.temp(obj.ty.clone());
+                    out.push(Stmt::Let(fn_slot, Some(obj)));
+                    let samp_slot = lw.temp(samples.ty.clone());
+                    out.push(Stmt::Let(samp_slot, Some(samples)));
+                    let ok_slot = lw.temp(Ty::Bool);
+                    out.push(Stmt::Let(
+                        ok_slot,
+                        Some(lw.mk(ExprKind::Bool(true), Ty::Bool, span)),
+                    ));
+                    let a_slot = lw.temp(elem_ty.clone());
+                    let b_slot = lw.temp(elem_ty.clone());
+                    let c_slot = lw.temp(elem_ty.clone());
+                    let call2 = |lw: &Self, x: Expr, y: Expr| -> Expr {
+                        lw.mk(
+                            ExprKind::CallExpr(
+                                Box::new(lw.local(fn_slot, span)),
+                                vec![Arg::Value(x), Arg::Value(y)],
+                            ),
+                            elem_ty.clone(),
+                            span,
+                        )
+                    };
+                    let ab = call2(lw, lw.local(a_slot, span), lw.local(b_slot, span));
+                    let ab_c = call2(lw, ab, lw.local(c_slot, span));
+                    let bc = call2(lw, lw.local(b_slot, span), lw.local(c_slot, span));
+                    let a_bc = call2(lw, lw.local(a_slot, span), bc);
+                    let ne = lw.mk(
+                        ExprKind::Cmp(CmpOp::Ne, Box::new(ab_c), Box::new(a_bc)),
+                        Ty::Bool,
+                        span,
+                    );
+                    let set_false = Stmt::Assign(
+                        Place {
+                            kind: PlaceKind::Local(ok_slot),
+                            ty: Ty::Bool,
+                            span: lw.span(span),
+                        },
+                        AssignOp::Set,
+                        lw.mk(ExprKind::Bool(false), Ty::Bool, span),
+                    );
+                    let lid_c = lw.fresh_loop();
+                    let lid_b = lw.fresh_loop();
+                    let lid_a = lw.fresh_loop();
+                    let loop_c = Stmt::For(
+                        lid_c,
+                        c_slot,
+                        Iter::Seq(lw.local(samp_slot, span), false),
+                        Block {
+                            stmts: vec![Stmt::If(
+                                ne,
+                                Block {
+                                    stmts: vec![set_false, Stmt::Break(None)],
+                                },
+                                Block::default(),
+                            )],
+                        },
+                    );
+                    let loop_b = Stmt::For(
+                        lid_b,
+                        b_slot,
+                        Iter::Seq(lw.local(samp_slot, span), false),
+                        Block {
+                            stmts: vec![loop_c],
+                        },
+                    );
+                    let loop_a = Stmt::For(
+                        lid_a,
+                        a_slot,
+                        Iter::Seq(lw.local(samp_slot, span), false),
+                        Block {
+                            stmts: vec![loop_b],
+                        },
+                    );
+                    out.push(loop_a);
+                    out.push(Stmt::Give(lw.local(ok_slot, span)));
+                });
+            }
+        }
         let Ty::Struct(sid) = obj.ty else {
             self.error(
                 codes::TYPE_MISMATCH,

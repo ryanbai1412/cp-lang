@@ -517,6 +517,8 @@ struct FnCx {
     scopes: Vec<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
     local_syms: Vec<HashMap<String, Sym>>,
+    /// Block-scoped generic local functions (`fn id<T>(x: T) -> T = x`).
+    local_gen_fns: HashMap<String, ast::FnDecl>,
     /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
     op_locals: HashMap<String, BareOp>,
     /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
