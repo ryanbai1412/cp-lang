@@ -24,6 +24,19 @@ exploit that:
 - **The spec is the product.** A program's meaning is defined by numbered
   rules, and the implementation should be traceable to them.
 
+Correctness comes first among these. A wrong answer from the compiler is
+worse than a slow one or a missing feature, because the contestant can't
+see it. Concretely:
+
+- every valid program produces the same output in the reference
+  interpreter, the VM and the compiled C++, in checked and release builds;
+- every invalid program is rejected with a diagnostic naming its rule, or
+  traps in checked builds;
+- emitted C++ has no undefined behaviour for valid programs (sanitizer
+  builds prove it on every test);
+- every miscompile becomes a regression test, and the count of known
+  miscompiles is zero.
+
 ## 2. The shape
 
 ```text
