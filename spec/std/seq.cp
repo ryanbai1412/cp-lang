@@ -725,15 +725,7 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
-pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
-    var out: List<(val: K, len: Int)> = []
-    for x in self:
-        let k = by(x)
-        if out.len > 0 and out[out.len - 1].val == k:
-            out[out.len - 1] = (val: k, len: out[out.len - 1].len + 1)
-        else:
-            out.push((val: k, len: 1))
-    out
+pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
