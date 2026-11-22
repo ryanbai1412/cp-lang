@@ -87,7 +87,7 @@ let cat = Op((a: Str, b: Str) => a + b)     # no identity: a semigroup
 
 With laws, as a named type. The `impl` with no body states a law. It is a
 promise: `cpl stress` samples it and `laws_hold` tests it (the `law` tier
-in 0-ownership.md).
+in 05-ownership.md).
 
 ```python
 struct Lcm

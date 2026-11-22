@@ -2,7 +2,7 @@
 
 A power is a mechanism that lets library code feel built in. The stdlib has
 no power a user library lacks: if a stub in `spec/std/` needs something, it
-is listed here, or it is core syntax in `SYNTAX.md`. A power earns its place
+is listed here, or it is core syntax in `delta/parser-gaps.md`. A power earns its place
 by the stdlib families it unlocks; one family means look for another design.
 
 Each entry: the decision, the smallest example, what needs it, and whether
@@ -85,7 +85,7 @@ precondition checked in debug builds, not a trait. `Map` is `Keyed`,
 
 Every value is owned or lent (read or `mut`); the mode is not part of the
 type. Five rules, with no lifetime annotations (decisions 141, 144; the
-full model with exercises is `spec/api/0-ownership.md`):
+full model with exercises is `spec/core/05-ownership.md`):
 
 1. Parameters are lent: a fn never owns its arguments.
 2. A value is lent if any part is: a struct's fields, a closure's captures,
@@ -308,4 +308,4 @@ Status: checks.
 
 `with io(base: 1)` and friends wait for the program-shape design. Until
 then a dream passes the option where it is used. Five dreams use contexts;
-they are listed in `SYNTAX.md`.
+they are listed in `delta/parser-gaps.md`.

@@ -89,7 +89,7 @@ for its result (`sorted`, `tally`, `scan`).
 
 ## Slices: which keys survive
 
-Identity everywhere (decision 143; worked through in `2b-keys.md`): **an
+Identity everywhere (decision 143; worked through in `04b-keys.md`): **an
 index names the same element everywhere it is valid.** A slice narrows the
 valid keys and never renames them, for domain arrays, `List` and `Str`
 alike, so an index taken from a view is valid on the source.

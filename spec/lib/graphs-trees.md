@@ -294,4 +294,4 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
    events carry the arc, `Again(from, via)`, shared `seen:`, free
    `reachable`, `g.dfs_tree` → `(tree: Rooted, tree_edge: [E]Bool)`.
    Derived tree structures (`LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`)
-   own their data; `t` stays free (0-ownership.md §5).
+   own their data; `t` stays free (05-ownership.md §5).

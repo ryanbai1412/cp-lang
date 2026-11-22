@@ -2,7 +2,7 @@
 
 This page is the whole model. After reading it you should be able to look
 at any snippet and say whether it compiles, and which rule decides it. It
-supersedes the shorter statements in `POWERS.md` W4/W8, `plan/14-state.md`
+supersedes the shorter statements in `core/12-powers.md` W4/W8, `plan/14-state.md`
 and `plan/19-index-and-lends.md` §3.4 to §5 where they differ; §13 lists
 every difference and why.
 

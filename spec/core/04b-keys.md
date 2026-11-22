@@ -1,6 +1,6 @@
 # Keys: identity everywhere, keys in, keys out
 
-Follows `2a-identity-vs-offset.md`, which scored the cases and picked
+Follows `04a-identity-vs-offset.md`, which scored the cases and picked
 identity everywhere. This doc shows how that choice looks in contest code,
 in user helpers and in library code.
 
