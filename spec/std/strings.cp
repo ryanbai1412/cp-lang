@@ -2032,6 +2032,7 @@ pub struct SuffixAutomaton<A>:
     first_end: List<-1..=2_000_000_000>
     prefix: List<Bool>
     last: 0..=2_000_000_000
+    letters: List<?A>
 
     /// An empty suffix automaton over the alphabet domain `A`: only the root state `0`. Call it
     /// as `SuffixAutomaton<A>()`, then `push` letters.
@@ -2041,7 +2042,9 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>().len == 1`
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.K
-        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0)
+        var lts: List<?A> = []
+        for _ in 0..k: lts.push(None)
+        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0, lts)
 
     /// The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.
     ///
@@ -2087,6 +2090,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `var m = SuffixAutomaton<Char>(); m.push('a'); m.push('b'); m.distinct() == 3`
     pub fn push(mut self, a: A):
         let c = a.to_idx
+        letters[c] = Some(a)
         let cur = self.add_empty_state(max_len[last] + 1, true)
         unchecked:
             var p = last
@@ -2319,7 +2323,6 @@ pub struct SuffixAutomaton<A>:
             for v in 1..links.len: kids[links[v]].push(v)
         kids
 
-    // blocked: no inverse of `to_idx` on a generic domain (GAPS.md strings `kth_substring`)
     /// The `k`-th (0-based) non-empty substring in lexicographic order, as its letters, or
     /// `None` when there are not that many. With `distinct: false` each substring counts once
     /// per occurrence. A proper prefix comes before its extensions.
@@ -2330,7 +2333,47 @@ pub struct SuffixAutomaton<A>:
     /// traps: when `k < 0`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(3) == Some(['b'])`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(5, distinct: false) == Some(['b', 'b'])`
-    pub fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A> = todo
+    @allow(unproven_list_index)
+    pub fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A>:
+        assert k >= 0, "kth_substring requires k >= 0"
+        let m = links.len
+        let order = self.topo_order()
+        var weight = List.filled(m, 0)
+        if distinct:
+            for v in 1..m: weight[v] = 1
+        else:
+            let occ = self.occ_counts()
+            for v in 1..m: weight[v] = occ[v]
+        var dp = List.filled(m, 0)
+        unchecked:
+            for i in (0..m).rev:
+                let v = order[i]
+                var s = weight[v]
+                let base = v * alpha
+                for c in 0..alpha:
+                    let u = next[base + c]
+                    if u != -1: s += dp[u]
+                dp[v] = s
+        if k >= dp[0]: return None
+        var rem = k
+        var v = 0
+        var out: List<A> = []
+        while true:
+            if v != 0:
+                if rem < weight[v]: return Some(out)
+                rem -= weight[v]
+            let base = v * alpha
+            var moved = false
+            for c in 0..alpha:
+                let u = next[base + c]
+                if u != -1:
+                    if rem < dp[u]:
+                        out.push(letters[c]!)
+                        v = u
+                        moved = true
+                        break
+                    rem -= dp[u]
+            if not moved: return Some(out)
 
 /// The length of the longest sequence that is a substring of every word in `words`.
 ///
