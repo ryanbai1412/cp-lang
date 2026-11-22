@@ -23,17 +23,21 @@ print(seen, p)
 print(yes(next_permutation(mut p)), p)
 
 struct Node:
-    ends: Bool = false
-    next: ?Int = none
+    var ends: Bool = false
+    var next: ?Int = none
 
 var trie: List<Node> = [Node()]
+fn push_id(v: Node) -> Int:
+    let id = trie.len
+    trie.push(v)
+    id
 fn grow() -> Int:
-    trie.push_id(Node())
+    push_id(Node())
 
 // The list grows while the index is worked out; the place is found after.
 trie[grow()].ends = true
-trie[0].next ??= trie.push_id(Node())
-trie[0].next ??= trie.push_id(Node())
+trie[0].next ??= push_id(Node())
+trie[0].next ??= push_id(Node())
 print(trie.len, yes(trie[1].ends), trie[0].next ?? -1)
 
 var v: List<Int> = [1]
