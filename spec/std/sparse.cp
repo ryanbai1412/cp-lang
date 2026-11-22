@@ -23,7 +23,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
         let n = D.K
         if n == 0: return SparseTable(op, 0, [])
         let levels = bit_width(n)
-        var table = List.filled(levels * n, a[D.first])
+        var table = List.filled(levels * n, a[D.first!])
         var idx = 0
         for p in D:
             unchecked: table[idx] = a[p]
@@ -65,14 +65,17 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SparseTable(min, [3, 1, 4]).try_fold(1..1) == None`
     /// example: `SparseTable(min, [3, 1, 4]).try_fold(1..3) == Some(1)`
-    pub fn try_fold(self, r: Range<D>) -> ?T = todo
+    pub fn try_fold(self, r: Range<D>) -> ?T:
+        if r.is_empty: return None
+        Some(self.fold(r))
 
     /// The original value at position `i` (level 0 of the table).
     ///
     /// cost: O(1)
     /// traps: when `i` is outside `D`
     /// example: `SparseTable(min, [3, 1, 4]).get(2) == 4`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T:
+        unchecked: return table[i.ord]
 
     /// The fold of every position of `D`; `fold(D.all)`.
     ///
@@ -80,7 +83,11 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// empty: traps on an empty domain
     /// traps: when `D` is empty
     /// example: `SparseTable(gcd, [4, 6, 10]).all == 2`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T:
+        assert n > 0
+        let k = bit_width(n) - 1
+        let off = k * n
+        unchecked: return op(table[off], table[off + n - (1 << k)])
 
 /// Whether `op(x, x) == x` for every sample `x` in `xs`: the law a sparse table needs on top of
 /// associativity. A sample check, not a proof; associativity is not tested.
@@ -116,7 +123,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
         let n = D.K
         if n == 0: return DisjointSparseTable(op, 0, [])
         let levels = if n <= 1: 1 else: bit_width(n - 1)
-        var table = List.filled(levels * n, a[D.first])
+        var table = List.filled(levels * n, a[D.first!])
         var idx = 0
         for p in D:
             unchecked: table[idx] = a[p]
@@ -171,14 +178,17 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).try_fold(2..2) == None`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).try_fold(0..2) == Some(4)`
-    pub fn try_fold(self, r: Range<D>) -> ?T = todo
+    pub fn try_fold(self, r: Range<D>) -> ?T:
+        if r.is_empty: return None
+        Some(self.fold(r))
 
     /// The original value at position `i`.
     ///
     /// cost: O(1)
     /// traps: when `i` is outside `D`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).get(0) == 3`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T:
+        unchecked: return table[i.ord]
 
     /// The fold of every position of `D`, left to right; `fold(D.all)`.
     ///
@@ -186,7 +196,14 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// empty: traps on an empty domain
     /// traps: when `D` is empty
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).all == 8`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T:
+        assert n > 0
+        let r1 = n - 1
+        if r1 == 0:
+            unchecked: return table[0]
+        let k = bit_width(r1) - 1
+        let off = k * n
+        unchecked: return op(table[off], table[off + r1])
 
 /// O(|R| * |C| * log |R| * log |C|) build and memory; O(1) rectangle fold for any associative,
 /// idempotent operation (`min`, `max`, `gcd`, `&`, `|`).
