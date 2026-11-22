@@ -1,5 +1,6 @@
 // Serves the built site (web/out) on a free port and runs the browser smoke
-// tests against it. BASE points them at a server that is already running.
+// tests against it (or the tests named as arguments). BASE points them at a
+// server that is already running.
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -42,7 +43,8 @@ if (!base) {
 }
 
 let status = 0;
-for (const test of ['smoke.mjs', 'learn-smoke.mjs']) {
+const named = process.argv.slice(2);
+for (const test of named.length ? named : ['smoke.mjs', 'learn-smoke.mjs']) {
   // Not spawnSync: this process is also the server the test loads pages from.
   const child = spawn(process.execPath, [join(tests, test)], { stdio: 'inherit', env: { ...process.env, BASE: base } });
   if ((await new Promise((done) => child.on('exit', done))) !== 0) status = 1;

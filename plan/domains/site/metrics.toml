@@ -61,3 +61,9 @@ name = "learn_content"
 command = "ls web/content/learn/read/*.mdx | wc -l; ls web/content/practice | wc -l"
 today = "3 chapters, 7 problems"
 target = "8 chapters, 15 problems"
+
+[[metric]]
+name = "page_weight_gzip_bytes"
+command = "CDP=<chrome devtools url> pnpm --dir web page-weight"
+today = "/ 2,560,698 (1,768,985 of it cpl.wasm), LCP 104 ms; /play 2,477,294, LCP 84 ms; /docs/guides/tour 829,584, LCP 128 ms (local static server, no network throttling)"
+target = "/ excluding cpl.wasm <= 800000; /docs/guides/tour <= 900000"
