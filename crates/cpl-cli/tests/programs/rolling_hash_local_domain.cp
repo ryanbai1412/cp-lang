@@ -9,6 +9,6 @@ for _ in 0..t:
     for len in 1..=S.len:
         var hashes: List<HashVal> = []
         for l in S:
-            if let r = l + (len - 1): hashes.push(hash.get(l..=r))
-        total += deduped(sorted(hashes)).len
-    print(total, yes(hash.get(S.first..) == hash.all))
+            if let r = S.at(l.ord + len - 1): hashes.push(hash.get(l..=r))
+        total += hashes.sorted().deduped().len
+    print(total, yes(hash.get(S.first!..) == hash.all))
