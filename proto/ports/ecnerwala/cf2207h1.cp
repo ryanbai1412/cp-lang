@@ -10,22 +10,22 @@
 // spans reversed, whether the output moves left of `m`'s subtree.
 
 struct Node:
-    lo: Int
-    hi: Int
+    span: Range<Int>
     gate: ?(is_max: Bool, a: Int, b: Int)
 
 @!multitest
-let n: Int = read()
+let n: 1..=5000 = read()
 var x = [i for i in 0..n]
-var nodes = [Node(i, i + 1, none) for i in 0..n]
+var nodes = [Node(i..i + 1, none) for i in 0..n]
 
 fn ask() -> Int:
     print("?", [v + 1 for v in x])
-    let shown = read<Int>() - 1
-    (0..n).first(i => x[i] == shown)!
+    x.find(read<Int>() - 1)!
+
+fn cover(a: Int, b: Int) -> Range<Int> = nodes[a].span.start..nodes[b].span.end
 
 fn join(a: Int, b: Int, is_max: Bool) -> Int:
-    nodes.push(Node(nodes[a].lo, nodes[b].hi, some((is_max, a, b))))
+    nodes.push(Node(cover(a, b), (is_max, a, b)))
     nodes.len - 1
 
 fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = none) -> List<Int>:
@@ -40,9 +40,9 @@ fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = none) -> List<Int>:
     right.reverse()
     var mid = m
     while let a = left.last and let b = right.last:
-        let outer = nodes[a].lo..nodes[b].hi
+        let outer = cover(a, b)
         x[outer].reverse()
-        let moved_left = ask() < nodes[mid].lo
+        let moved_left = ask() < nodes[mid].span.start
         x[outer].reverse()
         if moved_left: mid = join(mid, right.pop()!, not is_max)
         else: mid = join(left.pop()!, mid, is_max)
@@ -50,20 +50,21 @@ fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = none) -> List<Int>:
     left + [mid]
 
 fn eval(vals: List<Int>, v: Int) -> Int:
-    guard let g = nodes[v].gate else: return vals[v]
-    let (a, b) = (eval(vals, g.a), eval(vals, g.b))
-    if g.is_max: max(a, b) else: min(a, b)
+    if let g = nodes[v].gate:
+        let (a, b) = (eval(vals, g.a), eval(vals, g.b))
+        if g.is_max: max(a, b) else: min(a, b)
+    else: vals[v]
 
 let loc_incr = ask()
 x.reverse()
 let loc_decr = ask()
 let is_max = loc_incr >= loc_decr
 if is_max: x.reverse()
-var top = solve(0, n, is_max, known: if is_max: loc_incr else: loc_decr)
+var top = solve(0, n, is_max, if is_max: loc_incr else: loc_decr)
 var root = top.pop()!
 while let a = top.pop(): root = join(a, root, is_max)
 print("!")
-while true:
+loop:
     let first_v: Int = read()
     if first_v == 0: break
     let vals = [first_v] + [read<Int>() for _ in 1..n]
