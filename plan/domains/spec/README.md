@@ -1,6 +1,6 @@
 # spec
 
-Segment: D. Taste and co-design. Owns: `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance`. Worklog: [worklog.md](worklog.md).
+Segment: D. Taste and co-design. Owns: `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance`. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 The normative spec (core chapters, library guides, tool contracts) and the conformance suite. Writes tests only, never crates. Settles spec ambiguities (via `decisions.md`).

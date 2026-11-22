@@ -1,6 +1,6 @@
 # compiler
 
-Segment: B. Metric. Owns: `crates/cpl-syntax`, `cpl-check`, `cpl-ir`, `cpl-interp`, `prover` (proofs, range analysis). Worklog: [worklog.md](worklog.md).
+Segment: B. Metric. Owns: `crates/cpl-syntax`, `cpl-check`, `cpl-ir`, `cpl-interp`, `prover` (proofs, range analysis). Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 Parser, checker, IR, interpreter, prover (proofs and range analysis): everything that makes the spec's programs run, in both backends.

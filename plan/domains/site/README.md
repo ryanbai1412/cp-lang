@@ -1,6 +1,6 @@
 # site
 
-Segment: E. Experience. Owns: `web/` (content, playground, UI). Worklog: [worklog.md](worklog.md).
+Segment: E. Experience. Owns: `web/` (content, playground, UI). Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 Docs, Learn, guides, reference, playground UI, share links, content checks.

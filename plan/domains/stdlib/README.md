@@ -1,6 +1,6 @@
 # stdlib
 
-Segment: D. Taste and co-design. Owns: `spec/std` (-> `std/`). Worklog: [worklog.md](worklog.md).
+Segment: D. Taste and co-design. Owns: `spec/std` (-> `std/`). Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 Every std module, written in CP Lang (no compiler special cases), its docs and doc-tests.

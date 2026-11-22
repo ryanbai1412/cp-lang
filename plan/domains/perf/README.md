@@ -1,6 +1,6 @@
 # perf
 
-Segment: B. Metric. Owns: `crates/cpl-codegen`, `cpl bench`. Worklog: [worklog.md](worklog.md).
+Segment: B. Metric. Owns: `crates/cpl-codegen`, `cpl bench`. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 C++ codegen quality, runtime speed, C++ size, zero-cost abstractions, compile speed.

@@ -1,6 +1,8 @@
-# tech-debt
+# architecture & tech-debt
 
-Segment: B. Metric. Owns: crate/file layout, dead code, duplicated helpers, stdlib privilege, 0.2 leftovers. Worklog: [worklog.md](worklog.md).
+Segment: B. Metric. Owns: crate/file layout, dead code, duplicated helpers, stdlib privilege, 0.2 leftovers. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Also owns `plan/ARCHITECTURE.md` (the cross-domain map: crates, the edges between them, the core interfaces) and stewards every core-interface change. Free to propose re-architecting any lane's code: the proposal goes in the owning lane's worklog, the owning lane does or schedules it, and disagreements go to the coordinator, then Ryan.
 
 ## Covers
 Anything that makes the code harder to change than it needs to be: giant files, duplicated logic, compiler special cases for the stdlib, dead code, 0.2 leftovers, inconsistent naming and layout, stale docs. Pure refactors, no behavior change, each landing with its ratchet lowered.

@@ -1,6 +1,6 @@
 # debugger
 
-Segment: E. Experience. Owns: `crates/cpl-stress`, `cpl-trace` (split out), `web/packages/trace-viewer`. Worklog: [worklog.md](worklog.md).
+Segment: E. Experience. Owns: `crates/cpl-stress`, `cpl-trace` (split out), `web/packages/trace-viewer`. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Covers
 `cpl stress` (generators, shrinking, interactors, wasm; merged from stress), interpreter UX (traps with values and call path), `cpl run --trace`, the trace viewer, the debugger.
