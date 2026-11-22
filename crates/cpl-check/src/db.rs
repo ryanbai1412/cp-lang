@@ -899,6 +899,21 @@ impl Database {
                 );
             }
         }
+        if crate::ty::spec_edition() {
+            for (index, range) in ranges.iter().enumerate().take(items.len()) {
+                if let Some((name, at, reads)) = map_recomputed(&items, index) {
+                    let at = at.shift(range.span.start);
+                    sink.push(
+                        Diagnostic::warning(
+                            codes::MAP_RECOMPUTED,
+                            at,
+                            format!("`{name}` is a `.map` view read {reads} times by index, and each read reruns the function"),
+                        )
+                        .with_help(format!("copy it once with `List(...)` so each `{name}[i]` is a plain read (R07.2.11)")),
+                    );
+                }
+            }
+        }
         for (index, check) in checks.iter().enumerate() {
             let offset = ranges[index].span.start;
             // R05.10.6: a lambda's `let` name is not hoisted.
@@ -2113,6 +2128,50 @@ fn declare_with_var(
             edits: vec![(at, "var".into())],
         });
     }
+}
+
+/// R07.2.11: a top-level `let m = xs.map(f)` that later items index more
+/// than once. Gives the name, the initializer's span and the read count.
+fn map_recomputed(items: &[Arc<ItemSyntax>], index: usize) -> Option<(String, Span, usize)> {
+    use ast::{ExprKind, PatternKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    let StmtKind::Let {
+        pat,
+        init: Some(init),
+        ty: None,
+        ..
+    } = &items[index].parsed.stmts.first()?.kind
+    else {
+        return None;
+    };
+    let PatternKind::Name(name) = &pat.kind else {
+        return None;
+    };
+    let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(init).kind else {
+        return None;
+    };
+    if !matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "map")
+        || rewalk_kind(items, index).is_some()
+    {
+        return None;
+    }
+    struct Reads<'a>(&'a str, usize);
+    impl Visitor for Reads<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            if let ExprKind::Index { base, .. } = &e.kind {
+                if matches!(&base.kind, ExprKind::Name(n) if n == self.0) {
+                    self.1 += 1;
+                }
+            }
+        }
+    }
+    let mut reads = Reads(name, 0);
+    for item in &items[index + 1..] {
+        for stmt in &item.parsed.stmts {
+            walk_stmt(stmt, &mut reads);
+        }
+    }
+    (reads.1 > 1).then(|| (name.clone(), init.span, reads.1))
 }
 
 /// What makes the top-level `let` at `index` walkable once: a lazy chain

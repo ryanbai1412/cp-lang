@@ -677,6 +677,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("L0603"),
+        title: "`.map` view read many times by index",
+        summary: "A `let m = xs.map(f)` view is indexed more than once, so `f` runs again on every read.",
+        explanation: "`xs.map(f)` is a view: `m[i]` calls `f(xs[i])` each time. Copy it once with `List(xs.map(f))` when it is read repeatedly.",
+        trigger: "let a = [1, 2, 3]\nlet m = a.map(x => x * x)\nprint(m[0] + m[1])\n",
+        fix: "let a = [1, 2, 3]\nlet m = List(a.map(x => x * x))\nprint(m[0] + m[1])\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0604"),
         title: "Generator holding a `mut` lend walked twice",
         summary: "A generator that mutates a lent argument is walked a second time.",

@@ -175,6 +175,7 @@ pub mod codes {
     /// A warning: an assignment whose right side changes the place it writes.
     pub const SAME_PLACE_READ_WRITE: Code = Code("L0601");
     pub const CHAIN_WALKED_TWICE: Code = Code("L0602");
+    pub const MAP_RECOMPUTED: Code = Code("L0603");
     pub const MUT_GENERATOR_REWALKED: Code = Code("L0604");
     pub const LITERAL_SLICE_INDEX: Code = Code("L0605");
     pub const WIDE_ARRAY: Code = Code("L0606");
