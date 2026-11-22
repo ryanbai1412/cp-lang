@@ -136,3 +136,8 @@
 .dark .shiki span {
   color: var(--shiki-dark) !important;
 }
+
+/* Docs and Learn header in the landing's order: title and links, then search and icons (web/lib/layout.shared.tsx). */
+#nd-subnav > [data-header-body] > div:last-child {
+  flex: none;
+}
