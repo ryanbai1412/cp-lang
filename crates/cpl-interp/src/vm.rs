@@ -505,6 +505,8 @@ pub(crate) enum TracePoint<'p> {
     Let(Slot, &'p Expr),
     Assign(&'p Place),
     Loop(Slot, Span),
+    /// After the loop the variable keeps its last value, not one past the end.
+    LoopEnd(Slot),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2287,6 +2289,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.traced_loop_var = Some((*slot, span));
                     self.compile_untraced_stmt(stmt);
                     self.traced_loop_var = None;
+                    self.emit_trace(TracePoint::LoopEnd(*slot), span);
                 }
                 None => self.emit_fallback_stmt(stmt),
             },
@@ -6853,6 +6856,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 self.trace_local(slot, span);
                 self.trace_assigned_local(slot, span);
             }
+            TracePoint::LoopEnd(_) => {}
         }
     }
 
@@ -11097,14 +11101,24 @@ impl<'p, 'io> Interp<'p, 'io> {
                     sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
-                Op::Trace { idx } => {
-                    if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = chunk.trace_points[idx as usize] {
-                        self.stack[self.base + slot] = Value::Moved;
+                Op::Trace { idx } => match chunk.trace_points[idx as usize] {
+                    TracePoint::LoopEnd(slot) => {
+                        let held = &self.stack[self.base + slot];
+                        if let (SlotLoc::I(r, _), Value::Int(_) | Value::Bool(_) | Value::Char(_)) =
+                            (chunk.slot_map[slot], held)
+                        {
+                            regs_i[r as usize] = ScalarKind::unbox_val(held);
+                        }
                     }
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
-                    self.trace_point(&chunk.trace_points[idx as usize]);
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
-                }
+                    ref point => {
+                        if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
+                            self.stack[self.base + slot] = Value::Moved;
+                        }
+                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                        self.trace_point(point);
+                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                    }
+                },
                 Op::FallbackExprV { idx, dst, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
                         stats.record_with_loop(
