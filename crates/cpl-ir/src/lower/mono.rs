@@ -2103,8 +2103,9 @@ impl<'a> Lowerer<'a> {
                 .find(|a| a.name.as_ref().is_some_and(|n| n.text == param.name.text))
                 .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
             if let Some(arg) = matched_arg {
+                let hint = self.trait_lambda_hint(pty, &arg.value, &inferred);
                 let dlen = self.diags.len();
-                let probed = self.expr(&arg.value, None);
+                let probed = self.expr(&arg.value, hint.as_ref());
                 self.diags.truncate(dlen);
                 if probed.ty != Ty::Error {
                     trait_params.push((decl_idx, probed.ty));
@@ -2593,6 +2594,43 @@ impl<'a> Lowerer<'a> {
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
         (probed.ty != Ty::Error).then_some(probed.ty)
+    }
+
+    /// The fn type a one-parameter lambda passed as `g: Next<V>` (any trait whose first argument
+    /// is the type of what the lambda takes) has, once `V` is known: `scc::<N>(u => adj[u])`.
+    fn trait_lambda_hint(
+        &mut self,
+        pty: &ast::Type,
+        arg: &ast::Expr,
+        inferred: &HashMap<String, GenArg>,
+    ) -> Option<Ty> {
+        let ast::ExprKind::Lambda { params, body, .. } = &arg.kind else {
+            return None;
+        };
+        let ast::TypeKind::Named { args: targs, .. } = &pty.kind else {
+            return None;
+        };
+        let [param] = params.as_slice() else {
+            return None;
+        };
+        let Some(ast::Type {
+            kind: ast::TypeKind::Named { name, args },
+            ..
+        }) = targs.first()
+        else {
+            return None;
+        };
+        if !args.is_empty() {
+            return None;
+        }
+        let pty = match inferred.get(&name.text)? {
+            GenArg::Domain(d) => Ty::Pos(*d),
+            GenArg::Ty(t) => t.clone(),
+            _ => return None,
+        };
+        let ret =
+            self.probe_lambda_ret(std::slice::from_ref(param), std::slice::from_ref(&pty), body)?;
+        Some(Ty::Fn(vec![pty], Box::new(ret)))
     }
 
     fn probe_lambda_ret(
