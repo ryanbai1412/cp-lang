@@ -1,6 +1,6 @@
 # ucup5s02h
 
-Score: 3/5
+Score: pending cold rescore (adopted full Boruvka + `Hull` invariant header, named `struct Pt(x, q, id)` eliminating `.0`/`.1`, `ParityDsu<Node>()` eliminating `2 * i + 1` encoding, and named `gap`/`weaker_gap` toward the 4/5 dream)
 Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
