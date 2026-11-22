@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1470 (995 passing). Rules: 521.
+Cases: 1474 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -757,10 +757,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
-- **dp** (38/39 named by a case)
-  - uncovered: `Step`
-- **dsu** (62/63 named by a case)
-  - uncovered: `Mark`
+- **dp** (39/39 named by a case)
+- **dsu** (63/63 named by a case)
 - **fenwick** (31/31 named by a case)
 - **flow** (46/65 named by a case)
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
@@ -810,7 +808,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1989 of 2237 std items are named by a case.
+1991 of 2237 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
