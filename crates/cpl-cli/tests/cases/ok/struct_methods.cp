@@ -13,7 +13,7 @@ struct Edge:
     fn make(a: V, b: V) -> Edge:
         Edge(a, b, 1000)
 
-var e = Edge.make(V.first, V.last)
+var e = Edge.make(V.first!, V.last!)
 e.relax(7)
 e.relax(50)
-print(e.other(V.first), e.w)
+print(e.other(V.first!), e.w)

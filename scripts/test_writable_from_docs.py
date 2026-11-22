@@ -61,10 +61,10 @@ Output
 
     def test_load_docs_bundle_nonempty(self):
         bundle = wfd.load_docs_bundle(ROOT)
-        self.assertIn("One-Page Contest Cheat Sheet", bundle)
-        self.assertIn("site/content/stdlib.md", bundle)
-        self.assertIn("site/content/cpp-guide.md", bundle)
-        self.assertIn("site/content/idioms.md", bundle)
+        self.assertIn("web/content/docs/guides/cheatsheet.mdx", bundle)
+        self.assertIn("web/content/docs/guides/stdlib.mdx", bundle)
+        self.assertIn("web/content/docs/guides/cpp-guide.mdx", bundle)
+        self.assertIn("web/content/docs/guides/idioms.mdx", bundle)
 
     def test_manifest_has_50_plus_unported_problems(self):
         import json

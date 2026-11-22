@@ -805,13 +805,16 @@ impl Server {
                                     "label",
                                     {
                                         let start = item.offset + entry.span.start;
+                                        let ty_text = entry.ty.to_string();
                                         match proven.get(&start) {
                                             Some((lo, hi))
-                                                if entry.keyword == "let" && lo != hi =>
+                                                if entry.keyword == "let"
+                                                    && lo != hi
+                                                    && ty_text == "Int" =>
                                             {
-                                                format!(": {} in {lo}..={hi}", entry.ty)
+                                                format!(": Int in {lo}..={hi}")
                                             }
-                                            _ => format!(": {}", entry.ty),
+                                            _ => format!(": {ty_text}"),
                                         }
                                     }
                                     .into(),

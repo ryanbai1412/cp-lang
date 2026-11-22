@@ -729,7 +729,7 @@ impl<'a> Checker<'a> {
         let capital = |s: &str| s.starts_with(|c: char| c.is_ascii_uppercase());
         let suggestion = closest(name, candidates.iter().map(String::as_str))
             .filter(|s| !capital(name) || capital(s));
-        // Neither here nor in `stdlib/`: say so, and offer the closest
+        // Neither here nor in `spec/std/`: say so, and offer the closest
         // library name, since a program reaching for a helper that does not
         // exist yet usually means one that does under another name.
         // No stdlib export is one character long, and contest code is full

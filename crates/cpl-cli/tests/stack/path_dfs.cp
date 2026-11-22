@@ -8,8 +8,7 @@ fn dfs(v: V):
     seen[v] = true
     order[v] = t
     t += 1
-    if v.ord + 1 < n:
-        let w = V.at(v.ord + 1)
+    if let w = V.at(v.ord + 1):
         if not seen[w]: dfs(w)
-dfs(V.at(0))
-print(t, order[V.at(n - 1)])
+dfs(V.at(0)!)
+print(t, order[V.at(n - 1)!])

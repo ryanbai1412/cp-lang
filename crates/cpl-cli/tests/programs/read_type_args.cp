@@ -2,4 +2,4 @@
 let n = read<Int>()
 let (a, b) = read<(Int, Int)>()
 let k = 2
-print(n, a + b, n < k, k > (n))
+print(n, a + b, yes(n < k), yes(k > (n)))

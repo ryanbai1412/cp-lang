@@ -1,6 +1,6 @@
 struct Reg:
-    ids: Map<Str, Int>
-    p: Int
+    var ids: Map<Str, Int>
+    var p: Int
 
     fn late(mut self) -> Int:
         let f = () => p
@@ -18,8 +18,8 @@ struct Reg:
         a * 100 + b * 10 + p
 
 struct Pair:
-    left: Reg
-    right: Reg
+    var left: Reg
+    var right: Reg
 
 fn touch(mut r: Reg) -> Int:
     let before = () => r.p

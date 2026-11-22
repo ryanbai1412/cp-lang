@@ -5,7 +5,7 @@
 let (n, m, k): (2..=1e5, 1..=5e4, 1..=5e4) = read()
 domain City = 1..=n
 let tracks: Tree<City> = read()
-let tree = Rooted(Graph.undirected(tracks), City.first)
+let tree = Rooted(Graph.undirected(tracks), City.first!)
 var plans: List<List<City>> = []
 for _ in 0..m:
     let s: 2..=1e5 = read()

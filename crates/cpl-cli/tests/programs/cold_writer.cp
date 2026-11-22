@@ -6,7 +6,7 @@ let n: Int = read()
 print(x.sqrt, x.floor, x.ceil, x.round, x.trunc, (-x).abs)
 print(n.sqrt, n.isqrt, (-n).abs)
 flush()
-print(Node.Leaf == Node.Leaf, Node.Leaf == Node.Inner)
+print(yes(Node.Leaf == Node.Leaf), yes(Node.Leaf == Node.Inner))
 const MOD = 998244353
 type Z = Mod<MOD>
 let k: 1..=10 = read()

@@ -22,4 +22,4 @@ let m = smaller(P(5, 0), P(1, 1))
 var pts = [P(10, 0), P(1, 2), P(3, 1)]
 pts.sort()
 
-print(c.x, c.y, p.x, p.y, d.x, d.y, e.x, e.y, m.x, m.y, pts[0].x, pts[2].x, P(1, 2) == a)
+print(c.x, c.y, p.x, p.y, d.x, d.y, e.x, e.y, m.x, m.y, pts[0].x, pts[2].x, yes(P(1, 2) == a))

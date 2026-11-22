@@ -22,4 +22,4 @@ fn walk(k: Int, steps: List<Int>) -> Paths:
 let k = read::<Int>()
 let p = walk(k, [k, k + 1, k + 2, k + 3, k + 4])
 print(p.dist[V(4)])
-print(Pair(k, 1) == Pair(k, 2), Pair(k, 1) < Pair(k, 2))
+print(yes(Pair(k, 1) == Pair(k, 2)), yes(Pair(k, 1) < Pair(k, 2)))

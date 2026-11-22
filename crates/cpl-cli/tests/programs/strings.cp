@@ -3,7 +3,7 @@
 let s: Str = read()
 let t: Str = read()
 print(s, s.len, s[0], s[s.len - 1])
-print(s + t, s + "-" + t, s == t, s < t, s != t)
+print(s + t, s + "-" + t, yes(s == t), yes(s < t), yes(s != t))
 var up: Str = ""
 for c in s:
     if c >= 'a' and c <= 'z':
@@ -16,13 +16,13 @@ for c in s:
     if c >= 'a' and c <= 'z':
         count[c - 'a'] += 1
 print(count)
-print('a' + 2, 'z' - 'a', 'a' < 'b', "tab\there", "quote\"d", "back\\slash")
+print('a' + 2, 'z' - 'a', yes('a' < 'b'), "tab\there", "quote\"d", "back\\slash")
 print("{s} has {s.len} bytes; first is {s[0]}")
 print("braces {{like}} these", "what??!")
 var rev: Str = ""
 for i in (0..s.len).rev:
     rev.push(s[i])
-print(rev, rev == s, s.contains('l'), s.contains('q'))
+print(rev, yes(rev == s), yes(s.contains('l')), yes(s.contains('q')))
 let words: [3]Str = read()
 print(words)
 var sorted_words: List<Str> = []

@@ -26,8 +26,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Python packages
-        run: python3 -m pip install -r site/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - name: Fast gate
         run: scripts/check.sh --fast
 

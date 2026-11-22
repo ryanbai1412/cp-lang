@@ -6,6 +6,6 @@ print(top, high, high >> k)
 let m: Int = read()
 let c: U64 = 5
 let big: U64 = 18446744073709551615
-print(m < c, c > m, big > m, big == m, c >= 5, 5 == c, big > 7)
-print(big, big == 0xFFFF_FFFF_FFFF_FFFF)
+print(yes(m < c), yes(c > m), yes(big > m), yes(big == m), yes(c >= 5), yes(5 == c), yes(big > 7))
+print(big, yes(big == 0xFFFF_FFFF_FFFF_FFFF))
 print(popcount(big), ctz(high), bit_width(big), popcount(255), bit_width(-1))

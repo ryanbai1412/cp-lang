@@ -1,3 +1,10 @@
+error[E0103]: an enum's variants are separated by `|`, not `,`
+  --> planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp:1:12
+  |
+1 | enum Node: leaf, incr(a: Int, b: Int)
+  |            ^^^^^^^^^^
+  = help: write `= leaf | incr`
+
 error[E0504]: not implemented yet: a lowercase variant in a pattern, `incr(l, r) =>` (see spec/core/02-values-types.md §2.7)
   --> planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp:4:5
   |
@@ -5,4 +12,4 @@ error[E0504]: not implemented yet: a lowercase variant in a pattern, `incr(l, r)
   |     ^^^^^^^^^^
   = help: name the variant with a capital, `Incr(l, r)`
 
-planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp: 1 error
+planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp: 2 errors

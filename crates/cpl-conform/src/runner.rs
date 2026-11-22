@@ -6,17 +6,7 @@ use std::sync::Mutex;
 use cpl_check::Database;
 use cpl_diag::{Diagnostic, LineIndex, Severity};
 
-/// Configures `CPL_SPEC=1` and `CPL_STD=<root>/spec/std` before worker threads start.
-pub fn configure_spec_env(root: &Path) {
-    let std_dir = root.join("spec").join("std");
-    // SAFETY: called once at startup before spawning worker threads.
-    unsafe {
-        std::env::set_var("CPL_SPEC", "1");
-        std::env::set_var("CPL_STD", &std_dir);
-    }
-}
-
-/// Runs `cpl check` semantics in spec mode (`CPL_SPEC=1`), returning rendered
+/// Runs `cpl check` semantics, returning rendered
 /// diagnostics and whether any error diagnostic occurred.
 pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
     db.set_file(path, text);

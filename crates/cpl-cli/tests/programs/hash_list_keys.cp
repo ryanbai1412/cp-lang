@@ -15,4 +15,4 @@ for _ in 0..n:
     count[key] = (count.get(key) ?? 0) + 1
     firsts.insert([(x, "{x}") for x in key])
 print(fresh, seen.len, firsts.len)
-print(count[[1, 2, 3]], count.get([9]) ?? 0, [] in seen, [2, 1] in seen)
+print(count[[1, 2, 3]], count.get([9]) ?? 0, yes([] in seen), yes([2, 1] in seen))

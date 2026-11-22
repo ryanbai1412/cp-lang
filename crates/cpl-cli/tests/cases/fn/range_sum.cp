@@ -5,13 +5,13 @@ let a: [P]-100..=100 = read()
 
 var pre: [0..=n]Int = 0
 for i in P:
-    pre[i - P.first + 1] = pre[i - P.first] + a[i]
+    pre[i - P.first! + 1] = pre[i - P.first!] + a[i]
 
 fn range_sum(l: P, r: P) -> Int:
-    if r < l: return 0 else: return pre[r - P.first + 1] - pre[l - P.first]
+    if r < l: return 0 else: return pre[r - P.first! + 1] - pre[l - P.first!]
 
 @brute(range_sum)
 fn range_sum_slow(l: P, r: P) -> Int:
     sum(a[i] for i in l..=r)
 
-print(range_sum(P.first, P.last))
+print(range_sum(P.first!, P.last!))

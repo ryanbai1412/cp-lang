@@ -17,7 +17,7 @@ for k in m.keys.rev:
 print(rks)
 
 print(m.keys.sum(), m.values.sum(), m.values.max() ?? 0, m.values.min() ?? 0)
-print(sum(m.values), m.values.count(v => v >= 20), m.keys.any(k => k == 2), m.keys.all(k => k > 0))
+print(sum(m.values), m.values.count(v => v >= 20), yes(m.keys.any(k => k == 2)), yes(m.keys.all(k => k > 0)))
 print([v * 2 for v in m.values])
 print(m.keys, m.values)
 

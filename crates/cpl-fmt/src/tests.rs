@@ -322,7 +322,6 @@ fn formats_the_whole_corpus() {
         "corpus/lib",
         "crates/cpl-cli/tests/cases",
         "examples",
-        "stdlib",
     ] {
         walk(&root.join(dir), &mut files);
     }

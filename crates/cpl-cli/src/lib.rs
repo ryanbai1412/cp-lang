@@ -1952,40 +1952,6 @@ pub fn dap() -> u8 {
     dap::serve_stdio()
 }
 
-/// Picks the v0.3 edition (spec/README.md) for the editor when the
-/// environment chose none: `CPL_SPEC`, and `CPL_STD` naming `spec/std` in
-/// the nearest folder above the working folder or the binary that has one.
-/// With no `spec/std` to be found, the editor stays on the built-in stdlib.
-/// Runs before any thread starts, since it sets the process environment.
-pub fn default_to_spec_edition() {
-    if std::env::var_os("CPL_SPEC").is_some() {
-        return;
-    }
-    let found = || {
-        let starts = std::env::current_dir().ok().into_iter().chain(
-            std::env::current_exe()
-                .ok()
-                .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf)),
-        );
-        starts
-            .flat_map(|start| {
-                start
-                    .ancestors()
-                    .map(|dir| dir.join("spec/std"))
-                    .collect::<Vec<_>>()
-            })
-            .find(|dir| dir.join("prelude.cp").is_file())
-    };
-    let Some(std_dir) = std::env::var_os("CPL_STD")
-        .map(std::path::PathBuf::from)
-        .or_else(found)
-    else {
-        return;
-    };
-    std::env::set_var("CPL_SPEC", "1");
-    std::env::set_var("CPL_STD", std_dir);
-}
-
 /// Serves the language server on stdin and stdout until the editor ends
 /// the session. Returns the exit status.
 pub fn lsp() -> u8 {

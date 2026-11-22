@@ -1,3 +1,12 @@
+error[E0403]: `a` is a `let`, so it can't be changed in place (needs `mut`)
+  --> planned_a_tie_breaker_chain_of_comparisons_a_b_then_c_d.cp:2:7
+  |
+1 | let a = [3, 1]
+  |     - declared here
+2 | print(a.sort(cmp: (u, v) => u <=> v then v <=> u))
+  |       ^
+  = help: declare it with `var a` to change it
+
 error[E0504]: not implemented yet: a tie-breaker chain of comparisons, `a <=> b then c <=> d` (not in the design)
   --> planned_a_tie_breaker_chain_of_comparisons_a_b_then_c_d.cp:2:37
   |
@@ -5,4 +14,4 @@ error[E0504]: not implemented yet: a tie-breaker chain of comparisons, `a <=> b 
   |                                     ^^^^^^^^^^^^
   = help: compare tuples, `(a, c) <=> (b, d)`, or sort by a key tuple
 
-planned_a_tie_breaker_chain_of_comparisons_a_b_then_c_d.cp: 1 error
+planned_a_tie_breaker_chain_of_comparisons_a_b_then_c_d.cp: 2 errors

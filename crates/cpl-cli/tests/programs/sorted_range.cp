@@ -6,7 +6,7 @@ for x in [5, 2, 5, 1, 2, 5, 9, -3]:
 
 print(b.range(2..).first ?? -99, b.range(3..).first ?? -99, b.range(10..).first ?? -99)
 print(b.range(..=5).last ?? -99, b.range(..5).last ?? -99, b.range(..=-5).last ?? -99)
-print(b.range(2..6).len, b.range(2..=5).len, b.range(6..2).len, b.range(6..2).is_empty)
+print(b.range(2..6).len, b.range(2..=5).len, b.range(6..2).len, yes(b.range(6..2).is_empty))
 
 var fwd: List<Int> = []
 for x in b.range(2..=5): fwd.push(x)

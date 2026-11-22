@@ -15,7 +15,7 @@ print(seen, seen.len, seen.min(), seen.max())
 print(tally)
 for (k, v) in tally:
     print("key", k, "seen", v)
-print(tally.get(3), tally.get(99), tally.contains(4), seen.contains(99))
+print(tally.get(3), tally.get(99), yes(tally.contains(4)), yes(seen.contains(99)))
 xs.sort()
 print(xs)
 xs.reverse()
@@ -23,13 +23,13 @@ print(xs, xs.sorted(), xs.reversed())
 xs.sort(by: x => abs(x - 4))
 print(xs)
 print(xs.pop(), xs.pop(), xs.len)
-print(seen.remove(3), seen.remove(3), seen)
+print(yes(seen.remove(3)), yes(seen.remove(3)), seen)
 print(tally.remove(1), tally.len)
 var stack: List<Int> = [1, 2, 3]
 while stack.len > 0:
     let top = stack.pop() ?? -1
     print(top)
-print(stack.pop(), stack.is_empty)
+print(stack.pop(), yes(stack.is_empty))
 var pairs: List<(Int, Str)> = []
 pairs.push((3, "c"))
 pairs.push((1, "z"))

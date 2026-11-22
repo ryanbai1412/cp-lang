@@ -13,4 +13,4 @@ fn solve():
             return a[i] * scale + suffix(j)
         a[i] * scale
 
-    print(suffix(V.first))
+    print(suffix(V.first!))

@@ -1,4 +1,4 @@
-enum Sign: neg, zero, pos
+enum Sign = neg | zero | pos
 
 var cnt: [Sign]Int = 0
 cnt[Sign.neg] += 3

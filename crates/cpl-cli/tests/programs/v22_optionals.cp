@@ -13,7 +13,7 @@ top max= 4
 top max= b
 top max= a + 4
 print(best, top ?? -1, min(5, a), min(a, b) ?? -1, max(b, 7), max(1, b, a))
-print(a == 3, b == 3, a != 3, b == none)
+print(yes(a == 3), yes(b == 3), yes(a != 3), yes(b == none))
 
 fn first_gap(xs: List<?Int>) -> Int:
     var seen = 0

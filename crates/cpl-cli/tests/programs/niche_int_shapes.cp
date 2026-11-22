@@ -17,11 +17,11 @@ for i in 0..n:
         inner[i] = i + 100
         t.push(inner[i])
         t.push(inner[0])
-print(g[bump(), bump() - bump() + 0] ?? -1, t[bump()] ?? -1, g[1 % n, 0] == none, calls, t.len)
+print(g[bump(), bump() - bump() + 0] ?? -1, t[bump()] ?? -1, yes(g[1 % n, 0] == none), calls, t.len)
 var late: [n]?Int = none
 if n > 2:
     late[2] = 7
-print(late[n - 1] ?? -1, late[0] == none)
+print(late[n - 1] ?? -1, yes(late[0] == none))
 fn work(k: Int) -> Int:
     var acc = 0
     for r in 0..k:

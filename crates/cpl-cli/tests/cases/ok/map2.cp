@@ -9,8 +9,8 @@ for v in V:
         first_at[a[v]] = v
 for (x, v) in first_at:
     cnt[v] = x
-print(cnt.len, cnt.get(V.first) ?? -1, cnt.get(V.last) ?? -1)
+print(cnt.len, cnt.get(V.first!) ?? -1, cnt.get(V.last!) ?? -1)
 for (v, x) in cnt:
     print(v, x, cnt[v])
-cnt.remove(V.first)
-print(cnt.len, V.first in cnt)
+cnt.remove(V.first!)
+print(cnt.len, yes(V.first! in cnt))

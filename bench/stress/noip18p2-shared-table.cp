@@ -12,7 +12,7 @@ fn needed(coins: List<Int>) -> Int:
         if not payable[Amount(c)]:
             needed += 1
             for a in Amount:
-                if let b = a - c and payable[b]: payable[a] = true
+                if let b = a.back(c) and payable[b]: payable[a] = true
     needed
 
 @brute(needed)

@@ -7,5 +7,5 @@ impl Ord for W:
         a.v < b.v
 
 let (a, b) = (W(1), W(2))
-print(a < b, a > b, a <= b, a >= b, b < a, a < a)
+print(yes(a < b), yes(a > b), yes(a <= b), yes(a >= b), yes(b < a), yes(a < a))
 print(calls)

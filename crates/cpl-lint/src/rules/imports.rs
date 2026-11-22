@@ -12,12 +12,12 @@ use cpl_syntax::ast::StmtKind;
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-/// `(module, name)` for each name `stdlib/prelude.cp` lists, the module
+/// `(module, name)` for each name `spec/std/prelude.cp` lists, the module
 /// written `std.tree`.
 fn prelude() -> &'static HashSet<(String, String)> {
     static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = include_str!("../../../../stdlib/prelude.cp");
+        let text = include_str!("../../../../spec/std/prelude.cp");
         let mut found = HashSet::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
             for stmt in item.stmts {
