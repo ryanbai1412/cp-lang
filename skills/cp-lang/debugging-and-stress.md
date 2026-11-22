@@ -10,7 +10,8 @@ judge speed.
 ```bash
 cpl check sol.cp                 # type/domain/borrow check (< 500 ms)
 cpl run sol.cp < sample.in       # run checked on sample input
-cpl test sol.cp                  # run all @test functions in sol.cp
+cpl test sol                     # sol.tests/ cases, @sample and @test fns
+cpl stress sol.cp                # solution vs its @alt brutes, shrinks failures
 cpl build sol.cp                 # release binary
 cpl submit sol.cp -o sub.cpp     # single-file C++17 for judge upload
 ```
@@ -41,29 +42,37 @@ print(tri(4))
 
 ## Stress Testing (`cpl stress`)
 
-When a solution fails on hidden tests, write a small brute-force `brute.cp`
-and a random test generator `gen.cp` (using `std.rand.Rng`), then run:
-
-```bash
-cpl stress sol.cp brute.cp gen.cp --runs 500
-```
-
-`cpl stress` runs both solutions on generated inputs, stops on the first
-mismatch or trap, and saves the failing input so you can reproduce it directly
-with `cpl run sol.cp < fail.in`.
-
-A minimal generator using `std.rand.Rng`:
+Put the brute in the same file as an `@alt`. `@alt(program)` is a whole-program
+brute; `@alt(f)` is a slow twin of fn `f`, compared at each call site.
+`cpl stress sol.cp` generates inputs from the program's `read` types, runs
+both, stops at the first disagreement, shrinks it, and saves it to
+`sol.tests/stress-<seed>.in` as a regression case.
 
 ```cp
-use std.rand.{Rng}
+let n = read<1..=8>()
+domain V = 1..=n
+let a = read<[V]-5..=5>()
+print(V.all.map(v => a[v]).max()!)
 
-var rng = Rng(1)
-let n = rng.int(1, 5)
-var xs: List<Int> = []
-for _ in 0..n:
-    xs.push(rng.int(-10, 10))
-assert xs.len == n
+@alt(program)
+fn brute():
+    let n = read<1..=8>()
+    let a = read<[n]-5..=5>()
+    var best = a[0]
+    for x in a: best max= x
+    print(best)
+// input: 3
+// input: 1 -2 3
+// output: 3
 ```
+
+Options: `--cases N` (default 1000), `--size N` (largest n, default 8),
+`--seed N`, `--trace` (saves both runs' traces on failure), `--brute PROG`,
+`--gen PROG`, `--checker PROG` for external programs.
+
+Tight constraint types make better random inputs: `read<[V]-5..=5>()` already
+tells stress what to generate. (`@gen fn` with `gen(...)` for constraints
+types can't express is specified but not implemented yet.)
 
 ## `unchecked:` Escape Hatch
 

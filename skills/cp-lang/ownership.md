@@ -81,7 +81,11 @@ current elements, clone or `.collect()` the snapshot first.
 
 ## `@cache` on Struct Fields
 
-Use `@cache` on derived struct properties/methods that depend on immutable
-fields so they are computed lazily once and reused without manual bookkeeping.
-For recursive DP functions, use `@memo(array)` or `@memo(map)` (see
+A method that is logically a read may write a field marked `@cache` through
+a read `self`: path compression in `Dsu.find`, lazily grown tables in `Comb`,
+tag pushes in a lazy segment tree query. The field must not change any answer:
+`==`, hashing and `print` skip it, and `cpl stress` reruns with caches cold
+and compares. No lend of the field escapes. This is for library authors; in a
+solution you just call `d.find(v)` on a `let` value. `@cache` is not
+memoization: for recursive DP use `@memo(array)` or `@memo(map)` (see
 `functions-and-generators.md`).

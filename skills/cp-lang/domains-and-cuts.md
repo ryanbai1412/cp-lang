@@ -35,13 +35,34 @@ print(x[B(0)])
 
 ## Positions vs Cuts
 
-- A **position** `p: D` names one element (`0..n` or `1..=n`).
-- A **cut** `c: Cut<D>` names a boundary *between* positions (`0..=n` — there
-  are `D.count + 1` cuts).
-- `p.l` is the cut immediately before `p`; `p.r` is the cut immediately after
-  `p`.
-- `Range<D>` is a contiguous slice of positions (`l..r` half-open, `l..=r`
-  inclusive). Its endpoints `r.l` and `r.r` are `Cut<D>`.
+- A **position** `v: V` names one element. A **cut** names a boundary between
+  positions; `V.cuts` is the cut domain (`V.count + 1` cuts), and `Int(c)` is
+  the number of positions before `c`.
+- The one rule: `.l`/`.r` switch kind, `.prev`/`.next` keep it.
+
+| receiver | same kind | other kind |
+|---|---|---|
+| position `v` | `v.prev`, `v.next` → `?V` | `v.l`, `v.r` → its two cuts |
+| cut `c` | `c.prev`, `c.next` → `?V.cuts` | `c.l`, `c.r` → neighbouring positions, `?V` |
+
+- `v.next(k)`/`v.prev(k)` step by `k`. `v.l..v.r` is exactly `v`.
+- `v.after` / `v.before` are the positions after / before `v` (`v.r..`, `..v.l`).
+- `v + 1` is an `Int`. Back into the domain: `v.next`, `V(x)` (traps outside),
+  `V.at(x)` (`?V`), or `if let V(j) = i - 10:`. `Int(v)` gives the integer.
+- Ranges: `l..=r` and `l..r` of positions; `a..b` of cuts. Prefix structures
+  take ranges or cuts: `p.fold(l..=r)`, `bit.prefix(v.r)`.
+
+```cp
+domain V = 1..=3
+for v in V:
+    print(Int(v.l), Int(v.r), v.next, end: "; ")
+print()
+for j in V(1).after:
+    print(j, end: " ")
+print()
+// output: 0 1 2; 1 2 3; 2 3 none; 
+// output: 2 3 
+```
 
 Cuts prevent off-by-one bugs in prefix sums, DP on prefixes, and Fenwick/SegTree
 binary searches:

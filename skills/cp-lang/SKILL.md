@@ -5,95 +5,119 @@ description: Write idiomatic, correct CP Lang v0.3 competitive programming solut
 
 # CP Lang v0.3
 
-CP Lang compiles indentation-based competitive programming solutions to one
-self-contained C++17 file. Types carry contest facts: index domains, value
-ranges, optionals, and ownership. Write top-level statements directly (no
-`fn main`); add `@!multitest` at the top when the input begins with `t`.
+CP Lang compiles to one C++17 file. Write top-level statements (no `main`).
+Good CP Lang says the editorial's idea in the editorial's words, states every
+fact once, and its obvious reading is the correct and fast one. Do not
+translate C++ line by line: ask how the idea is best said here.
 
-## Loop: Edit, Check, Run, Stress
+## Workflow (always)
 
-```bash
-cpl check sol.cp                 # fast type, domain, and borrow check
-cpl run sol.cp < sample.in       # checked run (bounds, overflow, None traps)
-cpl test sol.cp                  # run @test functions
-cpl stress sol.cp brute.cp gen.cp --runs 500
-cpl build sol.cp                 # release C++17 build (unchecked hot loops)
-cpl submit sol.cp                # single-file C++17 ready for a judge
+1. Write `sol.cp`. Read constraints as types: `read<1..=2e5>()`.
+2. `cpl check sol.cp` until clean. Every error names the fix; `cpl fix` applies it.
+3. `cpl run sol.cp < sample.in` on every sample (checked: traps on bad index,
+   overflow, `None`).
+4. Add a brute `@alt(program) fn` in the same file; `cpl stress sol.cp` until
+   1000 cases agree. A failure is shrunk and saved to `sol.tests/`.
+5. `cpl lint sol.cp`; apply what it suggests unless clarity suffers.
+6. `cpl build sol.cp` writes the C++ to submit (`--judge <name>`, `cpl judges`).
+
+`R0402 todo reached` means a stdlib body is unwritten: write that piece in the
+solution and say so. Never paper over a checker error with casts.
+
+## The shape of a solution
+
+```cp
+let n = read<1..=2e5>()
+domain V = 1..=n
+let a = read<[V]Int>()
+let p = Prefix(a)
+print(p.fold(V(1)..=V(n)))
+print(V.first_true(v => a[v] > 2), none: -1)
+print(yes(a.all(x => x > 0)))
+// input: 4
+// input: 1 3 5 2
+// output: 11
+// output: 2
+// output: YES
 ```
 
-Use `cpl explain sol.cp` to inspect inferred widths/layouts, `cpl fmt` to
-format, and `cpl lint` for style/complexity warnings.
+```cp
+let n = read<1..=8>()
+domain V = 1..=n
+let a = read<[V]-5..=5>()
+print(V.all.map(v => a[v]).max()!)
 
-## Core Idioms
+@alt(program)
+fn brute():
+    let n = read<1..=8>()
+    let a = read<[n]-5..=5>()
+    var best = a[0]
+    for x in a: best max= x
+    print(best)
+// input: 3
+// input: 1 -2 3
+// output: 3
+```
 
-- **Domains vs cuts:** `domain V = 1..=n` makes a fresh index type. Arrays
-  `[V]Int` accept only `V`. `Cut<V>` marks boundaries *between* positions
-  (`0..=n`); `Range<V>` is a slice of positions (`l..r`, `l..=r`). Convert
-  raw ints via `V(x)` or `V.at(x)` (returns `?V`).
-- **Optionals (`?T`):** `None` and `Some(x)` replace `-1` and `INF`. Arithmetic
-  lifts (`a + b` is `None` if either is `None`). `min`/`max` and `min=`/`max=`
-  ignore `None`. Unwrap with `x ?? default` or `x!` (traps on `None`). Print
-  optionals with `print(x, none: -1)`.
-- **Bool output:** `Bool` does not implement `Print`. Always use `yes(b)`
-  (`YES`/`NO`), `yes(b, ("Yes", "No"))`, or `Int(b)`.
-- **Input & print:** `read<T>()` dispatches on the expected type and validates
-  ranges/domains: `let n = read<Int>()`, `let a = read<[V]Int>()`,
-  `let edges = read<[E](u: V, v: V)>()`. `print(a, b)` separates arguments with
-  spaces and ends with a newline; sequences print space-separated.
-- **Lending, moves, `.clone()`:** Plain scalars copy; heap values (`List`,
-  `[D]T`, `Set`, `Map`, structs holding them) move on assignment. Function
-  parameters lend by default. Mutation requires `mut` in both signature and
-  call site (`f(mut a)`). Use `.clone()` for an explicit heap copy.
-- **Generators & O(1) getters:** `fn f() -> yields T:` pushes values with
-  `yield x` and composes lazily without allocating; call `.collect()` to build
-  a `List`. Parentheses mean work: O(1) `@get` properties have no `()`
-  (`a.len`, `a.first`, `st.all`), while O(n)/allocating calls have `()`
-  (`a.sorted()`, `a.sum()`).
-- **Memoization & `@cache`:** `@memo(array)` caches recursive functions over
-  bounded domains/ranges in flat arrays; `@memo(map)` handles general keys.
-  `@cache` on a struct field lazily computes and memoizes derived data.
+## Practices
 
-## C++ Habit to CP Lang Rewrite
+1. **Name the algorithm.** If the stdlib has it (`Prefix`, `SegTree`, `Dsu`,
+   `first_true`, `compress`, `Graph`, `Mod<P>`), call it; don't hand-roll.
+2. **Whole-sequence ops for reductions, searches and builds** (`sum`, `max`,
+   `count(p)`, `all`, `sorted`, `[V] v => ...`); plain loops for real algorithms.
+3. **Name an index space** (`domain V = 1..=n`) when arrays share it or two
+   spaces could be confused (vertices vs edges, rows vs columns). Read 1-based
+   input straight into it: `read<[V]Int>()`, `read<[m](u: V, v: V)>()`.
+4. **Positions step, cuts bound.** `.prev`/`.next` keep the kind (`?V`);
+   `.l`/`.r` switch between a position and its cuts. `v.after`, `v.before`
+   are the positions after/before `v`. `v + 1` is an `Int`; get back with
+   `v.next`, `V(x)` (traps) or `V.at(x)` (`?V`). Ranges `l..=r` of positions.
+5. **Absence is `?T`, never `-1`/`INF`.** `+` lifts through `None`; `min=`/
+   `max=` ignore it; unwrap with `??`, `if let x = opt:` or `x!` (traps).
+6. **Constraints once, as types:** ranges and domains give width, overflow
+   proofs and input validation.
+7. **One home per fact:** derive, don't duplicate (`V.count`, not `n` twice).
+8. **Values by default.** `let` unless reassigned; `mut` at both ends for
+   in-place changes; heap values move, `.clone()` copies.
+9. **Per-test state lives under `@!multitest`** (first line; input starts with `t`).
+10. **Costs are visible:** no-paren members are O(1) (`a.len`, `v.next`);
+    work has parens (`a.sorted()`, `a.sum()`).
+11. **Print what you mean:** `yes(b)` for Bool (`answers: ("Yes", "No")`, or
+    `with io(answers: ...)` once); `print(x, none: -1)`; `sep:`, `end:`.
+12. **Evidence beside the solution:** `@alt` brutes, `@gen`, `@check`, `assert`.
+13. **One spelling per idea:** options are named args (`by:`), not `_by` twins.
+14. **Escape hatches explicit, rare, local** (`unchecked:`, inline C++).
+Clear beats short: never trade readability for tokens.
 
-| C++ habit | CP Lang v0.3 |
+## C++ habit → CP Lang
+
+| C++ | CP Lang |
 | --- | --- |
-| `int main() { cin >> n; }` | Top-level statements; `let n = read<Int>()` |
-| `vector<int> a(n);` with `0..n` | `domain I = 0..n; var a: [I]Int = 0` |
-| `const long long INF = 1e18;` | `var dp: [V]?Int = None` + `dp[v] min= d` |
-| `cout << (ok ? "YES" : "NO");` | `print(yes(ok))` |
-| `cout << (ans == INF ? -1 : ans);` | `print(ans, none: -1)` |
-| `void f(vector<int>& a)` / `f(a)` | `fn f(mut a: List<Int>):` / `f(mut a)` |
-| `auto b = a;` (copy vector) | `let b = a.clone()` (assignment moves) |
-| `sort(a.begin(), a.end(), cmp)` | `a.sort(by: x => desc(x))` or `a.sorted()` |
-| `vector<vector<int>> g(n)` | `let g = Graph.undirected(edges)` |
-| `# comment` / `/* ... */` | `// comment` (spaces only, no tabs) |
-| `for (int i = 0; i < n; i++)` | `for i in 0..n:` or `for v in V:` |
-| `if (x)` on int/optional | `if x != 0:` / `if let Some(v) = x:` |
+| `cin >> n; vector<ll> a(n)` | `let a = read<[n]Int>()` or `read<[V]Int>()` |
+| `dist(n, INF)`, `== INF ? -1` | `var d: [V]?Int = None`; `print(d, none: -1)` |
+| `cout << (ok ? "YES" : "NO")` | `print(yes(ok))` |
+| `while (lo < hi) { mid = ... }` | `(lo..=hi).first_true(x => ok(x))` |
+| `pre[i+1] = pre[i] + a[i]` | `let p = Prefix(a)`; `p.fold(l..=r)` |
+| `sort + unique + lower_bound` | `let (domain X, xs) = compress(vals)` |
+| `auto b = a;` | `let b = a.clone()` (assignment moves) |
+| `void f(vector<int>& a)` | `fn f(mut a: List<Int>):`, call `f(mut a)` |
+| `p[find(a)] = find(b)` | `var d = Dsu<V>()`; `d.unite(a, b)`; `d.same(a, b)` |
+| `x % MOD` everywhere | `Mod<P>` values: `z ** k`, `z.inv` |
+| `for (i = 0; i < n; i++) cnt += p(a[i])` | `a.count(x => p(x))` |
 
-## Common Mistakes & Error Codes
+## Traps that compile
 
-- `E0001` Tabs in indentation -> use 4 spaces.
-- `E0004` `#` is not a comment -> use `//`.
-- `E0110` Unparenthesized `??` mixed with other operators -> write `(a ?? 0) + 1`.
-- `E0208` Uppercase value/function name -> values/fns are `snake_case`, types/domains `PascalCase`.
-- `E0301` Wrong domain index -> index `[V]T` only with `V`, not `Int` or another domain.
-- `E0307` Non-`Bool` condition -> write `if x != 0:` or `if let Some(v) = opt:`.
-- `E0308` Ordering on `?T` -> unwrap first (`(a ?? 0) < b`) or use `min`/`max`.
-- `E0401` Assigning to `let` -> declare with `var`.
-- `E0402` Missing `mut` at call site -> pass `f(mut x)` to a `mut` parameter.
-- `E0601` / `E0602` Conflicting mutable lend or write while lent -> finish using views/generators before mutating.
-- `E0606` Printing `Bool` directly -> use `print(yes(b))`.
-- `E0608` Implicit copy of a heap value -> move once or call `.clone()`.
-- `L0608` Getter called with `()` or O(n) method missing `()` -> `a.len`, `a.sorted()`.
-- `R0301` Runtime trap unwrapping `None` with `!` -> guard with `if let Some(v) = ...` or `??`.
+- `count(p(x) for x in xs)` counts every element. Write `xs.count(x => p(x))`.
+- `print(true)` is an error (E0606): Bool has no `Print`; use `yes(b)`.
+- `m[k]` on a missing `Map` key traps; use `m.get(k) ?? 0`.
 
-## Supplements (Read When Needed)
+## Supplements (read when needed)
 
-- `io.md` — `read<T>()`, record/graph readers, `print`, `yes()`, `none:`, `@!multitest`, interactive flushing.
-- `domains-and-cuts.md` — `domain`, positions vs `Cut<D>`, `Range<D>`, `[D]T`, 2D arrays, `Pair<D>`, `Subset<D>`, binary search.
-- `ownership.md` — moves, lends, `mut` params, `.clone()`, views, `@cache`, avoiding `E0601`/`E0602`/`E0608`.
-- `functions-and-generators.md` — closures, `-> yields T`, lazy pipelines, `.collect()`, `@memo(array)`/`@memo(map)`.
-- `errors.md` — reading diagnostics and fixing top `E`/`W`/`L`/`R` codes.
-- `debugging-and-stress.md` — `cpl run`, `cpl test`, `cpl stress`, `assert`, `debug`, `unchecked:`, judge builds.
-- `idioms.md` — worked before/after CP Lang solutions (DP, graphs, binary search, data structures).
-- `stdlib/README.md` — index of all 39 standard-library modules (`stdlib/<module>.md`).
+- `io.md`: readers, records, `print` options, `yes`, multitest, interaction.
+- `domains-and-cuts.md`: domains, positions, cuts, ranges, `[R, C]T`, binary search.
+- `ownership.md`: moves, lends, `mut`, `.clone()`, views, `@cache` fields.
+- `functions-and-generators.md`: closures, `-> yields T`, `@get`, `@memo(array|map)`.
+- `errors.md`: reading diagnostics; top `E`/`W`/`L`/`R` codes and fixes.
+- `debugging-and-stress.md`: `@alt`, `@gen`, `@check`, `cpl stress`, traces, `cpl dap`.
+- `idioms.md`: worked before/after solutions (DP, graphs, search, structures).
+- `stdlib/README.md`: every module with signatures, costs and traps.
