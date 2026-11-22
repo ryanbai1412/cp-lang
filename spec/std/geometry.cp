@@ -31,7 +31,7 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result overflows `Int`
     /// example: `Pt(3, 4).norm2 == 25`
     /// example: `Pt(0, 0).norm2 == 0`
-    @get pub fn norm2(self) -> Int = todo
+    @get pub fn norm2(self) -> Int = x * x + y * y
 
     /// The exact squared length `x*x + y*y`, computed in `I128`.
     ///
@@ -39,7 +39,7 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result overflows `I128` (only for coordinates near `Int.MIN`)
     /// example: `Pt(3, 4).norm2_128 == 25`
     /// example: `Pt(3_000_000_000, 4_000_000_000).norm2_128 == 25_000_000_000_000_000_000`
-    @get pub fn norm2_128(self) -> I128 = todo
+    @get pub fn norm2_128(self) -> I128 = I128(x) * I128(x) + I128(y) * I128(y)
 
     /// The Euclidean length `sqrt(x*x + y*y)` as `F64` (`hypot`, so no intermediate overflow).
     ///
@@ -47,21 +47,21 @@ pub struct Pt(x: Int, y: Int):
     /// traps: never
     /// example: `Pt(3, 4).len == 5.0`
     /// example: `Pt(0, 0).len == 0.0`
-    @get pub fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = sqrt(F64(self.norm2_128))
 
     /// `self` rotated 90 degrees counter-clockwise: `Pt(-y, x)`.
     ///
     /// cost: O(1)
     /// traps: when `y` is `Int.MIN`
     /// example: `Pt(1, 2).perp == Pt(-2, 1)`
-    @get pub fn perp(self) -> Pt = todo
+    @get pub fn perp(self) -> Pt = Pt(-y, x)
 
     /// `self` rotated 90 degrees clockwise: `Pt(y, -x)`.
     ///
     /// cost: O(1)
     /// traps: when `x` is `Int.MIN`
     /// example: `Pt(1, 2).perp_cw == Pt(2, -1)`
-    @get pub fn perp_cw(self) -> Pt = todo
+    @get pub fn perp_cw(self) -> Pt = Pt(y, -x)
 
     /// The polar angle `atan2(y, x)` in `(-pi, pi]`; 0 for the zero vector.
     ///
@@ -73,7 +73,7 @@ pub struct Pt(x: Int, y: Int):
     /// example: `Pt(0, -1).angle < 0.0`
     /// example: `Pt(-1, 0).angle > 3.14`
     /// example: `Pt(0, 0).angle == 0.0`
-    @get pub fn angle(self) -> F64 = todo
+    @get pub fn angle(self) -> F64 = atan2(F64(y), F64(x))
 
     /// The reduced integer direction `(x / g, y / g)` with `g = gcd(|x|, |y|)`; `Pt(0, 0)` for the
     /// zero vector.
@@ -86,14 +86,17 @@ pub struct Pt(x: Int, y: Int):
     /// example: `Pt(4, -6).unit_dir() == Pt(2, -3)`
     /// example: `Pt(0, 5).unit_dir() == Pt(0, 1)`
     /// example: `Pt(0, 0).unit_dir() == Pt(0, 0)`
-    pub fn unit_dir(self) -> Pt = todo
+    pub fn unit_dir(self) -> Pt:
+        if x == 0 and y == 0: return Pt(0, 0)
+        let g = gcd(abs(x), abs(y))
+        Pt(x / g, y / g)
 
     /// `self` as a floating-point `Vec(F64(x), F64(y))`: the explicit way across.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt(1, 2).to_vec == Vec(1.0, 2.0)`
-    @get pub fn to_vec(self) -> Vec = todo
+    @get pub fn to_vec(self) -> Vec = Vec(F64(x), F64(y))
 
     /// The dot product `x * o.x + y * o.y`, in `Int`.
     ///
@@ -101,14 +104,14 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result or a product overflows `Int`
     /// example: `Pt(1, 2).dot(Pt(3, 4)) == 11`
     /// example: `Pt(1, 0).dot(Pt(0, 1)) == 0`
-    pub fn dot(self, o: Pt) -> Int = todo
+    pub fn dot(self, o: Pt) -> Int = x * o.x + y * o.y
 
     /// The exact dot product `x * o.x + y * o.y`, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the sum overflows `I128` (only when every coordinate is near `Int.MIN`)
     /// example: `Pt(1, 2).dot128(Pt(3, 4)) == 11`
-    pub fn dot128(self, o: Pt) -> I128 = todo
+    pub fn dot128(self, o: Pt) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y)
 
     /// The 2D cross product `x * o.y - y * o.x`, in `Int`: positive when `o` is counter-clockwise
     /// from `self`, negative when clockwise, 0 when parallel.
@@ -118,14 +121,14 @@ pub struct Pt(x: Int, y: Int):
     /// example: `Pt(1, 0).cross(Pt(0, 1)) == 1`
     /// example: `Pt(1, 2).cross(Pt(3, 4)) == -2`
     /// example: `Pt(1, 2).cross(Pt(2, 4)) == 0`
-    pub fn cross(self, o: Pt) -> Int = todo
+    pub fn cross(self, o: Pt) -> Int = x * o.y - y * o.x
 
     /// The exact 2D cross product `x * o.y - y * o.x`, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the difference overflows `I128` (only for coordinates near `Int.MIN`)
     /// example: `Pt(1, 2).cross128(Pt(3, 4)) == -2`
-    pub fn cross128(self, o: Pt) -> I128 = todo
+    pub fn cross128(self, o: Pt) -> I128 = I128(x) * I128(o.y) - I128(y) * I128(o.x)
 
     /// The squared Euclidean distance from `self` to `o`, in `Int`.
     ///
@@ -133,35 +136,35 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result overflows `Int`
     /// example: `Pt(0, 0).dist2(Pt(3, 4)) == 25`
     /// example: `Pt(1, 1).dist2(Pt(1, 1)) == 0`
-    pub fn dist2(self, o: Pt) -> Int = todo
+    pub fn dist2(self, o: Pt) -> Int = (o - self).norm2
 
     /// The exact squared Euclidean distance from `self` to `o`, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `I128` (coordinates beyond about `4e18` apart)
     /// example: `Pt(0, 0).dist2_128(Pt(3, 4)) == 25`
-    pub fn dist2_128(self, o: Pt) -> I128 = todo
+    pub fn dist2_128(self, o: Pt) -> I128 = (I128(o.x) - I128(x)) * (I128(o.x) - I128(x)) + (I128(o.y) - I128(y)) * (I128(o.y) - I128(y))
 
     /// The Euclidean distance from `self` to `o`, as `F64`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt(0, 0).dist(Pt(3, 4)) == 5.0`
-    pub fn dist(self, o: Pt) -> F64 = todo
+    pub fn dist(self, o: Pt) -> F64 = sqrt(F64(self.dist2_128(o)))
 
     /// The Manhattan (L1) distance `|x - o.x| + |y - o.y|`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt(1, 1).manhattan(Pt(4, -3)) == 7`
-    pub fn manhattan(self, o: Pt) -> Int = todo
+    pub fn manhattan(self, o: Pt) -> Int = abs(o.x - x) + abs(o.y - y)
 
     /// The Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|)`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt(1, 1).chebyshev(Pt(4, -3)) == 4`
-    pub fn chebyshev(self, o: Pt) -> Int = todo
+    pub fn chebyshev(self, o: Pt) -> Int = max(abs(o.x - x), abs(o.y - y))
 
 impl Add for Pt:
     fn add(a, b) = Pt(a.x + b.x, a.y + b.y)
@@ -228,7 +231,17 @@ fn half(a: Pt) -> Int:
 /// example: `angle_less(Pt(0, 0), Pt(1, 0)) == true`
 /// example: `angle_less(Pt(2, 0), Pt(1, 0)) == false`
 /// example: `angle_less(Pt(-1, 0), Pt(1, 0), from: Pt(0, 1)) == true`
-pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool = todo
+fn half_from(a: Pt, from: Pt) -> Int:
+    if a == Pt(0, 0): return 0
+    let c = from.cross128(a)
+    if c > I128(0) or (c == I128(0) and from.dot128(a) > I128(0)): 1 else: 2
+
+pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool:
+    assert from != Pt(0, 0), "`angle_less` needs a nonzero `from`"
+    let ha = half_from(a, from)
+    let hb = half_from(b, from)
+    if ha != hb: return ha < hb
+    ha != 0 and a.cross128(b) > I128(0)
 
 /// O(1) comparison key. Counter-clockwise by direction, starting from the positive x axis.
 /// Exact in `I128`; vectors in the same direction compare equal, zero comes first.
@@ -242,7 +255,7 @@ impl Ord for ByAngle:
 pub struct ByAngleFrom(base: Pt, p: Pt)
 
 impl Ord for ByAngleFrom:
-    fn lt(a, b) = todo
+    fn lt(a, b) = angle_less(a.p, b.p, from: a.base)
 
 /// An exact, float-free angular sort key for `p`: `ByAngle(p)`, ordered as `angle_less` from `+x`.
 ///
@@ -420,7 +433,22 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 /// ties: equal points keep the smallest position
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `lower_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 1, 3]`
-pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
+pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
+    var h: List<D> = []
+    var prev: ?D = None
+    for i in D:
+        let p = pts[i]
+        if prev != None:
+            let q = pts[prev!]
+            assert q <= p, "`lower_hull_idx` needs `pts` sorted by `(x, y)`"
+            if q == p: continue
+        prev = Some(i)
+        while h.len >= 2:
+            let t = turn(pts[h[h.len - 2]], pts[h[h.len - 1]], p)
+            if t < 0 or (not collinear and t == 0): h.pop()
+            else: break
+        h.push(i)
+    h
 
 /// The upper hull chain of `(x, y)`-sorted `pts` as domain positions, left to right; otherwise
 /// as `upper_hull`, and equal points keep the smallest position.
@@ -431,7 +459,22 @@ pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 /// ties: equal points keep the smallest position
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `upper_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 2, 3]`
-pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
+pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
+    var h: List<D> = []
+    var prev: ?D = None
+    for i in D:
+        let p = pts[i]
+        if prev != None:
+            let q = pts[prev!]
+            assert q <= p, "`upper_hull_idx` needs `pts` sorted by `(x, y)`"
+            if q == p: continue
+        prev = Some(i)
+        while h.len >= 2:
+            let t = turn(pts[h[h.len - 2]], pts[h[h.len - 1]], p)
+            if t > 0 or (not collinear and t == 0): h.pop()
+            else: break
+        h.push(i)
+    h
 
 /// O(n) memory. Incremental 2D convex hull of integer points backed by upper and lower chains.
 pub struct OnlineHull:
@@ -1170,7 +1213,9 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)> = todo
 /// traps: when `poly` has fewer than 3 vertices, or the area overflows `Int`
 /// example: `pick_interior([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 1`
 /// example: `pick_interior([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 3`
-pub fn pick_interior(poly: List<Pt>) -> Int = todo
+pub fn pick_interior(poly: List<Pt>) -> Int:
+    assert poly.len >= 3, "`pick_interior` needs at least 3 vertices"
+    (abs(area2(poly)) - pick_boundary(poly)) / 2 + 1
 
 /// The number of lattice points on the boundary of the lattice polygon `poly`: the sum of
 /// `gcd(|dx|, |dy|)` over its edges, including the closing edge.
@@ -1180,7 +1225,12 @@ pub fn pick_interior(poly: List<Pt>) -> Int = todo
 /// traps: when the sum overflows `Int`
 /// example: `pick_boundary([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 8`
 /// example: `pick_boundary([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 12`
-pub fn pick_boundary(poly: List<Pt>) -> Int = todo
+pub fn pick_boundary(poly: List<Pt>) -> Int:
+    var b = 0
+    for i in 0..poly.len:
+        let d = poly[(i + 1) % poly.len] - poly[i]
+        b += gcd(abs(d.x), abs(d.y))
+    b
 
 // ---- careful floating-point geometry
 
@@ -1203,6 +1253,8 @@ pub fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool = abs(a - b) <= eps
 /// example: `sign_eps(2.0) == 1`
 /// example: `sign_eps(-0.5) == -1`
 /// example: `sign_eps(1e-12) == 0`
+fn pi() -> F64 = atan2(0.0, -1.0)
+
 pub fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int = if x > eps: 1 else: if x < -eps: -1 else: 0
 
 /// O(1) value type. A 2D floating-point point or vector. Kept distinct from `Pt` so exact
@@ -1213,28 +1265,28 @@ pub struct Vec(x: F64, y: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(3.0, 4.0).norm2 == 25.0`
-    @get pub fn norm2(self) -> F64 = todo
+    @get pub fn norm2(self) -> F64 = x * x + y * y
 
     /// The Euclidean length (`hypot(x, y)`, so no intermediate overflow).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(3.0, 4.0).len == 5.0`
-    @get pub fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = sqrt(x * x + y * y)
 
     /// `self` rotated 90 degrees counter-clockwise: `Vec(-y, x)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).perp == Vec(-2.0, 1.0)`
-    @get pub fn perp(self) -> Vec = todo
+    @get pub fn perp(self) -> Vec = Vec(-y, x)
 
     /// `self` rotated 90 degrees clockwise: `Vec(y, -x)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).perp_cw == Vec(2.0, -1.0)`
-    @get pub fn perp_cw(self) -> Vec = todo
+    @get pub fn perp_cw(self) -> Vec = Vec(y, -x)
 
     /// The polar angle `atan2(y, x)` in `(-pi, pi]`; a `-0.0` `y` counts as `0.0`, so the negative x
     /// axis gives `PI`, and the zero vector gives 0.0.
@@ -1244,7 +1296,7 @@ pub struct Vec(x: F64, y: F64):
     /// example: `Vec(1.0, 0.0).angle == 0.0`
     /// example: `Vec(-1.0, 0.0).angle == PI`
     /// example: `Vec(0.0, 1.0).angle == PI / 2.0`
-    @get pub fn angle(self) -> F64 = todo
+    @get pub fn angle(self) -> F64 = atan2(y, x)
 
     /// The unit vector `Vec(cos(rad), sin(rad))`.
     ///
@@ -1259,7 +1311,10 @@ pub struct Vec(x: F64, y: F64):
     /// cost: O(1)
     /// traps: when `self.len == 0.0`
     /// example: `Vec(3.0, 4.0).unit == Vec(0.6, 0.8)`
-    @get pub fn unit(self) -> Vec = todo
+    @get pub fn unit(self) -> Vec:
+        let l = self.len
+        assert l != 0.0, "`unit` needs a nonzero vector"
+        Vec(x / l, y / l)
 
     /// `self` rotated by the direction `by`, as the complex product `self * by`:
     /// `Vec(x * by.x - y * by.y, x * by.y + y * by.x)`. A unit `by` rotates without scaling; get
@@ -1275,28 +1330,28 @@ pub struct Vec(x: F64, y: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).dot(Vec(3.0, 4.0)) == 11.0`
-    pub fn dot(self, o: Vec) -> F64 = todo
+    pub fn dot(self, o: Vec) -> F64 = x * o.x + y * o.y
 
     /// The 2D cross product `x * o.y - y * o.x`: positive when `o` is counter-clockwise from `self`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).cross(Vec(3.0, 4.0)) == -2.0`
-    pub fn cross(self, o: Vec) -> F64 = todo
+    pub fn cross(self, o: Vec) -> F64 = x * o.y - y * o.x
 
     /// The squared Euclidean distance from `self` to `o`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(0.0, 0.0).dist2(Vec(3.0, 4.0)) == 25.0`
-    pub fn dist2(self, o: Vec) -> F64 = todo
+    pub fn dist2(self, o: Vec) -> F64 = (o - self).norm2
 
     /// The Euclidean distance from `self` to `o`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(0.0, 0.0).dist(Vec(3.0, 4.0)) == 5.0`
-    pub fn dist(self, o: Vec) -> F64 = todo
+    pub fn dist(self, o: Vec) -> F64 = (o - self).len
 
 impl Add for Vec:
     fn add(a, b) = Vec(a.x + b.x, a.y + b.y)
@@ -1328,7 +1383,7 @@ pub fn turn_eps(
     b: Vec,
     c: Vec,
     eps: F64 = 1e-9,
-) -> Int = todo
+) -> Int = sign_eps((b - a).cross(c - a), eps)
 
 /// The signed angle from `a` to `b`, `atan2(a.cross(b), a.dot(b))`, in `(-pi, pi]`: positive when
 /// `b` is counter-clockwise from `a`. 0.0 when either is the zero vector.
@@ -1338,7 +1393,7 @@ pub fn turn_eps(
 /// example: `angle_between(Vec(1.0, 0.0), Vec(0.0, 1.0)) == PI / 2.0`
 /// example: `angle_between(Vec(1.0, 0.0), Vec(0.0, -1.0)) == -PI / 2.0`
 /// example: `angle_between(Vec(1.0, 0.0), Vec(-1.0, 0.0)) == PI`
-pub fn angle_between(a: Vec, b: Vec) -> F64 = todo
+pub fn angle_between(a: Vec, b: Vec) -> F64 = atan2(a.cross(b), a.dot(b))
 
 /// The orthogonal projection of `p` onto the line through `a` and `b`:
 /// `a + (b - a) * ((p - a).dot(b - a) / (b - a).norm2)`.
@@ -1452,21 +1507,23 @@ pub struct Circle(c: Vec, r: F64):
     /// traps: never
     /// example: `Circle.through(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Circle(Vec(3.0, 4.0), 5.0))`
     /// example: `Circle.through(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
-    pub fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
+    pub fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle:
+        let o = circumcenter(a, b, c, eps)?
+        Some(Circle(o, o.dist(a)))
 
     /// The disk area, computed as `PI * r * r`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Circle(Vec(0.0, 0.0), 1.0).area == PI`
-    @get pub fn area(self) -> F64 = todo
+    @get pub fn area(self) -> F64 = pi() * r * r
 
     /// The circumference, computed as `2.0 * PI * r`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Circle(Vec(0.0, 0.0), 0.5).circumference == PI`
-    @get pub fn circumference(self) -> F64 = todo
+    @get pub fn circumference(self) -> F64 = 2.0 * pi() * r
 
     /// Where `p` is relative to the disk, with `d = c.dist(p)`: `Boundary` when `|d - r| <= eps`,
     /// else `Inside` when `d < r`, else `Outside`.
@@ -1476,7 +1533,11 @@ pub struct Circle(c: Vec, r: F64):
     /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(3.0, 4.0)) == Location.Boundary`
     /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(1.0, 1.0)) == Location.Inside`
     /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(6.0, 0.0)) == Location.Outside`
-    pub fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location = todo
+    pub fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location:
+        let d = c.dist(p)
+        if abs(d - r) <= eps: Location.Boundary
+        elif d < r: Location.Inside
+        else: Location.Outside
 
 /// The inscribed circle of the triangle `a b c`, or `None` when `|(b - a).cross(c - a)| <= eps`
 /// (collinear).
@@ -1488,7 +1549,14 @@ pub struct Circle(c: Vec, r: F64):
 /// traps: never
 /// example: `incenter(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Circle(Vec(2.0, 2.0), 2.0))`
 /// example: `incenter(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
-pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
+pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle:
+    let k = abs((b - a).cross(c - a))
+    if k <= eps: return None
+    let la = b.dist(c)
+    let lb = c.dist(a)
+    let lc = a.dist(b)
+    let per = la + lb + lc
+    Some(Circle((a * la + b * lb + c * lc) / per, k / per))
 
 /// The points where `circle` meets the infinite line through `a` and `b`: two when it crosses,
 /// one (the foot of the perpendicular from the centre) when the distance is within `eps` of `r`,
@@ -1564,7 +1632,11 @@ pub fn circle_circle_area(a: Circle, b: Circle, eps: F64 = 1e-9) -> F64 = todo
 /// traps: when `p == across.c`
 /// example: `invert(Vec(4.0, 0.0), Circle(Vec(0.0, 0.0), 2.0)) == Vec(1.0, 0.0)`
 /// example: `invert(Vec(2.0, 0.0), Circle(Vec(0.0, 0.0), 2.0)) == Vec(2.0, 0.0)`
-pub fn invert(p: Vec, across: Circle) -> Vec = todo
+pub fn invert(p: Vec, across: Circle) -> Vec:
+    let d = p - across.c
+    let n = d.norm2
+    assert n != 0.0, "`invert` needs `p` away from the centre"
+    across.c + d * (across.r * across.r / n)
 
 /// The area of the union of the disks `circles`, by Green's theorem over the arcs on the union's
 /// boundary.
@@ -1645,7 +1717,9 @@ pub struct HalfPlane(p: Vec, dir: Vec):
     /// cost: O(1)
     /// traps: when `a == b`
     /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)) == HalfPlane(Vec(0.0, 0.0), Vec(1.0, 0.0))`
-    pub fn through(a: Vec, b: Vec) -> HalfPlane = todo
+    pub fn through(a: Vec, b: Vec) -> HalfPlane:
+        assert a != b, "`HalfPlane.through` needs two distinct points"
+        HalfPlane(a, b - a)
 
     /// The half-plane `{ (x, y) | a*x + b*y + c >= 0 }`, as `HalfPlane(p, Vec(b, -a))` with `p` the
     /// line's point nearest the origin, `Vec(-a * c, -b * c) / (a*a + b*b)`.
@@ -1654,7 +1728,10 @@ pub struct HalfPlane(p: Vec, dir: Vec):
     /// traps: when `a == 0.0` and `b == 0.0`
     /// example: `HalfPlane.from_line(0.0, 1.0, -2.0) == HalfPlane(Vec(0.0, 2.0), Vec(1.0, 0.0))`
     /// example: `HalfPlane.from_line(1.0, 0.0, 0.0).side(Vec(3.0, 7.0)) == 3.0`
-    pub fn from_line(a: F64, b: F64, c: F64) -> HalfPlane = todo
+    pub fn from_line(a: F64, b: F64, c: F64) -> HalfPlane:
+        let n = a * a + b * b
+        assert n != 0.0, "`HalfPlane.from_line` needs `a` or `b` nonzero"
+        HalfPlane(Vec(a, b) * (-c / n), Vec(b, -a))
 
     /// The signed value `dir.cross(q - p)`: positive left of the line (inside), 0 on it, negative
     /// outside. It is `|dir|` times the signed distance.
@@ -1663,7 +1740,7 @@ pub struct HalfPlane(p: Vec, dir: Vec):
     /// traps: never
     /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)).side(Vec(3.0, 2.0)) == 2.0`
     /// example: `HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)).side(Vec(3.0, -2.0)) == -2.0`
-    pub fn side(self, q: Vec) -> F64 = todo
+    pub fn side(self, q: Vec) -> F64 = dir.cross(q - p)
 
 fn hp_out(
     h: (p: Vec, dir: Vec, ang: F64),
@@ -2095,7 +2172,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: when the product overflows `Int`
     /// example: `Rect(0..3, 0..2).area == 6`
     /// example: `Rect(3..1, 0..2).area == 0`
-    @get pub fn area(self) -> Int = todo
+    @get pub fn area(self) -> Int = max(x.end - x.start, 0) * max(y.end - y.start, 0)
 
     /// Whether either axis range is empty.
     ///
@@ -2103,7 +2180,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: never
     /// example: `Rect(0..0, 0..5).is_empty == true`
     /// example: `Rect(0..1, 0..1).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = x.end <= x.start or y.end <= y.start
 
     /// Whether `p.x` is in `x` and `p.y` is in `y` (half-open, so the top and right edges are out).
     ///
@@ -2111,7 +2188,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: never
     /// example: `Rect(0..3, 0..2).contains(Pt(2, 1)) == true`
     /// example: `Rect(0..3, 0..2).contains(Pt(3, 1)) == false`
-    pub fn contains(self, p: Pt) -> Bool = todo
+    pub fn contains(self, p: Pt) -> Bool = x.start <= p.x and p.x < x.end and y.start <= p.y and p.y < y.end
 
     /// The common part of two rectangles, or `None` when it is empty (including rectangles that only
     /// touch along an edge).
@@ -2120,7 +2197,9 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: never
     /// example: `Rect(0..3, 0..3).intersect(Rect(1..5, 2..4)) == Some(Rect(1..3, 2..3))`
     /// example: `Rect(0..1, 0..1).intersect(Rect(1..2, 0..1)) == None`
-    pub fn intersect(self, o: Rect) -> ?Rect = todo
+    pub fn intersect(self, o: Rect) -> ?Rect:
+        let r = Rect(max(x.start, o.x.start)..min(x.end, o.x.end), max(y.start, o.y.start)..min(y.end, o.y.end))
+        if r.is_empty: None else: Some(r)
 
 /// The area of the union of `rects`, by a sweep over x with a segment tree over the compressed y
 /// coordinates. Empty rectangles add nothing.
@@ -2203,42 +2282,42 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt3(1, 2, 2).norm2 == 9`
-    @get pub fn norm2(self) -> Int = todo
+    @get pub fn norm2(self) -> Int = x * x + y * y + z * z
 
     /// The exact squared length, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `I128`
     /// example: `Pt3(1, 2, 2).norm2_128 == 9`
-    @get pub fn norm2_128(self) -> I128 = todo
+    @get pub fn norm2_128(self) -> I128 = I128(x) * I128(x) + I128(y) * I128(y) + I128(z) * I128(z)
 
     /// The Euclidean length as `F64`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt3(1, 2, 2).len == 3.0`
-    @get pub fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = sqrt(F64(self.norm2_128))
 
     /// `self` as a floating-point `Vec3`: the explicit way across.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt3(1, 2, 2).to_vec3 == Vec3(1.0, 2.0, 2.0)`
-    @get pub fn to_vec3(self) -> Vec3 = todo
+    @get pub fn to_vec3(self) -> Vec3 = Vec3(F64(x), F64(y), F64(z))
 
     /// The dot product `x * o.x + y * o.y + z * o.z`, in `Int`.
     ///
     /// cost: O(1)
     /// traps: when the result or a product overflows `Int`
     /// example: `Pt3(1, 2, 3).dot(Pt3(4, 5, 6)) == 32`
-    pub fn dot(self, o: Pt3) -> Int = todo
+    pub fn dot(self, o: Pt3) -> Int = x * o.x + y * o.y + z * o.z
 
     /// The exact dot product, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the sum overflows `I128`
     /// example: `Pt3(1, 2, 3).dot128(Pt3(4, 5, 6)) == 32`
-    pub fn dot128(self, o: Pt3) -> I128 = todo
+    pub fn dot128(self, o: Pt3) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y) + I128(z) * I128(o.z)
 
     /// The cross product `Pt3(y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x)`, perpendicular to both by
     /// the right-hand rule.
@@ -2247,35 +2326,35 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// traps: when a component overflows `Int`
     /// example: `Pt3(1, 0, 0).cross(Pt3(0, 1, 0)) == Pt3(0, 0, 1)`
     /// example: `Pt3(1, 2, 3).cross(Pt3(4, 5, 6)) == Pt3(-3, 6, -3)`
-    pub fn cross(self, o: Pt3) -> Pt3 = todo
+    pub fn cross(self, o: Pt3) -> Pt3 = Pt3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
 
     /// The squared Euclidean distance from `self` to `o`, in `Int`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt3(0, 0, 0).dist2(Pt3(1, 2, 2)) == 9`
-    pub fn dist2(self, o: Pt3) -> Int = todo
+    pub fn dist2(self, o: Pt3) -> Int = (o - self).norm2
 
     /// The Euclidean distance from `self` to `o`, as `F64`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt3(0, 0, 0).dist(Pt3(1, 2, 2)) == 3.0`
-    pub fn dist(self, o: Pt3) -> F64 = todo
+    pub fn dist(self, o: Pt3) -> F64 = (o - self).len
 
     /// The Manhattan (L1) distance `|x - o.x| + |y - o.y| + |z - o.z|`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt3(1, 1, 1).manhattan(Pt3(2, -1, 4)) == 6`
-    pub fn manhattan(self, o: Pt3) -> Int = todo
+    pub fn manhattan(self, o: Pt3) -> Int = abs(o.x - x) + abs(o.y - y) + abs(o.z - z)
 
     /// The Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|, |z - o.z|)`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt3(1, 1, 1).chebyshev(Pt3(2, -1, 4)) == 3`
-    pub fn chebyshev(self, o: Pt3) -> Int = todo
+    pub fn chebyshev(self, o: Pt3) -> Int = max(max(abs(o.x - x), abs(o.y - y)), abs(o.z - z))
 
 impl Add for Pt3:
     fn add(a, b) = Pt3(a.x + b.x, a.y + b.y, a.z + b.z)
@@ -2353,49 +2432,52 @@ pub struct Vec3(x: F64, y: F64, z: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 2.0).norm2 == 9.0`
-    @get pub fn norm2(self) -> F64 = todo
+    @get pub fn norm2(self) -> F64 = x * x + y * y + z * z
 
     /// The Euclidean length.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 2.0).len == 3.0`
-    @get pub fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = sqrt(x * x + y * y + z * z)
 
     /// The unit vector in the direction of `self`: each coordinate divided by `self.len`.
     ///
     /// cost: O(1)
     /// traps: when `self.len == 0.0`
     /// example: `Vec3(0.0, 0.0, 2.0).unit == Vec3(0.0, 0.0, 1.0)`
-    @get pub fn unit(self) -> Vec3 = todo
+    @get pub fn unit(self) -> Vec3:
+        let l = self.len
+        assert l != 0.0, "`unit` needs a nonzero vector"
+        Vec3(x / l, y / l, z / l)
 
     /// The dot product `x * o.x + y * o.y + z * o.z`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 3.0).dot(Vec3(4.0, 5.0, 6.0)) == 32.0`
-    pub fn dot(self, o: Vec3) -> F64 = todo
+    pub fn dot(self, o: Vec3) -> F64 = x * o.x + y * o.y + z * o.z
 
     /// The cross product, by the right-hand rule, as for `Pt3.cross`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 0.0, 0.0).cross(Vec3(0.0, 1.0, 0.0)) == Vec3(0.0, 0.0, 1.0)`
-    pub fn cross(self, o: Vec3) -> Vec3 = todo
+    pub fn cross(self, o: Vec3) -> Vec3 = Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
 
     /// The squared Euclidean distance from `self` to `o`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(0.0, 0.0, 0.0).dist2(Vec3(1.0, 2.0, 2.0)) == 9.0`
-    pub fn dist2(self, o: Vec3) -> F64 = todo
+    pub fn dist2(self, o: Vec3) -> F64 = (o - self).norm2
 
     /// The Euclidean distance from `self` to `o`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(0.0, 0.0, 0.0).dist(Vec3(1.0, 2.0, 2.0)) == 3.0`
-    pub fn dist(self, o: Vec3) -> F64 = todo
+    pub fn dist(self, o: Vec3) -> F64 = (o - self).len
 
     /// `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with
     /// `axis` pointing at the viewer), by Rodrigues' formula
@@ -2410,19 +2492,19 @@ pub struct Vec3(x: F64, y: F64, z: F64):
     pub fn rot(self, axis: Vec3, rad: F64) -> Vec3 = todo
 
 impl Add for Vec3:
-    fn add(a, b) = todo
+    fn add(a, b) = Vec3(a.x + b.x, a.y + b.y, a.z + b.z)
 
 impl Sub for Vec3:
-    fn sub(a, b) = todo
+    fn sub(a, b) = Vec3(a.x - b.x, a.y - b.y, a.z - b.z)
 
 impl Neg for Vec3:
-    fn neg(a) = todo
+    fn neg(a) = Vec3(-a.x, -a.y, -a.z)
 
 impl Mul<F64> for Vec3:
-    fn mul(a, k) = todo
+    fn mul(a, k) = Vec3(a.x * k, a.y * k, a.z * k)
 
 impl Div<F64> for Vec3:
-    fn div(a, k) = todo
+    fn div(a, k) = Vec3(a.x / k, a.y / k, a.z / k)
 
 /// O(1) value type. A 3D plane `{ p | n.dot(p) == d }` with unit normal `n`.
 pub struct Plane3(n: Vec3, d: F64):
@@ -2436,7 +2518,11 @@ pub struct Plane3(n: Vec3, d: F64):
     /// traps: never
     /// example: `Plane3.through(Vec3(0.0, 0.0, 1.0), Vec3(1.0, 0.0, 1.0), Vec3(0.0, 1.0, 1.0)) == Some(Plane3(Vec3(0.0, 0.0, 1.0), 1.0))`
     /// example: `Plane3.through(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 1.0, 1.0), Vec3(2.0, 2.0, 2.0)) == None`
-    pub fn through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3 = todo
+    pub fn through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3:
+        let m = (b - a).cross(c - a)
+        if m.len <= eps: return None
+        let n = m.unit
+        Some(Plane3(n, n.dot(a)))
 
     /// The signed distance `n.dot(p) - d`: positive on the side `n` points to.
     ///
@@ -2444,14 +2530,14 @@ pub struct Plane3(n: Vec3, d: F64):
     /// traps: never
     /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).dist(Vec3(5.0, 5.0, 3.0)) == 2.0`
     /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).dist(Vec3(5.0, 5.0, 0.0)) == -1.0`
-    pub fn dist(self, p: Vec3) -> F64 = todo
+    pub fn dist(self, p: Vec3) -> F64 = n.dot(p) - d
 
     /// The orthogonal projection of `p` onto the plane: `p - n * self.dist(p)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).project(Vec3(5.0, 5.0, 3.0)) == Vec3(5.0, 5.0, 1.0)`
-    pub fn project(self, p: Vec3) -> Vec3 = todo
+    pub fn project(self, p: Vec3) -> Vec3 = p - n * self.dist(p)
 
 /// The point where the infinite line through `a` and `b` meets `plane`, or `None` when
 /// `|plane.n.dot(b - a)| <= eps` (parallel, including lying in the plane, or `a == b`).
@@ -2462,7 +2548,10 @@ pub struct Plane3(n: Vec3, d: F64):
 /// traps: never
 /// example: `line_plane_intersect(Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 2.0), Plane3(Vec3(0.0, 0.0, 1.0), 1.0)) == Some(Vec3(0.0, 0.0, 1.0))`
 /// example: `line_plane_intersect(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 0.0, 0.0), Plane3(Vec3(0.0, 0.0, 1.0), 1.0)) == None`
-pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3 = todo
+pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3:
+    let den = plane.n.dot(b - a)
+    if abs(den) <= eps: return None
+    Some(a + (b - a) * ((plane.d - plane.n.dot(a)) / den))
 
 /// The great-circle distance between the directions of `a` and `b` on a sphere of radius `r`:
 /// `r * atan2(a.cross(b).len, a.dot(b))`. Lengths of `a` and `b` do not matter; 0.0 when either
@@ -2472,7 +2561,7 @@ pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) ->
 /// traps: never
 /// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(0.0, 1.0, 0.0)) == PI / 2.0`
 /// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(-3.0, 0.0, 0.0), r: 2.0) == 2.0 * PI`
-pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = todo
+pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = r * atan2(a.cross(b).len, a.dot(b))
 
 // ---- tests
 
