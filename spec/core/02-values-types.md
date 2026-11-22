@@ -94,27 +94,27 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   lambda or `fn ... =` body, or statement right-hand side. A `?` in an
   `if` or `while` condition is an error (write `... ?? false`), and a `?`
   whose result is dropped is an error. `?` is never control flow; an
-  early exit is `let x = e else: return None` (chapter 6).
+  early exit is `let x = e else: return None` (chapter 6). (R02.4.7)
 - `x!` is the `Unwrap` trait. `?T`, `[D]?T` and `List<?T>` implement it;
   the array forms check every element in one pass and trap naming the
-  first gap ("depth[17] is none"). This ends a fill phase:
-  `let depth = depth!`. `.all_some()` is the non-trapping form.
+  first gap ("depth[17] is None"). This ends a fill phase:
+  `let depth = depth!`. `.all_some()` is the non-trapping form. (R02.4.8)
 
 ## 2.5 Tuples and records
 
 - Tuples `(Int, V)` are positional; `.0`, `.1` and destructuring read
-  them.
+  them. (R02.5.1)
 - Records `(lo: Int, hi: V)` are anonymous structs with named fields.
   Two record types are equal when they have the same field names and
   types in the same order. Records are structural: a record with fields
   `.to` and `.w` satisfies field traits such as `Target<V>` and
-  `Weighted<W>` without an impl (chapter 8).
+  `Weighted<W>` without an impl (chapter 8). (R02.5.2)
 - Record update copies with replacements: `a with to: u` or
-  `(..a, to: u)`.
+  `(..a, to: u)`. (R02.5.3)
 - Row types `R: (u: V, v: V, ..)` accept any record with at least those
   fields, and `..R without (u, v)` names the rest. There is no record
   subtyping and no implicit field dropping: a function that wants fewer
-  fields says so with a row bound (chapter 8).
+  fields says so with a row bound (chapter 8). (R02.5.4)
 
 ## 2.6 Structs
 
@@ -131,11 +131,11 @@ struct Tally:
 ```
 
 - Fields are fixed after construction unless declared `var`; assigning a
-  non-`var` field is an error naming the field (decision 136).
+  non-`var` field is an error naming the field (decision 136). (R02.6.1)
 - Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`;
   fields with defaults may be omitted (decision 134). A custom
   constructor is a static fn (`Graph.read()`). There are no constructor
-  side effects and no destructors.
+  side effects and no destructors. (R02.6.2)
 - **Two kinds of constructor, one rule each.** A generated constructor
   (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes
   them by value: an owned heap argument moves in, a lent one makes the
@@ -144,16 +144,16 @@ struct Tally:
   parameters are lent for the call and its result is owned unless the
   signature says `lends` (chapter 5, decision 147). The cost rule tells
   them apart: a custom constructor that keeps data copies it (O(n),
-  documented) or says `lends`.
+  documented) or says `lends`. (R02.6.3)
 - `struct List<T>` with no body is opaque: its fields are private to its
-  module. A struct body may hold methods with `self` or `mut self`.
+  module. A struct body may hold methods with `self` or `mut self`. (R02.6.4)
 - Named structs satisfy traits only through `impl`, including field
-  traits (`impl Target<V> for Edge` with no body when the field exists).
+  traits (`impl Target<V> for Edge` with no body when the field exists). (R02.6.5)
 - `@get` on a read-only method whose other parameters all have defaults
   lets it be called without parentheses (`v.next` is `v.next(1)`); it
-  must be O(1) (decision 140).
+  must be O(1) (decision 140). (R02.6.6)
 - Storage may reorder fields to remove padding; source order is what
-  constructors, patterns and printing use (chapter 3).
+  constructors, patterns and printing use (chapter 3). (R02.6.7)
 
 ## 2.7 Enums
 
@@ -168,31 +168,31 @@ enum Ev:
 - Variants are `PascalCase` names in their enum's scope, like `Some` and
   `None` of `?T` (decision 157). Context resolves bare variant names in
   patterns and where the expected type is the enum; a lowercase name in
-  a pattern always binds.
+  a pattern always binds. (R02.7.1)
 - `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`,
   `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct
-  within the enum (E0407).
+  within the enum (E0407). (R02.7.2)
 - A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir`
-  walks it.
+  walks it. (R02.7.3)
 - `match` is exhaustive. Patterns match only the stored shape; there are
-  no user-defined patterns (decision 132).
+  no user-defined patterns (decision 132). (R02.7.4)
 - Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V`
-  positions are 4 bytes (chapter 3).
+  positions are 4 bytes (chapter 3). (R02.7.5)
 
 ## 2.8 Arrays and lists
 
 - `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`,
   never raw `Int`). `[R, C]T` is a dense row-major 2-D array indexed
   `g[r, c]`; `[(R, C)]T` is the same type. `g[r]` is the row place. A
-  counted dimension `[n]T` means `[0..n]T`.
+  counted dimension `[n]T` means `[0..n]T`. (R02.8.1)
 - `List<T>` grows, is indexed by `0..len` positions, and its slices keep
-  source positions.
+  source positions. (R02.8.2)
 - `[D]T` arrays are built by tables (`[V] v => 0`), typed reads
   (`read<[V]Int>()`), comprehensions with an expected array type, or
-  `[D].filled(x)`; every element is initialized.
+  `[D].filled(x)`; every element is initialized. (R02.8.3)
 - `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain
-  element it copies.
-- Large arrays never live on the C++ stack (chapter 13).
+  element it copies. (R02.8.4)
+- Large arrays never live on the C++ stack (chapter 13). (R02.8.5)
 
 ## 2.9 Fresh types: domains and runtime-parameterized types
 
@@ -204,26 +204,26 @@ let (domain Piece, piece_of) = t.components(without: c)
 type Z = Mod(read<Prime>())         // runtime modulus
 ```
 
-- Two fresh types are never equal, even from the same expression.
+- Two fresh types are never equal, even from the same expression. (R02.9.1)
 - A fresh type is block-scoped. A value whose type mentions it cannot
   leave the block by `return`, by assignment to an outer `var`, by a
   stored closure, by a per-program binding (so a position cannot leak
   into the next test case), or by a field of a struct declared outside
-  the block. Passing it to a call is always fine.
+  the block. Passing it to a call is always fine. (R02.9.2)
 - A function may return a fresh type existentially:
   `fn components(...) -> (domain P, [V]P)`; the caller binds it with
-  `let (domain P, ...) = ...`. User code can write such functions.
+  `let (domain P, ...) = ...`. User code can write such functions. (R02.9.3)
 - A fresh type carries runtime data (a domain's count, a modulus) in one
   static slot per declaration site, saved and restored when a recursive
   block re-enters. Generic code reads the slot; nothing is passed
-  hidden. A compile-time constant specializes the slot away.
+  hidden. A compile-time constant specializes the slot away. (R02.9.4)
 - `V.count` is typed by the declared range, which is where storage
-  widths and overflow proofs come from.
+  widths and overflow proofs come from. (R02.9.5)
 - Product domains `domain State = (V, K)` and disjoint unions
   `domain Node = In + Out` are domains too (decisions 2.x, 88). Written
   inline, `(V, K)` is the anonymous product domain, the same one that
   `[V, K]T` is indexed by: `(V, V).all((u, v) => d[u, v] == d[v, u])`
-  (decision 159).
+  (decision 159). (R02.9.6)
 
 ## 2.10 Type inference
 
@@ -231,22 +231,22 @@ type Z = Mod(read<Prime>())         // runtime modulus
   `if`/`else` branches, `match` arms, comprehension results) are unified
   before generics are fixed, with `None` joining `T` to `?T`. Inference
   never looks at later statements: `var x = None` followed by `x = 3` is
-  an error asking for `?Int` at the declaration (decision 131).
+  an error asking for `?Int` at the declaration (decision 131). (R02.10.1)
 - `let` keeps the computed range of its initializer; an unannotated
   `var` widens to `Int`; `var x: lo..=hi` checks each assignment.
   Range inference goes through arithmetic on `let`s, runs no loop
-  fixpoints and crosses no calls.
+  fixpoints and crosses no calls. (R02.10.2)
 - Function signatures are written in full except that a single-capital
   type parameter used in a parameter type may be left undeclared
-  (`fn peel(s: [D]Bool)`).
+  (`fn peel(s: [D]Bool)`). (R02.10.3)
 
 ## 2.11 Never implicit
 
 - No implicit numeric conversions except into a wider range of the same
   type and `T` into `?T`. `Int` to `F64` is `F64(x)`; `F64` to `Int` is
-  `x.floor()`, `x.round()` or `Int(x)` (truncating, documented).
+  `x.floor()`, `x.round()` or `Int(x)` (truncating, documented). (R02.11.1)
 - No implicit copies of heap values (`.clone()`), no implicit
   allocation behind an O(1)-looking member, no implicit `Int` to
-  position (`V(x)` traps out of range; `V.at(x)` is `?V`).
+  position (`V(x)` traps out of range; `V.at(x)` is `?V`). (R02.11.2)
 - No inheritance, no subtyping, no overloading by argument type
-  (decision 127), no user-defined implicit conversions.
+  (decision 127), no user-defined implicit conversions. (R02.11.3)
