@@ -314,6 +314,35 @@ impl<'a> Lowerer<'a> {
                 }
                 None
             }
+            ast::ExprKind::Field { base, name: field } => {
+                let ast::ExprKind::Name(bname) = &base.kind else {
+                    return None;
+                };
+                let bty = if let Some(slot) = self.lookup(bname) {
+                    self.cx.locals[slot].ty.clone()
+                } else if let Some(Sym::Global(gid)) = self.get_sym(bname) {
+                    self.globals[gid].ty.clone()
+                } else {
+                    return None;
+                };
+                let Ty::Struct(sid) = bty else {
+                    return None;
+                };
+                let (gid, gargs) = self.structs[sid].origin_gen.as_ref()?;
+                let decl = self.gen_structs[*gid].decl;
+                let fdecl = decl.fields.iter().find(|f| f.name.text == field.text)?;
+                let ast::TypeKind::Named { name, args } = &fdecl.ty.kind else {
+                    return None;
+                };
+                if !args.is_empty() {
+                    return None;
+                }
+                let pos = decl.generics.iter().position(|g| g.text == name.text)?;
+                match gargs.get(pos) {
+                    Some(GenArg::Op(op)) => Some(*op),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }

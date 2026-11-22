@@ -1125,3 +1125,23 @@ match b:
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "42\n");
 }
+
+#[test]
+fn bare_op_field_on_generic_struct_passes_to_monoid_of() {
+    let src = "\
+use std.algebra.Monoid
+
+struct Ring<A, M>(add: A, mul: M)
+
+fn combine<R>(a: Int, b: Int, over: R = Ring(min, +)) -> (Int, Int):
+  let add = Monoid<Int>.of(over.add)
+  let mul = Monoid<Int>.of(over.mul)
+  (add.op(a, b), mul.op(a, b))
+
+let (x, y) = combine(3, 5)
+print(x, y)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "3 8\n");
+}
