@@ -100,8 +100,8 @@ rest. Each has a test; a claim without a passing test is not a claim.
 5. **Dependable submission.** Does what passed locally pass on the judge?
    - Named judge profiles fix compiler, flags, stack size, widths, libraries
      and limits; local runs mimic the profile.
-   - One deterministic C++17 file under 64 KB (warn at 48 KB), no undefined
-     behaviour, fast to compile.
+   - One deterministic C++17 file, every solution under 32 KB (64 KB is the
+     judges' hard limit), no undefined behaviour, fast to compile.
    - The interpreter and the C++ agree on every program, including on input
      they reject.
 6. **Accumulate.** Do your techniques and old code keep paying off?

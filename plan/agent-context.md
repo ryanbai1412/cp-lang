@@ -85,6 +85,8 @@ reasons". Also: "we have a lot of stuff that ends up hurting perf. e.g.
 subsets can we do this in a way where we use compact like u32 or u64".
 
 **Submissions under 64 KB are critical.** "btw under 64kb is critical lmao".
+Later (2026-11-21) he tightened the goal: "always possible to get 1.1x with
+more manual tuning, and all solutions under 32kb".
 He also noticed when a port came out *more* bytes than the C++.
 
 **Rewrites must rethink, not translate.** "it's not just about translating

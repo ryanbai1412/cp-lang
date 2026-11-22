@@ -9,7 +9,8 @@ the generated C++17: what each form becomes, what it costs, and what
 
 - One deterministic C++17 file: a stamp, the used runtime pieces, the
   used library instances, then `main`. Same source and pins give the
-  same bytes. Warn at 48 KB, fail at 64 KB (profile-adjustable). (R13.1.1)
+  same bytes. Warn above 32 KB (the target for every solution), fail at
+  64 KB (profile-adjustable). (R13.1.1)
 - `main` starts a thread with the profile's stack (default 1 GB,
   halving down to 8 MB) and runs the program on it. (R13.1.2)
 - Input is one bulk `fread` and a hand-written parser; output is one
