@@ -160,7 +160,10 @@ pub struct TimeTree<E>:
     /// empty: schedules nothing
     /// traps: when a non-empty `r` reaches outside `0..q`
     /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 5`
-    pub fn add_range(mut self, r: Range<Int>, ev: E) = todo
+    pub fn add_range(mut self, r: Range<Int>, ev: E):
+        if r.start >= r.end: return
+        assert r.start >= 0 and r.end <= q, "the range reaches outside `0..q`"
+        self.add_interval(r.start, r.end, ev)
 
     /// The steps of `steps`, yielded one at a time without building the list.
     ///
@@ -168,7 +171,41 @@ pub struct TimeTree<E>:
     /// order: the same DFS order as `steps`
     /// traps: never
     /// example: `TimeTree<Int>(2).walk().collect() == [TimeStep.Query(0), TimeStep.Query(1)]`
-    pub fn walk(self) -> yields TimeStep = todo
+    pub fn walk(self) -> yields TimeStep:
+        if q == 0: return
+        var su = List<Int>()
+        var sl = List<Int>()
+        var sr = List<Int>()
+        su.push(1)
+        sl.push(0)
+        sr.push(size)
+        while su.len > 0:
+            let u = su.pop()!
+            let nl = sl.pop()!
+            let nr = sr.pop()!
+            if u < 0:
+                for _ in 0..nl: yield Undo
+                continue
+            var k = 0
+            var e = head[u]
+            while e != -1:
+                yield Apply(e)
+                k += 1
+                e = next[e]
+            su.push(-1)
+            sl.push(k)
+            sr.push(0)
+            if nr - nl == 1:
+                if nl < q: yield Query(nl)
+            else:
+                let mid = (nl + nr) / 2
+                if mid < q:
+                    su.push(2 * u + 1)
+                    sl.push(mid)
+                    sr.push(nr)
+                su.push(2 * u)
+                sl.push(nl)
+                sr.push(mid)
 
 /// CDQ divide and conquer over `events` in their given order. A list of length `n >= 2`
 /// splits into `left`, the first `n / 2` events, and `right`, the rest; it solves `left`,
@@ -180,7 +217,17 @@ pub struct TimeTree<E>:
 /// order: halves keep input order; calls go bottom-up, left subproblem before right
 /// traps: never (the callback may trap)
 /// example: `var pairs = 0; cdq([1, 2, 3], on_cross: (l, r) => pairs += l.len * r.len); pairs == 3`
-pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()) = todo
+pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()):
+    let n = events.len
+    if n < 2: return
+    var left = List<E>()
+    var right = List<E>()
+    for i in 0..n:
+        if i < n / 2: left.push(events[i])
+        else: right.push(events[i])
+    cdq(left, on_cross)
+    cdq(right, on_cross)
+    on_cross(left, right)
 
 /// Offline divide and conquer over time `0..q`: each item is active on the half-open slots
 /// `by(item) = (lo, hi)`. Builds a `TimeTree`, schedules every item in list order and walks
