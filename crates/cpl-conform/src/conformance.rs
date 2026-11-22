@@ -186,11 +186,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
         }
     };
     let path_str = case.path.to_string_lossy();
-    let (mut diag, check_failed) = runner::check_spec(db, &path_str, &text);
-    if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
-        let lints = cpl_lint::lint(&text, &cpl_lint::Config::default());
-        diag.push_str(&cpl_diag::render_all(&lints, &path_str, &text));
-    }
+    let (diag, check_failed) = runner::check_spec(db, &path_str, &text);
 
     match expect {
         Expect::Trap { code, line } => {

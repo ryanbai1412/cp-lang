@@ -93,7 +93,7 @@ def diag_codes():
         if not m:
             continue
         name = m.group(3).strip()
-        if line.split("|")[3].strip().startswith("retired"):
+        if "*(retired)*" in name or line.split("|")[3].strip().startswith("retired"):
             UNTESTABLE.setdefault(m.group(1), "retired")
         if m.group(2):
             lo, hi = int(m.group(1)[1:]), int(m.group(2)[1:])
