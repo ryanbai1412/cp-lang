@@ -2429,8 +2429,9 @@ n)`, `O((n * 3) log (n * 3))`) and evaluated at the size's maximum, logs base 2,
 (3.5e6) steps each`. Only costs built from `n`, numbers, `log`, `^`, `*`, `+` and parentheses are
 evaluated; any other name (`deg u`, `|D|`) leaves the cost unevaluated. A `List` receiver has no
 size, since pushes change it: 9 of the 627 listed calls in the ports and examples get steps. The
-steps are not multiplied by how often the call runs, nor summed into the fn's. Reverse by dropping
-`proven_sizes` and `steps_of`.
+steps are not multiplied by how often the call runs, nor summed into the fn's. Hovering such a call
+anywhere, top level included, adds the same steps to its `cost:` line (`about 3521929 (3.5e6) steps:
+cells has at most n = 200000 (2e5) items`). Reverse by dropping `proven_sizes` and `steps_of`.
 
 ## 30. Front-end recovery (2026-11-21)
 

@@ -230,6 +230,29 @@ impl Server {
                 if let Some(index) = self.index_hover(&uri, offset, true) {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
+                let sized = hover.text.lines().find_map(|l| l.strip_prefix("cost: ")).and_then(|cost| {
+                    let size = cpl_lint::proven_sizes(&analysis.text)
+                        .into_iter()
+                        .find(|s| s.receiver.1 + 1 == hover.span.start)?;
+                    let steps = steps_of(cost, size.max as f64)?;
+                    let receiver = &analysis.text[size.receiver.0 as usize..size.receiver.1 as usize];
+                    let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
+                        String::new()
+                    } else {
+                        format!("{} = ", size.count)
+                    };
+                    Some((
+                        format!("cost: {cost}"),
+                        format!(
+                            "cost: {cost}, about {} steps: {receiver} has at most {named}{} items",
+                            count_text(steps.ceil() as u128),
+                            count_text(size.max)
+                        ),
+                    ))
+                });
+                if let Some((plain, sized)) = sized {
+                    hover.text = hover.text.replacen(&plain, &sized, 1);
+                }
                 let proven = cpl_lint::proven_fns(&analysis.text)
                     .into_iter()
                     .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
