@@ -1387,6 +1387,7 @@ impl<'a> Lowerer<'a> {
         gfid: GenFnId,
         args: Vec<GenArg>,
         trait_params: &[(usize, Ty)],
+        op_params: &[(String, BareOp)],
     ) -> FnId {
         let key = (gfid, args.clone());
         if let Some(&id) = self.fn_insts.get(&key) {
@@ -1404,6 +1405,9 @@ impl<'a> Lowerer<'a> {
         }
         for (idx, ty) in trait_params {
             env.insert(format!("__trait_param_{idx}"), GenArg::Ty(ty.clone()));
+        }
+        for (name, op) in op_params {
+            env.insert(op_param_key(name), GenArg::Op(*op));
         }
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
@@ -1636,10 +1640,16 @@ impl<'a> Lowerer<'a> {
         }
 
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
+        let mut op_params: Vec<(String, BareOp)> = Vec::new();
         for (param, arg) in ast_params.iter().zip(&matched) {
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
                 continue;
             };
+            if matches!(pty.kind, ast::TypeKind::Fn { .. }) {
+                if let Some(op) = self.detect_bare_op(&arg.value) {
+                    op_params.push((param.name.text.clone(), op));
+                }
+            }
             if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
                 if targs.is_empty()
                     && gen_names.contains(&name.text)
@@ -2105,7 +2115,8 @@ impl<'a> Lowerer<'a> {
         if hashed.is_some() {
             final_args.push(GenArg::Int(1));
         }
-        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params);
+        final_args.extend(op_params.iter().map(|&(_, op)| GenArg::Op(op)));
+        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params, &op_params);
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;
         }
@@ -3806,4 +3817,10 @@ fn ty_mentions(t: &ast::Type, name: &str) -> bool {
         }
         _ => false,
     }
+}
+
+/// The generic-env key binding the bare operator passed for the fn-typed parameter `name`, so
+/// each operator gets its own instance and the body can tell `+` from `max`.
+pub(super) fn op_param_key(name: &str) -> String {
+    format!("__op_param_{name}")
 }

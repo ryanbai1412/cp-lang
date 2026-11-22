@@ -3665,6 +3665,10 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            let op_key = mono::op_param_key(&ast_p.name.text);
+            if let Some(GenArg::Op(op)) = self.gen_env.get(&op_key) {
+                cx.op_locals.insert(ast_p.name.text.clone(), *op);
+            }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         for ast_p in &decl.params {
