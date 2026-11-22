@@ -371,6 +371,9 @@ uv run scripts/conformance-coverage.py --check ||
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
 
+step "conformance traits: every claimed trait method has a case or a gap line"
+uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"
+
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \

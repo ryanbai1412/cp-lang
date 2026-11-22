@@ -1,0 +1,206 @@
+# Trait x claimer x method table; scripts/conformance-traits.py writes one
+# case per [case."Trait/Type/method"] to spec/conformance/traits/<Trait>/.
+# A claimed method with no case must be listed in trait-gaps.txt, which only
+# shrinks. Traits declared in spec/std/*.cp are read from there; the core
+# traits std types claim are declared here, with the method the impl writes.
+
+[trait.Add]
+methods = ["add"]
+[trait.Sub]
+methods = ["sub"]
+[trait.Mul]
+methods = ["mul"]
+[trait.Div]
+methods = ["div"]
+[trait.Neg]
+methods = ["neg"]
+[trait.Pow]
+methods = ["pow"]
+[trait.BitAnd]
+methods = ["bitand"]
+[trait.BitOr]
+methods = ["bitor"]
+[trait.BitXor]
+methods = ["bitxor"]
+[trait.Ord]
+methods = ["lt"]
+[trait.Show]
+methods = ["show"]
+[trait.Read]
+methods = ["read"]
+
+[case."Add/Pt/add"]
+code = """
+use std.geometry.{Pt}
+print(Pt(1, 2) + Pt(3, 4))
+"""
+out = "4 6"
+
+[case."Sub/Pt/sub"]
+code = """
+use std.geometry.{Pt}
+print(Pt(5, 7) - Pt(1, 2))
+"""
+out = "4 5"
+
+[case."Neg/Pt/neg"]
+code = """
+use std.geometry.{Pt}
+print(-Pt(1, -2))
+"""
+out = "-1 2"
+
+[case."Mul/Pt/mul"]
+code = """
+use std.geometry.{Pt}
+print(Pt(1, -2) * 3)
+"""
+out = "3 -6"
+
+[case."Show/Pt/show"]
+code = """
+use std.geometry.{Pt}
+print(Pt(3, -4), "{Pt(0, 5)}")
+"""
+out = "3 -4 0 5"
+
+[case."Add/Mod/add"]
+code = """
+type Z = Mod<7>
+print(Z(5) + Z(4))
+"""
+out = "2"
+
+[case."Sub/Mod/sub"]
+code = """
+type Z = Mod<7>
+print(Z(2) - Z(5))
+"""
+out = "4"
+
+[case."Neg/Mod/neg"]
+code = """
+type Z = Mod<7>
+print(-Z(3), -Z(0))
+"""
+out = "4 0"
+
+[case."Mul/Mod/mul"]
+code = """
+type Z = Mod<7>
+print(Z(3) * Z(5))
+"""
+out = "1"
+
+[case."Div/Mod/div"]
+code = """
+type Z = Mod<7>
+print(Z(3) / Z(5))
+"""
+out = "2"
+
+[case."Pow/Mod/pow"]
+code = """
+type Z = Mod<7>
+print(Z(3) ** 3, Z(3) ** 0, Z(3) ** -1)
+"""
+out = "6 1 5"
+
+[case."Show/Mod/show"]
+code = """
+type Z = Mod<7>
+print(Z(6), "{Z(2)}")
+"""
+out = "6 2"
+
+[case."Read/Mod/read"]
+code = """
+let x = read<Mod<7>>()
+print(x)
+"""
+out = "2"
+input = "9\\n"
+
+[case."Ord/Desc/lt"]
+code = """
+print(yes(desc(5) < desc(3)), yes(desc(3) < desc(5)))
+"""
+out = "YES NO"
+
+[case."Show/Desc/show"]
+code = """
+print(desc(4))
+"""
+out = "desc(4)"
+
+[case."Undo/Dsu/mark"]
+code = """
+use std.dsu.{Dsu}
+domain V = 0..3
+var d = Dsu<V>()
+d.unite(V(0), V(1))
+let m = d.mark()
+d.unite(V(1), V(2))
+d.undo_to(m)
+print(yes(d.same(V(0), V(1))), yes(d.same(V(1), V(2))))
+"""
+out = "YES NO"
+
+[case."Undo/Dsu/undo_to"]
+code = """
+use std.dsu.{Dsu}
+domain V = 0..3
+var d = Dsu<V>()
+let m = d.mark()
+d.unite(V(0), V(2))
+d.undo_to(m)
+d.undo_to(m)
+print(yes(d.same(V(0), V(2))))
+"""
+out = "NO"
+
+[case."Track/Counter/push"]
+code = """
+use std.hashmap.{Counter}
+var c: Counter<Char, Int> = Counter(0)
+c.push('a')
+c.push('a')
+print(c['a'])
+"""
+out = "2"
+
+[case."Track/Counter/pop"]
+code = """
+use std.hashmap.{Counter}
+var c: Counter<Char, Int> = Counter(0)
+c.push('a')
+c.push('a')
+c.pop('a')
+print(c['a'])
+"""
+out = "1"
+
+[case."Track/Window/push"]
+code = """
+use std.window.{Window}
+fn add<S: Track<Int>>(mut s: S, x: Int) = s.push(x)
+var w = Window<Int, (Int, Int) -> Int>.new((a: Int, b: Int) => a + b)
+add(mut w, 2)
+add(mut w, 3)
+print(w.all!, w.len)
+"""
+out = "5 2"
+
+# Window's own `pop()` takes no argument and wins method lookup (R08), so the
+# trait method is reached through a bound.
+[case."Track/Window/pop"]
+code = """
+use std.window.{Window}
+fn evict<S: Track<Int>>(mut s: S, x: Int) = s.pop(x)
+var w = Window<Int, (Int, Int) -> Int>.new((a: Int, b: Int) => a + b)
+w.push(2)
+w.push(3)
+evict(mut w, 2)
+print(w.all!, w.len)
+"""
+out = "3 1"
