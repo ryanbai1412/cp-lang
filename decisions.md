@@ -4798,3 +4798,14 @@ the stub. Prose-only fixes are marked in the notes; the API changes:
 - **`Rng.int(lo, hi)`, both ends inclusive, replaces `int(r: Range<Int>)`.**
   Reason: decision 21.4 and the prelude's `rand(lo, hi)`. Reverse: take a
   range again (gold `ioi25_triples` updated both ways).
+
+## 168. `SortedRange<K>` is written down; `Counter<K>` means `Counter<K, Int>` (2026-11-21)
+
+- **`SortedBag.range(r)` and `SortedSet.range(r)` now have stubs**, returning the `SortedRange<K>`
+  view decision 103 promised: `first()`, `last()`, `len()`, `is_empty()` in O(log n), `each()` and
+  `rev()` in O(log n + k). They are calls, not `@get`, because none is O(1) (decision 140).
+  Reverse: drop the stubs and restore the five bound methods.
+- **`Counter<K, V = Int>`.** The library chapters wrote `Counter<K>` with `.distinct`; the stub had
+  `Counter<K, V>`. A default type argument keeps one type. `.distinct` was the same number as `len`
+  (no stored entry equals `init`), so it is dropped: one name per idea. Reverse: add `distinct` as
+  an alias and remove the default.
