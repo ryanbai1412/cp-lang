@@ -1,6 +1,6 @@
 # ucup5s03a
 
-Score: 3/5
+Score: pending cold rescore (adopted full `S(x)/A(x) + (n mod 2)` derivation header, `ways`, `binomial_transform`, `spread`, and `t00`/`t01`/`t10`/`t11` toward the 4/5 dream; remaining gap is `std.poly.Fps` + `X`)
 Dream: 4/5
 
 The header says only that the answer is a quotient of two series; the series are assembled by hand-placed coefficients at unexplained offsets. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
