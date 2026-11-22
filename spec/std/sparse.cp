@@ -53,7 +53,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// empty: traps on an empty domain
     /// traps: when `D` is empty
     /// example: `SparseTable(gcd, [4, 6, 10]).all == 2`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
 /// Whether `op(x, x) == x` for every sample `x` in `xs`: the law a sparse table needs on top of
 /// associativity. A sample check, not a proof; associativity is not tested.
@@ -116,7 +116,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// empty: traps on an empty domain
     /// traps: when `D` is empty
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).all == 8`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
 /// O(|R| * |C| * log |R| * log |C|) build and memory; O(1) rectangle fold for any associative,
 /// idempotent operation (`min`, `max`, `gcd`, `&`, `|`).

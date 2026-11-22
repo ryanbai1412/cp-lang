@@ -9,14 +9,14 @@ pub struct Subset<B>(bits: U64):
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.empty.len == 0`
-    pub @get fn empty() -> Subset<B> = todo
+    @get pub fn empty() -> Subset<B> = todo
 
     /// Every member of `B`: the word with its low `|B|` bits set.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.full.len == 4`
-    pub @get fn full() -> Subset<B> = todo
+    @get pub fn full() -> Subset<B> = todo
 
     /// `{b}`: the subset whose only member is `b`.
     ///
@@ -37,7 +37,7 @@ pub struct Subset<B>(bits: U64):
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(0)).with(B(3)).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// `self` with `b` added. Adding a member already present returns `self` unchanged.
     ///
@@ -96,7 +96,7 @@ pub struct Subset<B>(bits: U64):
     /// order: increasing in `B`'s order (increasing bit index)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).items.collect() == [B(1), B(3)]`
-    pub @get fn items(self) -> yields B = todo
+    @get pub fn items(self) -> yields B = todo
 
     /// Every subset of `self`, `self` first and `{}` last: the submask walk
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
@@ -106,7 +106,7 @@ pub struct Subset<B>(bits: U64):
     /// order: decreasing as words: `self` first, `{}` last
     /// traps: never
     /// example: `domain B = 0..3; let s = Subset<B>.single(B(0)).with(B(1)); s.subsets.map(g => g.first()).collect() == [Some(B(0)), Some(B(1)), Some(B(0)), None]`
-    pub @get fn subsets(self) -> yields Subset<B> = todo
+    @get pub fn subsets(self) -> yields Subset<B> = todo
 
     /// Every superset of `self` within `B`, `self` first and `B` last: the walk
     /// `g = (g + 1) | self`, so the masks come in increasing order as words. `2^(|B| - s.len)`
@@ -117,7 +117,7 @@ pub struct Subset<B>(bits: U64):
     /// order: increasing as words: `self` first, `Subset<B>.full` last
     /// traps: never
     /// example: `domain B = 0..3; Subset<B>.single(B(1)).supersets.map(g => g.len).collect() == [1, 2, 2, 3]`
-    pub @get fn supersets(self) -> yields Subset<B> = todo
+    @get pub fn supersets(self) -> yields Subset<B> = todo
 
 impl BitOr for Subset<B>:
     fn bitor(a, b) = todo

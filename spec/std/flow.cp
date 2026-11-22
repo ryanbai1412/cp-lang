@@ -16,7 +16,7 @@ pub struct Arc(id: 0..2_147_483_648):
     /// cost: O(1)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.source(a.rev) == 1 and a.rev.rev == a`
-    pub @get fn rev(self) -> Arc = todo
+    @get pub fn rev(self) -> Arc = todo
 
 /// A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
 /// `add` is O(1). `max_flow` is O(V^2 E) in general, O(E sqrt(V)) on unit
@@ -136,7 +136,7 @@ pub struct FlowGraph<V>:
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 2, Some(1)); g.arcs.collect() == [a, b]`
-    pub @get fn arcs(self) -> yields Arc = todo
+    @get pub fn arcs(self) -> yields Arc = todo
 
     /// The arcs `add` or `add_both` returned whose source is `u`, lazily; never a reverse arc.
     ///
@@ -270,7 +270,7 @@ pub struct CostFlow<V>:
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(1), 0); let b = g.add(1, 0, Some(1), 0); g.arcs.collect() == [a, b]`
-    pub @get fn arcs(self) -> yields Arc = todo
+    @get pub fn arcs(self) -> yields Arc = todo
 
     /// Saturates every negative-cost cycle of the residual network, so the stored flow becomes a
     /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or
@@ -672,7 +672,7 @@ pub struct Matching<L, R>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
     /// The König vertex cover of the current matching, built as in
     /// [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
     ///

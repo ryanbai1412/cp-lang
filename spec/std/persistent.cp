@@ -34,7 +34,7 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// cost: O(1)
     /// traps: never
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.get(t.base, 0) == 1`
-    pub @get fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version = todo
 
     fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int = todo
 
@@ -208,7 +208,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// cost: O(1)
     /// traps: never
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.get(t.base, 2) == 3`
-    pub @get fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version = todo
 
     /// A new version equal to `v` with the tag `f` applied to every position of `r`.
     ///
@@ -265,7 +265,7 @@ pub struct PersistentArray<D, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var p = PersistentArray(a: [1, 2, 3]); p.get(p.base, 2) == 3`
-    pub @get fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version = todo
 
     /// The value at position `i` in version `v`.
     ///

@@ -47,13 +47,13 @@ pub struct Deque<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([4, 5]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
     /// Whether the deque is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([7]).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Remove all elements from the deque.
     ///
@@ -138,7 +138,7 @@ pub struct Deque<T>:
     /// ties: none: there is one front
     /// traps: never
     /// example: `Deque.of([4, 5]).first == Some(4)`
-    pub @get fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T = todo
 
     /// The back, or `None` when empty. `dq.last(k)` is the element `k`
     /// back from it, so `dq.last(1)` is the one before the back.
@@ -152,7 +152,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([4, 5, 6]).last == Some(6)`
     /// example: `Deque.of([4, 5, 6]).last(1) == Some(5)`
     /// example: `Deque.of([4]).last(1) == None`
-    pub @get fn last(self, k: Int = 0) -> ?T = todo
+    @get pub fn last(self, k: Int = 0) -> ?T = todo
 
     /// Each element with its place from the front: `for (i, x) in dq.items`. O(1) to make,
     /// O(n) to walk.
@@ -162,7 +162,7 @@ pub struct Deque<T>:
     /// order: front to back; the places are `0..len`
     /// traps: never
     /// example: `Deque.of([7, 8]).items.collect() == [(0, 7), (1, 8)]`
-    pub @get fn items(self) -> yields (Int, T) = todo
+    @get pub fn items(self) -> yields (Int, T) = todo
 
     /// The `i`-th element from the front.
     ///
@@ -265,14 +265,14 @@ pub struct LinkedList<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.from_list([1, 2, 3]).len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the list is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.of(1).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The front element, or `None` when the list is empty (as `Deque.first`).
     ///
@@ -281,7 +281,7 @@ pub struct LinkedList<T>:
     /// ties: none: there is one front
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).first == Some(1)`
-    pub @get fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T = todo
 
     /// The back element, or `None` when the list is empty (as `Deque.last`).
     ///
@@ -290,7 +290,7 @@ pub struct LinkedList<T>:
     /// ties: none: there is one back
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).last == Some(2)`
-    pub @get fn last(self) -> ?T = todo
+    @get pub fn last(self) -> ?T = todo
 
     /// Append `x` to the back.
     ///

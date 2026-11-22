@@ -306,7 +306,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 /// order: left to right
 /// traps: never
 /// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
-pub @get fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
+@get pub fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. O(n²) to walk; for adjacent pairs use `adjacent`.
@@ -327,7 +327,7 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 /// order: left to right, starting with `(None, first)`
 /// traps: never
 /// example: `[10, 20].with_prev.collect() == [(None, 10), (Some(10), 20)]`
-pub @get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
+@get pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
 
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
@@ -482,7 +482,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// cost: O(1)
     /// traps: never
     /// example: `compress([5, 5, 7]).1.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// The index of `val`, which must be one of the compressed values.
     ///
@@ -620,7 +620,7 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D = todo
 /// empty: the same cut as `r`
 /// traps: never
 /// example: `(2..5).l.r == Some(2)`
-pub @get fn l<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn l<D>(self: Range<D>) -> Cut<D> = todo
 
 /// Right boundary cut of a range (valid even when empty).
 ///
@@ -628,7 +628,7 @@ pub @get fn l<D>(self: Range<D>) -> Cut<D> = todo
 /// empty: the same cut as `l`
 /// traps: never
 /// example: `(2..5).r.l == Some(4)`
-pub @get fn r<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn r<D>(self: Range<D>) -> Cut<D> = todo
 
 /// O(1). `(r.l..r.mid, r.mid..r.r)`: two non-empty halves, or `None` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
@@ -647,7 +647,7 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
 /// empty: `r.l`
 /// traps: never
 /// example: `(0..5).mid.r == Some(2)`
-pub @get fn mid<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn mid<D>(self: Range<D>) -> Cut<D> = todo
 
 /// O(1). The positions in both ranges.
 ///
@@ -697,7 +697,7 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> =
 /// empty: `(lo, lo)`
 /// traps: when the range is written backwards
 /// example: `(2..5).ends == (2, 5)`
-pub @get fn ends<D>(self: Range<D>) -> (Int, Int) = todo
+@get pub fn ends<D>(self: Range<D>) -> (Int, Int) = todo
 
 /// First index in sorted `self` with `by(self[i]) > target`, or `None`.
 ///
@@ -965,7 +965,7 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = todo
 /// order: same elements, keyed `0..len` by a fresh domain
 /// traps: never
 /// example: `[5, 6, 7][1..].rebase.nth(1) == 7`
-pub @get fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
+@get pub fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
 
 /// The view `rebase` returns.
 pub struct Rebased<S>(src: S)
@@ -1670,7 +1670,7 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// cost: O(1)
 /// traps: never
 /// example: `(u: 1, v: 2).swap == (u: 2, v: 1)`
-pub @get fn swap<A>(self: (A, A)) -> (A, A) = todo
+@get pub fn swap<A>(self: (A, A)) -> (A, A) = todo
 
 /// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`.
 ///
@@ -1723,7 +1723,7 @@ pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// empty: a ring with no positions
 /// traps: never
 /// example: `[1, 2, 3].ring.next(2) == 0`
-pub @get fn ring<D, T>(self: [D]T) -> Ring<D, T> = todo
+@get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = todo
 
 /// `a.ring`; see `ring`.
 pub struct Ring<D, T>(src: [D]T):
@@ -1806,21 +1806,21 @@ pub struct RingRange<D>():
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// O(1). The first position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).start == 2`
-    pub @get fn start(self) -> D = todo
+    @get pub fn start(self) -> D = todo
 
     /// O(1). The last position.
     ///
     /// cost: O(1)
     /// traps: on an empty span
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
-    pub @get fn end(self) -> D = todo
+    @get pub fn end(self) -> D = todo
 
     /// O(1) to make. Its positions in ring order.
     ///
@@ -1828,7 +1828,7 @@ pub struct RingRange<D>():
     /// order: ring order from `start`
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).keys.collect() == [2, 0]`
-    pub @get fn keys(self) -> yields D = todo
+    @get pub fn keys(self) -> yields D = todo
 
     ///
     ///
@@ -1844,28 +1844,28 @@ pub struct RingSlice<D, T>():
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.range.len == 2`
-    pub @get fn range(self) -> RingRange<D> = todo
+    @get pub fn range(self) -> RingRange<D> = todo
 
     ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[w.len for w in [1, 2, 3].ring.windows(2)] == [2, 2, 2]`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// O(1). The first position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.start == 0`
-    pub @get fn start(self) -> D = todo
+    @get pub fn start(self) -> D = todo
 
     /// O(1). The last position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.end == 1`
-    pub @get fn end(self) -> D = todo
+    @get pub fn end(self) -> D = todo
 
     /// O(1) to make. Its positions in ring order.
     ///
@@ -1873,7 +1873,7 @@ pub struct RingSlice<D, T>():
     /// order: ring order from `start`
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.keys.collect() == [0, 1]`
-    pub @get fn keys(self) -> yields D = todo
+    @get pub fn keys(self) -> yields D = todo
 
 /// The non-empty ranges whose every element is strictly below both elements just outside it
 /// (both must exist). At most 2n of them, left ends ascending, from one monotone-stack pass;

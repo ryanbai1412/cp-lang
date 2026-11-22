@@ -114,7 +114,7 @@ pub struct Rooted<V, Pre>:
     /// order: as given at construction
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.roots.collect() == [0]`
-    pub @get fn roots(self) -> yields V = todo
+    @get pub fn roots(self) -> yields V = todo
 
     /// The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
     ///
@@ -292,7 +292,7 @@ pub struct Rooted<V, Pre>:
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [5, 3, 1, 1, 1]`
-    pub @get fn subtree_sizes(self) -> [V]Int = todo
+    @get pub fn subtree_sizes(self) -> [V]Int = todo
 
     /// A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than
     /// half its vertices. Found by walking heavy children down from the root while the heavy
@@ -325,7 +325,7 @@ pub struct Rooted<V, Pre>:
     /// order: `Enter` events in `t.Pre` order; `Exit(v, _)` right after the last event of `v`'s subtree
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.tour.collect() == [Enter(0, None), Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0)), Enter(2, Some(0)), Exit(2, Some(0)), Exit(0, None)]`
-    pub @get fn tour(self) -> yields Visit<V, V> = todo
+    @get pub fn tour(self) -> yields Visit<V, V> = todo
 
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
     ///
@@ -1599,7 +1599,7 @@ pub struct KruskalTree<V, N, W>:
     /// cost: O(1); built with the tree
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2]) and kt.tree.size(kt.leaf[0]) == 1`
-    pub @get fn tree(self) -> Rooted<N, _> = todo
+    @get pub fn tree(self) -> Rooted<N, _> = todo
 
     /// The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when
     /// none is); its leaves are what `v` reaches by edges of weight at most `limit`.

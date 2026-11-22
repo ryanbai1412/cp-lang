@@ -141,14 +141,14 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// empty: the identity for an empty `D`
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
     /// The operation the tree folds with, as its `(id, op)` pair.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SegTree(+, [1]).monoid.id == 0`
-    pub @get fn monoid(self) -> Monoid<T> = todo
+    @get pub fn monoid(self) -> Monoid<T> = todo
 
 
 
@@ -340,7 +340,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// empty: the identity for an empty grid
     /// traps: never
     /// example: `var g = SegTree2D<0..2, 0..2, Int>(max, fill: 0); g.set(1, 0, 8); g.all == 8`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
 /// O(|D| log V) build and memory. Wavelet matrix over non-negative integer values:
 /// O(log V) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.

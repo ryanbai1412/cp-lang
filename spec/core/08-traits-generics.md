@@ -8,7 +8,7 @@ for laws; `12-powers.md` for what user libraries can define.
 
 ```
 trait Ord(Eq):
-    fn cmp(self, other: Self) -> Order
+    fn cmp(self, other: Self) -> Ordering
 
 trait Next<V>:
     type Arc: Target<V>
@@ -16,10 +16,10 @@ trait Next<V>:
 
 trait Monoid<T>(Op<T>):
     fn id(self) -> T
-    law left_id(x: T) = self.op(self.id(), x) == x
+    law left_id(x: T) = self.op(self.id, x) == x
 
 impl Ord for Frac:
-    fn cmp(self, o: Frac) -> Order = (self.p * o.q).cmp(o.p * self.q)
+    fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
 ```
 
 - A trait declares methods (with optional default bodies), associated

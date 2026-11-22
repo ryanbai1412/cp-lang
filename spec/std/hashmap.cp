@@ -33,14 +33,14 @@ pub struct FlatMap<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(1, 5); m.set(1, 6); m.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the map has no live entries.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `FlatMap(0).is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Remove all entries while keeping allocated capacity.
     ///
@@ -119,7 +119,7 @@ pub struct FlatMap<V>:
     /// order: unspecified slot order, the same as `keys` and `values` while unchanged
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.items.sorted() == [(1, 10), (2, 20)]`
-    pub @get fn items(self) -> yields (Int, V) = todo
+    @get pub fn items(self) -> yields (Int, V) = todo
 
     ///
     ///
@@ -128,7 +128,7 @@ pub struct FlatMap<V>:
     /// order: unspecified slot order, the same as `items`
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.keys.sorted() == [1, 2]`
-    pub @get fn keys(self) -> yields Int = todo
+    @get pub fn keys(self) -> yields Int = todo
 
     ///
     ///
@@ -137,7 +137,7 @@ pub struct FlatMap<V>:
     /// order: unspecified slot order, the same as `items`
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.values.sorted() == [10, 20]`
-    pub @get fn values(self) -> yields V = todo
+    @get pub fn values(self) -> yields V = todo
 
     /// Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
     ///
@@ -184,14 +184,14 @@ pub struct Counter<K, V = Int>:
     /// cost: O(1)
     /// traps: never
     /// example: `Counter.of([3, 1, 3]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no keys are stored.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Counter.of([1]).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Value stored for `k`, or `init` if absent (does not insert).
     ///
@@ -301,7 +301,7 @@ pub struct Counter<K, V = Int>:
     /// order: unspecified hash order, the same as `keys` and `values` while unchanged
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).items.sorted() == [(1, 1), (2, 2)]`
-    pub @get fn items(self) -> yields (K, V) = todo
+    @get pub fn items(self) -> yields (K, V) = todo
 
     ///
     ///
@@ -310,7 +310,7 @@ pub struct Counter<K, V = Int>:
     /// order: unspecified hash order, the same as `items`
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).keys.sorted() == [1, 2]`
-    pub @get fn keys(self) -> yields K = todo
+    @get pub fn keys(self) -> yields K = todo
 
     ///
     ///
@@ -319,7 +319,7 @@ pub struct Counter<K, V = Int>:
     /// order: unspecified hash order, the same as `items`
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).values.sorted() == [1, 2]`
-    pub @get fn values(self) -> yields V = todo
+    @get pub fn values(self) -> yields V = todo
 
 @test
 fn flat_map_matches_builtin_hash_map() = todo

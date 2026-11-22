@@ -296,7 +296,7 @@ pub struct XorBasis:
     /// cost: O(1)
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.add(3); b.rank == 2`
-    pub @get fn rank(self) -> Int = todo
+    @get pub fn rank(self) -> Int = todo
 
     /// Insert `x >= 0` into the basis. Returns `true` iff the rank increased, that is, iff `x` was not
     /// already in the span (`0` never is new). The basis is kept fully reduced: no vector has another

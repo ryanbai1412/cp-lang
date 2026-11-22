@@ -155,7 +155,7 @@ pub struct BeatsSegTree<D>:
     /// empty: zero on an empty domain
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
-    pub @get fn all_sum(self) -> Int = todo
+    @get pub fn all_sum(self) -> Int = todo
 
     /// The least current value in `D`, or `None` when `D` is empty.
     ///
@@ -164,7 +164,7 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_min == Some(1)`
-    pub @get fn all_min(self) -> ?Int = todo
+    @get pub fn all_min(self) -> ?Int = todo
 
     /// The greatest current value in `D`, or `None` when `D` is empty.
     ///
@@ -173,7 +173,7 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_max == Some(5)`
-    pub @get fn all_max(self) -> ?Int = todo
+    @get pub fn all_max(self) -> ?Int = todo
 
 /// O(|D|) space. Segment Tree Beats with historic maximum and historic sum tracking under
 /// range `chmin`, `chmax`, and `add` (Ji Driver with historic tags).

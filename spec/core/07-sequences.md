@@ -173,7 +173,7 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
   lives until its last use in the block that made it. It passes into fns
   (arguments are always lent) and comes back only from a fn declared
   `lends`, whose result borrows every non-plain parameter unless narrowed:
-  `fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]`,
+  `fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]`,
   `fn pick(a: [V]Int, b: [V]Int) lends(a) [V]Int`. It never goes in a
   `var`, field, container, global or escaping closure. Keeping one is
   `List(w)`. (R07.5.10)
@@ -267,10 +267,11 @@ since the second walk reruns against what the first wrote.
 | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | O(n) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n) (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n) (R07.9.4) |
-| `s.first(p)`, `s.last(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n) (R07.9.5) |
+| `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n) (R07.9.5) |
 
 Position queries are folds over `a.keys`, because the keys are a range of
-positions. No `argmin`, `first_at` or `order` twins:
+positions. `argmin`/`argmax` are kept as the named form of the first
+line below (first on ties); there are no `first_at` or `order` twins:
 
 ```python
 a.keys.min(by: i => a[i])!         // argmin, first on ties
@@ -349,6 +350,6 @@ place) are different jobs, not twins.
 ## What goes away
 
 `View<T>`, `view()`, 0-based `.at(i)` / `.try_at(i)` on `Indexed`,
-`drop_first` (now `drop`), `skip`, `step_by`, `argmin`/`argmax`, `first_at`,
+`drop_first` (now `drop`), `skip`, `step_by`, `first_at`,
 `order`, `chunk_by`, `run_ranges`, `excl_fold`, `suffix_scan`,
 `scan_in_place`. Each is a view, a fold over `.keys`, or `.rev.scan`.

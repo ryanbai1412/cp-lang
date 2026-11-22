@@ -44,14 +44,14 @@ pub struct Concave(start: Int, base: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Concave.flat(0..=3); f.shift(-2); f.lo == -2`
-    pub @get fn lo(self) -> Int = todo
+    @get pub fn lo(self) -> Int = todo
 
     /// The last point of the domain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Concave.flat(0..=3); f.max_convolve(Concave.flat(0..=2)); f.hi == 5`
-    pub @get fn hi(self) -> Int = todo
+    @get pub fn hi(self) -> Int = todo
 
     /// Replace `f` with `c => max over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the two slope multisets merge, so the result stays concave.
@@ -184,14 +184,14 @@ pub struct Convex(neg: Concave):
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Convex.flat(0..=3); f.shift(-2); f.lo == -2`
-    pub @get fn lo(self) -> Int = todo
+    @get pub fn lo(self) -> Int = todo
 
     /// The last point of the domain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Convex.flat(0..=3); f.min_convolve(Convex.flat(0..=2)); f.hi == 5`
-    pub @get fn hi(self) -> Int = todo
+    @get pub fn hi(self) -> Int = todo
 
     /// Replace `f` with `c => min over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the slope multisets merge. Pass the smaller function as `g`.

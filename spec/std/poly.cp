@@ -212,28 +212,28 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.zero.deg() == -1 and Poly<Int>.zero.len == 0`
-    pub @get fn zero() -> Poly<T> = todo
+    @get pub fn zero() -> Poly<T> = todo
 
     /// The constant polynomial `1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == 0`
-    pub @get fn one() -> Poly<T> = todo
+    @get pub fn one() -> Poly<T> = todo
 
     /// The indeterminate `x`: coefficients `[0, 1]`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.x.deg() == 1 and Poly<Int>.x.at(1) == 1`
-    pub @get fn x() -> Poly<T> = todo
+    @get pub fn x() -> Poly<T> = todo
 
     /// The number of stored coefficients, trailing zeros included.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>([1, 0]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// The degree: the highest index with a nonzero coefficient, `-1` for the zero polynomial. Stored
     /// trailing zeros do not count.

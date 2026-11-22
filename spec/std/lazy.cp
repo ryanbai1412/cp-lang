@@ -135,7 +135,7 @@ pub struct LazyTreap<T, F>(
     /// cost: O(1)
     /// traps: never
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(4); t.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Make room for `n` elements in total, so pushes up to that size never regrow the node arena.
     /// A smaller `n` than the current capacity changes nothing.
@@ -150,7 +150,7 @@ pub struct LazyTreap<T, F>(
     /// cost: O(1)
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     fn put(mut self, u: ?Int, f: F) = todo
 

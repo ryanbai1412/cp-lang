@@ -64,7 +64,7 @@ Diagnostics:
 slice is a position of `a`, so it indexes `b` and splits the range directly.
 
 ```python
-fn solve(r: Range<V>) -> Int =
+fn solve(r: Range<V>) -> Int:
     if r.len == 0: return 0
     let m = a[r].argmax()!               // m: V, valid on a and b
     solve(r.l..m.l) + solve(m.r..r.r) + b[m] * r.len
@@ -238,10 +238,9 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 
 ## Open
 
-1. **Should `sorted()` of a slice keep its keys?** Rule 6 says yes:
-   `a[l..r].sorted()[l]` is the minimum. The alternative is that `sorted`
-   always returns a `List` from 0, as a sort produces a new order anyway.
-   I lean towards keeping keys, for one rule.
+1. **Settled (decision 182): `sorted()` returns a new `List` keyed from
+   0**, since a sort produces a new order. To keep keys, sort the keys:
+   `a[l..r].keys.sorted(by: i => a[i])`.
 2. **Is `rekey` worth a name?** The alternative is writing into
    `[s.keys]` through `s.keys.nth(i)`. That's correct, but it puts a key
    lookup in every hot-loop write.
