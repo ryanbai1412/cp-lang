@@ -3124,7 +3124,7 @@ fn dot3(a: Pt3, b: Pt3) -> Int = a.x * b.x + a.y * b.y + a.z * b.z
 fn cross3(a: Pt3, b: Pt3) -> Pt3 = Pt3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
 fn dist2_3(a: Pt3, b: Pt3) -> Int = (a - b).norm2
 
-fn random_points(n: Int, span: Int) -> List<Pt> = todo
+fn random_points(n: Int, span: Int) -> List<Pt> = [Pt(rand(-span, span), rand(-span, span)) for _ in 0..n]
 
 @test
 fn vectors_traits_and_large_coords():
@@ -3339,7 +3339,81 @@ fn closest_pair_matches_brute():
     assert res.dist2 == want
 
 @test
-fn float_vec_circles_and_half_planes() = todo
+fn float_vec_circles_and_half_planes():
+    let a = Vec(0.0, 0.0)
+    let b = Vec(4.0, 0.0)
+    let p = Vec(1.0, 3.0)
+    let proj = project(p, a, b)
+    assert close(proj.x, 1.0) and close(proj.y, 0.0)
+    let r = reflect(p, a, b)
+    assert close(r.x, 1.0) and close(r.y, -3.0)
+    let r2 = reflect(r, a, b)
+    assert close(r2.x, p.x) and close(r2.y, p.y)
+    assert close(line_dist(p, a, b), 3.0)
+    assert close(seg_dist(Vec(6.0, 0.0), a, b), 2.0)
+    // line intersection
+    let inter = line_intersect(Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0))!
+    assert close(inter.x, 1.0) and close(inter.y, 1.0)
+    assert line_intersect(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0)) == None
+    // circumcenter equidistant from all 3 vertices
+    let cc = circumcenter(Vec(0.0, 0.0), Vec(4.0, 0.0), Vec(0.0, 3.0))!
+    assert close(cc.x, 2.0) and close(cc.y, 1.5)
+    assert close(vdist(cc, Vec(0.0, 0.0)), vdist(cc, Vec(4.0, 0.0)))
+    assert close(vdist(cc, Vec(0.0, 0.0)), vdist(cc, Vec(0.0, 3.0)))
+    // circle-line and circle-circle intersections
+    let cl = circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 3.0), Vec(10.0, 3.0))
+    assert cl.len == 2
+    for q in cl:
+        assert close(q.len, 5.0) and close(q.y, 3.0)
+    let cc_pts = circle_intersect(Circle(Vec(0.0, 0.0), 5.0), Circle(Vec(6.0, 0.0), 5.0))
+    assert cc_pts.len == 2
+    for q in cc_pts:
+        assert close(vdist(q, Vec(0.0, 0.0)), 5.0) and close(vdist(q, Vec(6.0, 0.0)), 5.0)
+    // half-plane intersection: unit square [0, 2] x [0, 2] cut by x + y <= 3
+    let planes = [
+        HalfPlane(Vec(0.0, 0.0), Vec(1.0, 0.0)),
+        HalfPlane(Vec(2.0, 0.0), Vec(0.0, 1.0)),
+        HalfPlane(Vec(2.0, 2.0), Vec(-1.0, 0.0)),
+        HalfPlane(Vec(0.0, 2.0), Vec(0.0, -1.0)),
+        HalfPlane(Vec(3.0, 0.0), Vec(-1.0, 1.0)),
+    ]
+    let poly = half_plane_intersect(planes)
+    assert poly.len == 5
+    var area = 0.0
+    for i in 0..poly.len:
+        area += vcross(poly[i], poly[(i + 1) % poly.len])
+    assert close(area * 0.5, 3.5)
+    // empty intersection
+    let empty_hp = [
+        HalfPlane(Vec(0.0, 0.0), Vec(1.0, 0.0)),
+        HalfPlane(Vec(0.0, -1.0), Vec(-1.0, 0.0)),
+        HalfPlane(Vec(0.0, 0.0), Vec(0.0, 1.0)),
+    ]
+    assert half_plane_intersect(empty_hp).len == 0
+    // random half-plane stress: bounding box + random cuts always satisfy every plane
+    for _ in 0..40:
+        var hps = [
+            HalfPlane(Vec(-10.0, -10.0), Vec(1.0, 0.0)),
+            HalfPlane(Vec(10.0, -10.0), Vec(0.0, 1.0)),
+            HalfPlane(Vec(10.0, 10.0), Vec(-1.0, 0.0)),
+            HalfPlane(Vec(-10.0, 10.0), Vec(0.0, -1.0)),
+        ]
+        for _ in 0..8:
+            let px = F64(rand(-4, 4))
+            let py = F64(rand(-4, 4))
+            var dx = F64(rand(-5, 5))
+            var dy = F64(rand(-5, 5))
+            if dx == 0.0 and dy == 0.0: dx = 1.0
+            hps.push(HalfPlane(Vec(px, py), Vec(dx, dy)))
+        let res = half_plane_intersect(hps)
+        if res.len >= 3:
+            for v in res:
+                for hp in hps:
+                    assert vcross(hp.dir, v - hp.p) >= -1e-6 * hp.dir.len
+            var a2 = 0.0
+            for i in 0..res.len:
+                a2 += vcross(res[i], res[(i + 1) % res.len])
+            assert a2 >= -1e-6
 
 @test
 fn hull_extreme_and_locate_convex_edge_cases():
@@ -3389,7 +3463,40 @@ fn polygon_area_and_cut():
     assert polygon_cut(sq, Vec(0.0, 5.0), Vec(4.0, 5.0)).is_empty
 
 @test
-fn min_enclosing_circle_and_circle_polygon_area() = todo
+fn min_enclosing_circle_and_circle_polygon_area():
+    assert min_enclosing_circle([]).r == 0.0
+    assert close(min_enclosing_circle([Vec(3.0, 4.0)]).r, 0.0)
+    let sq = [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]
+    let mc = min_enclosing_circle(sq)
+    assert close(mc.c.x, 1.0) and close(mc.c.y, 1.0) and close(mc.r, sqrt(2.0))
+    // Randomized stress against brute-force over all pairs & triples
+    for _ in 0..25:
+        let pts = [Vec(F64(rand(-10, 10)), F64(rand(-10, 10))) for _ in 0..10]
+        let got = min_enclosing_circle(pts)
+        for p in pts:
+            assert vdist(got.c, p) <= got.r + 1e-6
+        var best_r = 1.0e18
+        for i in 0..pts.len:
+            for j in i + 1..pts.len:
+                let c2 = (pts[i] + pts[j]) * 0.5
+                let r2 = vdist(c2, pts[i])
+                if pts.all(q => vdist(c2, q) <= r2 + 1e-7): best_r = min(best_r, r2)
+                for k in j + 1..pts.len:
+                    if let c3 = circumcenter(pts[i], pts[j], pts[k]):
+                        let r3 = vdist(c3, pts[i])
+                        if pts.all(q => vdist(c3, q) <= r3 + 1e-7): best_r = min(best_r, r3)
+        if best_r < 1.0e17:
+            assert close(got.r, best_r, eps: 1e-5)
+    // Circle-polygon intersection area
+    let pi = 4.0 * atan2(1.0, 1.0)
+    // Disk radius 0.5 strictly inside [0,2]^2 -> area = pi * 0.25
+    assert close(circle_polygon_area(Circle(Vec(1.0, 1.0), 0.5), sq), pi * 0.25, eps: 1e-6)
+    // Square strictly inside disk radius 5 -> area = 4.0
+    assert close(circle_polygon_area(Circle(Vec(1.0, 1.0), 5.0), sq), 4.0, eps: 1e-6)
+    // Quarter disk at corner (0, 0) with radius 1 -> area = pi / 4
+    assert close(circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), sq), pi * 0.25, eps: 1e-6)
+    // Disk centered at (1, 0) with radius 1 -> half disk = pi / 2
+    assert close(circle_polygon_area(Circle(Vec(1.0, 0.0), 1.0), sq), pi * 0.5, eps: 1e-6)
 
 @test
 fn arg_exact_angular_sort_without_floats():
@@ -3489,7 +3596,14 @@ fn pt3_and_convex_hull_3d():
             assert cnt == 1 and (edges.get((v, u)) ?? 0) == 1
 
 @test
-fn test_float_eps_guards() = todo
+fn test_float_eps_guards():
+    // Degenerate and near-degenerate segments use eps rather than bare == 0.0.
+    assert close(seg_dist(Vec(3.0, 4.0), Vec(0.0, 0.0), Vec(1e-12, 0.0)), 5.0)
+    // Large-radius tangency: linear eps stays valid when r^2 ~ 1e12.
+    let cl = circle_line_intersect(Circle(Vec(0.0, 0.0), 1000000.0), Vec(-1.0, 1000000.0 + 1e-11), Vec(1.0, 1000000.0 + 1e-11))
+    assert cl.len == 1 and close(cl[0].y, 1000000.0, eps: 1e-6)
+    let cc = circle_intersect(Circle(Vec(0.0, 0.0), 1000000.0), Circle(Vec(2000000.0 + 1e-11, 0.0), 1000000.0))
+    assert cc.len == 1 and close(cc[0].x, 1000000.0, eps: 1e-6)
 
 @test
 fn test_min_bounding_box_against_brute():
@@ -3531,7 +3645,46 @@ fn test_min_bounding_box_against_brute():
         assert close(got.perimeter, brute_perim, eps: 1e-6 * max(1.0, brute_perim))
 
 @test
-fn test_circle_tangents_and_circle_circle_tangents() = todo
+fn test_circle_tangents_and_circle_circle_tangents():
+    // Point inside, on, and outside circle.
+    assert circle_tangents(Circle(Vec(0.0, 0.0), 5.0), Vec(1.0, 1.0)).is_empty
+    let on = circle_tangents(Circle(Vec(0.0, 0.0), 5.0), Vec(3.0, 4.0))
+    assert on.len == 1 and close(on[0].x, 3.0) and close(on[0].y, 4.0)
+    // Randomized point-circle tangent laws.
+    for _ in 0..40:
+        let c = Vec(F64(rand(-50, 50)), F64(rand(-50, 50)))
+        let r = F64(rand(1, 30))
+        let p = Vec(F64(rand(-80, 80)), F64(rand(-80, 80)))
+        let ts = circle_tangents(Circle(c, r), p)
+        let d = (p - c).len
+        if d < r - 1e-6: assert ts.is_empty
+        elif d > r + 1e-6:
+            assert ts.len == 2
+            for t in ts:
+                assert close((t - c).len, r, eps: 1e-6)
+                assert close(vdot(t - c, t - p), 0.0, eps: 1e-5)
+    // Circle-circle tangents: disjoint, externally tangent, intersecting, internally tangent, nested.
+    let c1 = Vec(0.0, 0.0)
+    assert circle_circle_tangents(Circle(c1, 2.0), Circle(Vec(6.0, 0.0), 2.0)).len == 2
+    assert circle_circle_tangents(Circle(c1, 2.0), Circle(Vec(6.0, 0.0), 2.0), inner: true).len == 2
+    assert circle_circle_tangents(Circle(c1, 2.0), Circle(Vec(4.0, 0.0), 2.0), inner: true).len == 1
+    assert circle_circle_tangents(Circle(c1, 2.0), Circle(Vec(3.0, 0.0), 2.0), inner: true).is_empty
+    assert circle_circle_tangents(Circle(c1, 5.0), Circle(Vec(3.0, 0.0), 2.0)).len == 1
+    assert circle_circle_tangents(Circle(c1, 5.0), Circle(Vec(1.0, 0.0), 2.0)).is_empty
+    // Randomized circle-circle tangent orthogonality & tangency laws.
+    for _ in 0..40:
+        let a = Vec(F64(rand(-40, 40)), F64(rand(-40, 40)))
+        let b = Vec(F64(rand(-40, 40)), F64(rand(-40, 40)))
+        let r1 = F64(rand(1, 25))
+        let r2 = F64(rand(1, 25))
+        for inner in [false, true]:
+            let segs = circle_circle_tangents(Circle(a, r1), Circle(b, r2), inner:)
+            for (p1, p2) in segs:
+                assert close((p1 - a).len, r1, eps: 1e-6)
+                assert close((p2 - b).len, r2, eps: 1e-6)
+                let dir = p2 - p1
+                assert close(vdot(p1 - a, dir), 0.0, eps: 1e-4)
+                assert close(vdot(p2 - b, dir), 0.0, eps: 1e-4)
 
 @test
 fn test_circles_union_area_against_analytic_and_grid():
