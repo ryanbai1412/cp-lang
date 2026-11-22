@@ -3600,3 +3600,19 @@ fn a_domains_nth_at_and_wrap_and_a_positions_offset_cost_o1() {
         assert!(text.ends_with("\ncost: O(1)"), "{name}: {text}");
     }
 }
+
+#[test]
+fn abs_of_an_integer_is_an_integer_so_a_position_made_of_it_costs_o1() {
+    let src = "domain Node = 1..=10\nfn r(i: Int, j: 0..=5) -> Node:\n    let m = min(i, j)\n    let a = abs(max(i, 3))\n    \
+               Node(min(m, a))\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    assert!(db.diagnostics("a.cp").iter().all(|d| d.severity != cpl_diag::Severity::Error));
+    let hover = |db: &mut Database, name: &str| {
+        let at = src.find(name).unwrap() as u32;
+        db.hover("a.cp", at).map(|h| h.text)
+    };
+    assert_eq!(hover(&mut db, "m =").as_deref(), Some("m: Int"));
+    assert_eq!(hover(&mut db, "a =").as_deref(), Some("a: Int"));
+    assert!(hover(&mut db, "Node(min").unwrap().ends_with("\ncost: O(1)"));
+}

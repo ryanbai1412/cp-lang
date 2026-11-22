@@ -660,6 +660,8 @@ impl<'a> Checker<'a> {
                 }
                 None
             }
+            ("abs", [Ty::Int | Ty::Range { .. }]) => Some(Ty::Int),
+            ("abs", [t @ (Ty::I128 | Ty::Float)]) => Some(t.clone()),
             // `none` is neither skipped nor passed on by `sum` (v2.2).
             ("sum", [over]) => {
                 let elem = self.element_ty(over);

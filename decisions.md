@@ -5451,3 +5451,15 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop `"nth"` from the domain members in `cpl-check`'s
   `member_ty` and the `positional` spans pushed to `fixed_io` after it.
 
+
+## 198. `abs` of a number has its number type (2026-11-22)
+
+- **Decision.** `abs` of an `Int` or integer range is typed `Int`, and of
+  an `I128` or `F64` that type, as `min` and `max` already are.
+- **Why.** It was `_`, so `let a = abs(x)` hovered `a: _` and
+  `Node(abs(i))` was not known to be made from a fixed-size value, which
+  blocked its fn's estimated cost. No fn in the ports gains an estimate
+  from this alone (32 of 1,334 scanned fns before and after): each is also
+  blocked by another call.
+- **Reverse.** Drop the `abs` arms in `prelude_call` in `cpl-check`'s
+  `check/call.rs`.
