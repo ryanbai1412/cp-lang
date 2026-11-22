@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1212 (296 passing). Rules: 521.
+Cases: 1213 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 1212 (296 passing). Rules: 521.
 - R07 (07-sequences.md): 87 rules, 81 cases; 0 uncovered, 7 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
-- R10 (10-io.md): 16 rules, 42 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 43 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
@@ -525,7 +525,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.2 [4+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [4+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [2+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
-- R10.2.5 [1+ 0-] *happy-path only*: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
+- R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.3.1 [1+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
@@ -621,7 +621,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0111 Mixed comparison chain: 2 case(s)
 - E0201 Unresolved name: 2 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 5 case(s)
+- E0203 Unknown field or method: 6 case(s)
 - E0204 Unknown type: 1 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
