@@ -1,0 +1,6 @@
+# One entry per metric; scripts/status.py runs each command hourly.
+# [[metric]]
+# name = "conformance"
+# command = "..."
+# target = "1711/1711"
+# today = "1617/1711"
