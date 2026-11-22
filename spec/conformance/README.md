@@ -15,12 +15,16 @@ expectation:
 
 Line numbers count from the first line after the header, so `at 1` is the
 first line of the program. A second header line `// rule: 05.4.2 05.4.3`
-names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests;
-`scripts/conformance.py --rules` lists the rules no case cites. An `R` code
+names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests,
+without the `R`; `cpl-conform --rules` lists the rules no case cites.
+A rule is defined where `(Rnn.n.n)` ends its sentence; a reference to a
+rule from elsewhere is written `(see Rnn.n.n)` so it is not read as a
+second definition. `COVERAGE.md` (from `scripts/conformance-coverage.py`)
+lists per chapter the rules, codes and std items each case covers. An `R` code
 expects the program to check, run and trap with that code on that line.
 
 They double as the spec's exercises and as the regression suite: the
-runner (`scripts/conformance.py`) checks each expectation
+runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation
 against `cpl check`/`cpl run`, and reports which cases 0.2.x does not
 meet yet without failing the fast check. Seeded from the exercises in
 `core/05-ownership.md`.
