@@ -122,7 +122,7 @@ for attempt in 1 2 3 4 5; do
     for r in "${riders[@]}"; do
         refs+=("$(git commit-tree "$empty" -p "$tip" -m "landed: $r"):refs/locks/done/$r")
     done
-    if git push -q --atomic "${lease[@]}" "$remote" "${refs[@]}"; then
+    if push_main; then
         [ -n "$held" ] && held_set "$token"
         for r in "${riders[@]}"; do
             git push -q "$remote" ":$queue/$r" 2>/dev/null || true
@@ -147,6 +147,23 @@ for attempt in 1 2 3 4 5; do
 done
 echo "land: gave up after 5 attempts" >&2
 exit 1
+}
+
+# The atomic push of main, the lock and the done markers. GitHub sometimes
+# fails a push on its side ("remote rejected ... (failed)", "unable to write
+# file"); while main is still $base and the lock still ours, that is retried
+# here rather than costing the train another gate.
+push_main() {
+    local i out
+    for i in 1 2 3 4; do
+        out=$(git push -q --atomic "${lease[@]}" "$remote" "${refs[@]}" 2>&1) && return 0
+        printf '%s\n' "$out" >&2
+        [ "$(git ls-remote "$remote" refs/heads/main | cut -f1)" = "$base" ] || return 1
+        [ -z "$held" ] || [ "$(git ls-remote "$remote" "$lock" | cut -f1)" = "$held" ] || return 1
+        echo "land: the push failed on the remote's side; main and the lock are unchanged, pushing again ($i/3)" >&2
+        [ "$i" -lt 4 ] && sleep $((i * 2))
+    done
+    return 1
 }
 
 retry() {

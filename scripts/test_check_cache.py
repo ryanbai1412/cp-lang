@@ -208,6 +208,48 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
             self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
 
+    def test_land_pushes_again_when_the_remote_fails_the_push(self):
+        # GitHub sometimes fails a push on its side; with main and the lock
+        # unchanged that costs a push retry, not another gate.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
+            def git(*a, cwd=work):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
+            git("init", "-q", "-b", "main", work, cwd=tmp)
+            git("config", "user.email", "t@example.com")
+            git("config", "user.name", "t")
+            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
+                f.write("ok\n")
+            git("add", "a.md")
+            git("commit", "-qm", "docs: a")
+            git("push", "-q", remote, "HEAD:main")
+            git("commit", "-q", "--allow-empty", "-m", "docs: more")
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write('#!/bin/sh\necho gated >> "$GATES"\n'
+                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            hook = os.path.join(remote, "hooks", "pre-receive")
+            with open(hook, "w", encoding="utf-8") as f:
+                f.write('#!/bin/sh\nif grep -q refs/heads/main && [ ! -e "$FAILED" ]; then\n'
+                        '  touch "$FAILED"; echo "error: unable to write file" >&2; exit 1\nfi\n')
+            os.chmod(hook, 0o755)
+            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
+            gates = os.path.join(tmp, "gates")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
+                               capture_output=True, text=True,
+                               env={**env, "CPL_LAND_GATE": gate, "GATES": gates,
+                                    "FAILED": os.path.join(tmp, "failed")})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("the push failed on the remote's side", r.stderr)
+            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
+            with open(gates, encoding="utf-8") as f:
+                self.assertEqual(f.read().count("gated"), 1)
+
     def _train(self, gate_body, bad=None, names=("first", "rider")):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
