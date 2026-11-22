@@ -88,9 +88,9 @@ decides the element type of the folds:
 This is the law machinery of round 5 doing layout work: `Selective`
 already promised "returns one of its operands", which is exactly the fact
 that keeps a range closed. `+` gets the same treatment from its interval
-rule: a fold of at most `V.count` inputs in `lo..=hi` lies in
-`V.count.lo * min(lo, 0) ..= V.count.hi * hi`, and the node type narrows
-when that fits. The bound comes from the static bound of `V.count`, so it
+rule: with `N` the static bound of `V.count`, a fold of at most `N`
+inputs in `lo..=hi` lies in `min(0, N*lo) ..= max(0, N*hi)`, and the node
+type narrows when that fits. The bound comes from the static bound of `V.count`, so it
 holds for every input; with `act:` or point writes of unbounded values
 there is no bound and nodes stay `Int`.
 
