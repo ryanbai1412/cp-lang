@@ -13,6 +13,7 @@ mod outline;
 mod rename;
 mod server;
 pub mod transport;
+mod uri;
 
 pub use server::Server;
 pub use transport::{read_message, serve, write_message};

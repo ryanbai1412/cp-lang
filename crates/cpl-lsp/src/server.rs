@@ -7,6 +7,7 @@
 
 use crate::complete::{self, Cursor, StdLib};
 use crate::rename;
+use crate::uri::uri_of_path;
 use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
@@ -1985,14 +1986,6 @@ fn memory_lens(
         [one, rest @ ..] => title += &format!(", not counting {one} and {} more", rest.len()),
     }
     Some((title, vec!["judges".into(), path.into()]))
-}
-
-fn uri_of_path(path: &str) -> String {
-    if path.contains("://") {
-        path.to_string()
-    } else {
-        format!("file://{path}")
-    }
 }
 
 /// Whether `query`'s characters appear in `name` in order, as editors'
