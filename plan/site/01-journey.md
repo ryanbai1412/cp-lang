@@ -1,7 +1,7 @@
 # CP Lang website: the new user's journey
 
 A story of one new user, from the first visit to a habit, with what the
-site does at each step and why. A companion to `91-website.md`. Mostly
+site does at each step and why. A companion to `00-overview.md`. Mostly
 proposal; where it relies on something that exists today, that is said.
 
 Status: decided (Ryan agreed to the journey, 2026-11-21).
