@@ -71,6 +71,56 @@ fn lsp_serves_diagnostics_and_hover_over_stdio() {
 }
 
 #[test]
+fn lsp_reports_what_check_reports_against_the_spec() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let std_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../spec/std");
+    let dir = std::env::temp_dir().join(format!("cpl-cli-spec-lsp-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("a.cp");
+    let text = "domain V = 1..=3\nlet par: [V]V = [V] v => v\nlet f = Functional.new(par)\nprint(f.on_cycle(V.first))\n";
+    std::fs::write(&file, text).unwrap();
+    let check = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("check")
+        .arg(&file)
+        .env("CPL_SPEC", "1")
+        .env("CPL_STD", std_dir)
+        .output()
+        .expect("cpl check runs");
+    assert!(check.status.success(), "{}", String::from_utf8_lossy(&check.stderr));
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["lsp", "--stdio"])
+        .env("CPL_SPEC", "1")
+        .env("CPL_STD", std_dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("cpl lsp starts");
+    let uri = format!("file://{}", file.display());
+    let session = [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.to_string(),
+        format!(
+            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"{uri}","languageId":"cp","version":1,"text":"{}"}}}}}}"#,
+            text.replace('\n', "\\n")
+        ),
+        r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#.to_string(),
+        r#"{"jsonrpc":"2.0","method":"exit","params":null}"#.to_string(),
+    ];
+    let mut stdin = child.stdin.take().unwrap();
+    for message in &session {
+        stdin.write_all(frame(message).as_bytes()).unwrap();
+    }
+    drop(stdin);
+    let out = child.wait_with_output().expect("cpl lsp exits");
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.contains("publishDiagnostics"), "{stdout}");
+    assert!(!stdout.contains(r#""severity":1"#), "{stdout}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn check_exits_nonzero_and_prints_the_error() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-bin-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

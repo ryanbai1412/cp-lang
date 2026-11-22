@@ -826,7 +826,7 @@ impl Server {
         };
         // The same answer as `cpl check`: the checker's diagnostics, then
         // what lowering rejects; then, as `cpl lint` reports them, the lints.
-        let items = cpl_ir::check(&analysis)
+        let items = cpl_ir::reported(&analysis)
             .iter()
             .chain(&lints(uri, &analysis.text))
             .chain(&overflows(&analysis.text))

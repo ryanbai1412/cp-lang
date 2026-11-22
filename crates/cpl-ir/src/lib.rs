@@ -59,6 +59,19 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     diagnostics
 }
 
+/// What `cpl check` and the editor report: [`check`], or under `CPL_SPEC`
+/// the checker's types alone against the spec (spec/README.md), without
+/// designed-but-unbuilt syntax that cites its spec section.
+pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
+    if std::env::var_os("CPL_SPEC").is_none() {
+        return check(analysis);
+    }
+    let cites_spec = |d: &cpl_diag::Diagnostic| {
+        d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
+    };
+    analysis.diagnostics.iter().filter(|d| !cites_spec(d)).cloned().collect()
+}
+
 pub use lower::{
     brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker,
     lower_gen, lower_gen_read, lower_judge, lower_test,
