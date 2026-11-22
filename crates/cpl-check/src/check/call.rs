@@ -242,7 +242,9 @@ impl<'a> Checker<'a> {
         self.debug_changes(callee, args);
         self.no_escape_args(callee, &callee_ty, args);
         self.check_store_domain_escape(callee, args);
-        self.mutates_view(call, callee);
+        if !self.own_non_mutator(callee) {
+            self.mutates_view(call, callee);
+        }
         self.mutates_self(callee);
         receiver.unwrap_or(ty)
     }
@@ -498,6 +500,23 @@ impl<'a> Checker<'a> {
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.
+    /// `p.swap()` on a type that declares its own non-`mut` `swap` calls
+    /// that method, not the built-in mutator of the same name (R05.4.1).
+    fn own_non_mutator(&mut self, callee: &Expr) -> bool {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let Ty::Named {
+            name: type_name, ..
+        } = self.quietly(|c| c.infer(base))
+        else {
+            return false;
+        };
+        self.members_of(&type_name).is_some_and(|m| {
+            m.members.iter().any(|(n, _)| *n == name.text) && !m.mutators.contains(&name.text)
+        })
+    }
+
     fn mutates_self(&mut self, callee: &Expr) {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;

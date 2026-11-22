@@ -854,6 +854,15 @@ impl<'a> Lowerer<'a> {
             let sid = self.instantiate_struct(gid, explicit);
             return self.construct_or_new(sid, args, span);
         }
+        // A hint says which instantiation is meant, even in the struct's own body
+        // (`fn swap(self) -> Pair<B, A> = Pair(second, first)`).
+        if let Some(Ty::Struct(hsid)) = hint {
+            if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
+                if *hgid == gid {
+                    return self.construct_or_new(*hsid, args, span);
+                }
+            }
+        }
         // Inside the struct's own body (`Mod(x % P)`, `Dsu(...)`, `Order(...)`), reuse `self_struct`!
         if explicit.is_empty() {
             if let Some(sid) = self.self_struct {
@@ -863,14 +872,6 @@ impl<'a> Lowerer<'a> {
                     .is_some_and(|(g, _)| *g == gid)
                 {
                     return self.construct_or_new(sid, args, span);
-                }
-            }
-        }
-        // Try inferring from `hint` (e.g. `Monoid(m.id, ...)` when return type is `Monoid<T>`).
-        if let Some(Ty::Struct(hsid)) = hint {
-            if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
-                if *hgid == gid {
-                    return self.construct_or_new(*hsid, args, span);
                 }
             }
         }

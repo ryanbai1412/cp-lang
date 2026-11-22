@@ -3861,7 +3861,7 @@ fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
 pub(crate) struct Members {
     generics: Vec<String>,
     pub(crate) fields: Vec<crate::ty::Param>,
-    members: Vec<(String, Ty)>,
+    pub(crate) members: Vec<(String, Ty)>,
     pub(crate) projections: Vec<crate::def::Projection>,
     /// The methods that take `mut self`.
     pub(crate) mutators: Vec<String>,
