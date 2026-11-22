@@ -1,14 +1,15 @@
 // The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
-// its status from the compiler, never by hand. Every snippet must pass the
-// 0.3 checker. `runs`: the compiler also runs it (matching `.out` when given)
-// and emits C++. `checks`: it does not run yet, so the page shows it without
-// Run and without output.
+// its status from the compiler, never by hand. `runs`: the compiler runs it
+// (matching `.out` when given) and emits C++. `checks`: it passes the checker
+// but does not run yet. `spec`: it is written to spec/ and the compiler does
+// not accept it yet; only `*.spec.cp` files and `status=spec` fences may be
+// that. The page shows `checks` and `spec` without Run and without output.
 // A practice problem's ref.cp must also pass every test in its tests.json.
 // Pages take their programs from content/, never from literals in TSX, so
 // everything a visitor can run is covered. Writes .gate/status.json and
 // .gate/report.md (the run/check split per page, and why each check-only
-// snippet does not run), and fails when a snippet is not 0.3 or is below its
-// declared status. Fragments without input only need to build.
+// snippet does not run), and fails when a snippet is below its declared
+// status. Fragments without input only need to build.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -20,7 +21,7 @@ const repo = dirname(web);
 const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
 if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
 
-const rank = { fails: 0, checks: 1, runs: 2 };
+const rank = { fails: 0, spec: 1, checks: 2, runs: 3 };
 const snippets = [];
 
 function walk(dir, f) {
@@ -40,7 +41,7 @@ walk(join(web, 'content'), (p) => {
       source: readFileSync(p, 'utf8'),
       stdin: read('in') ?? '',
       expected: p.endsWith('.spec.cp') ? null : read('out'),
-      declared: p.endsWith('.spec.cp') ? 'checks' : 'runs',
+      declared: p.endsWith('.spec.cp') ? 'spec' : 'runs',
     });
     const tests = join(dirname(p), 'tests.json');
     if (p.endsWith('/ref.cp') && existsSync(tests))
@@ -61,7 +62,7 @@ walk(join(web, 'content'), (p) => {
     while ((m = fence.exec(text))) {
       i++;
       const meta = m[1];
-      const declared = /\bstatus=(runs|checks)\b/.exec(meta)?.[1] ?? 'runs';
+      const declared = /\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs';
       const stdin = /\binput="([^"]*)"/.exec(meta)?.[1]?.replace(/\\n/g, '\n') ?? '';
       snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared });
     }
@@ -93,7 +94,10 @@ for (const s of snippets) {
   }
   let status = 'fails';
   let note = '';
-  if (check.status !== 0) note = first(check);
+  if (check.status !== 0) {
+    note = first(check);
+    if (s.declared === 'spec') status = 'spec';
+  }
   else if (build.status === 0 && run.status === 0 && matches) status = 'runs';
   else {
     status = 'checks';
@@ -112,17 +116,23 @@ const pages = {};
 for (const [id, r] of Object.entries(results)) {
   if (id.includes('@test')) continue;
   const page = id.replace(/#\d+$/, '').replace(/\/[^/]+\.cp$/, '/');
-  const p = (pages[page] ??= { runs: 0, checks: 0, fails: 0, notes: [] });
+  const p = (pages[page] ??= { runs: 0, checks: 0, spec: 0, fails: 0, notes: [] });
   p[r.status]++;
   if (r.status !== 'runs') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
 }
 writeFileSync(
   join(web, '.gate/report.md'),
-  ['# Snippet status by page', '', '| page | snippets | runs | check-only | fails the checker |', '|---|---|---|---|---|']
-    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.fails} | ${p.runs} | ${p.checks} | ${p.fails} |`))
+  ['# Snippet status by page', '', '| page | snippets | runs | check-only | spec only |', '|---|---|---|---|---|']
+    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.spec + p.fails} | ${p.runs} | ${p.checks} | ${p.spec + p.fails} |`))
     .concat(['', '## Does not run', ''], Object.values(pages).flatMap((p) => p.notes))
     .join('\n') + '\n',
 );
+const corpus = {};
+for (const e of readdirSync(join(repo, 'corpus/problems'), { withFileTypes: true })) {
+  const spec = join(repo, 'corpus/problems', e.name, 'spec.cp');
+  if (e.isDirectory() && existsSync(spec)) corpus[e.name] = sh(['check', spec], v03).status === 0 ? 'checks' : 'spec';
+}
+writeFileSync(join(web, '.gate/corpus.json'), JSON.stringify(corpus, null, 2) + '\n');
 const counts = Object.values(results).reduce((c, r) => ((c[r.status] = (c[r.status] ?? 0) + 1), c), {});
 console.log(`gate: ${snippets.length} snippets`, counts, failed ? `${failed} below declared` : 'ok');
 process.exit(failed ? 1 : 0);

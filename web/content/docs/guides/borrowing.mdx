@@ -28,13 +28,13 @@ While a place is borrowed mutably, other code cannot read or write the same plac
 
 ## A projection lends a place
 
-An ordinary function uses `->` to return an owned value. A projection uses `lends` to give temporary access to a place in its receiver, and the tail expression of its body names that place (`mut place` for a mutable one). `lends` is one of only four library-author keywords; contestants use projections, they rarely write them.
+An ordinary function uses `->` to return an owned value. A projection returns `-> lends T` to give temporary access to a place in its receiver, and the tail expression of its body names that place (`mut place` for a mutable one). `lends` is one of only four library-author keywords; contestants use projections, they rarely write them.
 
 ```cp
 domain V = 1..=3
 struct Counter:
     data: [V]Int
-    fn at(mut self, i: V) lends mut Int:
+    fn at(mut self, i: V) -> lends mut Int:
         mut self.data[i]
 
 var counter = Counter([V] v => 0)
@@ -47,7 +47,7 @@ This projection lends one counter without copying it. `lends T` only permits rea
 ```cp
 struct Value:
     data: Int
-    fn get(self) lends Int:
+    fn get(self) -> lends Int:
         self.data
 
 let owner = Value(7)
@@ -69,7 +69,7 @@ That is the tradeoff, not a promise that arbitrary Rust borrowing works without 
 domain V = 1..=4
 let a: [V]Int = [V] v => v.to_idx + 1
 fn find_span(a: [V]Int) -> Range<V>:
-    V.first..=V.last
+    V(1)..=V(4)
 
 let span: Range<V> = find_span(a)      // plain data: two boundaries
 let part = a[span]                     // a lexical lend, used here
@@ -87,7 +87,7 @@ The array's element projection declares this law:
 domain V = 1..=3
 struct Counter:
     data: [V]Int
-    fn at(mut self, i: V) lends mut Int:
+    fn at(mut self, i: V) -> lends mut Int:
         @law disjoint(i, j) = i != j
         mut self.data[i]
 

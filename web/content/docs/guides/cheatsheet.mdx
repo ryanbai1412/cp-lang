@@ -36,7 +36,7 @@ print(a.max()! - a.min()!)
 
 ## Output
 
-```cp
+```cp status=checks
 let xs = [3, 1, 4, 1, 5]
 let dist: [0..3]?Int = [0, None, 2]
 let ok = xs.len > 3
@@ -44,11 +44,11 @@ let x = 3.14159
 print(xs)
 print(xs, sep: "\n")
 print(dist, none: "-1")
-print(ok)
+print(yes(ok))
 print("sum={xs.sum()} pi={x:.2f} n={xs.len:03}")
 ```
 
-`print` puts spaces between arguments and ends the line. Lists and arrays print on one line. `Bool` prints `YES` or `NO`.
+`print` puts spaces between arguments and ends the line. Lists and arrays print on one line. `yes(b)` turns a `Bool` into `YES` or `NO`; `print` does not take a bare `Bool`.
 
 ## Control flow, arithmetic and optionals
 
@@ -74,10 +74,10 @@ print(total, k, 7 / 2, -7 % 3, 2 ** 10, min(3, 5))
 
 ## Arrays, domains and sequences
 
-```cp
+```cp status=checks
 let a = [5, 2, 8, 2]
 print(a.sum(), a.min()!, a.max()!, a.sorted(), a.count(x => x == 2))
-print(a.any(x => x > 7), a.all(x => x > 1))
+print(yes(a.any(x => x > 7)), yes(a.all(x => x > 1)))
 print(sum(x * x for x in a), [x for x in a if x % 2 == 0])
 domain V = 1..=4
 let b: [V]Int = [V] v => v.to_idx * 10
@@ -91,7 +91,7 @@ print()
 
 ## Collections
 
-```cp
+```cp status=checks
 var xs: List<Int> = []
 xs.push(5)
 xs.push(2)
@@ -103,7 +103,7 @@ seen.add(3)
 var cnt: Map<Int, Int> = Map()
 cnt[7] += 1
 cnt[7] += 1
-print(3 in seen, cnt[7])
+print(yes(3 in seen), cnt[7])
 var h = MinHeap<Int>()
 h.push(4)
 h.push(1)

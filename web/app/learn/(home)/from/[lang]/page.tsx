@@ -33,8 +33,7 @@ export default async function Page({ params }: Props) {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">CP Lang for {languages[l].name} programmers</h1>
       <p className="mt-2 text-muted-foreground">
         Six short problems. Each shows how you&apos;d write it in {languages[l].name}, then the CP Lang solution. Edit
-        it, break it, submit it: your browser judges it. A solution marked check-only is shown without a judge until
-        the compiler runs it.
+        it, break it, submit it: your browser judges it. A solution the compiler does not run yet is shown without a judge.
       </p>
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         {Object.entries(languages).map(([k, v]) => (
@@ -66,7 +65,7 @@ export default async function Page({ params }: Props) {
               ) : (
                 <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                   <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">
-                    <StatusBadge status="checks" />
+                    <StatusBadge status={p.status} />
                   </div>
                   <div
                     className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"

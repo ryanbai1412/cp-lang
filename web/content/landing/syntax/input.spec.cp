@@ -7,4 +7,4 @@ for (u, v) in street:
     deg[u] += 1
     deg[v] += 1
 for closed in read<[q]Range<Street>>():
-    print(deg[street[closed.l].0], closed.len)
+    print(deg[street[closed.first!].0], closed.len)

@@ -66,13 +66,17 @@ const library = [
   },
 ];
 
+const gate = () =>
+  JSON.parse(readFileSync(join(process.cwd(), '.gate/status.json'), 'utf8')) as Record<string, { status: Status }>;
+
 async function load(group: string, items: { id: string; title: string; caption: string }[], link: boolean) {
+  const status = gate();
   return Promise.all(
     items.map(async (t): Promise<Showcase> => {
       const source = readFileSync(join(dir, group, `${t.id}.spec.cp`), 'utf8').trimEnd();
       return {
         ...t,
-        status: 'checks',
+        status: status[`content/landing/${group}/${t.id}.spec.cp`].status,
         lines: source.split('\n').length,
         html: await highlight(source, 'cp'),
         href: link && existsSync(join(process.cwd(), '../corpus/problems', t.id)) ? `/corpus/${t.id}` : undefined,
@@ -135,9 +139,6 @@ const lib = [
     caption: 'Counting paths in a DAG modulo 1e9 + 7. Mod carries the modulus in its type; @memo caches the recursion.',
   },
 ];
-
-const gate = () =>
-  JSON.parse(readFileSync(join(process.cwd(), '.gate/status.json'), 'utf8')) as Record<string, { status: Status }>;
 
 function live(group: string, items: { id: string; title: string; caption: string }[]): Promise<Live[]> {
   const status = gate();

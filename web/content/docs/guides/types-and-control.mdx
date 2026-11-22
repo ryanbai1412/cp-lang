@@ -118,7 +118,7 @@ enum Event:
     Close(x: Int)
     Query(id: Int, x: Int)
 
-enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
+enum Dir = N | E | S | W        // one-line plain enum
 ```
 
 - **Records (`type`)** are structural and support both field names (`p.x`) and positional indexing (`p.0`).

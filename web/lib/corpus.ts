@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Status } from '@/components/status-badge';
 
 const repo = join(process.cwd(), '..');
 
@@ -33,6 +34,7 @@ export interface Entry {
   notes: string;
   statement: string;
   spec: string;
+  status: Status;
   cpp: string;
   cppFile: string;
   cppTime: number;
@@ -46,6 +48,7 @@ let cache: Entry[] | null = null;
 export function corpus(): Entry[] {
   if (cache) return cache;
   const dir = join(repo, 'corpus/problems');
+  const status = JSON.parse(readFileSync(join(process.cwd(), '.gate/corpus.json'), 'utf8')) as Record<string, Status>;
   cache = readdirSync(dir)
     .filter((p) => existsSync(join(dir, p, 'meta.json')))
     .map((p) => JSON.parse(readFileSync(join(dir, p, 'meta.json'), 'utf8')) as Meta)
@@ -64,6 +67,7 @@ export function corpus(): Entry[] {
           notes: m.notes ?? '',
           statement: `https://dmoj.ca/problem/${m.problem}`,
           spec: read(spec),
+          status: status[m.problem] ?? 'spec',
           cpp: read(ac.file),
           cppFile: ac.file,
           cppTime: ac.time,

@@ -77,9 +77,9 @@ for r in Row:
 
 ## Output with `print()` and format strings
 
-`print(...)` separates arguments with single spaces and writes a trailing newline. Arrays and lists print space-separated on one line, and `Bool` prints `YES` or `NO` (the standard contest convention):
+`print(...)` separates arguments with single spaces and writes a trailing newline. Arrays and lists print space-separated on one line, and `yes(b)` turns a `Bool` into `YES` or `NO` (the standard contest convention):
 
-```cp
+```cp status=checks
 let ans = 42
 let (a, b) = (3, 7)
 let arr = [3, 7]
@@ -90,7 +90,7 @@ print(a, b)                             // space-separated: "3 7"
 print(arr)                              // space-separated elements on one line (note: [D]Char prints contiguously; pass sep: " " for spaced chars)
 print(arr, sep: "\n")                   // one element per line
 print(dist, none: "-1")                 // prints ?Int array, writing -1 for every none
-print(ok)                               // YES or NO (for AtCoder Yes/No, use `print(if ok: "Yes" else: "No")`)
+print(yes(ok))                              // YES or NO (for AtCoder Yes/No, use `print(if ok: "Yes" else: "No")`)
 ```
 
 ### String interpolation and format specifiers

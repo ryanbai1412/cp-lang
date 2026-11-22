@@ -79,7 +79,7 @@ fn dfs(u: V):
     for v in g[u] if not vis[v]:
         dfs(v)
 dfs(V(1))
-print(vis)
+print(vis.count(x => x))
 ```
 
 Read [ownership & borrowing](/docs/guides/borrowing) for the lexical rules behind `mut` borrows and `lends` projections.

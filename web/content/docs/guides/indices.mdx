@@ -45,12 +45,12 @@ print(a.sum())
 
 A domain implements the `Index` and `Seq` traits:
 
-- `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints (`V.count > 0`).
+- `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints as `?V` (`none` for an empty domain; unwrap with `!`).
 - `v.to_idx` converts to `0..V.count` and `V.from_idx(i) -> ?V` converts back safely.
 - `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `none` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
 - Step along a named domain in either direction with `for v in V by k:` and `for v in V.rev by k:`.
 
-Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are indices. Like lists, empty arrays return `none`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
+Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are optional indices. Like lists, empty arrays return `none`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
 
 ```cp
 domain V = 5..8
@@ -74,7 +74,7 @@ let a: [V]Int = read()
 var pre: [V.cuts]Int = 0
 for v in V:
     pre[v.r] = pre[v.l] + a[v]
-print(pre[V.last.r])
+print(pre[V.last!.r])
 ```
 
 Every element `v: V` sits between two boundaries:
@@ -97,7 +97,7 @@ for i in I:
         best[i.r, c] = best[i.l, c]
         if c >= items[i].w:
             best[i.r, c] max= best[i.l, c - items[i].w] + items[i].v
-print(best[I.last.r, cap])
+print(best[I.last!.r, cap])
 ```
 
 ## Ranges, open ends, and slices
@@ -151,7 +151,7 @@ The imported `p.adj4` yields in-bounds orthogonal neighbors. `std.grid` also dec
 
 Coordinate compression produces a fresh nominal domain `xs.D` together with value lookup and inverse mapping:
 
-```cp status=checks
+```cp status=spec
 let all_coords = [30, 10, 20]
 let queries = [10, 30]
 let xs = compress(all_coords)
@@ -190,7 +190,7 @@ Standard-library functions that introduce a new index space (`components`, `scc`
 
 For undirected adjacency matrices and other symmetric relations over a domain `V`, `[Sym<V>]T` stores unordered pairs in a flat triangular array of `n * (n + 1) / 2` cells where `adj[u, v]` and `adj[v, u]` refer to the same entry. Domains also provide typed slicing and unordered pair iteration (`V.after(i)`, `V.before(i)`, `V.pairs`, and `domain P = V.pairs`):
 
-```cp
+```cp status=checks
 domain V = 1..=4
 var adj: [Sym<V>]Bool = false
 adj[V(1), V(3)] = true
@@ -201,7 +201,7 @@ for (i, j) in V.pairs if not adj[i, j]:
 var after_first = 0
 for j in V.after(V(1)):
     after_first += 1
-print(adj[V(3), V(1)], missing, after_first)
+print(yes(adj[V(3), V(1)]), missing, after_first)
 ```
 
 `for (i, j) in V.pairs` and `for j in V.after(i)` / `V.before(i)` lower directly to nested integer loops with no intermediate allocation.
@@ -246,13 +246,13 @@ print(dp[s], dp[V(2), K(2)], s.0.ord, State.len)
 
 `a.inverse()` inverts any 1D array whose elements are an index domain, fieldless enum, or bounded integer range. On a total bijection `a: [D]E` it returns `[E]D` (trapping if a value is repeated or missing); on a partial injection `a: [D]?E` it returns `[E]?D` (trapping if two positions map to the same value):
 
-```cp
+```cp status=checks
 domain P = 1..=4
 var a: [P]?(1..=4) = none
 a[P(2)] = 4
 a[P(4)] = 1
 let at = a.inverse()
-print(at[1]!.label, at[2] == none, at[4]!.label)
+print(at[1]!.label, yes(at[2] == none), at[4]!.label)
 ```
 
 ## Algebraic `Index` and escape hatches

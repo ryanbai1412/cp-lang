@@ -39,13 +39,13 @@ print(pref[Cut(3)])
 
 Prefer `any`, `all`, `sum`, `count`, `min`, and `max` over manual boolean flags and accumulator loops (enforced by lints `L0501`, `L0504`, `L0505`):
 
-```cp
+```cp status=checks
 let xs: List<Int> = [3, 8, 2, 9, 5]
 let has_big = xs.any(x => x > 7)
 let all_pos = xs.all(x => x > 0)
 let evens = xs.count(x => x % 2 == 0)
 let total = sum(x for x in xs)
-print(has_big, all_pos, evens, total)
+print(yes(has_big), yes(all_pos), evens, total)
 ```
 
 Use `for x in xs if cond:` to filter cleanly without extra nesting, and `xs.adjacent` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
@@ -127,7 +127,7 @@ print(lo)
 
 Import battle-tested data structures from `std.*` instead of re-deriving them inline:
 
-```cp
+```cp status=checks
 use std.dsu.Dsu
 use std.fenwick.Fenwick
 
@@ -139,7 +139,7 @@ let _ = dsu.unite(V(2), V(3))
 var bit = Fenwick<V>()
 bit.add(V(1), 5)
 bit.add(V(3), 7)
-print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
+print(yes(dsu.same(V(1), V(3))), yes(dsu.same(V(1), V(4))), bit.prefix(V(3).after))
 ```
 
 ## 8. Quick idiom reference
@@ -159,7 +159,7 @@ print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
 | Read unknown-length line or string | `let s: Str = read()` (ASCII bytes: `s[i]` is `Char`, `s[i] - 'a'` is `Int`) |
 | Convert integer `n` to string | `"{n}"` (or `std.math.digits(n)` for base-10 digits) |
 | Print space-separated values | `print(a, b)` or `print(x, end: " ")` |
-| Print `YES` / `NO` or `Yes` / `No` | `print(ok)` prints `YES`/`NO`; for AtCoder `Yes`/`No`, write `print(if ok: "Yes" else: "No")` (colons, never `then` or Python `a if c else b`) |
+| Print `YES` / `NO` or `Yes` / `No` | `print(yes(ok))` prints `YES`/`NO`; for AtCoder `Yes`/`No`, write `print(if ok: "Yes" else: "No")` (colons, never `then` or Python `a if c else b`) |
 | Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
 | Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`); every `mut` parameter also requires `mut` at the call site (`f(mut x)`) |
 | Adjacent pairs in a list | `for (a, b) in xs.adjacent:` |

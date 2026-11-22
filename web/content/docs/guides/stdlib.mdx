@@ -63,7 +63,7 @@ Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other contai
 use std.algebra.{desc}
 
 domain V = 0..4
-let (dist, u) = (3, V.first)
+let (dist, u) = (3, V(0))
 type Item = (cost: Int, value: Int)
 var items: List<Item> = [(2, 10), (1, 5)]
 var pq = MinHeap<(Int, Desc<V>)>()
@@ -136,7 +136,7 @@ print(diffs, jumps)
 
 Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id: identity, op: combine)`. A segment tree with range updates takes `act:`, either a stock action (`add`, `assign`, `affine`, `flip`) or a custom `Action(id:, compose:, apply:, over:)`. Name the fields to make each callback's role clear:
 
-```cp status=checks
+```cp status=spec
 use std.algebra.{Monoid, Action}
 
 domain V = 1..=4
