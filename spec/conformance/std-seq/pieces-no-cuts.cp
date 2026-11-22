@@ -2,4 +2,4 @@
 use std.seq.{pieces}
 let cuts: List<Int> = []
 let (domain P, piece) = (0..10).pieces(cuts: cuts)
-print(P.len, piece[P.all.start].len)
+print(P.len, piece[P.first!].len)
