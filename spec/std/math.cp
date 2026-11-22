@@ -135,7 +135,7 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
         (y0, y1) = (y1, y0 - q * y1)
     if r0 < 0: (g: -r0, x: -x0, y: -y0) else: (g: r0, x: x0, y: y0)
 
-/// `ceil(a / b)` for any non-zero `b`.
+/// `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.
 ///
 /// Built-in `/` is Euclidean division (the remainder is never negative), which already equals
 /// `floor(a / b)` for `b > 0`; `ceil_div` is the rounding-up counterpart for either sign of `b`.
@@ -146,7 +146,7 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
 /// example: `ceil_div(-7, 2) == -3`
 /// example: `ceil_div(7, -2) == -3`
 /// example: `ceil_div(6, 3) == 2`
-pub fn ceil_div(a: Int, b: Int) -> Int = if b > 0: -((-a) / b) else: -(a / (-b))
+pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(self / (-b))
 
 /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|` and `self == q * d + r`.
 ///

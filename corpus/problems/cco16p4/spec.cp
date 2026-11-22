@@ -10,5 +10,5 @@ fn canon() -> Int:
             if g[i, j]:
                 for (a, b) in [(i, j), (i, j.next!), (i.next!, j), (i.next!, j.next!)]:
                     g[a, b] ^= true
-    chain(g[.., N.last!], g[N.last!, ..]).fold((m, b) => m * 2 + b.int, 0)
+    chain(g[.., N.last!], g[N.last!, ..]).fold((m, b) => m * 2 + Int(b), 0)
 print([canon() for _ in 0..q].tally().values.map(c => c * (c - 1) / 2).sum())

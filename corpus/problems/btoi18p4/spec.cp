@@ -65,10 +65,10 @@ let answer: ?[Wire]Bool =
             let (wb, wc) = (tops[Int(b)], tops[Int(c)])
             let pair = (lo: lo[wb], hi: hi[wc] + (if lo[wc] < lo[wb]: n else: 0))
             let others = [tops[Int(T.ring.prev(b))], tops[Int(T.ring.next(c))]]
-            if good - free[b].int - free[c].int == T.len - 2 and covers(kids(b) + kids(c) + others, pair):
+            if good - Int(free[b]) - Int(free[c]) == T.len - 2 and covers(kids(b) + kids(c) + others, pair):
                 spread(t => T.ring.dist(c, t) % 2 == 0)
             else: None)
 
 match answer:
-    Some(dir) => print(dir.map(d => d.int), sep: "")
+    Some(dir) => print(dir.map(d => Int(d)), sep: "")
     None => print("impossible")

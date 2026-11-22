@@ -16,7 +16,7 @@ fn scores(c: Course) -> Z:
     let ys = [(1..=u).sum(of: s => Z(s) ** above * Z(u - s) ** below) for u in 0..=n + 1]
     lagrange_at(ys, Z(cap[c]))
 
-var beaten = [0..n] j => Z((j == k).int)
+var beaten = [0..n] j => Z(Int(j == k))
 for c in Course.rev:
     let below = n - rank[c]
     let ways = scores(c)
