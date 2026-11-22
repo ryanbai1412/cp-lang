@@ -1483,6 +1483,26 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtKind::Unchecked(body) => return self.block(body),
+            StmtKind::Context { name, fields } => {
+                let mut fs = Vec::new();
+                for f in fields {
+                    let fty = self.field_type(f);
+                    if let Some(d) = &f.default {
+                        let dty = self.infer(d);
+                        self.expect_fits(&dty, &fty, d, |c, got, want| {
+                            format!(
+                                "`{}` is {}, but `{}` is {}",
+                                f.name.text,
+                                want.with_article(),
+                                c.quote(d.span),
+                                got.with_article()
+                            )
+                        });
+                    }
+                    fs.push((f.name.text.clone(), fty));
+                }
+                self.declare(&name.text, name.span, Ty::Record(fs), false, "context");
+            }
             StmtKind::With { args, body, .. } => {
                 for arg in args {
                     if !context_constant(&arg.value) {

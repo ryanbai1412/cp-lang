@@ -623,6 +623,17 @@ impl<'a> Checker<'a> {
         if self.generics.iter().any(|g| g == name) {
             return Ty::Param(name.to_string());
         }
+        if name == "io" {
+            return Ty::Record(vec![
+                ("sep".into(), Ty::Str),
+                ("base".into(), Ty::Int),
+                ("precision".into(), Ty::Int),
+                (
+                    "answers".into(),
+                    Ty::Tuple(vec![Ty::Str, Ty::Str]),
+                ),
+            ]);
+        }
         if let Some(def) = self.global(name) {
             let ty = match &*def {
                 // `Sum` without `<Int>`: nothing says what `T` is.

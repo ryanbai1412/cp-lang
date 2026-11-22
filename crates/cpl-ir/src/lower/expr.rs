@@ -878,6 +878,11 @@ impl<'a> Lowerer<'a> {
     /// A name as a value. One that a test has shown to hold a value is the
     /// value it holds (see [`narrow`]).
     pub(super) fn name(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
+        if name == "io" && self.lookup("io").is_none() && self.get_sym("io").is_none() {
+            let gid = self.ensure_io_global();
+            let ty = self.globals[gid].ty.clone();
+            return self.mk(ExprKind::Global(gid), ty, span);
+        }
         // `x!`, `x ?? 0`, `match x`: the optional itself is asked for.
         let written = std::mem::take(&mut self.cx.as_written);
         let value = self.name_as_written(name, hint, span);
@@ -2166,7 +2171,11 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        if self.unchecked > 0 && ty == Ty::Int && l.ty == Ty::Int && r.ty == Ty::Int {
+        if (self.unchecked > 0 || self.overflow_checks_off > 0)
+            && ty == Ty::Int
+            && l.ty == Ty::Int
+            && r.ty == Ty::Int
+        {
             let wrap = match op {
                 Add => Some(Builtin::WrapAdd),
                 Sub => Some(Builtin::WrapSub),

@@ -881,6 +881,41 @@ impl Database {
             }
         }
 
+        {
+            let mut seen_exec = false;
+            for (range, item) in ranges.iter().zip(items.iter()) {
+                for stmt in &item.parsed.stmts {
+                    match &stmt.kind {
+                        StmtKind::With { body: None, .. } => {
+                            if seen_exec {
+                                let abs = Span::new(
+                                    range.span.start + stmt.span.start,
+                                    range.span.start + stmt.span.end,
+                                );
+                                sink.push(Diagnostic::error(
+                                    codes::WITH_NOT_FIRST,
+                                    abs,
+                                    "a bare `with` context must come before any executable statements",
+                                ));
+                            }
+                        }
+                        StmtKind::Context { .. }
+                        | StmtKind::Fn(_)
+                        | StmtKind::Struct(_)
+                        | StmtKind::Enum(_)
+                        | StmtKind::TypeAlias { .. }
+                        | StmtKind::Domain { .. }
+                        | StmtKind::Trait { .. }
+                        | StmtKind::Impl { .. }
+                        | StmtKind::Use { .. }
+                        | StmtKind::Const { .. }
+                        | StmtKind::Error => {}
+                        _ => seen_exec = true,
+                    }
+                }
+            }
+        }
+
         let analysis = Arc::new(Analysis {
             text: text.clone(),
             lines,
@@ -1317,6 +1352,7 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             StmtKind::Domain { name, .. } => push(out, name, DeclKind::Domain),
             StmtKind::TypeAlias { name, .. } => push(out, name, DeclKind::Alias),
             StmtKind::Trait { name, .. } => push(out, name, DeclKind::Trait),
+            StmtKind::Context { name, .. } => push(out, name, DeclKind::Value),
             // An impl is filed under a name of its own, so it is found,
             // memoized and reported twice like any other definition.
             StmtKind::Impl {

@@ -1312,12 +1312,23 @@ impl<'a> Lowerer<'a> {
     fn prelude(&mut self, name: &str, args: &[ast::Arg], hint: Option<&Ty>, span: Span) -> Expr {
         match name {
             "print" => {
-                let mut digits = match self.context("io", "precision").map(|v| v.kind) {
-                    Some(ast::ExprKind::Int(d)) if (0..=18).contains(&d) => d as u32,
-                    _ => crate::FLOAT_DIGITS,
-                };
+                let mut digits = self.io_precision.unwrap_or_else(|| {
+                    match self.context("io", "precision").map(|v| v.kind) {
+                        Some(ast::ExprKind::Int(d)) if (0..=18).contains(&d) => d as u32,
+                        _ => crate::FLOAT_DIGITS,
+                    }
+                });
                 let mut values = Vec::new();
-                let mut sep = None;
+                let mut sep = if let Some(s) = &self.io_sep {
+                    Some(self.mk(ExprKind::Str(s.as_bytes().to_vec()), Ty::Str, span))
+                } else if self.cx.uses_io {
+                    let gid = self.ensure_io_global();
+                    let io_ty = self.globals[gid].ty.clone();
+                    let io_expr = self.mk(ExprKind::Global(gid), io_ty, span);
+                    Some(self.mk(ExprKind::Field(Box::new(io_expr), 0), Ty::Str, span))
+                } else {
+                    None
+                };
                 let mut none_text = None;
                 let mut end = None;
                 for arg in args {

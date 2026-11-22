@@ -1096,6 +1096,22 @@ impl<'a> Checker<'a> {
                     },
                 )]
             }
+            ast::StmtKind::Context { name, fields } => {
+                let fs = fields
+                    .iter()
+                    .map(|f| (f.name.text.clone(), self.field_type(f)))
+                    .collect();
+                vec![(
+                    name.text.clone(),
+                    Def::Value {
+                        ty: Ty::Record(fs),
+                        mutable: false,
+                        keyword: "context",
+                        generics: Vec::new(),
+                        settled: None,
+                    },
+                )]
+            }
             _ => Vec::new(),
         }
     }

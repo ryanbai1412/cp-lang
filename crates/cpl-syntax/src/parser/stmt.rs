@@ -342,6 +342,27 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.let_stmt()
             }
+            T::Ident if self.text() == "context" && self.peek_n(1) == T::Ident => {
+                self.bump();
+                let name = self.expect_name("a context name after `context`");
+                let mut fields = Vec::new();
+                if self.at(T::Colon) {
+                    self.members(&format!("the fields of `{}`", name.text), |p| {
+                        let fname = p.expect_name("a context field name");
+                        p.expect(T::Colon, "`:` and the field's type");
+                        let ty = p.ty();
+                        let default = p.eat(T::Eq).then(|| p.expr());
+                        fields.push(FieldDecl {
+                            name: fname,
+                            ty,
+                            default,
+                            mutable: false,
+                            cached: false,
+                        });
+                    });
+                }
+                StmtKind::Context { name, fields }
+            }
             T::Ident if self.text() == "with" && self.peek_n(1) == T::Ident => {
                 self.bump();
                 let head = self.expr();

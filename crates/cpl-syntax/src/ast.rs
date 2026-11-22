@@ -168,6 +168,11 @@ pub enum StmtKind {
         args: Vec<Arg>,
         body: Option<Block>,
     },
+    /// `context opt:\n    k: Int = 2`: user-defined context declaration.
+    Context {
+        name: Name,
+        fields: Vec<FieldDecl>,
+    },
     /// A statement the parser could not read. Already reported.
     Error,
 }
@@ -189,6 +194,8 @@ pub struct FnDecl {
     pub ret: Option<Type>,
     /// `fn at(self, i: V) lends mut Int`: a projection.
     pub lends: Option<Lends>,
+    /// `fn pick() -> Int uses opt`: contexts used by this fn.
+    pub uses: Vec<Name>,
     pub body: FnBody,
     /// From `fn` to the end of the signature.
     pub sig_span: Span,

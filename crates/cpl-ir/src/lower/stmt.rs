@@ -691,6 +691,7 @@ impl<'a> Lowerer<'a> {
                                 params: synth_params,
                                 ret: synth_ret,
                                 lends: None,
+                                uses: Vec::new(),
                                 body: synth_body,
                                 sig_span: *lspan,
                             };
@@ -1440,16 +1441,196 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Unchecked(block) => {
                 self.unchecked += 1;
+                self.overflow_checks_off += 1;
                 out.extend(self.block(block, Tail::Discard).stmts);
+                self.overflow_checks_off -= 1;
                 self.unchecked -= 1;
             }
+            ast::StmtKind::Context { name, fields } => {
+                let span = stmt.span;
+                let mut field_tys = Vec::new();
+                let mut field_vals = Vec::new();
+                for f in fields {
+                    let fty = self.resolve_ty(&f.ty);
+                    let val = if let Some(d) = &f.default {
+                        self.expect(d, &fty)
+                    } else {
+                        self.mk(ExprKind::Int(0), fty.clone(), f.name.span)
+                    };
+                    field_tys.push((f.name.text.clone(), fty));
+                    field_vals.push(val);
+                }
+                let rec_ty = Ty::Record(field_tys.clone());
+                let gid = if let Some((existing, _)) = self.context_defs.get(&name.text) {
+                    *existing
+                } else {
+                    let gid = self.globals.len();
+                    self.globals.push(Global {
+                        name: format!("_ctx_{}", name.text),
+                        ty: rec_ty.clone(),
+                        span,
+                    });
+                    self.mut_globals.insert(gid);
+                    self.mod_syms[self.cur_mod].insert(name.text.clone(), Sym::Global(gid));
+                    self.context_defs.insert(name.text.clone(), (gid, field_tys));
+                    gid
+                };
+                let init = self.mk(ExprKind::Tuple(field_vals), rec_ty.clone(), span);
+                out.push(Stmt::Assign(
+                    Place {
+                        kind: PlaceKind::Global(gid),
+                        ty: rec_ty,
+                        span,
+                    },
+                    AssignOp::Set,
+                    init,
+                ));
+            }
             ast::StmtKind::With { ctx, args, body } => {
+                let span = stmt.span;
                 let held = (self.contexts.len(), self.unchecked);
                 self.push_context(ctx, args);
+                let saved_overflow = self.overflow_checks_off;
+                let saved_sep = self.io_sep.clone();
+                let saved_prec = self.io_precision;
+                let saved_base = self.io_base;
+                let mut saved_ctx_slot: Option<(GlobalId, Slot)> = None;
+
+                match ctx.text.as_str() {
+                    "checks" => {
+                        for arg in args {
+                            let Some(k) = &arg.name else { continue };
+                            let v = &arg.value;
+                            let is_off = matches!(&v.kind, ast::ExprKind::Name(n) if n == "off");
+                            let is_on = matches!(&v.kind, ast::ExprKind::Name(n) if n == "on");
+                            if k.text == "overflow" {
+                                if is_off {
+                                    self.overflow_checks_off += 1;
+                                } else if is_on {
+                                    self.overflow_checks_off = 0;
+                                }
+                            } else if is_off {
+                                self.unchecked += 1;
+                            } else if is_on {
+                                self.unchecked = 0;
+                            }
+                        }
+                    }
+                    "lint" => {}
+                    "io" => {
+                        let gid = self.ensure_io_global();
+                        let io_ty = self.globals[gid].ty.clone();
+                        let save = self.temp(io_ty.clone());
+                        out.push(Stmt::Let(
+                            save,
+                            Some(self.mk(ExprKind::Global(gid), io_ty.clone(), span)),
+                        ));
+                        saved_ctx_slot = Some((gid, save));
+                        let Ty::Record(fields) = &io_ty else { unreachable!() };
+                        let fields = fields.clone();
+                        for arg in args {
+                            let Some(k) = &arg.name else { continue };
+                            let v = &arg.value;
+                            if k.text == "sep" {
+                                if let ast::ExprKind::Str(pieces) = &v.kind {
+                                    let mut s = String::new();
+                                    for p in pieces {
+                                        if let ast::StrPiece::Text(t) = p {
+                                            s.push_str(t);
+                                        }
+                                    }
+                                    self.io_sep = Some(s);
+                                }
+                            } else if k.text == "precision" {
+                                if let ast::ExprKind::Int(n) = &v.kind {
+                                    self.io_precision = Some((*n).clamp(0, 18) as u32);
+                                }
+                            } else if k.text == "base" {
+                                if let ast::ExprKind::Int(n) = &v.kind {
+                                    self.io_base = Some(*n as i64);
+                                }
+                            }
+                            if let Some((idx, (_, fty))) =
+                                fields.iter().enumerate().find(|(_, (fnm, _))| fnm == &k.text)
+                            {
+                                let val = self.expect(v, fty);
+                                out.push(Stmt::Assign(
+                                    Place {
+                                        kind: PlaceKind::Field(
+                                            Box::new(Place {
+                                                kind: PlaceKind::Global(gid),
+                                                ty: io_ty.clone(),
+                                                span,
+                                            }),
+                                            idx,
+                                        ),
+                                        ty: fty.clone(),
+                                        span: v.span,
+                                    },
+                                    AssignOp::Set,
+                                    val,
+                                ));
+                            }
+                        }
+                    }
+                    other => {
+                        if let Some((gid, fields)) = self.context_defs.get(other).cloned() {
+                            let ctx_ty = self.globals[gid].ty.clone();
+                            let save = self.temp(ctx_ty.clone());
+                            out.push(Stmt::Let(
+                                save,
+                                Some(self.mk(ExprKind::Global(gid), ctx_ty.clone(), span)),
+                            ));
+                            saved_ctx_slot = Some((gid, save));
+                            for arg in args {
+                                let Some(k) = &arg.name else { continue };
+                                let v = &arg.value;
+                                if let Some((idx, (_, fty))) =
+                                    fields.iter().enumerate().find(|(_, (fnm, _))| fnm == &k.text)
+                                {
+                                    let val = self.expect(v, fty);
+                                    out.push(Stmt::Assign(
+                                        Place {
+                                            kind: PlaceKind::Field(
+                                                Box::new(Place {
+                                                    kind: PlaceKind::Global(gid),
+                                                    ty: ctx_ty.clone(),
+                                                    span,
+                                                }),
+                                                idx,
+                                            ),
+                                            ty: fty.clone(),
+                                            span: v.span,
+                                        },
+                                        AssignOp::Set,
+                                        val,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if let Some(body) = body {
                     out.extend(self.block(body, Tail::Discard).stmts);
                     self.contexts.truncate(held.0);
                     self.unchecked = held.1;
+                    self.overflow_checks_off = saved_overflow;
+                    self.io_sep = saved_sep;
+                    self.io_precision = saved_prec;
+                    self.io_base = saved_base;
+                    if let Some((gid, save)) = saved_ctx_slot {
+                        let ctx_ty = self.globals[gid].ty.clone();
+                        out.push(Stmt::Assign(
+                            Place {
+                                kind: PlaceKind::Global(gid),
+                                ty: ctx_ty,
+                                span,
+                            },
+                            AssignOp::Set,
+                            self.local(save, span),
+                        ));
+                    }
                 }
             }
             ast::StmtKind::Error => {}

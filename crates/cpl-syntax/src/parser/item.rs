@@ -115,6 +115,7 @@ impl<'a> Parser<'a> {
             params,
             ret,
             lends: None,
+            uses: Vec::new(),
             body,
             sig_span,
         };
@@ -195,6 +196,14 @@ impl<'a> Parser<'a> {
                     ty: self.ty(),
                 }
             });
+        let mut uses = Vec::new();
+        if self.at_ident("uses") {
+            self.bump();
+            uses.push(self.expect_name("a context name after `uses`"));
+            while self.eat(T::Comma) {
+                uses.push(self.expect_name("a context name"));
+            }
+        }
         self.where_clause(&mut bounds);
         let sig_span = self.span_from(start);
         let body = if self.eat(T::Eq) {
@@ -305,6 +314,7 @@ impl<'a> Parser<'a> {
             params,
             ret,
             lends,
+            uses,
             body,
             sig_span,
         }
@@ -440,7 +450,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the members of a `struct`, `enum` or `trait` body with
     /// `member`, one per line, and returns the methods among them.
-    fn members(&mut self, after: &str, mut member: impl FnMut(&mut Self)) -> Vec<Stmt> {
+    pub(super) fn members(&mut self, after: &str, mut member: impl FnMut(&mut Self)) -> Vec<Stmt> {
         let mut methods = Vec::new();
         if !self.expect(T::Colon, &format!("`:` after {after}"))
             && !(self.at(T::Newline) && self.peek_n(1) == T::Indent)

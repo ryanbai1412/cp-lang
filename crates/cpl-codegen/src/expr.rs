@@ -724,6 +724,7 @@ impl<'p> Emitter<'p> {
                         let d = ident(&program.domains[*d]);
                         Code::primary(format!("cpl::pos({}, {d}_len)", code.text))
                     }
+                    Cast::Raw if inner.ty == Ty::U64 => c_cast("ll"),
                     Cast::Raw => code,
                     Cast::Trust if matches!(inner.ty, Ty::Pos(_) | Ty::Bound(_)) => code,
                     Cast::Trust => c_cast("int"),

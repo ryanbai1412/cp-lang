@@ -511,6 +511,7 @@ struct FnCx {
     present: Vec<String>,
     /// The name about to be lowered stands where an optional is asked for.
     as_written: bool,
+    uses_io: bool,
     scopes: Vec<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
     local_syms: Vec<HashMap<String, Sym>>,
@@ -619,6 +620,12 @@ struct Lowerer<'a> {
     /// Domains declared by a count alone, `domain E = [m]`: the ones
     /// `io.base` shifts. (R10.2.2)
     counted: HashSet<DomainId>,
+    overflow_checks_off: usize,
+    io_sep: Option<String>,
+    io_precision: Option<u32>,
+    io_base: Option<i64>,
+    io_global: Option<GlobalId>,
+    context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
     whole_axis: Option<Slot>,
 
@@ -823,6 +830,12 @@ impl<'a> Lowerer<'a> {
             unchecked: 0,
             contexts: Vec::new(),
             counted: HashSet::new(),
+            overflow_checks_off: 0,
+            io_sep: None,
+            io_precision: None,
+            io_base: None,
+            io_global: None,
+            context_defs: HashMap::new(),
             whole_axis: None,
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
@@ -1356,6 +1369,25 @@ impl<'a> Lowerer<'a> {
                                 }
                             }
                         }
+                    }
+                    ast::StmtKind::Context { name, fields } => {
+                        let prev = self.cur_mod;
+                        self.cur_mod = m;
+                        let field_tys: Vec<(String, Ty)> = fields
+                            .iter()
+                            .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
+                            .collect();
+                        self.cur_mod = prev;
+                        let rec_ty = Ty::Record(field_tys.clone());
+                        let gid = self.globals.len();
+                        self.globals.push(Global {
+                            name: format!("_ctx_{}", name.text),
+                            ty: rec_ty,
+                            span: name.span,
+                        });
+                        self.mut_globals.insert(gid);
+                        self.mod_syms[m].insert(name.text.clone(), Sym::Global(gid));
+                        self.context_defs.insert(name.text.clone(), (gid, field_tys));
                     }
                     ast::StmtKind::Const {
                         name,
@@ -3589,6 +3621,12 @@ impl<'a> Lowerer<'a> {
             self.cx.new_domain_slots.push(*dom_id);
         }
 
+        let saved_fn_io_sep = self.io_sep.take();
+        let saved_fn_io_prec = self.io_precision.take();
+        let saved_fn_unchecked = std::mem::replace(&mut self.unchecked, 0);
+        let saved_fn_overflow = std::mem::replace(&mut self.overflow_checks_off, 0);
+        self.cx.uses_io = decl.uses.iter().any(|u| u.text == "io");
+
         match &decl.body {
             ast::FnBody::Block(block) => {
                 let tail = if is_gen { Tail::Discard } else { Tail::Return };
@@ -3603,6 +3641,11 @@ impl<'a> Lowerer<'a> {
             // there is.
             ast::FnBody::None => {}
         }
+
+        self.io_sep = saved_fn_io_sep;
+        self.io_precision = saved_fn_io_prec;
+        self.unchecked = saved_fn_unchecked;
+        self.overflow_checks_off = saved_fn_overflow;
 
         if let Some((acc, _)) = self.cx.yield_slot {
             let res = self.local(acc, decl.name.span);
@@ -3922,6 +3965,73 @@ impl<'a> Lowerer<'a> {
             ty: Ty::Int,
             span,
         }
+    }
+
+    pub(super) fn ensure_io_global(&mut self) -> GlobalId {
+        if let Some(gid) = self.io_global {
+            return gid;
+        }
+        let ty = Ty::Record(vec![
+            ("sep".into(), Ty::Str),
+            ("base".into(), Ty::Int),
+            ("precision".into(), Ty::Int),
+            ("answers".into(), Ty::Tuple(vec![Ty::Str, Ty::Str])),
+        ]);
+        let gid = self.globals.len();
+        self.globals.push(Global {
+            name: "_ctx_io".to_string(),
+            ty: ty.clone(),
+            span: Span::new(0, 0),
+        });
+        self.mut_globals.insert(gid);
+        let init = Expr {
+            kind: ExprKind::Tuple(vec![
+                Expr {
+                    kind: ExprKind::Str(b" ".to_vec()),
+                    ty: Ty::Str,
+                    span: Span::new(0, 0),
+                },
+                Expr {
+                    kind: ExprKind::Int(1),
+                    ty: Ty::Int,
+                    span: Span::new(0, 0),
+                },
+                Expr {
+                    kind: ExprKind::Int(crate::FLOAT_DIGITS as i64),
+                    ty: Ty::Int,
+                    span: Span::new(0, 0),
+                },
+                Expr {
+                    kind: ExprKind::Tuple(vec![
+                        Expr {
+                            kind: ExprKind::Str(b"YES".to_vec()),
+                            ty: Ty::Str,
+                            span: Span::new(0, 0),
+                        },
+                        Expr {
+                            kind: ExprKind::Str(b"NO".to_vec()),
+                            ty: Ty::Str,
+                            span: Span::new(0, 0),
+                        },
+                    ]),
+                    ty: Ty::Tuple(vec![Ty::Str, Ty::Str]),
+                    span: Span::new(0, 0),
+                },
+            ]),
+            ty,
+            span: Span::new(0, 0),
+        };
+        self.preamble_stmts.push(Stmt::Assign(
+            Place {
+                kind: PlaceKind::Global(gid),
+                ty: self.globals[gid].ty.clone(),
+                span: Span::new(0, 0),
+            },
+            AssignOp::Set,
+            init,
+        ));
+        self.io_global = Some(gid);
+        gid
     }
 
     /// Inside `unchecked:`, a position made from an ordinal or a label is

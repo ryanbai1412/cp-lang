@@ -167,6 +167,13 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
                 walk_scoped(v, Scope::Block, &body.stmts);
             }
         }
+        StmtKind::Context { fields, .. } => {
+            for f in fields {
+                if let Some(d) = &f.default {
+                    walk_expr(v, d);
+                }
+            }
+        }
     }
 }
 
