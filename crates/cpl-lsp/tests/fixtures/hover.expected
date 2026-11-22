@@ -288,7 +288,22 @@ cost: O(log |V|)
 
 The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
 
-== hover @ 124:10
+== hover @ 124:6
+```cp
+fn show(cells: [V]Int)
+  documented costs: print O(|V|), about 200000 (2e5) steps each, k = 7 times
+  estimated cost: O(k + k * (|V|)), about 1400007 (1.4e6) steps at max input
+```
+
+== hover @ 126:10
+```cp
+print: built-in
+cost: O(|V|)
+```
+
+Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.
+
+== hover @ 127:10
 ```cp
 struct Edge
   to: V  // at 0, 4 bytes
@@ -299,35 +314,35 @@ struct Edge
   storage: 24 bytes, aligned to 8
 ```
 
-== hover @ 128:6
+== hover @ 131:6
 ```cp
 es: [V]Edge
   domain V = 1..=n, n <= 2e5
   storage: 24 bytes per element, 4.8 MB max (fields at 0, 8, 16; 11 bytes padding)
 ```
 
-== hover @ 129:7
+== hover @ 132:7
 ```cp
 flag: [V]?Bool
   domain V = 1..=n, n <= 2e5
   storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for none)
 ```
 
-== hover @ 130:7
+== hover @ 133:7
 ```cp
 pairs: [V](V, Int)
   domain V = 1..=n, n <= 2e5
   storage: 16 bytes per element, 3.2 MB max (fields at 0, 8; 4 bytes padding)
 ```
 
-== hover @ 131:7
+== hover @ 134:7
 ```cp
 adj: [V]List<V>
   domain V = 1..=n, n <= 2e5
   storage: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 132:10
+== hover @ 135:10
 ```cp
 struct Runs
   first: [V]Int
@@ -335,14 +350,14 @@ struct Runs
   storage: first: 8 bytes per element, seen: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 135:7
+== hover @ 138:7
 ```cp
 names: [V](name: Str, t: 1..=1000)
   domain V = 1..=n, n <= 2e5
   storage: per element, name: grows on the heap, t: 2 bytes
 ```
 
-== hover @ 136:7
+== hover @ 139:7
 ```cp
 dists: [V][V]?Int
   domain V = 1..=n, n <= 2e5

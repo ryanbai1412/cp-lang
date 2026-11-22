@@ -121,6 +121,9 @@ fn ec$0ho():
 fn pre$0fixes(bit: Fenwick<V, Int>):
     for v in V:
         print(bit.s$0um(..v))
+fn sh$0ow(cells: [V]Int):
+    for _ in 0..k:
+        p$0rint(cells)
 struct Ed$0ge:
     to: V
     w: Int

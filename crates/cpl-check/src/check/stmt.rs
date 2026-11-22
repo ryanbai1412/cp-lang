@@ -563,13 +563,14 @@ impl<'a> Checker<'a> {
                     declared.as_ref().is_some_and(Self::expects_piece),
                 );
                 if let (Some(declared), Some(Expr { kind: ExprKind::Call { callee, args }, .. })) = (&declared, init) {
-                    let reads = match &callee.kind {
-                        ExprKind::Name(n) if n == "read" => args.is_empty(),
-                        ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
-                        _ => false,
-                    };
-                    if reads && self.io_fixed(declared) {
-                        self.fixed_io.push(callee.span);
+                    match &callee.kind {
+                        ExprKind::Name(n) if n == "read" && args.is_empty() && self.io_fixed(declared) => {
+                            self.fixed_io.push(callee.span)
+                        }
+                        ExprKind::Name(n) if n == "ask" && self.io_fixed(declared) => {
+                            self.record_io(callee.span, n, args);
+                        }
+                        _ => {}
                     }
                 }
                 // §127: `let f = (n: Int) -> Int => ...` may refer to `f` recursively.
@@ -1256,13 +1257,12 @@ impl<'a> Checker<'a> {
     /// value of its declared return type.
     fn fixed_read(&mut self, value: &Expr, ret: &Ty) {
         if let ExprKind::Call { callee, args } = &value.kind {
-            let reads = match &callee.kind {
-                ExprKind::Name(n) if n == "read" => args.is_empty(),
-                ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
-                _ => false,
-            };
-            if reads && self.io_fixed(ret) {
-                self.fixed_io.push(callee.span);
+            match &callee.kind {
+                ExprKind::Name(n) if n == "read" && args.is_empty() && self.io_fixed(ret) => self.fixed_io.push(callee.span),
+                ExprKind::Name(n) if n == "ask" && self.io_fixed(ret) => {
+                    self.record_io(callee.span, n, args);
+                }
+                _ => {}
             }
         }
     }

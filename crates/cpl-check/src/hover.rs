@@ -124,6 +124,8 @@ impl Database {
             .collect();
         named.sort_by_key(|(span, _)| (span.start, span.end));
         named.dedup_by_key(|(span, _)| *span);
+        let io = item.check.io_costs.iter().map(|(s, n, c)| (s.shift(item.offset), n.clone(), c.clone()));
+        let io: Vec<_> = io.filter(|(s, ..)| start <= s.start && s.end <= end).collect();
         named
             .into_iter()
             .filter_map(|(span, name)| {
@@ -131,6 +133,7 @@ impl Database {
                 let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
                 (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)")).then(|| (span, name, cost.to_string()))
             })
+            .chain(io)
             .collect()
     }
 
@@ -354,7 +357,8 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
     let args = find.calls.iter().find(|(callee, _)| *callee == span).map(|&(_, n)| n);
     let fixed = item.check.fixed_io.contains(&span);
     let doc = crate::prelude::value_doc(&name, args, fixed)?;
-    let text = match cost_of(doc) {
+    let io = item.check.io_costs.iter().find(|(s, ..)| *s == span).map(|(.., c)| c.clone());
+    let text = match io.or_else(|| cost_of(doc)) {
         Some(cost) => format!("{name}: built-in\ncost: {cost}"),
         None => format!("{name}: built-in"),
     };

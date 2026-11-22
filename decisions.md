@@ -5489,3 +5489,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** Every edge build recreates the `edge` prerelease at its commit; the first edge build of a UTC day also makes `edge-YYYY-MM-DD`, which later builds never touch. Archives are reproducible, and each `latest.json` names its toolchain id (`0.3.0`, `edge-2026-11-22-1a2b3c4d`), the folder under `~/.cpl/toolchains/`.
 - **Why.** A dated pin always gets the same bytes, and the rolling tag is always the newest main.
 - **Reverse.** `scripts/release/publish.sh` and `plan.sh`.
+
+## 202. Printing an array over domains costs its size (2026-11-22)
+
+- **Decision.** `print` and `ask` of arrays over domains of fixed-size
+  values, alongside fixed-size values, cost the sum of the arrays' sizes:
+  `print(d)` for `d: [V]Int` is `O(|V|)`, `ask("?", g)` for
+  `g: [V, V]Char` is `O(|V| * |V|)`. A fn's estimated cost uses the
+  domains' most positions, as for stdlib methods (decision 195). Lists and
+  strings still block an estimate, since nothing bounds their size here.
+- **Why.** `print` was the most common call left blocking an estimate in
+  the ports. Fns with an estimated cost went from 35 to 38 of the 1,066
+  fns the scan reads.
+- **Reverse.** Drop `io_terms` and `record_io` in `cpl-check`'s
+  `check/call.rs`, restoring the fixed-size checks for `print` and `ask`.

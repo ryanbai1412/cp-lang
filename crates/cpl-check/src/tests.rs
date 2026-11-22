@@ -3616,3 +3616,23 @@ fn abs_of_an_integer_is_an_integer_so_a_position_made_of_it_costs_o1() {
     assert_eq!(hover(&mut db, "a =").as_deref(), Some("a: Int"));
     assert!(hover(&mut db, "Node(min").unwrap().ends_with("\ncost: O(1)"));
 }
+
+#[test]
+fn printing_an_array_over_a_domain_costs_its_size() {
+    let src = "let n: 1..=100 = read()\ndomain V = 1..=n\nvar d: [V]Int = 1\nvar g: [V, V]Char = '.'\nlet xs: List<Int> = read()\n\
+               print(d)\nprint(\"?\", d, g)\nlet r: Int = ask(\"?\", g)\nprint(xs)\nprint(r)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let mut hover = |name: &str| db.hover("a.cp", src.find(name).unwrap() as u32).map(|h| h.text).unwrap_or_default();
+    assert!(hover("print(d)").ends_with("\ncost: O(|V|)"), "{}", hover("print(d)"));
+    assert!(hover("print(\"?\", d").ends_with("\ncost: O(|V| + |V| * |V|)"));
+    assert!(hover("ask(").ends_with("\ncost: O(|V| * |V|)"), "{}", hover("ask("));
+    assert!(!hover("print(xs)").contains("cost: O("), "{}", hover("print(xs)"));
+    assert!(hover("print(r)").ends_with("\ncost: O(1)"));
+    let src = "let n: 1..=100 = read()\ndomain V = 1..=n\nfn show(d: [V]Int, g: [V, V]Char):\n    print(d)\n    let r: Int = ask(\"?\", g)\n    print(r)\n";
+    db.set_file("b.cp", src);
+    let at = src.find("print(d)").unwrap() as u32;
+    let costs = db.costs_in("b.cp", at, src.len() as u32);
+    let costs: Vec<_> = costs.iter().map(|(_, n, c)| format!("{n} {c}")).collect();
+    assert_eq!(costs, ["print O(|V|)", "ask O(|V| * |V|)"]);
+}

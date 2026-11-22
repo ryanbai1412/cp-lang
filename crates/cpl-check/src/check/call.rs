@@ -50,6 +50,43 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// What writing `args` costs: `Some([])` when each has a fixed size,
+    /// a term such as `|V| * |W|` for each array over domains of
+    /// fixed-size values, `None` when some size is unbounded.
+    pub(crate) fn io_terms(&mut self, args: &[Arg]) -> Option<Vec<String>> {
+        let mut terms = Vec::new();
+        for arg in args {
+            if self.fixed_size(&arg.value) {
+                continue;
+            }
+            let Ty::Array { index, elem } = self.quietly(|c| c.infer(&arg.value)) else {
+                return None;
+            };
+            let domains: Option<Vec<String>> = index
+                .iter()
+                .map(|t| match t {
+                    Ty::Pos(d) | Ty::Domain(d) => Some(format!("|{d}|")),
+                    _ => None,
+                })
+                .collect();
+            if !self.io_fixed(&elem) {
+                return None;
+            }
+            terms.push(domains?.join(" * "));
+        }
+        Some(terms)
+    }
+
+    /// Records the cost of `print` or `ask` of `args` at `callee`, when
+    /// every argument's size is bounded.
+    pub(crate) fn record_io(&mut self, callee: Span, name: &str, args: &[Arg]) {
+        match self.io_terms(args) {
+            Some(terms) if terms.is_empty() => self.fixed_io.push(callee),
+            Some(terms) => self.io_costs.push((callee, name.to_string(), format!("O({})", terms.join(" + ")))),
+            None => {}
+        }
+    }
+
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         if let Some(on_self) = self.implicit_self_method(callee) {
             return self.call(call, &on_self, args);
@@ -106,12 +143,15 @@ impl<'a> Checker<'a> {
                 ty = read;
             }
         }
-        let fixed_args = match &callee.kind {
-            ExprKind::Name(n) if n == "print" => true,
-            ExprKind::Name(n) if ["Int", "I128", "U64", "F64", "Char", "Bool"].contains(&n.as_str()) => args.len() == 1,
+        let converts_one = match &callee.kind {
+            ExprKind::Name(n) if n == "print" => {
+                self.record_io(callee.span, n, args);
+                false
+            }
+            ExprKind::Name(n) => ["Int", "I128", "U64", "F64", "Char", "Bool"].contains(&n.as_str()) && args.len() == 1,
             _ => false,
         };
-        if fixed_args && args.iter().all(|a| self.fixed_size(&a.value)) {
+        if converts_one && self.fixed_size(&args[0].value) {
             self.fixed_io.push(callee.span);
         }
         let converts = match &callee_ty {
