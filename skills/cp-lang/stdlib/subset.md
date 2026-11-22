@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Subset`.
 
 A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th position).
 
-- `@get fn empty() -> Subset<B>` — O(1); The empty subset, also written `{}`.
+- `@get fn empty() -> Subset<B>` — O(1); The empty subset.
 - `@get fn full() -> Subset<B>` — O(1); Every member of `B`: the word with its low `\|B\|` bits set.
 - `fn single(b: B) -> Subset<B>` — O(1); `{b}`: the subset whose only member is `b`.
 - `fn contains(self, b: B) -> Bool` — O(1); Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
@@ -20,9 +20,9 @@ A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for 
 - `fn set(mut self, b: B, on: Bool)` — O(1); Add `b` when `on`, remove it otherwise, in place (as `Bitset.set`).
 - `fn shifted(self, k: Int) -> Subset<B>` — O(1); A new set with every member `k` places up (down for a negative `k`); members that leave `B` are dropped (as `Bitset.shifted`).
 - `fn complement(self) -> Subset<B>` — O(1); The members of `B` not in `self`; no bit at or above `\|B\|` is ever set.
-- `fn first(self) -> ?B` — O(1); The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None` for `{}`.
+- `fn first(self) -> ?B` — O(1); The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None` for the empty subset.
 - `@get fn items(self) -> yields B` — O(1) per member; The members in `B`'s order; `for b in s` walks the same sequence.
-- `@get fn subsets(self) -> yields Subset<B>` — O(1) per subset, `2^s.len` subsets; Every subset of `self`, `self` first and `{}` last: the submask walk `g = (g - 1) & self`, so the masks come in decreasing order as words.
+- `@get fn subsets(self) -> yields Subset<B>` — O(1) per subset, `2^s.len` subsets; Every subset of `self`, `self` first and the empty subset last: the submask walk `g = (g - 1) & self`, so the masks come in decreasing order as words.
 - `@get fn supersets(self) -> yields Subset<B>` — O(1) per superset, `2^(|B| - s.len)` supersets; Every superset of `self` within `B`, `self` first and `B` last: the walk `g = (g + 1) \| self`, so the masks come in increasing order as words.
 
 ## Example

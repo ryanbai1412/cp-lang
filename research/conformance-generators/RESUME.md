@@ -55,7 +55,7 @@ Last in flight at wind-down: 32a81dd9 (empty subsets, compose order, grid Prefix
 ## Gotchas
 - `// expect: E#### at N` counts N from the first line after the `// expect:`/`// rule:` headers, not from the top of the file.
 - R10.3.3 bars printing a Bool, so use `print(yes(b))`.
-- `{}` is an empty block, not an empty Subset; use `Subset<P>.empty` (decision 216).
+- `{}` is an empty block, not an empty Subset; use `Subset<P>.empty` (decision 217).
 - `V.count` is a property, while `V.count(f)` is the Seq method (R04.2.20).
 - A position's integer form is `Int(d)`; no `.ord` exists, and `core-04/enum-position-has-no-ord.cp` pins that.
 - `.at(k)` takes a key and `.nth(k)` is a walk offset (decision 213). `.collect()` and `List(w)` count from 0.

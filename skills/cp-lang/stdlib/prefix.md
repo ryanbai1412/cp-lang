@@ -2,7 +2,7 @@
 
 # std.prefix
 
-Prefix sums, prefix/suffix monoid folds, and offline difference arrays.  Call `prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in O(n) or O(r * c), then answer any `.fold(...)` or `.prefix(...)` query in O(1). Use `Diff<D, T>()` or `Diff<R, C, T>()` for O(1) offline range/rectangle adds and O(n) / O(r * c) `finish()`.
+Prefix sums, prefix/suffix monoid folds, and offline difference arrays.  Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in O(n) or O(r * c), then answer any `.fold(...)` or `.prefix(...)` query in O(1). Use `Diff<D, T>()` or `Diff<R, C, T>()` for O(1) offline range/rectangle adds and O(n) / O(r * c) `finish()`.
 
 In prelude (no `use` needed): `Diff`, `Prefix`, `scan`.
 
@@ -26,7 +26,7 @@ Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `
 
 Fields: `p: [D.cuts]T`.
 
-- `fn new(a: [D]T) -> Prefix<D, T>` — O(|D|) time and space; Build 1-D prefix sums over `a: [D]T`; `prefix(a)` calls it.
+- `fn new(a: [D]T) -> Prefix<D, T>` — O(|D|) time and space; Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — O(|D|) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
 - `fn prefix(self, b: Cut<D>) -> T` — O(1); The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
 - `fn fold(self, r: Range<D>) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
@@ -49,11 +49,11 @@ Fields: `p: [R.cuts, C.cuts]T`, `rev: Bool`, `next: Int`.
 
 ## `struct _Prefix2 <R, C, T>`
 
-Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
+Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 
 Fields: `p: [R.cuts, C.cuts]T`.
 
-- `fn new(a: [R, C]T) -> Prefix<R, C, T>` — O(|R| * |C|) time and space; Build 2-D prefix sums over `a: [R, C]T`; `prefix(a)` on a grid calls it.
+- `fn new(a: [R, C]T) -> Prefix<R, C, T>` — O(|R| * |C|) time and space; Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>` — O(|R| * |C|) time and space; Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`.
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — O(1); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — O(1); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by inclusion-exclusion over the four corner cuts.
@@ -70,11 +70,11 @@ Fields: `p: List<T>`, `rev: Bool`, `next: Int`.
 
 ## `struct _PrefixList <T>`
 
-Internal list shape of `Prefix<T>`, constructed by `prefix(a)` or `Prefix<T>.filling(n, ...)`.
+Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
 
 Fields: `p: List<T>`.
 
-- `fn new(a: List<T>) -> Prefix<T>` — O(a.len) time and space; Build 1-D prefix sums over `a: List<T>`; `prefix(a)` on a list calls it.
+- `fn new(a: List<T>) -> Prefix<T>` — O(a.len) time and space; Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
 - `fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>` — O(n) time and space; Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`.; traps: when `n < 0`
 - `fn prefix(self, k: Int) -> T` — O(1); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`
 - `fn fold(self, r: Range<Int>) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n`

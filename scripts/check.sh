@@ -365,11 +365,11 @@ uv run python scripts/skill-gen.py --check --cpl "$cpl" \
     || fail "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
-python3 scripts/conformance-coverage.py --check ||
-    fail "rule coverage gate failed; see above, then rerun: python3 scripts/conformance-coverage.py"
+uv run scripts/conformance-coverage.py --check ||
+    fail "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
-python3 scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
+uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
 
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
