@@ -2157,7 +2157,6 @@ pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
     for a in arcs: adj[a.u].push(a.v)
     adj
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex
 /// are skipped as `out` walks. `from` drops only the arcs leaving a vertex it rejects, so
 /// the vertex can be reached but not left. A view; vertices keep their domain.
@@ -2166,7 +2165,8 @@ pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).out(0).collect() == [2]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; reachable(g.only(from: v => v != 1), from: [V(0)]).collect() == [0, 1, 2]`
-pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G> = todo
+pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G> =
+    Only(self, keep, from)
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
 pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
@@ -2177,14 +2177,20 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
     /// order: arc order of `g`
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).out(0).collect() == [2]`
-    pub fn out(self, u: V) -> yields G.Arc = todo
+    pub fn out(self, u: V) -> yields G.Arc:
+        if not keep(u) or not from(u): return
+        for a in g.out(u):
+            if keep(a.to): yield a
 
     /// The number of arcs out of `u` the view keeps.
     ///
     /// cost: O(deg u in `g`)
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).deg(0) == 1`
-    pub fn deg(self, u: V) -> Int = todo
+    pub fn deg(self, u: V) -> Int:
+        var k = 0
+        for _ in self.out(u): k += 1
+        k
 
     /// The kept arcs reversed, built as a `Graph` (record arcs as `(..a, to: u)`, a plain
     /// vertex arc as `u`).
