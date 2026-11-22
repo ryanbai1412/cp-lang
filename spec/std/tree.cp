@@ -1049,6 +1049,8 @@ pub struct JumpTree<V>:
 pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     up: [V]?V
     dep: [V]0..=V.count
+    jmp: List<[V]?V>
+    val: List<[V]T>
 
     /// Binary lifting over the forest `par`: `par[v]` is `v`'s parent with the value on the edge
     /// to it, `None` at a root. `op` must be associative with identity `identity`; it need not
@@ -1057,7 +1059,44 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// cost: O(n log n) time and memory
     /// traps: when the parent links have a cycle
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.fold(2, up_to: 0) == 7 and l.depth(3) == 2`
-    pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T> = todo
+    pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T>:
+        var up: [V]?V = None
+        var e: [V]T = identity
+        for v in V:
+            if let (p, x) = par[v]:
+                up[v] = Some(p)
+                e[v] = x
+        var dep: [V]0..=V.count = 0
+        var state: [V]Int = 0
+        var stack = List<V>()
+        for s in V:
+            var x = s
+            while state[x] == 0:
+                state[x] = 1
+                stack.push(x)
+                if let p = up[x]: x = p
+                else: break
+            assert state[x] != 1 or up[x] == None, "`Lift.new`: the parent links have a cycle"
+            while stack.len > 0:
+                let y = stack.pop()!
+                if let p = up[y]: dep[y] = dep[p] + 1
+                state[y] = 2
+        var jmp = [up]
+        var val = [e]
+        var k = 1
+        while (1 << k) <= V.count:
+            let pj = jmp[k - 1]
+            let pv = val[k - 1]
+            var nj: [V]?V = None
+            var nv: [V]T = identity
+            for v in V:
+                if let m = pj[v]:
+                    nj[v] = pj[m]
+                    nv[v] = op(pv[v], pv[m])
+            jmp.push(nj)
+            val.push(nv)
+            k += 1
+        Lift(op, identity, up, dep, jmp, val)
 
     /// Lifting over any partial successor function, such as "the next interval a greedy picks":
     /// `Lift.of(i => first_from(iv[i].r))`. `None` ends a chain; the links must form a forest.
@@ -1066,7 +1105,11 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// cost: O(n log n) time and memory, n calls of `next`
     /// traps: when the links have a cycle
     /// example: `domain I = 0..4; let l = Lift<I, ()>.of(i => if i < 3: Some(I(i + 1)) else: None); l.ancestor(0, 3) == Some(3) and l.depth(0) == 3`
-    pub fn of(next: V -> ?V) -> Lift<V, ()> = todo
+    pub fn of(next: V -> ?V) -> Lift<V, ()>:
+        var par: [V]?(V, ()) = None
+        for v in V:
+            if let p = next(v): par[v] = Some((p, ()))
+        Lift.new(par, (a, b) => a, ())
 
     /// Climbs from `v` while the next vertex up satisfies `ok`, which must hold on a prefix of
     /// every root path: how many edges were climbed and where it stopped. Greedy "jump while the
@@ -1075,35 +1118,62 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// cost: O(log n) calls of `ok`
     /// traps: never
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.climb(2, u => u != 0) == (steps: 1, at: 1) and l.climb(2, u => false) == (steps: 0, at: 2)`
-    pub fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V) = todo
+    pub fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V):
+        var at = v
+        var steps = 0
+        for k in (0..jmp.len).rev:
+            if let w = jmp[k][at]:
+                if ok(w):
+                    at = w
+                    steps += 1 << k
+        (steps:, at:)
 
     /// The parent of `v`, or `None` at a root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.parent(2) == Some(1) and l.parent(0) == None`
-    pub fn parent(self, v: V) -> ?V = todo
+    pub fn parent(self, v: V) -> ?V = up[v]
 
     /// The number of edges from `v` up to its root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.depth(0) == 0 and l.depth(3) == 2`
-    pub fn depth(self, v: V) -> Int = todo
+    pub fn depth(self, v: V) -> Int = dep[v]
 
     /// The ancestor `k` edges above `v` (`v` for `k == 0`), or `None` if that is above the root.
     ///
     /// cost: O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.ancestor(3, 2) == Some(0) and l.ancestor(3, 3) == None`
-    pub fn ancestor(self, v: V, k: Int) -> ?V = todo
+    pub fn ancestor(self, v: V, k: Int) -> ?V:
+        assert k >= 0, "`ancestor` needs `k >= 0`"
+        if k > dep[v]: return None
+        var at = v
+        for b in 0..jmp.len:
+            if ((k >> b) & 1) == 1: at = jmp[b][at]!
+        Some(at)
 
     /// The lowest common ancestor of `a` and `b`, or `None` in different trees.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.lca(2, 3) == Some(1)`
-    pub fn lca(self, a: V, b: V) -> ?V = todo
+    pub fn lca(self, a: V, b: V) -> ?V:
+        var x = a
+        var y = b
+        if dep[x] < dep[y]:
+            let t = x
+            x = y
+            y = t
+        x = self.ancestor(x, dep[x] - dep[y])!
+        if x == y: return Some(x)
+        for k in (0..jmp.len).rev:
+            if jmp[k][x] != jmp[k][y]:
+                x = jmp[k][x]!
+                y = jmp[k][y]!
+        up[x]
 
     /// The fold with `op` of the edge values from `v` up to its ancestor `u`, lowest first;
     /// `identity` when `u == v`.
@@ -1111,7 +1181,16 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// cost: O(log n) calls of `op`
     /// traps: when `u` is not an ancestor of `v`
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.fold(2, up_to: 1) == 2 and l.fold(2, up_to: 0) == 7 and l.fold(2, up_to: 2) == 0`
-    pub fn fold(self, v: V, up_to u: V) -> T = todo
+    pub fn fold(self, v: V, up_to u: V) -> T:
+        let d = dep[v] - dep[u]
+        assert d >= 0 and self.ancestor(v, d) == Some(u), "`fold`: `u` is not an ancestor of `v`"
+        var acc = identity
+        var at = v
+        for b in 0..jmp.len:
+            if ((d >> b) & 1) == 1:
+                acc = op(acc, val[b][at])
+                at = jmp[b][at]!
+        acc
 
     /// The highest ancestor `u` of `v` with `ok(self.fold(v, up_to: u))`, or `v` itself; `ok` must
     /// turn false at most once on the way up, and holds for `identity`.
@@ -1119,7 +1198,16 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// cost: O(log n) calls of `ok` and `op`
     /// traps: never
     /// example: `domain V = 0..4; let par: [V]?(V, Int) = [None, Some((0, 5)), Some((1, 2)), Some((1, 7))]; let l = Lift(par, op: (x, y) => x + y, identity: 0); l.climb_while(2, s => s <= 5) == 1 and l.climb_while(2, s => s <= 7) == 0`
-    pub fn climb_while(self, v: V, ok: T -> Bool) -> V = todo
+    pub fn climb_while(self, v: V, ok: T -> Bool) -> V:
+        var at = v
+        var acc = identity
+        for k in (0..jmp.len).rev:
+            if let w = jmp[k][at]:
+                let nx = op(acc, val[k][at])
+                if ok(nx):
+                    acc = nx
+                    at = w
+        at
 
 /// A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex
 /// values along paths, by a link-cut tree (splay trees over preferred paths). Values fold
