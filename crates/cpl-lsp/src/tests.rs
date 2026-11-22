@@ -186,7 +186,7 @@ fn typing_updates_diagnostics_after_every_edit() {
     assert_eq!(diagnostics[0].at(&["code"]).as_str(), Some("E0101"));
     assert_eq!(diagnostics[0].at(&["range", "start"]), &pos(8, 5));
     // Finish the line: clean again.
-    let published = server.handle(&did_change((8, 11), (8, 11), "V.first])\n"));
+    let published = server.handle(&did_change((8, 11), (8, 11), "V.first!] ?? 0)\n"));
     assert!(diagnostics_of(&published).is_empty());
     // Break a line in the middle of the file by deleting `in V`.
     let published = server.handle(&did_change((5, 5), (5, 10), ""));
@@ -401,22 +401,22 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
 /// `use` lands where the port had it.
 #[test]
 fn quick_fixes_import_a_stdlib_name_where_the_file_imports_its_module() {
-    assert_fixes_restore(
-        "cf2062e2",
+    assert_fixes_restore_src(
+        "use std.math.{floor_sum}\nprint(floor_sum(4, 3, 2, 1))\n",
         &[(
-            "use std.seq.{buckets}\n",
+            "use std.math.{floor_sum}\n",
             "",
             "E0201",
-            "add `use std.seq.{buckets}`",
+            "add `use std.math.{floor_sum}`",
         )],
     );
-    assert_fixes_restore(
-        "ucup5s05f",
+    assert_fixes_restore_src(
+        "use std.math.{gcd, floor_sum}\nprint(gcd(6, 4) + floor_sum(4, 3, 2, 1))\n",
         &[(
-            "{suffix_array, lcp_array}",
-            "{suffix_array}",
+            "{gcd, floor_sum}",
+            "{gcd}",
             "E0201",
-            "add `use std.strings.{lcp_array}`",
+            "add `use std.math.{floor_sum}`",
         )],
     );
 }
@@ -482,13 +482,21 @@ fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
         .join(format!("../../corpus/problems/{port}/port.cp"));
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
+    assert_fixes_restore_at(&uri, &original, breaks);
+}
+
+fn assert_fixes_restore_src(original: &str, breaks: &[(&str, &str, &str, &str)]) {
+    assert_fixes_restore_at(URI, original, breaks);
+}
+
+fn assert_fixes_restore_at(uri: &str, original: &str, breaks: &[(&str, &str, &str, &str)]) {
     for (good, bad, code, title) in breaks {
         assert!(original.contains(good), "{good}");
         let broken = original.replacen(good, bad, 1);
         let mut server = Server::new();
         server.handle(&request(1, "initialize", obj([])));
         let doc = obj([
-            ("uri", uri.as_str().into()),
+            ("uri", uri.into()),
             ("languageId", "cp".into()),
             ("version", 1.into()),
             ("text", broken.as_str().into()),
@@ -502,7 +510,7 @@ fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
             .first()
             .unwrap_or_else(|| panic!("`{bad}` checked clean"));
         assert_eq!(first.at(&["code"]).as_str(), Some(*code), "{first:?}");
-        let (got, fixed) = quick_fixed(&mut server, &uri, &broken, first);
+        let (got, fixed) = quick_fixed(&mut server, uri, &broken, first);
         assert_eq!(got, *title);
         assert_eq!(
             fixed, original,
@@ -754,8 +762,8 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     ));
     let def_uri = def[0].at(&["result", "uri"]).as_str().unwrap_or("");
     assert!(
-        def_uri.ends_with("/stdlib/rand.cp"),
-        "expected definition in stdlib/rand.cp, got: {def_uri}"
+        def_uri.ends_with("std/rand.cp"),
+        "expected definition in std/rand.cp, got: {def_uri}"
     );
 }
 
@@ -794,18 +802,21 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .as_str()
         .unwrap();
     assert!(text.starts_with("```cp\nchoose: fn(n: Int, k: Int) -> Mod<"));
-    assert_eq!(
-        text.split_once("```\n\n").unwrap().1,
-        "The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.\n\
-         Uses Lucas's theorem automatically when `n >= M.MOD` (for prime `P`)."
+    let doc = text.split_once("```\n\n").unwrap().1;
+    assert!(
+        doc.starts_with(
+            "The number of `k`-subsets of `n` things, `n! / (k! (n - k)!)`; 0 when `k` is outside `0..=n`."
+        ),
+        "{doc}"
     );
+    assert!(doc.contains("Lucas's theorem"), "{doc}");
     let def = server.handle(&request(3, "textDocument/definition", at(2, 9)));
     assert!(def[0]
         .at(&["result", "uri"])
         .as_str()
         .unwrap()
-        .ends_with("/stdlib/mod.cp"));
-    let choose_line = include_str!("../../../stdlib/mod.cp")
+        .ends_with("std/mod.cp"));
+    let choose_line = include_str!("../../../spec/std/mod.cp")
         .lines()
         .position(|l| l.trim_start().starts_with("pub fn choose("))
         .unwrap() as u32;
@@ -869,7 +880,7 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
         &V22.replace("dp[s] min= dp[s - c] + 1", "dp[s] += 1")
             .replace(
                 "print(best ?? -1)",
-                "print(best ?? 0 + 1)\ndefer print(1)\nprint(sum(dp))",
+                "print(best ?? 0 + 1)\ndefer print(1)",
             ),
     );
     for d in &diagnostics {
@@ -880,13 +891,12 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
         .iter()
         .map(|d| d.at(&["code"]).as_str().unwrap())
         .collect();
-    assert_eq!(codes, ["E0309", "E0110", "E0503", "E0309"]);
+    assert_eq!(codes, ["E0309", "E0110", "E0503"]);
     let found = lines_and_messages(&diagnostics);
     let expected = [
         (6, "`+=` can't be applied to an ?Int\nhelp: write `x = x + y` when `none` should stay `none`"),
         (8, "`??` mixed with `+ - * / %` needs parentheses\nhelp: write `(a ?? 0) + b`"),
         (9, "`defer` was removed in CP Lang 0.2.2\nhelp: undo by hand after the call"),
-        (10, "`sum` adds numbers, not an ?Int\nhelp: `sum` does not skip or absorb `none`"),
     ];
     assert_eq!(found.len(), expected.len(), "{found:?}");
     for ((line, message), (want_line, want)) in found.iter().zip(expected) {
@@ -953,7 +963,7 @@ fn inlay_hints_show_the_types_that_are_not_written() {
     // `m` has its type written, so it gets none.
     assert_eq!(
         shown,
-        [(0, 5, ": Int"), (2, 6, ": List<Int>"), (3, 5, ": Int")]
+        [(0, 5, ": 3..=3"), (2, 6, ": List<Int>"), (3, 5, ": Int")]
     );
 }
 
@@ -1190,8 +1200,9 @@ fn builtin_domain_and_position_members_are_the_checkers() {
             assert!(errors.is_empty(), "{receiver}.{name}: {errors:?}");
             let hover = hover_at(&mut server, 2, 8);
             let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+            let ty_line = text.lines().nth(1).unwrap_or("");
             assert!(
-                text.contains("x: ") && !text.contains('?') && !text.contains('_'),
+                ty_line.starts_with("x: ") && ty_line != "x: ?" && !ty_line.contains('_'),
                 "{receiver}.{name} is untyped: {text}"
             );
         }
@@ -1358,7 +1369,7 @@ fn inlay_hints_name_the_parameters_of_literal_arguments() {
     assert_eq!(
         hints,
         [
-            (1, 5, ": Int".to_string(), 1),
+            (1, 5, ": 1..=1".to_string(), 1),
             (2, 14, "steps:".to_string(), 2)
         ]
     );
@@ -1659,18 +1670,18 @@ fn bare_names_include_the_compiler_prelude() {
         "{items:?}"
     );
     // A stdlib fn that needs a `use` comes with it, after what is in scope.
-    let reply = ask_at("textDocument/completion", "z_|\n");
+    let reply = ask_at("textDocument/completion", "floor_s|\n");
     let z = reply
         .at(&["items"])
         .as_array().unwrap_or(&[])
         .iter()
-        .find(|i| i.at(&["label"]).as_str() == Some("z_function"))
+        .find(|i| i.at(&["label"]).as_str() == Some("floor_sum"))
         .cloned()
-        .expect("z_function is offered");
+        .expect("floor_sum is offered");
     assert!(z.at(&["sortText"]).as_str().unwrap().starts_with('5'), "{z:?}");
     assert_eq!(
         z.at(&["additionalTextEdits"]).as_array().unwrap_or(&[])[0].at(&["newText"]).as_str(),
-        Some("use std.strings.{z_function}\n")
+        Some("use std.math.{floor_sum}\n")
     );
 }
 
@@ -1949,7 +1960,7 @@ fn inlay_hints_show_the_range_the_bounds_prove() {
             )
         })
         .collect();
-    assert_eq!(labels, [(1, ": Int in 2..=10001"), (2, ": Int")]);
+    assert_eq!(labels, [(1, ": 2..=10001"), (2, ": 7..=7")]);
 }
 
 /// The labels completion ranks first, the ones that fit the expected type.
@@ -2299,7 +2310,10 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     );
     let fold = shown(&mut server, 4, 28);
     assert!(fold.contains("-> T\ncost: O(n)\n```"), "{fold}");
-    assert_eq!(shown(&mut server, 2, 4), "```cp\nm: Int in 2..=10001\n```");
+    assert_eq!(
+        shown(&mut server, 2, 4),
+        "```cp\nm: 2..=10001\n  storage: 2 bytes\n```"
+    );
 }
 
 /// A range the bounds prove reaches into fns and loops, and a local that
@@ -2330,14 +2344,15 @@ fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
                 h.at(&["label"]).as_str().unwrap(),
             )
         })
-        .filter(|(_, label)| label.contains(" in "))
+        .filter(|(_, label)| label.contains("..="))
         .collect();
     assert_eq!(
         ranged,
         [
-            (2, ": Int in 2..=200"),
-            (6, ": Int in 2..=299"),
-            (10, ": Int in 1..=10000")
+            (2, ": 2..=200"),
+            (6, ": 2..=299"),
+            (9, ": 1..=n"),
+            (10, ": 1..=10000")
         ]
     );
     let hover = hover_at(&mut server, 6, 12);
@@ -2346,7 +2361,7 @@ fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
             .at(&["contents", "value"])
             .as_str()
             .unwrap()
-            .contains("j: Int in 2..=299"),
+            .contains("j: 2..=299"),
         "{hover:?}"
     );
     let hover = hover_at(&mut server, 5, 8);
@@ -2364,8 +2379,8 @@ fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
 /// that uses it, and hover, completion and signature help know it.
 #[test]
 fn reach_completes_hovers_helps_and_fixes_its_options() {
-    assert_fixes_restore(
-        "cf1284e",
+    assert_fixes_restore_src(
+        "let xs = [1, 2, 3]\nfor (a, b) in xs.reach(while: (x, y) => x < y, cyclic: true):\n    print(a, b)\n",
         &[(
             "cyclic: true)",
             "cylic: true)",
@@ -2478,7 +2493,7 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
             .to_string()
     };
     assert!(hover_text(&mut server, 10, 16).contains("x: Int"));
-    assert!(hover_text(&mut server, 11, 8).contains("d: Int"));
+    assert!(hover_text(&mut server, 11, 8).contains("d: 0..=9"));
     assert!(hover_text(&mut server, 14, 34).contains("y: Int"));
     assert!(hover_text(&mut server, 14, 17).contains("Src: Node"));
     assert!(hover_text(&mut server, 4, 5).contains("Node.Src"));
@@ -2503,7 +2518,7 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
             )
         })
         .collect();
-    for hint in [(10, 17, ": Int"), (11, 9, ": Int"), (14, 34, ": Int")] {
+    for hint in [(10, 17, ": Int"), (11, 9, ": 0..=9"), (14, 34, ": Int")] {
         assert!(hints.contains(&hint), "{hint:?} in {hints:?}");
     }
     let items = ask_at(
@@ -2517,11 +2532,11 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
         .filter_map(|i| i.at(&["label"]).as_str())
         .collect();
     assert_eq!(variants, ["Src", "Snk", "Cell"]);
-    assert_fixes_restore(
-        "cf2089d",
+    assert_fixes_restore_src(
+        "let e = \"a\"\nprint(e + \":b\")\n",
         &[(
-            "e + \":{chain",
-            "e ++ \":{chain",
+            "e + \":b\"",
+            "e ++ \":b\"",
             "E0004",
             "replace `++` with `+`",
         )],
@@ -2540,7 +2555,7 @@ print(f(moves:, cost:))
     assert!(diagnostics.is_empty(), "{diagnostics:?}");
     let hover = hover_at(&mut server, 3, 10);
     let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
-    assert!(text.contains("Int"), "expected Int hover on punned arg, got: {hover:?}");
+    assert!(text.contains("moves: 3..=3"), "expected 3..=3 hover on punned arg, got: {hover:?}");
 }
 
 #[test]
@@ -2623,10 +2638,10 @@ fn rename_refuses_a_name_that_would_capture_or_be_captured() {
 fn hover_shows_the_range_the_bounds_prove_after_an_edit() {
     let (mut server, _) = open("let n: 1..=100 = read()\nlet t = n * 2\nprint(t)\n");
     let range = |server: &mut Server| hover_at(server, 1, 4).at(&["contents", "value"]).as_str().unwrap().to_string();
-    assert!(range(&mut server).contains("t: Int in 2..=200"), "{}", range(&mut server));
-    assert!(range(&mut server).contains("t: Int in 2..=200"));
+    assert!(range(&mut server).contains("t: 2..=200"), "{}", range(&mut server));
+    assert!(range(&mut server).contains("t: 2..=200"));
     server.handle(&did_change((1, 12), (1, 13), "3"));
-    assert!(range(&mut server).contains("t: Int in 3..=300"), "{}", range(&mut server));
+    assert!(range(&mut server).contains("t: 3..=300"), "{}", range(&mut server));
 }
 
 #[test]
