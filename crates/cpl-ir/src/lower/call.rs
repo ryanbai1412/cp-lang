@@ -11034,16 +11034,19 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::ExprKind::Lambda { params, body, .. } = &func_ast.kind {
             if params.len() == 1 {
-                return self.do_expr(None, span, |lw, out| {
+                let mut out_ty = Ty::Error;
+                let expr = self.do_expr(None, span, |lw, out| {
                     lw.cx.scopes.push(HashMap::new());
                     let mut bind_stmts = Vec::new();
                     let item = lw.loop_var(&params[0], elem.ty.clone(), &mut bind_stmts);
                     out.push(Stmt::Let(item, Some(elem)));
                     out.extend(bind_stmts);
                     let mapped = lw.expr(body, None);
+                    out_ty = mapped.ty.clone();
                     lw.cx.scopes.pop();
                     out.push(Stmt::Give(mapped));
                 });
+                return Expr { ty: out_ty, ..expr };
             }
         }
         let fn_hint = Ty::Fn(vec![elem.ty.clone()], Box::new(Ty::Error));
