@@ -7,6 +7,7 @@ use cpl_lsp::json::{obj, Value};
 use cpl_lsp::Server;
 use std::collections::HashSet;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
@@ -60,6 +61,81 @@ fn sites(src: &str) -> (Vec<usize>, Vec<usize>) {
     (names, dots)
 }
 
+/// Opens `src`, asks hover and definition at every first use of a name and
+/// completion after every `name.`, then closes it. Records each missing or
+/// failed reply, each diagnostic outside the text, and each request slower
+/// than a second (a hang) in `failures`; returns whether some hover reports
+/// storage.
+fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut Vec<String>) -> bool {
+    let uri = format!("file:///ports/{name}");
+    let doc = || obj([("uri", uri.as_str().into())]);
+    let open = server.handle(&message(
+        None,
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", src.into()),
+            ]),
+        )]),
+    ));
+    let published: Vec<&Value> = open
+        .iter()
+        .filter(|m| m.get("method").as_str() == Some("textDocument/publishDiagnostics"))
+        .collect();
+    if published.is_empty() {
+        failures.push(format!("{name}: no diagnostics published on open"));
+    }
+    let lines: Vec<&str> = src.split('\n').collect();
+    for diagnostic in published.iter().flat_map(|m| m.get("params").get("diagnostics").as_array()) {
+        for end in ["start", "end"] {
+            let at = diagnostic.get("range").get(end);
+            let (line, col) = (at.get("line").as_u32(), at.get("character").as_u32());
+            let fits = match (line, col) {
+                (Some(line), Some(col)) => lines
+                    .get(line as usize)
+                    .is_some_and(|text| col as usize <= text.encode_utf16().count()),
+                _ => false,
+            };
+            if !fits {
+                failures.push(format!("{name}: diagnostic {end} outside the text: {diagnostic}"));
+            }
+        }
+    }
+    let (names, dots) = sites(src);
+    let mut stores = false;
+    let asks = names
+        .iter()
+        .flat_map(|&at| [("textDocument/hover", at), ("textDocument/definition", at)])
+        .chain(dots.iter().map(|&at| ("textDocument/completion", at)));
+    for (method, at) in asks {
+        *id += 1;
+        let params = obj([("textDocument", doc()), ("position", position(src, at))]);
+        let start = Instant::now();
+        let reply: String = server.handle(&message(Some(*id), method, params)).iter().map(Value::to_string).collect();
+        let took = start.elapsed();
+        if reply.is_empty() || reply.contains("internal error in cpl") || reply.contains("\"error\"") {
+            failures.push(format!("{name}: {method} at byte {at}: {reply:.200}"));
+        }
+        if took > Duration::from_secs(1) {
+            failures.push(format!("{name}: {method} at byte {at} took {took:?}"));
+        }
+        stores |= method == "textDocument/hover" && reply.contains("storage:");
+    }
+    server.handle(&message(None, "textDocument/didClose", obj([("textDocument", doc())])));
+    stores
+}
+
+fn server() -> Server {
+    let mut server = Server::new();
+    server.handle(&message(Some(1), "initialize", obj([])));
+    server.handle(&message(None, "initialized", obj([])));
+    server
+}
+
 #[test]
 fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -68,51 +144,63 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let ids: Vec<&str> = list.get("problems").as_array().iter().filter_map(|p| p.as_str()).collect();
     assert_eq!(ids.len(), 100);
 
-    let mut server = Server::new();
-    server.handle(&message(Some(1), "initialize", obj([])));
-    server.handle(&message(None, "initialized", obj([])));
+    let mut server = server();
     let mut id = 1;
     let mut failures = Vec::new();
     let mut storage = 0;
     for pid in &ids {
-        let path = root.join(format!("corpus/problems/{pid}/spec.cp"));
-        let src = std::fs::read_to_string(&path).unwrap();
-        let uri = format!("file:///ports/{pid}.cp");
-        let doc = || obj([("uri", uri.as_str().into())]);
-        let open = server.handle(&message(
-            None,
-            "textDocument/didOpen",
-            obj([(
-                "textDocument",
-                obj([
-                    ("uri", uri.as_str().into()),
-                    ("languageId", "cp".into()),
-                    ("version", 1.into()),
-                    ("text", src.as_str().into()),
-                ]),
-            )]),
-        ));
-        if !open.iter().any(|m| m.get("method").as_str() == Some("textDocument/publishDiagnostics")) {
-            failures.push(format!("{pid}: no diagnostics published on open"));
-        }
-        let (names, dots) = sites(&src);
-        let mut stores = false;
-        let asks = names
-            .iter()
-            .flat_map(|&at| [("textDocument/hover", at), ("textDocument/definition", at)])
-            .chain(dots.iter().map(|&at| ("textDocument/completion", at)));
-        for (method, at) in asks {
-            id += 1;
-            let params = obj([("textDocument", doc()), ("position", position(&src, at))]);
-            let reply: String = server.handle(&message(Some(id), method, params)).iter().map(Value::to_string).collect();
-            if reply.is_empty() || reply.contains("internal error in cpl") || reply.contains("\"error\"") {
-                failures.push(format!("{pid}: {method} at byte {at}: {reply:.200}"));
-            }
-            stores |= method == "textDocument/hover" && reply.contains("storage:");
-        }
-        storage += usize::from(stores);
-        server.handle(&message(None, "textDocument/didClose", obj([("textDocument", doc())])));
+        let src = std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
+        storage += usize::from(walk(&mut server, &mut id, &format!("{pid}.cp"), &src, &mut failures));
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     assert!(storage >= 88, "only {storage} of 100 ports show storage on some hover");
+}
+
+fn cp_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            cp_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "cp") {
+            out.push(path);
+        }
+    }
+}
+
+/// Every corpus program (`spec.cp`, `port.cp`, `dream.cp`) and every
+/// conformance case, walked as the hill-climb ports are; broken and rejected
+/// programs included.
+#[test]
+fn every_corpus_program_and_conformance_case_is_served() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut files = Vec::new();
+    cp_files(&root.join("corpus/problems"), &mut files);
+    let corpus = files.len();
+    cp_files(&root.join("spec/conformance"), &mut files);
+    assert!(corpus >= 1000 && files.len() - corpus >= 500, "{corpus} corpus files, {} cases", files.len() - corpus);
+    files.sort();
+
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);
+    let chunk = files.len().div_ceil(threads);
+    let failures: Vec<String> = std::thread::scope(|scope| {
+        let workers: Vec<_> = files
+            .chunks(chunk)
+            .map(|files| {
+                let root = &root;
+                scope.spawn(move || {
+                    let mut server = server();
+                    let mut id = 1;
+                    let mut failures = Vec::new();
+                    for path in files {
+                        let src = std::fs::read_to_string(path).unwrap();
+                        let name = path.strip_prefix(root).unwrap().to_string_lossy().replace('/', "_");
+                        walk(&mut server, &mut id, &name, &src, &mut failures);
+                    }
+                    failures
+                })
+            })
+            .collect();
+        workers.into_iter().flat_map(|w| w.join().unwrap()).collect()
+    });
+    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
 }
