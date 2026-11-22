@@ -579,7 +579,7 @@ struct Mat<T>(n: Int, m: Int, a: List<T>)
     fn identity(n: Int) -> Mat<T>                  // O(n^2)
     fn of(rows: List<List<T>>) -> Mat<T>           // O(n m)
     fn get(self, i: Int, j: Int) -> T              // O(1)
-    fn at(self, i: Int, j: Int) lends mut T        // O(1)
+    fn at(self, i: Int, j: Int) -> lends mut T        // O(1)
     // Power is `a ** e` via `impl Pow for Mat<T>` (O(n^3 log e))
     fn apply(self, v: List<T>) -> List<T>          // O(n m)
     fn transpose(self) -> Mat<T>                   // O(n m)
@@ -1034,7 +1034,7 @@ struct SegTree<D, T>(m: Monoid<T>) // O(log n)
     fn refresh(mut self, i: D) // O(log n)
     fn get(self, i: D) -> T
     fn set(mut self, i: D, x: T)
-    fn at(mut self, i: D) lends mut T // O(log n) per write: `st.at(i) += x`
+    fn at(mut self, i: D) -> lends mut T // O(log n) per write: `st.at(i) += x`
     fn update(mut self, i: D, f: T -> T) // O(log n)
     fn fold(self, r: Range<D>) -> T
     @get fn all(self) -> T // O(1)
@@ -1046,7 +1046,7 @@ struct LazySegTree<D, T, F>(act: Action<T, F>) // O(log n), O(1)
     fn set(mut self, i: D, x: T)
     fn update(mut self, i: D, f: T -> T) // O(log n)
     fn get(mut self, i: D) -> T
-    fn at(mut self, i: D) lends mut T // O(log n) per write
+    fn at(mut self, i: D) -> lends mut T // O(log n) per write
     @get fn all(self) -> T // O(1)
     @get fn monoid(self) -> Monoid<T>
     fn fold(mut self, r: Range<D>) -> T
@@ -1059,7 +1059,7 @@ struct DualSegTree<D, T, F> // [new] range apply, point get; no monoid or pulls;
     fn apply(mut self, r: Range<D>, f: F)
     fn get(mut self, i: D) -> T
     fn set(mut self, i: D, x: T)
-    fn at(mut self, i: D) lends mut T
+    fn at(mut self, i: D) -> lends mut T
     fn update(mut self, i: D, f: T -> T)
 struct LazyTreap<T, F> // [new] randomized treap with subtree-size-aware lazy tags; O(log n)
     fn new(apply: (T, Int, F) -> T, compose: (F, F) -> F,

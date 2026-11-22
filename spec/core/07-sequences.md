@@ -174,7 +174,7 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
   (arguments are always lent) and comes back only from a fn declared
   `lends`, whose result borrows every non-plain parameter unless narrowed:
   `fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]`,
-  `fn pick(a: [V]Int, b: [V]Int) lends(a) [V]Int`. It never goes in a
+  `fn pick(a: [V]Int, b: [V]Int) -> lends(a) [V]Int`. It never goes in a
   `var`, field, container, global or escaping closure. Keeping one is
   `List(w)`. (R07.5.10)
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`

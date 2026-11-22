@@ -212,7 +212,7 @@ A fn whose result borrows from its arguments declares it:
 ```python
 fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]       // read lend
 pub fn at(mut self, i: D) -> lends mut T                    // a writable place
-fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
+fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> // borrows only a
 ```
 
 - **Meaning.** The result is a lent value whose sources are every
@@ -783,7 +783,7 @@ fn tail(xs: [V]Int, l: V) -> [V]Int = xs[l..]
 
 **27.**
 ```python
-fn pick(x: List<Int>, y: List<Int>) lends(x) List<Int> = y[..]
+fn pick(x: List<Int>, y: List<Int>) -> lends(x) List<Int> = y[..]
 ```
 <details><summary>Answer</summary>No. The body lends from <code>y</code> but the signature says only <code>x</code> (§6).</details>
 
