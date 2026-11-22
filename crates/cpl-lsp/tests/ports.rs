@@ -114,5 +114,5 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
         server.handle(&message(None, "textDocument/didClose", obj([("textDocument", doc())])));
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    assert!(storage >= 80, "only {storage} of 100 ports show storage on some hover");
+    assert!(storage >= 88, "only {storage} of 100 ports show storage on some hover");
 }
