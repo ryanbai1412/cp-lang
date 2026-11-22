@@ -13,9 +13,9 @@ note = "These solutions were written with the compiler in the loop, not blind; t
 name = "blind_skill_eval"
 manual = true
 command = "for n in <the 20 cold-agent solutions>; do research/dryrun/v03/loop.sh $n 200; done"
-today = "unmeasured"
+today = "20/20 pass, 12/20 first attempt (16/20 without compile fixes), 0 workarounds, 3 lint kept (research/skill-eval/v3/REPORT.md)"
 target = "20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set"
-note = "A cold agent given only skills/cp-lang/ writes the 20 first (phase 2). Last recorded: 20/20 with 4 workarounds, 3 lint warnings, on devin/skill-eval-1 (unlanded). The brief's 10/20 is an earlier v0.3 run."
+note = "Known-20 regression baseline: round 3, a cold agent given only skills/cp-lang/ on main. Round 1 (research/skill-eval/REPORT.md): 20/20 with 4 workarounds. The unseen-20 gate waits on plan/QUESTIONS.md."
 
 [[metric]]
 name = "skill_check"

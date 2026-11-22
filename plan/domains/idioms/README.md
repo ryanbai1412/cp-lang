@@ -34,7 +34,7 @@ What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) 
 | Metric | Command | Today | Target |
 |---|---|---|---|
 | Dry run v0.3 (written with compiler) | `research/dryrun/v03/loop.sh <p> 20` x20 | 20/20 (15 `_w` workaround variants exist) | 20/20 at 200 cases, 0 `_w` |
-| Blind skill eval | cold agent + `loop.sh` | **unmeasured** (last: 20/20, 4 workarounds, unlanded branch) | 20/20, 0 workarounds, 0 lint |
+| Blind skill eval | cold agent + `loop.sh` | 20/20, 12/20 first attempt, 0 workarounds, 3 lint kept (known 20, round 3) | 20/20, 0 workarounds, 0 lint |
 | Skill check | `scripts/skill-gen.py --check` | absent on main; branch ok, 48 files, 75 blocks | on main, gated |
 | Tracked ports check on v0.3 | `cpl check corpus/problems/<id>/port.cp` x305 | 175/305 | 305/305 |
 | Dreams check on v0.3 | same, `dream.cp` | 145/305 | tracked |
