@@ -391,6 +391,12 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        self.close_angle("`>` to close the type arguments");
+        args
+    }
+
+    /// Eats one `>`, which may be half of a `>>` that closes two lists.
+    fn close_angle(&mut self, expected: &str) {
         if self.at(T::Gt) {
             self.bump();
         } else if self.at(T::Shr) {
@@ -399,13 +405,8 @@ impl<'a> Parser<'a> {
             }
             self.half_shr = !self.half_shr;
         } else {
-            self.error_expected(
-                codes::EXPECTED_TOKEN,
-                "`>` to close the type arguments",
-                Some(">"),
-            );
+            self.error_expected(codes::EXPECTED_TOKEN, expected, Some(">"));
         }
-        args
     }
 
     fn at_type_args_end(&self) -> bool {
@@ -420,14 +421,15 @@ impl<'a> Parser<'a> {
         if !self.eat(T::Lt) {
             return (Vec::new(), defaults, bounds);
         }
-        let names = self.comma_list(T::Gt, "the type parameters", |p| {
+        let mut names = Vec::new();
+        while !self.at_type_args_end() && !self.at_line_end() {
             // `const N: Int` is a value parameter; its type is not a bound.
-            let value = p.eat(T::Const);
+            let value = self.eat(T::Const);
             // `<domain I>` marks a parameter that is an index space; it is still a type.
-            p.eat(T::Domain);
-            let name = p.expect_name("a type parameter name");
-            if p.eat(T::Colon) {
-                let traits = p.bound_traits();
+            self.eat(T::Domain);
+            let name = self.expect_name("a type parameter name");
+            if self.eat(T::Colon) {
+                let traits = self.bound_traits();
                 if !value {
                     bounds.push(Bound {
                         name: name.clone(),
@@ -435,10 +437,14 @@ impl<'a> Parser<'a> {
                     });
                 }
             }
-            let default = p.eat(T::Eq).then(|| p.ty());
+            let default = self.eat(T::Eq).then(|| self.ty());
             defaults.push(default);
-            name
-        });
+            names.push(name);
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.close_angle("`>` to close the type parameters");
         (names, defaults, bounds)
     }
 

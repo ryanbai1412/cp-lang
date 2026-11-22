@@ -39,12 +39,14 @@ def code(line):
 
 def header_end(lines, i):
     """(last header line, column of the body's `:` or `=`, kind) or None."""
-    depth, seen_paren = 0, False
+    depth, seen_paren, in_where = 0, False, False
     for j in range(i, min(i + 40, len(lines))):
         s = code(lines[j])
         k = 0
         while k < len(s):
             c = s[k]
+            if depth == 0 and re.match(r"\bwhere\b", s[k:]) and not s[k - 1:k].isalnum():
+                in_where = True
             if c in "([{":
                 depth += 1
                 seen_paren |= c == "("
@@ -57,7 +59,8 @@ def header_end(lines, i):
             elif depth == 0 and c == "=" and s[k - 1:k] not in ("=", "<", ">", "!", ".") \
                     and s[k + 1:k + 2] not in ("=", ">"):
                 return j, k, "="
-            elif depth == 0 and c == ":" and s[k + 1:k + 2] != ":" and s[k - 1:k] != ":":
+            elif depth == 0 and c == ":" and s[k + 1:k + 2] != ":" and s[k - 1:k] != ":" \
+                    and not in_where:
                 return j, k, ":"
             k += 1
         if depth == 0 and j > i and not s.strip():

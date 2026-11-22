@@ -2,35 +2,61 @@
 //!
 //! Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge
 //! data is `[E]T`, and mixing the two does not type-check. An algorithm
-//! takes `next`: a stored `Graph`, or any fn from a vertex to what follows
-//! it. What follows is a list of vertices, or of arcs (records with a `to`
-//! field) when the algorithm needs to know which edge it took:
+//! takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn
+//! from a vertex to a `Seq` of arcs. An arc is anything with `.to`; what
+//! else it carries (`.w`, `.e`) decides which algorithms accept it:
 //!
 //!     bfs(g, from: [s])
-//!     bfs(from: [s], next: u => lists[u])
-//!     bfs(from: [s], next: p => p.adj4)
-//!     dijkstra(g, from: [(s, 0)], w: a => edges[a.e].w)
+//!     dijkstra(g, from: [(s, 0)])                          # arcs carry w
+//!     dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn
+//!     bfs(p => p.adj4().filter(q => grid[q] != '#'), from: [start])
+//!     bridges(g)                                           # arcs carry e
 //!
-//! Weights are read through a fn of the arc, so the same graph serves several
-//! weightings. Unreachable is `none`. An algorithm given only a fn cannot see
-//! the vertex type, so it is named: `scc::<V>(u => out[u])`; given a `Graph`
-//! it is read off the graph: `scc(g)`.
+//! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
+//! Unreachable is `none`. Whole-graph algorithms need `V: Domain`.
 use std.heap.{MinHeap}
 use std.dsu.{Dsu}
 use std.seq.{reverse}
 use std.deque.{Deque}
 
 /// O(deg u) per walk of `out(u)`.
-/// What an algorithm walks: a `Graph` gives its arcs out of `u`, and any fn `u => ...` is
-/// simply called.
-pub trait Neighbours:
-    fn out<V>(self, u: V) -> Iter<V> = todo
+/// What every graph algorithm walks: the arcs out of `u`. Implemented by
+/// `Graph`, by any `[V]S` with `S: Seq` of arcs, and by any fn `V -> Seq`.
+pub trait Next<V>:
+    type Arc: Target<V>
+    fn out(self, u: V) -> yields Self.Arc = todo
 
-/// O(1).
-/// What a neighbour list holds: an arc says where it leads with its `to` field, and a plain
-/// vertex leads to itself.
-pub trait Target:
-    @get fn to(self) -> Self = todo
+/// O(1). Where an arc leads. A plain vertex is its own target, and a record
+/// with a `to: V` field is one (a field is a `@get`).
+pub trait Target<V>:
+    @get fn to(self) -> V = todo
+
+/// O(1). The weight of an arc: a record with a `w` field, or `.weighted(f)`.
+pub trait Weighted<W>:
+    @get fn w(self) -> W = todo
+
+/// O(1). The edge an arc belongs to; both arcs of an undirected edge share it.
+pub trait Edged<E>:
+    @get fn e(self) -> E = todo
+
+/// A graph whose arcs carry weights: shortest paths, MST over arcs, DAG folds.
+pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
+
+/// A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
+/// These skip the arc back along the same edge, not to the same vertex, so
+/// parallel edges are right.
+pub trait EdgedNext<V, E> = Next<V> where Self.Arc: Edged<E>
+
+/// The arc a build stores by default: the target, the edge id, and every
+/// field of the edge record except `u` and `v`. Every carried field must be
+/// plain; a heap field is a compile error that points at `keep:`.
+pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
+
+/// O(1) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as
+/// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
+pub struct Reweighted<G, F>:
+    g: G
+    f: F
 
 /// O(n) to read.
 /// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
@@ -57,34 +83,47 @@ pub type Dag<V, E> = [E](u: V, v: V)
 pub type Digraph<V, E> = [E](u: V, v: V)
 
 /// O(n + m) memory and build.
-/// A fixed graph in compressed sparse row form: one offsets list and one arcs list.
-/// Built in O(n + m); memory is n + 1 offsets and one `(to, e)` per arc.
-/// An undirected edge is two arcs with the same `e`.
-pub struct Graph<V, E>:
-    start: List<0..=2_000_000_000>
-    arcs: List<(to: V, e: E)>
+/// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs
+/// list, the arcs of each vertex contiguous and in input order. Immutable; a
+/// graph that grows is a `[V]List` of arcs, which is already a `Next`.
+pub struct Graph<V: Domain, A: Target<V>>:
+    start: [V.cuts]Int
+    arcs: List<A>
 
-    /// O(n + m).
-    /// One arc `u -> v` per edge.
-    pub fn directed(edges: [E](u: V, v: V)) -> Graph<V, E> = todo
+    /// O(n + m). One arc `u -> v` per edge. `keep` picks what each arc stores
+    /// (run once per arc at build): `keep: a => (to: a.to, w: a.w)` drops `e`.
+    /// Omitted, `B` is `EdgeArc<V, E, R>`.
+    pub fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: [E]R,
+        keep: ?(EdgeArc<V, E, R> -> B) = none,
+    ) -> Graph<V, B> = todo
 
-    /// O(n + m).
-    /// Two arcs per edge, `u -> v` and `v -> u`, sharing the edge id.
-    pub fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E> = todo
+    /// O(n + m). Two arcs per edge, `u -> v` and `v -> u`, with the same `e`; a
+    /// loop gives two arcs. `keep` runs once per arc, so 2m times.
+    pub fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: [E]R,
+        keep: ?(EdgeArc<V, E, R> -> B) = none,
+    ) -> Graph<V, B> = todo
 
-    fn build(edges: [E](u: V, v: V), both: Bool) -> Graph<V, E> = todo
+    /// O(n + m). The base form: build from any `(from, arc)` pairs.
+    pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A> = todo
 
-    /// O(deg u) total, O(1) per arc.
-    /// The arcs out of `u`, in edge order: what makes a `Graph` usable wherever `next` is
-    /// expected. O(deg u).
-    pub fn out(self, u: V) -> yields (to: V, e: E) = todo
+    /// O(1). `g[u]`: the arcs out of `u`, an `Indexed` view.
+    pub fn at(self, u: V) lends Slice<A> = todo
 
-    /// O(deg u): copies.
-    /// `g[u]`: the arcs out of `u`, as a list.
-    pub fn get(self, u: V) -> List<(to: V, e: E)> = todo
+    /// O(1) to make, O(deg u) to walk: the arcs out of `u` (the `Next` impl).
+    pub fn out(self, u: V) -> yields A = todo
+
+    /// O(n^2 + m): the weight matrix, `d[u, v]` the least `.w` over arcs
+    /// `u -> v` and `none` without one; the input to `floyd_warshall`.
+    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W> = todo
 
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = todo
+
+    /// O(1) to make: the same graph with `.w` read as `f(a)`. Works on any
+    /// `Next`; on a weighted graph it reweights. `f` runs on every arc read.
+    pub fn weighted<W>(self, f: A -> W) lends Reweighted<Graph<V, A>, A -> W> = todo
 
     /// O(n + m): a BFS spanning tree, rooted at the first vertex. Traps if the
     /// graph is disconnected; a forest is `spanning_forest`.
@@ -105,20 +144,22 @@ pub struct Graph<V, E>:
     /// arc `u -> v` for which `skip(u, v)` holds.
     pub fn reachable(self, from: List<V>, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
 
-    /// O(1) to make, O(m) to walk: every edge once, with its id and its ends as given.
-    pub @get fn edges(self) -> yields Edge<V, E> = todo
+    /// O(1) to make, O(m) to walk: every edge once, with its id and its ends as
+    /// given. Only for graphs whose arcs keep `e`: a source arc per edge.
+    pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E> = todo
 
     /// O(n + m): the DFS tree from `root` of the component holding it. Every
     /// non-tree edge of an undirected graph then joins a vertex to an ancestor.
-    pub fn dfs_tree(self, root: V) -> DfsTree<V, E> = todo
+    pub fn dfs_tree<E>(self, root: V) -> DfsTree<V, E> where A: Edged<E> = todo
 
     /// O(n + m): `peel(g, ...)` as a method, with the same options.
     pub fn peel(
-        self, ready: ?(V -> Bool) = none, on_remove: ?((V, (to: V, e: E)) -> ()) = none,
+        self, ready: ?(V -> Bool) = none, on_remove: ?((V, A) -> ()) = none,
     ) -> List<V> = todo
 
-    /// The graph with every arc reversed. A rebuild, O(n + m).
-    pub fn transpose(self) -> Graph<V, E> = todo
+    /// O(n + m): every arc reversed, its other fields kept (record update
+    /// `(..a, to: u)`).
+    pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..) = todo
 
 /// O(n + m).
 /// Kahn's peeling: repeatedly remove a vertex with no arcs left coming in, and return the
@@ -126,21 +167,21 @@ pub struct Graph<V, E>:
 /// reachable from one, so the order covers all of `V` exactly when the graph is acyclic.
 /// For a vertexless closure graph, pass the vertex domain via turbofish: `peel::<V>(u => ...)`.
 /// O(n + m).
-pub fn peel<V, N, A>(
-    next: N, ready: ?(V -> Bool) = none, on_remove: ?((V, A) -> ()) = none,
+pub fn peel<V, G: Next<V>>(
+    g: G, ready: ?(V -> Bool) = none, on_remove: ?((V, G.Arc) -> ()) = none,
 ) -> List<V> = todo
 
 /// O(n + m).
 /// A topological order, or `none` if there is a cycle: a `peel` that removed every vertex.
 /// O(n + m). For a vertexless closure graph, pass the vertex domain via turbofish:
 /// `topo::<V>(u => ...)`.
-pub fn topo<V, N>(next: N) -> ?List<V> = todo
+pub fn topo<V>(g: Next<V>) -> ?List<V> = todo
 
 /// O(n + m).
 /// Strongly connected components. `C` is a fresh domain, numbered so that
 /// every arc goes from a smaller or equal component to a larger or equal
 /// one (a topological order of the condensation). O(n + m), no recursion.
-pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C) = todo
+pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
 
 /// O(n + m) memory and build.
 /// Compressed sparse row adjacency table over `V` built from pairs or triples.
@@ -154,6 +195,10 @@ pub struct Adj<V, A>:
 
     /// `g[u]`: the arcs out of `u`, as a list. O(deg u).
     pub fn get(self, u: V) -> List<A> = todo
+
+    /// O(n^2 + m): the weight matrix, `d[u, v]` the least `.w` over arcs
+    /// `u -> v` and `none` without one; the input to `floyd_warshall`.
+    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W> = todo
 
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = todo
@@ -181,11 +226,11 @@ pub fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> = tod
 pub fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> = todo
 
 /// Connected components of an undirected graph, as a fresh domain `C`. O(n + m).
-pub fn components<V, N>(next: N) -> (domain C, comp: [V]C) = todo
+pub fn components<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
 
 /// O(n + m).
 /// The condensation: the arcs between components, as adjacency lists (duplicates kept).
-pub fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)> = todo
+pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)> = todo
 
 /// O(n + m).
 /// Two-edge-connected components (bridge blocks) of an undirected graph.
@@ -194,12 +239,12 @@ pub fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)> = todo
 /// for the components and `comp: [V]C`. Every edge between distinct components
 /// is a bridge, so `condense(next, comp)` yields the bridge tree.
 /// O(n + m), iterative Tarjan low-link.
-pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C) = todo
+pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C) = todo
 
 /// Articulation points (cut vertices) of an undirected simple graph.
 
 /// Handles disconnected graphs and root child count. O(n + m), iterative.
-pub fn articulation_points<V, N>(next: N) -> [V]Bool = todo
+pub fn articulation_points<V>(g: Next<V>) -> [V]Bool = todo
 
 /// Vertex-biconnected components (blocks) of an undirected simple graph.
 /// Each returned list contains the vertices of one maximal 2-vertex-connected
@@ -207,10 +252,10 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool = todo
 /// every block that shares them. O(n + m), iterative Tarjan.
 
 /// Vertex-biconnected components (blocks) of an undirected graph via Tarjan DFS. O(|V| + |E|).
-pub fn biconnected_components<V, N>(next: N) -> List<List<V>> = todo
+pub fn biconnected_components<V>(g: Next<V>) -> List<List<V>> = todo
 
 /// 2-coloring of an undirected graph: returns a side for each vertex, or `none` if an odd cycle exists. O(n + m).
-pub fn two_color<V, N>(next: N) -> ?[V]Bool = todo
+pub fn two_color<V>(g: Next<V>) -> ?[V]Bool = todo
 
 @test
 fn csr_keeps_edge_ids_and_order() = todo
@@ -276,7 +321,7 @@ pub struct Paths<V, W, A>:
 
     /// O(n + m): the arcs on some shortest path (`p[a.to] == p[u] + w(a)`), the
     /// DAG that counting or listing shortest paths walks in `order`.
-    pub fn tight<N>(self, next: N, w: A -> W) -> [V]List<A> = todo
+    pub fn tight<>(self, g: Next<V>) -> [V]List<A> = todo
 
     /// Does some source reach `v`? O(1).
     pub fn reached(self, v: V) -> Bool = todo
@@ -292,24 +337,23 @@ pub struct Paths<V, W, A>:
 /// O(n + m).
 /// Fewest arcs from any of `from` to each vertex; `until: t` stops once `t` is
 /// reached. O(n + m).
-pub fn bfs<V, N, A>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A> = todo
+pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = none) -> Paths<V, Int, G.Arc> = todo
 
 /// O(n + m).
 /// Shortest distances when every weight `w(a)` is 0 or 1, from every vertex of `from`
 /// at distance 0: a deque, with 0-arcs pushed to the front; `until: t` stops once
 /// `t` is settled. O(n + m); traps on any other weight.
-pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none) -> Paths<V, Int, A> = todo
+pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = none) -> Paths<V, Int, G.Arc> = todo
 
 /// O((n + m) log n).
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)`
 /// pairs; `until: t` stops once `t` is settled. O((n + m) log m) with a binary heap
 /// and lazy deletion; traps on a negative weight.
-pub fn dijkstra<V, N, A, W>(
-    next: N,
-    from: List<(V, W)>,
-    w: A -> W,
+pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
+    g: G,
+    from: Seq<(V, W)>,
     until: ?V = none,
-) -> Paths<V, W, A> = todo
+) -> Paths<V, W, G.Arc> = todo
 
 /// O(|S| |M|) time, O(|S|) memory.
 /// Shortest distances over a state space `S` whose moves have fixed non-negative
@@ -331,23 +375,25 @@ pub fn fixed_cost_paths<S, M, W>(
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or
 /// `none` when a source reaches a negative cycle. `order` lists each reached vertex
 /// after its parent. O(n * m).
-pub fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A> = todo
+pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc> = todo
 
 /// O(n^3).
-/// All-pairs shortest distances from the direct weights `w[u, v]` (`none`: no edge),
-/// or `none` if there is a negative cycle. A vertex is at distance 0 from itself
-/// unless a cheaper cycle exists. O(n^3) time, O(n^2) memory.
-pub fn floyd_warshall<V>(w: [V, V]?Int) -> ?[V, V]?Int = todo
+/// O(n^3) time, no extra memory.
+/// All-pairs shortest distances, in place: `d[u, v]` starts as the direct
+/// weight (`none`: no edge, usually from `g.matrix()`) and ends as the
+/// distance. `false` if there is a negative cycle, and `d` is then unspecified.
+/// A vertex is at distance 0 from itself unless a cheaper cycle exists.
+pub fn floyd_warshall<V, W: Ord + Add>(mut d: [V, V]?W) -> Bool = todo
 
 /// O(n + m).
 /// One directed cycle, as its vertices in walking order (each is followed by the next,
 /// and the last by the first), or `none` if the graph is acyclic. O(n + m), no recursion.
-pub fn find_cycle<V, N>(next: N) -> ?List<V> = todo
+pub fn find_cycle<V>(g: Next<V>) -> ?List<V> = todo
 
 /// O(n + m).
 /// Which edges are bridges: removing one disconnects its ends. Needs arcs with edge ids
 /// (a `Graph.undirected`), so a parallel edge is not mistaken for the way back. O(n + m).
-pub fn bridges<V, E, N>(next: N) -> [E]Bool = todo
+pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool = todo
 
 /// O(m) memory.
 /// A walk: where it starts, then each arc taken (`to` is where the arc leads, `e` the
@@ -450,52 +496,52 @@ fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
 /// O(n + m) total, O(1) per step: a depth-first walk from
 /// `from`, yielding `Enter` on discovery and `Exit` when a vertex is finished.
 /// `continue` after `Enter(v)` still descends; the loop steers with `break`.
-pub fn dfs<V, N>(next: N, from: List<V>) -> yields Visit<V> = todo
+pub fn dfs<V>(g: Next<V>, from: Seq<V>) -> yields Visit<V> = todo
 
 /// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields.
 pub enum Visit<V>: Enter(v: V), Exit(v: V)
 
 /// O(n + m + W): shortest paths for small integer weights `0 ..= max_w` with a
 /// bucket queue (Dial). Same result shape as `dijkstra`.
-pub fn dial<V, N, A>(next: N, from: List<V>, w: A -> Int, max_w: Int, until: ?V = none) -> Paths<V, Int, A> = todo
+pub fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = none) -> Paths<V, Int, G.Arc> = todo
 
 /// O(n m log n): all-pairs shortest paths with negative arcs and no negative
 /// cycle (Johnson: one Bellman-Ford, then a Dijkstra per source). `none` if a
 /// negative cycle exists.
-pub fn johnson<V, N, A, W>(next: N, w: A -> W) -> ?[V, V]?W = todo
+pub fn johnson<V, W>(g: WeightedNext<V, W>) -> ?[V, V]?W = todo
 
 /// O((n + m) log n + k log k): the lengths of the `k` shortest walks from any
 /// of `from` to `to`, repeats allowed, ascending (Eppstein). Shorter if fewer exist.
-pub fn k_shortest<V, N, A, W>(next: N, from: List<V>, to: V, k: Int, w: A -> W) -> List<W> = todo
+pub fn k_shortest<V, W>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W> = todo
 
 /// O(n m): some cycle of negative total weight, as its arcs, or `none`.
-pub fn negative_cycle<V, N, A, W>(next: N, w: A -> W) -> ?List<A> = todo
+pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc> = todo
 
 /// O(n m): the cycle of least mean weight as (total, length), or `none` on an
 /// acyclic graph (Karp).
-pub fn min_mean_cycle<V, N, A>(next: N, w: A -> Int) -> ?(sum: Int, len: Int) = todo
+pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int) = todo
 
 /// O(n m): the length of a shortest cycle (the girth), or `none` if acyclic.
 /// Undirected graphs count a cycle only if it uses at least three edges.
-pub fn girth<V, N>(next: N, directed: Bool) -> ?Int = todo
+pub fn girth<V>(g: Next<V>, directed: Bool) -> ?Int = todo
 
 /// O((n + m) log n): the lexicographically smallest topological order, by a
 /// heap instead of a queue; `none` if there is a cycle.
-pub fn smallest_topo<V, N>(next: N) -> ?List<V> = todo
+pub fn smallest_topo<V>(g: Next<V>) -> ?List<V> = todo
 
 /// O(n + m): DAG DP in topological order. Each vertex starts at `init(v)` and
 /// every arc `u -> a.to` folds `step(val[u], a)` into `val[a.to]` with the
 /// operation value `op` (W10: `op: max` gives longest paths, `op: +` counts).
 /// `none` on a cycle.
-pub fn dag_fold<V, N, A, T, M>(next: N, init: V -> T, step: (T, A) -> T, op: M) -> ?[V]T = todo
+pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T = todo
 
 /// O(n + m): the number of `from -> v` paths of a DAG for every `v`, in `T`
 /// (a modular type keeps it exact). `none` on a cycle.
-pub fn count_paths<T, V, N>(next: N, from: List<V>) -> ?[V]T = todo
+pub fn count_paths<T, V>(g: Next<V>, from: Seq<V>) -> ?[V]T = todo
 
 /// O(n m / 64): reachability of every pair as bitset rows (transitive
 /// closure through the condensation).
-pub fn closure<V, N>(next: N) -> [V]Bitset<V> = todo
+pub fn closure<V>(g: Next<V>) -> [V]Bitset<V> = todo
 
 /// O(m log m): offline incremental SCC; for each arc of `arcs`, added in
 /// order, the first time its ends share a strongly connected component.
@@ -503,25 +549,25 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int = todo
 
 /// O(n + m): the block-cut tree. `B` numbers the biconnected blocks; the tree
 /// joins each block to the cut vertices it contains, as `(block, vertex)` pairs.
-pub fn block_cut_tree<V, N>(next: N) -> (domain B, links: List<(b: B, v: V)>) = todo
+pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = todo
 
 /// O(n + m): the biconnected block of every edge (edges, not vertices, are
 /// partitioned; a cut vertex lies in several blocks).
-pub fn edge_blocks<V, E, N>(next: N) -> (domain B, block: [E]B) = todo
+pub fn edge_blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
 
 /// O(n + m alpha): connected components of the complement of `next` (the
 /// arcs of `next` are the missing edges), each as a list of vertices.
-pub fn complement_components<V, N>(next: N) -> List<List<V>> = todo
+pub fn complement_components<V>(g: Next<V>) -> List<List<V>> = todo
 
 /// O(n + m): an odd cycle witnessing that `next` is not bipartite, or `none`.
-pub fn odd_cycle<V, N>(next: N) -> ?List<V> = todo
+pub fn odd_cycle<V>(g: Next<V>) -> ?List<V> = todo
 
 /// O((n + m) alpha): the immediate dominator of every vertex reachable from
 /// `root` (Lengauer-Tarjan); `none` for `root` and unreachable vertices.
-pub fn dominators<V, N>(next: N, root: V) -> [V]?V = todo
+pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V = todo
 
 /// O(m sqrt m), O(1) per item: every triangle of an undirected simple graph once.
-pub fn triangles<V, N>(next: N) -> yields (V, V, V) = todo
+pub fn triangles<V>(g: Next<V>) -> yields (V, V, V) = todo
 
 /// O(3^(n/3)) worst case: a maximum clique of the graph given as bitset rows
 /// (Bron-Kerbosch with pivoting); `n` up to about 64 in contests.
@@ -536,7 +582,7 @@ pub fn de_bruijn(k: Int, n: Int) -> List<Int> = todo
 
 /// O(m log m): a minimum spanning forest by Kruskal, as the chosen edges and
 /// their total. A negated `w` gives a maximum one.
-pub fn kruskal<V, E, W>(edges: [E](u: V, v: V), w: E -> W) -> (total: W, take: [E]Bool) = todo
+pub fn kruskal<V, E, W>(edges: [E](u: V, v: V, w: W, ..)) -> (total: W, take: [E]Bool) = todo
 
 /// O(n^2): a minimum spanning tree of the dense graph `w` (Prim without a
 /// heap); `none` if disconnected.
@@ -550,10 +596,10 @@ pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (tot
 /// O(m log n): a minimum spanning arborescence rooted at `root` (Chu-Liu /
 /// Edmonds with a skew heap), as each vertex's chosen parent edge; `none` if
 /// some vertex is unreachable.
-pub fn arborescence<V, E, W>(edges: [E](u: V, v: V), w: E -> W, root: V) -> ?(total: W, parent: [V]?E) = todo
+pub fn arborescence<V, E, W>(edges: [E](u: V, v: V, w: W, ..), root: V) -> ?(total: W, parent: [V]?E) = todo
 
 /// O(n + m): a spanning forest as chosen edges, by BFS.
-pub fn spanning_forest<V, E, N>(next: N) -> [E]Bool = todo
+pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool = todo
 
 /// O(n) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 pub struct Functional<V>:

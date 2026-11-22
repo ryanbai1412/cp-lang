@@ -1393,6 +1393,14 @@ fn generic_parameter_may_say_domain() {
 }
 
 #[test]
+fn generic_bound_may_end_in_a_double_angle() {
+    let f = fn_of("fn dij<V, G: Next<V>>(g: G) -> Int = 0\n");
+    let names: Vec<&str> = f.generics.iter().map(|g| g.text.as_str()).collect();
+    assert_eq!(names, ["V", "G"]);
+    assert!(codes("fn dij<V, G: Next<V>>(g: G) -> Int = 0\n").is_empty());
+}
+
+#[test]
 fn record_field_may_be_an_operator_or_punned() {
     let s = stmts("let a = (count: +, taken: or)\nlet b = (t, need: n)\n");
     for st in &s {
