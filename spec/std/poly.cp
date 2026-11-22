@@ -655,42 +655,42 @@ pub struct Poly<T>(c: List<T>):
     /// empty: `Poly.new([])` is the zero polynomial
     /// traps: never
     /// example: `Poly<Int>([1, 2, 0]).len == 3`
-    pub fn new(c: List<T>) -> Poly<T> = todo
+    pub fn new(c: List<T>) -> Poly<T> = Poly(c)
 
     /// The constant polynomial `v`, with one coefficient `T.from_int(v)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.from_int(5).at(0) == 5`
-    pub fn from_int(v: Int) -> Poly<T> = todo
+    pub fn from_int(v: Int) -> Poly<T> = Poly([T.from_int(v)])
 
     /// The zero polynomial `0`, with no coefficients.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.zero.deg() == -1 and Poly<Int>.zero.len == 0`
-    @get pub fn zero() -> Poly<T> = todo
+    @get pub fn zero() -> Poly<T> = Poly([])
 
     /// The constant polynomial `1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == 0`
-    @get pub fn one() -> Poly<T> = todo
+    @get pub fn one() -> Poly<T> = Poly([T.one])
 
     /// The indeterminate `x`: coefficients `[0, 1]`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>.x.deg() == 1 and Poly<Int>.x.at(1) == 1`
-    @get pub fn x() -> Poly<T> = todo
+    @get pub fn x() -> Poly<T> = Poly([T.zero, T.one])
 
     /// The number of stored coefficients, trailing zeros included.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Poly<Int>([1, 0]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = c.len
 
     /// The degree: the highest index with a nonzero coefficient, `-1` for the zero polynomial. Stored
     /// trailing zeros do not count.
@@ -699,42 +699,54 @@ pub struct Poly<T>(c: List<T>):
     /// traps: never
     /// example: `Poly<Int>([1, 2, 0]).deg() == 1`
     /// example: `Poly<Int>([0, 0]).deg() == -1`
-    pub fn deg(self) -> Int = todo
+    pub fn deg(self) -> Int:
+        var d = c.len - 1
+        while d >= 0 and c[d] == T.zero: d -= 1
+        d
 
     /// Whether all coefficients are zero (including when there are None).
     ///
     /// cost: O(1) plus the number of stored trailing zeros
     /// traps: never
     /// example: `Poly<Int>([0, 0]).is_zero() and not Poly<Int>.one.is_zero()`
-    pub fn is_zero(self) -> Bool = todo
+    pub fn is_zero(self) -> Bool = self.deg() < 0
 
     /// Read coefficient `i` (0 when `i >= self.len`).
     ///
     /// cost: O(1)
     /// traps: when `i < 0`
     /// example: `Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0`
-    pub fn at(self, i: Int) -> T = todo
+    pub fn at(self, i: Int) -> T = if 0 <= i and i < c.len: c[i] else: T.zero
 
     /// Write coefficient `i`, growing with zeros if needed.
     ///
     /// cost: O(1), or O(i) when it grows
     /// traps: when `i < 0`
     /// example: `var p = Poly<Int>([1]); p.set(3, 7); p.len == 4 and p.at(2) == 0 and p.at(3) == 7`
-    pub fn set(mut self, i: Int, v: T) = todo
+    pub fn set(mut self, i: Int, v: T):
+        assert i >= 0
+        while c.len <= i: c.push(T.zero)
+        c[i] = v
 
     /// The formal derivative `f'(x)`, as the free `deriv` does on the coefficients.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3]).deriv().at(1) == 6`
-    pub fn deriv(self) -> Poly<T> = todo
+    pub fn deriv(self) -> Poly<T>:
+        var out = List<T>()
+        for i in 1..c.len: out.push(T.from_int(i) * c[i])
+        Poly(out)
 
     /// The formal integral with zero constant term, as the free `integral`.
     ///
     /// cost: O(n)
     /// traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 3]).integral().at(3) == Z(1)`
-    pub fn integral(self) -> Poly<T> = todo
+    pub fn integral(self) -> Poly<T>:
+        var out = [T.zero]
+        for i in 0..c.len: out.push(c[i] / T.from_int(i + 1))
+        Poly(out)
 
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
     /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
@@ -743,6 +755,7 @@ pub struct Poly<T>(c: List<T>):
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).len == 3`
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).at(2) == 7`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn transposed_mul(self, b: Poly<T>) -> Poly<T> = todo
 
     /// Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).
@@ -751,13 +764,15 @@ pub struct Poly<T>(c: List<T>):
     /// traps: when `n < 0`
     /// example: `Poly<Int>([1, 2, 3]).truncated(2).len == 2`
     /// example: `Poly<Int>([1]).truncated(3).at(2) == 0`
-    pub fn truncated(self, n: Int) -> Poly<T> = todo
+    pub fn truncated(self, n: Int) -> Poly<T>:
+        Poly([self.at(i) for i in 0..n])
 
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn inv(self, n: Int) -> Poly<T> = todo
 
     /// The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.
@@ -765,6 +780,7 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n log n)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn log(self, n: Int) -> Poly<T> = todo
 
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
@@ -772,6 +788,7 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n log n)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn exp(self, n: Int) -> Poly<T> = todo
 
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
@@ -779,6 +796,7 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n log n)
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn pow(self, k: Int, n: Int) -> Poly<T> = todo
 
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
@@ -786,6 +804,7 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n log n + log^2 P)
     /// traps: when `n < 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn sqrt(self, n: Int) -> ?Poly<T> = todo
 
     /// The value at `x` by Horner's rule.
@@ -793,28 +812,34 @@ pub struct Poly<T>(c: List<T>):
     /// cost: O(n)
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3]).eval(2) == 17`
-    pub fn eval(self, x: T) -> T = todo
+    pub fn eval(self, x: T) -> T:
+        var acc = T.zero
+        for i in (0..c.len).rev: acc = acc * x + c[i]
+        acc
 
     /// The Taylor shift `self(x + c)`, as `taylor_shift`.
     ///
     /// cost: O(n log n)
     /// traps: when `T` cannot divide by the factorials below `n` (`n > P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn shift(self, c: T) -> Poly<T> = todo
 
 impl Add for Poly<T>:
-    fn add(a, b) = todo
+    fn add(a, b) = Poly([a.at(i) + b.at(i) for i in 0..max(a.len, b.len)])
 
 impl Sub for Poly<T>:
-    fn sub(a, b) = todo
+    fn sub(a, b) = Poly([a.at(i) - b.at(i) for i in 0..max(a.len, b.len)])
 
 impl Neg for Poly<T>:
-    fn neg(a) = todo
+    fn neg(a) = Poly([T.zero - a.at(i) for i in 0..a.len])
 
 impl Mul for Poly<T>:
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     fn mul(a, b) = todo
 
 impl Div for Poly<T>:
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     fn div(a, b) = todo
 
 /// O(m log^2 m) build. Prebuilt product tree over points `xs` for multipoint evaluation,
