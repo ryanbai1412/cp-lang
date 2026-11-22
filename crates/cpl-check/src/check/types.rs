@@ -199,7 +199,8 @@ impl<'a> Checker<'a> {
         };
         if let Some(param) = generics.get(arg_idx) {
             let used_as_domain = fields.iter().any(|f| ty_uses_as_domain(&f.ty, param));
-            if !used_as_domain {
+            let used_as_value = fields.iter().any(|f| ty_uses_as_value(&f.ty, param));
+            if used_as_value && !used_as_domain {
                 return;
             }
         }
@@ -1428,6 +1429,7 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
     match &pat.kind {
         P::Name(name) => f(name, ty.clone()),
         P::Domain(name) => f(&name.text, Ty::Domain(name.text.clone())),
+        P::Var(inner) => pattern_types(inner, ty, f),
         P::Tuple(items) => {
             let mut renames: Vec<(String, String)> = Vec::new();
             for (i, item) in items.iter().enumerate() {
@@ -1828,6 +1830,21 @@ fn ty_uses_as_domain(ty: &Ty, param: &str) -> bool {
         Ty::Named { args, .. } => args.iter().any(|a| ty_uses_as_domain(a, param)),
         Ty::Fn { params, ret } => {
             params.iter().any(|p| ty_uses_as_domain(&p.ty, param)) || ty_uses_as_domain(ret, param)
+        }
+        _ => false,
+    }
+}
+
+fn ty_uses_as_value(ty: &Ty, param: &str) -> bool {
+    match ty {
+        Ty::Param(p) => p == param,
+        Ty::Array { elem, .. } => ty_uses_as_value(elem, param),
+        Ty::Optional(inner) => ty_uses_as_value(inner, param),
+        Ty::Tuple(items) => items.iter().any(|i| ty_uses_as_value(i, param)),
+        Ty::Record(fields) => fields.iter().any(|(_, t)| ty_uses_as_value(t, param)),
+        Ty::Named { args, .. } => args.iter().any(|a| ty_uses_as_value(a, param)),
+        Ty::Fn { params, ret } => {
+            params.iter().any(|p| ty_uses_as_value(&p.ty, param)) || ty_uses_as_value(ret, param)
         }
         _ => false,
     }

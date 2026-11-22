@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: a type of listed literal values, `'+' | '-'` (not in the design)
-  --> planned_a_type_of_listed_literal_values.cp:1:15
-  |
-1 | let (op, v): ('+' | '-', Int) = read()
-  |               ^^^^^^^^^
-  = help: read a `Char` and check it, or declare an enum
-
-planned_a_type_of_listed_literal_values.cp: 1 error

@@ -1059,7 +1059,7 @@ impl<'a> Parser<'a> {
                     self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
                     let span = self.span_from(start);
                     self.error(Diagnostic::error(
-                        codes::BARE_OP_TUPLE,
+                        cpl_diag::Code("E0703"),
                         span,
                         format!(
                             "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"
@@ -1079,16 +1079,20 @@ impl<'a> Parser<'a> {
                             base: Box::new(base),
                             removed,
                         }
-                    } else {
-                        let updates = if self.eat(T::Comma) {
-                            self.comma_list(T::RParen, "the record update", Self::record_field)
-                        } else {
-                            self.expect(T::RParen, "`)`");
-                            Vec::new()
-                        };
+                    } else if self.eat(T::Comma) {
+                        let updates =
+                            self.comma_list(T::RParen, "the record update", Self::record_field);
                         ExprKind::With {
                             base: Box::new(base),
                             updates,
+                        }
+                    } else {
+                        self.expect(T::RParen, "`)`");
+                        ExprKind::Range {
+                            lo: None,
+                            hi: Some(Box::new(base)),
+                            inclusive: false,
+                            step: None,
                         }
                     }
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {

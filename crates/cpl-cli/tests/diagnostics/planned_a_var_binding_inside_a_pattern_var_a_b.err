@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: a `var` binding inside a pattern, `(var a, b)` (not in the design)
-  --> planned_a_var_binding_inside_a_pattern_var_a_b.cp:1:6
-  |
-1 | for (var a, b) in [(1, 2)]:
-  |      ^^^
-  = help: bind the name with `let`, then copy it into a `var`
-
-planned_a_var_binding_inside_a_pattern_var_a_b.cp: 1 error

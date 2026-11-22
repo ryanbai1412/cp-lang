@@ -199,40 +199,37 @@ impl<'a> Checker<'a> {
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
-            PatternKind::Tuple(items) => {
+            PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
                 let effective_ty;
-                let bind_ty = if let Ty::Pos(dom) = ty {
-                    if let Some(factors) = self.product_factors(dom) {
-                        effective_ty = Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
-                        &effective_ty
+                let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
+                    if let Ty::Pos(dom) = ty {
+                        if let Some(factors) = self.product_factors(dom) {
+                            effective_ty =
+                                Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
+                            &effective_ty
+                        } else {
+                            ty
+                        }
                     } else {
                         ty
                     }
                 } else {
                     ty
                 };
-                for (i, item) in items.iter().enumerate() {
-                    let item_ty = match bind_ty {
-                        Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
-                        Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
-                        Ty::Error => Ty::Error,
-                        _ => Ty::Unknown,
-                    };
-                    self.bind(item, &item_ty, mutable, keyword);
-                }
-            }
-            PatternKind::Name(_) | PatternKind::Domain(_) => {
                 let mut names = Vec::new();
-                pattern_types(pat, ty, &mut |name, ty| names.push((name.to_string(), ty)));
+                pattern_types(pat, bind_ty, &mut |name, ty| names.push((name.to_string(), ty)));
                 let mut spans = Vec::new();
-                name_spans(pat, &mut spans);
-                for ((name, ty), span) in names.into_iter().zip(spans) {
+                name_spans(pat, false, &mut spans);
+                for ((name, ty), (span, is_var)) in names.into_iter().zip(spans) {
+                    let is_mut = mutable || is_var;
                     let kw = if matches!(ty, Ty::Domain(_)) {
                         "domain"
+                    } else if is_var {
+                        "var"
                     } else {
                         keyword
                     };
-                    self.declare(&name, span, ty, mutable, kw);
+                    self.declare(&name, span, ty, is_mut, kw);
                 }
             }
             PatternKind::Variant { path, args } => {
@@ -2353,17 +2350,18 @@ fn memo_of(stmt: &Stmt) -> Option<(Span, bool)> {
 
 /// The span of each name a pattern binds, in the order `pattern_types`
 /// visits them.
-fn name_spans(pat: &Pattern, out: &mut Vec<Span>) {
+fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)>) {
     match &pat.kind {
-        PatternKind::Name(_) => out.push(pat.span),
-        PatternKind::Domain(name) => out.push(name.span),
+        PatternKind::Name(_) => out.push((pat.span, is_var)),
+        PatternKind::Domain(name) => out.push((name.span, is_var)),
+        PatternKind::Var(inner) => name_spans(inner, true, out),
         PatternKind::Tuple(items) => {
             for item in items {
                 match &item.kind {
-                    PatternKind::Domain(name) => out.push(name.span),
+                    PatternKind::Domain(name) => out.push((name.span, is_var)),
                     _ => match super::types::domain_binding(item) {
-                        Some(_) => out.push(item.span),
-                        None => name_spans(item, out),
+                        Some(_) => out.push((item.span, is_var)),
+                        None => name_spans(item, is_var, out),
                     },
                 }
             }

@@ -179,8 +179,6 @@ pub mod codes {
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
     /// A heap value read after `let b = a` moved it.
     pub const USE_AFTER_MOVE: Code = Code("E0608");
-    /// A bare tuple of operators like `(+, max)` instead of `each(+, max)` or `Semiring(max, +)`.
-    pub const BARE_OP_TUPLE: Code = Code("E0703");
 
     pub const AMBIGUOUS_METHOD: Code = Code("E0701");
     /// A context value that is not a compile-time constant. (R09.1.2)
@@ -189,11 +187,9 @@ pub mod codes {
     pub const WITH_NOT_FIRST: Code = Code("E0802");
     pub const QUESTION_IN_CONDITION: Code = Code("E0803");
     pub const INFERENCE_NEEDS_ANNOTATION: Code = Code("E0806");
-
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
     pub const DOMAIN_CAST: Code = Code("R0102");
-    pub const RANGE_BOUNDS: Code = Code("R0201");
     pub const OVERFLOW: Code = Code("R0202");
     pub const DIVISION_BY_ZERO: Code = Code("R0203");
     pub const UNWRAP_NONE: Code = Code("R0301");
