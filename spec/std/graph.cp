@@ -128,8 +128,32 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
     pub fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
-        keep: ?(EdgeArc<V, E, R> -> B) = None,
-    ) -> Graph<V, B> = todo
+        keep: EdgeArc<V, E, R> -> B = a => a,
+    ) -> Graph<V, B>:
+        let n = V.K
+        var deg: [V]Int = 0
+        for e in E:
+            deg[edges[e].u] += 1
+        var start: [V.cuts]Int = 0
+        var acc = 0
+        for v in V:
+            start[v.to_idx] = acc
+            acc += deg[v]
+        start[n] = acc
+        var cur: [V]Int = [V] v => start[v.to_idx]
+        var arcs = List<B>()
+        if acc > 0:
+            let first_e = E.first!
+            let f0 = edges[first_e]
+            let dummy = keep((to: f0.v, e: first_e, ..f0 without (u, v)))
+            for _ in 0..acc:
+                arcs.push(dummy)
+            for e in E:
+                let r = edges[e]
+                let pos = cur[r.u]
+                cur[r.u] = pos + 1
+                arcs[pos] = keep((to: r.v, e: e, ..r without (u, v)))
+        Graph<V, B>(start:, arcs:)
 
     /// A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the
     /// same `e`. A loop `u -> u` gives two arcs at `u`, so it counts twice in `deg`.
@@ -144,8 +168,37 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
     pub fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
-        keep: ?(EdgeArc<V, E, R> -> B) = None,
-    ) -> Graph<V, B> = todo
+        keep: EdgeArc<V, E, R> -> B = a => a,
+    ) -> Graph<V, B>:
+        let n = V.K
+        var deg: [V]Int = 0
+        for e in E:
+            let r = edges[e]
+            deg[r.u] += 1
+            deg[r.v] += 1
+        var start: [V.cuts]Int = 0
+        var acc = 0
+        for v in V:
+            start[v.to_idx] = acc
+            acc += deg[v]
+        start[n] = acc
+        var cur: [V]Int = [V] v => start[v.to_idx]
+        var arcs = List<B>()
+        if acc > 0:
+            let first_e = E.first!
+            let f0 = edges[first_e]
+            let dummy = keep((to: f0.v, e: first_e, ..f0 without (u, v)))
+            for _ in 0..acc:
+                arcs.push(dummy)
+            for e in E:
+                let r = edges[e]
+                let pu = cur[r.u]
+                cur[r.u] = pu + 1
+                arcs[pu] = keep((to: r.v, e: e, ..r without (u, v)))
+                let pv = cur[r.v]
+                cur[r.v] = pv + 1
+                arcs[pv] = keep((to: r.u, e: e, ..r without (u, v)))
+        Graph<V, B>(start:, arcs:)
 
     /// A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs. The base form
     /// the other builders reduce to.
@@ -155,7 +208,30 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: each vertex's arcs in the order the pairs come
     /// traps: never
     /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
-    pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A> = todo
+    pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>:
+        let n = V.K
+        var deg: [V]Int = 0
+        var pairs = List<(from: V, arc: A)>()
+        for p in arcs:
+            deg[p.from] += 1
+            pairs.push(p)
+        var start: [V.cuts]Int = 0
+        var acc = 0
+        for v in V:
+            start[v.to_idx] = acc
+            acc += deg[v]
+        start[n] = acc
+        var cur: [V]Int = [V] v => start[v.to_idx]
+        var out = List<A>()
+        if acc > 0:
+            let dummy = pairs[0].arc
+            for _ in 0..acc:
+                out.push(dummy)
+            for p in pairs:
+                let pos = cur[p.from]
+                cur[p.from] = pos + 1
+                out[pos] = p.arc
+        Graph<V, A>(start:, arcs: out)
 
     /// `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
     ///
@@ -496,9 +572,26 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
 /// order: `C` by smallest vertex; `comp` keyed by `V`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; let (domain C, comp) = two_edge_components(Graph.undirected(es)); comp[1] == comp[2] and comp[0] != comp[1]`
-pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C) = todo
+pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
+    let is_bridge = bridges(g)
+    var cid: [V]Int = -1
+    var k = 0
+    var q = Deque<V>()
+    for s in V:
+        if cid[s] != -1: continue
+        cid[s] = k
+        q.push(s)
+        while let Some(u) = q.pop_front():
+            for a in g.out(u):
+                if is_bridge[a.e]: continue
+                let v = a.to
+                if cid[v] == -1:
+                    cid[v] = k
+                    q.push(v)
+        k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(cid[v]))
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Which vertices are cut vertices: removing one (and its arcs) leaves more components than
 /// before. Works per component, so disconnected graphs are fine; a root is a cut vertex
 /// exactly when it has two or more DFS children. Skips the arc's own edge, not its source
@@ -508,7 +601,65 @@ pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C) =
 /// order: keyed by `V`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
-pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool = todo
+pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
+    var tin: [V]Int = -1
+    var low: [V]Int = 0
+    var is_cut: [V]Bool = false
+    var timer = 0
+    var stk_u = List<V>()
+    var stk_pe = List<?E>()
+    var stk_i = List<Int>()
+    var stk_ch = List<Int>()
+    var stk_nbrs = List<List<(to: V, e: E)>>()
+    for s in V:
+        if tin[s] != -1: continue
+        tin[s] = timer
+        low[s] = timer
+        timer += 1
+        stk_u.push(s)
+        stk_pe.push(None)
+        stk_i.push(0)
+        stk_ch.push(0)
+        stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(s)])
+        while stk_u.len > 0:
+            let k = stk_u.len - 1
+            let u = stk_u[k]
+            let i = stk_i[k]
+            if i == stk_nbrs[k].len:
+                let ch = stk_ch[k]
+                let is_root = stk_u.len == 1
+                stk_u.pop()
+                stk_pe.pop()
+                stk_i.pop()
+                stk_ch.pop()
+                stk_nbrs.pop()
+                if is_root:
+                    if ch >= 2: is_cut[u] = true
+                else:
+                    let p = stk_u[stk_u.len - 1]
+                    if low[u] < low[p]: low[p] = low[u]
+                    if low[u] >= tin[p] and stk_u.len > 1:
+                        is_cut[p] = true
+                continue
+            stk_i[k] = i + 1
+            let arc = stk_nbrs[k][i]
+            let v = arc.to
+            let eid = arc.e
+            if let Some(pe) = stk_pe[k]:
+                if eid == pe: continue
+            if tin[v] != -1:
+                if tin[v] < low[u]: low[u] = tin[v]
+            else:
+                stk_ch[k] += 1
+                tin[v] = timer
+                low[v] = timer
+                timer += 1
+                stk_u.push(v)
+                stk_pe.push(Some(eid))
+                stk_i.push(0)
+                stk_ch.push(0)
+                stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(v)])
+    is_cut
 
 /// A 2-colouring of an undirected graph (no arc joins two vertices of one side), or `None`
 /// when an odd cycle exists.
@@ -936,7 +1087,58 @@ pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
 /// order: keyed by `E`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; bridges(Graph.undirected(es)) == [true, false, false]`
-pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool = todo
+pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
+    var tin: [V]Int = -1
+    var low: [V]Int = 0
+    var is_bridge: [E]Bool = false
+    var timer = 0
+    var stk_u = List<V>()
+    var stk_pe = List<?E>()
+    var stk_i = List<Int>()
+    var stk_nbrs = List<List<(to: V, e: E)>>()
+    for s in V:
+        if tin[s] != -1: continue
+        tin[s] = timer
+        low[s] = timer
+        timer += 1
+        stk_u.push(s)
+        stk_pe.push(None)
+        stk_i.push(0)
+        stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(s)])
+        while stk_u.len > 0:
+            let k = stk_u.len - 1
+            let u = stk_u[k]
+            let i = stk_i[k]
+            if i == stk_nbrs[k].len:
+                let pe = stk_pe[k]
+                stk_u.pop()
+                stk_pe.pop()
+                stk_i.pop()
+                stk_nbrs.pop()
+                if stk_u.len > 0:
+                    let p = stk_u[stk_u.len - 1]
+                    if low[u] < low[p]: low[p] = low[u]
+                    if low[u] > tin[p]:
+                        if let Some(eid) = pe:
+                            is_bridge[eid] = true
+                continue
+            stk_i[k] = i + 1
+            let arc = stk_nbrs[k][i]
+            let v = arc.to
+            let eid = arc.e
+            if let Some(pe) = stk_pe[k]:
+                if eid == pe: continue
+            if tin[v] != -1:
+                if tin[v] < low[u]: low[u] = tin[v]
+            else:
+                tin[v] = timer
+                low[v] = timer
+                timer += 1
+                stk_u.push(v)
+                stk_pe.push(Some(eid))
+                stk_i.push(0)
+                stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(v)])
+    is_bridge
 
 /// O(m) memory.
 /// A walk: where it starts, then each arc taken (`to` is where the arc leads, `e` the
@@ -1654,7 +1856,18 @@ pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es) == (total: 3, take: [true, true, false])`
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es, by: e => desc(e.w)).take == [false, true, true]`
-pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool) = todo
+pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool):
+    var order = [e for e in E]
+    order.sort(by: e => by(edges[e]))
+    var dsu = Dsu<V>()
+    var total = W.zero
+    var take: [E]Bool = false
+    for e in order:
+        let r = edges[e]
+        if dsu.unite(r.u, r.v):
+            take[e] = true
+            total += r.w
+    (total:, take:)
 
 /// A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at
 /// `V.first`; `None` if it is disconnected. `w[u, v]` is read with `u` in the tree.
