@@ -2445,6 +2445,15 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Value(_) => Spec::Plain(Ty::Int),
             ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
+            ast::TypeKind::ConstrainedStr(_) => Spec::Plain(Ty::Str),
+            ast::TypeKind::LiteralUnion(lits) => {
+                let ty = match lits.first().map(|s| s.as_str()) {
+                    Some(s) if s.starts_with('\'') => Ty::Char,
+                    Some(s) if s.starts_with('"') => Ty::Str,
+                    _ => Ty::Int,
+                };
+                Spec::Plain(ty)
+            }
             ast::TypeKind::Infer | ast::TypeKind::Error => Spec::Plain(Ty::Error),
         }
     }

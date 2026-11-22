@@ -25,15 +25,15 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let kind = match self.peek() {
             T::Char | T::Str | T::Int if self.peek_n(1) == T::Pipe => {
+                let mut lits = Vec::new();
                 while matches!(self.peek(), T::Char | T::Str | T::Int) {
+                    lits.push(self.text().to_string());
                     self.bump();
                     if !self.eat(T::Pipe) {
                         break;
                     }
                 }
-                let span = self.span_from(start);
-                self.planned(span, &crate::planned::LITERAL_TYPE);
-                TypeKind::Error
+                TypeKind::LiteralUnion(lits)
             }
             T::Question => {
                 self.bump();
@@ -252,9 +252,17 @@ impl<'a> Parser<'a> {
                 }
                 if name.text == "Str" && self.at_ident("of") && self.peek_n(1) == T::Str {
                     self.bump();
+                    let raw = self.text();
+                    let alphabet = raw
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .unwrap_or(raw)
+                        .to_string();
                     self.bump();
-                    let span = self.span_from(name.span.start);
-                    self.planned(span, &crate::planned::STR_OF);
+                    return Type {
+                        kind: TypeKind::ConstrainedStr(alphabet),
+                        span: self.span_from(start),
+                    };
                 }
                 TypeKind::Named { name, args }
             }

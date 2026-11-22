@@ -636,6 +636,10 @@ pub enum TypeKind {
     /// `domain P` in a returned tuple, `-> (domain P, [P]Int)`: an
     /// existential fresh domain bound for later elements of the tuple.
     DomainBinder(Name),
+    /// `Str of "01"`: string whose characters belong to the given alphabet.
+    ConstrainedStr(String),
+    /// `'+' | '-'`: finite union of literal values.
+    LiteralUnion(Vec<String>),
     /// A field written `total = 0`: its type is its default's.
     Infer,
     Error,

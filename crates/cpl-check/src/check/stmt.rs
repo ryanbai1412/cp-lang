@@ -611,6 +611,33 @@ impl<'a> Checker<'a> {
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
+                if let (Some(ast_ty), Some(init_expr)) = (ty, init) {
+                    if let ast::TypeKind::ConstrainedStr(alphabet) = &ast_ty.kind {
+                        if let ExprKind::Str(pieces) = &init_expr.kind {
+                            for piece in pieces {
+                                if let cpl_syntax::ast::StrPiece::Text(text) = piece {
+                                    if let Some(bad) =
+                                        text.chars().find(|c| !alphabet.contains(*c))
+                                    {
+                                        self.error(
+                                            cpl_diag::Code("E0902"),
+                                            init_expr.span,
+                                            format!(
+                                                "`{bad}` is not in `Str of \"{alphabet}\"`"
+                                            ),
+                                        );
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if let (ast::TypeKind::LiteralUnion(lits), PatternKind::Name(n)) =
+                        (&ast_ty.kind, &pat.kind)
+                    {
+                        self.lit_unions.insert(n.clone(), lits.clone());
+                    }
+                }
                 let prev_bounds_range = self.expected_bounds_range;
                 if declared.as_ref().is_some_and(Self::expects_bounds_range) {
                     self.expected_bounds_range = true;
@@ -2046,6 +2073,14 @@ impl<'a> Checker<'a> {
                         )
                     });
                 }
+            }
+            if let Some(ast::Type {
+                kind: ast::TypeKind::LiteralUnion(lits),
+                ..
+            }) = &param.ty
+            {
+                self.lit_unions
+                    .insert(param.name.text.clone(), lits.clone());
             }
             self.declare(
                 &param.name.text,

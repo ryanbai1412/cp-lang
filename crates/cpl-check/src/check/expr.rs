@@ -642,6 +642,7 @@ impl<'a> Checker<'a> {
                 self.moved = post_moved;
                 let result = result.unwrap_or(Ty::Unit);
                 self.require_every_variant(&scrutinee_ty, arms, expr.span);
+                self.require_every_lit_union(scrutinee, arms, expr.span);
                 result
             }
             ExprKind::With { base, updates } => {
@@ -748,6 +749,52 @@ impl<'a> Checker<'a> {
         let message = format!("this `match` has no arm for {}", missing.join(", "));
         if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
+        }
+    }
+
+    fn require_every_lit_union(
+        &mut self,
+        scrutinee: &Expr,
+        arms: &[cpl_syntax::ast::Arm],
+        span: Span,
+    ) {
+        use cpl_syntax::ast::{Pattern, PatternKind};
+        let ExprKind::Name(name) = &scrutinee.kind else {
+            return;
+        };
+        let Some(lits) = self.lit_unions.get(name).cloned() else {
+            return;
+        };
+        fn collect(src: &str, pat: &Pattern, out: &mut Vec<String>) -> Option<()> {
+            match &pat.kind {
+                PatternKind::Literal(lit) => {
+                    let s = lit.span.text(src).trim().to_string();
+                    out.push(s);
+                    Some(())
+                }
+                PatternKind::Or(pats) => pats.iter().try_for_each(|p| collect(src, p, out)),
+                PatternKind::Var(inner) => collect(src, inner, out),
+                PatternKind::Wildcard | PatternKind::Name(_) | PatternKind::Error => None,
+                _ => Some(()),
+            }
+        }
+        let mut seen = Vec::new();
+        for arm in arms.iter().filter(|arm| arm.guard.is_none()) {
+            if collect(self.src, &arm.pat, &mut seen).is_none() {
+                return;
+            }
+        }
+        let missing: Vec<String> = lits
+            .iter()
+            .filter(|lit| !seen.contains(lit))
+            .map(|lit| format!("`{lit}`"))
+            .collect();
+        if missing.is_empty() {
+            return;
+        }
+        let message = format!("this `match` has no arm for {}", missing.join(", "));
+        if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
+            diag.help = Some("add an arm for each, or `_ =>` for whatever is left".to_string());
         }
     }
 

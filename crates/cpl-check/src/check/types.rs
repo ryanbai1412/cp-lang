@@ -132,6 +132,12 @@ impl<'a> Checker<'a> {
                 args: vec![self.resolve_type(elem)],
             },
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
+            TypeKind::ConstrainedStr(_) => Ty::Str,
+            TypeKind::LiteralUnion(lits) => match lits.first().map(|s| s.as_str()) {
+                Some(s) if s.starts_with('\'') => Ty::Char,
+                Some(s) if s.starts_with('"') => Ty::Str,
+                _ => Ty::Int,
+            },
             TypeKind::Value(_) | TypeKind::NewDomain | TypeKind::Infer => Ty::Unknown,
             TypeKind::Error => Ty::Error,
         }

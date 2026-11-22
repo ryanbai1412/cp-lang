@@ -102,15 +102,6 @@ pub const DOMAIN_LIST: Planned = Planned {
     example: "domain A = 0..3, B = 0..4\nprint(1)\n",
 };
 
-pub const STR_OF: Planned = Planned {
-    feature: "a string type over given bytes, `Str of \"01?\"`",
-    see: None,
-    now: "read a `Str` and check its bytes where it is used",
-    example: "let s: Str of \"01\" = read()
-print(s.len)
-",
-};
-
 pub const LOWER_VARIANT_PATTERN: Planned = Planned {
     feature: "a lowercase variant in a pattern, `incr(l, r) =>`",
     see: Some("spec/core/02-values-types.md §2.7"),
@@ -225,13 +216,6 @@ pub const IMPLICIT_MEMBER: Planned = Planned {
     example: "let f = _ => .empty\nprint(1)\n",
 };
 
-pub const LITERAL_TYPE: Planned = Planned {
-    feature: "a type of listed literal values, `'+' | '-'`",
-    see: None,
-    now: "read a `Char` and check it, or declare an enum",
-    example: "let (op, v): ('+' | '-', Int) = read()\nprint(v)\n",
-};
-
 impl Planned {
     /// Settled as not coming in this version: the design keeps it, `plan/OPERATING.md` defers it.
     pub fn deferred(&self) -> bool {
@@ -277,7 +261,6 @@ pub const PLANNED: &[&Planned] = &[
     &WRAP_LINE,
     &VALUE_DECORATOR,
     &READ_LENGTH,
-    &STR_OF,
     &LOWER_VARIANT_PATTERN,
     &RECORD_DECL,
     &TRAILING_LAMBDA,
@@ -302,7 +285,6 @@ pub const PLANNED: &[&Planned] = &[
     &ANY_LENGTH,
     &THEN_CHAIN,
     &IMPLICIT_MEMBER,
-    &LITERAL_TYPE,
 ];
 
 pub const DEFERRED: &[&Planned] = &[];
