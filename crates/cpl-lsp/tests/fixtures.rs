@@ -324,7 +324,7 @@ fn run(path: &Path) -> String {
             format!(
                 "{} {} {}",
                 span(d.at(&["range"])),
-                d.at(&["code"]).as_str().unwrap_or("-"),
+                catalogued(d.at(&["code"]).as_str().unwrap_or("-")),
                 d.at(&["message"]).as_str().unwrap_or("?")
             )
         })
@@ -406,4 +406,16 @@ fn every_fixture_answers_as_its_snapshot_says() {
         "rerun with BLESS=1 if intended:\n{}",
         wrong.join("\n")
     );
+}
+
+/// A diagnostic's code, which `cpl explain` and editors must find in the
+/// catalogue.
+fn catalogued(code: &str) -> &str {
+    assert!(
+        code == "-"
+            || cpl_diag::lookup(code).is_some()
+            || cpl_lint::LINTS.iter().any(|lint| lint.code.0 == code),
+        "`{code}` is not in the diagnostic catalogue"
+    );
+    code
 }

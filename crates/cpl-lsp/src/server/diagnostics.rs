@@ -82,7 +82,7 @@ fn overflows(facts: &Proven) -> Vec<Diagnostic> {
             let source = text.get(e.expr.0 as usize..e.expr.1 as usize)?;
             let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
             let mut diag = Diagnostic::warning(
-                cpl_diag::Code("overflow"),
+                cpl_diag::codes::OVERFLOW,
                 span,
                 format!("`{source}` overflows Int when {inputs}"),
             );

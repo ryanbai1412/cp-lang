@@ -13,8 +13,8 @@ help: iterate the values: `for x in g:`
 help: write `max(cells[v] for v in V)`
 101:9-101:13 L0203 this local hides the top-level `best`
 help: from here on `best` means the local; give it another name if the top-level one is meant below
-12:12-12:23 overflow `area * area` overflows Int when n = 55109
-12:12-12:30 overflow `area * area * area` overflows Int when n = 1448
+12:12-12:23 R0202 `area * area` overflows Int when n = 55109
+12:12-12:30 R0202 `area * area * area` overflows Int when n = 1448
 
 == hover @ 6:8
 ```cp
