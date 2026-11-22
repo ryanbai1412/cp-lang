@@ -6,6 +6,13 @@ exactly X is), **lookup** (cookbook, errors, cheat sheet, glossary) and
 **the spec itself**. Every page has "Edit this page", "Report a docs
 bug", a "last changed" date from git, and previous/next.
 
+Ryan, 2026-11-21: Docs holds the guides, "stdlib docs and also more
+detailed docs / spec on specific language features from basic to
+advanced, and i still want my cook book / quick search". So the four
+parts that must exist are the guides, a language reference ordered from
+basic to advanced, the library reference, and the cookbook with search
+that answers "how do I do X" with a snippet.
+
 ## Sidebar
 
 ```

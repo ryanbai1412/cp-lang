@@ -19,8 +19,8 @@ part contains.
    snippets.
 3. `20-onboarding.md`: getting started, the four quickstarts and their
    six shared problems, the tour.
-4. `30-course.md`: the problem format, the runner, verdicts, and the
-   full list of tracks and problems.
+4. `30-course.md`: Learn: reading chapters with live examples, one
+   problem per chapter, and the practice set of Div 2 A/B problems.
 5. `40-playground.md`: the editor component, the playground page, share
    links, `/s` and embeds.
 6. `50-docs.md`: the docs tree page by page: guides, the language and
@@ -47,8 +47,9 @@ deploy:
   `CPL_SPEC=1 CPL_STD=spec/std cpl check`; `spec` fences are labelled.
 - The playground runs, traces, shows C++17 and shares, offline after the
   first load.
-- The course has at least 60 original problems, each with tests, a
-  reference solution that passes them, and an editorial.
+- Learn has its chapters, each ending in one problem, and at least 30
+  original practice problems, each with tests and a reference solution
+  that passes them.
 - The library reference covers every public function in `spec/std`
   with its labelled facts.
 - The writable-from-docs eval run on `/llms-full.txt` passes at least as

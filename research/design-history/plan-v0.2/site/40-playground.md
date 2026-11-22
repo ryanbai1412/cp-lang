@@ -2,6 +2,12 @@
 
 Status: proposed.
 
+Ryan, 2026-11-21: "right now playground doesn't feel like part of the
+site at all". The playground uses the site header, layout and tokens
+like every other page, and is reachable from every example (the
+examples menu comes from the cookbook, Learn and the landing; every
+live example has "Open in playground").
+
 ## The editor component
 
 One React component used by the playground, course problems, the

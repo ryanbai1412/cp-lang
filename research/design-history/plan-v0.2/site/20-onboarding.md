@@ -80,8 +80,8 @@ rots.
 
 ### End of each quickstart
 
-"You've written six programs. Next: the course (problems with
-verdicts), or set up your editor." Plus the cheat sheet link.
+"You've written six programs. Next: the Read chapters, the Practice set,
+or set up your editor." Plus the cheat sheet link.
 
 ## `/learn/tour`: the language tour (one sitting, about 40 minutes)
 

@@ -12,7 +12,8 @@ web/
   components/ui/           # shadcn, as generated
   components/              # editor, verdict, compare, api-entry
   content/                 # hand-written MDX, landing snippets,
-    problems/<id>/         # course problems
+    learn/<chapter>.mdx    # Read track
+    practice/<id>/         # Practice track
   loaders/                 # build-time loaders (TypeScript)
   lib/wasm/                # worker + bindings for crates/cpl-wasm
   worker/                  # Cloudflare Worker for /p/ links
@@ -104,7 +105,8 @@ the lockfile, `pnpm gate`, `pnpm test`, `pnpm build`), replacing the
    reference, cookbook, errors, cheat sheet, glossary, search,
    `llms.txt`. Check: every `spec/std` public function has a page entry;
    every error code has a page.
-3. **Course**: format, judge, verdicts, tracks 1 to 3, then the rest.
+3. **Learn**: the Read chapters, then the Practice format, judge,
+   verdicts and problems.
    Check: every problem's CI checks pass.
 4. **Project and setup**: status, design, decisions, real problems,
    performance, releases, contributing, setup, tools pages, Worker,

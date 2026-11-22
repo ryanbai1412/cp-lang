@@ -114,6 +114,10 @@ lines each, for skimmers).
 
 ### 3.4 Interactive course
 
+Superseded 2026-11-21: Learn is now two tracks, Read (chapters) and
+Practice (Div 2 A/B problems); see `30-course.md`. What follows is the
+earlier problem-per-page design.
+
 Problem-driven: you learn by solving many CP-style problems in the browser.
 
 - **Structure.** Tracks of units. A unit has a short concept page (half a

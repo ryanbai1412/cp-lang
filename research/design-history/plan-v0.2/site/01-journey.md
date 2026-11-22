@@ -66,6 +66,10 @@ Her progress so far is already saved locally, with no sign-up.
 
 ## Act 3: the course (first session, 15-60 minutes)
 
+Superseded 2026-11-21: Learn is now two tracks, Read (chapters) and
+Practice (Div 2 A/B problems); see `30-course.md`. What follows is the
+earlier problem-per-page design.
+
 **Unit 1, "Read, compute, print"**, opens on a short concept page with
 two runnable examples, then the problem list: six problems from trivial
 to Div2-B. Each problem looks like a judge page: statement, samples, an

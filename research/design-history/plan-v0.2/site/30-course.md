@@ -1,63 +1,75 @@
-# The course (`/learn/course`)
+# Learn (`/learn`)
 
-Status: proposed. The course is problems, not lessons: each page is a
-small original contest problem with a short lesson attached, judged in
-the browser. It replaces today's 10 lessons (`site/course/*.json`,
-*verified*), reusing their topics.
+Status: decided in outline (Ryan, 2026-11-21); the chapter and problem
+lists are proposed. This replaces the earlier "problems, not lessons"
+design, which Ryan rejected after seeing it built: "we just have too
+many questions and not enough reading ... i just want to read".
 
-## A problem page
+Learn is a course that gets someone off the ground, starting from
+another programming language. It is reading first. The guides are not
+part of it; they stay in Docs (`50-docs.md`).
 
-Layout like a judge, two panes:
+## Shape
 
-- **Left**: title, limits (time, memory), statement, input and output
-  format with ranges, samples, then a collapsed **Lesson** (what this
-  problem teaches, 1 to 3 short runnable snippets, links to the guide
-  and reference). After AC: the **Editorial** and the reference
-  solution unlock.
-- **Right**: the editor with a starter (usually the input already read),
-  the test-case panel (samples plus your own cases), and buttons *Run*
-  (samples), *Submit* (hidden tests), *Trace* (on the selected case),
-  *C++17*.
-- **Verdicts**: AC, WA (first failing test, a diff of expected and
-  actual), RE (the trap message in source terms), TLE (the interpreter's
-  step budget, scaled to the problem's limit), CE (the diagnostic, with
-  its fix link). A WA offers "Trace this test".
-- **Hints**: up to three, revealed one at a time.
-- Progress (solved, attempts, last code) in `localStorage`; no accounts.
-  *Export progress* downloads a JSON file; *Import* restores it.
+Learn has two tracks (Ryan: "one is like the reading stuff, the other
+is the div 2 a / b practice set"). The four quickstarts
+(`20-onboarding.md`), one per language, are the way in.
 
-## Problem format
+- **Read**: about eight chapters, read in order, 5 to 10 minutes each.
+  A chapter is prose with inline examples. Examples are live editors on
+  the real compiler (Run, Trace, C++17). A chapter ends with exactly
+  one problem, solved in an editor and judged in the browser. No
+  multiple-choice and no predict-the-output questions.
+- **Practice**: original problems at the level of a Div 2 A or B:
+  mostly implementation, each chosen because solving it teaches a
+  specific piece of the language. After AC the page spells that piece
+  out and shows the reference solution. Each chapter links to the
+  practice problems that use what it covered.
+
+## Read: the chapters
+
+1. *Your first program*: `read` with types, ranges as the statement's
+   constraints, `let` and `var`, loops, `print`, running and building.
+2. *Arrays and index spaces*: `[0..n]T`, `domain V = 1..=n`, 1-based
+   input, grids, cuts and prefix sums.
+3. *Optionals instead of sentinels*: `?T`, `??`, `!`, `min=`/`max=`,
+   printing "-1 if none".
+4. *Functions, structs, enums and `match`*.
+5. *Strings and output*: `Str`, `Char`, formatting, separators.
+6. *Collections, sorting and searching*: `List`, maps, heaps,
+   `sort(by:)`, binary search.
+7. *The standard library*: `Mod`, `SegTree`, graphs, `Dsu`; how to find
+   what you need.
+8. *When it's wrong*: `@!multitest`, `@brute`, `cpl stress`, the trace.
+
+Chapters are MDX in `web/content/learn/`. A fence written
+` ```cp run input="..." ` becomes a live editor; the snippet gate runs
+every one. Until the 0.3 engine runs bodies, chapters teach forms that
+run today and note the 0.3 spelling where it differs.
+
+## Practice: the problems
 
 ```
-web/content/problems/<id>/
-  problem.md      # front matter + statement + lesson + editorial
+web/content/practice/<id>/
+  problem.mdx     # front matter, statement, and "what this teaches"
   starter.cp
   ref.cp          # reference solution; must pass every test
-  brute.cp        # optional; stress-checked against ref.cp in CI
-  tests/01.in 01.out ...   # samples are tests marked `sample: true`
-  gen.cp          # optional generator for large tests
+  tests.json      # [{input, expected, sample?}]
 ```
 
-Front matter:
+Front matter: `title`, `level` (A or B), `teaches` (the language
+pieces), `chapter` (the chapter it follows). The gate runs `ref.cp`
+against every test and compiles the starter. Problems are original;
+none copies a judge's statement. Verdicts: AC, WA (first failing test
+with a diff), RE (the trap in source terms), CE (the diagnostic). A WA
+offers "Trace this test". Progress is kept in `localStorage`; no
+accounts.
 
-```
-id: grid-bfs
-title: Nearest exit
-track: foundations
-order: 7
-tags: [grids, bfs, optionals]
-teaches: [Grid, "?T", "??"]
-limits: { time_ms: 1000, steps: 5e7 }
-status: runs        # runs | checks; set by the gate, not by hand
-```
+Target: 30 problems at launch. The track list below is the pool to
+draw from; pick the ones that are implementation-heavy and teach a
+distinct piece of the language first.
 
-CI checks for every problem: `ref.cp` passes all tests in the
-interpreter and as C++ (g++ `-O2`); `brute.cp` agrees with `ref.cp` on
-200 generated cases; the starter compiles; the statement's ranges match
-the input reads in `ref.cp`. Problems are original; none copies a
-judge's statement.
-
-## Tracks and problems
+## Problem pool
 
 About 64 problems in 8 tracks. Each track ends with one harder
 "checkpoint" problem. Problem names and one-line ideas:
@@ -160,9 +172,3 @@ Beyond the tracks, a filterable list (by tag and difficulty) of all
 problems, plus links into the real problems gallery for "solve the real
 thing on the judge".
 
-## Content plan
-
-Tracks 1 to 3 at phase 3 start, the rest as content work afterwards. A
-problem lands only when its `ref.cp` runs; problems whose natural
-solution needs a 0.3 form that doesn't run yet wait, listed in
-`web/content/problems/WAITING.md` with the missing form.
