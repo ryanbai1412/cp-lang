@@ -15,7 +15,7 @@ Say exactly what CP Lang is, in one place, so that a contestant, a model or a se
 | `spec/core/` chapters 00-13 and their `(Rnn.n.n)` rule ids | `spec/std/*.cp` signatures and bodies (stdlib) |
 | `spec/lib/` library design chapters | `spec/diagnostics.md`, the error catalogue (diagnostics) |
 | `spec/tools/` tool contracts | Making failing cases pass (compiler, perf, tools) |
-| `spec/conformance/`: cases, `COVERAGE.md`, the matrix and trait generators' data | `crates/cpl-conform` the runner, and `scripts/` (unassigned / infra; see "Decisions") |
+| `spec/conformance/`: cases, `COVERAGE.md`, the matrix and trait generators' data; `crates/cpl-conform` (the runner) and `scripts/conformance-*.py` | Other `scripts/` and the gate itself (infra) |
 | Settling spec ambiguities in `decisions.md` | Teaching docs on the site (site), idioms and the skill (idioms) |
 
 Spec writes cases, never compiler code: a failing case goes to the owning domain's worklog as a list of paths.
@@ -41,17 +41,17 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 
 | Metric | Command (short) | Today | Target | M |
 |---|---|---|---|---|
-| Conformance cases passing (compiler's number, spec's suite) | `cpl-conform conformance` | 1617/1711 | 100% | - |
-| Cases (only grows) | same | 1711 | ratchet up | - |
-| Rules cited by >= 1 case | `cpl-conform --rules` | 527/527 | 100% | M1 |
+| Conformance cases passing (compiler's number, spec's suite) | `cpl-conform conformance` | 1845/2030 | 100% | - |
+| Cases (only grows) | same | 2030 | ratchet up | - |
+| Rules cited by >= 1 case | `cpl-conform --rules` | 528/528 | 100% | M1 |
 | Forbidding rules with no reject case | `conformance-coverage.py` | 45 | 0 | M1 |
 | Case cites to unknown rules | `cpl-conform --rules` | 78 | 0 | M1 |
 | Core cases with no `// rule:` | `conformance-coverage.py` | 10 | 0 | M1 |
 | Diagnostic codes with no reject case | `conformance-coverage.py` | 2/135 | 0 | M1 |
 | Std items named by a case | `conformance-coverage.py` | 2037/2245 | 2245 | M2 |
-| Spec code blocks passing | `cpl-conform spec-blocks` | 19/185 | all or spec-only | M2 |
+| Spec code blocks passing | `cpl-conform spec-blocks` | 21/185 | all or spec-only | M2 |
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
-| Matrix empty cells | `conformance-matrix.py --check` | not on main | 0 | M2 |
+| Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py` | not built | 0 | M2 |
 | Rebuild holes (cold agent) | probe P1 | 32 (round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | probe P2 | not measured | >= 90% | M3 |
@@ -96,4 +96,3 @@ Each filed in `plan/QUESTIONS.md` with code; the lane works on the default meanw
 2. **`Subset<B>` and `Pair<V>` as domains: `Int(p)` and print?** Rec: yes to `Int(p)` (mask / rank) and print; no cuts or neighbours. Default: n/a in the matrix.
 3. **`V.count` property beside the Seq method `V.count(f)`?** Rec: keep both (arity tells them apart, both are the guessable name). Default: as ruled (R04.2.20 on the branch).
 
-For the coordinator (not Ryan): `crates/cpl-conform` and the `scripts/conformance-*.py` generators have no owner in `plan/DOMAINS.md`. Proposal: spec owns them, since they define what "conforms" means and must stay independent of the compiler.

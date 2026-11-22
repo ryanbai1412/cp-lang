@@ -27,7 +27,7 @@ Layout: this file is the index. Every domain uses the same layout, copied from `
 | 5 | B | [architecture & tech-debt](domains/tech-debt/README.md) | `plan/ARCHITECTURE.md`, crate/file layout, dead code, duplicated helpers, stdlib privilege, 0.2 leftovers | The codebase gets simpler every week; clean architecture across lanes |
 | 6 | C | [lint-fmt](domains/lint-fmt/README.md) | `crates/cpl-lint`, `crates/cpl-fmt` | Lints from the idiom catalog; formatter stable on v0.3 |
 | 7 | C | [tools](domains/tools/README.md) | `crates/cpl-cli`, `cpl-contest`, `cpl-doc`, `cpl-json`, `cpl-lsp`, `editors/` | Every command and editor fast, guessable, working on v0.3 |
-| 8 | D | [spec](domains/spec/README.md) | `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance` | What the language is, and tests that catch every compiler bug |
+| 8 | D | [spec](domains/spec/README.md) | `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance`, `crates/cpl-conform`, `scripts/conformance-*.py` | What the language is, and tests that catch every compiler bug |
 | 9 | D | [stdlib](domains/stdlib/README.md) | `spec/std` (-> `std/`) | Every std body written in CP Lang, documented, tested |
 | 10 | D | [idioms](domains/idioms/README.md) | skill, principles, idiom catalog, `research/dryrun`, `corpus/`, `crates/cpl-judge`, scoreboard | A model writes correct, idiomatic CP Lang; 305 ports proven on every judge |
 | 11 | E | [site](domains/site/README.md) | `web/` (content, playground, UI) | A cold reader writes correct code from the docs alone |

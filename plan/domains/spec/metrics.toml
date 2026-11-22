@@ -1,25 +1,25 @@
 # spec metrics. Every command runs from the repo root after
 # `cargo build --release -p cpl-cli -p cpl-conform`. `today` is the value the
-# command printed on 2026-11-22 at 4b8f504f. Read-only: the coverage commands
+# command printed on 2026-11-22 (matrix landing). Read-only: the coverage commands
 # print COVERAGE.md to stdout instead of rewriting it; never hand-edit it without a run.
 # conformance-coverage.py rewrites spec/conformance/COVERAGE.md as a side effect.
 
 [[metric]]
 name = "conformance cases passing"
 command = "target/release/cpl-conform conformance | head -1"
-today = "1617/1711"
+today = "1845/2030"
 target = "1711/1711 (pass count owned by compiler; the suite is spec's)"
 
 [[metric]]
 name = "conformance cases (ratchet up only)"
 command = "find spec/conformance -name '*.cp' | wc -l"
-today = "1711"
+today = "2030"
 target = "never decreases"
 
 [[metric]]
 name = "rules cited by at least one case"
 command = "target/release/cpl-conform --rules 2>&1 | tail -1"
-today = "527 of 527 covered"
+today = "528 of 528 covered"
 target = "100%"
 
 [[metric]]
@@ -55,7 +55,7 @@ target = "2245 of 2245"
 [[metric]]
 name = "spec code blocks passing"
 command = "target/release/cpl-conform spec-blocks | head -1"
-today = "19/185"
+today = "21/185"
 target = "every block a case or marked spec-only"
 
 [[metric]]
@@ -66,8 +66,8 @@ target = "0 (tag each block cp, or mark it spec-only)"
 
 [[metric]]
 name = "matrix empty cells"
-command = "test -f scripts/conformance-matrix.py && python3 scripts/conformance-matrix.py --check || echo not on main"
-today = "not on main (branch devin/wip-conformance-matrix: 211 cases, 22 n/a cells; check passed per the resume notes, not rerun)"
+command = "python3 scripts/conformance-matrix.py --check; echo exit $?"
+today = "exit 0 (0 empty cells)"
 target = "0"
 
 [[metric]]
