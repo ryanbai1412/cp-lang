@@ -10,8 +10,8 @@ Then read, in order:
    only normative language source; where anything else disagrees with it,
    `spec/` wins.
 1. `plan/OPERATING.md`: settled decisions and the loop we work in.
-2. `plan/DOMAINS.md`: each domain's north star, status and next steps;
-   find yours.
+2. `plan/DOMAINS.md`: the domains (one domain = one lane = one owner);
+   find yours, then read `plan/domains/<domain>/` and `plan/QUESTIONS.md`.
 3. `plan/ARCHITECTURE.md`: compiler, IR, interpreter, and crate architecture.
 4. `decisions.md`: every design call, its reason and how to reverse it.
 5. `REPO.md`: where everything lives.

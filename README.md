@@ -16,8 +16,8 @@ core traits.
   (contestant tokens median **0.50x** stripped C++; C++ runtime **p50 0.99x**;
   dream gap across 27 `dream/*.cp` ports: **11,825** port vs **7,639** dream
   tokens, median **1.33x**, p90 **2.53x**, ratcheted in `crates/cpl-conform` / `just conform`).
-- [Areas](plan/DOMAINS.md): each part of the project, its goal and
-  its next steps.
+- [Domains](plan/DOMAINS.md): each part of the project, its success
+  criteria, plan and worklog.
 - [Decisions](decisions.md) and [retros](research/retros/): design calls with
   their reasons, and why the way we work changed.
 - [Normative spec](spec/README.md): the v0.3 language, library, tools, and conformance spec.
@@ -192,7 +192,7 @@ The docs site labels every snippet as either runnable or specification.
 
 - `spec/`: the normative 0.3 language, library, tools, and conformance spec.
 - `decisions.md`: every language decision, its status and its reason.
-- `plan/`: operating rules (`plan/OPERATING.md`), areas (`plan/DOMAINS.md`),
+- `plan/`: operating rules (`plan/OPERATING.md`), domains (`plan/DOMAINS.md`, `plan/domains/`),
   architecture (`plan/ARCHITECTURE.md`), and Ryan's notes (`plan/agent-context.md`).
 - `research/`: the evidence behind the decisions (corpus mining, audits,
   design history, and C++ benchmarks).

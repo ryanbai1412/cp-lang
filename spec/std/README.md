@@ -44,7 +44,7 @@ Status: the design the stdlib lane builds toward. `plan/20-stdlib.md`
 keeps the catalogue of what contests need and the reasoning behind the
 v1 scope; this file is the surface: every module, every public item with
 its signature and cost, the naming rules they follow, and the core
-features each one relies on. `plan/DOMAINS.md` (area 4) says where we
+features each one relies on. `plan/domains/stdlib/` says where we
 stand against it. The 0.3 spec chapters 20 to 29 and 40 were the seed;
 where this file departs from them it says why, and `decisions.md` logs
 the call.

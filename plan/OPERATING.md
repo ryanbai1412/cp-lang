@@ -7,8 +7,8 @@
 
 How work on CP Lang runs: what is already decided, and the loop that moves
 the project forward. The mission, goals and principles every change follows
-are in `AGENTS.md`; read that first. Where each domain stands, its north star and its
-next steps are in `plan/DOMAINS.md`.
+are in `AGENTS.md`; read that first. Where each domain stands, its success criteria and its
+next steps are in `plan/DOMAINS.md` and `plan/domains/<domain>/`.
 
 ## Settled decisions
 
@@ -135,7 +135,7 @@ added here.
   tip on `main` is fixed by whoever broke it, before any other work.
 - **Lane review every round.** The coordinator reads every lane's latest
   report each round, not only settled ones, gives each finished lane its next
-  piece from `plan/DOMAINS.md`, and never leaves a lane idle.
+  piece from its domain's README and worklog, and never leaves a lane idle.
 - **Manual inspection.** Each round the coordinator reads a sample of new
   ports, dreams and lane commits side by side, and turns what it finds into
   brief edits, checklist lines or lane work.
