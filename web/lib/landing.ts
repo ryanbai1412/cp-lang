@@ -160,7 +160,11 @@ function live(group: string, items: { id: string; title: string; caption: string
 }
 
 export const heroPrograms = () => live('hero', hero);
-export const libraryPrograms = () => live('lib', lib);
+// Programs the compiler runs lead, so the first tab a visitor sees has a Run button.
+export const libraryPrograms = async () => {
+  const all = await live('lib', lib);
+  return [...all.filter((p) => p.status === 'runs'), ...all.filter((p) => p.status !== 'runs')];
+};
 
 export const syntaxShowcases = () => load('syntax', syntax, false);
 export const libraryShowcases = () => load('library', library, true);

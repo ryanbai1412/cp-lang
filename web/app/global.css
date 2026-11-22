@@ -131,3 +131,8 @@
   --cp-function: #d2a8ff;
   --cp-operator: #ff7b72;
 }
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}

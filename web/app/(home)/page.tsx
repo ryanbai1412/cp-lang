@@ -219,8 +219,8 @@ export default async function Home() {
         <div className="mb-8 max-w-2xl space-y-2">
           <h2 className="text-2xl font-semibold tracking-tight">Whole olympiad solutions</h2>
           <p className="text-muted-foreground">
-            Complete solutions to real olympiad problems, next to more of the syntax they rely on. These pass the
-            type checker; the compiler does not run them yet, so there is no Run button.
+            Complete solutions to real olympiad problems, next to more of the syntax they rely on. Each
+            carries its status: the ones the compiler does not run yet have no Run button.
           </p>
         </div>
         <div className="grid gap-8 lg:grid-cols-2">

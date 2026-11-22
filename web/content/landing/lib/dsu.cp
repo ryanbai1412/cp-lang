@@ -5,4 +5,4 @@ for _ in 0..m:
     let (u, v): (V, V) = read()
     d.unite(u, v)
 print(d.components, d.size(V(1)))
-print(if d.same(V(1), V(3)): "YES" else: "NO")
+print(yes(d.same(V(1), V(3))))
