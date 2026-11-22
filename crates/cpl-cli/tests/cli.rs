@@ -420,8 +420,8 @@ fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
 #[test]
 fn stress_judges_with_the_interactor_in_the_file() {
     let gen = "#!/bin/sh\nn=$(( ($1 * 37) % 1000 + 1 ))\necho \"$n $(( ($1 * 13) % n + 1 ))\"\n";
-    let stress = |test: &str, answer: &str| {
-        let path = guess(test, "10", answer);
+    let stress = |test: &str, limit: &str, answer: &str| {
+        let path = guess(test, limit, answer);
         let script = path.with_file_name("gen.sh");
         std::fs::write(&script, gen).unwrap();
         #[cfg(unix)]
@@ -437,10 +437,14 @@ fn stress_judges_with_the_interactor_in_the_file() {
         let out = cpl(&args, b"");
         format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr))
     };
-    let right = stress("interactor-stress-ok", "lo");
+    let right = stress("interactor-stress-ok", "10", "lo");
     assert!(right.contains("12 cases agree"), "{right}");
-    let wrong = stress("interactor-stress-wa", "lo + 1");
+    let wrong = stress("interactor-stress-wa", "10", "lo + 1");
     assert!(wrong.contains("interactor: assertion failed: x == secret"), "{wrong}");
+    // research/dryrun/LOG.md p19: the judge starving was all stress said.
+    let over = stress("interactor-stress-limit", "3", "lo");
+    assert!(over.contains("query limit exceeded: the limit is 3"), "{over}");
+    assert!(!over.contains("output ended"), "{over}");
 }
 
 /// A plain `Int` that sizes a domain, an array, a loop or a list is

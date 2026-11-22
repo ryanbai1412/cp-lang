@@ -322,6 +322,13 @@ fn interact(
         failure(&outcome).unwrap_or(Verdict::Accepted)
     } else {
         let said = judge_stderr.lines().next().unwrap_or("").trim();
+        // A judge left with nothing to read after the solution failed (say,
+        // over its query limit) only follows from that failure.
+        if said.starts_with("the solution's output ended") {
+            if let Some(verdict) = failure(&outcome) {
+                return Ok(Judged { verdict, outcome });
+            }
+        }
         Verdict::Wrong(if said.is_empty() {
             "the interactor rejected the run".to_string()
         } else {

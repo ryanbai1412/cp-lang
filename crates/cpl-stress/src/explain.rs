@@ -26,6 +26,10 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
         return None;
     }
     let program = cpl_ir::lower(&analysis).ok()?;
+    // Alone, an interactive solution only ever sees its input end.
+    if program.interactive {
+        return None;
+    }
     let mut sink = Vec::new();
     let trap = cpl_interp::run(&program, input.as_bytes(), &mut sink).err()?;
     let lines = cpl_diag::LineIndex::new(&text);

@@ -359,6 +359,27 @@ fn a_checker_gets_the_input_the_output_and_the_answer() {
 }
 
 #[test]
+fn an_interactive_failure_is_not_explained_by_a_run_without_its_interactor() {
+    let src = "let n: Int = read()\nlet r: Str = ask(\"?\", n, limit: 1)\nlet s: Str = ask(\"?\", n, limit: 1)\nprint(r, s)\n";
+    let path = std::env::temp_dir().join(format!("ask-explain-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    assert_eq!(crate::explain::runtime_error(&path, "3\n"), None);
+}
+
+#[test]
+fn a_solution_over_its_query_limit_is_blamed_not_the_starved_interactor() {
+    let interactor = Judge::Interactor(sh(
+        "read guess || { echo \"the solution's output ended where a word was expected\" >&2; exit 1; }",
+    ));
+    let over = sh("echo 'query limit exceeded: the limit is 30' >&2; exit 3");
+    let judged = interactor.run(&over, "2\n", None, Duration::from_secs(10)).unwrap();
+    assert_eq!(
+        judged.verdict,
+        Verdict::RuntimeError("exit code 3: query limit exceeded: the limit is 30".to_string())
+    );
+}
+
+#[test]
 fn an_interactor_talks_to_the_solution_and_rules() {
     // The secret is the input; the solution may ask three questions.
     let interactor = Judge::Interactor(sh(
