@@ -4354,4 +4354,12 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Rule.** `@cache` and `@law` are promises, not `unsafe`: a broken one
   gives wrong answers, never undefined behaviour, so codegen never
   optimizes on a promise (no `__restrict` from a `disjoint` law).
+- **Invariants.** Compiler: no lend of the field escapes, only own
+  methods write it, a cache write is a `mut` access inside the struct, no
+  unknown calls while the field is lent, derived `==`/`hash`/`Ord`/`print`
+  skip it. Author: cache writes change no answer; stress runs check this
+  by undoing them at method exit.
+- **Tiers.** Proved, trap, promise (`@cache`, `@law`), unsafe (`@trusted:`,
+  `@cpp`). Everything trusted without proof is an `@` attribute from that
+  closed list, and `cpl explain` lists every site.
 - **Reverse.** Drop `@cache`; `find` returns to `mut self`.

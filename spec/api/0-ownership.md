@@ -47,15 +47,18 @@ anyone hold a live view this write would break?
 
 ### Proved, promised, unsafe
 
-| Tier | Examples | Guaranteed by |
-|---|---|---|
-| Proved | moves, lends, R1 to R12 | the compiler |
-| Promised | `@cache`, `@law`, preconditions such as sortedness | the author; greppable; checked in debug builds where cheap |
-| Unsafe | inline C++ | nobody |
+| Tier | Spellings | If broken | Surfaced by |
+|---|---|---|---|
+| Proved | moves, lends, R1 to R12 | can't be | the compiler |
+| Trap | `!`, indexing, `assert`, preconditions such as sortedness | stops with a message | debug builds check every one |
+| Promise | `@cache`, `@law` | wrong answers, never undefined behaviour | `cpl explain` lists each; stress runs check them |
+| Unsafe | `@trusted:` blocks, `@cpp("...")` bodies | anything | `cpl explain` lists each; debug shadow checks where possible |
 
-A broken promise gives wrong answers, never undefined behaviour: codegen
-never optimizes on a promise (no `__restrict` from a `disjoint` law), and
-a `@cache` field can't be lent out, so no view of it can dangle.
+Anything the compiler trusts without proof is an `@` attribute from this
+closed list, so `grep -E '@(cache|law|trusted|cpp)'` finds all of it, and
+adding to the list takes a decision entry. Codegen never optimizes on a
+promise (no `__restrict` from a `disjoint` law), which is what keeps a
+broken promise from becoming undefined behaviour.
 
 ### The picture
 
@@ -392,13 +395,33 @@ pub struct Dsu<V>:
         r
 ```
 
-- Only the struct's own methods write it through a read `self`; `mut self`
-  methods write it as usual.
-- Nothing lends a `@cache` field out of those methods: no `lends` result
-  borrows it and no projection exposes it. So no outside lend can see it
-  change, which is what makes it sound (as with Rust's `Cell`).
-- The author promises the write changes no answer. Debug stress runs may
-  check it by rerunning with the cache cleared.
+Checked by the compiler (these make it memory-safe):
+
+- **C1. No lend escapes.** No `lends` result, projection or stored value
+  borrows the field, so no outside view can see it change (as with Rust's
+  `Cell`).
+- **C2. Only the struct's own methods write it.** Outside code can't, even
+  through `mut`.
+- **C3. Inside the struct, a cache write is a `mut` access to the field.**
+  A method walking `self.parent` can't call `self.find` partway through.
+  Only callers are relaxed.
+- **C4. No unknown calls while the field is lent.** A method holding a
+  lend into the field may not call a closure or fn parameter: it could
+  capture the struct and call `find`, writing under the method's view.
+- **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.**
+  Otherwise `d1 == d2` could flip after a `find`; a struct that needs them
+  compared writes the impl by hand.
+
+Promised by the author (this makes it correct):
+
+- **P1. Cache writes change no answer.** Every sequence of public calls
+  gives the same results as if each cache write through a read `self` were
+  undone at method exit. Equivalently, the abstract value (the partition,
+  the factorials) never changes.
+
+Stress runs check P1 with a cold mode that undoes those writes at method
+exit and compares output with a normal run; P1 is exactly what makes the
+two comparable, so no struct needs its own checker.
 - Shared ownership (two owners of one mutable value) stays out: pass
   `mut x` to each call, or capture `x`.
 
