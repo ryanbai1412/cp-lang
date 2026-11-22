@@ -4341,3 +4341,14 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   at a glance; the older documents disagreed on these points.
 - **Reverse.** Restore 141 rule 3 (lent values only in `let`s), or hold
   closure captures for the closure's life.
+
+## 145. `@cache` fields (2026-11-21)
+
+- **Decision.** A struct field marked `@cache` may be written by the
+  struct's own methods through a read `self`. No `lends` result or
+  projection may borrow it. `Dsu.find`, `DsuOf.find` and `Comb` use it.
+- **Why.** Logically-read methods (path compression, lazy tables, lazy
+  tag pushes) otherwise force `var` and block calls during walks. 19.10
+  gave `Comb` interior mutability as a stdlib privilege; this makes it a
+  general power. Sound because no outside lend can point into the field.
+- **Reverse.** Drop `@cache`; `find` returns to `mut self`.

@@ -12,7 +12,7 @@ pub struct Mark(at: 0..=2_000_000_000)
 /// `mark` on, paths are no longer shortened (a shortened path cannot be restored), so every
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
-    p: List<-2_147_483_648..=2_147_483_647>
+    @cache p: List<-2_147_483_648..=2_147_483_647>
     parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
     joined: List<Int>
@@ -21,10 +21,11 @@ pub struct Dsu<V>:
     /// Every position starts in its own set; pass `rollback: true` to enable rollback up front (or call `mark()` lazily). O(n).
     pub fn new(rollback: Bool = false) -> Dsu<V> = todo
 
-    fn find_ord(mut self, start: Int) -> Int = todo
+    fn find_ord(self, start: Int) -> Int = todo
 
-    /// The representative of `v`'s set.
-    pub fn find(mut self, v: V) -> V = todo
+    /// The representative of `v`'s set. Shortens paths through `@cache`, so a read-only
+    /// `Dsu` answers it too.
+    pub fn find(self, v: V) -> V = todo
 
     /// The present, to return to with `undo_to`. O(1).
     pub fn mark(mut self) -> Mark = todo
@@ -63,7 +64,7 @@ pub struct Dsu<V>:
 /// `mark` and `undo_to` step back in time like `Dsu`'s, and restore the values too: every
 /// merge and every `set` since the mark is undone, O(1) each.
 pub struct DsuOf<V, T>:
-    up: [V]V
+    @cache up: [V]V
     sz: [V]1..=V.count
     val: [V]T
     join: (T, T) -> T
@@ -76,8 +77,9 @@ pub struct DsuOf<V, T>:
     /// Every position starts in its own set, with value `init(v)`. O(n).
     pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> = todo
 
-    /// The representative of `v`'s set.
-    pub fn find(mut self, v: V) -> V = todo
+    /// The representative of `v`'s set. Shortens paths through `@cache`, so a read-only
+    /// `Dsu` answers it too.
+    pub fn find(self, v: V) -> V = todo
 
     /// The value of `v`'s set.
     pub fn get(mut self, v: V) -> T = todo

@@ -63,12 +63,12 @@ impl Show for Mod<P>:
     fn show(a) = todo
 
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
-/// Uses interior mutability to grow its table lazily on demand: an immutable
+/// Its tables are `@cache` fields that grow on demand, so an immutable
 /// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in O(1)
 /// with amortized O(1) growth per new factorial.
 pub struct Comb<M>:
-    f: List<M>
-    g: List<M>
+    @cache f: List<M>
+    @cache g: List<M>
 
     /// Precompute factorials and inverse factorials up to `limit`. O(limit).
     pub fn new(limit: Int = 0) -> Comb<M> = todo

@@ -341,6 +341,40 @@ fn counter() -> (() -> Int):
     () => c                 # error: the lambda captures local c, so it can't be returned
 ```
 
+## 10a. Caches: `@cache` fields
+
+A method that is logically a read can write a field marked `@cache`
+through a read `self`: path compression in `Dsu.find`, lazy tables in
+`Comb`, tag pushes in a lazy segment tree query, splay-tree reads.
+
+```python
+pub struct Dsu<V>:
+    @cache parent: [V]V
+    size: [V]Int
+
+    pub fn find(self, x: V) -> V:
+        let p = self.parent[x]
+        if p == x: return x
+        let r = self.find(p)
+        self.parent[x] = r
+        r
+```
+
+- Only the struct's own methods write it through a read `self`; `mut self`
+  methods write it as usual.
+- Nothing lends a `@cache` field out of those methods: no `lends` result
+  borrows it and no projection exposes it. So no outside lend can see it
+  change, which is what makes it sound (as with Rust's `Cell`).
+- The author promises the write changes no answer. Debug stress runs may
+  check it by rerunning with the cache cleared.
+- Shared ownership (two owners of one mutable value) stays out: pass
+  `mut x` to each call, or capture `x`.
+
+```python
+let d = build_dsu(edges)            # a let
+for v in V: print(d.find(v))        # fine: find takes read self
+```
+
 ## 11. Top-level state
 
 The file body is a fn (decision 6.1). Top-level `let`s are visible to
@@ -384,6 +418,7 @@ Earlier documents disagree with each other in places. This page picks:
 | Inline closures reusing the callee's `mut` borrow | allowed (5.4) | withdrawn | its client (`undo`/`with`) was deleted (5.8); it was the one unsound corner |
 | Mutable `let` aliases | left out of the first version (plan/19 §5.3) | `let p = mut a[i]` allowed | implemented and used by ports |
 | `let row = rows[i]` on a heap element | unclear (move? copy?) | a read lend | `at` is a `lends` fn; no special case for `[]` |
+| Interior mutability | `Comb` alone had it (19.10) | `@cache` fields, for any struct | no stdlib privilege; `Dsu.find` needs it too |
 
 ## 14. Exercises
 
