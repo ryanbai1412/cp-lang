@@ -47,3 +47,6 @@ opt-level = 1
 
 [profile.dev.package.cpl-codegen]
 opt-level = 1
+
+[profile.dev.package.cpl-conform]
+opt-level = 1

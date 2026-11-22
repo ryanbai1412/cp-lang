@@ -39,6 +39,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-conform"
+version = "0.2.2"
+dependencies = [
+ "cpl-check",
+ "cpl-codegen",
+ "cpl-diag",
+ "cpl-interp",
+ "cpl-ir",
+]
+
+[[package]]
 name = "cpl-contest"
 version = "0.2.2"
 dependencies = [

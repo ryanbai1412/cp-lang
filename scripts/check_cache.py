@@ -36,6 +36,7 @@ ENV_PREFIXES = ("RUSTFLAGS", "RUSTDOCFLAGS", "CARGO_", "CPL_", "CHECK_", "CXX", 
 # not enough (the tests open design/spec/ through cpl-syntax's planned.rs).
 _PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*"]
 _TESTS = _PROSE + [
+    "!research/scoreboard.json",
     "corpus/submissions/*", "corpus/statements/*", "plan/*",
 ]
 STAGES = {
