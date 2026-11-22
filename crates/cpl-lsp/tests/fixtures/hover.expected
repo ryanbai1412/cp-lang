@@ -235,8 +235,8 @@ The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like 
 == hover @ 89:8
 ```cp
 fn collect() -> Int
-  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls
   documented costs: seen.sorted O((n * k) log (n * k)), about 28583794 (2.9e7) steps, once
+  estimated cost: O(n + n * k + (n * k) log (n * k)), about 31583794 (3.2e7) steps at max input
 ```
 
 == hover @ 94:12
