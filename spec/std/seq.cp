@@ -664,6 +664,47 @@ pub fn maximal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields Sli
 /// For each right end, the shortest piece ending there that is `ok`, or none. O(n) amortized.
 pub fn minimal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields ?Slice<S> = todo
 
+/// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
+/// element is still a position of `a`. Replaces doubling the array.
+pub @get fn ring<D, T>(self: [D]T) -> Ring<D, T> = todo
+
+/// `a.ring`; see `ring`.
+pub struct Ring<D, T>(src: [D]T):
+    /// The position after `i`, wrapping. O(1).
+    pub fn next(self, i: D) -> D = todo
+
+    /// The position before `i`, wrapping. O(1).
+    pub fn prev(self, i: D) -> D = todo
+
+    /// All n positions, starting at `i` and wrapping. O(n) to walk.
+    pub fn from(self, i: D) -> yields D = todo
+
+    /// The n windows of `k` elements, one starting at each position, wrapping. O(n) to walk.
+    pub fn windows(self, k: Int) -> yields RingSlice<D, T> = todo
+
+    /// Two pointers round the cycle: for each position as the last element, the longest
+    /// wrapping piece (at most n elements) ending there that is `ok`, fed through
+    /// `state: Track`. O(n) pushes and pops (two laps).
+    pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T> = todo
+
+    /// For each position as the last element, the shortest wrapping piece ending there that is
+    /// `ok`, or none. O(n) pushes and pops (two laps).
+    pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T> = todo
+
+/// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
+pub struct RingSlice<D, T>():
+    /// O(1).
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). The first position.
+    pub @get fn start(self) -> D = todo
+
+    /// O(1). The last position.
+    pub @get fn end(self) -> D = todo
+
+    /// O(1) to make. Its positions in ring order.
+    pub @get fn keys(self) -> yields D = todo
+
 /// For each position, the widest piece where it is the minimum of `by` (ties: the left one
 /// extends). O(n).
 pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo

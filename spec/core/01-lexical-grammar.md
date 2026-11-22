@@ -220,6 +220,7 @@ match d: L => -1, R => 1            // one-line match
 ## 1.8 Expressions
 
 - **Lambdas** `x => e`, `(a, b) => e`, `(d: Int, l: Low) => e`, `_ => e`,
+  `(mut d, e) => d.unite(e.0, e.1)` (a `mut` parameter, as in `fn`),
   and block lambdas: a line ending in `=>` opens an indented body whose
   value is its last expression. A lambda body may be an assignment,
   and then returns nothing. A `let`-bound lambda may call itself

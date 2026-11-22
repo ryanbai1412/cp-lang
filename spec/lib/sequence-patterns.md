@@ -119,6 +119,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool)
 | `Counter<K>` | count up / down; `.distinct` kept | `c.distinct <= k` |
 | `Bag<T>` (sorted multiset) | insert / erase one | `b.max! - b.min! <= d` |
 | `track(add:, remove:)` | your two closures | your own predicate |
+| `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied O(log n) times amortized | `u => not u.state.consistent` |
 
 ```python
 let longest = a.maximal(Window(+), ok: w => w.all <= K).max(by: .len)!
@@ -201,7 +202,29 @@ No helper is added for these; each is one or two lines.
 all `n` positions starting at `i`, and every element is still a position
 of `a`. It replaces the "double the array" trick, which costs O(n) memory
 and loses the positions. A wrapping window isn't one range of `a`, so its
-`.keys` is a sequence of positions, not a `Range<D>`.
+`.keys` is a sequence of positions, not a `Range<D>`: wrapping pieces are
+`RingSlice`s with `start`, `end`, `len` and `keys`. `a.ring.next(i)` and
+`a.ring.prev(i)` step with wrap-around.
+
+Two pointers wrap too. `a.ring.maximal(state, ok:)` and
+`a.ring.minimal(state, ok:)` return `[D]RingSlice` and `[D]?RingSlice`:
+for each position as the last element, the longest or shortest wrapping
+piece (at most n elements) ending there that is `ok`. They walk two laps,
+so they cost O(n) pushes and pops. Problems about "everything except
+`l..=r`" become a ring window from `r` round to `l`:
+
+```python
+// BOI 2020 Joker: do the streets outside l..=r still hold an odd cycle?
+let dsu = undoing(ParityDsu<V>(), add: (mut d, e) => d.unite(e.0, e.1))
+let odd = street.ring.minimal(dsu, ok: u => not u.state.consistent)
+for (l, r) in read<[q](Street, Street)>():
+    let open = m - (l..=r).len
+    print(yes(odd[street.ring.prev(l)].map(w => w.len <= open) ?? false))
+```
+
+`undoing` is the queue-undo trick as a `Track`: a structure that can only
+undo its newest change (a rollback DSU) still serves a window that drops
+from the front.
 
 ## 4. How the parts stay coherent
 

@@ -53,6 +53,9 @@ front end (parse and type check) first.
 | Inline bounds | `fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>)` | 146 | E0204 |
 | Trait laws naming the trait's methods | `law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))` | 145 | E0201 |
 
+- `mut` lambda parameters: `(mut d, e) => d.unite(e.0, e.1)`. The parser expects a name
+  after `(`; dreams use a nested `fn` meanwhile (`btoi20p3`).
+
 ## Rejected (a dream using one is fixed instead)
 
 | Form | Instead | Why |

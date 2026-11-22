@@ -194,6 +194,7 @@ Every grouping returns a fresh domain and the map into it:
 | Form | Result | Cost |
 |---|---|---|
 | `components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
+| `complement(g)` | the complement graph of the missing arcs `g`: `bfs`, `dfs`, `reachable` and `components` over it cost O(n + m) | O(1) to make |
 | `scc(g)` | `(domain C, comp: [V]C)`, `C` in topological order | O(n + m) |
 | `condense(g, comp)` | `Graph<C, _>` of the components | O(n + m) |
 | `two_edge_components(g)` | `(domain C, comp: [V]C)` | O(n + m) |

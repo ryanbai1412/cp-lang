@@ -17,9 +17,5 @@ for p in Cell:
 var falls: [Cell]Bool = false
 for p in peel::<Cell>(p => guards[p]):
     falls[p] = true
-var needs: List<(u: Cell, v: Cell)> = []
-for p in Cell:
-    for q in guards[p]:
-        if falls[p] and falls[q]:
-            needs.push((u: p, v: q))
+let needs = [(u: p, v: q) for p in Cell if falls[p] for q in guards[p] if falls[q]]
 print(max_closure([Cell] p => if falls[p]: score[p] else: 0, needs).value)

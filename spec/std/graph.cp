@@ -565,9 +565,17 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = 
 /// partitioned; a cut vertex lies in several blocks).
 pub fn edge_blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
 
-/// O(n + m alpha): connected components of the complement of `next` (the
-/// arcs of `next` are the missing edges), each as a list of vertices.
-pub fn complement_components<V>(g: Next<V>) -> List<List<V>> = todo
+/// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
+/// `missing.next(u)` does not list. Its own `next(u)` is O(|V|), but `bfs`, `dfs`,
+/// `reachable` and `components` over a `Complement` run in O(|V| + m) by keeping the set of
+/// unvisited vertices and scanning only it, so "BFS in the complement graph" and its
+/// components are the ordinary searches: `components(complement(g))`.
+pub struct Complement<V, G>(missing: G):
+    /// O(|V|): every `v != u` that `missing.next(u)` does not list, ascending.
+    pub fn next(self, u: V) -> yields V = todo
+
+/// O(1). `Complement` of `missing`; see there.
+pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = todo
 
 /// O(n + m): an odd cycle witnessing that `next` is not bipartite, or `none`.
 pub fn odd_cycle<V>(g: Next<V>) -> ?List<V> = todo

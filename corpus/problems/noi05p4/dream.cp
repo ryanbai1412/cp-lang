@@ -16,5 +16,5 @@ fn turns(c: V, m: V) -> F64:
     if c2 == m:
         return 1.0
     let stay_or_move = turns(c2, m) + g.out(m).map(a => turns(c2, a.to)).sum()
-    1.0 + stay_or_move / F64(g[m].len + 1)
+    1.0 + stay_or_move / F64(g.deg(m) + 1)
 print(turns(cat, mouse), precision: 3)

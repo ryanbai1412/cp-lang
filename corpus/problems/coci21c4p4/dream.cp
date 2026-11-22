@@ -4,7 +4,7 @@
 let (n, k) = read<(1..=200_000, 1..=200_000)>()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](u: V, v: V, w: 1..=1_000_000_000)>())
-let t = Rooted(g, root: V.first!, w: a => a.w)
+let t = Rooted(g, root: V.first!)
 
 fn centres(limit: Int) -> List<V>:
     var open: List<V> = []

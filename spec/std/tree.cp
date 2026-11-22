@@ -48,8 +48,10 @@ pub struct Rooted<V, Pre>:
     /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
     /// breadth-first spanning tree, so on a graph with extra edges `depth` is the distance
     /// from the root. Stops if some vertex is not reachable from the root.
-    /// With `w:`, edges have lengths `w(arc)` and `dist`, `w` and `diameter` use them.
-    pub fn new<N, A>(next: N, root: V, w: A -> Int = a => 1) -> Rooted<V, _> = todo
+    /// Edge lengths come from the arcs, as in every graph algorithm: arcs that are `Weighted`
+    /// (a `w` field, or `g.weighted(f)`) give `dist`, `w` and `diameter` their lengths; others
+    /// count 1 per edge.
+    pub fn new<N>(next: N, root: V) -> Rooted<V, _> = todo
 
     /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `none` at the
     /// root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one
@@ -59,7 +61,7 @@ pub struct Rooted<V, Pre>:
     /// O(n). One tree per root: `next` must reach every vertex from exactly one of `from`. The
     /// trees sit one after another in `t.Pre`, in the order of `from`; `t.root` is the first root.
     /// Paths and lowest common ancestors exist only within one tree (`root_of` tells).
-    pub fn forest<N, A>(next: N, from: List<V>, w: A -> Int = a => 1) -> Rooted<V, _> = todo
+    pub fn forest<N>(next: N, from: List<V>) -> Rooted<V, _> = todo
 
     fn build<N, A>(next: N, roots: List<V>, len: A -> Int) = todo
 

@@ -5,7 +5,7 @@
 let (n, m) = read<(2..=50_000, 1..=50_000)>()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](u: V, v: V, w: 1..=10_000)>())
-let t = Rooted(g, root: V.first!, w: a => a.w)
+let t = Rooted(g, root: V.first!)
 fn tracks(k: Int) -> Int:
     var made = 0
     fn up(v: V) -> Int:

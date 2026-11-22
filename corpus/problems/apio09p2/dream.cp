@@ -9,8 +9,7 @@ let iv: [I](l: Int, r: Int) = read()
 let byl = I.range.sorted(by: i => iv[i].l)
 let soonest = byl.rev.scan(min(by: i => iv[i].r))
 fn first_from(a: Int) -> ?I:
-    let k = byl.keys.first_true(k => iv[byl[k]].l >= a)?
-    soonest[k]
+    soonest[byl.partition_point(i => iv[i].l < a).r?]
 let t = Rooted.from_parents(I.map(i => first_from(iv[i].r + 1)).collect())
 fn fit(a: Int, b: Int) -> Int:
     let u = first_from(a) ?? return 0
@@ -19,7 +18,7 @@ fn fit(a: Int, b: Int) -> Int:
     t.depth(u) - t.depth(t.jump_while(u, v => iv[v].r <= b)!) + 1
 
 var gaps = SortedMap<Int, (end: Int, best: Int)>()
-gaps.set(Int.MIN + 1, (end: Int.MAX, best: fit(Int.MIN + 1, Int.MAX)))
+gaps.set(-inf, (end: inf, best: fit(-inf, inf)))
 var picked = List<I>()
 for i in I:
     let (a, g) = gaps.last_le(iv[i].l)!

@@ -92,6 +92,22 @@ and its notes in that record's `notes`.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 
+- btoi20p3 (review): the dream translated C++ indices (`Int` bounds, `last[l - 1]`). Rewritten
+  as one `street.ring.minimal(undoing(ParityDsu<V>(), add:), ok:)` pass: two pointers on
+  `a.ring` (`RingSlice`, `ring.next/prev`) and `undoing`, the queue-undo `Track` over any
+  `Undo` structure (decision 152). Lambdas gain `mut` parameters.
+- noi10p2 (review): chord bounds became `Note.cuts` instead of raw prefix indices.
+- cco21p4 (review): requirements and profits ride on the arcs (`a.r`, `a.p`, `a.e` from the
+  default `EdgeArc`) of `g` and `g.transpose()`, instead of a filtered edge list and `into`
+  buckets indexed back into it.
+- noip18p3, coci21c4p4 (review): `Rooted` loses `w:`; lengths come from `Weighted` arcs, as in
+  every graph algorithm, so a tree read with a `w` field is weighted with no option.
+- ioi16p6, noi09p4, apio09p2, noi05p4 (review): `desc` instead of `-s.hi`, `with_prev`
+  instead of `spans[i - 1]`, a comprehension instead of a push loop, `partition_point` and
+  `inf` instead of `Int.MIN + 1` sentinels, `g.deg(m)`.
+- egoi23p7: `complement(g)`, a `Next` whose searches run in O(n + m) by scanning only
+  unvisited vertices; "BFS in the complement graph" is the ordinary `bfs`/`components`.
+
 Open questions raised by dreams:
 
 - Legacy `directed_of_pairs` and friends in `std.graph` predate

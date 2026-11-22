@@ -4531,3 +4531,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   `limit: -p - 1`), an off-by-one trap and an overflow trap at `Int.MIN`.
 - **Reverse.** Reintroduce the negation idiom in the two docs.
 
+## 152. Two pointers wrap on `a.ring`, and `undoing` queues any rollback structure (2026-11-21)
+
+- **Decision.** `a.ring.maximal/minimal(state, ok:)` return `[D]RingSlice` / `[D]?RingSlice`
+  keyed by the piece's last position. `undoing(s, add:)` turns any `Undo` structure (`mark`,
+  `undo_to`) into a `Track` by the queue-undo trick, O(log n) re-applications amortized.
+  Lambdas take `mut` parameters as `fn` does.
+- **Why.** `btoi20p3` was a divide and conquer over raw `Int` street indices with `- 1`
+  adjustments. "Everything except `l..=r`" is a ring window, and a rollback DSU in a
+  two-pointer pass is a known trick that had no name; with both, Joker is a two-pointer pass.
+- **Reverse.** Drop `Ring.maximal/minimal` and `undoing`; Joker returns to divide and conquer.
