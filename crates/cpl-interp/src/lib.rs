@@ -403,6 +403,7 @@ fn run_io(
         vm_regs_i: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
+        view_locals: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
@@ -643,6 +644,8 @@ struct Interp<'p, 'o> {
     /// Reusable pool of `Value` register frames for VM calls.
     #[cfg(not(target_arch = "wasm32"))]
     vm_pool_v: Vec<Vec<Value>>,
+    /// The allocation [`Interp::view`] lists locals in, kept between steps.
+    view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
     #[cfg(not(target_arch = "wasm32"))]
     vm_stats: Option<vm::VmStats>,
@@ -685,6 +688,13 @@ fn root_local(place: &Place) -> Option<usize> {
 
 /// How many indices of `place` lead straight from its variable: `2` in
 /// `dp[i][j]` and in `dp[i, j]`, `1` in `a[i].x`.
+/// Empties `locals` and gives back its allocation for borrows of another
+/// lifetime; collecting in place keeps the buffer.
+fn relifetime<'a, 'b>(mut locals: Vec<(&'a str, &'a Ty, &'a Value)>) -> Vec<(&'b str, &'b Ty, &'b Value)> {
+    locals.clear();
+    locals.into_iter().map(|_| unreachable!()).collect()
+}
+
 fn leading_indices(place: &Place) -> usize {
     match &place.kind {
         PlaceKind::Global(_) | PlaceKind::Local(_) => 0,
@@ -830,7 +840,11 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     /// What the tracer sees of the program's state right now.
     fn view(&self) -> trace::View<'_> {
-        let locals = self
+        self.view_in(Vec::new())
+    }
+
+    fn view_in<'s>(&'s self, mut locals: Vec<(&'s str, &'s Ty, &'s Value)>) -> trace::View<'s> {
+        let named = self
             .locals()
             .iter()
             .enumerate()
@@ -844,8 +858,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                     value => value,
                 };
                 Some((local.name.as_str(), &local.ty, value))
-            })
-            .collect();
+            });
+        locals.extend(named);
         trace::View {
             program: self.program,
             globals: &self.globals,
@@ -859,7 +873,10 @@ impl<'p, 'o> Interp<'p, 'o> {
     /// Runs `record` on the tracer, when the run is traced.
     fn traced(&mut self, record: impl FnOnce(&mut trace::Tracer, &trace::View)) {
         if let Some(mut tracer) = self.tracer.take() {
-            record(&mut tracer, &self.view());
+            let locals = relifetime(std::mem::take(&mut self.view_locals));
+            let view = self.view_in(locals);
+            record(&mut tracer, &view);
+            self.view_locals = relifetime(view.locals);
             self.tracer = Some(tracer);
         }
     }
