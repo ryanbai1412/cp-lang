@@ -149,7 +149,7 @@ export const STDLIB_VALUES: readonly string[] = [
 
 /** Public `spec/std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
 export const PRELUDE_CONSTANTS: readonly string[] = [
-    'add', 'affine', 'assign', 'flip', 'inf',
+    'add', 'affine', 'assign', 'flip', 'inf', 'io',
 ];
 
 /** Public `spec/std/*.cp` constants that need a `use`. */
