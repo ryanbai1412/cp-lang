@@ -1,6 +1,8 @@
 name: release
 
 on:
+  schedule:
+    - cron: "17 7 * * *" # nightly edge
   workflow_dispatch:
     inputs:
       channel:
@@ -19,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.channel }}
+  group: release-${{ inputs.channel || 'edge' }}
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +39,7 @@ jobs:
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANNEL: ${{ inputs.channel }}
+          CHANNEL: ${{ inputs.channel || 'edge' }}
         run: scripts/release/plan.sh "$CHANNEL"
 
   build:
@@ -133,7 +135,7 @@ jobs:
 
   publish:
     needs: [plan, build, editors]
-    if: inputs.publish
+    if: github.event_name == 'schedule' || inputs.publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
