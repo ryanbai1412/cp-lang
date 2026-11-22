@@ -80,3 +80,23 @@ and the emitted C++ against `p19_guess_interact.py` (100 random + 3 edge cases).
 | p18 modular combinatorics | fails | 14 | passes (hand factorial tables on `Mod`) |
 | p19 interactive | fails | 15-17 | passes (`print`/`read`, hand search) |
 | p20 geometry | fails | 19 | passes (`use std.geometry.turn`) |
+
+## Recheck on f605b8a4
+
+The stdlib bodies landed since the run (a81702ad, f605b8a4, still under `CPL_SPEC=1
+CPL_STD=spec/std`) clear eight repros: rows 2, 3, 11, 13, 17, 23 and 29 now run and build
+and print the right value (`repro-v03/run.sh`). Row 14 (`Comb`) still reaches `todo`, and
+row 4 still applies to it. Every other row reproduces unchanged.
+
+Spec versions rerun with `v03/loop.sh` (check, test, 100 stress cases, 100 emitted-C++ runs):
+
+| Problem | Now |
+|---|---|
+| p03 (`Prefix<Row, Col, Int>` form) | passes |
+| p04 (`first_true`) | passes |
+| p13 (`Fenwick.fold`) | passes |
+| p16 (`keys.bsearch`) | passes |
+| p19 | still fails: rows 16 and 17 (`last_true` is still unknown to `cpl run` next to the `Wire` error) |
+| p20 | still fails: row 19 |
+
+That makes 9 of 20 pass as the docs teach: p01, p02, p03, p04, p08, p13, p15, p16, p17.
