@@ -96,30 +96,30 @@ fn every_lsp_feature_works_on_v03() {
     // rename, inlay types.
     let main_uri = "file:///v03/main.cp";
     let main_src = concat!(
-        "use std.heap.{MinMaxHeap}\n",          // 0
-        "let n: 1..=100 = read()\n",            // 1
-        "domain V = 0..n\n",                    // 2
-        "fn tally_sum(xs: [V]Int) -> Int:\n",   // 3
-        "    var acc = 0\n",                    // 4
-        "    for v in V:\n",                    // 5
-        "        acc += xs[v]\n",               // 6
-        "    acc\n",                            // 7
-        "var h = MinMaxHeap<Int>()\n",          // 8
-        "h.push(3)\n",                          // 9
-        "let a: [V]Int = read()\n",             // 10
-        "let total = tally_sum(a)\n",           // 11
+        "use std.heap.{MinMaxHeap}\n",                    // 0
+        "let n: 1..=100 = read()\n",                      // 1
+        "domain V = 0..n\n",                              // 2
+        "fn tally_sum(xs: [V]Int) -> Int:\n",             // 3
+        "    var acc = 0\n",                              // 4
+        "    for v in V:\n",                              // 5
+        "        acc += xs[v]\n",                         // 6
+        "    acc\n",                                      // 7
+        "var h = MinMaxHeap<Int>()\n",                    // 8
+        "h.push(3)\n",                                    // 9
+        "let a: [V]Int = read()\n",                       // 10
+        "let total = tally_sum(a)\n",                     // 11
         "let p = bsearch_real(0.0, 1.0, x => x > 0.5)\n", // 12
-        "print(total, p)\n",                    // 13
+        "print(total, p)\n",                              // 13
     );
 
     // Document 2: completion probes (`use std.`, `use std.heap.`, `h.`, `Lazy`).
     let comp_uri = "file:///v03/complete.cp";
     let comp_src = concat!(
-        "use std.\n",                 // 0: col 8
-        "use std.heap.{MinMaxHeap}\n",// 1
-        "var h = MinMaxHeap<Int>()\n",// 2
-        "h.\n",                       // 3: col 2
-        "let x = Lazy\n",             // 4: col 12
+        "use std.\n",                  // 0: col 8
+        "use std.heap.{MinMaxHeap}\n", // 1
+        "var h = MinMaxHeap<Int>()\n", // 2
+        "h.\n",                        // 3: col 2
+        "let x = Lazy\n",              // 4: col 12
     );
 
     // Document 3: lint fixes (code actions) + formatting.
@@ -157,13 +157,25 @@ fn every_lsp_feature_works_on_v03() {
         msg(Some(12), "textDocument/hover", doc_pos(main_uri, 3, 5)),  // tally_sum
         msg(Some(13), "textDocument/hover", doc_pos(main_uri, 10, 4)), // a: [V]Int
         // 2. Go-to-definition into spec/std
-        msg(Some(20), "textDocument/definition", doc_pos(main_uri, 8, 10)),  // MinMaxHeap -> spec/std/heap.cp
-        msg(Some(21), "textDocument/definition", doc_pos(main_uri, 9, 3)),   // push -> spec/std/heap.cp
-        msg(Some(22), "textDocument/definition", doc_pos(main_uri, 12, 10)), // bsearch_real -> spec/std/search.cp
+        msg(
+            Some(20),
+            "textDocument/definition",
+            doc_pos(main_uri, 8, 10),
+        ), // MinMaxHeap -> spec/std/heap.cp
+        msg(Some(21), "textDocument/definition", doc_pos(main_uri, 9, 3)), // push -> spec/std/heap.cp
+        msg(
+            Some(22),
+            "textDocument/definition",
+            doc_pos(main_uri, 12, 10),
+        ), // bsearch_real -> spec/std/search.cp
         // 3. Completion: `use std.`, member `h.`, auto-import `Lazy`
-        msg(Some(30), "textDocument/completion", doc_pos(comp_uri, 0, 8)),  // use std.
-        msg(Some(31), "textDocument/completion", doc_pos(comp_uri, 3, 2)),  // h.
-        msg(Some(32), "textDocument/completion", doc_pos(comp_uri, 4, 12)), // Lazy
+        msg(Some(30), "textDocument/completion", doc_pos(comp_uri, 0, 8)), // use std.
+        msg(Some(31), "textDocument/completion", doc_pos(comp_uri, 3, 2)), // h.
+        msg(
+            Some(32),
+            "textDocument/completion",
+            doc_pos(comp_uri, 4, 12),
+        ), // Lazy
         // 4. Rename: user fn succeeds; spec/std symbol refused
         msg(
             Some(40),
@@ -205,7 +217,10 @@ fn every_lsp_feature_works_on_v03() {
             "textDocument/formatting",
             obj([
                 ("textDocument", obj([("uri", fix_uri.into())])),
-                ("options", obj([("tabSize", 4.into()), ("insertSpaces", true.into())])),
+                (
+                    "options",
+                    obj([("tabSize", 4.into()), ("insertSpaces", true.into())]),
+                ),
             ]),
         ),
         msg(Some(99), "shutdown", Value::Null),
@@ -223,9 +238,15 @@ fn every_lsp_feature_works_on_v03() {
             .to_string()
     };
     let h_struct = hover(10);
-    assert!(h_struct.contains("struct MinMaxHeap<T>"), "hover struct: {h_struct}");
+    assert!(
+        h_struct.contains("struct MinMaxHeap<T>"),
+        "hover struct: {h_struct}"
+    );
     let h_push = hover(11);
-    assert!(h_push.contains("cost: O(log n)"), "hover method cost: {h_push}");
+    assert!(
+        h_push.contains("cost: O(log n)"),
+        "hover method cost: {h_push}"
+    );
     let h_fn = hover(12);
     assert!(h_fn.contains("fn tally_sum"), "hover user fn: {h_fn}");
     assert!(
@@ -263,14 +284,23 @@ fn every_lsp_feature_works_on_v03() {
     // 3. Completion incl. members & v0.3 modules
     let mods = completion_labels(&replies[&30]);
     for wanted in ["io", "opt", "pair", "search", "subset", "heap"] {
-        assert!(mods.iter().any(|m| m == wanted), "use std. missing {wanted}: {mods:?}");
+        assert!(
+            mods.iter().any(|m| m == wanted),
+            "use std. missing {wanted}: {mods:?}"
+        );
     }
     for removed in ["derive", "spec", "tour"] {
-        assert!(!mods.iter().any(|m| m == removed), "use std. has v0.2-only {removed}: {mods:?}");
+        assert!(
+            !mods.iter().any(|m| m == removed),
+            "use std. has v0.2-only {removed}: {mods:?}"
+        );
     }
     let members = completion_labels(&replies[&31]);
     for wanted in ["push", "pop_first", "pop_last", "len"] {
-        assert!(members.iter().any(|m| m == wanted), "h. missing {wanted}: {members:?}");
+        assert!(
+            members.iter().any(|m| m == wanted),
+            "h. missing {wanted}: {members:?}"
+        );
     }
     let auto_imports = completion_labels(&replies[&32]);
     assert!(
@@ -287,7 +317,11 @@ fn every_lsp_feature_works_on_v03() {
         .at(&["result", "changes", main_uri])
         .as_array()
         .expect("rename returns edits for user fn");
-    assert_eq!(rename_edits.len(), 2, "expected decl + call site edits: {rename_edits:?}");
+    assert_eq!(
+        rename_edits.len(),
+        2,
+        "expected decl + call site edits: {rename_edits:?}"
+    );
     assert!(
         rename_edits
             .iter()
@@ -351,7 +385,11 @@ fn every_lsp_feature_works_on_v03() {
         .at(&["result"])
         .as_array()
         .expect("formatting edits array");
-    assert_eq!(fmt_edits.len(), 1, "expected one full-doc formatting edit: {fmt_edits:?}");
+    assert_eq!(
+        fmt_edits.len(),
+        1,
+        "expected one full-doc formatting edit: {fmt_edits:?}"
+    );
     let formatted = fmt_edits[0].at(&["newText"]).as_str().unwrap_or("");
     assert!(
         formatted.contains("let n: Int = read::<Int>()"),

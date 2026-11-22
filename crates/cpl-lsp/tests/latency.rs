@@ -653,12 +653,20 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
 
     let by_lines = files
         .iter()
-        .max_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)).then_with(|| b.2.cmp(&a.2)))
+        .max_by(|a, b| {
+            a.0.cmp(&b.0)
+                .then_with(|| a.1.cmp(&b.1))
+                .then_with(|| b.2.cmp(&a.2))
+        })
         .unwrap()
         .clone();
     let by_bytes = files
         .iter()
-        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)).then_with(|| b.2.cmp(&a.2)))
+        .max_by(|a, b| {
+            a.1.cmp(&b.1)
+                .then_with(|| a.0.cmp(&b.0))
+                .then_with(|| b.2.cmp(&a.2))
+        })
         .unwrap()
         .clone();
 
@@ -706,7 +714,11 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
         let mut version = 2usize;
         for i in 0..40 {
             let edited = if i % 2 == 0 {
-                format!("{}let _probe = {i}\n    {}", &src[..edit_at], &src[edit_at..])
+                format!(
+                    "{}let _probe = {i}\n    {}",
+                    &src[..edit_at],
+                    &src[edit_at..]
+                )
             } else {
                 src.clone()
             };
@@ -768,7 +780,10 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
                 "textDocument/hover",
                 obj([
                     ("textDocument", obj([("uri", uri.as_str().into())])),
-                    ("position", obj([("line", line.into()), ("character", col.into())])),
+                    (
+                        "position",
+                        obj([("line", line.into()), ("character", col.into())]),
+                    ),
                 ]),
             );
             let (replies, took) = round_trip(&mut server, &req);
@@ -801,7 +816,10 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
                 "textDocument/completion",
                 obj([
                     ("textDocument", obj([("uri", uri.as_str().into())])),
-                    ("position", obj([("line", line.into()), ("character", col.into())])),
+                    (
+                        "position",
+                        obj([("line", line.into()), ("character", col.into())]),
+                    ),
                 ]),
             );
             let (replies, took) = round_trip(&mut server, &req);
@@ -823,8 +841,23 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
             ms(c_p95),
             ms(budget),
         );
-        assert!(d_p95 < budget, "{label} diagnostics p95 {} >= {}", ms(d_p95), ms(budget));
-        assert!(h_p95 < budget, "{label} hover p95 {} >= {}", ms(h_p95), ms(budget));
-        assert!(c_p95 < budget, "{label} completion p95 {} >= {}", ms(c_p95), ms(budget));
+        assert!(
+            d_p95 < budget,
+            "{label} diagnostics p95 {} >= {}",
+            ms(d_p95),
+            ms(budget)
+        );
+        assert!(
+            h_p95 < budget,
+            "{label} hover p95 {} >= {}",
+            ms(h_p95),
+            ms(budget)
+        );
+        assert!(
+            c_p95 < budget,
+            "{label} completion p95 {} >= {}",
+            ms(c_p95),
+            ms(budget)
+        );
     }
 }
