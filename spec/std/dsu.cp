@@ -12,7 +12,7 @@ pub struct Mark(at: 0..=2_000_000_000)
 /// `mark` on, paths are no longer shortened (a shortened path cannot be restored), so every
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
-    p: List<-2_147_483_648..=2_147_483_647>
+    @cache p: List<-2_147_483_648..=2_147_483_647>
     parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
     joined: List<Int>
@@ -27,12 +27,6 @@ pub struct Dsu<V>:
     pub fn new(rollback: Bool = false) -> Dsu<V> = Dsu(List.filled(V.count, -1), V.count, [], rollback)
 
     fn find_ord(self, start: Int) -> Int:
-        var x = start
-        unchecked:
-            while p[x] >= 0: x = p[x]
-        x
-
-    fn find_halving(mut self, start: Int) -> Int:
         var x = start
         unchecked:
             while p[x] >= 0:
@@ -103,8 +97,8 @@ pub struct Dsu<V>:
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); d.merge(2, 1) == Some((kept: 0, merged: 2))`
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); d.merge(1, 0) == None`
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
-        var x = self.find_halving(a.ord)
-        var y = self.find_halving(b.ord)
+        var x = self.find_ord(a.ord)
+        var y = self.find_ord(b.ord)
         if x == y: return None
         unchecked:
             if p[x] > p[y]: swap(mut x, mut y)
@@ -129,8 +123,8 @@ pub struct Dsu<V>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
     /// example: `var d = Dsu<0..3>(); d.unite(0, 2); d.size(2) == 2 and d.size(1) == 1`
-    pub fn size(mut self, v: V) -> Int:
-        let r = self.find_halving(v.ord)
+    pub fn size(self, v: V) -> Int:
+        let r = self.find_ord(v.ord)
         unchecked:
             return -p[r]
 
@@ -160,7 +154,7 @@ pub struct Dsu<V>:
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(3, 1); d.groups() == [[0], [1, 3], [2]]`
-    pub fn groups(mut self) -> List<List<V>>:
+    pub fn groups(self) -> List<List<V>>:
         var gid: [V]Int = -1
         var out: List<List<V>> = []
         for v in V:
@@ -179,7 +173,7 @@ pub struct Dsu<V>:
 /// `mark` and `undo_to` step back in time like `Dsu`'s, and restore the values too: every
 /// merge and every `set` since the mark is undone, O(1) each.
 pub struct DsuOf<V, T>:
-    up: [V]V
+    @cache up: [V]V
     sz: [V]1..=V.count
     val: [V]T
     join: (T, T) -> T
@@ -207,7 +201,10 @@ pub struct DsuOf<V, T>:
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
     pub fn find(self, v: V) -> V:
         var x = v
-        while up[x] != x: x = up[x]
+        while up[x] != x:
+            let par = up[x]
+            if not marked: up[x] = up[par]
+            x = par
         x
 
     /// The value of `v`'s set.
@@ -215,7 +212,7 @@ pub struct DsuOf<V, T>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(0, 2); d.get(2) == 4 and d.get(1) == 2`
-    pub fn get(mut self, v: V) -> T:
+    pub fn get(self, v: V) -> T:
         let r = self.find(v)
         val[r]
 
