@@ -1,7 +1,7 @@
 # CP Lang toolchain architecture
 
 Owner: lead agent. Status: adopted, 2026-11-21; revised
-2026-11-21 for maintainability (one IR, one interpreter; see B0).
+2026-11-21 for maintainability (one IR, one interpreter; see "Dropped from the first plan" in B3).
 
 This file has two halves. Part A is the target: the architecture we would
 build if no code existed. Part B is how today's code gets there. The
@@ -319,31 +319,33 @@ files are either checked by a test or never committed.
 
 ## B1. Where we are
 
-- About 170k lines of Rust in 17 crates: `cpl-syntax` -> `cpl-check`
-  (salsa-style database) -> `cpl-ir` (typed lowering) -> `cpl-interp` (a
-  tree-walker plus a bytecode VM that falls back to it) and `cpl-codegen`
-  (C++17).
-- It runs the 100 corpus ports in their 0.2 form and meets about 170 of
-  500 conformance cases.
-- `stdlib/` is 39 CP Lang modules (about 21k lines) under 0.2 names;
-  `spec/std/` has the v0.3 signatures and docs, with bodies ported from
-  `stdlib/` where they matched (954) and `todo` elsewhere (1,586).
-- v0.3 ports run with `CPL_SPEC=1 CPL_STD=spec/std`; 2 of the 54 with
-  generated tests pass.
+Measured 2026-11-22; commands in `plan/domains/tech-debt/metrics.toml`
+and `plan/domains/compiler/metrics.toml`.
+
+- About 201k lines of Rust in 19 crates
+  (`git ls-files 'crates/*.rs' | xargs cat | wc -l`): `cpl-syntax` ->
+  `cpl-check` (salsa-style database) -> `cpl-ir` (typed lowering) ->
+  `cpl-interp` (a tree-walker plus a register VM that falls back to it)
+  and `cpl-codegen` (C++17). `cpl-contest`, `cpl-json` and `cpl-wasm` are
+  not in A4 yet; `prover` (package `cpl-prover`) is still its own crate.
+- One language: edition 0.2, its `stdlib/` and the `CPL_SPEC`/`CPL_STD`
+  switches are deleted (`edition_refs` 0).
+- Conformance 1617/1711; interpreter == C++ on 1242 of 1336 (94 skipped);
+  corpus 12/100 ports pass.
+- The stdlib is 39 modules in `spec/std/` with 294 `todo` stubs.
 
 | Target | Today |
 |---|---|
-| one `std/` tree | `spec/std` signatures plus `stdlib` bodies |
-| one language | v0.3 behind `CPL_SPEC` |
-| no library names in the compiler | 63 names special-cased in `cpl-ir/src/lower/call.rs` |
-| operator table as data; every spec block parses | precedence in parser code and prose |
+| one `std/` tree | `spec/std/`, bundled into `cpl-check` by `build.rs` |
+| no library names in the compiler | 89 names string-matched in `cpl-ir/src/lower/call.rs` (`ir_builtin_names`) |
+| operator table as data; every spec block parses | precedence in parser code and prose; 19/185 spec blocks pass |
 | coherent traits checked at definition; `Error` poisons | generics and traits partial; cascading errors |
-| harness and scoreboard in one place | `conformance.py`, `corpus-tests.py`, `scoreboard.py` and ad hoc runners |
+| harness and scoreboard in one place | `cpl-conform`, plus `scripts/corpus-tests.py` |
 | ownership on the IR | partial checks in `cpl-check` |
-| one facts framework | range reasoning spread across checker and codegen (`prover`, `ranges.rs`) |
-| one interpreter | a tree-walker plus a VM that falls back to it |
+| one facts framework | range reasoning spread across checker and codegen (`prover`, `ranges.rs`); `cpl-lint -> cpl-prover` (`layer_violations` 1) |
+| one interpreter | a tree-walker (`cpl-interp/src/lib.rs`) plus a VM (`vm/`) that falls back to it on 13 of 13 runnable corpus programs |
 | layout as one module | `niche.rs` and `ranges.rs` inside codegen |
-| one test harness | scattered scripts |
+| one test harness | `cpl-conform` plus per-crate tests and scripts |
 
 ## B2. Rules that stop path dependence
 
@@ -377,13 +379,13 @@ its own.
    duplicated value and trap code. The debugger, traces, stress and WASM
    run on the VM; the DAP recording becomes the delta log plus periodic
    snapshots.
-3. **`cpl-rt` and the name-ban gate.** The 63 special-cased names in
+3. **`cpl-rt` and the name-ban gate.** The 89 special-cased names in
    `lower/call.rs` move into `std/` as CP Lang or into the intrinsics
    table; the gate and the no-privilege test turn on. `lower/call.rs`
    shrinks to call resolution.
-4. **One library tree and one mode.** `spec/std` and `stdlib` merge into
-   `std/`; a codemod moves 0.2 tests, examples and ports to v0.3 spelling;
-   `CPL_SPEC`, `CPL_STD` and `stdlib/` are deleted.
+4. **One library tree.** `spec/std` moves to `std/`; the remaining 0.2
+   ports (`v02_port_files`) are deleted or rewritten. (One mode is done:
+   0.2, `CPL_SPEC`, `CPL_STD` and `stdlib/` are deleted.)
 5. **Front end in place.** `cpl-check` gets coherent traits, local
    inference and `Error` poisoning as modules of the same crate; the whole
    of `std/` type-checks as a library.

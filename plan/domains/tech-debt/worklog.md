@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `plan/ARCHITECTURE.md` B1 refreshed to measured values: 201k Rust lines in 19 crates, one language (0.2 row closed), 89 call.rs names (was 63), harness and interpreter rows updated; B3 step 4 now only the `std/` move and the 0.2 ports.
 - Ratchet: `edition_refs` also counts `spec_edition` (the compiler packet's 120 was right; 0 now); `stale_arch_paths` skips gitignored build output and `## Known debt` lists, and stays informational: 10 on main (`--list stale_arch_paths`: 1 compiler, 1 diagnostics, 5 idioms citing `devin/idioms-docs` files, 1 site, and 2 debugger paths that are planned on purpose, `crates/cpl-trace` and `web/packages/trace-viewer`). Gating it would fail every lane that names a planned path; it gates once docs mark planned paths.
 - Dead edition references 120 -> 0 in `cpl-check`/`cpl-ir` (note in `plan/domains/compiler/worklog.md`); `edition_refs` baseline tightened to 0.
 - Cold review round 1 (packets on main by 84cdb28e), rubric scores (right home / one way / local next change / legible / finished migration): diagnostics 4/3/4/4/3, site 4/4/4/4/3, compiler 3/3/3/4/2, lint-fmt 3/2/3/4/3, idioms 3/3/4/4/2, stdlib 4/2/3/4/3; findings in each lane's worklog. `stale_arch_paths` has false positives (gitignored build output such as `web/out`, missing files named on purpose in known-debt lists), so it stays ungated until the check skips ignored paths.
