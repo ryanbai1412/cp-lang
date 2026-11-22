@@ -5,18 +5,17 @@ Measured 2026-11-22 with `python3 bench/v03_perf_bench.py --suite dryrun,corpus,
 | suite | pairs | measured or ok | not building / not comparable |
 |---|---|---|---|
 | dryrun (`research/dryrun/v03`) | 11 | 11 | 0 (p06_labyrinth fixed by the `(char)` cast commit) |
-| bench (`bench/*/`) | 54 | 39 | 15 (below; 5 fixed in `bench/` by perf) |
+| bench (`bench/*/`) | 54 | 40 | 14 (below; 6 fixed in `bench/` by perf) |
 | corpus (`corpus/problems/*`) | 307 | 120 | 187 (below) |
 
-## bench: 15 pairs that cannot build yet
+## bench: 14 pairs that cannot build yet
 
-Fixed by perf in `bench/`: `containers/bitset` (copy via `shifted(0)`; `Bitset` has no `.clone()`), `containers/flatmap` (`FlatMap.new(0, cap:)`), `strings/trie` (`var` fields), `strings/palindromic_tree` and `strings/suffix_automaton` (`occ_counts`).
+Fixed by perf in `bench/`: `containers/bitset` (copy via `shifted(0)`; `Bitset` has no `.clone()`), `containers/flatmap` (`FlatMap.new(0, cap:)`), `strings/trie` (`var` fields), `strings/palindromic_tree` and `strings/suffix_automaton` (`occ_counts`), `containers/monodeque` (`Window(min)`, which keeps a monotone deque for a selective op).
 
 | pairs | why | owner |
 |---|---|---|
 | flow/bounded, flow/closure, flow/dinic, flow/general, flow/globalcut, flow/gomory, flow/matching, flow/pushrelabel, flow/wgeneral | `spec/std/flow.cp` uses `V.K` (domain size), which no std module declares on v0.3 (`r.len` is the spec's name, `spec/core/04-indices.md`) | stdlib |
 | math/ntt | builds, but times out: generic `convolve<T>` is the O(n·m) loop for `Mod<p>`; the NTT path (`convolve_prime`) is not reachable from `Mod` lists | stdlib |
-| containers/monodeque | `std.window` has no `MonoDeque` | stdlib |
 | ranges/range_fenwick | `std.fenwick` has no `RangeFenwick` (range add, range sum) | stdlib |
 | seq/scan | `std.seq` has no `suffix_scan` (`suffix_fold` is cut-indexed, not a drop-in) | stdlib |
 | seq/scan_in_place | `std.seq` has no `scan_in_place` / `suffix_scan_in_place` | stdlib |
