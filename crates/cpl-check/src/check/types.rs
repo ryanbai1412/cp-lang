@@ -1727,6 +1727,7 @@ impl<'a> Checker<'a> {
                         .all(|a| self.implements_trait_inner(a, trait_name, seen)),
                 }
             }
+            Ty::RowWithout(inner, _) => self.implements_trait_inner(inner, trait_name, seen),
             Ty::TypeName(_) => false,
         }
     }
@@ -1806,6 +1807,7 @@ impl<'a> Checker<'a> {
                     _ => true,
                 }
             }
+            Ty::RowWithout(inner, _) => self.derives_print(inner, allow_none, seen),
             Ty::Domain(_) | Ty::TypeName(_) => true,
         }
     }
