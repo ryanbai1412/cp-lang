@@ -1,6 +1,7 @@
 # ioi08p1
 
-Score: 3/5
+Score: pending cold rescore (added dream `proto/ports/scout_batch_22/dream/ioi08p1.cp`, port = dream: replaced parallel `on_longest` list with `Set<Int>`, dropped `let _ =`, bound `ch = Char(c.label)` once, bounded `n: 1..=25_000`; verified `cpl run` == `g++` on sample, 19.0 KB, 0 errors, 0 lints)
+Dream: pending cold rescore (new dream matching the polished port)
 
 Baseline review, cold, on main 15cc353a, after 14cdbd55 moved it onto `std.strings.Trie`. There is no dream, so the score is capped at 3. The header (lines 1-11) states the walk and why the longest word goes last, and the body follows it.
 
