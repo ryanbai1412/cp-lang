@@ -5579,7 +5579,24 @@ impl<'a> Lowerer<'a> {
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
             (Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView, "keys") => {
+                let value = if Self::keyed_view(&value.ty) {
+                    self.hold_view(value, span)
+                } else {
+                    value
+                };
+                let known = match &value.kind {
+                    ExprKind::Local(slot) => self.cx.view_lo.contains_key(slot),
+                    ExprKind::Global(gid) => self.global_view_lo.contains_key(gid),
+                    _ => false,
+                };
                 let lo = match &value.kind {
+                    // A view's keys are where it starts in its source, which a
+                    // parameter or temporary only knows at run time (R04b.1.1).
+                    ExprKind::Local(_) | ExprKind::Global(_)
+                        if !known && Self::keyed_view(&value.ty) =>
+                    {
+                        self.key_lo(&value, span)
+                    }
                     ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => args
                         .get(1)
                         .cloned()
