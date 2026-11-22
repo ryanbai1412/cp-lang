@@ -176,7 +176,7 @@ Catalogue tiers today: 262 `fix`, 154 `fix?`, 242 `warn`, 15 `doc`; all start op
 5. Add `@lint` declarations in the stdlib and delete the hard-coded stdlib names from the linter.
 6. Rename config to `cpl.toml` and `with lint(...)`.
 7. Compile the checker for wasm so the playground gets every lint.
-8. Then grow the catalogue family by family from `spec/idioms/lints.md` plus `lints.md` (about 670 entries), most-valuable first: bound-aware correctness, P0 bug classes, then stdlib replacements.
+8. Then grow the catalogue family by family from `spec/idioms/lints.md` (about 670 entries), most-valuable first: bound-aware correctness, P0 bug classes, then stdlib replacements.
 
 Steps 1–5 are architecture work, about a day. After that, a typical new lint is a record plus a `@lint` line and needs no Rust.
 
