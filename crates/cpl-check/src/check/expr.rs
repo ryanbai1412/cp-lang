@@ -3482,11 +3482,23 @@ impl<'a> Checker<'a> {
             Some(ast::StmtKind::Expr(e)) => Some(e.clone()),
             _ => None,
         };
+        let part = |c: &mut Self, item: &Expr, g: &Ty, w: &Ty| {
+            c.fits(g, w) || c.literal_position(item, w) || c.literal_shape_fits(item, g, w)
+        };
+        let list_elem = |ty: &Ty| match ty {
+            Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(args[0].clone()),
+            Ty::Array { index, elem } if index.len() == 1 => Some((**elem).clone()),
+            _ => None,
+        };
         match (&at.kind, got, want) {
-            (ExprKind::List(_), Ty::Named { name, args }, Ty::Array { index, elem })
-                if name == "List" && index.len() == 1 =>
+            (ExprKind::List(items), Ty::Named { name, args }, _)
+                if name == "List" && list_elem(want).is_some() =>
             {
-                args.first().is_none_or(|g| self.fits(g, elem))
+                let w = list_elem(want).unwrap_or(Ty::Error);
+                match args.first() {
+                    Some(g) => items.iter().all(|item| part(self, item, g, &w)),
+                    None => true,
+                }
             }
             (ExprKind::Tuple(items), Ty::Tuple(gots), Ty::Tuple(wants))
                 if items.len() == gots.len() && gots.len() == wants.len() =>
@@ -3494,7 +3506,16 @@ impl<'a> Checker<'a> {
                 items
                     .iter()
                     .zip(gots.iter().zip(wants))
-                    .all(|(item, (g, w))| self.fits(g, w) || self.literal_shape_fits(item, g, w))
+                    .all(|(item, (g, w))| part(self, item, g, w))
+            }
+            (ExprKind::Record(items), Ty::Record(gots), Ty::Record(wants))
+                if items.len() == gots.len() && gots.len() == wants.len() =>
+            {
+                items.iter().all(|(name, item)| {
+                    let g = gots.iter().find(|(n, _)| *n == name.text).map(|(_, t)| t);
+                    let w = wants.iter().find(|(n, _)| *n == name.text).map(|(_, t)| t);
+                    matches!((g, w), (Some(g), Some(w)) if part(self, item, g, w))
+                })
             }
             (ExprKind::Match { arms, .. }, _, _) => {
                 let tails: Vec<_> = arms.iter().map(|arm| tail(&arm.body)).collect();

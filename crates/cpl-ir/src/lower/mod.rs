@@ -4772,6 +4772,13 @@ impl<'a> Lowerer<'a> {
                 let d = *d;
                 Ok(self.cast(Cast::Trust, e, Ty::Bound(d)))
             }
+            // R04.2.18: an integer literal where a position is wanted is the position it labels.
+            (Ty::Pos(d), Ty::Int)
+                if matches!(e.kind, ExprKind::Int(_)) && !self.product_domains.contains_key(d) =>
+            {
+                let d = *d;
+                Ok(self.cast(Cast::FromLabel(d), e, Ty::Pos(d)))
+            }
             // §124: half-open cut range `Range<D.bounds>` -> `Range<D>` (same two ints, free).
             (Ty::Range(want_elem), Ty::Range(got_elem))
                 if matches!(
