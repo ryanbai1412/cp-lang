@@ -40,7 +40,7 @@ DEFAULT_MAX_RS_LINES = 2000
 
 TODO_STUB_RE = re.compile(r"(?:=\s*todo|^\s*todo)(?:\s*(?://.*)?$)")
 RUST_IGNORE_RE = re.compile(r"^\s*#\[ignore\b")
-EDITION_RE = re.compile(r"is_v03|CPL_EDITION|Edition::V02|edition::")
+EDITION_RE = re.compile(r"is_v03|spec_edition|CPL_EDITION|Edition::V02|edition::")
 # A match arm on string literals: `"name" | "other" =>`.
 ARM_RE = re.compile(r'^\s*"[A-Za-z_][\w.]*"(?:\s*\|\s*"[A-Za-z_][\w.]*")*\s*=>')
 # Library types the IR, interpreter and emitter should not know by name;
@@ -218,17 +218,45 @@ def direct_python(root: Path) -> list[str]:
     return out
 
 
+def _git_env() -> dict[str, str]:
+    """The environment without GIT_*: a hook's GIT_DIR must not redirect `git -C`."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
+def _git_ignored(root: Path, paths: list[str]) -> set[str]:
+    """Paths `.gitignore` covers: build output, not a stale citation."""
+    if not paths:
+        return set()
+    try:
+        r = subprocess.run(["git", "-C", str(root), "check-ignore", "--no-index", "--stdin"],
+                           input="\n".join(q for p in paths for q in (p, p + "/")),
+                           capture_output=True, text=True, env=_git_env())
+    except OSError:
+        return set()
+    return {p.rstrip("/") for p in r.stdout.split()} if r.returncode in (0, 1) else set()
+
+
 def stale_arch_paths(root: Path) -> list[str]:
-    """Backticked repo paths in ARCHITECTURE docs that do not exist."""
+    """Backticked repo paths in ARCHITECTURE docs that do not exist.
+
+    Skips gitignored build output and the "Known debt" section, which may
+    name a missing file on purpose.
+    """
     docs = [root / "plan/ARCHITECTURE.md", *sorted((root / "plan/domains").glob("*/ARCHITECTURE.md"))]
-    out = []
+    found = []
     for d in (d for d in docs if d.is_file()):
+        in_debt = False
         for i, line in enumerate(_lines(d), 1):
+            if line.startswith("#"):
+                in_debt = line.lstrip("#").strip().lower().startswith("known debt")
+            if in_debt:
+                continue
             for m in ARCH_PATH_RE.finditer(line):
                 path = m.group(1).rstrip("/.")
                 if "*" not in path and "<" not in path and not (root / path).exists():
-                    out.append(f"{_rel(root, d)}:{i} {path}")
-    return out
+                    found.append((f"{_rel(root, d)}:{i}", path))
+    ignored = _git_ignored(root, sorted({p for _, p in found}))
+    return [f"{where} {p}" for where, p in found if p not in ignored]
 
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

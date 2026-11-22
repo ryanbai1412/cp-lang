@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -115,6 +116,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.dev_crate_edges(root), ["cpl-lint -> cpl-cli"])
             self.assertEqual(dr.layer_violations(root), ["cpl-lint -> cpl-prover"])
             self.assertEqual(dr.stale_arch_paths(root), ["plan/ARCHITECTURE.md:1 crates/gone/x.rs"])
+
+    def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # A pre-commit hook exports GIT_DIR; `git init` would then rewrite the outer repo.
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "web/.gitignore", "out/\n")
+            self._write(root, "plan/domains/x/ARCHITECTURE.md",
+                        "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
+            self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
 
     def test_evaluate_counters_and_edges(self) -> None:
         baseline = {"edition_refs": 3, "crate_edges": ["a -> b", "a -> c"]}

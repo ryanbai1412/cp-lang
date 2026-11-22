@@ -96,7 +96,7 @@ milestone = "M1"
 [[metric]]
 name = "stale_arch_paths"
 command = "python3 scripts/debt-ratchet.py --show stale_arch_paths"
-today = 11
+today = 10
 target = "0"
 milestone = "M2"
 
