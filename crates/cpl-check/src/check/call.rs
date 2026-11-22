@@ -141,6 +141,9 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.filled(callee, args) {
             return ty;
         }
+        if let Some(ty) = self.grid_shape_call(callee, args) {
+            return ty;
+        }
         if let Some(ty) = self.sorted_range_call(call, callee, args) {
             return ty;
         }

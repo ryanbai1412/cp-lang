@@ -234,4 +234,30 @@ impl<'a> Checker<'a> {
             _ => None,
         }
     }
+
+    /// `Prefix(a)` on `a: [R, C]T` builds the family's 2-D shape.
+    pub(super) fn grid_shape_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        let shape = prefix_shape_struct(name, 3)?;
+        if self.local(name).is_some()
+            || self.global(shape).is_none()
+            || args.len() != 1
+            || args[0].name.is_some()
+        {
+            return None;
+        }
+        let Ty::Array { index, elem } = self.quietly(|c| c.infer(&args[0].value)) else {
+            return None;
+        };
+        if index.len() != 2 || !index.iter().all(|d| matches!(d, Ty::Pos(_))) {
+            return None;
+        }
+        self.infer(&args[0].value);
+        Some(Ty::Named {
+            name: shape.to_string(),
+            args: vec![index[0].clone(), index[1].clone(), *elem],
+        })
+    }
 }

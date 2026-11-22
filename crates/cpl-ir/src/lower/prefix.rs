@@ -111,4 +111,35 @@ impl<'a> Lowerer<'a> {
         let ret = self.ret_of(fn_id, span);
         self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
     }
+
+    /// `Prefix(a)` on `a: [R, C]T`: the family's 2-D shape `new(a)`.
+    pub(super) fn grid_shape_ctor(&mut self, shape: &str, args: &[ast::Arg], span: Span) -> Expr {
+        let src = self.expr(&args[0].value, None);
+        let Ty::Array { dims, elem } = &src.ty else {
+            return self.err_expr(span);
+        };
+        let (Dim::Pos(r), Dim::Pos(c)) = (&dims[0], &dims[1]) else {
+            self.error(
+                codes::TYPE_MISMATCH,
+                span,
+                format!("`{shape}` takes an array over two domains"),
+            );
+            return self.err_expr(span);
+        };
+        let gargs = vec![
+            GenArg::Domain(*r),
+            GenArg::Domain(*c),
+            GenArg::Ty((**elem).clone()),
+        ];
+        let Some(Sym::GenStruct(gid)) = self.get_sym(shape) else {
+            return self.err_expr(span);
+        };
+        let sid = self.instantiate_struct(gid, gargs);
+        let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+            self.unsupported(span, "this 2-D shape has no `new` constructor");
+            return self.err_expr(span);
+        };
+        let ret = self.ret_of(fn_id, span);
+        self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
+    }
 }

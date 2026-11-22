@@ -259,6 +259,17 @@ impl<'a> Lowerer<'a> {
                         self.call_gen_fn(gfid, Vec::new(), None, args, span)
                     }
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
+                    Some(Sym::GenStruct(_))
+                        if prefix_shape_struct(name, 3).is_some()
+                            && args.len() == 1
+                            && args[0].name.is_none()
+                            && matches!(
+                                self.probe_ty_silent(&args[0].value),
+                                Some(Ty::Array { ref dims, .. }) if dims.len() == 2
+                            ) =>
+                    {
+                        self.grid_shape_ctor(prefix_shape_struct(name, 3).unwrap(), args, span)
+                    }
                     Some(Sym::GenStruct(gid)) => {
                         self.call_gen_struct(gid, Vec::new(), args, hint, span)
                     }
