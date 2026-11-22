@@ -144,6 +144,12 @@ fn handles_calls_fields_ranges_and_postfix() {
 }
 
 #[test]
+fn keeps_a_bang_in_typo_one_operator() {
+    assert_eq!(fmt("print(s !in reach)\n"), "print(s !in reach)\n");
+    assert_eq!(fmt("print(s!.len)\n"), "print(s!.len)\n");
+}
+
+#[test]
 fn spaces_block_expressions_and_decorators() {
     assert_eq!(
         fmt("let lim = {let s = f(); s*2+1}\n"),
