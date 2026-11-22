@@ -2714,7 +2714,155 @@ pub fn point_location_planar<V>(
 /// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == [(0, 1, 2)]`
 /// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4), Pt(1, 1)]) == [(0, 1, 3), (0, 3, 2), (1, 2, 3)]`
 /// example: `delaunay([Pt(0, 0), Pt(1, 1), Pt(2, 2)]) == []`
-pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)> = todo
+@allow(unproven_list_index)
+pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>:
+    let keys = [k for k in pts.keys]
+    [(keys[a], keys[b], keys[c]) for (a, b, c) in delaunay_idx([pts[k] for k in keys])]
+
+@allow(unproven_list_index)
+fn delaunay_idx(ps: List<Pt>) -> List<(Int, Int, Int)>:
+    let n = ps.len
+    var order = [i for i in 0..n]
+    order.sort(by: i => (ps[i].x, ps[i].y))
+    let s = [ps[i] for i in order]
+    for i in 1..n: assert s[i] != s[i - 1], "`delaunay` needs distinct points"
+    if n < 3 or (2..n).all(i => cross128_3(s[0], s[1], s[i]) == I128(0)): return []
+    var qs = DelQuads([], [], [], [], s)
+    var e = qs.rec(0, n).0
+    while qs.turn(qs.dest(qs.o[e]), qs.dest(e), qs.p[e]) < 0: e = qs.o[e]
+    var queue = [e]
+    let _ = qs.face(e, mut queue)
+    var out: List<(Int, Int, Int)> = []
+    var qi = 0
+    while qi < queue.len:
+        e = queue[qi]
+        qi += 1
+        if qs.mark[e]: continue
+        let f = qs.face(e, mut queue)
+        let (a, b, c) = (order[f[0]], order[f[1]], order[f[2]])
+        out.push(if a < b and a < c: (a, b, c) else: if b < c: (b, c, a) else: (c, a, b))
+    out.sort()
+    out
+
+struct DelQuads:
+    rot: List<Int>
+    o: List<Int>
+    p: List<Int>
+    mark: List<Bool>
+    s: List<Pt>
+
+    @allow(unproven_list_index)
+    fn r(self, e: Int) -> Int = rot[rot[e]]
+    @allow(unproven_list_index)
+    fn dest(self, e: Int) -> Int = p[rot[rot[e]]]
+    @allow(unproven_list_index)
+    fn prev(self, e: Int) -> Int = rot[o[rot[e]]]
+    fn next(self, e: Int) -> Int = self.prev(self.r(e))
+    @allow(unproven_list_index)
+    fn turn(self, a: Int, b: Int, c: Int) -> Int:
+        let k = cross128_3(s[a], s[b], s[c])
+        if k > I128(0): 1 else: if k < I128(0): -1 else: 0
+
+    @allow(unproven_list_index)
+    fn in_circle(self, q: Int, a: Int, b: Int, c: Int) -> Bool:
+        let q2 = s[q].norm2_128
+        let da = s[a].norm2_128 - q2
+        let db = s[b].norm2_128 - q2
+        let dc = s[c].norm2_128 - q2
+        cross128_3(s[q], s[a], s[b]) * dc + cross128_3(s[q], s[b], s[c]) * da + cross128_3(s[q], s[c], s[a]) * db > I128(0)
+
+    @allow(unproven_list_index)
+    fn edge(mut self, a: Int, b: Int) -> Int:
+        let e = rot.len
+        for i in 0..4:
+            rot.push(e + (i + 1) % 4)
+            o.push(0)
+            p.push(-1)
+            mark.push(false)
+        for i in 0..4:
+            let q = e + (i + 1) % 4
+            o[q] = if i % 2 == 1: q else: e + (i + 3) % 4
+        p[e] = a
+        p[e + 2] = b
+        e
+
+    @allow(unproven_list_index)
+    fn splice(mut self, a: Int, b: Int):
+        let x = rot[o[a]]
+        let y = rot[o[b]]
+        let t = o[x]
+        o[x] = o[y]
+        o[y] = t
+        let u = o[a]
+        o[a] = o[b]
+        o[b] = u
+
+    fn connect(mut self, a: Int, b: Int) -> Int:
+        let q = self.edge(self.dest(a), p[b])
+        self.splice(q, self.next(a))
+        self.splice(self.r(q), b)
+        q
+
+    fn cut(mut self, e: Int):
+        self.splice(e, self.prev(e))
+        self.splice(self.r(e), self.prev(self.r(e)))
+
+    fn above(self, e: Int, base: Int) -> Bool = self.turn(self.dest(e), self.dest(base), p[base]) > 0
+
+    fn rec(mut self, lo: Int, hi: Int) -> (Int, Int):
+        let m = hi - lo
+        if m <= 3:
+            let a = self.edge(lo, lo + 1)
+            let b = self.edge(lo + 1, hi - 1)
+            if m == 2: return (a, self.r(a))
+            self.splice(self.r(a), b)
+            let side = self.turn(lo, lo + 1, lo + 2)
+            if side == 0: return (a, self.r(b))
+            let c = self.connect(b, a)
+            return if side < 0: (self.r(c), c) else: (a, self.r(b))
+        let half = m / 2
+        var (ra, a) = self.rec(lo, hi - half)
+        var (b, rb) = self.rec(hi - half, hi)
+        while true:
+            if self.turn(p[b], self.dest(a), p[a]) < 0: a = self.next(a)
+            elif self.turn(p[a], self.dest(b), p[b]) > 0: b = o[self.r(b)]
+            else: break
+        var base = self.connect(self.r(b), a)
+        if p[a] == p[ra]: ra = self.r(base)
+        if p[b] == p[rb]: rb = base
+        while true:
+            var lc = o[self.r(base)]
+            if self.above(lc, base):
+                while self.in_circle(self.dest(o[lc]), self.dest(base), p[base], self.dest(lc)):
+                    let t = o[lc]
+                    self.cut(lc)
+                    lc = t
+            var rc = self.prev(base)
+            if self.above(rc, base):
+                while self.in_circle(self.dest(self.prev(rc)), self.dest(base), p[base], self.dest(rc)):
+                    let t = self.prev(rc)
+                    self.cut(rc)
+                    rc = t
+            let vl = self.above(lc, base)
+            let vr = self.above(rc, base)
+            if not vl and not vr: break
+            if not vl or (vr and self.in_circle(self.dest(rc), p[rc], self.dest(lc), p[lc])):
+                base = self.connect(rc, self.r(base))
+            else:
+                base = self.connect(self.r(base), self.r(lc))
+        (ra, rb)
+
+    @allow(unproven_list_index)
+    fn face(mut self, e: Int, mut queue: List<Int>) -> List<Int>:
+        var f: List<Int> = []
+        var c = e
+        while true:
+            mark[c] = true
+            f.push(p[c])
+            queue.push(self.r(c))
+            c = self.next(c)
+            if c == e: break
+        f
 
 /// The Voronoi cell of each point, clipped to the box `[-bound, bound]^2`, as a counter-clockwise
 /// polygon (from the Delaunay dual, then half-plane clipping).
@@ -3843,3 +3991,33 @@ fn planar_faces_cover_each_side_once_and_satisfy_euler():
         let verts = used.count(true)
         let comps = [i for i in 0..k * k if used[i] and root(parent, i) == i].len
         assert faces.len == edges.len - verts + 2 * comps
+
+@test
+fn delaunay_is_a_ccw_empty_circle_triangulation_of_the_hull():
+    for _ in 0..60:
+        var seen: List<Pt> = []
+        for _ in 0..rand(1, 30):
+            let q = Pt(rand(-4, 4), rand(-4, 4))
+            if not seen.contains(q): seen.push(q)
+        let tris = delaunay(seen)
+        let hull = convex_hull(seen)
+        if hull.len < 3:
+            assert tris.is_empty
+            continue
+        var total = 0
+        var used = List.filled(seen.len, false)
+        for (a, b, c) in tris:
+            assert a < b and a < c
+            let k = (seen[b] - seen[a]).cross128(seen[c] - seen[a])
+            assert k > I128(0)
+            total += area2([seen[a], seen[b], seen[c]])
+            used[a] = true
+            used[b] = true
+            used[c] = true
+            for q in seen:
+                let q2 = q.norm2_128
+                let inside = (seen[a] - q).cross128(seen[b] - q) * (seen[c].norm2_128 - q2) + (seen[b] - q).cross128(seen[c] - q) * (seen[a].norm2_128 - q2) + (seen[c] - q).cross128(seen[a] - q) * (seen[b].norm2_128 - q2)
+                assert inside <= I128(0)
+        assert total == area2(hull)
+        assert used.all(u => u)
+        assert tris == tris.sorted()
