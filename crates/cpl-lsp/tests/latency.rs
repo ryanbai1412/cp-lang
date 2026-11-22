@@ -141,9 +141,8 @@ fn check_latency(lines: usize) {
     for _ in 0..10 {
         let mut db = Database::new();
         db.set_file("a.cp", src.as_str());
-        let start = Instant::now();
-        let analysis = db.analyze("a.cp").unwrap();
-        cold.0.push(start.elapsed());
+        let (analysis, took) = time_cpu(|| db.analyze("a.cp").unwrap());
+        cold.0.push(took);
         assert!(
             analysis.diagnostics.is_empty(),
             "{:#?}",
@@ -159,10 +158,11 @@ fn check_latency(lines: usize) {
     let mut warm = Samples(Vec::new());
     for key in 0..200 {
         let text = typed(&src, at, key);
-        let start = Instant::now();
-        db.set_file("a.cp", text.as_str());
-        db.analyze("a.cp").unwrap();
-        warm.0.push(start.elapsed());
+        let (_, took) = time_cpu(|| {
+            db.set_file("a.cp", text.as_str());
+            db.analyze("a.cp").unwrap()
+        });
+        warm.0.push(took);
     }
     report("check, after a keystroke", actual, &mut warm, CHECK_BUDGET);
 
@@ -194,16 +194,17 @@ fn position(src: &str, offset: usize) -> Value {
 
 /// Sends a message as text, as it arrives on the wire, and returns the
 /// replies as text, as they leave. Parsing and printing are part of the cost.
+/// Timed by thread CPU time where the platform has it, else wall time.
 fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
     let wire = message.to_string();
-    let start = Instant::now();
-    let parsed = cpl_json::parse(&wire).unwrap();
-    let replies: Vec<String> = server
-        .handle(&parsed)
-        .iter()
-        .map(Value::to_string)
-        .collect();
-    (replies, start.elapsed())
+    time_cpu(|| {
+        let parsed = cpl_json::parse(&wire).unwrap();
+        server
+            .handle(&parsed)
+            .iter()
+            .map(Value::to_string)
+            .collect()
+    })
 }
 
 fn lsp_latency(lines: usize) {
@@ -438,14 +439,16 @@ fn on_cpu() -> Option<Duration> {
     Some(Duration::from_nanos(nanos))
 }
 
-/// `round_trip`, timed by CPU time where the platform has it, else wall time.
-fn cpu_round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
+/// Runs `f`, timed by thread CPU time where the platform has it, else wall time.
+fn time_cpu<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let before = on_cpu();
-    let (replies, wall) = round_trip(server, message);
-    match (before, on_cpu()) {
-        (Some(before), Some(after)) => (replies, after - before),
-        _ => (replies, wall),
-    }
+    let start = Instant::now();
+    let out = f();
+    let elapsed = match (before, on_cpu()) {
+        (Some(before), Some(after)) => after - before,
+        _ => start.elapsed(),
+    };
+    (out, elapsed)
 }
 
 #[test]
@@ -489,7 +492,7 @@ fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, boo
                     ("contentChanges", Value::Array(vec![obj([("text", text.as_str().into())])])),
                 ]),
             );
-            let (replies, took) = cpu_round_trip(&mut server, &change);
+            let (replies, took) = round_trip(&mut server, &change);
             assert!(replies.iter().any(|r| r.contains("publishDiagnostics")), "no diagnostics");
             errors |= replies.iter().any(|r| r.contains(r#""severity":1"#));
             samples.0.push(took);
