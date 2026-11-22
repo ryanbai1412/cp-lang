@@ -1,10 +1,14 @@
-// Codeforces 2262 E: ans[k] = choose(2n, k) / (k + 1) * [u^(n+1)] (u * sum catalan(i)^2 u^i)^(k+1),
-// then a Taylor shift by -1. The modulus is read per test, so `Z` and `Comb`
-// take it at runtime; the series stay plain `Int`s for `convolve_mod`.
+// Codeforces 2262 E — Catalan-Squared Generating Function & Taylor Shift
+//
+// Compute `ans[k] = choose(2n, k) / (k + 1) * [u^(n+1)] (u * sum C_i^2 u^i)^(k+1)`
+// modulo the runtime prime `m` (using `convolve_mod` over `Int` coefficient
+// lists), then apply the binomial Taylor shift `ans(x - 1)`:
+// `out[j] = sum_{k=j..n} ans[k] * choose(k, j) * (-1)^(k - j)`.
+
 use std.ntt.{convolve_mod}
 
 @!multitest
-let (n, m): (Int, Int) = read()
+let (n, m): (1..=500, 2..=2 * 10 ** 9) = read()
 type Z = Mod<m>
 let comb = Comb<Z>()
 
@@ -15,7 +19,6 @@ for k in 0..=n:
     cur = convolve_mod(cur, symbol, m)[..n + 2].to_list()
     ans[k] = cur[n + 1] * comb.choose(2 * n, k) * comb.inv(k + 1)
 
-// ans(x - 1): out[j] = sum over k >= j of ans[k] * choose(k, j) * (-1)^(k - j)
 fn shift(j: Int) -> Int:
     var tot: Z = 0
     for k in j..=n:
