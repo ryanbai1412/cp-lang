@@ -141,7 +141,10 @@ fn input():
         .split_whitespace()
         .map(|t| t.parse().unwrap())
         .collect();
-    assert_eq!(nums[0], 3, "shrunk n should be minimal (3), got {content:?}");
+    assert_eq!(
+        nums[0], 3,
+        "shrunk n should be minimal (3), got {content:?}"
+    );
     assert!(
         nums[1..].iter().any(|&x| x > 5),
         "shrunk input should still trigger bug: {content:?}"
@@ -267,7 +270,10 @@ fn input():
         .split_whitespace()
         .map(|t| t.parse().unwrap())
         .collect();
-    assert_eq!(nums[0], 3, "shrunk n should be minimal (3), got {content:?}");
+    assert_eq!(
+        nums[0], 3,
+        "shrunk n should be minimal (3), got {content:?}"
+    );
     assert!(
         nums[1..].iter().any(|&x| x > 5),
         "shrunk input should still trigger bug: {content:?}"
@@ -287,8 +293,18 @@ fn input():
     );
     let cpp = dir.join("sol.cpp");
     let bin = dir.join("sol_bin");
-    let build = cpl().args(["build"]).arg(&sol).arg("-o").arg(&cpp).output().unwrap();
-    assert!(build.status.success(), "{}", String::from_utf8_lossy(&build.stderr));
+    let build = cpl()
+        .args(["build"])
+        .arg(&sol)
+        .arg("-o")
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&build.stderr)
+    );
     let gpp = Command::new("g++")
         .args(["-O2", "-std=c++17"])
         .arg(&cpp)
@@ -296,7 +312,11 @@ fn input():
         .arg(&bin)
         .output()
         .unwrap();
-    assert!(gpp.status.success(), "{}", String::from_utf8_lossy(&gpp.stderr));
+    assert!(
+        gpp.status.success(),
+        "{}",
+        String::from_utf8_lossy(&gpp.stderr)
+    );
     let mut child = Command::new(&bin)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())

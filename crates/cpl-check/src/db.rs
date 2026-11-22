@@ -2529,7 +2529,11 @@ fn check_stress_decorators(stmts: &[cpl_syntax::ast::Stmt], base: u32, sink: &mu
                             format!("`@brute` has been replaced by `{target_label}`"),
                         )
                         .with_help(format!("use `{target_label}`"))
-                        .with_fix(format!("replace with `{target_label}`"), fix_span, replacement),
+                        .with_fix(
+                            format!("replace with `{target_label}`"),
+                            fix_span,
+                            replacement,
+                        ),
                     );
                 }
                 "alt" => {
@@ -2631,7 +2635,10 @@ mod tests {
         let cases = [
             ("@brute(main)\nfn slow():\n    print(1)\n", "@alt(program)"),
             ("@brute\nfn slow():\n    print(1)\n", "@alt(program)"),
-            ("fn f() -> Int = 1\n@brute(f)\nfn f_slow() -> Int = 1\n", "@alt(f)"),
+            (
+                "fn f() -> Int = 1\n@brute(f)\nfn f_slow() -> Int = 1\n",
+                "@alt(f)",
+            ),
             ("@alt(main)\nfn slow():\n    print(1)\n", "program"),
             ("@checker\nfn ok():\n    assert true\n", "check"),
         ];
@@ -2643,7 +2650,12 @@ mod tests {
                 .diagnostics
                 .iter()
                 .find(|d| d.message.contains("has been replaced by"))
-                .unwrap_or_else(|| panic!("expected legacy decorator error for:\n{src}\ngot: {:?}", a.diagnostics));
+                .unwrap_or_else(|| {
+                    panic!(
+                        "expected legacy decorator error for:\n{src}\ngot: {:?}",
+                        a.diagnostics
+                    )
+                });
             assert!(
                 diag.fixes
                     .iter()

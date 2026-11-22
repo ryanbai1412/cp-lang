@@ -290,10 +290,7 @@ impl<'a> Checker<'a> {
                 }
                 for arg in args {
                     // Allow bare shape keywords (`shape: random | path | star | caterpillar | binary`).
-                    let is_shape_kw = arg
-                        .name
-                        .as_ref()
-                        .is_some_and(|n| n.text == "shape")
+                    let is_shape_kw = arg.name.as_ref().is_some_and(|n| n.text == "shape")
                         && matches!(
                             &arg.value.kind,
                             ExprKind::Name(s)

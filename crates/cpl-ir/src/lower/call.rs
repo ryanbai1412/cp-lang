@@ -13373,10 +13373,7 @@ impl<'a> Lowerer<'a> {
     fn lower_gen_range_expr(&mut self, expr: &ast::Expr, span: Span) -> Expr {
         match &expr.kind {
             ast::ExprKind::Range {
-                lo,
-                hi,
-                inclusive,
-                ..
+                lo, hi, inclusive, ..
             } => {
                 let lo_e = match lo {
                     Some(e) => self.resolve_bound_expr(e),
@@ -13480,16 +13477,22 @@ impl<'a> Lowerer<'a> {
                 };
                 self.expr(&table, None)
             }
-            ast::TypeKind::ConstrainedStr(alphabet) => {
-                self.lower_gen_str(alphabet, args, span)
-            }
-            ast::TypeKind::Named { name, args: targs } if name.text == "Str" && targs.is_empty() => {
+            ast::TypeKind::ConstrainedStr(alphabet) => self.lower_gen_str(alphabet, args, span),
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Str" && targs.is_empty() =>
+            {
                 self.lower_gen_str("abcdefghijklmnopqrstuvwxyz", args, span)
             }
-            ast::TypeKind::Named { name, args: targs } if name.text == "Bool" && targs.is_empty() => {
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Bool" && targs.is_empty() =>
+            {
                 let lo = self.int_lit(0, span);
                 let hi = self.int_lit(1, span);
-                let draw = self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span);
+                let draw = self.mk(
+                    ExprKind::Builtin(Builtin::Rand, vec![lo, hi]),
+                    Ty::Int,
+                    span,
+                );
                 let one = self.int_lit(1, span);
                 self.mk(
                     ExprKind::Cmp(CmpOp::Eq, Box::new(draw), Box::new(one)),
@@ -13497,22 +13500,28 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            ast::TypeKind::Named { name, args: targs } if name.text == "Int" && targs.is_empty() => {
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Int" && targs.is_empty() =>
+            {
                 let lo = self.int_lit(0, span);
                 let hi = self.int_lit(8, span);
-                self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span)
+                self.mk(
+                    ExprKind::Builtin(Builtin::Rand, vec![lo, hi]),
+                    Ty::Int,
+                    span,
+                )
             }
-            ast::TypeKind::Named { name, args: targs } if name.text == "Perm" && targs.len() == 1 => {
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Perm" && targs.len() == 1 =>
+            {
                 self.call_stdlib_generic("gen_perm", targs, &[], span)
             }
             ast::TypeKind::Named { name, args: targs }
                 if name.text == "Rooted" && !targs.is_empty() =>
             {
-                let shape_arg = args.iter().find(|a| {
-                    a.name
-                        .as_ref()
-                        .is_some_and(|n| n.text == "shape")
-                });
+                let shape_arg = args
+                    .iter()
+                    .find(|a| a.name.as_ref().is_some_and(|n| n.text == "shape"));
                 let shape_expr = match shape_arg {
                     Some(a) => match &a.value.kind {
                         ast::ExprKind::Name(kw)
@@ -13570,7 +13579,10 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
-                if let Some((w_lo, w_hi)) = targs.get(1).and_then(|e| extract_graph_weight_bounds(e, span)) {
+                if let Some((w_lo, w_hi)) = targs
+                    .get(1)
+                    .and_then(|e| extract_graph_weight_bounds(e, span))
+                {
                     let mut wargs = vec![
                         ast::Arg {
                             name: Some(ast::Name {
@@ -13615,7 +13627,11 @@ impl<'a> Lowerer<'a> {
                     let n_ir = self.expr(&len_expr, Some(&Ty::Int));
                     let lo = self.int_lit(0, span);
                     let hi = self.int_add(n_ir, -1);
-                    let idx = self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span);
+                    let idx = self.mk(
+                        ExprKind::Builtin(Builtin::Rand, vec![lo, hi]),
+                        Ty::Int,
+                        span,
+                    );
                     return self.mk(idx.kind, Ty::Pos(d), span);
                 }
                 self.error(
@@ -13714,10 +13730,7 @@ fn extract_ast_range_bounds(
 ) -> (ast::Expr, ast::Expr) {
     match &expr.kind {
         ast::ExprKind::Range {
-            lo,
-            hi,
-            inclusive,
-            ..
+            lo, hi, inclusive, ..
         } => {
             let lo_e = lo.as_deref().cloned().unwrap_or(ast::Expr {
                 kind: ast::ExprKind::Int(default_lo),

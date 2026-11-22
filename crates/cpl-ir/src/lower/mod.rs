@@ -1166,9 +1166,9 @@ impl<'a> Lowerer<'a> {
                             "multitest" => {}
                             // Read once, before lowering: see `directed`.
                             "interactive" if decorator.directive => {}
-                            "get" | "alt" | "test" | "solution" | "tags" | "memo"
-                            | "law" | "gen" | "check" | "interactor" | "grader"
-                            | "on_unimplemented" | "droppable" | "" => {}
+                            "get" | "alt" | "test" | "solution" | "tags" | "memo" | "law"
+                            | "gen" | "check" | "interactor" | "grader" | "on_unimplemented"
+                            | "droppable" | "" => {}
                             // For `cpl lint` alone: it changes nothing a run does.
                             "allow" => {}
                             other => self
