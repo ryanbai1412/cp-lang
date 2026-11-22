@@ -495,6 +495,16 @@ pub(crate) enum Op {
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
     FallbackExprI { idx: u32, dst: u16, in_loop: bool },
     FallbackExprV { idx: u32, dst: u16, in_loop: bool },
+    /// A traced run tells the tracer of a write the VM just did itself.
+    Trace { idx: u32 },
+}
+
+/// A write a traced run reports: the same steps the tree-walker's
+/// `Stmt::Let`, `Stmt::Assign` and `for` rounds record.
+pub(crate) enum TracePoint<'p> {
+    Let(Slot, &'p Expr),
+    Assign(&'p Place),
+    Loop(Slot, Span),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -546,6 +556,8 @@ pub(crate) struct Chunk<'p> {
     pub formats: Vec<FormatSpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
+    pub trace_points: Vec<TracePoint<'p>>,
+    pub traced: bool,
     pub fill_tys: Vec<&'p Ty>,
     pub num_i: usize,
     pub num_v: usize,
@@ -649,11 +661,13 @@ pub(crate) struct CompiledProgram<'p> {
 }
 
 impl<'p> CompiledProgram<'p> {
-    pub fn compile(program: &'p Program, feeds: &cpl_ir::pushed::Feeds) -> Self {
+    /// With `traced`, every write, print and call is reported to the
+    /// tracer as the tree-walker reports it.
+    pub fn compile(program: &'p Program, feeds: &cpl_ir::pushed::Feeds, traced: bool) -> Self {
         let empty_fed: Vec<bool> = vec![false; program.fns.len()];
         let mut fed_fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
-            if f.locals.len() > 512 || program.judge_fns.contains(&id) {
+            if traced || f.locals.len() > 512 || program.judge_fns.contains(&id) {
                 fed_fns.push(None);
             } else if let Some(&acc_slot) = feeds.pushers.get(&id) {
                 let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
@@ -689,6 +703,7 @@ impl<'p> CompiledProgram<'p> {
             } else {
                 let mut c =
                     Compiler::new(program, feeds, &fed_ok, &f.locals, Some(id), f.params.len());
+                c.traced = traced;
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
                 c.compile_block(&f.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -717,6 +732,7 @@ impl<'p> CompiledProgram<'p> {
                 let mut c =
                     Compiler::new(program, feeds, &fed_ok, &def.locals, None, def.params.len());
                 c.allow_fed_loops = false;
+                c.traced = traced;
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
                 c.compile_block(&def.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -731,6 +747,7 @@ impl<'p> CompiledProgram<'p> {
             }
         }
         let mut main_c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
+        main_c.traced = traced;
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let mut main = main_c.finish();
@@ -804,6 +821,10 @@ struct Compiler<'p, 'f> {
     allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
+    traced: bool,
+    trace_points: Vec<TracePoint<'p>>,
+    /// The `for` whose body is compiled next, whose variable each round reports.
+    traced_loop_var: Option<(Slot, Span)>,
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -870,11 +891,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
             allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
+            traced: false,
+            trace_points: Vec::new(),
+            traced_loop_var: None,
         }
     }
 
     fn finish(self) -> Chunk<'p> {
-        let needs_stack = !self.fallback_stmts.is_empty() || !self.fallback_exprs.is_empty();
+        let needs_stack = !self.fallback_stmts.is_empty()
+            || !self.fallback_exprs.is_empty()
+            || !self.trace_points.is_empty();
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -888,6 +914,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             formats: self.formats,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
+            trace_points: self.trace_points,
+            traced: self.traced,
             fill_tys: self.fill_tys,
             num_i: self.next_i as usize,
             num_v: self.next_v as usize,
@@ -2137,10 +2165,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     fn compile_stmts(&mut self, stmts: &'p [Stmt]) {
+        if let Some((slot, span)) = self.traced_loop_var.take() {
+            self.emit_trace(TracePoint::Loop(slot, span), span);
+        }
         let has_closure = Self::stmts_have_closure(stmts);
         let mut declared = Vec::new();
         let mut i = 0;
         while i < stmts.len() {
+            if self.traced {
+                self.compile_stmt(&stmts[i]);
+                i += 1;
+                continue;
+            }
             if i + 1 < stmts.len()
                 && self.try_compile_opt_minmax_pair(&stmts[i], &stmts[i + 1], &stmts[i + 2..])
             {
@@ -2211,6 +2247,55 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     fn compile_stmt(&mut self, stmt: &'p Stmt) {
+        if !self.traced || !self.compile_traced_stmt(stmt) {
+            self.compile_untraced_stmt(stmt);
+        }
+    }
+
+    fn emit_trace(&mut self, point: TracePoint<'p>, span: Span) {
+        let idx = self.trace_points.len() as u32;
+        self.trace_points.push(point);
+        self.emit(Op::Trace { idx }, span);
+    }
+
+    /// In a traced run the VM runs control flow and expressions that
+    /// neither write nor call; a write it does itself is followed by a
+    /// `Trace`, and anything else is left to the tree-walker, which
+    /// reports it. Returns whether `stmt` was compiled.
+    fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
+        let fallbacks = self.fallback_stmts.len();
+        match stmt {
+            Stmt::Let(slot, Some(init)) if self.feed_acc != Some(*slot) && quiet(init) => {
+                self.compile_untraced_stmt(stmt);
+                if self.fallback_stmts.len() == fallbacks {
+                    self.emit_trace(TracePoint::Let(*slot, init), init.span);
+                }
+            }
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
+            Stmt::Assign(place, _, value)
+                if quiet_place(place, cpl_ir::walk::root(place)) && quiet(value) =>
+            {
+                self.compile_untraced_stmt(stmt);
+                if self.fallback_stmts.len() == fallbacks {
+                    self.emit_trace(TracePoint::Assign(place), place.span);
+                }
+            }
+            Stmt::If(cond, ..) | Stmt::While(_, cond, _) | Stmt::Assert { cond, .. } if quiet(cond) => return false,
+            Stmt::Return(Some(value)) | Stmt::Give(value) if quiet(value) => return false,
+            Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => match quiet_iter(iter) {
+                Some(span) => {
+                    self.traced_loop_var = Some((*slot, span));
+                    self.compile_untraced_stmt(stmt);
+                    self.traced_loop_var = None;
+                }
+                None => self.emit_fallback_stmt(stmt),
+            },
+            _ => self.emit_fallback_stmt(stmt),
+        }
+        true
+    }
+
+    fn compile_untraced_stmt(&mut self, stmt: &'p Stmt) {
         match stmt {
             Stmt::Let(slot, init) => {
                 if self.feed_acc == Some(*slot) {
@@ -6607,14 +6692,25 @@ fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
     }
 }
 
+/// In a traced run a local the VM keeps in a register is left out of the
+/// stack, which the tracer shows, until it is declared, as in the tree-walker.
+#[inline(always)]
+fn undeclared(traced: bool, loc: &SlotLoc, held: &Value) -> bool {
+    traced && !matches!(loc, SlotLoc::V(_)) && matches!(held, Value::Unit)
+}
+
 fn sync_to_stack(
     slot_map: &[SlotLoc],
     regs_i: &[i64],
     regs_v: &mut [Value],
     stack: &mut [Value],
     base: usize,
+    traced: bool,
 ) {
     for (slot, loc) in slot_map.iter().enumerate() {
+        if undeclared(traced, loc, &stack[base + slot]) {
+            continue;
+        }
         stack[base + slot] = match *loc {
             SlotLoc::I(r, kind) => kind.box_val(regs_i[r as usize]),
             SlotLoc::OptI { val, some, kind } => {
@@ -6639,8 +6735,12 @@ fn sync_from_stack(
     regs_v: &mut [Value],
     stack: &mut [Value],
     base: usize,
+    traced: bool,
 ) {
     for (slot, loc) in slot_map.iter().enumerate() {
+        if undeclared(traced, loc, &stack[base + slot]) {
+            continue;
+        }
         match *loc {
             SlotLoc::I(r, _) => regs_i[r as usize] = ScalarKind::unbox_val(&stack[base + slot]),
             SlotLoc::OptI { val, some, .. } => {
@@ -6736,6 +6836,26 @@ impl<'p, 'io> Interp<'p, 'io> {
         }
     }
 
+    fn trace_point(&mut self, point: &TracePoint<'p>) {
+        match *point {
+            TracePoint::Let(slot, init) => {
+                self.trace_local(slot, init.span);
+                self.trace_assigned_local(slot, init.span);
+            }
+            TracePoint::Assign(place) => {
+                let mut indices = Vec::new();
+                if self.indices(place, &mut indices).is_ok() {
+                    self.trace_change(place, &indices);
+                }
+                self.trace_assigned(place);
+            }
+            TracePoint::Loop(slot, span) => {
+                self.trace_local(slot, span);
+                self.trace_assigned_local(slot, span);
+            }
+        }
+    }
+
     pub(crate) fn run_main_vm(&mut self, compiled: &CompiledProgram<'p>) -> Res<()> {
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         if vm_regs_i.capacity() < 4096 {
@@ -6774,7 +6894,7 @@ impl<'p, 'io> Interp<'p, 'io> {
             &mut vm_regs_i[base_i..base_i + chunk.num_i],
             &mut regs_v,
             &mut self.stack,
-            self.base,
+            self.base, chunk.traced
         );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
         for (k, is_global, at) in aliases {
@@ -8521,7 +8641,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     arg_buf[..n].copy_from_slice(&regs_i[ab..ab + n]);
                     let needs_stack = callee.needs_stack;
                     if chunk.has_by_ref_closure {
-                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     }
                     let saved_base = self.base;
                     if needs_stack {
@@ -8540,7 +8660,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     if chunk.has_by_ref_closure {
-                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     }
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
@@ -8578,7 +8698,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                     let needs_stack = callee.needs_stack;
                     if chunk.has_by_ref_closure {
-                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     }
                     let saved_base = self.base;
                     if needs_stack {
@@ -8604,7 +8724,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     if chunk.has_by_ref_closure {
-                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     }
                     if f.params.iter().any(|p| p.mutable) {
                         regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
@@ -8870,7 +8990,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                                 regs_i,
                                 regs_v,
                                 &mut self.stack,
-                                self.base,
+                                self.base, chunk.traced
                             );
                         }
                         let res = self.call_value(Value::Closure(cid, caps), boxed, spans[cur_pc]);
@@ -8881,7 +9001,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                                 regs_i,
                                 regs_v,
                                 &mut self.stack,
-                                self.base,
+                                self.base, chunk.traced
                             );
                         }
                         res?
@@ -10954,10 +11074,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                     for r in &mut regs_v[clear_from_v as usize..] {
                         *r = Value::Unit;
                     }
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let stmt = chunk.fallback_stmts[idx as usize];
                     let flow = self.stmt(stmt)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     match flow {
                         Flow::Next => {}
                         Flow::Return(v) | Flow::Give(v) => return Ok(ExecExit::Return(v)),
@@ -10971,11 +11091,19 @@ impl<'p, 'io> Interp<'p, 'io> {
                             in_loop,
                         );
                     }
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
+                }
+                Op::Trace { idx } => {
+                    if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = chunk.trace_points[idx as usize] {
+                        self.stack[self.base + slot] = Value::Moved;
+                    }
+                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                    self.trace_point(&chunk.trace_points[idx as usize]);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                 }
                 Op::FallbackExprV { idx, dst, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
@@ -10984,14 +11112,69 @@ impl<'p, 'io> Interp<'p, 'io> {
                             in_loop,
                         );
                     }
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     regs_v[dst as usize] = val;
                 }
             }
         }
+    }
+}
+
+/// Whether `e` neither writes, prints nor calls: what a traced run lets the
+/// VM evaluate without telling the tracer.
+fn quiet(e: &Expr) -> bool {
+    let mut quiet = true;
+    cpl_ir::walk::deep_expr(e, &mut |e| {
+        quiet &= !matches!(
+            e.kind,
+            ExprKind::Call(..)
+                | ExprKind::CallExpr(..)
+                | ExprKind::Closure(..)
+                | ExprKind::Do(_)
+                | ExprKind::MutSlice(..)
+                | ExprKind::Mutate(..)
+                | ExprKind::Sort(..)
+                | ExprKind::Print(..)
+                | ExprKind::Debug(..)
+        );
+    });
+    quiet
+}
+
+/// Whether the indices of `place` are [`quiet`] and do not read its root,
+/// so that evaluating them after the write gives the cell that was written.
+fn quiet_place(place: &Place, root: (bool, usize)) -> bool {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => true,
+        PlaceKind::Index(base, indices) => {
+            quiet_place(base, root)
+                && indices.iter().all(|index| {
+                    let mut reads_root = false;
+                    cpl_ir::walk::deep_expr(index, &mut |e| {
+                        reads_root |= matches!(e.kind, ExprKind::Global(id) if root == (true, id))
+                            || matches!(e.kind, ExprKind::Local(slot) if root == (false, slot));
+                    });
+                    quiet(index) && !reads_root
+                })
+        }
+        PlaceKind::Field(base, _) => quiet_place(base, root),
+        PlaceKind::Some(_) => false,
+    }
+}
+
+/// Where a traced `for` reports its variable, when its iterable is [`quiet`].
+fn quiet_iter(iter: &Iter) -> Option<Span> {
+    match iter {
+        Iter::Range { lo, hi, step, .. } => {
+            (quiet(lo) && quiet(hi) && step.as_ref().is_none_or(quiet)).then_some(lo.span)
+        }
+        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
+            quiet(e).then_some(e.span)
+        }
+        Iter::TreeRange { .. } => None,
     }
 }
 

@@ -508,7 +508,7 @@ print(gtot, local_driver(2), glob[0])
     assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
-    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
     let has_loop_fallback = |chunk: &crate::vm::Chunk<'_>| {
         chunk.ops.iter().any(|op| {
             matches!(
@@ -1020,4 +1020,29 @@ print(dp[1][1]!, dp[2][2]!, best[0, 1]!, k0, k1)
     let (out, trap) = outcome(src, "");
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "8 12 10 -1 42\n");
+}
+
+/// A traced run keeps writes to scalars and array cells on the VM: each
+/// is followed by a `Trace` instead of falling back to the tree-walker.
+#[test]
+fn traced_vm_runs_writes_itself() {
+    let source = "\
+var x = 0
+var a: [0..1000]Int = 0
+for i in 0..100:
+    x += i % 7
+    a[i % 1000] += 1
+print(x, a[0])
+";
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true);
+    let in_loop = |op: &crate::vm::Op| matches!(op, crate::vm::Op::FallbackStmt { in_loop: true, .. });
+    assert!(!compiled.main.ops.iter().any(in_loop), "a traced write in the loop fell back");
+    let traces = compiled.main.ops.iter().filter(|op| matches!(op, crate::vm::Op::Trace { .. })).count();
+    assert!(traces >= 3, "the loop variable and both writes are reported: {traces}");
 }

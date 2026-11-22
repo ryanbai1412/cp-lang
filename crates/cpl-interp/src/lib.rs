@@ -750,9 +750,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                     cpl_ir::walk::deep_exprs(&c.body, &mut check);
                 }
             }
-            let use_vm = self.tracer.is_none() && self.profiler.is_none() && !has_mut_view;
-            if use_vm {
-                self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds)));
+            if self.profiler.is_none() && !has_mut_view {
+                let traced = self.tracer.is_some();
+                self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds, traced)));
             }
         }
         if !program.multitest {
