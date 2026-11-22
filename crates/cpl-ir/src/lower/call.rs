@@ -165,6 +165,19 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                if (name == "Some" || name == "some")
+                    && args.len() == 1
+                    && args[0].name.is_none()
+                    && !args[0].mutable
+                {
+                    let inner_h = match hint {
+                        Some(Ty::Opt(inner)) => Some(&**inner),
+                        _ => None,
+                    };
+                    let val = self.expr(&args[0].value, inner_h);
+                    let ty = Ty::opt(val.ty.clone());
+                    return self.mk(ExprKind::Some(Box::new(val)), ty, span);
+                }
                 if name == "same" && args.len() == 2 {
                     let op_a = self.detect_bare_op(&args[0].value);
                     let op_b = self.detect_bare_op(&args[1].value);
@@ -1953,7 +1966,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "some" => match self.positional_any(name, args, 1, span) {
+            "some" | "Some" => match self.positional_any(name, args, 1, span) {
                 Some(exprs) => {
                     let inner_h = match hint {
                         Some(Ty::Opt(inner)) => Some(&**inner),
@@ -4910,6 +4923,7 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx" | "idx") => {
                 self.cast(Cast::Ord, value, Ty::Int)
             }
+            (Ty::Int, "ord" | "to_idx" | "idx") => value,
             (Ty::Pos(d), "label") => self.cast(Cast::Label(*d), value, Ty::Int),
             (Ty::Pos(_), "rank") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
@@ -5559,6 +5573,115 @@ impl<'a> Lowerer<'a> {
                     Ty::Bool,
                     span,
                 )
+            }
+            (Ty::Pos(d), "subsets") if self.subset_base(*d).is_some() => {
+                let d = *d;
+                let elem_ty = Ty::Pos(d);
+                let list_ty = Ty::list(elem_ty.clone());
+                self.do_expr(Some(&list_ty), span, |lw, out| {
+                    let acc = lw.temp(list_ty.clone());
+                    out.push(Stmt::Let(
+                        acc,
+                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
+                    ));
+                    let item = lw.temp(elem_ty.clone());
+                    let lid = lw.fresh_loop();
+                    let push = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![lw.local(item, span)],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    out.push(Stmt::For(
+                        lid,
+                        item,
+                        Iter::Subsets(value),
+                        Block {
+                            stmts: vec![Stmt::Expr(push)],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(acc, span)));
+                })
+            }
+            (Ty::Pos(d), "supersets") if self.subset_base(*d).is_some() => {
+                let d = *d;
+                let base_d = self.subset_base(d).unwrap();
+                let elem_ty = Ty::Pos(d);
+                let list_ty = Ty::list(elem_ty.clone());
+                self.do_expr(Some(&list_ty), span, |lw, out| {
+                    let s_ord_slot = lw.temp(Ty::Int);
+                    let s_ord = lw.cast(Cast::Ord, value, Ty::Int);
+                    out.push(Stmt::Let(s_ord_slot, Some(s_ord)));
+                    let base_len = lw.mk(ExprKind::DomainLen(base_d), Ty::Int, span);
+                    let one = lw.int_lit(1, span);
+                    let two_n = lw.mk(
+                        ExprKind::Binary(BinOp::Shl, Box::new(one.clone()), Box::new(base_len)),
+                        Ty::Int,
+                        span,
+                    );
+                    let full = lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(two_n), Box::new(one)),
+                        Ty::Int,
+                        span,
+                    );
+                    let comp_ord = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::BitXor,
+                            Box::new(full),
+                            Box::new(lw.local(s_ord_slot, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let comp = lw.cast(Cast::Trust, comp_ord, elem_ty.clone());
+                    let acc = lw.temp(list_ty.clone());
+                    out.push(Stmt::Let(
+                        acc,
+                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
+                    ));
+                    let item = lw.temp(elem_ty.clone());
+                    let lid = lw.fresh_loop();
+                    let sub_ord = lw.cast(Cast::Ord, lw.local(item, span), Ty::Int);
+                    let sup_ord = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::BitOr,
+                            Box::new(sub_ord),
+                            Box::new(lw.local(s_ord_slot, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let sup = lw.cast(Cast::Trust, sup_ord, elem_ty.clone());
+                    let push = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![sup],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    out.push(Stmt::For(
+                        lid,
+                        item,
+                        Iter::Subsets(comp),
+                        Block {
+                            stmts: vec![Stmt::Expr(push)],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(acc, span)));
+                })
             }
             (Ty::Pos(d), "len") if self.subset_base(*d).is_some() => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);

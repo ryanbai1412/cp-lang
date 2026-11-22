@@ -2479,10 +2479,11 @@ impl<'a> Lowerer<'a> {
                 }
             } else if matches!(&e.kind, ast::ExprKind::List(_)) {
                 match (operands.last(), asts.get(i + 1)) {
-                    (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_)) => {
+                    (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_) | Ty::Array { .. }) => {
                         self.expr(e, Some(&prev.ty))
                     }
-                    (Some((prev, _)), _) if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_))) =>
+                    (Some((prev, _)), _)
+                        if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_) | Ty::Array { .. })) =>
                     {
                         let Ty::Opt(inner) = &prev.ty else {
                             unreachable!()
@@ -2493,7 +2494,9 @@ impl<'a> Lowerer<'a> {
                     {
                         let next = self.expr(next, None);
                         let hint = match &next.ty {
-                            Ty::Opt(inner) if matches!(**inner, Ty::List(_)) => inner.as_ref(),
+                            Ty::Opt(inner) if matches!(**inner, Ty::List(_) | Ty::Array { .. }) => {
+                                inner.as_ref()
+                            }
                             other => other,
                         };
                         self.expr(e, Some(hint))
@@ -2512,7 +2515,16 @@ impl<'a> Lowerer<'a> {
                 .last()
                 .is_some_and(|(prev, _)| matches!(prev.ty, Ty::Opt(_)))
             {
-                self.expr_maybe_opt_reduce(e)
+                if matches!(
+                    &e.kind,
+                    ast::ExprKind::Call { callee, .. }
+                        if matches!(&callee.kind, ast::ExprKind::Name(n) if n == "Some")
+                ) {
+                    let prev_ty = operands.last().unwrap().0.ty.clone();
+                    self.expr(e, Some(&prev_ty))
+                } else {
+                    self.expr_maybe_opt_reduce(e)
+                }
             } else if matches!(e.kind, ast::ExprKind::Int(_))
                 && operands.last().is_some_and(|(prev, _)| prev.ty == Ty::U64)
             {
@@ -3827,7 +3839,10 @@ impl<'a> Lowerer<'a> {
             // which is checked when the domain's size is known: at run time
             // (or statically for a plain enum domain `[Side]T`).
             Some(ty @ Ty::Array { dims, elem })
-                if matches!(dims[..], [Dim::Pos(_) | Dim::Bound(_) | Dim::Enum(_)]) =>
+                if matches!(
+                    dims[..],
+                    [Dim::Pos(_) | Dim::Bound(_) | Dim::Enum(_) | Dim::Int]
+                ) =>
             {
                 let (dim, len) = match dims[0] {
                     Dim::Pos(d) => (
@@ -3844,7 +3859,11 @@ impl<'a> Lowerer<'a> {
                         let n = self.enums[e].variants.len() as i64;
                         (DimSpec::Enum(e), self.mk(ExprKind::Int(n), Ty::Int, span))
                     }
-                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
+                    Dim::Int => {
+                        let n = self.mk(ExprKind::Int(items.len() as i64), Ty::Int, span);
+                        (DimSpec::Int(Box::new(n.clone())), n)
+                    }
+                    Dim::Sym(_) | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
