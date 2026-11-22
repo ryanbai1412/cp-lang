@@ -3,7 +3,7 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
-use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
+use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type};
 
 impl<'a> Checker<'a> {
     /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
@@ -14,6 +14,12 @@ impl<'a> Checker<'a> {
                 cpl_syntax::ast::StrPiece::Text(_) => true,
                 cpl_syntax::ast::StrPiece::Expr(e) => self.fixed_size(e),
                 cpl_syntax::ast::StrPiece::Spec(e, _) => self.fixed_size(e),
+            });
+        }
+        if let ExprKind::If { branches, otherwise: Some(otherwise) } = &e.kind {
+            return branches.iter().map(|(_, b)| b).chain([otherwise]).all(|b| match b.stmts.last() {
+                Some(Stmt { kind: StmtKind::Expr(e), .. }) => self.fixed_size(e),
+                _ => false,
             });
         }
         let ty = self.quietly(|c| c.infer(e));
@@ -83,6 +89,15 @@ impl<'a> Checker<'a> {
         };
         if fixed_args && args.iter().all(|a| self.fixed_size(&a.value)) {
             self.fixed_io.push(callee.span);
+        }
+        if let ExprKind::Generic { base, args: tys } = &callee.kind {
+            if matches!(&base.kind, ExprKind::Name(n) if n == "read") && args.is_empty() {
+                if let [t] = tys.as_slice() {
+                    if self.resolve_type(t).is_fixed_size() {
+                        self.fixed_io.push(base.span);
+                    }
+                }
+            }
         }
         self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);

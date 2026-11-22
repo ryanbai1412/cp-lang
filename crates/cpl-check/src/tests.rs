@@ -3495,3 +3495,21 @@ fn a_method_cost_names_the_receivers_domain_for_the_structs() {
     assert_eq!(cost(&mut db, "sum(..v)").as_deref(), Some("O(log |V|)"));
     assert_eq!(cost(&mut db, "sum(.., ..)").as_deref(), Some("O(log |V| * log |V|)"));
 }
+
+#[test]
+fn read_with_a_fixed_type_argument_and_a_choice_of_fixed_text_cost_o1() {
+    let src = "fn f(ok: Bool) -> Int:\n    print(if ok: \"YES\" else: \"NO\")\n    \
+               print(if ok: \"YES\" else: str(1))\n    read<Int>() + read<(Int, Char)>().0\n\
+               fn g() -> Str:\n    read<Str>()\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let hover = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).and_then(|h| h.text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string))
+    };
+    assert_eq!(hover(&mut db, 0, "print").as_deref(), Some("O(1)"));
+    assert_eq!(hover(&mut db, 1, "print"), None);
+    assert_eq!(hover(&mut db, 0, "read").as_deref(), Some("O(1)"));
+    assert_eq!(hover(&mut db, 1, "read").as_deref(), Some("O(1)"));
+    assert_eq!(hover(&mut db, 2, "read"), None);
+}

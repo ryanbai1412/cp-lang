@@ -5368,3 +5368,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `cpl_interp::trace::Recording` keeps one small entry per step, write and print, plus a full snapshot of the variables at least every 1024 steps and only once the deltas since the last one outweigh it four times. Step `k` is rebuilt from the nearest snapshot before it and the deltas after; nothing re-runs. The HTML trace, the DAP and call replay read it through the same methods (`len`, `step`, `steps`, `line`, `place`). `crates/cpl-interp/tests/trace_log.rs` measures the A5 budgets at 10^7 steps (ignored; run by hand in release).
 - **Why.** A snapshot per step is quadratic in memory for any array program. Measured at 10^7 steps: step back at most 34 µs, the recording 442 MB (scalar loop) and 487 MB (array loop). Recording costs about 2x over the observed run, but tracing is 13-18x the untraced run, because observation forces the tree-walker, which is about 6x slower than the VM. The 3x budget needs the VM to emit the observer events (ARCHITECTURE step 2), not a cheaper log.
 - **Reverse.** Snapshot every step again in `Log::snapshot_if_due`; tune `SNAPSHOT_EVERY` and the 4x ratio to trade memory for step-back time.
+
+## 192. `read<T>()` and a choice of fixed text cost `O(1)` (2026-11-22)
+
+- **Decision.** In a fn's estimated cost, `read<T>()` costs `O(1)` when
+  `T` has a fixed size, the same as `let x: T = read()` (29.49). A value
+  whose every branch is fixed text or a fixed-size value, such as
+  `if ok: "YES" else: "NO"`, has a fixed size, so printing it costs
+  `O(1)`.
+- **Why.** Both are common in the ports and were left out only because
+  the check looked at a declared `let` type and at the inferred type
+  `Str`. Fns in the ports and examples with an estimate: 40 of 2,183.
+- **Reverse.** Drop the `ExprKind::Generic` and `ExprKind::If` cases in
+  `cpl-check`'s fixed-size checks.
