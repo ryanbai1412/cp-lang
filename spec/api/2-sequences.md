@@ -14,12 +14,14 @@ ends, `.first`/`.last` are optional.
    `Seq`.
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
-   walked twice and side-effecting closures.
+   walked twice (sharper when it holds a `mut` lend) and side-effecting
+   closures.
 4. **Identity vs offset.** A domain slice keeps its positions
    (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0 (pending:
    2a recommends keeping keys there too).
-5. **Views are borrows with the rules of `mut a[i]`.** No lifetime
-   annotations, never stored, returned only through `lends`. In-place verbs
+5. **Views are lent values with the rules of `mut a[i]`.** A value built
+   from a lent part is lent; no lifetime annotations, never stored, returned
+   only by a fn declared `lends`. In-place verbs
    work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`).
 6. **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`;
    `pre[v]` folds through `v`.
@@ -37,7 +39,7 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` offset (`List`, `Str`) | | `i: V`, `3` |
 | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` arrays, `List`, `Str`, `Set`, `Map` |
 | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behind it (round 1) | nothing to own | `l..=r`, `..i`, `V.range` |
-| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it. Formally, a `Seq` whose struct is declared `lends S` (POWERS W4); there is no `View` trait | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` |
+| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it. Formally, a `Seq` built from a lent source, so it is a lent value (POWERS W4); there is no `View` trait and no marker on the struct | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` |
 | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l..=r]`, `s[i..]`, `grid[r]` (a row) |
 | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, `.take`, `zip` |
 | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filter(p).map(f)` |
@@ -131,7 +133,7 @@ compile error (§128).
 
 ## Under the hood
 
-A view is a library struct that lends its source: a reference plus the two
+A view is a plain library struct built from a lent source: a reference plus the two
 end cuts as Ints. Direction and adapters are in the type, so nothing is
 decided at run time and nothing allocates.
 
@@ -157,11 +159,14 @@ a[l..=r].rev.map(f)       # Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
   (E0602). Halves at one cut (`mut a[..c]` and `mut a[c..]`, or `halve`'s
   two) are provably disjoint. A length change (`push`, `pop`, `clear`) while
   any view or place is alive is a compile error.
-- **Lifetime: second-class, no annotations.** A view lives at most as long
-  as its source's scope. It passes into fns (arguments are always lent) and
-  comes back only from a fn that `lends` it from a parameter:
-  `fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]`. It never goes
-  in a field, container, global or escaping closure. Keeping one is
+- **Lifetime: second-class, no annotations.** A value is lent if any part
+  of it is (a field, a capture, a generator argument), and a lent value
+  lives until its last use in the block that made it. It passes into fns
+  (arguments are always lent) and comes back only from a fn declared
+  `lends`, whose result borrows every non-plain parameter unless narrowed:
+  `fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]`,
+  `fn pick(a: [V]Int, b: [V]Int) lends(a) [V]Int`. It never goes in a
+  `var`, field, container, global or escaping closure. Keeping one is
   `List(w)`.
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
   over `V`; it is a template parameter, so each call site gets its own fused
@@ -186,8 +191,13 @@ for d in divisors(n):
   `yield`, so a non-recursive generator inlines to a plain loop. Recursive
   generators (DFS, subset enumeration) work the same way, including `break`
   and `return` out of the body (§126).
-- **A generator value is a recipe.** `let g = divisors(n)` stores the call;
-  each `for` over `g` runs it again. Keep the results with `List(g)`.
+- **A generator value is a closure you walk instead of call.** `let g =
+  divisors(n)` stores the fn and its arguments and runs nothing; each walk
+  runs the body from the top, with fresh locals and the arguments as they
+  are now. It is owned or lent by what it captured: `divisors(12)` is
+  owned, `dfs(graph, s)` is lent, `dfs(mut seen)` is `mut`-lent. Walking a
+  `mut`-lent one twice is legal (the second run sees what the first wrote)
+  and linted. Keep the results with `List(g)`.
 - **Steering.** The yielded item may carry methods the generator reads after
   `yield` returns: `for step in dfs(g, s): if bad(step.v): step.prune()`.
   This is ordinary library code; any user generator can do it.
@@ -234,7 +244,9 @@ the postfix form is for chains, the prefix form for single values.
 every read; a `filter` calls `p` on every walk. Lint flags a lazy chain
 walked twice, or built outside a loop and consumed inside it, and a lazy
 `map`/`filter` whose closure mutates anything (`rng.int(..)`, `count += 1`),
-suggesting `.collect()` or a comprehension.
+suggesting `.collect()` or a comprehension. Walking a `mut`-lent value twice
+(`let a = dfs(mut seen)`, then two walks of `a`) gets the sharper message,
+since the second walk reruns against what the first wrote.
 
 ## Folds
 

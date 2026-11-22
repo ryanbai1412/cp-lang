@@ -4262,3 +4262,22 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   the costs-are-visible rule applied to call syntax: `x.foo` never hides a
   loop.
 - **Reverse.** Allow `@get` on any zero-argument method, as before.
+
+## 141. Lent values: five rules, `lends` only on fn signatures (2026-11-21)
+
+- **Decision.** Every value is owned or lent (read or `mut`); the mode is not
+  part of the type. (1) Parameters are lent. (2) A value is lent if any part
+  is: fields, closure captures, generator arguments; `mut`-lent if any part
+  is. (3) A lent value lives until its last use in its block and is never
+  stored or returned, except by a fn declared `lends`. (4) Its sources stay
+  lent while it lives. (5) Owned values move. Views are plain structs: the
+  `lends S` struct marker from W4 is removed, so one `Filter` owns or
+  borrows by what built it. A `lends` result borrows every non-plain
+  parameter; `lends(xs)` narrows it; bodies are checked against it. A
+  generator value is a closure you walk: each walk reruns the body. No
+  walk-once rule: walking a `mut`-lent value twice is legal and linted.
+- **Why.** Ryan wanted signatures to say when a result borrows, without a
+  second kind of struct. Rules 1-5 are 5.14 made precise; the walk-once
+  error was dropped by Ryan in favour of a lint.
+- **Reverse.** Restore `lends S` on view structs, or make the second walk of
+  a `mut`-lent value an error (walk-once).

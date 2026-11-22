@@ -57,25 +57,42 @@ works in `for`, comprehensions and every sequence method (`count`, `first`,
     pub trait Sized:       len: Int                    // property, no parens
     pub trait Indexed<K, T>: fn at(self, k: K) -> T
 
-A view is a struct declared `lends S`: its field of type `S` borrows the
-source instead of owning it. There is no `View` trait; a view is a `Seq`
-(and `Indexed` when reads stay O(1)) whose struct lends. `lends` gives it
-the place rules of `mut a[i]` with no lifetime annotations:
+Every value is owned or lent (read or `mut`); the mode is not part of the
+type. Five rules, with no lifetime annotations (decision 141):
 
-- it lives at most as long as the source's scope, and while it lives the
-  source can't change length; a `mut` view excludes overlapping access;
-- it can't go in a field, container or global, or be captured by a closure
-  that escapes; `.collect()` or `List(w)` copies it out;
-- a fn returns one only by saying which parameter it lends:
-  `fn window(xs: [V]Int, r: Range<V>) lends xs = xs[r]`.
+1. Parameters are lent: a fn never owns its arguments.
+2. A value is lent if any part is: a struct's fields, a closure's captures,
+   a generator value's arguments. It is `mut`-lent if any part is, and it
+   borrows every source its parts borrow.
+3. A lent value lives at most until its last use in the block that made it:
+   it may be bound by `let`, passed, read, walked and lent onward, never put
+   in a `var`, field, container or global, captured by an escaping closure,
+   or returned except by a fn declared `lends`.
+4. While it lives its sources are lent: none changes length, and a
+   `mut`-lent value excludes every other access to them.
+5. Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies.
 
-    pub struct Filter<S, P> lends S:
+A view is a `Seq` (and `Indexed` when reads stay O(1)) built from a lent
+source. There is no `View` trait and no marker on the struct: the same
+`Filter` owns its source when built from an owned value (`Filter(xs, p)`
+moves `xs`) and borrows it when built from a lent one (`arr.filter(p)`,
+since `self` is lent). A fn that returns a lent value says so in its
+signature; by default the result borrows every lent parameter that is not
+a plain value (`Int`, `Bool`, ranges, positions), and `lends(xs)` narrows
+it. The body is checked against the signature, so call sites and `= todo`
+stubs need nothing more:
+
+    pub struct Filter<S, P>:
         src: S
         keep: P                      // the closure's own type: no boxing
     impl Seq<T> for Filter<S: Seq<T>, P: T -> Bool>:
         fn iter(self) -> yields T =
             for x in self.src:
                 if self.keep(x): yield x
+    pub fn filter<S: Seq<T>, T, P: T -> Bool>(self: S, keep: P) lends Filter<S, P> =
+        Filter(self, keep)
+    fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]
+    pub fn at(mut self, i: D) lends mut T       // a writable place: the same keyword
 
 A `for` over a generator pastes its body at the loop and each `yield x`
 becomes the loop body, so `for y in a.filter(p).map(f): b(y)` is
