@@ -206,6 +206,14 @@ for i in 1..=3:
     }
 
     #[test]
+    fn the_program_ends_at_its_last_statement_not_at_a_later_fn() {
+        let source = "var x = 1\nprint(x)\n\nfn unused() -> Int:\n    return 2\n";
+        let (recorded, _) = run(&program(source), b"", config(source));
+        let end = recorded.steps.last().unwrap();
+        assert_eq!((end.line, end.label.as_str()), (2, "the program ended"));
+    }
+
+    #[test]
     fn a_fns_locals_each_take_a_step_and_a_changed_local_is_the_first_change() {
         let source = "fn sum(n: Int) -> Int:\n    var s = 0\n    for i in 1..=n:\n        s += i\n    return s\nprint(sum(2))\n";
         let (recorded, _) = run(&program(source), b"", config(source));

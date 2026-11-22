@@ -911,7 +911,9 @@ impl Tracer {
             }
             None if self.stopped => {}
             None => {
-                let end = Span::new(self.source.trim_end().len() as u32, self.source.trim_end().len() as u32);
+                let last = view.program.main.stmts.iter().rev().find_map(cpl_ir::Stmt::span);
+                let at = last.map_or(self.source.trim_end().len() as u32, |span| span.end);
+                let end = Span::new(at, at);
                 self.step(view, end, Some("the program ended".to_string()), Some("end"), None)
             }
         }
