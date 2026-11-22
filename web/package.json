@@ -8,7 +8,11 @@
     "start": "npx serve out",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "gate": "node scripts/gate.mjs",
+    "wasm": "node scripts/wasm.mjs",
+    "smoke": "node tests/smoke.mjs && node tests/course-smoke.mjs",
+    "prebuild": "node scripts/wasm.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",
