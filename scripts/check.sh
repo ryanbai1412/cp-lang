@@ -309,11 +309,16 @@ step "cpl fmt --check stdlib"
 
 # Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
 if [ "$scoreboard_cached" -eq 0 ]; then
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
 fi
+
+# Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
+step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
+python3 scripts/debt-ratchet.py --check \
+    || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
 
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
