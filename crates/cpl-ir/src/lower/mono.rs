@@ -39,6 +39,12 @@ pub(super) enum GenArg {
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
 
+/// The env entry saying type parameter `k` is the `Int` key of an indexed
+/// parameter, so `[k]T` is a table keyed like that parameter.
+pub(super) fn int_key_marker(k: &str) -> String {
+    format!("__int_key_{k}")
+}
+
 pub(super) struct GenStructTemplate<'a> {
     pub mod_id: ModId,
     pub offset: u32,
@@ -364,7 +370,7 @@ impl<'a> Lowerer<'a> {
             Ty::DomainVal => "Dom".into(),
             Ty::Opt(t) => format!("Opt_{}", self.mangle_ty(t)),
             Ty::List(t) => format!("Lst_{}", self.mangle_ty(t)),
-            Ty::ListView(t, _) => format!("LstView_{}", self.mangle_ty(t)),
+            Ty::ListView(t, _) | Ty::Keyed(t, _) => format!("LstView_{}", self.mangle_ty(t)),
             Ty::MutView(t) => format!("MutView_{}", self.mangle_ty(t)),
             Ty::Map(k, v) => format!("Map_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::HashMap(k, v) => format!("HMap_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
@@ -1461,6 +1467,32 @@ impl<'a> Lowerer<'a> {
         for (p, a) in decl.generics.iter().zip(&args) {
             env.insert(p.text.clone(), a.clone());
         }
+        // `S: Indexed<K, T>` with `S` keyed by `Int`: a `[K]T` it returns
+        // starts at `S`'s first key, not at 0 (R04b.5.3).
+        for bound in &decl.bounds {
+            for tr in &bound.traits {
+                if let ast::TypeKind::Named { name, args: targs } = &tr.kind {
+                    if let (
+                        true,
+                        Some(ast::Type {
+                            kind:
+                                ast::TypeKind::Named {
+                                    name: k,
+                                    args: kargs,
+                                },
+                            ..
+                        }),
+                    ) = (
+                        matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut"),
+                        targs.first(),
+                    ) {
+                        if kargs.is_empty() && env.get(&k.text) == Some(&GenArg::Ty(Ty::Int)) {
+                            env.insert(int_key_marker(&k.text), GenArg::Ty(Ty::Int));
+                        }
+                    }
+                }
+            }
+        }
         for (idx, ty) in trait_params {
             env.insert(format!("__trait_param_{idx}"), GenArg::Ty(ty.clone()));
         }
@@ -2368,11 +2400,13 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let (lo, list) = match self.probe_ty_silent(arg) {
-            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_))
-                if part_from.is_some() =>
-            {
-                (part_from.unwrap_or(0), true)
-            }
+            Some(
+                Ty::Array { .. }
+                | Ty::List(_)
+                | Ty::ListView(_, _)
+                | Ty::Keyed(_, _)
+                | Ty::MutView(_),
+            ) if part_from.is_some() => (part_from.unwrap_or(0), true),
             Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
                 [Dim::Int] => (0, false),
@@ -2380,9 +2414,14 @@ impl<'a> Lowerer<'a> {
                 _ => return,
             },
             // A list is indexed by its own positions, `0..len`.
-            Some(Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_) | Ty::Str | Ty::StrView) => {
-                (0, true)
-            }
+            Some(
+                Ty::List(_)
+                | Ty::ListView(_, _)
+                | Ty::Keyed(_, _)
+                | Ty::MutView(_)
+                | Ty::Str
+                | Ty::StrView,
+            ) => (0, true),
             _ => return,
         };
         // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
@@ -2949,7 +2988,11 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
                 (
                     "List" | "Iter" | "Seq",
-                    Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) | Ty::Range(elem),
+                    Ty::List(elem)
+                    | Ty::ListView(elem, _)
+                    | Ty::Keyed(elem, _)
+                    | Ty::MutView(elem)
+                    | Ty::Range(elem),
                 ) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
@@ -3163,8 +3206,10 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (Ty::List(ce) | Ty::ListView(ce, _) | Ty::MutView(ce), [_]) =
-                    (concrete, index.as_slice())
+                } else if let (
+                    Ty::List(ce) | Ty::ListView(ce, _) | Ty::Keyed(ce, _) | Ty::MutView(ce),
+                    [_],
+                ) = (concrete, index.as_slice())
                 {
                     // A list given where a `[D]T` is asked for.
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);

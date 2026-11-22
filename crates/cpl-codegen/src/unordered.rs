@@ -40,9 +40,12 @@ fn tables(program: &Program, ty: &Ty, seen: &mut Vec<usize>, f: &mut dyn FnMut(&
             tables(program, key, seen, f);
             tables(program, value, seen, f);
         }
-        Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner, _) | Ty::HashSet(inner) | Ty::Range(inner) => {
-            tables(program, inner, seen, f)
-        }
+        Ty::Opt(inner)
+        | Ty::List(inner)
+        | Ty::ListView(inner, _)
+        | Ty::Keyed(inner, _)
+        | Ty::HashSet(inner)
+        | Ty::Range(inner) => tables(program, inner, seen, f),
         Ty::Array { elem, .. } => tables(program, elem, seen, f),
         Ty::Tuple(items) => items.iter().for_each(|t| tables(program, t, seen, f)),
         Ty::Struct(id) if !seen.contains(id) => {

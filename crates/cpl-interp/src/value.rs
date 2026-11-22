@@ -348,9 +348,15 @@ pub(crate) struct ListViewVal {
     pub lo: usize,
     pub len: usize,
     pub rev: bool,
+    /// Key of storage cell `i` is `i + shift`; nonzero only after `rekey`.
+    pub shift: i64,
 }
 
 impl ListViewVal {
+    pub fn first_key(&self) -> i64 {
+        self.lo as i64 + self.shift
+    }
+
     pub fn whole(base: Rc<Vec<Value>>, rev: bool) -> ListViewVal {
         let len = base.len();
         ListViewVal {
@@ -358,6 +364,7 @@ impl ListViewVal {
             lo: 0,
             len,
             rev,
+            shift: 0,
         }
     }
 
@@ -381,6 +388,7 @@ impl ListViewVal {
             lo: self.lo + rel.start,
             len: rel.len(),
             rev: self.rev,
+            shift: self.shift,
         }
     }
 
@@ -396,6 +404,7 @@ impl ListViewVal {
             lo: new_lo,
             len: n,
             rev: self.rev,
+            shift: self.shift,
         }
     }
 
@@ -405,6 +414,7 @@ impl ListViewVal {
             lo: self.lo,
             len: self.len,
             rev: !self.rev,
+            shift: self.shift,
         }
     }
 
@@ -1122,7 +1132,9 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
-        Ty::ListView(_, _) => Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false))),
+        Ty::ListView(_, _) | Ty::Keyed(_, _) => {
+            Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false)))
+        }
         Ty::MutView(_) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
@@ -1246,7 +1258,7 @@ pub(crate) fn show(
                 rec(out, item, elem);
             }
         }
-        (Value::ListView(view), Ty::ListView(elem, _)) => {
+        (Value::ListView(view), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
             let sep = sep_of(elem, &program.structs);
             for i in 0..view.len {
                 if i > 0 {

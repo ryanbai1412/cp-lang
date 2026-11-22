@@ -504,7 +504,7 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
 fn is_narrowable_seq(ty: &Ty) -> bool {
     matches!(
         ty,
-        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)
+        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
     )
 }
 
@@ -539,7 +539,7 @@ pub(crate) fn narrow_elems(
             if def
                 .fields
                 .get(field)
-                .is_some_and(|(_, t)| matches!(t, Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) if matches!(elem.as_ref(), Ty::Int)))
+                .is_some_and(|(_, t)| matches!(t, Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) if matches!(elem.as_ref(), Ty::Int)))
             {
                 narrow.entry(ElemLoc::Field(id, field)).or_insert(NarrowLayout::Int(width));
             }
@@ -657,7 +657,11 @@ pub(crate) fn narrow_elems(
             },
             ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
             ExprKind::Builtin(
-                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                Builtin::ListSlice
+                | Builtin::KeySlice
+                | Builtin::Rekey
+                | Builtin::ToList
+                | Builtin::Copy,
                 args,
             ) => args.first().and_then(|a| expr_loc(scope, a)),
             ExprKind::Do(blk) => match blk.stmts.last() {
@@ -764,7 +768,11 @@ pub(crate) fn narrow_elems(
                 Some((loc, d + 1))
             }
             ExprKind::Builtin(
-                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                Builtin::ListSlice
+                | Builtin::KeySlice
+                | Builtin::Rekey
+                | Builtin::ToList
+                | Builtin::Copy,
                 args,
             ) => args.first().and_then(|a| expr_root(scope, a)),
             ExprKind::MutSlice(place, _, _) => place_root(scope, place),
@@ -917,7 +925,11 @@ pub(crate) fn narrow_elems(
                 }
             }
             ExprKind::Builtin(
-                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                Builtin::ListSlice
+                | Builtin::KeySlice
+                | Builtin::Rekey
+                | Builtin::ToList
+                | Builtin::Copy,
                 args,
             ) => {
                 // When reached via check_val (not as a safe consumer), widen the base.
@@ -1191,7 +1203,11 @@ pub(crate) fn narrow_elems(
                 }
             }
             ExprKind::Builtin(
-                Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList | Builtin::Copy,
+                Builtin::ListSlice
+                | Builtin::KeySlice
+                | Builtin::Rekey
+                | Builtin::ToList
+                | Builtin::Copy,
                 args,
             ) => {
                 if let Some((first, rest)) = args.split_first() {

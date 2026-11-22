@@ -3854,6 +3854,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let elem = match &args[1].ty {
                     Ty::List(elem)
                     | Ty::ListView(elem, _)
+                    | Ty::Keyed(elem, _)
                     | Ty::MutView(elem)
                     | Ty::Array { elem, .. } => (**elem).clone(),
                     _ => Ty::Unit,
@@ -4401,14 +4402,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::StrView(Rc::new(view.slice(lo as usize, hi as usize)))
             }
             Builtin::KeyLo => Value::Int(match &first {
-                Value::ListView(v) => v.lo as i64,
+                Value::ListView(v) => v.first_key(),
                 Value::StrView(v) => v.lo as i64,
                 _ => 0,
             }),
             Builtin::KeyPos | Builtin::PosKey => {
                 let at = values.next().unwrap_or_default().int();
                 let (lo, len, rev) = match &first {
-                    Value::ListView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
                     _ => return trap(span, "keys need a slice"),
                 };
@@ -4418,6 +4419,29 @@ impl<'p, 'o> Interp<'p, 'o> {
                 } else {
                     lo + if rev { len - 1 - at } else { at }
                 })
+            }
+            Builtin::Rekey => {
+                let lo = values.next().unwrap_or_default().int();
+                let hi = values.next().unwrap_or_default().int();
+                let mut view = match first {
+                    Value::List(items) => ListViewVal::whole(items, false),
+                    Value::Array(a) if a.dims.len() == 1 => {
+                        ListViewVal::whole(Rc::new(a.to_values()), false)
+                    }
+                    Value::ListView(v) => (*v).clone(),
+                    _ => return trap(span, "rekey needs a list"),
+                };
+                if hi - lo != view.len as i64 {
+                    return trap(
+                        span,
+                        format!(
+                            "rekey needs as many keys as cells: {lo}..{hi} for {} cells",
+                            view.len
+                        ),
+                    );
+                }
+                view.shift = lo - view.lo as i64;
+                Value::ListView(Rc::new(view))
             }
             Builtin::KeySlice => {
                 let lo = values.next().unwrap_or_default().int();
@@ -4430,7 +4454,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     other => other,
                 };
                 let (first_key, len) = match &first {
-                    Value::ListView(v) => (v.lo as i64, v.len as i64),
+                    Value::ListView(v) => (v.first_key(), v.len as i64),
                     Value::StrView(v) => (v.lo as i64, v.len as i64),
                     _ => return trap(span, "keys need a slice"),
                 };

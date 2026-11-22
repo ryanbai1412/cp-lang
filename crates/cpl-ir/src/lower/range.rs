@@ -132,7 +132,10 @@ impl RangeInfo {
                 }
                 Some(NarrowLayout::Tuple(widths))
             }
-            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _)) => self
+            (
+                RangeInfo::Elem(_),
+                Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _),
+            ) => self
                 .narrow_elem_layout(ty)
                 .map(|l| NarrowLayout::Seq(Box::new(l))),
             _ => None,
@@ -141,7 +144,10 @@ impl RangeInfo {
 
     pub(super) fn narrow_elem_layout(&self, container_ty: &Ty) -> Option<NarrowLayout> {
         let elem_ty = match container_ty {
-            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) => elem.as_ref(),
+            Ty::Array { elem, .. }
+            | Ty::List(elem)
+            | Ty::ListView(elem, _)
+            | Ty::Keyed(elem, _) => elem.as_ref(),
             _ => return None,
         };
         self.elem()?.narrow_value_layout(elem_ty)
@@ -224,7 +230,10 @@ fn is_minus_one_of(hi_expr: &Expr, divisor: &Expr) -> bool {
 }
 
 pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
-    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _))
+    matches!(
+        ty,
+        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _)
+    )
 }
 
 impl<'a> Lowerer<'a> {
@@ -483,9 +492,10 @@ impl<'a> Lowerer<'a> {
                 RangeInfo::Elem(inner) => Some(*inner),
                 _ => None,
             },
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::KeySlice | Builtin::ToList, args) => {
-                args.first().and_then(|a| self.expr_range(a))
-            }
+            ExprKind::Builtin(
+                Builtin::ListSlice | Builtin::KeySlice | Builtin::Rekey | Builtin::ToList,
+                args,
+            ) => args.first().and_then(|a| self.expr_range(a)),
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(e)) => self.expr_range(e),
                 _ => None,

@@ -2682,6 +2682,15 @@ impl<'a> Lowerer<'a> {
     fn resolve(&mut self, ty: &ast::Type, values: bool) -> Spec {
         match &ty.kind {
             ast::TypeKind::Named { name, args } => self.named(name, args, values),
+            ast::TypeKind::Array { index, elem }
+                if matches!(index.as_slice(), [ast::Type { kind: ast::TypeKind::Named { name, args }, .. }]
+                    if args.is_empty() && self.gen_env.contains_key(&mono::int_key_marker(&name.text))) =>
+            {
+                // `[K]T` keyed by a sequence's `Int` keys (R04b.5.3): those start
+                // wherever the sequence's do, so the table carries its first key.
+                let elem = self.resolve(elem, values).ty();
+                Spec::Plain(Ty::Keyed(Box::new(elem), Dim::Int))
+            }
             ast::TypeKind::Array { index, elem } => {
                 // `[V]T` where `V` stands for `(R, C)`: one dimension for
                 // each part, as `[R, C]T`.
@@ -2893,7 +2902,9 @@ impl<'a> Lowerer<'a> {
         if name.text == "Slice" && args.len() == 1 {
             match self.resolve_ty(&args[0]) {
                 Ty::List(e) | Ty::MutView(e) => return Spec::Plain(Ty::ListView(e, Dim::Int)),
-                Ty::ListView(e, key) => return Spec::Plain(Ty::ListView(e, key)),
+                Ty::ListView(e, key) | Ty::Keyed(e, key) => {
+                    return Spec::Plain(Ty::ListView(e, key))
+                }
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
                 _ => {}
             }
@@ -4240,6 +4251,7 @@ impl<'a> Lowerer<'a> {
             | Ty::Opt(t)
             | Ty::List(t)
             | Ty::ListView(t, _)
+            | Ty::Keyed(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::HashSet(t)
@@ -4754,7 +4766,7 @@ impl<'a> Lowerer<'a> {
                     dims,
                     elem: want_elem,
                 },
-                Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem),
+                Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem),
             ) if want_elem == elem || self.plain_ty(want_elem) == **elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
@@ -5165,20 +5177,27 @@ impl<'a> Lowerer<'a> {
                 }
                 Err(e)
             }
+            (Ty::ListView(we, wk), Ty::Keyed(ge, gk))
+                if we == ge && wk == gk && matches!(e.kind, ExprKind::Local(_)) =>
+            {
+                Ok(Expr {
+                    ty: want.clone(),
+                    ..e
+                })
+            }
             (Ty::Str, Ty::StrView) => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
                 ty: Ty::Str,
                 span,
             }),
-            (Ty::List(want_elem), Ty::ListView(got_elem, _) | Ty::MutView(got_elem))
-                if want_elem == got_elem =>
-            {
-                Ok(Expr {
-                    kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
-                    ty: want.clone(),
-                    span,
-                })
-            }
+            (
+                Ty::List(want_elem),
+                Ty::ListView(got_elem, _) | Ty::Keyed(got_elem, _) | Ty::MutView(got_elem),
+            ) if want_elem == got_elem => Ok(Expr {
+                kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
+                ty: want.clone(),
+                span,
+            }),
             (Ty::Pos(d), Ty::Tuple(ts))
                 if self
                     .product_domains

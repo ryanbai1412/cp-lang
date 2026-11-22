@@ -391,18 +391,16 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     let n = s.len
     var z = List.filled(n, 0)
-    if n > 0:
-        z[0] = n
-        var (l, r) = (0, 0)
-        unchecked:
-            for i in 1..n:
-                var k = if i < r: min(r - i, z[i - l]) else: 0
-                while i + k < n and s.at(k) == s.at(i + k): k += 1
-                z[i] = k
-                if i + k > r:
-                    l = i
-                    r = i + k
-    [n] i => z[i]
+    if n > 0: z[0] = n
+    var l = 0
+    var r = 0
+    for i in 1..n:
+        if i < r: z[i] = if r - i < z[i - l]: r - i else: z[i - l]
+        while i + z[i] < n and s.nth(z[i]) == s.nth(i + z[i]): z[i] += 1
+        if i + z[i] > r:
+            l = i
+            r = i + z[i]
+    z.rekey(s.keys)
 
 @allow(unproven_list_index)
 /// The prefix function (failure function) of `s`: `p[i]` is the length of the longest
@@ -415,9 +413,7 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
-pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
-    let p = failure_lengths(s)
-    [s.len] i => p[i]
+pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = failure_lengths(s).rekey(s.keys)
 
 fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
@@ -541,18 +537,16 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
 /// traps: never
 /// example: `"abab".prefix_matches("ab") == [1, 2, 1, 2]`
 pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int:
-    let n = self.len
-    let m = pat.len
-    var res = List.filled(n, 0)
-    if n > 0 and m > 0:
-        let pi = failure_lengths(pat)
-        var k = 0
-        unchecked:
-            for i in 0..n:
-                while k > 0 and (k == m or self.at(i) != pat.at(k)): k = pi[k - 1]
-                if self.at(i) == pat.at(k): k += 1
-                res[i] = k
-    [n] i => res[i]
+    var res = List.filled(self.len, 0)
+    if pat.is_empty: return res.rekey(self.keys)
+    let p = failure_lengths(pat)
+    var k = 0
+    for i in 0..self.len:
+        if k == pat.len: k = p[k - 1]
+        while k > 0 and self.nth(i) != pat.nth(k): k = p[k - 1]
+        if self.nth(i) == pat.nth(k): k += 1
+        res[i] = k
+    res.rekey(self.keys)
 
 @allow(unproven_list_index)
 /// The length of the longest suffix of `a` that is also a prefix of `b`, at most

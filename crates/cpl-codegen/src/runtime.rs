@@ -1604,6 +1604,24 @@ inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size
 ",
     },
     Piece {
+        name: "rekey",
+        needs: &["list_view"],
+        code: "\
+template <class T> ListView<T> rekey(ListView<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.n) fail(\"rekey needs as many keys as cells\"); return ListView<T>(v.ptr, v.n, v.rev, lo); }
+template <class T> ListView<T> rekey(const std::vector<T>& v, ll lo, ll hi) { return rekey(ListView<T>(v), lo, hi); }
+template <class T> struct Keyed : ListView<T> {
+    std::vector<T> store;
+    Keyed() = default;
+    Keyed(std::vector<T> v, ll k) : store(std::move(v)) { this->ptr = store.data(); this->n = store.size(); this->k0 = k; }
+    Keyed(const Keyed& o) : ListView<T>(o), store(o.store) { this->ptr = store.data(); }
+    Keyed(Keyed&& o) noexcept : ListView<T>(o), store(std::move(o.store)) { this->ptr = store.data(); }
+    Keyed& operator=(const Keyed& o) { ListView<T>::operator=(o); store = o.store; this->ptr = store.data(); return *this; }
+    Keyed& operator=(Keyed&& o) noexcept { ListView<T>::operator=(o); store = std::move(o.store); this->ptr = store.data(); return *this; }
+};
+template <class T> Keyed<T> rekey_own(std::vector<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.size()) fail(\"rekey needs as many keys as cells\"); return Keyed<T>(std::move(v), lo); }
+",
+    },
+    Piece {
         name: "mut_view",
         needs: &["fail"],
         code: "\

@@ -157,6 +157,9 @@ pub enum Ty {
     /// O(1) read-only view into a `List<T>` or 1D `[D]T` (slice or
     /// reverse), keyed like its source (R04b.1.2).
     ListView(Box<Ty>, Dim),
+    /// An owned table keyed like a view: `z.rekey(s.keys)` on an owned `z`
+    /// (R04b.1.7). Every use reads it as a `ListView`.
+    Keyed(Box<Ty>, Dim),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
     MutView(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
@@ -201,6 +204,7 @@ impl Ty {
             | Ty::Opt(t)
             | Ty::List(t)
             | Ty::ListView(t, _)
+            | Ty::Keyed(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::HashSet(t)
@@ -221,6 +225,7 @@ impl Ty {
             self,
             Ty::List(_)
                 | Ty::ListView(_, _)
+                | Ty::Keyed(_, _)
                 | Ty::MutView(_)
                 | Ty::Array { .. }
                 | Ty::Map(..)
@@ -274,6 +279,7 @@ impl Ty {
             Ty::Opt(t)
             | Ty::List(t)
             | Ty::ListView(t, _)
+            | Ty::Keyed(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::Range(t) => t.is_comparable(program),
@@ -306,7 +312,9 @@ impl Ty {
     /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
-            Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) => Some((**elem).clone()),
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+                Some((**elem).clone())
+            }
             Ty::Str | Ty::StrView => Some(Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => Some((**elem).clone()),
             Ty::Range(inner) => Some((**inner).clone()),
@@ -318,7 +326,7 @@ impl Ty {
     pub fn seq_key(&self) -> Option<Dim> {
         match self {
             Ty::List(_) | Ty::MutView(_) | Ty::Str | Ty::StrView => Some(Dim::Int),
-            Ty::ListView(_, key) => Some(*key),
+            Ty::ListView(_, key) | Ty::Keyed(_, key) => Some(*key),
             Ty::Array { dims, .. } if dims.len() == 1 => Some(dims[0]),
             _ => None,
         }
@@ -751,6 +759,8 @@ pub enum Builtin {
     PosKey,
     /// `(view, lo, hi)` -> the view narrowed to the keys `lo..hi`, keeping them.
     KeySlice,
+    /// `(seq, lo, hi)` -> the same cells keyed `lo..hi`; traps unless the lengths match.
+    Rekey,
     /// Explicit O(n) copy of a `Str` or `StrView` into an owned `Str`.
     ToStr,
     /// Explicit O(n) copy of a `List` or `ListView` into an owned `List`.
@@ -1064,7 +1074,7 @@ impl NarrowLayout {
                 let cell = inner.cpp_elem(elem)?;
                 Some(format!("std::vector<{cell}>"))
             }
-            (NarrowLayout::Seq(inner), Ty::ListView(elem, _)) => {
+            (NarrowLayout::Seq(inner), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
                 let cell = inner.cpp_elem(elem)?;
                 Some(format!("cpl::ListView<{cell}>"))
             }
@@ -1236,6 +1246,7 @@ impl Program {
             | Ty::Opt(inner)
             | Ty::List(inner)
             | Ty::ListView(inner, _)
+            | Ty::Keyed(inner, _)
             | Ty::MutView(inner)
             | Ty::Set(inner)
             | Ty::HashSet(inner)

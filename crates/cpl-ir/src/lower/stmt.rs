@@ -2140,7 +2140,12 @@ impl<'a> Lowerer<'a> {
                 Ty::DomainVal => {
                     out.push(Stmt::DefDomainFromVal { id, val });
                 }
-                Ty::List(_) | Ty::ListView(_, _) | Ty::Array { .. } | Ty::Str | Ty::StrView => {
+                Ty::List(_)
+                | Ty::ListView(_, _)
+                | Ty::Keyed(_, _)
+                | Ty::Array { .. }
+                | Ty::Str
+                | Ty::StrView => {
                     let len = self.mk(
                         ExprKind::Builtin(Builtin::Len, vec![val]),
                         Ty::Int,
