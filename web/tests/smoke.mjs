@@ -8,12 +8,19 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(base + '/');
 await page.getByRole('button', { name: 'Run' }).first().click();
 const out = page.getByRole('status').first();
-await out.filter({ hasText: '30' }).waitFor({ timeout: 30000 });
+await out.filter({ hasText: /^1\s*$/ }).waitFor({ timeout: 30000 });
 console.log('home run output:', JSON.stringify(await out.innerText()));
+const [viewer] = await Promise.all([
+  page.context().waitForEvent('page'),
+  page.getByRole('button', { name: 'Trace' }).first().click(),
+]);
+await viewer.getByText('main.cp').first().waitFor({ state: 'attached', timeout: 30000 });
+console.log('trace viewer ok');
+await viewer.close();
 await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '14' }).waitFor({ timeout: 30000 });
 console.log('play run output ok');
 await page.close();
 console.log('page errors:', errors);
-process.exit(0);
+process.exit(errors.length ? 1 : 0);
