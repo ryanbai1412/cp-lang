@@ -368,31 +368,26 @@ fn quick_fixed(server: &mut Server, uri: &str, text: &str, diagnostic: &Value) -
 #[test]
 fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
     assert_fixes_restore(
-        "cf2062g",
+        "aac4p6",
         &[
             // E0101: a call left open.
             (
-                "let p: [I]I = read()",
-                "let p: [I]I = read(",
+                "var a: [0..n]Int = read()",
+                "var a: [0..n]Int = read(",
                 "E0101",
                 "insert `)`",
             ),
             // E0103: a block without its colon.
-            (
-                "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:",
-                "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>",
-                "E0103",
-                "insert `:`",
-            ),
+            ("if k > 0:", "if k > 0", "E0103", "insert `:`"),
             // E0102: an operator typed twice.
             (
-                "abs(i.ord - j.ord) + abs(",
-                "abs(i.ord - j.ord) + * abs(",
+                "a[i] - ds.len",
+                "a[i] - * ds.len",
                 "E0102",
                 "remove the extra `*`",
             ),
             // E0004: a stray character.
-            ("fn sort_perm<D>", "fn $sort_perm<D>", "E0004", "remove `$`"),
+            ("let m = min", "let $m = min", "E0004", "remove `$`"),
         ],
     );
 }
@@ -455,31 +450,31 @@ fn completion_offers_unimported_stdlib_names_with_their_use() {
 #[test]
 fn quick_fixes_close_a_bracket_where_it_was_dropped() {
     assert_fixes_restore(
-        "cf2084c",
+        "aac4p6",
         &[(
-            "target[mid] = I(n / 2 + 1)",
-            "target[mid = I(n / 2 + 1)",
+            "a[i] = max(a[i], 1)",
+            "a[i = max(a[i], 1)",
             "E0101",
             "insert `]`",
         )],
     );
     assert_fixes_restore(
-        "cf2150c",
+        "aac4p6",
         &[(
-            "if let (nxt_k, nxt_v) = deltas",
-            "if let (nxt_k, nxt_v = deltas",
+            "let (n, k) = read",
+            "let (n, k = read",
             "E0101",
             "insert `)`",
         )],
     );
 }
 
-/// Each `(good, bad, code, title)` breaks the ecnerwala `port` by replacing
+/// Each `(good, bad, code, title)` breaks the corpus `spec.cp` of `port` by replacing
 /// `good` with `bad`; its first diagnostic is `code` and the first quick
 /// fix, titled `title`, restores the port.
 fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../corpus/problems/{port}/port.cp"));
+        .join(format!("../../corpus/problems/{port}/spec.cp"));
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
     assert_fixes_restore_at(&uri, &original, breaks);
@@ -994,7 +989,7 @@ fn inlay_hints_skip_names_in_a_typed_tuple() {
 #[test]
 fn inlay_hints_show_the_index_space_of_lambda_parameters() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../corpus/problems/cf2062g/port.cp");
+        .join("../../corpus/problems/ccc20s4/spec.cp");
     let text = std::fs::read_to_string(&path).unwrap();
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
@@ -1014,7 +1009,7 @@ fn inlay_hints_show_the_index_space_of_lambda_parameters() {
         "textDocument/inlayHint",
         obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
     ));
-    let line = text.lines().position(|l| l.contains("(i, j) =>")).unwrap() as u32;
+    let line = text.lines().position(|l| l.contains("(x, y) =>")).unwrap() as u32;
     let shown: Vec<(u32, String)> = reply[0]
         .at(&["result"])
         .as_array().unwrap_or(&[])
@@ -1027,12 +1022,11 @@ fn inlay_hints_show_the_index_space_of_lambda_parameters() {
             )
         })
         .collect();
-    // `let (_, mate) = min_weight_matching<I, I>((i, j) => ...)`: the
-    // matching's `[I]I`, and both lambda parameters range over `I`.
+    // `[Who, Who] (x, y) => ...`: both lambda parameters range over `Who`.
     let hint = |at: u32, label: &str| (at, label.to_string());
     assert_eq!(
         shown,
-        [hint(12, ": [I]I"), hint(44, ": I"), hint(47, ": I")]
+        [hint(25, ": Who"), hint(28, ": Who")]
     );
     // A fn's parameters have their types written, so they get none.
     let (mut server, _) = open(
@@ -2047,10 +2041,10 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
 #[test]
 fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../corpus/problems/cf2062g/port.cp");
+        .join("../../corpus/problems/apio09p3/spec.cp");
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
-    let (good, bad) = ("let q: [I]I = read()", "var q: [I]I = read()");
+    let (good, bad) = ("let cash: [V]0..=4000 = read()", "var cash: [V]0..=4000 = read()");
     assert!(original.contains(good));
     let broken = original.replacen(good, bad, 1);
     let mut server = Server::new();
@@ -2106,7 +2100,7 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
 
 fn open_port(server: &mut Server, port: &str, edit: (&str, &str)) -> (String, String, Vec<Value>) {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../corpus/problems/{port}/port.cp"));
+        .join(format!("../../corpus/problems/{port}/spec.cp"));
     let original = std::fs::read_to_string(&path).unwrap();
     assert!(original.contains(edit.0), "{port}: {}", edit.0);
     let text = original.replacen(edit.0, edit.1, 1);
@@ -2136,20 +2130,14 @@ fn open_port(server: &mut Server, port: &str, edit: (&str, &str)) -> (String, St
 fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
     for (port, good, bad, code) in [
         (
-            "cf2066b",
-            "in a.items if x != 0",
-            "in a.items where x != 0",
+            "egoi22p3",
+            "open.chunks(2) if pair.len == 2",
+            "open.chunks(2) where pair.len == 2",
             "E0503",
         ),
-        ("agc077a", "@!multitest\n", "--- multitest ---\n", "E0503"),
-        (
-            "cf2062h",
-            "Z(2) ** inside - ways",
-            "Z(2).pow(inside) - ways",
-            "L0205",
-        ),
-        ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "L0206"),
-        ("cf2053i1", "reach.start", "reach.lo", "E0503"),
+        ("ccc03s4", "@!multitest\n", "--- multitest ---\n", "E0503"),
+        ("shoi16p3", "Z(s) ** above", "Z(s).pow(above)", "L0205"),
+        ("aac4p6", "a[i] - ds.len,", "a[i] - ds.len(),", "L0206"),
     ] {
         let mut server = Server::new();
         let (uri, text, diagnostics) = open_port(&mut server, port, (good, bad));
@@ -2172,14 +2160,14 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
 fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
     let mut server = Server::new();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../corpus/problems/cf2066b/port.cp");
+        .join("../../corpus/problems/egoi22p3/spec.cp");
     let original = std::fs::read_to_string(&path).unwrap();
     let (uri, text, _) = open_port(
         &mut server,
-        "cf2066b",
-        ("(0..b.len).rev:", "(0..b.len()).rev:"),
+        "egoi22p3",
+        ("if pair.len == 2:", "if pair.len() == 2:"),
     );
-    let text = text.replacen("in a.items if x != 0", "in a.items where x != 0", 1);
+    let text = text.replacen("chunks(2) if pair", "chunks(2) where pair", 1);
     let change = obj([
         (
             "textDocument",

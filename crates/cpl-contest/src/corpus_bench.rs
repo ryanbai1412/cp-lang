@@ -4,7 +4,7 @@
 //! original accepted C++ solution (both built with `g++ -O2 -std=c++17`),
 //! reports per-port ratio, p50 and p95, enforces:
 //!   - corpus p50 <= 1.0x, p95 <= 1.5x (over ports above the 10 ms floor)
-//!   - when `perf.cp` exists beside `spec.cp`/`port.cp`, uses it as the tuned
+//!   - when `perf.cp` exists beside `spec.cp`, uses it as the tuned
 //!     variant, verifies it passes the problem's tests, and requires <= 1.1x
 //!
 //! Writes `bench/corpus-p95-results.json` in the schema `web/lib/bench.ts`
@@ -127,10 +127,6 @@ fn choose_port(prob_dir: &Path) -> Option<(PathBuf, bool)> {
     let perf = prob_dir.join("perf.cp");
     if perf.is_file() {
         return Some((perf, true));
-    }
-    let port = prob_dir.join("port.cp");
-    if port.is_file() {
-        return Some((port, false));
     }
     let spec = prob_dir.join("spec.cp");
     if spec.is_file() {
@@ -320,7 +316,7 @@ fn bench_problem(prob_dir: &Path, runs: usize) -> PortRecord {
             time_ratio: None,
             rss_ratio: None,
             above_floor: false,
-            skip: Some("no port.cp/spec.cp".to_string()),
+            skip: Some("no spec.cp".to_string()),
         };
     };
     let port_str = port_path.to_string_lossy().into_owned();

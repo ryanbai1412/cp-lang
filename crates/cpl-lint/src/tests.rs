@@ -450,9 +450,9 @@ fn lints_the_whole_corpus() {
     let mut files = Vec::new();
     if let Ok(entries) = std::fs::read_dir(root.join("corpus/problems")) {
         for entry in entries.flatten() {
-            let port = entry.path().join("port.cp");
-            if port.exists() {
-                files.push(port);
+            let spec = entry.path().join("spec.cp");
+            if spec.exists() {
+                files.push(spec);
             }
         }
     }
@@ -1498,7 +1498,7 @@ print(p[3] - p[1])
         "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
     );
 
-    // 1D domain bounds (corpus/problems/atcoder_dp_m/port.cp shape) -> prefix(ways) and pre.prefix(...)
+    // 1D domain bounds -> prefix(ways) and pre.prefix(...)
     let dom_pref = "\
 domain C = 0..=4
 let ways: [C]Int = [1, 2, 3, 4, 5]
@@ -2048,8 +2048,14 @@ print(f([[1], [2, 3]]))
     assert_eq!(proofs(&other), ["g[u] 0 <= u < g.len"]);
     let cell = walk.replace("s += g[u][j]", "g[u][j] = s");
     assert_eq!(proofs(&cell), rows);
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/problems/ioi12p6/port.cp");
-    let port = &std::fs::read_to_string(path).unwrap();
+    let port = "domain Node = 0..5
+var kids: [Node]List<Node> = [Node] _ => []
+kids[Node.first!].push(Node.last!)
+for v in Node:
+    for i in 0..kids[v].len:
+        let k = kids[v][i]
+        print(k.ord)
+";
     assert!(proofs(port).contains(&"kids[v][i] 0 <= i < kids[v].len".to_string()), "{:?}", proofs(port));
 }
 

@@ -2273,15 +2273,11 @@ fn a_dropped_closer_inside_a_call_or_index_is_the_only_error() {
     // `f(a[i, j)` closes the call, so the call or index sees one argument
     // too many or too few; that is the missing `]`, not a second error.
     for (port, good, bad) in [
-        ("cf2096b", "max(l[i], r[i]) for", "max(l[i, r[i]) for"),
-        (
-            "cf2096h",
-            "(even_prod[a], odd_prod[a], even_prod[b], odd_prod[b]) =",
-            "(even_prod[a, odd_prod[a], even_prod[b], odd_prod[b]) =",
-        ),
+        ("ceoi17p2", "min(sa[i], sb[k])", "min(sa[i, sb[k])"),
+        ("ioi15p5", "(spot[u], spot[v]) = (pv, pu)", "(spot[u, spot[v]) = (pv, pu)"),
     ] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("../../corpus/problems/{port}/port.cp"));
+            .join(format!("../../corpus/problems/{port}/spec.cp"));
         let src = std::fs::read_to_string(path).unwrap();
         assert!(src.contains(good), "{port}: {good}");
         assert_eq!(
@@ -3506,13 +3502,17 @@ fn an_index_of_the_arrays_own_domain_is_proven_by_its_type() {
         }
         out
     };
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../corpus/problems/atcoder_dp_l/port.cp"
-    );
-    let port = std::fs::read_to_string(path).unwrap();
+    let port = "let n: 1..=3000 = read()
+domain I = 0..n
+let a: [I]1..=1e9 = read()
+@memo
+fn lead(l: I, r: I) -> Int:
+    if l >= r: return a[l]
+    max(a[l] - lead(l.next!, r), a[r] - lead(l, r.prev!))
+print(lead(I.first!, I.last!))
+";
     assert_eq!(
-        proofs(&port),
+        proofs(port),
         [
             "a[l] l: I, the index space of a",
             "a[l] l: I, the index space of a",

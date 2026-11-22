@@ -382,11 +382,10 @@ fn extracts_the_whole_corpus() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let (mut files, mut items) = (0, 0);
     let mut paths = Vec::new();
-    let ec_set = std::fs::read_to_string(root.join("corpus/sets/ecnerwala.txt")).unwrap();
-    for id in ec_set.lines().map(str::trim).filter(|l| !l.is_empty()) {
-        let port = root.join("corpus/problems").join(id).join("port.cp");
-        if port.exists() {
-            paths.push(port);
+    for entry in std::fs::read_dir(root.join("corpus/problems")).unwrap().flatten() {
+        let spec = entry.path().join("spec.cp");
+        if spec.exists() {
+            paths.push(spec);
         }
     }
     for dir in [

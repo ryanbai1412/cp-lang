@@ -167,7 +167,7 @@ fn cp_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     }
 }
 
-/// Every corpus program (`spec.cp`, `port.cp`, `dream.cp`) and every
+/// Every corpus program (`spec.cp`, `dream.cp`) and every
 /// conformance case, walked as the hill-climb ports are; broken and rejected
 /// programs included.
 #[test]
@@ -177,7 +177,7 @@ fn every_corpus_program_and_conformance_case_is_served() {
     cp_files(&root.join("corpus/problems"), &mut files);
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);
-    assert!(corpus >= 1000 && files.len() - corpus >= 500, "{corpus} corpus files, {} cases", files.len() - corpus);
+    assert!(corpus >= 500 && files.len() - corpus >= 500, "{corpus} corpus files, {} cases", files.len() - corpus);
     files.sort();
 
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);

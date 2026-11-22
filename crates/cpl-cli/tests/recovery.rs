@@ -1,9 +1,9 @@
 //! How well the front end recovers from broken code: one diagnostic per
 //! root cause, at the right line.
 //!
-//! Two corpora. The code blocks of `plan/1x-*.md` are mostly valid 0.2.2
+//! Two corpora. The code blocks of `plan/1x-*.md` are mostly valid CP Lang
 //! with some planned syntax mixed in. The broken ports take every
-//! `corpus/sets/ecnerwala.txt` port, which checks clean, and break one line at
+//! `SPEC_PORTS` spec, which checks clean, and break one line at
 //! a time with a small set of edits a contestant makes by accident. Each
 //! broken copy has exactly one root cause, so every error past the first
 //! is a cascade, and the first error should be on the line that was
