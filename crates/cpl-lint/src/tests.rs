@@ -1814,6 +1814,19 @@ fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
 }
 
 #[test]
+fn a_fn_lists_the_calls_its_loop_count_leaves_out() {
+    let src = "let n: 1..=10 = read()\nfn inner() -> Int:\n    return 1\n\
+               fn outer(xs: List<Int>):\n    for i in 0..n:\n        print(inner(), xs.sorted().len)\n\
+               \x20   fn nested():\n        xs.reverse()\n    (inner)()\n";
+    let callees: Vec<Vec<&str>> = crate::proven_fns(src)
+        .iter()
+        .map(|f| f.callees.iter().map(|&(s, e)| &src[s as usize..e as usize]).collect())
+        .collect();
+    // `inner` is in the loop count; `nested` speaks for its own calls.
+    assert_eq!(callees, [vec![], vec!["reverse"], vec!["print", "sorted", "(inner)"]]);
+}
+
+#[test]
 fn the_prover_names_the_inputs_an_overflow_needs() {
     let overflows = |src: &str| -> Vec<Option<String>> {
         crate::proven_expr_ranges(src).into_iter().map(|e| e.overflow).collect()

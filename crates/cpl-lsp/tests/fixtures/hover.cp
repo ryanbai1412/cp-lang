@@ -92,3 +92,8 @@ fn coll$0ect() -> Int:
         for j in 0..k:
             seen.push(j)
     seen.so$0rted().len
+fn tal$0ly(cells: [V]Int) -> Int:
+    var best = 0
+    for v in V:
+        best max= cells[v]
+    cells.sorted().len + best

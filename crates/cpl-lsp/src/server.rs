@@ -257,13 +257,13 @@ impl Server {
                     .into_iter()
                     .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
                 if let Some(f) = proven {
-                    let calls = fn_call_costs(&mut self.db, &uri, &f);
+                    let (calls, total) = fn_call_costs(&mut self.db, &uri, &f);
                     let named = |count: Option<&str>| {
                         count
                             .filter(|c| !c.chars().all(|c| c.is_ascii_digit()))
                             .map_or(String::new(), |c| format!("{c} = "))
                     };
-                    if let Some(steps) = f.steps.filter(|&s| s > 0) {
+                    if let Some(steps) = f.steps.filter(|&s| s > 0 && total.is_none()) {
                         let rest = if calls.is_empty() {
                             "; methods and the stdlib not counted"
                         } else {
@@ -277,6 +277,13 @@ impl Server {
                     }
                     if !calls.is_empty() {
                         hover.text += &format!("\n  documented costs: {}", calls.join("; "));
+                    }
+                    if let Some((steps, cost)) = total {
+                        let cost = cost.map_or(String::new(), |c| format!("{c}, "));
+                        hover.text += &format!(
+                            "\n  estimated cost: {cost}about {} steps at max input",
+                            count_text(steps.ceil() as u128)
+                        );
                     }
                 }
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
@@ -1439,10 +1446,19 @@ fn size_in(cost: &str, size: &str) -> String {
 }
 
 /// The calls in `f`'s body with a documented cost, each with how often it
-/// runs per call: `.sorted O(n log n) n * q = 2e8 times`.
-fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn) -> Vec<String> {
+/// runs per call: `.sorted O(n log n) n * q = 2e8 times`; and the steps of
+/// one call at max input, with its `O(..)` when that is short, if every
+/// loop has a count and every call a documented cost that can be evaluated.
+#[allow(clippy::type_complexity)]
+fn fn_call_costs(
+    db: &mut cpl_check::Database,
+    uri: &str,
+    f: &cpl_lint::ProvenFn,
+) -> (Vec<String>, Option<(f64, Option<String>)>) {
     const MOST: usize = 4;
+    const LONGEST: usize = 100;
     let mut out = Vec::new();
+    let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
     let text = db.analyze(uri).map_or_else(String::new, |a| a.text.to_string());
     let sizes = if costs.is_empty() { Vec::new() } else { cpl_lint::proven_sizes(&text) };
@@ -1473,6 +1489,16 @@ fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn
             },
             Some(_) => "an unknown number of times".to_string(),
         };
+        if let (Some(s), Some(r)) = (steps, run.map_or(Some(1), |r| r.times)) {
+            let inner = cost.strip_prefix("O(").and_then(|c| c.strip_suffix(')'));
+            let term = match (run.and_then(|r| r.count.as_deref()), inner) {
+                (_, None) => None,
+                (None, Some(i)) => Some(i.to_string()),
+                (Some(c), Some(i)) if c.contains(' ') => Some(format!("({c}) * ({i})")),
+                (Some(c), Some(i)) => Some(format!("{c} * ({i})")),
+            };
+            evaluated.push((*span, s * r as f64, term));
+        }
         let cost = match steps {
             Some(s) if times == "once" => format!("{cost}, about {} steps,", count_text(s.ceil() as u128)),
             Some(s) => format!("{cost}, about {} steps each,", count_text(s.ceil() as u128)),
@@ -1485,7 +1511,52 @@ fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn
         out.truncate(MOST);
         out.push(format!("and {more} more"));
     }
-    out
+    let total = fn_total(db, uri, f, &evaluated).filter(|_| f.steps.is_some_and(|s| s > 0) || !costs.is_empty());
+    let total = total.map(|(steps, terms)| {
+        let cost = terms.map(|t| format!("O({})", t.join(" + "))).filter(|c| c.len() <= LONGEST);
+        (steps, cost)
+    });
+    (out, total)
+}
+
+/// One call of `f` at max input: its loop iterations, plus each call's
+/// steps times how often it runs, a documented `O(1)` call counting one
+/// step; `None` if a loop or call is uncounted. With it, the `O(..)` terms.
+fn fn_total(
+    db: &mut cpl_check::Database,
+    uri: &str,
+    f: &cpl_lint::ProvenFn,
+    evaluated: &[(Span, f64, Option<String>)],
+) -> Option<(f64, Option<Vec<String>>)> {
+    let loops = f.steps?;
+    if f.runs.iter().any(|r| r.times.is_none()) {
+        return None;
+    }
+    let mut steps = loops as f64;
+    let mut terms = match (loops, &f.count) {
+        (0, _) => Some(Vec::new()),
+        (_, Some(c)) => Some(vec![c.clone()]),
+        (_, None) => None,
+    };
+    for &(start, end) in &f.callees {
+        if let Some((_, s, term)) = evaluated.iter().find(|(span, ..)| span.start == start && span.end == end) {
+            steps += s;
+            terms = terms.zip(term.clone()).map(|(mut t, term)| {
+                t.push(term);
+                t
+            });
+            continue;
+        }
+        let hover = db.hover(uri, start)?;
+        let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
+        if (hover.span.start, hover.span.end) != (start, end) || !cost.starts_with("O(1)") {
+            return None;
+        }
+        let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;
+        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        steps += run.map_or(Some(1), |r| r.times)? as f64;
+    }
+    Some((steps, terms))
 }
 
 pub(crate) fn count_text(n: u128) -> String {

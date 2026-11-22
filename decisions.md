@@ -2444,6 +2444,20 @@ Along with it, `sort`, `reverse`, `swap` and `fill` count as keeping a list's le
 29.39): the catalog marks them mutating, but they only move or overwrite elements, so a sort no
 longer drops an index proof. Reverse by dropping `Bounds::pushed` and `keeps_len`'s `IN_PLACE`.
 
+29.46. **A fn's hover estimates one call's steps only when nothing is left out.** When every loop
+of the fn has a count and every call outside the fns of the file has a documented cost that can be
+evaluated, the hover shows `estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max
+input` in place of the loop line: its loop iterations, plus each documented call's steps times how
+often it runs, an `O(1)` call counting one step. The `O(..)` is the sum of those terms in the
+source's terms, dropped past 100 characters. Any uncounted part (a lambda, table or comprehension;
+a call whose doc states no cost, such as `print`, `min` or `push`; a cost on a receiver of unknown
+size; a call through an expression) means no estimate, so the number is never an undercount of
+what it names. Operators and getters count as one step each: no doc states otherwise, and a string
+`+` is the one known exception. Only 13 of the 2,142 fns in the ports and examples get one: of the
+694 whose loops all have a count, the calls most often left without a cost are `push` (66 fns),
+`min` (33), `read` (31), `max` (30), `print` (27) and type constructors (`Node`, `Int`, `some`).
+Reverse by dropping `ProvenFn::callees` and `fn_total`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

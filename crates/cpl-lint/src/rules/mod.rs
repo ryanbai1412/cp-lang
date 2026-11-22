@@ -109,6 +109,12 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
                     .collect(),
                 steps,
                 count: terms.map(|t| render_sum(file, &t)),
+                callees: f
+                    .callees
+                    .iter()
+                    .filter(|(name, _)| name.as_ref().is_none_or(|n| !by_name.contains_key(n.as_str())))
+                    .map(|(_, at)| *at)
+                    .collect(),
             }
         })
         .collect()
@@ -159,20 +165,20 @@ struct FnCost {
     /// The loop-count chain of each of its own loops.
     own_terms: Vec<Vec<Factor>>,
     calls: Vec<Call>,
+    callees: Vec<(Option<String>, (u32, u32))>,
 }
 
-/// The calls by name in `block`, each with its offset, and the spans of
-/// what runs an unknown number of times or not here: lambdas, tables,
-/// comprehensions and nested fns.
-/// Calls by name with their offsets, and the spans that hide calls.
-/// The calls by name, what runs an unknown number of times or not here,
-/// the nested fns and the loops.
-type Calls = (Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>);
+/// The calls by name with their offsets, what runs an unknown number of
+/// times or not here (lambdas, tables, comprehensions, nested fns), the
+/// nested fns, the loops, and every call's callee: its name for a call by
+/// name (`print`), the member for a method call (`sorted`).
+type Calls = (Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(Option<String>, (u32, u32))>);
 
 fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
     use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_block, Visitor};
-    struct Found(Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>);
+    #[allow(clippy::type_complexity)]
+    struct Found(Vec<(String, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(u32, u32)>, Vec<(Option<String>, (u32, u32))>);
     impl Visitor for Found {
         fn stmt(&mut self, stmt: &Stmt) {
             match stmt.kind {
@@ -187,8 +193,13 @@ fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
         fn expr(&mut self, expr: &Expr) {
             match &expr.kind {
                 ExprKind::Call { callee, .. } => {
-                    if let ExprKind::Name(name) = &callee.kind {
-                        self.0.push((name.clone(), expr.span.start));
+                    match &callee.kind {
+                        ExprKind::Name(name) => {
+                            self.0.push((name.clone(), expr.span.start));
+                            self.4.push((Some(name.clone()), (callee.span.start, callee.span.end)));
+                        }
+                        ExprKind::Field { name, .. } => self.4.push((None, (name.span.start, name.span.end))),
+                        _ => self.4.push((None, (callee.span.start, callee.span.end))),
                     }
                 }
                 ExprKind::Lambda { .. } | ExprKind::Table { .. } | ExprKind::Comprehension { .. } => {
@@ -198,9 +209,9 @@ fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
             }
         }
     }
-    let mut calls = Found(Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut calls = Found(Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
     walk_block(block, &mut calls);
-    (calls.0, calls.1, calls.2, calls.3)
+    (calls.0, calls.1, calls.2, calls.3, calls.4)
 }
 
 pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
@@ -980,8 +991,13 @@ fn ranges_of_stmt(
                     let own = (!proven.unbounded)
                         .then(|| loops.iter().try_fold(0u128, |sum, l| sum.checked_add(l.total?)))
                         .flatten();
-                    let (found, hidden, nested, all_loops) = calls_in(block);
+                    let (found, hidden, nested, all_loops, callees) = calls_in(block);
                     let inside = |at: u32, (start, end): (u32, u32)| start <= at && at < end;
+                    let callees = callees
+                        .into_iter()
+                        .map(|(name, (s, e))| (name, (base + s, base + e)))
+                        .filter(|(_, (s, _))| !nested.iter().any(|&(ns, ne)| inside(*s, (base + ns, base + ne))))
+                        .collect();
                     let calls = found
                         .into_iter()
                         .map(|(name, at)| {
@@ -1020,6 +1036,7 @@ fn ranges_of_stmt(
                         own,
                         own_terms: proven.loop_factors[first..].to_vec(),
                         calls,
+                        callees,
                     });
                     proven.around = around;
                     proven.factors = factors;
