@@ -40,7 +40,7 @@ fn tables(program: &Program, ty: &Ty, seen: &mut Vec<usize>, f: &mut dyn FnMut(&
             tables(program, key, seen, f);
             tables(program, value, seen, f);
         }
-        Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner) | Ty::HashSet(inner) | Ty::Range(inner) => {
+        Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner, _) | Ty::HashSet(inner) | Ty::Range(inner) => {
             tables(program, inner, seen, f)
         }
         Ty::Array { elem, .. } => tables(program, elem, seen, f),

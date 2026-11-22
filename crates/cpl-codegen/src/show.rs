@@ -122,7 +122,7 @@ impl<'p> Emitter<'p> {
     /// The types a value of the compound type `ty` is made of.
     fn parts(&self, ty: &Ty) -> Vec<Ty> {
         match ty {
-            Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner) | Ty::Set(inner) | Ty::HashSet(inner) => {
+            Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner, _) | Ty::Set(inner) | Ty::HashSet(inner) => {
                 vec![(**inner).clone()]
             }
             Ty::Array { elem, .. } => vec![(**elem).clone()],
@@ -241,7 +241,7 @@ impl<'p> Emitter<'p> {
                 });
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
-            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => {
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) => {
                 let cell = self.cell("v[i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");

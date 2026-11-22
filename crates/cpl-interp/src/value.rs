@@ -1122,7 +1122,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
-        Ty::ListView(_) => Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false))),
+        Ty::ListView(_, _) => Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::MutView(_) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
@@ -1246,7 +1246,7 @@ pub(crate) fn show(
                 rec(out, item, elem);
             }
         }
-        (Value::ListView(view), Ty::ListView(elem)) => {
+        (Value::ListView(view), Ty::ListView(elem, _)) => {
             let sep = sep_of(elem, &program.structs);
             for i in 0..view.len {
                 if i > 0 {

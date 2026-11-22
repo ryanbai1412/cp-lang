@@ -2892,7 +2892,8 @@ impl<'a> Lowerer<'a> {
         // `Slice<S>` is the view a slice of `S` is.
         if name.text == "Slice" && args.len() == 1 {
             match self.resolve_ty(&args[0]) {
-                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => return Spec::Plain(Ty::ListView(e)),
+                Ty::List(e) | Ty::MutView(e) => return Spec::Plain(Ty::ListView(e, Dim::Int)),
+                Ty::ListView(e, key) => return Spec::Plain(Ty::ListView(e, key)),
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
                 _ => {}
             }
@@ -4238,7 +4239,7 @@ impl<'a> Lowerer<'a> {
             Ty::Range(t)
             | Ty::Opt(t)
             | Ty::List(t)
-            | Ty::ListView(t)
+            | Ty::ListView(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::HashSet(t)
@@ -4753,7 +4754,7 @@ impl<'a> Lowerer<'a> {
                     dims,
                     elem: want_elem,
                 },
-                Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem),
+                Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem),
             ) if want_elem == elem || self.plain_ty(want_elem) == **elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
@@ -5169,7 +5170,7 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Str,
                 span,
             }),
-            (Ty::List(want_elem), Ty::ListView(got_elem) | Ty::MutView(got_elem))
+            (Ty::List(want_elem), Ty::ListView(got_elem, _) | Ty::MutView(got_elem))
                 if want_elem == got_elem =>
             {
                 Ok(Expr {

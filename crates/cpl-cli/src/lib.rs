@@ -2085,17 +2085,17 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
                 cpl_ir::Builtin::ListSlice => Some(format!(
                     "slice view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
                     match &e.ty {
-                        cpl_ir::Ty::ListView(t) => program.show_ty(t),
+                        cpl_ir::Ty::ListView(t, _) => program.show_ty(t),
                         _ => "T".to_string(),
                     }
                 )),
                 cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::StrView) => Some(
                     "reverse view -> cpl::StrView (std::string_view + rev), O(1), read-only".to_string(),
                 ),
-                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::ListView(_)) => Some(format!(
+                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::ListView(_, _)) => Some(format!(
                     "reverse view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
                     match &e.ty {
-                        cpl_ir::Ty::ListView(t) => program.show_ty(t),
+                        cpl_ir::Ty::ListView(t, _) => program.show_ty(t),
                         _ => "T".to_string(),
                     }
                 )),

@@ -504,7 +504,7 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
 fn is_narrowable_seq(ty: &Ty) -> bool {
     matches!(
         ty,
-        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
+        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)
     )
 }
 
@@ -539,7 +539,7 @@ pub(crate) fn narrow_elems(
             if def
                 .fields
                 .get(field)
-                .is_some_and(|(_, t)| matches!(t, Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) if matches!(elem.as_ref(), Ty::Int)))
+                .is_some_and(|(_, t)| matches!(t, Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) if matches!(elem.as_ref(), Ty::Int)))
             {
                 narrow.entry(ElemLoc::Field(id, field)).or_insert(NarrowLayout::Int(width));
             }

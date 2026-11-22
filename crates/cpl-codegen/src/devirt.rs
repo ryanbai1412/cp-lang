@@ -1062,7 +1062,7 @@ fn ty_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
         Ty::Array { elem, .. }
         | Ty::Opt(elem)
         | Ty::List(elem)
-        | Ty::ListView(elem)
+        | Ty::ListView(elem, _)
         | Ty::MutView(elem)
         | Ty::Set(elem)
         | Ty::HashSet(elem)
@@ -1094,7 +1094,7 @@ fn key_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
         Ty::Array { elem, .. }
         | Ty::Opt(elem)
         | Ty::List(elem)
-        | Ty::ListView(elem)
+        | Ty::ListView(elem, _)
         | Ty::MutView(elem)
         | Ty::Mut(elem)
         | Ty::Range(elem) => key_structs(elem, out),

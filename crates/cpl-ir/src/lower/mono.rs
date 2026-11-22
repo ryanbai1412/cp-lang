@@ -364,7 +364,7 @@ impl<'a> Lowerer<'a> {
             Ty::DomainVal => "Dom".into(),
             Ty::Opt(t) => format!("Opt_{}", self.mangle_ty(t)),
             Ty::List(t) => format!("Lst_{}", self.mangle_ty(t)),
-            Ty::ListView(t) => format!("LstView_{}", self.mangle_ty(t)),
+            Ty::ListView(t, _) => format!("LstView_{}", self.mangle_ty(t)),
             Ty::MutView(t) => format!("MutView_{}", self.mangle_ty(t)),
             Ty::Map(k, v) => format!("Map_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::HashMap(k, v) => format!("HMap_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
@@ -1855,6 +1855,29 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // `argmax<S: Keyed, D, T>(self: S) -> ?D`: `D` is what `S` is keyed by.
+        if gen_names.iter().any(|g| g == "D") && !inferred.contains_key("D") {
+            let key = decl.bounds.iter().find_map(|b| {
+                let keyed = b.traits.iter().any(|tr| {
+                    matches!(&tr.kind, ast::TypeKind::Named { name, .. }
+                        if matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut"))
+                });
+                match inferred.get(&b.name.text) {
+                    Some(GenArg::Ty(t)) if keyed => t.seq_key(),
+                    _ => None,
+                }
+            });
+            match key {
+                Some(Dim::Pos(d)) => {
+                    inferred.insert("D".to_string(), GenArg::Domain(d));
+                }
+                Some(Dim::Int | Dim::IntFrom(_)) => {
+                    inferred.insert("D".to_string(), GenArg::Ty(Ty::Int));
+                }
+                _ => {}
+            }
+        }
+
         // Pass 2 (up to 4 rounds for chained lambdas like `dijkstra(adj, from, w)`):
         // unify from lambda arguments whose parameter types are now known.
         for _ in 0..4 {
@@ -2345,7 +2368,7 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let (lo, list) = match self.probe_ty_silent(arg) {
-            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_))
+            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_))
                 if part_from.is_some() =>
             {
                 (part_from.unwrap_or(0), true)
@@ -2357,7 +2380,7 @@ impl<'a> Lowerer<'a> {
                 _ => return,
             },
             // A list is indexed by its own positions, `0..len`.
-            Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView) => {
+            Some(Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_) | Ty::Str | Ty::StrView) => {
                 (0, true)
             }
             _ => return,
@@ -2926,7 +2949,7 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
                 (
                     "List" | "Iter" | "Seq",
-                    Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) | Ty::Range(elem),
+                    Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) | Ty::Range(elem),
                 ) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
@@ -3140,7 +3163,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (Ty::List(ce) | Ty::ListView(ce) | Ty::MutView(ce), [_]) =
+                } else if let (Ty::List(ce) | Ty::ListView(ce, _) | Ty::MutView(ce), [_]) =
                     (concrete, index.as_slice())
                 {
                     // A list given where a `[D]T` is asked for.

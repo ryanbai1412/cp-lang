@@ -132,7 +132,7 @@ impl RangeInfo {
                 }
                 Some(NarrowLayout::Tuple(widths))
             }
-            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) => self
+            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _)) => self
                 .narrow_elem_layout(ty)
                 .map(|l| NarrowLayout::Seq(Box::new(l))),
             _ => None,
@@ -141,7 +141,7 @@ impl RangeInfo {
 
     pub(super) fn narrow_elem_layout(&self, container_ty: &Ty) -> Option<NarrowLayout> {
         let elem_ty = match container_ty {
-            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => elem.as_ref(),
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) => elem.as_ref(),
             _ => return None,
         };
         self.elem()?.narrow_value_layout(elem_ty)
@@ -224,7 +224,7 @@ fn is_minus_one_of(hi_expr: &Expr, divisor: &Expr) -> bool {
 }
 
 pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
-    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_))
+    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _))
 }
 
 impl<'a> Lowerer<'a> {

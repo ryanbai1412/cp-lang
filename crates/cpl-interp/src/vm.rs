@@ -2874,7 +2874,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let seq_kind = match &seq_expr.ty {
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
-            Ty::List(_) | Ty::ListView(_) => SeqKind::List,
+            Ty::List(_) | Ty::ListView(_, _) => SeqKind::List,
             Ty::Str | Ty::StrView => SeqKind::Str,
             _ => return false,
         };
@@ -4617,7 +4617,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_, _)) && indices.len() == 1 =>
             {
                 let list_v = self.compile_expr_v(base);
                 let r_i = self.compile_expr_i(&indices[0]);
@@ -5429,7 +5429,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_, _)) && indices.len() == 1 =>
             {
                 match &base.kind {
                     ExprKind::Global(gid) if matches!(base.ty, Ty::List(_)) => {
@@ -5866,7 +5866,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_, _)) && indices.len() == 1 =>
             {
                 match &base.kind {
                     ExprKind::Global(gid) if matches!(base.ty, Ty::List(_)) => {

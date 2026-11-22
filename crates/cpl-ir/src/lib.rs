@@ -154,8 +154,9 @@ pub enum Ty {
     Tuple(Vec<Ty>),
     Record(Vec<(String, Ty)>),
     List(Box<Ty>),
-    /// O(1) read-only view into a `List<T>` (slice or reverse).
-    ListView(Box<Ty>),
+    /// O(1) read-only view into a `List<T>` or 1D `[D]T` (slice or
+    /// reverse), keyed like its source (R04b.1.2).
+    ListView(Box<Ty>, Dim),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
     MutView(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
@@ -199,7 +200,7 @@ impl Ty {
             Ty::Range(t)
             | Ty::Opt(t)
             | Ty::List(t)
-            | Ty::ListView(t)
+            | Ty::ListView(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::HashSet(t)
@@ -219,7 +220,7 @@ impl Ty {
         matches!(
             self,
             Ty::List(_)
-                | Ty::ListView(_)
+                | Ty::ListView(_, _)
                 | Ty::MutView(_)
                 | Ty::Array { .. }
                 | Ty::Map(..)
@@ -272,7 +273,7 @@ impl Ty {
             Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
             Ty::Opt(t)
             | Ty::List(t)
-            | Ty::ListView(t)
+            | Ty::ListView(t, _)
             | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::Range(t) => t.is_comparable(program),
@@ -305,10 +306,20 @@ impl Ty {
     /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
-            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => Some((**elem).clone()),
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) => Some((**elem).clone()),
             Ty::Str | Ty::StrView => Some(Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => Some((**elem).clone()),
             Ty::Range(inner) => Some((**inner).clone()),
+            _ => None,
+        }
+    }
+
+    /// What a sequence is indexed by: its keys (R04b.1).
+    pub fn seq_key(&self) -> Option<Dim> {
+        match self {
+            Ty::List(_) | Ty::MutView(_) | Ty::Str | Ty::StrView => Some(Dim::Int),
+            Ty::ListView(_, key) => Some(*key),
+            Ty::Array { dims, .. } if dims.len() == 1 => Some(dims[0]),
             _ => None,
         }
     }
@@ -1053,7 +1064,7 @@ impl NarrowLayout {
                 let cell = inner.cpp_elem(elem)?;
                 Some(format!("std::vector<{cell}>"))
             }
-            (NarrowLayout::Seq(inner), Ty::ListView(elem)) => {
+            (NarrowLayout::Seq(inner), Ty::ListView(elem, _)) => {
                 let cell = inner.cpp_elem(elem)?;
                 Some(format!("cpl::ListView<{cell}>"))
             }
@@ -1224,7 +1235,7 @@ impl Program {
             Ty::Range(inner)
             | Ty::Opt(inner)
             | Ty::List(inner)
-            | Ty::ListView(inner)
+            | Ty::ListView(inner, _)
             | Ty::MutView(inner)
             | Ty::Set(inner)
             | Ty::HashSet(inner)

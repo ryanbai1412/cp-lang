@@ -397,7 +397,7 @@ impl<'a> Lowerer<'a> {
                         base_expr.ty,
                         Ty::Array { .. }
                             | Ty::List(_)
-                            | Ty::ListView(_)
+                            | Ty::ListView(_, _)
                             | Ty::MutView(_)
                             | Ty::Str
                             | Ty::StrView
@@ -2520,7 +2520,7 @@ impl<'a> Lowerer<'a> {
             | Ty::Bound(_) => true,
             Ty::Tuple(items) => items.iter().all(|t| self.ordered(t)),
             Ty::Record(fields) => fields.iter().all(|(_, t)| self.ordered(t)),
-            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => self.ordered(elem),
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) => self.ordered(elem),
             Ty::Struct(id) => {
                 let fields: Vec<Ty> = self.structs[*id]
                     .def
@@ -2733,10 +2733,10 @@ impl<'a> Lowerer<'a> {
             )
             || matches!(
                 (&l.ty, &r.ty),
-                (Ty::List(a), Ty::ListView(b) | Ty::MutView(b))
-                    | (Ty::ListView(a) | Ty::MutView(a), Ty::List(b))
-                    | (Ty::ListView(a), Ty::MutView(b))
-                    | (Ty::MutView(a), Ty::ListView(b))
+                (Ty::List(a), Ty::ListView(b, _) | Ty::MutView(b))
+                    | (Ty::ListView(a, _) | Ty::MutView(a), Ty::List(b))
+                    | (Ty::ListView(a, _), Ty::MutView(b))
+                    | (Ty::MutView(a), Ty::ListView(b, _))
                     if a == b
             ) {
             (l, r)
@@ -2922,7 +2922,7 @@ impl<'a> Lowerer<'a> {
                 }
                 let elem = match &holder.ty {
                     Ty::List(elem)
-                    | Ty::ListView(elem)
+                    | Ty::ListView(elem, _)
                     | Ty::MutView(elem)
                     | Ty::Set(elem)
                     | Ty::HashSet(elem)
@@ -2961,7 +2961,7 @@ impl<'a> Lowerer<'a> {
             || !matches!(
                 base,
                 Ty::List(_)
-                    | Ty::ListView(_)
+                    | Ty::ListView(_, _)
                     | Ty::MutView(_)
                     | Ty::Array { .. }
                     | Ty::Str
@@ -3291,7 +3291,7 @@ impl<'a> Lowerer<'a> {
             }
             // `a[V(2)..=V(4)][V(3)]`: a slice of an array keeps its
             // positions, held as their ordinals.
-            Ty::ListView(elem) | Ty::MutView(elem)
+            Ty::ListView(elem, _) | Ty::MutView(elem)
                 if indices.len() == 1 && cpl_check::edition::is_v03() =>
             {
                 let value = self.expr(&indices[0], None);
@@ -3301,7 +3301,7 @@ impl<'a> Lowerer<'a> {
                 };
                 (vec![key], (**elem).clone())
             }
-            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => {
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) => {
                 (one(self, &Ty::Int), (**elem).clone())
             }
             Ty::Str | Ty::StrView => (one(self, &Ty::Int), Ty::Char),
@@ -3539,7 +3539,7 @@ impl<'a> Lowerer<'a> {
     /// Whether indexing `ty` names source keys rather than positions: in
     /// v0.3 a slice keeps its source's keys (R04b.1).
     pub(super) fn keyed_view(ty: &Ty) -> bool {
-        matches!(ty, Ty::StrView | Ty::ListView(_)) && cpl_check::edition::is_v03()
+        matches!(ty, Ty::StrView | Ty::ListView(_, _)) && cpl_check::edition::is_v03()
     }
 
     /// `view` in a form that can be read more than once.
@@ -3605,23 +3605,23 @@ impl<'a> Lowerer<'a> {
                 },
                 Ty::StrView,
             ),
-            Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => (
+            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) => (
                 if keyed {
                     Builtin::KeySlice
                 } else {
                     Builtin::ListSlice
                 },
-                Ty::ListView(e.clone()),
+                Ty::ListView(e.clone(), base.ty.seq_key().unwrap_or(Dim::Int)),
             ),
             // R04b.1.2: a slice of an array keeps its positions as keys.
-            Ty::Array { elem, .. } => (Builtin::KeySlice, Ty::ListView(elem.clone())),
+            Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
             _ => unreachable!(),
         };
         self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
     }
 
     pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
-        if matches!(base.ty, Ty::StrView | Ty::ListView(_) | Ty::MutView(_))
+        if matches!(base.ty, Ty::StrView | Ty::ListView(_, _) | Ty::MutView(_))
             || matches!(
                 base.kind,
                 ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..)
@@ -3641,7 +3641,7 @@ impl<'a> Lowerer<'a> {
         if keyed_array
             || matches!(
                 base.ty,
-                Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
+                Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)
             )
         {
             let base = self.hoist_view_base(base, span);
@@ -3903,7 +3903,7 @@ impl<'a> Lowerer<'a> {
         }
         if matches!(
             base.ty,
-            Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
+            Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)
         ) {
             let base = self.hoist_view_base(base, span);
             let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
@@ -5025,7 +5025,7 @@ impl<'a> Lowerer<'a> {
                 let elem = match &value.ty {
                     Ty::Array { elem, .. }
                     | Ty::List(elem)
-                    | Ty::ListView(elem)
+                    | Ty::ListView(elem, _)
                     | Ty::MutView(elem)
                     | Ty::Set(elem)
                     | Ty::HashSet(elem) => (**elem).clone(),
@@ -6024,7 +6024,7 @@ fn run_gives(stmts: &mut [Stmt]) {
 
 fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
     match ty {
-        Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => Some(e),
+        Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) => Some(e),
         Ty::Array { dims, elem } if dims.len() == 1 => Some(elem),
         _ => None,
     }

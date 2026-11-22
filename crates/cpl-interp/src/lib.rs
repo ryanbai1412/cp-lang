@@ -3853,7 +3853,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let none_text = values.next().map(text);
                 let elem = match &args[1].ty {
                     Ty::List(elem)
-                    | Ty::ListView(elem)
+                    | Ty::ListView(elem, _)
                     | Ty::MutView(elem)
                     | Ty::Array { elem, .. } => (**elem).clone(),
                     _ => Ty::Unit,

@@ -380,7 +380,7 @@ impl<'p> Emitter<'p> {
                 self.need_ty(elem);
             }
             Ty::StrView => self.need("str_view"),
-            Ty::ListView(t) => {
+            Ty::ListView(t, _) => {
                 self.need("list_view");
                 self.need_ty(t);
             }
@@ -698,7 +698,7 @@ impl<'p> Emitter<'p> {
                         return format!("std::vector<{cell}>");
                     }
                 }
-                Ty::ListView(elem) => {
+                Ty::ListView(elem, _) => {
                     if let Some(cell) = l.cpp_elem(elem) {
                         return format!("cpl::ListView<{cell}>");
                     }
@@ -1206,7 +1206,7 @@ impl<'p> Emitter<'p> {
                 Ty::Range(t)
                 | Ty::Opt(t)
                 | Ty::List(t)
-                | Ty::ListView(t)
+                | Ty::ListView(t, _)
                 | Ty::MutView(t)
                 | Ty::Set(t)
                 | Ty::HashSet(t)
@@ -2170,7 +2170,7 @@ fn judge_ty(ty: &Ty) -> String {
         Ty::Str => "std::string".into(),
         Ty::StrView => "cpl::StrView".into(),
         Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
-        Ty::ListView(elem) => format!("cpl::ListView<{}>", judge_ty(elem)),
+        Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
         Ty::MutView(elem) => format!("cpl::MutView<{}>", judge_ty(elem)),
         Ty::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();

@@ -411,7 +411,7 @@ impl<'p> Emitter<'p> {
             return self.expr(e);
         };
         let elem_ty = match &e.ty {
-            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => Some(elem.as_ref()),
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem, _) => Some(elem.as_ref()),
             _ => None,
         };
         let Some(cpp_cell) = elem_ty.and_then(|et| l.cpp_elem(et)) else {
@@ -777,7 +777,7 @@ impl<'p> Emitter<'p> {
                 };
                 self.need("list_concat_at");
                 let operands = [&args[0], &args[1], &indices[0]];
-                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if **elem == Ty::Bool);
+                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem) if **elem == Ty::Bool);
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let call = format!(
                         "cpl::list_concat_at({}, {}, {})",
@@ -798,7 +798,7 @@ impl<'p> Emitter<'p> {
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
                     || matches!((&base.kind, &indices[0].kind), (ExprKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i)));
                 let checked = !proven(indices) && !raw_list;
-                if (matches!(base_ty, Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) && !raw_list)
+                if (matches!(base_ty, Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)) && !raw_list)
                     || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str | Ty::StrView))
                 {
                     if self.expr_fixed_len(base).is_some() {
@@ -841,15 +841,15 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)
+                        Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem)
                             if raw_list && **elem == Ty::Bool =>
                         {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) if raw_list => {
+                        Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_) if raw_list => {
                             Code::primary(format!("{b}[{}]", at[0]))
                         }
-                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)
+                        Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem)
                             if **elem == Ty::Bool =>
                         {
                             Code::new(
@@ -857,7 +857,7 @@ impl<'p> Emitter<'p> {
                                 UNARY,
                             )
                         }
-                        Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) => {
+                        Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
                         Ty::Array { elem, .. } if checked && **elem == Ty::Bool => Code::new(
@@ -2107,7 +2107,7 @@ impl<'p> Emitter<'p> {
             Builtin::Join => {
                 let elem = match &args[1].ty {
                     Ty::List(elem)
-                    | Ty::ListView(elem)
+                    | Ty::ListView(elem, _)
                     | Ty::MutView(elem)
                     | Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
@@ -2302,7 +2302,7 @@ impl<'p> Emitter<'p> {
                     self.need("str_view");
                     Code::primary(format!("cpl::str_rev({})", text(0)))
                 }
-                Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) => {
+                Some(Ty::List(_) | Ty::ListView(_, _) | Ty::MutView(_)) => {
                     self.need("list_view");
                     Code::primary(format!("cpl::list_rev({})", text(0)))
                 }
