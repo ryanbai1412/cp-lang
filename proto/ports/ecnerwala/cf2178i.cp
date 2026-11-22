@@ -7,6 +7,7 @@
 // `stay` = |adj(b) - out| + 1 ways. With b in T, any outsider next to b may
 // pick it, each outsider at most once: dp[s] counts the ways in which exactly
 // the outsiders in s have picked, and the zeta over adj(b) & out adds b's picks.
+// Subtract 1 at the end to exclude the empty firework set T = empty (all-nothing).
 use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
@@ -22,7 +23,7 @@ let b = [v for v in V if side[v] != left]
 domain A = 0..a.len
 fn nbr(v: V) -> Subset<A>:
     var m = Subset<A>.empty
-    for i in A if near(a[i.to_idx], v): m = m.with(i)
+    for i in A if near(a[i.ord], v): m = m.with(i)
     return m
 let adj = [nbr(v) for v in b]
 
