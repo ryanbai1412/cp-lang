@@ -1,0 +1,28 @@
+// expect: ok, output "YES 2 YES YES YES\nYES 7 3 2 4 YES 0 1\nYES"
+use std.bitset.{XorTrie}
+var t = XorTrie(3)
+t.add(5)
+t.add(5)
+let n = t.len
+t.remove(5)
+let x = t.remove(5)
+let z = t.remove(5)
+let y = z
+var u = XorTrie(3)
+u.add(5)
+u.add(5)
+u.add(1)
+var v = XorTrie(3)
+v.add(1)
+v.add(5)
+v.xor_all(1)
+print(XorTrie(3).is_empty, n, x and not y and t.is_empty, u.count(5) == 2 and u.count(2) == 0 and u.contains(5) and not u.contains(4), v.contains(0) and v.contains(4) and not v.contains(1))
+var w = XorTrie(3)
+w.add(1)
+w.add(5)
+w.add(6)
+var r = XorTrie(3)
+r.reserve(100)
+print(r.len == 0, w.max_xor(2)!, w.min_xor(2)!, w.count_xor_less(2, 5), w.kth_xor(2, 1)!, w.kth_xor(2, 3) == None and XorTrie(3).max_xor(2) == None, w.mex_xor(), w.mex_xor(1))
+w.clear()
+print(w.is_empty and not w.contains(5))

@@ -950,6 +950,40 @@ pub struct DynBitset:
 /// O(bits) per op. Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
 pub struct XorTrie:
     _bits: Int
+    _mask: Int
+    _c0: List<Int>
+    _c1: List<Int>
+    _cnt: List<Int>
+    _dist: List<Int>
+
+    fn child(self, node: Int, b: Int) -> Int = if b == 0: _c0[node] else: _c1[node]
+
+    fn leaf(self, x: Int) -> Int:
+        let z = x ^ _mask
+        var node = 0
+        for i in (0.._bits).rev:
+            node = self.child(node, (z >> i) & 1)
+            if node < 0: return -1
+        node
+
+    fn walk(mut self, x: Int, d: Int, dd: Int):
+        let z = x ^ _mask
+        var node = 0
+        _cnt[0] += d
+        _dist[0] += dd
+        for i in (0.._bits).rev:
+            let b = (z >> i) & 1
+            var c = self.child(node, b)
+            if c < 0:
+                c = _cnt.len
+                _c0.push(-1)
+                _c1.push(-1)
+                _cnt.push(0)
+                _dist.push(0)
+                if b == 0: _c0[node] = c else: _c1[node] = c
+            node = c
+            _cnt[node] += d
+            _dist[node] += dd
 
     /// Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in
     /// `0..2^bits`.
@@ -957,7 +991,9 @@ pub struct XorTrie:
     /// cost: O(1)
     /// traps: when `bits` is not in `1..=62`
     /// example: `XorTrie(3).is_empty`
-    pub fn new(bits: Int = 60) -> XorTrie = todo
+    pub fn new(bits: Int = 60) -> XorTrie:
+        assert bits >= 1 and bits <= 62
+        XorTrie(bits, 0, [-1], [-1], [0], [0])
 
     /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
     /// contents are unchanged.
@@ -965,21 +1001,22 @@ pub struct XorTrie:
     /// cost: O(nodes) time and space
     /// traps: when `nodes < 0`
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
-    pub fn reserve(mut self, nodes: Int) = todo
+    pub fn reserve(mut self, nodes: Int):
+        assert nodes >= 0
 
     /// The total number of stored integers, with multiplicity.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = _cnt[0]
 
     /// True when the trie holds no integers.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = _cnt[0] == 0
 
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
     /// only to elements already present.
@@ -987,28 +1024,37 @@ pub struct XorTrie:
     /// cost: O(bits) time, up to `bits` new nodes
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.count(5) == 2`
-    pub fn add(mut self, x: Int) = todo
+    pub fn add(mut self, x: Int):
+        assert 0 <= x and x < 1 << _bits
+        self.walk(x, 1, if self.count(x) == 0: 1 else: 0)
 
     /// Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
     ///
     /// cost: O(bits)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); let x = t.remove(5); let y = t.remove(5); x and not y`
-    pub fn remove(mut self, x: Int) -> Bool = todo
+    pub fn remove(mut self, x: Int) -> Bool:
+        let c = self.count(x)
+        if c == 0: return false
+        self.walk(x, -1, if c == 1: -1 else: 0)
+        true
 
     /// Whether `x` is present at least once.
     ///
     /// cost: O(bits)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.contains(5) and not t.contains(4)`
-    pub fn contains(self, x: Int) -> Bool = todo
+    pub fn contains(self, x: Int) -> Bool = self.count(x) > 0
 
     /// The multiplicity of `x` currently stored; zero when absent.
     ///
     /// cost: O(bits)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.add(1); t.count(5) == 2 and t.count(2) == 0`
-    pub fn count(self, x: Int) -> Int = todo
+    pub fn count(self, x: Int) -> Int:
+        if x < 0 or x >= 1 << _bits: return 0
+        let node = self.leaf(x)
+        if node < 0: 0 else: _cnt[node]
 
     /// Apply a lazy global XOR mask: every stored `y` becomes `y ^ mask`. Masks compose (`xor_all(a)`
     /// then `xor_all(b)` is `xor_all(a ^ b)`).
@@ -1016,7 +1062,9 @@ pub struct XorTrie:
     /// cost: O(1)
     /// traps: when `mask` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.xor_all(1); t.contains(0) and t.contains(4) and not t.contains(1)`
-    pub fn xor_all(mut self, mask: Int) = todo
+    pub fn xor_all(mut self, mask: Int):
+        assert 0 <= mask and mask < 1 << _bits
+        _mask ^= mask
 
     /// The maximum value of `x ^ y` over stored `y`, or `None` if empty.
     ///
@@ -1026,7 +1074,7 @@ pub struct XorTrie:
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.max_xor(2) == Some(7)`
     /// example: `XorTrie(3).max_xor(2) == None`
-    pub fn max_xor(self, x: Int) -> ?Int = todo
+    pub fn max_xor(self, x: Int) -> ?Int = self.extreme_xor(x, 1)
 
     /// The minimum value of `x ^ y` over stored `y`, or `None` if empty.
     ///
@@ -1035,7 +1083,7 @@ pub struct XorTrie:
     /// ties: None possible; the value is unique even when several `y` reach it
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.min_xor(2) == Some(3)`
-    pub fn min_xor(self, x: Int) -> ?Int = todo
+    pub fn min_xor(self, x: Int) -> ?Int = self.extreme_xor(x, 0)
 
     /// The number of stored `y` (with multiplicity) with `(x ^ y) < limit`. A `limit <= 0` gives 0 and
     /// a `limit >= 2^bits` gives `len`.
@@ -1043,7 +1091,23 @@ pub struct XorTrie:
     /// cost: O(bits)
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.count_xor_less(2, 5) == 2`
-    pub fn count_xor_less(self, x: Int, limit: Int) -> Int = todo
+    pub fn count_xor_less(self, x: Int, limit: Int) -> Int:
+        assert 0 <= x and x < 1 << _bits
+        if limit <= 0: return 0
+        if limit >= 1 << _bits: return _cnt[0]
+        let z = x ^ _mask
+        var node = 0
+        var out = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            if (limit >> i) & 1 == 1:
+                let same = self.child(node, zb)
+                if same >= 0: out += _cnt[same]
+                node = self.child(node, 1 - zb)
+            else:
+                node = self.child(node, zb)
+            if node < 0: return out
+        out
 
     /// The `k`-th smallest value of `x ^ y` over stored `y` (0-based, with multiplicity), or `None` if
     /// `k >= len`.
@@ -1054,7 +1118,24 @@ pub struct XorTrie:
     /// traps: when `k < 0` or `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
-    pub fn kth_xor(self, x: Int, k: Int) -> ?Int = todo
+    pub fn kth_xor(self, x: Int, k: Int) -> ?Int:
+        assert k >= 0 and 0 <= x and x < 1 << _bits
+        if k >= _cnt[0]: return None
+        let z = x ^ _mask
+        var node = 0
+        var left = k
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let same = self.child(node, zb)
+            let c = if same >= 0: _cnt[same] else: 0
+            if left < c:
+                node = same
+            else:
+                left -= c
+                res |= 1 << i
+                node = self.child(node, 1 - zb)
+        Some(res)
 
     /// The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits`
     /// when every value is present.
@@ -1063,14 +1144,50 @@ pub struct XorTrie:
     /// empty: zero
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
-    pub fn mex_xor(self, x: Int = 0) -> Int = todo
+    pub fn mex_xor(self, x: Int = 0) -> Int:
+        assert 0 <= x and x < 1 << _bits
+        let z = x ^ _mask
+        var node = 0
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let same = self.child(node, zb)
+            if same >= 0 and _dist[same] == 1 << i:
+                res |= 1 << i
+                node = self.child(node, 1 - zb)
+            else:
+                node = same
+            if node < 0: return res
+        res
 
     /// Remove all elements and the global mask, keeping `bits` and the reserved pool.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
-    pub fn clear(mut self) = todo
+    fn extreme_xor(self, x: Int, want: Int) -> ?Int:
+        assert 0 <= x and x < 1 << _bits
+        if _cnt[0] == 0: return None
+        let z = x ^ _mask
+        var node = 0
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let pref = self.child(node, zb ^ want)
+            if pref >= 0 and _cnt[pref] > 0:
+                node = pref
+                res |= want << i
+            else:
+                node = self.child(node, zb ^ want ^ 1)
+                res |= (want ^ 1) << i
+        Some(res)
+
+    pub fn clear(mut self):
+        _mask = 0
+        _c0 = [-1]
+        _c1 = [-1]
+        _cnt = [0]
+        _dist = [0]
 
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:
