@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1246 (296 passing). Rules: 521.
+Cases: 1247 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -799,8 +799,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
 - **search** (8/9 named by a case)
   - uncovered: `split_best`
-- **segtree** (49/54 named by a case)
-  - uncovered: `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
+- **segtree** (51/54 named by a case)
+  - uncovered: `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
 - **seq** (176/215 named by a case)
   - uncovered: `Perm`, `mean`, `partition`, `get_or_insert_with`, `rotated_left`, `prev_permutation`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `product`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
 - **slope** (32/39 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1808 of 2222 std items are named by a case.
+1810 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
