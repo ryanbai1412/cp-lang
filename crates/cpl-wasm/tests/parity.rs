@@ -141,7 +141,7 @@ fn a_failed_run_keeps_its_output_and_says_where_it_failed() {
     let [failure] = diagnostics else {
         panic!("one failure, not {}", run.result);
     };
-    assert_eq!(text(failure, "code"), "R0001");
+    assert_eq!(text(failure, "code"), "R0101");
     assert_eq!(number(failure, &["range", "start", "line"]), 3);
     assert!(
         text(&run.result, "stderr").contains("main.cp:4:"),

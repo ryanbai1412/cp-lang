@@ -39,14 +39,14 @@ fn golden_division_and_remainder_by_zero_include_values() {
     let (code, err) = run_stderr("let a: Int = read()\nprint(42 / a)\n", "0\n");
     assert_eq!(code, 3);
     assert!(
-        err.contains("error[R0001]: division by zero: `42 / 0`"),
+        err.contains("error[R0203]: division by zero: `42 / 0`"),
         "got:\n{err}"
     );
 
     let (code, err) = run_stderr("let a: Int = read()\nprint(42 % a)\n", "0\n");
     assert_eq!(code, 3);
     assert!(
-        err.contains("error[R0001]: division by zero: `42 % 0`"),
+        err.contains("error[R0203]: division by zero: `42 % 0`"),
         "got:\n{err}"
     );
 }
@@ -189,7 +189,7 @@ print(outer(a))
     let (code, err) = run_stderr(source, "0\n");
     assert_eq!(code, 3);
     assert!(
-        err.contains("error[R0001]: division by zero: `100 / 0`"),
+        err.contains("error[R0203]: division by zero: `100 / 0`"),
         "got:\n{err}"
     );
     assert!(
@@ -213,7 +213,7 @@ print(divide(a, b))
     let (code, err) = run_stderr(source, "3\n10 2\n7 0\n9 3\n");
     assert_eq!(code, 3);
     assert!(
-        err.contains("error[R0001]: division by zero: `7 / 0`"),
+        err.contains("error[R0203]: division by zero: `7 / 0`"),
         "got:\n{err}"
     );
     assert!(
@@ -236,7 +236,7 @@ print(f(a))
     let (code, err) = run_stderr(source, "0\n");
     assert_eq!(code, 3);
     assert!(
-        err.contains("error[R0001]: division by zero: `10 / 0`"),
+        err.contains("error[R0203]: division by zero: `10 / 0`"),
         "got:\n{err}"
     );
     assert!(

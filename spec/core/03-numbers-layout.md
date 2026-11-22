@@ -1,6 +1,6 @@
-# Round 6: numbers, widths and niches
+# 3. Numbers, widths and layout
 
-Status: aligned with Ryan 2026-11-21 (decision 149). Scope: how numbers stay small in memory
+Status: draft for 0.3.0, aligned with Ryan 2026-11-21 (decision 149). Scope: how numbers stay small in memory
 without the contestant thinking about bytes, and how `?T` costs nothing
 for ints, structs, records, enums and arrays. Modular arithmetic, floats
 and overflow semantics are summarized where they touch layout; their
@@ -40,28 +40,28 @@ bytes, never slower), and `cpl explain` prints every layout.
 - **Domain widths follow the static bound of the count.** `let n =
   read<1..=2e5>(); domain V = 0..n` gives 4-byte positions; `n: 1..=5000`
   gives 2-byte positions. Every `[V]V` parent array, `List<V>` stack and
-  `[V]0..=V.count` size array shrinks with it.
+  `[V]0..=V.count` size array shrinks with it. (R03.1.1)
 - **Locals never narrow.** `let x: 0..=1e9 = ...` is a contract checked
   at assignment, but it lives in an i64 register. Narrowing a local saves
-  nothing and costs conversions.
+  nothing and costs conversions. (R03.1.2)
 - **Struct fields need static bounds** (unchanged): layout never depends
   on input. A field may be `V` (a domain position), since the domain's
-  width bound is static.
+  width bound is static. (R03.1.3)
 - **Loads widen, stores check.** Reading `a[i]` from a `[V]0..=1e9` is
   one zero-extending load; arithmetic is in `Int`, so `a[i] * a[j]` can't
   overflow 32 bits. Storing into a range-typed slot checks the range
   unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
   type is a contract: `cpl run` and checked builds trap on a violation;
   release builds don't check (decision 100), the same deal as `Int`
-  overflow, so valid programs pay nothing on the judge.
+  overflow, so valid programs pay nothing on the judge. (R03.1.4)
 - **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is
   one byte per element, `[V]0..=4e9` four. Decision 1.7 keeps the number
-  types to `Int`, `U64`, `I128` and `F64`; a byte of text is `Char`.
+  types to `Int`, `U64`, `I128` and `F64`; a byte of text is `Char`. (R03.1.5)
 - **Narrow arithmetic when proven.** Semantically every operation is in
   `Int`. When the range proof shows an expression and its operands fit in
   32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
   C++ computes it in 32 bits. Same answer, never slower, and twice the
-  lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it.
+  lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it. (R03.1.6)
 
 Why this split: in registers, 64-bit `+ - * < &` cost the same as 32-bit
 on every judge CPU; only division by a runtime value is slower on older
@@ -96,7 +96,7 @@ there is no bound and nodes stay `Int`.
 
 To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every
 node write is then a range store under decision 148: checked builds trap
-with the node and the value, release truncates.
+with the node and the value, release truncates. (R03.1.7)
 
 ### Seeing and steering it
 
@@ -109,7 +109,7 @@ with the node and the value, release truncates.
   whose element type is `Int` while every value written into it has a
   narrower static range (a read, a domain position, a constant, `min`/`max`
   of those). It suggests the annotation, e.g. `[V]0..=1e9`. Purely local:
-  it looks only at the writes in the same function.
+  it looks only at the writes in the same function. (R03.1.8)
 - Override with an explicit type in either direction: `[V]Int` widens,
   `[V]0..=4e9` stores 4 bytes.
 - **The editor shows the same facts** from the same computation:
@@ -117,14 +117,14 @@ with the node and the value, release truncates.
     padding and where `None` lives (`?Edge 8 B: None = all-ones in to`);
   - an inlay hint after each array or structure declaration gives element
     size and peak bytes at the input bounds (`8 B × 2e5 = 1.6 MB`);
-  - a code lens on `main` gives total static peak against the profile's
+  - a code lens at the top of the file gives total static peak against the profile's
     limit; `wide_array` and padding over 20% come with quick fixes.
 
 ## 2. Spare values
 
 Every type has a fixed set of **spare values**: bit patterns of its
 storage that no valid value uses. The set is a property of the type, never
-of a use, so two `?Edge`s always agree on layout.
+of a use, so two `?Edge`s always agree on layout. (R03.2.1)
 
 | Type | Spare values | `None` is |
 |---|---|---|
@@ -143,12 +143,12 @@ of a use, so two `?Edge`s always agree on layout.
 
 **`?S` borrows the first field, in declaration order, that has a spare
 value.** It writes `None` into that field and leaves the others
-undefined. So a struct of `Int`s has a niche because `Int` has one:
+undefined. So a struct of `Int`s has a niche because `Int` has one: (R03.2.2)
 
-```python
-struct Edge: to: V; w: Int          // 4 + 8 -> 16 B (padded)
-let best: [V]?Edge = none           // 16 B per slot, not 24
-record (lo: Int, hi: Int)           // ?(lo, hi) is 16 B
+```
+struct Edge: to: V, w: Int          // 4 + 8 -> 16 B (padded)
+var best: [V]?Edge = [V].filled(None)   // 16 B per slot, not 24
+var span: ?(lo: Int, hi: Int) = None    // 16 B: None lives in lo
 ```
 
 - Records and tuples follow the same rule, since they are structs without
@@ -159,7 +159,7 @@ record (lo: Int, hi: Int)           // ?(lo, hi) is 16 B
   its own code later produces, turning a wrong `None` into silent
   corruption. Every struct that has a spare value already has one in a
   field, and a range type on one field is how you give it one:
-  `struct H: h: U64; len: 0..=1e6` puts `?H` in `len`.
+  `struct H: h: U64, len: 0..=1e6` puts `?H` in `len`. (R03.2.3)
 
 ### Enums with payloads
 
@@ -167,17 +167,17 @@ The tag goes into a spare value when that is free; otherwise it is a
 byte:
 - **One payload variant plus k unit variants** (`Option`-like, `enum Cell:
   Wall, Empty, Box(id: V)`): the unit variants take k spare values of the
-  payload. `Cell` is 4 bytes.
+  payload. `Cell` is 4 bytes. (R03.2.4)
 - **Several payload variants:** the largest variant (first on a tie) sets
   the layout. Every other variant is one spare value of a single field of
   it, the first field in declaration order with enough spares, provided
   that variant's own fields fit in the bytes outside that field. `enum Ev:
   Add(v: V), Ask(l: V, r: V)` is 8 bytes: `Add` keeps `v` in `l`'s slot and
   writes all-ones into `r`'s slot, so a valid `r` means `Ask`. `?Ev` takes
-  another spare of `r` and is also 8.
+  another spare of `r` and is also 8. (R03.2.5)
 - **Otherwise a tag byte** beside the largest payload, rounded up to
   alignment: when no field has enough spares (every bit pattern is a valid
-  value) or a smaller variant can't fit around the field holding them.
+  value) or a smaller variant can't fit around the field holding them. (R03.2.6)
 - The rule is Rust's niche filling, restricted to "first field with enough
   spares", so it is predictable without reading the compiler; `cpl explain`
   prints the encoding.
@@ -190,7 +190,7 @@ spare (`[V]?U64`), the flag is stored inline next to each element. The
 compiler never splits it into a side bitset on its own: that would be
 smaller but costs a second load per access, so it doesn't majorize. Ask
 for it with `Opt<V, T>` (a library struct of `[V]T` plus `Bits<V>`) if
-memory is the limit.
+memory is the limit. (R03.2.7)
 
 ### Field order
 
@@ -198,7 +198,8 @@ Storage order is chosen to minimize padding (largest alignment first,
 then declaration order); visible order (constructors, patterns, `print`,
 derives, `..R` rows) stays declaration order. Nothing in the language
 observes addresses, so reordering never changes behaviour, and it only
-removes padding. `cpl explain` shows the storage order.
+removes padding. A struct passed to `@cpp` code keeps declaration order,
+since C++ would see the storage. `cpl explain` shows the storage order. (R03.2.8)
 
 ### Cache layout
 
@@ -223,18 +224,18 @@ its element and names both fixes.
 
 ## 3. Operations on niche types
 
-- **Testing `None` is one compare** with the fixed pattern.
+- **Testing `None` is one compare** with the fixed pattern. (R03.3.1)
 - **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`,
   so `None` is already the identity of `max` (the tropical rule in
   decision 1.3). `min=` on `?Int` compiles to one compare and a
-  conditional move.
+  conditional move. (R03.3.2)
 - **Producing a spare value is an overflow.** `Int` arithmetic that lands
   on `INT64_MIN` traps in debug like any overflow; in release it is part
   of the wrap contract (a wrapped value may read as `None`). An
   out-of-range store is the same: checked builds trap before it writes a
-  spare; release truncates, and the result may read as `None`.
+  spare; release truncates, and the result may read as `None`. (R03.3.3)
 - **Reading input** rejects a value equal to a spare (`read<Int>` of
-  `-9223372036854775808` is an input error naming the bound).
+  `-9223372036854775808` is an input error naming the bound). (R03.3.4)
 - **Generic code** sees no difference: `?T` inside `SegTree<T>` or a user
   struct gets `T`'s layout after monomorphization.
 
@@ -250,7 +251,7 @@ C++ still has no undefined behaviour (wrapping goes through unsigned
 casts, which compile to the same instructions), so `-O2` never
 miscompiles the valid paths around a bug. To keep a check on the judge,
 opt in: `with checks(ranges: on, overflow: on)` on a block or file, or
-`release_checks:` in the judge profile.
+`release_checks:` in the judge profile. (R03.4.1)
 
 | Situation | Debug and `cpl run` | Release on the judge |
 |---|---|---|
@@ -264,7 +265,7 @@ opt in: `with checks(ranges: on, overflow: on)` on a block or file, or
 
 Proofs are intraprocedural interval arithmetic on `let`s and declared
 ranges (already decided); nothing crosses calls, so compile time stays
-linear.
+linear. (R03.4.2)
 
 ## 5. Modular numbers
 
@@ -273,19 +274,19 @@ linear.
 nodes. Multiplication widens to u64 (or `I128` for moduli above `2^32`,
 which the profile must allow). A runtime modulus is a scoped type
 (`Mod<p>` with `p` read once) using Barrett reduction, one local edit
-from the constant form.
+from the constant form. (R03.5.1)
 
 ## 6. Examples
 
-```python
+```
 let n = read<1..=2e5>()
 domain V = 0..n
 let a = read<[V]1..=1e9>()           // 4 B per element
-var par: [V]?V = none                // 4 B, none = all ones
-var dist: [V]?Int = none             // 8 B, none = INT64_MIN
+var par: [V]?V = [V].filled(None)    // 4 B, None = all ones
+var dist: [V]?Int = [V].filled(None) // 8 B, None = INT64_MIN
 var mx = SegTree(max, a)             // 4 B nodes: max is Selective
 var sm = SegTree(+, a)               // 8 B nodes: sums are Int
-struct Item: w: 1..=1e9; v: 1..=1e9; id: V    // 12 B, ?Item 12 B
+struct Item: w: 1..=1e9, v: 1..=1e9, id: V    // 12 B, ?Item 12 B
 ```
 
 `cpl explain` on this prints, per line, the storage and the reason
@@ -312,8 +313,5 @@ struct Item: w: 1..=1e9; v: 1..=1e9; id: V    // 12 B, ?Item 12 B
 
 ## Open
 
-1. **Automatic field reordering.** It only removes padding, but C++
-   interop through `@cpp` would see the storage order. Proposal: reorder,
-   and `@cpp`-visible structs keep declaration order.
-2. **`wide_array` threshold.** 1e6 cells is a guess; the goal is to flag
+1. **`wide_array` threshold.** 1e6 cells is a guess; the goal is to flag
    the arrays that decide MLE and stay quiet otherwise.

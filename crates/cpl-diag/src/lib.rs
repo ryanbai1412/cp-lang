@@ -92,7 +92,7 @@ pub struct Code(pub &'static str);
 /// Every code the front end can report. Syntax is `E00xx`/`E01xx`, names are
 /// `E02xx`, types and domains are `E03xx`, ownership is `E04xx`. The back
 /// ends report `E05xx` for what they can't run, lends, projections and
-/// impls are `E06xx`, and a program that fails while it runs is `R0001`.
+/// impls are `E06xx`, and a program that fails while it runs gets the `R` code of its trap (`R0001` when uncatalogued).
 pub mod codes {
     use super::Code;
 
@@ -163,6 +163,11 @@ pub mod codes {
     pub const MISSING_IMPL: Code = Code("E0606");
 
     pub const RUNTIME: Code = Code("R0001");
+    pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
+    pub const OVERFLOW: Code = Code("R0202");
+    pub const DIVISION_BY_ZERO: Code = Code("R0203");
+    pub const UNWRAP_NONE: Code = Code("R0301");
+    pub const TODO_REACHED: Code = Code("R0402");
 
     pub const INTERNAL: Code = Code("E9999");
 }

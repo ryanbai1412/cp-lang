@@ -29,6 +29,6 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
     let mut sink = Vec::new();
     let trap = cpl_interp::run(&program, input.as_bytes(), &mut sink).err()?;
     let lines = cpl_diag::LineIndex::new(&text);
-    let diagnostic = cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, trap.span, trap.message);
+    let diagnostic = cpl_diag::Diagnostic::error(trap.code(), trap.span, trap.message);
     Some(cpl_diag::render(&diagnostic, &name, &text, &lines))
 }

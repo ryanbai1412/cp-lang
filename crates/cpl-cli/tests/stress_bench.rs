@@ -32,11 +32,11 @@ fn slow():
 fn stress_and_test_show_the_runtime_error_and_its_line() {
     let path = scratch("runtime_error", "d.cp", DIVIDES_BY_ZERO);
     let stressed = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "5".as_ref()]);
-    assert!(stressed.contains("error[R0001]"), "{stressed}");
+    assert!(stressed.contains("error[R0203]"), "{stressed}");
     assert!(stressed.contains("d.cp:2"), "{stressed}");
     assert!(!stressed.contains("crashed"), "{stressed}");
     let tested = cpl(&["test".as_ref(), path.as_os_str()]);
-    assert!(tested.contains("error[R0001]") && tested.contains("d.cp:2"), "{tested}");
+    assert!(tested.contains("error[R0203]") && tested.contains("d.cp:2"), "{tested}");
 }
 
 #[test]

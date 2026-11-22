@@ -55,10 +55,29 @@ pub struct Trap {
 }
 
 impl Trap {
+    /// The catalogued `R` code (`spec/diagnostics.md`) for this trap's kind.
+    pub fn code(&self) -> cpl_diag::Code {
+        use cpl_diag::codes;
+        let m = self.message.as_str();
+        if m.contains("integer overflow") || m.contains("does not fit in") {
+            codes::OVERFLOW
+        } else if m.starts_with("division by zero") {
+            codes::DIVISION_BY_ZERO
+        } else if m.starts_with("`!` on") || m.contains("unwrapped a `None`") || m.contains("there is no value here") {
+            codes::UNWRAP_NONE
+        } else if m.starts_with("`todo` reached") {
+            codes::TODO_REACHED
+        } else if m.starts_with("index ") && m.contains("outside") {
+            codes::INDEX_OUT_OF_RANGE
+        } else {
+            codes::RUNTIME
+        }
+    }
+
     /// Builds the runtime diagnostic with test-case and call-stack notes.
     pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
         let mut diagnostic =
-            cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, self.span, self.message.clone());
+            cpl_diag::Diagnostic::error(self.code(), self.span, self.message.clone());
         if let Some(case) = self.case {
             diagnostic = diagnostic.with_note(format!("in test case {case}"));
         }

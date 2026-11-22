@@ -195,7 +195,7 @@ fn run_exits_3_where_the_program_fails_and_keeps_what_it_printed() {
     assert_eq!(out.stdout, b"before\n");
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(
-        stderr.contains("error[R0001]: index 5 is outside a list of length 2"),
+        stderr.contains("error[R0101]: index 5 is outside a list of length 2"),
         "{stderr}"
     );
     assert!(stderr.contains("trap.cp:3:7"), "{stderr}");
