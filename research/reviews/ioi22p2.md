@@ -1,6 +1,7 @@
 # ioi22p2
 
-Score: 3/5
+Score: pending cold rescore (added dream `proto/ports/scout_batch_25/dream/ioi22p2.cp`, `today/ioi22p2.cp` = dream: derives 21-state tree + `DEPTH + 1` play bound in header, uses `enum Step: Low | High | Child(Int)` + `match` + `step_action`, loops `(t, c)` directly; checks 0 errors, 0 lints, 14.5 KB, byte-identical to original on `cpl run` and `g++`)
+Dream: pending cold rescore (new dream matching the polished standalone port; checks 0 errors)
 
 Baseline review, cold, on main 96359635. Reads like the editorial. The header (lines 11-18) derives the 21-state tree, and `Step` plus the `path` walk carry the idea. Remaining issues are small and spelling-level. No dream exists, so the score is capped at 3.
 
