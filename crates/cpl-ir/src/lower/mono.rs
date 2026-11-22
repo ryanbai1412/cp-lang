@@ -2820,6 +2820,32 @@ impl<'a> Lowerer<'a> {
                 }
                 (_, Ty::Struct(sid)) => {
                     if let Some((_, actual_args)) = &self.structs[*sid].origin_gen {
+                        if args.len() == 2
+                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
+                            && actual_args.len() >= 2
+                        {
+                            match &actual_args[0] {
+                                GenArg::Ty(t) => {
+                                    self.unify_ast_ty(&args[0], t, tpl_mod, gen_names, env)
+                                }
+                                GenArg::Domain(d) => self.unify_ast_ty(
+                                    &args[0],
+                                    &Ty::Pos(*d),
+                                    tpl_mod,
+                                    gen_names,
+                                    env,
+                                ),
+                                _ => {}
+                            }
+                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
+                            if let GenArg::Ty(Ty::Record(rfields)) = &actual_args[1] {
+                                if let Some((_, fty)) =
+                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
+                                {
+                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
+                                }
+                            }
+                        } else {
                         // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
                         // their first generic arg is `T`!
                         for (pa, actual) in args.iter().zip(actual_args) {
@@ -2866,6 +2892,7 @@ impl<'a> Lowerer<'a> {
                                 }
                             }
                         }
+                        }
                     }
                 }
                 (_, Ty::Array { dims, elem })
@@ -2889,6 +2916,18 @@ impl<'a> Lowerer<'a> {
                     if is_domain_indexed && trait_takes_pos {
                         if let [Dim::Pos(d) | Dim::Sym(d)] = dims.as_slice() {
                             self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
+                        }
+                        if args.len() == 2
+                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
+                        {
+                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
+                            if let Some(Ty::Record(rfields)) = elem.seq_elem() {
+                                if let Some((_, fty)) =
+                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
+                                {
+                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
+                                }
+                            }
                         }
                     } else if args.len() == 1 {
                         self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
@@ -2944,7 +2983,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            ast::TypeKind::Record(fields) => {
+            ast::TypeKind::Record(fields) | ast::TypeKind::Row(fields) => {
                 if let Ty::Record(cfields) = concrete {
                     for (pname, p) in fields {
                         if let Some((_, c)) = cfields.iter().find(|(cn, _)| cn == &pname.text) {
@@ -3798,7 +3837,9 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         | ast::TypeKind::Infer
         | ast::TypeKind::Error => false,
         ast::TypeKind::Row(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
-        ast::TypeKind::RowWithout { base, .. } => type_names(base, name),
+        ast::TypeKind::RowWithout { prefix, base, .. } => {
+            prefix.iter().any(|(_, t)| type_names(t, name)) || type_names(base, name)
+        }
     }
 }
 

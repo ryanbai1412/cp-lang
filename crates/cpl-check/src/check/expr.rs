@@ -707,15 +707,25 @@ impl<'a> Checker<'a> {
                 ty
             }
             ExprKind::HasBound { .. } => Ty::Bool,
-            ExprKind::Without { base, removed } => {
+            ExprKind::Without {
+                prefix,
+                base,
+                removed,
+            } => {
+                let mut out_fields: Vec<(String, Ty)> = prefix
+                    .iter()
+                    .map(|(n, e)| (n.text.clone(), self.infer(e)))
+                    .collect();
                 let base_ty = self.infer(base);
                 let rem_names: Vec<String> = removed.iter().map(|n| n.text.clone()).collect();
                 match base_ty {
-                    Ty::Record(fs) => Ty::Record(
-                        fs.into_iter()
-                            .filter(|(n, _)| !rem_names.iter().any(|r| r == n))
-                            .collect(),
-                    ),
+                    Ty::Record(fs) => {
+                        out_fields.extend(
+                            fs.into_iter()
+                                .filter(|(n, _)| !rem_names.iter().any(|r| r == n)),
+                        );
+                        Ty::Record(out_fields)
+                    }
                     Ty::Param(p) => {
                         if let Some(req) = self.row_bounds.get(&p).cloned() {
                             for r in removed {
@@ -731,9 +741,15 @@ impl<'a> Checker<'a> {
                                 }
                             }
                         }
-                        Ty::RowWithout(Box::new(Ty::Param(p)), rem_names)
+                        Ty::RowWithout(out_fields, Box::new(Ty::Param(p)), rem_names)
                     }
-                    other => other,
+                    other => {
+                        if out_fields.is_empty() {
+                            other
+                        } else {
+                            Ty::Record(out_fields)
+                        }
+                    }
                 }
             }
             ExprKind::Try(inner) if self.branch > 0 => {

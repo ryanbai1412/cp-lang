@@ -139,7 +139,15 @@ impl<'a> Checker<'a> {
                     .map(|(n, t)| (n.text.clone(), self.resolve_type(t)))
                     .collect(),
             ),
-            TypeKind::RowWithout { base, removed } => {
+            TypeKind::RowWithout {
+                prefix,
+                base,
+                removed,
+            } => {
+                let mut out_fields: Vec<(String, Ty)> = prefix
+                    .iter()
+                    .map(|(n, t)| (n.text.clone(), self.resolve_type(t)))
+                    .collect();
                 let base_ty = self.resolve_type(base);
                 let rem_names: Vec<String> = removed.iter().map(|n| n.text.clone()).collect();
                 if let Ty::Param(p) = &base_ty {
@@ -156,12 +164,14 @@ impl<'a> Checker<'a> {
                     }
                 }
                 match base_ty {
-                    Ty::Record(fs) => Ty::Record(
-                        fs.into_iter()
-                            .filter(|(n, _)| !rem_names.iter().any(|r| r == n))
-                            .collect(),
-                    ),
-                    other => Ty::RowWithout(Box::new(other), rem_names),
+                    Ty::Record(fs) => {
+                        out_fields.extend(
+                            fs.into_iter()
+                                .filter(|(n, _)| !rem_names.iter().any(|r| r == n)),
+                        );
+                        Ty::Record(out_fields)
+                    }
+                    other => Ty::RowWithout(out_fields, Box::new(other), rem_names),
                 }
             }
             TypeKind::LiteralUnion(lits) => match lits.first().map(|s| s.as_str()) {
@@ -1772,7 +1782,7 @@ impl<'a> Checker<'a> {
                         .all(|a| self.implements_trait_inner(a, trait_name, seen)),
                 }
             }
-            Ty::RowWithout(inner, _) => self.implements_trait_inner(inner, trait_name, seen),
+            Ty::RowWithout(_, inner, _) => self.implements_trait_inner(inner, trait_name, seen),
             Ty::TypeName(_) => false,
         }
     }
@@ -1854,7 +1864,7 @@ impl<'a> Checker<'a> {
                     _ => true,
                 }
             }
-            Ty::RowWithout(inner, _) => self.derives_print(inner, allow_none, seen),
+            Ty::RowWithout(_, inner, _) => self.derives_print(inner, allow_none, seen),
             Ty::Domain(_) | Ty::TypeName(_) => true,
         }
     }

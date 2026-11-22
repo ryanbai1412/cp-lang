@@ -287,7 +287,12 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
                 walk_expr(value, v);
             }
         }
-        ExprKind::Without { base, .. } => walk_expr(base, v),
+        ExprKind::Without { prefix, base, .. } => {
+            for (_, e) in prefix {
+                walk_expr(e, v);
+            }
+            walk_expr(base, v);
+        }
         ExprKind::HasBound { .. } => {}
         ExprKind::Int(_)
         | ExprKind::Float(_)

@@ -565,14 +565,23 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::Bool(has), Ty::Bool, span)
             }
-            ast::ExprKind::Without { base, removed } => {
+            ast::ExprKind::Without {
+                prefix,
+                base,
+                removed,
+            } => {
+                let mut kept_tys = Vec::new();
+                let mut kept_vals = Vec::new();
+                for (pname, pexpr) in prefix {
+                    let pv = self.expr(pexpr, None);
+                    kept_tys.push((pname.text.clone(), pv.ty.clone()));
+                    kept_vals.push(pv);
+                }
                 let b = self.expr(base, None);
                 match b.ty.clone() {
                     Ty::Record(fs) => {
                         let slot = self.temp(b.ty.clone());
                         let mut stmts = vec![Stmt::Let(slot, Some(b))];
-                        let mut kept_tys = Vec::new();
-                        let mut kept_vals = Vec::new();
                         for (idx, (fname, fty)) in fs.into_iter().enumerate() {
                             if removed.iter().any(|r| r.text == fname) {
                                 continue;
@@ -590,7 +599,11 @@ impl<'a> Lowerer<'a> {
                         stmts.push(Stmt::Give(res));
                         self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
                     }
-                    _ => b,
+                    _ if kept_tys.is_empty() => b,
+                    _ => {
+                        let out_ty = Ty::Record(kept_tys);
+                        self.mk(ExprKind::Tuple(kept_vals), out_ty, span)
+                    }
                 }
             }
             ast::ExprKind::With { base, updates } => self.do_expr(hint, span, |lw, out| {

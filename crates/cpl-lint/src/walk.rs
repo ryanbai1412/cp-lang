@@ -309,7 +309,12 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
                 walk_ty(v, t);
             }
         }
-        TypeKind::RowWithout { base, .. } => walk_ty(v, base),
+        TypeKind::RowWithout { prefix, base, .. } => {
+            for (_, t) in prefix {
+                walk_ty(v, t);
+            }
+            walk_ty(v, base);
+        }
     }
 }
 
@@ -448,7 +453,12 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
                 walk_expr(v, value);
             }
         }
-        ExprKind::Without { base, .. } => walk_expr(v, base),
+        ExprKind::Without { prefix, base, .. } => {
+            for (_, e) in prefix {
+                walk_expr(v, e);
+            }
+            walk_expr(v, base);
+        }
         ExprKind::HasBound { .. } => {}
         ExprKind::TableFill { domain, value } => {
             walk_expr(v, domain);

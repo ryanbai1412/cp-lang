@@ -125,7 +125,11 @@ impl<'a> Parser<'a> {
                         });
                     }
                     self.expect(T::RParen, "`)`");
-                    TypeKind::RowWithout { base, removed }
+                    TypeKind::RowWithout {
+                        prefix: Vec::new(),
+                        base,
+                        removed,
+                    }
                 } else if self.at(T::Domain) {
                     enum Item {
                         Dom(Name, Span),
@@ -191,10 +195,29 @@ impl<'a> Parser<'a> {
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
                     let mut fields = Vec::new();
                     let mut open = false;
+                    let mut spread: Option<(Box<Type>, Vec<Name>)> = None;
                     while !self.at(T::RParen) && !self.at(T::Eof) {
                         if self.eat(T::DotDot) {
-                            open = true;
-                            self.eat(T::Comma);
+                            if self.at(T::RParen) || self.at(T::Comma) {
+                                open = true;
+                                self.eat(T::Comma);
+                            } else {
+                                let base = Box::new(self.ty());
+                                let mut removed = Vec::new();
+                                if self.at_ident("without") {
+                                    self.bump();
+                                    self.expect(
+                                        T::LParen,
+                                        "`(` and the removed field names after `without`",
+                                    );
+                                    removed = self.comma_list(
+                                        T::RParen,
+                                        "the removed fields",
+                                        |p| p.expect_name("a field name"),
+                                    );
+                                }
+                                spread = Some((base, removed));
+                            }
                             break;
                         }
                         let name = self.expect_name("a field name");
@@ -205,7 +228,13 @@ impl<'a> Parser<'a> {
                         }
                     }
                     self.expect(T::RParen, "`)`");
-                    if open {
+                    if let Some((base, removed)) = spread {
+                        TypeKind::RowWithout {
+                            prefix: fields,
+                            base,
+                            removed,
+                        }
+                    } else if open {
                         TypeKind::Row(fields)
                     } else {
                         TypeKind::Record(fields)

@@ -2612,15 +2612,26 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
             ast::TypeKind::ConstrainedStr(_) => Spec::Plain(Ty::Str),
             ast::TypeKind::Row(_) => Spec::Plain(Ty::Error),
-            ast::TypeKind::RowWithout { base, removed } => {
+            ast::TypeKind::RowWithout {
+                prefix,
+                base,
+                removed,
+            } => {
+                let mut out_fields: Vec<(String, Ty)> = prefix
+                    .iter()
+                    .map(|(n, t)| (n.text.clone(), self.resolve_ty(t)))
+                    .collect();
                 let bty = self.resolve_ty(base);
                 let ty = match bty {
-                    Ty::Record(fs) => Ty::Record(
-                        fs.into_iter()
-                            .filter(|(n, _)| !removed.iter().any(|r| r.text == *n))
-                            .collect(),
-                    ),
-                    other => other,
+                    Ty::Record(fs) => {
+                        out_fields.extend(
+                            fs.into_iter()
+                                .filter(|(n, _)| !removed.iter().any(|r| r.text == *n)),
+                        );
+                        Ty::Record(out_fields)
+                    }
+                    other if out_fields.is_empty() => other,
+                    _ => Ty::Record(out_fields),
                 };
                 Spec::Plain(ty)
             }

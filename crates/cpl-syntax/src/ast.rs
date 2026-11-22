@@ -428,8 +428,9 @@ pub enum ExprKind {
         base: Box<Expr>,
         updates: Vec<(Name, Expr)>,
     },
-    /// `(..e without (u, v))`.
+    /// `(to: r.v, ..e without (u, v))` or `(..e without (u, v))`.
     Without {
+        prefix: Vec<(Name, Expr)>,
         base: Box<Expr>,
         removed: Vec<Name>,
     },
@@ -669,8 +670,9 @@ pub enum TypeKind {
     DomainBinder(Name),
     /// `(lo: Int, hi: Int, ..)`: open row bound on a record type parameter.
     Row(Vec<(Name, Type)>),
-    /// `(..R without (u, v))`: record type with named fields removed.
+    /// `(to: V, ..R without (u, v))` or `(..R without (u, v))`: record type with named fields added and/or removed.
     RowWithout {
+        prefix: Vec<(Name, Type)>,
         base: Box<Type>,
         removed: Vec<Name>,
     },

@@ -1100,6 +1100,7 @@ impl<'a> Parser<'a> {
                         });
                         self.expect(T::RParen, "`)`");
                         ExprKind::Without {
+                            prefix: Vec::new(),
                             base: Box::new(base),
                             removed,
                         }
@@ -1120,8 +1121,43 @@ impl<'a> Parser<'a> {
                         }
                     }
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
-                    let fields = self.comma_list(T::RParen, "the record", Self::record_field);
-                    ExprKind::Record(fields)
+                    let mut fields = Vec::new();
+                    let mut spread: Option<(Box<Expr>, Vec<Name>)> = None;
+                    while !self.at(T::RParen) && !self.at(T::Eof) {
+                        if self.eat(T::DotDot) {
+                            let base = Box::new(self.expr());
+                            let mut removed = Vec::new();
+                            if self.at_ident("without") {
+                                self.bump();
+                                self.expect(
+                                    T::LParen,
+                                    "`(` and the removed field names after `without`",
+                                );
+                                removed = self.comma_list(
+                                    T::RParen,
+                                    "the removed fields",
+                                    |p| p.expect_name("a field name"),
+                                );
+                            }
+                            spread = Some((base, removed));
+                            self.eat(T::Comma);
+                            break;
+                        }
+                        fields.push(self.record_field());
+                        if !self.eat(T::Comma) {
+                            break;
+                        }
+                    }
+                    self.expect(T::RParen, "`)`");
+                    if let Some((base, removed)) = spread {
+                        ExprKind::Without {
+                            prefix: fields,
+                            base,
+                            removed,
+                        }
+                    } else {
+                        ExprKind::Record(fields)
+                    }
                 } else if self.eat(T::RParen) {
                     ExprKind::Tuple(Vec::new())
                 } else {

@@ -1077,3 +1077,19 @@ print(total(a))
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "10\n");
 }
+
+#[test]
+fn record_spread_prefix_and_row_bound_unify() {
+    let src = "\
+type Ext<V, R> = (to: V, ..R without (u, v))
+fn make<V, R: (u: V, v: V, ..)>(r: R) -> Ext<V, R>:
+  (to: r.v, ..r without (u, v))
+
+domain V = 0..3
+let a = make((u: V(0), v: V(2), w: 9))
+print(a.to, a.w)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "2 9\n");
+}
