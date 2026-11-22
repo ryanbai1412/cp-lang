@@ -69,7 +69,12 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     let cites_spec = |d: &cpl_diag::Diagnostic| {
         d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
     };
-    analysis.diagnostics.iter().filter(|d| !cites_spec(d)).cloned().collect()
+    analysis
+        .diagnostics
+        .iter()
+        .filter(|d| !cites_spec(d))
+        .cloned()
+        .collect()
 }
 
 pub use lower::{
@@ -174,9 +179,14 @@ impl Ty {
     pub fn mentions_error(&self) -> bool {
         match self {
             Ty::Error => true,
-            Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::MutView(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
-                t.mentions_error()
-            }
+            Ty::Range(t)
+            | Ty::Opt(t)
+            | Ty::List(t)
+            | Ty::ListView(t)
+            | Ty::MutView(t)
+            | Ty::Set(t)
+            | Ty::HashSet(t)
+            | Ty::Mut(t) => t.mentions_error(),
             Ty::Array { elem, .. } => elem.mentions_error(),
             Ty::Tuple(ts) => ts.iter().any(Ty::mentions_error),
             Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_error()),
@@ -243,9 +253,12 @@ impl Ty {
     pub fn is_comparable(&self, program: &Program) -> bool {
         match self {
             Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
-            Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::MutView(t) | Ty::Set(t) | Ty::Range(t) => {
-                t.is_comparable(program)
-            }
+            Ty::Opt(t)
+            | Ty::List(t)
+            | Ty::ListView(t)
+            | Ty::MutView(t)
+            | Ty::Set(t)
+            | Ty::Range(t) => t.is_comparable(program),
             Ty::Array { elem, .. } => elem.is_comparable(program),
             Ty::Map(k, v) => k.is_comparable(program) && v.is_comparable(program),
             Ty::Tuple(ts) => ts.iter().all(|t| t.is_comparable(program)),
@@ -1309,7 +1322,9 @@ impl Program {
                         | Iter::Members(e) => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
-                        Iter::TreeRange { container, lo, hi, .. } => {
+                        Iter::TreeRange {
+                            container, lo, hi, ..
+                        } => {
                             self.collect_defined_domains_expr(container, escaping, seen, out);
                             if let Some((e, _)) = lo {
                                 self.collect_defined_domains_expr(e, escaping, seen, out);

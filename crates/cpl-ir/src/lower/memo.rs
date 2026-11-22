@@ -71,10 +71,14 @@ pub(super) struct MemoFast {
 /// The table a `@memo(into: dp)` fn keeps its answers in.
 pub(super) fn into_table(stmt: &ast::Stmt) -> Option<&str> {
     let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
-    memo.args.iter().find_map(|arg| match (&arg.name, &arg.value.kind) {
-        (Some(label), ast::ExprKind::Name(table)) if label.text == "into" => Some(table.as_str()),
-        _ => None,
-    })
+    memo.args
+        .iter()
+        .find_map(|arg| match (&arg.name, &arg.value.kind) {
+            (Some(label), ast::ExprKind::Name(table)) if label.text == "into" => {
+                Some(table.as_str())
+            }
+            _ => None,
+        })
 }
 
 /// The name of a local the wrapper of a `@memo(into:)` fn makes. No
@@ -104,7 +108,11 @@ fn into_cell(table: &str, decl: &ast::FnDecl) -> ast::Expr {
     ast::Expr {
         kind: ast::ExprKind::Index {
             base: Box::new(name_expr(table, span)),
-            indices: decl.params.iter().map(|p| name_expr(&p.name.text, span)).collect(),
+            indices: decl
+                .params
+                .iter()
+                .map(|p| name_expr(&p.name.text, span))
+                .collect(),
         },
         span,
     }
@@ -188,7 +196,10 @@ impl<'a> Lowerer<'a> {
         let span = decl.name.span;
         let index: Option<Vec<ast::Type>> = decl.params.iter().map(|p| p.ty.clone()).collect();
         let (Some(index), Some(ret)) = (index, decl.ret.clone()) else {
-            self.unsupported(span, "`@memo(into:)` on a fn whose parameter and return types are not all written");
+            self.unsupported(
+                span,
+                "`@memo(into:)` on a fn whose parameter and return types are not all written",
+            );
             return;
         };
         // A table of `0..=9` answers holds `Int`s.
@@ -306,7 +317,10 @@ impl<'a> Lowerer<'a> {
                     cells
                 };
                 let bound = i64::from(matches!(spec, Spec::Plain(Ty::Bound(_))));
-                let most = self.domain_lens.get(d).map(|&(least, most)| (least + bound, most + bound));
+                let most = self
+                    .domain_lens
+                    .get(d)
+                    .map(|&(least, most)| (least + bound, most + bound));
                 let ord = self.mk(ExprKind::Cast(Cast::Ord, Box::new(value)), Ty::Int, span);
                 memo.parts.push(Part {
                     ord,
@@ -316,7 +330,9 @@ impl<'a> Lowerer<'a> {
                 });
                 true
             }
-            Spec::Plain(Ty::Enum(e)) if self.enums[*e].variants.iter().all(|(_, fs)| fs.is_empty()) => {
+            Spec::Plain(Ty::Enum(e))
+                if self.enums[*e].variants.iter().all(|(_, fs)| fs.is_empty()) =>
+            {
                 let n = self.enums[*e].variants.len() as i64;
                 let ord = self.cast(Cast::EnumOrd(*e), value, Ty::Int);
                 memo.parts.push(Part {
@@ -351,11 +367,19 @@ impl<'a> Lowerer<'a> {
                     // Below the range is still outside the table, not `none`.
                     let low = self.memo_cmp(CmpOp::Ge, part.ord, self.int_lit(0, span), span);
                     let out = self.int_lit(-1, span);
-                    some = self.mk(ExprKind::If(Box::new(low), Box::new(some), Box::new(out)), Ty::Int, span);
+                    some = self.mk(
+                        ExprKind::If(Box::new(low), Box::new(some), Box::new(out)),
+                        Ty::Int,
+                        span,
+                    );
                 }
                 let present = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
                 let ord = self.mk(
-                    ExprKind::If(Box::new(present), Box::new(some), Box::new(self.int_lit(0, span))),
+                    ExprKind::If(
+                        Box::new(present),
+                        Box::new(some),
+                        Box::new(self.int_lit(0, span)),
+                    ),
                     Ty::Int,
                     span,
                 );
@@ -363,7 +387,9 @@ impl<'a> Lowerer<'a> {
                     ord,
                     len: self.int_add(part.len, 1),
                     ranged: part.ranged,
-                    most: part.most.and_then(|(least, most)| least.checked_add(1).zip(most.checked_add(1))),
+                    most: part
+                        .most
+                        .and_then(|(least, most)| least.checked_add(1).zip(most.checked_add(1))),
                 });
                 true
             }
@@ -391,7 +417,10 @@ impl<'a> Lowerer<'a> {
                 let first = self.memo_var(memo, &format!("lo{at}"), Ty::Int);
                 let len = self.memo_var(memo, &format!("len{at}"), Ty::Int);
                 let lo = lo.unwrap_or_else(|| self.int_lit(0, span));
-                let most = match (self.ir_bounds(&lo), hi.as_ref().and_then(|hi| self.ir_bounds(hi))) {
+                let most = match (
+                    self.ir_bounds(&lo),
+                    hi.as_ref().and_then(|hi| self.ir_bounds(hi)),
+                ) {
                     (Some(l), Some(h)) => h.0.checked_sub(l.1).zip(h.1.checked_sub(l.0)),
                     _ => None,
                 }
@@ -524,16 +553,16 @@ impl<'a> Lowerer<'a> {
             // as they are reached.
             let lazy = !proven
                 && matches!(
-                &memo.parts[..],
-                [Part {
-                    ranged: true,
-                    len: Expr {
-                        kind: ExprKind::Local(_) | ExprKind::Global(_),
+                    &memo.parts[..],
+                    [Part {
+                        ranged: true,
+                        len: Expr {
+                            kind: ExprKind::Local(_) | ExprKind::Global(_),
+                            ..
+                        },
                         ..
-                    },
-                    ..
-                }]
-            );
+                    }]
+                );
             for part in &memo.parts {
                 let grown =
                     self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
@@ -541,7 +570,8 @@ impl<'a> Lowerer<'a> {
                     start.push(set(&cells_place, grown));
                     // An empty range: no cells, every call out of range.
                     if part.most.is_some_and(|(least, _)| least < 1) {
-                        let empty = self.memo_cmp(CmpOp::Lt, part.len.clone(), self.int_lit(1, span), span);
+                        let empty =
+                            self.memo_cmp(CmpOp::Lt, part.len.clone(), self.int_lit(1, span), span);
                         let none = set(&cells_place, self.int_lit(0, span));
                         start.push(Stmt::If(empty, block(vec![none]), Block::default()));
                     }
@@ -762,7 +792,13 @@ impl<'a> Lowerer<'a> {
 
     /// The wrapper of a `@memo` fn with a flat table: a cell that is
     /// already filled is answered here, and anything else by `fill`.
-    pub(super) fn memo_lookup(&mut self, fast: MemoFast, fill: Expr, ret: &Ty, span: Span) -> Vec<Stmt> {
+    pub(super) fn memo_lookup(
+        &mut self,
+        fast: MemoFast,
+        fill: Expr,
+        ret: &Ty,
+        span: Span,
+    ) -> Vec<Stmt> {
         let at = self.temp(Ty::Int);
         let cell = |lw: &Self, of: &Place, ty: Ty| {
             lw.mk(

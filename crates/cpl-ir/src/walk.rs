@@ -1,7 +1,7 @@
 //! Walking the direct sub-expressions of an expression.
 
-use crate::{Builtin, Local, Slot, Ty};
 use crate::{Arg, Block, DimSpec, Expr, ExprKind, FmtPiece, Iter, Place, PlaceKind, Spec, Stmt};
+use crate::{Builtin, Local, Slot, Ty};
 use std::collections::BTreeSet;
 
 /// Calls `f` on each index expression along `place`.
@@ -190,7 +190,9 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
                 step.iter().for_each(f);
             }
             Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => f(e),
-            Iter::TreeRange { container, lo, hi, .. } => {
+            Iter::TreeRange {
+                container, lo, hi, ..
+            } => {
                 f(container);
                 if let Some((e, _)) = lo {
                     f(e);
@@ -400,18 +402,29 @@ pub fn inside_list(
         return None;
     };
     let from_zero = matches!(lo.kind, ExprKind::Int(lo) if lo >= 0);
-    let forward = step.as_ref().is_none_or(|step| matches!(step.kind, ExprKind::Int(step) if step > 0));
+    let forward = step
+        .as_ref()
+        .is_none_or(|step| matches!(step.kind, ExprKind::Int(step) if step > 0));
     let ExprKind::Builtin(Builtin::Len, of) = &hi.kind else {
         return None;
     };
-    let [Expr { kind: ExprKind::Local(list), .. }] = of.as_slice() else {
+    let [Expr {
+        kind: ExprKind::Local(list),
+        ..
+    }] = of.as_slice()
+    else {
         return None;
     };
     let list = *list;
-    if !from_zero || !forward || !matches!(locals[list].ty, Ty::List(_)) || locals[slot].ty != Ty::Int {
+    if !from_zero
+        || !forward
+        || !matches!(locals[list].ty, Ty::List(_))
+        || locals[slot].ty != Ty::Int
+    {
         return None;
     }
-    let whole = |place: &Place| matches!(place.kind, PlaceKind::Local(at) if at == list || at == slot);
+    let whole =
+        |place: &Place| matches!(place.kind, PlaceKind::Local(at) if at == list || at == slot);
     let mut kept = true;
     deep_stmts(body, &mut |stmt| match stmt {
         Stmt::Assign(place, ..) => kept &= !whole(place),

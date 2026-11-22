@@ -56,8 +56,11 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
         (summary, effects.calls, through)
     };
     let values = program.fns.len();
-    let mut direct: Vec<(FnSummary, BTreeSet<usize>, bool)> =
-        program.fns.iter().map(|f| direct_of(&f.body, false)).collect();
+    let mut direct: Vec<(FnSummary, BTreeSet<usize>, bool)> = program
+        .fns
+        .iter()
+        .map(|f| direct_of(&f.body, false))
+        .collect();
     let mut all = (FnSummary::default(), BTreeSet::new(), false);
     for c in &program.closures {
         let (summary, calls, through) = direct_of(&c.body, c.captures.iter().any(|cap| cap.by_ref));
@@ -102,7 +105,12 @@ impl FnSummary {
 /// or call a fn value.
 fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len() || f.params.iter().any(|p| p.mutable) || summary.sizes || summary.opaque || summary.calls_values {
+    if acc < f.params.len()
+        || f.params.iter().any(|p| p.mutable)
+        || summary.sizes
+        || summary.opaque
+        || summary.calls_values
+    {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -126,7 +134,6 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     });
     (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
 }
-
 
 /// The summaries of a program's fns and its `yields` fns that can feed a
 /// loop body: each to the slot of the list it builds.
@@ -175,13 +182,19 @@ impl Feeds {
                 return None;
             };
             walk::deep_expr(value, &mut |e| match e.kind {
-                ExprKind::Local(slot) => shared |= !e.ty.is_scalar() && effects.locals.contains(&slot),
+                ExprKind::Local(slot) => {
+                    shared |= !e.ty.is_scalar() && effects.locals.contains(&slot)
+                }
                 ExprKind::Global(g) => shared |= writes.contains(&g),
                 ExprKind::Call(f, _) => shared |= !self.summaries[f].reads.is_disjoint(&writes),
                 _ => {}
             });
         }
-        if opaque || shared || !summary.reads.is_disjoint(&writes) || !summary.writes.is_disjoint(&writes) {
+        if opaque
+            || shared
+            || !summary.reads.is_disjoint(&writes)
+            || !summary.writes.is_disjoint(&writes)
+        {
             return None;
         }
         // A jump out of the body can only be to this loop.
@@ -192,7 +205,10 @@ impl Feeds {
             Stmt::Break(Some(to)) | Stmt::Continue(Some(to)) => jumps.push(*to),
             _ => {}
         });
-        jumps.iter().all(|to| inner.contains(to)).then_some((*callee, acc))
+        jumps
+            .iter()
+            .all(|to| inner.contains(to))
+            .then_some((*callee, acc))
     }
 }
 

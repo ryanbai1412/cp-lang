@@ -28,7 +28,8 @@ pub(super) enum RangeInfo {
 impl RangeBounds {
     pub(super) fn narrow_opt_layout(&self) -> Option<NarrowLayout> {
         let (lo_min, hi_max) = self.limits()?;
-        (lo_min > i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX)).then_some(NarrowLayout::OptI32)
+        (lo_min > i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX))
+            .then_some(NarrowLayout::OptI32)
     }
 
     fn limits(&self) -> Option<(i64, i64)> {
@@ -102,8 +103,12 @@ impl RangeInfo {
     pub(super) fn narrow_value_layout(&self, ty: &Ty) -> Option<NarrowLayout> {
         match (self, ty) {
             (RangeInfo::Scalar(b), Ty::Int) => b.narrow_width().map(NarrowLayout::Int),
-            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => inner.scalar()?.narrow_opt_layout(),
-            (RangeInfo::Tuple(items), Ty::Tuple(ts)) if !ts.is_empty() && items.len() == ts.len() => {
+            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => {
+                inner.scalar()?.narrow_opt_layout()
+            }
+            (RangeInfo::Tuple(items), Ty::Tuple(ts))
+                if !ts.is_empty() && items.len() == ts.len() =>
+            {
                 let mut widths = Vec::with_capacity(ts.len());
                 for (item, t) in items.iter().zip(ts) {
                     if *t != Ty::Int {
@@ -114,7 +119,9 @@ impl RangeInfo {
                 }
                 Some(NarrowLayout::Tuple(widths))
             }
-            (RangeInfo::Tuple(items), Ty::Record(fs)) if !fs.is_empty() && items.len() == fs.len() => {
+            (RangeInfo::Tuple(items), Ty::Record(fs))
+                if !fs.is_empty() && items.len() == fs.len() =>
+            {
                 let mut widths = Vec::with_capacity(fs.len());
                 for (item, (_, t)) in items.iter().zip(fs) {
                     if *t != Ty::Int {
@@ -125,9 +132,9 @@ impl RangeInfo {
                 }
                 Some(NarrowLayout::Tuple(widths))
             }
-            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) => {
-                self.narrow_elem_layout(ty).map(|l| NarrowLayout::Seq(Box::new(l)))
-            }
+            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) => self
+                .narrow_elem_layout(ty)
+                .map(|l| NarrowLayout::Seq(Box::new(l))),
             _ => None,
         }
     }
@@ -155,10 +162,16 @@ impl RangeInfo {
                     text: text.clone(),
                 }))
             }
-            Spec::Array { elem, .. } => RangeInfo::from_spec(elem).map(|e| RangeInfo::Elem(Box::new(e))),
+            Spec::Array { elem, .. } => {
+                RangeInfo::from_spec(elem).map(|e| RangeInfo::Elem(Box::new(e)))
+            }
             Spec::Fields(_, fields) => {
-                let items: Vec<Option<RangeInfo>> = fields.iter().map(RangeInfo::from_spec).collect();
-                items.iter().any(Option::is_some).then_some(RangeInfo::Tuple(items))
+                let items: Vec<Option<RangeInfo>> =
+                    fields.iter().map(RangeInfo::from_spec).collect();
+                items
+                    .iter()
+                    .any(Option::is_some)
+                    .then_some(RangeInfo::Tuple(items))
             }
             _ => None,
         }
@@ -224,7 +237,8 @@ impl<'a> Lowerer<'a> {
         for (&slot, info) in ranges {
             if let Some(l) = locals.get(slot).filter(|l| is_narrowable_elem_ty(&l.ty)) {
                 if let Some(layout) = info.narrow_elem_layout(&l.ty) {
-                    self.narrow_elems.insert(ElemLoc::Local(scope, slot), layout);
+                    self.narrow_elems
+                        .insert(ElemLoc::Local(scope, slot), layout);
                 }
             }
         }
@@ -253,12 +267,14 @@ impl<'a> Lowerer<'a> {
                     text: self.source(ty.span),
                 }))
             }
-            ast::TypeKind::Array { elem, .. } | ast::TypeKind::OwnDomain { elem, .. } => {
-                self.range_info_from_ast(elem).map(|e| RangeInfo::Elem(Box::new(e)))
-            }
+            ast::TypeKind::Array { elem, .. } | ast::TypeKind::OwnDomain { elem, .. } => self
+                .range_info_from_ast(elem)
+                .map(|e| RangeInfo::Elem(Box::new(e))),
             ast::TypeKind::Named { name, args } => {
                 if name.text == "List" && args.len() == 1 && self.get_sym(&name.text).is_none() {
-                    return self.range_info_from_ast(&args[0]).map(|e| RangeInfo::Elem(Box::new(e)));
+                    return self
+                        .range_info_from_ast(&args[0])
+                        .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
                 if args.is_empty() {
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
@@ -273,18 +289,26 @@ impl<'a> Lowerer<'a> {
                 }
                 None
             }
-            ast::TypeKind::Optional(inner) => {
-                self.range_info_from_ast(inner).map(|r| RangeInfo::Opt(Box::new(r)))
-            }
+            ast::TypeKind::Optional(inner) => self
+                .range_info_from_ast(inner)
+                .map(|r| RangeInfo::Opt(Box::new(r))),
             ast::TypeKind::Tuple(items) => {
                 let parts: Vec<Option<RangeInfo>> =
                     items.iter().map(|t| self.range_info_from_ast(t)).collect();
-                parts.iter().any(Option::is_some).then_some(RangeInfo::Tuple(parts))
+                parts
+                    .iter()
+                    .any(Option::is_some)
+                    .then_some(RangeInfo::Tuple(parts))
             }
             ast::TypeKind::Record(fields) => {
-                let parts: Vec<Option<RangeInfo>> =
-                    fields.iter().map(|(_, t)| self.range_info_from_ast(t)).collect();
-                parts.iter().any(Option::is_some).then_some(RangeInfo::Tuple(parts))
+                let parts: Vec<Option<RangeInfo>> = fields
+                    .iter()
+                    .map(|(_, t)| self.range_info_from_ast(t))
+                    .collect();
+                parts
+                    .iter()
+                    .any(Option::is_some)
+                    .then_some(RangeInfo::Tuple(parts))
             }
             _ => None,
         }
@@ -346,7 +370,11 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         self.cur_mod = saved_m;
         self.offset = saved_off;
-        if had_err { None } else { info }
+        if had_err {
+            None
+        } else {
+            info
+        }
     }
 
     /// Records `RangeInfo` for every binding introduced by `pat`.
@@ -459,7 +487,10 @@ impl<'a> Lowerer<'a> {
                 let (lo, hi) = self.expr_const_bounds(inner);
                 (hi.and_then(i64::checked_neg), lo.and_then(i64::checked_neg))
             }
-            ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..) | ExprKind::Index(..) => {
+            ExprKind::Local(_)
+            | ExprKind::Global(_)
+            | ExprKind::Field(..)
+            | ExprKind::Index(..) => {
                 if let ExprKind::Global(gid) = &e.kind {
                     if let Some(&v) = self.const_ints.get(&self.globals[*gid].name) {
                         return (Some(v), Some(v));
@@ -543,7 +574,9 @@ impl<'a> Lowerer<'a> {
                                     if let (ExprKind::Binary(BinOp::Sub, ea, eb), Some(p)) =
                                         (&esub.kind, const_int_expr(ep))
                                     {
-                                        if ea.as_ref() == lhs.as_ref() && eb.as_ref() == rhs.as_ref() {
+                                        if ea.as_ref() == lhs.as_ref()
+                                            && eb.as_ref() == rhs.as_ref()
+                                        {
                                             ehi = Some(ehi.map_or(p - 1, |h| h.min(p - 1)));
                                         }
                                     }
@@ -639,9 +672,15 @@ impl<'a> Lowerer<'a> {
             ExprKind::Read(spec) => {
                 if let Spec::Int { lo, hi, .. } = spec.as_ref() {
                     let lo_eq = dst.lo.is_none()
-                        || lo.as_deref().zip(dst.lo.as_ref()).is_some_and(|(a, b)| same_expr(a, b));
+                        || lo
+                            .as_deref()
+                            .zip(dst.lo.as_ref())
+                            .is_some_and(|(a, b)| same_expr(a, b));
                     let hi_eq = dst.hi.is_none()
-                        || hi.as_deref().zip(dst.hi.as_ref()).is_some_and(|(a, b)| same_expr(a, b));
+                        || hi
+                            .as_deref()
+                            .zip(dst.hi.as_ref())
+                            .is_some_and(|(a, b)| same_expr(a, b));
                     if lo_eq && hi_eq {
                         return true;
                     }
@@ -649,22 +688,39 @@ impl<'a> Lowerer<'a> {
             }
             ExprKind::RangeCheck { lo, hi, .. } => {
                 let lo_eq = dst.lo.is_none()
-                    || lo.as_deref().zip(dst.lo.as_ref()).is_some_and(|(a, b)| same_expr(a, b));
+                    || lo
+                        .as_deref()
+                        .zip(dst.lo.as_ref())
+                        .is_some_and(|(a, b)| same_expr(a, b));
                 let hi_eq = dst.hi.is_none()
-                    || hi.as_deref().zip(dst.hi.as_ref()).is_some_and(|(a, b)| same_expr(a, b));
+                    || hi
+                        .as_deref()
+                        .zip(dst.hi.as_ref())
+                        .is_some_and(|(a, b)| same_expr(a, b));
                 if lo_eq && hi_eq {
                     return true;
                 }
             }
-            ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..) | ExprKind::Index(..) => {
+            ExprKind::Local(_)
+            | ExprKind::Global(_)
+            | ExprKind::Field(..)
+            | ExprKind::Index(..) => {
                 if let Some(RangeInfo::Scalar(src)) = self.expr_range(value) {
                     let lo_eq = dst.lo.is_none()
-                        || src.lo.as_ref().zip(dst.lo.as_ref()).is_some_and(|(a, b)| same_expr(a, b))
+                        || src
+                            .lo
+                            .as_ref()
+                            .zip(dst.lo.as_ref())
+                            .is_some_and(|(a, b)| same_expr(a, b))
                         || (src.lo_const.is_some()
                             && dst.lo_const.is_some()
                             && src.lo_const >= dst.lo_const);
                     let hi_eq = dst.hi.is_none()
-                        || src.hi.as_ref().zip(dst.hi.as_ref()).is_some_and(|(a, b)| same_expr(a, b))
+                        || src
+                            .hi
+                            .as_ref()
+                            .zip(dst.hi.as_ref())
+                            .is_some_and(|(a, b)| same_expr(a, b))
                         || (src.hi_const.is_some()
                             && dst.hi_const.is_some()
                             && src.hi_const <= dst.hi_const);
@@ -796,9 +852,19 @@ impl<'a> Lowerer<'a> {
             if let Some(RangeInfo::Opt(inner)) = self.place_range(&place) {
                 if let RangeInfo::Scalar(bounds) = *inner {
                     let (ty, at) = (value.ty.clone(), value.span);
-                    let ExprKind::Some(x) = value.kind else { unreachable!() };
+                    let ExprKind::Some(x) = value.kind else {
+                        unreachable!()
+                    };
                     let x = self.check_range(*x, &bounds, span);
-                    out.push(Stmt::Assign(place, op, Expr { kind: ExprKind::Some(Box::new(x)), ty, span: at }));
+                    out.push(Stmt::Assign(
+                        place,
+                        op,
+                        Expr {
+                            kind: ExprKind::Some(Box::new(x)),
+                            ty,
+                            span: at,
+                        },
+                    ));
                     return;
                 }
             }
@@ -831,7 +897,11 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::Let(slot, Some(value)));
                 let rhs = self.local(slot, span);
                 let cur = super::stmt::place_to_expr(&place);
-                let cmp = if op == AssignOp::Max { CmpOp::Gt } else { CmpOp::Lt };
+                let cmp = if op == AssignOp::Max {
+                    CmpOp::Gt
+                } else {
+                    CmpOp::Lt
+                };
                 let cond = self.mk(
                     ExprKind::Cmp(cmp, Box::new(rhs.clone()), Box::new(cur)),
                     Ty::Bool,

@@ -147,11 +147,18 @@ impl<'a> Lowerer<'a> {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
                 continue;
             }
-            let (m, offset, target) = (self.impls[idx].mod_id, self.impls[idx].offset, self.impls[idx].target);
+            let (m, offset, target) = (
+                self.impls[idx].mod_id,
+                self.impls[idx].offset,
+                self.impls[idx].target,
+            );
             if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
                 return true;
             }
-            let saved = (std::mem::replace(&mut self.cur_mod, m), std::mem::replace(&mut self.offset, offset));
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+            );
             let got = self.resolve_ty(target);
             (self.cur_mod, self.offset) = saved;
             if got == *ty || got == Ty::Error {
@@ -219,11 +226,22 @@ impl<'a> Lowerer<'a> {
 
     /// Look up a symbol in the current module (or local domains/aliases/gen_env, including enclosing scopes).
     pub(super) fn get_sym(&self, name: &str) -> Option<Sym> {
-        if let Some(local_sym) = self.cx.local_syms.iter().rev().find_map(|s| s.get(name).copied()) {
+        if let Some(local_sym) = self
+            .cx
+            .local_syms
+            .iter()
+            .rev()
+            .find_map(|s| s.get(name).copied())
+        {
             return Some(local_sym);
         }
         for ocx in self.outer_cxs.iter().rev() {
-            if let Some(local_sym) = ocx.local_syms.iter().rev().find_map(|s| s.get(name).copied()) {
+            if let Some(local_sym) = ocx
+                .local_syms
+                .iter()
+                .rev()
+                .find_map(|s| s.get(name).copied())
+            {
                 return Some(local_sym);
             }
         }
@@ -321,7 +339,10 @@ impl<'a> Lowerer<'a> {
                 format!("Tup{}_{}", ts.len(), parts.join("_"))
             }
             Ty::Record(fs) => {
-                let parts: Vec<String> = fs.iter().map(|(n, t)| format!("{n}_{}", self.mangle_ty(t))).collect();
+                let parts: Vec<String> = fs
+                    .iter()
+                    .map(|(n, t)| format!("{n}_{}", self.mangle_ty(t)))
+                    .collect();
                 format!("Rec{}_{}", fs.len(), parts.join("_"))
             }
             Ty::Fn(ps, r) => {
@@ -350,7 +371,10 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Binary { op, lhs, rhs, .. } => {
                 interval(*op, self.ast_bounds(lhs)?, self.ast_bounds(rhs)?)
             }
-            ast::ExprKind::Unary { op: UnOp::Neg, expr } => {
+            ast::ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } => {
                 let (least, most) = self.ast_bounds(expr)?;
                 Some((most.checked_neg()?, least.checked_neg()?))
             }
@@ -363,19 +387,31 @@ impl<'a> Lowerer<'a> {
     /// The bounds of `xs.min()!`, `xs.max()!` and `xs.sum()` over a
     /// top-level array whose elements have a range type.
     fn fold_bounds(&self, call: &ast::Expr, unwrapped: bool) -> Option<(i64, i64)> {
-        let ast::ExprKind::Call { callee, args } = &call.kind else { return None };
-        let ast::ExprKind::Field { base, name } = &callee.kind else { return None };
-        let ast::ExprKind::Name(xs) = &base.kind else { return None };
-        let Some(Sym::Global(g)) = self.get_sym(xs) else { return None };
-        let ast::TypeKind::Array { index, elem } = &self.global_specs.get(&g)?.kind else { return None };
+        let ast::ExprKind::Call { callee, args } = &call.kind else {
+            return None;
+        };
+        let ast::ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let ast::ExprKind::Name(xs) = &base.kind else {
+            return None;
+        };
+        let Some(Sym::Global(g)) = self.get_sym(xs) else {
+            return None;
+        };
+        let ast::TypeKind::Array { index, elem } = &self.global_specs.get(&g)?.kind else {
+            return None;
+        };
         let each = self.type_bounds(elem)?;
         match (name.text.as_str(), unwrapped, args.is_empty()) {
             ("min" | "max", true, true) => Some(each),
             ("sum", false, true) => {
-                let len = index.iter().try_fold((1, 1), |(least, most): (i64, i64), d| {
-                    let (l, m) = self.type_len(d)?;
-                    Some((least.checked_mul(l)?, most.checked_mul(m)?))
-                })?;
+                let len = index
+                    .iter()
+                    .try_fold((1, 1), |(least, most): (i64, i64), d| {
+                        let (l, m) = self.type_len(d)?;
+                        Some((least.checked_mul(l)?, most.checked_mul(m)?))
+                    })?;
                 interval(BinOp::Mul, len, each)
             }
             _ => None,
@@ -384,18 +420,32 @@ impl<'a> Lowerer<'a> {
 
     /// The values a range type such as `1..=400` holds.
     fn type_bounds(&self, ty: &ast::Type) -> Option<(i64, i64)> {
-        let ast::TypeKind::Range { lo, hi: Some(hi), inclusive } = &ty.kind else { return None };
+        let ast::TypeKind::Range {
+            lo,
+            hi: Some(hi),
+            inclusive,
+        } = &ty.kind
+        else {
+            return None;
+        };
         let least = match lo {
             Some(lo) => self.ast_bounds(lo)?.0,
             None => 0,
         };
-        Some((least, self.ast_bounds(hi)?.1.checked_sub(i64::from(!*inclusive))?))
+        Some((
+            least,
+            self.ast_bounds(hi)?.1.checked_sub(i64::from(!*inclusive))?,
+        ))
     }
 
     /// How many positions an index type such as `0..n` or a domain has.
     fn type_len(&self, ty: &ast::Type) -> Option<(i64, i64)> {
         match &ty.kind {
-            ast::TypeKind::Range { lo, hi: Some(hi), inclusive } => {
+            ast::TypeKind::Range {
+                lo,
+                hi: Some(hi),
+                inclusive,
+            } => {
                 let lo = match lo {
                     Some(lo) => self.ast_bounds(lo)?,
                     None => (0, 0),
@@ -428,8 +478,14 @@ impl<'a> Lowerer<'a> {
         match &e.kind {
             ast::ExprKind::Int(v) => i64::try_from(*v).ok(),
             ast::ExprKind::Paren(inner) => self.eval_const_int(inner),
-            ast::ExprKind::Unary { op: UnOp::Pos, expr } => self.eval_const_int(expr),
-            ast::ExprKind::Unary { op: UnOp::Neg, expr } => self.eval_const_int(expr)?.checked_neg(),
+            ast::ExprKind::Unary {
+                op: UnOp::Pos,
+                expr,
+            } => self.eval_const_int(expr),
+            ast::ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } => self.eval_const_int(expr)?.checked_neg(),
             ast::ExprKind::Binary { op, lhs, rhs, .. } => {
                 let l = self.eval_const_int(lhs)?;
                 let r = self.eval_const_int(rhs)?;
@@ -475,13 +531,22 @@ impl<'a> Lowerer<'a> {
                 _ => self.const_bools.get(name).copied(),
             },
             ast::ExprKind::Paren(inner) => self.eval_const_bool(inner),
-            ast::ExprKind::Unary { op: UnOp::Not, expr } => Some(!self.eval_const_bool(expr)?),
-            ast::ExprKind::Binary { op: BinOp::And, lhs, rhs, .. } => {
-                Some(self.eval_const_bool(lhs)? && self.eval_const_bool(rhs)?)
-            }
-            ast::ExprKind::Binary { op: BinOp::Or, lhs, rhs, .. } => {
-                Some(self.eval_const_bool(lhs)? || self.eval_const_bool(rhs)?)
-            }
+            ast::ExprKind::Unary {
+                op: UnOp::Not,
+                expr,
+            } => Some(!self.eval_const_bool(expr)?),
+            ast::ExprKind::Binary {
+                op: BinOp::And,
+                lhs,
+                rhs,
+                ..
+            } => Some(self.eval_const_bool(lhs)? && self.eval_const_bool(rhs)?),
+            ast::ExprKind::Binary {
+                op: BinOp::Or,
+                lhs,
+                rhs,
+                ..
+            } => Some(self.eval_const_bool(lhs)? || self.eval_const_bool(rhs)?),
             ast::ExprKind::Compare { first, rest } => {
                 let mut left = self.eval_const_int(first)?;
                 for (op, next) in rest {
@@ -531,7 +596,11 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                self.error(codes::BAD_NUMBER, expr.span, "expected a compile-time constant integer");
+                self.error(
+                    codes::BAD_NUMBER,
+                    expr.span,
+                    "expected a compile-time constant integer",
+                );
                 GenArg::Int(1)
             }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
@@ -612,7 +681,13 @@ impl<'a> Lowerer<'a> {
     /// (`Mod<P>`'s `P`) or one of its `let` constants (`Z.MOD`).
     fn const_of_type(&mut self, owner: &str, member: &str, span: Span) -> Option<i64> {
         let owner = ast::Type {
-            kind: ast::TypeKind::Named { name: ast::Name { text: owner.to_string(), span }, args: Vec::new() },
+            kind: ast::TypeKind::Named {
+                name: ast::Name {
+                    text: owner.to_string(),
+                    span,
+                },
+                args: Vec::new(),
+            },
             span,
         };
         let dlen = self.diags.len();
@@ -634,10 +709,15 @@ impl<'a> Lowerer<'a> {
 
     /// The fields of `decl` that are a row of 1 to 64 cells, the count
     /// written as numbers: `kid: [0..2]?Int`, `cnt: [1..=26]Int`.
-    pub(super) fn fixed_rows(&self, decl: &ast::StructDecl) -> std::collections::BTreeMap<usize, u32> {
+    pub(super) fn fixed_rows(
+        &self,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeMap<usize, u32> {
         let mut rows = std::collections::BTreeMap::new();
         for (at, field) in decl.fields.iter().enumerate() {
-            let ast::TypeKind::Array { index, .. } = &field.ty.kind else { continue };
+            let ast::TypeKind::Array { index, .. } = &field.ty.kind else {
+                continue;
+            };
             let [ast::Type {
                 kind:
                     ast::TypeKind::Range {
@@ -650,7 +730,9 @@ impl<'a> Lowerer<'a> {
             else {
                 continue;
             };
-            let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else { continue };
+            let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else {
+                continue;
+            };
             let len = hi.saturating_sub(lo).saturating_add(i64::from(*inclusive));
             if (1..=64).contains(&len) {
                 rows.insert(at, len as u32);
@@ -671,26 +753,37 @@ impl<'a> Lowerer<'a> {
             {
                 if let ast::ExprKind::Name(dname) = &base.kind {
                     let is_dom = matches!(self.gen_env.get(dname), Some(GenArg::Domain(_)))
-                        || matches!(
-                            self.mod_syms[self.cur_mod].get(dname),
-                            Some(Sym::Domain(_))
-                        );
+                        || matches!(self.mod_syms[self.cur_mod].get(dname), Some(Sym::Domain(_)));
                     if is_dom {
                         return Some((0, i64::from(i32::MAX)));
                     }
                 }
                 None
             }
-            ast::ExprKind::Unary { op: ast::UnOp::Neg, expr, .. } => {
+            ast::ExprKind::Unary {
+                op: ast::UnOp::Neg,
+                expr,
+                ..
+            } => {
                 let (lo, hi) = self.range_bound_limits(expr)?;
                 Some((hi.checked_neg()?, lo.checked_neg()?))
             }
-            ast::ExprKind::Binary { op: ast::BinOp::Add, lhs, rhs, .. } => {
+            ast::ExprKind::Binary {
+                op: ast::BinOp::Add,
+                lhs,
+                rhs,
+                ..
+            } => {
                 let (alo, ahi) = self.range_bound_limits(lhs)?;
                 let (blo, bhi) = self.range_bound_limits(rhs)?;
                 Some((alo.checked_add(blo)?, ahi.checked_add(bhi)?))
             }
-            ast::ExprKind::Binary { op: ast::BinOp::Sub, lhs, rhs, .. } => {
+            ast::ExprKind::Binary {
+                op: ast::BinOp::Sub,
+                lhs,
+                rhs,
+                ..
+            } => {
                 let (alo, ahi) = self.range_bound_limits(lhs)?;
                 let (blo, bhi) = self.range_bound_limits(rhs)?;
                 Some((alo.checked_sub(bhi)?, ahi.checked_sub(blo)?))
@@ -710,7 +803,11 @@ impl<'a> Lowerer<'a> {
         };
         let (lo_min, _) = self.range_bound_limits(lo)?;
         let (_, hi_raw) = self.range_bound_limits(hi)?;
-        let hi_max = if *inclusive { hi_raw } else { hi_raw.checked_sub(1)? };
+        let hi_max = if *inclusive {
+            hi_raw
+        } else {
+            hi_raw.checked_sub(1)?
+        };
         if lo_min > hi_max {
             return None;
         }
@@ -750,7 +847,11 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Instantiates a generic struct template with concrete `args`, memoized.
-    pub(super) fn instantiate_struct(&mut self, gid: GenStructId, mut args: Vec<GenArg>) -> StructId {
+    pub(super) fn instantiate_struct(
+        &mut self,
+        gid: GenStructId,
+        mut args: Vec<GenArg>,
+    ) -> StructId {
         let tpl_mod = self.gen_structs[gid].mod_id;
         let tpl_offset = self.gen_structs[gid].offset;
         let decl = self.gen_structs[gid].decl;
@@ -828,16 +929,22 @@ impl<'a> Lowerer<'a> {
         for item in &decl.methods {
             if let ast::StmtKind::Domain { name, def } = &item.kind {
                 let dom_id = self.domains.len();
-                self.domains.push(format!("{}_{}", self.structs[id].def.name, name.text));
-                self.structs[id].owned_domains.insert(name.text.clone(), dom_id);
+                self.domains
+                    .push(format!("{}_{}", self.structs[id].def.name, name.text));
+                self.structs[id]
+                    .owned_domains
+                    .insert(name.text.clone(), dom_id);
                 self.structs[id].owned_domain_inits.push(OwnedDomainInit {
                     id: dom_id,
                     def,
                     offset: tpl_offset,
                     mod_id: tpl_mod,
                 });
-                self.gen_env.insert(name.text.clone(), GenArg::Domain(dom_id));
-                self.structs[id].env.insert(name.text.clone(), GenArg::Domain(dom_id));
+                self.gen_env
+                    .insert(name.text.clone(), GenArg::Domain(dom_id));
+                self.structs[id]
+                    .env
+                    .insert(name.text.clone(), GenArg::Domain(dom_id));
             }
         }
 
@@ -881,14 +988,27 @@ impl<'a> Lowerer<'a> {
                             owner_env: struct_env.clone(),
                             decl: f,
                         });
-                        self.structs[id].gen_methods.insert(f.name.text.clone(), gfid);
+                        self.structs[id]
+                            .gen_methods
+                            .insert(f.name.text.clone(), gfid);
                     } else {
-                        let fn_id = self.declare_fn_in(f, tpl_mod, tpl_offset, Some(id), struct_env.clone());
+                        let fn_id = self.declare_fn_in(
+                            f,
+                            tpl_mod,
+                            tpl_offset,
+                            Some(id),
+                            struct_env.clone(),
+                        );
                         self.resolve_fn_sig(fn_id, None);
                         self.structs[id].methods.insert(f.name.text.clone(), fn_id);
                     }
                 }
-                ast::StmtKind::Let { pat, ty, init: Some(init), .. } if let_const_name(pat).is_some() => {
+                ast::StmtKind::Let {
+                    pat,
+                    ty,
+                    init: Some(init),
+                    ..
+                } if let_const_name(pat).is_some() => {
                     let cname = let_const_name(pat).expect("guarded");
                     self.structs[id].consts.insert(
                         cname.to_string(),
@@ -900,7 +1020,12 @@ impl<'a> Lowerer<'a> {
                         },
                     );
                 }
-                ast::StmtKind::Const { name, ty, init: Some(init), .. } => {
+                ast::StmtKind::Const {
+                    name,
+                    ty,
+                    init: Some(init),
+                    ..
+                } => {
                     self.structs[id].consts.insert(
                         name.text.clone(),
                         StructConst {
@@ -997,15 +1122,20 @@ impl<'a> Lowerer<'a> {
             let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
 
-            let ast::TypeKind::Named { name: tname, args: targs } = &imp_target.kind else {
+            let ast::TypeKind::Named {
+                name: tname,
+                args: targs,
+            } = &imp_target.kind
+            else {
                 continue;
             };
             // Check whether `tname` in `imp_mod` refers to the same struct.
             let target_matches = match self.mod_syms[imp_mod].get(&tname.text).copied() {
                 Some(Sym::Struct(id)) => id == sid,
-                Some(Sym::GenStruct(gid)) => {
-                    self.structs[sid].origin_gen.as_ref().is_some_and(|(g, _)| *g == gid)
-                }
+                Some(Sym::GenStruct(gid)) => self.structs[sid]
+                    .origin_gen
+                    .as_ref()
+                    .is_some_and(|(g, _)| *g == gid),
                 _ => tname.text == struct_decl_name && imp_mod == struct_mod,
             };
             if !target_matches {
@@ -1046,7 +1176,8 @@ impl<'a> Lowerer<'a> {
             // Handle `impl Index for S`: allocate backing domain for `let K = ...`.
             if imp_trait.as_deref() == Some("Index") && self.structs[sid].index_domain.is_none() {
                 let dom_id = self.domains.len();
-                self.domains.push(format!("{}_Index", self.structs[sid].def.name));
+                self.domains
+                    .push(format!("{}_Index", self.structs[sid].def.name));
                 self.structs[sid].index_domain = Some(dom_id);
             }
 
@@ -1059,7 +1190,8 @@ impl<'a> Lowerer<'a> {
             });
             if let Some(ref o) = imp_out_ty {
                 env.insert("Out".to_string(), GenArg::Ty(o.clone()));
-                self.gen_env.insert("Out".to_string(), GenArg::Ty(o.clone()));
+                self.gen_env
+                    .insert("Out".to_string(), GenArg::Ty(o.clone()));
             }
 
             for item in &imp_body.stmts {
@@ -1089,9 +1221,12 @@ impl<'a> Lowerer<'a> {
                                 owner_env: env.clone(),
                                 decl: f,
                             });
-                            self.structs[sid].gen_methods.insert(f.name.text.clone(), gfid);
+                            self.structs[sid]
+                                .gen_methods
+                                .insert(f.name.text.clone(), gfid);
                         } else {
-                            let fn_id = self.declare_fn_in(f, imp_mod, imp_offset, Some(sid), env.clone());
+                            let fn_id =
+                                self.declare_fn_in(f, imp_mod, imp_offset, Some(sid), env.clone());
                             self.resolve_fn_sig_with(
                                 fn_id,
                                 imp_trait.as_deref(),
@@ -1120,9 +1255,10 @@ impl<'a> Lowerer<'a> {
                                     rhs_resolved,
                                     fn_id,
                                 ));
-                            } else if let Some(tname) = imp_trait.as_ref().filter(|_| {
-                                self.structs[sid].methods.contains_key(&f.name.text)
-                            }) {
+                            } else if let Some(tname) = imp_trait
+                                .as_ref()
+                                .filter(|_| self.structs[sid].methods.contains_key(&f.name.text))
+                            {
                                 // An inherent method of the same name wins the lookup (R08.1.4).
                                 let key = (tname.clone(), f.name.text.clone());
                                 self.structs[sid].trait_methods.insert(key, fn_id);
@@ -1134,14 +1270,21 @@ impl<'a> Lowerer<'a> {
                                 self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
                             }
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
-                                (Some("Show"), "show") => self.structs[sid].def.show_fn = Some(fn_id),
+                                (Some("Show"), "show") => {
+                                    self.structs[sid].def.show_fn = Some(fn_id)
+                                }
                                 (Some("Eq"), "eq") => self.structs[sid].def.eq_fn = Some(fn_id),
                                 (Some("Ord"), "lt") => self.structs[sid].def.lt_fn = Some(fn_id),
                                 _ => {}
                             }
                         }
                     }
-                    ast::StmtKind::Let { pat, ty, init: Some(init), .. } => {
+                    ast::StmtKind::Let {
+                        pat,
+                        ty,
+                        init: Some(init),
+                        ..
+                    } => {
                         let cname = let_const_name(pat).map(str::to_string);
                         if let Some(cname) = cname {
                             self.structs[sid].consts.insert(
@@ -1155,7 +1298,12 @@ impl<'a> Lowerer<'a> {
                             );
                         }
                     }
-                    ast::StmtKind::Const { name, ty, init: Some(init), .. } => {
+                    ast::StmtKind::Const {
+                        name,
+                        ty,
+                        init: Some(init),
+                        ..
+                    } => {
                         self.structs[sid].consts.insert(
                             name.text.clone(),
                             StructConst {
@@ -1180,7 +1328,8 @@ impl<'a> Lowerer<'a> {
                         if !matches!(m.body, ast::FnBody::None)
                             && !self.structs[sid].methods.contains_key(&m.name.text)
                         {
-                            let fn_id = self.declare_fn_in(m, t_mod, t_offset, Some(sid), env.clone());
+                            let fn_id =
+                                self.declare_fn_in(m, t_mod, t_offset, Some(sid), env.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));
                             self.structs[sid].methods.insert(m.name.text.clone(), fn_id);
                             let key = (tname.clone(), m.name.text.clone());
@@ -1292,7 +1441,8 @@ impl<'a> Lowerer<'a> {
             span: val.span,
         };
         if temp_cx.locals.is_empty() {
-            self.preamble_stmts.push(Stmt::Assign(place, AssignOp::Set, val));
+            self.preamble_stmts
+                .push(Stmt::Assign(place, AssignOp::Set, val));
         } else {
             // Put into a 0-arg helper fn called in preamble so locals stay clean.
             let fid = self.sigs.len();
@@ -1329,7 +1479,8 @@ impl<'a> Lowerer<'a> {
                 ty: val_ty.clone(),
                 span: place.span,
             };
-            self.preamble_stmts.push(Stmt::Assign(place, AssignOp::Set, call));
+            self.preamble_stmts
+                .push(Stmt::Assign(place, AssignOp::Set, call));
         }
         self.mk(ExprKind::Global(gid), val_ty, span)
     }
@@ -1356,7 +1507,9 @@ impl<'a> Lowerer<'a> {
             .params
             .iter()
             .enumerate()
-            .filter(|(i, p)| !(*i == 0 && p.name.text == "self" && self.gen_fns[gfid].owner.is_some()))
+            .filter(|(i, p)| {
+                !(*i == 0 && p.name.text == "self" && self.gen_fns[gfid].owner.is_some())
+            })
             .map(|(_, p)| p)
             .collect();
 
@@ -1409,12 +1562,18 @@ impl<'a> Lowerer<'a> {
         {
             if let Some(first_param) = decl.params.first() {
                 if let Some(ast::Type {
-                    kind: ast::TypeKind::Named { name: pname, args: targs },
+                    kind:
+                        ast::TypeKind::Named {
+                            name: pname,
+                            args: targs,
+                        },
                     ..
                 }) = &first_param.ty
                 {
                     if targs.is_empty() && gen_names.contains(&pname.text) {
-                        inferred.entry(pname.text.clone()).or_insert(GenArg::Domain(*d));
+                        inferred
+                            .entry(pname.text.clone())
+                            .or_insert(GenArg::Domain(*d));
                     }
                 }
             }
@@ -1422,7 +1581,14 @@ impl<'a> Lowerer<'a> {
 
         for (param, arg) in ast_params.iter().zip(&matched) {
             if let (Some(pty), Some(arg)) = (&param.ty, arg) {
-                self.bind_range_domain(pty, &arg.value, &gen_names, &mut inferred, span, Some((gfid, decl.ret.as_ref())));
+                self.bind_range_domain(
+                    pty,
+                    &arg.value,
+                    &gen_names,
+                    &mut inferred,
+                    span,
+                    Some((gfid, decl.ret.as_ref())),
+                );
             }
         }
 
@@ -1468,7 +1634,9 @@ impl<'a> Lowerer<'a> {
                     if let Some(d) = dom_id {
                         if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
                             if targs.is_empty() && gen_names.contains(&name.text) {
-                                inferred.entry(name.text.clone()).or_insert(GenArg::Domain(d));
+                                inferred
+                                    .entry(name.text.clone())
+                                    .or_insert(GenArg::Domain(d));
                                 continue;
                             }
                             if name.text == "List" {
@@ -1641,7 +1809,12 @@ impl<'a> Lowerer<'a> {
                         None => continue,
                     },
                 };
-                let ast::ExprKind::Lambda { params: lparams, body: lbody, .. } = &expr.kind else {
+                let ast::ExprKind::Lambda {
+                    params: lparams,
+                    body: lbody,
+                    ..
+                } = &expr.kind
+                else {
                     continue;
                 };
                 if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
@@ -1650,14 +1823,13 @@ impl<'a> Lowerer<'a> {
                         && !inferred.contains_key(&name.text)
                         && lparams.len() == 1
                     {
-                        let dom_ty = inferred
-                            .get("V")
-                            .or_else(|| inferred.get("D"))
-                            .and_then(|ga| match ga {
+                        let dom_ty = inferred.get("V").or_else(|| inferred.get("D")).and_then(
+                            |ga| match ga {
                                 GenArg::Domain(d) => Some(Ty::Pos(*d)),
                                 GenArg::Ty(t) => Some(t.clone()),
                                 _ => None,
-                            });
+                            },
+                        );
                         // `peel(v => adj[v])`: with nothing else to say what a
                         // vertex is, it is what the lambda indexes with `v`.
                         let dom_ty = dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
@@ -1667,7 +1839,9 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         if let Some(vty) = dom_ty {
-                            if let Some(ret_ty) = self.probe_lambda_ret(lparams, std::slice::from_ref(&vty), lbody) {
+                            if let Some(ret_ty) =
+                                self.probe_lambda_ret(lparams, std::slice::from_ref(&vty), lbody)
+                            {
                                 inferred.insert(
                                     name.text.clone(),
                                     GenArg::Ty(Ty::Fn(vec![vty], Box::new(ret_ty))),
@@ -1677,7 +1851,11 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
                 }
-                if let ast::TypeKind::Fn { params: fparams, ret: fret } = &pty.kind {
+                if let ast::TypeKind::Fn {
+                    params: fparams,
+                    ret: fret,
+                } = &pty.kind
+                {
                     // Check if all parameter types of this lambda can now be resolved.
                     let mut p_tys = Vec::new();
                     let mut all_known = fparams.len() == lparams.len();
@@ -1723,14 +1901,17 @@ impl<'a> Lowerer<'a> {
                                     .ret
                                     .as_ref()
                                     .and_then(|r| match &r.kind {
-                                        ast::TypeKind::Named { name: rn, args: ra } if ra.is_empty() => {
+                                        ast::TypeKind::Named { name: rn, args: ra }
+                                            if ra.is_empty() =>
+                                        {
                                             inferred.get(&rn.text)
                                         }
                                         _ => None,
                                     })
                                     .cloned()
                                 {
-                                    inferred.insert(name.text.clone(), GenArg::Ty(Ty::list(elem_ty)));
+                                    inferred
+                                        .insert(name.text.clone(), GenArg::Ty(Ty::list(elem_ty)));
                                 }
                             }
                         }
@@ -1740,14 +1921,16 @@ impl<'a> Lowerer<'a> {
         }
         if let (Some(ret_ast), Some(want)) = (decl.ret.as_ref(), hint.filter(|t| *t != Ty::Error)) {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
-                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text) {
+                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text)
+                {
                     inferred.insert(rn.text.clone(), GenArg::Ty(want));
                 }
             }
         }
         if let Some(ret_ast) = decl.ret.as_ref() {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
-                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text) {
+                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text)
+                {
                     let elem_from_container = inferred.values().find_map(|ga| match ga {
                         GenArg::Ty(t) => t.seq_elem(),
                         _ => None,
@@ -1815,7 +1998,11 @@ impl<'a> Lowerer<'a> {
             },
         };
         let hashed = given.filter(|ty| {
-            let declared = decl.params.first().and_then(|p| p.ty.as_ref()).map(|ty| &ty.kind);
+            let declared = decl
+                .params
+                .first()
+                .and_then(|p| p.ty.as_ref())
+                .map(|ty| &ty.kind);
             match (ty, declared) {
                 (Ty::HashMap(..), Some(ast::TypeKind::Named { name, .. })) => name.text == "Map",
                 (Ty::HashSet(_), Some(ast::TypeKind::Named { name, .. })) => name.text == "Set",
@@ -1849,7 +2036,10 @@ impl<'a> Lowerer<'a> {
             }
         };
         if decl.ret.as_ref().is_some_and(|ret| type_names(ret, name))
-            || decl.params.iter().any(|p| p.ty.as_ref().is_some_and(|ty| !only_indexes(ty)))
+            || decl
+                .params
+                .iter()
+                .any(|p| p.ty.as_ref().is_some_and(|ty| !only_indexes(ty)))
         {
             return true;
         }
@@ -1859,10 +2049,14 @@ impl<'a> Lowerer<'a> {
             ast::FnBody::None => return false,
         };
         let abs = span.shift(tpl.offset);
-        let text = self.mods[tpl.mod_id].text.get(abs.start as usize..abs.end as usize).unwrap_or("");
+        let text = self.mods[tpl.mod_id]
+            .text
+            .get(abs.start as usize..abs.end as usize)
+            .unwrap_or("");
         let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
         text.match_indices(name).any(|(at, _)| {
-            !text[..at].chars().next_back().is_some_and(word) && !text[at + name.len()..].chars().next().is_some_and(word)
+            !text[..at].chars().next_back().is_some_and(word)
+                && !text[at + name.len()..].chars().next().is_some_and(word)
         })
     }
 
@@ -1898,11 +2092,15 @@ impl<'a> Lowerer<'a> {
         else {
             return;
         };
-        if !targs.is_empty() || !gen_names.contains(&name.text) || inferred.contains_key(&name.text) {
+        if !targs.is_empty() || !gen_names.contains(&name.text) || inferred.contains_key(&name.text)
+        {
             return;
         }
         // `[1, 2, 3]` and `[x for ..]` written at the call are lists.
-        let written = matches!(arg.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. });
+        let written = matches!(
+            arg.kind,
+            ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. }
+        );
         // A part of an array keeps the first index of the axis it runs
         // along: `one[.., 3]` of a `[1..=2, 1..=3]T` is indexed from 1.
         let mut part = arg;
@@ -1912,7 +2110,10 @@ impl<'a> Lowerer<'a> {
         let part_from = match &part.kind {
             ast::ExprKind::Index { base, indices } => match self.probe_ty_silent(base) {
                 Some(Ty::Array { dims, .. }) if dims.len() == indices.len() => {
-                    let mut along = indices.iter().zip(&dims).filter(|(index, _)| matches!(index.kind, ast::ExprKind::Range { .. }));
+                    let mut along = indices
+                        .iter()
+                        .zip(&dims)
+                        .filter(|(index, _)| matches!(index.kind, ast::ExprKind::Range { .. }));
                     match (along.next(), along.next()) {
                         (Some((_, Dim::IntFrom(first))), None) => Some(*first),
                         _ => None,
@@ -1923,7 +2124,11 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let (lo, list) = match self.probe_ty_silent(arg) {
-            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) if part_from.is_some() => (part_from.unwrap_or(0), true),
+            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_))
+                if part_from.is_some() =>
+            {
+                (part_from.unwrap_or(0), true)
+            }
             Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
                 [Dim::Int] => (0, false),
@@ -1931,7 +2136,9 @@ impl<'a> Lowerer<'a> {
                 _ => return,
             },
             // A list is indexed by its own positions, `0..len`.
-            Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView) => (0, true),
+            Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView) => {
+                (0, true)
+            }
             _ => return,
         };
         // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
@@ -1945,7 +2152,15 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let site = match shared {
-            Some(gfid) => (usize::MAX, gfid as u32, format!("{} from {lo}{}", name.text, if list { " of a list" } else { "" })),
+            Some(gfid) => (
+                usize::MAX,
+                gfid as u32,
+                format!(
+                    "{} from {lo}{}",
+                    name.text,
+                    if list { " of a list" } else { "" }
+                ),
+            ),
             None => (self.cur_mod, self.offset + span.start, name.text.clone()),
         };
         let d = match self.range_domain_sites.get(&site) {
@@ -2009,11 +2224,7 @@ impl<'a> Lowerer<'a> {
         let param_tys: Vec<Ty> = decl
             .params
             .iter()
-            .map(|p| {
-                p.ty.as_ref()
-                    .map(|t| self.resolve_ty(t))
-                    .unwrap_or(Ty::Int)
-            })
+            .map(|p| p.ty.as_ref().map(|t| self.resolve_ty(t)).unwrap_or(Ty::Int))
             .collect();
         let ret_ty = decl
             .ret
@@ -2022,10 +2233,14 @@ impl<'a> Lowerer<'a> {
             .unwrap_or(Ty::Unit);
         // The fn's type says which parameters are `mut`, so a call through
         // its name works on the caller's variable.
-        let sig = decl.params.iter().zip(&param_tys).map(|(p, ty)| match p.mutable {
-            true => Ty::Mut(Box::new(ty.clone())),
-            false => ty.clone(),
-        });
+        let sig = decl
+            .params
+            .iter()
+            .zip(&param_tys)
+            .map(|(p, ty)| match p.mutable {
+                true => Ty::Mut(Box::new(ty.clone())),
+                false => ty.clone(),
+            });
         let fn_ty = Ty::Fn(sig.collect(), Box::new(ret_ty.clone()));
         let fn_slot = self.cx.locals.len();
         self.cx.locals.push(Local {
@@ -2088,8 +2303,18 @@ impl<'a> Lowerer<'a> {
 
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
         let cid = self.closures.len();
-        self.record_narrow_locals(ScopeId::Closure(cid), &inner_cx.locals, &inner_cx.local_ranges);
-        let muts = decl.params.iter().zip(&param_slots).filter(|(p, _)| p.mutable).map(|(_, slot)| *slot).collect();
+        self.record_narrow_locals(
+            ScopeId::Closure(cid),
+            &inner_cx.locals,
+            &inner_cx.local_ranges,
+        );
+        let muts = decl
+            .params
+            .iter()
+            .zip(&param_slots)
+            .filter(|(p, _)| p.mutable)
+            .map(|(_, slot)| *slot)
+            .collect();
         self.closures.push(ClosureDef {
             params: param_slots,
             muts,
@@ -2134,7 +2359,10 @@ impl<'a> Lowerer<'a> {
             slots.push((slot, p.ty.as_ref()));
         }
         let body = self.capture_from_outer(&body_name).expect("just declared");
-        let args = slots.iter().map(|(slot, _)| Arg::Value(self.local(*slot, span))).collect();
+        let args = slots
+            .iter()
+            .map(|(slot, _)| Arg::Value(self.local(*slot, span)))
+            .collect();
         let call = self.mk(
             ExprKind::CallExpr(Box::new(self.local(body, span)), args),
             ret_ty.clone(),
@@ -2143,7 +2371,14 @@ impl<'a> Lowerer<'a> {
         let mut lets = Vec::new();
         let stmts = match into {
             Some(table) => self.memo_into_wrapper(table, decl, call, &ret_ty),
-            None => self.memo_wrapper(memo::MemoHome::Outer, &slots, &ret_ty, call, span, &mut lets),
+            None => self.memo_wrapper(
+                memo::MemoHome::Outer,
+                &slots,
+                &ret_ty,
+                call,
+                span,
+                &mut lets,
+            ),
         };
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
         out.extend(lets);
@@ -2208,7 +2443,12 @@ impl<'a> Lowerer<'a> {
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
 
-    fn probe_lambda_ret(&mut self, lparams: &[ast::Pattern], p_tys: &[Ty], body: &ast::Expr) -> Option<Ty> {
+    fn probe_lambda_ret(
+        &mut self,
+        lparams: &[ast::Pattern],
+        p_tys: &[Ty],
+        body: &ast::Expr,
+    ) -> Option<Ty> {
         let diag_len = self.diags.len();
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
@@ -2245,37 +2485,54 @@ impl<'a> Lowerer<'a> {
         let ast::PatternKind::Name(name) = &param.kind else {
             return None;
         };
-        let mut uses = Uses { name, bases: Vec::new() };
+        let mut uses = Uses {
+            name,
+            bases: Vec::new(),
+        };
         cpl_syntax::visit::Visitor::expr(&mut uses, body);
         cpl_syntax::visit::walk_expr(body, &mut uses);
-        uses.bases.iter().find_map(|(base, k)| match self.probe_ty_silent(base)? {
-            Ty::Array { dims, .. } => match dims.get(*k) {
-                Some(Dim::Pos(d)) => Some(Ty::Pos(*d)),
+        uses.bases
+            .iter()
+            .find_map(|(base, k)| match self.probe_ty_silent(base)? {
+                Ty::Array { dims, .. } => match dims.get(*k) {
+                    Some(Dim::Pos(d)) => Some(Ty::Pos(*d)),
+                    _ => None,
+                },
                 _ => None,
-            },
-            _ => None,
-        })
+            })
     }
 
     fn ast_ty_has_unbound(&self, ty: &ast::Type, gen_names: &[String], env: &GenEnv) -> bool {
         match &ty.kind {
             ast::TypeKind::Named { name, args } => {
-                if args.is_empty() && gen_names.contains(&name.text) && !env.contains_key(&name.text) {
+                if args.is_empty()
+                    && gen_names.contains(&name.text)
+                    && !env.contains_key(&name.text)
+                {
                     return true;
                 }
-                args.iter().any(|a| self.ast_ty_has_unbound(a, gen_names, env))
+                args.iter()
+                    .any(|a| self.ast_ty_has_unbound(a, gen_names, env))
             }
             ast::TypeKind::Array { index, elem } => {
-                index.iter().any(|d| self.ast_ty_has_unbound(d, gen_names, env))
+                index
+                    .iter()
+                    .any(|d| self.ast_ty_has_unbound(d, gen_names, env))
                     || self.ast_ty_has_unbound(elem, gen_names, env)
             }
             ast::TypeKind::Optional(t) | ast::TypeKind::Yields(t) => {
                 self.ast_ty_has_unbound(t, gen_names, env)
             }
-            ast::TypeKind::Tuple(ts) => ts.iter().any(|t| self.ast_ty_has_unbound(t, gen_names, env)),
-            ast::TypeKind::Record(fs) => fs.iter().any(|(_, t)| self.ast_ty_has_unbound(t, gen_names, env)),
+            ast::TypeKind::Tuple(ts) => ts
+                .iter()
+                .any(|t| self.ast_ty_has_unbound(t, gen_names, env)),
+            ast::TypeKind::Record(fs) => fs
+                .iter()
+                .any(|(_, t)| self.ast_ty_has_unbound(t, gen_names, env)),
             ast::TypeKind::Fn { params, ret } => {
-                params.iter().any(|t| self.ast_ty_has_unbound(t, gen_names, env))
+                params
+                    .iter()
+                    .any(|t| self.ast_ty_has_unbound(t, gen_names, env))
                     || self.ast_ty_has_unbound(ret, gen_names, env)
             }
             ast::TypeKind::Value(e) => {
@@ -2303,14 +2560,19 @@ impl<'a> Lowerer<'a> {
             return;
         }
         match &pat.kind {
-            ast::TypeKind::Named { name, args } if args.is_empty() && gen_names.contains(&name.text) => {
-                env.entry(name.text.clone()).or_insert_with(|| match concrete {
-                    Ty::Pos(d) => GenArg::Domain(*d),
-                    other => GenArg::Ty(other.clone()),
-                });
+            ast::TypeKind::Named { name, args }
+                if args.is_empty() && gen_names.contains(&name.text) =>
+            {
+                env.entry(name.text.clone())
+                    .or_insert_with(|| match concrete {
+                        Ty::Pos(d) => GenArg::Domain(*d),
+                        other => GenArg::Ty(other.clone()),
+                    });
             }
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
-                ("List" | "Iter", Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)) if args.len() == 1 => {
+                ("List" | "Iter", Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem))
+                    if args.len() == 1 =>
+                {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
                 ("List" | "Iter", Ty::Str | Ty::StrView) if args.len() == 1 => {
@@ -2343,7 +2605,9 @@ impl<'a> Lowerer<'a> {
                         for (pa, actual) in args.iter().zip(actual_args) {
                             match actual {
                                 GenArg::Ty(t) => self.unify_ast_ty(pa, t, tpl_mod, gen_names, env),
-                                GenArg::Domain(d) => self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env),
+                                GenArg::Domain(d) => {
+                                    self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
+                                }
                                 GenArg::Int(v) => {
                                     if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
                                         if a.is_empty() && gen_names.contains(&n.text) {
@@ -2360,7 +2624,8 @@ impl<'a> Lowerer<'a> {
                                 GenArg::RuntimeInt(gid) => {
                                     if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
                                         if a.is_empty() && gen_names.contains(&n.text) {
-                                            env.entry(n.text.clone()).or_insert(GenArg::RuntimeInt(*gid));
+                                            env.entry(n.text.clone())
+                                                .or_insert(GenArg::RuntimeInt(*gid));
                                         }
                                     }
                                 }
@@ -2391,7 +2656,9 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (Ty::List(ce) | Ty::ListView(ce) | Ty::MutView(ce), [_]) = (concrete, index.as_slice()) {
+                } else if let (Ty::List(ce) | Ty::ListView(ce) | Ty::MutView(ce), [_]) =
+                    (concrete, index.as_slice())
+                {
                     // A list given where a `[D]T` is asked for.
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
                 } else if let (Ty::Str | Ty::StrView, [_]) = (concrete, index.as_slice()) {
@@ -2442,7 +2709,11 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         let (mut param_tys, ret_hint) = match hint {
             Some(Ty::Fn(ps, r)) if ps.len() == params.len() => {
-                let rh = if **r == Ty::Error { None } else { Some((**r).clone()) };
+                let rh = if **r == Ty::Error {
+                    None
+                } else {
+                    Some((**r).clone())
+                };
                 (ps.clone(), rh)
             }
             _ => (vec![Ty::Int; params.len()], None),
@@ -2511,7 +2782,11 @@ impl<'a> Lowerer<'a> {
 
         let finished = std::mem::replace(&mut self.cx, self.outer_cxs.pop().expect("parent cx"));
         let cid = self.closures.len();
-        self.record_narrow_locals(ScopeId::Closure(cid), &finished.locals, &finished.local_ranges);
+        self.record_narrow_locals(
+            ScopeId::Closure(cid),
+            &finished.locals,
+            &finished.local_ranges,
+        );
         self.closures.push(ClosureDef {
             params: param_slots,
             muts: Vec::new(),
@@ -2530,7 +2805,11 @@ impl<'a> Lowerer<'a> {
     /// Wraps a named function `fn_id` as a `Ty::Fn` closure value.
     pub(super) fn fn_as_closure(&mut self, fn_id: FnId, span: Span) -> Expr {
         self.queue_fn(fn_id);
-        let params: Vec<Ty> = self.sigs[fn_id].params.iter().map(|p| p.ty.clone()).collect();
+        let params: Vec<Ty> = self.sigs[fn_id]
+            .params
+            .iter()
+            .map(|p| p.ty.clone())
+            .collect();
         let ret = self.ret_of(fn_id, span);
         let mut locals = Vec::new();
         let mut p_slots = Vec::new();
@@ -2579,9 +2858,10 @@ impl<'a> Lowerer<'a> {
             return Some(slot);
         }
         // Find the innermost enclosing FnCx that defines `name` (either directly or as a field of `self`).
-        let found_level = self.outer_cxs.iter().rposition(|cx| {
-            cx.scopes.iter().rev().any(|s| s.contains_key(name))
-        })?;
+        let found_level = self
+            .outer_cxs
+            .iter()
+            .rposition(|cx| cx.scopes.iter().rev().any(|s| s.contains_key(name)))?;
         // Thread the capture down from `found_level` to `self.cx`.
         let orig_slot = self.outer_cxs[found_level]
             .scopes
@@ -2645,7 +2925,10 @@ impl<'a> Lowerer<'a> {
         if !self.cx.is_closure {
             return None;
         }
-        let found_level = self.outer_cxs.iter().rposition(|cx| cx.receiver.is_some())?;
+        let found_level = self
+            .outer_cxs
+            .iter()
+            .rposition(|cx| cx.receiver.is_some())?;
         let (_, sid) = self.outer_cxs[found_level].receiver?;
         let slot = self.capture_from_outer("self")?;
         Some((slot, sid))
@@ -2656,7 +2939,11 @@ impl<'a> Lowerer<'a> {
     pub(super) fn bind_method_closure(&mut self, fn_id: FnId, recv: Expr, span: Span) -> Expr {
         self.queue_fn(fn_id);
         let recv_ty = recv.ty.clone();
-        let params: Vec<Ty> = self.sigs[fn_id].params.iter().map(|p| p.ty.clone()).collect();
+        let params: Vec<Ty> = self.sigs[fn_id]
+            .params
+            .iter()
+            .map(|p| p.ty.clone())
+            .collect();
         let ret = self.ret_of(fn_id, span);
         let fn_ty = Ty::Fn(params.clone(), Box::new(ret.clone()));
         self.do_expr(Some(&fn_ty), span, |lw, out| {
@@ -2713,7 +3000,11 @@ impl<'a> Lowerer<'a> {
                 ret: ret.clone(),
                 body: Block { stmts },
             });
-            out.push(Stmt::Give(lw.mk(ExprKind::Closure(cid), fn_ty.clone(), span)));
+            out.push(Stmt::Give(lw.mk(
+                ExprKind::Closure(cid),
+                fn_ty.clone(),
+                span,
+            )));
         })
     }
 
@@ -2761,7 +3052,11 @@ impl<'a> Lowerer<'a> {
         };
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(codes::UNSUPPORTED, span, "projection has no `lend` statement");
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                "projection has no `lend` statement",
+            );
             return self.err_expr(span);
         };
 
@@ -2820,7 +3115,11 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(codes::UNSUPPORTED, span, "projection has no `lend` statement");
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                "projection has no `lend` statement",
+            );
             return;
         };
 
@@ -2852,7 +3151,11 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(codes::UNSUPPORTED, span, "projection has no `lend` statement");
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                "projection has no `lend` statement",
+            );
             return Place {
                 kind: PlaceKind::Local(0),
                 ty: Ty::Error,
@@ -2940,12 +3243,20 @@ impl<'a> Lowerer<'a> {
     /// Lowers `laws_hold(obj, samples_or_kw...)` into nested assertion loops checking every `law`.
     pub(super) fn lower_laws_hold(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.is_empty() {
-            self.error(codes::WRONG_ARG_COUNT, span, "`laws_hold` takes an operation value and samples");
+            self.error(
+                codes::WRONG_ARG_COUNT,
+                span,
+                "`laws_hold` takes an operation value and samples",
+            );
             return self.err_expr(span);
         }
         let obj = self.expr(&args[0].value, None);
         let Ty::Struct(sid) = obj.ty else {
-            self.error(codes::TYPE_MISMATCH, args[0].value.span, "`laws_hold` expects a struct with `law`s");
+            self.error(
+                codes::TYPE_MISMATCH,
+                args[0].value.span,
+                "`laws_hold` expects a struct with `law`s",
+            );
             return self.err_expr(span);
         };
         let laws = self.structs[sid].laws.clone();
@@ -2991,7 +3302,11 @@ impl<'a> Lowerer<'a> {
                     span: lw.span(span),
                 };
                 out.push(Stmt::Let(fslot, Some(fexpr)));
-                lw.cx.scopes.last_mut().unwrap().insert(fname.clone(), fslot);
+                lw.cx
+                    .scopes
+                    .last_mut()
+                    .unwrap()
+                    .insert(fname.clone(), fslot);
             }
             let saved_recv = lw.cx.receiver.replace((obj_slot, sid));
 
@@ -3010,9 +3325,7 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => None,
                     };
-                    let slot = tn
-                        .and_then(|n| kw_slots.get(n).copied())
-                        .or(def_slot);
+                    let slot = tn.and_then(|n| kw_slots.get(n).copied()).or(def_slot);
                     if let Some(s) = slot {
                         let elem_ty = match &lw.cx.locals[s].ty {
                             Ty::List(e) => (**e).clone(),
@@ -3061,7 +3374,11 @@ impl<'a> Lowerer<'a> {
         let var_slot = self.new_slot(pname, elem_ty.clone());
         let lid = self.open_loop(None);
         self.cx.scopes.push(HashMap::new());
-        self.cx.scopes.last_mut().unwrap().insert(pname.clone(), var_slot);
+        self.cx
+            .scopes
+            .last_mut()
+            .unwrap()
+            .insert(pname.clone(), var_slot);
         let body = self.emit_law_loops(pools, idx + 1, law, span);
         self.cx.scopes.pop();
         self.cx.loops.pop();
@@ -3075,12 +3392,19 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Checks whether a struct `have_id` structurally contains every field of `want_id` (e.g., `Group<T>` -> `Monoid<T>`).
-    pub(super) fn coerce_struct_projection(&mut self, e: Expr, have_id: StructId, want_id: StructId) -> Option<Expr> {
+    pub(super) fn coerce_struct_projection(
+        &mut self,
+        e: Expr,
+        have_id: StructId,
+        want_id: StructId,
+    ) -> Option<Expr> {
         let want_fields = self.structs[want_id].def.fields.clone();
         let have_fields = &self.structs[have_id].def.fields;
         let mut mapping = Vec::with_capacity(want_fields.len());
         for (wname, wty) in &want_fields {
-            let pos = have_fields.iter().position(|(hname, hty)| hname == wname && hty == wty)?;
+            let pos = have_fields
+                .iter()
+                .position(|(hname, hty)| hname == wname && hty == wty)?;
             mapping.push((pos, wty.clone()));
         }
         let span = e.span;
@@ -3135,9 +3459,7 @@ impl<'a> Lowerer<'a> {
     }
 }
 
-fn split_projection_body(
-    decl: &ast::FnDecl,
-) -> (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) {
+fn split_projection_body(decl: &ast::FnDecl) -> (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) {
     let ast::FnBody::Block(block) = &decl.body else {
         return (&[], None, &[]);
     };
@@ -3166,15 +3488,21 @@ pub(super) fn let_const_name(pat: &ast::Pattern) -> Option<&str> {
 fn type_names(ty: &ast::Type, name: &str) -> bool {
     match &ty.kind {
         ast::TypeKind::Named { name: n, args } => {
-            n.text == name || n.text.split('.').next() == Some(name) || args.iter().any(|a| type_names(a, name))
+            n.text == name
+                || n.text.split('.').next() == Some(name)
+                || args.iter().any(|a| type_names(a, name))
         }
-        ast::TypeKind::Array { index, elem } => index.iter().any(|i| type_names(i, name)) || type_names(elem, name),
-        ast::TypeKind::OwnDomain { elem, .. } | ast::TypeKind::Optional(elem) | ast::TypeKind::Yields(elem) => {
-            type_names(elem, name)
+        ast::TypeKind::Array { index, elem } => {
+            index.iter().any(|i| type_names(i, name)) || type_names(elem, name)
         }
+        ast::TypeKind::OwnDomain { elem, .. }
+        | ast::TypeKind::Optional(elem)
+        | ast::TypeKind::Yields(elem) => type_names(elem, name),
         ast::TypeKind::Tuple(items) => items.iter().any(|i| type_names(i, name)),
         ast::TypeKind::Record(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
-        ast::TypeKind::Fn { params, ret } => params.iter().any(|p| type_names(p, name)) || type_names(ret, name),
+        ast::TypeKind::Fn { params, ret } => {
+            params.iter().any(|p| type_names(p, name)) || type_names(ret, name)
+        }
         ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == name),
         ast::TypeKind::Range { .. }
         | ast::TypeKind::NewDomain
@@ -3203,7 +3531,9 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
                 }
             };
             let mut arg = arg.clone();
-            if param.is_some_and(|p| p.lazy) && !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+            if param.is_some_and(|p| p.lazy)
+                && !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+            {
                 let span = arg.value.span;
                 arg.value = ast::Expr {
                     kind: ast::ExprKind::Lambda {
@@ -3225,7 +3555,10 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
 /// A variadic `..xs: Ts` takes the positional arguments from its place on
 /// as one tuple, passed by name; `Ts` is then that tuple's type.
 fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Vec<ast::Arg>> {
-    let at = params.iter().filter(|p| !p.named_only).position(|p| p.variadic)?;
+    let at = params
+        .iter()
+        .filter(|p| !p.named_only)
+        .position(|p| p.variadic)?;
     let param = params.iter().filter(|p| !p.named_only).nth(at)?;
     let mut kept = Vec::new();
     let mut items = Vec::new();
@@ -3255,14 +3588,18 @@ fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Ve
     Some(kept)
 }
 
-
 /// The least and greatest value of `a op b`.
 fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
     match op {
         BinOp::Add => Some((a.0.checked_add(b.0)?, a.1.checked_add(b.1)?)),
         BinOp::Sub => Some((a.0.checked_sub(b.1)?, a.1.checked_sub(b.0)?)),
         BinOp::Mul => {
-            let ends = [a.0.checked_mul(b.0)?, a.0.checked_mul(b.1)?, a.1.checked_mul(b.0)?, a.1.checked_mul(b.1)?];
+            let ends = [
+                a.0.checked_mul(b.0)?,
+                a.0.checked_mul(b.1)?,
+                a.1.checked_mul(b.0)?,
+                a.1.checked_mul(b.1)?,
+            ];
             Some((*ends.iter().min()?, *ends.iter().max()?))
         }
         _ => None,
@@ -3271,14 +3608,20 @@ fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
 
 fn ty_mentions(t: &ast::Type, name: &str) -> bool {
     match &t.kind {
-        ast::TypeKind::Named { name: n, args } => n.text == name || args.iter().any(|a| ty_mentions(a, name)),
-        ast::TypeKind::Array { index, elem } => index.iter().any(|i| ty_mentions(i, name)) || ty_mentions(elem, name),
-        ast::TypeKind::OwnDomain { elem, .. } | ast::TypeKind::Optional(elem) | ast::TypeKind::Yields(elem) => {
-            ty_mentions(elem, name)
+        ast::TypeKind::Named { name: n, args } => {
+            n.text == name || args.iter().any(|a| ty_mentions(a, name))
         }
+        ast::TypeKind::Array { index, elem } => {
+            index.iter().any(|i| ty_mentions(i, name)) || ty_mentions(elem, name)
+        }
+        ast::TypeKind::OwnDomain { elem, .. }
+        | ast::TypeKind::Optional(elem)
+        | ast::TypeKind::Yields(elem) => ty_mentions(elem, name),
         ast::TypeKind::Tuple(items) => items.iter().any(|i| ty_mentions(i, name)),
         ast::TypeKind::Record(fields) => fields.iter().any(|(_, f)| ty_mentions(f, name)),
-        ast::TypeKind::Fn { params, ret } => params.iter().any(|p| ty_mentions(p, name)) || ty_mentions(ret, name),
+        ast::TypeKind::Fn { params, ret } => {
+            params.iter().any(|p| ty_mentions(p, name)) || ty_mentions(ret, name)
+        }
         _ => false,
     }
 }
