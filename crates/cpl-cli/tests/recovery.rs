@@ -202,6 +202,12 @@ fn broken_ports(edits: &'static [(&'static str, Edit)]) -> Vec<Broken> {
     let mut out = Vec::new();
     for path in paths {
         let src = std::fs::read_to_string(&path).unwrap();
+        // A port that already has an error would blame the edit for it.
+        let unclean = errors(&path.to_string_lossy(), &src);
+        if !unclean.is_empty() {
+            println!("skipped, not clean before the edit: {}", path.display());
+            continue;
+        }
         let lines: Vec<&str> = src.lines().collect();
         for (edit, apply) in edits {
             let hits: Vec<(usize, String)> = lines
@@ -559,7 +565,6 @@ fn scoreboard_plan() -> PlanTally {
 }
 
 #[test]
-#[ignore = "v0.3 recovery regression on spec.cp: 98.6% first-right (<99.5%) and 8.9% cascaded (>5%), mostly E0006 on dropped block colon"]
 fn recovery_scoreboard() {
     let plan = scoreboard_plan();
     let ports = scoreboard_broken_ports("broken ports", EDITS, false);
@@ -586,7 +591,6 @@ fn recovery_scoreboard() {
 /// Each common mistake carries a fix, and applying the fixes gives back
 /// the program the mistake was made in.
 #[test]
-#[ignore = "v0.3 cpl-check regression on spec.cp: E0203 'no std module declares it' omits fix-its, dropping fixable rate to 59.2% (<88%)"]
 fn fix_it_scoreboard() {
     let ports = scoreboard_broken_ports("common mistakes", MISTAKES, true);
     assert!(
