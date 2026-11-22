@@ -347,6 +347,18 @@ class CheckCacheTest(unittest.TestCase):
         self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
         self.assertNotIn("-after", locks)
 
+    def test_land_drops_the_rider_the_failure_points_at_without_bisecting(self):
+        lanes = ("first", "rider", "breaker", "after")
+        gate = 'if test -e bad.md; then echo "  --> bad.md:1:1"; exit 1; fi\n'
+        out, files, locks = self._train(gate, bad="breaker", names=lanes)
+        self.assertEqual(out["first"][2], 0, out["first"][1])
+        self.assertIn("the failure points at", out["first"][1])
+        self.assertNotIn("gating the holder with", out["first"][1])
+        self.assertIn("with 2 rider(s)", out["first"][0])
+        self.assertNotEqual(out["breaker"][2], 0)
+        self.assertEqual(out["after"][2], 0, out["after"][1])
+        self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
+
     def test_land_lock_heartbeat_keeps_live_gate_and_expires_after_max_hold(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}

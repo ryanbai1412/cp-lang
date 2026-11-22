@@ -102,9 +102,9 @@ for attempt in 1 2 3 4 5; do
     gate_t0=$(date +%s)
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
-        $gate || isolate
+        run_gate || isolate
     else
-        $gate
+        run_gate
     fi
     gate_s=$(( $(date +%s) - gate_t0 ))
     stop_lock_heartbeat
@@ -414,9 +414,74 @@ relock() {
 # The train failed: find the first breaking rider, mark it solo, drop it,
 # rebase the riders behind it onto the passing prefix and gate again, until
 # a train passes. If the holder alone fails, exit without marking anyone.
+# The gate's output, kept so a failed train can be pinned on a rider.
+gate_log=$(git rev-parse --absolute-git-dir)/land-gate.log
+run_gate() {
+    $gate 2>&1 | tee "$gate_log"
+    return "${PIPESTATUS[0]}"
+}
+
+# The one rider whose diff touches what the failed gate names (a file a
+# compiler error points at, or the crate of a failing test), or nothing.
+suspect() {
+    local files dirs i hit=() pkg
+    files=$(grep -aoE -- '--> [^: ]+' "$gate_log" | cut -c5- | sort -u || true)
+    dirs=""
+    for pkg in $(grep -aoE 'FAIL \[ *[0-9.]+s\] \([^)]*\) [^ ]+' "$gate_log" | awk '{print $NF}' | sed 's/::.*//' | sort -u); do
+        dirs+=$(cargo metadata -q --no-deps --format-version 1 2>/dev/null | python3 -c '
+import json, os, sys
+for p in json.load(sys.stdin)["packages"]:
+    if p["name"] == sys.argv[1]:
+        print(os.path.relpath(os.path.dirname(p["manifest_path"])) + "/")' "$pkg" || true)$'\n'
+    done
+    [ -n "$files$dirs" ] || return 0
+    for ((i = 0; i < ${#riders[@]}; i++)); do
+        if git diff --name-only "${prefix[$i]}" "${prefix[$((i + 1))]}" | awk -v files="$files" -v dirs="$dirs" '
+            BEGIN { n = split(files, f, "\n"); m = split(dirs, d, "\n") }
+            { for (j = 1; j <= n; j++) if (f[j] != "" && $0 == f[j]) hit = 1
+              for (j = 1; j <= m; j++) if (d[j] != "" && index($0, d[j]) == 1) hit = 1 }
+            END { exit !hit }'; then
+            hit+=("$i")
+        fi
+    done
+    [ ${#hit[@]} -eq 1 ] && echo "${hit[0]}"
+    return 0
+}
+
+# Mark rider $1 solo and rebase the riders behind it onto the ones ahead.
+drop_rider() {
+    local k=$1 i n=${#riders[@]} rest=()
+    mark solo "${riders[$k]}"
+    for ((i = k + 1; i < n; i++)); do rest+=("$i"); done
+    local cands=("${rider_cand[@]}") froms=("${rider_from[@]}") names=("${riders[@]}")
+    tip=${prefix[$k]}
+    riders=("${names[@]:0:$k}")
+    rider_cand=("${cands[@]:0:$k}")
+    rider_from=("${froms[@]:0:$k}")
+    prefix=("${prefix[@]:0:$((k + 1))}")
+    for i in "${rest[@]}"; do
+        board_one "${names[$i]}" "${cands[$i]}" "${froms[$i]}"
+    done
+    git checkout -q -f --detach "$tip"
+}
+
 isolate() {
-    local good=-1 lo hi mid bad n rest i
+    local good=-1 lo hi mid bad s
     echo "land: the train failed the gate; splitting it" >&2
+    # One gate instead of a bisection when the failure points at one rider.
+    s=$(suspect)
+    if [ -n "$s" ]; then
+        bad=${riders[$s]}
+        echo "land: the failure points at ${bad} alone; gating the train without it" >&2
+        drop_rider "$s"
+        phase="gating ${#riders[@]} rider(s) without ${bad##*-}"
+        relock
+        start_lock_heartbeat
+        echo "land: gating ${#riders[@]} rider(s) without ${bad}" >&2
+        splits=$((splits + 1))
+        if run_gate; then stop_lock_heartbeat; return 0; fi
+        stop_lock_heartbeat
+    fi
     while :; do
         lo=$good
         hi=${#riders[@]}
@@ -428,7 +493,7 @@ isolate() {
             start_lock_heartbeat
             echo "land: gating the holder with ${mid} rider(s)" >&2
             splits=$((splits + 1))
-            if $gate; then lo=$mid; else hi=$mid; fi
+            if run_gate; then lo=$mid; else hi=$mid; fi
             stop_lock_heartbeat
         done
         if [ "$lo" -lt 0 ]; then
@@ -437,28 +502,15 @@ isolate() {
         fi
         bad=${riders[$lo]}
         echo "land: ${bad} broke the train; marking it solo" >&2
-        mark solo "$bad"
-        n=${#riders[@]}
-        rest=()
-        for ((i = lo + 1; i < n; i++)); do rest+=("$i"); done
-        local cands=("${rider_cand[@]}") froms=("${rider_from[@]}") names=("${riders[@]}")
-        tip=${prefix[$lo]}
-        riders=("${names[@]:0:$lo}")
-        rider_cand=("${cands[@]:0:$lo}")
-        rider_from=("${froms[@]:0:$lo}")
-        prefix=("${prefix[@]:0:$((lo + 1))}")
+        drop_rider "$lo"
         good=$lo
-        for i in "${rest[@]}"; do
-            board_one "${names[$i]}" "${cands[$i]}" "${froms[$i]}"
-        done
-        git checkout -q -f --detach "$tip"
         [ ${#riders[@]} -gt "$good" ] || return 0
         phase="gating ${#riders[@]} rider(s) without ${bad##*-}"
         relock
         start_lock_heartbeat
         echo "land: gating ${#riders[@]} rider(s) without ${bad}" >&2
         splits=$((splits + 1))
-        if $gate; then stop_lock_heartbeat; return 0; fi
+        if run_gate; then stop_lock_heartbeat; return 0; fi
         stop_lock_heartbeat
     done
 }
