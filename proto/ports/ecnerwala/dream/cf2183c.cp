@@ -1,17 +1,21 @@
-// Codeforces 2183 C — Maximum Reachable Positions
+// Codeforces 2183 C — War Strategy
 //
-// Starting at `k` on 1..=n with `m_in` steps, let `l = min(k - 1, n - k)` and
-// `r = max(k - 1, n - k)` be the distances to the near and far ends.
+// Starting at base `k` on `1..=n` with `m_in` days, let `l = min(k - 1, n - k)`
+// and `r = max(k - 1, n - k)` be the distances to the near and far ends.
 //
-// Reaching `a <= l` cells on the near side and `b <= r` cells on the far side
-// takes `min(2a + b, a + 2b) - 1` steps (since the first cell is reached on
-// step 1 without returning), so with `m = m_in + 1` we need `a + 2b <= m`
-// (for `a <= b`) or `2a + b <= m` (for `a >= b`). Maximizing `a + b + 1`:
+// Occupying `a <= l` cells on the near side and `b <= r` cells on the far side
+// takes `a + b` soldier-spawns plus `max(a, b) - 1` extra march days for the
+// longer wave (the first march step happens on the same day as the first spawn,
+// saving 1 day), for a total cost of `max(2a + b, a + 2b) - 1`. Letting
+// `m = m_in + 1` absorbs that `- 1`, so the larger side binds: we need
+// `max(2a + b, a + 2b) <= m` (i.e. `a + 2b <= m` when `a <= b`).
+//
+// Maximizing `a + b + 1` subject to `a <= l`, `b <= r`, and `max(2a + b, a + 2b) <= m`:
 // - If `l + 2r <= m`: all `n = l + r + 1` cells are reachable.
-// - Else if `3l <= m`: exhaust the near side (`a = l`), leaving `(m - l) / 2`
-//   cells on the far side (`l + (m - l) / 2 + 1`).
-// - Otherwise (`3l > m`): split evenly with `a + b = floor(2m / 3)` for
-//   `2 * m / 3 + 1` cells.
+// - Else if `3l <= m`: exhaust the near side (`a = l`), leaving
+//   `b = (m - l) / 2` cells on the far side (`l + (m - l) / 2 + 1`).
+// - Otherwise (`3l > m`): neither wall binds, so balance `a` and `b` around
+//   `m / 3` to get `a + b = floor(2m / 3)` (`2 * m / 3 + 1` cells).
 
 @!multitest
 let (n, m_in, k): (1..=10 ** 9, 1..=10 ** 9, 1..=10 ** 9) = read()
