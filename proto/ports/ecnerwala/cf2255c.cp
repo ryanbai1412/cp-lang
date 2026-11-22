@@ -1,7 +1,14 @@
-// Codeforces 2255 C (two-run communication): the first run hides a cell
-// (r, c) by toggling the grid so that, for the minority colour with w cells,
-// the row sum is r*w mod n and the column sum is c*w mod n; moving one
-// minority cell by (dr, dc) shifts both sums.  The second run decodes it.
+// Codeforces 2255 C — Two-Run Torus Grid Encoding
+//
+// In an n x n grid of '#' and '.', let `ink` be the minority colour (count
+// `w <= n^2 / 2`) and `(sr, sc)` be the sum of its row and column indices mod n.
+// First run: hide `(r, c)` by shifting one `ink` cell by `(dr, dc)` mod n so
+// the new sums satisfy `sr' == (r - 1) * w (mod n)` and `sc' == (c - 1) * w
+// (mod n)` — whenever `(dr, dc) != (0, 0)`, a valid `ink` cell whose shifted
+// target is non-`ink` exists because `ink` is a strict minority.
+// Second run: recover `(r, c)` from `(sr, sc)` via `r * w == sr (mod n)` and
+// `c * w == sc (mod n)`.
+
 let op: Str = read()
 
 @!multitest
@@ -14,10 +21,7 @@ let sr = sum(i for i in 0..n for j in 0..n if g[i][j] == ink) % n
 let sc = sum(j for i in 0..n for j in 0..n if g[i][j] == ink) % n
 
 if op == "second":
-    print(
-        first(r for r in 0..n if r * w % n == sr)! + 1,
-        first(c for c in 0..n if c * w % n == sc)! + 1,
-    )
+    print((0..n).first(r => r * w % n == sr)! + 1, (0..n).first(c => c * w % n == sc)! + 1)
     return
 
 let (r, c): (1..=n, 1..=n) = read()
