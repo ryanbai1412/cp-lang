@@ -7,20 +7,20 @@ domain I = 0..n
 let a: [I]Int = [I] i => i.to_idx
 fn span(l: I, r: I) -> Int:
     if l >= r: return a[l]
-    a[l] + span(l + 1, r)
+    a[l] + span(l.next!, r)
 fn back(l: I, r: I) -> Int:
-    if l < r: a[r] + back(l, r - 1) else: a[l]
+    if l < r: a[r] + back(l, r.prev!) else: a[l]
 print(span(I(0), I(4)), back(I(1), I(3)))
 var dp: [I, I]Int = 0
 for l in I.rev:
     for r in l..:
         if l == r: continue
-        dp[l, r] = min(dp[l, m] + dp[m + 1, r] for m in l..r) + a[r]
+        dp[l, r] = [dp[l, m] + dp[m.next!, r] for m in l..r].min()! + a[r]
 print(dp[I(0), I(4)])
 var i = I(0)
 let last = I(4)
 var steps = 0
 while i < last:
-    steps += a[(i + 1)!]
-    i = (i + 1)!
-print(steps, (i - 1) ?? i)
+    steps += a[i.next!]
+    i = i.next!
+print(steps, (i.prev ?? i).ord)

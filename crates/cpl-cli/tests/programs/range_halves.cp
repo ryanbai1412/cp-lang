@@ -25,4 +25,4 @@ fn sum_dc(r: Range<V>, a: [V]Int) -> Int:
     sum_dc(left, a) + sum_dc(right, a)
 
 let a: [V]Int = [V] i => (i.to_idx + 1) * 10
-print(sum_dc(V.first.l..V.last.r, a), il.len, ir.len)
+print(sum_dc(V.first!.l..V.last!.r, a), il.len, ir.len)

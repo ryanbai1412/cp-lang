@@ -21,26 +21,26 @@ for i in 0..n:
     total += row.len + size(i) + word.len
 // Each of these is what the row was before the change.
 for i in 0..n:
-    let before = rows[i]
+    let before = rows[i].copy()
     bump(i)
     total += before.len * 1000
 for i in 0..n:
-    let kept = rows[i]
+    let kept = rows[i].copy()
     rows[i].push(7)
     rows[i][0] = -1
     total += kept.len * 100000 + kept[0]
 for i in 0..n:
-    let g = grid[i]
+    let g = grid[i].copy()
     grid.push([1])
     grid[i][1] = 50
     total += g[1]
 for i in 0..n:
-    let was = rows[i]
+    let was = rows[i].copy()
     let f = k => rows[k].push(3)
     f(i)
     total += was.len
 for i in 0..n:
-    let old = rows[i]
+    let old = rows[i].copy()
     rows[i] = []
     total += old.len
     rows[i] = old
@@ -49,7 +49,7 @@ fn inside(i: Int) -> Int:
     if i > 0:
         let a = rows[i]
         return a.len + size(i)
-    let b = rows[i]
+    let b = rows[i].copy()
     bump(i)
     b.len + rows[i].len
 
@@ -57,6 +57,6 @@ print(total, inside(0), inside(1), rows[0], grid.len)
 
 @!multitest
 let k: Int = read()
-let pick = rows[k]
+let pick = rows[k].copy()
 rows[k].push(k)
 print(pick, rows[k].len)

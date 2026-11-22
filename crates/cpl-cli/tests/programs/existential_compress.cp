@@ -5,7 +5,7 @@ fn compress_vals<D>(xs: [D]Int) -> (domain C, [D]C, [C]Int):
     uniq.sort()
     uniq = uniq.deduped()
     domain C = 0..uniq.len
-    let idx: [D]C = [D] i => C(bsearch_first(0..uniq.len, k => uniq[k] >= xs[i])!)
+    let idx: [D]C = [D] i => C((0..uniq.len).first_true(k => uniq[k] >= xs[i])!)
     let vals: [C]Int = [C] c => uniq[c.ord]
     (C, idx, vals)
 

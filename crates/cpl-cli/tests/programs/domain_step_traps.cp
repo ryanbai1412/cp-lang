@@ -7,9 +7,9 @@ var cnt: [I]Int = 0
 var nxt: [I]I = [I] i => i
 let k: Int = read()
 cnt[cur] += 1
-cur += 2
+cur = I.at(cur.ord + 2)!
 cnt[cur] += 1
-nxt[cur] += 1
-print(cnt, cur, nxt)
-cur += k
+nxt[cur] = nxt[cur].next!
+print(cnt, cur.ord, [x.ord for x in nxt])
+cur = I.at(cur.ord + k)!
 print("never printed")

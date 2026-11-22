@@ -7,14 +7,14 @@ var dense: [P]Int = 0
 
 fn check_sync():
     for i in P:
-        assert m.at(i) == dense[i]
+        assert m[i] == dense[i]
     var prev_val = -999
     var covered = 0
     for (r, v) in m.each():
         assert v != prev_val
         prev_val = v
         covered += r.len
-    assert covered == P.K
+    assert covered == P.count
 
 // Single-run split both sides, same-value no-op, left/right coalesce, default no-op on_old
 var acc = 0
