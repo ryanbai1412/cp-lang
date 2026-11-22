@@ -207,5 +207,39 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             over.push(format!("{name}: the recording takes {mb:.0} MB"));
         }
     }
+    // The debugging demos on the inputs `cpl stress` pins, each run many
+    // times, since one run takes microseconds.
+    let demos = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugging/");
+    for (name, input) in [
+        ("knapsack", "1 2\n1 1\n"),
+        ("shortest_path", "2 2\n1 2 2\n1 2 1\n"),
+        ("shows", "3\n0 2\n0 1\n1 1\n"),
+    ] {
+        let source = std::fs::read_to_string(format!("{demos}{name}.cp")).unwrap();
+        let program = program(&source);
+        let mut out = Vec::new();
+        let mut time = |trace: bool| {
+            let started = Instant::now();
+            for _ in 0..2000 {
+                let config = trace.then(|| TraceConfig {
+                    source: source.clone(),
+                    record_frames: true,
+                    ..TraceConfig::default()
+                });
+                let io = cpl_interp::Io::fixed(input.as_bytes());
+                cpl_interp::run_observed(&program, io, &mut out, config);
+            }
+            started.elapsed()
+        };
+        let (plain, traced) = (time(false), time(true));
+        let slower = traced.as_secs_f64() / plain.as_secs_f64();
+        eprintln!(
+            "{name}: 2000 runs; untraced {plain:?}, recorded {traced:?}: \
+             {slower:.2}x the untraced run"
+        );
+        if slower > 3.0 {
+            over.push(format!("{name}: tracing made the run {slower:.2}x slower"));
+        }
+    }
     assert!(over.is_empty(), "over budget: {over:?}");
 }
