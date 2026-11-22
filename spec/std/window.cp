@@ -110,6 +110,7 @@ pub trait Undo:
     fn mark(mut self) -> Mark
     fn undo_to(mut self, snap: Mark)
 
+// blocked: `(mut S, T) -> ()` fn types don't parse (GAPS.md window)
 /// The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds at the back
 /// and drops from the front runs on a structure that can only undo its newest change (a
 /// rollback DSU in a two-pointer pass). `add(mut state, x)` applies one element; `state`
@@ -139,6 +140,7 @@ pub struct Undoing<S, T>(state: S, add: (mut S, T) -> ()):
     /// example: `domain V = 0..3; let u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
     @get pub fn state(self) -> S = todo
 
+// blocked: `(mut S, T) -> ()` fn types don't parse (GAPS.md window)
 /// `Undoing` over `state`, holding no elements; see there. `state` is taken as the base: the
 /// window never undoes past it.
 ///

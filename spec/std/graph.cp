@@ -279,6 +279,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
     pub fn dfs_tree<E>(self, root: V) -> (tree: Rooted<V, V>, tree_edge: [E]Bool) where A: Edged<E> = todo
 
+    // blocked: `Graph` resolves to a compiler built-in typed over `Int` (GAPS.md graph)
     /// `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
     ///
     /// cost: O(n + m) plus the calls of `ready` and `on_remove`
@@ -297,6 +298,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
     pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..) = todo
 
+// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
 /// vertices in removal order. What stays is every vertex on a cycle or reachable from one,
 /// so the order covers all of `V` exactly when the graph is acyclic.
@@ -672,6 +674,7 @@ pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) 
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 0), (u: 2, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: [V(0)]); p[1] == Some(0) and p.path(1) == Some([0, 2, 1])`
 pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
 
+// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)` pairs (a
 /// vertex given twice keeps the smaller start). A binary heap with lazy deletion; `until:
 /// t` stops once `t` is settled.

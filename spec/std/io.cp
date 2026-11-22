@@ -39,6 +39,7 @@ pub struct Wire():
     /// example: `let wire = Wire(); let x: Int = wire.ask("? 1 2"); x == 7` (stdin `7`)
     pub fn ask<T>(self, query: Str) -> T = todo
 
+// blocked: no end-of-input primitive in CP Lang (GAPS.md io)
 /// Every remaining `T` on stdin, for statements that give no count.
 ///
 /// Without `until`, it reads to end of input; a later read then traps as reading past the end.
