@@ -20,12 +20,12 @@ fn cpl_bin() -> &'static str {
     env!("CARGO_BIN_EXE_cpl")
 }
 
-/// Extracts a JSON string value of `key` from `json`, unescaped.
+/// Extracts a JSON string value of `key` from `json`, unescaped (top-level or nested under `counterexample`).
 fn json_string_field(json: &str, key: &str) -> Option<String> {
-    cpl_json::parse(json)
-        .ok()?
-        .get(key)?
-        .as_str()
+    let root = cpl_json::parse(json).ok()?;
+    root.get(key)
+        .or_else(|| root.get("counterexample")?.get(key))
+        .and_then(cpl_json::Value::as_str)
         .map(str::to_string)
 }
 
