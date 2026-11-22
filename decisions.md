@@ -5425,3 +5425,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   26 to 27 of 1,613; `apply` no longer blocks any.
 - **Reverse.** Restore the old doc lines in `stdlib/segtree.cp` and
   `stdlib/lazy.cp`.
+
+## 196. Making a number into a position or a modular number costs `O(1)` (2026-11-22)
+
+- **Decision.** In a fn's estimated cost, `V(i)` for a domain `V`,
+  `State(v, k)` for a product domain, and `Z(x)` for a number struct such
+  as `Mod<P>` (3.10), or an alias of one (`type Z = Mod<MOD>`), cost
+  `O(1)` when every argument has a fixed size. Hovering the callee shows
+  `cost: O(1)`.
+- **Why.** Each is a range check or one `new(x)`, and they were the most
+  common blockers after `print`: `Z` blocked 6 fns and `Node` 5. Fns in
+  `corpus/problems` and the examples with an estimate: 27 to 37 of 1,613.
+- **Reverse.** Drop the `converts` case in `cpl-check`'s `call.rs` and the
+  `fixed_io` case in `hover.rs`.

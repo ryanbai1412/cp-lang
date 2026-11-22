@@ -94,6 +94,7 @@ impl Database {
             Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
                 format!("{text}\ncost: {cost}")
             }
+            _ if item.check.fixed_io.contains(&entry.span) => format!("{text}\ncost: O(1)"),
             _ => text,
         };
         Some(Hover { span, text, doc })

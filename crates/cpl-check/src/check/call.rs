@@ -114,6 +114,20 @@ impl<'a> Checker<'a> {
         if fixed_args && args.iter().all(|a| self.fixed_size(&a.value)) {
             self.fixed_io.push(callee.span);
         }
+        let converts = match &callee_ty {
+            Ty::Domain(_) => true,
+            Ty::TypeName(name) | Ty::Named { name, .. } => match self.type_def(name).as_deref() {
+                Some(Def::Alias { ty: Ty::Named { name: inner, .. } }) => {
+                    let inner = inner.clone();
+                    self.is_number(&inner)
+                }
+                _ => self.is_number(name),
+            },
+            _ => false,
+        };
+        if converts && !args.is_empty() && args.iter().all(|a| self.fixed_size(&a.value)) {
+            self.fixed_io.push(callee.span);
+        }
         if let ExprKind::Generic { base, args: tys } = &callee.kind {
             if matches!(&base.kind, ExprKind::Name(n) if n == "read") && args.is_empty() {
                 if let [t] = tys.as_slice() {

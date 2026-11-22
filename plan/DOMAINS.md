@@ -167,7 +167,7 @@ proven ranges, in-bounds proofs, overflow inputs, loop counts and a fn's
 estimated cost; VS Code, JetBrains, Zed, Neovim, Emacs and Helix setups,
 each tested in the gate.
 
-**Next.** Estimated cost for more fns (27 of 1,613 today); storage-size
+**Next.** Estimated cost for more fns (37 of 1,613 today); storage-size
 and layout hovers; publish the Zed extension.
 
 ## 12. Docs, site, playground

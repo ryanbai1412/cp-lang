@@ -3564,3 +3564,21 @@ fn segment_tree_methods_cost_log_of_the_receivers_domain() {
     assert_eq!(cost(&mut db, 0, "fold(").as_deref(), Some("O(log |V|)"));
     assert_eq!(cost(&mut db, 1, "fold(").as_deref(), Some("O(log |V|)"));
 }
+
+#[test]
+fn a_number_made_into_a_position_or_a_modular_number_costs_o1() {
+    let src = "const MOD = 7\ntype Z = Mod<MOD>\ndomain Node = 0..10\ndomain Cell = Node * Node\n\
+               fn f(i: Int, s: Str) -> Int:\n    let a = Node(i)\n    let c = Cell(a, a)\n    let z = Z(i)\n    \
+               let w = Z(s.len)\n    a.ord + z.v\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, needle: &str| {
+        let at = src.find(needle).unwrap() as u32;
+        db.hover("a.cp", at).and_then(|h| h.text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string))
+    };
+    assert_eq!(cost(&mut db, "Node(i)").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, "Cell(a").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, "Z(i)").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, "Z(s.len)").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, "domain Node").as_deref(), None);
+}
