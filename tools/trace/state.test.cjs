@@ -1,13 +1,13 @@
 // Focused tests for the site trace debugger: pure core logic, transport state
-// machine and keyboard map. Run: node --test site/test_trace.cjs
+// machine and keyboard map. Run: node --test tools/trace/state.test.cjs
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const {core:T, section} = require("../tools/trace/read-viewer.cjs");
+const {core:T, section} = require("./read-viewer.cjs");
 
 const samples = Object.fromEntries(["knapsack", "dijkstra", "tree", "grid", "array"].map(name =>
-  [name, JSON.parse(fs.readFileSync(path.join(__dirname, "../tools/trace/samples", `${name}.json`), "utf8"))]));
+  [name, JSON.parse(fs.readFileSync(path.join(__dirname, "./samples", `${name}.json`), "utf8"))]));
 const plain = value => JSON.parse(JSON.stringify(value));
 
 test("every sample validates and analyzes", () => {

@@ -4,9 +4,8 @@
 by `cpl run --trace`, `cpl stress --trace`, the VS Code webview, the site,
 and exported captures. Edit its named `trace-style`, `trace-core`, and
 `trace-ui` sections directly; never generate or copy a second viewer.
-`site/build.py` reads it and changes only host navigation and sample data.
-`site/test_site.py` asserts the generated site and CLI template stay identical
-after normalizing those two host-specific details. No built HTML is committed.
+`web/scripts/gen-debug.mjs` serves it on the site with the browser compiler
+attached. No built HTML is committed.
 
 Open `tools/trace/index.html` directly in a browser. No build, server, fonts,
 CDN, telemetry, or network connection is needed. The shadcn/ui zinc-based
@@ -14,7 +13,7 @@ visual system matches the documentation: white and neutral surfaces, crisp
 borders, system sans/monospace stacks, and blue interaction states.
 Light/dark mode follows your system initially and persists locally.
 
-The site supplies five deterministic illustrative traces: a deliberately broken
+`tools/trace/samples` holds five deterministic illustrative traces: a deliberately broken
 0/1 knapsack versus a correct spec, Dijkstra, postorder subtree sizes, maze
 BFS, and insertion sort. These are generated executions of the example
 algorithms, **not live browser executions**. The bare template starts empty;
@@ -31,9 +30,6 @@ Use **Open trace** to load another JSON capture locally. **Save JSON** keeps
 the full capture; **Save HTML** embeds the loaded trace in a portable file.
 The latter deliberately omits the demo library and docs navigation so the
 export remains a standalone capture. No data leaves the browser.
-
-For all documentation, the example playground, and this debugger in one
-offline file, run `python3 site/bundle.py` and open `dist/cp-lang.html`.
 
 The timeline supports scrubbing, first/last, previous/next, playback and five
 speeds. Type an exact step or jump between shared checkpoints with the picker
@@ -143,8 +139,7 @@ small counterexamples, not multi-gigabyte execution recording.
 python3 tools/trace/samples.py        # regenerate only the illustrative JSON files
 python3 -m unittest discover -s tools/trace -p 'test_*.py'
 node --test tools/trace/trace.test.cjs
-node --test site/test_trace.cjs
-site/.venv/bin/python site/test_site.py  # includes the cross-host source-of-truth gate
+node --test tools/trace/state.test.cjs
 cargo test                          # repository-wide required check
 ```
 

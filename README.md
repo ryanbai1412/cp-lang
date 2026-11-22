@@ -5,7 +5,7 @@ file you can submit to any judge. The command is `cpl` (a working name)
 and source files end in `.cp`.
 
 The language is locked at **0.2.2**. The whole surface fits on
-[one page](docs/one-page-cheat-sheet.md): 34 reserved keywords (30 for
+[one page](web/content/docs/guides/cheatsheet.mdx): 34 reserved keywords (30 for
 contestants, 4 for library authors), 4 numeric types and 7 auto-derived
 core traits.
 
@@ -121,11 +121,11 @@ Build the Rust toolchain and run a program in the debug interpreter:
 
 ```text
 $ cargo build -p cpl-cli
-$ printf '3\n1 4 6\n' | target/debug/cpl run site/examples/optional.cp
+$ printf '3\n1 4 6\n' | target/debug/cpl run web/content/landing/hero/optional.cp
 6
-$ target/debug/cpl build site/examples/optional.cp -o -    # the C++17 to submit
-$ target/debug/cpl run site/examples/optional.cp --release  # run that C++, built with g++ -O2
-$ target/debug/cpl build site/examples/optional.cp --checked # also build it with sanitizers
+$ target/debug/cpl build web/content/landing/hero/optional.cp -o -    # the C++17 to submit
+$ target/debug/cpl run web/content/landing/hero/optional.cp --release  # run that C++, built with g++ -O2
+$ target/debug/cpl build web/content/landing/hero/optional.cp --checked # also build it with sanitizers
 $ target/debug/cpl --help                                   # check, fmt, lint, test, stress, lsp, ...
 ```
 
@@ -148,14 +148,14 @@ $ code --install-extension cp-lang.vsix
 Neovim, Emacs and Helix use the same server; their setups
 are in `editors/README.md`.
 
-Build the offline course, reference and playground as one HTML file, then
-open it straight from disk. It needs no server and no network; the
-compiler runs in WebAssembly:
+Build the website (course, guides, reference and playground) as static
+files. The compiler runs in the browser as WebAssembly, so it needs no
+backend:
 
 ```text
-$ python3 -m venv site/.venv && site/.venv/bin/pip install -r site/requirements.txt
 $ rustup target add wasm32-unknown-unknown
-$ site/.venv/bin/python site/bundle.py                       # writes dist/cp-lang.html
+$ scripts/build-wasm.sh                                      # writes dist/wasm/
+$ pnpm install --frozen-lockfile && pnpm --filter cp-lang-web build   # writes web/out/
 ```
 
 ## Status
@@ -190,8 +190,8 @@ The docs site labels every snippet as either runnable or specification.
   `stdlib/README.md` is the tour.
 - `examples/local-lib/`: a sample personal contest library built on it.
 - `editors/vscode/`: the VS Code extension.
-- `site/`: the interactive course, reference and offline playground. See
-  [the site README](site/README.md).
+- `web/`: the website: landing page, course, guides, reference and
+  playground. `web/scripts/gate.mjs` checks every program on it.
 - `bench/`: the corpus performance harness and results.
 - `mise.toml`, `justfile`, `pyproject.toml`, `pnpm-workspace.yaml`: unified
   toolchain pins and task runner (`mise install && just check`).

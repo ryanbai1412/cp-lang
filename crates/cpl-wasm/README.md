@@ -164,7 +164,7 @@ $ scripts/build-wasm.sh --smoke     # the built module, in Node
 ```
 
 `tests/parity.rs` runs every program of `crates/cpl-cli/tests/programs`
-and every example of `site/examples` through `cpl` and through this
+and every hero program of `web/content/landing/hero` through `cpl` and through this
 crate, and compares standard output, standard error, the exit status and
 the C++ byte for byte. `tests/smoke.mjs` loads the built `cpl.wasm`
 through `cpl.js`, the two files a page loads, and checks what only the

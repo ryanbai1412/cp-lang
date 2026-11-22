@@ -43,7 +43,7 @@ STAGES = {
     # rustc reads only crates/, spec/std/ (cpl-check's build.rs) and the
     # include_str! targets; test_check_cache.py keeps those out of here.
     "clippy": _TESTS + [
-        "README.md", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",
+        "README.md", "bench/*", "docs/*", "editors/*", "examples/*", "web/*",
         "corpus/*", "tools/*",
         "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
         "!tools/trace/*",
@@ -53,8 +53,7 @@ STAGES = {
     "recovery": _TESTS,
     # The public-history scan reads every tracked file.
     "scoreboard_fast": [],
-    "site_bundle": ["archive/*"],
-    "docs_site": ["archive/*"],
+    "site_gate": ["archive/*"],
 }
 
 
