@@ -5667,3 +5667,35 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `scripts/debt-ratchet.py` gates, besides the old file-size, TODO, `#[ignore]` and pending counts: dead edition references, names string-matched in `crates/cpl-ir/src/lower/call.rs`, std type names in IR/interpreter/codegen, copied fn bodies across files, forbidden shipped crate edges, the tree-walking interpreter, v0.2 `port.cp` files, and direct `python3` calls in the gate and `justfile`. Missing paths cited by `ARCHITECTURE.md` files are counted but not gated while the domain packets land; the cold review files them with each lane. A new shipped crate edge, or a new `.rs` file over 2,000 lines, now fails instead of warning. A deliberate increase is `--update` in the same commit plus a line here. `--show` and `--list NAME` print the counts and offenders.
 - **Why.** Twelve lanes land in parallel; counts that can only go down keep each lane from adding the debt the architecture lane is removing. Warnings were ignored: 24 files over the cap had accumulated.
 - **Reverse.** Drop counters from `COUNTERS` in `scripts/debt-ratchet.py` (or their keys from `scripts/debt-ratchet.json`, which skips them), and turn the new-file error back into a warning in `evaluate`.
+
+## 215. `cpl fmt` line breaking, and what the formatter does not do (2026-11-22)
+
+- **Decision.** One layout, no options. A line over 100 columns breaks
+  only inside brackets (outside them a newline ends the statement): the
+  widest bracket holding a list, or at least `MIN_BREAK_WIDTH` columns, is
+  opened one element per line with a trailing comma, and each element is
+  laid out again by the same rule. A call's arguments, a closure
+  argument included, are elements like any other: `xs.filter(` / closure
+  / `).count(..)`, no hugging of a last closure and no breaks at `.` or
+  at operators. A closure body written `{ a; b }` stays on its line:
+  turning it into an indented `=>` block would change tokens, and fmt
+  only changes whitespace and trailing commas. `read (T, U)` keeps the
+  source's spacing (only the source tells a call from a type operand);
+  `read [n]T`, `by: .len`, `impl<T>`, `lends(a)`, `without (u)` follow
+  the spec's spelling.
+- **Not done (debt against spec/tools/fmt-lint.md).** Sorting `use` lines
+  changed diagnostics: `examples/local-lib/spec/worked.cp` reports one
+  E0206 for a missing `std.spec` imported first and four once it sorts
+  after the `lib.spec.*` imports, so sorting waits for the checker to
+  report a missing module once. `with` lines are not moved (that changes
+  what they cover) and the line-1 stamp is not added (it shifts every
+  golden line number). Test inputs (`spec/conformance/`, diagnostics
+  fixtures, editor grammar tests) are not bulk-formatted: their layout is
+  what they test (`trailing-comma.cp`, `bracket-layout.cp`,
+  `space-indent-block.cp`). `scripts/fmt_check.py` (the `fmt_corpus`
+  stage of `scripts/check.sh`) checks instead that formatting every
+  tracked `.cp` file is idempotent and keeps `cpl check` codes and
+  `cpl run` output.
+- **Reverse.** Hug a last closure argument in `layout::seq`; sort `use`
+  runs in `cpl_fmt::format` once the E0206 cascade is fixed; drop the
+  `fmt_corpus` stage from `STAGES` and `check.sh`.

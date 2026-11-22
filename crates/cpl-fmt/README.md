@@ -30,7 +30,8 @@ change, and exits 1 if there are any.
   ```
 
   A bracket that fits is joined back onto one line. A line that is too long
-  and has no bracket to open is left alone.
+  and has no bracket to open is left alone; lines never break at `.` or at
+  an operator, and a closure argument is one element like any other.
 - Comments stay attached to the line or the element they were on. Trailing
   comments on consecutive lines are lined up, two spaces after the longest.
 - Runs of blank lines become one; the file ends with one newline.
@@ -45,8 +46,11 @@ closing bracket; `(x,)` keeps its comma. A file the lexer cannot read (an
 unclosed bracket, a tab in indentation) is reported and not touched.
 
 Formatting twice gives the same text as formatting once. The tests check
-that, and that the parser's verdict does not change, on every `.cp` file
-under `proto/`.
+that, and that the parsed AST does not change, on the corpus;
+`scripts/fmt_check.py` (a cached stage of `scripts/check.sh`) checks on
+every tracked `.cp` file that formatting is idempotent and keeps the
+`cpl check` codes and the `cpl run` output. Line breaking and what fmt does
+not do yet are decision 215.
 
 Two pairs read both ways without a parse, and there the source's own
 spacing is kept: `[V]Int` (a type) against `[I] i => 0` (a table), and
