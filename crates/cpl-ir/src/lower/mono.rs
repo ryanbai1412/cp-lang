@@ -2436,8 +2436,8 @@ impl<'a> Lowerer<'a> {
         };
         // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
         // array of any index: there is no domain to make, and the array
-        // is indexed as it always was.
-        if of.is_some_and(|(gfid, _)| !self.gen_fn_names(gfid, &name.text)) {
+        // is indexed as it always was; a list has no index to keep (R04b.3.1).
+        if !list && of.is_some_and(|(gfid, _)| !self.gen_fn_names(gfid, &name.text)) {
             return;
         }
         let shared = match of {
