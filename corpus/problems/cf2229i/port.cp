@@ -44,12 +44,9 @@ for v in t.at.rev:
     for c in kids[v]:
         joined_before[v].push(f)
         f = join(f, down[c])
-    down[v] = [
-        if i == 0: f[0] elif i == f.len: f[i - 1] + w[v] * i else: max(
-            f[i],
-            f[i - 1] + w[v] * i,
-        ) for i in 0..=f.len
-    ]
+    f.push(0)
+    for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
+    down[v] = f
 
 var ans: [V]Int = 0
 var up: [V]List<?Int> = []
