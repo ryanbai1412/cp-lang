@@ -1813,3 +1813,16 @@ fn a_field_is_kept_when_a_store_can_trap_or_the_whole_value_is_seen() {
     assert!(crate::explain_dropped_fields(&lower(compared)).is_empty());
 }
 
+#[test]
+fn optional_mut_param_does_not_emit_optional_of_reference() {
+    let src = concat!(
+        "domain V = 0..2\n",
+        "fn f(seen: ?mut [V]Bool = None) -> Int:\n",
+        "    0\n",
+        "print(f())\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
+    assert!(out.contains("std::optional<std::vector<char>>"), "{out}");
+}
+

@@ -237,6 +237,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
                 Some(field) => format!("cpl::OptField<&{}::{}>", ident(&program.structs[id].name), ident(field)),
                 None => format!("std::optional<{}>", cty(program, niches, inner)),
             },
+            Ty::Mut(ref of) => format!("std::optional<{}>", cty(program, niches, of)),
             _ => format!("std::optional<{}>", cty(program, niches, inner)),
         },
         Ty::Tuple(items) => {
