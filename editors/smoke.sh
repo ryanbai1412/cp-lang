@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# The editor setups besides VS Code, each against the real `cpl lsp`.
+# Every editor setup in editors/, each against the real `cpl lsp`.
 #
 #   editors/smoke.sh              keyword lists against the compiler, then each
-#                                 editor's own smoke test when it is installed
-#                                 (Neovim, Emacs, Helix, Zed), the tree-sitter grammar
-#                                 when the tree-sitter CLI is, and the JetBrains
-#                                 plugin's build when java is (others are skipped,
-#                                 and say so)
+#                                 editor's own smoke test when its toolchain is
+#                                 installed (VS Code, Neovim, Vim, Emacs, Helix,
+#                                 Zed), the tree-sitter grammar when the
+#                                 tree-sitter CLI is, and the JetBrains plugin's
+#                                 build when java is (others are skipped, and say so)
 #
-# Needs target/debug/cpl (cargo build -p cpl-cli) or $CPL. $NVIM, $EMACS, $HX and
-# $TREE_SITTER name the tools when they are not nvim, emacs, hx and tree-sitter on
-# the PATH.
+# Needs target/debug/cpl (cargo build -p cpl-cli) or $CPL. $NVIM, $VIM_BIN,
+# $EMACS, $HX and $TREE_SITTER name the tools when they are not on the PATH.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,12 +45,27 @@ for path, words in lists.items():
 sys.exit(1 if bad else 0)
 PY
 
+if command -v node >/dev/null && command -v npm >/dev/null && [ -d "$root/editors/vscode/node_modules" ]; then
+    echo "editors: vscode"
+    "$root/editors/vscode/smoke.sh" "$cpl"
+else
+    echo "editors: SKIPPED vscode (need node, npm, and editors/vscode/node_modules)"
+fi
+
 nvim="${NVIM:-nvim}"
 if command -v "$nvim" >/dev/null && "$nvim" --headless --clean -c 'if has("nvim-0.10") | qa! | else | cq | endif' >/dev/null 2>&1; then
     echo "editors: neovim"
     "$nvim" --headless --clean -l "$root/editors/neovim/test/smoke.lua" "$cpl" "$root"
 else
     echo "editors: SKIPPED neovim (no nvim 0.10 or later; set \$NVIM)"
+fi
+
+vim_bin="${VIM_BIN:-vim}"
+if command -v "$vim_bin" >/dev/null; then
+    echo "editors: vim"
+    VIM_BIN="$vim_bin" "$root/editors/neovim/test/smoke_vim.sh" "$cpl"
+else
+    echo "editors: SKIPPED vim (set \$VIM_BIN)"
 fi
 
 emacs="${EMACS:-emacs}"
@@ -87,7 +101,7 @@ if command -v "$ts" >/dev/null; then
     (cd "$work" && "$ts" generate --abi 14 >/dev/null)
     diff -r "$work/src" "$grammar/src" >/dev/null || { echo "editors: editors/tree-sitter-cp/src is stale; run tree-sitter generate --abi 14 there" >&2; exit 1; }
     echo '{"parser-directories": ["'"$root/editors"'"]}' >"$work/config.json"
-    find "$root/corpus/problems" "$root/stdlib" -name '*.cp' >"$work/files"
+    find "$root/corpus/problems" "$root/spec/std" "$root/stdlib" -name '*.cp' >"$work/files"
     stat="$(cd "$grammar" && "$ts" parse --config-path "$work/config.json" --quiet --stat --paths "$work/files" 2>&1)"
     grep -q "failed parses: 0;" <<<"$stat" || { echo "$stat" >&2; echo "editors: the grammar fails on a .cp file" >&2; exit 1; }
     for query in "$grammar/queries/highlights.scm" "$root/editors/helix/runtime/queries/cp/highlights.scm" "$root/editors/zed/languages/cp/highlights.scm"; do

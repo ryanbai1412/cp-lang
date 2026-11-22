@@ -16,17 +16,41 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | Zed | `editors/zed/` | tree-sitter (`editors/tree-sitter-cp/`) | `cpl run` in a terminal |
 
 `editors/smoke.sh` checks the keyword lists against the compiler, then runs
-each editor's smoke test when the editor is installed: each starts `cpl lsp`
+each editor's smoke test when its toolchain is installed: each starts `cpl lsp`
 the way that editor's setup does and checks `initialize` and the error it
-publishes for a file (`editors/neovim/test/smoke.lua`, `editors/emacs/smoke.el`,
+publishes for a file (`editors/vscode/smoke.sh`, `editors/neovim/test/smoke.lua`,
+`editors/neovim/test/smoke_vim.sh`, `editors/emacs/smoke.el`,
 `editors/helix/smoke.sh`, and `editors/zed/smoke.sh` when Rust has the
 `wasm32-wasip1` target). With the `tree-sitter` CLI it checks the grammar,
-and with `java` it builds the JetBrains plugin. `scripts/check.sh --full` runs
-it.
+and with `java` it builds and tests the JetBrains plugin. `scripts/check.sh --full`
+runs it.
 
 `editors/tree-sitter-cp/` is a tree-sitter grammar for highlighting: tokens,
 `fn` names, calls, members, types and constants. Blocks and everything else
 come from the server.
+
+## VS Code
+
+Install directly from this repo (no marketplace needed):
+
+```sh
+cargo install --path crates/cpl-cli
+cd editors/vscode
+npm ci
+npm run package
+code --install-extension cp-lang.vsix
+```
+
+Or run an Extension Development Host without packaging:
+
+```sh
+cd editors/vscode && npm ci && npm run compile
+code --extensionDevelopmentPath="$PWD" /path/to/your/workspace
+```
+
+`editors/vscode/smoke.sh` runs the grammar and unit test suite (`npm test`)
+and checks the live `cpl lsp` handshake. See `editors/vscode/README.md` for
+settings, snippets, and extension-host integration tests.
 
 ## Neovim (0.10 or later)
 
