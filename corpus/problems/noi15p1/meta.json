@@ -11,6 +11,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi15p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_27/noi15p1.cp"
   ],
@@ -23,7 +26,7 @@
   "compression"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "@!multitest; compress binds domain X for the Dsu."
 }

@@ -18,6 +18,9 @@
   "draft": [
    "proto/ports/blind_critic_3/ioi09p6_draft.cp"
   ],
+  "dream": [
+   "corpus/problems/ioi09p6/dream.cp"
+  ],
   "port": [
    "proto/ports/blind_critic_3/ioi09p6.cp"
   ],
@@ -31,7 +34,7 @@
   "binary-search"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Grid graphs are written as moves (p.adj4.filter); bfs gained enter: (v, d) for time-dependent safety; spec/std/grid.cp added."
 }

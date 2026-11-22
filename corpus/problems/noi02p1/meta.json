@@ -11,6 +11,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi02p1/dream.cp"
+  ],
   "original": [
    "proto/ports/noi02p1.cpp",
    "proto/ports/noi02p1_orig.cpp"
@@ -27,7 +30,7 @@
   "weighted-dsu"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "PotentialDsu with an explicit head-per-root array."
 }

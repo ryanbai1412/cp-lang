@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/btoi17p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_18/btoi17p2.cp",
    "proto/ports/scout_batch_18/today/btoi17p2.cp"
@@ -21,7 +24,7 @@
   "min-plus"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Semiring/Mat stubs reconciled to Semiring(min, +) and Mat(over:). Needs explicit use lines: Mat and Semiring are not in the prelude."
 }

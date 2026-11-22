@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/apio23p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_21/apio23p1.cp"
   ],
@@ -21,7 +24,7 @@
   "grader"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Next customization by lambda (v => roads[v].filter(...)) passed to dijkstra."
 }

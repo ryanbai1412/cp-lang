@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ceoi18p1/dream.cp"
+  ],
   "original": [
    "proto/ports/ceoi18p1.cpp",
    "proto/ports/ceoi18p1_orig.cpp"
@@ -23,7 +26,7 @@
   "sorting"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "chain + sorted(by: (desc, desc)); [K]?Int knapsack with K.at for out-of-range transitions; clone per event instead of direction-dependent loops."
 }
