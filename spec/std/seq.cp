@@ -836,7 +836,16 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.at(30) == C.last!`
-pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
+@allow(unproven_list_index)
+pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>):
+    var raw: List<T> = [x for x in all]
+    raw.sort()
+    var uniq: List<T> = []
+    for x in raw:
+        if uniq.is_empty or uniq.last != x: uniq.push(x)
+    domain C = 0..uniq.len
+    let vals = [C] i => uniq[i.to_idx]
+    (C, Compressed(vals))
 
 /// Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the
 /// non-empty pieces between consecutive cuts (the range's own ends always count; repeats drop),
@@ -849,7 +858,26 @@ pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 /// order: pieces left to right; `piece` is keyed by the fresh domain `P`
 /// traps: when a cut lies outside the range
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
-pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>) = todo
+@allow(unproven_list_index)
+pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
+    let a = self.start
+    let b = self.end
+    if self.is_empty:
+        for c in cuts: assert a <= c and c <= b, "pieces: cut outside range"
+        domain P = 0..0
+        return (P, [P] _ => a..a)
+    var pts: List<D> = [a, b]
+    for c in cuts:
+        assert a <= c and c <= b, "pieces: cut outside range"
+        pts.push(c)
+    pts.sort()
+    var uniq: List<D> = []
+    for x in pts:
+        if uniq.is_empty or uniq.last != x: uniq.push(x)
+    let m = uniq.len - 1
+    domain P = 0..m
+    let ps = [P] i => uniq[i.to_idx]..uniq[i.to_idx + 1]
+    (P, ps)
 
 /// The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were
 /// made from (traps otherwise). `t.apply(piece.covering(a..=b), x)`. O(log k).
