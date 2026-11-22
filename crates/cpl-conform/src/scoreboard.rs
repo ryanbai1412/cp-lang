@@ -22,6 +22,7 @@ pub struct CauseEntry {
 pub struct SuiteReport {
     pub total: usize,
     pub passed: usize,
+    pub strict_passed: Option<usize>,
     pub counts: BTreeMap<String, usize>,
     pub cases: BTreeMap<String, String>,
     pub details: BTreeMap<String, String>,
@@ -230,6 +231,7 @@ impl SuiteReport {
         SuiteReport {
             total,
             passed,
+            strict_passed: None,
             counts,
             cases,
             details,
@@ -241,6 +243,9 @@ impl SuiteReport {
         let mut obj = BTreeMap::new();
         obj.insert("total".into(), Value::Int(self.total as i64));
         obj.insert("passed".into(), Value::Int(self.passed as i64));
+        if let Some(strict) = self.strict_passed {
+            obj.insert("strict_passed".into(), Value::Int(strict as i64));
+        }
         let counts: BTreeMap<String, Value> = self
             .counts
             .iter()
@@ -335,9 +340,11 @@ impl SuiteReport {
             .get("passed")
             .and_then(Value::as_usize)
             .unwrap_or_else(|| counts.get("pass").copied().unwrap_or(0));
+        let strict_passed = obj.get("strict_passed").and_then(Value::as_usize);
         Ok(SuiteReport {
             total,
             passed,
+            strict_passed,
             counts,
             cases,
             details: BTreeMap::new(),

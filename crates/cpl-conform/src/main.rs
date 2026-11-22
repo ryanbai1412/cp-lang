@@ -7,14 +7,15 @@ use cpl_conform::scoreboard::{self, Scoreboard, SuiteReport};
 use cpl_conform::{Suite, default_scoreboard_path, find_repo_root, run_suites};
 
 const USAGE: &str = "\
-usage: cpl-conform [conformance|corpus|docs|diff|all]... [options] [filter]
+usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|all]... [options] [filter]
 
 suites:
   conformance     spec/conformance/**/*.cp cases
   corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
   docs            /// example: lines in spec/std/*.cp
+  spec-blocks     fenced cp blocks in spec/core/*.md and spec/lib/*.md
   diff            interpreter vs g++ -O2 -std=c++17 differential
-  all             all four suites (default if no suite is named)
+  all             all five suites (default if no suite is named)
 
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
@@ -146,8 +147,12 @@ fn main() -> ExitCode {
     for &suite in &suites {
         let name = suite.name();
         let report = &current.suites[name];
+        let strict_col = match report.strict_passed {
+            Some(s) => format!(" [strict {s}/{}]", report.total),
+            None => String::new(),
+        };
         println!(
-            "{name:12} {:>4}/{:<4} pass ({})",
+            "{name:12} {:>4}/{:<4} pass{strict_col} ({})",
             report.passed,
             report.total,
             format_counts(report)

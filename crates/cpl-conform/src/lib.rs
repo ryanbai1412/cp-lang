@@ -4,6 +4,7 @@ pub mod diff;
 pub mod docs;
 pub mod runner;
 pub mod scoreboard;
+pub mod spec_blocks;
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,7 @@ pub enum Suite {
     Conformance,
     Corpus,
     Docs,
+    SpecBlocks,
     Diff,
 }
 
@@ -23,6 +25,7 @@ impl Suite {
             Suite::Conformance => "conformance",
             Suite::Corpus => "corpus",
             Suite::Docs => "docs",
+            Suite::SpecBlocks => "spec-blocks",
             Suite::Diff => "diff",
         }
     }
@@ -32,15 +35,26 @@ impl Suite {
             "conformance" => Some(Suite::Conformance),
             "corpus" => Some(Suite::Corpus),
             "docs" => Some(Suite::Docs),
+            "spec-blocks" | "spec_blocks" => Some(Suite::SpecBlocks),
             "diff" => Some(Suite::Diff),
             _ => None,
         }
     }
 
-    pub const ALL: &'static [Suite] =
-        &[Suite::Conformance, Suite::Corpus, Suite::Docs, Suite::Diff];
+    pub const ALL: &'static [Suite] = &[
+        Suite::Conformance,
+        Suite::Corpus,
+        Suite::Docs,
+        Suite::SpecBlocks,
+        Suite::Diff,
+    ];
 
-    pub const FAST: &'static [Suite] = &[Suite::Conformance, Suite::Corpus, Suite::Docs];
+    pub const FAST: &'static [Suite] = &[
+        Suite::Conformance,
+        Suite::Corpus,
+        Suite::Docs,
+        Suite::SpecBlocks,
+    ];
 }
 
 /// Locates the repository root (the directory containing `spec/conformance`).
@@ -74,6 +88,7 @@ pub fn run_suites(root: &Path, suites: &[Suite], filter: Option<&str>) -> Scoreb
             Suite::Conformance => conformance::run(root, filter),
             Suite::Corpus => corpus::run(root, filter),
             Suite::Docs => docs::run(root, filter),
+            Suite::SpecBlocks => spec_blocks::run(root, filter),
             Suite::Diff => diff::run(root, filter),
         };
         sb.suites.insert(suite.name().to_string(), report);

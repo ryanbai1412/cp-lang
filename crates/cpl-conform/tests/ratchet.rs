@@ -187,6 +187,18 @@ fn ratchet_respects_filtered_runs() {
 }
 
 #[test]
+fn spec_blocks_extract_and_strict_roundtrip() {
+    let md = "intro\n```cp\nlet x = 1\n```\n```text\nignored\n```\n```python\nprint(2)\n```\n";
+    let blocks = cpl_conform::spec_blocks::extract_blocks(md);
+    assert_eq!(blocks, vec!["let x = 1\n", "print(2)\n"]);
+
+    let mut sb = make_board("spec-blocks", &[("core/a.md#0123456789", "pass")]);
+    sb.suites.get_mut("spec-blocks").unwrap().strict_passed = Some(1);
+    let parsed = Scoreboard::from_json_str(&sb.to_json_string()).expect("roundtrip");
+    assert_eq!(parsed.suites["spec-blocks"].strict_passed, Some(1));
+}
+
+#[test]
 fn committed_scoreboard_ratchet() {
     let root = find_repo_root().expect("repo root");
     let path = default_scoreboard_path(&root);
