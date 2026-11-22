@@ -3775,7 +3775,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn list(&mut self, items: &[ast::Expr], hint: Option<&Ty>, span: Span) -> Expr {
+    pub(crate) fn list(&mut self, items: &[ast::Expr], hint: Option<&Ty>, span: Span) -> Expr {
         match hint {
             Some(ty @ (Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem))) => {
                 let values = items.iter().map(|item| self.expect(item, elem)).collect();

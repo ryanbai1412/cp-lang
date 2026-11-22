@@ -2078,6 +2078,10 @@ impl<'a> Lowerer<'a> {
                     };
                     return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
                 }
+                if args.len() > 1 && args.iter().all(|a| a.name.is_none()) {
+                    let items: Vec<ast::Expr> = args.iter().map(|a| a.value.clone()).collect();
+                    return self.list(&items, hint.filter(|t| matches!(t, Ty::List(_))), span);
+                }
                 let src = &args[0].value;
                 let collect_directly = matches!(
                     &src.kind,
@@ -2124,6 +2128,10 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Pos(d) if self.subset_base(d).is_some() => {
                         self.collect_iter_to_list(src, span)
+                    }
+                    ref elem @ (Ty::Int | Ty::Bool | Ty::Char | Ty::Float) => {
+                        let ty = Ty::list(elem.clone());
+                        self.mk(ExprKind::Tuple(vec![val]), ty, span)
                     }
                     _ => val,
                 }
