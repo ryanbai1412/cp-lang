@@ -194,7 +194,7 @@ type DynamicZ = Mod<p>
 - **NTT & convolutions (`std.ntt`):** `ntt<P>(mut a, inverse:, bit_reversed:)`, `convolve<P>(a, b, cyclic:)`, `convolve_mod(a, b, m, cyclic:)`, `convolve_int(a, b, cyclic:)`, in-place `sos(mut f, over: Sub | Sup = Sub, inverse:)` and `fwht(mut a, inverse:)`, and `convolve_or`/`convolve_and`/`convolve_xor`/`convolve_subset`.
 - **Formal power series (`std.poly`):** `deriv`, `integral`, `inv(a, n)`, `log(a, n)`, `exp(a, n)`, `pow(a, k, n)`, `sqrt(a, n) -> ?List<Mod<P>>`, `eval(a, x)`, `div_mod(a, b)`, `prod_linear(roots)`, `taylor_shift(a, c)`, `eval_all(a, xs)`, `compose(f, g, n)`, `lagrange_at(ys, x)`, and `interpolate(xs, ys)` over NTT.
 - **Matrices & XOR basis (`std.matrix`):** `Mat<T>` (`+`, `-`, `*`, `.pow(e)`, `.mul_vec(v)`, `.transpose()`, `.product(n)`, exact-field `.det()`, `.rank()`, `.solve(b)`, `.solve_space(b)`, `.inverse()`), floating-point `det_real`/`rank_real`/`solve_real`/`inverse_real` with explicit `eps:`, and `XorBasis` (`.add`, `.reduce`, `.contains`, `.max_xor`, `.min_xor`, `.kth`, `.merge`, `.monoid`).
-- **Exact geometry (`std.geometry`):** `Pt<T = Int>` with `.dot`, `.cross`, `.norm2`, `orient(a, b, c)` (`-1 | 0 | 1`), `turn`, `turn_eps`, and `ByAngle` for exact integer angular sorting.
+- **Exact geometry (`std.geometry`):** `Pt<T = Int>` with `.dot`, `.cross`, `.norm2`, `turn(a, b, c)` (`-1 | 0 | 1`), `turn_eps`, and `ByAngle` for exact integer angular sorting.
 
 ## Local libraries & advanced contest structures
 

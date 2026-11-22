@@ -132,9 +132,9 @@ This example matches both pairs and prints `2`. The domain gives the network exa
 
 The remaining `std` modules cover the classic toolkit with the same domain-typed discipline:
 
-- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd(a, b) -> (g, x, y)`, `pow_mod(a, e, m)`, `Sieve(n)` (`.is_prime(x)`, `.spf(x)`, `.primes`), `factor(n)`, `divisors(n)`.
+- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd(a, b) -> (g, x, y)`, `pow_mod(a, e, m)`, `Sieve(n)` (`.is_prime(x)`, `.spf[x]`, `.primes`), `factor(n)`, `divisors(n)`.
 - **Strings (`std.strings`):** `z_function(s)`, `prefix_function(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and `RollingHash(seq)` (dual-base salted hashing over `Str` or any `[D]T`, with `.get(l..r) -> HashVal`).
-- **Exact geometry (`std.geometry`):** `Pt(x, y)` with `dot`, `cross`, `norm2`, `orient(a, b, c)` (`-1 | 0 | 1`), and `ByAngle` for integer angular sorting without calling `atan2`.
+- **Exact geometry (`std.geometry`):** `Pt(x, y)` with `dot`, `cross`, `norm2`, `turn(a, b, c)` (`-1 | 0 | 1`), and `ByAngle` for integer angular sorting without calling `atan2`.
 
 ```exercise graphs-geometry-exact
 ```

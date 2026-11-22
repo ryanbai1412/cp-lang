@@ -542,8 +542,27 @@ class SiteTests(unittest.TestCase):
     def test_authored_copy_does_not_advertise_unbuilt_collection_apis(self):
         for path in documentation_paths():
             self.assertNotRegex(path.read_text(),
-                                r"\bHashSet\b|\bSet(?:<[^>]+>)?\.rank\b",
+                                r"\bHashSet\b|\bSet(?:<[^>]+>)?\.rank\b|\blower_bound\b|\bupper_bound\b",
                                 path.name)
+
+    def test_calls_documented_for_a_std_module_exist_in_it(self):
+        # A contestant who reads `orient(a, b, c)` next to `std.geometry` writes it.
+        prelude = {"print", "isqrt", "bit_ceil"}
+        modules = {}
+        for path in (REPO / "stdlib").glob("*.cp"):
+            text = path.read_text()
+            modules[path.stem] = set(re.findall(r"\bfn\s+(\w+)", text)) | set(
+                re.findall(r"^\s+(\w+):", text, flags=re.M))
+        for path in documentation_paths():
+            for number, line in enumerate(path.read_text().splitlines(), 1):
+                module = re.search(r"\(`std\.(\w+)`\)", line)
+                if not module:
+                    continue
+                names = modules.get(module.group(1))
+                self.assertIsNotNone(names, f"{path.name}:{number}: no std.{module.group(1)}")
+                for name in re.findall(r"`\.?([a-z_]\w*)\(", line):
+                    self.assertIn(name, names | prelude,
+                                  f"{path.name}:{number}: std.{module.group(1)} has no `{name}`")
 
     def test_sidebar_sections_are_not_duplicated(self):
         html = (ROOT / "_build/index.html").read_text()

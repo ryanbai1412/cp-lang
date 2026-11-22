@@ -103,7 +103,7 @@ print(pts[0].0, pts[0].1, freq[2], h.pop() ?? -1)
 
 ## 6. Binary search and prefix sums
 
-Use integer binary search on a monotone predicate with explicit `lo`/`hi` invariants, or `lower_bound` / `upper_bound` on sorted lists:
+Use integer binary search on a monotone predicate with explicit `lo`/`hi` invariants, or `xs.first_ge(x)` / `xs.first_gt(x)` on a sorted list (the index of the first element `>= x` / `> x`, or `none`):
 
 ```cp CP Lang
 // First x in 1..=100 whose square is at least 50.
