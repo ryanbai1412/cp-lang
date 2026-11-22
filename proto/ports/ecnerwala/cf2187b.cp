@@ -1,7 +1,16 @@
-// Codeforces 2187 B: bitwise top-down DP over the 4 sign combinations of (p - x, q - y)
-// minimizing |p - x| + |q - y| subject to p & q == 0.
+// Codeforces 2187 B — Minimum Distance Disjoint-Bit Pair
+//
+// Find non-negative integers `(p, q)` with `p & q == 0` minimizing
+// `|p - x| + |q - y|`.
+//
+// Fix the two comparison signs `dx in {0 (p <= x), 1 (p >= x)}` and
+// `dy in {0 (q <= y), 1 (q >= y)}` so the objective is linear in the bits of
+// `p` and `q`. Run a top-down digit DP over bits `30` down to `0` with state
+// `(cx, cy)` tracking whether `p` / `q` has already separated from `x` / `y`
+// in the chosen direction, choosing `(vx, vy)` with `vx + vy < 2` (`p & q == 0`).
+
 @!multitest
-let (x, y): (Int, Int) = read()
+let (x, y): (0..2 ** 30, 0..2 ** 30) = read()
 var ans: ?(Int, Int, Int) = none
 
 for dx in 0..2:
