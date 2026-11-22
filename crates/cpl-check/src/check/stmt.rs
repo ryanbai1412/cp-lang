@@ -522,6 +522,14 @@ impl<'a> Checker<'a> {
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
+                if let (Some(declared), Some(Expr { kind: ExprKind::Call { callee, args }, .. })) = (&declared, init) {
+                    if args.is_empty()
+                        && matches!(&callee.kind, ExprKind::Name(n) if n == "read")
+                        && declared.is_fixed_size()
+                    {
+                        self.fixed_io.push(callee.span);
+                    }
+                }
                 // §127: `let f = (n: Int) -> Int => ...` may refer to `f` recursively.
                 // `var f = ...` cannot refer to itself recursively.
                 let mut rec_scope = false;

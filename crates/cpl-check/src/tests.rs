@@ -3311,5 +3311,22 @@ fn a_prelude_call_hovers_its_doc_and_the_cost_of_its_shape() {
     assert_eq!(cost(&mut db, "max("), "max: built-in\ncost: O(1)");
     assert_eq!(cost(&mut db, "min("), "min: built-in\ncost: O(n)");
     assert!(cost(&mut db, "isqrt").ends_with("\ncost: O(1)"));
-    assert!(db.hover("a.cp", at("read")).is_none());
+    assert_eq!(cost(&mut db, "read"), "read: built-in\ncost: O(1)");
+}
+
+#[test]
+fn print_and_read_cost_o1_only_for_values_of_a_fixed_size() {
+    let src = "fn f(xs: List<Int>, s: Str):\n    let (a, b): (Int, 1..=9) = read()\n    \
+               print(a, \"is {b}\")\n    print(xs)\n    print(s)\n    let t: Str = read()\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let hover = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).unwrap().text
+    };
+    assert_eq!(hover(&mut db, 0, "read"), "read: built-in\ncost: O(1)");
+    assert_eq!(hover(&mut db, 0, "print"), "print: built-in\ncost: O(1)");
+    assert_eq!(hover(&mut db, 1, "print"), "print: built-in");
+    assert_eq!(hover(&mut db, 2, "print"), "print: built-in");
+    assert_eq!(hover(&mut db, 1, "read"), "read: built-in");
 }

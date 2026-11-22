@@ -212,8 +212,8 @@ A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 == hover @ 85:7
 ```cp
 fn order(cells: [V]Int)
-  loops: at most k = 7 iterations per call, with the fns it calls
   documented costs: pts.sorted O(k log k), about 20 steps each, k = 7 times; cells.sorted O(n log n), about 3521929 (3.5e6) steps each, k = 7 times
+  estimated cost: O(k + k * (k log k) + k * (n log n)), about 24653649 (2.5e7) steps at max input
 ```
 
 == hover @ 87:41
@@ -264,4 +264,10 @@ fn spread(cells: [V]Int) -> Int
 ```cp
 fn widest(cells: [V]Int) -> Span
   estimated cost: O(n), about 800001 (8e5) steps at max input
+```
+
+== hover @ 117:6
+```cp
+fn echo()
+  estimated cost: O(n), about 600000 (6e5) steps at max input
 ```

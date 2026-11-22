@@ -113,3 +113,8 @@ fn wi$0dest(cells: [V]Int) -> Span:
     for v in V:
         cur = Span(min(cur.lo, cells[v]), max(cur.hi, cells[v]))
     cur
+
+fn ec$0ho():
+    for _ in 0..n:
+        let (x, y): (Int, Int) = read()
+        print(x + y, "and {x * y}")

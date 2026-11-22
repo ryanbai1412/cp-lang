@@ -71,6 +71,16 @@ pub struct Param {
 }
 
 impl Ty {
+    /// A number, character or tuple of them: what `print` and `read` handle
+    /// in O(1). A position is not, since its label may be any value.
+    pub fn is_fixed_size(&self) -> bool {
+        match self {
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Range { .. } => true,
+            Ty::Tuple(items) => items.iter().all(Ty::is_fixed_size),
+            _ => false,
+        }
+    }
+
     pub fn list(elem: Ty) -> Ty {
         Ty::Named {
             name: "List".into(),

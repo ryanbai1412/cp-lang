@@ -324,7 +324,8 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
     }
     let (span, name) = find.name?;
     let args = find.calls.iter().find(|(callee, _)| *callee == span).map(|&(_, n)| n);
-    let doc = crate::prelude::value_doc(&name, args)?;
+    let fixed = item.check.fixed_io.contains(&span);
+    let doc = crate::prelude::value_doc(&name, args, fixed)?;
     let text = match cost_of(doc) {
         Some(cost) => format!("{name}: built-in\ncost: {cost}"),
         None => format!("{name}: built-in"),

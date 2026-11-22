@@ -2479,6 +2479,16 @@ building costs nothing beyond the arguments, which are counted where they are wr
 struct (`Pair<Int>(..)`), a variant and a built-in type such as `List(xs)`, which copies, stay
 uncounted. Reverse by dropping `builds`.
 
+29.49. **`print` and `read` cost `O(1)` when their values have a fixed size.** The checker records
+in `ItemCheck::fixed_io` a `print` whose arguments are all numbers, characters, tuples of them or
+strings of fixed text around them (`print(a + b, "and {a * b}")`), and a `let` of a declared fixed
+type bound to `read()` (`let (a, b): (Int, 1..=9) = read()`); their hover says `cost: O(1)`, so a
+fn's estimate counts them as one step. Any other `print` or `read` hovers a doc with no cost and
+still leaves the fn without an estimate. Fns in the ports and examples with an estimate went from
+25 to 28 of 2,150; `ask` (20 fns), `print` and `read` of lists or strings, and `Int(..)` are now
+the calls that most often block one. Assumption: a position counts as not fixed, since its label
+may be a string. Reverse by dropping `fixed_io`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

@@ -160,9 +160,14 @@ pub fn value(name: &str) -> Option<Ty> {
 
 /// The doc of a prelude value the compiler defines, for a call with `args`
 /// arguments or, with `None`, the value itself: `min(xs)` walks `xs` where
-/// `min(a, b)` compares two values.
-pub fn value_doc(name: &str, args: Option<usize>) -> Option<&'static str> {
+/// `min(a, b)` compares two values. `fixed` says the checker found the
+/// values a `print` or `read` handles are of a fixed size.
+pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'static str> {
     Some(match (name, args) {
+        ("print", _) if fixed => "Writes its arguments and a newline, in O(1) for numbers, characters and tuples of them.",
+        ("print", _) => "Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.",
+        ("read", _) if fixed => "Reads the next value of the type it is bound to, in O(1) for a number, a character or a tuple of them.",
+        ("read", _) => "Reads the next value of the type it is bound to, in time linear in what it reads.",
         ("abs", _) => "The absolute value, in O(1).",
         ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
         ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",

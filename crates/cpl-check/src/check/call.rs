@@ -6,6 +6,20 @@ use crate::ty::{Bindings, Param};
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
 
 impl<'a> Checker<'a> {
+    /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
+    /// them, or a string of fixed text around them.
+    pub(crate) fn fixed_size(&mut self, e: &Expr) -> bool {
+        if let ExprKind::Str(pieces) = &e.kind {
+            return pieces.iter().all(|p| match p {
+                cpl_syntax::ast::StrPiece::Text(_) => true,
+                cpl_syntax::ast::StrPiece::Expr(e) => self.fixed_size(e),
+                cpl_syntax::ast::StrPiece::Spec(e, _) => self.fixed_size(e),
+            });
+        }
+        let ty = self.quietly(|c| c.infer(e));
+        ty.is_fixed_size()
+    }
+
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         if let Some(ty) = self.builtin_getter_call(call, callee, args) {
             return ty;
@@ -53,6 +67,11 @@ impl<'a> Checker<'a> {
         }
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
+        }
+        if matches!(&callee.kind, ExprKind::Name(n) if n == "print")
+            && args.iter().all(|a| self.fixed_size(&a.value))
+        {
+            self.fixed_io.push(callee.span);
         }
         self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);

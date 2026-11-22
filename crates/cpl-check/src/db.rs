@@ -75,6 +75,9 @@ pub struct ItemCheck {
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
     pub typed_indexes: Vec<TypedIndex>,
+    /// Where `print` or `read` is called with values of a fixed size (numbers,
+    /// characters and tuples of them): the callee.
+    pub fixed_io: Vec<Span>,
 }
 
 #[derive(Debug)]
@@ -1629,6 +1632,7 @@ impl FileCtx<'_> {
             hovers: checked.hovers,
             refs: checked.refs,
             typed_indexes: checked.typed_indexes,
+            fixed_io: checked.fixed_io,
         });
         self.db.checks.insert(
             key,
