@@ -26,7 +26,7 @@ pub fn argmin<S: Keyed, K, T: Ord>(self: S) -> ?K = todo
 | Label | Required | Says |
 |---|---|---|
 | `cost:` | always | time, and extra space when it is not O(1); per step for generators |
-| `traps:` | always | every input that traps, or `never` |
+| `traps:` | always | every input that traps, or `never`. A violated precondition is an `assert` in the body and reports R0401; a core trap (an index, overflow, `x!`) keeps its own code |
 | `example:` | always, one or more | an expression `==` its value, so it can become a test |
 | `empty:` | when an input is a sequence, range, domain or container | the result, or the trap, on empty input |
 | `ties:` | when the fn chooses among equal candidates (min, max, sort, search, first, nearest) | which one wins, and whether a sort is stable |
