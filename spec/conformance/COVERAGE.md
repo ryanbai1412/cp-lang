@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1190 (296 passing). Rules: 521.
+Cases: 1194 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -792,18 +792,18 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **opt** (0/2 named by a case)
   - uncovered: `is_some_and`, `is_none_or`
 - **pair** (5/5 named by a case)
-- **persistent** (33/38 named by a case)
-  - uncovered: `RangeKth`, `RangeKth.new`, `RangeKth.count_le`, `PMultiset`, `PMultiset.cmp`
+- **persistent** (34/38 named by a case)
+  - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`, `PMultiset.cmp`
 - **poly** (27/57 named by a case)
   - uncovered: `deriv`, `integral`, `log`, `exp`, `pow`, `sqrt`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
-- **prefix** (43/56 named by a case)
-  - uncovered: `scan`, `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `prefix_fold`, `suffix_fold`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **prefix** (45/56 named by a case)
+  - uncovered: `scan`, `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (6/10 named by a case)
   - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
 - **search** (8/9 named by a case)
   - uncovered: `split_best`
-- **segtree** (47/54 named by a case)
-  - uncovered: `SegTree.refresh`, `MergeSortTree.count_le`, `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
+- **segtree** (49/54 named by a case)
+  - uncovered: `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
 - **seq** (106/215 named by a case)
   - uncovered: `Perm`, `mean`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `deduped`, `distinct`, `partition`, `select`, `windows`, `chunks`, `adjacent`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `radix_sort`, `counting_sort`, `is_subsequence`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `outermost`, `keys`
 - **slope** (32/39 named by a case)
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1657 of 2222 std items are named by a case.
+1662 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
