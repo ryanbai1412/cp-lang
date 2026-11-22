@@ -1,3 +1,7 @@
+// Codeforces 2022 E1: a grid is beautiful iff every cell is row[r] xor col[c] for some row and column labels.
+// A fixed cell is one constraint row[r] xor col[c] = v, so rows and columns form a graph in which each
+// component has one free 30-bit label, less one for the global xor shift that leaves the grid unchanged.
+// A contradictory cycle gives 0; otherwise the count is 2^(30 * (components - 1)).
 @!multitest
 type Z = Mod<1_000_000_007>
 let (n, m, k, _): (2..=100_000, 2..=100_000, 0..=100_000, 0..=0) = read()
@@ -26,5 +30,5 @@ fn unite(a: Line, b: Line, v: Int) -> Bool:
     true
 
 let consistent = cells.all(cell => unite(Line(cell.r), Line(n + cell.c), cell.v))
-let parts = sum(Int(up[x] == x) for x in Line)
+let parts = Line.count(x => up[x] == x)
 print(if consistent: Z(2) ** (30 * (parts - 1)) else: Z(0))
