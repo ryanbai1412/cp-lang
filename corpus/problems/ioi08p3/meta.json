@@ -1,0 +1,23 @@
+{
+ "problem": "ioi08p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4843258", "language": "CPP17", "result": "WA", "time": 4.022912561, "memory_kb": 31228.0, "file": "corpus/submissions/4843258.cpp"},
+  {"id": "4843275", "language": "CPP17", "result": "TLE", "time": 17.427592045, "memory_kb": 7424.0, "file": "corpus/submissions/4843275.cpp"},
+  {"id": "4843410", "language": "CPP17", "result": "MLE", "time": 6.663224596, "memory_kb": 66332.0, "file": "corpus/submissions/4843410.cpp"},
+  {"id": "4843416", "language": "CPP17", "result": "AC", "time": 6.619286407, "memory_kb": 54564.0, "file": "corpus/submissions/4843416.cpp"},
+  {"id": "5032789", "language": "CPP17", "result": "AC", "time": 7.29763256, "memory_kb": 54456.0, "file": "corpus/submissions/5032789.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_23/ioi08p3.cp",
+   "proto/ports/scout_batch_23/today/ioi08p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

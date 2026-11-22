@@ -1,0 +1,15 @@
+{
+ "problem": "bf3",
+ "source": "bf",
+ "submissions": [
+  {"id": "3688336", "language": "JAVA", "result": "WA", "time": 1.563802306, "memory_kb": 62256.0, "file": "corpus/submissions/3688336.java"},
+  {"id": "3688341", "language": "JAVA", "result": "AC", "time": 1.589673064, "memory_kb": 62340.0, "file": "corpus/submissions/3688341.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

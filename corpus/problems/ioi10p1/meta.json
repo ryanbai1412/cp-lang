@@ -1,0 +1,14 @@
+{
+ "problem": "ioi10p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4692340", "language": "CPP17", "result": "AC", "time": 0.013912607, "memory_kb": 3604.0, "file": "corpus/submissions/4692340.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

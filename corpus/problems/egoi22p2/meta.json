@@ -1,0 +1,23 @@
+{
+ "problem": "egoi22p2",
+ "source": "egoi",
+ "submissions": [
+  {"id": "5199722", "language": "CPP17", "result": "TLE", "time": 7.833113639, "memory_kb": 5980.0, "file": "corpus/submissions/5199722.cpp"},
+  {"id": "5199738", "language": "CPP17", "result": "TLE", "time": 5.15118493, "memory_kb": 4216.0, "file": "corpus/submissions/5199738.cpp"},
+  {"id": "5199829", "language": "CPP17", "result": "TLE", "time": 5.360837164, "memory_kb": 4288.0, "file": "corpus/submissions/5199829.cpp"},
+  {"id": "5199839", "language": "CPP17", "result": "WA", "time": 0.154261061, "memory_kb": 4104.0, "file": "corpus/submissions/5199839.cpp"},
+  {"id": "5199888", "language": "CPP17", "result": "AC", "time": 0.245724807, "memory_kb": 6880.0, "file": "corpus/submissions/5199888.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_23/egoi22p2.cp",
+   "proto/ports/scout_batch_23/today/egoi22p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

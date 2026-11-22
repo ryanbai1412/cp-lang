@@ -1,0 +1,27 @@
+{
+ "problem": "noip06p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "5165670", "language": "CPP17", "result": "WA", "time": 0.051605324, "memory_kb": 3496.0, "file": "corpus/submissions/5165670.cpp"},
+  {"id": "5165674", "language": "CPP17", "result": "WA", "time": 0.06868169, "memory_kb": 3496.0, "file": "corpus/submissions/5165674.cpp"},
+  {"id": "5165678", "language": "CPP17", "result": "WA", "time": 0.051980175, "memory_kb": 3496.0, "file": "corpus/submissions/5165678.cpp"},
+  {"id": "5165686", "language": "CPP17", "result": "AC", "time": 0.053184326, "memory_kb": 3496.0, "file": "corpus/submissions/5165686.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/noip06p1.cpp",
+   "proto/ports/hillclimb_dp_graph/noip06p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/noip06p1.cp",
+   "proto/ports/hillclimb_dp_graph/noip06p1.cp",
+   "proto/ports/wave2/noip06p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

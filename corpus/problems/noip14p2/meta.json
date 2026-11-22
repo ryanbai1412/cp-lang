@@ -1,0 +1,24 @@
+{
+ "problem": "noip14p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5205402", "language": "CPP17", "result": "AC", "time": 0.250327028, "memory_kb": 18096.0, "file": "corpus/submissions/5205402.cpp"},
+  {"id": "5445666", "language": "CPP17", "result": "AC", "time": 0.251256937, "memory_kb": 18056.0, "file": "corpus/submissions/5445666.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip14p2.cpp",
+   "proto/ports/noip14p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip14p2.cp",
+   "proto/ports/wave2/noip14p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

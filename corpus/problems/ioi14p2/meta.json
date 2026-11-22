@@ -1,0 +1,19 @@
+{
+ "problem": "ioi14p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4683906", "language": "CPP17", "result": "AC", "time": 12.026534494, "memory_kb": 105756.0, "file": "corpus/submissions/4683906.cpp"},
+  {"id": "4843911", "language": "CPP17", "result": "AC", "time": 12.139148097, "memory_kb": 105768.0, "file": "corpus/submissions/4843911.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_2/ioi14p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

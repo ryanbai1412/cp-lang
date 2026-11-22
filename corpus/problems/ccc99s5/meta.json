@@ -1,0 +1,20 @@
+{
+ "problem": "ccc99s5",
+ "source": "ccc",
+ "submissions": [
+  {"id": "5024628", "language": "CPP17", "result": "WA", "time": 0.004277486, "memory_kb": 3624.0, "file": "corpus/submissions/5024628.cpp"},
+  {"id": "5024685", "language": "CPP17", "result": "WA", "time": 0.377701314, "memory_kb": 3636.0, "file": "corpus/submissions/5024685.cpp"},
+  {"id": "5515588", "language": "CPP17", "result": "AC", "time": 0.378482152, "memory_kb": 3552.0, "file": "corpus/submissions/5515588.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_22/ccc99s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

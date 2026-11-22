@@ -1,0 +1,19 @@
+{
+ "problem": "ioi22p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4783516", "language": "CPP17", "result": "AC", "time": 5.126504356, "memory_kb": 40500.0, "file": "corpus/submissions/4783516.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_49/ioi22p4.cp",
+   "proto/ports/scout_batch_49/today/ioi22p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

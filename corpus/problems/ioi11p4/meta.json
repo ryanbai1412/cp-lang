@@ -1,0 +1,24 @@
+{
+ "problem": "ioi11p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "3734919", "language": "CPP17", "result": "AC", "time": 1.353726592, "memory_kb": 50520.0, "file": "corpus/submissions/3734919.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/ioi11p4.cpp",
+   "proto/ports/hillclimb_dp_graph/ioi11p4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/ioi11p4.cp",
+   "proto/ports/hillclimb_dp_graph/ioi11p4.cp",
+   "proto/ports/scout_batch_2/ioi11p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

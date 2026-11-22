@@ -1,0 +1,14 @@
+{
+ "problem": "cco20p6",
+ "source": "cco",
+ "submissions": [
+  {"id": "4801876", "language": "CPP17", "result": "RTE", "time": 13.998966251, "memory_kb": 128572.0, "file": "corpus/submissions/4801876.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

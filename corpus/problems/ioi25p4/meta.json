@@ -1,0 +1,14 @@
+{
+ "problem": "ioi25p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "7921943", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/7921943.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

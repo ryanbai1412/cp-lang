@@ -1,0 +1,18 @@
+{
+ "problem": "noi23p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "5723066", "language": "CPP17", "result": "RTE", "time": 0.04706599, "memory_kb": 4.0, "file": "corpus/submissions/5723066.cpp"},
+  {"id": "5723067", "language": "CPP17", "result": "RTE", "time": 1.132672743, "memory_kb": 13240.0, "file": "corpus/submissions/5723067.cpp"},
+  {"id": "5723071", "language": "CPP17", "result": "RTE", "time": 1.439786665, "memory_kb": 16936.0, "file": "corpus/submissions/5723071.cpp"},
+  {"id": "5723072", "language": "CPP17", "result": "RTE", "time": 4.878154496, "memory_kb": 20144.0, "file": "corpus/submissions/5723072.cpp"},
+  {"id": "5723075", "language": "CPP17", "result": "RTE", "time": 6.975585152, "memory_kb": 19980.0, "file": "corpus/submissions/5723075.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

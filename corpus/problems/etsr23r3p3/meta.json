@@ -1,0 +1,21 @@
+{
+ "problem": "etsr23r3p3",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5521291", "language": "CPP17", "result": "TLE", "time": 20.155028238, "memory_kb": 28548.0, "file": "corpus/submissions/5521291.cpp"},
+  {"id": "5521292", "language": "CPP17", "result": "TLE", "time": 21.192832575, "memory_kb": 28544.0, "file": "corpus/submissions/5521292.cpp"},
+  {"id": "5521298", "language": "CPP17", "result": "AC", "time": 28.762865553, "memory_kb": 259628.0, "file": "corpus/submissions/5521298.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_43/etsr23r3p3.cp",
+   "proto/ports/scout_batch_43/today/etsr23r3p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

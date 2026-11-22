@@ -1,0 +1,24 @@
+{
+ "problem": "noi15p2",
+ "source": "noi",
+ "submissions": [
+  {"id": "3775038", "language": "CPP17", "result": "AC", "time": 2.809514003, "memory_kb": 13976.0, "file": "corpus/submissions/3775038.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/noi15p2.cpp",
+   "proto/ports/hillclimb_dp_graph/noi15p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/noi15p2.cp",
+   "proto/ports/hillclimb_dp_graph/noi15p2.cp",
+   "proto/ports/scout_batch_2/noi15p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

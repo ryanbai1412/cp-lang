@@ -1,0 +1,18 @@
+{
+ "problem": "sac22cc5p4",
+ "source": "sac",
+ "submissions": [
+  {"id": "4575559", "language": "CPP17", "result": "AC", "time": 1.734323345, "memory_kb": 12736.0, "file": "corpus/submissions/4575559.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_7/sac22cc5p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

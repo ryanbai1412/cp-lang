@@ -1,0 +1,19 @@
+{
+ "problem": "mccc5j5",
+ "source": "mccc",
+ "submissions": [
+  {"id": "5333196", "language": "CPP17", "result": "AC", "time": 7.050145553, "memory_kb": 21752.0, "file": "corpus/submissions/5333196.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/mccc5j5.cp",
+   "proto/ports/scout_batch_42/today/mccc5j5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

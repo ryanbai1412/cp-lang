@@ -1,0 +1,15 @@
+{
+ "problem": "noiwc22p1",
+ "source": "noiwc",
+ "submissions": [
+  {"id": "4261560", "language": "CPP17", "result": "RTE", "time": 0.640996487, "memory_kb": 28848.0, "file": "corpus/submissions/4261560.cpp"},
+  {"id": "4261601", "language": "CPP17", "result": "RTE", "time": 0.418340415, "memory_kb": 22636.0, "file": "corpus/submissions/4261601.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,29 @@
+{
+ "problem": "noi06p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "3752813", "language": "CPP17", "result": "WA", "time": 0.023819692, "memory_kb": 3316.0, "file": "corpus/submissions/3752813.cpp"},
+  {"id": "3752817", "language": "CPP17", "result": "WA", "time": 0.024147967, "memory_kb": 3276.0, "file": "corpus/submissions/3752817.cpp"},
+  {"id": "3752893", "language": "CPP17", "result": "WA", "time": 0.023939227, "memory_kb": 3276.0, "file": "corpus/submissions/3752893.cpp"},
+  {"id": "3752954", "language": "CPP17", "result": "WA", "time": 0.024482742, "memory_kb": 3276.0, "file": "corpus/submissions/3752954.cpp"},
+  {"id": "3752965", "language": "CPP17", "result": "WA", "time": 0.023981508, "memory_kb": 3276.0, "file": "corpus/submissions/3752965.cpp"},
+  {"id": "3753002", "language": "CPP17", "result": "WA", "time": 0.024312053, "memory_kb": 3276.0, "file": "corpus/submissions/3753002.cpp"},
+  {"id": "3753058", "language": "CPP17", "result": "WA", "time": 0.024328433, "memory_kb": 3324.0, "file": "corpus/submissions/3753058.cpp"},
+  {"id": "3753083", "language": "CPP17", "result": "WA", "time": 0.024222741, "memory_kb": 3316.0, "file": "corpus/submissions/3753083.cpp"},
+  {"id": "3753089", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3753089.cpp"},
+  {"id": "3753090", "language": "CPP17", "result": "WA", "time": 0.024487893, "memory_kb": 3284.0, "file": "corpus/submissions/3753090.cpp"},
+  {"id": "3753130", "language": "CPP17", "result": "WA", "time": 0.023966079, "memory_kb": 3324.0, "file": "corpus/submissions/3753130.cpp"},
+  {"id": "3753139", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3753139.cpp"},
+  {"id": "3753140", "language": "CPP17", "result": "AC", "time": 0.02413869, "memory_kb": 3332.0, "file": "corpus/submissions/3753140.cpp"},
+  {"id": "3753148", "language": "CPP17", "result": "AC", "time": 0.024329818, "memory_kb": 3332.0, "file": "corpus/submissions/3753148.cpp"},
+  {"id": "3753205", "language": "CPP17", "result": "AC", "time": 0.024311608, "memory_kb": 3332.0, "file": "corpus/submissions/3753205.cpp"},
+  {"id": "3753393", "language": "CPP17", "result": "AC", "time": 0.024315298, "memory_kb": 3292.0, "file": "corpus/submissions/3753393.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

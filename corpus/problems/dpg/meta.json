@@ -1,0 +1,22 @@
+{
+ "problem": "dpg",
+ "source": "dpg",
+ "submissions": [
+  {"id": "4131646", "language": "CPP17", "result": "AC", "time": 0.363804123, "memory_kb": 11304.0, "file": "corpus/submissions/4131646.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/dpg.cpp",
+   "proto/ports/dpg_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dpg.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

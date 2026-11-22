@@ -1,0 +1,17 @@
+{
+ "problem": "cmt21r4djq",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4192270", "language": "CPP17", "result": "WA", "time": 0.056451578, "memory_kb": 13528.0, "file": "corpus/submissions/4192270.cpp"},
+  {"id": "4192271", "language": "CPP17", "result": "WA", "time": 0.217063339, "memory_kb": 21724.0, "file": "corpus/submissions/4192271.cpp"},
+  {"id": "4192276", "language": "CPP17", "result": "WA", "time": 0.215530405, "memory_kb": 21688.0, "file": "corpus/submissions/4192276.cpp"},
+  {"id": "4192304", "language": "CPP17", "result": "WA", "time": 0.240457628, "memory_kb": 21728.0, "file": "corpus/submissions/4192304.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

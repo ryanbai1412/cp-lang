@@ -1,0 +1,22 @@
+{
+ "problem": "aplusb",
+ "source": "aplusb",
+ "submissions": [
+  {"id": "3380903", "language": "JAVA", "result": "AC", "time": 0.424030248, "memory_kb": 68608.0, "file": "corpus/submissions/3380903.java"},
+  {"id": "3414441", "language": "JAVA", "result": "AC", "time": 0.427346941, "memory_kb": 69968.0, "file": "corpus/submissions/3414441.java"},
+  {"id": "3414467", "language": "JAVA", "result": "WA", "time": 0.123328697, "memory_kb": 58336.0, "file": "corpus/submissions/3414467.java"},
+  {"id": "3414472", "language": "JAVA", "result": "WA", "time": 0.126385527, "memory_kb": 58548.0, "file": "corpus/submissions/3414472.java"},
+  {"id": "3414475", "language": "JAVA", "result": "AC", "time": 0.392899739, "memory_kb": 71288.0, "file": "corpus/submissions/3414475.java"},
+  {"id": "3422423", "language": "JAVA", "result": "IR", "time": 0.102275167, "memory_kb": 54628.0, "file": "corpus/submissions/3422423.java"},
+  {"id": "3422444", "language": "JAVA", "result": "AC", "time": 0.788817288, "memory_kb": 78784.0, "file": "corpus/submissions/3422444.java"},
+  {"id": "3422521", "language": "JAVA", "result": "IR", "time": 0.097143499, "memory_kb": 60544.0, "file": "corpus/submissions/3422521.java"},
+  {"id": "3996078", "language": "CPP17", "result": "AC", "time": 0.120467234, "memory_kb": 3344.0, "file": "corpus/submissions/3996078.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

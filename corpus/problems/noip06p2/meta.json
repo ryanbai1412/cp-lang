@@ -1,0 +1,23 @@
+{
+ "problem": "noip06p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5165705", "language": "CPP17", "result": "AC", "time": 0.040224527, "memory_kb": 3672.0, "file": "corpus/submissions/5165705.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip06p2.cpp",
+   "proto/ports/noip06p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip06p2.cp",
+   "proto/ports/wave2/noip06p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

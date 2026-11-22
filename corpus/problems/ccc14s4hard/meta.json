@@ -1,0 +1,22 @@
+{
+ "problem": "ccc14s4hard",
+ "source": "ccc",
+ "submissions": [
+  {"id": "5672243", "language": "CPP17", "result": "TLE", "time": 3.169666127, "memory_kb": 22276.0, "file": "corpus/submissions/5672243.cpp"},
+  {"id": "5672273", "language": "CPP17", "result": "AC", "time": 55.337942669, "memory_kb": 39552.0, "file": "corpus/submissions/5672273.cpp"},
+  {"id": "5673260", "language": "CPP17", "result": "RTE", "time": 1.283536016, "memory_kb": 27484.0, "file": "corpus/submissions/5673260.cpp"},
+  {"id": "5673262", "language": "CPP17", "result": "WA", "time": 2.527368004, "memory_kb": 27580.0, "file": "corpus/submissions/5673262.cpp"},
+  {"id": "5673265", "language": "CPP17", "result": "RTE", "time": 10.783765171, "memory_kb": 27536.0, "file": "corpus/submissions/5673265.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_7/ccc14s4hard.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

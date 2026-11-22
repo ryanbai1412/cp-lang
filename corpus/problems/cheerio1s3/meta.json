@@ -1,0 +1,26 @@
+{
+ "problem": "cheerio1s3",
+ "source": "cheerio",
+ "submissions": [
+  {"id": "5337838", "language": "CPP17", "result": "WA", "time": 0.010416074, "memory_kb": 3456.0, "file": "corpus/submissions/5337838.cpp"},
+  {"id": "5337857", "language": "CPP17", "result": "WA", "time": 0.010386336, "memory_kb": 3460.0, "file": "corpus/submissions/5337857.cpp"},
+  {"id": "5337970", "language": "CPP17", "result": "TLE", "time": 3.055881408, "memory_kb": 3460.0, "file": "corpus/submissions/5337970.cpp"},
+  {"id": "5338013", "language": "CPP17", "result": "WA", "time": 0.010518231, "memory_kb": 3460.0, "file": "corpus/submissions/5338013.cpp"},
+  {"id": "5338043", "language": "CPP17", "result": "AC", "time": 0.386822378, "memory_kb": 3496.0, "file": "corpus/submissions/5338043.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/cheerio1s3.cpp",
+   "proto/ports/cheerio1s3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/cheerio1s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

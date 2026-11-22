@@ -1,0 +1,19 @@
+{
+ "problem": "shoi15p2",
+ "source": "shoi",
+ "submissions": [
+  {"id": "5450923", "language": "CPP17", "result": "AC", "time": 1.1527405, "memory_kb": 22000.0, "file": "corpus/submissions/5450923.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_45/shoi15p2.cp",
+   "proto/ports/scout_batch_45/today/shoi15p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

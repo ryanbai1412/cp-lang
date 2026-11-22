@@ -1,0 +1,26 @@
+{
+ "problem": "noip07p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5185465", "language": "CPP17", "result": "RTE", "time": 0.13589966, "memory_kb": 3420.0, "file": "corpus/submissions/5185465.cpp"},
+  {"id": "5198812", "language": "CPP17", "result": "TLE", "time": 11.638421238, "memory_kb": 157876.0, "file": "corpus/submissions/5198812.cpp"},
+  {"id": "5198819", "language": "CPP17", "result": "TLE", "time": 12.341910592, "memory_kb": 222972.0, "file": "corpus/submissions/5198819.cpp"},
+  {"id": "5198846", "language": "CPP17", "result": "TLE", "time": 11.406121159, "memory_kb": 132948.0, "file": "corpus/submissions/5198846.cpp"},
+  {"id": "5198854", "language": "CPP17", "result": "TLE", "time": 9.336721809, "memory_kb": 141244.0, "file": "corpus/submissions/5198854.cpp"},
+  {"id": "5198860", "language": "CPP17", "result": "TLE", "time": 6.514145954, "memory_kb": 141384.0, "file": "corpus/submissions/5198860.cpp"},
+  {"id": "5198865", "language": "CPP17", "result": "WA", "time": 4.963235122, "memory_kb": 127496.0, "file": "corpus/submissions/5198865.cpp"},
+  {"id": "5198884", "language": "CPP17", "result": "TLE", "time": 6.492034094, "memory_kb": 141388.0, "file": "corpus/submissions/5198884.cpp"},
+  {"id": "5198895", "language": "CPP17", "result": "WA", "time": 4.938683168, "memory_kb": 127496.0, "file": "corpus/submissions/5198895.cpp"},
+  {"id": "5198897", "language": "CPP17", "result": "WA", "time": 5.002851727, "memory_kb": 127488.0, "file": "corpus/submissions/5198897.cpp"},
+  {"id": "5198908", "language": "CPP17", "result": "WA", "time": 5.376115788, "memory_kb": 130324.0, "file": "corpus/submissions/5198908.cpp"},
+  {"id": "5198916", "language": "CPP17", "result": "RTE", "time": 9.081803083, "memory_kb": 141388.0, "file": "corpus/submissions/5198916.cpp"},
+  {"id": "5198925", "language": "CPP17", "result": "TLE", "time": 6.642471277, "memory_kb": 141364.0, "file": "corpus/submissions/5198925.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

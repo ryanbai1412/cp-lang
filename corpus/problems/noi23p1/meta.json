@@ -1,0 +1,19 @@
+{
+ "problem": "noi23p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "5723056", "language": "CPP17", "result": "AC", "time": 0.913356818, "memory_kb": 9292.0, "file": "corpus/submissions/5723056.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi23p1.cp",
+   "proto/ports/scout_batch_50/today/noi23p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

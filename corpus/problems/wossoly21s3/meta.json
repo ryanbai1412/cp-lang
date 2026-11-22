@@ -1,0 +1,23 @@
+{
+ "problem": "wossoly21s3",
+ "source": "wossoly",
+ "submissions": [
+  {"id": "4121186", "language": "CPP17", "result": "WA", "time": 0.028766632, "memory_kb": 3512.0, "file": "corpus/submissions/4121186.cpp"},
+  {"id": "4121217", "language": "CPP17", "result": "WA", "time": 0.028878608, "memory_kb": 3500.0, "file": "corpus/submissions/4121217.cpp"},
+  {"id": "4121239", "language": "CPP17", "result": "WA", "time": 0.028379376, "memory_kb": 3504.0, "file": "corpus/submissions/4121239.cpp"},
+  {"id": "4121240", "language": "CPP17", "result": "WA", "time": 0.028901974, "memory_kb": 3660.0, "file": "corpus/submissions/4121240.cpp"},
+  {"id": "4121248", "language": "CPP17", "result": "WA", "time": 0.02140407, "memory_kb": 3468.0, "file": "corpus/submissions/4121248.cpp"},
+  {"id": "4224399", "language": "CPP17", "result": "AC", "time": 0.035837571, "memory_kb": 3688.0, "file": "corpus/submissions/4224399.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_12/wossoly21s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

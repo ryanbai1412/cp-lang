@@ -1,0 +1,22 @@
+{
+ "problem": "cco24p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "6435479", "language": "CPP17", "result": "AC", "time": 36.092487985, "memory_kb": 91416.0, "file": "corpus/submissions/6435479.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/cco24p1.cpp",
+   "proto/ports/cco24p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/cco24p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

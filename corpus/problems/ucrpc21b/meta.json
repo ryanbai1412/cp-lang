@@ -1,0 +1,14 @@
+{
+ "problem": "ucrpc21b",
+ "source": "ucrpc",
+ "submissions": [
+  {"id": "3944549", "language": "CPP17", "result": "AC", "time": 0.056705195, "memory_kb": 3360.0, "file": "corpus/submissions/3944549.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

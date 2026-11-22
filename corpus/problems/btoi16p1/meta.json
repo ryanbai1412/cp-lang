@@ -1,0 +1,23 @@
+{
+ "problem": "btoi16p1",
+ "source": "btoi",
+ "submissions": [
+  {"id": "5323125", "language": "CPP17", "result": "WA", "time": 0.010912544, "memory_kb": 3424.0, "file": "corpus/submissions/5323125.cpp"},
+  {"id": "5323368", "language": "CPP17", "result": "WA", "time": 0.010920442, "memory_kb": 3420.0, "file": "corpus/submissions/5323368.cpp"},
+  {"id": "5323902", "language": "CPP17", "result": "WA", "time": 0.010387859, "memory_kb": 3424.0, "file": "corpus/submissions/5323902.cpp"},
+  {"id": "5323915", "language": "CPP17", "result": "RTE", "time": 0.010461635, "memory_kb": 3424.0, "file": "corpus/submissions/5323915.cpp"},
+  {"id": "5323921", "language": "CPP17", "result": "WA", "time": 0.011997537, "memory_kb": 3460.0, "file": "corpus/submissions/5323921.cpp"},
+  {"id": "5323961", "language": "CPP17", "result": "AC", "time": 1.279453352, "memory_kb": 3720.0, "file": "corpus/submissions/5323961.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_33/btoi16p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

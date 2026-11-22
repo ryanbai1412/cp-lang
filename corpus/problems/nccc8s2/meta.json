@@ -1,0 +1,19 @@
+{
+ "problem": "nccc8s2",
+ "source": "nccc",
+ "submissions": [
+  {"id": "3381135", "language": "JAVA", "result": "AC", "time": 0.903272479, "memory_kb": 60004.0, "file": "corpus/submissions/3381135.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/nccc8s2.cp",
+   "proto/ports/scout_batch_41/today/nccc8s2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

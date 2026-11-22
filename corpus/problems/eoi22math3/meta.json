@@ -1,0 +1,15 @@
+{
+ "problem": "eoi22math3",
+ "source": "eoi",
+ "submissions": [
+  {"id": "4838787", "language": "TEXT", "result": "WA", "time": 0.004169947, "memory_kb": 1900.0, "file": null},
+  {"id": "4838788", "language": "TEXT", "result": "WA", "time": 0.00370445, "memory_kb": 1872.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

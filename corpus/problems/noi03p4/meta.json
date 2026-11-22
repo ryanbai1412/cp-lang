@@ -1,0 +1,20 @@
+{
+ "problem": "noi03p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "3741364", "language": "CPP17", "result": "AC", "time": 0.388233365, "memory_kb": 19604.0, "file": "corpus/submissions/3741364.cpp"},
+  {"id": "5032732", "language": "CPP17", "result": "AC", "time": 0.332232531, "memory_kb": 19608.0, "file": "corpus/submissions/5032732.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi03p4.cp",
+   "proto/ports/scout_batch_50/today/noi03p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

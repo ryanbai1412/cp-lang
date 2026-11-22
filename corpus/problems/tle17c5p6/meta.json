@@ -1,0 +1,24 @@
+{
+ "problem": "tle17c5p6",
+ "source": "tle",
+ "submissions": [
+  {"id": "5134032", "language": "CPP17", "result": "WA", "time": 0.010242801, "memory_kb": 3476.0, "file": "corpus/submissions/5134032.cpp"},
+  {"id": "5134033", "language": "CPP17", "result": "WA", "time": 0.010184776, "memory_kb": 3476.0, "file": "corpus/submissions/5134033.cpp"},
+  {"id": "5134036", "language": "CPP17", "result": "WA", "time": 0.010089991, "memory_kb": 3476.0, "file": "corpus/submissions/5134036.cpp"},
+  {"id": "5134038", "language": "CPP17", "result": "RTE", "time": 0.076943454, "memory_kb": 3588.0, "file": "corpus/submissions/5134038.cpp"},
+  {"id": "5142108", "language": "CPP17", "result": "RTE", "time": 0.080660954, "memory_kb": 3624.0, "file": "corpus/submissions/5142108.cpp"},
+  {"id": "5142110", "language": "CPP17", "result": "AC", "time": 0.267998604, "memory_kb": 7000.0, "file": "corpus/submissions/5142110.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/tle17c5p6.cp",
+   "proto/ports/scout_batch_13/today/tle17c5p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

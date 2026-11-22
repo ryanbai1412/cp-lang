@@ -1,0 +1,20 @@
+{
+ "problem": "cco19p5",
+ "source": "cco",
+ "submissions": [
+  {"id": "3617416", "language": "CPP17", "result": "TLE", "time": 17.215927352, "memory_kb": 1055856.0, "file": "corpus/submissions/3617416.cpp"},
+  {"id": "3617423", "language": "CPP17", "result": "TLE", "time": 21.890390021, "memory_kb": 13332.0, "file": "corpus/submissions/3617423.cpp"},
+  {"id": "3617425", "language": "CPP17", "result": "AC", "time": 2.385509841, "memory_kb": 13064.0, "file": "corpus/submissions/3617425.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_2/cco19p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

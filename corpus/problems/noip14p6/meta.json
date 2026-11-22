@@ -1,0 +1,28 @@
+{
+ "problem": "noip14p6",
+ "source": "noip",
+ "submissions": [
+  {"id": "5205472", "language": "PYPY3", "result": "IR", "time": 0.653710726, "memory_kb": 57532.0, "file": "corpus/submissions/5205472.py"},
+  {"id": "5205486", "language": "PYPY3", "result": "IR", "time": 0.586223545, "memory_kb": 57452.0, "file": "corpus/submissions/5205486.py"},
+  {"id": "5205487", "language": "PYPY3", "result": "IR", "time": 0.578942267, "memory_kb": 57488.0, "file": "corpus/submissions/5205487.py"},
+  {"id": "5205488", "language": "PYPY3", "result": "WA", "time": 0.550415712, "memory_kb": 56828.0, "file": "corpus/submissions/5205488.py"},
+  {"id": "5205507", "language": "PYPY3", "result": "IR", "time": 0.653306652, "memory_kb": 57528.0, "file": "corpus/submissions/5205507.py"},
+  {"id": "5205556", "language": "PYPY3", "result": "IR", "time": 0.674725776, "memory_kb": 57552.0, "file": "corpus/submissions/5205556.py"},
+  {"id": "5205559", "language": "PYPY3", "result": "TLE", "time": 9.757132993, "memory_kb": 62984.0, "file": "corpus/submissions/5205559.py"},
+  {"id": "5205619", "language": "CPP17", "result": "TLE", "time": 15.035736789, "memory_kb": 5312.0, "file": "corpus/submissions/5205619.cpp"},
+  {"id": "5205621", "language": "CPP17", "result": "TLE", "time": 3.189764827, "memory_kb": 5392.0, "file": "corpus/submissions/5205621.cpp"},
+  {"id": "5205623", "language": "CPP17", "result": "AC", "time": 2.169702411, "memory_kb": 5388.0, "file": "corpus/submissions/5205623.cpp"},
+  {"id": "5445671", "language": "CPP17", "result": "AC", "time": 2.175316259, "memory_kb": 5432.0, "file": "corpus/submissions/5445671.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/noip14p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

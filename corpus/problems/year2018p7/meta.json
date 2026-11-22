@@ -1,0 +1,18 @@
+{
+ "problem": "year2018p7",
+ "source": "year",
+ "submissions": [
+  {"id": "4899354", "language": "CPP17", "result": "AC", "time": 4.362618921, "memory_kb": 18296.0, "file": "corpus/submissions/4899354.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/year2018p7.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

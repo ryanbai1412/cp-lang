@@ -1,0 +1,23 @@
+{
+ "problem": "dmopc21c2p1",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3946475", "language": "CPP17", "result": "WA", "time": 0.003765529, "memory_kb": 3376.0, "file": "corpus/submissions/3946475.cpp"},
+  {"id": "3946478", "language": "CPP17", "result": "AC", "time": 1.011875552, "memory_kb": 7260.0, "file": "corpus/submissions/3946478.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/dmopc21c2p1.cpp",
+   "proto/ports/dmopc21c2p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dmopc21c2p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

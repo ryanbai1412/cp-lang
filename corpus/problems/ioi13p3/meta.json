@@ -1,0 +1,25 @@
+{
+ "problem": "ioi13p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4722391", "language": "CPP17", "result": "TLE", "time": 65.164188103, "memory_kb": 24468.0, "file": "corpus/submissions/4722391.cpp"},
+  {"id": "4722395", "language": "CPP17", "result": "AC", "time": 126.111450846, "memory_kb": 29404.0, "file": "corpus/submissions/4722395.cpp"},
+  {"id": "4722396", "language": "CPP17", "result": "AC", "time": 94.94436848, "memory_kb": 39464.0, "file": "corpus/submissions/4722396.cpp"},
+  {"id": "4722401", "language": "CPP17", "result": "AC", "time": 102.919732624, "memory_kb": 59404.0, "file": "corpus/submissions/4722401.cpp"},
+  {"id": "4722414", "language": "CPP17", "result": "AC", "time": 105.935035101, "memory_kb": 179360.0, "file": "corpus/submissions/4722414.cpp"},
+  {"id": "4722418", "language": "CPP17", "result": "RTE", "time": 6.808335821, "memory_kb": 43280.0, "file": "corpus/submissions/4722418.cpp"},
+  {"id": "4722427", "language": "CPP17", "result": "WA", "time": 7.305854152, "memory_kb": 177188.0, "file": "corpus/submissions/4722427.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/ioi13p3.cp",
+   "proto/ports/scout_batch_52/today/ioi13p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

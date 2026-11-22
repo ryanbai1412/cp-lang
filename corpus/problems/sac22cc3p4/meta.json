@@ -1,0 +1,23 @@
+{
+ "problem": "sac22cc3p4",
+ "source": "sac",
+ "submissions": [
+  {"id": "4331646", "language": "CPP17", "result": "AC", "time": 1.280986737, "memory_kb": 51476.0, "file": "corpus/submissions/4331646.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/sac22cc3p4.cpp",
+   "proto/ports/hillclimb_dp_graph/sac22cc3p4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/sac22cc3p4.cp",
+   "proto/ports/hillclimb_dp_graph/sac22cc3p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

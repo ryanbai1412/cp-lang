@@ -1,0 +1,24 @@
+{
+ "problem": "etsr23r4p3",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5527725", "language": "CPP17", "result": "RTE", "time": 0.12352685, "memory_kb": 4260.0, "file": "corpus/submissions/5527725.cpp"},
+  {"id": "5527727", "language": "CPP17", "result": "RTE", "time": 18.235335581, "memory_kb": 136980.0, "file": "corpus/submissions/5527727.cpp"},
+  {"id": "5527728", "language": "CPP17", "result": "RTE", "time": 5.878725507, "memory_kb": 433592.0, "file": "corpus/submissions/5527728.cpp"},
+  {"id": "5635600", "language": "CPP17", "result": "TLE", "time": 9.050792863, "memory_kb": 3436.0, "file": "corpus/submissions/5635600.cpp"},
+  {"id": "5635614", "language": "CPP17", "result": "AC", "time": 42.66595004, "memory_kb": 3452.0, "file": "corpus/submissions/5635614.cpp"},
+  {"id": "5635626", "language": "CPP17", "result": "AC", "time": 45.338101165, "memory_kb": 3444.0, "file": "corpus/submissions/5635626.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_43/etsr23r4p3.cp",
+   "proto/ports/scout_batch_43/today/etsr23r4p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

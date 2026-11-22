@@ -1,0 +1,22 @@
+{
+ "problem": "cco21p2",
+ "source": "cco",
+ "submissions": [
+  {"id": "4543397", "language": "CPP17", "result": "WA", "time": 0.026562224, "memory_kb": 5132.0, "file": "corpus/submissions/4543397.cpp"},
+  {"id": "4543408", "language": "CPP17", "result": "TLE", "time": 3.055984117, "memory_kb": 26980.0, "file": "corpus/submissions/4543408.cpp"},
+  {"id": "4543410", "language": "CPP17", "result": "AC", "time": 2.371394948, "memory_kb": 26940.0, "file": "corpus/submissions/4543410.cpp"},
+  {"id": "4543411", "language": "CPP17", "result": "AC", "time": 2.352509082, "memory_kb": 26972.0, "file": "corpus/submissions/4543411.cpp"},
+  {"id": "6420577", "language": "CPP17", "result": "AC", "time": 2.332827755, "memory_kb": 76928.0, "file": "corpus/submissions/6420577.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_33/cco21p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

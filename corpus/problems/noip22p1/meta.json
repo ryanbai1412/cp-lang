@@ -1,0 +1,22 @@
+{
+ "problem": "noip22p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "5213639", "language": "CPP17", "result": "AC", "time": 0.481834079, "memory_kb": 12248.0, "file": "corpus/submissions/5213639.cpp"},
+  {"id": "5445680", "language": "CPP17", "result": "AC", "time": 0.472191862, "memory_kb": 12284.0, "file": "corpus/submissions/5445680.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/noip22p1_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/noip22p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

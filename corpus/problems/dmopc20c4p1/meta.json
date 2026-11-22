@@ -1,0 +1,15 @@
+{
+ "problem": "dmopc20c4p1",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3484902", "language": "CPP17", "result": "WA", "time": 0.002383617, "memory_kb": 1520.0, "file": "corpus/submissions/3484902.cpp"},
+  {"id": "3484918", "language": "CPP17", "result": "AC", "time": 0.357781565, "memory_kb": 1520.0, "file": "corpus/submissions/3484918.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

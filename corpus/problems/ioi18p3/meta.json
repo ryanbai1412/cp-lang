@@ -1,0 +1,19 @@
+{
+ "problem": "ioi18p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4727179", "language": "CPP17", "result": "AC", "time": 18.556397244, "memory_kb": 110936.0, "file": "corpus/submissions/4727179.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_26/ioi18p3.cp",
+   "proto/ports/scout_batch_27/ioi18p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,16 @@
+{
+ "problem": "math01",
+ "source": "math",
+ "submissions": [
+  {"id": "4806679", "language": "TEXT", "result": "WA", "time": 0.003454218, "memory_kb": 1904.0, "file": null},
+  {"id": "4806682", "language": "TEXT", "result": "AC", "time": 0.003576449, "memory_kb": 1904.0, "file": null},
+  {"id": "4808724", "language": "TEXT", "result": "AC", "time": 0.003365628, "memory_kb": 1920.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

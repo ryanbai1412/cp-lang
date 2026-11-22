@@ -1,0 +1,26 @@
+{
+ "problem": "noi07p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "3756533", "language": "CPP17", "result": "RTE", "time": 0.407577594, "memory_kb": 5252.0, "file": "corpus/submissions/3756533.cpp"},
+  {"id": "3756542", "language": "CPP17", "result": "TLE", "time": 16.018106073, "memory_kb": 5048.0, "file": "corpus/submissions/3756542.cpp"},
+  {"id": "3756561", "language": "CPP17", "result": "TLE", "time": 16.019727208, "memory_kb": 6988.0, "file": "corpus/submissions/3756561.cpp"},
+  {"id": "3756576", "language": "CPP17", "result": "TLE", "time": 16.019489074, "memory_kb": 7004.0, "file": "corpus/submissions/3756576.cpp"},
+  {"id": "3756584", "language": "CPP17", "result": "TLE", "time": 16.018317281, "memory_kb": 6928.0, "file": "corpus/submissions/3756584.cpp"},
+  {"id": "3772986", "language": "CPP17", "result": "WA", "time": 1.015460851, "memory_kb": 54272.0, "file": "corpus/submissions/3772986.cpp"},
+  {"id": "3773047", "language": "CPP17", "result": "AC", "time": 1.012379624, "memory_kb": 54272.0, "file": "corpus/submissions/3773047.cpp"},
+  {"id": "5032746", "language": "CPP17", "result": "AC", "time": 1.013267599, "memory_kb": 54268.0, "file": "corpus/submissions/5032746.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_24/noi07p4.cp",
+   "proto/ports/scout_batch_24/today/noi07p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

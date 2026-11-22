@@ -1,0 +1,22 @@
+{
+ "problem": "noi08p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "6067585", "language": "PYPY3", "result": "WA", "time": 0.425992327, "memory_kb": 55376.0, "file": "corpus/submissions/6067585.py"},
+  {"id": "6067589", "language": "PYPY3", "result": "AC", "time": 0.429510537, "memory_kb": 55544.0, "file": "corpus/submissions/6067589.py"},
+  {"id": "6067593", "language": "PYPY3", "result": "AC", "time": 0.428751137, "memory_kb": 55448.0, "file": "corpus/submissions/6067593.py"},
+  {"id": "6067598", "language": "PYPY3", "result": "AC", "time": 0.425747817, "memory_kb": 55552.0, "file": "corpus/submissions/6067598.py"},
+  {"id": "6067603", "language": "PYPY3", "result": "AC", "time": 0.429470385, "memory_kb": 55536.0, "file": "corpus/submissions/6067603.py"},
+  {"id": "6067605", "language": "PYPY3", "result": "AC", "time": 0.429076736, "memory_kb": 55408.0, "file": "corpus/submissions/6067605.py"},
+  {"id": "6067608", "language": "PYPY3", "result": "AC", "time": 0.428029859, "memory_kb": 55424.0, "file": "corpus/submissions/6067608.py"},
+  {"id": "6067615", "language": "PYPY3", "result": "AC", "time": 0.427498403, "memory_kb": 55544.0, "file": "corpus/submissions/6067615.py"},
+  {"id": "6067616", "language": "PYPY3", "result": "AC", "time": 0.429541794, "memory_kb": 55572.0, "file": "corpus/submissions/6067616.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

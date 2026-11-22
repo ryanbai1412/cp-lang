@@ -1,0 +1,23 @@
+{
+ "problem": "ccc18s5",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4329840", "language": "CPP17", "result": "WA", "time": 0.059284331, "memory_kb": 4964.0, "file": "corpus/submissions/4329840.cpp"},
+  {"id": "4329864", "language": "CPP17", "result": "AC", "time": 0.508016908, "memory_kb": 11712.0, "file": "corpus/submissions/4329864.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc18s5.cpp",
+   "proto/ports/ccc18s5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc18s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

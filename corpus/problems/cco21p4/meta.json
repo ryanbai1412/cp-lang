@@ -1,0 +1,30 @@
+{
+ "problem": "cco21p4",
+ "source": "cco",
+ "submissions": [
+  {"id": "4553267", "language": "CPP17", "result": "TLE", "time": 8.245462264, "memory_kb": 12628.0, "file": "corpus/submissions/4553267.cpp"},
+  {"id": "4553270", "language": "CPP17", "result": "TLE", "time": 6.138959812, "memory_kb": 22740.0, "file": "corpus/submissions/4553270.cpp"},
+  {"id": "4553271", "language": "CPP17", "result": "TLE", "time": 6.194583467, "memory_kb": 22808.0, "file": "corpus/submissions/4553271.cpp"},
+  {"id": "4553274", "language": "CPP17", "result": "TLE", "time": 8.653597748, "memory_kb": 23500.0, "file": "corpus/submissions/4553274.cpp"},
+  {"id": "4553283", "language": "CPP17", "result": "WA", "time": 0.390382533, "memory_kb": 35964.0, "file": "corpus/submissions/4553283.cpp"},
+  {"id": "4553285", "language": "CPP17", "result": "TLE", "time": 9.132369777, "memory_kb": 41636.0, "file": "corpus/submissions/4553285.cpp"},
+  {"id": "4553286", "language": "CPP17", "result": "TLE", "time": 9.058320995, "memory_kb": 42440.0, "file": "corpus/submissions/4553286.cpp"},
+  {"id": "4553288", "language": "CPP17", "result": "WA", "time": 0.390928127, "memory_kb": 35964.0, "file": "corpus/submissions/4553288.cpp"},
+  {"id": "4553295", "language": "CPP17", "result": "WA", "time": 0.587598523, "memory_kb": 35992.0, "file": "corpus/submissions/4553295.cpp"},
+  {"id": "4553296", "language": "CPP17", "result": "TLE", "time": 8.153557531, "memory_kb": 41712.0, "file": "corpus/submissions/4553296.cpp"},
+  {"id": "4848752", "language": "CPP17", "result": "AC", "time": 4.429152254, "memory_kb": 23688.0, "file": "corpus/submissions/4848752.cpp"},
+  {"id": "6419583", "language": "CPP17", "result": "AC", "time": 4.937508857, "memory_kb": 35620.0, "file": "corpus/submissions/6419583.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_18/cco21p4.cp",
+   "proto/ports/scout_batch_18/today/cco21p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

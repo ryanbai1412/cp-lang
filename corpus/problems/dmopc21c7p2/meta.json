@@ -1,0 +1,23 @@
+{
+ "problem": "dmopc21c7p2",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4452859", "language": "CPP17", "result": "RTE", "time": 0.676476752, "memory_kb": 19092.0, "file": "corpus/submissions/4452859.cpp"},
+  {"id": "4452865", "language": "CPP17", "result": "RTE", "time": 0.377131136, "memory_kb": 19092.0, "file": "corpus/submissions/4452865.cpp"},
+  {"id": "4452868", "language": "CPP17", "result": "RTE", "time": 0.67747286, "memory_kb": 19092.0, "file": "corpus/submissions/4452868.cpp"},
+  {"id": "4452878", "language": "CPP17", "result": "WA", "time": 0.695375572, "memory_kb": 50292.0, "file": "corpus/submissions/4452878.cpp"},
+  {"id": "4452915", "language": "CPP17", "result": "AC", "time": 1.14983891, "memory_kb": 50292.0, "file": "corpus/submissions/4452915.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_44/dmopc21c7p2.cp",
+   "proto/ports/scout_batch_44/today/dmopc21c7p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

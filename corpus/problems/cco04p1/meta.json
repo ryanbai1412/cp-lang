@@ -1,0 +1,19 @@
+{
+ "problem": "cco04p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "5430016", "language": "CPP17", "result": "AC", "time": 0.063878333, "memory_kb": 3448.0, "file": "corpus/submissions/5430016.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_47/cco04p1.cp",
+   "proto/ports/scout_batch_47/today/cco04p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

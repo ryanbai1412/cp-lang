@@ -1,0 +1,14 @@
+{
+ "problem": "noip18p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "4002876", "language": "CPP17", "result": "AC", "time": 0.072534185, "memory_kb": 3824.0, "file": "corpus/submissions/4002876.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

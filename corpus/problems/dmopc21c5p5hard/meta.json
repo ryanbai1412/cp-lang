@@ -1,0 +1,28 @@
+{
+ "problem": "dmopc21c5p5hard",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4223920", "language": "CPP17", "result": "WA", "time": 17.121755458, "memory_kb": 7500.0, "file": "corpus/submissions/4223920.cpp"},
+  {"id": "4223960", "language": "CPP17", "result": "WA", "time": 0.531429465, "memory_kb": 7484.0, "file": "corpus/submissions/4223960.cpp"},
+  {"id": "4223976", "language": "CPP17", "result": "WA", "time": 1.058025797, "memory_kb": 7484.0, "file": "corpus/submissions/4223976.cpp"},
+  {"id": "4224004", "language": "CPP17", "result": "RTE", "time": 100.515518999, "memory_kb": 7508.0, "file": "corpus/submissions/4224004.cpp"},
+  {"id": "4224009", "language": "CPP17", "result": "WA", "time": 41.588614003, "memory_kb": 7508.0, "file": "corpus/submissions/4224009.cpp"},
+  {"id": "4224049", "language": "CPP17", "result": "RTE", "time": 100.599626588, "memory_kb": 7512.0, "file": "corpus/submissions/4224049.cpp"},
+  {"id": "4224138", "language": "CPP17", "result": "WA", "time": 14.365038667, "memory_kb": 7500.0, "file": "corpus/submissions/4224138.cpp"},
+  {"id": "4224266", "language": "CPP17", "result": "TLE", "time": 7.000952574, "memory_kb": 7248.0, "file": "corpus/submissions/4224266.cpp"},
+  {"id": "4224272", "language": "CPP17", "result": "RTE", "time": 52.548703919, "memory_kb": 7500.0, "file": "corpus/submissions/4224272.cpp"},
+  {"id": "4224292", "language": "CPP17", "result": "TLE", "time": 7.000145787, "memory_kb": 7244.0, "file": "corpus/submissions/4224292.cpp"},
+  {"id": "4224293", "language": "CPP17", "result": "WA", "time": 0.111494663, "memory_kb": 7480.0, "file": "corpus/submissions/4224293.cpp"},
+  {"id": "4224296", "language": "CPP17", "result": "RTE", "time": 54.512208885, "memory_kb": 7500.0, "file": "corpus/submissions/4224296.cpp"},
+  {"id": "4224316", "language": "CPP17", "result": "TLE", "time": 7.000561542, "memory_kb": 7252.0, "file": "corpus/submissions/4224316.cpp"},
+  {"id": "4224319", "language": "CPP17", "result": "WA", "time": 1.993785332, "memory_kb": 7484.0, "file": "corpus/submissions/4224319.cpp"},
+  {"id": "4224323", "language": "CPP17", "result": "WA", "time": 28.236385199, "memory_kb": 7500.0, "file": "corpus/submissions/4224323.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

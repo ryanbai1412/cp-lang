@@ -1,0 +1,22 @@
+{
+ "problem": "egoi22p6",
+ "source": "egoi",
+ "submissions": [
+  {"id": "5201973", "language": "CPP17", "result": "RTE", "time": 0.32222564, "memory_kb": 3440.0, "file": "corpus/submissions/5201973.cpp"},
+  {"id": "5201986", "language": "CPP17", "result": "RTE", "time": 0.319827179, "memory_kb": 3440.0, "file": "corpus/submissions/5201986.cpp"},
+  {"id": "5201987", "language": "CPP17", "result": "RTE", "time": 0.587081997, "memory_kb": 3440.0, "file": "corpus/submissions/5201987.cpp"},
+  {"id": "5201990", "language": "CPP17", "result": "RTE", "time": 0.032380676, "memory_kb": 3436.0, "file": "corpus/submissions/5201990.cpp"},
+  {"id": "5202006", "language": "CPP17", "result": "RTE", "time": 0.578374645, "memory_kb": 3440.0, "file": "corpus/submissions/5202006.cpp"},
+  {"id": "5202011", "language": "CPP17", "result": "RTE", "time": 0.583041654, "memory_kb": 3440.0, "file": "corpus/submissions/5202011.cpp"},
+  {"id": "5202013", "language": "CPP17", "result": "RTE", "time": 0.595823631, "memory_kb": 3440.0, "file": "corpus/submissions/5202013.cpp"},
+  {"id": "5202017", "language": "CPP17", "result": "WA", "time": 0.054284141, "memory_kb": 3436.0, "file": "corpus/submissions/5202017.cpp"},
+  {"id": "5203818", "language": "CPP17", "result": "WA", "time": 0.05741056, "memory_kb": 3428.0, "file": "corpus/submissions/5203818.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

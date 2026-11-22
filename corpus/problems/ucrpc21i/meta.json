@@ -1,0 +1,16 @@
+{
+ "problem": "ucrpc21i",
+ "source": "ucrpc",
+ "submissions": [
+  {"id": "3944677", "language": "CPP17", "result": "WA", "time": 0.62664892, "memory_kb": 70468.0, "file": "corpus/submissions/3944677.cpp"},
+  {"id": "3944682", "language": "CPP17", "result": "WA", "time": 1.201364204, "memory_kb": 135648.0, "file": "corpus/submissions/3944682.cpp"},
+  {"id": "3944931", "language": "CPP17", "result": "RTE", "time": 0.137721501, "memory_kb": 36544.0, "file": "corpus/submissions/3944931.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

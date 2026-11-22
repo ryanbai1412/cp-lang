@@ -1,0 +1,14 @@
+{
+ "problem": "yac6p1",
+ "source": "yac",
+ "submissions": [
+  {"id": "5149514", "language": "CPP17", "result": "AC", "time": 0.108216991, "memory_kb": 3440.0, "file": "corpus/submissions/5149514.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,21 @@
+{
+ "problem": "noi02p2",
+ "source": "noi",
+ "submissions": [
+  {"id": "4793915", "language": "CPP17", "result": "AC", "time": 0.207925612, "memory_kb": 3440.0, "file": "corpus/submissions/4793915.cpp"},
+  {"id": "4793916", "language": "CPP17", "result": "AC", "time": 0.210902056, "memory_kb": 3440.0, "file": "corpus/submissions/4793916.cpp"},
+  {"id": "4793917", "language": "CPP17", "result": "AC", "time": 0.193240597, "memory_kb": 3424.0, "file": "corpus/submissions/4793917.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/noi02p2.cp",
+   "proto/ports/scout_batch_52/today/noi02p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

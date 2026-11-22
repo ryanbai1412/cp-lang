@@ -1,0 +1,28 @@
+{
+ "problem": "btoi08p6",
+ "source": "btoi",
+ "submissions": [
+  {"id": "5324296", "language": "CPP17", "result": "WA", "time": 0.010837557, "memory_kb": 3416.0, "file": "corpus/submissions/5324296.cpp"},
+  {"id": "5324317", "language": "CPP17", "result": "WA", "time": 0.010648664, "memory_kb": 3456.0, "file": "corpus/submissions/5324317.cpp"},
+  {"id": "5325456", "language": "CPP17", "result": "WA", "time": 0.007343426, "memory_kb": 3420.0, "file": "corpus/submissions/5325456.cpp"},
+  {"id": "5325469", "language": "CPP17", "result": "WA", "time": 0.007523068, "memory_kb": 3420.0, "file": "corpus/submissions/5325469.cpp"},
+  {"id": "5325478", "language": "CPP17", "result": "WA", "time": 0.007286139, "memory_kb": 3420.0, "file": "corpus/submissions/5325478.cpp"},
+  {"id": "5325483", "language": "CPP17", "result": "WA", "time": 0.007282986, "memory_kb": 3424.0, "file": "corpus/submissions/5325483.cpp"},
+  {"id": "5325485", "language": "CPP17", "result": "WA", "time": 0.007534927, "memory_kb": 3420.0, "file": "corpus/submissions/5325485.cpp"},
+  {"id": "5325507", "language": "CPP17", "result": "TLE", "time": 3.117192095, "memory_kb": 3420.0, "file": "corpus/submissions/5325507.cpp"},
+  {"id": "5325509", "language": "CPP17", "result": "WA", "time": 0.006859826, "memory_kb": 3448.0, "file": "corpus/submissions/5325509.cpp"},
+  {"id": "5325518", "language": "CPP17", "result": "AC", "time": 2.645061404, "memory_kb": 21404.0, "file": "corpus/submissions/5325518.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_38/btoi08p6.cp",
+   "proto/ports/scout_batch_38/today/btoi08p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

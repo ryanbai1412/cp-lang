@@ -1,0 +1,20 @@
+{
+ "problem": "dmopc21c4p2",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4125270", "language": "CPP17", "result": "TLE", "time": 4.057203352, "memory_kb": 26784.0, "file": "corpus/submissions/4125270.cpp"},
+  {"id": "4125290", "language": "CPP17", "result": "AC", "time": 3.334172195, "memory_kb": 35540.0, "file": "corpus/submissions/4125290.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_44/dmopc21c4p2.cp",
+   "proto/ports/scout_batch_44/today/dmopc21c4p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

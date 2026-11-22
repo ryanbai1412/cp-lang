@@ -1,0 +1,19 @@
+{
+ "problem": "sdoi17r1p3",
+ "source": "sdoi",
+ "submissions": [
+  {"id": "5457062", "language": "CPP17", "result": "AC", "time": 1.516106149, "memory_kb": 23072.0, "file": "corpus/submissions/5457062.cpp"},
+  {"id": "5463991", "language": "CPP17", "result": "AC", "time": 1.525175619, "memory_kb": 23044.0, "file": "corpus/submissions/5463991.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_11/sdoi17r1p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

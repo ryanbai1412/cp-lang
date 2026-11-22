@@ -1,0 +1,19 @@
+{
+ "problem": "aac4p3",
+ "source": "aac",
+ "submissions": [
+  {"id": "4140246", "language": "CPP17", "result": "AC", "time": 7.660717549, "memory_kb": 10312.0, "file": "corpus/submissions/4140246.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_3/aac4p3.cp",
+   "proto/ports/scout_batch_3/today/aac4p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

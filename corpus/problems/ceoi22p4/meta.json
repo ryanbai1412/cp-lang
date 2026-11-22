@@ -1,0 +1,18 @@
+{
+ "problem": "ceoi22p4",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4734034", "language": "CPP17", "result": "WA", "time": 2.460829281, "memory_kb": 31920.0, "file": "corpus/submissions/4734034.cpp"},
+  {"id": "4734041", "language": "CPP17", "result": "WA", "time": 1.027213026, "memory_kb": 20492.0, "file": "corpus/submissions/4734041.cpp"},
+  {"id": "4734043", "language": "CPP17", "result": "WA", "time": 2.465331003, "memory_kb": 31956.0, "file": "corpus/submissions/4734043.cpp"},
+  {"id": "4734088", "language": "CPP17", "result": "RTE", "time": 0.762083089, "memory_kb": 24696.0, "file": "corpus/submissions/4734088.cpp"},
+  {"id": "4734122", "language": "CPP17", "result": "RTE", "time": 0.767344795, "memory_kb": 24680.0, "file": "corpus/submissions/4734122.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

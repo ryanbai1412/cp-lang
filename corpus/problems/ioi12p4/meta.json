@@ -1,0 +1,18 @@
+{
+ "problem": "ioi12p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4951048", "language": "CPP17", "result": "AC", "time": 1.300138791, "memory_kb": 20096.0, "file": "corpus/submissions/4951048.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_17/ioi12p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

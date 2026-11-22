@@ -1,0 +1,23 @@
+{
+ "problem": "ccc19s5hard",
+ "source": "ccc",
+ "submissions": [
+  {"id": "5034035", "language": "CPP17", "result": "WA", "time": 0.049607108, "memory_kb": 74120.0, "file": "corpus/submissions/5034035.cpp"},
+  {"id": "5034051", "language": "CPP17", "result": "WA", "time": 2.965937513, "memory_kb": 197256.0, "file": "corpus/submissions/5034051.cpp"},
+  {"id": "5034054", "language": "CPP17", "result": "RTE", "time": 0.001928979, "memory_kb": 4.0, "file": "corpus/submissions/5034054.cpp"},
+  {"id": "5119931", "language": "CPP17", "result": "AC", "time": 14.570347498, "memory_kb": 402816.0, "file": "corpus/submissions/5119931.cpp"},
+  {"id": "5119933", "language": "CPP17", "result": "AC", "time": 8.757621228, "memory_kb": 199092.0, "file": "corpus/submissions/5119933.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_36/ccc19s5hard.cp",
+   "proto/ports/scout_batch_36/today/ccc19s5hard.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

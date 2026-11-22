@@ -1,0 +1,18 @@
+{
+ "problem": "noip01p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5086731", "language": "CPP17", "result": "AC", "time": 0.017660595, "memory_kb": 3732.0, "file": "corpus/submissions/5086731.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_3/noip01p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,14 @@
+{
+ "problem": "noimps23p2",
+ "source": "noimps",
+ "submissions": [
+  {"id": "5556845", "language": "CPP17", "result": "WA", "time": 1.837075174, "memory_kb": 4684.0, "file": "corpus/submissions/5556845.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+ "problem": "cpc21c1p5",
+ "source": "cpc",
+ "submissions": [
+  {"id": "4899372", "language": "CPP17", "result": "RTE", "time": 0.351372665, "memory_kb": 3424.0, "file": "corpus/submissions/4899372.cpp"},
+  {"id": "4899391", "language": "CPP17", "result": "AC", "time": 35.658466759, "memory_kb": 3364.0, "file": "corpus/submissions/4899391.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/cpc21c1p5.cp",
+   "proto/ports/scout_batch_13/today/cpc21c1p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

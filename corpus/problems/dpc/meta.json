@@ -1,0 +1,14 @@
+{
+ "problem": "dpc",
+ "source": "dpc",
+ "submissions": [
+  {"id": "4131642", "language": "CPP17", "result": "AC", "time": 0.170620979, "memory_kb": 5804.0, "file": "corpus/submissions/4131642.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

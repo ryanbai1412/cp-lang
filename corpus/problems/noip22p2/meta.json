@@ -1,0 +1,28 @@
+{
+ "problem": "noip22p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5213766", "language": "CPP17", "result": "RTE", "time": 0.24928307, "memory_kb": 11164.0, "file": "corpus/submissions/5213766.cpp"},
+  {"id": "5214025", "language": "CPP17", "result": "RTE", "time": 0.189189284, "memory_kb": 11300.0, "file": "corpus/submissions/5214025.cpp"},
+  {"id": "5214228", "language": "CPP17", "result": "TLE", "time": 7.506849398, "memory_kb": 68036.0, "file": "corpus/submissions/5214228.cpp"},
+  {"id": "5214230", "language": "CPP17", "result": "TLE", "time": 6.871729606, "memory_kb": 69860.0, "file": "corpus/submissions/5214230.cpp"},
+  {"id": "5214326", "language": "CPP17", "result": "TLE", "time": 6.953548628, "memory_kb": 68044.0, "file": "corpus/submissions/5214326.cpp"},
+  {"id": "5217158", "language": "CPP17", "result": "TLE", "time": 9.223273695, "memory_kb": 68060.0, "file": "corpus/submissions/5217158.cpp"},
+  {"id": "5217161", "language": "CPP17", "result": "TLE", "time": 9.674288256, "memory_kb": 69872.0, "file": "corpus/submissions/5217161.cpp"},
+  {"id": "5217166", "language": "CPP17", "result": "AC", "time": 9.604175134, "memory_kb": 68060.0, "file": "corpus/submissions/5217166.cpp"},
+  {"id": "5217173", "language": "CPP17", "result": "TLE", "time": 11.877761052, "memory_kb": 81608.0, "file": "corpus/submissions/5217173.cpp"},
+  {"id": "5445681", "language": "CPP17", "result": "AC", "time": 9.291776788, "memory_kb": 68096.0, "file": "corpus/submissions/5445681.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noip22p2.cp",
+   "proto/ports/scout_batch_50/today/noip22p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

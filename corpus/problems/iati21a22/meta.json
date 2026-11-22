@@ -1,0 +1,20 @@
+{
+ "problem": "iati21a22",
+ "source": "iati",
+ "submissions": [
+  {"id": "5053454", "language": "CPP17", "result": "WA", "time": 0.997503038, "memory_kb": 69700.0, "file": "corpus/submissions/5053454.cpp"},
+  {"id": "5053473", "language": "CPP17", "result": "AC", "time": 3.068149026, "memory_kb": 69736.0, "file": "corpus/submissions/5053473.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/iati21a22.cp",
+   "proto/ports/scout_batch_32/today/iati21a22.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

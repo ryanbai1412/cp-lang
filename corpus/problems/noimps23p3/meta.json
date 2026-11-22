@@ -1,0 +1,15 @@
+{
+ "problem": "noimps23p3",
+ "source": "noimps",
+ "submissions": [
+  {"id": "5556867", "language": "CPP17", "result": "WA", "time": 0.688329104, "memory_kb": 39472.0, "file": "corpus/submissions/5556867.cpp"},
+  {"id": "5556873", "language": "CPP17", "result": "TLE", "time": 48.186520998, "memory_kb": 40276.0, "file": "corpus/submissions/5556873.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

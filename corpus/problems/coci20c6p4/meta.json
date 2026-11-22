@@ -1,0 +1,18 @@
+{
+ "problem": "coci20c6p4",
+ "source": "coci",
+ "submissions": [
+  {"id": "4188202", "language": "CPP17", "result": "WA", "time": 0.008213177, "memory_kb": 3476.0, "file": "corpus/submissions/4188202.cpp"},
+  {"id": "4188209", "language": "CPP17", "result": "WA", "time": 0.007748443, "memory_kb": 3336.0, "file": "corpus/submissions/4188209.cpp"},
+  {"id": "4188214", "language": "CPP17", "result": "WA", "time": 0.007900323, "memory_kb": 3336.0, "file": "corpus/submissions/4188214.cpp"},
+  {"id": "4188216", "language": "CPP17", "result": "WA", "time": 0.002530726, "memory_kb": 3332.0, "file": "corpus/submissions/4188216.cpp"},
+  {"id": "4188252", "language": "CPP17", "result": "TLE", "time": 3.773425961, "memory_kb": 3384.0, "file": "corpus/submissions/4188252.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "utso15p5",
+ "source": "utso",
+ "submissions": [
+  {"id": "4205287", "language": "CPP17", "result": "RTE", "time": 0.86469561, "memory_kb": 199328.0, "file": "corpus/submissions/4205287.cpp"},
+  {"id": "4207464", "language": "CPP17", "result": "AC", "time": 0.587021938, "memory_kb": 18548.0, "file": "corpus/submissions/4207464.cpp"},
+  {"id": "4207471", "language": "CPP17", "result": "WA", "time": 0.039989078, "memory_kb": 12976.0, "file": "corpus/submissions/4207471.cpp"},
+  {"id": "4207486", "language": "CPP17", "result": "RTE", "time": 0.039077906, "memory_kb": 12948.0, "file": "corpus/submissions/4207486.cpp"},
+  {"id": "4207493", "language": "CPP17", "result": "AC", "time": 0.585235669, "memory_kb": 18548.0, "file": "corpus/submissions/4207493.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_9/utso15p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

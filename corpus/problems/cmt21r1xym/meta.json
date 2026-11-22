@@ -1,0 +1,21 @@
+{
+ "problem": "cmt21r1xym",
+ "source": "cmt",
+ "submissions": [
+  {"id": "3997206", "language": "CPP17", "result": "AC", "time": 4.780549695, "memory_kb": 276412.0, "file": "corpus/submissions/3997206.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/cmt21r1xym_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/cmt21r1xym.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,34 @@
+{
+ "problem": "cco16p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "3604807", "language": "CPP17", "result": "WA", "time": 0.014438707, "memory_kb": 26420.0, "file": "corpus/submissions/3604807.cpp"},
+  {"id": "3604812", "language": "CPP17", "result": "WA", "time": 0.028500972, "memory_kb": 26344.0, "file": "corpus/submissions/3604812.cpp"},
+  {"id": "3604839", "language": "CPP17", "result": "WA", "time": 0.099224979, "memory_kb": 26344.0, "file": "corpus/submissions/3604839.cpp"},
+  {"id": "3604847", "language": "CPP17", "result": "WA", "time": 0.793719829, "memory_kb": 90340.0, "file": "corpus/submissions/3604847.cpp"},
+  {"id": "3604850", "language": "CPP17", "result": "WA", "time": 1.834457238, "memory_kb": 777832.0, "file": "corpus/submissions/3604850.cpp"},
+  {"id": "3604867", "language": "CPP17", "result": "WA", "time": 0.546531551, "memory_kb": 11820.0, "file": "corpus/submissions/3604867.cpp"},
+  {"id": "3604869", "language": "CPP17", "result": "AC", "time": 0.809909188, "memory_kb": 11788.0, "file": "corpus/submissions/3604869.cpp"},
+  {"id": "4583862", "language": "CPP17", "result": "WA", "time": 0.119792707, "memory_kb": 27264.0, "file": "corpus/submissions/4583862.cpp"},
+  {"id": "4583868", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4583868.cpp"},
+  {"id": "4583871", "language": "CPP17", "result": "WA", "time": 0.120141423, "memory_kb": 27284.0, "file": "corpus/submissions/4583871.cpp"},
+  {"id": "4583872", "language": "CPP17", "result": "WA", "time": 0.834171722, "memory_kb": 109792.0, "file": "corpus/submissions/4583872.cpp"},
+  {"id": "4583874", "language": "CPP17", "result": "WA", "time": 0.723673931, "memory_kb": 109724.0, "file": "corpus/submissions/4583874.cpp"},
+  {"id": "4583881", "language": "CPP17", "result": "WA", "time": 0.64401972, "memory_kb": 62900.0, "file": "corpus/submissions/4583881.cpp"},
+  {"id": "4583882", "language": "CPP17", "result": "AC", "time": 0.937508381, "memory_kb": 62920.0, "file": "corpus/submissions/4583882.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/cco16p1_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/cco16p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

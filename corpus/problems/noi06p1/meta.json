@@ -1,0 +1,20 @@
+{
+ "problem": "noi06p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3750763", "language": "CPP17", "result": "WA", "time": 0.364340605, "memory_kb": 44320.0, "file": "corpus/submissions/3750763.cpp"},
+  {"id": "3750818", "language": "CPP17", "result": "AC", "time": 0.32347369, "memory_kb": 44320.0, "file": "corpus/submissions/3750818.cpp"},
+  {"id": "5032743", "language": "CPP17", "result": "AC", "time": 0.308571108, "memory_kb": 44304.0, "file": "corpus/submissions/5032743.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_30/noi06p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

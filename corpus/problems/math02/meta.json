@@ -1,0 +1,15 @@
+{
+ "problem": "math02",
+ "source": "math",
+ "submissions": [
+  {"id": "4806759", "language": "TEXT", "result": "WA", "time": 0.003381267, "memory_kb": 1904.0, "file": null},
+  {"id": "4806769", "language": "TEXT", "result": "AC", "time": 0.003469622, "memory_kb": 1840.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

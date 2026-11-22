@@ -1,0 +1,20 @@
+{
+ "problem": "noi10p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "5670231", "language": "CPP17", "result": "TLE", "time": 3.572715084, "memory_kb": 3432.0, "file": "corpus/submissions/5670231.cpp"},
+  {"id": "5670455", "language": "CPP17", "result": "AC", "time": 0.078552273, "memory_kb": 5020.0, "file": "corpus/submissions/5670455.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/noi10p1.cp",
+   "proto/ports/scout_batch_37/today/noi10p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

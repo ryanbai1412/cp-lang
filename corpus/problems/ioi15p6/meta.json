@@ -1,0 +1,22 @@
+{
+ "problem": "ioi15p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5723342", "language": "CPP17", "result": "WA", "time": 0.284767725, "memory_kb": 3752.0, "file": "corpus/submissions/5723342.cpp"},
+  {"id": "5723344", "language": "CPP17", "result": "AC", "time": 0.365268933, "memory_kb": 3720.0, "file": "corpus/submissions/5723344.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_4/ioi15p6_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_4/ioi15p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

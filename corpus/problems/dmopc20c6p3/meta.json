@@ -1,0 +1,25 @@
+{
+ "problem": "dmopc20c6p3",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3915654", "language": "CPP17", "result": "RTE", "time": 1.569708976, "memory_kb": 36856.0, "file": "corpus/submissions/3915654.cpp"},
+  {"id": "3915659", "language": "CPP17", "result": "WA", "time": 2.865137765, "memory_kb": 37320.0, "file": "corpus/submissions/3915659.cpp"},
+  {"id": "3915788", "language": "CPP17", "result": "WA", "time": 2.920165159, "memory_kb": 36608.0, "file": "corpus/submissions/3915788.cpp"},
+  {"id": "3915796", "language": "CPP17", "result": "RTE", "time": 0.203416534, "memory_kb": 19848.0, "file": "corpus/submissions/3915796.cpp"},
+  {"id": "3915799", "language": "CPP17", "result": "RTE", "time": 0.541729895, "memory_kb": 19792.0, "file": "corpus/submissions/3915799.cpp"},
+  {"id": "3915802", "language": "CPP17", "result": "AC", "time": 9.664915258, "memory_kb": 36632.0, "file": "corpus/submissions/3915802.cpp"},
+  {"id": "3917634", "language": "CPP17", "result": "AC", "time": 9.697014415, "memory_kb": 37328.0, "file": "corpus/submissions/3917634.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_34/dmopc20c6p3.cp",
+   "proto/ports/scout_batch_34/today/dmopc20c6p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

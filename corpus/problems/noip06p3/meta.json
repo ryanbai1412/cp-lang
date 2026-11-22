@@ -1,0 +1,21 @@
+{
+ "problem": "noip06p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5165774", "language": "CPP17", "result": "RTE", "time": 0.034853603, "memory_kb": 3456.0, "file": "corpus/submissions/5165774.cpp"},
+  {"id": "5165776", "language": "CPP17", "result": "RTE", "time": 0.172532908, "memory_kb": 3452.0, "file": "corpus/submissions/5165776.cpp"},
+  {"id": "5165783", "language": "CPP17", "result": "AC", "time": 0.035182368, "memory_kb": 3456.0, "file": "corpus/submissions/5165783.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/noip06p3.cp",
+   "proto/ports/scout_batch_37/today/noip06p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

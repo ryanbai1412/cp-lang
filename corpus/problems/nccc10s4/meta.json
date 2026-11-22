@@ -1,0 +1,24 @@
+{
+ "problem": "nccc10s4",
+ "source": "nccc",
+ "submissions": [
+  {"id": "4214475", "language": "CPP17", "result": "WA", "time": 0.034939805, "memory_kb": 3452.0, "file": "corpus/submissions/4214475.cpp"},
+  {"id": "4214500", "language": "CPP17", "result": "WA", "time": 0.035126779, "memory_kb": 3432.0, "file": "corpus/submissions/4214500.cpp"},
+  {"id": "4214501", "language": "CPP17", "result": "WA", "time": 0.035204772, "memory_kb": 3456.0, "file": "corpus/submissions/4214501.cpp"},
+  {"id": "4214502", "language": "CPP17", "result": "WA", "time": 0.035105155, "memory_kb": 3456.0, "file": "corpus/submissions/4214502.cpp"},
+  {"id": "4214503", "language": "CPP17", "result": "WA", "time": 0.035280516, "memory_kb": 3456.0, "file": "corpus/submissions/4214503.cpp"},
+  {"id": "4224488", "language": "CPP17", "result": "TLE", "time": 16.245318823, "memory_kb": 7448.0, "file": "corpus/submissions/4224488.cpp"},
+  {"id": "4225209", "language": "CPP17", "result": "AC", "time": 15.325260854, "memory_kb": 7456.0, "file": "corpus/submissions/4225209.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_21/nccc10s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

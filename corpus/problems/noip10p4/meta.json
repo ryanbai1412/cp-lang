@@ -1,0 +1,26 @@
+{
+ "problem": "noip10p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5205717", "language": "CPP17", "result": "TLE", "time": 2.990002418, "memory_kb": 8652.0, "file": "corpus/submissions/5205717.cpp"},
+  {"id": "5205721", "language": "CPP17", "result": "RTE", "time": 0.711710158, "memory_kb": 8648.0, "file": "corpus/submissions/5205721.cpp"},
+  {"id": "5205724", "language": "CPP17", "result": "RTE", "time": 0.692714879, "memory_kb": 8644.0, "file": "corpus/submissions/5205724.cpp"},
+  {"id": "5205725", "language": "CPP17", "result": "RTE", "time": 0.929554348, "memory_kb": 8652.0, "file": "corpus/submissions/5205725.cpp"},
+  {"id": "5205728", "language": "CPP17", "result": "RTE", "time": 0.698774221, "memory_kb": 8648.0, "file": "corpus/submissions/5205728.cpp"},
+  {"id": "5205730", "language": "CPP17", "result": "WA", "time": 0.714901024, "memory_kb": 8648.0, "file": "corpus/submissions/5205730.cpp"},
+  {"id": "5205786", "language": "CPP17", "result": "AC", "time": 0.562381674, "memory_kb": 8652.0, "file": "corpus/submissions/5205786.cpp"},
+  {"id": "5445664", "language": "CPP17", "result": "AC", "time": 0.573899769, "memory_kb": 8520.0, "file": "corpus/submissions/5445664.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/noip10p4.cp",
+   "proto/ports/scout_batch_37/today/noip10p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

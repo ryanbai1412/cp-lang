@@ -1,0 +1,22 @@
+{
+ "problem": "coci25c3p1",
+ "source": "coci",
+ "submissions": [
+  {"id": "7730233", "language": "CPP17", "result": "AC", "time": 0.3659043909999999, "memory_kb": 3784.0, "file": "corpus/submissions/7730233.cpp"},
+  {"id": "7730236", "language": "CPP17", "result": "WA", "time": 0.013886678, "memory_kb": 3780.0, "file": "corpus/submissions/7730236.cpp"},
+  {"id": "7730375", "language": "CPP17", "result": "WA", "time": 0.010443725000000001, "memory_kb": 3764.0, "file": "corpus/submissions/7730375.cpp"},
+  {"id": "7730376", "language": "CPP17", "result": "AC", "time": 0.362821276, "memory_kb": 3780.0, "file": "corpus/submissions/7730376.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_31/coci25c3p1.cp",
+   "proto/ports/scout_batch_31/today/coci25c3p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

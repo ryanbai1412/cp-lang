@@ -1,0 +1,17 @@
+{
+ "problem": "ioi23p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5773633", "language": "CPP17", "result": "TLE", "time": 6.446455396, "memory_kb": 119848.0, "file": "corpus/submissions/5773633.cpp"},
+  {"id": "5773635", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5773635.cpp"},
+  {"id": "5773636", "language": "CPP17", "result": "TLE", "time": 6.516776474, "memory_kb": 119932.0, "file": "corpus/submissions/5773636.cpp"},
+  {"id": "5773674", "language": "CPP17", "result": "AC", "time": 11.296654466, "memory_kb": 139064.0, "file": "corpus/submissions/5773674.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

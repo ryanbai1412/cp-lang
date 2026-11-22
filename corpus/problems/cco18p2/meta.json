@@ -1,0 +1,19 @@
+{
+ "problem": "cco18p2",
+ "source": "cco",
+ "submissions": [
+  {"id": "4801864", "language": "CPP17", "result": "AC", "time": 0.00361561, "memory_kb": 3476.0, "file": "corpus/submissions/4801864.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_51/cco18p2.cp",
+   "proto/ports/scout_batch_51/today/cco18p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

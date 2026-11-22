@@ -1,0 +1,24 @@
+{
+ "problem": "sdoi17r1p4",
+ "source": "sdoi",
+ "submissions": [
+  {"id": "5461859", "language": "CPP17", "result": "RTE", "time": 1.028694584, "memory_kb": 36020.0, "file": "corpus/submissions/5461859.cpp"},
+  {"id": "5461861", "language": "CPP17", "result": "RTE", "time": 1.028216051, "memory_kb": 36020.0, "file": "corpus/submissions/5461861.cpp"},
+  {"id": "5461864", "language": "CPP17", "result": "RTE", "time": 1.791950642, "memory_kb": 68844.0, "file": "corpus/submissions/5461864.cpp"},
+  {"id": "5463995", "language": "CPP17", "result": "WA", "time": 0.035145804, "memory_kb": 3412.0, "file": "corpus/submissions/5463995.cpp"},
+  {"id": "5463998", "language": "CPP17", "result": "RTE", "time": 1.178989996, "memory_kb": 68848.0, "file": "corpus/submissions/5463998.cpp"},
+  {"id": "5466766", "language": "CPP17", "result": "WA", "time": 3.68990907, "memory_kb": 4196.0, "file": "corpus/submissions/5466766.cpp"},
+  {"id": "5466798", "language": "CPP17", "result": "AC", "time": 4.27641985, "memory_kb": 4196.0, "file": "corpus/submissions/5466798.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_15/sdoi17r1p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

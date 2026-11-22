@@ -1,0 +1,14 @@
+{
+ "problem": "sac22cc1p4",
+ "source": "sac",
+ "submissions": [
+  {"id": "3992511", "language": "CPP17", "result": "AC", "time": 0.220056002, "memory_kb": 3660.0, "file": "corpus/submissions/3992511.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "nccc10s2",
+ "source": "nccc",
+ "submissions": [
+  {"id": "4214203", "language": "CPP17", "result": "AC", "time": 0.082513088, "memory_kb": 3476.0, "file": "corpus/submissions/4214203.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/nccc10s2.cpp",
+   "proto/ports/nccc10s2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/nccc10s2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

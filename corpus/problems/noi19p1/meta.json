@@ -1,0 +1,22 @@
+{
+ "problem": "noi19p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3783196", "language": "CPP17", "result": "TLE", "time": 2.422252255, "memory_kb": 13564.0, "file": "corpus/submissions/3783196.cpp"},
+  {"id": "3783206", "language": "CPP17", "result": "TLE", "time": 2.346898785, "memory_kb": 13520.0, "file": "corpus/submissions/3783206.cpp"},
+  {"id": "3783656", "language": "CPP17", "result": "TLE", "time": 19.755021874, "memory_kb": 41212.0, "file": "corpus/submissions/3783656.cpp"},
+  {"id": "3790564", "language": "CPP17", "result": "AC", "time": 1.2991843909999998, "memory_kb": 31544.0, "file": "corpus/submissions/3790564.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_14/noi19p1.cp",
+   "proto/ports/scout_batch_14/today/noi19p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

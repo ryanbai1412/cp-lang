@@ -1,0 +1,34 @@
+{
+ "problem": "996warmup8p3",
+ "source": "996warmup8p3",
+ "submissions": [
+  {"id": "5324538", "language": "CPP17", "result": "RTE", "time": 9.519929639, "memory_kb": 27032.0, "file": "corpus/submissions/5324538.cpp"},
+  {"id": "5324563", "language": "CPP17", "result": "WA", "time": 10.031444203, "memory_kb": 26992.0, "file": "corpus/submissions/5324563.cpp"},
+  {"id": "5324572", "language": "CPP17", "result": "TLE", "time": 16.033990239, "memory_kb": 98380.0, "file": "corpus/submissions/5324572.cpp"},
+  {"id": "5324592", "language": "CPP17", "result": "RTE", "time": 9.195440888, "memory_kb": 26996.0, "file": "corpus/submissions/5324592.cpp"},
+  {"id": "5324595", "language": "CPP17", "result": "RTE", "time": 9.078886391, "memory_kb": 27032.0, "file": "corpus/submissions/5324595.cpp"},
+  {"id": "5324616", "language": "CPP17", "result": "RTE", "time": 9.217492197, "memory_kb": 26996.0, "file": "corpus/submissions/5324616.cpp"},
+  {"id": "5324620", "language": "CPP17", "result": "RTE", "time": 8.95234414, "memory_kb": 27032.0, "file": "corpus/submissions/5324620.cpp"},
+  {"id": "5324622", "language": "CPP17", "result": "RTE", "time": 13.447288876, "memory_kb": 51060.0, "file": "corpus/submissions/5324622.cpp"},
+  {"id": "5324626", "language": "CPP17", "result": "RTE", "time": 8.958608635, "memory_kb": 27200.0, "file": "corpus/submissions/5324626.cpp"},
+  {"id": "5324630", "language": "CPP17", "result": "RTE", "time": 9.507267134, "memory_kb": 27196.0, "file": "corpus/submissions/5324630.cpp"},
+  {"id": "5324634", "language": "CPP17", "result": "RTE", "time": 8.934609048, "memory_kb": 27032.0, "file": "corpus/submissions/5324634.cpp"},
+  {"id": "5324649", "language": "CPP17", "result": "RTE", "time": 9.138598591, "memory_kb": 26996.0, "file": "corpus/submissions/5324649.cpp"},
+  {"id": "5324653", "language": "CPP17", "result": "WA", "time": 9.379412309, "memory_kb": 27032.0, "file": "corpus/submissions/5324653.cpp"},
+  {"id": "5324659", "language": "CPP17", "result": "WA", "time": 9.497974028, "memory_kb": 26996.0, "file": "corpus/submissions/5324659.cpp"},
+  {"id": "5324665", "language": "CPP17", "result": "WA", "time": 10.017412975, "memory_kb": 26992.0, "file": "corpus/submissions/5324665.cpp"},
+  {"id": "5324670", "language": "CPP17", "result": "AC", "time": 9.393477207, "memory_kb": 26992.0, "file": "corpus/submissions/5324670.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/996warmup8p3.cp",
+   "proto/ports/scout_batch_32/today/996warmup8p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

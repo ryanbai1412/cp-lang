@@ -1,0 +1,26 @@
+{
+ "problem": "ccc18s3",
+ "source": "ccc",
+ "submissions": [
+  {"id": "3431374", "language": "JAVA", "result": "WA", "time": 0.925632138, "memory_kb": 57344.0, "file": "corpus/submissions/3431374.java"},
+  {"id": "3431420", "language": "JAVA", "result": "WA", "time": 1.050997102, "memory_kb": 57888.0, "file": "corpus/submissions/3431420.java"},
+  {"id": "3431482", "language": "JAVA", "result": "AC", "time": 1.289223984, "memory_kb": 68532.0, "file": "corpus/submissions/3431482.java"},
+  {"id": "4329516", "language": "CPP17", "result": "WA", "time": 0.029057719, "memory_kb": 3504.0, "file": "corpus/submissions/4329516.cpp"},
+  {"id": "4329522", "language": "CPP17", "result": "WA", "time": 0.030052856, "memory_kb": 3504.0, "file": "corpus/submissions/4329522.cpp"},
+  {"id": "4329528", "language": "CPP17", "result": "WA", "time": 0.028530149, "memory_kb": 3504.0, "file": "corpus/submissions/4329528.cpp"},
+  {"id": "4329545", "language": "CPP17", "result": "WA", "time": 0.028480215, "memory_kb": 3508.0, "file": "corpus/submissions/4329545.cpp"},
+  {"id": "4329576", "language": "CPP17", "result": "WA", "time": 0.032543864, "memory_kb": 3520.0, "file": "corpus/submissions/4329576.cpp"},
+  {"id": "4329580", "language": "CPP17", "result": "AC", "time": 0.040069614, "memory_kb": 3520.0, "file": "corpus/submissions/4329580.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_12/ccc18s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

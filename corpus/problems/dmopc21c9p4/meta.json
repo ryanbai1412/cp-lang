@@ -1,0 +1,24 @@
+{
+ "problem": "dmopc21c9p4",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4563991", "language": "CPP17", "result": "WA", "time": 0.01802773, "memory_kb": 7012.0, "file": "corpus/submissions/4563991.cpp"},
+  {"id": "4563993", "language": "CPP17", "result": "WA", "time": 2.493343071, "memory_kb": 52332.0, "file": "corpus/submissions/4563993.cpp"},
+  {"id": "4565958", "language": "CPP17", "result": "AC", "time": 12.628206284, "memory_kb": 61780.0, "file": "corpus/submissions/4565958.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/dmopc21c9p4.cpp",
+   "proto/ports/dmopc21c9p4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dmopc21c9p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

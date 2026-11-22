@@ -1,0 +1,15 @@
+{
+ "problem": "yac7p1",
+ "source": "yac",
+ "submissions": [
+  {"id": "5705127", "language": "CPP17", "result": "WA", "time": 0.003506031, "memory_kb": 3428.0, "file": "corpus/submissions/5705127.cpp"},
+  {"id": "5705129", "language": "CPP17", "result": "AC", "time": 1.106370256, "memory_kb": 18848.0, "file": "corpus/submissions/5705129.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

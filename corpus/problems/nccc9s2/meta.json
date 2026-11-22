@@ -1,0 +1,19 @@
+{
+ "problem": "nccc9s2",
+ "source": "nccc",
+ "submissions": [
+  {"id": "4051671", "language": "CPP17", "result": "AC", "time": 5.80003043399999, "memory_kb": 17136.0, "file": "corpus/submissions/4051671.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/nccc9s2.cp",
+   "proto/ports/scout_batch_41/today/nccc9s2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+ "problem": "etsr23r2p4",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5494510", "language": "CPP17", "result": "AC", "time": 0.571459145, "memory_kb": 7116.0, "file": "corpus/submissions/5494510.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_43/etsr23r2p4.cp",
+   "proto/ports/scout_batch_43/today/etsr23r2p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

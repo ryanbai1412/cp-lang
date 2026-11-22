@@ -1,0 +1,25 @@
+{
+ "problem": "egoi22p5",
+ "source": "egoi",
+ "submissions": [
+  {"id": "5202216", "language": "CPP17", "result": "RTE", "time": 0.048531166, "memory_kb": 3940.0, "file": "corpus/submissions/5202216.cpp"},
+  {"id": "5202219", "language": "CPP17", "result": "WA", "time": 0.174928719, "memory_kb": 3936.0, "file": "corpus/submissions/5202219.cpp"},
+  {"id": "5202230", "language": "CPP17", "result": "RTE", "time": 0.12179671, "memory_kb": 4796.0, "file": "corpus/submissions/5202230.cpp"},
+  {"id": "5202232", "language": "CPP17", "result": "RTE", "time": 0.24657226, "memory_kb": 4796.0, "file": "corpus/submissions/5202232.cpp"},
+  {"id": "5202237", "language": "CPP17", "result": "RTE", "time": 0.268241953, "memory_kb": 4796.0, "file": "corpus/submissions/5202237.cpp"},
+  {"id": "5203691", "language": "CPP17", "result": "RTE", "time": 0.253773533, "memory_kb": 3976.0, "file": "corpus/submissions/5203691.cpp"},
+  {"id": "5203693", "language": "CPP17", "result": "AC", "time": 1.099985807, "memory_kb": 3976.0, "file": "corpus/submissions/5203693.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_48/egoi22p5.cp",
+   "proto/ports/scout_batch_48/today/egoi22p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

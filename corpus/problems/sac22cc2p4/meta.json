@@ -1,0 +1,22 @@
+{
+ "problem": "sac22cc2p4",
+ "source": "sac",
+ "submissions": [
+  {"id": "4121061", "language": "CPP17", "result": "WA", "time": 0.011485486, "memory_kb": 8192.0, "file": "corpus/submissions/4121061.cpp"},
+  {"id": "4121086", "language": "CPP17", "result": "AC", "time": 3.208951774, "memory_kb": 8368.0, "file": "corpus/submissions/4121086.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_2/sac22cc2p4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_2/sac22cc2p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

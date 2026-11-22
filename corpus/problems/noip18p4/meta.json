@@ -1,0 +1,20 @@
+{
+ "problem": "noip18p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "4004130", "language": "CPP17", "result": "TLE", "time": 8.520654219, "memory_kb": 4012.0, "file": "corpus/submissions/4004130.cpp"},
+  {"id": "4004140", "language": "CPP17", "result": "AC", "time": 1.56203746, "memory_kb": 3836.0, "file": "corpus/submissions/4004140.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/noip18p4.cp",
+   "proto/ports/scout_batch_37/today/noip18p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

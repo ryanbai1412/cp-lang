@@ -1,0 +1,19 @@
+{
+ "problem": "cheerio1s1",
+ "source": "cheerio",
+ "submissions": [
+  {"id": "5337471", "language": "CPP17", "result": "AC", "time": 0.327096542, "memory_kb": 8144.0, "file": "corpus/submissions/5337471.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_40/cheerio1s1.cp",
+   "proto/ports/scout_batch_40/today/cheerio1s1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

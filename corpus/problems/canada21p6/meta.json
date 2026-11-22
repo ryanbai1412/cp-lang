@@ -1,0 +1,16 @@
+{
+ "problem": "canada21p6",
+ "source": "canada",
+ "submissions": [
+  {"id": "5151450", "language": "CPP17", "result": "RTE", "time": 3.544709401, "memory_kb": 402244.0, "file": "corpus/submissions/5151450.cpp"},
+  {"id": "5151453", "language": "CPP17", "result": "RTE", "time": 1.457991725, "memory_kb": 795428.0, "file": "corpus/submissions/5151453.cpp"},
+  {"id": "5151463", "language": "CPP17", "result": "RTE", "time": 1.300664735, "memory_kb": 795428.0, "file": "corpus/submissions/5151463.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

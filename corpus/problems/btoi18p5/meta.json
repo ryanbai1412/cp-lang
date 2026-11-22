@@ -1,0 +1,18 @@
+{
+ "problem": "btoi18p5",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4456174", "language": "CPP17", "result": "TLE", "time": 29.02878907, "memory_kb": 47844.0, "file": "corpus/submissions/4456174.cpp"},
+  {"id": "4456214", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4456214.cpp"},
+  {"id": "4456215", "language": "CPP17", "result": "TLE", "time": 26.006094688, "memory_kb": 47928.0, "file": "corpus/submissions/4456215.cpp"},
+  {"id": "4456217", "language": "CPP17", "result": "TLE", "time": 18.482495635, "memory_kb": 47944.0, "file": "corpus/submissions/4456217.cpp"},
+  {"id": "4456220", "language": "CPP17", "result": "TLE", "time": 11.578921977, "memory_kb": 47832.0, "file": "corpus/submissions/4456220.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

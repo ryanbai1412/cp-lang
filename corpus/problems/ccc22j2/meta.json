@@ -1,0 +1,14 @@
+{
+ "problem": "ccc22j2",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4794219", "language": "PYPY3", "result": "AC", "time": 0.464615832, "memory_kb": 60304.0, "file": "corpus/submissions/4794219.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

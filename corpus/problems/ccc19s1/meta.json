@@ -1,0 +1,15 @@
+{
+ "problem": "ccc19s1",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4325060", "language": "CPP17", "result": "WA", "time": 0.003386413, "memory_kb": 3368.0, "file": "corpus/submissions/4325060.cpp"},
+  {"id": "4325062", "language": "CPP17", "result": "AC", "time": 0.100335383, "memory_kb": 4352.0, "file": "corpus/submissions/4325062.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

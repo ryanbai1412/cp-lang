@@ -1,0 +1,26 @@
+{
+ "problem": "noiwc22p3",
+ "source": "noiwc",
+ "submissions": [
+  {"id": "4261087", "language": "CPP17", "result": "AC", "time": 12.394083153, "memory_kb": 3952.0, "file": "corpus/submissions/4261087.cpp"},
+  {"id": "4261143", "language": "CPP17", "result": "RTE", "time": 0.065361798, "memory_kb": 3848.0, "file": "corpus/submissions/4261143.cpp"},
+  {"id": "4261150", "language": "CPP17", "result": "RTE", "time": 0.072122462, "memory_kb": 3700.0, "file": "corpus/submissions/4261150.cpp"},
+  {"id": "4261154", "language": "CPP17", "result": "AC", "time": 9.907042213, "memory_kb": 3912.0, "file": "corpus/submissions/4261154.cpp"},
+  {"id": "4261160", "language": "CPP17", "result": "AC", "time": 9.932025365, "memory_kb": 3940.0, "file": "corpus/submissions/4261160.cpp"},
+  {"id": "4261177", "language": "CPP17", "result": "AC", "time": 12.53120512, "memory_kb": 3944.0, "file": "corpus/submissions/4261177.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_5/noiwc22p3_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_5/noiwc22p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

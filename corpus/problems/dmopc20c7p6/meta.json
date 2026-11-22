@@ -1,0 +1,15 @@
+{
+ "problem": "dmopc20c7p6",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3686705", "language": "CPP17", "result": "TLE", "time": 3.999748475, "memory_kb": 6044.0, "file": "corpus/submissions/3686705.cpp"},
+  {"id": "3686712", "language": "CPP17", "result": "RTE", "time": 5.812757098, "memory_kb": 136924.0, "file": "corpus/submissions/3686712.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

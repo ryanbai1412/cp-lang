@@ -1,0 +1,26 @@
+{
+ "problem": "bsspc21s4",
+ "source": "bsspc",
+ "submissions": [
+  {"id": "4152529", "language": "CPP17", "result": "WA", "time": 2.891319335, "memory_kb": 96216.0, "file": "corpus/submissions/4152529.cpp"},
+  {"id": "4152599", "language": "CPP17", "result": "RTE", "time": 1.580568355, "memory_kb": 198680.0, "file": "corpus/submissions/4152599.cpp"},
+  {"id": "4152767", "language": "CPP17", "result": "WA", "time": 8.400052894, "memory_kb": 96300.0, "file": "corpus/submissions/4152767.cpp"},
+  {"id": "4152810", "language": "CPP17", "result": "WA", "time": 8.419681798, "memory_kb": 99256.0, "file": "corpus/submissions/4152810.cpp"},
+  {"id": "4152847", "language": "CPP17", "result": "WA", "time": 8.468397698, "memory_kb": 99164.0, "file": "corpus/submissions/4152847.cpp"},
+  {"id": "4152932", "language": "CPP17", "result": "AC", "time": 39.131037491, "memory_kb": 106496.0, "file": "corpus/submissions/4152932.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_5/bsspc21s4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_5/bsspc21s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,24 @@
+{
+ "problem": "apio07p1",
+ "source": "apio",
+ "submissions": [
+  {"id": "5532652", "language": "CPP17", "result": "WA", "time": 0.058901931, "memory_kb": 3404.0, "file": "corpus/submissions/5532652.cpp"},
+  {"id": "5532654", "language": "CPP17", "result": "WA", "time": 0.059836994, "memory_kb": 3412.0, "file": "corpus/submissions/5532654.cpp"},
+  {"id": "5532655", "language": "CPP17", "result": "AC", "time": 0.248467867, "memory_kb": 8780.0, "file": "corpus/submissions/5532655.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/apio07p1.cpp",
+   "proto/ports/apio07p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/apio07p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

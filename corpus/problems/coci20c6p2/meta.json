@@ -1,0 +1,18 @@
+{
+ "problem": "coci20c6p2",
+ "source": "coci",
+ "submissions": [
+  {"id": "4188022", "language": "CPP17", "result": "AC", "time": 0.054140291, "memory_kb": 3564.0, "file": "corpus/submissions/4188022.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_27/coci20c6p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "coci13c1p3",
+ "source": "coci",
+ "submissions": [
+  {"id": "5245417", "language": "CPP17", "result": "AC", "time": 1.416642631, "memory_kb": 3600.0, "file": "corpus/submissions/5245417.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/coci13c1p3.cpp",
+   "proto/ports/coci13c1p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/coci13c1p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

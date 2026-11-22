@@ -1,0 +1,16 @@
+{
+ "problem": "cmt21r2zjr",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4007873", "language": "CPP17", "result": "TLE", "time": 10.340334135, "memory_kb": 6808.0, "file": "corpus/submissions/4007873.cpp"},
+  {"id": "4007887", "language": "CPP17", "result": "AC", "time": 10.781508938, "memory_kb": 6996.0, "file": "corpus/submissions/4007887.cpp"},
+  {"id": "4007901", "language": "CPP17", "result": "AC", "time": 9.403073692, "memory_kb": 6960.0, "file": "corpus/submissions/4007901.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

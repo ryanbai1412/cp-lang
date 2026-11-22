@@ -1,0 +1,18 @@
+{
+ "problem": "math04",
+ "source": "math",
+ "submissions": [
+  {"id": "4804203", "language": "TEXT", "result": "WA", "time": 0.004261524, "memory_kb": 1896.0, "file": null},
+  {"id": "4804228", "language": "TEXT", "result": "WA", "time": 0.003762284, "memory_kb": 1840.0, "file": null},
+  {"id": "4804250", "language": "TEXT", "result": "WA", "time": 0.003652598, "memory_kb": 1840.0, "file": null},
+  {"id": "4804276", "language": "TEXT", "result": "WA", "time": 0.003869527, "memory_kb": 1916.0, "file": null},
+  {"id": "4804284", "language": "TEXT", "result": "AC", "time": 0.003573482, "memory_kb": 1840.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

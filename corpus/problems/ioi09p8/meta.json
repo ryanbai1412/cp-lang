@@ -1,0 +1,18 @@
+{
+ "problem": "ioi09p8",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4811954", "language": "CPP17", "result": "AC", "time": 5.259533811, "memory_kb": 47824.0, "file": "corpus/submissions/4811954.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_20/ioi09p8.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,26 @@
+{
+ "problem": "yac6p6",
+ "source": "yac",
+ "submissions": [
+  {"id": "5149837", "language": "CPP17", "result": "WA", "time": 0.083385293, "memory_kb": 3452.0, "file": "corpus/submissions/5149837.cpp"},
+  {"id": "5149844", "language": "CPP17", "result": "WA", "time": 0.083957968, "memory_kb": 3452.0, "file": "corpus/submissions/5149844.cpp"},
+  {"id": "5149859", "language": "CPP17", "result": "TLE", "time": 2.085212435, "memory_kb": 5616.0, "file": "corpus/submissions/5149859.cpp"},
+  {"id": "5149874", "language": "CPP17", "result": "TLE", "time": 5.506455494, "memory_kb": 8168.0, "file": "corpus/submissions/5149874.cpp"},
+  {"id": "5149944", "language": "CPP17", "result": "TLE", "time": 7.012699689, "memory_kb": 9692.0, "file": "corpus/submissions/5149944.cpp"},
+  {"id": "5149985", "language": "CPP17", "result": "TLE", "time": 2.288315244, "memory_kb": 12324.0, "file": "corpus/submissions/5149985.cpp"},
+  {"id": "5149996", "language": "CPP17", "result": "TLE", "time": 2.291798718, "memory_kb": 12292.0, "file": "corpus/submissions/5149996.cpp"},
+  {"id": "5150025", "language": "CPP17", "result": "AC", "time": 3.215350843, "memory_kb": 15976.0, "file": "corpus/submissions/5150025.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/today/yac6p6.cp",
+   "proto/ports/scout_batch_39/yac6p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

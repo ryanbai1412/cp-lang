@@ -1,0 +1,18 @@
+{
+ "problem": "btoi18p3",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4656860", "language": "CPP17", "result": "AC", "time": 24.694345891, "memory_kb": 502392.0, "file": "corpus/submissions/4656860.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/btoi18p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

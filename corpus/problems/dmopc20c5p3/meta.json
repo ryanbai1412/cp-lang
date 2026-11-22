@@ -1,0 +1,14 @@
+{
+ "problem": "dmopc20c5p3",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3591406", "language": "CPP17", "result": "MLE", "time": 0.47230033, "memory_kb": 288080.0, "file": "corpus/submissions/3591406.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

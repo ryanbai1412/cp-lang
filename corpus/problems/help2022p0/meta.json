@@ -1,0 +1,21 @@
+{
+ "problem": "help2022p0",
+ "source": "help",
+ "submissions": [
+  {"id": "4963746", "language": "PYPY3", "result": "IR", "time": 0.06350997, "memory_kb": 57496.0, "file": "corpus/submissions/4963746.py"},
+  {"id": "4963750", "language": "PYPY3", "result": "IR", "time": 0.057129108, "memory_kb": 57432.0, "file": "corpus/submissions/4963750.py"},
+  {"id": "4963752", "language": "PYPY3", "result": "IR", "time": 0.062662794, "memory_kb": 57500.0, "file": "corpus/submissions/4963752.py"},
+  {"id": "4963753", "language": "PYPY3", "result": "WA", "time": 0.062561777, "memory_kb": 61656.0, "file": "corpus/submissions/4963753.py"},
+  {"id": "4963756", "language": "PYPY3", "result": "IR", "time": 0.057154988, "memory_kb": 57424.0, "file": "corpus/submissions/4963756.py"},
+  {"id": "4963768", "language": "PYPY3", "result": "IR", "time": 0.062449058, "memory_kb": 57496.0, "file": "corpus/submissions/4963768.py"},
+  {"id": "4963771", "language": "PYPY3", "result": "IR", "time": 0.057042902, "memory_kb": 57428.0, "file": "corpus/submissions/4963771.py"},
+  {"id": "4964436", "language": "PYPY3", "result": "IR", "time": 0.062962056, "memory_kb": 57508.0, "file": "corpus/submissions/4964436.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "noi21p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "3861252", "language": "CPP17", "result": "TLE", "time": 103.911860378, "memory_kb": 103068.0, "file": "corpus/submissions/3861252.cpp"},
+  {"id": "3861295", "language": "CPP17", "result": "TLE", "time": 103.980031233, "memory_kb": 103088.0, "file": "corpus/submissions/3861295.cpp"},
+  {"id": "3861303", "language": "CPP17", "result": "TLE", "time": 104.073361176, "memory_kb": 103088.0, "file": "corpus/submissions/3861303.cpp"},
+  {"id": "3861312", "language": "CPP17", "result": "TLE", "time": 78.977297628, "memory_kb": 15596.0, "file": "corpus/submissions/3861312.cpp"},
+  {"id": "3861375", "language": "CPP17", "result": "AC", "time": 14.096850048, "memory_kb": 97964.0, "file": "corpus/submissions/3861375.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_22/noi21p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

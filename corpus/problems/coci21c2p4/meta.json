@@ -1,0 +1,21 @@
+{
+ "problem": "coci21c2p4",
+ "source": "coci",
+ "submissions": [
+  {"id": "4143819", "language": "CPP17", "result": "TLE", "time": 3.011039256, "memory_kb": 9020.0, "file": "corpus/submissions/4143819.cpp"},
+  {"id": "4144014", "language": "CPP17", "result": "TLE", "time": 6.367778632, "memory_kb": 4888.0, "file": "corpus/submissions/4144014.cpp"},
+  {"id": "4226750", "language": "CPP17", "result": "RTE", "time": 0.00135078, "memory_kb": 4.0, "file": "corpus/submissions/4226750.cpp"},
+  {"id": "4226760", "language": "CPP17", "result": "AC", "time": 11.431258965, "memory_kb": 44760.0, "file": "corpus/submissions/4226760.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_11/coci21c2p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

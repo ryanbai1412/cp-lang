@@ -1,0 +1,18 @@
+{
+ "problem": "cco23p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "5579927", "language": "CPP17", "result": "AC", "time": 7.710539983, "memory_kb": 22808.0, "file": "corpus/submissions/5579927.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_20/cco23p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+ "problem": "mccc3j3",
+ "source": "mccc",
+ "submissions": [
+  {"id": "4223421", "language": "CPP17", "result": "WA", "time": 0.069326842, "memory_kb": 5660.0, "file": "corpus/submissions/4223421.cpp"},
+  {"id": "4223424", "language": "CPP17", "result": "AC", "time": 0.10845503, "memory_kb": 5664.0, "file": "corpus/submissions/4223424.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/mccc3j3.cp",
+   "proto/ports/scout_batch_42/today/mccc3j3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

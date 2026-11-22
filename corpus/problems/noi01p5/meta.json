@@ -1,0 +1,28 @@
+{
+ "problem": "noi01p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "5079249", "language": "CPP17", "result": "TLE", "time": 2.703304179, "memory_kb": 21360.0, "file": "corpus/submissions/5079249.cpp"},
+  {"id": "5079251", "language": "CPP17", "result": "RTE", "time": 0.517948762, "memory_kb": 40116.0, "file": "corpus/submissions/5079251.cpp"},
+  {"id": "5079252", "language": "CPP17", "result": "RTE", "time": 0.932692849, "memory_kb": 40148.0, "file": "corpus/submissions/5079252.cpp"},
+  {"id": "5079262", "language": "CPP17", "result": "RTE", "time": 0.956452437, "memory_kb": 40148.0, "file": "corpus/submissions/5079262.cpp"},
+  {"id": "5079263", "language": "CPP17", "result": "RTE", "time": 2.860673635, "memory_kb": 59920.0, "file": "corpus/submissions/5079263.cpp"},
+  {"id": "5079270", "language": "CPP17", "result": "WA", "time": 0.877665766, "memory_kb": 36176.0, "file": "corpus/submissions/5079270.cpp"},
+  {"id": "5079272", "language": "CPP17", "result": "AC", "time": 0.882119066, "memory_kb": 36152.0, "file": "corpus/submissions/5079272.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noi01p5.cpp",
+   "proto/ports/noi01p5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noi01p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

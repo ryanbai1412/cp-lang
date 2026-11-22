@@ -1,0 +1,20 @@
+{
+ "problem": "noip02p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5096308", "language": "CPP17", "result": "TLE", "time": 6.010807299, "memory_kb": 3372.0, "file": "corpus/submissions/5096308.cpp"},
+  {"id": "5096311", "language": "CPP17", "result": "TLE", "time": 3.030415718, "memory_kb": 62996.0, "file": "corpus/submissions/5096311.cpp"},
+  {"id": "5096313", "language": "CPP17", "result": "WA", "time": 0.952442461, "memory_kb": 13304.0, "file": "corpus/submissions/5096313.cpp"},
+  {"id": "5096314", "language": "CPP17", "result": "WA", "time": 0.960360128, "memory_kb": 13340.0, "file": "corpus/submissions/5096314.cpp"},
+  {"id": "5096344", "language": "CPP17", "result": "WA", "time": 0.030369675, "memory_kb": 5056.0, "file": "corpus/submissions/5096344.cpp"},
+  {"id": "5096353", "language": "CPP17", "result": "WA", "time": 0.174952037, "memory_kb": 5052.0, "file": "corpus/submissions/5096353.cpp"},
+  {"id": "5096361", "language": "CPP17", "result": "AC", "time": 0.171576555, "memory_kb": 5028.0, "file": "corpus/submissions/5096361.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

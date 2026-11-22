@@ -1,0 +1,23 @@
+{
+ "problem": "noip20p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5103156", "language": "CPP17", "result": "TLE", "time": 16.882105841, "memory_kb": 295336.0, "file": "corpus/submissions/5103156.cpp"},
+  {"id": "5103165", "language": "CPP17", "result": "TLE", "time": 14.163462666, "memory_kb": 257920.0, "file": "corpus/submissions/5103165.cpp"},
+  {"id": "5103187", "language": "CPP17", "result": "TLE", "time": 14.091410019, "memory_kb": 257920.0, "file": "corpus/submissions/5103187.cpp"},
+  {"id": "5103190", "language": "CPP17", "result": "TLE", "time": 14.084221964, "memory_kb": 274280.0, "file": "corpus/submissions/5103190.cpp"},
+  {"id": "5103199", "language": "CPP17", "result": "AC", "time": 2.663377543, "memory_kb": 52624.0, "file": "corpus/submissions/5103199.cpp"},
+  {"id": "5445673", "language": "CPP17", "result": "AC", "time": 3.060754386, "memory_kb": 48296.0, "file": "corpus/submissions/5445673.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/noip20p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

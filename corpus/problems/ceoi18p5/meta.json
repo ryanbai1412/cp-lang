@@ -1,0 +1,24 @@
+{
+ "problem": "ceoi18p5",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "5323283", "language": "CPP17", "result": "TLE", "time": 8.145227433, "memory_kb": 5340.0, "file": "corpus/submissions/5323283.cpp"},
+  {"id": "5323300", "language": "CPP17", "result": "MLE", "time": 2.68021352, "memory_kb": 265164.0, "file": "corpus/submissions/5323300.cpp"},
+  {"id": "5323809", "language": "CPP17", "result": "RTE", "time": 13.593522144, "memory_kb": 108464.0, "file": "corpus/submissions/5323809.cpp"},
+  {"id": "5323825", "language": "CPP17", "result": "RTE", "time": 13.676387666, "memory_kb": 108464.0, "file": "corpus/submissions/5323825.cpp"},
+  {"id": "5323847", "language": "CPP17", "result": "RTE", "time": 13.268460695, "memory_kb": 169312.0, "file": "corpus/submissions/5323847.cpp"},
+  {"id": "5323860", "language": "CPP17", "result": "RTE", "time": 12.385971099, "memory_kb": 152980.0, "file": "corpus/submissions/5323860.cpp"},
+  {"id": "5323876", "language": "CPP17", "result": "AC", "time": 13.205997818, "memory_kb": 152980.0, "file": "corpus/submissions/5323876.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_20/ceoi18p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

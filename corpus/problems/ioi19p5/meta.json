@@ -1,0 +1,21 @@
+{
+ "problem": "ioi19p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5664246", "language": "CPP17", "result": "AC", "time": 0.782096314, "memory_kb": 4416.0, "file": "corpus/submissions/5664246.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_5/ioi19p5_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_5/ioi19p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

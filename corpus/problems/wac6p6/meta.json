@@ -1,0 +1,19 @@
+{
+ "problem": "wac6p6",
+ "source": "wac",
+ "submissions": [
+  {"id": "5122020", "language": "CPP17", "result": "AC", "time": 16.09019769, "memory_kb": 3416.0, "file": "corpus/submissions/5122020.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/today/wac6p6.cp",
+   "proto/ports/scout_batch_39/wac6p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

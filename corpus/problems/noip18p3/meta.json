@@ -1,0 +1,18 @@
+{
+ "problem": "noip18p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "4002963", "language": "CPP17", "result": "AC", "time": 1.326926501, "memory_kb": 12312.0, "file": "corpus/submissions/4002963.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_2/noip18p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

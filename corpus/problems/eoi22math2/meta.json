@@ -1,0 +1,16 @@
+{
+ "problem": "eoi22math2",
+ "source": "eoi",
+ "submissions": [
+  {"id": "4835861", "language": "TEXT", "result": "WA", "time": 0.003317175, "memory_kb": 1912.0, "file": null},
+  {"id": "4835904", "language": "TEXT", "result": "WA", "time": 0.003389065, "memory_kb": 1912.0, "file": null},
+  {"id": "4835936", "language": "TEXT", "result": "AC", "time": 0.003480398, "memory_kb": 1868.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

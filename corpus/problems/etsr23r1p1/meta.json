@@ -1,0 +1,14 @@
+{
+ "problem": "etsr23r1p1",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5494240", "language": "CPP17", "result": "AC", "time": 0.044057198, "memory_kb": 3468.0, "file": "corpus/submissions/5494240.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

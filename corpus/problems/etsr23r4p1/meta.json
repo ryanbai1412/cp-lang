@@ -1,0 +1,22 @@
+{
+ "problem": "etsr23r4p1",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5521410", "language": "CPP17", "result": "WA", "time": 0.003589024, "memory_kb": 3444.0, "file": "corpus/submissions/5521410.cpp"},
+  {"id": "5521412", "language": "CPP17", "result": "WA", "time": 0.003766952, "memory_kb": 3376.0, "file": "corpus/submissions/5521412.cpp"},
+  {"id": "5521416", "language": "CPP17", "result": "WA", "time": 0.003540934, "memory_kb": 3472.0, "file": "corpus/submissions/5521416.cpp"},
+  {"id": "5521420", "language": "CPP17", "result": "AC", "time": 5.776223223, "memory_kb": 3484.0, "file": "corpus/submissions/5521420.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_43/etsr23r4p1.cp",
+   "proto/ports/scout_batch_43/today/etsr23r4p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

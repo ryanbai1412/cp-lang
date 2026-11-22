@@ -1,0 +1,26 @@
+{
+ "problem": "apio09p3",
+ "source": "apio",
+ "submissions": [
+  {"id": "5536713", "language": "CPP17", "result": "MLE", "time": 1.167000924, "memory_kb": 74320.0, "file": "corpus/submissions/5536713.cpp"},
+  {"id": "5536724", "language": "CPP17", "result": "MLE", "time": 1.160448587, "memory_kb": 74284.0, "file": "corpus/submissions/5536724.cpp"},
+  {"id": "5536741", "language": "CPP17", "result": "AC", "time": 1.462750971, "memory_kb": 53664.0, "file": "corpus/submissions/5536741.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/apio09p3.cpp",
+   "proto/ports/hillclimb_dp_graph/apio09p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/apio09p3.cp",
+   "proto/ports/hillclimb_dp_graph/before/apio09p3.cp",
+   "proto/ports/scout_batch_2/apio09p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

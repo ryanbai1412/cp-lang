@@ -1,0 +1,16 @@
+{
+ "problem": "bsspc21s2",
+ "source": "bsspc",
+ "submissions": [
+  {"id": "4152101", "language": "CPP17", "result": "WA", "time": 0.007022598, "memory_kb": 3372.0, "file": "corpus/submissions/4152101.cpp"},
+  {"id": "4152117", "language": "CPP17", "result": "WA", "time": 0.177246878, "memory_kb": 3448.0, "file": "corpus/submissions/4152117.cpp"},
+  {"id": "4152122", "language": "CPP17", "result": "AC", "time": 0.796771186, "memory_kb": 3524.0, "file": "corpus/submissions/4152122.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

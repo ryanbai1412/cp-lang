@@ -1,0 +1,14 @@
+{
+ "problem": "dmopc21c6p1",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4341874", "language": "CPP17", "result": "AC", "time": 0.244892232, "memory_kb": 4324.0, "file": "corpus/submissions/4341874.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

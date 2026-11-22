@@ -1,0 +1,36 @@
+{
+ "problem": "ioi04p2hard",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4171427", "language": "CPP17", "result": "RTE", "time": 0.293792692, "memory_kb": 474180.0, "file": "corpus/submissions/4171427.cpp"},
+  {"id": "4171533", "language": "CPP17", "result": "RTE", "time": 0.209784273, "memory_kb": 3648.0, "file": "corpus/submissions/4171533.cpp"},
+  {"id": "4171556", "language": "CPP17", "result": "RTE", "time": 0.338811626, "memory_kb": 3648.0, "file": "corpus/submissions/4171556.cpp"},
+  {"id": "4171594", "language": "CPP17", "result": "RTE", "time": 0.235262932, "memory_kb": 3648.0, "file": "corpus/submissions/4171594.cpp"},
+  {"id": "4171607", "language": "CPP17", "result": "RTE", "time": 0.29316007, "memory_kb": 3648.0, "file": "corpus/submissions/4171607.cpp"},
+  {"id": "4171646", "language": "CPP17", "result": "TLE", "time": 6.528072882, "memory_kb": 7236.0, "file": "corpus/submissions/4171646.cpp"},
+  {"id": "4171692", "language": "CPP17", "result": "WA", "time": 0.572374241, "memory_kb": 4200.0, "file": "corpus/submissions/4171692.cpp"},
+  {"id": "4171696", "language": "CPP17", "result": "TLE", "time": 6.231588055, "memory_kb": 8020.0, "file": "corpus/submissions/4171696.cpp"},
+  {"id": "4171709", "language": "CPP17", "result": "TLE", "time": 5.948042223, "memory_kb": 8020.0, "file": "corpus/submissions/4171709.cpp"},
+  {"id": "4181037", "language": "CPP17", "result": "TLE", "time": 11.688119873, "memory_kb": 83748.0, "file": "corpus/submissions/4181037.cpp"},
+  {"id": "4181096", "language": "CPP17", "result": "TLE", "time": 7.221134068, "memory_kb": 83812.0, "file": "corpus/submissions/4181096.cpp"},
+  {"id": "4181102", "language": "CPP17", "result": "TLE", "time": 13.341613099, "memory_kb": 164156.0, "file": "corpus/submissions/4181102.cpp"},
+  {"id": "4181250", "language": "CPP17", "result": "TLE", "time": 6.597867968, "memory_kb": 132968.0, "file": "corpus/submissions/4181250.cpp"},
+  {"id": "4182092", "language": "CPP17", "result": "TLE", "time": 6.946095832, "memory_kb": 5744.0, "file": "corpus/submissions/4182092.cpp"},
+  {"id": "4182160", "language": "CPP17", "result": "TLE", "time": 12.316669255, "memory_kb": 9008.0, "file": "corpus/submissions/4182160.cpp"},
+  {"id": "4182170", "language": "CPP17", "result": "AC", "time": 2.317361297, "memory_kb": 50384.0, "file": "corpus/submissions/4182170.cpp"},
+  {"id": "4182173", "language": "CPP17", "result": "AC", "time": 2.279665594, "memory_kb": 42572.0, "file": "corpus/submissions/4182173.cpp"},
+  {"id": "4182973", "language": "CPP17", "result": "AC", "time": 2.240247061, "memory_kb": 26948.0, "file": "corpus/submissions/4182973.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/ioi04p2hard.cp",
+   "proto/ports/scout_batch_32/today/ioi04p2hard.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

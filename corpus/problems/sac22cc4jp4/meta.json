@@ -1,0 +1,21 @@
+{
+ "problem": "sac22cc4jp4",
+ "source": "sac",
+ "submissions": [
+  {"id": "4416079", "language": "CPP17", "result": "WA", "time": 0.006856149, "memory_kb": 3532.0, "file": "corpus/submissions/4416079.cpp"},
+  {"id": "4416080", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4416080.cpp"},
+  {"id": "4416081", "language": "CPP17", "result": "WA", "time": 0.007080958, "memory_kb": 3492.0, "file": "corpus/submissions/4416081.cpp"},
+  {"id": "4416096", "language": "CPP17", "result": "AC", "time": 0.208508189, "memory_kb": 5172.0, "file": "corpus/submissions/4416096.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/sac22cc4jp4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

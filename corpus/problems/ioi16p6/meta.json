@@ -1,0 +1,25 @@
+{
+ "problem": "ioi16p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4730483", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4730483.cpp"},
+  {"id": "4730486", "language": "CPP17", "result": "TLE", "time": 137.734902888, "memory_kb": 57308.0, "file": "corpus/submissions/4730486.cpp"},
+  {"id": "4730499", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4730499.cpp"},
+  {"id": "4730503", "language": "CPP17", "result": "WA", "time": 51.669723677, "memory_kb": 54956.0, "file": "corpus/submissions/4730503.cpp"},
+  {"id": "4730514", "language": "CPP17", "result": "TLE", "time": 66.397393478, "memory_kb": 54956.0, "file": "corpus/submissions/4730514.cpp"},
+  {"id": "4730526", "language": "CPP17", "result": "TLE", "time": 108.877485176, "memory_kb": 40920.0, "file": "corpus/submissions/4730526.cpp"},
+  {"id": "4730536", "language": "CPP17", "result": "TLE", "time": 41.462469458, "memory_kb": 40812.0, "file": "corpus/submissions/4730536.cpp"},
+  {"id": "4730545", "language": "CPP17", "result": "AC", "time": 28.55262305, "memory_kb": 45000.0, "file": "corpus/submissions/4730545.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_28/ioi16p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

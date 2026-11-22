@@ -1,0 +1,19 @@
+{
+ "problem": "dpf",
+ "source": "dpf",
+ "submissions": [
+  {"id": "4131645", "language": "CPP17", "result": "AC", "time": 0.382671207, "memory_kb": 38676.0, "file": "corpus/submissions/4131645.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_38/dpf.cp",
+   "proto/ports/scout_batch_38/today/dpf.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

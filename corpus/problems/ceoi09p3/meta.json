@@ -1,0 +1,25 @@
+{
+ "problem": "ceoi09p3",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4827222", "language": "CPP17", "result": "WA", "time": 0.121613141, "memory_kb": 7512.0, "file": "corpus/submissions/4827222.cpp"},
+  {"id": "4827237", "language": "CPP17", "result": "WA", "time": 0.125517065, "memory_kb": 7512.0, "file": "corpus/submissions/4827237.cpp"},
+  {"id": "4827239", "language": "CPP17", "result": "RTE", "time": 0.038459723, "memory_kb": 7352.0, "file": "corpus/submissions/4827239.cpp"},
+  {"id": "4827241", "language": "CPP17", "result": "AC", "time": 0.126161962, "memory_kb": 7436.0, "file": "corpus/submissions/4827241.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ceoi09p3.cpp",
+   "proto/ports/ceoi09p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ceoi09p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

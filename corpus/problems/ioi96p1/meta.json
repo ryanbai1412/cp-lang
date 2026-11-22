@@ -1,0 +1,14 @@
+{
+ "problem": "ioi96p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4806776", "language": "CPP17", "result": "AC", "time": 0.061519149, "memory_kb": 3520.0, "file": "corpus/submissions/4806776.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

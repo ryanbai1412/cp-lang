@@ -1,0 +1,21 @@
+{
+ "problem": "yac1p4",
+ "source": "yac",
+ "submissions": [
+  {"id": "4376295", "language": "CPP17", "result": "RTE", "time": 2.388518111, "memory_kb": 102980.0, "file": "corpus/submissions/4376295.cpp"},
+  {"id": "4376308", "language": "CPP17", "result": "TLE", "time": 6.393535277, "memory_kb": 43592.0, "file": "corpus/submissions/4376308.cpp"},
+  {"id": "4376331", "language": "CPP17", "result": "RTE", "time": 1.011346108, "memory_kb": 103360.0, "file": "corpus/submissions/4376331.cpp"},
+  {"id": "4376742", "language": "CPP17", "result": "AC", "time": 7.054507317, "memory_kb": 14212.0, "file": "corpus/submissions/4376742.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/yac1p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

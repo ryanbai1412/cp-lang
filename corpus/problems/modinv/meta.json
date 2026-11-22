@@ -1,0 +1,20 @@
+{
+ "problem": "modinv",
+ "source": "modinv",
+ "submissions": [
+  {"id": "5034433", "language": "CPP17", "result": "WA", "time": 0.177279221, "memory_kb": 3388.0, "file": "corpus/submissions/5034433.cpp"},
+  {"id": "5034440", "language": "CPP17", "result": "AC", "time": 0.164285556, "memory_kb": 3300.0, "file": "corpus/submissions/5034440.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_3/modinv.cp",
+   "proto/ports/scout_batch_3/today/modinv.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

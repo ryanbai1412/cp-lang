@@ -1,0 +1,19 @@
+{
+ "problem": "noi21p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "3861703", "language": "CPP17", "result": "TLE", "time": 10.909132044, "memory_kb": 3440.0, "file": "corpus/submissions/3861703.cpp"},
+  {"id": "3861713", "language": "CPP17", "result": "RTE", "time": 11.337241628, "memory_kb": 3396.0, "file": "corpus/submissions/3861713.cpp"},
+  {"id": "3861724", "language": "CPP17", "result": "RTE", "time": 11.864774344, "memory_kb": 3380.0, "file": "corpus/submissions/3861724.cpp"},
+  {"id": "3861732", "language": "CPP17", "result": "RTE", "time": 10.378118763, "memory_kb": 3360.0, "file": "corpus/submissions/3861732.cpp"},
+  {"id": "3861739", "language": "CPP17", "result": "RTE", "time": 8.824356759, "memory_kb": 3404.0, "file": "corpus/submissions/3861739.cpp"},
+  {"id": "3861777", "language": "CPP17", "result": "RTE", "time": 8.927006532, "memory_kb": 3416.0, "file": "corpus/submissions/3861777.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

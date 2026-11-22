@@ -1,0 +1,18 @@
+{
+ "problem": "sac22cc4jp5",
+ "source": "sac",
+ "submissions": [
+  {"id": "4416105", "language": "CPP17", "result": "WA", "time": 0.037014461, "memory_kb": 7036.0, "file": "corpus/submissions/4416105.cpp"},
+  {"id": "4416110", "language": "CPP17", "result": "WA", "time": 0.037653278, "memory_kb": 7036.0, "file": "corpus/submissions/4416110.cpp"},
+  {"id": "4416113", "language": "CPP17", "result": "WA", "time": 0.003429686, "memory_kb": 3512.0, "file": "corpus/submissions/4416113.cpp"},
+  {"id": "4416126", "language": "CPP17", "result": "WA", "time": 0.038384729, "memory_kb": 7036.0, "file": "corpus/submissions/4416126.cpp"},
+  {"id": "4416132", "language": "CPP17", "result": "AC", "time": 0.038207393, "memory_kb": 7000.0, "file": "corpus/submissions/4416132.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

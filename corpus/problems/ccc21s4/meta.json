@@ -1,0 +1,22 @@
+{
+ "problem": "ccc21s4",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4323468", "language": "CPP17", "result": "AC", "time": 4.571657426, "memory_kb": 25356.0, "file": "corpus/submissions/4323468.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc21s4.cpp",
+   "proto/ports/ccc21s4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc21s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

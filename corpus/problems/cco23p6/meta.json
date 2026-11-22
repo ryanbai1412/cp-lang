@@ -1,0 +1,23 @@
+{
+ "problem": "cco23p6",
+ "source": "cco",
+ "submissions": [
+  {"id": "5618697", "language": "CPP17", "result": "TLE", "time": 18.416178738, "memory_kb": 4696.0, "file": "corpus/submissions/5618697.cpp"},
+  {"id": "5618702", "language": "CPP17", "result": "TLE", "time": 18.305466843, "memory_kb": 7092.0, "file": "corpus/submissions/5618702.cpp"},
+  {"id": "5618711", "language": "CPP17", "result": "TLE", "time": 17.246645773, "memory_kb": 7124.0, "file": "corpus/submissions/5618711.cpp"},
+  {"id": "5618713", "language": "CPP17", "result": "TLE", "time": 18.294140365, "memory_kb": 7112.0, "file": "corpus/submissions/5618713.cpp"},
+  {"id": "5618725", "language": "CPP17", "result": "AC", "time": 4.602489031, "memory_kb": 25892.0, "file": "corpus/submissions/5618725.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/cco23p6.cp",
+   "proto/ports/scout_batch_5/today/cco23p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

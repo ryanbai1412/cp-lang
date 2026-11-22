@@ -1,0 +1,18 @@
+{
+ "problem": "sac22cc4jp3",
+ "source": "sac",
+ "submissions": [
+  {"id": "4416076", "language": "CPP17", "result": "AC", "time": 0.267657681, "memory_kb": 3560.0, "file": "corpus/submissions/4416076.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_21/sac22cc4jp3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

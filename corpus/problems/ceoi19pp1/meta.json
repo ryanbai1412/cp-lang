@@ -1,0 +1,19 @@
+{
+ "problem": "ceoi19pp1",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "5343174", "language": "CPP17", "result": "AC", "time": 7.151863165, "memory_kb": 108716.0, "file": "corpus/submissions/5343174.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_48/ceoi19pp1.cp",
+   "proto/ports/scout_batch_48/today/ceoi19pp1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

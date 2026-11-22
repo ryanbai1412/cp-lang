@@ -1,0 +1,31 @@
+{
+ "problem": "noi05p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "3718811", "language": "CPP17", "result": "AC", "time": 0.14039637, "memory_kb": 19220.0, "file": "corpus/submissions/3718811.cpp"},
+  {"id": "4242528", "language": "CPP17", "result": "WA", "time": 5.85205023, "memory_kb": 7540.0, "file": "corpus/submissions/4242528.cpp"},
+  {"id": "4242529", "language": "CPP17", "result": "WA", "time": 5.936492616, "memory_kb": 7540.0, "file": "corpus/submissions/4242529.cpp"},
+  {"id": "4242570", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4242570.cpp"},
+  {"id": "4242580", "language": "CPP17", "result": "WA", "time": 5.937766013, "memory_kb": 7548.0, "file": "corpus/submissions/4242580.cpp"},
+  {"id": "4242621", "language": "CPP17", "result": "WA", "time": 5.939784595, "memory_kb": 7616.0, "file": "corpus/submissions/4242621.cpp"},
+  {"id": "4242624", "language": "CPP17", "result": "WA", "time": 5.938834131, "memory_kb": 7616.0, "file": "corpus/submissions/4242624.cpp"},
+  {"id": "4242670", "language": "CPP17", "result": "WA", "time": 5.938490577, "memory_kb": 11236.0, "file": "corpus/submissions/4242670.cpp"},
+  {"id": "4242671", "language": "CPP17", "result": "TLE", "time": 5.984829563, "memory_kb": 11228.0, "file": "corpus/submissions/4242671.cpp"},
+  {"id": "4242674", "language": "CPP17", "result": "WA", "time": 5.979667567, "memory_kb": 11228.0, "file": "corpus/submissions/4242674.cpp"},
+  {"id": "4242675", "language": "CPP17", "result": "WA", "time": 5.981128186, "memory_kb": 11228.0, "file": "corpus/submissions/4242675.cpp"},
+  {"id": "4242677", "language": "CPP17", "result": "WA", "time": 5.976276273, "memory_kb": 11228.0, "file": "corpus/submissions/4242677.cpp"},
+  {"id": "4242678", "language": "CPP17", "result": "WA", "time": 5.979321319, "memory_kb": 11236.0, "file": "corpus/submissions/4242678.cpp"},
+  {"id": "5032733", "language": "CPP17", "result": "AC", "time": 0.1387175, "memory_kb": 19280.0, "file": "corpus/submissions/5032733.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_14/noi05p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,18 @@
+{
+ "problem": "cco19p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "3613457", "language": "CPP17", "result": "AC", "time": 3.075123755, "memory_kb": 26040.0, "file": "corpus/submissions/3613457.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_12/cco19p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

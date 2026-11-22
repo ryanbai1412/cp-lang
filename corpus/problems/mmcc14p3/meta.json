@@ -1,0 +1,18 @@
+{
+ "problem": "mmcc14p3",
+ "source": "mmcc",
+ "submissions": [
+  {"id": "5120083", "language": "CPP17", "result": "AC", "time": 0.243461695, "memory_kb": 8604.0, "file": "corpus/submissions/5120083.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_26/mmcc14p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

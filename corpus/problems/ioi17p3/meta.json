@@ -1,0 +1,24 @@
+{
+ "problem": "ioi17p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "3919482", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3919482.cpp"},
+  {"id": "3919484", "language": "CPP17", "result": "RTE", "time": 0.474967792, "memory_kb": 136580.0, "file": "corpus/submissions/3919484.cpp"},
+  {"id": "3920680", "language": "CPP17", "result": "TLE", "time": 12.836528099, "memory_kb": 233148.0, "file": "corpus/submissions/3920680.cpp"},
+  {"id": "3920698", "language": "CPP17", "result": "TLE", "time": 12.735703914, "memory_kb": 233384.0, "file": "corpus/submissions/3920698.cpp"},
+  {"id": "3921030", "language": "CPP17", "result": "WA", "time": 0.172304455, "memory_kb": 4324.0, "file": "corpus/submissions/3921030.cpp"},
+  {"id": "3921067", "language": "CPP17", "result": "AC", "time": 4.581422285, "memory_kb": 4344.0, "file": "corpus/submissions/3921067.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_23/ioi17p3.cp",
+   "proto/ports/scout_batch_23/today/ioi17p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

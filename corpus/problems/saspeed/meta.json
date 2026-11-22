@@ -1,0 +1,19 @@
+{
+ "problem": "saspeed",
+ "source": "saspeed",
+ "submissions": [
+  {"id": "4852075", "language": "CPP17", "result": "AC", "time": 1.477585441, "memory_kb": 19948.0, "file": "corpus/submissions/4852075.cpp"},
+  {"id": "4852187", "language": "CPP17", "result": "WA", "time": 35.197270021, "memory_kb": 23900.0, "file": "corpus/submissions/4852187.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/saspeed.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

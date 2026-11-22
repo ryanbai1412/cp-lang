@@ -1,0 +1,22 @@
+{
+ "problem": "ccc22s3",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4371344", "language": "CPP17", "result": "AC", "time": 2.415155649, "memory_kb": 7124.0, "file": "corpus/submissions/4371344.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/ccc22s3.cpp",
+   "proto/ports/hillclimb_dp_graph/ccc22s3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/ccc22s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,14 @@
+{
+ "problem": "math07",
+ "source": "math",
+ "submissions": [
+  {"id": "4811880", "language": "TEXT", "result": "AC", "time": 0.00346895, "memory_kb": 1828.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,15 @@
+{
+ "problem": "ioi21p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5694415", "language": "CPP17", "result": "TLE", "time": 68.188397349, "memory_kb": 966712.0, "file": "corpus/submissions/5694415.cpp"},
+  {"id": "5694420", "language": "CPP17", "result": "TLE", "time": 75.171046338, "memory_kb": 966696.0, "file": "corpus/submissions/5694420.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

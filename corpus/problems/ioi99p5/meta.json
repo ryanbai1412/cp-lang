@@ -1,0 +1,17 @@
+{
+ "problem": "ioi99p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4899495", "language": "CPP17", "result": "TLE", "time": 9.074723707, "memory_kb": 3352.0, "file": "corpus/submissions/4899495.cpp"},
+  {"id": "4899502", "language": "TEXT", "result": "WA", "time": 0.038632289, "memory_kb": 1740.0, "file": null},
+  {"id": "4899520", "language": "CPP17", "result": "WA", "time": 9.060774309, "memory_kb": 3420.0, "file": "corpus/submissions/4899520.cpp"},
+  {"id": "4899522", "language": "CPP17", "result": "WA", "time": 9.051301269, "memory_kb": 3420.0, "file": "corpus/submissions/4899522.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

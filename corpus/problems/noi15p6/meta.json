@@ -1,0 +1,26 @@
+{
+ "problem": "noi15p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "3777344", "language": "CPP17", "result": "WA", "time": 0.639214735, "memory_kb": 61180.0, "file": "corpus/submissions/3777344.cpp"},
+  {"id": "3777346", "language": "CPP17", "result": "WA", "time": 0.64483762, "memory_kb": 61184.0, "file": "corpus/submissions/3777346.cpp"},
+  {"id": "3777366", "language": "CPP17", "result": "AC", "time": 0.654971143, "memory_kb": 62660.0, "file": "corpus/submissions/3777366.cpp"},
+  {"id": "3777373", "language": "CPP17", "result": "AC", "time": 0.658357821, "memory_kb": 62580.0, "file": "corpus/submissions/3777373.cpp"},
+  {"id": "3777451", "language": "CPP17", "result": "AC", "time": 0.821335381, "memory_kb": 66136.0, "file": "corpus/submissions/3777451.cpp"},
+  {"id": "3777454", "language": "CPP17", "result": "AC", "time": 0.815913461, "memory_kb": 66136.0, "file": "corpus/submissions/3777454.cpp"},
+  {"id": "3777459", "language": "CPP17", "result": "AC", "time": 0.817306717, "memory_kb": 66136.0, "file": "corpus/submissions/3777459.cpp"},
+  {"id": "3777460", "language": "CPP17", "result": "AC", "time": 0.816591744, "memory_kb": 66136.0, "file": "corpus/submissions/3777460.cpp"},
+  {"id": "3777461", "language": "CPP17", "result": "AC", "time": 0.818067875, "memory_kb": 66136.0, "file": "corpus/submissions/3777461.cpp"},
+  {"id": "3777462", "language": "CPP17", "result": "AC", "time": 0.816125292, "memory_kb": 66136.0, "file": "corpus/submissions/3777462.cpp"},
+  {"id": "3777464", "language": "CPP17", "result": "AC", "time": 0.81647547, "memory_kb": 66136.0, "file": "corpus/submissions/3777464.cpp"},
+  {"id": "3777606", "language": "CPP17", "result": "AC", "time": 1.458631373, "memory_kb": 121472.0, "file": "corpus/submissions/3777606.cpp"},
+  {"id": "3779976", "language": "CPP17", "result": "AC", "time": 1.021197657, "memory_kb": 117876.0, "file": "corpus/submissions/3779976.cpp"}
+ ],
+ "cpp_ac": 11,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,23 @@
+{
+ "problem": "cco01p4io",
+ "source": "cco",
+ "submissions": [
+  {"id": "5034473", "language": "CPP17", "result": "RTE", "time": 0.036422354000000004, "memory_kb": 4160.0, "file": "corpus/submissions/5034473.cpp"},
+  {"id": "5034477", "language": "CPP17", "result": "WA", "time": 0.03840492200000001, "memory_kb": 3916.0, "file": "corpus/submissions/5034477.cpp"},
+  {"id": "5034480", "language": "CPP17", "result": "RTE", "time": 0.2652117890000001, "memory_kb": 4184.0, "file": "corpus/submissions/5034480.cpp"},
+  {"id": "5034482", "language": "CPP17", "result": "RTE", "time": 0.5617753329999999, "memory_kb": 4140.0, "file": "corpus/submissions/5034482.cpp"},
+  {"id": "5034487", "language": "CPP17", "result": "AC", "time": 0.18638483800000005, "memory_kb": 3920.0, "file": "corpus/submissions/5034487.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_47/cco01p4io.cp",
+   "proto/ports/scout_batch_47/today/cco01p4io.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

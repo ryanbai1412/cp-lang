@@ -1,0 +1,34 @@
+{
+ "problem": "dmopc21c5p5",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4218598", "language": "CPP17", "result": "RTE", "time": 1.188651281, "memory_kb": 87780.0, "file": "corpus/submissions/4218598.cpp"},
+  {"id": "4223570", "language": "CPP17", "result": "WA", "time": 1.911762467, "memory_kb": 7624.0, "file": "corpus/submissions/4223570.cpp"},
+  {"id": "4223604", "language": "CPP17", "result": "WA", "time": 1.91243827, "memory_kb": 7620.0, "file": "corpus/submissions/4223604.cpp"},
+  {"id": "4223747", "language": "CPP17", "result": "WA", "time": 0.041256091, "memory_kb": 7412.0, "file": "corpus/submissions/4223747.cpp"},
+  {"id": "4223787", "language": "CPP17", "result": "WA", "time": 97.16353081, "memory_kb": 7484.0, "file": "corpus/submissions/4223787.cpp"},
+  {"id": "4223878", "language": "CPP17", "result": "RTE", "time": 18.08967364, "memory_kb": 7488.0, "file": "corpus/submissions/4223878.cpp"},
+  {"id": "4223887", "language": "CPP17", "result": "AC", "time": 49.48521072, "memory_kb": 7484.0, "file": "corpus/submissions/4223887.cpp"},
+  {"id": "4223904", "language": "CPP17", "result": "WA", "time": 5.249606373, "memory_kb": 7484.0, "file": "corpus/submissions/4223904.cpp"},
+  {"id": "4223910", "language": "CPP17", "result": "WA", "time": 17.185972029, "memory_kb": 7484.0, "file": "corpus/submissions/4223910.cpp"},
+  {"id": "4223913", "language": "CPP17", "result": "AC", "time": 30.289059506, "memory_kb": 7488.0, "file": "corpus/submissions/4223913.cpp"},
+  {"id": "4223963", "language": "CPP17", "result": "WA", "time": 0.104799919, "memory_kb": 7488.0, "file": "corpus/submissions/4223963.cpp"},
+  {"id": "4223975", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4223975.cpp"},
+  {"id": "4223979", "language": "CPP17", "result": "WA", "time": 0.740472743, "memory_kb": 7488.0, "file": "corpus/submissions/4223979.cpp"},
+  {"id": "4223999", "language": "CPP17", "result": "AC", "time": 30.171923788, "memory_kb": 7484.0, "file": "corpus/submissions/4223999.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_4/dmopc21c5p5_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_4/dmopc21c5p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

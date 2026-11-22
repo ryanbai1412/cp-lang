@@ -1,0 +1,16 @@
+{
+ "problem": "cco04p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "5430126", "language": "CPP17", "result": "MLE", "time": 0.333933068, "memory_kb": 36436.0, "file": "corpus/submissions/5430126.cpp"},
+  {"id": "5430127", "language": "CPP17", "result": "MLE", "time": 0.330858783, "memory_kb": 36416.0, "file": "corpus/submissions/5430127.cpp"},
+  {"id": "5430128", "language": "CPP17", "result": "MLE", "time": 0.397565521, "memory_kb": 48220.0, "file": "corpus/submissions/5430128.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

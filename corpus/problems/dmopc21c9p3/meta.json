@@ -1,0 +1,19 @@
+{
+ "problem": "dmopc21c9p3",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4564027", "language": "CPP17", "result": "AC", "time": 4.336734161, "memory_kb": 38920.0, "file": "corpus/submissions/4564027.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_44/dmopc21c9p3.cp",
+   "proto/ports/scout_batch_44/today/dmopc21c9p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

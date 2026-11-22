@@ -1,0 +1,20 @@
+{
+ "problem": "noi22p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "4802114", "language": "CPP17", "result": "WA", "time": 1.747699357, "memory_kb": 29288.0, "file": "corpus/submissions/4802114.cpp"},
+  {"id": "4802121", "language": "CPP17", "result": "AC", "time": 3.098712191, "memory_kb": 50796.0, "file": "corpus/submissions/4802121.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi22p4.cp",
+   "proto/ports/scout_batch_50/today/noi22p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

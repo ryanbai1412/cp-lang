@@ -1,0 +1,18 @@
+{
+ "problem": "noi10p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "5670273", "language": "CPP17", "result": "AC", "time": 0.16923393, "memory_kb": 3676.0, "file": "corpus/submissions/5670273.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_27/noi10p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

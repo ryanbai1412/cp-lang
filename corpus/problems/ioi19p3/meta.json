@@ -1,0 +1,15 @@
+{
+ "problem": "ioi19p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5661849", "language": "CPP17", "result": "TLE", "time": 15.906725993, "memory_kb": 466936.0, "file": "corpus/submissions/5661849.cpp"},
+  {"id": "5661960", "language": "CPP17", "result": "AC", "time": 35.587176347, "memory_kb": 623064.0, "file": "corpus/submissions/5661960.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

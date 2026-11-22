@@ -1,0 +1,22 @@
+{
+ "problem": "btoi18p6",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4456176", "language": "CPP17", "result": "AC", "time": 3.682169207, "memory_kb": 57564.0, "file": "corpus/submissions/4456176.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/btoi18p6.cpp",
+   "proto/ports/btoi18p6_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/btoi18p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

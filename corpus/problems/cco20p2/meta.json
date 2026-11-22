@@ -1,0 +1,18 @@
+{
+ "problem": "cco20p2",
+ "source": "cco",
+ "submissions": [
+  {"id": "4561352", "language": "CPP17", "result": "AC", "time": 5.583567358, "memory_kb": 28520.0, "file": "corpus/submissions/4561352.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_2/cco20p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

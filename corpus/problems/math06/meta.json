@@ -1,0 +1,25 @@
+{
+ "problem": "math06",
+ "source": "math",
+ "submissions": [
+  {"id": "4810223", "language": "TEXT", "result": "WA", "time": 0.003517945, "memory_kb": 1840.0, "file": null},
+  {"id": "4810226", "language": "TEXT", "result": "WA", "time": 0.004033711, "memory_kb": 1944.0, "file": null},
+  {"id": "4810230", "language": "TEXT", "result": "WA", "time": 0.003477066, "memory_kb": 1944.0, "file": null},
+  {"id": "4810241", "language": "TEXT", "result": "WA", "time": 0.003442114, "memory_kb": 1944.0, "file": null},
+  {"id": "4810242", "language": "TEXT", "result": "WA", "time": 0.003306751, "memory_kb": 1944.0, "file": null},
+  {"id": "4810243", "language": "TEXT", "result": "WA", "time": 0.003368748, "memory_kb": 1944.0, "file": null},
+  {"id": "4810244", "language": "TEXT", "result": "WA", "time": 0.00334423, "memory_kb": 1944.0, "file": null},
+  {"id": "4810245", "language": "TEXT", "result": "WA", "time": 0.004524959, "memory_kb": 1896.0, "file": null},
+  {"id": "4810246", "language": "TEXT", "result": "WA", "time": 0.004112602, "memory_kb": 1896.0, "file": null},
+  {"id": "4810247", "language": "TEXT", "result": "WA", "time": 0.004153521, "memory_kb": 1896.0, "file": null},
+  {"id": "4810251", "language": "TEXT", "result": "WA", "time": 0.003416327, "memory_kb": 1944.0, "file": null},
+  {"id": "4810294", "language": "TEXT", "result": "AC", "time": 0.003489012, "memory_kb": 1840.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

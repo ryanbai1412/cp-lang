@@ -1,0 +1,15 @@
+{
+ "problem": "noip08p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5184894", "language": "CPP17", "result": "TLE", "time": 10.573154394, "memory_kb": 3456.0, "file": "corpus/submissions/5184894.cpp"},
+  {"id": "5184898", "language": "CPP17", "result": "AC", "time": 2.518168843, "memory_kb": 3456.0, "file": "corpus/submissions/5184898.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

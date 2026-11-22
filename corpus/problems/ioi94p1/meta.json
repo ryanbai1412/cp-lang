@@ -1,0 +1,23 @@
+{
+ "problem": "ioi94p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4810274", "language": "CPP17", "result": "AC", "time": 0.020073397, "memory_kb": 3556.0, "file": "corpus/submissions/4810274.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi94p1.cpp",
+   "proto/ports/ioi94p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi94p1.cp",
+   "proto/ports/wave2/ioi94p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

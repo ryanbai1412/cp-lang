@@ -1,0 +1,30 @@
+{
+ "problem": "ioi17p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5659146", "language": "CPP17", "result": "TLE", "time": 2.929151025, "memory_kb": 272716.0, "file": "corpus/submissions/5659146.cpp"},
+  {"id": "5659191", "language": "CPP17", "result": "WA", "time": 0.026855935, "memory_kb": 69036.0, "file": "corpus/submissions/5659191.cpp"},
+  {"id": "5659194", "language": "CPP17", "result": "TLE", "time": 2.682711042, "memory_kb": 363724.0, "file": "corpus/submissions/5659194.cpp"},
+  {"id": "5659203", "language": "CPP17", "result": "TLE", "time": 2.869396945, "memory_kb": 358756.0, "file": "corpus/submissions/5659203.cpp"},
+  {"id": "5659214", "language": "CPP17", "result": "WA", "time": 3.707732299, "memory_kb": 276628.0, "file": "corpus/submissions/5659214.cpp"},
+  {"id": "5659264", "language": "CPP17", "result": "TLE", "time": 2.759599563, "memory_kb": 358776.0, "file": "corpus/submissions/5659264.cpp"},
+  {"id": "5659273", "language": "CPP17", "result": "TLE", "time": 2.697547659, "memory_kb": 374256.0, "file": "corpus/submissions/5659273.cpp"},
+  {"id": "5659292", "language": "CPP17", "result": "WA", "time": 0.027256587, "memory_kb": 69252.0, "file": "corpus/submissions/5659292.cpp"},
+  {"id": "5659297", "language": "CPP17", "result": "WA", "time": 0.162505629, "memory_kb": 69144.0, "file": "corpus/submissions/5659297.cpp"},
+  {"id": "5659304", "language": "CPP17", "result": "AC", "time": 18.705088708, "memory_kb": 286184.0, "file": "corpus/submissions/5659304.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_4/ioi17p6_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_4/ioi17p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,27 @@
+{
+ "problem": "noi16p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "4787912", "language": "CPP17", "result": "WA", "time": 2.178931444, "memory_kb": 38328.0, "file": "corpus/submissions/4787912.cpp"},
+  {"id": "4787927", "language": "CPP17", "result": "TLE", "time": 38.526705932, "memory_kb": 32932.0, "file": "corpus/submissions/4787927.cpp"},
+  {"id": "4791654", "language": "CPP17", "result": "MLE", "time": 4.146948955, "memory_kb": 324880.0, "file": "corpus/submissions/4791654.cpp"},
+  {"id": "4791660", "language": "CPP17", "result": "RTE", "time": 3.267766117, "memory_kb": 13484.0, "file": "corpus/submissions/4791660.cpp"},
+  {"id": "4791664", "language": "CPP17", "result": "TLE", "time": 21.329550257, "memory_kb": 44332.0, "file": "corpus/submissions/4791664.cpp"},
+  {"id": "4791678", "language": "CPP17", "result": "AC", "time": 2.54921632, "memory_kb": 29528.0, "file": "corpus/submissions/4791678.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noi16p4.cpp",
+   "proto/ports/noi16p4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noi16p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

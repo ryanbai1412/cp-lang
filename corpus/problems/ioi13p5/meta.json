@@ -1,0 +1,20 @@
+{
+ "problem": "ioi13p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4688418", "language": "CPP17", "result": "AC", "time": 10.49836869, "memory_kb": 19016.0, "file": "corpus/submissions/4688418.cpp"},
+  {"id": "5032757", "language": "CPP17", "result": "AC", "time": 10.544581065, "memory_kb": 20768.0, "file": "corpus/submissions/5032757.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/ioi13p5.cp",
+   "proto/ports/scout_batch_5/today/ioi13p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

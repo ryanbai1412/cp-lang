@@ -1,0 +1,24 @@
+{
+ "problem": "cco17p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "4843956", "language": "CPP17", "result": "RTE", "time": 5.473487664, "memory_kb": 376640.0, "file": "corpus/submissions/4843956.cpp"},
+  {"id": "4843957", "language": "CPP17", "result": "AC", "time": 11.755501498, "memory_kb": 376700.0, "file": "corpus/submissions/4843957.cpp"},
+  {"id": "4843959", "language": "CPP17", "result": "AC", "time": 9.54903801, "memory_kb": 387652.0, "file": "corpus/submissions/4843959.cpp"},
+  {"id": "4843960", "language": "CPP17", "result": "AC", "time": 8.490367791, "memory_kb": 284356.0, "file": "corpus/submissions/4843960.cpp"},
+  {"id": "4843961", "language": "CPP17", "result": "RTE", "time": 0.404431804, "memory_kb": 190688.0, "file": "corpus/submissions/4843961.cpp"},
+  {"id": "4843962", "language": "CPP17", "result": "RTE", "time": 4.359463978, "memory_kb": 331312.0, "file": "corpus/submissions/4843962.cpp"},
+  {"id": "4843963", "language": "CPP17", "result": "AC", "time": 7.560080461, "memory_kb": 241588.0, "file": "corpus/submissions/4843963.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_7/cco17p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

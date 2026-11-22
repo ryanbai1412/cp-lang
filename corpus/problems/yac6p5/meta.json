@@ -1,0 +1,22 @@
+{
+ "problem": "yac6p5",
+ "source": "yac",
+ "submissions": [
+  {"id": "5149746", "language": "CPP17", "result": "WA", "time": 0.00333368, "memory_kb": 3456.0, "file": "corpus/submissions/5149746.cpp"},
+  {"id": "5149774", "language": "CPP17", "result": "TLE", "time": 6.477676142, "memory_kb": 7852.0, "file": "corpus/submissions/5149774.cpp"},
+  {"id": "5149786", "language": "CPP17", "result": "TLE", "time": 5.942003315, "memory_kb": 6788.0, "file": "corpus/submissions/5149786.cpp"},
+  {"id": "5149823", "language": "CPP17", "result": "AC", "time": 10.830836166, "memory_kb": 93672.0, "file": "corpus/submissions/5149823.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/today/yac6p5.cp",
+   "proto/ports/scout_batch_46/yac6p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

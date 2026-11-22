@@ -1,0 +1,16 @@
+{
+ "problem": "dmopc21c4p3",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4125390", "language": "TEXT", "result": "WA", "time": 0.002316233, "memory_kb": 1724.0, "file": null},
+  {"id": "4125392", "language": "TEXT", "result": "WA", "time": 0.002364317, "memory_kb": 1724.0, "file": null},
+  {"id": "4125403", "language": "PYPY3", "result": "AC", "time": 0.04378604, "memory_kb": 58132.0, "file": "corpus/submissions/4125403.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

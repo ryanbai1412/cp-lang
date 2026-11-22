@@ -1,0 +1,20 @@
+{
+ "problem": "dmopc20c7p2",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3686590", "language": "CPP17", "result": "WA", "time": 0.163716169, "memory_kb": 24728.0, "file": "corpus/submissions/3686590.cpp"},
+  {"id": "3686612", "language": "CPP17", "result": "AC", "time": 9.578678228, "memory_kb": 100556.0, "file": "corpus/submissions/3686612.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_34/dmopc20c7p2.cp",
+   "proto/ports/scout_batch_34/today/dmopc20c7p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

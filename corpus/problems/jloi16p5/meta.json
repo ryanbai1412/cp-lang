@@ -1,0 +1,18 @@
+{
+ "problem": "jloi16p5",
+ "source": "jloi",
+ "submissions": [
+  {"id": "5434751", "language": "CPP17", "result": "TLE", "time": 17.286953096, "memory_kb": 6240.0, "file": "corpus/submissions/5434751.cpp"},
+  {"id": "5434779", "language": "CPP17", "result": "TLE", "time": 15.237816774, "memory_kb": 7228.0, "file": "corpus/submissions/5434779.cpp"},
+  {"id": "5434862", "language": "CPP17", "result": "TLE", "time": 15.874441198, "memory_kb": 6240.0, "file": "corpus/submissions/5434862.cpp"},
+  {"id": "5438936", "language": "CPP17", "result": "AC", "time": 0.455611563, "memory_kb": 17260.0, "file": "corpus/submissions/5438936.cpp"},
+  {"id": "5445696", "language": "CPP17", "result": "AC", "time": 0.456431145, "memory_kb": 17256.0, "file": "corpus/submissions/5445696.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

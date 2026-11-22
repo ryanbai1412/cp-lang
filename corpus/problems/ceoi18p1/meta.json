@@ -1,0 +1,22 @@
+{
+ "problem": "ceoi18p1",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "5323668", "language": "CPP17", "result": "AC", "time": 8.186062477, "memory_kb": 5132.0, "file": "corpus/submissions/5323668.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ceoi18p1.cpp",
+   "proto/ports/ceoi18p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ceoi18p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

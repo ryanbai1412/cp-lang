@@ -1,0 +1,19 @@
+{
+ "problem": "ucrpc21e",
+ "source": "ucrpc",
+ "submissions": [
+  {"id": "3944571", "language": "CPP17", "result": "AC", "time": 3.686926057, "memory_kb": 54320.0, "file": "corpus/submissions/3944571.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/today/ucrpc21e.cp",
+   "proto/ports/scout_batch_32/ucrpc21e.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

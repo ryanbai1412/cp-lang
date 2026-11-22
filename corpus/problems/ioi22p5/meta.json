@@ -1,0 +1,32 @@
+{
+ "problem": "ioi22p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4785775", "language": "CPP17", "result": "RTE", "time": 0.078873686, "memory_kb": 3320.0, "file": "corpus/submissions/4785775.cpp"},
+  {"id": "4785860", "language": "CPP17", "result": "AC", "time": 6.560899913, "memory_kb": 3732.0, "file": "corpus/submissions/4785860.cpp"},
+  {"id": "4785882", "language": "CPP17", "result": "AC", "time": 5.329144785, "memory_kb": 3732.0, "file": "corpus/submissions/4785882.cpp"},
+  {"id": "4785894", "language": "CPP17", "result": "AC", "time": 6.761907662, "memory_kb": 3760.0, "file": "corpus/submissions/4785894.cpp"},
+  {"id": "4785906", "language": "CPP17", "result": "AC", "time": 10.259395095, "memory_kb": 3760.0, "file": "corpus/submissions/4785906.cpp"},
+  {"id": "4785908", "language": "CPP17", "result": "AC", "time": 5.617594787, "memory_kb": 3732.0, "file": "corpus/submissions/4785908.cpp"},
+  {"id": "4785915", "language": "CPP17", "result": "AC", "time": 5.740388932, "memory_kb": 3760.0, "file": "corpus/submissions/4785915.cpp"},
+  {"id": "4785916", "language": "CPP17", "result": "AC", "time": 6.055142855, "memory_kb": 3760.0, "file": "corpus/submissions/4785916.cpp"},
+  {"id": "4785919", "language": "CPP17", "result": "AC", "time": 5.9605128, "memory_kb": 3732.0, "file": "corpus/submissions/4785919.cpp"},
+  {"id": "4785985", "language": "CPP17", "result": "WA", "time": 1.077941459, "memory_kb": 3856.0, "file": "corpus/submissions/4785985.cpp"},
+  {"id": "4786033", "language": "CPP17", "result": "AC", "time": 5.271319175, "memory_kb": 3828.0, "file": "corpus/submissions/4786033.cpp"},
+  {"id": "4786035", "language": "CPP17", "result": "AC", "time": 4.09057881, "memory_kb": 3856.0, "file": "corpus/submissions/4786035.cpp"},
+  {"id": "4786083", "language": "CPP17", "result": "AC", "time": 3.72310396, "memory_kb": 3904.0, "file": "corpus/submissions/4786083.cpp"},
+  {"id": "4786085", "language": "CPP17", "result": "AC", "time": 3.835355918, "memory_kb": 3932.0, "file": "corpus/submissions/4786085.cpp"}
+ ],
+ "cpp_ac": 12,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/ioi22p5.cp",
+   "proto/ports/scout_batch_52/today/ioi22p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

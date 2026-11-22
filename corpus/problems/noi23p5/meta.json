@@ -1,0 +1,14 @@
+{
+ "problem": "noi23p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "5723065", "language": "CPP17", "result": "AC", "time": 2.532282725, "memory_kb": 15208.0, "file": "corpus/submissions/5723065.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

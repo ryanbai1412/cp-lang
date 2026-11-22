@@ -1,0 +1,18 @@
+{
+ "problem": "btoi15p3",
+ "source": "btoi",
+ "submissions": [
+  {"id": "5640865", "language": "CPP17", "result": "AC", "time": 6.820823542, "memory_kb": 92848.0, "file": "corpus/submissions/5640865.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_26/btoi15p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,25 @@
+{
+ "problem": "iati21a13",
+ "source": "iati",
+ "submissions": [
+  {"id": "5052232", "language": "CPP17", "result": "RTE", "time": 17.003233545, "memory_kb": 42596.0, "file": "corpus/submissions/5052232.cpp"},
+  {"id": "5052243", "language": "CPP17", "result": "RTE", "time": 15.102374641, "memory_kb": 354588.0, "file": "corpus/submissions/5052243.cpp"},
+  {"id": "5052246", "language": "CPP17", "result": "TLE", "time": 26.453237973, "memory_kb": 367072.0, "file": "corpus/submissions/5052246.cpp"},
+  {"id": "5052248", "language": "CPP17", "result": "TLE", "time": 20.7942426, "memory_kb": 354548.0, "file": "corpus/submissions/5052248.cpp"},
+  {"id": "5052260", "language": "CPP17", "result": "TLE", "time": 26.182624448, "memory_kb": 304548.0, "file": "corpus/submissions/5052260.cpp"},
+  {"id": "5052294", "language": "CPP17", "result": "RTE", "time": 15.145630053, "memory_kb": 304576.0, "file": "corpus/submissions/5052294.cpp"},
+  {"id": "5052303", "language": "CPP17", "result": "AC", "time": 15.985192006, "memory_kb": 304592.0, "file": "corpus/submissions/5052303.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/iati21a13.cp",
+   "proto/ports/scout_batch_52/today/iati21a13.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

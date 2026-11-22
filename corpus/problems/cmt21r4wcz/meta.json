@@ -1,0 +1,16 @@
+{
+ "problem": "cmt21r4wcz",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4011796", "language": "CPP17", "result": "RTE", "time": 5.848166211, "memory_kb": 514380.0, "file": "corpus/submissions/4011796.cpp"},
+  {"id": "4011800", "language": "CPP17", "result": "RTE", "time": 5.215459728, "memory_kb": 526928.0, "file": "corpus/submissions/4011800.cpp"},
+  {"id": "4011891", "language": "CPP17", "result": "RTE", "time": 0.314615399, "memory_kb": 42628.0, "file": "corpus/submissions/4011891.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

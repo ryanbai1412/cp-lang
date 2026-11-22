@@ -1,0 +1,17 @@
+{
+ "problem": "rccc1s5",
+ "source": "rccc",
+ "submissions": [
+  {"id": "3416040", "language": "JAVA", "result": "WA", "time": 0.778444909, "memory_kb": 87364.0, "file": "corpus/submissions/3416040.java"},
+  {"id": "3416046", "language": "JAVA", "result": "TLE", "time": 19.447941644, "memory_kb": 94968.0, "file": "corpus/submissions/3416046.java"},
+  {"id": "3422488", "language": "JAVA", "result": "TLE", "time": 19.296573891, "memory_kb": 93416.0, "file": "corpus/submissions/3422488.java"},
+  {"id": "3422510", "language": "JAVA", "result": "WA", "time": 24.403928221, "memory_kb": 87624.0, "file": "corpus/submissions/3422510.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

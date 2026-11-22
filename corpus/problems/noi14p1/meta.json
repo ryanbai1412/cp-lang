@@ -1,0 +1,19 @@
+{
+ "problem": "noi14p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3595708", "language": "CPP17", "result": "WA", "time": 0.126541257, "memory_kb": 3636.0, "file": "corpus/submissions/3595708.cpp"},
+  {"id": "3595714", "language": "CPP17", "result": "AC", "time": 0.127494977, "memory_kb": 3636.0, "file": "corpus/submissions/3595714.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_22/noi14p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

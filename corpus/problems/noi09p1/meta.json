@@ -1,0 +1,21 @@
+{
+ "problem": "noi09p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "5102810", "language": "CPP17", "result": "RTE", "time": 0.040794652, "memory_kb": 4256.0, "file": "corpus/submissions/5102810.cpp"},
+  {"id": "5102812", "language": "CPP17", "result": "WA", "time": 0.038444304, "memory_kb": 4252.0, "file": "corpus/submissions/5102812.cpp"},
+  {"id": "5102814", "language": "CPP17", "result": "RTE", "time": 0.041978085, "memory_kb": 4256.0, "file": "corpus/submissions/5102814.cpp"},
+  {"id": "5102817", "language": "CPP17", "result": "AC", "time": 0.041317117, "memory_kb": 4256.0, "file": "corpus/submissions/5102817.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_15/noi09p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,23 @@
+{
+ "problem": "aac5p5",
+ "source": "aac",
+ "submissions": [
+  {"id": "4240131", "language": "CPP17", "result": "TLE", "time": 3.999805593, "memory_kb": 3624.0, "file": "corpus/submissions/4240131.cpp"},
+  {"id": "4240133", "language": "CPP17", "result": "TLE", "time": 3.999820154, "memory_kb": 3316.0, "file": "corpus/submissions/4240133.cpp"},
+  {"id": "4240171", "language": "CPP17", "result": "AC", "time": 3.258280633, "memory_kb": 4152.0, "file": "corpus/submissions/4240171.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/aac5p5_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/aac5p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

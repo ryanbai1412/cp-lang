@@ -1,0 +1,16 @@
+{
+ "problem": "noi18p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "6517962", "language": "CPP17", "result": "RTE", "time": 0.895082958, "memory_kb": 85480.0, "file": "corpus/submissions/6517962.cpp"},
+  {"id": "6518029", "language": "CPP17", "result": "RTE", "time": 0.898562351, "memory_kb": 85556.0, "file": "corpus/submissions/6518029.cpp"},
+  {"id": "6518047", "language": "CPP17", "result": "RTE", "time": 0.900977079, "memory_kb": 85372.0, "file": "corpus/submissions/6518047.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+ "problem": "noip05p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5156189", "language": "CPP17", "result": "RTE", "time": 0.033333435, "memory_kb": 3152.0, "file": "corpus/submissions/5156189.cpp"},
+  {"id": "5156196", "language": "CPP17", "result": "AC", "time": 0.040859684, "memory_kb": 4940.0, "file": "corpus/submissions/5156196.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_28/noip05p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

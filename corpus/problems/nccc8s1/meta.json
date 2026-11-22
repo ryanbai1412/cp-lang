@@ -1,0 +1,22 @@
+{
+ "problem": "nccc8s1",
+ "source": "nccc",
+ "submissions": [
+  {"id": "3381093", "language": "JAVA", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3381093.java"},
+  {"id": "3381096", "language": "JAVA", "result": "WA", "time": 0.111941459, "memory_kb": 59840.0, "file": "corpus/submissions/3381096.java"},
+  {"id": "3381102", "language": "JAVA", "result": "WA", "time": 0.115437817, "memory_kb": 59524.0, "file": "corpus/submissions/3381102.java"},
+  {"id": "3381111", "language": "JAVA", "result": "AC", "time": 2.330875392, "memory_kb": 61048.0, "file": "corpus/submissions/3381111.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/nccc8s1.cp",
+   "proto/ports/scout_batch_41/today/nccc8s1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

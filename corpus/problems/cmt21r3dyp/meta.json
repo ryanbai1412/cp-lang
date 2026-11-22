@@ -1,0 +1,17 @@
+{
+ "problem": "cmt21r3dyp",
+ "source": "cmt",
+ "submissions": [
+  {"id": "3998068", "language": "CPP17", "result": "RTE", "time": 5.567082837, "memory_kb": 35088.0, "file": "corpus/submissions/3998068.cpp"},
+  {"id": "3998084", "language": "CPP17", "result": "WA", "time": 5.623674148, "memory_kb": 36692.0, "file": "corpus/submissions/3998084.cpp"},
+  {"id": "3998645", "language": "CPP17", "result": "MLE", "time": 6.639025722, "memory_kb": 1111064.0, "file": "corpus/submissions/3998645.cpp"},
+  {"id": "3998720", "language": "CPP17", "result": "WA", "time": 6.617260149, "memory_kb": 36656.0, "file": "corpus/submissions/3998720.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

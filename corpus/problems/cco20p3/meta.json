@@ -1,0 +1,14 @@
+{
+ "problem": "cco20p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "4561353", "language": "CPP17", "result": "TLE", "time": 32.951918347, "memory_kb": 139704.0, "file": "corpus/submissions/4561353.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

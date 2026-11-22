@@ -1,0 +1,24 @@
+{
+ "problem": "ioi11p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "3732147", "language": "CPP17", "result": "WA", "time": 0.197123951, "memory_kb": 4604.0, "file": "corpus/submissions/3732147.cpp"},
+  {"id": "3732149", "language": "CPP17", "result": "WA", "time": 0.204230983, "memory_kb": 5384.0, "file": "corpus/submissions/3732149.cpp"},
+  {"id": "3732153", "language": "CPP17", "result": "WA", "time": 0.199324433, "memory_kb": 4604.0, "file": "corpus/submissions/3732153.cpp"},
+  {"id": "3732158", "language": "CPP17", "result": "RTE", "time": 0.196334099, "memory_kb": 4736.0, "file": "corpus/submissions/3732158.cpp"},
+  {"id": "3732163", "language": "CPP17", "result": "AC", "time": 0.422006978, "memory_kb": 4672.0, "file": "corpus/submissions/3732163.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/ioi11p3.cp",
+   "proto/ports/scout_batch_13/today/ioi11p3.cp",
+   "proto/ports/scout_batch_17/ioi11p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

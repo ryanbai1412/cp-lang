@@ -1,0 +1,22 @@
+{
+ "problem": "nccc10s3",
+ "source": "nccc",
+ "submissions": [
+  {"id": "4214344", "language": "CPP17", "result": "RTE", "time": 3.077017015, "memory_kb": 15456.0, "file": "corpus/submissions/4214344.cpp"},
+  {"id": "4214353", "language": "CPP17", "result": "TLE", "time": 31.392287559, "memory_kb": 3940.0, "file": "corpus/submissions/4214353.cpp"},
+  {"id": "4214377", "language": "CPP17", "result": "TLE", "time": 16.483392133, "memory_kb": 15220.0, "file": "corpus/submissions/4214377.cpp"},
+  {"id": "4214389", "language": "CPP17", "result": "RTE", "time": 8.556144556, "memory_kb": 11636.0, "file": "corpus/submissions/4214389.cpp"},
+  {"id": "4214399", "language": "CPP17", "result": "AC", "time": 8.650881631, "memory_kb": 11592.0, "file": "corpus/submissions/4214399.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/nccc10s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

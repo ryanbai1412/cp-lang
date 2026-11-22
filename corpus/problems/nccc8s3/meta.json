@@ -1,0 +1,37 @@
+{
+ "problem": "nccc8s3",
+ "source": "nccc",
+ "submissions": [
+  {"id": "3381403", "language": "JAVA", "result": "IR", "time": 0.214078978, "memory_kb": 65964.0, "file": "corpus/submissions/3381403.java"},
+  {"id": "3381436", "language": "JAVA", "result": "WA", "time": 0.234311964, "memory_kb": 59668.0, "file": "corpus/submissions/3381436.java"},
+  {"id": "3381452", "language": "JAVA", "result": "TLE", "time": 0.850861186, "memory_kb": 94860.0, "file": "corpus/submissions/3381452.java"},
+  {"id": "3381528", "language": "CPP17", "result": "RTE", "time": 0.07963009, "memory_kb": 73828.0, "file": "corpus/submissions/3381528.cpp"},
+  {"id": "3381534", "language": "CPP17", "result": "RTE", "time": 0.078356936, "memory_kb": 74444.0, "file": "corpus/submissions/3381534.cpp"},
+  {"id": "3381723", "language": "JAVA", "result": "TLE", "time": 0.676037534, "memory_kb": 73920.0, "file": "corpus/submissions/3381723.java"},
+  {"id": "3381735", "language": "JAVA", "result": "WA", "time": 0.108948505, "memory_kb": 59588.0, "file": "corpus/submissions/3381735.java"},
+  {"id": "3381770", "language": "JAVA", "result": "TLE", "time": 0.675933687, "memory_kb": 72816.0, "file": "corpus/submissions/3381770.java"},
+  {"id": "3381780", "language": "JAVA", "result": "TLE", "time": 0.583317367, "memory_kb": 92056.0, "file": "corpus/submissions/3381780.java"},
+  {"id": "3381802", "language": "JAVA", "result": "WA", "time": 0.216831787, "memory_kb": 59704.0, "file": "corpus/submissions/3381802.java"},
+  {"id": "3381804", "language": "JAVA", "result": "TLE", "time": 0.652430251, "memory_kb": 91936.0, "file": "corpus/submissions/3381804.java"},
+  {"id": "3381851", "language": "JAVA", "result": "TLE", "time": 0.539645365, "memory_kb": 85380.0, "file": "corpus/submissions/3381851.java"},
+  {"id": "3383279", "language": "JAVA", "result": "TLE", "time": 0.626597966, "memory_kb": 68144.0, "file": "corpus/submissions/3383279.java"},
+  {"id": "3383393", "language": "JAVA", "result": "TLE", "time": 0.623385722, "memory_kb": 68452.0, "file": "corpus/submissions/3383393.java"},
+  {"id": "3383979", "language": "JAVA", "result": "TLE", "time": 0.498680544, "memory_kb": 79860.0, "file": "corpus/submissions/3383979.java"},
+  {"id": "3384148", "language": "JAVA", "result": "WA", "time": 0.599644105, "memory_kb": 57536.0, "file": "corpus/submissions/3384148.java"},
+  {"id": "3384276", "language": "JAVA", "result": "WA", "time": 0.580348253, "memory_kb": 57960.0, "file": "corpus/submissions/3384276.java"},
+  {"id": "7011221", "language": "CPP17", "result": "RTE", "time": 0.07783889299999999, "memory_kb": 3632.0, "file": "corpus/submissions/7011221.cpp"},
+  {"id": "7011313", "language": "CPP17", "result": "AC", "time": 0.169498092, "memory_kb": 9892.0, "file": "corpus/submissions/7011313.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_6/nccc8s3.cp",
+   "proto/ports/scout_batch_6/today/nccc8s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

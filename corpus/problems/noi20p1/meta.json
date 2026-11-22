@@ -1,0 +1,19 @@
+{
+ "problem": "noi20p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3890254", "language": "CPP17", "result": "RTE", "time": 0.052225024, "memory_kb": 3456.0, "file": "corpus/submissions/3890254.cpp"},
+  {"id": "3890258", "language": "CPP17", "result": "AC", "time": 1.889692298, "memory_kb": 20888.0, "file": "corpus/submissions/3890258.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_11/noi20p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

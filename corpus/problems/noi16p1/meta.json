@@ -1,0 +1,20 @@
+{
+ "problem": "noi16p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "4784708", "language": "CPP17", "result": "TLE", "time": 3.118425608, "memory_kb": 4604.0, "file": "corpus/submissions/4784708.cpp"},
+  {"id": "4794305", "language": "CPP17", "result": "AC", "time": 0.36095907, "memory_kb": 4392.0, "file": "corpus/submissions/4794305.cpp"},
+  {"id": "4797772", "language": "CPP17", "result": "AC", "time": 0.386257225, "memory_kb": 4404.0, "file": "corpus/submissions/4797772.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/noi16p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

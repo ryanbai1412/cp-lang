@@ -1,0 +1,20 @@
+{
+ "problem": "occ19g4",
+ "source": "occ",
+ "submissions": [
+  {"id": "3578447", "language": "CPP17", "result": "TLE", "time": 7.738152325, "memory_kb": 47048.0, "file": "corpus/submissions/3578447.cpp"},
+  {"id": "3578469", "language": "CPP17", "result": "TLE", "time": 8.104992728, "memory_kb": 138736.0, "file": "corpus/submissions/3578469.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/occ19g4.cp",
+   "proto/ports/scout_batch_42/today/occ19g4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

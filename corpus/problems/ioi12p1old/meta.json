@@ -1,0 +1,15 @@
+{
+ "problem": "ioi12p1old",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4718853", "language": "TEXT", "result": "WA", "time": 0.270148453, "memory_kb": 1824.0, "file": null},
+  {"id": "4718872", "language": "TEXT", "result": "AC", "time": 0.29370305, "memory_kb": 1824.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

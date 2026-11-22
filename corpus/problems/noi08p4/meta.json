@@ -1,0 +1,24 @@
+{
+ "problem": "noi08p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "5144268", "language": "CPP17", "result": "WA", "time": 0.073687329, "memory_kb": 5012.0, "file": "corpus/submissions/5144268.cpp"},
+  {"id": "5144303", "language": "CPP17", "result": "TLE", "time": 12.73140813, "memory_kb": 3728.0, "file": "corpus/submissions/5144303.cpp"},
+  {"id": "5144319", "language": "CPP17", "result": "AC", "time": 0.071269327, "memory_kb": 5036.0, "file": "corpus/submissions/5144319.cpp"},
+  {"id": "5144322", "language": "CPP17", "result": "AC", "time": 0.067943745, "memory_kb": 4892.0, "file": "corpus/submissions/5144322.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_5/noi08p4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_5/noi08p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

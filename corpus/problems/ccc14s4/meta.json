@@ -1,0 +1,18 @@
+{
+ "problem": "ccc14s4",
+ "source": "ccc",
+ "submissions": [
+  {"id": "5672281", "language": "CPP17", "result": "AC", "time": 0.195509831, "memory_kb": 3952.0, "file": "corpus/submissions/5672281.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_21/ccc14s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,14 @@
+{
+ "problem": "boolean",
+ "source": "boolean",
+ "submissions": [
+  {"id": "3422471", "language": "PYPY3", "result": "AC", "time": 23.136395256, "memory_kb": 56300.0, "file": "corpus/submissions/3422471.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

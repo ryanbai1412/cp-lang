@@ -1,0 +1,21 @@
+{
+ "problem": "canada21p5",
+ "source": "canada",
+ "submissions": [
+  {"id": "3718228", "language": "CPP17", "result": "AC", "time": 5.992060937, "memory_kb": 3824.0, "file": "corpus/submissions/3718228.cpp"},
+  {"id": "3718290", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3718290.cpp"},
+  {"id": "3718291", "language": "CPP17", "result": "AC", "time": 17.371923782, "memory_kb": 3980.0, "file": "corpus/submissions/3718291.cpp"},
+  {"id": "3718293", "language": "CPP17", "result": "AC", "time": 11.204005114, "memory_kb": 3800.0, "file": "corpus/submissions/3718293.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_11/canada21p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

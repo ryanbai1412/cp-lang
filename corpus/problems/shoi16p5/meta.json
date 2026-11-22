@@ -1,0 +1,22 @@
+{
+ "problem": "shoi16p5",
+ "source": "shoi",
+ "submissions": [
+  {"id": "5434711", "language": "CPP17", "result": "TLE", "time": 20.035426942, "memory_kb": 3964.0, "file": "corpus/submissions/5434711.cpp"},
+  {"id": "5434712", "language": "CPP17", "result": "TLE", "time": 20.046929936, "memory_kb": 3992.0, "file": "corpus/submissions/5434712.cpp"},
+  {"id": "5434718", "language": "CPP17", "result": "AC", "time": 0.255548955, "memory_kb": 8832.0, "file": "corpus/submissions/5434718.cpp"},
+  {"id": "5445695", "language": "CPP17", "result": "AC", "time": 0.255519775, "memory_kb": 8832.0, "file": "corpus/submissions/5445695.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_45/shoi16p5.cp",
+   "proto/ports/scout_batch_45/today/shoi16p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

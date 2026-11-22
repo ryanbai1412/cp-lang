@@ -1,0 +1,20 @@
+{
+ "problem": "sac22cc3jp5",
+ "source": "sac",
+ "submissions": [
+  {"id": "4331805", "language": "CPP17", "result": "WA", "time": 0.08869011, "memory_kb": 3612.0, "file": "corpus/submissions/4331805.cpp"},
+  {"id": "4331815", "language": "CPP17", "result": "WA", "time": 0.086978974, "memory_kb": 3556.0, "file": "corpus/submissions/4331815.cpp"},
+  {"id": "4331837", "language": "CPP17", "result": "WA", "time": 0.075424221, "memory_kb": 3580.0, "file": "corpus/submissions/4331837.cpp"},
+  {"id": "4331886", "language": "CPP17", "result": "WA", "time": 0.090355277, "memory_kb": 3524.0, "file": "corpus/submissions/4331886.cpp"},
+  {"id": "4331893", "language": "CPP17", "result": "WA", "time": 0.089083138, "memory_kb": 3532.0, "file": "corpus/submissions/4331893.cpp"},
+  {"id": "4331900", "language": "CPP17", "result": "WA", "time": 0.073456032, "memory_kb": 3520.0, "file": "corpus/submissions/4331900.cpp"},
+  {"id": "4331904", "language": "CPP17", "result": "AC", "time": 0.218828091, "memory_kb": 3520.0, "file": "corpus/submissions/4331904.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

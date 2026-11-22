@@ -1,0 +1,18 @@
+{
+ "problem": "btoi19p5",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4456167", "language": "CPP17", "result": "AC", "time": 8.741695599, "memory_kb": 3620.0, "file": "corpus/submissions/4456167.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/btoi19p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "ioi14p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4684550", "language": "CPP17", "result": "AC", "time": 0.631362555, "memory_kb": 8644.0, "file": "corpus/submissions/4684550.cpp"},
+  {"id": "4684562", "language": "CPP17", "result": "WA", "time": 0.585269244, "memory_kb": 8608.0, "file": "corpus/submissions/4684562.cpp"},
+  {"id": "4684563", "language": "CPP17", "result": "WA", "time": 0.611641535, "memory_kb": 8608.0, "file": "corpus/submissions/4684563.cpp"},
+  {"id": "4684567", "language": "CPP17", "result": "AC", "time": 0.742898074, "memory_kb": 8640.0, "file": "corpus/submissions/4684567.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_49/ioi14p4.cp",
+   "proto/ports/scout_batch_49/today/ioi14p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

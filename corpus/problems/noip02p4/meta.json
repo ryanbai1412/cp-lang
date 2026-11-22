@@ -1,0 +1,19 @@
+{
+ "problem": "noip02p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5096459", "language": "CPP17", "result": "AC", "time": 0.017399956, "memory_kb": 3468.0, "file": "corpus/submissions/5096459.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noip02p4.cp",
+   "proto/ports/scout_batch_50/today/noip02p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

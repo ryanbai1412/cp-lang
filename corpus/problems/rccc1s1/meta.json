@@ -1,0 +1,14 @@
+{
+ "problem": "rccc1s1",
+ "source": "rccc",
+ "submissions": [
+  {"id": "3414518", "language": "JAVA", "result": "AC", "time": 13.518954885, "memory_kb": 59160.0, "file": "corpus/submissions/3414518.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

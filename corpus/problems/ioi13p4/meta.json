@@ -1,0 +1,18 @@
+{
+ "problem": "ioi13p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4687973", "language": "CPP17", "result": "AC", "time": 13.831213038, "memory_kb": 3788.0, "file": "corpus/submissions/4687973.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_16/ioi13p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

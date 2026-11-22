@@ -1,0 +1,18 @@
+{
+ "problem": "ioi19p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5661847", "language": "CPP17", "result": "AC", "time": 10.588126609, "memory_kb": 35416.0, "file": "corpus/submissions/5661847.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_20/ioi19p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

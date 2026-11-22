@@ -1,0 +1,17 @@
+{
+ "problem": "ctsc06p6",
+ "source": "ctsc",
+ "submissions": [
+  {"id": "4528036", "language": "CPP17", "result": "RTE", "time": 0.03507059, "memory_kb": 3328.0, "file": "corpus/submissions/4528036.cpp"},
+  {"id": "4528040", "language": "CPP17", "result": "RTE", "time": 12.238037811, "memory_kb": 3632.0, "file": "corpus/submissions/4528040.cpp"},
+  {"id": "4528042", "language": "CPP17", "result": "RTE", "time": 0.567773344, "memory_kb": 3428.0, "file": "corpus/submissions/4528042.cpp"},
+  {"id": "4529643", "language": "CPP17", "result": "RTE", "time": 0.621881478, "memory_kb": 3312.0, "file": "corpus/submissions/4529643.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,17 @@
+{
+ "problem": "ceoi22p6",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4733859", "language": "CPP17", "result": "TLE", "time": 15.968748569, "memory_kb": 265696.0, "file": "corpus/submissions/4733859.cpp"},
+  {"id": "4733861", "language": "CPP17", "result": "TLE", "time": 8.408226143, "memory_kb": 19012.0, "file": "corpus/submissions/4733861.cpp"},
+  {"id": "4733952", "language": "CPP17", "result": "TLE", "time": 8.272746201, "memory_kb": 19576.0, "file": "corpus/submissions/4733952.cpp"},
+  {"id": "4733989", "language": "CPP17", "result": "RTE", "time": 0.786663787, "memory_kb": 19048.0, "file": "corpus/submissions/4733989.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

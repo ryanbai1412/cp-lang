@@ -1,0 +1,20 @@
+{
+ "problem": "yac7p3",
+ "source": "yac",
+ "submissions": [
+  {"id": "5705212", "language": "CPP17", "result": "WA", "time": 0.026386569, "memory_kb": 26832.0, "file": "corpus/submissions/5705212.cpp"},
+  {"id": "5705218", "language": "CPP17", "result": "AC", "time": 6.672566187, "memory_kb": 133028.0, "file": "corpus/submissions/5705218.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/today/yac7p3.cp",
+   "proto/ports/scout_batch_39/yac7p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

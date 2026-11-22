@@ -1,0 +1,18 @@
+{
+ "problem": "dmopc20c7p3",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3686672", "language": "CPP17", "result": "WA", "time": 0.310733891, "memory_kb": 1532.0, "file": "corpus/submissions/3686672.cpp"},
+  {"id": "3692231", "language": "CPP17", "result": "WA", "time": 0.254032799, "memory_kb": 1540.0, "file": "corpus/submissions/3692231.cpp"},
+  {"id": "3692235", "language": "CPP17", "result": "WA", "time": 1.069075136, "memory_kb": 10852.0, "file": "corpus/submissions/3692235.cpp"},
+  {"id": "3692241", "language": "CPP17", "result": "WA", "time": 1.070604815, "memory_kb": 10852.0, "file": "corpus/submissions/3692241.cpp"},
+  {"id": "3692246", "language": "CPP17", "result": "WA", "time": 1.081921081, "memory_kb": 18732.0, "file": "corpus/submissions/3692246.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

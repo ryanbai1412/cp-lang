@@ -1,0 +1,19 @@
+{
+ "problem": "noi17p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "5690633", "language": "CPP17", "result": "AC", "time": 2.661735623, "memory_kb": 43304.0, "file": "corpus/submissions/5690633.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi17p1.cp",
+   "proto/ports/scout_batch_50/today/noi17p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

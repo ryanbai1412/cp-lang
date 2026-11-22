@@ -1,0 +1,20 @@
+{
+ "problem": "ioi09p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5106592", "language": "CPP17", "result": "AC", "time": 0.067271682, "memory_kb": 3476.0, "file": "corpus/submissions/5106592.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_33/ioi09p5.cp",
+   "proto/ports/scout_batch_37/ioi09p5.cp",
+   "proto/ports/scout_batch_37/today/ioi09p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,24 @@
+{
+ "problem": "apio07p3",
+ "source": "apio",
+ "submissions": [
+  {"id": "5532774", "language": "CPP17", "result": "WA", "time": 0.29410033, "memory_kb": 6212.0, "file": "corpus/submissions/5532774.cpp"},
+  {"id": "5532787", "language": "CPP17", "result": "AC", "time": 2.345703383, "memory_kb": 6292.0, "file": "corpus/submissions/5532787.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/apio07p3.cpp",
+   "proto/ports/hillclimb_dp_graph/apio07p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/apio07p3.cp",
+   "proto/ports/hillclimb_dp_graph/before/apio07p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

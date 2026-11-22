@@ -1,0 +1,19 @@
+{
+ "problem": "mccc4j4",
+ "source": "mccc",
+ "submissions": [
+  {"id": "4264934", "language": "CPP17", "result": "AC", "time": 0.923829604, "memory_kb": 3512.0, "file": "corpus/submissions/4264934.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/mccc4j4.cp",
+   "proto/ports/scout_batch_42/today/mccc4j4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

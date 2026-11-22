@@ -1,0 +1,27 @@
+{
+ "problem": "yac1p3",
+ "source": "yac",
+ "submissions": [
+  {"id": "4376287", "language": "CPP17", "result": "RTE", "time": 0.032343659, "memory_kb": 3496.0, "file": "corpus/submissions/4376287.cpp"},
+  {"id": "4376391", "language": "CPP17", "result": "RTE", "time": 0.023867381, "memory_kb": 3464.0, "file": "corpus/submissions/4376391.cpp"},
+  {"id": "4376393", "language": "CPP17", "result": "RTE", "time": 0.021873683, "memory_kb": 3336.0, "file": "corpus/submissions/4376393.cpp"},
+  {"id": "4376394", "language": "CPP17", "result": "RTE", "time": 0.08389115, "memory_kb": 3328.0, "file": "corpus/submissions/4376394.cpp"},
+  {"id": "4376397", "language": "CPP17", "result": "RTE", "time": 0.02184745, "memory_kb": 3336.0, "file": "corpus/submissions/4376397.cpp"},
+  {"id": "4376409", "language": "CPP17", "result": "RTE", "time": 0.092538523, "memory_kb": 3328.0, "file": "corpus/submissions/4376409.cpp"},
+  {"id": "4376424", "language": "CPP17", "result": "RTE", "time": 0.0134625, "memory_kb": 3336.0, "file": "corpus/submissions/4376424.cpp"},
+  {"id": "4376426", "language": "CPP17", "result": "RTE", "time": 0.032190343, "memory_kb": 3336.0, "file": "corpus/submissions/4376426.cpp"},
+  {"id": "4380584", "language": "CPP17", "result": "AC", "time": 5.455022764, "memory_kb": 3320.0, "file": "corpus/submissions/4380584.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/today/yac1p3.cp",
+   "proto/ports/scout_batch_46/yac1p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

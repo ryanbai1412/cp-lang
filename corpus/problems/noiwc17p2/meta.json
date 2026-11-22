@@ -1,0 +1,15 @@
+{
+ "problem": "noiwc17p2",
+ "source": "noiwc",
+ "submissions": [
+  {"id": "4277351", "language": "CPP17", "result": "RTE", "time": 3.571271268, "memory_kb": 784784.0, "file": "corpus/submissions/4277351.cpp"},
+  {"id": "4277456", "language": "CPP17", "result": "RTE", "time": 3.490822998, "memory_kb": 784828.0, "file": "corpus/submissions/4277456.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

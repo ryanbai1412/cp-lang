@@ -1,0 +1,15 @@
+{
+ "problem": "noip02p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5096403", "language": "CPP17", "result": "WA", "time": 0.01699527, "memory_kb": 3560.0, "file": "corpus/submissions/5096403.cpp"},
+  {"id": "5096408", "language": "CPP17", "result": "AC", "time": 0.017500734, "memory_kb": 3592.0, "file": "corpus/submissions/5096408.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

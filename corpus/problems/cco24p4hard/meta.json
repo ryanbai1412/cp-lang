@@ -1,0 +1,14 @@
+{
+ "problem": "cco24p4hard",
+ "source": "cco",
+ "submissions": [
+  {"id": "6435765", "language": "CPP17", "result": "AC", "time": 0.208361413, "memory_kb": 3816.0, "file": "corpus/submissions/6435765.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

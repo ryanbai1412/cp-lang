@@ -1,0 +1,14 @@
+{
+ "problem": "wossoly21s2",
+ "source": "wossoly",
+ "submissions": [
+  {"id": "4121142", "language": "CPP17", "result": "AC", "time": 0.698327761, "memory_kb": 8364.0, "file": "corpus/submissions/4121142.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

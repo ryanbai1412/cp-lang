@@ -1,0 +1,20 @@
+{
+ "problem": "rccc1s3",
+ "source": "rccc",
+ "submissions": [
+  {"id": "3414765", "language": "JAVA", "result": "TLE", "time": 3.744029309, "memory_kb": 309280.0, "file": "corpus/submissions/3414765.java"},
+  {"id": "3414778", "language": "JAVA", "result": "TLE", "time": 3.772599629, "memory_kb": 308996.0, "file": "corpus/submissions/3414778.java"},
+  {"id": "3415250", "language": "JAVA", "result": "WA", "time": 8.039394623, "memory_kb": 111956.0, "file": "corpus/submissions/3415250.java"},
+  {"id": "3415396", "language": "JAVA", "result": "WA", "time": 8.796948431, "memory_kb": 113924.0, "file": "corpus/submissions/3415396.java"},
+  {"id": "3415746", "language": "JAVA", "result": "WA", "time": 8.408782057, "memory_kb": 94168.0, "file": "corpus/submissions/3415746.java"},
+  {"id": "3415775", "language": "JAVA", "result": "WA", "time": 0.433740109, "memory_kb": 57560.0, "file": "corpus/submissions/3415775.java"},
+  {"id": "3415809", "language": "JAVA", "result": "AC", "time": 41.036701846, "memory_kb": 104336.0, "file": "corpus/submissions/3415809.java"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

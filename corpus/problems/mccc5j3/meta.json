@@ -1,0 +1,21 @@
+{
+ "problem": "mccc5j3",
+ "source": "mccc",
+ "submissions": [
+  {"id": "5333096", "language": "CPP17", "result": "RTE", "time": 0.167963762, "memory_kb": 3616.0, "file": "corpus/submissions/5333096.cpp"},
+  {"id": "5333101", "language": "CPP17", "result": "WA", "time": 1.836493411, "memory_kb": 40932.0, "file": "corpus/submissions/5333101.cpp"},
+  {"id": "5333116", "language": "CPP17", "result": "AC", "time": 2.52339536, "memory_kb": 40932.0, "file": "corpus/submissions/5333116.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/mccc5j3.cp",
+   "proto/ports/scout_batch_42/today/mccc5j3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

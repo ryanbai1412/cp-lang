@@ -1,0 +1,19 @@
+{
+ "problem": "coci21c4p4",
+ "source": "coci",
+ "submissions": [
+  {"id": "5120081", "language": "CPP17", "result": "AC", "time": 36.820263573, "memory_kb": 27548.0, "file": "corpus/submissions/5120081.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/coci21c4p4.cp",
+   "proto/ports/scout_batch_13/today/coci21c4p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

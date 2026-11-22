@@ -1,0 +1,27 @@
+{
+ "problem": "dmpg18s5",
+ "source": "dmpg",
+ "submissions": [
+  {"id": "3470548", "language": "CPP17", "result": "RTE", "time": 0.734516121, "memory_kb": 161168.0, "file": "corpus/submissions/3470548.cpp"},
+  {"id": "3470555", "language": "CPP17", "result": "WA", "time": 1.420940221, "memory_kb": 348844.0, "file": "corpus/submissions/3470555.cpp"},
+  {"id": "3470556", "language": "CPP17", "result": "WA", "time": 1.4194764, "memory_kb": 348616.0, "file": "corpus/submissions/3470556.cpp"},
+  {"id": "3476226", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3476226.cpp"},
+  {"id": "3476230", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3476230.cpp"},
+  {"id": "3476232", "language": "CPP17", "result": "MLE", "time": 3.83685955, "memory_kb": 526480.0, "file": "corpus/submissions/3476232.cpp"},
+  {"id": "3476240", "language": "CPP17", "result": "MLE", "time": 2.923063375, "memory_kb": 524292.0, "file": "corpus/submissions/3476240.cpp"},
+  {"id": "3476241", "language": "CPP17", "result": "MLE", "time": 3.656377804, "memory_kb": 524500.0, "file": "corpus/submissions/3476241.cpp"},
+  {"id": "3476383", "language": "CPP17", "result": "AC", "time": 10.898182288, "memory_kb": 336704.0, "file": "corpus/submissions/3476383.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/dmpg18s5.cp",
+   "proto/ports/scout_batch_39/today/dmpg18s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

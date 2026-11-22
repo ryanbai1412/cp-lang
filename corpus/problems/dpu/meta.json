@@ -1,0 +1,25 @@
+{
+ "problem": "dpu",
+ "source": "dpu",
+ "submissions": [
+  {"id": "4131872", "language": "CPP17", "result": "AC", "time": 1.29582797, "memory_kb": 4516.0, "file": "corpus/submissions/4131872.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/dpu.cpp",
+   "proto/ports/hillclimb_dp_graph/dpu_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/dpu.cp",
+   "proto/ports/hillclimb_dp_graph/dpu.cp",
+   "proto/ports/scout_batch_4/dpu.cp",
+   "proto/ports/wave2/dpu.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

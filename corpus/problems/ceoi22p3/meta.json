@@ -1,0 +1,32 @@
+{
+ "problem": "ceoi22p3",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4728105", "language": "CPP17", "result": "TLE", "time": 110.025519724, "memory_kb": 360640.0, "file": "corpus/submissions/4728105.cpp"},
+  {"id": "4728111", "language": "CPP17", "result": "WA", "time": 24.351662834, "memory_kb": 350684.0, "file": "corpus/submissions/4728111.cpp"},
+  {"id": "4728112", "language": "CPP17", "result": "TLE", "time": 21.997945298, "memory_kb": 3256.0, "file": "corpus/submissions/4728112.cpp"},
+  {"id": "4728130", "language": "CPP17", "result": "RTE", "time": 25.751148931, "memory_kb": 1079336.0, "file": "corpus/submissions/4728130.cpp"},
+  {"id": "4728133", "language": "CPP17", "result": "TLE", "time": 79.702413325, "memory_kb": 1079340.0, "file": "corpus/submissions/4728133.cpp"},
+  {"id": "4728139", "language": "CPP17", "result": "TLE", "time": 79.247440908, "memory_kb": 1079332.0, "file": "corpus/submissions/4728139.cpp"},
+  {"id": "4728141", "language": "CPP17", "result": "WA", "time": 0.025767286, "memory_kb": 3508.0, "file": "corpus/submissions/4728141.cpp"},
+  {"id": "4728144", "language": "CPP17", "result": "MLE", "time": 26.152845322, "memory_kb": 1079340.0, "file": "corpus/submissions/4728144.cpp"},
+  {"id": "4728150", "language": "CPP17", "result": "MLE", "time": 185.08592891, "memory_kb": 1079336.0, "file": "corpus/submissions/4728150.cpp"},
+  {"id": "4728167", "language": "CPP17", "result": "RTE", "time": 183.449414311, "memory_kb": 621396.0, "file": "corpus/submissions/4728167.cpp"},
+  {"id": "4728177", "language": "CPP17", "result": "RTE", "time": 188.57710946, "memory_kb": 422260.0, "file": "corpus/submissions/4728177.cpp"},
+  {"id": "4728181", "language": "CPP17", "result": "RTE", "time": 7.096406391, "memory_kb": 72888.0, "file": "corpus/submissions/4728181.cpp"},
+  {"id": "4728183", "language": "CPP17", "result": "RTE", "time": 11.237535224, "memory_kb": 422848.0, "file": "corpus/submissions/4728183.cpp"},
+  {"id": "4728193", "language": "CPP17", "result": "RTE", "time": 97.642414511, "memory_kb": 624740.0, "file": "corpus/submissions/4728193.cpp"},
+  {"id": "4728198", "language": "CPP17", "result": "AC", "time": 363.62976792, "memory_kb": 643868.0, "file": "corpus/submissions/4728198.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_26/ceoi22p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

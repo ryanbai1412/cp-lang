@@ -1,0 +1,27 @@
+{
+ "problem": "dmpg16s5",
+ "source": "dmpg",
+ "submissions": [
+  {"id": "5323558", "language": "CPP17", "result": "WA", "time": 0.174016244, "memory_kb": 9332.0, "file": "corpus/submissions/5323558.cpp"},
+  {"id": "5323572", "language": "CPP17", "result": "AC", "time": 0.614265112, "memory_kb": 9232.0, "file": "corpus/submissions/5323572.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_2/dmpg16s5_draft.cp"
+  ],
+  "original": [
+   "proto/ports/dmpg16s5.cpp",
+   "proto/ports/dmpg16s5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_2/dmpg16s5.cp",
+   "proto/ports/dmpg16s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

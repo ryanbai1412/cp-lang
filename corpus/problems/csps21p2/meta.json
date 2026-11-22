@@ -1,0 +1,19 @@
+{
+ "problem": "csps21p2",
+ "source": "csps",
+ "submissions": [
+  {"id": "4819734", "language": "CPP17", "result": "AC", "time": 0.977953996, "memory_kb": 6452.0, "file": "corpus/submissions/4819734.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_14/csps21p2.cp",
+   "proto/ports/scout_batch_14/today/csps21p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

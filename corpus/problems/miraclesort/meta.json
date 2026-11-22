@@ -1,0 +1,23 @@
+{
+ "problem": "miraclesort",
+ "source": "miraclesort",
+ "submissions": [
+  {"id": "3498522", "language": "PYPY3", "result": "IR", "time": 0.022015825, "memory_kb": 216.0, "file": "corpus/submissions/3498522.py"},
+  {"id": "3498526", "language": "CPP17", "result": "AC", "time": 10.014264671, "memory_kb": 1532.0, "file": "corpus/submissions/3498526.cpp"},
+  {"id": "3498527", "language": "CPP17", "result": "AC", "time": 4.329716326, "memory_kb": 1532.0, "file": "corpus/submissions/3498527.cpp"},
+  {"id": "3498534", "language": "CPP17", "result": "WA", "time": 0.285115255, "memory_kb": 1532.0, "file": "corpus/submissions/3498534.cpp"},
+  {"id": "3498536", "language": "CPP17", "result": "WA", "time": 1.873441924, "memory_kb": 1512.0, "file": "corpus/submissions/3498536.cpp"},
+  {"id": "3498538", "language": "CPP17", "result": "AC", "time": 0.285825114, "memory_kb": 1512.0, "file": "corpus/submissions/3498538.cpp"},
+  {"id": "3498539", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3498539.cpp"},
+  {"id": "3498541", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3498541.cpp"},
+  {"id": "3498542", "language": "CPP17", "result": "AC", "time": 0.271440246, "memory_kb": 1532.0, "file": "corpus/submissions/3498542.cpp"},
+  {"id": "3498544", "language": "CPP11", "result": "AC", "time": 0.174496859, "memory_kb": 3728.0, "file": "corpus/submissions/3498544.cpp"}
+ ],
+ "cpp_ac": 5,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

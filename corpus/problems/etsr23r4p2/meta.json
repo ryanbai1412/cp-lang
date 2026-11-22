@@ -1,0 +1,35 @@
+{
+ "problem": "etsr23r4p2",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5521437", "language": "CPP17", "result": "TLE", "time": 8.050506824, "memory_kb": 4576.0, "file": "corpus/submissions/5521437.cpp"},
+  {"id": "5521439", "language": "CPP17", "result": "WA", "time": 0.017202405, "memory_kb": 4940.0, "file": "corpus/submissions/5521439.cpp"},
+  {"id": "5521441", "language": "CPP17", "result": "WA", "time": 0.066899178, "memory_kb": 4860.0, "file": "corpus/submissions/5521441.cpp"},
+  {"id": "5521443", "language": "CPP17", "result": "TLE", "time": 8.053449803, "memory_kb": 4776.0, "file": "corpus/submissions/5521443.cpp"},
+  {"id": "5521447", "language": "CPP17", "result": "TLE", "time": 4.00402347, "memory_kb": 6188.0, "file": "corpus/submissions/5521447.cpp"},
+  {"id": "5521451", "language": "CPP17", "result": "TLE", "time": 4.054408857, "memory_kb": 6344.0, "file": "corpus/submissions/5521451.cpp"},
+  {"id": "5521453", "language": "CPP17", "result": "TLE", "time": 4.003497562, "memory_kb": 6216.0, "file": "corpus/submissions/5521453.cpp"},
+  {"id": "5521456", "language": "CPP17", "result": "TLE", "time": 4.054723364, "memory_kb": 6316.0, "file": "corpus/submissions/5521456.cpp"},
+  {"id": "5521472", "language": "CPP17", "result": "TLE", "time": 4.065594376, "memory_kb": 9396.0, "file": "corpus/submissions/5521472.cpp"},
+  {"id": "5529389", "language": "CPP17", "result": "TLE", "time": 4.475578873, "memory_kb": 5532.0, "file": "corpus/submissions/5529389.cpp"},
+  {"id": "5529433", "language": "CPP17", "result": "TLE", "time": 23.634112376, "memory_kb": 128992.0, "file": "corpus/submissions/5529433.cpp"},
+  {"id": "5529439", "language": "CPP17", "result": "TLE", "time": 15.676996194, "memory_kb": 58688.0, "file": "corpus/submissions/5529439.cpp"},
+  {"id": "5529640", "language": "CPP17", "result": "WA", "time": 1.548278242, "memory_kb": 133700.0, "file": "corpus/submissions/5529640.cpp"},
+  {"id": "5529689", "language": "CPP17", "result": "TLE", "time": 18.41366848, "memory_kb": 112508.0, "file": "corpus/submissions/5529689.cpp"},
+  {"id": "5529693", "language": "CPP17", "result": "WA", "time": 0.010478819, "memory_kb": 3392.0, "file": "corpus/submissions/5529693.cpp"},
+  {"id": "5529696", "language": "CPP17", "result": "TLE", "time": 20.455020472, "memory_kb": 112724.0, "file": "corpus/submissions/5529696.cpp"},
+  {"id": "5529698", "language": "CPP17", "result": "AC", "time": 18.379387051, "memory_kb": 112760.0, "file": "corpus/submissions/5529698.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_43/etsr23r4p2.cp",
+   "proto/ports/scout_batch_43/today/etsr23r4p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

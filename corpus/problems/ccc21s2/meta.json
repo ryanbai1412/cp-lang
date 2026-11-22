@@ -1,0 +1,37 @@
+{
+ "problem": "ccc21s2",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4323443", "language": "CPP17", "result": "AC", "time": 0.375247537, "memory_kb": 4792.0, "file": "corpus/submissions/4323443.cpp"},
+  {"id": "5124793", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5124793.cpp"},
+  {"id": "5124796", "language": "RUST", "result": "AC", "time": 0.330772765, "memory_kb": 3484.0, "file": null},
+  {"id": "5128843", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5128843.cpp"},
+  {"id": "5128845", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5128845.cpp"},
+  {"id": "5128846", "language": "RUST", "result": "AC", "time": 0.330711828, "memory_kb": 3484.0, "file": null},
+  {"id": "5128847", "language": "RUST", "result": "AC", "time": 0.365274349, "memory_kb": 3484.0, "file": null},
+  {"id": "5128850", "language": "RUST", "result": "AC", "time": 0.291844906, "memory_kb": 3484.0, "file": null},
+  {"id": "5128852", "language": "RUST", "result": "AC", "time": 0.310729686, "memory_kb": 3484.0, "file": null},
+  {"id": "5128857", "language": "RUST", "result": "WA", "time": 0.034593818, "memory_kb": 11828.0, "file": null},
+  {"id": "5128859", "language": "RUST", "result": "AC", "time": 0.378421999, "memory_kb": 11828.0, "file": null},
+  {"id": "5128861", "language": "RUST", "result": "AC", "time": 0.365281819, "memory_kb": 11828.0, "file": null},
+  {"id": "5128865", "language": "RUST", "result": "AC", "time": 0.303422064, "memory_kb": 4120.0, "file": null},
+  {"id": "5128867", "language": "RUST", "result": "AC", "time": 0.307079053, "memory_kb": 3484.0, "file": null},
+  {"id": "5128873", "language": "RUST", "result": "AC", "time": 0.352217974, "memory_kb": 3484.0, "file": null}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc21s2.cpp",
+   "proto/ports/ccc21s2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc21s2.cp",
+   "proto/ports/wave2/ccc21s2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

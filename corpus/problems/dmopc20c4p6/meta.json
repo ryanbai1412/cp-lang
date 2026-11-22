@@ -1,0 +1,14 @@
+{
+ "problem": "dmopc20c4p6",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3485096", "language": "CPP17", "result": "TLE", "time": 6.852542677, "memory_kb": 4148.0, "file": "corpus/submissions/3485096.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

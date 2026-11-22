@@ -1,0 +1,14 @@
+{
+ "problem": "noi23p3",
+ "source": "noi",
+ "submissions": [
+  {"id": "5723060", "language": "CPP17", "result": "RTE", "time": 1.136604162, "memory_kb": 13320.0, "file": "corpus/submissions/5723060.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

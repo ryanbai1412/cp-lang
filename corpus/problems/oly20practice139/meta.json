@@ -1,0 +1,20 @@
+{
+ "problem": "oly20practice139",
+ "source": "oly",
+ "submissions": [
+  {"id": "6415669", "language": "CPP17", "result": "TLE", "time": 9.585849986, "memory_kb": 16116.0, "file": "corpus/submissions/6415669.cpp"},
+  {"id": "6415690", "language": "CPP17", "result": "AC", "time": 43.398694989, "memory_kb": 28584.0, "file": "corpus/submissions/6415690.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/oly20practice139.cp",
+   "proto/ports/scout_batch_41/today/oly20practice139.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

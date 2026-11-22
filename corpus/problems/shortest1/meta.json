@@ -1,0 +1,14 @@
+{
+ "problem": "shortest1",
+ "source": "shortest",
+ "submissions": [
+  {"id": "4325034", "language": "PYPY3", "result": "AC", "time": 3.984083736, "memory_kb": 58288.0, "file": "corpus/submissions/4325034.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

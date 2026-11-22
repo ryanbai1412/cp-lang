@@ -1,0 +1,25 @@
+{
+ "problem": "coi06p2",
+ "source": "coi",
+ "submissions": [
+  {"id": "4171330", "language": "CPP17", "result": "WA", "time": 1.166970597, "memory_kb": 20928.0, "file": "corpus/submissions/4171330.cpp"},
+  {"id": "4171379", "language": "CPP17", "result": "AC", "time": 1.173511215, "memory_kb": 21320.0, "file": "corpus/submissions/4171379.cpp"},
+  {"id": "5032811", "language": "CPP17", "result": "AC", "time": 0.920874666, "memory_kb": 21364.0, "file": "corpus/submissions/5032811.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/coi06p2.cpp",
+   "proto/ports/hillclimb_dp_graph/coi06p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/coi06p2.cp",
+   "proto/ports/hillclimb_dp_graph/coi06p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

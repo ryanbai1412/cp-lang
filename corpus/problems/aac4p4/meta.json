@@ -1,0 +1,27 @@
+{
+ "problem": "aac4p4",
+ "source": "aac",
+ "submissions": [
+  {"id": "4140321", "language": "CPP17", "result": "WA", "time": 0.002498793, "memory_kb": 3324.0, "file": "corpus/submissions/4140321.cpp"},
+  {"id": "4140326", "language": "PYPY3", "result": "WA", "time": 0.045859559, "memory_kb": 58256.0, "file": "corpus/submissions/4140326.py"},
+  {"id": "4140333", "language": "CPP17", "result": "WA", "time": 0.002535384, "memory_kb": 3324.0, "file": "corpus/submissions/4140333.cpp"},
+  {"id": "4140335", "language": "CPP17", "result": "RTE", "time": 0.002496413, "memory_kb": 3292.0, "file": "corpus/submissions/4140335.cpp"},
+  {"id": "4140339", "language": "CPP17", "result": "WA", "time": 0.001748288, "memory_kb": 3324.0, "file": "corpus/submissions/4140339.cpp"},
+  {"id": "4140362", "language": "CPP17", "result": "WA", "time": 0.947523185, "memory_kb": 7260.0, "file": "corpus/submissions/4140362.cpp"},
+  {"id": "4140369", "language": "CPP17", "result": "WA", "time": 0.732176582, "memory_kb": 7260.0, "file": "corpus/submissions/4140369.cpp"},
+  {"id": "4140373", "language": "CPP17", "result": "WA", "time": 0.947785279, "memory_kb": 7284.0, "file": "corpus/submissions/4140373.cpp"},
+  {"id": "4140376", "language": "CPP17", "result": "AC", "time": 1.380809115, "memory_kb": 7244.0, "file": "corpus/submissions/4140376.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/aac4p4.cp",
+   "proto/ports/scout_batch_46/today/aac4p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

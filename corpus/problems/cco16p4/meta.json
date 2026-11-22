@@ -1,0 +1,18 @@
+{
+ "problem": "cco16p4",
+ "source": "cco",
+ "submissions": [
+  {"id": "3605322", "language": "CPP17", "result": "AC", "time": 0.408949909, "memory_kb": 6996.0, "file": "corpus/submissions/3605322.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/cco16p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

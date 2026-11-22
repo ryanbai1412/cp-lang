@@ -1,0 +1,19 @@
+{
+ "problem": "coi07p1",
+ "source": "coi",
+ "submissions": [
+  {"id": "5323995", "language": "CPP17", "result": "AC", "time": 0.292010178, "memory_kb": 4460.0, "file": "corpus/submissions/5323995.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_35/coi07p1.cp",
+   "proto/ports/scout_batch_35/today/coi07p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "dmopc20c5p2",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3591021", "language": "CPP17", "result": "WA", "time": 0.002423114, "memory_kb": 1528.0, "file": "corpus/submissions/3591021.cpp"},
+  {"id": "3591101", "language": "CPP17", "result": "WA", "time": 0.002317695, "memory_kb": 1528.0, "file": "corpus/submissions/3591101.cpp"},
+  {"id": "3591217", "language": "CPP17", "result": "WA", "time": 0.00233153, "memory_kb": 1528.0, "file": "corpus/submissions/3591217.cpp"},
+  {"id": "3591332", "language": "CPP17", "result": "AC", "time": 11.074164938, "memory_kb": 127932.0, "file": "corpus/submissions/3591332.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_44/dmopc20c5p2.cp",
+   "proto/ports/scout_batch_44/today/dmopc20c5p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

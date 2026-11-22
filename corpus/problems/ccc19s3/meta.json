@@ -1,0 +1,18 @@
+{
+ "problem": "ccc19s3",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4325116", "language": "CPP17", "result": "AC", "time": 0.303711089, "memory_kb": 3376.0, "file": "corpus/submissions/4325116.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_16/ccc19s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

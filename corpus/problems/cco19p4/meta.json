@@ -1,0 +1,24 @@
+{
+ "problem": "cco19p4",
+ "source": "cco",
+ "submissions": [
+  {"id": "3617441", "language": "CPP17", "result": "RTE", "time": 1.670252261, "memory_kb": 3884.0, "file": "corpus/submissions/3617441.cpp"},
+  {"id": "3617452", "language": "CPP17", "result": "RTE", "time": 0.044100012, "memory_kb": 3592.0, "file": "corpus/submissions/3617452.cpp"},
+  {"id": "3617681", "language": "CPP17", "result": "WA", "time": 2.063357183, "memory_kb": 208580.0, "file": "corpus/submissions/3617681.cpp"},
+  {"id": "3617790", "language": "CPP17", "result": "WA", "time": 3.638729324, "memory_kb": 339516.0, "file": "corpus/submissions/3617790.cpp"},
+  {"id": "3617805", "language": "CPP17", "result": "AC", "time": 13.552390778, "memory_kb": 341224.0, "file": "corpus/submissions/3617805.cpp"},
+  {"id": "3617807", "language": "CPP17", "result": "AC", "time": 13.55156662, "memory_kb": 341224.0, "file": "corpus/submissions/3617807.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_36/cco19p4.cp",
+   "proto/ports/scout_batch_36/today/cco19p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

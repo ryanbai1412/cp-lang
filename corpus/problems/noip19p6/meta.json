@@ -1,0 +1,20 @@
+{
+ "problem": "noip19p6",
+ "source": "noip",
+ "submissions": [
+  {"id": "5148070", "language": "CPP17", "result": "TLE", "time": 60.168720705, "memory_kb": 68780.0, "file": "corpus/submissions/5148070.cpp"},
+  {"id": "5148084", "language": "CPP17", "result": "TLE", "time": 35.498267238, "memory_kb": 203620.0, "file": "corpus/submissions/5148084.cpp"},
+  {"id": "5148136", "language": "CPP17", "result": "AC", "time": 15.976460927, "memory_kb": 89608.0, "file": "corpus/submissions/5148136.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_26/noip19p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

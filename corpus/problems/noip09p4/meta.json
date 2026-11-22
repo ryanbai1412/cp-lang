@@ -1,0 +1,22 @@
+{
+ "problem": "noip09p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5185208", "language": "CPP17", "result": "TLE", "time": 47.857835846, "memory_kb": 3456.0, "file": "corpus/submissions/5185208.cpp"},
+  {"id": "5185216", "language": "CPP17", "result": "TLE", "time": 8.656099261, "memory_kb": 3416.0, "file": "corpus/submissions/5185216.cpp"},
+  {"id": "5185227", "language": "CPP17", "result": "TLE", "time": 8.664096122, "memory_kb": 3456.0, "file": "corpus/submissions/5185227.cpp"},
+  {"id": "5185229", "language": "CPP17", "result": "TLE", "time": 6.553494291, "memory_kb": 3436.0, "file": "corpus/submissions/5185229.cpp"},
+  {"id": "5185258", "language": "CPP17", "result": "AC", "time": 5.423788631, "memory_kb": 3436.0, "file": "corpus/submissions/5185258.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_12/noip09p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

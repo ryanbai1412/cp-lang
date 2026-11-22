@@ -1,0 +1,19 @@
+{
+ "problem": "cco03p4",
+ "source": "cco",
+ "submissions": [
+  {"id": "5024536", "language": "CPP17", "result": "AC", "time": 0.037450685, "memory_kb": 3412.0, "file": "corpus/submissions/5024536.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_51/cco03p4.cp",
+   "proto/ports/scout_batch_51/today/cco03p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

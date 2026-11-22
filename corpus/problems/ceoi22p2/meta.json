@@ -1,0 +1,19 @@
+{
+ "problem": "ceoi22p2",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4727898", "language": "CPP17", "result": "AC", "time": 3.762318135, "memory_kb": 131296.0, "file": "corpus/submissions/4727898.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_19/ceoi22p2.cp",
+   "proto/ports/scout_batch_19/today/ceoi22p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

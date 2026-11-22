@@ -1,0 +1,26 @@
+{
+ "problem": "ioi07p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5122462", "language": "CPP17", "result": "RTE", "time": 0.514425605, "memory_kb": 19516.0, "file": "corpus/submissions/5122462.cpp"},
+  {"id": "5122463", "language": "CPP17", "result": "RTE", "time": 0.259982408, "memory_kb": 19524.0, "file": "corpus/submissions/5122463.cpp"},
+  {"id": "5122464", "language": "CPP17", "result": "RTE", "time": 0.335331799, "memory_kb": 19520.0, "file": "corpus/submissions/5122464.cpp"},
+  {"id": "5122465", "language": "CPP17", "result": "RTE", "time": 0.269643309, "memory_kb": 19524.0, "file": "corpus/submissions/5122465.cpp"},
+  {"id": "5122466", "language": "CPP17", "result": "WA", "time": 0.267510182, "memory_kb": 19524.0, "file": "corpus/submissions/5122466.cpp"},
+  {"id": "5122468", "language": "CPP17", "result": "WA", "time": 0.262097969, "memory_kb": 17968.0, "file": "corpus/submissions/5122468.cpp"},
+  {"id": "5122469", "language": "CPP17", "result": "WA", "time": 0.260206296, "memory_kb": 17960.0, "file": "corpus/submissions/5122469.cpp"},
+  {"id": "5133896", "language": "CPP17", "result": "AC", "time": 0.306519256, "memory_kb": 19280.0, "file": "corpus/submissions/5133896.cpp"},
+  {"id": "5133897", "language": "CPP17", "result": "AC", "time": 0.309478999, "memory_kb": 19248.0, "file": "corpus/submissions/5133897.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_16/ioi07p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

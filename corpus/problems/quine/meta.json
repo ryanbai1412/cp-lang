@@ -1,0 +1,14 @@
+{
+ "problem": "quine",
+ "source": "quine",
+ "submissions": [
+  {"id": "5867378", "language": "CPP17", "result": "AC", "time": 0.003608553, "memory_kb": 3532.0, "file": "corpus/submissions/5867378.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

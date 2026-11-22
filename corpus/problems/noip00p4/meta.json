@@ -1,0 +1,24 @@
+{
+ "problem": "noip00p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5067880", "language": "CPP17", "result": "RTE", "time": 0.018500079, "memory_kb": 3476.0, "file": "corpus/submissions/5067880.cpp"},
+  {"id": "5067882", "language": "CPP17", "result": "RTE", "time": 0.155690644, "memory_kb": 3348.0, "file": "corpus/submissions/5067882.cpp"},
+  {"id": "5067884", "language": "CPP17", "result": "WA", "time": 0.01655287, "memory_kb": 3316.0, "file": "corpus/submissions/5067884.cpp"},
+  {"id": "5067901", "language": "CPP17", "result": "WA", "time": 0.017890558, "memory_kb": 3392.0, "file": "corpus/submissions/5067901.cpp"},
+  {"id": "5067903", "language": "CPP17", "result": "WA", "time": 0.017899631, "memory_kb": 3428.0, "file": "corpus/submissions/5067903.cpp"},
+  {"id": "5067920", "language": "CPP17", "result": "AC", "time": 0.017248404, "memory_kb": 3360.0, "file": "corpus/submissions/5067920.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_14/noip00p4.cp",
+   "proto/ports/scout_batch_14/today/noip00p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,21 @@
+{
+ "problem": "dmpg15g6",
+ "source": "dmpg",
+ "submissions": [
+  {"id": "4253072", "language": "CPP17", "result": "TLE", "time": 7.275651765, "memory_kb": 4000.0, "file": "corpus/submissions/4253072.cpp"},
+  {"id": "4253110", "language": "CPP17", "result": "AC", "time": 2.28744424, "memory_kb": 41532.0, "file": "corpus/submissions/4253110.cpp"},
+  {"id": "4253124", "language": "CPP17", "result": "AC", "time": 1.921351342, "memory_kb": 41640.0, "file": "corpus/submissions/4253124.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_24/dmpg15g6.cp",
+   "proto/ports/scout_batch_24/today/dmpg15g6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

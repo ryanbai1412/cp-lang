@@ -1,0 +1,21 @@
+{
+ "problem": "coci21c1p5",
+ "source": "coci",
+ "submissions": [
+  {"id": "4080970", "language": "CPP17", "result": "TLE", "time": 3.86246978, "memory_kb": 27564.0, "file": "corpus/submissions/4080970.cpp"},
+  {"id": "4086660", "language": "CPP17", "result": "AC", "time": 2.48116139, "memory_kb": 464656.0, "file": "corpus/submissions/4086660.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_30/coci21c1p5.cp",
+   "proto/ports/scout_batch_35/coci21c1p5.cp",
+   "proto/ports/scout_batch_35/today/coci21c1p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

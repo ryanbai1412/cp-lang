@@ -1,0 +1,21 @@
+{
+ "problem": "ceoi22p5",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "4733717", "language": "CPP17", "result": "TLE", "time": 7.854994726, "memory_kb": 4732.0, "file": "corpus/submissions/4733717.cpp"},
+  {"id": "4733739", "language": "CPP17", "result": "TLE", "time": 9.192524097, "memory_kb": 4732.0, "file": "corpus/submissions/4733739.cpp"},
+  {"id": "4733784", "language": "CPP17", "result": "AC", "time": 3.107768588, "memory_kb": 31372.0, "file": "corpus/submissions/4733784.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/ceoi22p5.cp",
+   "proto/ports/scout_batch_32/today/ceoi22p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

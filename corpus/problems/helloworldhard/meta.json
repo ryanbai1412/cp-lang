@@ -1,0 +1,14 @@
+{
+ "problem": "helloworldhard",
+ "source": "helloworldhard",
+ "submissions": [
+  {"id": "3682536", "language": "PHP", "result": "WA", "time": 0.049804621, "memory_kb": 14632.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

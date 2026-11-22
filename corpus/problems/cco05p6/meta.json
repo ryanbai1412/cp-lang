@@ -1,0 +1,22 @@
+{
+ "problem": "cco05p6",
+ "source": "cco",
+ "submissions": [
+  {"id": "5150817", "language": "CPP17", "result": "RTE", "time": 0.291836949, "memory_kb": 16944.0, "file": "corpus/submissions/5150817.cpp"},
+  {"id": "5150819", "language": "CPP17", "result": "WA", "time": 0.87310817, "memory_kb": 102956.0, "file": "corpus/submissions/5150819.cpp"},
+  {"id": "5150823", "language": "CPP17", "result": "AC", "time": 3.435807998, "memory_kb": 5176.0, "file": "corpus/submissions/5150823.cpp"},
+  {"id": "5150852", "language": "CPP17", "result": "RTE", "time": 0.056448481, "memory_kb": 4008.0, "file": "corpus/submissions/5150852.cpp"},
+  {"id": "5150853", "language": "CPP17", "result": "AC", "time": 0.941925747, "memory_kb": 102888.0, "file": "corpus/submissions/5150853.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_33/cco05p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,16 @@
+{
+ "problem": "dmopc21c5p6",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4218432", "language": "CPP17", "result": "TLE", "time": 4.11137642, "memory_kb": 6232.0, "file": "corpus/submissions/4218432.cpp"},
+  {"id": "4233321", "language": "CPP17", "result": "TLE", "time": 4.20956775, "memory_kb": 7504.0, "file": "corpus/submissions/4233321.cpp"},
+  {"id": "4233327", "language": "CPP17", "result": "TLE", "time": 4.2763638, "memory_kb": 7504.0, "file": "corpus/submissions/4233327.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

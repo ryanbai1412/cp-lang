@@ -1,0 +1,19 @@
+{
+ "problem": "ioi18p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4724581", "language": "CPP17", "result": "AC", "time": 1.918464966, "memory_kb": 13520.0, "file": "corpus/submissions/4724581.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_25/ioi18p4.cp",
+   "proto/ports/scout_batch_25/today/ioi18p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

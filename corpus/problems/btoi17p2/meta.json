@@ -1,0 +1,20 @@
+{
+ "problem": "btoi17p2",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4456180", "language": "CPP17", "result": "RTE", "time": 0.545053172, "memory_kb": 15576.0, "file": "corpus/submissions/4456180.cpp"},
+  {"id": "4456186", "language": "CPP17", "result": "AC", "time": 1.14137024, "memory_kb": 32556.0, "file": "corpus/submissions/4456186.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_18/btoi17p2.cp",
+   "proto/ports/scout_batch_18/today/btoi17p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

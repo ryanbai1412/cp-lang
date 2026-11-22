@@ -1,0 +1,19 @@
+{
+ "problem": "acc7p3",
+ "source": "acc",
+ "submissions": [
+  {"id": "3540442", "language": "CPP17", "result": "TLE", "time": 2.475052598, "memory_kb": 87872.0, "file": "corpus/submissions/3540442.cpp"},
+  {"id": "3540475", "language": "CPP17", "result": "AC", "time": 3.761599529, "memory_kb": 23572.0, "file": "corpus/submissions/3540475.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_27/acc7p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

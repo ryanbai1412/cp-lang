@@ -1,0 +1,29 @@
+{
+ "problem": "ccc19s5",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4325368", "language": "CPP17", "result": "RTE", "time": 0.0020321, "memory_kb": 4.0, "file": "corpus/submissions/4325368.cpp"},
+  {"id": "4325374", "language": "CPP17", "result": "WA", "time": 0.729021732, "memory_kb": 100828.0, "file": "corpus/submissions/4325374.cpp"},
+  {"id": "4325403", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4325403.cpp"},
+  {"id": "4325406", "language": "CPP17", "result": "WA", "time": 0.780383408, "memory_kb": 101796.0, "file": "corpus/submissions/4325406.cpp"},
+  {"id": "4327508", "language": "CPP17", "result": "AC", "time": 14.189268648, "memory_kb": 179592.0, "file": "corpus/submissions/4327508.cpp"},
+  {"id": "4327544", "language": "CPP17", "result": "AC", "time": 7.365482266, "memory_kb": 179700.0, "file": "corpus/submissions/4327544.cpp"},
+  {"id": "5119937", "language": "CPP17", "result": "AC", "time": 8.243686792, "memory_kb": 38576.0, "file": "corpus/submissions/5119937.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc19s5.cpp",
+   "proto/ports/ccc19s5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc19s5.cp",
+   "proto/ports/scout_batch_1/ccc19s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

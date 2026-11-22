@@ -1,0 +1,23 @@
+{
+ "problem": "ccc21s5",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4323478", "language": "CPP17", "result": "TLE", "time": 5.100037284, "memory_kb": 5864.0, "file": "corpus/submissions/4323478.cpp"},
+  {"id": "4323513", "language": "CPP17", "result": "AC", "time": 0.904284237, "memory_kb": 38832.0, "file": "corpus/submissions/4323513.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc21s5.cpp",
+   "proto/ports/ccc21s5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc21s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

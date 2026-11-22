@@ -1,0 +1,16 @@
+{
+ "problem": "noip18p5",
+ "source": "noip",
+ "submissions": [
+  {"id": "4016303", "language": "CPP17", "result": "WA", "time": 0.049757495, "memory_kb": 3272.0, "file": "corpus/submissions/4016303.cpp"},
+  {"id": "4263671", "language": "CPP17", "result": "WA", "time": 0.051084325, "memory_kb": 3364.0, "file": "corpus/submissions/4263671.cpp"},
+  {"id": "4263702", "language": "CPP17", "result": "AC", "time": 0.050259468, "memory_kb": 3364.0, "file": "corpus/submissions/4263702.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

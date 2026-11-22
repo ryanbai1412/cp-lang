@@ -1,0 +1,17 @@
+{
+ "problem": "factorial2",
+ "source": "factorial",
+ "submissions": [
+  {"id": "5653896", "language": "CPP17", "result": "WA", "time": 2.148987049, "memory_kb": 4292.0, "file": "corpus/submissions/5653896.cpp"},
+  {"id": "5653907", "language": "CPP17", "result": "TLE", "time": 8.002933373, "memory_kb": 4300.0, "file": "corpus/submissions/5653907.cpp"},
+  {"id": "5653914", "language": "CPP17", "result": "AC", "time": 2.079504293, "memory_kb": 4276.0, "file": "corpus/submissions/5653914.cpp"},
+  {"id": "5653915", "language": "CPP17", "result": "AC", "time": 2.077058769, "memory_kb": 4288.0, "file": "corpus/submissions/5653915.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

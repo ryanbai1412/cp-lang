@@ -1,0 +1,18 @@
+{
+ "problem": "ioi09p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5645292", "language": "CPP17", "result": "TLE", "time": 64.905051924, "memory_kb": 16320.0, "file": "corpus/submissions/5645292.cpp"},
+  {"id": "5646794", "language": "CPP17", "result": "AC", "time": 0.595495079, "memory_kb": 15532.0, "file": "corpus/submissions/5646794.cpp"},
+  {"id": "5646822", "language": "CPP17", "result": "AC", "time": 0.435159129, "memory_kb": 18256.0, "file": "corpus/submissions/5646822.cpp"},
+  {"id": "5646899", "language": "CPP17", "result": "AC", "time": 0.363816829, "memory_kb": 15156.0, "file": "corpus/submissions/5646899.cpp"},
+  {"id": "5646901", "language": "CPP17", "result": "AC", "time": 0.394765052, "memory_kb": 15224.0, "file": "corpus/submissions/5646901.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

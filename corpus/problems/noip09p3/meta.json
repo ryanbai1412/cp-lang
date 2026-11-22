@@ -1,0 +1,24 @@
+{
+ "problem": "noip09p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5185083", "language": "CPP17", "result": "WA", "time": 0.191391929, "memory_kb": 9452.0, "file": "corpus/submissions/5185083.cpp"},
+  {"id": "5185107", "language": "CPP17", "result": "RTE", "time": 7.412395217, "memory_kb": 100820.0, "file": "corpus/submissions/5185107.cpp"},
+  {"id": "5185139", "language": "CPP17", "result": "AC", "time": 0.150079079, "memory_kb": 8808.0, "file": "corpus/submissions/5185139.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip09p3.cpp",
+   "proto/ports/noip09p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip09p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,21 @@
+{
+ "problem": "cco09p4",
+ "source": "cco",
+ "submissions": [
+  {"id": "5034496", "language": "CPP17", "result": "RTE", "time": 0.08663031, "memory_kb": 3496.0, "file": "corpus/submissions/5034496.cpp"},
+  {"id": "5034499", "language": "CPP17", "result": "RTE", "time": 0.005770782, "memory_kb": 3444.0, "file": "corpus/submissions/5034499.cpp"},
+  {"id": "5034519", "language": "CPP17", "result": "AC", "time": 27.05019455, "memory_kb": 3960.0, "file": "corpus/submissions/5034519.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_3/cco09p4.cp",
+   "proto/ports/scout_batch_3/today/cco09p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

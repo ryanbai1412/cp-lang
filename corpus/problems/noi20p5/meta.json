@@ -1,0 +1,23 @@
+{
+ "problem": "noi20p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "3803678", "language": "CPP17", "result": "WA", "time": 1.534935934, "memory_kb": 5684.0, "file": "corpus/submissions/3803678.cpp"},
+  {"id": "3803698", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3803698.cpp"},
+  {"id": "3803700", "language": "CPP17", "result": "WA", "time": 1.639849278, "memory_kb": 5708.0, "file": "corpus/submissions/3803700.cpp"},
+  {"id": "3803765", "language": "CPP17", "result": "WA", "time": 1.611864587, "memory_kb": 7452.0, "file": "corpus/submissions/3803765.cpp"},
+  {"id": "3803796", "language": "CPP17", "result": "AC", "time": 1.685034089, "memory_kb": 9444.0, "file": "corpus/submissions/3803796.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi20p5.cp",
+   "proto/ports/scout_batch_50/today/noi20p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

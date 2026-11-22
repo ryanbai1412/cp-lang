@@ -1,0 +1,19 @@
+{
+ "problem": "bsspc21s5",
+ "source": "bsspc",
+ "submissions": [
+  {"id": "4152988", "language": "CPP17", "result": "RTE", "time": 0.0019194, "memory_kb": 3068.0, "file": "corpus/submissions/4152988.cpp"},
+  {"id": "4152998", "language": "CPP17", "result": "RTE", "time": 0.002845273, "memory_kb": 3532.0, "file": "corpus/submissions/4152998.cpp"},
+  {"id": "4153003", "language": "CPP17", "result": "WA", "time": 0.002481868, "memory_kb": 3284.0, "file": "corpus/submissions/4153003.cpp"},
+  {"id": "4153006", "language": "CPP17", "result": "WA", "time": 0.00751384, "memory_kb": 3292.0, "file": "corpus/submissions/4153006.cpp"},
+  {"id": "4153026", "language": "CPP17", "result": "WA", "time": 0.005584849, "memory_kb": 3376.0, "file": "corpus/submissions/4153026.cpp"},
+  {"id": "4153033", "language": "CPP17", "result": "WA", "time": 0.007575463, "memory_kb": 3296.0, "file": "corpus/submissions/4153033.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

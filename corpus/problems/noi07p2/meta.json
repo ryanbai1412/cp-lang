@@ -1,0 +1,23 @@
+{
+ "problem": "noi07p2",
+ "source": "noi",
+ "submissions": [
+  {"id": "3756745", "language": "CPP17", "result": "WA", "time": 0.645162174, "memory_kb": 5900.0, "file": "corpus/submissions/3756745.cpp"},
+  {"id": "3756978", "language": "CPP17", "result": "RTE", "time": 0.319260695, "memory_kb": 3420.0, "file": "corpus/submissions/3756978.cpp"},
+  {"id": "3767090", "language": "CPP17", "result": "TLE", "time": 8.016253197, "memory_kb": 7192.0, "file": "corpus/submissions/3767090.cpp"},
+  {"id": "3767174", "language": "CPP17", "result": "TLE", "time": 8.016694289, "memory_kb": 7164.0, "file": "corpus/submissions/3767174.cpp"},
+  {"id": "3767186", "language": "CPP17", "result": "TLE", "time": 5.585551633, "memory_kb": 7180.0, "file": "corpus/submissions/3767186.cpp"},
+  {"id": "3767248", "language": "CPP17", "result": "AC", "time": 0.482445194, "memory_kb": 13652.0, "file": "corpus/submissions/3767248.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_21/noi07p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

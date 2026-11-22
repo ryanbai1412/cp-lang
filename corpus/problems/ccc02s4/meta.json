@@ -1,0 +1,21 @@
+{
+ "problem": "ccc02s4",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4157526", "language": "CPP17", "result": "AC", "time": 0.012521395, "memory_kb": 3324.0, "file": "corpus/submissions/4157526.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_2/ccc02s4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_2/ccc02s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

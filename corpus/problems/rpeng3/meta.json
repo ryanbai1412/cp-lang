@@ -1,0 +1,20 @@
+{
+ "problem": "rpeng3",
+ "source": "rpeng",
+ "submissions": [
+  {"id": "4811939", "language": "CPP17", "result": "WA", "time": 4.490968729, "memory_kb": 47824.0, "file": "corpus/submissions/4811939.cpp"},
+  {"id": "4811952", "language": "CPP17", "result": "AC", "time": 4.844203165, "memory_kb": 47820.0, "file": "corpus/submissions/4811952.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/rpeng3.cp",
+   "proto/ports/scout_batch_32/today/rpeng3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

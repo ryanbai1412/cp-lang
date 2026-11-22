@@ -1,0 +1,29 @@
+{
+ "problem": "helloworld",
+ "source": "helloworld",
+ "submissions": [
+  {"id": "3380891", "language": "JAVA", "result": "AC", "time": 0.11414312, "memory_kb": 57328.0, "file": "corpus/submissions/3380891.java"},
+  {"id": "3380943", "language": "JAVA", "result": "WA", "time": 0.132505196, "memory_kb": 58580.0, "file": "corpus/submissions/3380943.java"},
+  {"id": "3380956", "language": "JAVA", "result": "AC", "time": 0.110534369, "memory_kb": 57380.0, "file": "corpus/submissions/3380956.java"},
+  {"id": "3380965", "language": "JAVA", "result": "WA", "time": 0.118689511, "memory_kb": 58704.0, "file": "corpus/submissions/3380965.java"},
+  {"id": "3380968", "language": "JAVA", "result": "WA", "time": 0.132475227, "memory_kb": 58372.0, "file": "corpus/submissions/3380968.java"},
+  {"id": "3380979", "language": "JAVA", "result": "WA", "time": 0.139545283, "memory_kb": 58260.0, "file": "corpus/submissions/3380979.java"},
+  {"id": "3380987", "language": "JAVA", "result": "AC", "time": 0.108583097, "memory_kb": 57852.0, "file": "corpus/submissions/3380987.java"},
+  {"id": "3722894", "language": "CPP17", "result": "WA", "time": 0.0024299, "memory_kb": 3284.0, "file": "corpus/submissions/3722894.cpp"},
+  {"id": "3722896", "language": "CPP17", "result": "WA", "time": 0.001797224, "memory_kb": 1204.0, "file": "corpus/submissions/3722896.cpp"},
+  {"id": "3996076", "language": "CPP17", "result": "AC", "time": 0.002493212, "memory_kb": 3320.0, "file": "corpus/submissions/3996076.cpp"},
+  {"id": "4964435", "language": "PYPY3", "result": "WA", "time": 0.067809047, "memory_kb": 61912.0, "file": "corpus/submissions/4964435.py"},
+  {"id": "5160903", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5160903.cpp"},
+  {"id": "5160906", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5160906.cpp"},
+  {"id": "5160910", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5160910.cpp"},
+  {"id": "5876749", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5876749.cpp"},
+  {"id": "5876754", "language": "CLPP14", "result": "WA", "time": 0.003606366, "memory_kb": 3764.0, "file": "corpus/submissions/5876754.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

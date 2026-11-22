@@ -1,0 +1,25 @@
+{
+ "problem": "ccc20s3",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4323635", "language": "CPP17", "result": "WA", "time": 0.073523067, "memory_kb": 9720.0, "file": "corpus/submissions/4323635.cpp"},
+  {"id": "4323637", "language": "CPP17", "result": "WA", "time": 0.084861105, "memory_kb": 12804.0, "file": "corpus/submissions/4323637.cpp"},
+  {"id": "4323642", "language": "CPP17", "result": "WA", "time": 0.083341573, "memory_kb": 12844.0, "file": "corpus/submissions/4323642.cpp"},
+  {"id": "4323643", "language": "CPP17", "result": "AC", "time": 16.849050241, "memory_kb": 17096.0, "file": "corpus/submissions/4323643.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc20s3.cpp",
+   "proto/ports/ccc20s3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc20s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

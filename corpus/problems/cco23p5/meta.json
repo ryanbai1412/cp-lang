@@ -1,0 +1,21 @@
+{
+ "problem": "cco23p5",
+ "source": "cco",
+ "submissions": [
+  {"id": "5580314", "language": "CPP17", "result": "RTE", "time": 5.812570704, "memory_kb": 37056.0, "file": "corpus/submissions/5580314.cpp"},
+  {"id": "5580356", "language": "CPP17", "result": "WA", "time": 7.10123449, "memory_kb": 100916.0, "file": "corpus/submissions/5580356.cpp"},
+  {"id": "5580402", "language": "CPP17", "result": "AC", "time": 10.383383242, "memory_kb": 105468.0, "file": "corpus/submissions/5580402.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_47/cco23p5.cp",
+   "proto/ports/scout_batch_47/today/cco23p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

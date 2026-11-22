@@ -1,0 +1,19 @@
+{
+ "problem": "joi16fp2",
+ "source": "joi",
+ "submissions": [
+  {"id": "5331716", "language": "CPP17", "result": "AC", "time": 0.130857491, "memory_kb": 3512.0, "file": "corpus/submissions/5331716.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_6/joi16fp2.cp",
+   "proto/ports/scout_batch_6/today/joi16fp2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

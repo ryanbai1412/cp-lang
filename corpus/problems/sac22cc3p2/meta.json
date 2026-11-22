@@ -1,0 +1,16 @@
+{
+ "problem": "sac22cc3p2",
+ "source": "sac",
+ "submissions": [
+  {"id": "4331568", "language": "CPP17", "result": "WA", "time": 0.010022292, "memory_kb": 3476.0, "file": "corpus/submissions/4331568.cpp"},
+  {"id": "4331571", "language": "CPP17", "result": "WA", "time": 0.010309183, "memory_kb": 3556.0, "file": "corpus/submissions/4331571.cpp"},
+  {"id": "4331699", "language": "CPP17", "result": "AC", "time": 0.071854513, "memory_kb": 3444.0, "file": "corpus/submissions/4331699.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

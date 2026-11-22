@@ -1,0 +1,24 @@
+{
+ "problem": "ccc10s4",
+ "source": "ccc",
+ "submissions": [
+  {"id": "5341292", "language": "CPP17", "result": "AC", "time": 0.760637115999999, "memory_kb": 3452.0, "file": "corpus/submissions/5341292.cpp"},
+  {"id": "7171512", "language": "CPP17", "result": "AC", "time": 4.4097677399999995, "memory_kb": 34976.0, "file": "corpus/submissions/7171512.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc10s4.cpp",
+   "proto/ports/ccc10s4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc10s4.cp",
+   "proto/ports/scout_batch_12/ccc10s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,24 @@
+{
+ "problem": "ctsc06p1",
+ "source": "ctsc",
+ "submissions": [
+  {"id": "4527937", "language": "CPP17", "result": "OLE", "time": 0.971992967, "memory_kb": 4452.0, "file": "corpus/submissions/4527937.cpp"},
+  {"id": "4527938", "language": "CPP17", "result": "WA", "time": 0.483640643, "memory_kb": 3904.0, "file": "corpus/submissions/4527938.cpp"},
+  {"id": "4527951", "language": "CPP17", "result": "RTE", "time": 0.483268188, "memory_kb": 4108.0, "file": "corpus/submissions/4527951.cpp"},
+  {"id": "4527998", "language": "CPP17", "result": "RTE", "time": 0.054027649, "memory_kb": 4088.0, "file": "corpus/submissions/4527998.cpp"},
+  {"id": "4528000", "language": "CPP17", "result": "WA", "time": 0.527944794, "memory_kb": 5296.0, "file": "corpus/submissions/4528000.cpp"},
+  {"id": "4528004", "language": "CPP17", "result": "AC", "time": 0.56501861, "memory_kb": 5316.0, "file": "corpus/submissions/4528004.cpp"},
+  {"id": "4528855", "language": "CPP17", "result": "AC", "time": 0.562024759, "memory_kb": 5316.0, "file": "corpus/submissions/4528855.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_10/ctsc06p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+ "problem": "noip22p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5214011", "language": "CPP17", "result": "AC", "time": 8.731800413, "memory_kb": 148192.0, "file": "corpus/submissions/5214011.cpp"},
+  {"id": "5445683", "language": "CPP17", "result": "AC", "time": 8.96869988, "memory_kb": 148208.0, "file": "corpus/submissions/5445683.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_9/noip22p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,21 @@
+{
+ "problem": "noi21p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3858923", "language": "CPP17", "result": "WA", "time": 6.32120944, "memory_kb": 22632.0, "file": "corpus/submissions/3858923.cpp"},
+  {"id": "3858984", "language": "CPP17", "result": "WA", "time": 3.272488391, "memory_kb": 33908.0, "file": "corpus/submissions/3858984.cpp"},
+  {"id": "3858994", "language": "CPP17", "result": "WA", "time": 3.280626776, "memory_kb": 33880.0, "file": "corpus/submissions/3858994.cpp"},
+  {"id": "3859087", "language": "CPP17", "result": "AC", "time": 7.118958054, "memory_kb": 31360.0, "file": "corpus/submissions/3859087.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_9/noi21p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

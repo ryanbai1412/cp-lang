@@ -1,0 +1,15 @@
+{
+ "problem": "dmopc21c9p5",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4564032", "language": "CPP17", "result": "TLE", "time": 8.000049678, "memory_kb": 3184.0, "file": "corpus/submissions/4564032.cpp"},
+  {"id": "4564058", "language": "CPP17", "result": "WA", "time": 7.965452887, "memory_kb": 3480.0, "file": "corpus/submissions/4564058.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,16 @@
+{
+ "problem": "noip07p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5184967", "language": "CPP17", "result": "WA", "time": 0.035215643, "memory_kb": 3512.0, "file": "corpus/submissions/5184967.cpp"},
+  {"id": "5184976", "language": "PYPY3", "result": "WA", "time": 0.690378131, "memory_kb": 62748.0, "file": "corpus/submissions/5184976.py"},
+  {"id": "5184980", "language": "PYPY3", "result": "AC", "time": 0.697025574, "memory_kb": 63444.0, "file": "corpus/submissions/5184980.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

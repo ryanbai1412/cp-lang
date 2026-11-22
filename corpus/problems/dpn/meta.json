@@ -1,0 +1,24 @@
+{
+ "problem": "dpn",
+ "source": "dpn",
+ "submissions": [
+  {"id": "4131779", "language": "CPP17", "result": "AC", "time": 0.188173965, "memory_kb": 4736.0, "file": "corpus/submissions/4131779.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/dpn.cpp",
+   "proto/ports/dpn_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dpn.cp",
+   "proto/ports/scout_batch_4/dpn.cp",
+   "proto/ports/wave2/dpn.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

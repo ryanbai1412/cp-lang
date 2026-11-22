@@ -1,0 +1,23 @@
+{
+ "problem": "neerc10k",
+ "source": "neerc",
+ "submissions": [
+  {"id": "5325548", "language": "CPP17", "result": "RTE", "time": 0.587331415, "memory_kb": 5344.0, "file": "corpus/submissions/5325548.cpp"},
+  {"id": "5325554", "language": "CPP17", "result": "TLE", "time": 33.489845385, "memory_kb": 5348.0, "file": "corpus/submissions/5325554.cpp"},
+  {"id": "5325557", "language": "CPP17", "result": "RTE", "time": 0.627719313, "memory_kb": 5460.0, "file": "corpus/submissions/5325557.cpp"},
+  {"id": "5325558", "language": "CPP17", "result": "TLE", "time": 33.522893934, "memory_kb": 5484.0, "file": "corpus/submissions/5325558.cpp"},
+  {"id": "5325567", "language": "CPP17", "result": "AC", "time": 0.594955217, "memory_kb": 5420.0, "file": "corpus/submissions/5325567.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_45/neerc10k.cp",
+   "proto/ports/scout_batch_45/today/neerc10k.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

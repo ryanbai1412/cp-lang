@@ -1,0 +1,20 @@
+{
+ "problem": "ioi17p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5724149", "language": "CPP17", "result": "AC", "time": 3.355065213, "memory_kb": 19020.0, "file": "corpus/submissions/5724149.cpp"},
+  {"id": "5724153", "language": "CPP17", "result": "AC", "time": 2.944977659, "memory_kb": 15932.0, "file": "corpus/submissions/5724153.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_49/ioi17p2.cp",
+   "proto/ports/scout_batch_49/today/ioi17p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

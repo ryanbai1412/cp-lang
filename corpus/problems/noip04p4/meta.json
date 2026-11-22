@@ -1,0 +1,31 @@
+{
+ "problem": "noip04p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5117191", "language": "CPP17", "result": "TLE", "time": 4.569209674, "memory_kb": 3392.0, "file": "corpus/submissions/5117191.cpp"},
+  {"id": "5117208", "language": "CPP17", "result": "TLE", "time": 5.718511094, "memory_kb": 3432.0, "file": "corpus/submissions/5117208.cpp"},
+  {"id": "5117210", "language": "CPP17", "result": "WA", "time": 0.059985103, "memory_kb": 3428.0, "file": "corpus/submissions/5117210.cpp"},
+  {"id": "5117215", "language": "CPP17", "result": "TLE", "time": 11.983425736, "memory_kb": 3392.0, "file": "corpus/submissions/5117215.cpp"},
+  {"id": "5117218", "language": "CPP17", "result": "TLE", "time": 11.997619407, "memory_kb": 3432.0, "file": "corpus/submissions/5117218.cpp"},
+  {"id": "5117222", "language": "CPP17", "result": "TLE", "time": 3.71262899, "memory_kb": 3432.0, "file": "corpus/submissions/5117222.cpp"},
+  {"id": "5117224", "language": "CPP17", "result": "TLE", "time": 3.655466402, "memory_kb": 3432.0, "file": "corpus/submissions/5117224.cpp"},
+  {"id": "5117226", "language": "CPP17", "result": "TLE", "time": 3.612753054, "memory_kb": 3432.0, "file": "corpus/submissions/5117226.cpp"},
+  {"id": "5117229", "language": "CPP17", "result": "TLE", "time": 1.322120745, "memory_kb": 3392.0, "file": "corpus/submissions/5117229.cpp"},
+  {"id": "5117239", "language": "CPP17", "result": "TLE", "time": 3.340929963, "memory_kb": 3432.0, "file": "corpus/submissions/5117239.cpp"},
+  {"id": "5117244", "language": "CPP17", "result": "TLE", "time": 3.428586929, "memory_kb": 3432.0, "file": "corpus/submissions/5117244.cpp"},
+  {"id": "5117245", "language": "CPP17", "result": "TLE", "time": 3.517551539, "memory_kb": 3392.0, "file": "corpus/submissions/5117245.cpp"},
+  {"id": "5117252", "language": "CPP17", "result": "AC", "time": 0.475555318, "memory_kb": 3436.0, "file": "corpus/submissions/5117252.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/noip04p4.cp",
+   "proto/ports/scout_batch_37/today/noip04p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

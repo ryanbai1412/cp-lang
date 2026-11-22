@@ -1,0 +1,24 @@
+{
+ "problem": "dpp",
+ "source": "dpp",
+ "submissions": [
+  {"id": "4131860", "language": "CPP17", "result": "AC", "time": 0.512536569, "memory_kb": 18088.0, "file": "corpus/submissions/4131860.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/dpp.cpp",
+   "proto/ports/hillclimb_dp_graph/dpp_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/dpp.cp",
+   "proto/ports/hillclimb_dp_graph/dpp.cp",
+   "proto/ports/wave2/dpp.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

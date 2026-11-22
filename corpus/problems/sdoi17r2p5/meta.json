@@ -1,0 +1,15 @@
+{
+ "problem": "sdoi17r2p5",
+ "source": "sdoi",
+ "submissions": [
+  {"id": "5514015", "language": "CPP17", "result": "TLE", "time": 70.374617509, "memory_kb": 4284.0, "file": "corpus/submissions/5514015.cpp"},
+  {"id": "5516661", "language": "CPP17", "result": "TLE", "time": 70.381109194, "memory_kb": 4276.0, "file": "corpus/submissions/5516661.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

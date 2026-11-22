@@ -1,0 +1,24 @@
+{
+ "problem": "ioi05p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4843820", "language": "CPP17", "result": "RTE", "time": 0.165572532, "memory_kb": 18884.0, "file": "corpus/submissions/4843820.cpp"},
+  {"id": "4843822", "language": "CPP17", "result": "RTE", "time": 0.898196642, "memory_kb": 12580.0, "file": "corpus/submissions/4843822.cpp"},
+  {"id": "4843824", "language": "CPP17", "result": "RTE", "time": 0.18317536, "memory_kb": 9412.0, "file": "corpus/submissions/4843824.cpp"},
+  {"id": "4843881", "language": "CPP17", "result": "RTE", "time": 0.055765446, "memory_kb": 4.0, "file": "corpus/submissions/4843881.cpp"},
+  {"id": "4843882", "language": "CPP17", "result": "AC", "time": 1.539659363, "memory_kb": 84428.0, "file": "corpus/submissions/4843882.cpp"},
+  {"id": "5032753", "language": "CPP17", "result": "AC", "time": 1.499271141, "memory_kb": 84336.0, "file": "corpus/submissions/5032753.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_18/ioi05p2.cp",
+   "proto/ports/scout_batch_18/today/ioi05p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

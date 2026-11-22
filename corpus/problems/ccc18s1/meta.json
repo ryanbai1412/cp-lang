@@ -1,0 +1,14 @@
+{
+ "problem": "ccc18s1",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4329415", "language": "CPP17", "result": "AC", "time": 0.054704867, "memory_kb": 3496.0, "file": "corpus/submissions/4329415.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

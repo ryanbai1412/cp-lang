@@ -1,0 +1,15 @@
+{
+ "problem": "apio23p3",
+ "source": "apio",
+ "submissions": [
+  {"id": "5593303", "language": "CPP17", "result": "RTE", "time": 0.13250077, "memory_kb": 7984.0, "file": "corpus/submissions/5593303.cpp"},
+  {"id": "5593320", "language": "CPP17", "result": "RTE", "time": 0.40708438900000005, "memory_kb": 18116.0, "file": "corpus/submissions/5593320.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

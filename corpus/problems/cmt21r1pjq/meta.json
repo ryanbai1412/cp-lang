@@ -1,0 +1,19 @@
+{
+ "problem": "cmt21r1pjq",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4003433", "language": "TEXT", "result": "WA", "time": 0.014522547, "memory_kb": 1804.0, "file": null},
+  {"id": "4003536", "language": "CPP17", "result": "RTE", "time": 12.481151214, "memory_kb": 480740.0, "file": "corpus/submissions/4003536.cpp"},
+  {"id": "4003541", "language": "CPP17", "result": "RTE", "time": 12.858201438, "memory_kb": 515508.0, "file": "corpus/submissions/4003541.cpp"},
+  {"id": "4003586", "language": "CPP17", "result": "RTE", "time": 10.066182942, "memory_kb": 523996.0, "file": "corpus/submissions/4003586.cpp"},
+  {"id": "4381786", "language": "CPP17", "result": "WA", "time": 2.783389671, "memory_kb": 114756.0, "file": "corpus/submissions/4381786.cpp"},
+  {"id": "4381789", "language": "CPP17", "result": "WA", "time": 3.628829014, "memory_kb": 114780.0, "file": "corpus/submissions/4381789.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

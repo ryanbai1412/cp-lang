@@ -1,0 +1,21 @@
+{
+ "problem": "dmopc20c4p2",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3484930", "language": "CPP17", "result": "RTE", "time": 0.519037485, "memory_kb": 1520.0, "file": "corpus/submissions/3484930.cpp"},
+  {"id": "3484931", "language": "CPP17", "result": "RTE", "time": 0.549060133, "memory_kb": 3464.0, "file": "corpus/submissions/3484931.cpp"},
+  {"id": "3484932", "language": "CPP17", "result": "AC", "time": 2.960615214, "memory_kb": 1520.0, "file": "corpus/submissions/3484932.cpp"},
+  {"id": "3484999", "language": "CPP17", "result": "WA", "time": 1.093485195, "memory_kb": 35208.0, "file": "corpus/submissions/3484999.cpp"},
+  {"id": "3485001", "language": "CPP17", "result": "WA", "time": 1.090664292, "memory_kb": 35260.0, "file": "corpus/submissions/3485001.cpp"},
+  {"id": "3485012", "language": "CPP17", "result": "WA", "time": 0.00409222, "memory_kb": 3100.0, "file": "corpus/submissions/3485012.cpp"},
+  {"id": "3485014", "language": "CPP17", "result": "WA", "time": 1.100991031, "memory_kb": 35260.0, "file": "corpus/submissions/3485014.cpp"},
+  {"id": "3485016", "language": "CPP17", "result": "AC", "time": 10.513546156, "memory_kb": 52488.0, "file": "corpus/submissions/3485016.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

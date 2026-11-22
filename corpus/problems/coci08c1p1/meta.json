@@ -1,0 +1,14 @@
+{
+ "problem": "coci08c1p1",
+ "source": "coci",
+ "submissions": [
+  {"id": "5245311", "language": "CPP17", "result": "AC", "time": 0.034566086, "memory_kb": 3444.0, "file": "corpus/submissions/5245311.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

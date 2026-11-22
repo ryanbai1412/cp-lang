@@ -1,0 +1,14 @@
+{
+ "problem": "mccc3j1",
+ "source": "mccc",
+ "submissions": [
+  {"id": "4223414", "language": "CPP17", "result": "AC", "time": 0.03344474, "memory_kb": 3372.0, "file": "corpus/submissions/4223414.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

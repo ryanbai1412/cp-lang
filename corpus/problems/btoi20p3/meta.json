@@ -1,0 +1,20 @@
+{
+ "problem": "btoi20p3",
+ "source": "btoi",
+ "submissions": [
+  {"id": "4656866", "language": "CPP17", "result": "AC", "time": 7.728701436, "memory_kb": 18216.0, "file": "corpus/submissions/4656866.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_15/btoi20p3.cp",
+   "proto/ports/scout_batch_18/btoi20p3.cp",
+   "proto/ports/scout_batch_18/today/btoi20p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

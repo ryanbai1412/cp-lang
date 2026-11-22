@@ -1,0 +1,20 @@
+{
+ "problem": "noi02p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "3754467", "language": "CPP17", "result": "AC", "time": 0.024738224, "memory_kb": 3380.0, "file": "corpus/submissions/3754467.cpp"},
+  {"id": "3754486", "language": "CPP17", "result": "AC", "time": 0.024860554, "memory_kb": 3328.0, "file": "corpus/submissions/3754486.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/noi02p6.cp",
+   "proto/ports/scout_batch_52/today/noi02p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

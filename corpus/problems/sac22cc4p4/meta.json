@@ -1,0 +1,21 @@
+{
+ "problem": "sac22cc4p4",
+ "source": "sac",
+ "submissions": [
+  {"id": "4411171", "language": "CPP17", "result": "WA", "time": 0.022286035, "memory_kb": 3496.0, "file": "corpus/submissions/4411171.cpp"},
+  {"id": "4411173", "language": "CPP17", "result": "TLE", "time": 3.045549215, "memory_kb": 7032.0, "file": "corpus/submissions/4411173.cpp"},
+  {"id": "4411200", "language": "CPP17", "result": "AC", "time": 5.049492302, "memory_kb": 100812.0, "file": "corpus/submissions/4411200.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/sac22cc4p4.cp",
+   "proto/ports/scout_batch_39/today/sac22cc4p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

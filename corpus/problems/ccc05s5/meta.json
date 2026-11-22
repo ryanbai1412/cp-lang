@@ -1,0 +1,18 @@
+{
+ "problem": "ccc05s5",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4173126", "language": "CPP17", "result": "AC", "time": 0.237798051, "memory_kb": 10340.0, "file": "corpus/submissions/4173126.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_1/ccc05s5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "sdoi17r2p6",
+ "source": "sdoi",
+ "submissions": [
+  {"id": "5514249", "language": "CPP17", "result": "TLE", "time": 48.492385618, "memory_kb": 8720.0, "file": "corpus/submissions/5514249.cpp"},
+  {"id": "5514253", "language": "CPP17", "result": "TLE", "time": 47.648221957, "memory_kb": 8736.0, "file": "corpus/submissions/5514253.cpp"},
+  {"id": "5514259", "language": "CPP17", "result": "TLE", "time": 47.744856489, "memory_kb": 8700.0, "file": "corpus/submissions/5514259.cpp"},
+  {"id": "5514263", "language": "CPP17", "result": "TLE", "time": 47.847909671000004, "memory_kb": 8708.0, "file": "corpus/submissions/5514263.cpp"},
+  {"id": "5514289", "language": "CPP17", "result": "TLE", "time": 47.690693451, "memory_kb": 8756.0, "file": "corpus/submissions/5514289.cpp"},
+  {"id": "5514290", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5514290.cpp"},
+  {"id": "5514291", "language": "CPP17", "result": "TLE", "time": 47.585435459, "memory_kb": 8628.0, "file": "corpus/submissions/5514291.cpp"},
+  {"id": "5514400", "language": "CPP17", "result": "TLE", "time": 47.767810295, "memory_kb": 8788.0, "file": "corpus/submissions/5514400.cpp"},
+  {"id": "5519264", "language": "CPP17", "result": "TLE", "time": 44.177059481, "memory_kb": 13660.0, "file": "corpus/submissions/5519264.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

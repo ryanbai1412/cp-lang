@@ -1,0 +1,21 @@
+{
+ "problem": "aac5p4",
+ "source": "aac",
+ "submissions": [
+  {"id": "4239773", "language": "CPP17", "result": "WA", "time": 0.030797346, "memory_kb": 3380.0, "file": "corpus/submissions/4239773.cpp"},
+  {"id": "4239877", "language": "CPP17", "result": "WA", "time": 0.041354631, "memory_kb": 3380.0, "file": "corpus/submissions/4239877.cpp"},
+  {"id": "4239900", "language": "CPP17", "result": "AC", "time": 0.760256777, "memory_kb": 3376.0, "file": "corpus/submissions/4239900.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/aac5p4.cp",
+   "proto/ports/scout_batch_46/today/aac5p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

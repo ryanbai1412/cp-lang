@@ -1,0 +1,19 @@
+{
+ "problem": "ioi01p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "3477587", "language": "CPP17", "result": "RTE", "time": 0.026681462, "memory_kb": 4.0, "file": "corpus/submissions/3477587.cpp"},
+  {"id": "3477640", "language": "CPP17", "result": "AC", "time": 0.383565078, "memory_kb": 7216.0, "file": "corpus/submissions/3477640.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_7/ioi01p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

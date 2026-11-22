@@ -1,0 +1,25 @@
+{
+ "problem": "dmopc21c5p1",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4218208", "language": "CPP17", "result": "WA", "time": 0.012676214, "memory_kb": 3356.0, "file": "corpus/submissions/4218208.cpp"},
+  {"id": "4218215", "language": "CPP17", "result": "AC", "time": 1.107215578, "memory_kb": 7480.0, "file": "corpus/submissions/4218215.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/dmopc21c5p1.cpp",
+   "proto/ports/hillclimb_dp_graph/dmopc21c5p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/before/dmopc21c5p1.cp",
+   "proto/ports/hillclimb_dp_graph/dmopc21c5p1.cp",
+   "proto/ports/wave2/dmopc21c5p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

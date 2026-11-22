@@ -1,0 +1,19 @@
+{
+ "problem": "ccc02s4hard",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4157744", "language": "CPP17", "result": "AC", "time": 9.069711312, "memory_kb": 144176.0, "file": "corpus/submissions/4157744.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_36/ccc02s4hard.cp",
+   "proto/ports/scout_batch_36/today/ccc02s4hard.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

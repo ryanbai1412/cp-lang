@@ -1,0 +1,27 @@
+{
+ "problem": "noip19p2",
+ "source": "noip",
+ "submissions": [
+  {"id": "5127766", "language": "CPP17", "result": "TLE", "time": 30.086348971, "memory_kb": 37440.0, "file": "corpus/submissions/5127766.cpp"},
+  {"id": "5127767", "language": "CPP17", "result": "TLE", "time": 28.31577011, "memory_kb": 46480.0, "file": "corpus/submissions/5127767.cpp"},
+  {"id": "5127799", "language": "CPP17", "result": "TLE", "time": 5.246301677, "memory_kb": 118072.0, "file": "corpus/submissions/5127799.cpp"},
+  {"id": "5127810", "language": "CPP17", "result": "TLE", "time": 5.436600239, "memory_kb": 115352.0, "file": "corpus/submissions/5127810.cpp"},
+  {"id": "5127813", "language": "CPP17", "result": "TLE", "time": 5.669682976, "memory_kb": 113976.0, "file": "corpus/submissions/5127813.cpp"},
+  {"id": "5127828", "language": "CPP17", "result": "AC", "time": 3.674639445, "memory_kb": 111252.0, "file": "corpus/submissions/5127828.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/noip19p2_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/noip19p2.cp",
+   "proto/ports/scout_batch_26/noip19p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

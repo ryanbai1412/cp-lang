@@ -1,0 +1,27 @@
+{
+ "problem": "ccc17s4",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4899287", "language": "CPP17", "result": "WA", "time": 0.96211305, "memory_kb": 8440.0, "file": "corpus/submissions/4899287.cpp"},
+  {"id": "4899293", "language": "CPP17", "result": "TLE", "time": 15.994680418, "memory_kb": 6644.0, "file": "corpus/submissions/4899293.cpp"},
+  {"id": "4899334", "language": "CPP17", "result": "WA", "time": 1.298931648, "memory_kb": 7052.0, "file": "corpus/submissions/4899334.cpp"},
+  {"id": "4899336", "language": "CPP17", "result": "WA", "time": 1.091577472, "memory_kb": 7048.0, "file": "corpus/submissions/4899336.cpp"},
+  {"id": "4899340", "language": "CPP17", "result": "AC", "time": 1.31073367, "memory_kb": 7048.0, "file": "corpus/submissions/4899340.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc17s4.cpp",
+   "proto/ports/ccc17s4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc17s4.cp",
+   "proto/ports/scout_batch_2/ccc17s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,26 @@
+{
+ "problem": "yac7p5",
+ "source": "yac",
+ "submissions": [
+  {"id": "5705271", "language": "CPP17", "result": "AC", "time": 16.039170719, "memory_kb": 3672.0, "file": "corpus/submissions/5705271.cpp"},
+  {"id": "5705280", "language": "CPP17", "result": "AC", "time": 16.15724806, "memory_kb": 3628.0, "file": "corpus/submissions/5705280.cpp"},
+  {"id": "5705286", "language": "CPP17", "result": "AC", "time": 15.209572612, "memory_kb": 3680.0, "file": "corpus/submissions/5705286.cpp"},
+  {"id": "5705288", "language": "CPP17", "result": "AC", "time": 14.97211908, "memory_kb": 3648.0, "file": "corpus/submissions/5705288.cpp"},
+  {"id": "5705290", "language": "CPP17", "result": "AC", "time": 15.267804332, "memory_kb": 3688.0, "file": "corpus/submissions/5705290.cpp"}
+ ],
+ "cpp_ac": 5,
+ "artifacts": {
+  "original": [
+   "proto/ports/yac7p5.cpp",
+   "proto/ports/yac7p5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/yac7p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

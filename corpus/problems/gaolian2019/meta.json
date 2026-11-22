@@ -1,0 +1,24 @@
+{
+ "problem": "gaolian2019",
+ "source": "gaolian",
+ "submissions": [
+  {"id": "4930928", "language": "TEXT", "result": "WA", "time": 0.003895563, "memory_kb": 1744.0, "file": null},
+  {"id": "4930957", "language": "TEXT", "result": "WA", "time": 0.003581159, "memory_kb": 1712.0, "file": null},
+  {"id": "4930983", "language": "TEXT", "result": "WA", "time": 0.003884624, "memory_kb": 1744.0, "file": null},
+  {"id": "4931969", "language": "TEXT", "result": "WA", "time": 0.003945782, "memory_kb": 1744.0, "file": null},
+  {"id": "4931971", "language": "TEXT", "result": "WA", "time": 0.003615267, "memory_kb": 1712.0, "file": null},
+  {"id": "4933819", "language": "TEXT", "result": "WA", "time": 0.003592127, "memory_kb": 1712.0, "file": null},
+  {"id": "4933832", "language": "TEXT", "result": "WA", "time": 0.003944673, "memory_kb": 1744.0, "file": null},
+  {"id": "4933848", "language": "TEXT", "result": "WA", "time": 0.003830232, "memory_kb": 1744.0, "file": null},
+  {"id": "4933933", "language": "TEXT", "result": "WA", "time": 0.003936393, "memory_kb": 1744.0, "file": null},
+  {"id": "4936369", "language": "TEXT", "result": "WA", "time": 0.003936444, "memory_kb": 1744.0, "file": null},
+  {"id": "4936372", "language": "TEXT", "result": "AC", "time": 0.003964514, "memory_kb": 1744.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

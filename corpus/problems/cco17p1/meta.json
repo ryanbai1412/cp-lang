@@ -1,0 +1,22 @@
+{
+ "problem": "cco17p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "3606070", "language": "CPP17", "result": "AC", "time": 0.124142201, "memory_kb": 3300.0, "file": "corpus/submissions/3606070.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/cco17p1.cpp",
+   "proto/ports/cco17p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/cco17p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

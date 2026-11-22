@@ -1,0 +1,21 @@
+{
+ "problem": "sac22cc1p5",
+ "source": "sac",
+ "submissions": [
+  {"id": "3992625", "language": "CPP17", "result": "AC", "time": 0.521760652, "memory_kb": 3584.0, "file": "corpus/submissions/3992625.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_2/sac22cc1p5_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_2/sac22cc1p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

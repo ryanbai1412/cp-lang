@@ -1,0 +1,24 @@
+{
+ "problem": "noi04p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "3744254", "language": "CPP17", "result": "RTE", "time": 0.026511306, "memory_kb": 3320.0, "file": "corpus/submissions/3744254.cpp"},
+  {"id": "3744255", "language": "CPP17", "result": "WA", "time": 0.193065627, "memory_kb": 8168.0, "file": "corpus/submissions/3744255.cpp"},
+  {"id": "3744258", "language": "CPP17", "result": "WA", "time": 0.350101578, "memory_kb": 12728.0, "file": "corpus/submissions/3744258.cpp"},
+  {"id": "3744261", "language": "CPP17", "result": "WA", "time": 0.349466395, "memory_kb": 12712.0, "file": "corpus/submissions/3744261.cpp"},
+  {"id": "3744262", "language": "CPP17", "result": "WA", "time": 0.348628181, "memory_kb": 12728.0, "file": "corpus/submissions/3744262.cpp"},
+  {"id": "3744270", "language": "CPP17", "result": "AC", "time": 0.35215791, "memory_kb": 12696.0, "file": "corpus/submissions/3744270.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi04p5.cp",
+   "proto/ports/scout_batch_50/today/noi04p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

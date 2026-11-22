@@ -1,0 +1,28 @@
+{
+ "problem": "noi16p6",
+ "source": "noi",
+ "submissions": [
+  {"id": "4788267", "language": "CPP17", "result": "WA", "time": 0.041476488, "memory_kb": 3536.0, "file": "corpus/submissions/4788267.cpp"},
+  {"id": "4788497", "language": "CPP17", "result": "WA", "time": 0.033861077, "memory_kb": 3464.0, "file": "corpus/submissions/4788497.cpp"},
+  {"id": "4788579", "language": "CPP17", "result": "WA", "time": 0.041376421, "memory_kb": 3544.0, "file": "corpus/submissions/4788579.cpp"},
+  {"id": "4788751", "language": "CPP17", "result": "WA", "time": 0.041307977, "memory_kb": 3600.0, "file": "corpus/submissions/4788751.cpp"},
+  {"id": "4788820", "language": "PYPY3", "result": "IR", "time": 0.603930953, "memory_kb": 61868.0, "file": "corpus/submissions/4788820.py"},
+  {"id": "4788822", "language": "PYPY3", "result": "WA", "time": 0.67358748, "memory_kb": 60512.0, "file": "corpus/submissions/4788822.py"},
+  {"id": "4794372", "language": "PYPY3", "result": "WA", "time": 0.59335131, "memory_kb": 60396.0, "file": "corpus/submissions/4794372.py"},
+  {"id": "4794380", "language": "PYPY3", "result": "WA", "time": 0.596124308, "memory_kb": 60348.0, "file": "corpus/submissions/4794380.py"},
+  {"id": "4799736", "language": "PYPY3", "result": "WA", "time": 0.839957292, "memory_kb": 65700.0, "file": "corpus/submissions/4799736.py"},
+  {"id": "4799740", "language": "PYPY3", "result": "WA", "time": 0.614654936, "memory_kb": 64736.0, "file": "corpus/submissions/4799740.py"},
+  {"id": "4799789", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4799789.cpp"},
+  {"id": "4799790", "language": "PYPY3", "result": "WA", "time": 0.701205522, "memory_kb": 64408.0, "file": "corpus/submissions/4799790.py"},
+  {"id": "4800428", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/4800428.cpp"},
+  {"id": "4800429", "language": "PYPY3", "result": "WA", "time": 0.61473513, "memory_kb": 64220.0, "file": "corpus/submissions/4800429.py"},
+  {"id": "4800437", "language": "PYPY3", "result": "AC", "time": 0.636078809, "memory_kb": 64820.0, "file": "corpus/submissions/4800437.py"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

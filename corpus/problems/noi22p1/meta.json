@@ -1,0 +1,32 @@
+{
+ "problem": "noi22p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "4800813", "language": "CPP17", "result": "TLE", "time": 8.084433757, "memory_kb": 433792.0, "file": "corpus/submissions/4800813.cpp"},
+  {"id": "4800817", "language": "CPP17", "result": "RTE", "time": 0.087584054, "memory_kb": 3612.0, "file": "corpus/submissions/4800817.cpp"},
+  {"id": "4800854", "language": "CPP17", "result": "TLE", "time": 7.800290937, "memory_kb": 433660.0, "file": "corpus/submissions/4800854.cpp"},
+  {"id": "4800855", "language": "CPP17", "result": "RTE", "time": 0.087868348, "memory_kb": 3612.0, "file": "corpus/submissions/4800855.cpp"},
+  {"id": "4800857", "language": "CPP17", "result": "TLE", "time": 7.767999816, "memory_kb": 433796.0, "file": "corpus/submissions/4800857.cpp"},
+  {"id": "4800859", "language": "CPP17", "result": "TLE", "time": 6.731979348, "memory_kb": 504912.0, "file": "corpus/submissions/4800859.cpp"},
+  {"id": "4800867", "language": "CPP17", "result": "TLE", "time": 7.119706888, "memory_kb": 505048.0, "file": "corpus/submissions/4800867.cpp"},
+  {"id": "4800872", "language": "CPP17", "result": "TLE", "time": 7.496657623, "memory_kb": 504916.0, "file": "corpus/submissions/4800872.cpp"},
+  {"id": "4800877", "language": "CPP17", "result": "TLE", "time": 7.508375234, "memory_kb": 504928.0, "file": "corpus/submissions/4800877.cpp"},
+  {"id": "4800878", "language": "CPP17", "result": "TLE", "time": 6.378788775, "memory_kb": 516344.0, "file": "corpus/submissions/4800878.cpp"},
+  {"id": "4800879", "language": "CPP17", "result": "TLE", "time": 5.377613539, "memory_kb": 482916.0, "file": "corpus/submissions/4800879.cpp"},
+  {"id": "4800880", "language": "CPP17", "result": "TLE", "time": 5.385746917, "memory_kb": 482808.0, "file": "corpus/submissions/4800880.cpp"},
+  {"id": "4800881", "language": "CPP17", "result": "TLE", "time": 5.37506302, "memory_kb": 481576.0, "file": "corpus/submissions/4800881.cpp"},
+  {"id": "4800882", "language": "CPP17", "result": "AC", "time": 4.586744323, "memory_kb": 482916.0, "file": "corpus/submissions/4800882.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noi22p1.cp",
+   "proto/ports/scout_batch_50/today/noi22p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

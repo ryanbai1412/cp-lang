@@ -1,0 +1,17 @@
+{
+ "problem": "noip20p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5103429", "language": "CPP17", "result": "RTE", "time": 0.06560648, "memory_kb": 3576.0, "file": "corpus/submissions/5103429.cpp"},
+  {"id": "5103490", "language": "CPP17", "result": "RTE", "time": 6.277131406, "memory_kb": 13284.0, "file": "corpus/submissions/5103490.cpp"},
+  {"id": "5103510", "language": "CPP17", "result": "WA", "time": 0.08262902, "memory_kb": 4176.0, "file": "corpus/submissions/5103510.cpp"},
+  {"id": "5445675", "language": "CPP17", "result": "WA", "time": 0.091517923, "memory_kb": 4016.0, "file": "corpus/submissions/5445675.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

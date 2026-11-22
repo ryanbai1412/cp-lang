@@ -1,0 +1,21 @@
+{
+ "problem": "noi07p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3756474", "language": "CPP17", "result": "AC", "time": 0.177785425, "memory_kb": 3768.0, "file": "corpus/submissions/3756474.cpp"},
+  {"id": "5032737", "language": "CPP17", "result": "AC", "time": 0.108451874, "memory_kb": 3848.0, "file": "corpus/submissions/5032737.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_23/noi07p1.cp",
+   "proto/ports/scout_batch_23/today/noi07p1.cp",
+   "proto/ports/scout_batch_27/noi07p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

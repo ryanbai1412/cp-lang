@@ -1,0 +1,21 @@
+{
+ "problem": "cmt21r3zlm",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4015295", "language": "CPP17", "result": "WA", "time": 0.131679653, "memory_kb": 26128.0, "file": "corpus/submissions/4015295.cpp"},
+  {"id": "4015300", "language": "CPP17", "result": "WA", "time": 1.107482869, "memory_kb": 26168.0, "file": "corpus/submissions/4015300.cpp"},
+  {"id": "4015377", "language": "CPP17", "result": "WA", "time": 1.74168724, "memory_kb": 27168.0, "file": "corpus/submissions/4015377.cpp"},
+  {"id": "4015487", "language": "CPP17", "result": "WA", "time": 1.76717256, "memory_kb": 27132.0, "file": "corpus/submissions/4015487.cpp"},
+  {"id": "4015568", "language": "CPP17", "result": "RTE", "time": 0.624359212, "memory_kb": 11520.0, "file": "corpus/submissions/4015568.cpp"},
+  {"id": "4015788", "language": "CPP17", "result": "WA", "time": 1.893625228, "memory_kb": 27044.0, "file": "corpus/submissions/4015788.cpp"},
+  {"id": "4015809", "language": "CPP17", "result": "WA", "time": 1.891904265, "memory_kb": 27044.0, "file": "corpus/submissions/4015809.cpp"},
+  {"id": "4015841", "language": "CPP17", "result": "WA", "time": 1.966439336, "memory_kb": 27136.0, "file": "corpus/submissions/4015841.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

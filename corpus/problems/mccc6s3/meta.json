@@ -1,0 +1,22 @@
+{
+ "problem": "mccc6s3",
+ "source": "mccc",
+ "submissions": [
+  {"id": "6103076", "language": "CPP17", "result": "TLE", "time": 2.034246704, "memory_kb": 40564.0, "file": "corpus/submissions/6103076.cpp"},
+  {"id": "6103104", "language": "CPP17", "result": "WA", "time": 0.029794867, "memory_kb": 11904.0, "file": "corpus/submissions/6103104.cpp"},
+  {"id": "6103113", "language": "CPP17", "result": "TLE", "time": 2.139840414, "memory_kb": 59168.0, "file": "corpus/submissions/6103113.cpp"},
+  {"id": "6103125", "language": "CPP17", "result": "AC", "time": 1.882454654, "memory_kb": 46088.0, "file": "corpus/submissions/6103125.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_42/mccc6s3.cp",
+   "proto/ports/scout_batch_42/today/mccc6s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

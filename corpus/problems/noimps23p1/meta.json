@@ -1,0 +1,19 @@
+{
+ "problem": "noimps23p1",
+ "source": "noimps",
+ "submissions": [
+  {"id": "5556659", "language": "CPP17", "result": "AC", "time": 0.625023246, "memory_kb": 25480.0, "file": "corpus/submissions/5556659.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/noimps23p1.cp",
+   "proto/ports/scout_batch_32/today/noimps23p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

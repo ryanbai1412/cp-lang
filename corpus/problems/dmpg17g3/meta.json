@@ -1,0 +1,17 @@
+{
+ "problem": "dmpg17g3",
+ "source": "dmpg",
+ "submissions": [
+  {"id": "5200823", "language": "CPP17", "result": "TLE", "time": 4.383161956, "memory_kb": 4484.0, "file": "corpus/submissions/5200823.cpp"},
+  {"id": "5200825", "language": "CPP17", "result": "RTE", "time": 4.691997323, "memory_kb": 4692.0, "file": "corpus/submissions/5200825.cpp"},
+  {"id": "5200826", "language": "CPP17", "result": "TLE", "time": 11.141657871, "memory_kb": 4484.0, "file": "corpus/submissions/5200826.cpp"},
+  {"id": "5200842", "language": "CPP17", "result": "AC", "time": 0.401869658, "memory_kb": 4488.0, "file": "corpus/submissions/5200842.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,14 @@
+{
+ "problem": "acc4p0",
+ "source": "acc",
+ "submissions": [
+  {"id": "3454601", "language": "CPP17", "result": "AC", "time": 0.00228929, "memory_kb": 1540.0, "file": "corpus/submissions/3454601.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

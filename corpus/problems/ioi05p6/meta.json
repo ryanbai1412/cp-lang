@@ -1,0 +1,23 @@
+{
+ "problem": "ioi05p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4843197", "language": "CPP17", "result": "AC", "time": 0.654053802, "memory_kb": 12704.0, "file": "corpus/submissions/4843197.cpp"},
+  {"id": "5032744", "language": "CPP17", "result": "AC", "time": 0.590817618, "memory_kb": 12576.0, "file": "corpus/submissions/5032744.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi05p6.cpp",
+   "proto/ports/ioi05p6_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi05p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

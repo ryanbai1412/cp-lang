@@ -1,0 +1,14 @@
+{
+ "problem": "ioi18p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4728932", "language": "CPP17", "result": "RTE", "time": 6.447039612, "memory_kb": 392756.0, "file": "corpus/submissions/4728932.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,31 @@
+{
+ "problem": "noi22p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "4802219", "language": "CPP17", "result": "WA", "time": 1.935165287, "memory_kb": 12996.0, "file": "corpus/submissions/4802219.cpp"},
+  {"id": "4802243", "language": "CPP17", "result": "RTE", "time": 2.659225119, "memory_kb": 35212.0, "file": "corpus/submissions/4802243.cpp"},
+  {"id": "4802246", "language": "CPP17", "result": "RTE", "time": 2.581422557, "memory_kb": 35132.0, "file": "corpus/submissions/4802246.cpp"},
+  {"id": "4802283", "language": "CPP17", "result": "RTE", "time": 11.781136732, "memory_kb": 30672.0, "file": "corpus/submissions/4802283.cpp"},
+  {"id": "4802353", "language": "CPP17", "result": "RTE", "time": 12.926394948, "memory_kb": 32708.0, "file": "corpus/submissions/4802353.cpp"},
+  {"id": "4802356", "language": "CPP17", "result": "RTE", "time": 4.194458693, "memory_kb": 35136.0, "file": "corpus/submissions/4802356.cpp"},
+  {"id": "4802533", "language": "CPP17", "result": "TLE", "time": 84.22119, "memory_kb": 24784.0, "file": "corpus/submissions/4802533.cpp"},
+  {"id": "4802534", "language": "CPP17", "result": "TLE", "time": 84.219529935, "memory_kb": 24772.0, "file": "corpus/submissions/4802534.cpp"},
+  {"id": "4832434", "language": "CPP17", "result": "TLE", "time": 28.884980829, "memory_kb": 17076.0, "file": "corpus/submissions/4832434.cpp"},
+  {"id": "4832606", "language": "CPP17", "result": "TLE", "time": 17.942587486, "memory_kb": 27948.0, "file": "corpus/submissions/4832606.cpp"},
+  {"id": "4832632", "language": "CPP17", "result": "AC", "time": 8.182126733, "memory_kb": 84188.0, "file": "corpus/submissions/4832632.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_5/noi22p5_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_5/noi22p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

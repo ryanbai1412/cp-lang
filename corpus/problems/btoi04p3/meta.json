@@ -1,0 +1,22 @@
+{
+ "problem": "btoi04p3",
+ "source": "btoi",
+ "submissions": [
+  {"id": "5270721", "language": "CPP17", "result": "WA", "time": 0.003469217, "memory_kb": 3436.0, "file": "corpus/submissions/5270721.cpp"},
+  {"id": "5270726", "language": "CPP17", "result": "WA", "time": 0.003602786, "memory_kb": 3448.0, "file": "corpus/submissions/5270726.cpp"},
+  {"id": "5270732", "language": "CPP17", "result": "WA", "time": 0.003486236, "memory_kb": 3436.0, "file": "corpus/submissions/5270732.cpp"},
+  {"id": "5270736", "language": "CPP17", "result": "AC", "time": 3.606322129, "memory_kb": 69624.0, "file": "corpus/submissions/5270736.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_38/btoi04p3.cp",
+   "proto/ports/scout_batch_38/today/btoi04p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

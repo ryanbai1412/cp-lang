@@ -1,0 +1,26 @@
+{
+ "problem": "dph",
+ "source": "dph",
+ "submissions": [
+  {"id": "4131647", "language": "CPP17", "result": "WA", "time": 0.029468557, "memory_kb": 8324.0, "file": "corpus/submissions/4131647.cpp"},
+  {"id": "4131657", "language": "CPP17", "result": "AC", "time": 0.109383318, "memory_kb": 8376.0, "file": "corpus/submissions/4131657.cpp"},
+  {"id": "4131659", "language": "CPP17", "result": "WA", "time": 0.029371022, "memory_kb": 8376.0, "file": "corpus/submissions/4131659.cpp"},
+  {"id": "4131664", "language": "CPP17", "result": "AC", "time": 0.10960007, "memory_kb": 8324.0, "file": "corpus/submissions/4131664.cpp"},
+  {"id": "4131700", "language": "CPP17", "result": "AC", "time": 0.107955013, "memory_kb": 8324.0, "file": "corpus/submissions/4131700.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "original": [
+   "proto/ports/dph.cpp",
+   "proto/ports/dph_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dph.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

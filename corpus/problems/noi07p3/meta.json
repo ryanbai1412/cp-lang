@@ -1,0 +1,16 @@
+{
+ "problem": "noi07p3",
+ "source": "noi",
+ "submissions": [
+  {"id": "3756833", "language": "CPP17", "result": "WA", "time": 0.024447822, "memory_kb": 3256.0, "file": "corpus/submissions/3756833.cpp"},
+  {"id": "3756903", "language": "CPP17", "result": "WA", "time": 0.033141553, "memory_kb": 3848.0, "file": "corpus/submissions/3756903.cpp"},
+  {"id": "3756929", "language": "CPP17", "result": "WA", "time": 0.039961975, "memory_kb": 3848.0, "file": "corpus/submissions/3756929.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,26 @@
+{
+ "problem": "ioi00p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4682419", "language": "CPP17", "result": "MLE", "time": 0.401610128, "memory_kb": 65048.0, "file": "corpus/submissions/4682419.cpp"},
+  {"id": "4682427", "language": "CPP17", "result": "AC", "time": 0.280445159, "memory_kb": 3556.0, "file": "corpus/submissions/4682427.cpp"},
+  {"id": "4819641", "language": "CPP17", "result": "RTE", "time": 0.528905284, "memory_kb": 3512.0, "file": "corpus/submissions/4819641.cpp"},
+  {"id": "4819647", "language": "CPP17", "result": "AC", "time": 0.286387254, "memory_kb": 3524.0, "file": "corpus/submissions/4819647.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi00p1.cpp",
+   "proto/ports/ioi00p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi00p1.cp",
+   "proto/ports/wave2/ioi00p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

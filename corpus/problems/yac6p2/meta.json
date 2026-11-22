@@ -1,0 +1,22 @@
+{
+ "problem": "yac6p2",
+ "source": "yac",
+ "submissions": [
+  {"id": "5149548", "language": "CPP17", "result": "AC", "time": 7.202975956, "memory_kb": 307904.0, "file": "corpus/submissions/5149548.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/hillclimb_dp_graph/yac6p2.cpp",
+   "proto/ports/hillclimb_dp_graph/yac6p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/hillclimb_dp_graph/yac6p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+ "problem": "math10",
+ "source": "math",
+ "submissions": [
+  {"id": "4819616", "language": "TEXT", "result": "WA", "time": 0.004145572, "memory_kb": 1852.0, "file": null},
+  {"id": "4819625", "language": "TEXT", "result": "WA", "time": 0.003959307, "memory_kb": 1916.0, "file": null},
+  {"id": "4819632", "language": "TEXT", "result": "WA", "time": 0.004229657, "memory_kb": 1888.0, "file": null},
+  {"id": "4819637", "language": "TEXT", "result": "WA", "time": 0.003366143, "memory_kb": 1916.0, "file": null},
+  {"id": "4819638", "language": "TEXT", "result": "WA", "time": 0.003465679, "memory_kb": 1916.0, "file": null},
+  {"id": "4819639", "language": "TEXT", "result": "WA", "time": 0.003378698, "memory_kb": 1916.0, "file": null},
+  {"id": "4819640", "language": "TEXT", "result": "AC", "time": 0.003297787, "memory_kb": 1916.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

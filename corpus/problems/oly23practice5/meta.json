@@ -1,0 +1,26 @@
+{
+ "problem": "oly23practice5",
+ "source": "oly",
+ "submissions": [
+  {"id": "6415560", "language": "CPP17", "result": "TLE", "time": 6.306124116, "memory_kb": 3416.0, "file": "corpus/submissions/6415560.cpp"},
+  {"id": "6415561", "language": "CPP17", "result": "TLE", "time": 6.349351284, "memory_kb": 3480.0, "file": "corpus/submissions/6415561.cpp"},
+  {"id": "6415575", "language": "CPP17", "result": "TLE", "time": 6.345940523, "memory_kb": 3700.0, "file": "corpus/submissions/6415575.cpp"},
+  {"id": "6415579", "language": "CPP17", "result": "TLE", "time": 6.350710079, "memory_kb": 3412.0, "file": "corpus/submissions/6415579.cpp"},
+  {"id": "6415581", "language": "CPP17", "result": "TLE", "time": 6.35847206, "memory_kb": 3464.0, "file": "corpus/submissions/6415581.cpp"},
+  {"id": "6415614", "language": "CPP17", "result": "TLE", "time": 8.501765314, "memory_kb": 3704.0, "file": "corpus/submissions/6415614.cpp"},
+  {"id": "6415618", "language": "CPP17", "result": "TLE", "time": 8.707411554, "memory_kb": 64936.0, "file": "corpus/submissions/6415618.cpp"},
+  {"id": "6415646", "language": "CPP17", "result": "AC", "time": 7.050097806, "memory_kb": 50888.0, "file": "corpus/submissions/6415646.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/oly23practice5.cp",
+   "proto/ports/scout_batch_41/today/oly23practice5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+ "problem": "noip19p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "5127716", "language": "CPP17", "result": "WA", "time": 0.069995716, "memory_kb": 3440.0, "file": "corpus/submissions/5127716.cpp"},
+  {"id": "5127723", "language": "CPP17", "result": "AC", "time": 0.069720554, "memory_kb": 3440.0, "file": "corpus/submissions/5127723.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_25/noip19p1.cp",
+   "proto/ports/scout_batch_25/today/noip19p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

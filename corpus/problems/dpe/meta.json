@@ -1,0 +1,22 @@
+{
+ "problem": "dpe",
+ "source": "dpe",
+ "submissions": [
+  {"id": "4131644", "language": "CPP17", "result": "AC", "time": 0.183455128, "memory_kb": 4272.0, "file": "corpus/submissions/4131644.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/dpe.cpp",
+   "proto/ports/dpe_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/dpe.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

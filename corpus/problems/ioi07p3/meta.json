@@ -1,0 +1,21 @@
+{
+ "problem": "ioi07p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5120001", "language": "CPP17", "result": "AC", "time": 0.862883039, "memory_kb": 16452.0, "file": "corpus/submissions/5120001.cpp"},
+  {"id": "5120003", "language": "CPP17", "result": "AC", "time": 0.791811057, "memory_kb": 16436.0, "file": "corpus/submissions/5120003.cpp"},
+  {"id": "5120005", "language": "CPP17", "result": "AC", "time": 0.788572994, "memory_kb": 16456.0, "file": "corpus/submissions/5120005.cpp"}
+ ],
+ "cpp_ac": 3,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_24/ioi07p3.cp",
+   "proto/ports/scout_batch_24/today/ioi07p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

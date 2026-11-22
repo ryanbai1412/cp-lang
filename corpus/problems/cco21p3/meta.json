@@ -1,0 +1,23 @@
+{
+ "problem": "cco21p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "4552195", "language": "CPP17", "result": "WA", "time": 6.220394103, "memory_kb": 26084.0, "file": "corpus/submissions/4552195.cpp"},
+  {"id": "4552840", "language": "CPP17", "result": "TLE", "time": 23.337950635, "memory_kb": 126160.0, "file": "corpus/submissions/4552840.cpp"},
+  {"id": "4552849", "language": "CPP17", "result": "TLE", "time": 36.904340571, "memory_kb": 176164.0, "file": "corpus/submissions/4552849.cpp"},
+  {"id": "4552856", "language": "CPP17", "result": "RTE", "time": 27.528254615, "memory_kb": 1103744.0, "file": "corpus/submissions/4552856.cpp"},
+  {"id": "4552867", "language": "CPP17", "result": "AC", "time": 41.596845009, "memory_kb": 300124.0, "file": "corpus/submissions/4552867.cpp"},
+  {"id": "4552873", "language": "CPP17", "result": "AC", "time": 40.419534023, "memory_kb": 300868.0, "file": "corpus/submissions/4552873.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_15/cco21p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

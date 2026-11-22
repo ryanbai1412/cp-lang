@@ -1,0 +1,19 @@
+{
+ "problem": "egoi23p8",
+ "source": "egoi",
+ "submissions": [
+  {"id": "5659039", "language": "CPP17", "result": "AC", "time": 26.142108033000003, "memory_kb": 11268.0, "file": "corpus/submissions/5659039.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_48/egoi23p8.cp",
+   "proto/ports/scout_batch_48/today/egoi23p8.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "ucrpc21g",
+ "source": "ucrpc",
+ "submissions": [
+  {"id": "3944704", "language": "CPP17", "result": "TLE", "time": 10.606275469, "memory_kb": 96496.0, "file": "corpus/submissions/3944704.cpp"},
+  {"id": "3944708", "language": "CPP17", "result": "WA", "time": 4.732751694, "memory_kb": 61952.0, "file": "corpus/submissions/3944708.cpp"},
+  {"id": "3944712", "language": "CPP17", "result": "TLE", "time": 16.068469213, "memory_kb": 149916.0, "file": "corpus/submissions/3944712.cpp"},
+  {"id": "3944717", "language": "CPP17", "result": "AC", "time": 5.067396789, "memory_kb": 150716.0, "file": "corpus/submissions/3944717.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_31/today/ucrpc21g.cp",
+   "proto/ports/scout_batch_31/ucrpc21g.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

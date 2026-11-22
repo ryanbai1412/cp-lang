@@ -1,0 +1,19 @@
+{
+ "problem": "ioi09p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5106576", "language": "CPP17", "result": "AC", "time": 0.682378655, "memory_kb": 6984.0, "file": "corpus/submissions/5106576.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_25/ioi09p3.cp",
+   "proto/ports/scout_batch_25/today/ioi09p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

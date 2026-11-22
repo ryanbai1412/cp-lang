@@ -1,0 +1,24 @@
+{
+ "problem": "ccc21s3",
+ "source": "ccc",
+ "submissions": [
+  {"id": "4323533", "language": "CPP17", "result": "AC", "time": 0.668918374, "memory_kb": 18208.0, "file": "corpus/submissions/4323533.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ccc21s3.cpp",
+   "proto/ports/ccc21s3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ccc21s3.cp",
+   "proto/ports/scout_batch_6/ccc21s3.cp",
+   "proto/ports/scout_batch_6/today/ccc21s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

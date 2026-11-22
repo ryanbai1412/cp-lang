@@ -1,0 +1,19 @@
+{
+ "problem": "tle17c5p1",
+ "source": "tle",
+ "submissions": [
+  {"id": "5034414", "language": "CPP17", "result": "AC", "time": 0.377955132, "memory_kb": 3388.0, "file": "corpus/submissions/5034414.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_40/tle17c5p1.cp",
+   "proto/ports/scout_batch_40/today/tle17c5p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

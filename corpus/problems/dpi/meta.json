@@ -1,0 +1,19 @@
+{
+ "problem": "dpi",
+ "source": "dpi",
+ "submissions": [
+  {"id": "4131648", "language": "CPP17", "result": "AC", "time": 0.572710215, "memory_kb": 3724.0, "file": "corpus/submissions/4131648.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_23/dpi.cp",
+   "proto/ports/scout_batch_23/today/dpi.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

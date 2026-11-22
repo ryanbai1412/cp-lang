@@ -1,0 +1,30 @@
+{
+ "problem": "cco19p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "3613560", "language": "CPP17", "result": "RTE", "time": 0.18078384, "memory_kb": 3312.0, "file": "corpus/submissions/3613560.cpp"},
+  {"id": "3613771", "language": "CPP17", "result": "WA", "time": 0.003227347, "memory_kb": 7724.0, "file": "corpus/submissions/3613771.cpp"},
+  {"id": "3613772", "language": "CPP17", "result": "TLE", "time": 6.215711038, "memory_kb": 15956.0, "file": "corpus/submissions/3613772.cpp"},
+  {"id": "3613810", "language": "CPP17", "result": "TLE", "time": 7.171394707, "memory_kb": 15856.0, "file": "corpus/submissions/3613810.cpp"},
+  {"id": "3613811", "language": "CPP17", "result": "TLE", "time": 7.159584668, "memory_kb": 16396.0, "file": "corpus/submissions/3613811.cpp"},
+  {"id": "3613816", "language": "CPP17", "result": "TLE", "time": 7.172291199, "memory_kb": 15868.0, "file": "corpus/submissions/3613816.cpp"},
+  {"id": "3613825", "language": "CPP17", "result": "RTE", "time": 8.783701098, "memory_kb": 15872.0, "file": "corpus/submissions/3613825.cpp"},
+  {"id": "3613828", "language": "CPP17", "result": "TLE", "time": 11.235910347, "memory_kb": 15868.0, "file": "corpus/submissions/3613828.cpp"},
+  {"id": "3618431", "language": "CPP17", "result": "TLE", "time": 9.74997224, "memory_kb": 15908.0, "file": "corpus/submissions/3618431.cpp"},
+  {"id": "3618469", "language": "CPP17", "result": "TLE", "time": 7.320459813, "memory_kb": 15904.0, "file": "corpus/submissions/3618469.cpp"},
+  {"id": "3618523", "language": "CPP17", "result": "WA", "time": 2.117704352, "memory_kb": 16036.0, "file": "corpus/submissions/3618523.cpp"},
+  {"id": "3618537", "language": "CPP17", "result": "WA", "time": 2.117367, "memory_kb": 15248.0, "file": "corpus/submissions/3618537.cpp"},
+  {"id": "3618571", "language": "CPP17", "result": "AC", "time": 6.489177115, "memory_kb": 56316.0, "file": "corpus/submissions/3618571.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/cco19p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

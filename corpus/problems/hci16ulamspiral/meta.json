@@ -1,0 +1,14 @@
+{
+ "problem": "hci16ulamspiral",
+ "source": "hci",
+ "submissions": [
+  {"id": "3615637", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3615637.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

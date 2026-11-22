@@ -1,0 +1,22 @@
+{
+ "problem": "noi06p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "4369909", "language": "CPP17", "result": "RTE", "time": 8.685276751, "memory_kb": 28096.0, "file": "corpus/submissions/4369909.cpp"},
+  {"id": "4370365", "language": "CPP17", "result": "RTE", "time": 0.284827876, "memory_kb": 4272.0, "file": "corpus/submissions/4370365.cpp"},
+  {"id": "4370439", "language": "CPP17", "result": "AC", "time": 0.218802829, "memory_kb": 11492.0, "file": "corpus/submissions/4370439.cpp"},
+  {"id": "5032812", "language": "CPP17", "result": "AC", "time": 0.225436737, "memory_kb": 11388.0, "file": "corpus/submissions/5032812.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/noi06p4.cp",
+   "proto/ports/scout_batch_5/today/noi06p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

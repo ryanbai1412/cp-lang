@@ -1,0 +1,15 @@
+{
+ "problem": "noip01p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "5086671", "language": "CPP17", "result": "RTE", "time": 0.141182478, "memory_kb": 3676.0, "file": "corpus/submissions/5086671.cpp"},
+  {"id": "5086672", "language": "CPP17", "result": "AC", "time": 0.016621518, "memory_kb": 3652.0, "file": "corpus/submissions/5086672.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

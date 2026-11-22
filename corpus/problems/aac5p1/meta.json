@@ -1,0 +1,14 @@
+{
+ "problem": "aac5p1",
+ "source": "aac",
+ "submissions": [
+  {"id": "4239548", "language": "CPP17", "result": "AC", "time": 0.223176436, "memory_kb": 3372.0, "file": "corpus/submissions/4239548.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

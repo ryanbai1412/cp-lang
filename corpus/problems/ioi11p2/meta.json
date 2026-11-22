@@ -1,0 +1,23 @@
+{
+ "problem": "ioi11p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "3732088", "language": "CPP17", "result": "AC", "time": 4.220855936, "memory_kb": 57280.0, "file": "corpus/submissions/3732088.cpp"},
+  {"id": "4848359", "language": "CPP17", "result": "AC", "time": 3.95358024, "memory_kb": 59716.0, "file": "corpus/submissions/4848359.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi11p2.cpp",
+   "proto/ports/ioi11p2_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi11p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

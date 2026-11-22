@@ -1,0 +1,19 @@
+{
+ "problem": "noi18p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "6517784", "language": "CPP17", "result": "RTE", "time": 2.525698795, "memory_kb": 14668.0, "file": "corpus/submissions/6517784.cpp"},
+  {"id": "6517796", "language": "CPP17", "result": "AC", "time": 3.184591609, "memory_kb": 23852.0, "file": "corpus/submissions/6517796.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_11/noi18p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

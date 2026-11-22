@@ -1,0 +1,19 @@
+{
+ "problem": "cco18p6",
+ "source": "cco",
+ "submissions": [
+  {"id": "4575245", "language": "CPP17", "result": "AC", "time": 0.820293627, "memory_kb": 8612.0, "file": "corpus/submissions/4575245.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_36/cco18p6.cp",
+   "proto/ports/scout_batch_36/today/cco18p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+ "problem": "noi05p1",
+ "source": "noi",
+ "submissions": [
+  {"id": "3744821", "language": "CPP17", "result": "AC", "time": 0.436620116, "memory_kb": 3820.0, "file": "corpus/submissions/3744821.cpp"},
+  {"id": "5032738", "language": "CPP17", "result": "AC", "time": 0.459348359, "memory_kb": 3700.0, "file": "corpus/submissions/5032738.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_12/noi05p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

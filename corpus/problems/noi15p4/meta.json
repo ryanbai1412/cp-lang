@@ -1,0 +1,25 @@
+{
+ "problem": "noi15p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "3777167", "language": "CPP17", "result": "WA", "time": 0.250648023, "memory_kb": 5216.0, "file": "corpus/submissions/3777167.cpp"},
+  {"id": "3777173", "language": "CPP17", "result": "WA", "time": 0.250473412, "memory_kb": 5216.0, "file": "corpus/submissions/3777173.cpp"},
+  {"id": "3777175", "language": "CPP17", "result": "WA", "time": 0.25136737, "memory_kb": 5216.0, "file": "corpus/submissions/3777175.cpp"},
+  {"id": "3777177", "language": "CPP17", "result": "AC", "time": 0.250899675, "memory_kb": 5216.0, "file": "corpus/submissions/3777177.cpp"},
+  {"id": "5032756", "language": "CPP17", "result": "AC", "time": 0.259545177, "memory_kb": 5204.0, "file": "corpus/submissions/5032756.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_2/noi15p4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_2/noi15p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

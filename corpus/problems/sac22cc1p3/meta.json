@@ -1,0 +1,19 @@
+{
+ "problem": "sac22cc1p3",
+ "source": "sac",
+ "submissions": [
+  {"id": "3992599", "language": "CPP17", "result": "AC", "time": 0.613406137, "memory_kb": 3256.0, "file": "corpus/submissions/3992599.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_31/sac22cc1p3.cp",
+   "proto/ports/scout_batch_31/today/sac22cc1p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,18 @@
+{
+ "problem": "noip21p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "4062205", "language": "CPP17", "result": "TLE", "time": 159.150740153, "memory_kb": 20676.0, "file": "corpus/submissions/4062205.cpp"},
+  {"id": "4067109", "language": "CPP17", "result": "TLE", "time": 173.386719283, "memory_kb": 20840.0, "file": "corpus/submissions/4067109.cpp"},
+  {"id": "4067137", "language": "CPP17", "result": "TLE", "time": 163.156652978, "memory_kb": 20672.0, "file": "corpus/submissions/4067137.cpp"},
+  {"id": "4094804", "language": "CPP17", "result": "AC", "time": 67.439352253, "memory_kb": 168580.0, "file": "corpus/submissions/4094804.cpp"},
+  {"id": "5445679", "language": "CPP17", "result": "AC", "time": 64.028553405, "memory_kb": 168740.0, "file": "corpus/submissions/5445679.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

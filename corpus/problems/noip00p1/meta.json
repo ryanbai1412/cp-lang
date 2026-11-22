@@ -1,0 +1,23 @@
+{
+ "problem": "noip00p1",
+ "source": "noip",
+ "submissions": [
+  {"id": "5067849", "language": "CPP17", "result": "AC", "time": 0.016559986, "memory_kb": 3328.0, "file": "corpus/submissions/5067849.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip00p1.cpp",
+   "proto/ports/noip00p1_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip00p1.cp",
+   "proto/ports/wave2/noip00p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

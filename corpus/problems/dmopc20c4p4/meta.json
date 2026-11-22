@@ -1,0 +1,21 @@
+{
+ "problem": "dmopc20c4p4",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "3485172", "language": "CPP17", "result": "WA", "time": 0.004594102, "memory_kb": 1528.0, "file": "corpus/submissions/3485172.cpp"},
+  {"id": "3485716", "language": "CPP17", "result": "AC", "time": 3.653145159, "memory_kb": 18920.0, "file": "corpus/submissions/3485716.cpp"},
+  {"id": "3485721", "language": "PYPY3", "result": "AC", "time": 11.403442389, "memory_kb": 315668.0, "file": "corpus/submissions/3485721.py"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_32/dmopc20c4p4.cp",
+   "proto/ports/scout_batch_32/today/dmopc20c4p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

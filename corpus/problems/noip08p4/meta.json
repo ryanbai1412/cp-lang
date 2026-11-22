@@ -1,0 +1,19 @@
+{
+ "problem": "noip08p4",
+ "source": "noip",
+ "submissions": [
+  {"id": "5185830", "language": "CPP17", "result": "AC", "time": 0.22027365, "memory_kb": 3492.0, "file": "corpus/submissions/5185830.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_50/noip08p4.cp",
+   "proto/ports/scout_batch_50/today/noip08p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

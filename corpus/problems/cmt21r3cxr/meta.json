@@ -1,0 +1,27 @@
+{
+ "problem": "cmt21r3cxr",
+ "source": "cmt",
+ "submissions": [
+  {"id": "3996075", "language": "CPP17", "result": "TLE", "time": 23.983802093, "memory_kb": 16652.0, "file": "corpus/submissions/3996075.cpp"},
+  {"id": "3996954", "language": "CPP17", "result": "TLE", "time": 14.455733479, "memory_kb": 95976.0, "file": "corpus/submissions/3996954.cpp"},
+  {"id": "3997027", "language": "CPP17", "result": "TLE", "time": 9.569258693, "memory_kb": 95960.0, "file": "corpus/submissions/3997027.cpp"},
+  {"id": "3997045", "language": "CPP17", "result": "TLE", "time": 9.568722301, "memory_kb": 95972.0, "file": "corpus/submissions/3997045.cpp"},
+  {"id": "3997056", "language": "CPP17", "result": "TLE", "time": 13.869185778, "memory_kb": 95972.0, "file": "corpus/submissions/3997056.cpp"},
+  {"id": "3997135", "language": "CPP17", "result": "TLE", "time": 24.810583281, "memory_kb": 88348.0, "file": "corpus/submissions/3997135.cpp"},
+  {"id": "3997362", "language": "CPP17", "result": "TLE", "time": 51.935347878, "memory_kb": 58112.0, "file": "corpus/submissions/3997362.cpp"},
+  {"id": "3997405", "language": "CPP17", "result": "AC", "time": 49.420403971, "memory_kb": 69044.0, "file": "corpus/submissions/3997405.cpp"},
+  {"id": "3997501", "language": "CPP17", "result": "WA", "time": 1.910269744, "memory_kb": 52784.0, "file": "corpus/submissions/3997501.cpp"},
+  {"id": "3997531", "language": "CPP17", "result": "TLE", "time": 2.957284636, "memory_kb": 55552.0, "file": "corpus/submissions/3997531.cpp"},
+  {"id": "3997538", "language": "CPP17", "result": "AC", "time": 47.360561645, "memory_kb": 77716.0, "file": "corpus/submissions/3997538.cpp"},
+  {"id": "3997541", "language": "CPP17", "result": "AC", "time": 45.791886921, "memory_kb": 77720.0, "file": "corpus/submissions/3997541.cpp"},
+  {"id": "3997969", "language": "CPP17", "result": "WA", "time": 1.990327472, "memory_kb": 49216.0, "file": "corpus/submissions/3997969.cpp"},
+  {"id": "3997981", "language": "CPP17", "result": "AC", "time": 46.247191274, "memory_kb": 77768.0, "file": "corpus/submissions/3997981.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

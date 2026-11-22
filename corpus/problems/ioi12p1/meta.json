@@ -1,0 +1,14 @@
+{
+ "problem": "ioi12p1",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,14 @@
+{
+ "problem": "tropical",
+ "source": "tropical",
+ "submissions": [
+  {"id": "3495010", "language": "CPP17", "result": "AC", "time": 4.505682328, "memory_kb": 7668.0, "file": "corpus/submissions/3495010.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

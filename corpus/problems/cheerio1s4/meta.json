@@ -1,0 +1,22 @@
+{
+ "problem": "cheerio1s4",
+ "source": "cheerio",
+ "submissions": [
+  {"id": "5338426", "language": "CPP17", "result": "WA", "time": 0.003969881, "memory_kb": 3572.0, "file": "corpus/submissions/5338426.cpp"},
+  {"id": "5339437", "language": "CPP17", "result": "AC", "time": 0.677390865, "memory_kb": 17928.0, "file": "corpus/submissions/5339437.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "draft": [
+   "proto/ports/blind_critic_3/cheerio1s4_draft.cp"
+  ],
+  "port": [
+   "proto/ports/blind_critic_3/cheerio1s4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

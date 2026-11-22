@@ -1,0 +1,20 @@
+{
+ "problem": "nccc9s3",
+ "source": "nccc",
+ "submissions": [
+  {"id": "4051693", "language": "CPP17", "result": "WA", "time": 0.005042869, "memory_kb": 3320.0, "file": "corpus/submissions/4051693.cpp"},
+  {"id": "4051697", "language": "CPP17", "result": "AC", "time": 1.084037013, "memory_kb": 3500.0, "file": "corpus/submissions/4051697.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_41/nccc9s3.cp",
+   "proto/ports/scout_batch_41/today/nccc9s3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

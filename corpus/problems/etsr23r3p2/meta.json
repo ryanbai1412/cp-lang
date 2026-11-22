@@ -1,0 +1,19 @@
+{
+ "problem": "etsr23r3p2",
+ "source": "etsr",
+ "submissions": [
+  {"id": "5521304", "language": "CPP17", "result": "RTE", "time": 0.021374377, "memory_kb": 3676.0, "file": "corpus/submissions/5521304.cpp"},
+  {"id": "5529780", "language": "CPP17", "result": "AC", "time": 0.193837979, "memory_kb": 3552.0, "file": "corpus/submissions/5529780.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/etsr23r3p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

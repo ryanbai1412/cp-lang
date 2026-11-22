@@ -1,0 +1,25 @@
+{
+ "problem": "noimps22p1",
+ "source": "noimps",
+ "submissions": [
+  {"id": "4533663", "language": "CPP17", "result": "WA", "time": 0.036755213, "memory_kb": 3544.0, "file": "corpus/submissions/4533663.cpp"},
+  {"id": "4533669", "language": "CPP17", "result": "WA", "time": 0.039839857, "memory_kb": 3540.0, "file": "corpus/submissions/4533669.cpp"},
+  {"id": "4533678", "language": "CPP17", "result": "RTE", "time": 0.035134475, "memory_kb": 3532.0, "file": "corpus/submissions/4533678.cpp"},
+  {"id": "4533681", "language": "CPP17", "result": "RTE", "time": 0.439690394, "memory_kb": 3528.0, "file": "corpus/submissions/4533681.cpp"},
+  {"id": "4533683", "language": "CPP17", "result": "WA", "time": 0.036846765, "memory_kb": 3544.0, "file": "corpus/submissions/4533683.cpp"},
+  {"id": "4533687", "language": "CPP17", "result": "WA", "time": 0.037000903, "memory_kb": 3540.0, "file": "corpus/submissions/4533687.cpp"},
+  {"id": "4533693", "language": "CPP17", "result": "RTE", "time": 0.035205644, "memory_kb": 3532.0, "file": "corpus/submissions/4533693.cpp"},
+  {"id": "4533698", "language": "CPP17", "result": "AC", "time": 0.036716312, "memory_kb": 3540.0, "file": "corpus/submissions/4533698.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_19/noimps22p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

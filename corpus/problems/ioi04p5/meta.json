@@ -1,0 +1,21 @@
+{
+ "problem": "ioi04p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4829127", "language": "CPP17", "result": "AC", "time": 0.211121953, "memory_kb": 4232.0, "file": "corpus/submissions/4829127.cpp"},
+  {"id": "4829825", "language": "CPP17", "result": "AC", "time": 0.247577924, "memory_kb": 3616.0, "file": "corpus/submissions/4829825.cpp"},
+  {"id": "4829829", "language": "CPP17", "result": "AC", "time": 0.100376927, "memory_kb": 3692.0, "file": "corpus/submissions/4829829.cpp"},
+  {"id": "4829839", "language": "CPP17", "result": "AC", "time": 0.074555768, "memory_kb": 3620.0, "file": "corpus/submissions/4829839.cpp"}
+ ],
+ "cpp_ac": 4,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_8/ioi04p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

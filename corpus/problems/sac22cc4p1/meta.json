@@ -1,0 +1,15 @@
+{
+ "problem": "sac22cc4p1",
+ "source": "sac",
+ "submissions": [
+  {"id": "4411109", "language": "CPP17", "result": "RTE", "time": 1.76004579, "memory_kb": 3496.0, "file": "corpus/submissions/4411109.cpp"},
+  {"id": "4411112", "language": "CPP17", "result": "AC", "time": 1.731891061, "memory_kb": 3440.0, "file": "corpus/submissions/4411112.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

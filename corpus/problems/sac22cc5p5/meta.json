@@ -1,0 +1,26 @@
+{
+ "problem": "sac22cc5p5",
+ "source": "sac",
+ "submissions": [
+  {"id": "4575578", "language": "CPP17", "result": "WA", "time": 0.01979315, "memory_kb": 4492.0, "file": "corpus/submissions/4575578.cpp"},
+  {"id": "4575580", "language": "CPP17", "result": "WA", "time": 0.020050513, "memory_kb": 4444.0, "file": "corpus/submissions/4575580.cpp"},
+  {"id": "4575582", "language": "CPP17", "result": "WA", "time": 0.019782794, "memory_kb": 4512.0, "file": "corpus/submissions/4575582.cpp"},
+  {"id": "4575601", "language": "CPP17", "result": "WA", "time": 4.565892347, "memory_kb": 283188.0, "file": "corpus/submissions/4575601.cpp"},
+  {"id": "4575610", "language": "CPP17", "result": "TLE", "time": 16.897460157, "memory_kb": 1043592.0, "file": "corpus/submissions/4575610.cpp"},
+  {"id": "4575613", "language": "CPP17", "result": "RTE", "time": 11.334593753, "memory_kb": 1043368.0, "file": "corpus/submissions/4575613.cpp"},
+  {"id": "4575614", "language": "CPP17", "result": "RTE", "time": 11.182320744, "memory_kb": 1043248.0, "file": "corpus/submissions/4575614.cpp"},
+  {"id": "4575631", "language": "CPP17", "result": "AC", "time": 14.151678629, "memory_kb": 303724.0, "file": "corpus/submissions/4575631.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_39/sac22cc5p5.cp",
+   "proto/ports/scout_batch_39/today/sac22cc5p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

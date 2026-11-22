@@ -1,0 +1,15 @@
+{
+ "problem": "cco17p6",
+ "source": "cco",
+ "submissions": [
+  {"id": "4801869", "language": "CPP17", "result": "RTE", "time": 0.131119553, "memory_kb": 26488.0, "file": "corpus/submissions/4801869.cpp"},
+  {"id": "4801872", "language": "CPP17", "result": "TLE", "time": 4.89618093, "memory_kb": 10432.0, "file": "corpus/submissions/4801872.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

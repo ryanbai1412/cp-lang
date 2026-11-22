@@ -1,0 +1,14 @@
+{
+ "problem": "factorial",
+ "source": "factorial",
+ "submissions": [
+  {"id": "5653851", "language": "CPP17", "result": "AC", "time": 0.006859005, "memory_kb": 3412.0, "file": "corpus/submissions/5653851.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

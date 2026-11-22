@@ -1,0 +1,19 @@
+{
+ "problem": "coci06c1p6",
+ "source": "coci",
+ "submissions": [
+  {"id": "4183051", "language": "CPP17", "result": "AC", "time": 0.071957892, "memory_kb": 6652.0, "file": "corpus/submissions/4183051.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_3/coci06c1p6.cp",
+   "proto/ports/scout_batch_3/today/coci06c1p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

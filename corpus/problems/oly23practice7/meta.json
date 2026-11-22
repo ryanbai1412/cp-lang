@@ -1,0 +1,19 @@
+{
+ "problem": "oly23practice7",
+ "source": "oly",
+ "submissions": [
+  {"id": "6415780", "language": "CPP17", "result": "WA", "time": 0.726042702, "memory_kb": 44136.0, "file": "corpus/submissions/6415780.cpp"},
+  {"id": "6415781", "language": "CPP17", "result": "WA", "time": 6.167816211, "memory_kb": 52080.0, "file": "corpus/submissions/6415781.cpp"},
+  {"id": "6415793", "language": "CPP17", "result": "RTE", "time": 7.312515572, "memory_kb": 51800.0, "file": "corpus/submissions/6415793.cpp"},
+  {"id": "6415801", "language": "CPP17", "result": "RTE", "time": 7.160128161, "memory_kb": 51844.0, "file": "corpus/submissions/6415801.cpp"},
+  {"id": "6415807", "language": "CPP17", "result": "RTE", "time": 6.81457328, "memory_kb": 51880.0, "file": "corpus/submissions/6415807.cpp"},
+  {"id": "6415810", "language": "CPP17", "result": "RTE", "time": 9.594328714, "memory_kb": 52136.0, "file": "corpus/submissions/6415810.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

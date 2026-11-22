@@ -1,0 +1,24 @@
+{
+ "problem": "cmt21r2yg",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4006013", "language": "CPP17", "result": "TLE", "time": 14.034711855, "memory_kb": 937216.0, "file": "corpus/submissions/4006013.cpp"},
+  {"id": "4006014", "language": "CPP17", "result": "TLE", "time": 24.084664243, "memory_kb": 937160.0, "file": "corpus/submissions/4006014.cpp"},
+  {"id": "4006019", "language": "CPP17", "result": "TLE", "time": 16.158906643, "memory_kb": 150728.0, "file": "corpus/submissions/4006019.cpp"},
+  {"id": "4013279", "language": "CPP17", "result": "RTE", "time": 6.644369573, "memory_kb": 12564.0, "file": "corpus/submissions/4013279.cpp"},
+  {"id": "4013457", "language": "CPP17", "result": "TLE", "time": 6.748749116, "memory_kb": 12540.0, "file": "corpus/submissions/4013457.cpp"},
+  {"id": "4013576", "language": "CPP17", "result": "TLE", "time": 16.146890078, "memory_kb": 358092.0, "file": "corpus/submissions/4013576.cpp"},
+  {"id": "4013579", "language": "CPP17", "result": "TLE", "time": 13.530618619, "memory_kb": 12532.0, "file": "corpus/submissions/4013579.cpp"},
+  {"id": "4013668", "language": "CPP17", "result": "WA", "time": 3.154507993, "memory_kb": 14584.0, "file": "corpus/submissions/4013668.cpp"},
+  {"id": "4013768", "language": "CPP17", "result": "RTE", "time": 0.011808131, "memory_kb": 4.0, "file": "corpus/submissions/4013768.cpp"},
+  {"id": "4013774", "language": "CPP17", "result": "TLE", "time": 15.081787706, "memory_kb": 331796.0, "file": "corpus/submissions/4013774.cpp"},
+  {"id": "4013779", "language": "CPP17", "result": "WA", "time": 16.461505457, "memory_kb": 14636.0, "file": "corpus/submissions/4013779.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,23 @@
+{
+ "problem": "ioi04p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4501742", "language": "CPP17", "result": "AC", "time": 0.686952898, "memory_kb": 4564.0, "file": "corpus/submissions/4501742.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi04p4.cpp",
+   "proto/ports/ioi04p4_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi04p4.cp",
+   "proto/ports/wave2/ioi04p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+ "problem": "apio09p1",
+ "source": "apio",
+ "submissions": [
+  {"id": "5536558", "language": "CPP17", "result": "RTE", "time": 2.382765724, "memory_kb": 38544.0, "file": "corpus/submissions/5536558.cpp"},
+  {"id": "5536569", "language": "CPP17", "result": "AC", "time": 2.531386926, "memory_kb": 38552.0, "file": "corpus/submissions/5536569.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_38/apio09p1.cp",
+   "proto/ports/scout_batch_38/today/apio09p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

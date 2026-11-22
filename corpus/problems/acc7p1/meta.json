@@ -1,0 +1,14 @@
+{
+ "problem": "acc7p1",
+ "source": "acc",
+ "submissions": [
+  {"id": "3540343", "language": "CPP17", "result": "AC", "time": 0.41058693, "memory_kb": 1536.0, "file": "corpus/submissions/3540343.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

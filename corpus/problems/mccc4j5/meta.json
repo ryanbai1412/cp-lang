@@ -1,0 +1,23 @@
+{
+ "problem": "mccc4j5",
+ "source": "mccc",
+ "submissions": [
+  {"id": "4264947", "language": "CPP17", "result": "WA", "time": 0.017354773, "memory_kb": 3372.0, "file": "corpus/submissions/4264947.cpp"},
+  {"id": "4264954", "language": "CPP17", "result": "AC", "time": 3.082443455, "memory_kb": 70580.0, "file": "corpus/submissions/4264954.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/mccc4j5.cpp",
+   "proto/ports/mccc4j5_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/mccc4j5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,23 @@
+{
+ "problem": "ioi10p6",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4693330", "language": "CPP17", "result": "AC", "time": 14.991836085, "memory_kb": 136412.0, "file": "corpus/submissions/4693330.cpp"},
+  {"id": "4843159", "language": "CPP17", "result": "WA", "time": 0.037896081, "memory_kb": 37140.0, "file": "corpus/submissions/4843159.cpp"},
+  {"id": "4843169", "language": "CPP17", "result": "AC", "time": 13.288399654, "memory_kb": 163848.0, "file": "corpus/submissions/4843169.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/scout_batch_9/harness/ioi10p6.cpp"
+  ],
+  "port": [
+   "proto/ports/scout_batch_9/ioi10p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

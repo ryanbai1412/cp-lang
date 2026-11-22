@@ -1,0 +1,23 @@
+{
+ "problem": "ioi05p4",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5044848", "language": "CPP17", "result": "WA", "time": 0.699616504, "memory_kb": 7472.0, "file": "corpus/submissions/5044848.cpp"},
+  {"id": "5044860", "language": "CPP17", "result": "WA", "time": 0.662445447, "memory_kb": 7508.0, "file": "corpus/submissions/5044860.cpp"},
+  {"id": "5044864", "language": "CPP17", "result": "TLE", "time": 34.558499231, "memory_kb": 7008.0, "file": "corpus/submissions/5044864.cpp"},
+  {"id": "5044871", "language": "CPP17", "result": "TLE", "time": 36.04546543, "memory_kb": 6904.0, "file": "corpus/submissions/5044871.cpp"},
+  {"id": "5044895", "language": "CPP17", "result": "AC", "time": 2.857110826, "memory_kb": 18708.0, "file": "corpus/submissions/5044895.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/ioi05p4.cp",
+   "proto/ports/scout_batch_13/today/ioi05p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

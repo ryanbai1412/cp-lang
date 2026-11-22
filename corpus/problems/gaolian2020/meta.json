@@ -1,0 +1,21 @@
+{
+ "problem": "gaolian2020",
+ "source": "gaolian",
+ "submissions": [
+  {"id": "4950597", "language": "TEXT", "result": "WA", "time": 0.003905895, "memory_kb": 1744.0, "file": null},
+  {"id": "4950604", "language": "TEXT", "result": "WA", "time": 0.003580694, "memory_kb": 1712.0, "file": null},
+  {"id": "4950613", "language": "TEXT", "result": "WA", "time": 0.003909898, "memory_kb": 1744.0, "file": null},
+  {"id": "4952757", "language": "TEXT", "result": "WA", "time": 0.003550785, "memory_kb": 1712.0, "file": null},
+  {"id": "5031700", "language": "TEXT", "result": "WA", "time": 0.004019286, "memory_kb": 1720.0, "file": null},
+  {"id": "5031728", "language": "TEXT", "result": "WA", "time": 0.003997056, "memory_kb": 1704.0, "file": null},
+  {"id": "5031735", "language": "TEXT", "result": "WA", "time": 0.00392045, "memory_kb": 1720.0, "file": null},
+  {"id": "5032533", "language": "TEXT", "result": "WA", "time": 0.003726837, "memory_kb": 1680.0, "file": null}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

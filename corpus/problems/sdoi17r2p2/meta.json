@@ -1,0 +1,15 @@
+{
+ "problem": "sdoi17r2p2",
+ "source": "sdoi",
+ "submissions": [
+  {"id": "5474627", "language": "CPP17", "result": "WA", "time": 0.065737797, "memory_kb": 3848.0, "file": "corpus/submissions/5474627.cpp"},
+  {"id": "5481973", "language": "CPP17", "result": "WA", "time": 0.070581084, "memory_kb": 3820.0, "file": "corpus/submissions/5481973.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

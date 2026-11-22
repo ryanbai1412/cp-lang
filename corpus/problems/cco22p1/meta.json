@@ -1,0 +1,19 @@
+{
+ "problem": "cco22p1",
+ "source": "cco",
+ "submissions": [
+  {"id": "4801881", "language": "CPP17", "result": "AC", "time": 11.187850358, "memory_kb": 3560.0, "file": "corpus/submissions/4801881.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/cco22p1.cp",
+   "proto/ports/scout_batch_5/today/cco22p1.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

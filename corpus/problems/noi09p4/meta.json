@@ -1,0 +1,26 @@
+{
+ "problem": "noi09p4",
+ "source": "noi",
+ "submissions": [
+  {"id": "5136072", "language": "CPP17", "result": "WA", "time": 0.074753027, "memory_kb": 4124.0, "file": "corpus/submissions/5136072.cpp"},
+  {"id": "5136109", "language": "CPP17", "result": "TLE", "time": 15.318796038, "memory_kb": 245048.0, "file": "corpus/submissions/5136109.cpp"},
+  {"id": "5136119", "language": "CPP17", "result": "WA", "time": 0.077162409, "memory_kb": 4380.0, "file": "corpus/submissions/5136119.cpp"},
+  {"id": "5136133", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5136133.cpp"},
+  {"id": "5136135", "language": "CPP17", "result": "WA", "time": 0.10599477, "memory_kb": 4408.0, "file": "corpus/submissions/5136135.cpp"},
+  {"id": "5144012", "language": "CPP17", "result": "AC", "time": 0.123685223, "memory_kb": 16756.0, "file": "corpus/submissions/5144012.cpp"},
+  {"id": "5144326", "language": "CPP17", "result": "AC", "time": 0.123456761, "memory_kb": 16756.0, "file": "corpus/submissions/5144326.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_15/noi09p4.cp",
+   "proto/ports/scout_batch_18/noi09p4.cp",
+   "proto/ports/scout_batch_18/today/noi09p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+ "problem": "joi16op3",
+ "source": "joi",
+ "submissions": [
+  {"id": "4226618", "language": "CPP17", "result": "WA", "time": 1.665464336, "memory_kb": 242880.0, "file": "corpus/submissions/4226618.cpp"},
+  {"id": "4226622", "language": "CPP17", "result": "AC", "time": 1.706140571, "memory_kb": 242884.0, "file": "corpus/submissions/4226622.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_4/joi16op3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

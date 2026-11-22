@@ -1,0 +1,14 @@
+{
+ "problem": "cmt21r8srf",
+ "source": "cmt",
+ "submissions": [
+  {"id": "4233198", "language": "CPP17", "result": "RTE", "time": 0.194296478, "memory_kb": 4604.0, "file": "corpus/submissions/4233198.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

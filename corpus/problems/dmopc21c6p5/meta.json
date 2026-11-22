@@ -1,0 +1,18 @@
+{
+ "problem": "dmopc21c6p5",
+ "source": "dmopc",
+ "submissions": [
+  {"id": "4342383", "language": "CPP17", "result": "RTE", "time": 0.010050375, "memory_kb": 3216.0, "file": "corpus/submissions/4342383.cpp"},
+  {"id": "4342406", "language": "CPP17", "result": "RTE", "time": 0.174045171, "memory_kb": 3380.0, "file": "corpus/submissions/4342406.cpp"},
+  {"id": "4342627", "language": "CPP17", "result": "RTE", "time": 0.229309492, "memory_kb": 5756.0, "file": "corpus/submissions/4342627.cpp"},
+  {"id": "4342631", "language": "CPP17", "result": "RTE", "time": 0.25188833, "memory_kb": 5756.0, "file": "corpus/submissions/4342631.cpp"},
+  {"id": "4342660", "language": "CPP17", "result": "TLE", "time": 5.818400805, "memory_kb": 890944.0, "file": "corpus/submissions/4342660.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

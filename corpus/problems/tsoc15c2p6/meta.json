@@ -1,0 +1,21 @@
+{
+ "problem": "tsoc15c2p6",
+ "source": "tsoc",
+ "submissions": [
+  {"id": "3657387", "language": "CPP17", "result": "WA", "time": 4.962757496, "memory_kb": 65396.0, "file": "corpus/submissions/3657387.cpp"},
+  {"id": "3657393", "language": "CPP17", "result": "AC", "time": 6.474509386, "memory_kb": 65444.0, "file": "corpus/submissions/3657393.cpp"},
+  {"id": "3657400", "language": "CPP17", "result": "WA", "time": 4.281838499, "memory_kb": 81088.0, "file": "corpus/submissions/3657400.cpp"},
+  {"id": "3657404", "language": "CPP17", "result": "AC", "time": 5.628831035, "memory_kb": 81044.0, "file": "corpus/submissions/3657404.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_7/tsoc15c2p6.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

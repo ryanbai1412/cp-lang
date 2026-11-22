@@ -1,0 +1,14 @@
+{
+ "problem": "noip99p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5044635", "language": "CPP17", "result": "AC", "time": 0.013829837, "memory_kb": 3608.0, "file": "corpus/submissions/5044635.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,22 @@
+{
+ "problem": "ioi10p3",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4692375", "language": "CPP17", "result": "AC", "time": 5.999232733, "memory_kb": 110796.0, "file": "corpus/submissions/4692375.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/ioi10p3.cpp",
+   "proto/ports/ioi10p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/ioi10p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

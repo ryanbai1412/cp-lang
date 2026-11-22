@@ -1,0 +1,19 @@
+{
+ "problem": "ioi13p3io",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4722412", "language": "CPP17", "result": "AC", "time": 103.366728722, "memory_kb": 59404.0, "file": "corpus/submissions/4722412.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_24/ioi13p3io.cp",
+   "proto/ports/scout_batch_24/today/ioi13p3io.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

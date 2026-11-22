@@ -1,0 +1,14 @@
+{
+ "problem": "wac6p6hard",
+ "source": "wac",
+ "submissions": [
+  {"id": "5122001", "language": "CPP17", "result": "AC", "time": 41.91417759, "memory_kb": 3456.0, "file": "corpus/submissions/5122001.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

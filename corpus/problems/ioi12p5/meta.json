@@ -1,0 +1,19 @@
+{
+ "problem": "ioi12p5",
+ "source": "ioi",
+ "submissions": [
+  {"id": "4951033", "language": "CPP17", "result": "AC", "time": 2.088422335, "memory_kb": 11756.0, "file": "corpus/submissions/4951033.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_37/ioi12p5.cp",
+   "proto/ports/scout_batch_37/today/ioi12p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

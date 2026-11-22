@@ -1,0 +1,15 @@
+{
+ "problem": "ccc21s1",
+ "source": "ccc",
+ "submissions": [
+  {"id": "3688329", "language": "PYPY3", "result": "AC", "time": 0.47838083, "memory_kb": 60672.0, "file": "corpus/submissions/3688329.py"},
+  {"id": "4323430", "language": "CPP17", "result": "AC", "time": 0.035113084, "memory_kb": 3704.0, "file": "corpus/submissions/4323430.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

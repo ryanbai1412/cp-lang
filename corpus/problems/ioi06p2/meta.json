@@ -1,0 +1,22 @@
+{
+ "problem": "ioi06p2",
+ "source": "ioi",
+ "submissions": [
+  {"id": "5034324", "language": "CPP17", "result": "RTE", "time": 0.270496759, "memory_kb": 16784.0, "file": "corpus/submissions/5034324.cpp"},
+  {"id": "5034348", "language": "CPP17", "result": "WA", "time": 0.406903348, "memory_kb": 16752.0, "file": "corpus/submissions/5034348.cpp"},
+  {"id": "5034368", "language": "CPP17", "result": "TLE", "time": 9.108991921, "memory_kb": 10932.0, "file": "corpus/submissions/5034368.cpp"},
+  {"id": "5034372", "language": "CPP17", "result": "AC", "time": 0.502755476, "memory_kb": 16784.0, "file": "corpus/submissions/5034372.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_5/ioi06p2.cp",
+   "proto/ports/scout_batch_5/today/ioi06p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

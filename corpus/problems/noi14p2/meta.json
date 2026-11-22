@@ -1,0 +1,17 @@
+{
+ "problem": "noi14p2",
+ "source": "noi",
+ "submissions": [
+  {"id": "3595725", "language": "CPP17", "result": "WA", "time": 1.811574707, "memory_kb": 9660.0, "file": "corpus/submissions/3595725.cpp"},
+  {"id": "3595776", "language": "CPP17", "result": "TLE", "time": 56.77595515, "memory_kb": 9976.0, "file": "corpus/submissions/3595776.cpp"},
+  {"id": "3595797", "language": "CPP17", "result": "WA", "time": 3.042020285, "memory_kb": 10984.0, "file": "corpus/submissions/3595797.cpp"},
+  {"id": "3595798", "language": "CPP17", "result": "WA", "time": 4.176153903, "memory_kb": 10988.0, "file": "corpus/submissions/3595798.cpp"}
+ ],
+ "cpp_ac": 0,
+ "artifacts": {},
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

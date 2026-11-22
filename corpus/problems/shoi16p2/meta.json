@@ -1,0 +1,25 @@
+{
+ "problem": "shoi16p2",
+ "source": "shoi",
+ "submissions": [
+  {"id": "5431765", "language": "CPP17", "result": "TLE", "time": 51.563392777, "memory_kb": 126184.0, "file": "corpus/submissions/5431765.cpp"},
+  {"id": "5431766", "language": "CPP17", "result": "TLE", "time": 51.588158629, "memory_kb": 126216.0, "file": "corpus/submissions/5431766.cpp"},
+  {"id": "5431785", "language": "CPP17", "result": "TLE", "time": 15.94365144, "memory_kb": 181564.0, "file": "corpus/submissions/5431785.cpp"},
+  {"id": "5431788", "language": "CPP17", "result": "TLE", "time": 17.558430348, "memory_kb": 145948.0, "file": "corpus/submissions/5431788.cpp"},
+  {"id": "5431794", "language": "CPP17", "result": "RTE", "time": 4.375544967, "memory_kb": 150816.0, "file": "corpus/submissions/5431794.cpp"},
+  {"id": "5431800", "language": "CPP17", "result": "AC", "time": 2.069361498, "memory_kb": 36052.0, "file": "corpus/submissions/5431800.cpp"},
+  {"id": "5445692", "language": "CPP17", "result": "AC", "time": 2.062074654, "memory_kb": 36060.0, "file": "corpus/submissions/5445692.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_45/shoi16p2.cp",
+   "proto/ports/scout_batch_45/today/shoi16p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,26 @@
+{
+ "problem": "noip04p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5117111", "language": "CPP17", "result": "WA", "time": 0.034639912, "memory_kb": 3444.0, "file": "corpus/submissions/5117111.cpp"},
+  {"id": "5117126", "language": "CPP17", "result": "TLE", "time": 15.105675682, "memory_kb": 3436.0, "file": "corpus/submissions/5117126.cpp"},
+  {"id": "5117139", "language": "CPP17", "result": "TLE", "time": 15.201758252, "memory_kb": 3396.0, "file": "corpus/submissions/5117139.cpp"},
+  {"id": "5117143", "language": "CPP17", "result": "AC", "time": 0.03294734, "memory_kb": 3404.0, "file": "corpus/submissions/5117143.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip04p3.cpp",
+   "proto/ports/noip04p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip04p3.cp",
+   "proto/ports/wave2/noip04p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

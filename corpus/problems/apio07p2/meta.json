@@ -1,0 +1,25 @@
+{
+ "problem": "apio07p2",
+ "source": "apio",
+ "submissions": [
+  {"id": "5532681", "language": "CPP17", "result": "RTE", "time": 0.023795888, "memory_kb": 3408.0, "file": "corpus/submissions/5532681.cpp"},
+  {"id": "5532685", "language": "CPP17", "result": "RTE", "time": 0.02368142, "memory_kb": 3408.0, "file": "corpus/submissions/5532685.cpp"},
+  {"id": "5532730", "language": "CPP17", "result": "TLE", "time": 4.478997362, "memory_kb": 3860.0, "file": "corpus/submissions/5532730.cpp"},
+  {"id": "5532733", "language": "CPP17", "result": "TLE", "time": 1.923331194, "memory_kb": 3508.0, "file": "corpus/submissions/5532733.cpp"},
+  {"id": "5532735", "language": "CPP17", "result": "TLE", "time": 4.497692521, "memory_kb": 3936.0, "file": "corpus/submissions/5532735.cpp"},
+  {"id": "5532752", "language": "CPP17", "result": "AC", "time": 1.241804842, "memory_kb": 6688.0, "file": "corpus/submissions/5532752.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/apio07p2.cp",
+   "proto/ports/scout_batch_13/today/apio07p2.cp",
+   "proto/ports/scout_batch_17/apio07p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

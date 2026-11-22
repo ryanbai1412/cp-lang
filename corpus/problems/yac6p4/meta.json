@@ -1,0 +1,20 @@
+{
+ "problem": "yac6p4",
+ "source": "yac",
+ "submissions": [
+  {"id": "5149665", "language": "CPP17", "result": "WA", "time": 2.572475898, "memory_kb": 7344.0, "file": "corpus/submissions/5149665.cpp"},
+  {"id": "5149666", "language": "CPP17", "result": "AC", "time": 8.631818807, "memory_kb": 7364.0, "file": "corpus/submissions/5149666.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/today/yac6p4.cp",
+   "proto/ports/scout_batch_46/yac6p4.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

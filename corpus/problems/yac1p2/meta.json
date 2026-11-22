@@ -1,0 +1,19 @@
+{
+ "problem": "yac1p2",
+ "source": "yac",
+ "submissions": [
+  {"id": "4376253", "language": "CPP17", "result": "AC", "time": 3.054152335, "memory_kb": 38004.0, "file": "corpus/submissions/4376253.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_46/today/yac1p2.cp",
+   "proto/ports/scout_batch_46/yac1p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

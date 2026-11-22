@@ -1,0 +1,19 @@
+{
+ "problem": "cco22p3",
+ "source": "cco",
+ "submissions": [
+  {"id": "4801883", "language": "CPP17", "result": "TLE", "time": 9.521603224, "memory_kb": 299420.0, "file": "corpus/submissions/4801883.cpp"},
+  {"id": "4801968", "language": "CPP17", "result": "AC", "time": 13.139974675, "memory_kb": 21676.0, "file": "corpus/submissions/4801968.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_30/cco22p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

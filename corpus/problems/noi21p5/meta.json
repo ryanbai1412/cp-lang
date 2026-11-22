@@ -1,0 +1,24 @@
+{
+ "problem": "noi21p5",
+ "source": "noi",
+ "submissions": [
+  {"id": "3861540", "language": "CPP17", "result": "WA", "time": 0.373860526, "memory_kb": 5728.0, "file": "corpus/submissions/3861540.cpp"},
+  {"id": "3861563", "language": "CPP17", "result": "RTE", "time": 0.425407884, "memory_kb": 7224.0, "file": "corpus/submissions/3861563.cpp"},
+  {"id": "3861576", "language": "CPP17", "result": "WA", "time": 0.401132525, "memory_kb": 7124.0, "file": "corpus/submissions/3861576.cpp"},
+  {"id": "3861579", "language": "CPP17", "result": "WA", "time": 0.433597976, "memory_kb": 7104.0, "file": "corpus/submissions/3861579.cpp"},
+  {"id": "3927886", "language": "CPP17", "result": "TLE", "time": 80.083717483, "memory_kb": 3300.0, "file": "corpus/submissions/3927886.cpp"},
+  {"id": "3927923", "language": "CPP17", "result": "AC", "time": 4.646302732, "memory_kb": 13648.0, "file": "corpus/submissions/3927923.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_52/noi21p5.cp",
+   "proto/ports/scout_batch_52/today/noi21p5.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -1,0 +1,25 @@
+{
+ "problem": "noip10p3",
+ "source": "noip",
+ "submissions": [
+  {"id": "5205348", "language": "CPP17", "result": "AC", "time": 0.140274768, "memory_kb": 6488.0, "file": "corpus/submissions/5205348.cpp"},
+  {"id": "5445663", "language": "CPP17", "result": "AC", "time": 0.12191335, "memory_kb": 6516.0, "file": "corpus/submissions/5445663.cpp"}
+ ],
+ "cpp_ac": 2,
+ "artifacts": {
+  "original": [
+   "proto/ports/noip10p3.cpp",
+   "proto/ports/noip10p3_orig.cpp"
+  ],
+  "port": [
+   "proto/ports/noip10p3.cp",
+   "proto/ports/scout_batch_5/noip10p3.cp",
+   "proto/ports/scout_batch_5/today/noip10p3.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

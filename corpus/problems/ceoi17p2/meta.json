@@ -1,0 +1,18 @@
+{
+ "problem": "ceoi17p2",
+ "source": "ceoi",
+ "submissions": [
+  {"id": "5324109", "language": "CPP17", "result": "AC", "time": 3.426420316, "memory_kb": 5276.0, "file": "corpus/submissions/5324109.cpp"}
+ ],
+ "cpp_ac": 1,
+ "artifacts": {
+  "port": [
+   "proto/ports/scout_batch_13/ceoi17p2.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}
