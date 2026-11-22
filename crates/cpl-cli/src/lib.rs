@@ -8,6 +8,8 @@ mod live;
 mod profile;
 mod replay;
 mod report;
+mod sha256;
+pub mod toolchain;
 mod trace;
 
 pub use report::{install_ice_hook, set_crash_context};
@@ -16,6 +18,10 @@ use std::io::Write;
 
 /// Version of the toolchain.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// The release channel and commit this binary was built from: `CPL_CHANNEL`
+/// and `CPL_COMMIT` at build time, else `dev` and the checkout's commit.
+pub const CHANNEL: &str = env!("CPL_CHANNEL");
+pub const COMMIT: &str = env!("CPL_GIT_COMMIT");
 
 /// Crates linked into the binary, in pipeline order.
 pub const COMPONENTS: &[&str] = &[
@@ -73,6 +79,9 @@ commands:
   dap                   serve the time-travel debug adapter (DAP) on stdio
   replay <file> --trace <t.json> --step <n>
                         run one recorded call again with the file's edited fn
+  self <command>        update, switch or roll back the installed toolchain
+                        (`cpl self --help`); `cpl +<toolchain> <command>` runs
+                        one command with another, e.g. `cpl +edge run a.cp`
 
 `cpl <command> --help` describes a command's options.
 
@@ -80,6 +89,11 @@ options:
   -V, --version    print the version
   -h, --help       print this help
 ";
+
+/// `cpl 0.2.2 (edge, 1a2b3c4d)`: what `cpl --version` prints.
+pub fn version_line() -> String {
+    format!("cpl {VERSION} ({CHANNEL}, {})", &COMMIT[..COMMIT.len().min(8)])
+}
 
 /// What one invocation prints and the status it exits with.
 #[derive(Debug, PartialEq, Eq)]
@@ -143,7 +157,7 @@ pub fn exec<S: AsRef<str>>(
             0
         }
         Some("-V" | "--version") => {
-            let _ = writeln!(stdout, "cpl {VERSION}");
+            let _ = writeln!(stdout, "{}", version_line());
             0
         }
         Some(command @ ("check" | "fix" | "build" | "judge" | "submit" | "judges" | "explain" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
@@ -165,6 +179,7 @@ pub fn exec<S: AsRef<str>>(
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),
         Some("report") => report::report(&rest, stdin, stdout, stderr),
+        Some("self") => toolchain::self_command(&rest, stdout, stderr),
         Some("explain") => explain_code(&rest, stdout, stderr),
         Some("check") if rest.is_empty() => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
@@ -2104,7 +2119,8 @@ mod tests {
     fn version_prints_the_binary_name() {
         let out = run(&["--version"]);
         assert_eq!(out.code, 0);
-        assert_eq!(out.stdout, format!("cpl {VERSION}\n").into_bytes());
+        assert_eq!(out.stdout, format!("{}\n", version_line()).into_bytes());
+        assert!(version_line().starts_with(&format!("cpl {VERSION} ({CHANNEL}, ")));
     }
 
     #[test]

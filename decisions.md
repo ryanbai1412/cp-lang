@@ -5475,3 +5475,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   and fns with an estimated cost from 32 to 35.
 - **Reverse.** Drop `declare` and `read_type` in `cpl-lint`'s
   `rules/bounds.rs` and the tuple-typed `parts` arm in `rules/mod.rs`.
+
+## 200. Toolchain downloads shell out to curl and tar (2026-11-22)
+
+- **Decision.** `cpl self`, the `~/.cpl/bin/cpl` launcher and the installers download with `curl`, unpack with `tar`, and check SHA-256 with the dependency-free `crates/cpl-cli/src/sha256.rs` (tested on the FIPS 180-4 vectors).
+- **Why.** Both tools ship with macOS, the Linux distributions we target and Windows 10+, so the compiler gains no TLS stack, dependency tree or binary size; `ureq` with rustls adds about twenty crates for three HTTPS GETs.
+- **Reverse.** Swap `fetch` in `crates/cpl-cli/src/toolchain.rs` for `ureq::get`, keeping the `file://` support the tests use.

@@ -7,10 +7,9 @@ fn binary_reports_its_version() {
         .output()
         .expect("cpl runs");
     assert!(out.status.success());
-    assert_eq!(
-        String::from_utf8(out.stdout).unwrap(),
-        format!("cpl {}\n", env!("CARGO_PKG_VERSION"))
-    );
+    let line = String::from_utf8(out.stdout).unwrap();
+    assert!(line.starts_with(&format!("cpl {} (dev, ", env!("CARGO_PKG_VERSION"))), "{line}");
+    assert!(line.ends_with(")\n") && line.lines().count() == 1, "{line}");
 }
 
 #[test]
