@@ -1,5 +1,5 @@
 fn kernel(n: Int, reps: Int, a: List<Int>) -> Int:
-    let P = 998244353
+    const P = 998244353
     var acc = 1
     for r in 0..reps:
         let shift = (r + 1) % P

@@ -13,7 +13,7 @@ fn kernel(n: Int, q: Int, a: List<Int>, qs: List<(Int, Int, Int)>) -> Int:
             st.set(V.nth(x), y)
         else:
             let r = V.nth(x)..=V.nth(y)
-            acc = (acc + st.fold(r) + pf.sum(r)) ^ (acc >> 4)
+            acc = (acc + st.fold(r) + pf.fold(r)) ^ (acc >> 4)
     acc
 
 let n: Int = read()

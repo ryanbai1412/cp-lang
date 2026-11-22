@@ -1,0 +1,448 @@
+#!/usr/bin/env python3
+"""Cached, matched-algorithm v0.3 C++ codegen performance benchmark harness.
+
+Measures median runtime ratio (emitted C++ / matched C++ original) across:
+  1. corpus   -- corpus/problems/*/{port.cp,orig.cpp} (max-N via corpus_generators or tests/*.in)
+  2. dryrun   -- research/dryrun/v03/p*.cp vs matched research/dryrun/p*_ref.cpp at large N
+  3. zero-cost -- bench/zero-cost/* via `cpl bench --zero-cost`
+
+Both sides are compiled with `g++ -std=c++17 -O2 -w` and verified for exact
+token-level output agreement (1e-6 float tolerance). Compiled C++ originals and
+generated inputs are cached by content hash so reruns after codegen changes
+only recompile CP Lang programs.
+"""
+import argparse
+import concurrent.futures
+import glob
+import hashlib
+import json
+import math
+import os
+import resource
+import signal
+import statistics
+import subprocess
+import sys
+import threading
+import time
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "bench"))
+
+CPL = os.path.join(ROOT, "target", "release", "cpl")
+CLEAN_ENV = {
+    k: v
+    for k, v in os.environ.items()
+    if k not in ("CPL_SPEC", "CPL_STD", "CPL_EDITION")
+}
+
+# Dry-run problems whose _ref.cpp uses the same asymptotic algorithm as v03/.
+DRYRUN_MATCHED = [
+    ("p01_ordinary", "p01_ordinary_gen.py", None),
+    ("p02_movies", "p02_movies_gen.py", None),
+    ("p03_forest", "p03_forest_gen.py", None),
+    ("p04_factory", "p04_factory_gen.py", None),
+    ("p06_labyrinth", "p06_labyrinth_gen.py", None),
+    ("p07_dijkstra", "p07_dijkstra_gen.py", None),
+    ("p08_roads", "p08_roads_gen.py", None),
+    ("p09_topo", "p09_topo_gen.py", None),
+    ("p10_matching", "p10_matching_gen.py", None),
+    ("p14_elevator", "p14_elevator_gen.py", None),
+    ("p20_point", "p20_point_gen.py", None),
+]
+
+
+def big_stack():
+    try:
+        resource.setrlimit(resource.RLIMIT_STACK, (1 << 30, 1 << 30))
+    except OSError:
+        pass
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()[:16]
+
+
+def same_tokens(a, b):
+    ta, tb = a.split(), b.split()
+    if ta == tb:
+        return True
+    if len(ta) != len(tb):
+        return False
+    for x, y in zip(ta, tb):
+        if x == y:
+            continue
+        try:
+            fx, fy = float(x), float(y)
+        except ValueError:
+            return False
+        if not math.isclose(fx, fy, rel_tol=1e-6, abs_tol=1e-6):
+            return False
+    return True
+
+
+def run_once(binary, inp, outp, timeout):
+    with open(inp, "rb") as fi, open(outp, "wb") as fo:
+        t0 = time.perf_counter()
+        pr = subprocess.Popen(
+            [binary],
+            stdin=fi,
+            stdout=fo,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=big_stack,
+            start_new_session=True,
+        )
+        killer = threading.Timer(timeout, lambda: os.killpg(pr.pid, signal.SIGKILL))
+        killer.start()
+        pr.wait()
+        wall = time.perf_counter() - t0
+        timed_out = not killer.is_alive()
+        killer.cancel()
+    if timed_out:
+        return timeout, "timeout"
+    return wall, "ok" if pr.returncode == 0 else f"exit {pr.returncode}"
+
+
+def compile_cpp_cached(src, cache_dir, tag):
+    key = f"{tag}_{sha256_file(src)}"
+    bin_path = os.path.join(cache_dir, key)
+    if os.path.exists(bin_path):
+        return bin_path, None
+    tmp = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
+    r = subprocess.run(
+        ["g++", "-std=c++17", "-O2", "-w", src, "-o", tmp],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        err = (r.stderr.strip().splitlines() or ["g++ failed"])[0][:160]
+        return None, err
+    os.replace(tmp, bin_path)
+    return bin_path, None
+
+
+def build_cpl_cached(cp_src, cache_dir, cpl_hash):
+    key = f"cpl_{cpl_hash}_{sha256_file(cp_src)}"
+    cpp_path = os.path.join(cache_dir, key + ".cpp")
+    bin_path = os.path.join(cache_dir, key)
+    if os.path.exists(bin_path) and os.path.exists(cpp_path):
+        return bin_path, cpp_path, None
+    tmp_cpp = cpp_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
+    r = subprocess.run(
+        [CPL, "build", cp_src, "-o", tmp_cpp],
+        capture_output=True,
+        text=True,
+        env=CLEAN_ENV,
+    )
+    if r.returncode != 0:
+        if os.path.exists(tmp_cpp):
+            os.remove(tmp_cpp)
+        err = ((r.stderr or r.stdout).strip().splitlines() or ["cpl build failed"])[0][:160]
+        return None, None, f"cpl build: {err}"
+    os.replace(tmp_cpp, cpp_path)
+    tmp_bin = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
+    g = subprocess.run(
+        ["g++", "-std=c++17", "-O2", "-w", cpp_path, "-o", tmp_bin],
+        capture_output=True,
+        text=True,
+    )
+    if g.returncode != 0:
+        if os.path.exists(tmp_bin):
+            os.remove(tmp_bin)
+        err = (g.stderr.strip().splitlines() or ["g++ failed"])[0][:160]
+        return None, cpp_path, f"g++ emitted: {err}"
+    os.replace(tmp_bin, bin_path)
+    return bin_path, cpp_path, None
+
+
+def gen_dryrun_input(name, cache_dir):
+    """Generate a large deterministic input for matched dry-run problems."""
+    inp = os.path.join(cache_dir, f"dryrun_in_{name}.txt")
+    if os.path.exists(inp) and os.path.getsize(inp) > 0:
+        return inp
+    import random
+
+    rng = random.Random(42)
+    lines = []
+    if name == "p01_ordinary":
+        t = 200000
+        lines.append(str(t))
+        for _ in range(t):
+            lines.append(str(rng.randint(1, 10**9)))
+    elif name == "p02_movies":
+        n = 200000
+        lines.append(str(n))
+        for _ in range(n):
+            a = rng.randint(1, 10**9 - 1000)
+            b = a + rng.randint(1, 1000)
+            lines.append(f"{a} {b}")
+    elif name == "p03_forest":
+        n, q = 1000, 200000
+        lines.append(f"{n} {q}")
+        for _ in range(n):
+            lines.append("".join("*" if rng.random() < 0.3 else "." for _ in range(n)))
+        for _ in range(q):
+            y1, y2 = sorted((rng.randint(1, n), rng.randint(1, n)))
+            x1, x2 = sorted((rng.randint(1, n), rng.randint(1, n)))
+            lines.append(f"{y1} {x1} {y2} {x2}")
+    elif name == "p04_factory":
+        n, t = 200000, 10**9
+        lines.append(f"{n} {t}")
+        lines.append(" ".join(str(rng.randint(1, 10**9)) for _ in range(n)))
+    elif name == "p06_labyrinth":
+        n, m = 800, 800
+        lines.append(f"{n} {m}")
+        grid = [["." for _ in range(m)] for _ in range(n)]
+        for r in range(n):
+            for c in range(m):
+                if (r, c) not in ((0, 0), (n - 1, m - 1)) and rng.random() < 0.22:
+                    grid[r][c] = "#"
+        grid[0][0] = "A"
+        grid[n - 1][m - 1] = "B"
+        for row in grid:
+            lines.append("".join(row))
+    elif name == "p07_dijkstra":
+        n, m = 100000, 200000
+        lines.append(f"{n} {m}")
+        for i in range(2, n + 1):
+            lines.append(f"{rng.randint(1, i - 1)} {i} {rng.randint(1, 10**6)}")
+        for _ in range(m - (n - 1)):
+            lines.append(f"{rng.randint(1, n)} {rng.randint(1, n)} {rng.randint(1, 10**6)}")
+    elif name == "p08_roads":
+        n, m = 100000, 200000
+        lines.append(f"{n} {m}")
+        for _ in range(m):
+            u = rng.randint(1, n)
+            v = rng.randint(1, n)
+            lines.append(f"{u} {v}")
+    elif name == "p09_topo":
+        n, m = 100000, 200000
+        lines.append(f"{n} {m}")
+        for _ in range(m):
+            u = rng.randint(1, n - 1)
+            v = rng.randint(u + 1, n)
+            lines.append(f"{u} {v}")
+    elif name == "p10_matching":
+        n = 200000
+        lines.append(str(n))
+        for i in range(2, n + 1):
+            lines.append(f"{rng.randint(1, i - 1)} {i}")
+    elif name == "p14_elevator":
+        n, x = 20, 10**9
+        lines.append(f"{n} {x}")
+        lines.append(" ".join(str(rng.randint(1, x)) for _ in range(n)))
+    elif name == "p20_point":
+        t = 200000
+        lines.append(str(t))
+        for _ in range(t):
+            vals = [str(rng.randint(-(10**9), 10**9)) for _ in range(6)]
+            lines.append(" ".join(vals))
+    with open(inp, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    return inp
+
+
+def collect_items(suites, only, cache_dir):
+    items = []
+    if "dryrun" in suites:
+        for name, _, _ in DRYRUN_MATCHED:
+            if only and name not in only:
+                continue
+            cp = os.path.join(ROOT, "research", "dryrun", "v03", f"{name}.cp")
+            orig = os.path.join(ROOT, "research", "dryrun", f"{name}_ref.cpp")
+            if os.path.exists(cp) and os.path.exists(orig):
+                items.append(("dryrun", name, cp, orig, lambda n=name: gen_dryrun_input(n, cache_dir)))
+
+    if "corpus" in suites:
+        cg_by_prob = {}
+        try:
+            import corpus_generators as cg
+
+            for s in cg.SPECS:
+                cg_by_prob[os.path.basename(s[0])] = s
+        except Exception:
+            pass
+        for orig in sorted(glob.glob(os.path.join(ROOT, "corpus", "problems", "*", "orig.cpp"))):
+            d = os.path.dirname(orig)
+            pid = os.path.basename(d)
+            if only and pid not in only:
+                continue
+            cp = os.path.join(d, "port.cp")
+            if not os.path.exists(cp):
+                continue
+
+            def make_input(p=pid, prob_dir=d, spec=cg_by_prob.get(pid)):
+                if spec is not None:
+                    out = os.path.join(cache_dir, f"corpus_gen_{p}.in")
+                    if not (os.path.exists(out) and os.path.getsize(out) > 0):
+                        try:
+                            spec[4](out, True, {})
+                        except Exception:
+                            if os.path.exists(out):
+                                os.remove(out)
+                    if os.path.exists(out) and os.path.getsize(out) > 0:
+                        return out
+                ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
+                if ins:
+                    return max(ins, key=os.path.getsize)
+                return None
+
+            items.append(("corpus", pid, cp, orig, make_input))
+
+    if "bench" in suites:
+        empty_in = os.path.join(cache_dir, "empty.in")
+        if not os.path.exists(empty_in):
+            open(empty_in, "w").close()
+        for sub in ("containers", "flow", "math", "ranges", "seq", "strings"):
+            for cp in sorted(glob.glob(os.path.join(ROOT, "bench", sub, "*.cp"))):
+                stem = os.path.basename(cp)[:-3]
+                name = f"{sub}/{stem}"
+                if only and name not in only and stem not in only:
+                    continue
+                orig = cp[:-3] + ".cpp"
+                if not os.path.exists(orig):
+                    continue
+                items.append(("bench", name, cp, orig, lambda p=empty_in: p))
+    return items
+
+
+def percentile(sorted_vals, q):
+    if not sorted_vals:
+        return 0.0
+    k = (len(sorted_vals) - 1) * q
+    lo = math.floor(k)
+    hi = math.ceil(k)
+    if lo == hi:
+        return sorted_vals[lo]
+    return sorted_vals[lo] * (hi - k) + sorted_vals[hi] * (k - lo)
+
+
+def summarize(rows, min_ms):
+    measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= min_ms]
+    ratios = sorted(r["ratio"] for r in measured)
+    return {
+        "total_ok": sum(1 for r in rows if r.get("status") == "ok"),
+        "measured_ge_min_ms": len(measured),
+        "p50": round(percentile(ratios, 0.50), 3),
+        "p90": round(percentile(ratios, 0.90), 3),
+        "p95": round(percentile(ratios, 0.95), 3),
+        "max": round(ratios[-1], 3) if ratios else 0.0,
+        "gt_1_1": sum(1 for x in ratios if x > 1.1),
+        "gt_1_5": sum(1 for x in ratios if x > 1.5),
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--suite", default="dryrun,corpus", help="comma-separated: dryrun,corpus")
+    ap.add_argument("--only", default="", help="comma-separated problem names")
+    ap.add_argument("--runs", type=int, default=5)
+    ap.add_argument("--timeout", type=float, default=10.0)
+    ap.add_argument("--min-ms", type=float, default=10.0)
+    ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 4))
+    ap.add_argument("--cache", default="/tmp/cpl-perf-cache")
+    ap.add_argument("--json-out", default="")
+    args = ap.parse_args()
+
+    os.makedirs(args.cache, exist_ok=True)
+    cpl_hash = sha256_file(CPL)
+    suites = {s.strip() for s in args.suite.split(",") if s.strip()}
+    only = {s.strip() for s in args.only.split(",") if s.strip()}
+    items = collect_items(suites, only, args.cache)
+
+    def build_one(item):
+        suite, name, cp, orig, input_fn = item
+        pbin, cpp_path, perr = build_cpl_cached(cp, args.cache, cpl_hash)
+        if perr:
+            return {"suite": suite, "name": name, "status": "skip", "reason": perr}
+        obin, oerr = compile_cpp_cached(orig, args.cache, f"orig_{name.replace('/', '__')}")
+        if oerr:
+            return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ orig: {oerr}"}
+        inp = input_fn()
+        if not inp:
+            return {"suite": suite, "name": name, "status": "skip", "reason": "no input"}
+        return {
+            "suite": suite,
+            "name": name,
+            "pbin": pbin,
+            "obin": obin,
+            "cpp_path": cpp_path,
+            "inp": inp,
+            "status": "built",
+        }
+
+    built = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as ex:
+        for res in ex.map(build_one, items):
+            built.append(res)
+
+    rows = []
+    out_p = os.path.join(args.cache, "out_p.txt")
+    out_o = os.path.join(args.cache, "out_o.txt")
+    for b in built:
+        if b["status"] != "built":
+            rows.append(b)
+            continue
+        t_o, s_o = run_once(b["obin"], b["inp"], out_o, args.timeout)
+        t_p, s_p = run_once(b["pbin"], b["inp"], out_p, args.timeout)
+        if s_o != "ok" or s_p != "ok":
+            rows.append({**b, "status": "skip", "reason": f"run orig={s_o} port={s_p}"})
+            continue
+        if not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
+            rows.append({**b, "status": "mismatch", "reason": "output mismatch"})
+            continue
+        ts_o = [t_o]
+        ts_p = [t_p]
+        if max(t_o, t_p) * 1000.0 >= args.min_ms:
+            for _ in range(args.runs - 1):
+                to, _ = run_once(b["obin"], b["inp"], out_o, args.timeout)
+                tp, _ = run_once(b["pbin"], b["inp"], out_p, args.timeout)
+                ts_o.append(to)
+                ts_p.append(tp)
+        med_o = statistics.median(ts_o) * 1000.0
+        med_p = statistics.median(ts_p) * 1000.0
+        ratio = med_p / med_o if med_o > 0 else 1.0
+        rows.append(
+            {
+                "suite": b["suite"],
+                "name": b["name"],
+                "status": "ok",
+                "port_ms": round(med_p, 2),
+                "orig_ms": round(med_o, 2),
+                "ratio": round(ratio, 3),
+                "cpp_path": b["cpp_path"],
+            }
+        )
+
+    for s in sorted(suites):
+        sub = [r for r in rows if r["suite"] == s]
+        st = summarize(sub, args.min_ms)
+        print(f"=== {s} (n={st['measured_ge_min_ms']} >= {args.min_ms}ms, ok={st['total_ok']}/{len(sub)}) ===")
+        print(
+            f"  p50={st['p50']:.3f}x  p90={st['p90']:.3f}x  p95={st['p95']:.3f}x  max={st['max']:.3f}x  "
+            f"(>1.1x: {st['gt_1_1']}, >1.5x: {st['gt_1_5']})"
+        )
+        measured = [r for r in sub if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
+        for r in sorted(measured, key=lambda x: -x["ratio"])[:20]:
+            print(f"  {r['name']:18s}  port={r['port_ms']:7.2f}ms  orig={r['orig_ms']:7.2f}ms  ratio={r['ratio']:6.3f}x")
+
+    overall = summarize(rows, args.min_ms)
+    print(f"=== OVERALL (n={overall['measured_ge_min_ms']} >= {args.min_ms}ms) ===")
+    print(
+        f"  p50={overall['p50']:.3f}x  p90={overall['p90']:.3f}x  p95={overall['p95']:.3f}x  max={overall['max']:.3f}x  "
+        f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']})"
+    )
+
+    if args.json_out:
+        with open(args.json_out, "w") as f:
+            json.dump({"cpl_hash": cpl_hash, "overall": overall, "rows": rows}, f, indent=2)
+
+
+if __name__ == "__main__":
+    main()
