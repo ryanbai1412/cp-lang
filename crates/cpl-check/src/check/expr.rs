@@ -1819,6 +1819,13 @@ impl<'a> Checker<'a> {
     /// struct or enum `base`, as the method it is: the fn without that
     /// parameter.
     fn own_method(&mut self, base: &Ty, name: &str) -> Option<Ty> {
+        // A product position is the tuple of its factors (R04.2.10).
+        let factors = match base {
+            Ty::Pos(d) => self.product_factors(d),
+            _ => None,
+        };
+        let tuple = factors.map(|f| Ty::Tuple(f.into_iter().map(|(_, t)| t).collect()));
+        let base = tuple.as_ref().unwrap_or(base);
         if !matches!(base, Ty::Named { .. } | Ty::Record(_) | Ty::Tuple(_)) {
             return None;
         }
