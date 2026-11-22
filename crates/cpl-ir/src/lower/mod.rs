@@ -507,6 +507,8 @@ struct DoFrame {
 #[derive(Clone, Default)]
 struct FnCx {
     locals: Vec<Local>,
+    /// Local fns an earlier fn in the same block calls, by name: their slots.
+    predeclared: HashMap<String, usize>,
     /// The optionals a test has shown to hold a value here, by name.
     present: Vec<String>,
     /// The name about to be lowered stands where an optional is asked for.

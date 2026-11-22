@@ -12,6 +12,9 @@ impl<'a> Lowerer<'a> {
         let present = self.cx.present.len();
         let held = (self.contexts.len(), self.unchecked);
         let mut out = Vec::new();
+        if !self.at_top_level() {
+            self.predeclare_local_fns(&block.stmts, &mut out);
+        }
         match block.stmts.split_last() {
             None if tail == Tail::Give => self.needs_value(block.span),
             None => {}
@@ -505,6 +508,30 @@ impl<'a> Lowerer<'a> {
             }
         }
         false
+    }
+
+    /// `fn even` calling `fn odd` declared after it: `odd` gets its slot first.
+    fn predeclare_local_fns(&mut self, stmts: &[ast::Stmt], out: &mut Vec<Stmt>) {
+        for (idx, stmt) in stmts.iter().enumerate() {
+            let ast::StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            let plain =
+                decl.generics.is_empty() && !stmt.decorators.iter().any(|d| d.name.text == "memo");
+            if !plain || !captured(&stmts[..idx], &decl.name.text) {
+                continue;
+            }
+            let (_, _, fn_ty) = self.local_fn_ty(decl);
+            let slot = self.new_slot(&decl.name.text, fn_ty);
+            self.cx
+                .scopes
+                .last_mut()
+                .unwrap()
+                .insert(decl.name.text.clone(), slot);
+            self.cx.mut_slots.insert(slot);
+            self.cx.predeclared.insert(decl.name.text.clone(), slot);
+            out.push(Stmt::Let(slot, None));
+        }
     }
 
     fn at_top_level(&self) -> bool {
@@ -1485,7 +1512,8 @@ impl<'a> Lowerer<'a> {
                     });
                     self.mut_globals.insert(gid);
                     self.mod_syms[self.cur_mod].insert(name.text.clone(), Sym::Global(gid));
-                    self.context_defs.insert(name.text.clone(), (gid, field_tys));
+                    self.context_defs
+                        .insert(name.text.clone(), (gid, field_tys));
                     gid
                 };
                 let init = self.mk(ExprKind::Tuple(field_vals), rec_ty.clone(), span);
@@ -1539,7 +1567,9 @@ impl<'a> Lowerer<'a> {
                             Some(self.mk(ExprKind::Global(gid), io_ty.clone(), span)),
                         ));
                         saved_ctx_slot = Some((gid, save));
-                        let Ty::Record(fields) = &io_ty else { unreachable!() };
+                        let Ty::Record(fields) = &io_ty else {
+                            unreachable!()
+                        };
                         let fields = fields.clone();
                         for arg in args {
                             let Some(k) = &arg.name else { continue };
@@ -1563,8 +1593,10 @@ impl<'a> Lowerer<'a> {
                                     self.io_base = Some(*n as i64);
                                 }
                             }
-                            if let Some((idx, (_, fty))) =
-                                fields.iter().enumerate().find(|(_, (fnm, _))| fnm == &k.text)
+                            if let Some((idx, (_, fty))) = fields
+                                .iter()
+                                .enumerate()
+                                .find(|(_, (fnm, _))| fnm == &k.text)
                             {
                                 let val = self.expect(v, fty);
                                 out.push(Stmt::Assign(
@@ -1598,8 +1630,10 @@ impl<'a> Lowerer<'a> {
                             for arg in args {
                                 let Some(k) = &arg.name else { continue };
                                 let v = &arg.value;
-                                if let Some((idx, (_, fty))) =
-                                    fields.iter().enumerate().find(|(_, (fnm, _))| fnm == &k.text)
+                                if let Some((idx, (_, fty))) = fields
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, (fnm, _))| fnm == &k.text)
                                 {
                                     let val = self.expect(v, fty);
                                     out.push(Stmt::Assign(
@@ -2082,10 +2116,7 @@ impl<'a> Lowerer<'a> {
             }
             return;
         };
-        if !*inclusive
-            && matches!(lo.kind, ast::ExprKind::Int(0))
-            && lo.span.start == lo.span.end
-        {
+        if !*inclusive && matches!(lo.kind, ast::ExprKind::Int(0)) && lo.span.start == lo.span.end {
             self.counted_domains.insert(id);
         }
         if let (Some(l), Some(h)) = (self.ast_bounds(lo), self.ast_bounds(hi)) {

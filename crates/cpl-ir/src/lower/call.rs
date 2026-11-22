@@ -477,12 +477,20 @@ impl<'a> Lowerer<'a> {
                             let zero = self.int_lit(0, span);
                             let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                             let ge0 = self.mk(
-                                ExprKind::Cmp(CmpOp::Ge, Box::new(self.local(ord_slot, span)), Box::new(zero)),
+                                ExprKind::Cmp(
+                                    CmpOp::Ge,
+                                    Box::new(self.local(ord_slot, span)),
+                                    Box::new(zero),
+                                ),
                                 Ty::Bool,
                                 span,
                             );
                             let lt_len = self.mk(
-                                ExprKind::Cmp(CmpOp::Lt, Box::new(self.local(ord_slot, span)), Box::new(len)),
+                                ExprKind::Cmp(
+                                    CmpOp::Lt,
+                                    Box::new(self.local(ord_slot, span)),
+                                    Box::new(len),
+                                ),
                                 Ty::Bool,
                                 span,
                             );
@@ -491,15 +499,21 @@ impl<'a> Lowerer<'a> {
                                 Ty::Bool,
                                 span,
                             );
-                            let pos_val = self.cast(Cast::Trust, self.local(ord_slot, span), Ty::Pos(d));
-                            let some_pos = self.mk(ExprKind::Some(Box::new(pos_val)), res_ty.clone(), span);
+                            let pos_val =
+                                self.cast(Cast::Trust, self.local(ord_slot, span), Ty::Pos(d));
+                            let some_pos =
+                                self.mk(ExprKind::Some(Box::new(pos_val)), res_ty.clone(), span);
                             let none_pos = self.mk(ExprKind::None, res_ty.clone(), span);
                             let checked = self.mk(
                                 ExprKind::Do(Block {
                                     stmts: vec![
                                         Stmt::Let(ord_slot, Some(ord)),
                                         Stmt::Give(self.mk(
-                                            ExprKind::If(Box::new(in_range), Box::new(some_pos), Box::new(none_pos.clone())),
+                                            ExprKind::If(
+                                                Box::new(in_range),
+                                                Box::new(some_pos),
+                                                Box::new(none_pos.clone()),
+                                            ),
                                             res_ty.clone(),
                                             span,
                                         )),
@@ -513,7 +527,11 @@ impl<'a> Lowerer<'a> {
                                     stmts: vec![
                                         Stmt::Let(opt_slot, Some(parsed)),
                                         Stmt::Give(self.mk(
-                                            ExprKind::If(Box::new(is_some), Box::new(checked), Box::new(none_pos)),
+                                            ExprKind::If(
+                                                Box::new(is_some),
+                                                Box::new(checked),
+                                                Box::new(none_pos),
+                                            ),
                                             res_ty.clone(),
                                             span,
                                         )),
@@ -3009,7 +3027,11 @@ impl<'a> Lowerer<'a> {
         let ty = Ty::Enum(id);
         Some(self.do_expr(Some(&ty), span, |lw, out| {
             let token = lw.temp(Ty::Str);
-            let read = lw.mk(ExprKind::Read(Box::new(Spec::Plain(Ty::Str))), Ty::Str, span);
+            let read = lw.mk(
+                ExprKind::Read(Box::new(Spec::Plain(Ty::Str))),
+                Ty::Str,
+                span,
+            );
             out.push(Stmt::Let(token, Some(read)));
             for (tag, (_, specs)) in variants.iter().zip(fields).enumerate() {
                 let tags = [tokens[tag].clone()];
@@ -3039,7 +3061,11 @@ impl<'a> Lowerer<'a> {
                     body.push(Stmt::Let(slot, Some(value)));
                     values.push(lw.local(slot, span));
                 }
-                body.push(Stmt::Give(lw.mk(ExprKind::Variant(tag, values), ty.clone(), span)));
+                body.push(Stmt::Give(lw.mk(
+                    ExprKind::Variant(tag, values),
+                    ty.clone(),
+                    span,
+                )));
                 let cond = cond.expect("a variant has a name");
                 out.push(Stmt::If(cond, Block { stmts: body }, Block::default()));
             }
@@ -8341,7 +8367,10 @@ impl<'a> Lowerer<'a> {
                 if matches!(ty, Ty::Str | Ty::StrView)
                     && args.len() == 1
                     && args[0].name.is_none()
-                    && matches!(self.probe_ty_silent(&args[0].value), Some(Ty::Str | Ty::StrView)) =>
+                    && matches!(
+                        self.probe_ty_silent(&args[0].value),
+                        Some(Ty::Str | Ty::StrView)
+                    ) =>
             {
                 let pat = self.expr(&args[0].value, None);
                 let rev = method == "rfind";
@@ -8355,15 +8384,30 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Let(p_slot, Some(pat)));
                     let p_ref = lw.local(p_slot, span);
                     let n_slot = lw.temp(Ty::Int);
-                    let s_len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![s_ref.clone()]), Ty::Int, span);
+                    let s_len = lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![s_ref.clone()]),
+                        Ty::Int,
+                        span,
+                    );
                     out.push(Stmt::Let(n_slot, Some(s_len)));
                     let m_slot = lw.temp(Ty::Int);
-                    let p_len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![p_ref.clone()]), Ty::Int, span);
+                    let p_len = lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![p_ref.clone()]),
+                        Ty::Int,
+                        span,
+                    );
                     out.push(Stmt::Let(m_slot, Some(p_len)));
                     let res_slot = lw.temp(out_ty.clone());
-                    out.push(Stmt::Let(res_slot, Some(lw.mk(ExprKind::None, out_ty.clone(), span))));
+                    out.push(Stmt::Let(
+                        res_slot,
+                        Some(lw.mk(ExprKind::None, out_ty.clone(), span)),
+                    ));
                     let diff = lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(lw.local(n_slot, span)), Box::new(lw.local(m_slot, span))),
+                        ExprKind::Binary(
+                            BinOp::Sub,
+                            Box::new(lw.local(n_slot, span)),
+                            Box::new(lw.local(m_slot, span)),
+                        ),
                         Ty::Int,
                         span,
                     );
@@ -8373,10 +8417,26 @@ impl<'a> Lowerer<'a> {
                     let ok_slot = lw.temp(Ty::Bool);
                     let j_slot = lw.temp(Ty::Int);
                     let j_ref = lw.local(j_slot, span);
-                    let ij = lw.mk(ExprKind::Binary(BinOp::Add, Box::new(i_ref.clone()), Box::new(j_ref.clone())), Ty::Int, span);
+                    let ij = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::Add,
+                            Box::new(i_ref.clone()),
+                            Box::new(j_ref.clone()),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
                     let sc = lw.mk(ExprKind::Index(Box::new(s_ref), vec![ij]), Ty::Char, span);
-                    let pc = lw.mk(ExprKind::Index(Box::new(p_ref), vec![j_ref]), Ty::Char, span);
-                    let ne = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(sc), Box::new(pc)), Ty::Bool, span);
+                    let pc = lw.mk(
+                        ExprKind::Index(Box::new(p_ref), vec![j_ref]),
+                        Ty::Char,
+                        span,
+                    );
+                    let ne = lw.mk(
+                        ExprKind::Cmp(CmpOp::Ne, Box::new(sc), Box::new(pc)),
+                        Ty::Bool,
+                        span,
+                    );
                     let inner_lid = lw.next_loop;
                     lw.next_loop += 1;
                     let outer_lid = lw.next_loop;
@@ -8393,7 +8453,10 @@ impl<'a> Lowerer<'a> {
                         },
                         Block {
                             stmts: vec![
-                                Stmt::Let(ok_slot, Some(lw.mk(ExprKind::Bool(true), Ty::Bool, span))),
+                                Stmt::Let(
+                                    ok_slot,
+                                    Some(lw.mk(ExprKind::Bool(true), Ty::Bool, span)),
+                                ),
                                 Stmt::For(
                                     inner_lid,
                                     j_slot,
@@ -8410,9 +8473,17 @@ impl<'a> Lowerer<'a> {
                                             Block {
                                                 stmts: vec![
                                                     Stmt::Assign(
-                                                        Place { kind: PlaceKind::Local(ok_slot), ty: Ty::Bool, span },
+                                                        Place {
+                                                            kind: PlaceKind::Local(ok_slot),
+                                                            ty: Ty::Bool,
+                                                            span,
+                                                        },
                                                         AssignOp::Set,
-                                                        lw.mk(ExprKind::Bool(false), Ty::Bool, span),
+                                                        lw.mk(
+                                                            ExprKind::Bool(false),
+                                                            Ty::Bool,
+                                                            span,
+                                                        ),
                                                     ),
                                                     Stmt::Break(None),
                                                 ],
@@ -8426,9 +8497,17 @@ impl<'a> Lowerer<'a> {
                                     Block {
                                         stmts: vec![
                                             Stmt::Assign(
-                                                Place { kind: PlaceKind::Local(res_slot), ty: out_ty.clone(), span },
+                                                Place {
+                                                    kind: PlaceKind::Local(res_slot),
+                                                    ty: out_ty.clone(),
+                                                    span,
+                                                },
                                                 AssignOp::Set,
-                                                lw.mk(ExprKind::Some(Box::new(i_ref)), out_ty.clone(), span),
+                                                lw.mk(
+                                                    ExprKind::Some(Box::new(i_ref)),
+                                                    out_ty.clone(),
+                                                    span,
+                                                ),
                                             ),
                                             Stmt::Break(None),
                                         ],

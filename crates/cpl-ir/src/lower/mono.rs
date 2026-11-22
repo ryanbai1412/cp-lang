@@ -2084,7 +2084,9 @@ impl<'a> Lowerer<'a> {
         let mut trait_params: Vec<(usize, Ty)> = Vec::new();
         for (decl_idx, param) in decl.params.iter().enumerate() {
             let Some(pty) = &param.ty else { continue };
-            let ast::TypeKind::Named { name, .. } = &pty.kind else { continue };
+            let ast::TypeKind::Named { name, .. } = &pty.kind else {
+                continue;
+            };
             if !matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) {
                 continue;
             }
@@ -2325,6 +2327,42 @@ impl<'a> Lowerer<'a> {
         into: Option<&str>,
         out: &mut Vec<Stmt>,
     ) {
+        let (param_tys, ret_ty, fn_ty) = self.local_fn_ty(decl);
+        let predeclared = self.cx.predeclared.remove(&decl.name.text);
+        let fn_slot = match predeclared {
+            Some(slot) => slot,
+            None => {
+                let fn_slot = self.cx.locals.len();
+                self.cx.locals.push(Local {
+                    name: decl.name.text.clone(),
+                    ty: fn_ty.clone(),
+                });
+                self.cx
+                    .scopes
+                    .last_mut()
+                    .unwrap()
+                    .insert(decl.name.text.clone(), fn_slot);
+                fn_slot
+            }
+        };
+        // A fn that calls itself reads its own slot, which is set only
+        // after its body is lowered: it is captured by reference, so the
+        // call finds the fn and not the empty slot.
+        self.cx.mut_slots.insert(fn_slot);
+        self.lower_local_fn_body(
+            decl,
+            memo,
+            into,
+            out,
+            param_tys,
+            ret_ty,
+            fn_ty,
+            fn_slot,
+            predeclared.is_some(),
+        );
+    }
+
+    pub(super) fn local_fn_ty(&mut self, decl: &ast::FnDecl) -> (Vec<Ty>, Ty, Ty) {
         let param_tys: Vec<Ty> = decl
             .params
             .iter()
@@ -2346,21 +2384,22 @@ impl<'a> Lowerer<'a> {
                 false => ty.clone(),
             });
         let fn_ty = Ty::Fn(sig.collect(), Box::new(ret_ty.clone()));
-        let fn_slot = self.cx.locals.len();
-        self.cx.locals.push(Local {
-            name: decl.name.text.clone(),
-            ty: fn_ty.clone(),
-        });
-        self.cx
-            .scopes
-            .last_mut()
-            .unwrap()
-            .insert(decl.name.text.clone(), fn_slot);
-        // A fn that calls itself reads its own slot, which is set only
-        // after its body is lowered: it is captured by reference, so the
-        // call finds the fn and not the empty slot.
-        self.cx.mut_slots.insert(fn_slot);
+        (param_tys, ret_ty, fn_ty)
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    fn lower_local_fn_body(
+        &mut self,
+        decl: &ast::FnDecl,
+        memo: bool,
+        into: Option<&str>,
+        out: &mut Vec<Stmt>,
+        param_tys: Vec<Ty>,
+        ret_ty: Ty,
+        fn_ty: Ty,
+        fn_slot: usize,
+        predeclared: bool,
+    ) {
         let mut fresh = FnCx {
             is_closure: true,
             ..FnCx::default()
@@ -2429,6 +2468,15 @@ impl<'a> Lowerer<'a> {
         });
         let init = self.mk(ExprKind::Closure(cid), fn_ty.clone(), decl.name.span);
         let plain = decl.params.iter().all(|p| !p.mutable);
+        if predeclared {
+            let place = Place {
+                kind: PlaceKind::Local(fn_slot),
+                ty: fn_ty,
+                span: self.span(decl.name.span),
+            };
+            out.push(Stmt::Assign(place, AssignOp::Set, init));
+            return;
+        }
         if !(memo && plain) || matches!(ret_ty, Ty::Unit | Ty::Error) {
             out.push(Stmt::Let(fn_slot, Some(init)));
             return;
@@ -2779,7 +2827,10 @@ impl<'a> Lowerer<'a> {
                 }
                 (_, Ty::Array { dims, elem })
                     if !args.is_empty()
-                        && matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) =>
+                        && matches!(
+                            self.mod_syms[tpl_mod].get(&name.text),
+                            Some(Sym::Trait(_))
+                        ) =>
                 {
                     let is_domain_indexed = matches!(
                         (dims.as_slice(), elem.as_ref()),
@@ -2802,7 +2853,10 @@ impl<'a> Lowerer<'a> {
                 }
                 (_, concrete_seq)
                     if args.len() == 1
-                        && matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) =>
+                        && matches!(
+                            self.mod_syms[tpl_mod].get(&name.text),
+                            Some(Sym::Trait(_))
+                        ) =>
                 {
                     if let Some(elem) = concrete_seq.seq_elem() {
                         self.unify_ast_ty(&args[0], &elem, tpl_mod, gen_names, env);

@@ -102,7 +102,10 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Bool(value) => self.mk(ExprKind::Bool(*value), Ty::Bool, span),
             ast::ExprKind::None
                 if self.lookup("none").is_some()
-                    || matches!(self.mod_syms[self.cur_mod].get("none"), Some(Sym::Global(_))) =>
+                    || matches!(
+                        self.mod_syms[self.cur_mod].get("none"),
+                        Some(Sym::Global(_))
+                    ) =>
             {
                 self.name("none", inner_hint, span)
             }
@@ -439,14 +442,19 @@ impl<'a> Lowerer<'a> {
                     ast::ExprKind::Field { base, name } if name.text == "keys" => {
                         let b = self.expr(base, None);
                         let lo = match &b.kind {
-                            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
-                                args.get(1).and_then(|e| match &e.kind {
+                            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => args
+                                .get(1)
+                                .and_then(|e| match &e.kind {
                                     ExprKind::Int(v) => Some(*v),
                                     _ => None,
-                                }).unwrap_or(0)
+                                })
+                                .unwrap_or(0),
+                            ExprKind::Local(slot) => {
+                                self.cx.view_lo.get(slot).copied().unwrap_or(0)
                             }
-                            ExprKind::Local(slot) => self.cx.view_lo.get(slot).copied().unwrap_or(0),
-                            ExprKind::Global(gid) => self.global_view_lo.get(gid).copied().unwrap_or(0),
+                            ExprKind::Global(gid) => {
+                                self.global_view_lo.get(gid).copied().unwrap_or(0)
+                            }
                             _ => 0,
                         };
                         let len = self.len_of(b, span);
@@ -456,7 +464,9 @@ impl<'a> Lowerer<'a> {
                             DimSpec::IntFrom(lo, Box::new(len))
                         }
                     }
-                    ast::ExprKind::Range { lo, hi, inclusive, .. } => {
+                    ast::ExprKind::Range {
+                        lo, hi, inclusive, ..
+                    } => {
                         let lo_e = lo
                             .as_ref()
                             .map(|l| self.expr(l, None))
@@ -474,7 +484,11 @@ impl<'a> Lowerer<'a> {
                             Ty::Int,
                             span,
                         );
-                        let len = if *inclusive { self.int_add(diff, 1) } else { diff };
+                        let len = if *inclusive {
+                            self.int_add(diff, 1)
+                        } else {
+                            diff
+                        };
                         if lo_const == 0 {
                             DimSpec::Int(Box::new(len))
                         } else {
