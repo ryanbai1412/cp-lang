@@ -186,7 +186,9 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 /// ties: not applicable; position decides
 /// traps: never
 /// example: `[4, 5].first == Some(4)`
-@get pub fn first<S: Seq, T>(self: S) -> ?T = todo
+@get pub fn first<S: Seq, T>(self: S) -> ?T:
+    for x in self: return Some(x)
+    None
 
 /// O(1). The last element, `None` when empty. For the last element satisfying a predicate,
 /// use `rfind(p)`.
@@ -950,7 +952,10 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// empty: `r.l`
 /// traps: never
 /// example: `(0..5).mid.r == Some(2)`
-@get pub fn mid<D>(self: Range<D>) -> Cut<D> = todo
+@get pub fn mid<D>(self: Range<D>) -> Cut<D>:
+    if self.is_empty: return self.start
+    let m = self[self.len / 2]
+    (m..m).start
 
 /// O(1). The positions in both ranges.
 ///
@@ -3085,8 +3090,20 @@ pub struct RingSlice<D, T>():
 /// empty: yields nothing
 /// order: left ends ascending, then shorter first
 /// traps: never
-/// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3, 2..3]`
-pub fn valleys<D, T>(self: [D]T) -> yields Range<D> = todo
+/// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3]`
+pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
+    let n = D.K
+    var ends: List<List<Int>> = [[] for _ in 0..n]
+    var st: List<Int> = []
+    for j in 0..n:
+        let x = self[D.nth(j)]
+        while st.len > 0 and self[D.nth(st[st.len - 1])] < x:
+            st.pop()
+            if st.len > 0: ends[st[st.len - 1]].push(j)
+        if st.len > 0 and self[D.nth(st[st.len - 1])] == x: st.pop()
+        st.push(j)
+    for l in 0..n:
+        for r in ends[l]: yield D.nth(l + 1)..D.nth(r)
 
 /// For each position, the widest piece where it is the minimum of `by` (ties: the left one
 /// extends). O(n).
