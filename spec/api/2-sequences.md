@@ -8,8 +8,9 @@ ends, `.first`/`.last` are optional.
 1. **Generators are the only iterator.** `-> yields T`, no `next()`; values
    are pushed into the loop body, so they compile to the hand-written loop.
    `break`/`return` work through them; lockstep is `List(g)`.
-2. **Two capabilities.** `Seq` walks; `Indexed` adds O(1) `s[i]`, `.len`,
-   `.keys`. Adapters keep `Indexed` when they can stay O(1) (slices, `.rev`,
+2. **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has
+   O(1) `.len`; `Bidir` walks backwards; `Indexed` adds O(1) `s[i]` and
+   `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay O(1) (slices, `.rev`,
    `map`, `take`/`drop`, `zip`); `filter`, `take_while` and generators are
    `Seq`.
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
@@ -69,12 +70,16 @@ a.map(f)          # Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
 a.items           # (i, a[i]) pairs with a's own indices
 ```
 
-## The two capabilities
+## The capabilities
 
 | Capability | What it guarantees | Examples |
 |---|---|---|
 | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g[u]` |
-| `Indexed<D, T>` | `Seq` + `s[i]` for `i: D` in O(1), `s.keys: Range<D>`, `s.len` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` |
+| `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.filter(p)`, `s.take_while(p)`, `Map`, `x.enumerate()` |
+| `Sized` | O(1) `s.len` | collections, ranges, `Indexed` views, sets, maps |
+| `Bidir<T>` | `s.rev` walks backwards; `s.last` is O(1) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` |
+| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in O(1), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` |
+| `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices |
 
 **Cost rule.** Views are O(1) to make and allocate nothing. A
 loop over them compiles to the loop you would write by hand. Anything that

@@ -50,12 +50,36 @@ printing. Status: partial (built-in derives check; `T.fields` does not).
 ## W4. Sequences, views and index spaces (P4)
 
 One iteration protocol: anything with `iter` (a generator) is a `Seq` and
-works in `for`, comprehensions and every sequence method (`count`, `first`,
-`sum`, `sort(by:)`). `Sized` adds `.len`; `Indexed<K>` adds `xs[k]`.
+works in `for`, comprehensions and every sequence method. Five more
+capabilities layer on it; each operation asks for the weakest one that
+keeps it at its stated cost (decision 142):
 
-    pub trait Seq<T>:      fn iter(self) -> yields T
-    pub trait Sized:       len: Int                    // property, no parens
-    pub trait Indexed<K, T>: fn at(self, k: K) -> T
+    pub trait Seq<T>:                    fn iter(self) -> yields T          // walk in order
+    pub trait Keyed<K, T>: Seq<T>:       fn items(self) -> yields (K, T)    // each element knows its key
+    pub trait Sized:                     len: Int                           // O(1) length
+    pub trait Bidir<T>: Seq<T>:          fn iter_rev(self) -> yields T      // walk backwards
+    pub trait Indexed<K, T>: Keyed<K, T>, Sized, Bidir<T>:
+        fn at(self, k: K) -> T                                              // O(1) s[k]
+        keys: Range<K>                                                      // contiguous keys
+    pub trait IndexedMut<K, T>: Indexed<K, T>:
+        fn at(mut self, k: K) lends mut T                                   // s[k] is a place
+    pub trait Contains<T>:               fn contains(self, x: T) -> Bool    // `x in s`, sub-linear only
+
+| Needs | Operations |
+|---|---|
+| `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `enumerate()`, `collect()`, `sorted()` |
+| `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys |
+| `Sized` | `.len` |
+| `Bidir` | `.rev`, `.last` as an O(1) property |
+| `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip` |
+| `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment |
+| `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` |
+
+Generators are `Seq` only: a yield number is not an identity, so
+`dfs(s).argmax()` is an error suggesting `.enumerate()` or `.max()`.
+`.enumerate()` makes any `Seq` `Keyed` by an `Int` counter. Sortedness is a
+precondition checked in debug builds, not a trait. `Map` is `Keyed`,
+`Sized` and `Contains` with its own `[]`; there is no `Lookup` trait.
 
 Every value is owned or lent (read or `mut`); the mode is not part of the
 type. Five rules, with no lifetime annotations (decision 141):
@@ -89,6 +113,14 @@ stubs need nothing more:
         fn iter(self) -> yields T =
             for x in self.src:
                 if self.keep(x): yield x
+    impl Keyed<K, T> for Filter<S: Keyed<K, T>, P: T -> Bool>:
+        fn items(self) -> yields (K, T) =       // keys survive filtering
+            for (k, x) in self.src.items():
+                if self.keep(x): yield (k, x)
+    impl Bidir<T> for Filter<S: Bidir<T>, P: T -> Bool>:
+        fn iter_rev(self) -> yields T =
+            for x in self.src.rev:
+                if self.keep(x): yield x
     pub fn filter<S: Seq<T>, T, P: T -> Bool>(self: S, keep: P) lends Filter<S, P> =
         Filter(self, keep)
     fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]
@@ -97,7 +129,10 @@ stubs need nothing more:
 A `for` over a generator pastes its body at the loop and each `yield x`
 becomes the loop body, so `for y in a.filter(p).map(f): b(y)` is
 `for x in a: if p(x): b(f(x))`, and `break`, `continue` and `return` act on
-that one loop. Recursive generators pass the body as a closure that
+that one loop. An adapter implements each capability it can keep O(1):
+`Filter` keeps `Keyed` and `Bidir` but not `Sized` or `Indexed`, so
+`a.filter(p).argmax()` walks `a.items()` once and answers with a key of `a`.
+Recursive generators pass the body as a closure that
 returns continue or stop. `Slice`, `Rev`, `Map`, `Filter`, `TakeWhile` and
 `Chain` are each a few lines like this, with no stdlib privilege.
 

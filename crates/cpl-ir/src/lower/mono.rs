@@ -1454,7 +1454,7 @@ impl<'a> Lowerer<'a> {
                     let elem_ty = decl.bounds.iter().find_map(|b| {
                         let is_seq_bound = b.traits.iter().any(|tr| {
                             matches!(&tr.kind, ast::TypeKind::Named { name, .. }
-                                if matches!(name.text.as_str(), "Seq" | "Indexed" | "IndexedMut"))
+                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut"))
                         });
                         if !is_seq_bound {
                             return None;
@@ -1709,8 +1709,8 @@ impl<'a> Lowerer<'a> {
                     continue;
                 };
                 let ok = match tr_name.text.as_str() {
-                    "Seq" => ty.is_seq(),
-                    "Indexed" => ty.is_indexed(),
+                    "Seq" | "Keyed" | "Sized" => ty.is_seq(),
+                    "Indexed" | "Bidir" => ty.is_indexed(),
                     "IndexedMut" => ty.is_indexed_mut(),
                     name => self.implements(ty, name),
                 };

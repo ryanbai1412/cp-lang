@@ -579,13 +579,13 @@ fn pairs_and_with_prev_yield_neighbours() = todo
 fn cyclic_pairs_close_the_ring() = todo
 
 /// The index of the first largest value (optionally under key `by:`), or `none` when empty:
-/// `[3, 9, 2, 9].argmax` is `some(1)` and `words.argmax(by: w => w.len)` is the index of the
-/// longest word. It is an index of `self`, so `a[a.argmax!]` is the largest value of a
-/// `List<T>`, a `[1..=n]T` or a `[V]T` alike. O(n).
-pub fn argmax<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
+/// `[3, 9, 2, 9].argmax()` is `some(1)` and `words.argmax(by: w => w.len)` is the index of the
+/// longest word. It is an index of `self`, so `a[a.argmax()!]` is the largest value of a
+/// `List<T>`, a `[1..=n]T`, a `[V]T` or a filtered view of one alike. O(n).
+pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 
 /// The index of the first smallest value (optionally under key `by:`), or `none` when empty. O(n).
-pub fn argmin<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
+pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 
 @test
 fn argmax_and_argmin_give_the_first_best_index() = todo

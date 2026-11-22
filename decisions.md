@@ -4281,3 +4281,22 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   error was dropped by Ryan in favour of a lint.
 - **Reverse.** Restore `lends S` on view structs, or make the second walk of
   a `mut`-lent value an error (walk-once).
+
+## 142. Six sequence capabilities (2026-11-21)
+
+- **Decision.** `Seq` (walk), `Keyed` (walk `(key, x)`), `Sized` (O(1)
+  `.len`), `Bidir` (walk backwards), `Indexed` (O(1) `s[k]`, contiguous
+  `keys`; implies the three before it) and `IndexedMut` (`s[k]` is a
+  place), plus `Contains` for `x in s` on sub-linear lookups only. Each
+  operation asks for the weakest one that keeps its cost: `find` and
+  `argmax` need `Keyed`, `sorted()` needs `Seq`, `sort()` needs
+  `IndexedMut`. Adapters implement each capability they keep O(1), so
+  `Filter` has `Seq`, `Keyed` and `Bidir` impls. Generators are `Seq` only;
+  `.enumerate()` makes any `Seq` `Keyed` by a counter. `Bidir` avoids a
+  clash with `std.algebra`'s `Reversible` (fold values read backwards).
+- **Why.** Ryan: "argmax just wants smth that has the concept of having
+  keys ... `.find` clearly doesn't need random access". With identity keys,
+  `a.filter(p).argmax()` answers with a key of `a`. He preferred three
+  impls per adapter in library code over keying every sequence.
+- **Reverse.** Fold `Keyed` into `Seq` (generators keyed by yield number),
+  or stop adapters forwarding `Bidir`.
