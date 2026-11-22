@@ -1217,8 +1217,8 @@ below has been measured.
 `proto/cpc/` (the Python compiler, see `agent-context.md`) implements the
 rules a user meets, so they can be tried against the corpus before the
 Rust checker is written. The checker lives in `proto/cpc/lends.py`; the
-tests are `proto/tests/lend/` (programs that run and print) and
-`proto/tests/bad/` (programs that must be rejected, each with the error
+tests are `crates/cpl-cli/tests/cases/lend/` (programs that run and print) and
+`crates/cpl-cli/tests/cases/bad/` (programs that must be rejected, each with the error
 text it must produce on its first line). `proto/run_all.sh` runs both
 after the 30 ports.
 
@@ -1349,5 +1349,5 @@ build; `Int.MIN / -1` is `Int.MAX`, since `Int` is symmetric, and only
 the pattern `-2^63`, which is not an `Int`, stops when divided by `-1`. Arithmetic the checker could not bound stops a
 local build on overflow (`-DLOCAL`, which `cp run` and the test suites
 use) and is the plain operator on a judge. A domain's length is computed
-in 128 bits and capped at 2^31 - 1. `proto/tests/redteam/` holds one
+in 128 bits and capped at 2^31 - 1. `crates/cpl-cli/tests/cases/redteam/` holds one
 program per case of 5.6 that runs, each built under ASan and UBSan.

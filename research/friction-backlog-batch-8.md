@@ -55,7 +55,7 @@ that names an earlier `let` is used by the generator and checked by local
 runs, the same as a constant bound. 1 of 11 here; `1 <= k <= n` is on the
 first line of most statements.
 
-*Fixed.* This was K3 of batch 5 again and `722c0ea` covers it: at `91fb701` the generator draws `k` from `1..=n` and a local run stops on `5 9` with "input out of declared range". Locked by `proto/tests/gen/bound_names_input.cp`.
+*Fixed.* This was K3 of batch 5 again and `722c0ea` covers it: at `91fb701` the generator draws `k` from `1..=n` and a local run stops on `5 9` with "input out of declared range". Locked by `crates/cpl-cli/tests/cases/gen/bound_names_input.cp`.
 
 ## H2. `f<P>(x)` is read as two comparisons (fixed in Stage-2 sprint #2; noip14p6)
 
@@ -75,7 +75,7 @@ arguments`. Proposal: parse `f::<T>(...)`; reject `f<P>(x)` with a hint
 when `f` is a generic function; infer a parameter that appears inside
 `List<Mod<M>>`.
 
-*Fixed.* The silent misreading is gone: naming a generic function anywhere but in a call is a compile error that says `f<P>(x)` would be two comparisons (`proto/tests/bad/generic_angle_call.cp`). A way to write the type argument (`f::<P>(x)`, decision 2.13) is not in the prototype yet and is left to the language pass over all backlogs.
+*Fixed.* The silent misreading is gone: naming a generic function anywhere but in a call is a compile error that says `f<P>(x)` would be two comparisons (`crates/cpl-cli/tests/cases/bad/generic_angle_call.cp`). A way to write the type argument (`f::<P>(x)`, decision 2.13) is not in the prototype yet and is left to the language pass over all backlogs.
 
 ## H3. Ports still cannot use the standard library (3 of 11; batch 1 F1)
 
@@ -384,7 +384,7 @@ bound silently chases the list it fills is the kind of 1% case the borrow
 rules exist to stop: `out` is being read by the range and changed by the
 body.
 
-*Fixed.* `proto/cpc` now reads the end of a range once, before the first step, as `proto/cpi` does (decision 15.2): the loop above stops at the length the list had when it started. Locked by `proto/tests/redteam/range_end_once.cp`.
+*Fixed.* `proto/cpc` now reads the end of a range once, before the first step, as `proto/cpi` does (decision 15.2): the loop above stops at the length the list had when it started. Locked by `crates/cpl-cli/tests/cases/redteam/range_end_once.cp`.
 
 ## H18. Appending one list to another (cco19p3, dpy)
 

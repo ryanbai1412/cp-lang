@@ -49,8 +49,8 @@ const PENDING: &[&str] = &[
     "proto/ports/ccc21s4.cp",
     "proto/ports/ioi05p6.cp",
     "proto/ports/noi16p4.cp",
-    "proto/tests/ergo/compound_div.cp",
-    "proto/tests/ergo/library.cp",
+    "crates/cpl-cli/tests/cases/ergo/compound_div.cp",
+    "crates/cpl-cli/tests/cases/ergo/library.cp",
 ];
 
 /// Files the checker takes and lowering does not: until `cpl check` ran
@@ -70,22 +70,22 @@ const NOT_BUILT: &[&str] = &[
     "proto/ports/mccc4j5.cp",
     "proto/ports/nccc10s2.cp",
     "proto/ports/noi01p5.cp",
-    "proto/tests/ergo/columns.cp",
-    "proto/tests/ergo/counter.cp",
-    "proto/tests/ergo/moves.cp",
-    "proto/tests/ergo/ranges.cp",
-    "proto/tests/ergo/sugar.cp",
-    "proto/tests/fn/invariant.cp",
-    "proto/tests/lend/grid_rows.cp",
-    "proto/tests/lend/projection.cp",
-    "proto/tests/lend/slices.cp",
-    "proto/tests/ok/at1.cp",
-    "proto/tests/ok/do2.cp",
-    "proto/tests/ok/implicit_gen.cp",
-    "proto/tests/ok/subset2.cp",
-    "proto/tests/redteam/empty_slice_reduce.cp",
-    "proto/tests/redteam/hashmap_sentinel.cp",
-    "proto/tests/redteam/list_expr_once.cp",
+    "crates/cpl-cli/tests/cases/ergo/columns.cp",
+    "crates/cpl-cli/tests/cases/ergo/counter.cp",
+    "crates/cpl-cli/tests/cases/ergo/moves.cp",
+    "crates/cpl-cli/tests/cases/ergo/ranges.cp",
+    "crates/cpl-cli/tests/cases/ergo/sugar.cp",
+    "crates/cpl-cli/tests/cases/fn/invariant.cp",
+    "crates/cpl-cli/tests/cases/lend/grid_rows.cp",
+    "crates/cpl-cli/tests/cases/lend/projection.cp",
+    "crates/cpl-cli/tests/cases/lend/slices.cp",
+    "crates/cpl-cli/tests/cases/ok/at1.cp",
+    "crates/cpl-cli/tests/cases/ok/do2.cp",
+    "crates/cpl-cli/tests/cases/ok/implicit_gen.cp",
+    "crates/cpl-cli/tests/cases/ok/subset2.cp",
+    "crates/cpl-cli/tests/cases/redteam/empty_slice_reduce.cp",
+    "crates/cpl-cli/tests/cases/redteam/hashmap_sentinel.cp",
+    "crates/cpl-cli/tests/cases/redteam/list_expr_once.cp",
 ];
 
 #[test]
@@ -100,11 +100,11 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         ("examples/local-lib", true),
         ("proto/ports", false),
         ("proto/ports/hillclimb_dp_graph", false),
-        ("proto/tests/lend", false),
-        ("proto/tests/ergo", false),
-        ("proto/tests/ok", false),
-        ("proto/tests/fn", false),
-        ("proto/tests/redteam", false),
+        ("crates/cpl-cli/tests/cases/lend", false),
+        ("crates/cpl-cli/tests/cases/ergo", false),
+        ("crates/cpl-cli/tests/cases/ok", false),
+        ("crates/cpl-cli/tests/cases/fn", false),
+        ("crates/cpl-cli/tests/cases/redteam", false),
     ] {
         for path in sources(dir, nested) {
             checked += 1;
@@ -172,7 +172,7 @@ fn stated_reason(text: &str) -> Option<&str> {
 fn each_failing_test_is_rejected_for_its_stated_reason() {
     let mut wrong = Vec::new();
     let mut cases = 0;
-    for path in sources("proto/tests/bad", false) {
+    for path in sources("crates/cpl-cli/tests/cases/bad", false) {
         let text = std::fs::read_to_string(&path).unwrap();
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         let Some(reason) = stated_reason(&text) else {

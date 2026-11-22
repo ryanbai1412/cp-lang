@@ -279,7 +279,7 @@ counting into a map with `+=`; `ask(...)` for interactive problems.
 
 Third round: `read(alphabet: "...")` and `where` on a word read; a fix
 that made `x /= b` and `x %= b` Euclidean like `/` and `%`; and a fix for a
-compiler crash on two effects in one expression. `proto/tests/ergo/`
+compiler crash on two effects in one expression. `crates/cpl-cli/tests/cases/ergo/`
 (`compound_div`, `effects_first`) pins them. `Dsu`, `bfs` and `subsets`,
 which this round also needed, came from the scout sprint's library.
 

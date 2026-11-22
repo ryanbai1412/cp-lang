@@ -123,7 +123,7 @@ nothing about code that already has an error.
 To try it:
 
 ```
-$ cargo run -q -p cpl-cli -- check proto/tests/bad/wrong_domain.cp
+$ cargo run -q -p cpl-cli -- check crates/cpl-cli/tests/cases/bad/wrong_domain.cp
 $ cargo test --release -p cpl-lsp --test latency -- --nocapture
 ```
 
@@ -157,7 +157,7 @@ what the libraries are written in:
 `crates/cpl-cli/tests/corpus.rs` holds this to the source in the
 repository: `stdlib/`, `examples/local-lib/`, the ports in `proto/ports/`
 and `proto/ports/hillclimb_dp_graph/`, and the prototype's passing tests
-check with no diagnostics, and each file in `proto/tests/bad/` is
+check with no diagnostics, and each file in `crates/cpl-cli/tests/cases/bad/` is
 rejected for the reason its first line states. The sketches in
 `proto/ports/scout_batch_*/` are left out: they are written in syntax the
 language does not have yet. `main` moves quickly, so that file also names

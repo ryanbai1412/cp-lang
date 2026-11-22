@@ -410,16 +410,16 @@ Execute in strict priority order on the prototype (`proto/cpc/`, `proto/cpi/`, `
 
 ### Priority 0 — Correctness, Compiler-Trust, Sheet-vs-Prototype Parity & False-OK Fixes (`proto/cpc/`, `proto/cpi/`, `proto/cp.py`)
 
-- [ ] **P0.0 First-page cheat-sheet parity & CI gate (`proto/cpc/`, `proto/tests/` — Blind Critic 3 Top Fix #1 & #2):**
+- [ ] **P0.0 First-page cheat-sheet parity & CI gate (`proto/cpc/`, `crates/cpl-cli/tests/cases/` — Blind Critic 3 Top Fix #1 & #2):**
   - [ ] Fix **tuple `read()`** (`let (n, m): (Int, Int) = read()`), **string interpolation** (`print("{a} {b}")` — currently silently prints literal braces!), and **`for ch in s`** over `Str` (Errors 1–5 & 23 in Blind Critic 3).
   - [ ] Make anonymous range arrays **`[0..n]T` / `[0..=n]T` structural** across function boundaries (fixing `expected [range]Int, got [range]Int` in `cmt21r1xym` and `aac5p5`), and support **`a.fill(x)`** (incl. `seen.fill(none)`) + **`ans min= opt`** when RHS is `?T` + **`MinHeap.is_empty`** + **`sort(mut xs, by: ...)`**.
-  - [ ] Extract every fenced block from `docs/one-page-cheat-sheet.md` into `proto/tests/` and gate CI on compiling them so sheet and prototype never diverge again.
+  - [ ] Extract every fenced block from `docs/one-page-cheat-sheet.md` into `crates/cpl-cli/tests/cases/` and gate CI on compiling them so sheet and prototype never diverge again.
 - [ ] **P0.1 Remove `using namespace std;` in `proto/cpc/runtime.hpp` & `compiler.py`:** Qualify `std::` explicitly so user names (`extent`, `rank`, `norm`, `count`, `next`, `left`, `right`, `move`) never clash with C++ headers (`P1`, `B19-8`).
 - [ ] **P0.2 Fix 64-bit shift literal codegen & `var t = s` value semantics (`proto/cpc/compiler.py`, `proto/cpi/`):**
   - [ ] Emit `1LL << k` / `cp_shl` on all integer shifts so `1 << 32` is never 32-bit UB (`W5`, `btoi19p2`).
   - [ ] Fix `var t = s` silent aliasing on `Str` and `List` in `proto/cpi/` (`X4`, Batch 22) and add a regression test to `proto/cpi/checks_test.py` ensuring mutating `t[0]` never mutates `let s`.
 - [ ] **P0.3 Lock coherent `?T` & `Mod<P>` ordering (`proto/cpc/compiler.py`, `runtime.hpp`):** Revert `Opt<T>::operator<` from `6f113c3`; emit `operator<` on structs/records/tuples ONLY when every field implements `Ord` (never `?T`, never `Mod<P>` — fixing `List<(Int, Z, Int)>` in Blind Critic 3); reject `MinHeap<?T>` / `sort(List<?T>)` cleanly with a help message showing `by: x => (x == none, x ?? 0)` (`16.9`).
-- [ ] **P0.4 Implement parallel tuple assignment `(a, b) = (x, y)` (`proto/cpc/compiler.py`):** Evaluate all RHS expressions into temporaries before assigning to distinct mutable LHS places; reject duplicate/non-disjoint LHS places (`16.9`, `W6`, updates `proto/tests/bad/tuple_assign.cp`).
+- [ ] **P0.4 Implement parallel tuple assignment `(a, b) = (x, y)` (`proto/cpc/compiler.py`):** Evaluate all RHS expressions into temporaries before assigning to distinct mutable LHS places; reject duplicate/non-disjoint LHS places (`16.9`, `W6`, updates `crates/cpl-cli/tests/cases/bad/tuple_assign.cp`).
 - [ ] **P0.5 Fix remaining silent-WA prototype bugs (`proto/cpc/compiler.py`):**
   - [ ] Rename `first_where`/`last_where` to free-fn `bsearch_first`/`bsearch_last`/`bsearch_first_some` with debug monotonicity checks (`9-T12`, Fork 5).
   - [ ] Fix `read()` inside a top-level `while` loop swallowing subsequent statements (`P3`).

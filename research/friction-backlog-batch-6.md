@@ -67,7 +67,7 @@ Today the read is moved into a function of its own (`read_tile`).
 Proposal: a domain introduced by a `read` ends with the block it is
 declared in, in a function as at the top level.
 
-*Fixed.* In a function, as at the top level, the input a loop reads ends where the outermost loop ends. Locked by `proto/tests/redteam/multitest_word_loop.cp`.
+*Fixed.* In a function, as at the top level, the input a loop reads ends where the outermost loop ends. Locked by `crates/cpl-cli/tests/cases/redteam/multitest_word_loop.cp`.
 
 ### S2. `compress` of a list expression crashes (fixed in Stage-2 sprint #2; dmopc20c4p3)
 
@@ -90,7 +90,7 @@ let (X, col) = compress(xs)
 Proposal: evaluate the argument once. Worth a sweep of the other builtins
 that take a list: `sort`, `sorted`, `runs`, `counts`, `prefix`.
 
-*Fixed.* `compress` evaluates its argument once. The other builtins that take a list (`sorted`, `x in [...]`, `sorted(..., by:)`) were checked with a list expression under ASan and already did. Locked by `proto/tests/redteam/list_expr_once.cp`.
+*Fixed.* `compress` evaluates its argument once. The other builtins that take a list (`sorted`, `x in [...]`, `sorted(..., by:)`) were checked with a list expression under ASan and already did. Locked by `crates/cpl-cli/tests/cases/redteam/list_expr_once.cp`.
 
 ### S3. `MinHeap<T>(by: ...)` takes the argument and ignores it (fixed in Stage-2 sprint #2; probe for dmopc20c7p1)
 
@@ -109,7 +109,7 @@ expression generic`. Proposal: until S11 lands, any argument to `MinHeap`
 is a compile error that names the negated key as the way to get a
 max-heap today.
 
-*Fixed.* Any argument to `MinHeap<T>()` is a compile error that names the negated key (`proto/tests/bad/minheap_by.cp`). `MaxHeap` waits for S11.
+*Fixed.* Any argument to `MinHeap<T>()` is a compile error that names the negated key (`crates/cpl-cli/tests/cases/bad/minheap_by.cp`). `MaxHeap` waits for S11.
 
 ## What the stress generator can be told
 
@@ -171,7 +171,7 @@ stations))` fails the same way. Today the table is declared with a value
 and filled by a loop. Proposal: a table generator takes its element type
 from the declaration, and `rand(lo, hi)` has the type `lo..=hi`.
 
-*Fixed.* A table generator takes its element type from the declaration, and a table whose elements are stored at another width is copied across where it is assigned. Locked by `proto/tests/redteam/rand_table_narrow.cp`. `rand(lo, hi)` still has the type `Int`.
+*Fixed.* A table generator takes its element type from the declaration, and a table whose elements are stored at another width is copied across where it is assigned. Locked by `crates/cpl-cli/tests/cases/redteam/rand_table_narrow.cp`. `rand(lo, hi)` still has the type `Int`.
 
 ## Language and prelude
 

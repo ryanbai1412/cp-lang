@@ -63,7 +63,7 @@ ccc19s5) and `prefix(a)` over an `Int` array (used as is by ccc22s4).
 
 ### F18. A compound assignment on a missing map key (bug; ioi11p2)
 
-**Resolved.** A missing key starts from the identity of the operation (`min=` / `max=` store the value); an operation without one is a compile error. `decisions.md` §12, `proto/tests/ergo/mapfold.cp`, `proto/tests/bad/map_fold_*.cp`; `proto/cpi` follows the same rule.
+**Resolved.** A missing key starts from the identity of the operation (`min=` / `max=` store the value); an operation without one is a compile error. `decisions.md` §12, `crates/cpl-cli/tests/cases/ergo/mapfold.cp`, `crates/cpl-cli/tests/cases/bad/map_fold_*.cp`; `proto/cpi` follows the same rule.
 
 *Checked.* This prints `0 0 2`:
 

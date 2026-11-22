@@ -19,8 +19,8 @@ in the ports, not yet changed).
 
 Eleven ports were rewritten. All 30 still agree with their original C++
 under `proto/run_all.sh`, and the new vocabulary is locked by
-`proto/tests/ergo/`, `proto/tests/lend/writeback.cp` and six new
-`proto/tests/bad/` programs.
+`crates/cpl-cli/tests/cases/ergo/`, `crates/cpl-cli/tests/cases/lend/writeback.cp` and six new
+`crates/cpl-cli/tests/cases/bad/` programs.
 
 ## The two files that started it
 
@@ -170,7 +170,7 @@ may go negative, which is what makes the `missing` counter of `ccc20s3`
 work: "the needle minus the window" is zero everywhere exactly when the
 window is a rearrangement.
 
-`Counter` is not compiler magic, and `proto/tests/lend/writeback.cp`
+`Counter` is not compiler magic, and `crates/cpl-cli/tests/cases/lend/writeback.cp`
 proves it by writing one in `.cp`:
 
 ```cp

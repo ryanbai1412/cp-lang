@@ -274,7 +274,7 @@ confirmed by Ryan yet; each is small and local to change.
 
 A read of all 30 ports as code (`research/ergonomics-audit.md`) changed
 the prototype in the ways below. They are implemented in `proto/cpc/`,
-eleven ports use them, and `proto/tests/ergo/` locks them. None is
+eleven ports use them, and `crates/cpl-cli/tests/cases/ergo/` locks them. None is
 confirmed by Ryan yet, so each is **Leaning**. Per the rules at the top of
 this file, each says what is library code and what is not.
 
@@ -299,7 +299,7 @@ this file, each says what is library code and what is not.
   now prototyped. It is what lets a container keep a derived value right
   on every write.
 - **`Counter<K>` and `counts(xs)`.** A library struct whose `at` is a
-  projection with a write-back; `proto/tests/lend/writeback.cp` is that
+  projection with a write-back; `crates/cpl-cli/tests/cases/lend/writeback.cp` is that
   struct in `.cp`. The prototype compiles it in, as it does `SegTree`.
 - **`prefix(a)` with `pre.sum(range)` / `pre.sum(rows, cols)`.** A library
   struct over `[I.bounds]T`, compiled in for the same reason.
@@ -379,8 +379,8 @@ prefix and suffix pass (a `reroot` combinator is the next candidate).
 The first scout batch (`research/friction-backlog.md`) re-solved ten
 corpus problems and listed what the prototype made awkward. The changes
 below are implemented in `proto/cpc/`, eight of the ten sketches now pass
-against their originals as ports, and `proto/tests/ergo/` and
-`proto/tests/bad/` lock them. None is confirmed by Ryan yet, so each is
+against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
+`crates/cpl-cli/tests/cases/bad/` lock them. None is confirmed by Ryan yet, so each is
 **Leaning**, and each says what is library code and what is not.
 
 - **A compound assignment on a missing map key starts from the identity
@@ -507,7 +507,7 @@ not state, these calls were made. None is confirmed by Ryan yet.
 ## 15. Calls made fixing the prototype bugs of scout batches 5 to 12 (2026-11-20)
 
 Bug fixes only: no syntax was added. Each rule below is the reading the
-scouts expected and is locked by a test under `proto/tests/`.
+scouts expected and is locked by a test under `crates/cpl-cli/tests/cases/`.
 
 - **15.1 `print` evaluates all its arguments before it writes.**
   Arguments are evaluated left to right, and nothing is written
@@ -1195,7 +1195,7 @@ statements, run top to bottom. Neither needs a `fn solve()` wrapper.
   per group, a sentinel) still write a plain `for _ in 0..tests:` or `read_until` loop.
 
 - **20.6 Prototype status.** `proto/cpc` and `proto/cpi` implement 20.1 to 20.3 and 20.5's errors;
-  `proto/tests/program/` holds the cases, run by both. The prototype still compiles the older
+  `crates/cpl-cli/tests/cases/program/` holds the cases, run by both. The prototype still compiles the older
   `@multitest fn solve():` wrapper and the bare `@multitest` divider, so existing ports keep building until
   they are migrated; both should then become errors that point to `@!multitest`. `@spec` and
   `@checker` are not implemented in the prototype, so 20.4 is specified here and not yet tested.

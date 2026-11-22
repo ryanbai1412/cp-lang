@@ -362,10 +362,10 @@ Everything below is the **remaining delta** ordered strictly by bug severity and
   - [ ] Fix `<=` / `>=` codegen on structs/tuples/records (Batch 28 `D5` `g++` failure), and emit `operator<` ONLY when every field is `Ord` (never `?T`, never `Mod<P>`, `16.9`).
   - [ ] Fix `proto/cpi` value-semantics aliasing on `var t = s` for `Str`, `List`, and `[D]T` (`X4`, `O5`), and fix `[D]T = expr` (any `T` expression, independent clones per slot, reject `[Small]Int = [2, 3, 5]`, `O6`, `C9`, Batch 23 §7.1).
   - [ ] Fix `proto/cpi` `Int` read/parse overflow check (`18446744073709551615` silently accepted as `Int`, `X9`) and `List.pop() -> ?T` (currently traps on empty, `HG8`, `O11`).
-- [ ] **P0.2 First-page cheat-sheet parity & CI gate (`proto/cpc/`, `proto/tests/`):**
+- [ ] **P0.2 First-page cheat-sheet parity & CI gate (`proto/cpc/`, `crates/cpl-cli/tests/cases/`):**
   - [ ] Fix tuple/record `read()`, string interpolation `"{a} {b}"` and `"{x:.6f}"` (in both `proto/cpc` and `proto/cpi`, fixing `E1`, `K8`, Batch 23 §5), structural `[0..n]T` / `[0..=n]T` unification across functions (`D3`, Batch 30 §1.1), `a.fill(x)`, `print(xs)` space-separated + `print(v)` domain labels, and `for ... if` / `while let ... and` / chained `if let` expressions (`C2`, `38.4`, Batch 37 §2, Batch 41 §2).
   - [ ] Fix lexer crash on labeled loops `'outer: for ...` (`proto/cpc/lexer.py`, Batch 39 §3), `Set.add` / `MinHeap.len` / `MinHeap.is_empty` / `Map.items` naming drift, and `Map<(Int, Int), V>()` generic tuple parsing (`UD12`).
-  - [ ] Extract every fenced snippet in `docs/one-page-cheat-sheet.md` into `proto/tests/` and gate CI on compiling them.
+  - [ ] Extract every fenced snippet in `docs/one-page-cheat-sheet.md` into `crates/cpl-cli/tests/cases/` and gate CI on compiling them.
 - [ ] **P0.3 Lock v2.1 core semantics (`proto/cpc/`, `proto/cpi/`):**
   - [ ] Implement **Tropical Optional Rule (U1)**: `none`-absorbing `+`/`-`/`+=`/`-=`/unary `-`/`sum` on `?Int`/`?F64`, compile error on unparenthesized `??` mixed with arithmetic, `min`/`max`/`min=`/`max=` skipping `none` on `?T` and `T` targets (incl. `min(gen)`/`max(gen)` over `?T`), and `?T == T` / `?T != T` lifting.
   - [ ] Implement **borrow & evaluation rules (U4, U6)**: `for mut x in xs:`, immediate `Copy` element release before calls (`merge_heap(hrc[u], v)`), RHS-before-LHS-place evaluation (`nodes[u].l = merge(nodes[u].l, b)`), parallel tuple assignment `(a, b) = (x, y)`, block-scoped `defer` (per loop iteration), and bare top-level `return`.

@@ -128,7 +128,7 @@ Worse, after I worked around the crash by renaming `SegTree` to `MaxTree`, `prot
 
 The compiler unconditionally synthesizes `operator<` on every user `struct` via `std::tie` over all fields, even when the struct is never ordered, and `Opt<T>` does not implement `operator<`. Putting `?Int` or `List<?Int>` inside any user `struct` breaks C++ compilation—directly punishing the exact sentinel-free `?Int` idiom the docs tell users to adopt.
 
-*Fixed (prototype bug pass).* A `struct` or `enum` the program declares takes its name from there on, so `struct SegTree:` and `struct Dsu:` build, and a built-in type written without its type arguments is a compile error instead of a Python exception. `?T` has `operator<` where `T` does (none first), and a record only gets one when all its fields do, lists included, so a record with a `?Int` or `List<?Int>` field builds, sorts and goes in a `MinHeap` (decisions 15.10 and 15.11; `proto/tests/redteam/struct_named_builtin.cp`, `optional_order.cp`).
+*Fixed (prototype bug pass).* A `struct` or `enum` the program declares takes its name from there on, so `struct SegTree:` and `struct Dsu:` build, and a built-in type written without its type arguments is a compile error instead of a Python exception. `?T` has `operator<` where `T` does (none first), and a record only gets one when all its fields do, lists included, so a record with a `?Int` or `List<?Int>` field builds, sorts and goes in a `MinHeap` (decisions 15.10 and 15.11; `crates/cpl-cli/tests/cases/redteam/struct_named_builtin.cp`, `optional_order.cp`).
 
 ### 4. `Map` and `Set` Lack Ordered Predecessor/Successor Queries and Documentation (`3540475`) — High
 

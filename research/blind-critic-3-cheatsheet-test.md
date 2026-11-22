@@ -192,7 +192,7 @@ Errors are in the order hit, one build at a time, quoted from `python3 proto/cp.
 **1. Make the sheet's first page compile on the prototype, and gate it in CI.** Tuple read
 (`let (n, m): (Int, Int) = read()`) and string interpolation (`print("{a} {b}")`) are the first
 two things a contestant types, and they were errors 1 to 5. Worse, interpolation fails silently
-by printing the braces. Extract every fenced block from the sheet into `proto/tests/` and build
+by printing the braces. Extract every fenced block from the sheet into `crates/cpl-cli/tests/cases/` and build
 it; anything that cannot be built yet gets a visible "(planned)" mark on the sheet. Today a
 reader cannot tell which third of the sheet is real.
 
