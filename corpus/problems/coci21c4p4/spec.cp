@@ -31,7 +31,7 @@ fn centres(limit: Int) -> List<V>:
 
 let best = (0..=200_000_000_000_000).first_true(x => centres(x).len <= k)!
 let chosen = centres(best)
-let picked = chosen.tally()
-let spare = V.filter(v => v not in picked).take(k - chosen.len)
+let picked = V.mask(chosen)
+let spare = V.filter(v => not picked[v]).take(k - chosen.len)
 print(best)
 print(chain(chosen, spare))

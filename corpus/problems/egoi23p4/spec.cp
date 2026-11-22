@@ -5,7 +5,6 @@
 // maximum spanning forest of the candidates.
 let (n, k) = read<(1..=500, 1..=1_000_000_000)>()
 domain V = [n]
-domain Pair = (V, V)
 fn read_triangle(flip: Bool) -> [V, V]?Int:
     var m: [V, V]?Int = none
     for i in V:
@@ -16,25 +15,28 @@ fn read_triangle(flip: Bool) -> [V, V]?Int:
     m
 let narrow = read_triangle(true)
 let wide = read_triangle(false)
-let widest = Semiring(max, min)
-let narrowest = Semiring(min, max)
 fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
     var c = d.clone()
     floyd_warshall(mut c, over: over)
-    Pair.all(p => p.0 == p.1 or c[p] == want[p])
-fn fits(p: Pair) -> Bool = (wide[p] ?? -1) >= (narrow[p] ?? inf)
-let try_wide: [V, V]?Int = [Pair] p => if fits(p): wide[p] else: none
-let try_narrow: [V, V]?Int = [Pair] p => if fits(p): narrow[p] else: none
+    V.all(u => V.all(v => u == v or c[u, v] == want[u, v]))
+var try_wide: [V, V]?Int = none
+var try_narrow: [V, V]?Int = none
+var edges: List<(u: V, v: V, w: Int)> = []
+for u in V:
+    for v in ..u:
+        if (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf):
+            (try_wide[u, v], try_wide[v, u]) = (wide[u, v], wide[u, v])
+            (try_narrow[u, v], try_narrow[v, u]) = (narrow[u, v], narrow[u, v])
+            edges.push((u: u, v: v, w: wide[u, v]!))
+            edges.push((u: u, v: v, w: narrow[u, v]!))
+let widest = Semiring(max, min)
+let narrowest = Semiring(min, max)
 if not (closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow)
         and closes_to(try_wide, widest, wide) and closes_to(try_narrow, narrowest, narrow)):
     print("NO")
 else:
-    var edges: List<(u: V, v: V, w: Int)> = []
-    for (u, v) in Pair if u > v and fits((u, v)):
-        edges.push((u: u, v: v, w: wide[u, v]!))
-        edges.push((u: u, v: v, w: narrow[u, v]!))
     let low = kruskal(edges).take
-    let high = kruskal(edges.map(e => (u: e.u, v: e.v, w: -e.w)).collect()).take
+    let high = kruskal(edges, by: e => desc(e.w)).take
     let keep = edges.keys.filter(e => low[e] or high[e]).collect()
     print(keep.len)
     for e in keep:

@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/egoi23p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_38/egoi23p4.cp",
    "proto/ports/scout_batch_38/today/egoi23p4.cp"
@@ -21,7 +24,7 @@
   "kruskal"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "floyd_warshall(over: Semiring(max, min)); [Pair]T indexing (checker gap)"
 }

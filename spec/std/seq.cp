@@ -670,13 +670,17 @@ pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice
 /// Pieces between elements where `sep` holds; separators excluded, empty pieces kept. O(n).
 pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
 
+/// Which end of a piece a two-pointer result is keyed by.
+pub enum Anchor: start, end
+
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
-/// `state: Track`. `ok` must be monotone under shrinking. O(n) amortized.
-pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool) -> [D]Slice<[D]T> = todo
+/// `state: Track`. `ok` must be monotone under shrinking. `anchor: Anchor.start` keys by left
+/// end instead: the longest piece starting at each position, as greedy jumps want. O(n) amortized.
+pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.end) -> [D]Slice<[D]T> = todo
 
 /// For each right end, the shortest piece ending there that is `ok`, or none, keyed by that
-/// end like the ring forms. O(n) amortized.
-pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool) -> [D]?Slice<[D]T> = todo
+/// end like the ring forms; `anchor: Anchor.start` keys by left end. O(n) amortized.
+pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.end) -> [D]?Slice<[D]T> = todo
 
 /// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
 /// element is still a position of `a`. Replaces doubling the array.

@@ -4570,3 +4570,14 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   Decision 3.x already spelled adjacent pairs `xs.adjacent`. `combinations(k)` stays for k > 2.
 - **Reverse.** Rename `adjacent` back to `pairs` and drop the all-pairs `pairs()` in
   `spec/std/seq.cp`, the prelude and chapters 07 and sequence-patterns.
+
+## 155. Two-pointer results can be keyed by the left end (2026-11-21)
+
+- **Decision.** `maximal` and `minimal` take `anchor: Anchor = Anchor.end`; `Anchor.start`
+  returns the longest (shortest) piece starting at each position from the same O(n) pass.
+- **Why.** Greedy jumping over groups ("the next lineup starts after the longest good run from
+  s") needs pieces by start. The coci21c2p5 port recovered them with a `partition_point` over
+  the right-keyed starts; the blind dream asked for `longest_from`. An option on the existing
+  pass keeps one two-pointer vocabulary instead of a second function.
+- **Reverse.** Drop `anchor:` and `Anchor` from `spec/std/seq.cp`, the prelude and
+  `spec/lib/sequence-patterns.md`.

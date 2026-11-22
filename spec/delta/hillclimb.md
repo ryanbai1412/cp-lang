@@ -247,3 +247,35 @@ Open questions raised by dreams:
     expression say it directly.
   - Dream bugs: `#` comments again, and a guessed `Counter(...)[k]`. `tally()` returns a
     `HashMap`, so a missing key needs `get(k) ?? 0`.
+- Sixth blind batch (coci21c2p5, coci21c4p4, dmopc20c4p4, dmopc21c2p1, dmopc21c4p1, dmopc21c4p2,
+  dmopc21c5p2, dmopc21c9p1, dmpg16g2, egoi23p4).
+  - Spec change, decision 155: `maximal`/`minimal` take `anchor: Anchor.start`, which keys the
+    pieces by left end. The coci21c2p5 dream asked for `longest_from`. The port had recovered
+    starts with a `partition_point` over the right-keyed results; it now reads
+    `Lift.of(s => group[s].last!.next)`.
+  - Spec idiom bugs fixed:
+    - dmopc21c2p1 now ternary-searches the convex cost, as the dream did, instead of using
+      prefix sums at breakpoints: 4 lines, not 8.
+    - coci21c4p4 marks the chosen parks with `V.mask` instead of `tally()`.
+    - egoi23p4 uses `kruskal(by: desc(.w))` instead of negating weights. It drops the
+      product-domain tuple index (a parser gap) for plain `[u, v]` loops, and it now checks.
+  - Rejected:
+    - `Polygon(..).contains(p, boundary:)` (dmopc21c4p1): `locate(poly, p) != Outside` is the
+      one point-in-polygon spelling and already says what happens on the boundary.
+    - `read lower_triangle` again (egoi23p4), for the same reason as cco20p4.
+    - `g.closure(semiring)` and `g.bottleneck(semiring)`: `floyd_warshall(mut d, over:)` covers both.
+    - `R.group(pairs)` into `[R]List` (dmpg16g2): `group(by:)` plus pushes is fine at this frequency.
+  - The dream was worse than the port:
+    - dmopc21c9p1: the port's `ok.clip(..)` over a range of feasible x₁ beats the dream's
+      `scan` over sign records.
+    - dmpg16g2: the port starts every column blocked and frees the clear ones, which beats the
+      dream's run-by-run initialization.
+  - Dream bugs:
+    - dmopc20c4p4 printed only the final cost; the statement wants one per prefix.
+    - coci21c4p4 tested `a.to in open` on a `List` (O(k) per arc) and `v not in chosen`
+      (O(nk)).
+    - dmopc21c4p2 used a hashed `Set` for dense keys up to 5e6.
+    - coci21c2p5 wrote `.end.r` where it meant the next position.
+    - dmpg16g2 indexed a list by a subset.
+  - Parser gaps, all already logged: `(mut t, s) =>` lambdas (coci21c2p5), and `Letter.subsets`
+    / `Letter.at` on enum domains (dmpg16g2).

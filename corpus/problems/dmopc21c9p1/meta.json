@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/dmopc21c9p1/dream.cp"
+  ],
   "spec": [
    "corpus/problems/dmopc21c9p1/spec.cp"
   ]
@@ -16,7 +19,7 @@
   "ad-hoc"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Alternating sign tracking bounds x1; inf as the open upper bound."
 }
