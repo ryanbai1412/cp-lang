@@ -10,6 +10,8 @@ Import: `use std.hashmap.{...}`.
 
 Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 
+Fields: `ks: List<Int>`, `vs: List<V>`, `state: List<Int>`, `default_val: V`, `salt: U64`, `live: Int`, `used: Int`.
+
 - `fn new(default_val: V, cap: Int = 16) -> FlatMap<V>` — O(cap); [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
 - `@get fn len(self) -> Int` — O(1); Number of live key-value pairs.
 - `@get fn is_empty(self) -> Bool` — O(1); Whether the map has no live entries.
@@ -24,11 +26,13 @@ Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 - `@get fn items(self) -> yields (Int, V)` — O(1) to make, O(capacity) to walk; O(1) to make.
 - `@get fn keys(self) -> yields Int` — O(1) to make, O(capacity) to walk
 - `@get fn values(self) -> yields V` — O(1) to make, O(capacity) to walk
-- `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V)` — O(min(|self|, |other|)) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
+- `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None)` — O(min(|self|, |other|)) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 
 ## `struct Counter<K, V = Int>`
 
 Default-valued frequency / weight map over hashable keys `K`.
+
+Fields: `m: HashMap<K, V>`, `init: V`.
 
 - `fn new(init: V) -> Counter<K, V>` — O(1); Create an empty `Counter<K, V>` whose missing keys read as `init`.
 - `fn of(xs: List<K>) -> Counter<K, Int>` — O(n) expected; Count occurrences of each element in `xs`.

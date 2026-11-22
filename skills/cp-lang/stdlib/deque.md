@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Deque`.
 
 A queue with both ends open: `var q = Deque<Int>()`.
 
+Fields: `buf: List<T>`, `head: Int`, `n: Int`, `mask: Int`, `want: Int`.
+
 - `fn new() -> Deque<T>` — O(1); nothing is allocated until the first push; Create an empty `Deque<T>`.
 - `fn of(xs: List<T>) -> Deque<T>` — O(n); A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`, then `while let u = q.pop_front(): ...`.
 - `fn reserve(mut self, cap: Int)` — O(1) when empty, O(cap) otherwise; Reserve capacity for at least `cap` elements without reallocating.
@@ -21,7 +23,7 @@ A queue with both ends open: `var q = Deque<Int>()`.
 - `fn push_front(mut self, x: T)` — O(1) amortized; a full ring doubles; Prepend `x` to the front of the deque.
 - `fn pop(mut self) -> ?T` — O(1); Remove and return the back, or `None` when empty.
 - `fn pop_front(mut self) -> ?T` — O(1); Remove and return the front, or `None` when empty.
-- `fn pop_front_while(mut self, ok: T -> Bool) -> List<T>` — O(k) for `k` removed; O(k) for `k` removed.
+- `fn pop_front_while(mut self, ok: T -> Bool) -> List<T>` — O(k) for `k` removed
 - `fn pop_while(mut self, ok: T -> Bool) -> List<T>` — O(k) for `k` removed; Pop from the back while `ok` holds; the popped values, back first.
 - `@get fn first(self) -> ?T` — O(1); The front, or `None` when empty.
 - `@get fn last(self, k: Int = 0) -> ?T` — O(1); The back, or `None` when empty.; traps: when `k < 0`
@@ -37,6 +39,8 @@ A queue with both ends open: `var q = Deque<Int>()`.
 ## `struct LinkedList<T>`
 
 Doubly-linked list supporting O(1) end pushes/pops and O(1) splicing (`splice_back`, `splice_front`).
+
+Fields: `head: Int`, `tail: Int`, `nx: List<Int>`, `pv: List<Int>`, `val: List<T>`, `flip: Bool`.
 
 - `fn new() -> LinkedList<T>` — O(1); Create an empty `LinkedList<T>`.
 - `fn of(x: T) -> LinkedList<T>` — O(1); Create a singleton `LinkedList<T>` containing `x`.

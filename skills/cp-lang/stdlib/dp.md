@@ -16,6 +16,8 @@ O(1) per evaluation.
 
 O(log n) per `at`, O(log n) per whole-line `add`, O(log^2 n) on a segment.
 
+Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
+
 - `fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>` — O(1); An empty envelope over the integer coordinates `over`, keeping at each `x` the value `pick` prefers (`min` for the lower envelope, `max` for the upper).; traps: when `over` is empty
 - `fn clear(mut self)` — O(1) amortized; Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases, say) without reallocating.
 - `fn at(self, x: Int) -> ?K` — O(log n) for n = `over.len`; The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line covers `x` (nothing added yet, or only segments that miss `x`).; traps: when `x` is not in `over`
@@ -30,7 +32,7 @@ O(1) per step; the next cut's optimum after O(1) amortized calls of `cost`.
 - `fn val(self, i: Int) -> K` — O(1); The optimum at node `i`, which must already be reached; `val(0)` is 0.; traps: when `i < 0` or `i >= len`
 - `@get fn len(self) -> Int` — O(1); The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
 
-## `struct MonotoneHull<P>(pick: (Int, Int) -> Int`
+## `struct MonotoneHull<P>(pick: (Int, Int) -> Int = min)`
 
 O(1) amortized per `add` and per `at_next`, O(log n) per `at`.
 
@@ -41,7 +43,7 @@ O(1) amortized per `add` and per `at_next`, O(log n) per `at`.
 - `@get fn len(self) -> Int` — O(1); The number of lines kept on the hull (dominated lines are not counted).
 - `fn clear(mut self)` — O(1); Remove every line and reset the `at_next` pointer, keeping `pick`.
 
-## `struct LineContainer(pick: (Int, Int) -> Int`
+## `struct LineContainer(pick: (Int, Int) -> Int = min)`
 
 O(log n) amortized per `add`, O(log n) per `at`.
 
@@ -61,12 +63,12 @@ One state reached by `backtrack`.
 - `fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>` — O((rows + cols) log rows) calls of `f`, O(rows) memory; For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its leftmost `col`, or `None` where `f` is `None` on the whole row.; traps: when `rows < 0` or `cols < 0`
 - `fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>` — O(n log n) calls of `cost` for n = `prev.len`; One layer of a partition DP: `next[i]` is the least `prev[j] + cost(j, i)` over `j < i` with `prev[j]` present, or `None` when no such `j` exists, so `next[0]` is always `None`.
 - `fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>` — O(n^2) time, memory and calls of `cost`; The interval DP over cuts `0..=n`: `dp[i][i + 1] = 0` and `dp[i][j] = cost(i, j) + min over i < k < j of dp[i][k] + dp[k][j]`, returned as the full `(n + 1) x (n + 1)` table.; traps: when `n < 0`
-- `fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L>` — O(log lambdas.len) calls of `solve` (fewer once a count is exactly `k`); O(log |λ*|) more without `lambdas`; `f(k)` for a convex `f` known only through its penalized form: `solve(λ)` returns the least `f(c) + λ * c` over every count `c`, and the least `c` attaining it.; traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
+- `fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L` — O(log lambdas.len) calls of `solve` (fewer once a count is exactly `k`); O(log |λ*|) more without `lambdas`; `f(k)` for a convex `f` known only through its penalized form: `solve(λ)` returns the least `f(c) + λ * c` over every count `c`, and the least `c` attaining it.; traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 - `fn subset_sums(xs: List<Int>) -> List<Int>` — O(2^n) time and memory for n = `xs.len`; Every subset sum of `xs`, one per subset (repeats kept), sorted ascending: the half of a meet-in-the-middle.; traps: when a sum overflows `Int`
 - `fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int)` — O(n) calls of `cost` (online LARSCH), O(n) memory, for n = `nodes.len`; The shortest path from `nodes.first` to `nodes.last` along increasing edges `nodes[j] -> nodes[i]`, `j < i`, of weight `cost(nodes[j], nodes[i])`: its total and its number of edges, the shape `aliens` asks `solve` for (`aliens(k, solve: pen => monge_path(cuts, cost: (j, i) => w(j, i) + pen))`).; traps: when `nodes` is empty
 - `fn monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, prev: List<Int>)` — O(n) calls of `cost` (online LARSCH), O(n) memory, for n = `nodes.len`; Every shortest path from `nodes.first`: `val[i]` is the least total weight to `nodes[i]` and `prev[i]` the index before it on that path (`val[0] == 0`, `prev[0] == 0`).; traps: when `nodes` is empty
 - `fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>` — O(rows + cols) calls of `f`; For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its leftmost `col`.; traps: when `rows < 0`, or `cols <= 0` with `rows > 0`
-- `fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K` — O(n log n) time, O(n) memory, one `by` call per element; The length of the longest increasing subsequence ending at each position, compared by `by`; `strict: false` allows equal neighbours (non-decreasing).
+- `fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int` — O(n log n) time, O(n) memory, one `by` call per element; The length of the longest increasing subsequence ending at each position, compared by `by`; `strict: false` allows equal neighbours (non-decreasing).
 - `fn supermasks(m: Int, bits: Int) -> yields Int` — O(2^(bits - popcount(m))); Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.; traps: when `bits < 0` or `m` is not in `0..2^bits`
 - `fn masks_of_size(bits: Int, k: Int) -> yields Int` — O(C(bits, k)); Every mask of `bits` bits with exactly `k` bits set, increasing (Gosper's hack).; traps: when `bits < 0` or `k < 0`
 - `fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>` — O(2^n) time and memory, one `op` call per non-empty mask, for n = `xs.len`; `out[mask]` is the fold under `op` of `xs[i]` for `i` in `mask`, in increasing `i`; `out[0]` is `op`'s identity (W10).

@@ -10,6 +10,8 @@ In prelude (no `use` needed): `JumpTree`, `KruskalTree`, `LcaTable`, `Lift`, `Pr
 
 A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 
+Fields: `root: V`, `par: [V]?V`, `far: [V]Int`, `bfs: List<V>`, `heavy: [V]?V`, `top: [V]V`, `tin: [V]Pre`, `at: [Pre]V`.
+
 - `fn new(next: Next<V>, root: V) -> Rooted<V, _>` — O(n + m) for m listed arcs, without recursion; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
 - `fn from_parents(par: [V]?V) -> Rooted<V, _>` — O(n); Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key is the root.; traps: when the parents have a cycle; `try_from_parents` is for input that may
 - `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>` — O(n); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
@@ -28,8 +30,8 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn root_of(self, v: V) -> V` — O(log n); The root of the tree that holds `v`: always `t.root` unless built as a forest.
 - `fn subtree(self, v: V) -> yields V` — O(size(v)); The vertices of `v`'s subtree in preorder, `v` first: `t.at[p] for p in t.sub(v)`.
 - `fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T` — O(n) calls of `f`; A top-down pass: `out[v] = f(out[parent], v)`, and `f(init, r)` at a root `r`.
-- `fn up<T, U, M>( self, op: M, lift: (T, V, V) -> U` — O(n) calls of `lift`, `op` and `finish`; A bottom-up tree DP: `out[v] = finish(fold with op of lift(out[c], c, v) over children c, v)`.
-- `fn reroot<T, U, M>( self, op: M, lift: (T, V, V) -> U` — O(n) calls of `lift` and `finish`, O(n) calls of `op`; The same DP as `up`, for every root at once: `out[v]` is what `up` would give at `v` if the tree were rooted at `v`.
+- `fn up<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — O(n) calls of `lift`, `op` and `finish`; A bottom-up tree DP: `out[v] = finish(fold with op of lift(out[c], c, v) over children c, v)`.
+- `fn reroot<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — O(n) calls of `lift` and `finish`, O(n) calls of `op`; The same DP as `up`, for every root at once: `out[v]` is what `up` would give at `v` if the tree were rooted at `v`.
 - `fn shapes(self) -> (domain Shape, of: [V]Shape)` — O(n log n); The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a` and `b` are the same rooted tree up to reordering children.
 - `@get fn subtree_sizes(self) -> [V]Int` — O(1); a view of the stored sizes; The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
 - `fn centroid(self) -> V` — O(depth); A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than half its vertices.
@@ -46,7 +48,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn ancestor(self, v: V, k: Int) -> ?V` — O(log n); The ancestor `k` edges above `v` (`v` itself for `k == 0`), or `None` if that is above the root.; traps: when `k` is negative
 - `fn jump(self, a: V, b: V, k: Int) -> ?V` — O(log n); The vertex `k` edges from `a` on the path to `b` (`a` for `k == 0`), or `None` if the path is shorter.; traps: when `k` is negative, or `a` and `b` are in different trees
 - `fn jump_while(self, v: V, pred: V -> Bool) -> ?V` — O(log² n) calls of `pred`; The highest ancestor `u` of `v` such that `pred(u)` holds, or `None` when `pred(v)` is false.
-- `fn chains( self, a: V, b: V, edges: Bool = false, ) -> yields (range: Range<Pre>, rising: Bool)` — O(log n) ranges; The path from `a` to `b` as O(log n) heavy-chain ranges of `t.Pre`, in path order.; traps: when `a` and `b` are in different trees of a forest
+- `fn chains(self, a: V, b: V, edges: Bool = false) -> yields (range: Range<Pre>, rising: Bool)` — O(log n) ranges; The path from `a` to `b` as O(log n) heavy-chain ranges of `t.Pre`, in path order.; traps: when `a` and `b` are in different trees of a forest
 - `fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T` — O(log² n) with one structure; The fold of the values on the path from `a` to `b`, in that order, read from `ds`: any structure over `t.Pre` with `fold(range)` and a `monoid` (`SegTree`).; traps: when `a` and `b` are in different trees of a forest
 - `fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false)` — O(log² n); Applies the update `tag` to every vertex on the path from `a` to `b`, through `ds.apply(range, tag)` once per chain range.; traps: when `a` and `b` are in different trees of a forest
 - `fn virtual(self, keys: List<V>) -> VirtualTree<V, _>` — O(k log k + k log n) for k keys; The tree squeezed down to `keys`: the keys and the lowest common ancestor of every pair, in a fresh domain `vt.K` in preorder, so `for x in vt.K.rev` visits children first.; traps: when the keys are in different trees of a forest
@@ -57,11 +59,11 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn sub_at(self, v: V, root: V) -> yields Range<Pre>` — O(log n); The subtree of `v` were the tree rooted at `root`, as at most two ranges of positions: `sub(v)` when `root` is outside it, all of `t.Pre` when `v == root`, and otherwise everything except the subtree of the child of `v` toward `root`.; traps: when `v` and `root` are in different trees of a forest
 - `fn on_path(self, c: V, a: V, b: V) -> Bool` — O(log n); Whether `c` lies on the path from `a` to `b`, ends included.
 - `fn meet(self, a: V, b: V, c: V) -> V` — O(log n); The one vertex on all three paths between `a`, `b` and `c`: the deepest of their pairwise lowest common ancestors.; traps: when the three are not in one tree
-- `fn above<T, U, M>( self, op: M, lift: (T, V, V) -> U` — O(n) calls of `lift` and `finish`, O(n) calls of `op`; The other half of `reroot`: for `v` that is not a root, the DP of the tree without `sub(v)`, rooted at `parent(v)`; `None` at a root.
-- `fn farthest( self, x: ?(len: Int, u: V, v: V), y: ?(len: Int, u: V, v: V), ) -> ?(len: Int, u: V, v: V)` — O(log n): at most four `dist` calls; The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of their union; `None` is the identity.; traps: when the vertices are in different trees of a forest
+- `fn above<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]?T` — O(n) calls of `lift` and `finish`, O(n) calls of `op`; The other half of `reroot`: for `v` that is not a root, the DP of the tree without `sub(v)`, rooted at `parent(v)`; `None` at a root.
+- `fn farthest(self, x: ?(len: Int, u: V, v: V), y: ?(len: Int, u: V, v: V)) -> ?(len: Int, u: V, v: V)` — O(log n): at most four `dist` calls; The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of their union; `None` is the identity.; traps: when the vertices are in different trees of a forest
 - `fn layers(self) -> Layers<V, _>` — O(n); Every vertex ordered by depth, each depth in `t.Pre` order, over a fresh domain, so the descendants of `v` at one depth are one range.
 - `fn events(self) -> Events<V, _>` — O(n); The 2n enter and exit events of `tour` over a fresh domain, for Mo's algorithm on paths and on subtrees.
-- `fn euler_tour<K: Ord>(self, by: V -> K` — O(1) per item; The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours joined by a tree edge, children in `t.Pre` order.
+- `fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V` — O(1) per item; The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours joined by a tree edge, children in `t.Pre` order.
 - `fn long_paths(self) -> LongPaths<V, _>` — O(n); The long-path decomposition, for DP indexed by depth merged in O(n) in total.
 - `fn preorder(self, v: V) -> yields Step<V>` — O(size(v)), less when pruned; The subtree of `v` in `t.Pre` order as `std.dp` steps: `step.state` is the vertex, `step.depth` its depth below `v`, and `step.prune()` skips the rest of its subtree (decision 126).
 
@@ -69,9 +71,13 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 
 A virtual tree from `Rooted.virtual`: a few vertices of a tree and their pairwise lowest common ancestors, over its own domain `K` in preorder.
 
+Fields: `at: [K]V`, `parent: [K]?K`, `w: [K]Int`, `key: [K]Bool`.
+
 ## `struct Centroids<V>`
 
 A centroid decomposition: the centroid of the tree, then recursively of each piece left when it is removed.
+
+Fields: `root: V`, `cpar: [V]?V`, `anc: [V]List<(c: V, dist: Int, branch: V)>`, `held: [V]List<V>`.
 
 - `fn new(next: Next<V>) -> Centroids<V>` — O(n log n) time and memory; Decomposes the tree given by `next` (as for `Rooted`: a `Graph`, neighbour lists or a fn).; traps: when `next` is not a connected tree
 - `fn parent(self, c: V) -> ?V` — O(1); The parent of centroid `c` in the centroid tree; `None` at `cd.root`.
@@ -82,6 +88,8 @@ A centroid decomposition: the centroid of the tree, then recursively of each pie
 ## `struct JumpTree<V>`
 
 A rooted forest grown one leaf at a time, by skew-binary jump pointers: `add` is O(1), queries are O(log n), and it keeps three arrays.
+
+Fields: `par: [V]?V`, `jump: [V]V`.
 
 - `fn new() -> JumpTree<V>` — O(n); A forest of lone vertices, each its own root.
 - `fn add(mut self, v: V, p: V)` — O(1); Hangs `v`, a lone vertex not yet in any tree, below `p`, setting its skew-binary jump pointer from `p`'s.; traps: when `v` already has a parent, or `v == p`
@@ -98,6 +106,8 @@ A rooted forest grown one leaf at a time, by skew-binary jump pointers: `add` is
 
 Binary lifting over a fixed forest given by parent links, each carrying a value on the edge up: O(n log n) build and memory, O(log n) queries.
 
+Fields: `up: [V]?V`, `jmp: List<[V]?V>`, `val: List<[V]T>`.
+
 - `fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T>` — O(n log n) time and memory; Binary lifting over the forest `par`: `par[v]` is `v`'s parent with the value on the edge to it, `None` at a root.; traps: when the parent links have a cycle
 - `fn of(next: V -> ?V) -> Lift<V, ()>` — O(n log n) time and memory, n calls of `next`; Lifting over any partial successor function, such as "the next interval a greedy picks": `Lift.of(i => first_from(iv[i].r))`.; traps: when the links have a cycle
 - `fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V)` — O(log n) calls of `ok`; Climbs from `v` while the next vertex up satisfies `ok`, which must hold on a prefix of every root path: how many edges were climbed and where it stopped.
@@ -111,6 +121,8 @@ Binary lifting over a fixed forest given by parent links, each carrying a value 
 ## `struct LinkCut<V, T>(m: Monoid<T>)`
 
 A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex values along paths, by a link-cut tree (splay trees over preferred paths).
+
+Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `stk: List<V>`.
 
 - `fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>` — O(n); `V.count` single-vertex trees holding `a`, or the identity of `op` everywhere when `a` is absent.
 - `fn make_root(mut self, v: V)` — amortized O(log n); Makes `v` the root of its tree.
@@ -133,6 +145,8 @@ A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set
 - `fn access(mut self, v: V) -> yields (lost: ?V, gained: V)` — amortized O(log n) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up: `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of the path that parent stopped preferring, if any.
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
+
+Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `lz: [V]F`, `stk: List<V>`.
 
 - `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F>` — O(n); `V.count` single-vertex trees holding `a`, or the identity of `act.over` everywhere when `a` is absent.
 - `fn make_root(mut self, v: V)` — amortized O(log n); Makes `v` the root of its tree.
@@ -160,6 +174,8 @@ A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`,
 
 The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node covers a run of positions, leaves are single positions, a node's children split its run in two, and the values of every node but a `Partial` one form an interval.
 
+Fields: `root: Node`, `kind: [Node]PermKind`, `l: [Node]Node`, `r: [Node]Node`, `first: [Node]I`, `last: [Node]I`, `lo: [Node]V`, `hi: [Node]V`.
+
 - `fn new(p: [I]V) -> PermTree<I, V, _>` — O(n); The binary permutation tree of `p`, built by one stack pass from left to right: a run that keeps extending in one direction builds left-deep, so `[0, 1, 2]` is `((0, 1), 2)`.; traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
 - `fn node(self, v: Node) -> PermNode<I, Node>` — O(1); The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
 - `fn leaf(self, i: I) -> Node` — O(1); The leaf of position `i`.
@@ -172,6 +188,8 @@ The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: e
 
 The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 
+Fields: `at: [B]V`, `slot: [V]B`, `start: List<Int>`.
+
 - `fn pos(self, v: V) -> B` — O(1); The position of `v` among the layers.
 - `fn level(self, d: Int) -> Range<B>` — O(1); Every vertex at depth `d`, in `t.Pre` order; empty past the deepest or below 0.
 - `fn below(self, v: V, d: Int) -> Range<B>` — O(log n); The descendants of `v` at depth `d`, counted from the root as in `level`, by binary search in `level(d)`; `v` itself when `d == depth(v)`.
@@ -179,6 +197,8 @@ The vertices of a `Rooted` tree by depth, each depth in preorder, over their own
 ## `struct Events<V, P>`
 
 The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n members, for Mo's algorithm on trees.
+
+Fields: `at: [P]Visit<V, V>`.
 
 - `fn enter(self, v: V) -> P` — O(1); The event that enters `v`.
 - `fn exit(self, v: V) -> P` — O(1); The event that leaves `v`.
@@ -189,12 +209,16 @@ The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` 
 
 The long-path decomposition of a `Rooted` tree: each vertex continues the path of its tallest child, so a DP indexed by depth below `v` lives in one shared buffer over `L`, inheriting `deep[v]`'s values is free, and merging the other children costs their heights.
 
+Fields: `deep: [V]?V`, `height: [V]Int`, `pos: [V]L`.
+
 - `fn slots(self, v: V) -> Range<L>` — O(1); The slots of `v`, one per depth offset `0..=height[v]`, offset 0 first; `slots(deep[v])` starts one later in the same buffer.
 - `fn slot(self, v: V, d: Int) -> L` — O(1); The slot of `v` at depth offset `d`.; traps: unless `0 <= d <= height[v]`
 
 ## `struct LcaTable<V>`
 
 Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
+
+Fields: `first: [V]Int`, `far: [V]Int`.
 
 - `fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V>` — O(n log n) time and memory; A sparse table over the Euler walk of `t`, for O(1) lowest common ancestors on a fixed tree.
 - `fn lca(self, a: V, b: V) -> V` — O(1); The lowest common ancestor of `a` and `b`.; traps: when `a` and `b` are in different trees
@@ -203,6 +227,8 @@ Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse tabl
 ## `struct EulerTourTree<V, T>`
 
 A forest that changes, with folds over whole trees and subtrees, by an Euler tour tree (a balanced sequence of each tree's tour).
+
+Fields: `val: [V]T`.
 
 - `fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>` — O(n); Lone vertices with values `a`, or the identity of `op` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected O(log n); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
@@ -217,6 +243,8 @@ A forest that changes, with folds over whole trees and subtrees, by an Euler tou
 ## `struct LazyEulerTourTree<V, T, F>`
 
 `EulerTourTree` with updates to whole trees and subtrees under an action.
+
+Fields: `val: [V]T`.
 
 - `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F>` — O(n); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected O(log n); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
@@ -234,6 +262,8 @@ A forest that changes, with folds over whole trees and subtrees, by an Euler tou
 
 The Kruskal reconstruction tree: each edge that merges two components, in increasing weight, becomes a node above them.
 
+Fields: `leaf: [V]N`, `w: [N]?W`, `lift: Lift<N, Int>`.
+
 - `@get fn tree(self) -> Rooted<N, _>` — O(1); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — O(log n); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
 - `fn top<E>(self, v: V, ok: E -> Bool) -> N` — O(log n) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`, which gets the edge's key in the list given to `kruskal_tree` (`kt.top(v, ok: e => roads[e].alt > p)`).
@@ -242,7 +272,7 @@ The Kruskal reconstruction tree: each edge that merges two components, in increa
 
 ## Functions
 
-- `fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool` — O(n), one stack pass; The Cartesian tree of `a` as parent links: the root is the least element by `by` (the leftmost among equals) and every subtree is a contiguous range of `D`.
+- `fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x <y) -> [D]?D = todo` — O(n), one stack pass; The Cartesian tree of `a` as parent links: the root is the least element by `by` (the leftmost among equals) and every subtree is a contiguous range of `D`.
 - `fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>)` — O(m log m) for m edges; The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain bound by the caller: `let (domain N, kt) = kruskal_tree(es, w: f)`.
 - `fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>` — O(n); The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour, until two vertices remain.; traps: when `V` has fewer than two vertices, or `edges` is not a tree
 - `fn from_prufer<V>(code: List<V>) -> Tree<V>` — O(n); The tree whose Prüfer code is `code`.; traps: when `code` does not have `V.count - 2` entries, or `V` has fewer than two vertices

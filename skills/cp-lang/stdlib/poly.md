@@ -36,6 +36,8 @@ O(n) storage.
 
 O(m log^2 m) build.
 
+Fields: `n: Int`.
+
 - `fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>` — O(m log^2 m) time, O(m log m) space; Build the subproduct tree for the points `xs`: leaf `i` is `x - xs[i]` and each node the product of its children.; traps: when a transform length exceeds what `P` supports
 - `fn eval(self, f: List<Mod<P>>) -> List<Mod<P>>` — O((deg f + m) log^2 m); Evaluate `f` at every point in the tree: `[f(x) for x in xs]`.; traps: when the tree was built with `keep >= 0`
 - `fn eval_transposed(self, c: List<Mod<P>>) -> List<Mod<P>>` — O(m log^2 m); Transposed multipoint evaluation (Bostan-Lecerf-Schost / Tellegen's principle): the transpose of `eval` on polynomials of degree `< m`, so `out[k] = sum_i c[i] * xs[i]^k` for `k in 0..m`.; traps: when `c.len != m`, or `keep` is in `0..m`

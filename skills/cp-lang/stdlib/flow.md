@@ -16,6 +16,8 @@ A handle to one arc of a `FlowGraph`.
 
 A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
 
+Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>`, `cut_from: ?V`.
+
 - `fn new() -> FlowGraph<V>` — O(n) for n = `V.count`; An empty flow network over the vertices `V`.
 - `fn add(mut self, u: V, v: V, cap: ?Int) -> Arc` — O(1) amortized; two arcs of memory; Adds an arc `u -> v` with capacity `cap`, and its reverse `v -> u` with capacity 0, and returns the forward arc.; traps: when `cap` is negative
 - `fn add_both(mut self, u: V, v: V, cap: Int) -> Arc` — O(1) amortized; two arcs of memory; Adds an undirected edge between `u` and `v`: an arc `u -> v` whose reverse also has capacity `cap`.; traps: when `cap` is negative
@@ -38,6 +40,8 @@ A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`)
 
 A flow network with a cost per unit on every arc, solved by successive shortest paths with Johnson potentials.
 
+Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>`, `price: List<Int>`.
+
 - `fn new() -> CostFlow<V>` — O(n) for n = `V.count`; An empty min-cost flow network over the vertices `V`.
 - `fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc` — O(1) amortized; two arcs of memory; Adds an arc `u -> v` with capacity `cap` and cost `cost` per unit; its reverse has capacity 0 and cost `-cost`.; traps: when `cap` is negative
 - `fn flow(self, a: Arc) -> Int` — O(1); The flow currently sent along `a`; `flow(a.rev) == -flow(a)`.
@@ -55,6 +59,8 @@ A flow network with a cost per unit on every arc, solved by successive shortest 
 
 O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
 
+Fields: `adj: [L]List<R>`, `mate: [L]?R`, `back: [R]?L`, `size: Int`.
+
 - `fn new() -> Matching<L, R>` — O(L + R); An online bipartite matching between `L` and `R` with no edges and nothing matched.
 - `fn add(mut self, l: L, r: R)` — O(1) amortized; Allows `l` to match `r`.
 - `fn augment(mut self, from: L) -> Bool` — O(V + E); Looks for one augmenting path from the unmatched `from` (Kuhn's DFS, trying edges in `add` order); `true` when it grew the matching.
@@ -63,7 +69,7 @@ O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
 - `fn mate(self, l: L) -> ?R` — O(1); `l`'s partner, `None` when unmatched.
 - `fn back(self, r: R) -> ?L` — O(1); `r`'s partner, `None` when unmatched.
 - `@get fn len(self) -> Int` — O(1); The number of matched pairs.
-- `fn cover(self) -> (left: [L]Bool, right: [R]Bool)` — O(V + E); The number of matched pairs.
+- `fn cover(self) -> (left: [L]Bool, right: [R]Bool)` — O(V + E); The König vertex cover of the current matching, built as in [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
 
 ## `trait Matroid<E>`
 
@@ -73,11 +79,15 @@ An independence oracle for `matroid_intersection`.
 
 O(E α) per rebuild.
 
+Fields: `edges: [E](u: V, v: V)`.
+
 - `fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E>` — O(1); each `rebuild` is O(E alpha(V)); The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
 
 ## `struct ColorMatroid<E, C>`
 
 O(E) per rebuild.
+
+Fields: `color: [E]C`, `limit: [C]Int`.
 
 - `fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>` — O(1); each `rebuild` is O(E); The partition matroid of `color`: a set is independent when it holds at most `limit[c]` elements of each colour `c`.; traps: when some `limit[c]` is negative
 
@@ -89,16 +99,16 @@ O(E) per rebuild.
 - `fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R)` — O(L² R) time, O(L R) calls of `weight`, by the Hungarian algorithm; The maximum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, maximizing `total`, the sum of `weight(l, mate[l])`.; traps: when `L.count > R.count`
 - `fn min_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R)` — O(L² R) time, O(L R) calls of `weight`, by the Hungarian algorithm; The minimum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, minimizing `total`, the sum of `weight(l, mate[l])`.; traps: when `L.count > R.count`
 - `fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V)` — O(V³); A maximum matching in the undirected graph `adj` (each edge listed from both ends): its `size` and each vertex's partner, `None` when unmatched.
-- `fn max_weight_general_matching<V, E>( edges: [E](u: V, v: V, w: Int) ) -> (total: Int, mate: [V]?V)` — O(V³) time, O(V²) memory, by Edmonds' weighted blossom algorithm with dual labels; A maximum-weight matching in the undirected graph `edges`: no vertex in two chosen edges, maximizing `total`, the sum of chosen `w`, not necessarily of largest size.
+- `fn max_weight_general_matching<V, E>(edges: [E](u: V, v: V, w: Int)) -> (total: Int, mate: [V]?V)` — O(V³) time, O(V²) memory, by Edmonds' weighted blossom algorithm with dual labels; A maximum-weight matching in the undirected graph `edges`: no vertex in two chosen edges, maximizing `total`, the sum of chosen `w`, not necessarily of largest size.
 - `fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int` — one `max_flow` on V + 2 vertices and E + V arcs; A flow `f` with `lo <= f[e] <= hi` on every arc that is conserved at every vertex, or `None` when there is None.; traps: when some `lo > hi`
-- `fn max_bounded_flow<V, E>( arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V, ) -> ?(value: Int, flow: [E]Int)` — two `max_flow`s on V + 2 vertices and E + V + 1 arcs; The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
-- `fn min_bounded_flow<V, E>( arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V, ) -> ?(value: Int, flow: [E]Int)` — as `max_bounded_flow`; The smallest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`), or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
+- `fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)` — two `max_flow`s on V + 2 vertices and E + V + 1 arcs; The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
+- `fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)` — as `max_bounded_flow`; The smallest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`), or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
 - `fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>` — `V.count - 1` max flows on one reused network, each O(V² E); A Gomory-Hu tree of the undirected graph `edges`: `V.count - 1` edges on `V` such that for every `s != t` the minimum `s`-`t` cut of `edges` is the smallest `w` on the tree path from `s` to `t`.; traps: when some `w` is negative
 - `fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool)` — O(V³) time, O(V²) memory; A minimum cut of the undirected graph `edges` over all vertex pairs: its weight `w` and one side of it, the side without `V.first`.; traps: when `V` has fewer than two positions, or some `w` is negative
 - `fn best_matching<L, R, E>(edges: [E](l: L, r: R, w: Int), size: ?Int = None, min: Bool = false) -> ?(total: Int, mate: [L]?R, used: [E]Bool)` — O(F E log V), F = matching size; The maximum (or, with `min: true`, minimum) total-weight matching among the listed edges, not necessarily perfect: sparse weights through min-cost flow, where `max_weight_matching` needs every pair's weight.; traps: when `size` is negative
 - `fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R` — O(L R); Gale-Shapley stable matching with proposals from `L`: `pref_l[l]` lists the `R`s `l` accepts, best first, and likewise `pref_r`.; traps: when a preference list names the same vertex twice
 - `fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E]Int)` — O(E V); Colours the edges of a bipartite multigraph so no two edges at a vertex share a colour, with exactly max-degree colours `0..colors` (König's edge colouring theorem).
-- `fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int)` — O(r E (r + oracle)) for answer size r, oracle the cost of one `can_add` or `can_swap`; A largest set of elements independent in both matroids; with `weight`, the one of largest total weight among the largest.
+- `fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E>>(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool` — O(r E (r + oracle)) for answer size r, oracle the cost of one `can_add` or `can_swap`; A largest set of elements independent in both matroids; with `weight`, the one of largest total weight among the largest.
 - `fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int)` — O(V² E) worst case, like `max_flow`; The minimum-cost circulation of arcs with lower and upper bounds and costs, negative cycles included (cost scaling); `None` when no circulation meets the bounds.; traps: when some `lo > hi`
 
 ## Example

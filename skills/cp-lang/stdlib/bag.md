@@ -14,6 +14,8 @@ Read-only handle into a `SortedBag<K>` node, valid until the next mutation.
 
 An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 
+Fields: `nodes: List<BagNode<K>>`, `live: Int`, `root: Int`, `rng: U64`, `lo: ?K`, `hi: ?K`.
+
 - `fn new() -> SortedBag<K>` — O(1); Create an empty `SortedBag<K>`.
 - `fn of(xs: List<K>) -> SortedBag<K>` — O(n log n) expected; Build a `SortedBag` containing every element of `xs`.
 - `@get fn len(self) -> Int` — O(1); Total number of elements in the bag (counting duplicates).
@@ -63,6 +65,8 @@ An ordered multiset (bag) of `K` backed by a randomized treap over a single flat
 
 An ordered set of unique keys `K` with order statistics (`rank`, `nth`), O(1) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`).
 
+Fields: `bag: SortedBag<K>`.
+
 - `fn new() -> SortedSet<K>` — O(1); Create an empty `SortedSet<K>`.
 - `fn of(xs: List<K>) -> SortedSet<K>` — O(n log n) expected; Build a `SortedSet` containing the distinct elements of `xs`.
 - `@get fn len(self) -> Int` — O(1); Number of keys in the set.
@@ -96,6 +100,8 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), O(1) ke
 
 Order-statistic ordered map from `K` to `V` backed by a randomized treap.
 
+Fields: `ks: SortedBag<K>`, `vals: HashMap<K, V>`.
+
 - `fn new() -> SortedMap<K, V>` — O(1); Create an empty `SortedMap<K, V>`.
 - `fn reserve(mut self, cap: Int)` — O(cap) when the pool grows, O(1) otherwise; Preallocate treap node pool for at least `cap` entries.
 - `@get fn len(self) -> Int` — O(1); Number of key-value pairs.
@@ -121,7 +127,7 @@ Order-statistic ordered map from `K` to `V` backed by a randomized treap.
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>` — O(k log n) expected for `k` removed entries; Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds.; traps: when both `after` and `before` are given
 - `fn split_at(mut self, k: K) -> SortedMap<K, V>` — O(log n) expected; Split off and return all entries with key `>= k`.
 - `fn join(mut self, other: SortedMap<K, V>)` — O(log n) expected; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
-- `fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V)` — O(min(n, m) log(n + m)) expected; Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
+- `fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None)` — O(min(n, m) log(n + m)) expected; Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 - `@get fn items(self) -> yields (K, V)` — O(1) to make, O(1) amortized per step; O(1) to make.
 - `fn each_rev(self) -> yields (K, V)` — O(1) amortized per step; Yield `(key, val)` pairs in descending key order.
 - `@get fn keys(self) -> yields K` — O(1) to make, O(1) amortized per step
@@ -130,6 +136,8 @@ Order-statistic ordered map from `K` to `V` backed by a randomized treap.
 ## `struct AugSortedBag<K, T>`
 
 Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
+
+Fields: `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T>` — O(1); Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
 - `fn reserve(mut self, cap: Int)` — O(cap) when the pool grows, O(1) otherwise; Preallocate treap node pool for at least `cap` elements.
@@ -154,6 +162,8 @@ Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtr
 
 Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 
+Fields: `bag: AugSortedBag<K, T>`.
+
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T>` — O(1); Create an empty `AugSortedSet<K, T>` with associative `op`, identity `id`, and key map `leaf`.
 - `fn reserve(mut self, cap: Int)` — O(cap) when the pool grows, O(1) otherwise; Preallocate treap node pool for at least `cap` keys.
 - `@get fn len(self) -> Int` — O(1); Number of distinct keys.
@@ -177,19 +187,23 @@ Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every sub
 
 O(1) point add, O(sqrt(N)) k-th order statistic over an integer value range `r`.
 
-- `fn new(r: Range<Int>) -> BucketCount` — O(r.len); O(r.len).
-- `fn add(mut self, x: Int, delta: Int = 1)` — O(1); O(1).; traps: when `x` is not in `r`; when the count of `x` would become negative
-- `fn remove(mut self, x: Int, delta: Int = 1)` — O(1); O(1).; traps: when `x` is not in `r`; when the count of `x` would become negative
-- `fn count(self, x: Int) -> Int` — O(1); O(1).; traps: never; an `x` outside `r` has count 0
-- `fn count_lt(self, x: Int) -> Int` — O(sqrt(N)); O(sqrt(N)).
-- `fn kth(self, k: Int) -> Int` — O(sqrt(N)); O(sqrt(N)).; traps: when `k` is not in `0..len`
+Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: List<Int>`.
+
+- `fn new(r: Range<Int>) -> BucketCount` — O(r.len)
+- `fn add(mut self, x: Int, delta: Int = 1)` — O(1); traps: when `x` is not in `r`; when the count of `x` would become negative
+- `fn remove(mut self, x: Int, delta: Int = 1)` — O(1); traps: when `x` is not in `r`; when the count of `x` would become negative
+- `fn count(self, x: Int) -> Int` — O(1); traps: never; an `x` outside `r` has count 0
+- `fn count_lt(self, x: Int) -> Int` — O(sqrt(N))
+- `fn kth(self, k: Int) -> Int` — O(sqrt(N)); traps: when `k` is not in `0..len`
 - `@get fn len(self) -> Int` — O(1)
-- `@get fn is_empty(self) -> Bool` — O(1); O(1).
-- `fn clear(mut self)` — O(r.len); O(r.len).
+- `@get fn is_empty(self) -> Bool` — O(1)
+- `fn clear(mut self)` — O(r.len)
 
 ## `struct SortedRange<K>`
 
 The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`.
+
+Fields: `lo: ?K`, `lo_inc: Bool`, `hi: ?K`, `hi_inc: Bool`.
 
 - `fn first(self) -> ?K` — O(log n) expected; The smallest key in the range.
 - `fn last(self) -> ?K` — O(log n) expected; The largest key in the range.

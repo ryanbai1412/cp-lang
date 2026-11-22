@@ -13,15 +13,19 @@ Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTre
 - `fn of(on: Bool, x: T, id: T) -> Flip<T>` — O(1); The leaf for one element that is currently `on` or off: `Flip(x, id)` when `on`, else `Flip(id, x)`.
 - `fn op<M>(m: M) -> Monoid<Flip<T>>` — O(1); The monoid on pairs that folds both halves with `m` independently: `op(a, b) == Flip(m(a.now, b.now), m(a.flipped, b.flipped))`, identity `Flip(id, id)` with `id` from `Monoid.of(m)`.; traps: never (an `m` without a known identity is a compile-time error)
 
-## `struct LazyTreap<T, F>( apply_fn: (T, Int, F) -> T, split_fn: (F, Int) -> (F, F), compose_fn: (F, F) -> F, before_fn: (T, T) -> Bool, )`
+## `struct LazyTreap<T, F>(apply_fn: (T, Int, F) -> T, split_fn: (F, Int) -> (F, F), compose_fn: (F, F) -> F, before_fn: (T, T) -> Bool)`
 
 Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
+
+Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose_fn: (F, F) -> F,`, `before_fn: (T, T) -> Bool,`.
 
 ## `struct Rope<D, T>`
 
 O(n) space.
 
-- `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T)` — O(|D|); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
+Fields: `n: Int`.
+
+- `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>` — O(|D|); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
 - `fn apply(mut self, r: Range<D>, tag: T)` — O(log n) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`
 - `fn reverse(mut self, r: Range<D>)` — O(log n) expected; Reverse the order of the values at positions `r`; pending tags stay with their values.; traps: when a non-empty `r` reaches outside `D`
 - `fn get(mut self, i: D) -> T` — O(log n) expected; The value currently at position `i`, with pending tags merged in.; traps: when `i` is outside `D`

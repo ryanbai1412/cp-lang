@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Marks`.
 
 A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v in m`), and O(1) `clear()`.
 
+Fields: `gen: Int`, `cnt: Int`.
+
 - `fn new() -> Marks<D>` — O(|D|); An empty mark set over `D`, with its stamp array allocated once.
 - `fn add(mut self, v: D) -> Bool` — O(1); Mark `v`.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> Bool` — O(1); Unmark `v`.; traps: when `v` is outside `D`
@@ -21,6 +23,8 @@ A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v i
 ## `struct MarkMap<D, T>`
 
 Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
+
+Fields: `vals: [D]T`, `default_val: T`, `gen: Int`, `cnt: Int`.
 
 - `fn new(default_val: T) -> MarkMap<D, T>` — O(|D|); An empty map over `D`.
 - `@get fn len(self) -> Int` — O(1); The number of keys present.
@@ -35,6 +39,8 @@ Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, 
 
 Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 
+Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
+
 - `fn new() -> Interner<K>` — O(1); An empty interner.
 - `@get fn len(self) -> Int` — O(1); The number of distinct keys interned so far; ids are exactly `0..len`.
 - `@get fn is_empty(self) -> Bool` — O(1); Whether no key has been interned; `len == 0`.
@@ -48,6 +54,8 @@ Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `
 ## `struct SparseSet<D>`
 
 Briggs-Torczon sparse set over domain `D`.
+
+Fields: `dense: List<D>`, `pos: [D]Int`.
 
 - `fn new() -> SparseSet<D>` — O(|D|); An empty sparse set over `D`.
 - `@get fn len(self) -> Int` — O(1); The number of elements.

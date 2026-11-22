@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Bitset`.
 
 One bit per position of `D`, in `ceil(K / 64)` words.
 
+Fields: `w: List<U64>`, `n: Int`.
+
 - `fn new() -> Bitset<D>` — O(K / 64) time and space; The empty set, every word zero; the same set as `empty()`.
 - `fn empty() -> Bitset<D>` — O(K / 64) time and space; The empty set, matching `Subset<D>.empty` (a call here: it is O(K / 64)); the same as `new()`.
 - `fn full() -> Bitset<D>` — O(K / 64) time and space; The full set containing every position of `D`, matching `Subset<D>.full`.

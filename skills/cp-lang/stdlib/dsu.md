@@ -14,6 +14,8 @@ A point in the history of a structure that can step back in time, returned by `m
 
 Union-find with path halving and union by size.
 
+Fields: `parts: Int`, `joined: List<Int>`, `marked: Bool`.
+
 - `fn new(rollback: Bool = false) -> Dsu<V>` — O(n) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
 - `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set: the root that union by size kept.
 - `fn mark(mut self) -> Mark` — O(1); The present, to return to with [`undo_to`](Dsu.undo_to).
@@ -29,6 +31,8 @@ Union-find with path halving and union by size.
 ## `struct DsuOf<V, T>`
 
 Union-find where every set carries a value of type `T`.
+
+Fields: `up: [V]V`, `val: [V]T`, `join: (T, T) -> T`, `log: List<(V, V, T)>`, `marked: Bool`.
 
 - `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — O(n) calls of `init`; three `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
 - `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).
@@ -49,6 +53,8 @@ Union-find where every set carries a value of type `T`.
 
 Union-find that knows, for two positions of one set, whether they are on the same side or on opposite sides: two-colouring, parity constraints, `x[a] xor x[b] == d`.
 
+Fields: `up: [V]V`, `flip: [V]Bool`, `log: List<(V, Bool)>`.
+
 - `fn new() -> ParityDsu<V>` — O(n); three `[V]` arrays; A parity union-find over `V` with every position alone and nothing known.
 - `fn find(self, v: V) -> (root: V, flip: Bool)` — O(log n); The representative of `v`'s set and whether `v` is on the other side from it.
 - `fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool` — O(log n), plus one log entry when it merges or contradicts; Records that `a` and `b` are on opposite sides (`differ: false`: the same side).
@@ -62,6 +68,8 @@ Union-find that knows, for two positions of one set, whether they are on the sam
 ## `struct PotentialDsu<V>`
 
 Weighted (potential / difference-constraint) union-find over domain `V` with `Mark` rollback.
+
+Fields: `up: [V]V`, `pot: [V]Int`, `log: List<(V, Bool)>`.
 
 - `fn new<G>(op: ?G = None) -> PotentialDsu<V>` — O(n); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
 - `fn find(self, v: V) -> (root: V, offset: Int)` — O(log n); The representative of `v`'s set and `val[v] - val[root]`.
@@ -77,6 +85,8 @@ Weighted (potential / difference-constraint) union-find over domain `V` with `Ma
 ## `struct RollbackArray<D, T>`
 
 Domain-indexed array `[D]T` with `Mark` rollback.
+
+Fields: `data: [D]T`, `log: List<(D, T)>`.
 
 - `fn new(init: D -> T) -> RollbackArray<D, T>` — O(n) calls of `init`, for n = `D.count`; An array over `D` holding `init(i)` at each `i`, that can step back to any mark.
 - `fn get(self, i: D) -> T` — O(1); The current value at `i`.

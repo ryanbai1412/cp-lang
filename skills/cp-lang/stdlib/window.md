@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Sweep`, `Track`, `Undo`, `Undoing`, `Window`, `tr
 
 A sliding fold queue over `op`.
 
+Fields: `q: List<T>`, `front: List<T>`, `back: ?T`.
+
 - `fn new(op: M) -> Window<T, M>` — O(1); An empty window over `op`.
 - `fn push(mut self, x: T)` — O(1) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: never (beyond what `op` traps on)
 - `fn pop(mut self)` — O(1) amortized calls of `op`; Pop the front: remove the oldest element.; traps: on an empty window
@@ -43,6 +45,8 @@ The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds 
 ## `struct Sweep<D, S>(state: S)`
 
 A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
+
+Fields: `lo: Int`, `hi: Int`.
 
 - `fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>` — O(1), plus `start.len` pushes when `start` is given; A sweep over `state`, starting empty (or at `start`).; traps: never (beyond what `state.push` traps on)
 - `fn move(mut self, to: Range<D>)` — O(|dl| + |dr|) pushes and pops, where `dl` and `dr` are the moves of the two ends; Slide to `to`, feeding `state` the positions that enter and leave.; traps: never (beyond what the state traps on)

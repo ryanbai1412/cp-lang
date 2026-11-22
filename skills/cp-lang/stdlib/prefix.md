@@ -14,6 +14,8 @@ Fill direction for an append-only `Prefix.filling(...)` table.
 
 Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 
+Fields: `p: [D.cuts]T`, `rev: Bool`, `next: Int`.
+
 - `fn set(mut self, i: D, x: T)` — O(1); Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).; traps: when `i` is not the next position in fill order (out of order, repeated, or after
 - `fn prefix(self, b: Cut<D>) -> T` — O(1); The sum of everything left of boundary `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
 - `fn fold(self, r: Range<D>) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.; traps: when `r` is non-empty and contains a position not yet written
@@ -21,6 +23,8 @@ Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 ## `struct Prefix<D, T>`
 
 Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
+
+Fields: `p: [D.cuts]T`.
 
 - `fn new(a: [D]T) -> Prefix<D, T>` — O(|D|) time and space; Build 1-D prefix sums over `a: [D]T`; `prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — O(|D|) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
@@ -33,51 +37,63 @@ Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `
 - `fn first_ge(self, target: T) -> ?Cut<D>` — O(log |D|); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
 - `fn first_gt(self, target: T) -> ?Cut<D>` — O(log |D|); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
 
-## `struct _FillPrefix2 < R, C, T >`
+## `struct _FillPrefix2 <R, C, T>`
 
 Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
+
+Fields: `p: [R.cuts, C.cuts]T`, `rev: Bool`, `next: Int`.
 
 - `fn set(mut self, r: R, c: C, x: T)` — O(1); Write the next cell in row-major fill order (top-left to bottom-right for `Forward`, bottom-right to top-left for `Reverse`).; traps: when `(r, c)` is not the next cell in fill order
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — O(1); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.; traps: when that rectangle is non-empty and holds a cell not yet written
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — O(1); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty.; traps: when the rectangle is non-empty and holds a cell not yet written
 
-## `struct _Prefix2 < R, C, T >`
+## `struct _Prefix2 <R, C, T>`
 
 Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
+
+Fields: `p: [R.cuts, C.cuts]T`.
 
 - `fn new(a: [R, C]T) -> Prefix<R, C, T>` — O(|R| * |C|) time and space; Build 2-D prefix sums over `a: [R, C]T`; `prefix(a)` on a grid calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>` — O(|R| * |C|) time and space; Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`.
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — O(1); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — O(1); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by inclusion-exclusion over the four corner cuts.
 
-## `struct _FillPrefixList < T >`
+## `struct _FillPrefixList <T>`
 
 Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
+
+Fields: `p: List<T>`, `rev: Bool`, `next: Int`.
 
 - `fn set(mut self, i: Int, x: T)` — O(1); Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`).; traps: when `i` is not the next index in fill order (including any `i` outside `0..n`)
 - `fn prefix(self, k: Int) -> T` — O(1); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
 - `fn fold(self, r: Range<Int>) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
 
-## `struct _PrefixList < T >`
+## `struct _PrefixList <T>`
 
 Internal list shape of `Prefix<T>`, constructed by `prefix(a)` or `Prefix<T>.filling(n, ...)`.
+
+Fields: `p: List<T>`.
 
 - `fn new(a: List<T>) -> Prefix<T>` — O(a.len) time and space; Build 1-D prefix sums over `a: List<T>`; `prefix(a)` on a list calls it.
 - `fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>` — O(n) time and space; Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`.; traps: when `n < 0`
 - `fn prefix(self, k: Int) -> T` — O(1); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`
-- `fn fold( self, r: Range<Int>, ) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n`
+- `fn fold(self, r: Range<Int>) -> T` — O(1); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n`
 
 ## `struct Diff<D, T>`
 
 Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 
+Fields: `d: [D.cuts]T`.
+
 - `fn new() -> Diff<D, T>` — O(|D|) time and space; Create an all-zero 1-D difference array over `D`.
 - `fn add(mut self, r: Range<D>, x: T)` — O(1); Add `x` to every position in `r`; an empty `r` changes nothing.
 - `fn finish(self) -> [D]T` — O(|D|) time and space; The accumulated values across `D`: each position's total of the `add`s covering it.
 
-## `struct _Diff2 < R, C, T >`
+## `struct _Diff2 <R, C, T>`
 
 Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(\|R\| * \|C\|) `finish`.
+
+Fields: `d: [R.cuts, C.cuts]T`.
 
 - `fn new() -> Diff<R, C, T>` — O(|R| * |C|) time and space; Create an all-zero 2-D difference array over `(R, C)`.
 - `fn add(mut self, rows: Range<R>, cols: Range<C>, x: T)` — O(1); Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
@@ -87,6 +103,8 @@ Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(\|R\| * \|C\|) `f
 
 O(\|D\|) space.
 
+Fields: `d: [D.cuts]T`, `cur: T`, `rev: Bool`.
+
 - `fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T>` — O(|D|) time and space; Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`), with no position advanced yet.
 - `fn add(mut self, r: Range<D>, x: T)` — O(1); Schedule `+x` across `r`, which must start at or ahead of the current sweep cursor: no position of `r` may have been advanced past already.; traps: when `r` is non-empty and holds a position already advanced to
 - `fn advance(mut self, i: D) -> T` — O(1); Advance the cursor to `i`, the next position in fill order, and return the accumulated value there: the total of every scheduled `add` covering `i`.; traps: when `i` is not the next position in fill order
@@ -95,6 +113,8 @@ O(\|D\|) space.
 ## `struct ArithDiff<D, T>`
 
 O(\|D\|) space.
+
+Fields: `d: [D.cuts]T`, `e: [D.cuts]T`.
 
 - `fn new() -> ArithDiff<D, T>` — O(|D|) time and space; Create an all-zero second-order difference array over `D`.
 - `fn add_arith(mut self, r: Range<D>, start: T, step: T)` — O(1); Add `start + step * (i.ord - r.start.ord)` to every position `i` in `r`: `start` at the first position of `r`, growing by `step` per position.

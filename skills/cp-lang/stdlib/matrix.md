@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Mat`.
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
+Fields: `rows: Int`, `cols: Int`, `data: List<T>`.
+
 - `fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
 - `fn zeros(rows: Int, cols: Int) -> Mat<T>` — O(rows * cols) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
@@ -37,6 +39,8 @@ A dense `rows x cols` matrix stored flat in row-major order.
 
 Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 
+Fields: `basis: List<Int>`, `size: Int`.
+
 - `fn new() -> XorBasis` — O(W); An empty basis of rank 0, whose span is `{0}`.
 - `@get fn rank(self) -> Int` — O(1); The number of linearly independent vectors in the basis: the span has `2^rank` elements.
 - `fn add(mut self, x: Int) -> Bool` — O(W); Insert `x >= 0` into the basis.; traps: when `x < 0`
@@ -54,12 +58,16 @@ Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 
 O(n^3 log max_exp) build, O(n^2 log e) query.
 
+Fields: `n: Int`.
+
 - `fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>` — O(n^3 log max_exp) time, O(n^2 log max_exp) space; Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.; traps: when `a` is not square or `max_exp < 0`
 - `fn apply_pow(self, e: Int, v: List<T>) -> List<T>` — O(n^2 log e) time, O(n) space; Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers for the set bits of `e`.; traps: when `e` is not in `0..=max_exp` or `v.len != n`
 
 ## `struct BitMat(rows: Int, cols: Int)`
 
 O(n * m / 64) storage.
+
+Fields: `bits: List<Int>`.
 
 - `fn new(rows: Int, cols: Int) -> BitMat` — O(rows * cols / 64) time and space; A zero GF(2) matrix of `rows x cols`, one bit per entry.; traps: when `rows < 0` or `cols < 0`
 - `fn identity(n: Int) -> BitMat` — O(n^2 / 64) time and space; The `n x n` GF(2) identity matrix.; traps: when `n < 0`
@@ -75,6 +83,8 @@ O(n * m / 64) storage.
 ## `struct PrefixXorBasis`
 
 O(62) per push and query.
+
+Fields: `len: Int`, `vecs: List<Int>`, `from: List<Int>`.
 
 - `fn new() -> PrefixXorBasis` — O(1); An empty prefix XOR basis, with no positions pushed.
 - `fn push(mut self, x: Int)` — O(62) time and space; Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the rightmost source index, so any subarray's span reads off the vectors whose index lies in it.; traps: when `x < 0` or `x >= 2^62`

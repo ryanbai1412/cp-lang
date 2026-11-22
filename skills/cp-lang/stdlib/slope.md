@@ -10,6 +10,8 @@ Import: `use std.slope.{...}`.
 
 O(log n) expected per slope operation, for n slopes.
 
+Fields: `slopes: LazyTreap<Int, Slide>`.
+
 - `fn point(d: Int) -> Concave` — O(1); The function defined on the single point `d`, with `f(d) = 0`.
 - `fn flat(r: Range<Int>) -> Concave` — O(|r| log |r|) expected; The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of `r` and `hi` the last.; traps: when `r` is empty
 - `fn reserve(mut self, n: Int)` — O(n); Make room for `n` slopes in total, so later operations do not regrow the storage.; traps: when `n < 0`

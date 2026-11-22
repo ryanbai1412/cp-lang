@@ -16,7 +16,7 @@ Interactive mode.
 ## Functions
 
 - `fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str` — O(1); The answer word for `ok`: `io.answers.0` when true, else `io.answers.1`.
-- `fn read_all<T>(until: ?(T -> Bool)` — O(tokens read); Every remaining `T` on stdin, for statements that give no count.; traps: when a token is not a valid `T`
+- `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>` — O(tokens read); Every remaining `T` on stdin, for statements that give no count.; traps: when a token is not a valid `T`
 
 ## Example
 

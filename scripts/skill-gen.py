@@ -57,6 +57,7 @@ class TypeDecl:
     header: str
     doc: DocInfo
     methods: list[Member] = field(default_factory=list)
+    fields: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -369,7 +370,7 @@ def collect_doc_above(lines: list[str], idx: int) -> DocInfo:
         if s.startswith("///"):
             doc.insert(0, s)
             j -= 1
-        elif s.startswith("@") and not s.startswith("@!"):
+        elif re.fullmatch(r"@\w+(\(.*\))?", s):
             j -= 1
         else:
             break
@@ -384,7 +385,7 @@ def read_header(lines: list[str], idx: int) -> str:
         if not line:
             break
         parts.append(line)
-        for ch in line:
+        for ch in line.replace("->", "  ").replace("=>", "  "):
             if ch in "([{<":
                 depth += 1
             elif ch in ")]}>":
@@ -399,7 +400,7 @@ def read_header(lines: list[str], idx: int) -> str:
     sig = " ".join(parts)
     depth = 0
     cut = len(sig)
-    for k, ch in enumerate(sig):
+    for k, ch in enumerate(sig.replace("->", "  ").replace("=>", "  ")):
         if ch in "([{<":
             depth += 1
         elif ch in ")]}>":
@@ -410,6 +411,8 @@ def read_header(lines: list[str], idx: int) -> str:
     sig = sig[:cut]
     sig = re.sub(r":\s*$", "", sig)
     sig = re.sub(r"\s+", " ", sig).strip()
+    sig = re.sub(r"([(\[<])\s+", r"\1", sig)
+    sig = re.sub(r",?\s+([)\]>])", r"\1", sig)
     return sig
 
 
@@ -458,6 +461,8 @@ def parse_module(path: Path, prelude_names: list[str]) -> ModuleDoc:
                 sig = read_header(lines, i)
                 sig = re.sub(r"^(?:@get\s+)?pub\s+(?:@get\s+)?", "", sig)
                 functions.append(Member(kind="fn", name=m_fn.group(1), signature=sig, doc=collect_doc_above(lines, i), is_getter=is_get))
+        elif cur_type is not None and indent == 4 and not cur_type.methods and re.fullmatch(r"[a-z]\w*: [^=]+", re.sub(r"//.*", "", s).strip()):
+            cur_type.fields.append(re.sub(r"//.*", "", s).strip())
         elif cur_type is not None and indent <= 4:
             m_fn = re.match(r"^(?:@get\s+)?pub\s+(?:@get\s+)?fn\s+([A-Za-z_]\w*)", s)
             if m_fn:
@@ -482,7 +487,7 @@ def render_member_line(m: Member) -> str:
     meta: list[str] = []
     if m.doc.cost:
         meta.append(m.doc.cost)
-    if m.doc.summary:
+    if m.doc.summary and m.doc.summary.rstrip(".") != m.doc.cost.rstrip("."):
         meta.append(m.doc.summary)
     if m.doc.traps and m.doc.traps.lower() != "never":
         meta.append(f"traps: {m.doc.traps}")
@@ -518,6 +523,9 @@ def render_module(mod: ModuleDoc) -> str:
         out.append("")
         if td.doc.summary:
             out.append(td.doc.summary)
+            out.append("")
+        if td.fields:
+            out.append("Fields: " + ", ".join(f"`{f}`" for f in td.fields) + ".")
             out.append("")
         for m in td.methods:
             out.append(render_member_line(m))

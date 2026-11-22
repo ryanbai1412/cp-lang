@@ -33,6 +33,8 @@ Which side of zero a number is on.
 
 O(n^(2/3)) time and memory.
 
+Fields: `n: Int`.
+
 - `fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>` — O(f_small.len) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
 - `fn sum(mut self, m: Int) -> T` — O(1) cached; O(n^(2/3)) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
 

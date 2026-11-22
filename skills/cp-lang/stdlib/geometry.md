@@ -44,6 +44,8 @@ O(1) comparison key.
 
 O(n) memory.
 
+Fields: `hull: List<Pt>`, `area: Int`.
+
 - `fn new() -> OnlineHull` — O(1); An empty online convex hull.
 - `fn add(mut self, p: Pt) -> Bool` — O(log n) amortized; Insert `p` and report whether the hull changed (whether `p` is now a corner).
 - `fn locate(self, p: Pt) -> Location` — O(log n); Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
@@ -157,7 +159,7 @@ O(1) value type.
 - `fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>` — O(|a| + |b|) time and memory; The upper hull of the Minkowski sum of two non-empty left-to-right upper hulls.; traps: when `a` or `b` is empty
 - `fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt>` — O(|a| + |b|) time and memory; The lower hull of the Minkowski sum of two non-empty left-to-right lower hulls; the mirror of `minkowski_upper`.; traps: when `a` or `b` is empty
 - `fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool` — O(|a| + |b|); Whether two non-empty counter-clockwise convex polygons share at least one point, boundary included.; traps: when `a` or `b` is empty
-- `fn convex_polygon_intersect( a: List<Vec>, b: List<Vec>, eps: F64 = 1e-9, ) -> List<Vec>` — O(|a| + |b|) time and memory; The intersection of two counter-clockwise convex polygons, as a counter-clockwise polygon.
+- `fn convex_polygon_intersect(a: List<Vec>, b: List<Vec>, eps: F64 = 1e-9) -> List<Vec>` — O(|a| + |b|) time and memory; The intersection of two counter-clockwise convex polygons, as a counter-clockwise polygon.
 - `fn area2(poly: List<Pt>) -> Int` — O(n); Twice the signed area of the polygon `poly` (shoelace): positive when the vertices run counter-clockwise, negative when clockwise; 0 for fewer than 3 vertices.; traps: when the sum overflows `Int`
 - `fn area2_128(poly: List<Pt>) -> I128` — O(n); Twice the signed area of `poly`, as `area2`, accumulated exactly in `I128`.; traps: when the sum overflows `I128`
 - `fn locate(poly: List<Pt>, p: Pt) -> Location` — O(n); Where `p` is relative to the simple polygon `poly`, in either orientation: `Inside`, `Boundary` or `Outside`.
@@ -179,7 +181,7 @@ O(1) value type.
 - `fn pick_boundary(poly: List<Pt>) -> Int` — O(n log max_coord); The number of lattice points on the boundary of the lattice polygon `poly`: the sum of `gcd(\|dx\|, \|dy\|)` over its edges, including the closing edge.; traps: when the sum overflows `Int`
 - `fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool` — O(1); Whether `\|a - b\| <= eps`: an absolute tolerance, the same test every `eps` in this module uses.
 - `fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int` — O(1); The sign of `x` with tolerance: 1 if `x > eps`, -1 if `x < -eps`, else 0.
-- `fn turn_eps( a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9, ) -> Int` — O(1); Which way the path `a -> b -> c` turns, with tolerance: `sign_eps((b - a).cross(c - a), eps)`, so 1 left, -1 right, 0 straight within `eps`.
+- `fn turn_eps(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> Int` — O(1); Which way the path `a -> b -> c` turns, with tolerance: `sign_eps((b - a).cross(c - a), eps)`, so 1 left, -1 right, 0 straight within `eps`.
 - `fn angle_between(a: Vec, b: Vec) -> F64` — O(1); The signed angle from `a` to `b`, `atan2(a.cross(b), a.dot(b))`, in `(-pi, pi]`: positive when `b` is counter-clockwise from `a`.
 - `fn project(p: Vec, a: Vec, b: Vec) -> Vec` — O(1); The orthogonal projection of `p` onto the line through `a` and `b`: `a + (b - a) * ((p - a).dot(b - a) / (b - a).norm2)`.; traps: when `a == b`
 - `fn reflect(p: Vec, a: Vec, b: Vec) -> Vec` — O(1); The mirror image of `p` across the line through `a` and `b`: `project(p, a, b) * 2.0 - p`.; traps: when `a == b`
@@ -193,11 +195,11 @@ O(1) value type.
 - `fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>` — O(1); The points where `circle` meets the infinite line through `a` and `b`: two when it crosses, one (the foot of the perpendicular from the centre) when the distance is within `eps` of `r`, and None otherwise.; traps: when `a == b`
 - `fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec>` — O(1); The points where the circles `a` and `b` meet: two when they cross, one when tangent (within `eps`), None when apart, nested, or identical (infinitely many).
 - `fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec>` — O(1); The points of `circle` where a tangent line through `p` touches it: two when `p` is outside, `[p]` when `p` is on the circle (within `eps`), None when inside.
-- `fn circle_circle_tangents( a: Circle, b: Circle, inner: Bool = false, eps: F64 = 1e-9, ) -> List<(Vec, Vec)>` — O(1); The common tangent segments `(p1, p2)` of the circles `a` and `b`, `p1` on `a` and `p2` on `b`: the outer tangents, or the inner ones (crossing between the centres) with `inner: true`.
+- `fn circle_circle_tangents(a: Circle, b: Circle, inner: Bool = false, eps: F64 = 1e-9) -> List<(Vec, Vec)>` — O(1); The common tangent segments `(p1, p2)` of the circles `a` and `b`, `p1` on `a` and `p2` on `b`: the outer tangents, or the inner ones (crossing between the centres) with `inner: true`.
 - `fn circle_circle_area(a: Circle, b: Circle, eps: F64 = 1e-9) -> F64` — O(1); The area of the intersection of the disks `a` and `b`: 0.0 when apart, the smaller disk's `area` when one contains the other (within `eps`), else the sum of the two circular segments.
 - `fn invert(p: Vec, across: Circle) -> Vec` — O(1); The inverse of `p` in the circle `across`: `c + (p - c) * (r * r / (p - c).norm2)`.; traps: when `p == across.c`
 - `fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64` — O(n^2 log n) time, O(n) memory; The area of the union of the disks `circles`, by Green's theorem over the arcs on the union's boundary.
-- `fn half_plane_intersect( planes: List<HalfPlane>, bound: ?F64 = None, eps: F64 = 1e-9, ) -> List<Vec>` — O(n log n) time, O(n) memory; The intersection of the closed half-planes `planes`, as a counter-clockwise convex polygon (sort by angle, then a deque sweep).; traps: when a plane's `dir` is the zero vector
+- `fn half_plane_intersect(planes: List<HalfPlane>, bound: ?F64 = None, eps: F64 = 1e-9) -> List<Vec>` — O(n log n) time, O(n) memory; The intersection of the closed half-planes `planes`, as a counter-clockwise convex polygon (sort by angle, then a deque sweep).; traps: when a plane's `dir` is the zero vector
 - `fn polygon_area(poly: List<Vec>) -> F64` — O(n); The signed area of the polygon `poly` (half the shoelace sum): positive counter-clockwise, negative clockwise; 0.0 for fewer than 3 vertices.
 - `fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>` — O(n) time and memory; The part of `poly` in the closed half-plane left of the directed line `a -> b` (Sutherland-Hodgman).; traps: when `a == b`
 - `fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle` — O(n) expected for unadversarial order; The smallest circle containing every point of `pts` (Welzl's algorithm, deterministic: points are processed in input order, with no shuffle).
@@ -206,7 +208,7 @@ O(1) value type.
 - `fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D)` — O(n log n) time, O(n) memory; `any_segments_meet` over a domain-indexed array: `Some((a, b))` with `a` before `b` in key order for a pair of segments that meet, or `None`.
 - `fn rects_union_area(rects: List<Rect>) -> Int` — O(n log n) time, O(n) memory; The area of the union of `rects`, by a sweep over x with a segment tree over the compressed y coordinates.; traps: when the area overflows `Int`
 - `fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>` — O((n + m) log m) time, O(n + m) memory; The faces of the planar straight-line graph with vertices `pts` and undirected `edges`, each as its cycle of vertices: bounded faces counter-clockwise, the outer face of each connected component clockwise.; traps: when an edge joins a vertex to itself, or an edge repeats
-- `fn point_location_planar<V>( pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>, ) -> List<?Int>` — O((n + m + q) log(n + m)) time, O(n + m + q) memory; For each query point, the index into `planar_faces(pts, edges)` of the bounded face that contains it, or `None` when it lies on an edge or vertex or in the unbounded region (offline sweep).; traps: as `planar_faces`
+- `fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int>` — O((n + m + q) log(n + m)) time, O(n + m + q) memory; For each query point, the index into `planar_faces(pts, edges)` of the bounded face that contains it, or `None` when it lies on an edge or vertex or in the unbounded region (offline sweep).; traps: as `planar_faces`
 - `fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>` — O(n log n) time, O(n) memory; The Delaunay triangulation of distinct integer points (`\|coords\| <= 1e9`), exact in `I128`, as counter-clockwise handle triples.; traps: when two points are equal
 - `fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>` — O(n log n) time, O(n) memory; The Voronoi cell of each point, clipped to the box `[-bound, bound]^2`, as a counter-clockwise polygon (from the Delaunay dual, then half-plane clipping).; traps: when two points are equal or `bound <= 0.0`
 - `fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>` — O(n^2) time, O(n) memory; The 3D convex hull of `pts` as triangular faces of indices, each counter-clockwise seen from outside (so its normal points out), exact in `I128` (valid for `\|x\|, \|y\|, \|z\| <= 1e12`).

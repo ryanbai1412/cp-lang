@@ -22,7 +22,7 @@ Common shapes:
 - Domain-indexed array: `let a = read<[V]Int>()`
 - Edge list: `let edges = read<[E](u: V, v: V)>()` or weighted
   `read<[E](u: V, v: V, w: Int)>()`
-- 2D grid of ints or chars: `let g = read<[R, C]Int>()`
+- 2D grid: `let g = read<[R, C]Int>()`, or `read<[R, C]Char>()` for a character grid
 - Tree (reads `V.count - 1` edges): `let edges = read<Tree<V>>()`
 
 Input contract violations (bad token or out-of-range value) trap with `R0501`

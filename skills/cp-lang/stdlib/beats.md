@@ -10,6 +10,8 @@ In prelude (no `use` needed): `BeatsSegTree`.
 
 Segment Tree Beats over a domain `D` of `Int` values.
 
+Fields: `s: List<Int>`, `mx1: List<Int>`, `mx2: List<Int>`, `mx_c: List<Int>`, `mn1: List<Int>`, `mn2: List<Int>`, `mn_c: List<Int>`, `lz_add: List<Int>`, `n: Int`.
+
 - `fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>` — O(|D|); A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or zero everywhere when neither is given.; traps: when both `a` and `fill` are given
 - `fn chmin(mut self, r: Range<D>, x: Int)` — O(log |D|) amortized; O(log^2 |D|) amortized when mixed with `add`; Replace every `a[i]` in `r` with `min(a[i], x)`.; traps: when a non-empty `r` reaches outside `D`
 - `fn chmax(mut self, r: Range<D>, x: Int)` — O(log |D|) amortized; O(log^2 |D|) amortized when mixed with `add`; Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.; traps: when a non-empty `r` reaches outside `D`
@@ -29,6 +31,8 @@ Segment Tree Beats over a domain `D` of `Int` values.
 ## `struct HistoricBeatsSegTree<D>`
 
 O(\|D\|) space.
+
+Fields: `n: Int`.
 
 - `fn new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>` — O(|D|); A Beats tree that also tracks history, holding `a`, or `fill` everywhere, or zeros.; traps: when both `a` and `fill` are given
 - `fn chmin(mut self, r: Range<D>, x: Int)` — O(log |D|) amortized; O(log^2 |D|) amortized when mixed with `add`; Replace every `a[i]` in `r` with `min(a[i], x)`, then record a new version.; traps: when a non-empty `r` reaches outside `D`

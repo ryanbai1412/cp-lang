@@ -10,6 +10,8 @@ In prelude (no `use` needed): `SegTree`.
 
 Point update and range fold.
 
+Fields: `t: List<T>`, `size: Int`, `source: ?(D -> T)`.
+
 - `fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: ?A = None, over: ?Range<Int> = None) -> SegTree<D, T>` — O(|D|); O(1) with `over:`; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`
 - `fn apply(mut self, r: Range<D>, f: F)` — O(log |D|); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
 - `fn apply_all(mut self, f: F)` — O(1) amortized when the tags commute, else O(|D|); Apply tag `f` to every position; `apply(D.all, f)`.
@@ -32,6 +34,8 @@ Point update and range fold.
 
 Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 
+Fields: `data: List<T>`, `size: Int`.
+
 - `fn new(a: [D]T) -> MergeSortTree<D, T>` — O(|D| log |D|) time and memory; A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — O(log^2 |D|); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_le(self, r: Range<D>, x: T) -> Int` — O(log^2 |D|); The number of positions in `r` whose value is `<= x`.; traps: when a non-empty `r` reaches outside `D`
@@ -45,6 +49,8 @@ Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 
 O(\|R\| * \|C\|) space.
 
+Fields: `t: List<T>`.
+
 - `fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>` — O(|R| * |C|); A grid tree over `(R, C)` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere.; traps: when both `a` and `fill` are given
 - `fn get(self, r: R, c: C) -> T` — O(1); The value of cell `(r, c)`.; traps: when `r` is outside `R` or `c` is outside `C`
 - `fn set(mut self, r: R, c: C, x: T)` — O(log |R| * log |C|); Make cell `(r, c)` hold `x`.; traps: when `r` is outside `R` or `c` is outside `C`
@@ -55,6 +61,8 @@ O(\|R\| * \|C\|) space.
 ## `struct WaveletMatrix<D>`
 
 O(\|D\| log V) build and memory.
+
+Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `cnt: List<Int>`, `zsum: List<Int>`.
 
 - `fn new(a: [D]Int) -> WaveletMatrix<D>` — O(|D| log V) time and memory; A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the largest value (`V` below is that value plus one).; traps: when some value is negative
 - `fn kth(self, r: Range<D>, k: Int) -> ?Int` — O(log V); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -69,6 +77,8 @@ O(\|D\| log V) build and memory.
 
 O(\|D\| log^2 \|D\|) space.
 
+Fields: `n: Int`.
+
 - `fn new(a: [D]T) -> DynamicOrderTree<D, T>` — O(|D| log^2 |D|) time and memory; A structure over `a` answering value counts and order statistics on ranges while positions are reassigned.
 - `fn set(mut self, i: D, x: T)` — O(log^2 |D|); Make position `i` hold `x`.; traps: when `i` is outside `D`
 - `fn get(self, i: D) -> T` — O(1); The value at position `i`.; traps: when `i` is outside `D`
@@ -79,6 +89,8 @@ O(\|D\| log^2 \|D\|) space.
 ## `struct MergeSeg<D>`
 
 O(q log \|D\|) space.
+
+Fields: `heap: List<D>`.
 
 - `fn singleton(x: D) -> MergeSeg<D>` — O(log |D|); A set of positions of `D` holding only `x`, stored as a sparse binary tree over `D`.; traps: when `x` is outside `D`
 - `fn merge(self, other: MergeSeg<D>) -> MergeSeg<D>` — O(log |D|) amortized per node absorbed; The union of `self` and `other`.

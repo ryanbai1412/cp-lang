@@ -14,8 +14,10 @@ In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
 A priority queue on `<`.
 
-- `fn new<K>(by: ?(T -> K)` — O(1); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
-- `fn of<K>(xs: List<T>, by: ?(T -> K)` — O(n); Build a `Heap<T>` from `xs` via Floyd heapify.
+Fields: `xs: List<T>`, `lt: ?((T, T) -> Bool)`.
+
+- `fn new<K>(by: ?(T -> K) = None) -> Heap<T>` — O(1); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — O(n); Build a `Heap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — O(1); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — O(1); Whether the heap is empty.
 - `@get fn peek(self) -> ?T` — O(1); The smallest element, or `None` if the heap is empty.
@@ -33,7 +35,9 @@ A priority queue on `<`.
 
 Min-heap supporting O(log n) arbitrary-value `remove(x)` via a lazy deletion heap.
 
-- `fn new<K>(by: ?(T -> K)` — O(1); Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
+Fields: `live: Heap<T>`, `dead: Heap<T>`.
+
+- `fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>` — O(1); Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `@get fn len(self) -> Int` — O(1); Number of active elements in the heap.
 - `@get fn is_empty(self) -> Bool` — O(1); Whether no active elements remain.
 - `fn clear(mut self)` — O(1); Remove all elements from the heap.
@@ -46,6 +50,8 @@ Min-heap supporting O(log n) arbitrary-value `remove(x)` via a lazy deletion hea
 ## `struct IndexedHeap<D, K>`
 
 Domain-keyed min-heap over `D` supporting O(log n) `set`, `decrease`, `increase`, `remove`, and `pop`, plus O(1) `contains`, `get`, and `peek`.
+
+Fields: `heap: List<D>`, `pos: [D]Int`, `keys: [D]?K`.
 
 - `fn new() -> IndexedHeap<D, K>` — O(|D|); Create an empty `IndexedHeap<D, K>`.
 - `@get fn len(self) -> Int` — O(1); Number of keys currently in the heap.
@@ -62,7 +68,9 @@ Domain-keyed min-heap over `D` supporting O(log n) `set`, `decrease`, `increase`
 
 ## `struct MinMaxHeap<T>`
 
-- `fn new<K>(by: ?(T -> K)` — O(1); Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
+Fields: `lt: ?((T, T) -> Bool)`.
+
+- `fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T>` — O(1); Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MinMaxHeap<T>` — O(n); Build a `MinMaxHeap<T>` from `xs` in linear time.
 - `fn reserve(mut self, cap: Int)` — O(cap) when the storage grows, O(1) otherwise; Reserve backing storage for at least `cap` elements.
 - `@get fn len(self) -> Int` — O(1); Number of elements currently in the heap.
@@ -79,7 +87,7 @@ Domain-keyed min-heap over `D` supporting O(log n) `set`, `decrease`, `increase`
 
 Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offset `add_all`.
 
-- `fn new<K>(by: ?(T -> K)` — O(1); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>` — O(1); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MeldHeap<T>` — O(n); Build a `MeldHeap<T>` from `xs`.
 - `@get fn len(self) -> Int` — O(1); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — O(1); Whether the heap is empty.
@@ -99,6 +107,8 @@ Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offse
 
 `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and costs as `Heap`; it holds each element as `desc(x)`.
 
+Fields: `h: Heap<Desc<T>>`.
+
 - `fn new() -> MaxHeap<T>` — O(1); An empty `MaxHeap<T>`.
 - `fn of(xs: List<T>) -> MaxHeap<T>` — O(n); Build a `MaxHeap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — O(1); Number of elements currently in the heap.
@@ -114,7 +124,7 @@ Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offse
 - `fn push_all(mut self, items: List<T>)` — O(n + k log(n + k)); Push every element of `items`.
 - `fn drain(mut self) -> yields T` — O(n log n); Pop every element, largest first.
 
-## `struct Settle<K, P>(best: (P, P) -> P`
+## `struct Settle<K, P>(best: (P, P) -> P = min)`
 
 A keyed frontier where each key pops exactly once.
 

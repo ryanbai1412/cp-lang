@@ -45,12 +45,16 @@ O(1) reduction.
 
 O(p^e) build, O(log_p n) query.
 
+Fields: `free: List<Int>`.
+
 - `fn new(p: Int, e: Int) -> PrimePowerComb` — O(p^e) time and memory; Tables for binomial coefficients modulo `p^e`: the factorials with every factor of `p` removed, modulo `p^e`.; traps: when `p` is not prime, or `e < 1`, or `p^e` overflows `Int`
 - `fn choose(self, n: Int, k: Int) -> Int` — O(log_p n); `C(n, k) mod p^e`, by Granville's generalization of Lucas's theorem; 0 when `k` is outside `0..=n`.
 
 ## `struct ModComb(m: Int)`
 
 O(sum p_i^e_i) build, O(omega(m) log n) query.
+
+Fields: `parts: List<PrimePowerComb>`.
 
 - `fn new(m: Int) -> ModComb` — O(sum p_i^e_i); Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per prime power, combined by CRT.; traps: when `m < 1`
 - `fn choose(self, n: Int, k: Int) -> Int` — O(omega(m) log n); `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.

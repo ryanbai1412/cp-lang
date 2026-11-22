@@ -10,12 +10,14 @@ In prelude (no `use` needed): `IntervalMap`.
 
 A total partition of domain `D` into maximal contiguous half-open runs, each carrying a value of type `T`.
 
+Fields: `segs: Map<Int, (hi: Int, val: T)>`.
+
 - `fn new(init: T) -> IntervalMap<D, T>` — O(1); A map that gives every position of `D` the value `init`: one run, or None when `D` is empty.
 - `fn from(a: [D]T) -> IntervalMap<D, T>` — O(|D|); The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
 - `@get fn runs(self) -> Int` — O(1); The number of maximal runs, i.e.
 - `fn get(self, i: D) -> T` — O(log runs); The value at position `i`.; traps: when `i` is outside `D`
 - `fn run_at(self, i: D) -> (range: Range<D>, val: T)` — O(log runs); The maximal run containing position `i` and its value.; traps: when `i` is outside `D`
-- `fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> ()` — O((1 + overwritten) log runs) amortized; Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all runs stay maximal.; traps: when a non-empty `r` reaches outside `D`
+- `fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` — O((1 + overwritten) log runs) amortized; Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all runs stay maximal.; traps: when a non-empty `r` reaches outside `D`
 - `fn assign_point(mut self, i: D, val: T) -> T` — O(log runs); Give position `i` the value `val` and return the value it had.; traps: when `i` is outside `D`
 - `fn each(self) -> yields (range: Range<D>, val: T)` — O(1) per run; Every maximal run with its value.
 - `fn set(mut self, i: D, val: T)` — O(log runs); Give position `i` the value `val`; `assign_point` without the old value, and the write-through place for `m[i] = val`.; traps: when `i` is outside `D`
@@ -26,6 +28,8 @@ A total partition of domain `D` into maximal contiguous half-open runs, each car
 ## `struct IntervalSet<D>`
 
 O(runs) space.
+
+Fields: `segs: Map<Int, Int>`, `total: Int`.
 
 - `fn new() -> IntervalSet<D>` — O(1); An empty set of positions of `D`.
 - `fn add(mut self, r: Range<D>)` — O((1 + merged) log runs) amortized; Add every position of `r`, merging runs that overlap or touch it into one maximal run.; traps: when a non-empty `r` reaches outside `D`
@@ -43,6 +47,8 @@ O(runs) space.
 
 O(runs) space.
 
+Fields: `segs: Map<Int, Int>`, `total: Int`.
+
 - `fn new() -> SparseIntervalSet` — O(1); An empty set of `Int` coordinates, unbounded in both directions.
 - `fn add(mut self, r: Range<Int>)` — O((1 + merged) log runs) amortized; Add every coordinate of the half-open `r`, merging runs that overlap or touch it.
 - `fn remove(mut self, r: Range<Int>)` — O((1 + split) log runs) amortized; Remove every coordinate of the half-open `r`; a run straddling an end of `r` is cut there.
@@ -56,11 +62,13 @@ O(runs) space.
 
 Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
 
+Fields: `lo: Int`, `hi: Int`, `segs: Map<Int, (hi: Int, val: T)>`.
+
 - `fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T>` — O(1); A map giving every coordinate of `lo..hi` the value `init`: one run, or None when `lo == hi`.; traps: when `lo > hi`
 - `@get fn runs(self) -> Int` — O(1); The number of maximal runs of equal values.
 - `fn get(self, i: Int) -> T` — O(log runs); The value at coordinate `i`.; traps: when `i` is outside `lo..hi`
 - `fn run_at(self, i: Int) -> (range: Range<Int>, val: T)` — O(log runs); The maximal run containing coordinate `i` and its value.; traps: when `i` is outside `lo..hi`
-- `fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> ()` — O((1 + removed) log runs) amortized; Give every coordinate of `r` the value `val`, then merge with equal neighbouring runs.; traps: when a non-empty `r` reaches outside `lo..hi`
+- `fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ())` — O((1 + removed) log runs) amortized; Give every coordinate of `r` the value `val`, then merge with equal neighbouring runs.; traps: when a non-empty `r` reaches outside `lo..hi`
 - `fn update(mut self, r: Range<Int>, f: T -> T)` — O((1 + touched) log runs); Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge equal neighbours.; traps: when a non-empty `r` reaches outside `lo..hi`
 - `fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T)` — O(log runs + k) for `k` pieces; Every run overlapping `r`, clipped to `r`, with its value.; traps: when a non-empty `r` reaches outside `lo..hi`
 - `fn each(self) -> yields (range: Range<Int>, val: T)` — O(1) per run; Every maximal run with its value.

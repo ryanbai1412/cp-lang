@@ -17,9 +17,9 @@ One of the four directions up, right, down, left (clockwise, rows growing downwa
 - `fn all() -> List<Dir4>` — O(1); All four directions, clockwise from up.
 - `fn from(letters: Str, ch: Char) -> ?Dir4` — O(1); The direction a letter stands for, given the letters for up, right, down and left in that; traps: `letters.len != 4`
 - `@get fn cw(self) -> Dir4` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
-- `@get fn ccw(self) -> Dir4` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
-- `@get fn back(self) -> Dir4` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
-- `@get fn delta(self) -> (Int, Int)` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
+- `@get fn ccw(self) -> Dir4` — O(1); A quarter turn counter-clockwise, the inverse of `cw`.
+- `@get fn back(self) -> Dir4` — O(1); The opposite direction, a half turn: its delta is the negated delta.
+- `@get fn delta(self) -> (Int, Int)` — O(1); The change in (row, column) of one step.
 
 ## `struct Dir8(k: Int)`
 
@@ -28,9 +28,9 @@ One of the eight directions, clockwise from up: the four of `Dir4` and the diago
 - `fn all() -> List<Dir8>` — O(1); All eight directions, clockwise from up: up, up-right, right, down-right, down, down-left, left, up-left.
 - `fn from(letters: Str, ch: Char) -> ?Dir8` — O(1); The direction whose letter is `ch` in `letters`, listed in `Dir8.all()` order, e.g.; traps: `letters.len != 8`
 - `@get fn cw(self) -> Dir8` — O(1); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
-- `@get fn ccw(self) -> Dir8` — O(1); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
-- `@get fn back(self) -> Dir8` — O(1); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
-- `@get fn delta(self) -> (Int, Int)` — O(1); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
+- `@get fn ccw(self) -> Dir8` — O(1); An eighth of a turn counter-clockwise, the inverse of `cw`.
+- `@get fn back(self) -> Dir8` — O(1); The opposite direction, four eighths round: its delta is the negated delta.
+- `@get fn delta(self) -> (Int, Int)` — O(1); The change in (row, column) of one step; each part is `-1`, `0` or `1`.
 
 ## Functions
 

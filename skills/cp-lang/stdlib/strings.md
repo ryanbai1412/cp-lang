@@ -32,6 +32,8 @@ O(n) space, O(1) queries.
 
 O(n) SA-IS + Kasai LCP (O(n log n) with RMQ).
 
+Fields: `sa: List<Int>`, `rank: List<Int>`, `lcp: List<Int>`, `rmq: List<Int>`, `log: List<Int>`, `dcum: List<Int>`, `toks: List<Int>`.
+
 - `fn new<S: Indexed>(s: S) -> SuffixArray` — O(n) for `Str` and small integer alphabets, O(n log n) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — O(1); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — O(1); True when the suffix array was built over an empty sequence.
@@ -46,9 +48,11 @@ O(n) SA-IS + Kasai LCP (O(n log n) with RMQ).
 - `fn split(self, r: Range<Int>) -> Int` — O(1); Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are the first child and the rest.; traps: when `r.len < 2` or `r` reaches outside `0..n`
 - `fn kth_distinct(self, k: Int) -> ?Range<Int>` — O(log n); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
 
-## `struct SuffixTreeEdge( top_size: Int, bottom_size: Int, parent_len: Int, edge_len: Int, rank_range: Range<Int>, )`
+## `struct SuffixTreeEdge(top_size: Int, bottom_size: Int, parent_len: Int, edge_len: Int, rank_range: Range<Int>)`
 
 O(1) value.
+
+Fields: `top_size: Int,`, `bottom_size: Int,`, `parent_len: Int,`, `edge_len: Int,`, `rank_range: Range<Int>,`.
 
 ## `struct HashVal(h1: Int, h2: Int)`
 
@@ -63,6 +67,8 @@ O(1) per element.
 ## `struct RollingHash`
 
 O(n) build, O(1) slice hash.
+
+Fields: `bases: (Int, Int)`, `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 
 - `fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash` — O(n); A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.; traps: when a given base is outside `2..M`
 - `fn push<T: Hashable>(mut self, x: T)` — O(1) amortized; Appends `x` to the end of the hashed sequence.
@@ -83,7 +89,9 @@ O(n) build, O(1) slice hash.
 
 O(R * C) build, O(1) rectangle hash.
 
-- `fn new(code: (R, C) -> Int, bases: ?(Int, Int)` — O(|R| * |C|); A 2D polynomial prefix hash of the grid whose cell `(r, c)` has the token `code(r, c)`, for every `r` in `R` and `c` in `C`; call it as `Hash2D<R, C>(code)`.; traps: when a given base is outside `2..M`
+Fields: `stride: Int`, `pre1: List<Int>`, `pre2: List<Int>`, `pow_r1: List<Int>`, `pow_c1: List<Int>`, `pow_r2: List<Int>`, `pow_c2: List<Int>`.
+
+- `fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>` — O(|R| * |C|); A 2D polynomial prefix hash of the grid whose cell `(r, c)` has the token `code(r, c)`, for every `r` in `R` and `c` in `C`; call it as `Hash2D<R, C>(code)`.; traps: when a given base is outside `2..M`
 - `fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal` — O(1); The hash of the rectangle `rows` x `cols`; equal rectangles of equal shape hash equal.; traps: never (the ranges are typed by `R` and `C`)
 
 ## `struct Hash61(v: U64)`
@@ -93,6 +101,8 @@ O(1) value.
 ## `struct RollingHash61`
 
 O(n) build, O(1) query.
+
+Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
 
 - `fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61` — O(n); A single-modulus polynomial rolling hash of `seq` modulo the Mersenne prime `2^61 - 1`; call it as `RollingHash61(seq)`.; traps: when a given base is outside `2..2^61 - 1`
 - `@get fn len(self) -> Int` — O(1); The number of elements hashed.
@@ -110,6 +120,8 @@ O(n) build, O(1) query.
 
 O(n) build, O(log n) point update and range hash.
 
+Fields: `bases: (Int, Int)`.
+
 - `fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>` — O(n); A double-modulus rolling hash of `seq` that supports point updates, kept forwards and backwards in a segment tree; call it as `DynamicHash(seq)`.; traps: when a given base is outside `2..M`
 - `@get fn len(self) -> Int` — O(1); The number of hashed positions, `D.K`.
 - `@get fn is_empty(self) -> Bool` — O(1); True when there are no positions.
@@ -123,6 +135,8 @@ O(n) build, O(log n) point update and range hash.
 
 O(n * \|A\|) space, O(1) amortized push.
 
+Fields: `prefix: List<Bool>`, `letters: List<?A>`.
+
 - `fn new() -> SuffixAutomaton<A>` — O(|A|); An empty suffix automaton over the alphabet domain `A`: only the root state `0`.
 - `fn of<S: Seq>(s: S) -> SuffixAutomaton<A>` — O(|s| * |A|) memory, O(|s|) amortized time; The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
 - `fn push(mut self, a: A)` — O(1) amortized (O(|A|) for a cloned state); Appends the letter `a` to the string the automaton recognises the substrings of.; traps: never (`a` is an `A`)
@@ -131,7 +145,7 @@ O(n * \|A\|) space, O(1) amortized push.
 - `fn step(self, state: Int, a: A) -> ?Int` — O(1); The state reached from `state` by the letter `a`, or `None` when that extension is not a substring.; traps: when `state` is outside `0..self.len`
 - `fn link(self, state: Int) -> ?Int` — O(1); The suffix link of `state`: the state of its longest suffix that lies in another state; `None` at the root.; traps: when `state` is outside `0..self.len`
 - `fn longest(self, state: Int) -> Int` — O(1); The length of the longest substring in `state`; `0` at the root.; traps: when `state` is outside `0..self.len`
-- `fn shortest( self, state: Int, ) -> Int` — O(1); The length of the shortest substring in `state`, `longest(link) + 1`; `0` at the root.; traps: when `state` is outside `0..self.len`
+- `fn shortest(self, state: Int) -> Int` — O(1); The length of the shortest substring in `state`, `longest(link) + 1`; `0` at the root.; traps: when `state` is outside `0..self.len`
 - `fn first_pos(self, state: Int) -> Int` — O(1); The 0-based position where the first occurrence of `state`'s substrings ends; `-1` at the root.; traps: when `state` is outside `0..self.len`
 - `fn find<S: Seq>(self, word: S) -> ?Int` — O(|word|); The state holding `word`, or `None` when `word` is not a substring; the root for an empty `word`.; traps: when an element of `word` is not in `A`
 - `fn contains<S: Seq>(self, word: S) -> Bool` — O(|word|); True when `word` is a substring of the automaton's string: `find(word) != None`.; traps: when an element of `word` is not in `A`
@@ -148,6 +162,8 @@ O(n * \|A\|) space, O(1) amortized push.
 ## `struct PalindromicTree<A>`
 
 O(n * \|A\|) space, O(1) amortized push.
+
+Fields: `chars: List<A>`, `front: List<A>`, `undo: List<(last: Int, first: Int, edge: Int, fronts: Int)>`.
 
 - `fn new() -> PalindromicTree<A>` — O(|A|); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — O(|s| * |A|) memory, O(|s|) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
@@ -258,7 +274,7 @@ O(\|pat\| * \|A\| * log n) amortized insert/delete, O(\|text\| * log n) query.
 - `fn min_rotation<S: Indexed, K>(s: S) -> ?K` — O(n); The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
 - `fn max_rotation<S: Indexed, K>(s: S) -> ?K` — O(n); The key at which the lexicographically greatest cyclic rotation of `s` starts.
 - `fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int` — O(|self| * ceil(|pat| / 64)); The start position of every occurrence of `pat` in `self`, overlapping ones included, by bit-parallel Shift-And.
-- `fn find_all_wildcard<S: Indexed, P: Indexed>( self: S, pat: P, wildcard: Char = '?', ) -> yields Int` — O(|self| * ceil(|pat| / 64)); The start position of every place where `pat` matches `self` when each `wildcard` in `pat` matches any one element.
+- `fn find_all_wildcard<S: Indexed, P: Indexed>(self: S, pat: P, wildcard: Char = '?') -> yields Int` — O(|self| * ceil(|pat| / 64)); The start position of every place where `pat` matches `self` when each `wildcard` in `pat` matches any one element.
 - `fn manacher<S: Indexed>(s: S) -> Palindromes` — O(n); The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]` one.
 - `fn suffix_array<S: Indexed>(s: S) -> SuffixArray` — O(n) for `Str` and small integer alphabets, O(n log n) otherwise; The suffix array of `s`; the same as `SuffixArray(s)`.
 - `fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>` — O(n); Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP array), one `SuffixTreeEdge` per edge of non-zero length.

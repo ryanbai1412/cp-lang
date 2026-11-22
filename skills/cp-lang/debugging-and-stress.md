@@ -12,8 +12,8 @@ cpl check sol.cp                 # type/domain/borrow check (< 500 ms)
 cpl run sol.cp < sample.in       # run checked on sample input
 cpl test sol                     # sol.tests/ cases, @sample and @test fns
 cpl stress sol.cp                # solution vs its @alt brutes, shrinks failures
-cpl build sol.cp                 # release binary
-cpl submit sol.cp -o sub.cpp     # single-file C++17 for judge upload
+cpl build sol.cp -o sub.cpp      # the one C++17 file to submit
+cpl submit sol.cp                # build for its judge, then run sol.tests/ on that C++
 ```
 
 ## Inline Unit Tests (`@test`)
@@ -68,7 +68,9 @@ fn brute():
 
 Options: `--cases N` (default 1000), `--size N` (largest n, default 8),
 `--seed N`, `--trace` (saves both runs' traces on failure), `--brute PROG`,
-`--gen PROG`, `--checker PROG` for external programs.
+`--gen PROG`, `--checker PROG` for external programs, and `--interactor PROG`
+for interactive problems (the interactor talks to the solution over
+stdin/stdout and its exit code is the verdict).
 
 Tight constraint types make better random inputs: `read<[V]-5..=5>()` already
 tells stress what to generate. (`@gen fn` with `gen(...)` for constraints

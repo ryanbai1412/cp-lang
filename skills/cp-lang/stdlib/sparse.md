@@ -10,6 +10,8 @@ In prelude (no `use` needed): `SparseTable`.
 
 `SparseTable<V, Int>(min, a)`: built in O(n log n) time and memory, `fold` is O(1).
 
+Fields: `n: Int`, `table: List<T>`.
+
 - `fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>` — O(|D| log |D|) time and memory, `op` called O(|D| log |D|) times; Build a sparse table for the idempotent, associative `op` over the values of `a`.; traps: never (a non-idempotent or non-associative `op` gives unspecified folds; check with `idempotent`)
 - `fn fold(self, r: Range<D>) -> T` — O(1); The fold of `op` over the positions of the non-empty range `r`, as two overlapping power-of-two windows combined with one `op` call.; traps: when `r` is empty or reaches outside `D`
 - `fn try_fold(self, r: Range<D>) -> ?T` — O(1); The fold of `r` like `fold`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
@@ -19,6 +21,8 @@ In prelude (no `use` needed): `SparseTable`.
 ## `struct DisjointSparseTable<D, T>(op: (T, T) -> T)`
 
 Disjoint sparse table: O(n log n) build and memory, O(1) range fold for ANY associative operation — no idempotence and no inverse required (matrix products, `Mod<P>` products, `MaxSub`, string concatenation).
+
+Fields: `n: Int`, `table: List<T>`.
 
 - `fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>` — O(|D| log |D|) time and memory, `op` called O(|D| log |D|) times; Build a disjoint sparse table for the associative `op` over `a`.; traps: never (a non-associative `op` gives unspecified folds)
 - `fn fold(self, r: Range<D>) -> T` — O(1), at most one `op` call; The fold of `op` over the non-empty range `r`, left to right in domain order, so a non-commutative `op` sees its operands in position order.; traps: when `r` is empty or reaches outside `D`
@@ -30,6 +34,8 @@ Disjoint sparse table: O(n log n) build and memory, O(1) range fold for ANY asso
 
 O(\|R\| * \|C\| * log \|R\| * log \|C\|) build and memory; O(1) rectangle fold for any associative, idempotent operation (`min`, `max`, `gcd`, `&`, `\|`).
 
+Fields: `table: List<T>`, `h: Int`, `w: Int`, `lr: Int`, `lc: Int`.
+
 - `fn new(op: (T, T) -> T, a: [R, C]T) -> SparseTable2D<R, C, T>` — O(|R| |C| log |R| log |C|) time and memory; Build a 2-D sparse table for the idempotent, associative `op` over the grid `a`: one `SparseTable` level per power-of-two row height and column width.; traps: never (a non-idempotent `op` gives unspecified folds)
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — O(1); The fold of `op` over the rectangle `rows` by `cols`, both non-empty: four overlapping power-of-two blocks combined with `op`.; traps: when either range is empty or reaches outside its domain
 - `fn try_fold(self, rows: Range<R>, cols: Range<C>) -> ?T` — O(1); The rectangle fold like `fold`, or `None` when `rows` or `cols` is empty.; traps: when a range reaches outside its domain on a non-empty rectangle
@@ -39,7 +45,9 @@ O(\|R\| * \|C\| * log \|R\| * log \|C\|) build and memory; O(1) rectangle fold f
 
 O(\|D\|) build and memory; O(1) range min/max query via block-of-64 bitmask RMQ (Four Russians).
 
-- `fn new(a: [D]T, before: (T, T) -> Bool` — O(|D|) time and memory; Build a linear-space range-best structure over `a`, where `before(x, y)` means `x` is better than `y` (default `<`, so the best is the minimum).; traps: never (`before` must be a strict weak order, or results are unspecified)
+Fields: `n: Int`, `vals: List<T>`, `mask: List<U64>`, `nb: Int`, `top: List<Int>`.
+
+- `fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x <y) -> LinearRmq<D, T>: let vals = [a[i] for i in D] let n = vals.len let nb = (n + 63) / 64 var q = LinearRmq<D, T>(before, n, vals, [], nb, []) for b in 0..nb: var cur: U64 = U64(0) for i in 64 * b..min(64 * b + 64, n): while cur != U64(0) and before(vals[i], vals[64 * b + bit_width(cur) - 1]): cur ^= U64(1) <<(bit_width(cur) - 1) cur |= U64(1) <<(i - 64 * b) q.mask.push(cur)` — O(|D|) time and memory; Build a linear-space range-best structure over `a`, where `before(x, y)` means `x` is better than `y` (default `<`, so the best is the minimum).; traps: never (`before` must be a strict weak order, or results are unspecified)
 - `fn argbest(self, r: Range<D>) -> D` — O(1); The position of the best element of the non-empty range `r` under `before`; the leftmost when several are equally best (neither is `before` the other).; traps: when `r` is empty or reaches outside `D`
 - `fn best(self, r: Range<D>) -> T` — O(1); The value of the best element of the non-empty range `r` under `before`; `a[argbest(r)]`.; traps: when `r` is empty or reaches outside `D`
 - `fn try_best(self, r: Range<D>) -> ?T` — O(1); The value of the best element of `r` like `best`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
