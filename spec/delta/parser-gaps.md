@@ -80,3 +80,7 @@ front end (parse and type check) first.
 
 File-wide program shape (`--- with multitest() ---`), `#set`, and testing
 roles, by Ryan's call. `@!multitest` stays.
+- The checker's `chain` takes `Int`s, not two `Seq`s as `std.seq` declares (ioi19p6 uses
+  `+` on lists instead).
+- `Graph.undirected` rejects a `List` of `(u:, v:, w:)` records; the spec's `[E]R` accepts any
+  keyed edge collection. Ports wrap it as `[links.keys] e => links[e]`.

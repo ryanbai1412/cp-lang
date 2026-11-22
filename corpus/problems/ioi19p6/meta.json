@@ -24,11 +24,14 @@
  "artifacts": {
   "dream": [
    "corpus/problems/ioi19p6/dream.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi19p6/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }
