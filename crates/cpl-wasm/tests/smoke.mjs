@@ -306,3 +306,8 @@ test("stress finds and shrinks a planted bug in wasm with first differing value"
   assert.deepEqual(ok, { status: "ok", cases: 25 });
 });
 
+
+test("the worker client has every method the worker answers", () => {
+  const methods = (file) => /METHODS = (?:new Set\()?\[([^\]]+)\]/.exec(readFileSync(join(dist, file), "utf8"))[1];
+  assert.equal(methods("cpl.js"), methods("cpl.worker.js"));
+});
