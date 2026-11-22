@@ -169,8 +169,6 @@ pub mod codes {
     pub const MISSING_IMPL: Code = Code("E0606");
     /// A warning: an assignment whose right side changes the place it writes.
     pub const SAME_PLACE_READ_WRITE: Code = Code("L0601");
-    /// A warning: a `@cache` field written from outside its struct.
-    pub const CACHE_WRITTEN_OUTSIDE: Code = Code("L0609");
 
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
