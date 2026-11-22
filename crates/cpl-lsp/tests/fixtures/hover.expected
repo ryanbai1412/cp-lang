@@ -43,12 +43,14 @@ v: V
 
 == hover @ 9:11
 ```cp
-half: Int in 0..=100000
+half: 0..=100000
+  storage: 4 bytes
 ```
 
 == hover @ 10:25
 ```cp
-k: Int in 1..=7
+k: 1..=7
+  storage: 1 byte
 ```
 
 == hover @ 10:31
@@ -164,17 +166,17 @@ at: Int
 g[u][j]: in bounds, 0 <= j < g[u].len
 ```
 
-== hover @ 70:33
+== hover @ 70:34
 ```cp
 xs[v]: in bounds, v: V, the index space of xs
 ```
 
-== hover @ 71:24
+== hover @ 71:25
 ```cp
 domain Col = 0..4
   at most 4 positions
   storage: 1 byte per position
-  in bounds of grid[Row.first, Col.last]: Row.first: Row, Col.last: Col, the index spaces of grid
+  in bounds of grid[Row.first!, Col.last!]: Row.first!: Row, Col.last!: Col, the index spaces of grid
 ```
 
 == hover @ 72:6
@@ -245,9 +247,16 @@ fn splitmix64(x: U64) -> U64
 cost: O(1)
 ```
 
-SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart. The
-usual guard for `HashMap` keys and the step of a seeded generator; `U64` arithmetic wraps.
-O(1).
+SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
+
+One full splitmix64 step on state `x`: `z = x + 0x9E3779B97F4A7C15`, then `z ^= z >> 30; z *=
+0xBF58476D1CE4E5B9; z ^= z >> 27; z *= 0x94D049BB133111EB; z ^= z >> 31`, all wrapping. It is
+the usual guard for `HashMap` keys, and `std.rand.Rng.next` is this applied to its state.
+
+cost: O(1)
+traps: never
+example: `splitmix64(0) == 0xE220A8397B1DCDAF`
+example: `splitmix64(1) != splitmix64(2)`
 
 == hover @ 94:8
 ```cp
@@ -292,17 +301,24 @@ fn echo()
 == hover @ 126:7
 ```cp
 fn prefixes(bit: Fenwick<V, Int>)
-  documented costs: bit.sum O(log |V|), about 18 steps each, n = 200000 (2e5) times
+  documented costs: bit.fold O(log |V|), about 18 steps each, n = 200000 (2e5) times
   estimated cost: O(n + n * (log |V|)), about 3921929 (3.9e6) steps at max input
 ```
 
 == hover @ 128:20
 ```cp
-sum: fn(r: Range<V>) -> Int
+fold: fn(r: Range<V>) -> Int
 cost: O(log |V|)
 ```
 
-The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
+The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`. Accepts every range form
+(`l..r`, `l..=r`, `..i`, `i..`).
+
+cost: O(log |D|)
+empty: zero
+traps: when a non-empty `r` reaches outside `D`
+example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
+example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
 
 == hover @ 129:6
 ```cp

@@ -1,4 +1,4 @@
-//! The structures of `stdlib/algebra.cp` and `stdlib/lazy.cp`, checked
+//! The structures of `spec/std/algebra.cp` and `spec/std/lazy.cp`, checked
 //! with the laws as they are written there, and the ways an instance
 //! goes wrong.
 
@@ -10,7 +10,7 @@ fn proved(report: &Report) {
 
 const INT: [(&str, &str); 1] = [("T", "Int")];
 
-// ---- the constants of stdlib/algebra.cp -----------------------------------
+// ---- the constants of spec/std/algebra.cp -----------------------------------
 
 #[test]
 fn sum_is_a_commutative_group() {
@@ -248,7 +248,7 @@ fn flip_keeps_the_laws_and_loses_nothing() {
 
 #[test]
 fn the_count_of_the_maximum() {
-    // stdlib/tour.cp: (best, how many times it occurs).
+    // spec/std/tour.cp: (best, how many times it occurs).
     let fields = [
         ("id", "(Int.MIN, 0)"),
         (
@@ -410,7 +410,7 @@ fn arithmetic_modulo_a_runtime_modulus() {
     );
 }
 
-// ---- actions (stdlib/lazy.cp) -----------------------------------------------------
+// ---- actions (spec/std/lazy.cp) -----------------------------------------------------
 
 #[test]
 fn add_on_max_is_an_action() {

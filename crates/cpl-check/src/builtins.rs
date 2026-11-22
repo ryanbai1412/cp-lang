@@ -110,12 +110,12 @@ pub enum PreludeKind {
     Trait,
     /// `print`, `sum`, `read`.
     Value,
-    /// A name `stdlib/prelude.cp` brings in, with the module it is from.
+    /// A name `spec/std/prelude.cp` brings in, with the module it is from.
     Std(&'static str),
 }
 
 /// Every name a file can use without a `use`: the compiler's own, then the
-/// ones `stdlib/prelude.cp` brings in.
+/// ones `spec/std/prelude.cp` brings in.
 pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
     let own = prelude::TYPE_NAMES
         .iter()

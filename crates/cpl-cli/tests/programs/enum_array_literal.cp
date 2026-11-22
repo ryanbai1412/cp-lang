@@ -1,6 +1,6 @@
 // Array literal `[e0, e1]` coerced to a plain-enum-indexed `[Side]T` array
 // in `let`, struct fields, and function arguments (dream/agc077a:74).
-enum Side: X, Y
+enum Side = X | Y
 struct Run(l: Int, r: Int)
 struct Block(seen: [Side]Run, real: [Side]Run)
 

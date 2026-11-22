@@ -1,4 +1,4 @@
-enum Dir: N, E, S, W
+enum Dir = N | E | S | W
 enum Q: ask(Int), answer(Int)
 var best = 0, ways: Int = 1
 let a = +3, b = -best

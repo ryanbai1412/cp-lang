@@ -21,8 +21,8 @@ fn longest() -> Int:
     let ahead = ahead_in()
     var best: [L]Int = 0
     for u in L:
-        best[u] = (max(best[v] for v in L if v != u and ahead[v, u]) ?? 0) + 1
-    max(best[u] for u in L)!
+        best[u] = ([best[v] for v in L if v != u and ahead[v, u]].max() ?? 0) + 1
+    [best[u] for u in L].max()!
 
 @brute(longest)
 fn longest_slow() -> Int:
@@ -30,7 +30,7 @@ fn longest_slow() -> Int:
     var best: [L]Int = 0
     for p in L:
         let u = orders[0][p]
-        best[u] = (max(best[v] for v in L if v != u and ahead[v, u]) ?? 0) + 1
-    max(best[u] for u in L)!
+        best[u] = ([best[v] for v in L if v != u and ahead[v, u]].max() ?? 0) + 1
+    [best[u] for u in L].max()!
 
 print(longest())

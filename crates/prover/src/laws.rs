@@ -1,7 +1,7 @@
 //! Algebraic laws: the equations a `Monoid`, a `Group`, an `Action` or
 //! an `Order` promises, proved for every value or refuted with one.
 //!
-//! The laws are the ones written in `stdlib/algebra.cp`, in the same
+//! The laws are the ones written in `spec/std/algebra.cp`, in the same
 //! words. A structure is checked by binding its type parameters and its
 //! fields:
 //!

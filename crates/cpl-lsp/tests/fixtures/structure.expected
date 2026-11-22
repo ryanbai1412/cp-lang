@@ -2,8 +2,8 @@
 (none)
 
 == inlayHint
-9:6 : Int in 6..=30
-11:10 : Int
+9:6 : 6..=30
+11:10 : 0..=6
 13:6 : Row
 15:7 : List<Int>
 15:22 : Int

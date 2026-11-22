@@ -1,5 +1,3 @@
-use std.derive.{Hash, hash_fields}
-
 /// A trait says, in its own words, what a type without an `impl` lacks.
 @on_unimplemented("`{T}` can't be shown; write `impl Show2 for {T}`")
 trait Show2:

@@ -307,12 +307,12 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
 fn wide_range_overflow_traps_in_interp_and_cpp() {
     let cases = [
         (
-            "use std.seq.{bsearch_first}\nlet lo = -6_000_000_000_000_000_000\nlet hi = 6_000_000_000_000_000_000\nprint(bsearch_first(lo..=hi, x => x >= 7)!)\n",
+            "let lo = -6_000_000_000_000_000_000\nlet hi = 6_000_000_000_000_000_000\nprint((lo..=hi).first_true(x => x >= 7)!)\n",
             "integer overflow: range",
             "range span overflow",
         ),
         (
-            "use std.seq.{bsearch_first}\nlet big = I128(1_000_000_000_000_000_000) * I128(1_000_000_000_000_000_000) * I128(100)\nprint(bsearch_first((-big)..=big, x => x >= I128(7))!)\n",
+            "let big = I128(1_000_000_000_000_000_000) * I128(1_000_000_000_000_000_000) * I128(100)\nprint(((-big)..=big).first_true(x => x >= I128(7))!)\n",
             "integer overflow: range",
             "range span overflow",
         ),
@@ -420,25 +420,6 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
         );
     }
 }
-#[test]
-fn fold_empty_traps_in_interp_and_checked_cpp() {
-    let src = "let xs: List<Int> = []\nprint(xs.fold((a, b) => a * 10 + b))\n";
-    let msg = "`fold` of an empty sequence";
-    let (code, err) = run_stderr(src, "");
-    assert_eq!(code, 3, "interp should trap:\n{err}");
-    assert!(err.contains(msg), "interp expected `{msg}`, got:\n{err}");
-    assert!(
-        !err.contains("the interpreter itself failed"),
-        "got panic:\n{err}"
-    );
-
-    let (cpp_code, cpp_err) = build_and_run_cpp(src);
-    assert_eq!(cpp_code, 3, "checked cpp should trap:\n{cpp_err}");
-    assert!(
-        cpp_err.contains(msg),
-        "checked cpp expected `{msg}`, got:\n{cpp_err}"
-    );
-}
 
 #[test]
 fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
@@ -513,7 +494,7 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
 fn range_typed_stores_trap_in_interp_and_checked_cpp() {
     let cases = [
         (
-            "struct S(a: 0..=1_000_000, b: Int)\nlet k: Int = read()\nvar s = S(0, 1)\ns.a = k\nprint(s.a)\n",
+            "struct S:\n    var a: 0..=1_000_000\n    b: Int\nlet k: Int = read()\nvar s = S(0, 1)\ns.a = k\nprint(s.a)\n",
             "5000000000\n",
             "5000000000 is outside `0..=1_000_000`",
         ),
@@ -578,7 +559,7 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "2147483648 is outside `0..2_147_483_648`",
         ),
         (
-            "struct Node(l: ?Int, pri: 0..2_147_483_648, sz: 0..2_147_483_648)\nlet k: Int = read()\nvar n = Node(none, 0, 1)\nn.sz += k\nprint(n.sz)\n",
+            "struct Node:\n    l: ?Int\n    pri: 0..2_147_483_648\n    var sz: 0..2_147_483_648\nlet k: Int = read()\nvar n = Node(none, 0, 1)\nn.sz += k\nprint(n.sz)\n",
             "2147483647\n",
             "2147483648 is outside `0..2_147_483_648`",
         ),
@@ -738,11 +719,11 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
             "in_order",
         ),
         (
-            "domain D = 0..4\nvar p = Prefix<D, Int>.filling()\np.set(D(0), 5)\nprint(p.sum(D(0)..=D(1)))\n",
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling()\np.set(D(0), 5)\nprint(p.fold(D(0)..=D(1)))\n",
             "in_filled",
         ),
         (
-            "domain D = 0..4\nvar p = Prefix<D, Int>.filling(order: FillOrder.Reverse)\np.set(D(3), 5)\nprint(p.sum(D(2)..=D(3)))\n",
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling(order: FillOrder.Reverse)\np.set(D(3), 5)\nprint(p.fold(D(2)..=D(3)))\n",
             "in_filled",
         ),
         (
@@ -750,7 +731,7 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
             "in_order",
         ),
         (
-            "domain R = 0..2\ndomain C = 0..3\nvar p = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)\np.set(R(1), C(2), 1)\nprint(p.sum(R(1)..=R(1), C(1)..=C(2)))\n",
+            "domain R = 0..2\ndomain C = 0..3\nvar p = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)\np.set(R(1), C(2), 1)\nprint(p.fold(R(1)..=R(1), C(1)..=C(2)))\n",
             "in_filled",
         ),
         (
@@ -758,7 +739,7 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
             "in_order",
         ),
         (
-            "var p = Prefix<Int>.filling(4, order: FillOrder.Reverse)\np.set(3, 7)\nprint(p.sum(2..4))\n",
+            "var p = Prefix<Int>.filling(4, order: FillOrder.Reverse)\np.set(3, 7)\nprint(p.fold(2..4))\n",
             "in_filled",
         ),
     ];

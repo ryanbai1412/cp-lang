@@ -5,4 +5,4 @@ var known: [I]?Bool = none
 for i in I:
     if i.idx % 3 == 1: known[i] = true
     elif i.idx % 3 == 2: known[i] = false
-print(count(known[i] == none for i in I), count(known[i] == true for i in I), known[I.first] ?? true)
+print(count(known[i] == none for i in I), count(known[i] == true for i in I), yes(known[I.first!] ?? true))

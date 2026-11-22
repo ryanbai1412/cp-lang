@@ -8,7 +8,7 @@ fn win(k: 0..=singles, s: 0..=shines) -> Bool:
     if k == 0: return s % 2 == 1
     if s == 0: return not win(k - 1, s)
     not win(k - 1, s) or not win(k, s - 1)
-print(win(singles, shines))
+print(yes(win(singles, shines)))
 
 @memo
 fn ways(k: 0..=shines) -> Int:

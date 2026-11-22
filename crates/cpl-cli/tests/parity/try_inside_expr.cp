@@ -14,9 +14,9 @@ fn order(a: ?Int) -> ?Int:
 var m: Map<Int, Int> = Map()
 m[1] = 2
 m[5] = 10
-print(f(m, 1), f(m, 2), f(m, 5))
-print(g([some(1), some(2)]), g([some(1), none]), h(some(1), some(2)), h(none, some(1)), h(some(1), none))
-print(order(some(5)), order(none))
+print(f(m, 1) ?? -1, f(m, 2) ?? -1, f(m, 5) ?? -1)
+print(g([some(1), some(2)]) ?? -1, g([some(1), none]) ?? -1, h(some(1), some(2)) ?? -1, h(none, some(1)) ?? -1, h(some(1), none) ?? -1)
+print(order(some(5)) ?? -1, order(none) ?? -1)
 fn walk(line: Str, on_foot: [0..26]?Int) -> ?Int:
     var total = 0
     for i in 0..line.len:
@@ -25,9 +25,9 @@ fn walk(line: Str, on_foot: [0..26]?Int) -> ?Int:
 var of: [0..26]?Int = none
 of[0] = some(3)
 of[1] = some(4)
-print(walk("abba", of), walk("abc", of))
+print(walk("abba", of) ?? -1, walk("abc", of) ?? -1)
 fn best(xs: List<?Int>) -> ?Int:
     var b = 0
     for i in 0..xs.len: b max= i + xs[i]?
     some(b)
-print(best([some(1), some(5)]), best([some(1), none]))
+print(best([some(1), some(5)]) ?? -1, best([some(1), none]) ?? -1)

@@ -1,6 +1,6 @@
 struct Acc:
     total: Int
-    hook: ?(Int -> Int)
+    var hook: ?(Int -> Int)
     step: Int -> Int
 
 struct Tagged:
@@ -23,4 +23,4 @@ let u = Tagged(8, none)
 match t.pick:
     none: print("none")
     some(f): print(f(10))
-print(u.pick == none, t.tag + u.tag)
+print(yes(u.pick == none), t.tag + u.tag)

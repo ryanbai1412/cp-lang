@@ -72,8 +72,7 @@ walk(join(web, 'content'), (p) => {
 const tmp = join(tmpdir(), 'cp-gate');
 mkdirSync(tmp, { recursive: true });
 writeFileSync(join(tmp, 'cp.toml'), `[libs]\nlib = "${join(repo, 'examples/local-lib')}"\n`);
-const sh = (args, env = {}, input = '') =>
-  spawnSync(cpl, args, { input, encoding: 'utf8', timeout: 20000, env: { ...process.env, ...env } });
+const sh = (args, input = '') => spawnSync(cpl, args, { input, encoding: 'utf8', timeout: 20000 });
 
 const results = {};
 let failed = 0;
@@ -83,7 +82,7 @@ for (const s of snippets) {
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
   const check = sh(['check', file]);
   const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
-  const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], {}, s.stdin) : build;
+  const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], s.stdin) : build;
   const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
   let status = 'fails';
   let note = '';

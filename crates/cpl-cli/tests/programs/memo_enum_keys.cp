@@ -1,6 +1,6 @@
 // `@memo` keyed by a plain enum and by an optional enum: a dense table,
 // with `none` as one more row.
-enum Row: Top, Bottom
+enum Row = Top | Bottom
 
 fn other(r: Row) -> Row = if r == Row.Top: Row.Bottom else: Row.Top
 

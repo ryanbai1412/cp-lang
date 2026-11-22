@@ -10,7 +10,7 @@ struct Tally:
     cnt: [V]Int
     distinct: Int
 
-    fn at(mut self, v: V) lends mut Int:
+    fn at(mut self, v: V) -> lends mut Int:
         if cnt[v] != 0: distinct -= 1
         lend mut cnt[v]
         if cnt[v] != 0: distinct += 1

@@ -1,7 +1,7 @@
 //! Where the file behind `use std.segtree` or `use lib.graph.two_sat` is.
 //!
-//! A module is one `.cp` file (`plan/40-tooling.md`). `std` is the
-//! `stdlib/` folder shipped with the compiler; any other first name is a
+//! A module is one `.cp` file (`plan/40-tooling.md`). `std` is `spec/std`,
+//! built into the compiler; any other first name is a
 //! library: a folder the nearest `cp.toml` above the importing file names
 //! under `[libs]`, or else a folder with a `lib.toml` that says
 //! `name = "<that name>"`, found by walking up from the importing file.
@@ -38,122 +38,35 @@ impl Loader for FsLoader {
             relative.push(part);
         }
         relative.set_extension("cp");
-        let roots = if root_name == "std" {
-            std_roots(start)
-        } else {
-            library_root(start, root_name).into_iter().collect()
-        };
-        let on_disk = roots.iter().find_map(|root| {
+        if root_name == "std" {
+            let text = bundled_std(rest)?;
+            return Some((format!("std/{}.cp", rest.join("/")), text.to_string()));
+        }
+        library_root(start, root_name).and_then(|root| {
             let path = root.join(&relative);
             let text = std::fs::read_to_string(&path).ok()?;
             Some((path.to_string_lossy().into_owned(), text))
-        });
-        // No `stdlib/` to read (a browser, a binary on its own): the copy
-        // the compiler was built with.
-        on_disk.or_else(|| {
-            let text = bundled_std(rest).filter(|_| root_name == "std")?;
-            Some((format!("stdlib/{}.cp", rest.join("/")), text.to_string()))
         })
     }
 }
 
-/// The modules of `stdlib/` as they were when the compiler was built, by
+/// The modules of `spec/std` as they were when the compiler was built, by
 /// their path below it (`"seq"`).
-const BUNDLED_V02: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
-const BUNDLED_V03: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/spec_std_modules.rs"));
-
-/// The standard library built into the compiler for the active edition.
-fn bundled() -> &'static [(&'static str, &'static str)] {
-    match crate::edition::edition() {
-        crate::edition::Edition::V02 => BUNDLED_V02,
-        crate::edition::Edition::V03 => BUNDLED_V03,
-    }
-}
+const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
 /// The text of the standard library module `module` (`["segtree"]`) that
 /// is built into the compiler.
 pub fn bundled_std(module: &[String]) -> Option<&'static str> {
     let name = module.join("/");
-    bundled()
+    BUNDLED
         .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
         .ok()
-        .map(|at| bundled()[at].1)
+        .map(|at| BUNDLED[at].1)
 }
 
-/// Every module of the standard library that is built into the compiler,
-/// by name (`"segtree"`), with its text.
-#[cfg(test)]
-pub fn bundled_std_modules() -> &'static [(&'static str, &'static str)] {
-    bundled()
-}
-
-/// The modules of the standard library programs are checked against: the
-/// folder `$CPL_STD` names when it is set (the spec's stubs), else the one
-/// built in. Read once.
-pub fn active_std_modules() -> &'static [(&'static str, &'static str)] {
-    static ACTIVE: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
-        std::sync::OnceLock::new();
-    ACTIVE.get_or_init(|| {
-        let Some(root) = std::env::var_os("CPL_STD").map(PathBuf::from) else {
-            return bundled().to_vec();
-        };
-        let mut found = Vec::new();
-        let mut stack = vec![root.clone()];
-        while let Some(dir) = stack.pop() {
-            let Ok(entries) = std::fs::read_dir(&dir) else {
-                continue;
-            };
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    stack.push(path);
-                } else if path.extension().is_some_and(|e| e == "cp") {
-                    let (Ok(rel), Ok(text)) =
-                        (path.strip_prefix(&root), std::fs::read_to_string(&path))
-                    else {
-                        continue;
-                    };
-                    let name = rel.with_extension("").to_string_lossy().replace('\\', "/");
-                    found.push((
-                        &*Box::leak(name.into_boxed_str()),
-                        &*Box::leak(text.into_boxed_str()),
-                    ));
-                }
-            }
-        }
-        found.sort();
-        found
-    })
-}
-
-/// Folders that may hold the standard library, most specific first:
-/// `$CPL_STD`, a `stdlib/` above the importing file (a checkout of the
-/// compiler), and `stdlib/` next to or above the `cpl` binary.
-fn std_roots(start: &Path) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Some(dir) = std::env::var_os("CPL_STD") {
-        roots.push(PathBuf::from(dir));
-    }
-    // A checkout's `stdlib/` is the 0.2 library; 0.3's is built in.
-    if crate::edition::is_v03() {
-        return roots;
-    }
-    let above = |from: &Path, roots: &mut Vec<PathBuf>| {
-        let from = from.canonicalize().unwrap_or_else(|_| from.to_path_buf());
-        for dir in from.ancestors() {
-            let candidate = dir.join("stdlib");
-            if candidate.is_dir() {
-                roots.push(candidate);
-            }
-        }
-    };
-    above(start, &mut roots);
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            above(dir, &mut roots);
-        }
-    }
-    roots
+/// Every module of the standard library, by name (`"segtree"`), with its text.
+pub fn std_modules() -> &'static [(&'static str, &'static str)] {
+    BUNDLED
 }
 
 /// The folder of the library `name`: the one a `cp.toml` above `start`

@@ -32,5 +32,5 @@ var d: [V]Int = [V] v => v.label
 d[V(2)..=V(4)] *= 3
 d[..] min= 10
 print(d)
-print(a[..] max= 0, a[..] min= 0)
+print(yes(a[..] max= 0), yes(a[..] min= 0))
 print(a)

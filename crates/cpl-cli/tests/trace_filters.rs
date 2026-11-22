@@ -266,11 +266,11 @@ fn trace_bound_cut_labels_use_domain_base() {
         "\
 domain V = 1..=3
 var pre: [V.cuts]Int = 0
-var cut: V.cuts = V.first.l
+var cut: V.cuts = V.first!.l
 for v in V:
     pre[v.r] = pre[v.l] + 1
     cut = v.r
-print(pre[V.last.r], cut)
+print(pre[V.last!.r], cut)
 ",
     );
     let p = path.to_str().unwrap();

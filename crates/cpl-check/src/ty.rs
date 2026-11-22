@@ -57,7 +57,6 @@ pub enum Ty {
     Error,
 }
 
-/// True when checking against the 0.3 spec (`CPL_SPEC`).
 pub fn spec_edition() -> bool {
     crate::edition::is_v03()
 }
@@ -1052,7 +1051,7 @@ mod tests {
         assert!(!Ty::Int.fits(&v));
         assert!(range(0, 5).fits(&Ty::Int));
         assert!(Ty::Int.fits(&range(0, 5)));
-        assert!(Ty::Int.fits(&Ty::Float));
+        assert!(!Ty::Int.fits(&Ty::Float));
         assert!(!Ty::Float.fits(&Ty::Int));
         assert!(v.fits(&Ty::Optional(Box::new(v.clone()))));
         assert!(Ty::Unknown.fits(&v) && v.fits(&Ty::Error));

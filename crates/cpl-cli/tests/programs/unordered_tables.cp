@@ -9,7 +9,7 @@ for i in 0..n:
     cnt[x] = (cnt.get(x) ?? 0) + 1
     seen.insert(x % 10)
     names["k{x % 3}"] = i
-print(cnt.len, 5 in seen, cnt[0], seen.len)
+print(cnt.len, yes(5 in seen), cnt[0], seen.len)
 for (k, v) in names: print(k, v)
 
 // `if k in m:` followed by `m[k]` is one lookup in the C++.

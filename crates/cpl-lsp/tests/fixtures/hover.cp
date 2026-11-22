@@ -25,7 +25,7 @@ var lo = 0
 var hi = n
 while lo < hi:
     let m$0id = (lo + hi) / 2
-    if xs[V.first] < 0:
+    if xs[V.first!] < 0:
         lo = mid + 1
     else:
         hi = mid
@@ -43,7 +43,7 @@ var b = n
 while a < b:
     let c = (a + b) / 2
     print(b $0- c)
-    if xs[V.first] < c:
+    if xs[V.first!] < c:
         a = c + 1
     else:
         b = c
@@ -67,8 +67,8 @@ domain Col = 0..4
 var grid: [Row, Col]Int = 0
 for v in V:
     for r in Row:
-        grid[r, Col.first] += xs$0[v]
-print(grid[Row.first, C$0ol.last])
+        grid[r, Col.first!] += xs$0[v]
+print(grid[Row.first!, C$0ol.last!])
 fn sc$0an():
     for v in V:
         for j in 0..k:
@@ -125,7 +125,7 @@ fn ec$0ho():
         print(x + y, "and {x * y}")
 fn pre$0fixes(bit: Fenwick<V, Int>):
     for v in V:
-        print(bit.s$0um(..v))
+        print(bit.f$0old(..v))
 fn sh$0ow(cells: [V]Int):
     for _ in 0..k:
         p$0rint(cells)
@@ -148,4 +148,4 @@ struct Ru$0ns:
     seen: List<V>
 let na$0mes: [V](name: Str, t: 1..=1000) = [V] v => (name: "", t: 1)
 let di$0sts: [V][V]?Int = [V] u => [V] v => none
-print(es[V.first].to, es[V.first].w, es[V.first].used, flag, pairs, adj, names, dists, Runs([V] v => 0, []).seen)
+print(es[V.first!].to, es[V.first!].w, yes(es[V.first!].used), yes(flag[V.first!] ?? false), pairs, adj, names, dists[V.first!][V.first!] ?? 0, Runs([V] v => 0, []).seen)

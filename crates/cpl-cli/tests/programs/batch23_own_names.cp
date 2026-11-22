@@ -35,4 +35,4 @@ print(sort(mut xs), xs)
 
 var s = Set<Int>()
 s.insert(4)
-print(remove(s, 4), remove(s, 5), s.len)
+print(yes(remove(s, 4)), yes(remove(s, 5)), s.len)

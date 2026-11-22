@@ -78,7 +78,7 @@ swap(mut a, mut b)
 print(a, b)
 swap(mut xs[0], mut xs[4])
 print(xs)
-print(fact(10), fact(20), is_even(10), is_odd(7), classify(-3), classify(0), classify(8), countdown(10))
+print(fact(10), fact(20), yes(is_even(10)), yes(is_odd(7)), classify(-3), classify(0), classify(8), countdown(10))
 // Arguments run left to right.
 print(note(1) + note(2) * note(3), log)
 print(note(4) - note(5), min(note(6), note(7)), log)

@@ -11,7 +11,7 @@ fn hankson(a0: Int, a1: Int, b0: Int, b1: Int) -> Int:
 
 @brute(hankson)
 fn hankson_slow(a0: Int, a1: Int, b0: Int, b1: Int) -> Int =
-    count(gcd(x, a0) == a1 and lcm(x, b0) == b1 for x in divisors(b1))
+    divisors(b1).count(x => gcd(x, a0) == a1 and lcm(x, b0) == b1)
 
 @!multitest
 let (a0, a1, b0, b1): (1..=2e9, 1..=2e9, 1..=2e9, 1..=2e9) = read()

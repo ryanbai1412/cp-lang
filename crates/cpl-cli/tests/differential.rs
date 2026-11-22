@@ -141,6 +141,28 @@ fn programs() -> Vec<PathBuf> {
     found
 }
 
+/// Programs written for 0.2 that still need porting to 0.3 live in
+/// `tests/pending/`, outside every sweep. Each must still fail `cpl check`;
+/// once one passes, move it back to `tests/programs/`, so the directory only
+/// shrinks.
+#[test]
+fn pending_ports_still_need_porting() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/pending");
+    let mut ported: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|_| panic!("{} exists", dir.display()))
+        .map(|entry| entry.expect("readable entry").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
+        .filter(|path| check(path, "pending").is_ok())
+        .map(|path| path.display().to_string())
+        .collect();
+    ported.sort();
+    assert!(
+        ported.is_empty(),
+        "these now pass `cpl check`; move them to tests/programs/:\n{}",
+        ported.join("\n")
+    );
+}
+
 fn input_of(program: &Path) -> Vec<u8> {
     std::fs::read(program.with_extension("in")).unwrap_or_default()
 }
@@ -428,12 +450,12 @@ fn lowering_gaps_agree_between_interp_and_sanitized_cpp() {
             "\
 domain I = 1..=3
 let a: [I, I]Int = [I, I] (r, c) => r.ord * 3 + c.ord + 1
-let pre = prefix(a)
+let pre = Prefix<I, I, Int>(a)
 let row = [I] i => a[I(2), i]
-let p1 = prefix(row)
+let p1 = Prefix(row)
 let cnt = counts([1, 2, 1, 3, 1])
-print(pre.sum(span(I(1).l, I(2)), span(I(2).l, I(3))))
-print(p1.sum(span(I(1), I(3))))
+print(pre.fold(I(1)..=I(2), I(2)..=I(3)))
+print(p1.fold(I(1)..=I(3)))
 print(cnt[1], cnt[2], cnt[99])
 ",
             "16\n15\n3 1 0\n",
@@ -478,7 +500,7 @@ var total = 0
 for i in Bug:
     total += bs[i.to_idx].ord
 let pairs = [10, 20, 35, 35]
-print(total, count(a != b for (a, b) in pairs.adjacent))
+print(total, pairs.adjacent.count((a, b) => a != b))
 var known: [Bool]List<Int> = []
 known[true].push(5)
 known[false].push(9)
@@ -756,32 +778,25 @@ fn compress_call_sites_get_fresh_domains_in_interp_checked_and_release() {
     // 1. Top-level, inside a fn called twice, and a wrapper fn called twice.
     let main_cp = dir.join("main.cp");
     let main_src = "\
-let xs = compress([40, -7, 40, 1_000_000_000, 3])
-let ys = compress([5, 6])
+let (domain X, xs) = compress([40, -7, 40, 1_000_000_000, 3])
+let (domain Y, ys) = compress([5, 6])
 let ix = xs.at(40)
 let iy = ys.at(6)
 print(xs.len, ys.len, xs[ix], ys[iy])
 
 fn work(a: List<Int>, b: List<Int>):
-    let u = compress(a)
-    let v = compress(b)
+    let (domain U, u) = compress(a)
+    let (domain W, v) = compress(b)
     let iu = u.at(a[0])
     let iv = v.at(b[0])
     print(u.len, v.len, u[iu], v[iv])
 
 work([10, 20, 30, 10], [99])
 work([5, 5], [1, 2, 3, 4, 5])
-
-fn wrap(a: List<Int>):
-    compress(a)
-
-let wa = wrap([100, 200, 300])
-let wb = wrap([7])
-print(wa.len, wb.len, wa[wa.at(200)], wb[wb.at(7)])
 ";
     std::fs::write(&main_cp, main_src).unwrap();
     let main_str = main_cp.to_string_lossy().into_owned();
-    let expected_main = "4 2 40 6\n3 1 10 99\n1 5 5 1\n3 1 200 7\n";
+    let expected_main = "4 2 40 6\n3 1 10 99\n1 5 5 1\n";
 
     let interp = cpl_cli::run(&["run", &main_str]);
     assert_eq!(interp.code, 0, "interp stderr: {}", interp.stderr);
@@ -815,8 +830,8 @@ let n: Int = read()
 let m: Int = read()
 let a: List<Int> = [read() for _ in 0..n]
 let b: List<Int> = [read() for _ in 0..m]
-let xs = compress(a)
-let ys = compress(b)
+let (domain X, xs) = compress(a)
+let (domain Y, ys) = compress(b)
 let ix = xs.at(a[0])
 let iy = ys.at(b[0])
 print(xs.len, ys.len, xs[ix], ys[iy])
@@ -859,7 +874,7 @@ print(xs.len, ys.len, xs[ix], ys[iy])
     let err_cp = dir.join("err.cp");
     std::fs::write(
         &err_cp,
-        "let xs = compress([1, 2, 3, 4])\nlet ys = compress([10, 20])\nlet i: xs.D = ys.at(10)\nprint(i)\n",
+        "let (domain X, xs) = compress([1, 2, 3, 4])\nlet (domain Y, ys) = compress([10, 20])\nlet i: X = ys.at(10)\nprint(i)\n",
     )
     .unwrap();
     let err_str = err_cp.to_string_lossy().into_owned();
@@ -876,8 +891,6 @@ fn nth_element_introselect_handles_median_of_3_killer_in_budget() {
     std::fs::create_dir_all(&dir).unwrap();
     let cp_path = dir.join("killer.cp");
     let src = "\
-use std.seq.{nth_element}
-
 let n = 200_000
 var a: List<Int> = [i for i in 0..n]
 var lo = n - 2
@@ -887,11 +900,11 @@ while lo >= 0:
     lo -= 2
 
 var b = a.copy()
-a.nth_element(n - 1)
+a.select(n - 1)
 assert a[n - 1] == n - 1
 for i in 0..n - 1: assert a[i] <= n - 1
 
-b[0..n].nth_element(n / 2)
+b.select(n / 2)
 assert b[n / 2] == n / 2
 for i in 0..n / 2: assert b[i] <= n / 2
 for i in n / 2 + 1..n: assert b[i] >= n / 2

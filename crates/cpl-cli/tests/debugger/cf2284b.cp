@@ -5,7 +5,7 @@ var a: [0..n]1..=5 = read()
 
 sort(mut a)
 let mx = a[n - 1]
-let c = count(x == mx for x in a)
+let c = a.count(x => x == mx)
 
 if k < c:
     print("NO")
@@ -25,8 +25,8 @@ print(ans)
 @checker
 fn check():
     let verdict: Str = read_output()
-    let top = max(a)
-    let least = count(x == top for x in a)
+    let top = a.max()!
+    let least = a.count(x => x == top)
     if verdict == "NO":
         assert k < least, "said NO, but {k} very pleasant donations are possible"
         return

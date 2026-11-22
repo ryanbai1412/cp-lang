@@ -4,6 +4,6 @@ let n: Int = read()
 var xs: List<Int> = []
 for i in 0..n: xs.push(i * i)
 var flags: List<Bool> = [true]
-print(xs.len, flags[0])
+print(xs.len, yes(flags[0]))
 xs[0] += 1
 print(xs[xs.len - 1])

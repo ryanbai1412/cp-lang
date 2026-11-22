@@ -2,7 +2,7 @@
 //!
 //! A program has to mean in the browser what it means on the command line.
 //! Every program `cpl`'s own tests run (`crates/cpl-cli/tests/programs`)
-//! and every example on the docs site (`site/examples`) goes through both
+//! and every hero program on the site (`web/content/landing/hero`) goes through both
 //! here, and the two must agree on each byte: what the program prints, what
 //! `cpl` says on standard error, the exit status, and the C++.
 //!
@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 fn programs() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut found = Vec::new();
-    for dir in ["crates/cpl-cli/tests/programs", "site/examples"] {
+    for dir in ["crates/cpl-cli/tests/programs", "web/content/landing/hero"] {
         let dir = root.join(dir);
         let entries = std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
         found.extend(

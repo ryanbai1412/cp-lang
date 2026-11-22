@@ -1,6 +1,6 @@
 side 5
 side 5
-none 5 2
+-1 -1 5 2
 side 7
 side 8
 side 9
@@ -9,18 +9,18 @@ side 1
 side 3
 side 0
 side 7
-115 none
+115 -1
 side 1
 side 1
 side 1
-2 4 none none
+2 4 -1 -1 -1 -1
 side 2
 side 4
 side 2
-8 none
+8 -1
 side 1
 1 2 end
 side 2
 2
 side 1
-0 none
+0 -1

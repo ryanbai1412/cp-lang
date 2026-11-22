@@ -307,7 +307,7 @@ crates/      the crates in A4
 corpus/      problems with ports, tests and metadata; raw submissions
 bench/       runtime and size harness against matched C++
 editors/     VS Code and others, generated grammars
-site/        docs and playground, built from spec/ and std/
+web/         site, docs and playground, built from spec/ and std/
 research/    notes and experiments, non-normative
 plan/        plans, non-normative
 ```

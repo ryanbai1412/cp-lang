@@ -10,7 +10,13 @@ fn prefix_min_sum(a: List<Int>) -> Int:
     total
 
 @brute(prefix_min_sum)
-fn prefix_min_sum_slow(a: List<Int>) -> Int = scan(a, min).sum()
+fn prefix_min_sum_slow(a: List<Int>) -> Int:
+    var lo = a[0]
+    var s = 0
+    for x in a:
+        lo min= x
+        s += lo
+    s
 
 @!multitest
 let n: 1..=2e5 = read()

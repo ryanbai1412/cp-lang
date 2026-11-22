@@ -7,4 +7,4 @@ fn f(i: I) -> Int:
     if let p = i.prev: return (f(p) * 3 + i.idx) % 1000000007
     1
 
-print(f(I.last))
+print(f(I.last!))

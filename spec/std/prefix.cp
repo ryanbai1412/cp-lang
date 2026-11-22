@@ -140,6 +140,7 @@ pub struct Prefix<D, T>:
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
     pub fn fold(self, r: Range<D>) -> T:
+        if r.is_empty: return T.zero
         self.p[r.end] - self.p[r.start]
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`

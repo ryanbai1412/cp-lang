@@ -7,7 +7,7 @@ fn fib(i: I) -> Int:
     fib(I.nth(i.idx - 1)) + fib(I.nth(i.idx - 2))
 
 dp[I.nth(5)] = 100
-print(fib(I.last))
+print(fib(I.last!))
 print(count(dp[i] != none for i in I), dp[I.nth(7)] ?? -1)
 
 domain J = 0..3
@@ -17,4 +17,4 @@ fn paths(i: J, j: J) -> Int:
         if let b = j.prev:
             return paths(a, j) + paths(i, b)
     1
-print(paths(J.last, J.last), grid[J.last, J.first] ?? -1, grid[J.first, J.last] ?? -1)
+print(paths(J.last!, J.last!), grid[J.last!, J.first!] ?? -1, grid[J.first!, J.last!] ?? -1)

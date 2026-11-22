@@ -16,6 +16,6 @@ impl Index for Cell:
 var dist: [Cell]Int = 0
 for x in Cell:
     dist[x] = x.r.label * 10 + x.c.label
-let last = Cell(Row.last, Col.last)
+let last = Cell(Row.last!, Col.last!)
 print(Cell.K, dist[last], last.to_idx, Cell.from_idx(1).c)
 print(dist)

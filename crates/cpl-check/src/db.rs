@@ -1232,7 +1232,7 @@ impl Database {
             if diags.is_empty() {
                 let dotted = parts.join(".");
                 let help = match first.text.as_str() {
-                    "std" => "the standard library's modules are the files of `stdlib/`".to_string(),
+                    "std" => "the standard library's modules are the files of `spec/std/`".to_string(),
                     lib => format!(
                         "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
                     ),
@@ -2189,13 +2189,13 @@ impl Env for FileCtx<'_> {
 
 /// Whether `path` is the prelude itself, which is not given its own names.
 fn is_prelude(path: &str) -> bool {
-    path == "prelude.cp" || path.ends_with("stdlib/prelude.cp")
+    path == "prelude.cp" || path.ends_with("std/prelude.cp")
 }
 
 /// Whether `path` is a standard-library module (which declares its own imports
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
-    path.contains("/stdlib/") || path.starts_with("stdlib/") || path.starts_with("std/")
+    path.contains("/spec/std/") || path.starts_with("spec/std/") || path.starts_with("std/")
 }
 
 /// The declaration of the top-level name that starts at `at`.

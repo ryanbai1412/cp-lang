@@ -4,14 +4,14 @@ domain V = 0..n
 // Whole rows: every cell takes the larger (or smaller) of the two.
 var a: [V]Int = [V] v => v.idx
 var b: [V]Int = [V] v => 3 - v.idx
-print(a max= b, a)
-print(a max= b, a)
-print(a min= b, a)
+print(yes(a max= b), a)
+print(yes(a max= b), a)
+print(yes(a min= b), a)
 a min= [V] v => 1
 print(a)
 var c: [0..n]Int = 5
 var d: [0..n]Int = [4, 9, 5, 1]
-print(c min= d, c)
+print(yes(c min= d), c)
 c max= d
 print(c)
 var f: [1..=3]F64 = [1.5, 2.5, 3.5]

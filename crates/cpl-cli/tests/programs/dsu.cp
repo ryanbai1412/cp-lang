@@ -58,4 +58,4 @@ for e in edges:
         used.push(e)
 print(cost, used.len)
 print(used)
-print(dsu.find(0) == dsu.find(n - 1), dsu.size[dsu.find(0)])
+print(yes(dsu.find(0) == dsu.find(n - 1)), dsu.size[dsu.find(0)])

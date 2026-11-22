@@ -2,8 +2,8 @@
 // unit-variant `is` test, and `match` on an enum with a payload variant.
 domain D = 1..=5
 let p = D(3)
-print(p.back(0)!, p.back(2)!, p.back(3) == none)
-print(p.ahead(0)!, p.ahead(2)!, p.ahead(3) == none)
+print(p.back(0)!, p.back(2)!, yes(p.back(3) == none))
+print(p.ahead(0)!, p.ahead(2)!, yes(p.ahead(3) == none))
 
 let r: Range<D> = D(1)..=D(5)
 print([x for x in r.drop(2)])
@@ -30,4 +30,4 @@ fn describe(ph: Phase) -> Int:
 print(describe(Phase.Seeking), describe(Phase.Split(Walk(z: 3, o: 7))))
 let p1: Phase = Phase.Seeking
 let p2: Phase = Phase.Split(Walk(z: 2, o: 5))
-print(p1 is Seeking, p2 is Seeking)
+print(yes(p1 is Seeking), yes(p2 is Seeking))
