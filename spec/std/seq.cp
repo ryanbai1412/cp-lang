@@ -719,6 +719,11 @@ pub struct RingSlice<D, T>():
     /// O(1) to make. Its positions in ring order.
     pub @get fn keys(self) -> yields D = todo
 
+/// The non-empty ranges whose every element is strictly below both elements just outside it
+/// (both must exist). At most 2n of them, left ends ascending, from one monotone-stack pass;
+/// the "walls" shape of grid problems such as IOI 2019 Rectangles. O(n) to walk.
+pub fn valleys<D, T>(self: [D]T) -> yields Range<D> = todo
+
 /// For each position, the widest piece where it is the minimum of `by` (ties: the left one
 /// extends). O(n).
 pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
