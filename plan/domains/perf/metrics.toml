@@ -1,0 +1,90 @@
+# perf metrics. `today` measured 2026-11-22 on main 4b8f504fc, 8-core VM,
+# g++ 11.4 -O2, release `cpl` (`cargo build --release -p cpl-cli`).
+# E = env -u CPL_SPEC -u CPL_STD -u CPL_EDITION (run outside any edition override).
+# Commands marked `branch` need a file that is only on an in-flight branch
+# today (bench/v03_perf_bench.py on devin/wip-codegen-perf, scripts/sizes.py on
+# devin/wip-cpp-size-main); they land in phase 2 step 1-2.
+
+[[metric]]
+name = "zero-cost pairs passing (both bars)"
+command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
+target = "7/7"
+today = "3/7 (domains, op_values, slices_views); modular and segtree_prefix do not build on v0.3; exit 1"
+milestone = "M2"
+
+[[metric]]
+name = "zero-cost worst ratio vs hand.cpp"
+command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
+target = "<= 1.05"
+today = "7.976 (iterators)"
+milestone = "M2"
+
+[[metric]]
+name = "zero-cost worst ratio vs direct.cp"
+command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
+target = "<= 1.05"
+today = "4.996 (iterators)"
+milestone = "M2"
+
+[[metric]]
+name = "zero-cost optionals vs hand.cpp"
+command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
+target = "<= 1.05"
+today = "1.264 (1.007 vs direct.cp)"
+milestone = "M2"
+
+[[metric]]
+name = "perf set p50 runtime vs matched C++"
+command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # branch"
+target = "<= 1.1"
+today = "0.987 (n=48 >= 10 ms both sides); bench/ alone 1.028, dryrun 0.529, corpus n=4"
+milestone = "M3"
+
+[[metric]]
+name = "perf set max runtime vs matched C++"
+command = "same as perf set p50"
+target = "<= 1.5"
+today = "2.431 (bench/ranges/mo)"
+milestone = "M3"
+
+[[metric]]
+name = "perf set programs over 1.5x"
+command = "same as perf set p50"
+target = "0"
+today = "3 (ranges/mo 2.431, corpus cf2178h 1.761, dryrun p10_matching 1.530); 14 over 1.1"
+milestone = "M3"
+
+[[metric]]
+name = "largest emitted C++, v0.3 dry runs (codeforces profile)"
+command = "python3 scripts/sizes.py --cpl target/release/cpl --report /tmp/sizes.tsv -j 2  # branch"
+target = "< 32768 bytes"
+today = "21667 bytes (research/dryrun/v03/p06_labyrinth.cp); 35/35 build"
+milestone = "M1"
+
+[[metric]]
+name = "programs over 32 KB, every program the size script builds"
+command = "python3 scripts/sizes.py --cpl target/release/cpl --report /tmp/sizes.tsv -j 2  # branch"
+target = "0 (64 KB hard limit: 0)"
+today = "1 (corpus/problems/cf2255f/port.cp, 48705 bytes); 0 over 64 KB; 506 of 1032 do not build (0.2 ports)"
+milestone = "M1"
+
+[[metric]]
+name = "front end, largest v0.3 dry run"
+command = "E ./target/release/cpl check research/dryrun/v03/p12_rangeupd_w.cp  # mean of 20"
+target = "< 500 ms"
+today = "3 ms"
+milestone = "M3"
+
+[[metric]]
+name = "codegen shape tests"
+command = "grep -c '#\\[test\\]' crates/cpl-codegen/src/tests.rs"
+target = "grows with every optimisation"
+today = "91"
+milestone = "all"
+
+[[metric]]
+name = "codegen files over the 2000-line cap"
+command = "wc -l crates/cpl-codegen/src/*.rs | awk '$1 > 2000 && $2 != \"total\"'"
+target = "0"
+today = "2 (expr.rs 2900, emit.rs 2233)"
+milestone = "M2"

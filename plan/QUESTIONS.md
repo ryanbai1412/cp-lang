@@ -185,4 +185,23 @@ Recommendation: A. Arity tells them apart, both are the name a contestant guesse
 How to reverse: B with a `cpl fix` codemod.
 Meanwhile: as ruled in R04.2.20 (on `devin/wip-conformance-matrix`).
 
+### perf: which programs and which tail bar define the v0.3 runtime target?
+Options: (a) the v0.3 perf set: dry runs with a matched `_ref.cpp`, `bench/<area>/*.cp`, corpus `spec.cp` ports, both sides >= 10 ms at max-N; p50 <= 1.1x, max <= 1.5x (AGENTS.md goal 3). (b) Same set, p95 <= 1.5x (what `plan/domains/perf/README.md` said). (c) The 0.2 343-port sweep in `bench/corpus-p95-report.md` (p95 2.61x today).
+Recommendation: (a). The worst program is the one a contestant hits; (c) measures 0.2 ports being deleted.
+How to reverse it: change the bar in `plan/domains/perf/metrics.toml`; the runner reports p95 and max either way.
+Meanwhile: perf works to (a).
+
+### perf: does Euclidean `%` on an unbounded `Int` count as abstraction cost?
+`bench/zero-cost/optionals` is 1.01x against `direct.cp` but 1.26x against `hand.cpp` (`cpl bench --zero-cost --reps 11`); isolating it showed the gap is `cpl::emod(x * 31 + 7, m)` where `hand.cpp` uses C++'s truncating `%`, because `a[i]` is a plain `Int` that could be negative. `OptInt` itself is free.
+Options: (a) the bench declares its input's real range (`0..10^9`), so the language proves `%` non-negative and prints plain `%`; (b) keep the source and count `emod` against the bar; (c) make codegen speculate (sign test, then fast path).
+Recommendation: (a). Floored `%` is the language's semantics, not an abstraction; the range is the fact a contestant writes anyway.
+How to reverse it: restore the `Int` declaration in `bench/zero-cost/optionals/abstract.cp`.
+Meanwhile: perf reports optionals both ways and does not change the source.
+
+### perf: to fit 32 KB, minify the C++ before dropping the CP Lang source from the header?
+On main, fitting drops comments, then the source header, then half the indentation. `devin/wip-cpp-size-main` instead drops comments, indentation, needless spaces and numbered names first, and the source last, so the submission keeps what it was written from but its C++ reads worse.
+Recommendation: minify first (the branch). The source is what a reader of the submission wants; the C++ is for the judge.
+How to reverse it: the order is one list in `crates/cpl-codegen/src/lib.rs`.
+Meanwhile: land the branch's order.
+
 ## Answered

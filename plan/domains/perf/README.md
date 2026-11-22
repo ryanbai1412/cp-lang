@@ -1,15 +1,92 @@
 # perf
 
-Segment: B. Metric. Owns: `crates/cpl-codegen`, `cpl bench`. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+Segment: B. Metric. Owns: `crates/cpl-codegen`, `cpl bench` (`crates/cpl-contest/src/{bench,zero_cost,corpus_bench}.rs`), `bench/`, generated C++ size. Status 2026-11-22: zero-cost bench 3/7 pass on main, two in-flight branches fix most of it; nothing perf-related is in the gate.
+Detail: [PLAN.md](PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [metrics.toml](metrics.toml) · [worklog.md](worklog.md).
 
-## Covers
-C++ codegen quality, runtime speed, C++ size, zero-cost abstractions, compile speed.
+## Mission
 
-## Improve
-Devirtualization, bounds-check elimination from proofs, narrow storage/niches; fix the over-budget programs (`ranges/mo`, `cf2178h`); iterators (12x) and slices (9x) in the zero-cost bench.
+The submitted C++ is as fast and as small as the C++ a strong contestant writes by hand, for the same algorithm and layout, so nobody ever drops to C++ for speed. Domains, optionals, iterators and operation values cost nothing; any cost left is visible and tunable in the language.
 
-## Success criteria
-Runtime p50 <= 1.1x and p95 <= 1.5x matched C++ (`cpl bench --corpus`); zero-cost bench <= 1.05x for domains, optionals, iterators, slices; every solution < 32 KB; front end < 500 ms on the largest port.
+## Covers / not covered
+
+| Covered here | Not here (owner) |
+|---|---|
+| C++17 codegen: lowering, devirtualization, bounds-check elimination, fusion, narrowing, niches | IR and lowering, range proofs in `prover` (compiler) |
+| `cpl bench` (zero-cost pairs, corpus), `bench/` suites and reports | Gate wiring, CI, cache (infra); we hand them the command |
+| Emitted C++ size and fitting under 32 KB | Judge profiles' contents, `cpl-judge` (tools) |
+| Runtime vs matched C++, peak RSS, compile time of the C++ | Interpreter speed (compiler), front end speed (compiler; we track it) |
+| Perf of stdlib code paths through codegen | Stdlib bodies and their algorithms (stdlib) |
+| | Choice of algorithm in ports (idioms) |
+
+## Success criteria for v0.3
+
+1. Zero-cost: every `bench/zero-cost` pair <= 1.05x against both `direct.cp` and `hand.cpp` (7/7).
+2. Matched C++ on the perf set (v0.3 dry runs with a matched `_ref.cpp`, `bench/<area>/*.cp`, corpus `spec.cp` ports; both sides >= 10 ms at max-N): p50 <= 1.1x, max <= 1.5x.
+3. Every v0.3 program builds under 32 KB for every judge profile; none over 64 KB.
+4. Every port reachable to <= 1.1x by tuning in the language, shown on the 5 worst.
+5. All of it measured by one command per metric and ratcheted, so no landing makes a number worse.
+
+## Milestones
+
+- **M1 Measured and ratcheted** — zero-cost 7/7 build on v0.3; `devin/wip-codegen-perf` and `devin/wip-cpp-size-main` landed; `scripts/sizes.py --check` in the gate; one perf-set runner whose JSON feeds `metrics.toml`; a perf ratchet file that a regression > 10% fails. Exit: `cpl bench --zero-cost` exits 0 on build errors = 0; `scripts/check.sh --fast` runs sizes.
+- **M2 Abstractions are free** — exit: `cpl bench --zero-cost bench/zero-cost --reps 11` 7/7 pass both bars; shape tests in `src/tests.rs` show zero `std::function` for `let f = mon.op; f(a, b)`, zero `cpl::at` for `for i in 0..n` over `[0; n]`, zero intermediate vectors for `filter.map.sum`.
+- **M3 Parity with matched C++** — exit: perf set p50 <= 1.1x and max <= 1.5x (5 runs, median); `ranges/mo`, `cf2178h`, `p10_matching` each <= 1.5x; front end < 500 ms on the largest v0.3 program.
+
+## Metrics
+
+Today = measured on main `4b8f504fc`, 8-core VM, g++ 11.4 `-O2`, release `cpl`; branch harnesses copied in to run. Commands in [metrics.toml](metrics.toml).
+
+| Metric | Command (short) | Today | Target | M |
+|---|---|---|---|---|
+| Zero-cost pairs passing | `cpl bench --zero-cost --reps 11` | 3/7 (2 don't build) | 7/7 | M2 |
+| Worst zero-cost vs hand.cpp | same | iterators 7.98x | <= 1.05x | M2 |
+| Worst zero-cost vs direct.cp | same | iterators 5.00x | <= 1.05x | M2 |
+| optionals vs hand.cpp | same | 1.26x | <= 1.05x | M2 |
+| Perf set p50 | `bench/v03_perf_bench.py` (branch) | 0.987x (n=48); 1.028x on `bench/` alone | <= 1.1x | M3 |
+| Perf set max | same | 2.431x (`ranges/mo`) | <= 1.5x | M3 |
+| Perf set programs > 1.5x | same | 3: `ranges/mo` 2.43x, `cf2178h` 1.76x, `p10_matching` 1.53x | 0 | M3 |
+| Largest emitted C++ | `scripts/sizes.py` (branch) | 21.7 KB (v0.3 dry runs, 35/35 build) | < 32 KB | M1 |
+| Programs over 32 KB | same | 1 (`cf2255f` 0.2 port, 48.7 KB); 0 over 64 KB | 0 | M1 |
+| Front end, largest v0.3 program | `time cpl check` | 3 ms | < 500 ms | M3 |
+| Codegen shape tests | `cargo nextest run -p cpl-codegen` | 91 | grows | all |
+| Codegen files over 2000 lines | `scripts/debt-ratchet.json` | 2 | 0 | M2 |
+
+Not measured: peak RSS and C++ compile time on the perf set; sizes for judge profiles other than `codeforces`; `bench/rust_latency_audit.py` (fails: `No module named max_n_audit`). Caveats: 20/54 `bench/` and 187/307 corpus pairs did not build or run, so the set is partial; several dry-run "matched" references are slower algorithms (`p20_point` 0.055x), which drags p50 down. Fixing the set is M1.
+
+## Judgment rubric
+
+Scored 1-5 with a reason by a cold agent on fixed samples (`p10_matching`, `ranges/mo`, `bench/zero-cost/iterators`).
+
+1. Would a strong C++ contestant submit this kernel as is: no `std::function`, no check they can see is redundant, no copy they would not make?
+2. When a program is slow, does `cpl explain` / `cpl profile` say why, in source terms?
+3. Is every optimisation one that majorizes and is shown, never a secret choice of algorithm?
+4. Is each optimisation a general rule in one module with a shape test, never keyed to a library name?
+5. Can a contestant read the emitted C++ back to the source?
+
+Probes (cold agent, pass/fail + time + files touched):
+
+- **Diagnose:** given `p10_matching` at 1.53x and the docs, name the cause (indirect call through `let f = mon.op`) in <= 15 min. Tests rubric 2.
+- **Tune:** take the worst perf-set program to <= 1.1x by editing only the `.cp`. Tests criterion 4.
+- **Extend:** add `reserve` on known-length producer loops following ARCHITECTURE.md; <= 3 files, a shape test, no special case. Tests rubric 4.
+
+## Improve (highest impact first)
+
+1. Land `devin/wip-codegen-perf`: loop fusion (iterators 7.98x -> 1.05x per the branch run) and power-of-two `/` `%` (segtree_prefix builds again; 1.01x vs direct per the branch run), fusion split into `src/fuse.rs`.
+2. Land `devin/wip-cpp-size-main` (size report, 32 KB gate, `src/compact.rs`); drop superseded `wip-cpp-size`, `wip-cpp-size-report`.
+3. Put sizes and a perf ratchet in the gate; one runner for all suites.
+4. Bounds checks from range facts (`proven()` is syntactic): `z_prefix` 1.37x, `cf2178h` 1.76x.
+5. Devirtualize local fn bindings: `p10_matching` 1.53x.
+6. `ranges/mo` 2.43x: narrow element storage, `reserve`, dynamic-divisor `/` `%`.
+7. Split `expr.rs` / `emit.rs` under 2000 lines; move `ranges.rs` / `niche.rs` facts into `cpl-ir` with compiler.
 
 ## Ryan's role
-Signs off the targets once. Hears about trade-offs only (e.g. faster C++ that is harder to read).
+
+Signs off the targets and the perf set once (Q1). Hears only about trade-offs: readable C++ vs size (Q3), language semantics that cost time (Q2). Everything else is ordinary decisions in `decisions.md`.
+
+## Decisions needed from Ryan
+
+Filed in [plan/QUESTIONS.md](../../QUESTIONS.md):
+
+1. **Which set and which tail bar define the v0.3 runtime target?** Recommend: the v0.3 perf set above, p50 <= 1.1x and max <= 1.5x (as AGENTS.md says; this README said p95). The 0.2 343-port sweep (p95 2.61x, `bench/corpus-p95-report.md`) is retired with the 0.2 ports.
+2. **Does Euclidean `%` on an unbounded `Int` count as abstraction cost?** `optionals` is 1.01x vs direct but 1.26x vs `hand.cpp`, all of it `cpl::emod`. Recommend: no; the bench declares its real input range (`0..10^9`), making `%` plain C++.
+3. **To fit 32 KB, minify the C++ before dropping the CP Lang source from the header?** Recommend: yes (comments, indentation, spaces, numbered names go first; the source last), as `devin/wip-cpp-size-main` does.
