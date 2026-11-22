@@ -84,18 +84,20 @@ precondition checked in debug builds, not a trait. `Map` is `Keyed`,
 `Sized` and `Contains` with its own `[]`; there is no `Lookup` trait.
 
 Every value is owned or lent (read or `mut`); the mode is not part of the
-type. Five rules, with no lifetime annotations (decision 141):
+type. Five rules, with no lifetime annotations (decisions 141, 144; the
+full model with exercises is `spec/api/0-ownership.md`):
 
 1. Parameters are lent: a fn never owns its arguments.
 2. A value is lent if any part is: a struct's fields, a closure's captures,
    a generator value's arguments. It is `mut`-lent if any part is, and it
    borrows every source its parts borrow.
-3. A lent value lives at most until its last use in the block that made it:
-   it may be bound by `let`, passed, read, walked and lent onward, never put
-   in a `var`, field, container or global, captured by an escaping closure,
-   or returned except by a fn declared `lends`.
-4. While it lives its sources are lent: none changes length, and a
-   `mut`-lent value excludes every other access to them.
+3. A lent value lives until its last use. It may be kept in a `let`, `var`,
+   field or container that dies no later than its sources (same or inner
+   block, declared after them); never returned except by a fn declared
+   `lends`, stored through a parameter, or stored in a top-level `var`.
+4. While it lives its sources are lent: a read lend forbids writing,
+   resizing or moving them, and a `mut` lend excludes every other access.
+   A closure's captures are borrowed per call, not for its life.
 5. Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies.
 
 A view is a `Seq` (and `Indexed` when reads stay O(1)) built from a lent

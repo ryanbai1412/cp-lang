@@ -4322,3 +4322,20 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   `2b-keys.md` shows contest, helper and library code.
 - **Reverse.** Restore the hybrid: `List`/`Str` slices count from 0, and the
   string results go back to `List<Int>` offsets.
+
+## 144. One ownership model, written out with exercises (2026-11-21)
+
+- **Decision.** `spec/api/0-ownership.md` states the whole model as rules
+  R1 to R12 and wins over older text. It settles: `.clone()` is the copy;
+  no `mut fn` (5.10); push-only generators (126); plain means "no heap
+  part"; a read lend forbids writes, not only resizes; lent values may sit
+  in a `var`, field or container that dies no later than their sources
+  (relaxes 5.14 and 141 rule 3, so `var st = SegTree(V, op: closure over
+  ws)` works); lent structs can be built anywhere; closure captures are
+  borrowed per call; 5.4's reuse of a callee's `mut` borrow by an inline
+  closure is withdrawn; `let p = mut a[i]` is allowed; `let row = rows[i]`
+  on a heap element is a read lend (`at` is a `lends` fn).
+- **Why.** Ryan asked for one document from which any snippet can be judged
+  at a glance; the older documents disagreed on these points.
+- **Reverse.** Restore 141 rule 3 (lent values only in `let`s), or hold
+  closure captures for the closure's life.
