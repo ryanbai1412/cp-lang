@@ -1791,13 +1791,11 @@ pub(crate) fn unescape(text: &str) -> String {
 fn names_a_type(ty: &crate::ast::Type) -> bool {
     use crate::ast::TypeKind;
     match &ty.kind {
-        // The `7` of `Mod<7>` is a value, but only a type takes it.
         TypeKind::Named { name, args } => {
             name.is_type_like()
-                && args.iter().all(|arg| {
-                    names_a_type(arg)
-                        || matches!(&arg.kind, TypeKind::Value(v) if matches!(v.kind, crate::ast::ExprKind::Int(_)))
-                })
+                && args
+                    .iter()
+                    .all(|a| matches!(a.kind, TypeKind::Value(_)) || names_a_type(a))
         }
         TypeKind::Tuple(items) => items.iter().all(names_a_type),
         TypeKind::Optional(t) => names_a_type(t),

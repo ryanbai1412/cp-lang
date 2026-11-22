@@ -121,7 +121,7 @@ impl<'p> Emitter<'p> {
             ExprKind::Global(id) => {
                 touch.reads.insert((true, *id));
             }
-            ExprKind::Read(_)
+            ExprKind::Read(_) | ExprKind::Parse(..)
             | ExprKind::Print(..)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => touch.io = true,
             ExprKind::CallExpr(_, args) => {
@@ -343,6 +343,7 @@ impl<'p> Emitter<'p> {
                 | ExprKind::Field(..)
                 | ExprKind::Char(_)
                 | ExprKind::Read(_)
+                | ExprKind::Parse(..)
         ) || matches!(
             (&e.kind, &e.ty),
             (ExprKind::Index(..), Ty::Pos(_) | Ty::Bound(_))
@@ -1316,6 +1317,23 @@ impl<'p> Emitter<'p> {
                 this.sort_stmts(place, sort_by, desc.as_deref(), out)
             }),
             ExprKind::Read(spec) => self.read(spec),
+            ExprKind::Parse(src, spec) => {
+                let ty = self.ty(&e.ty);
+                self.lambda(&ty, |this, out| {
+                    let s = this.expr(src).text;
+                    let saved = this.temp();
+                    let ss = this.temp();
+                    let p = pad(this.indent);
+                    out.push_str(&format!("{p}auto {saved} = std::cin.rdbuf();\n"));
+                    out.push_str(&format!("{p}std::istringstream {ss}({s});\n"));
+                    out.push_str(&format!("{p}std::cin.rdbuf({ss}.rdbuf());\n"));
+                    let val = this.read(spec).text;
+                    let r = this.temp();
+                    out.push_str(&format!("{p}auto {r} = {val};\n"));
+                    out.push_str(&format!("{p}std::cin.rdbuf({saved});\n"));
+                    out.push_str(&format!("{p}return {ty}({r});\n"));
+                })
+            }
             ExprKind::Print(args, end) => self.lambda("void", |this, out| {
                 this.print_stmts(args, end.as_deref(), out)
             }),

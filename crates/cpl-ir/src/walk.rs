@@ -114,6 +114,11 @@ pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             let s: &'p Spec = s;
             spec_p(s, f);
         }
+        ExprKind::Parse(src, s) => {
+            f(src);
+            let s: &'p Spec = s;
+            spec_p(s, f);
+        }
         ExprKind::Print(args, end) => {
             args.iter().for_each(|arg| f(&arg.value));
             end.iter().for_each(|end| f(end));

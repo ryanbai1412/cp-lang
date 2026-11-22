@@ -625,6 +625,7 @@ struct Lowerer<'a> {
     io_sep: Option<String>,
     io_precision: Option<u32>,
     io_base: Option<i64>,
+    counted_domains: HashSet<DomainId>,
     io_global: Option<GlobalId>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
@@ -837,6 +838,7 @@ impl<'a> Lowerer<'a> {
             io_sep: None,
             io_precision: None,
             io_base: None,
+            counted_domains: HashSet::new(),
             io_global: None,
             context_defs: HashMap::new(),
             whole_axis: None,
@@ -2827,6 +2829,26 @@ impl<'a> Lowerer<'a> {
             if self.sigs[fn_id].params.is_empty() {
                 let call = self.method_call(fn_id, None, &[], Span::default());
                 return Spec::Call(Box::new(call));
+            }
+        }
+        if self.structs[id].def.fields.len() == 1 {
+            if let Some(&fn_id) = self.structs[id].methods.get("new") {
+                if self.sigs[fn_id].params.len() == 1 {
+                    let param_ty = self.sigs[fn_id].params[0].ty.clone();
+                    if let Some(arg_spec) = self.spec_of(&param_ty) {
+                        let read_arg = self.mk(
+                            ExprKind::Read(Box::new(arg_spec)),
+                            param_ty,
+                            Span::default(),
+                        );
+                        let call = self.mk(
+                            ExprKind::Call(fn_id, vec![Arg::Value(read_arg)]),
+                            Ty::Struct(id),
+                            Span::default(),
+                        );
+                        return Spec::Call(Box::new(call));
+                    }
+                }
             }
         }
         let Some(decl) = self.structs[id].decl else {
@@ -5419,6 +5441,10 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
             }
         }
         ExprKind::Read(spec) => collect_spec_calls(spec, out),
+        ExprKind::Parse(src, spec) => {
+            collect_expr_calls(src, out);
+            collect_spec_calls(spec, out);
+        }
         ExprKind::Print(args, end) => {
             for a in args {
                 collect_expr_calls(&a.value, out);

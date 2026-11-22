@@ -464,6 +464,8 @@ pub enum ExprKind {
     /// equal elements staying as they were.
     Sort(Box<Place>, SortBy, Option<Box<Expr>>),
     Read(Box<Spec>),
+    /// `s.parse<T>()`: parse a value of `Spec` from a string, returning `?T`.
+    Parse(Box<Expr>, Box<Spec>),
     /// `print(a, b)`: the values space-separated, then a newline, or the
     /// text of `end: s` in its place.
     Print(Vec<FmtArg>, Option<Box<Expr>>),

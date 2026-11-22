@@ -445,6 +445,92 @@ impl<'a> Lowerer<'a> {
                 }
             }
             let val = self.expr(recv, None);
+            if name.text == "parse"
+                && types.len() == 1
+                && args.is_empty()
+                && matches!(val.ty, Ty::Str | Ty::StrView)
+            {
+                let spec = self.resolve(&types[0], true);
+                let out_ty = spec.ty();
+                if let Spec::Plain(Ty::Pos(d)) = spec {
+                    if self.counted_domains.contains(&d) {
+                        if let Some(base_shift) = self.io_base.filter(|&b| b != 0) {
+                            let parsed = self.mk(
+                                ExprKind::Parse(Box::new(val), Box::new(Spec::Plain(Ty::Int))),
+                                Ty::Opt(Box::new(Ty::Int)),
+                                span,
+                            );
+                            let opt_slot = self.temp(Ty::Opt(Box::new(Ty::Int)));
+                            let res_ty = Ty::Opt(Box::new(Ty::Pos(d)));
+                            let is_some = self.mk(
+                                ExprKind::IsSome(Box::new(self.local(opt_slot, span))),
+                                Ty::Bool,
+                                span,
+                            );
+                            let raw = self.mk(
+                                ExprKind::Unwrap(Box::new(self.local(opt_slot, span)), false),
+                                Ty::Int,
+                                span,
+                            );
+                            let ord = self.int_add(raw, -base_shift);
+                            let ord_slot = self.temp(Ty::Int);
+                            let zero = self.int_lit(0, span);
+                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                            let ge0 = self.mk(
+                                ExprKind::Cmp(CmpOp::Ge, Box::new(self.local(ord_slot, span)), Box::new(zero)),
+                                Ty::Bool,
+                                span,
+                            );
+                            let lt_len = self.mk(
+                                ExprKind::Cmp(CmpOp::Lt, Box::new(self.local(ord_slot, span)), Box::new(len)),
+                                Ty::Bool,
+                                span,
+                            );
+                            let in_range = self.mk(
+                                ExprKind::Binary(BinOp::And, Box::new(ge0), Box::new(lt_len)),
+                                Ty::Bool,
+                                span,
+                            );
+                            let pos_val = self.cast(Cast::Trust, self.local(ord_slot, span), Ty::Pos(d));
+                            let some_pos = self.mk(ExprKind::Some(Box::new(pos_val)), res_ty.clone(), span);
+                            let none_pos = self.mk(ExprKind::None, res_ty.clone(), span);
+                            let checked = self.mk(
+                                ExprKind::Do(Block {
+                                    stmts: vec![
+                                        Stmt::Let(ord_slot, Some(ord)),
+                                        Stmt::Give(self.mk(
+                                            ExprKind::If(Box::new(in_range), Box::new(some_pos), Box::new(none_pos.clone())),
+                                            res_ty.clone(),
+                                            span,
+                                        )),
+                                    ],
+                                }),
+                                res_ty.clone(),
+                                span,
+                            );
+                            return self.mk(
+                                ExprKind::Do(Block {
+                                    stmts: vec![
+                                        Stmt::Let(opt_slot, Some(parsed)),
+                                        Stmt::Give(self.mk(
+                                            ExprKind::If(Box::new(is_some), Box::new(checked), Box::new(none_pos)),
+                                            res_ty.clone(),
+                                            span,
+                                        )),
+                                    ],
+                                }),
+                                res_ty,
+                                span,
+                            );
+                        }
+                    }
+                }
+                return self.mk(
+                    ExprKind::Parse(Box::new(val), Box::new(spec)),
+                    Ty::Opt(Box::new(out_ty)),
+                    span,
+                );
+            }
             if let Ty::Struct(sid) = val.ty {
                 if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
                     let gargs = self.resolve_gen_args(types);
@@ -1430,7 +1516,17 @@ impl<'a> Lowerer<'a> {
                 }
                 let mut values: Vec<FmtArg> = values
                     .into_iter()
-                    .filter_map(|(value, at)| self.fmt_arg(value, digits, at))
+                    .filter_map(|(mut value, at)| {
+                        if let Some(b) = self.io_base.filter(|&b| b != 0) {
+                            if let Ty::Pos(d) = value.ty {
+                                if self.counted_domains.contains(&d) {
+                                    let ord = self.cast(Cast::Ord, value, Ty::Int);
+                                    value = self.int_add(ord, b);
+                                }
+                            }
+                        }
+                        self.fmt_arg(value, digits, at)
+                    })
                     .collect();
                 if let Some(sep) = sep {
                     // One text, so the separator is the only thing between.
@@ -2683,7 +2779,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn spec_of(&mut self, ty: &Ty) -> Option<Spec> {
+    pub(super) fn spec_of(&mut self, ty: &Ty) -> Option<Spec> {
         Some(match ty {
             Ty::Struct(id) => self.struct_spec(*id),
             Ty::Tuple(_) | Ty::Record(_) => {

@@ -2436,6 +2436,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             ExprKind::Read(spec) => self.read(spec, span)?,
+            ExprKind::Parse(src, spec) => {
+                let s = self.eval(src)?;
+                let bytes = match s {
+                    Value::Str(b) => (*b).clone(),
+                    Value::StrView(v) => v.to_vec(),
+                    _ => Vec::new(),
+                };
+                let saved = std::mem::replace(&mut self.input, Input::owned(bytes));
+                let res = self.read(spec, span);
+                self.input = saved;
+                Value::Opt(OptVal::from_option(res.ok()))
+            }
             ExprKind::Debug(line, args) => {
                 let mut values = Vec::new();
                 for arg in args {

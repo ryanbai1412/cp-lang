@@ -38,7 +38,6 @@ impl<'a> Input<'a> {
             name: "the string",
         }
     }
-
     /// An input that starts empty and is fed by `more`.
     pub fn live(more: More<'a>) -> Input<'a> {
         Input {

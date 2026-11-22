@@ -1002,6 +1002,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 | ExprKind::Mutate(..)
                 | ExprKind::Sort(..)
                 | ExprKind::Read(..)
+                | ExprKind::Parse(..)
                 | ExprKind::Print(..)
                 | ExprKind::Debug(..)
                 | ExprKind::Format(..)
@@ -1936,7 +1937,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 cpl_ir::FmtPiece::Value(a) => Self::expr_mentions_slot(&a.value, target),
                 cpl_ir::FmtPiece::Number(e, _) => Self::expr_mentions_slot(e, target),
             }),
-            ExprKind::Read(_) => true,
+            ExprKind::Read(_) | ExprKind::Parse(..) => true,
             ExprKind::Unit
             | ExprKind::Int(_)
             | ExprKind::Float(_)
@@ -11724,6 +11725,7 @@ fn expr_tag_short(expr: &Expr) -> &'static str {
         ExprKind::IsVariant(..) => "IsVariant",
         ExprKind::Payload(..) => "Payload",
         ExprKind::Read(_) => "Read",
+        ExprKind::Parse(..) => "Parse",
         ExprKind::Print { .. } => "Print",
         ExprKind::Debug { .. } => "Debug",
         ExprKind::Format(_) => "Format",

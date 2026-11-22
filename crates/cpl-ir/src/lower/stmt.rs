@@ -1927,6 +1927,18 @@ impl<'a> Lowerer<'a> {
         // `domain E = [m]` is parsed as `0..m`; the brackets mark it counted.
         if self.source(def.span).trim_start().starts_with('[') {
             self.counted.insert(id);
+            self.counted_domains.insert(id);
+        }
+        if let ast::ExprKind::List(items) = &def.kind {
+            if items.len() == 1 {
+                let val = self.expr(&items[0], Some(&Ty::Int));
+                let len = self.coerce(val, &Ty::Int, def.span);
+                let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+                self.counted.insert(id);
+                self.counted_domains.insert(id);
+                out.push(Stmt::DefDomain { id, lo, len });
+                return;
+            }
         }
         if let Some(factors) = self.resolve_product_factors(def) {
             self.product_domains.insert(id, factors.clone());
@@ -1993,6 +2005,7 @@ impl<'a> Lowerer<'a> {
                     self.counted.insert(id);
                     let len = self.coerce(val, &Ty::Int, def.span);
                     let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+                    self.counted_domains.insert(id);
                     out.push(Stmt::DefDomain { id, lo, len });
                 }
                 Ty::DomainVal => {
@@ -2055,6 +2068,12 @@ impl<'a> Lowerer<'a> {
             }
             return;
         };
+        if !*inclusive
+            && matches!(lo.kind, ast::ExprKind::Int(0))
+            && lo.span.start == lo.span.end
+        {
+            self.counted_domains.insert(id);
+        }
         if let (Some(l), Some(h)) = (self.ast_bounds(lo), self.ast_bounds(hi)) {
             let extra = i64::from(*inclusive);
             let least = h.0.checked_add(extra).and_then(|h| h.checked_sub(l.1));
