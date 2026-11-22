@@ -57,6 +57,7 @@ STAGES = {
     # and the cpl binary; it opened none of these prose paths.
     "fmt_corpus": ["AGENTS.md", "REPO.md", "decisions.md", "plan/*",
                    "corpus/statements/*", "corpus/submissions/*"],
+    "site_smoke": ["archive/*"],
 }
 
 

@@ -1,10 +1,6 @@
-import { chromium } from '@playwright/test';
+import { base, open } from './browser.mjs';
 
-const base = process.env.BASE ?? 'http://127.0.0.1:3000';
-const browser = await chromium.connectOverCDP(process.env.CDP ?? 'http://localhost:29229');
-const page = await browser.contexts()[0].newPage();
-const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
+const { page, errors } = await open();
 await page.goto(base + '/');
 await page.getByRole('button', { name: 'Run' }).first().click();
 const out = page.getByRole('status').first();

@@ -23,12 +23,14 @@
 # --full  8. the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
+#            and scripts/site-check.sh: the site build (with the
+#            2,100,000-byte gzipped cap on cpl.wasm) and its browser smoke
 #        11. the VS Code extension tests (editors/vscode: npm test, and its
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #
-# Needs cargo with clippy, python3 and node; --full also needs npm, g++ and
-# the wasm target (rustup target add wasm32-unknown-unknown).
+# Needs cargo with clippy, python3 and node; --full also needs npm, pnpm, a
+# Playwright Chromium, g++ and the wasm target (rustup target add wasm32-unknown-unknown).
 set -euo pipefail
 
 gate_t0=$(date +%s)
@@ -347,6 +349,9 @@ if [ "$mode" = full ]; then
 
     step "wasm build and crates/cpl-wasm/tests/smoke.mjs"
     scripts/build-wasm.sh --smoke --out "$tmp/wasm"
+
+    step "scripts/site-check.sh: site build, cpl.wasm size cap, browser smoke"
+    CPL="$cpl" scripts/site-check.sh --no-cache
 
     step "editors/vscode: npm test"
     cargo build -q -p cpl-cli    # the LSP test starts target/debug/cpl

@@ -55,8 +55,10 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_touching_any_unexcluded_file_invalidates_every_stage(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(root, "scripts", "check.sh"), encoding="utf-8") as f:
-            script = f.read()
+        script = ""
+        for name in ("check.sh", "site-check.sh"):
+            with open(os.path.join(root, "scripts", name), encoding="utf-8") as f:
+                script += f.read()
         used = set(re.findall(r"cache_(?:hit|save) (\w+)", script))
         self.assertEqual(used, set(cc.STAGES))
         env, *lines = cc.manifest(root).splitlines()

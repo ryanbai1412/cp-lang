@@ -36,9 +36,13 @@ bench-corpus *args:
 web-build:
     pnpm --dir web build
 
-# Run the Next.js web app smoke suite (expects web/out served on :3000).
+# Run the browser smoke suite against the built site (web/out), on a port of its own.
 web-smoke:
     pnpm --dir web smoke
+
+# Build the site, hold cpl.wasm to its size cap and run the browser smoke suite; skipped when unchanged.
+site *args:
+    scripts/site-check.sh {{args}}
 
 # Run the unified conformance/corpus/docs/diff harness (crates/cpl-conform).
 conform *args:
