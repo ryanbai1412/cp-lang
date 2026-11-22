@@ -1,0 +1,3 @@
+// expect: ok, output "1"
+domain D = 0..4
+print(D.count(x => x == D(1)))

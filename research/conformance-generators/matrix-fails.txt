@@ -1,0 +1,52 @@
+  matrix/generic/segtree--explicit_static.cp: fail: wanted ok; got: error[E0302]: `u` is declared a SegTree<V, Int, Int>, but `t` is a SegTree<V, Int>
+  matrix/generic/segtree--inferred_static.cp: fail: wanted ok; got: error[E0302]: `u` is declared a SegTree<V, Int, Int>, but `SegTree.of(max, v => 0)` is a SegTree<_, _>
+  matrix/generic/segtree--partial_static.cp: fail: wanted ok; got: error[E0302]: `u` is declared a SegTree<V, Int, Int>, but `t` is a SegTree<_, _>
+  matrix/index/compress--find.cp: fail: wanted ok; got: error[E0302]: can't compare a `Int` with a `D`
+  matrix/index/enum--count.cp: fail: wanted ok; got: error[E0304]: `D.count` is an Int, not a fn
+  matrix/index/enum--cuts_lr.cp: fail: wanted ok; got: error[E0203]: D has no field or method `l`
+  matrix/index/enum--filter.cp: fail: wanted ok; got: error[E0203]: D has no field or method `filter`
+  matrix/index/enum--find.cp: fail: wanted ok; got: error[E0203]: D has no field or method `find`
+  matrix/index/enum--first.cp: fail: wanted ok; got: error[E0203]: `D` has no variant `first`
+  matrix/index/enum--min_by.cp: fail: wanted ok; got: error[E0203]: D has no field or method `min`
+  matrix/index/enum--next.cp: fail: wanted ok; got: error[E0203]: a `D` has no member `next` that `cpl run` knows
+  matrix/index/enum--prev.cp: fail: wanted ok; got: error[E0203]: a `D` has no member `prev` that `cpl run` knows
+  matrix/index/enum--size.cp: fail: wanted ok; got: error[E0203]: `D` has no variant `count`
+  matrix/index/pair--builder.cp: fail: wanted ok; got: error[E0204]: an array is indexed by a domain or a length: `[V]Int`, `[n]Int`
+  matrix/index/pair--count.cp: fail: wanted ok; got: error[E0304]: `Pair<V>.count` is an Int, not a fn
+  matrix/index/pair--fill.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `last`
+  matrix/index/pair--filter.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `filter`
+  matrix/index/pair--find.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `find`
+  matrix/index/pair--first.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `first`
+  matrix/index/pair--for.cp: fail: wanted ok; got: error[E0501]: `cpl run` and `cpl build` can't handle explicit type arguments here yet
+  matrix/index/pair--memo.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `last`
+  matrix/index/pair--min_by.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `min`
+  matrix/index/pair--optional.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `last`
+  matrix/index/pair--read.cp: fail: wanted ok; got: error[E0204]: an array is indexed by a domain or a length: `[V]Int`, `[n]Int`
+  matrix/index/pair--rev.cp: fail: wanted ok; got: error[E0203]: Pair<V> has no field or method `rev`
+  matrix/index/pair--size.cp: fail: wanted ok; got: error[E0501]: `cpl run` and `cpl build` can't handle explicit type arguments here yet
+  matrix/index/plain--find.cp: fail: wanted ok; got: error[E0302]: can't compare a `Int` with a `D`
+  matrix/index/product--construct.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--count.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--cuts_lr.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--fill.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--filter.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--find.cp: fail: wanted ok; got: error[E0302]: can't compare a `Int` with a `D`
+  matrix/index/product--first.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--int.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--memo.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--min_by.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--next.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--optional.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--prev.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--print.cp: fail: wanted ok; got: error[E0302]: expected `R`, found `Int`
+  matrix/index/product--step.cp: fail: wanted ok; got: error[E0302]: expected `(Int, Int)`, found `D`
+  matrix/index/subset--count.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `count`
+  matrix/index/subset--filter.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `filter`
+  matrix/index/subset--find.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `find`
+  matrix/index/subset--first.cp: fail: wanted ok; got: error[E0302]: `!` takes the value out of an optional, but this is a `Subset<B>`
+  matrix/index/subset--min_by.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `min`
+  matrix/index/subset--rev.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `rev`
+  matrix/index/subset--size.cp: fail: wanted ok; got: error[E0203]: Subset<B> has no field or method `count`
+  matrix/optional/int--let_else_top.cp: fail: wanted ok; got: error[E0606]: `y` has type `?Int`, which does not implement `Print`
+  matrix/optional/list--let_else_top.cp: fail: wanted ok; got: error[E0606]: `y` has type `?List<Int>`, which does not implement `Print`
+  matrix/optional/std_generic--let_else_top.cp: fail: wanted ok; got: error[E0606]: `y` has type `?List<_>`, which does not implement `Print`

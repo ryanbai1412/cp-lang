@@ -1,0 +1,302 @@
+# Feature x consumer matrices. scripts/conformance-matrix.py writes one case
+# per cell to spec/conformance/matrix/<matrix>/<row>--<col>.cp. A cell with
+# no case fails the gate unless [<matrix>.na] gives a reason.
+# Templates use $name for the row's fields; scope wraps the form's body.
+
+# ---- index types x consumers (R04, R04.2.20, R10) ----
+
+[index.row.plain]
+second = "D(1)"
+make = "D(1)"
+k = 1
+decl = "domain D = 0..4"
+D = "D"
+p = "D(1)"
+first = "D(0)"
+n = 4
+show = "1"
+
+[index.row.product]
+second = "D((0, 1))"
+make = "D((0, 1))"
+k = 1
+decl = "domain R = 0..2\ndomain C = 0..3\ndomain D = (R, C)"
+D = "D"
+p = "D((1, 2))"
+first = "D((0, 0))"
+n = 6
+show = "1 2"
+up = 3
+
+[index.row.enum]
+second = "D.E"
+make = "D(1)"
+k = 1
+decl = "enum D = N | E | S | W"
+D = "D"
+p = "D.E"
+first = "D.N"
+n = 4
+show = "E"
+
+[index.row.subset]
+decl = "domain B = 0..3"
+D = "Subset<B>"
+p = "Subset<B>.full"
+first = "Subset<B>.empty"
+n = 8
+
+[index.row.compress]
+second = "D(1)"
+make = "D(1)"
+k = 1
+decl = "let (domain D, comp) = compress([30, 10, 20, 10])"
+D = "D"
+p = "D.last!"
+first = "D.first!"
+n = 3
+show = "2"
+
+[index.row.pair]
+decl = "domain V = 0..4"
+D = "Pair<V>"
+p = "Pair<V>.last!"
+first = "Pair<V>.first!"
+n = 6
+
+[index.row.cuts]
+second = "V.cuts(1)"
+make = "V.cuts(1)"
+k = 1
+decl = "domain V = 0..3"
+D = "V.cuts"
+p = "V.cuts(1)"
+first = "V.cuts(0)"
+n = 4
+show = "1"
+
+[index.col.builder]
+code = "$decl\nlet a: [$D]Int = [$D] x => 1\nprint(a.sum())"
+out = "$n"
+
+[index.col.fill]
+code = "$decl\nvar a: [$D]Int = 0\na[$p] = 5\nprint(a.sum())"
+out = "5"
+
+[index.col.read]
+code = "$decl\nlet a: [$D]Int = read()\nprint(a.sum())"
+input = "$ones"
+out = "$n"
+
+[index.col.for]
+code = "$decl\nvar k = 0\nfor x in $D:\n    k += 1\nprint(k)"
+out = "$n"
+
+[index.col.rev]
+code = "$decl\nvar k = 0\nfor x in $D.rev:\n    k += 1\nprint(k)"
+out = "$n"
+
+[index.col.size]
+code = "$decl\nprint($D.count)"
+out = "$n"
+
+[index.col.first]
+code = "$decl\nprint(yes($D.first! == $first))"
+out = "YES"
+
+[index.col.count]
+code = "$decl\nprint($D.count(x => x == $p))"
+out = "1"
+
+[index.col.find]
+code = "$decl\nprint(yes($D.find(x => x == $p)! == $p))"
+out = "YES"
+
+[index.col.filter]
+code = "$decl\nprint($D.filter(x => x != $p).count())"
+out = "$n_less"
+
+[index.col.min_by]
+code = "$decl\nprint(yes($D.min(by: x => 0)! == $first))"
+out = "YES"
+
+[index.col.optional]
+code = "$decl\nlet o: ?$D = None\nlet s: ?$D = $p\nprint(yes(o == None and s! == $p))"
+out = "YES"
+
+[index.col.memo]
+code = "$decl\n@memo(map) fn f(x: $D) -> Int = 7\nprint(f($p))"
+out = "7"
+
+[index.col.print]
+code = "$decl\nprint($p)"
+out = "$show"
+
+[index.col.step]
+code = "$decl\nprint($D.count(x => x.step(Dir4.up()) != None))"
+out = "$up"
+
+[index.col.next]
+code = "$decl\nprint(yes($first.next! == $second))"
+out = "YES"
+
+[index.col.prev]
+code = "$decl\nprint(yes($second.prev! == $first and $first.prev == None))"
+out = "YES"
+
+[index.col.cuts_lr]
+code = "$decl\nprint(Int($second.l), Int($second.r))"
+out = "1 2"
+
+[index.col.construct]
+code = "$decl\nprint(yes($make == $second))"
+out = "YES"
+
+[index.col.int]
+code = "$decl\nprint(Int($second))"
+out = "$k"
+
+[index.na]
+"subset--next" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"subset--prev" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"subset--cuts_lr" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"subset--construct" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"subset--int" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"pair--next" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"pair--prev" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"pair--cuts_lr" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"pair--construct" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"pair--int" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
+"cuts--cuts_lr" = "a cut has positions beside it, not cuts (R04.3.2); cuts_lr is for positions"
+"subset--print" = "std.subset gives Subset no print form"
+"pair--print" = "R10 prints [Pair<V>]T, but names no form for one Pair position"
+"plain--step" = "grid steps take a (row, column) position; only product domains have one"
+"enum--step" = "grid steps take a (row, column) position; only product domains have one"
+"subset--step" = "grid steps take a (row, column) position; only product domains have one"
+"compress--step" = "grid steps take a (row, column) position; only product domains have one"
+"pair--step" = "grid steps take a (row, column) position; only product domains have one"
+"cuts--step" = "grid steps take a (row, column) position; only product domains have one"
+
+# ---- optional producers x unwrap forms x scopes (R01.6.2, R02) ----
+
+[optional.row.int]
+decl = "let x: ?Int = 5"
+e = "x"
+v = "5"
+alt = "0"
+
+[optional.row.list_first]
+decl = "let xs = [4, 2]"
+e = "xs.first"
+v = "4"
+alt = "0"
+
+[optional.row.domain_at]
+decl = "domain V = 0..5"
+e = "V.at(3)"
+v = "3"
+alt = "V(0)"
+
+[optional.row.list]
+decl = "let xs: ?List<Int> = [1, 2]"
+e = "xs"
+v = "1 2"
+alt = "List<Int>()"
+
+[optional.row.std_generic]
+decl = "use std.graph.{Graph, smallest_topo}\ndomain V = 0..3\ndomain E = 0..2\nlet reqs: [E](u: V, v: V) = [(u: 0, v: 2), (u: 2, v: 1)]"
+e = "smallest_topo(Graph.directed(reqs))"
+v = "0 2 1"
+alt = "List<V>()"
+
+[optional.form.let_else]
+body = "let y = $e else: $leave\nprint(y)"
+
+[optional.form.if_let]
+body = "if let y = $e:\n    print(y)"
+
+[optional.form.while_let]
+body = "var left = 1\nwhile let y = (if left > 0: $e else: None):\n    left -= 1\n    print(y)"
+
+[optional.form.match]
+body = "match $e:\n    Some(y) => print(y)\n    None => print(0)"
+
+[optional.form.default]
+body = "print($e ?? $alt)"
+
+[optional.scope.top]
+wrap = "$decl\n$body"
+leave = "return"
+
+[optional.scope.fn]
+wrap = "$decl\nfn f():\n$body_in\nf()"
+leave = "return"
+
+[optional.scope.loop]
+wrap = "$decl\nfor i in 0..1:\n$body_in"
+leave = "continue"
+
+# ---- generic types x how args are given x call kind (R08.2.5) ----
+
+[generic.row.segtree]
+decl = "use std.segtree.{SegTree}\ndomain V = 0..5"
+base = "SegTree"
+full = "SegTree<V, Int, Int>"
+explicit = "SegTree<V, Int>"
+ctor = "(max, [V] v => 0)"
+static = ".of(max, v => 0)"
+method = ".of(max, v => 0).clone()"
+show = "u.all"
+v = "0"
+
+[generic.row.user]
+decl = "struct Box<T, F = Int>:\n    x: ?T\n    pub fn empty() -> Box<T, F> = Box<T, F>(None)\n    pub fn same(self) -> Box<T, F> = self"
+base = "Box"
+full = "Box<Int, Int>"
+explicit = "Box<Int>"
+ctor = "(None)"
+static = ".empty()"
+method = ".empty().same()"
+show = "yes(u.x == None)"
+v = "YES"
+
+[generic.col.explicit_ctor]
+code = "$decl\nlet t = $full$ctor\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.partial_ctor]
+code = "$decl\nlet t = $explicit$ctor\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.inferred_ctor]
+code = "$decl\nlet u: $full = $base$ctor\nprint($show)"
+out = "$v"
+
+[generic.col.explicit_static]
+code = "$decl\nlet t = $full$static\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.partial_static]
+code = "$decl\nlet t = $explicit$static\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.inferred_static]
+code = "$decl\nlet u: $full = $base$static\nprint($show)"
+out = "$v"
+
+[generic.col.explicit_method]
+code = "$decl\nlet t = $full$method\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.partial_method]
+code = "$decl\nlet t = $explicit$method\nlet u: $full = t\nprint($show)"
+out = "$v"
+
+[generic.col.inferred_method]
+code = "$decl\nlet u: $full = $base$method\nprint($show)"
+out = "$v"
+
+[generic.na]
+"segtree--explicit_method" = "SegTree has no method that returns a SegTree"
+"segtree--partial_method" = "SegTree has no method that returns a SegTree"
+"segtree--inferred_method" = "SegTree has no method that returns a SegTree"
