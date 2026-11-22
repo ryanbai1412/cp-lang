@@ -296,7 +296,7 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// order: `lambdas` is searched as an increasing range; one value is returned
 /// ties: among counts with equal penalized value, `solve` must report the least; `aliens` relies on it
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
-/// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min_by(p => (p.val, p.count))!) == 4`
+/// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 4`
 pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
     assert k >= 0
     var lo: L = -1

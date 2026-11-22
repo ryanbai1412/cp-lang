@@ -159,7 +159,7 @@ pub struct TimeTree<E>:
     /// cost: O(log q)
     /// empty: schedules nothing
     /// traps: when a non-empty `r` reaches outside `0..q`
-    /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 5`
+    /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 7`
     pub fn add_range(mut self, r: Range<Int>, ev: E):
         if r.start >= r.end: return
         assert r.start >= 0 and r.end <= q, "the range reaches outside `0..q`"
