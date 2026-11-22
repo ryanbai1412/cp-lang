@@ -33,7 +33,20 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: ?A = None, over: ?Range<Int> = None) -> SegTree<D, T> = todo
+    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: ?A = None, over: ?Range<Int> = None) -> SegTree<D, T>:
+        if act != None or over != None: todo
+        SegTree<D, T>.build(Monoid<T>.of(op!), a, fill)
+
+    fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T>:
+        let size = bit_ceil(D.K)
+        var t = List.filled(2 * size, m.id)
+        if let init = a:
+            assert fill == None, "pass either `a` or `fill`, not both"
+            for i in D: t[size + i.to_idx] = init[i]
+        elif let v = fill:
+            for i in 0..D.K: t[size + i] = v
+        for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
+        SegTree(m, t, size, None)
 
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
@@ -108,7 +121,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: never
     /// example: `let w = [1, 2, 3]; SegTree<0..3, Int>.of(+, i => w[i] * 2).all == 12`
     pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T>:
-        var s = SegTree<D, T>.new(op, [D] i => f(i))
+        var s = SegTree<D, T>.build(Monoid<T>.of(op), [D] i => f(i), None)
         s.source = f
         s
 
@@ -170,14 +183,14 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// empty: the identity for an empty `D`
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T = t[1]
 
     /// The operation the tree folds with, as its `(id, op)` pair.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SegTree(+, [1]).monoid.id == 0`
-    @get pub fn monoid(self) -> Monoid<T> = todo
+    @get pub fn monoid(self) -> Monoid<T> = m
 
 
 
@@ -189,7 +202,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SegTree(+, [1, 2]).try_fold(0..2) == Some(3)`
     /// example: `SegTree(+, [1, 2]).try_fold(1..1) == None`
-    pub fn try_fold(self, r: Range<D>) -> ?T = todo
+    pub fn try_fold(self, r: Range<D>) -> ?T:
+        let (lo, hi) = r.ends
+        if lo >= hi: return None
+        Some(self.fold(r))
 
     /// Make every position hold `fill`, or the identity when `fill` is `None`, dropping all pending
     /// tags; the storage is reused. A tree built with `of` keeps its formula.
@@ -199,7 +215,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(); s.all == 0`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(fill: 2); s.all == 6`
-    pub fn clear(mut self, fill: ?T = None) = todo
+    pub fn clear(mut self, fill: ?T = None):
+        let v = fill ?? m.id
+        for i in 0..size: t[size + i] = if i < D.K: v else: m.id
+        for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// The values of the canonical nodes that exactly cover `r`: the maximal aligned blocks of the
     /// tree's `bit_ceil(|D|)` leaves inside `r`. Their fold, left to right, is `fold(r)`.
@@ -210,7 +229,23 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(0..3).collect() == [3, 3]`
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(1..4).collect() == [2, 7]`
-    pub fn walk(self, r: Range<D>) -> yields T = todo
+    pub fn walk(self, r: Range<D>) -> yields T:
+        let (lo, hi) = r.ends
+        var (l, h) = (lo + size, hi + size)
+        var right: List<T> = []
+        while l < h:
+            if l % 2 == 1:
+                yield t[l]
+                l += 1
+            if h % 2 == 1:
+                h -= 1
+                right.push(t[h])
+            l /= 2
+            h /= 2
+        var k = right.len
+        while k > 0:
+            k -= 1
+            yield right[k]
 
 @test
 fn folds_match_a_plain_array():
