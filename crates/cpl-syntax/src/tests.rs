@@ -1251,6 +1251,12 @@ fn v22_statement_forms_from_the_blind_drafts_parse() {
     // line is still a mistake.
     assert_eq!(codes("fn f(i: Int) -> Int\n"), vec!["E0103"]);
     assert_eq!(codes("let y = 2;\n"), vec!["E0107"]);
+    // A `@grader fn` whose indented body lost its `:` is one error on the
+    // signature, with the body still read.
+    let src = "@grader fn f(n: Int) -> Int\n    domain V = [n]\n    V.len\n";
+    let parsed = parse_file(src);
+    assert_eq!(codes(src), vec!["E0103"]);
+    assert_eq!(parsed.diagnostics[0].fixes[0].edits[0].1, ":");
 }
 
 /// `(lo..hi) by step` is the range `lo..hi by step`; after `.rev` the

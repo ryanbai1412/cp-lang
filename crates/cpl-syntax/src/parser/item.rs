@@ -232,6 +232,8 @@ impl<'a> Parser<'a> {
         } else if (self.in_trait || self.in_grader)
             && self.at_line_end()
             && self.peek() != T::Indent
+            // An indented block below is a body that lost its `:`.
+            && !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
         {
             FnBody::None
         } else {
