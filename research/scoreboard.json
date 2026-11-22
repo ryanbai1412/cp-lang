@@ -187,7 +187,7 @@
         "core-04/dom-at.cp": "fail",
         "core-04/dom-call-traps.cp": "fail",
         "core-04/dom-count.cp": "pass",
-        "core-04/dom-cuts.cp": "fail",
+        "core-04/dom-cuts.cp": "pass",
         "core-04/dom-empty-first-traps.cp": "pass",
         "core-04/dom-empty-walks.cp": "pass",
         "core-04/dom-first-last.cp": "pass",
@@ -197,6 +197,7 @@
         "core-04/dom-range.cp": "fail",
         "core-04/dom-walk-rev.cp": "pass",
         "core-04/dom-wrap.cp": "fail",
+        "core-04/domain-mask.cp": "pass",
         "core-04/domain-mixup.cp": "pass",
         "core-04/e1-generic-param-takes-slice.cp": "fail",
         "core-04/e1-list-copy-fix.cp": "fail",
@@ -269,9 +270,9 @@
         "core-04/zip-pairs-domains-rejected.cp": "fail",
         "core-05/cache-lend-no-unknown-call.cp": "fail",
         "core-05/cache-no-lend-escapes.cp": "fail",
-        "core-05/cache-skipped-by-eq.cp": "fail",
+        "core-05/cache-skipped-by-eq.cp": "pass",
         "core-05/cache-walk-then-find.cp": "fail",
-        "core-05/cache-write-through-read-self.cp": "fail",
+        "core-05/cache-write-through-read-self.cp": "pass",
         "core-05/cache-written-outside.cp": "fail",
         "core-05/call-effect-through-fn.cp": "pass",
         "core-05/captured-not-moved.cp": "fail",
@@ -346,6 +347,7 @@
         "core-06/memo-array-jagged.cp": "pass",
         "core-06/memo-array-unbounded.cp": "fail",
         "core-06/memo-map.cp": "pass",
+        "core-06/min-max-as-fn-value.cp": "pass",
         "core-06/multitest-shared-above.cp": "pass",
         "core-06/mut-param-marked-at-call.cp": "pass",
         "core-06/mut-param-missing-marker.cp": "pass",
@@ -429,6 +431,7 @@
         "core-08/blanket-impl.cp": "fail",
         "core-08/bound-unmet.cp": "fail",
         "core-08/bounds-three-ways.cp": "fail",
+        "core-08/call-gen-alias.cp": "pass",
         "core-08/conditional-on-bound.cp": "fail",
         "core-08/const-param.cp": "pass",
         "core-08/derive-needs-fields.cp": "fail",
@@ -439,8 +442,10 @@
         "core-08/field-trait-struct-opt-in.cp": "fail",
         "core-08/field-trait.cp": "fail",
         "core-08/generic-checked-at-definition.cp": "fail",
+        "core-08/generic-method-call.cp": "pass",
         "core-08/if-const.cp": "pass",
         "core-08/impl-plus-shorthand.cp": "pass",
+        "core-08/infer-domain-from-bounds.cp": "pass",
         "core-08/inherent-before-trait.cp": "fail",
         "core-08/inherent-methods.cp": "pass",
         "core-08/inherent-outside-module.cp": "fail",
@@ -448,6 +453,7 @@
         "core-08/law-must-be-bool.cp": "fail",
         "core-08/laws-hold.cp": "fail",
         "core-08/laws-not-assumed.cp": "pass",
+        "core-08/lazy-method-sig.cp": "pass",
         "core-08/monomorphized.cp": "pass",
         "core-08/no-dyn.cp": "fail",
         "core-08/no-higher-kinded.cp": "fail",
@@ -520,6 +526,7 @@
         "core-10/read-after-read-all.cp": "fail",
         "core-10/read-all-empty.cp": "fail",
         "core-10/read-needs-type.cp": "fail",
+        "core-10/read-range.cp": "pass",
         "core-10/top-level-return.cp": "pass",
         "core-10/yes-answers.cp": "fail",
         "core-11/compiler-stamp.cp": "pass",
@@ -632,7 +639,7 @@
         "std-ntt/ntt.cp": "pass",
         "std-poly/big.cp": "pass",
         "std-poly/series.cp": "pass",
-        "std-rand/chance-pick.cp": "fail",
+        "std-rand/chance-pick.cp": "pass",
         "std-slope/concave.cp": "pass",
         "std-strings/automata.cp": "pass",
         "std-strings/case-trim.cp": "pass",
@@ -643,6 +650,7 @@
         "std-strings/rolling.cp": "pass",
         "std-strings/search.cp": "fail",
         "std-strings/split.cp": "pass",
+        "std-strings/str-find-rfind.cp": "pass",
         "std-strings/suffix-array-brute.cp": "pass",
         "std-strings/suffix-array.cp": "pass",
         "std-tree/lift-chain.cp": "pass",
@@ -683,17 +691,6 @@
           ]
         },
         {
-          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
-          "count": 14,
-          "examples": [
-            "core-02/array-builders.cp",
-            "core-02/large-local-array.cp",
-            "core-03/narrow-arith-same-answer.cp",
-            "core-03/optional-array-no-spare.cp",
-            "core-04/b4-prefix-of-range.cp"
-          ]
-        },
-        {
           "cause": "wrong output",
           "count": 14,
           "examples": [
@@ -705,6 +702,28 @@
           ]
         },
         {
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 13,
+          "examples": [
+            "core-02/array-builders.cp",
+            "core-02/large-local-array.cp",
+            "core-03/narrow-arith-same-answer.cp",
+            "core-03/optional-array-no-spare.cp",
+            "core-04/b4-prefix-of-range.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0602; got no diagnostic",
+          "count": 12,
+          "examples": [
+            "core-05/cache-lend-no-unknown-call.cp",
+            "core-05/cache-walk-then-find.cp",
+            "core-05/generator-holds-lent-arg.cp",
+            "core-05/heap-element-is-lent.cp",
+            "core-05/lent-source-not-moved.cp"
+          ]
+        },
+        {
           "cause": "wanted E0302; got no diagnostic",
           "count": 10,
           "examples": [
@@ -713,17 +732,6 @@
             "core-02/record-no-dropping.cp",
             "core-04/closed-cut-range-not-piece.cp",
             "core-04/e1-list-param-rejects-slice.cp"
-          ]
-        },
-        {
-          "cause": "wanted E0602; got no diagnostic",
-          "count": 10,
-          "examples": [
-            "core-05/generator-holds-lent-arg.cp",
-            "core-05/heap-element-is-lent.cp",
-            "core-05/lent-source-not-moved.cp",
-            "core-05/mut-place-excludes-reads.cp",
-            "core-05/no-resize-while-place-lent.cp"
           ]
         },
         {
@@ -782,6 +790,17 @@
           ]
         },
         {
+          "cause": "E0501: `<id>` is not in scope during lowering",
+          "count": 5,
+          "examples": [
+            "core-10/parse-enum-command.cp",
+            "core-10/parse-none-on-leftover.cp",
+            "core-10/parse-range-order.cp",
+            "core-10/parse-shapes.cp",
+            "core-10/print-shapes.cp"
+          ]
+        },
+        {
           "cause": "wanted E0301; got no diagnostic",
           "count": 5,
           "examples": [
@@ -824,16 +843,6 @@
           ]
         },
         {
-          "cause": "E0309: `<id>` gives a default for an optional, but the left side is a `<id>`",
-          "count": 4,
-          "examples": [
-            "core-01/optional-chaining.cp",
-            "core-02/question-extent.cp",
-            "core-04/dom-at.cp",
-            "core-10/parse-none-on-leftover.cp"
-          ]
-        },
-        {
           "cause": "E0603: storing it in a `<id>` would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
           "count": 4,
           "examples": [
@@ -864,24 +873,6 @@
           ]
         },
         {
-          "cause": "E0107: expected the end of the statement, found `<id>`",
-          "count": 3,
-          "examples": [
-            "core-05/cache-skipped-by-eq.cp",
-            "core-05/cache-write-through-read-self.cp",
-            "core-08/conditional-on-bound.cp"
-          ]
-        },
-        {
-          "cause": "E0107: expected the end of the statement, found a name",
-          "count": 3,
-          "examples": [
-            "core-09/standard-and-user-contexts.cp",
-            "core-10/parse-shapes.cp",
-            "core-10/print-shapes.cp"
-          ]
-        },
-        {
           "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
           "count": 3,
           "examples": [
@@ -897,6 +888,15 @@
             "core-04/h-drop-take-keys.cp",
             "core-04/rebase-fresh-domain.cp",
             "core-07/take-drop-clamped.cp"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` gives a default for an optional, but the left side is a `<id>`",
+          "count": 3,
+          "examples": [
+            "core-01/optional-chaining.cp",
+            "core-02/question-extent.cp",
+            "core-04/dom-at.cp"
           ]
         },
         {
@@ -960,14 +960,6 @@
             "core-04/d1-literal-slice-index-lint.cp",
             "core-04/d2-counter-loop-lint.cp",
             "core-07/slice-literal-index-lint.cp"
-          ]
-        },
-        {
-          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
-          "count": 2,
-          "examples": [
-            "core-08/trait-qualified-call.cp",
-            "core-10/parse-range-order.cp"
           ]
         },
         {
@@ -1067,14 +1059,6 @@
           ]
         },
         {
-          "cause": "wanted E0602; got E0107: expected the end of the statement, found `<id>`",
-          "count": 2,
-          "examples": [
-            "core-05/cache-lend-no-unknown-call.cp",
-            "core-05/cache-walk-then-find.cp"
-          ]
-        },
-        {
           "cause": "wanted E0608; got no diagnostic",
           "count": 2,
           "examples": [
@@ -1150,6 +1134,20 @@
           ]
         },
         {
+          "cause": "E0107: expected the end of the statement, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-08/conditional-on-bound.cp"
+          ]
+        },
+        {
+          "cause": "E0107: expected the end of the statement, found a name",
+          "count": 1,
+          "examples": [
+            "core-09/standard-and-user-contexts.cp"
+          ]
+        },
+        {
           "cause": "E0107: expected the end of the statement, found a number",
           "count": 1,
           "examples": [
@@ -1161,6 +1159,13 @@
           "count": 1,
           "examples": [
             "core-06/tool-roles-leave-item.cp"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 1,
+          "examples": [
+            "core-08/trait-qualified-call.cp"
           ]
         },
         {
@@ -1185,13 +1190,6 @@
           ]
         },
         {
-          "cause": "E0302: `<id>` takes a Cmd for `<id>`, but `<id>` is a Bool",
-          "count": 1,
-          "examples": [
-            "core-10/parse-enum-command.cp"
-          ]
-        },
-        {
           "cause": "E0302: `<id>` takes an Int for `<id>`, but `<id>` is a List",
           "count": 1,
           "examples": [
@@ -1203,13 +1201,6 @@
           "count": 1,
           "examples": [
             "core-04/range-mid-small.cp"
-          ]
-        },
-        {
-          "cause": "E0303: `<id>` needs the argument `<id>`",
-          "count": 1,
-          "examples": [
-            "core-04/dom-cuts.cp"
           ]
         },
         {
@@ -1507,13 +1498,6 @@
           ]
         },
         {
-          "cause": "wanted E0604; got E0107: expected the end of the statement, found `<id>`",
-          "count": 1,
-          "examples": [
-            "core-05/cache-no-lend-escapes.cp"
-          ]
-        },
-        {
           "cause": "wanted E0606; got E0004: `<id>` isn't used in cp",
           "count": 1,
           "examples": [
@@ -1619,7 +1603,7 @@
           ]
         },
         {
-          "cause": "wanted L0609; got E0107: expected the end of the statement, found `<id>`",
+          "cause": "wanted L0609; got no diagnostic",
           "count": 1,
           "examples": [
             "core-05/cache-written-outside.cp"
@@ -1773,6 +1757,13 @@
           ]
         },
         {
+          "cause": "wrong line for E0604: `<id>` is declared `<id>`, so every path through it must reach one `<id>`",
+          "count": 1,
+          "examples": [
+            "core-05/cache-no-lend-escapes.cp"
+          ]
+        },
+        {
           "cause": "wrong line for E0608: `<id>` was already moved",
           "count": 1,
           "examples": [
@@ -1781,11 +1772,11 @@
         }
       ],
       "counts": {
-        "fail": 348,
-        "pass": 296
+        "fail": 344,
+        "pass": 308
       },
-      "passed": 296,
-      "total": 644
+      "passed": 308,
+      "total": 652
     },
     "corpus": {
       "cases": {
@@ -1893,23 +1884,13 @@
       "causes": [
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 8,
+          "count": 11,
           "examples": [
+            "btoi17p2",
             "ccc20s4",
-            "coci21c2p5",
-            "etsr23r4p2",
-            "ioi05p2",
-            "noi06p3"
-          ]
-        },
-        {
-          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
-          "count": 4,
-          "examples": [
-            "btoi15p3",
             "cco21p4",
-            "shoi16p1",
-            "yac6p4"
+            "coci21c2p5",
+            "etsr23r4p2"
           ]
         },
         {
@@ -1923,24 +1904,6 @@
           ]
         },
         {
-          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
-          "count": 3,
-          "examples": [
-            "btoi17p2",
-            "mccc4j4",
-            "noi15p1"
-          ]
-        },
-        {
-          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
-          "count": 3,
-          "examples": [
-            "apio09p3",
-            "ioi09p3",
-            "ucrpc21h"
-          ]
-        },
-        {
           "cause": "E0302: can't compare a `<id>` with a `<id>`",
           "count": 3,
           "examples": [
@@ -1950,11 +1913,36 @@
           ]
         },
         {
+          "cause": "E0501: `<id>` has no input format for a `<id>`",
+          "count": 3,
+          "examples": [
+            "etsr23r1p4",
+            "ioi01p1",
+            "shoi16p1"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 2,
+          "examples": [
+            "mccc4j4",
+            "noi15p1"
+          ]
+        },
+        {
           "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
           "count": 2,
           "examples": [
             "noi02p3",
             "sdoi17r1p2"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 2,
+          "examples": [
+            "btoi15p3",
+            "yac6p4"
           ]
         },
         {
@@ -1974,11 +1962,11 @@
           ]
         },
         {
-          "cause": "E0501: `<id>` has no input format for a `<id>`",
+          "cause": "E0501: `<id>` is not in scope during lowering",
           "count": 2,
           "examples": [
-            "etsr23r1p4",
-            "ioi01p1"
+            "noi17p2",
+            "noip14p6"
           ]
         },
         {
@@ -1996,10 +1984,10 @@
           ]
         },
         {
-          "cause": "E0302: `<id>` is a type, and a value is needed here",
+          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
           "count": 1,
           "examples": [
-            "noip14p6"
+            "ioi09p3"
           ]
         },
         {
@@ -2045,6 +2033,13 @@
           ]
         },
         {
+          "cause": "E0309: `<id>` gives a default for an optional, but the left side is a `<id>`",
+          "count": 1,
+          "examples": [
+            "apio09p3"
+          ]
+        },
+        {
           "cause": "E0501: `<id>` and `<id>` can't handle `<id>` of a domain as a value yet",
           "count": 1,
           "examples": [
@@ -2056,13 +2051,6 @@
           "count": 1,
           "examples": [
             "ccc02s4"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` is not in scope during lowering",
-          "count": 1,
-          "examples": [
-            "noi17p2"
           ]
         },
         {
@@ -2221,7 +2209,7 @@
         "conformance/core-04/d3-relative-by-variable.cp": "skip",
         "conformance/core-04/dom-at.cp": "skip",
         "conformance/core-04/dom-count.cp": "pass",
-        "conformance/core-04/dom-cuts.cp": "skip",
+        "conformance/core-04/dom-cuts.cp": "pass",
         "conformance/core-04/dom-empty-walks.cp": "pass",
         "conformance/core-04/dom-first-last.cp": "pass",
         "conformance/core-04/dom-in.cp": "pass",
@@ -2229,6 +2217,7 @@
         "conformance/core-04/dom-range.cp": "skip",
         "conformance/core-04/dom-walk-rev.cp": "pass",
         "conformance/core-04/dom-wrap.cp": "skip",
+        "conformance/core-04/domain-mask.cp": "pass",
         "conformance/core-04/e1-generic-param-takes-slice.cp": "skip",
         "conformance/core-04/e1-list-copy-fix.cp": "skip",
         "conformance/core-04/e2-table-keyed-like-input.cp": "skip",
@@ -2280,8 +2269,8 @@
         "conformance/core-04/table-over-keys.cp": "skip",
         "conformance/core-04/with-domain.cp": "skip",
         "conformance/core-04/zip-keyed-by-first.cp": "skip",
-        "conformance/core-05/cache-skipped-by-eq.cp": "skip",
-        "conformance/core-05/cache-write-through-read-self.cp": "skip",
+        "conformance/core-05/cache-skipped-by-eq.cp": "pass",
+        "conformance/core-05/cache-write-through-read-self.cp": "pass",
         "conformance/core-05/closure-arg-called.cp": "pass",
         "conformance/core-05/closure-captures-at-call.cp": "cxx_err",
         "conformance/core-05/disjoint-fields.cp": "pass",
@@ -2315,6 +2304,7 @@
         "conformance/core-06/lambda-unpacks-tuple.cp": "skip",
         "conformance/core-06/memo-array-jagged.cp": "pass",
         "conformance/core-06/memo-map.cp": "pass",
+        "conformance/core-06/min-max-as-fn-value.cp": "pass",
         "conformance/core-06/multitest-shared-above.cp": "pass",
         "conformance/core-06/mut-param-marked-at-call.cp": "pass",
         "conformance/core-06/named-and-default-args.cp": "pass",
@@ -2379,19 +2369,23 @@
         "conformance/core-08/associated-type.cp": "skip",
         "conformance/core-08/blanket-impl.cp": "skip",
         "conformance/core-08/bounds-three-ways.cp": "skip",
+        "conformance/core-08/call-gen-alias.cp": "pass",
         "conformance/core-08/conditional-on-bound.cp": "skip",
         "conformance/core-08/const-param.cp": "pass",
         "conformance/core-08/derived-structural.cp": "skip",
         "conformance/core-08/domain-kind-param.cp": "pass",
         "conformance/core-08/false-law-no-ub.cp": "skip",
         "conformance/core-08/field-trait.cp": "skip",
+        "conformance/core-08/generic-method-call.cp": "pass",
         "conformance/core-08/if-const.cp": "pass",
         "conformance/core-08/impl-plus-shorthand.cp": "pass",
+        "conformance/core-08/infer-domain-from-bounds.cp": "pass",
         "conformance/core-08/inherent-before-trait.cp": "pass",
         "conformance/core-08/inherent-methods.cp": "pass",
         "conformance/core-08/law-declared.cp": "skip",
         "conformance/core-08/laws-hold.cp": "skip",
         "conformance/core-08/laws-not-assumed.cp": "pass",
+        "conformance/core-08/lazy-method-sig.cp": "pass",
         "conformance/core-08/monomorphized.cp": "pass",
         "conformance/core-08/operator-compound.cp": "pass",
         "conformance/core-08/return-type-dispatch.cp": "pass",
@@ -2530,6 +2524,7 @@
         "conformance/std-strings/rolling.cp": "pass",
         "conformance/std-strings/search.cp": "pass",
         "conformance/std-strings/split.cp": "pass",
+        "conformance/std-strings/str-find-rfind.cp": "pass",
         "conformance/std-strings/suffix-array-brute.cp": "pass",
         "conformance/std-strings/suffix-array.cp": "pass",
         "conformance/std-tree/lift-chain.cp": "pass",
@@ -2600,7 +2595,7 @@
           ]
         },
         {
-          "cause": "cxx_err: In function ‘ll prog::m2_nth_Lst_Int_Int_242(const std",
+          "cause": "cxx_err: In function ‘ll prog::m2_nth_Lst_Int_Int_242(const std::vec",
           "count": 1,
           "examples": [
             "conformance/std-rand/chance-pick.cp"
@@ -2623,11 +2618,11 @@
       ],
       "counts": {
         "cxx_err": 6,
-        "pass": 258,
-        "skip": 217
+        "pass": 268,
+        "skip": 214
       },
-      "passed": 258,
-      "total": 481
+      "passed": 268,
+      "total": 488
     },
     "docs": {
       "cases": {
@@ -4504,7 +4499,7 @@
         "rand.cp#648c569f57": "trap",
         "rand.cp#89293e22ee": "pass",
         "rand.cp#9cbc28608b": "pass",
-        "rand.cp#ace6adeb7d": "error",
+        "rand.cp#ace6adeb7d": "pass",
         "rand.cp#b7e6ec4a96": "pass",
         "rand.cp#bff9153a8b": "trap",
         "rand.cp#c0d27917fc": "todo",
@@ -4585,7 +4580,7 @@
         "segtree.cp#b80447a7bb": "todo",
         "segtree.cp#b80447a7bb~2": "todo",
         "segtree.cp#bd41a8325b": "error",
-        "segtree.cp#be818c861e": "error",
+        "segtree.cp#be818c861e": "trap",
         "segtree.cp#c076d340b1": "todo",
         "segtree.cp#c104be08ed": "error",
         "segtree.cp#c218d083c4": "error",
@@ -4786,7 +4781,7 @@
         "seq.cp#d73b68bcfa": "todo",
         "seq.cp#df36693189": "error",
         "seq.cp#dfa41f19a7": "todo",
-        "seq.cp#e0600ae8b4": "todo",
+        "seq.cp#e0600ae8b4": "error",
         "seq.cp#e0f6ec1efc": "todo",
         "seq.cp#e2eda72bfa": "todo",
         "seq.cp#e3f9c66f9a": "todo",
@@ -5298,7 +5293,7 @@
         "window.cp#298f09cbe1": "error",
         "window.cp#2aee1b4da8": "error",
         "window.cp#3ae684188d": "error",
-        "window.cp#41175a1970": "error",
+        "window.cp#41175a1970": "todo",
         "window.cp#6c0261e89d": "error",
         "window.cp#87f0cab08a": "todo",
         "window.cp#9763023feb": "error",
@@ -5339,13 +5334,13 @@
         },
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 182,
+          "count": 184,
           "examples": [
             "algebra.cp#5e9c1b0196",
+            "algebra.cp#b1abde49c9",
             "algebra.cp#f83cfaf9d7",
             "dp.cp#33920d71bf",
-            "dp.cp#4b367b8bba",
-            "dp.cp#62d8e7f286"
+            "dp.cp#4b367b8bba"
           ]
         },
         {
@@ -5361,18 +5356,18 @@
         },
         {
           "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
-          "count": 71,
+          "count": 73,
           "examples": [
+            "graph.cp#9853d7c46a",
+            "graph.cp#b4492e2e53",
             "seq.cp#3051f0cb20",
             "seq.cp#7bec4db2fe",
-            "seq.cp#96cfd42954",
-            "seq.cp#f498d5fd39",
-            "strings.cp#153acdefc8"
+            "seq.cp#96cfd42954"
           ]
         },
         {
           "cause": "R0001: an array literal needs one value per position",
-          "count": 67,
+          "count": 68,
           "examples": [
             "beats.cp#148e79d4d7",
             "beats.cp#2608a6732d",
@@ -5383,7 +5378,7 @@
         },
         {
           "cause": "E0302: can't compare a `<id>` with a `<id>`",
-          "count": 41,
+          "count": 40,
           "examples": [
             "flow.cp#2d3a874b7e",
             "flow.cp#2f72bbbd54",
@@ -5405,13 +5400,13 @@
         },
         {
           "cause": "E0201: `<id>` doesn't know the name `<id>` here",
-          "count": 29,
+          "count": 24,
           "examples": [
-            "algebra.cp#b1abde49c9",
             "flow.cp#2cbdd90c90",
             "flow.cp#e60f5abcea",
             "flow.cp#f1f5ba7707",
-            "heap.cp#5d389603b6"
+            "heap.cp#5d389603b6",
+            "heap.cp#69553a634c"
           ]
         },
         {
@@ -5481,17 +5476,6 @@
           ]
         },
         {
-          "cause": "E0204: `<id>` is not a type `<id>` knows",
-          "count": 8,
-          "examples": [
-            "graph.cp#34cce8806f",
-            "graph.cp#9853d7c46a",
-            "graph.cp#b4492e2e53",
-            "segtree.cp#4cc38c3122",
-            "segtree.cp#9ee143fc28"
-          ]
-        },
-        {
           "cause": "E0302: `<id>` is declared an [I]I, but `<id>` is a List<Int>",
           "count": 7,
           "examples": [
@@ -5558,6 +5542,28 @@
           ]
         },
         {
+          "cause": "E0303: `<id>` needs the argument `<id>`",
+          "count": 6,
+          "examples": [
+            "seq.cp#1a682ea42e",
+            "seq.cp#4ebb22663d",
+            "seq.cp#55f8890383",
+            "seq.cp#8a69f3aa18",
+            "window.cp#2aee1b4da8"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` is not a type `<id>` knows",
+          "count": 5,
+          "examples": [
+            "graph.cp#34cce8806f",
+            "segtree.cp#4cc38c3122",
+            "segtree.cp#9ee143fc28",
+            "window.cp#e5d2d03686",
+            "window.cp#ffba38c469"
+          ]
+        },
+        {
           "cause": "E0201: no `<id>` in scope",
           "count": 4,
           "examples": [
@@ -5598,16 +5604,6 @@
           ]
         },
         {
-          "cause": "E0303: `<id>` needs the argument `<id>`",
-          "count": 4,
-          "examples": [
-            "seq.cp#1a682ea42e",
-            "seq.cp#4ebb22663d",
-            "seq.cp#55f8890383",
-            "seq.cp#8a69f3aa18"
-          ]
-        },
-        {
           "cause": "E0303: `<id>` takes 1 argument, but 2 were given",
           "count": 4,
           "examples": [
@@ -5625,6 +5621,16 @@
             "deque.cp#146c4fa2ab",
             "hashmap.cp#bc1692fca9",
             "hashmap.cp#e99316a606"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` is not in scope during lowering",
+          "count": 4,
+          "examples": [
+            "seq.cp#703483bf32",
+            "seq.cp#f42b8bc3cb",
+            "strings.cp#a426dcbac0",
+            "strings.cp#fb730ba62b"
           ]
         },
         {
@@ -5690,14 +5696,6 @@
           "examples": [
             "prefix.cp#b6ef94d893",
             "prefix.cp#ba7ae40e43"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` is not in scope during lowering",
-          "count": 2,
-          "examples": [
-            "seq.cp#703483bf32",
-            "seq.cp#f42b8bc3cb"
           ]
         },
         {
@@ -5862,13 +5860,6 @@
           ]
         },
         {
-          "cause": "E0309: chained comparisons must point in one direction",
-          "count": 1,
-          "examples": [
-            "rand.cp#ace6adeb7d"
-          ]
-        },
-        {
           "cause": "E0402: `<id>` changes `<id>`, so the argument must be passed as `<id>`",
           "count": 1,
           "examples": [
@@ -5982,13 +5973,13 @@
         }
       ],
       "counts": {
-        "error": 860,
-        "pass": 835,
+        "error": 858,
+        "pass": 836,
         "skip": 2,
         "todo": 897,
-        "trap": 88
+        "trap": 89
       },
-      "passed": 835,
+      "passed": 836,
       "total": 2682
     },
     "spec-blocks": {
@@ -6027,7 +6018,7 @@
         "core/05-ownership.md#4a6a7f9c0d": "error",
         "core/05-ownership.md#4df98561c8": "pass",
         "core/05-ownership.md#509c7974b3": "pass",
-        "core/05-ownership.md#5681f0df0c": "error",
+        "core/05-ownership.md#5681f0df0c": "pass",
         "core/05-ownership.md#5765e1aa70": "error",
         "core/05-ownership.md#5855e8d4d2": "pass",
         "core/05-ownership.md#5a18088c3e": "error",
@@ -6247,22 +6238,21 @@
           ]
         },
         {
-          "cause": "E0107: expected the end of the statement, found `<id>`",
-          "count": 4,
-          "examples": [
-            "core/04b-keys.md#6758c9905d",
-            "core/05-ownership.md#5681f0df0c",
-            "lib/ops-ranges.md#89b8d06b0d",
-            "lib/ops-ranges.md#e0148950eb"
-          ]
-        },
-        {
           "cause": "E0103: expected `<id>` and the type this names, found `<id>`",
           "count": 3,
           "examples": [
             "lib/graphs-trees.md#44024f2dcf",
             "lib/ops-ranges.md#40a6229565",
             "lib/ops-ranges.md#5c04724058"
+          ]
+        },
+        {
+          "cause": "E0107: expected the end of the statement, found `<id>`",
+          "count": 3,
+          "examples": [
+            "core/04b-keys.md#6758c9905d",
+            "lib/ops-ranges.md#89b8d06b0d",
+            "lib/ops-ranges.md#e0148950eb"
           ]
         },
         {
@@ -6454,11 +6444,11 @@
         }
       ],
       "counts": {
-        "error": 158,
-        "pass": 27
+        "error": 157,
+        "pass": 28
       },
-      "passed": 27,
-      "strict_passed": 19,
+      "passed": 28,
+      "strict_passed": 21,
       "total": 185
     }
   }
