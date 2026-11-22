@@ -187,6 +187,7 @@ fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program,
     let mut lw = Lowerer::new(analysis);
     lw.aside = Some(aside);
     lw.load_modules(analysis);
+    lw.file_contexts();
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();
     lw.collect_all();
@@ -221,6 +222,7 @@ fn lower_entry(
     lw.interactive =
         judge || (test_name.is_none() && interactor(analysis).is_some()) || directed(analysis);
     lw.load_modules(analysis);
+    lw.file_contexts();
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();
     lw.collect_all();
@@ -610,6 +612,12 @@ struct Lowerer<'a> {
     warnings: Vec<Diagnostic>,
     /// How many `unchecked:` blocks the code being lowered is inside.
     unchecked: usize,
+    /// The `with` settings in force, innermost last: the module that
+    /// wrote it, the context, the field and its value. (R09.1.1)
+    contexts: Vec<(ModId, String, String, ast::Expr)>,
+    /// Domains declared by a count alone, `domain E = [m]`: the ones
+    /// `io.base` shifts. (R10.2.2)
+    counted: HashSet<DomainId>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
     whole_axis: Option<Slot>,
 
@@ -811,6 +819,8 @@ impl<'a> Lowerer<'a> {
             memo_fast: None,
             raw_lists: Vec::new(),
             unchecked: 0,
+            contexts: Vec::new(),
+            counted: HashSet::new(),
             whole_axis: None,
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),

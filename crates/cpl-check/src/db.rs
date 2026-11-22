@@ -760,6 +760,20 @@ impl Database {
                 );
             }
         }
+        let mut leading = true;
+        for (index, item) in items.iter().enumerate() {
+            for stmt in &item.parsed.stmts {
+                match &stmt.kind {
+                    StmtKind::With { body: None, .. } if !leading => sink.push(Diagnostic::error(
+                        codes::WITH_NOT_FIRST,
+                        stmt.span.shift(ranges[index].span.start),
+                        "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
+                    )),
+                    _ if crate::check::runs(stmt) => leading = false,
+                    _ => {}
+                }
+            }
+        }
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;
             let first_index = scope.names[&decl.name];

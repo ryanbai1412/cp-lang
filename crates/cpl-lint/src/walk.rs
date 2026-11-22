@@ -161,6 +161,12 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             }
         }
         StmtKind::Unchecked(block) => walk_scoped(v, Scope::Block, &block.stmts),
+        StmtKind::With { args, body, .. } => {
+            walk_args(v, args);
+            if let Some(body) = body {
+                walk_scoped(v, Scope::Block, &body.stmts);
+            }
+        }
     }
 }
 

@@ -330,20 +330,30 @@ impl<'a> Parser<'a> {
                 self.let_stmt()
             }
             T::Ident if self.text() == "with" && self.peek_n(1) == T::Ident => {
-                let start = self.start();
                 self.bump();
-                self.expr();
-                let span = self.span_from(start);
-                self.planned(span, &crate::planned::CONTEXT_LINE);
-                if self.at(T::Colon) {
-                    let block = self.colon_block("the context");
-                    StmtKind::Expr(Expr {
-                        kind: ExprKind::Block(block),
-                        span: self.span_from(start),
-                    })
-                } else {
-                    StmtKind::Error
-                }
+                let head = self.expr();
+                let (ctx, args) = match head.kind {
+                    ExprKind::Call { callee, args } => match callee.kind {
+                        ExprKind::Name(text) => (
+                            Name {
+                                text,
+                                span: callee.span,
+                            },
+                            args,
+                        ),
+                        _ => return StmtKind::Error,
+                    },
+                    ExprKind::Name(text) => (
+                        Name {
+                            text,
+                            span: head.span,
+                        },
+                        Vec::new(),
+                    ),
+                    _ => return StmtKind::Error,
+                };
+                let body = self.at(T::Colon).then(|| self.colon_block("the context"));
+                StmtKind::With { ctx, args, body }
             }
             T::Ident
                 if self.text() == "record"

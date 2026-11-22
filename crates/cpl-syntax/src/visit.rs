@@ -146,6 +146,11 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
             }
         }
         StmtKind::Unchecked(block) => walk_block(block, v),
+        StmtKind::With { body, .. } => {
+            if let Some(body) = body {
+                walk_block(body, v);
+            }
+        }
         StmtKind::TypeAlias { .. }
         | StmtKind::Use { .. }
         | StmtKind::Break(_)

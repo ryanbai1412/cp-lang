@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet, and deferred: a context, `with io(base: 1)` (see spec/core/09-contexts-checks.md §9.1)
-  --> planned_a_context_with_io_base_1.cp:1:1
-  |
-1 | with io(base: 1)
-  | ^^^^^^^^^^^^^^^^
-  = help: say it where it applies: `read<1..=n>()` for 1-based input, `print(x, precision: k)`
-
-planned_a_context_with_io_base_1.cp: 1 error

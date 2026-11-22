@@ -60,16 +60,6 @@ print(a.len)
 ",
 };
 
-pub const CONTEXT_LINE: Planned = Planned {
-    feature: "a context, `with io(base: 1)`",
-    see: Some("spec/core/09-contexts-checks.md §9.1"),
-    now: "say it where it applies: `read<1..=n>()` for 1-based input, `print(x, precision: k)`",
-    example: "with io(base: 1)
-let n: 1..=5 = read()
-print(n)
-",
-};
-
 pub const CONTINUED_LINE: Planned = Planned {
     feature: "a line continued by an indented line that starts with an operator",
     see: Some("spec/core/01-lexical-grammar.md §1.2"),
@@ -294,7 +284,6 @@ pub const PLANNED: &[&Planned] = &[
     &WRAP_LINE,
     &VALUE_DECORATOR,
     &READ_LENGTH,
-    &CONTEXT_LINE,
     &STR_OF,
     &LOWER_VARIANT_PATTERN,
     &RECORD_DECL,
@@ -324,4 +313,4 @@ pub const PLANNED: &[&Planned] = &[
     &LITERAL_TYPE,
 ];
 
-pub const DEFERRED: &[&Planned] = &[&CONTEXT_LINE];
+pub const DEFERRED: &[&Planned] = &[];

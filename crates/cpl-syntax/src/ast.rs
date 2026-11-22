@@ -161,6 +161,13 @@ pub enum StmtKind {
         message: Option<Expr>,
     },
     Unchecked(Block),
+    /// `with io(sep: ",")`: a context for `body`, or for the rest of the
+    /// enclosing block when written bare. (R09.1.1)
+    With {
+        ctx: Name,
+        args: Vec<Arg>,
+        body: Option<Block>,
+    },
     /// A statement the parser could not read. Already reported.
     Error,
 }

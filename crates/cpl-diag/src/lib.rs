@@ -179,6 +179,10 @@ pub mod codes {
     pub const USE_AFTER_MOVE: Code = Code("E0608");
 
     pub const AMBIGUOUS_METHOD: Code = Code("E0701");
+    /// A context value that is not a compile-time constant. (R09.1.2)
+    pub const CONTEXT_NOT_CONSTANT: Code = Code("E0801");
+    /// A bare `with` line after another statement of its block. (R09.1.1)
+    pub const WITH_NOT_FIRST: Code = Code("E0802");
     pub const QUESTION_IN_CONDITION: Code = Code("E0803");
     pub const INFERENCE_NEEDS_ANNOTATION: Code = Code("E0806");
 

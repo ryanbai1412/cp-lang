@@ -140,6 +140,18 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        let mut leading = true;
+        for stmt in stmts {
+            match &stmt.kind {
+                StmtKind::With { body: None, .. } if !leading => {
+                    let message = "a bare `with` line comes first in its block; indent what it covers under `with ...:`".to_string();
+                    self.error(codes::WITH_NOT_FIRST, stmt.span, message);
+                }
+                StmtKind::With { body: None, .. } => {}
+                _ if runs(stmt) => leading = false,
+                _ => {}
+            }
+        }
         for (k, stmt) in stmts.iter().enumerate() {
             last = self.stmt(stmt, top_level);
             // `if x == none: return` leaves `x` holding a value.
@@ -1411,6 +1423,17 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtKind::Unchecked(body) => return self.block(body),
+            StmtKind::With { args, body, .. } => {
+                for arg in args {
+                    if !context_constant(&arg.value) {
+                        let message = "a context value is a compile-time constant; pass a runtime value as an argument instead".to_string();
+                        self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message);
+                    }
+                }
+                if let Some(body) = body {
+                    return self.block(body);
+                }
+            }
             StmtKind::Law { params, body, .. } => {
                 self.push_scope();
                 if let Some(self_ty) = self.self_ty.clone() {
@@ -2303,6 +2326,44 @@ fn refutable(pat: &ast::Pattern) -> bool {
         ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
         ast::PatternKind::Tuple(items) => items.iter().any(refutable),
         ast::PatternKind::Or(alts) => alts.iter().all(refutable),
+        _ => false,
+    }
+}
+
+/// A statement that does work when reached, unlike a declaration; a bare
+/// `with` line may not follow one. (R09.1.1)
+pub(crate) fn runs(stmt: &Stmt) -> bool {
+    matches!(
+        stmt.kind,
+        StmtKind::Let { .. }
+            | StmtKind::Expr(..)
+            | StmtKind::Assign { .. }
+            | StmtKind::While { .. }
+            | StmtKind::For { .. }
+            | StmtKind::Return(..)
+            | StmtKind::Break(..)
+            | StmtKind::Continue(..)
+            | StmtKind::Yield { .. }
+            | StmtKind::Assert { .. }
+            | StmtKind::Unchecked(..)
+            | StmtKind::With { body: Some(_), .. }
+    )
+}
+
+/// A literal, a level such as `off`, or a tuple of them. (R09.1.2)
+fn context_constant(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Int(_)
+        | ExprKind::Float(_)
+        | ExprKind::Char(_)
+        | ExprKind::Bool(_)
+        | ExprKind::None => true,
+        ExprKind::Str(pieces) => pieces
+            .iter()
+            .all(|p| matches!(p, cpl_syntax::ast::StrPiece::Text(_))),
+        ExprKind::Name(name) => matches!(name.as_str(), "on" | "off" | "allow" | "warn" | "deny"),
+        ExprKind::Unary { expr, .. } => context_constant(expr),
+        ExprKind::Tuple(items) => items.iter().all(context_constant),
         _ => false,
     }
 }

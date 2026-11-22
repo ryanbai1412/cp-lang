@@ -666,8 +666,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0704 row_missing_field *(0.3)*: 2 case(s)
 - E0705 law_unsupported_specialization *(0.3)*: 1 case(s)
 - E0706 empty_fold_no_identity *(0.3)*: 1 case(s)
-- E0801 context_not_constant *(0.3)*: 1 case(s)
-- E0802 with_not_first *(0.3)*: 2 case(s)
+- E0801 Context value is not a constant: 1 case(s)
+- E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
 - E0804 dropped_question *(0.3)*: **no case**
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**

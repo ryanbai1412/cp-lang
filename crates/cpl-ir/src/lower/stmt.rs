@@ -10,6 +10,7 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         self.cx.local_syms.push(HashMap::new());
         let present = self.cx.present.len();
+        let held = (self.contexts.len(), self.unchecked);
         let mut out = Vec::new();
         match block.stmts.split_last() {
             None if tail == Tail::Give => self.needs_value(block.span),
@@ -46,6 +47,8 @@ impl<'a> Lowerer<'a> {
             }
         }
         self.cx.present.truncate(present);
+        self.contexts.truncate(held.0);
+        self.unchecked = held.1;
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
         let depth = self.cx.scopes.len();
@@ -1440,8 +1443,74 @@ impl<'a> Lowerer<'a> {
                 out.extend(self.block(block, Tail::Discard).stmts);
                 self.unchecked -= 1;
             }
+            ast::StmtKind::With { ctx, args, body } => {
+                let held = (self.contexts.len(), self.unchecked);
+                self.push_context(ctx, args);
+                if let Some(body) = body {
+                    out.extend(self.block(body, Tail::Discard).stmts);
+                    self.contexts.truncate(held.0);
+                    self.unchecked = held.1;
+                }
+            }
             ast::StmtKind::Error => {}
         }
+    }
+
+    /// Puts `with ctx(field: value, ..)` in force. `checks(overflow: off)`
+    /// is an `unchecked:` for what it covers. (R09.4.2)
+    pub(super) fn push_context(&mut self, ctx: &ast::Name, args: &[ast::Arg]) {
+        for arg in args {
+            let Some(field) = &arg.name else { continue };
+            let off = matches!(&arg.value.kind, ast::ExprKind::Name(v) if v == "off");
+            if ctx.text == "checks" && field.text == "overflow" && off {
+                self.unchecked += 1;
+            }
+            let entry = (
+                self.cur_mod,
+                ctx.text.clone(),
+                field.text.clone(),
+                arg.value.clone(),
+            );
+            self.contexts.push(entry);
+        }
+    }
+
+    /// The bare `with` lines that open the program's file: they hold for
+    /// all of it, its fns included.
+    pub(super) fn file_contexts(&mut self) {
+        let leading: Vec<(ast::Name, Vec<ast::Arg>)> = self
+            .mod_items(0)
+            .map(|(_, stmt)| stmt)
+            .map_while(|stmt| match &stmt.kind {
+                ast::StmtKind::With {
+                    ctx,
+                    args,
+                    body: None,
+                } => Some((ctx.clone(), args.clone())),
+                _ => None,
+            })
+            .collect();
+        let held = self.cur_mod;
+        self.cur_mod = 0;
+        for (ctx, args) in &leading {
+            self.push_context(ctx, args);
+        }
+        self.cur_mod = held;
+    }
+
+    /// The value `with ctx(field: ..)` gives where this code is written.
+    pub(super) fn context(&self, ctx: &str, field: &str) -> Option<ast::Expr> {
+        self.contexts
+            .iter()
+            .rev()
+            .find(|(m, c, f, _)| *m == self.cur_mod && c == ctx && f == field)
+            .map(|(_, _, _, value)| value.clone())
+    }
+
+    /// `with io(base: 1)`: counted domains read and print 1-based. (R10.2.2)
+    pub(super) fn base_one(&self) -> bool {
+        self.context("io", "base")
+            .is_some_and(|v| matches!(v.kind, ast::ExprKind::Int(1)))
     }
 
     /// The loop heads and cell value of `for (r, c) in Square` over a
@@ -1674,6 +1743,10 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn init_domain_id(&mut self, id: DomainId, def: &ast::Expr, out: &mut Vec<Stmt>) {
+        // `domain E = [m]` is parsed as `0..m`; the brackets mark it counted.
+        if self.source(def.span).trim_start().starts_with('[') {
+            self.counted.insert(id);
+        }
         if let Some(factors) = self.resolve_product_factors(def) {
             self.product_domains.insert(id, factors.clone());
             let mut len = self.product_factor_len(&factors[0].1, def.span);
@@ -1736,6 +1809,7 @@ impl<'a> Lowerer<'a> {
             let val = self.expr(def, Some(&Ty::Int));
             match &val.ty {
                 Ty::Int => {
+                    self.counted.insert(id);
                     let len = self.coerce(val, &Ty::Int, def.span);
                     let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
                     out.push(Stmt::DefDomain { id, lo, len });

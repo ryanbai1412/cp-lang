@@ -93,6 +93,26 @@ impl<'a> Lowerer<'a> {
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
             ast::ExprKind::Name(name) => {
+                // `yes(ok)` under `with io(answers: ..)`. (R10.3.3)
+                if name == "yes"
+                    && self.lookup(name).is_none()
+                    && !args
+                        .iter()
+                        .any(|a| a.name.as_ref().is_some_and(|n| n.text == "answers"))
+                {
+                    if let Some(value) = self.context("io", "answers") {
+                        let mut args = args.to_vec();
+                        args.push(ast::Arg {
+                            name: Some(ast::Name {
+                                text: "answers".into(),
+                                span: value.span,
+                            }),
+                            mutable: false,
+                            value,
+                        });
+                        return self.call(whole, callee, &args, hint);
+                    }
+                }
                 // Local variable, receiver field, or captured fn value?
                 if self.lookup(name).is_some() {
                     let fv = self.name(name, None, callee.span);
@@ -1242,7 +1262,10 @@ impl<'a> Lowerer<'a> {
     fn prelude(&mut self, name: &str, args: &[ast::Arg], hint: Option<&Ty>, span: Span) -> Expr {
         match name {
             "print" => {
-                let mut digits = crate::FLOAT_DIGITS;
+                let mut digits = match self.context("io", "precision").map(|v| v.kind) {
+                    Some(ast::ExprKind::Int(d)) if (0..=18).contains(&d) => d as u32,
+                    _ => crate::FLOAT_DIGITS,
+                };
                 let mut values = Vec::new();
                 let mut sep = None;
                 let mut none_text = None;
@@ -1274,20 +1297,29 @@ impl<'a> Lowerer<'a> {
                                 })
                             };
                         }
-                        Some(arg_name) if arg_name.text == "digits" => match arg.value.kind {
-                            ast::ExprKind::Int(d) if (0..=18).contains(&d) => digits = d as u32,
-                            _ => self.error(
-                                codes::TYPE_MISMATCH,
-                                arg.value.span,
-                                "`digits` is a whole number from 0 to 18",
-                            ),
-                        },
+                        Some(arg_name)
+                            if arg_name.text == "digits" || arg_name.text == "precision" =>
+                        {
+                            match arg.value.kind {
+                                ast::ExprKind::Int(d) if (0..=18).contains(&d) => digits = d as u32,
+                                _ => self.error(
+                                    codes::TYPE_MISMATCH,
+                                    arg.value.span,
+                                    "`precision` is a whole number from 0 to 18",
+                                ),
+                            }
+                        }
                         Some(arg_name) => {
                             let message =
                                 format!("`print` has no argument named `{}`", arg_name.text);
                             self.error(codes::UNKNOWN_ARG_NAME, arg_name.span, message);
                         }
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
+                    }
+                }
+                if sep.is_none() {
+                    if let Some(value) = self.context("io", "sep") {
+                        sep = Some(self.expect(&value, &Ty::Str));
                     }
                 }
                 // Every argument is worked out before anything is written:
@@ -2761,6 +2793,25 @@ impl<'a> Lowerer<'a> {
     fn readable(&mut self, spec: Spec) -> Spec {
         match spec {
             Spec::Plain(ty @ Ty::Range(_)) => self.spec_of(&ty).unwrap_or(Spec::Plain(ty)),
+            // `with io(base: 1)`: a counted domain's `1` is its first position.
+            Spec::Plain(Ty::Pos(d)) if self.base_one() && self.counted.contains(&d) => {
+                let span = Span::default();
+                let call = self.do_expr(Some(&Ty::Pos(d)), span, |lw, out| {
+                    let read = lw.mk(
+                        ExprKind::Read(Box::new(Spec::Plain(Ty::Int))),
+                        Ty::Int,
+                        span,
+                    );
+                    let label = lw.int_add(read, -1);
+                    let pos = lw.mk(
+                        ExprKind::Cast(Cast::FromLabel(d), Box::new(label)),
+                        Ty::Pos(d),
+                        span,
+                    );
+                    out.push(Stmt::Give(pos));
+                });
+                Spec::Call(Box::new(call))
+            }
             Spec::Fields(ty, fields) => {
                 Spec::Fields(ty, fields.into_iter().map(|f| self.readable(f)).collect())
             }

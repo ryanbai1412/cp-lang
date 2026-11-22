@@ -76,8 +76,8 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0704 | row_missing_field *(0.3)* | the record lacks field `w` required by `(w: W, ..)` |
 | E0705 | law_unsupported_specialization *(0.3)* | `Fenwick` takes no `act:`; use `SegTree(op, a, act:)` |
 | E0706 | empty_fold_no_identity *(0.3)* | folding with `Op` gives `?T`; unwrap or pass a `Monoid` |
-| E0801 | context_not_constant *(0.3)* | `with` needs a compile-time value; for a runtime modulus use `type Z = Mod(p)` |
-| E0802 | with_not_first *(0.3)* | a bare `with` line must come first in its block |
+| E0801 | context_not_constant | `with` needs a compile-time value; for a runtime modulus use `type Z = Mod(p)` |
+| E0802 | with_not_first | a bare `with` line must come first in its block |
 | E0803 | question_in_condition | `x?` in a condition; write `... ?? false` |
 | E0804 | dropped_question *(0.3)* | a `?` whose result is dropped |
 | E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |

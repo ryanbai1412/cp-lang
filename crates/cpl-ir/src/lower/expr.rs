@@ -1621,6 +1621,18 @@ impl<'a> Lowerer<'a> {
             self.error(codes::TYPE_MISMATCH, span, "this has no value to print");
             return None;
         }
+        // `with io(base: 1)`: a counted domain's first position prints as `1`.
+        let value = match value.ty {
+            Ty::Pos(d) if self.base_one() && self.counted.contains(&d) => {
+                let label = self.mk(
+                    ExprKind::Cast(Cast::Label(d), Box::new(value)),
+                    Ty::Int,
+                    span,
+                );
+                self.int_add(label, 1)
+            }
+            _ => value,
+        };
         Some(FmtArg { value, digits })
     }
 

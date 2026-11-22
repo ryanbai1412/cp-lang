@@ -9,6 +9,7 @@ mod call;
 mod expr;
 pub(crate) mod lends;
 mod stmt;
+pub(crate) use stmt::runs;
 mod types;
 
 pub(crate) use types::{domain_binding, memo_table, own_domains, trait_impl_key, type_head};
