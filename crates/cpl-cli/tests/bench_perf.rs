@@ -31,6 +31,20 @@ print(kernel(n))
 ";
     std::fs::write(pair.join("abstract.cp"), src).unwrap();
     std::fs::write(pair.join("direct.cp"), src).unwrap();
+    std::fs::write(
+        pair.join("hand.cpp"),
+        r#"#include <cstdio>
+int main() {
+    long long n;
+    if (scanf("%lld", &n) != 1) return 1;
+    long long s = 0;
+    for (long long i = 0; i < n; i++) s = (s + i * 3) ^ (s >> 2);
+    printf("%lld\n", s);
+    return 0;
+}
+"#,
+    )
+    .unwrap();
     std::fs::write(pair.join("input.txt"), "2000000\n").unwrap();
 
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
@@ -53,6 +67,8 @@ print(kernel(n))
     assert!(stdout.contains("\"status\":\"ok\""), "stdout={stdout}");
     assert!(stdout.contains("\"name\":\"same\""), "stdout={stdout}");
     assert!(stdout.contains("\"asm\":\"equal\""), "stdout={stdout}");
+    assert!(stdout.contains("\"cpp_ms\":"), "stdout={stdout}");
+    assert!(stdout.contains("\"cpp_ratio\":"), "stdout={stdout}");
 
     let _ = std::fs::remove_dir_all(&root);
 }

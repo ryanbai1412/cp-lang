@@ -22,7 +22,9 @@ pub struct PairResult {
     pub name: String,
     pub abstract_ms: f64,
     pub direct_ms: f64,
+    pub cpp_ms: Option<f64>,
     pub ratio: f64,
+    pub cpp_ratio: Option<f64>,
     pub asm_equal: Option<bool>,
     pub passed: bool,
     pub error: Option<String>,
@@ -229,16 +231,22 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
     let res = (|| -> Result<PairResult, String> {
         let abs_cp = dir.join("abstract.cp");
         let dir_cp = dir.join("direct.cp");
+        let hand_cpp_src = dir.join("hand.cpp");
+        let has_hand_cpp = hand_cpp_src.is_file();
         let abs_cpp = scratch.join("abstract.cpp");
         let dir_cpp = scratch.join("direct.cpp");
         let abs_bin = scratch.join("abstract.bin");
         let dir_bin = scratch.join("direct.bin");
+        let hand_bin = scratch.join("hand.bin");
         let input_path = scratch.join("input.txt");
 
         std::fs::write(&abs_cpp, emit_cpp(&abs_cp)?).map_err(|e| e.to_string())?;
         std::fs::write(&dir_cpp, emit_cpp(&dir_cp)?).map_err(|e| e.to_string())?;
         compile_cpp(&abs_cpp, &abs_bin)?;
         compile_cpp(&dir_cpp, &dir_bin)?;
+        if has_hand_cpp {
+            compile_cpp(&hand_cpp_src, &hand_bin)?;
+        }
         generate_input(dir, &input_path)?;
 
         let asm_equal = match (
@@ -254,11 +262,17 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
 
         let mut abs_times = Vec::with_capacity(reps);
         let mut dir_times = Vec::with_capacity(reps);
+        let mut hand_times = Vec::with_capacity(reps);
         let mut expected_out: Option<Vec<u8>> = None;
 
         for r in 0..reps {
             let (ta, oa) = run_binary(&abs_bin, &input_path)?;
             let (td, od) = run_binary(&dir_bin, &input_path)?;
+            let hand_run = if has_hand_cpp {
+                Some(run_binary(&hand_bin, &input_path)?)
+            } else {
+                None
+            };
             if r == 0 {
                 if oa != od {
                     return Err(format!(
@@ -267,27 +281,52 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
                         String::from_utf8_lossy(&od).trim()
                     ));
                 }
+                if let Some((_, ref oh)) = hand_run {
+                    if &oa != oh {
+                        return Err(format!(
+                            "stdout mismatch: abstract={:?} hand.cpp={:?}",
+                            String::from_utf8_lossy(&oa).trim(),
+                            String::from_utf8_lossy(oh).trim()
+                        ));
+                    }
+                }
                 expected_out = Some(oa);
-            } else if expected_out.as_ref() != Some(&oa) || expected_out.as_ref() != Some(&od) {
+            } else if expected_out.as_ref() != Some(&oa)
+                || expected_out.as_ref() != Some(&od)
+                || hand_run
+                    .as_ref()
+                    .is_some_and(|(_, oh)| expected_out.as_ref() != Some(oh))
+            {
                 return Err("non-deterministic stdout across repetitions".to_string());
             }
             abs_times.push(ta);
             dir_times.push(td);
+            if let Some((th, _)) = hand_run {
+                hand_times.push(th);
+            }
         }
 
         let abstract_ms = median(&mut abs_times);
         let direct_ms = median(&mut dir_times);
+        let cpp_ms = if has_hand_cpp {
+            Some(median(&mut hand_times))
+        } else {
+            None
+        };
         let ratio = if direct_ms > 0.0 {
             abstract_ms / direct_ms
         } else {
             1.0
         };
-        let passed = ratio <= max_ratio;
+        let cpp_ratio = cpp_ms.map(|c| if c > 0.0 { abstract_ms / c } else { 1.0 });
+        let passed = ratio <= max_ratio && cpp_ratio.is_none_or(|cr| cr <= max_ratio);
         Ok(PairResult {
             name: name.clone(),
             abstract_ms,
             direct_ms,
+            cpp_ms,
             ratio,
+            cpp_ratio,
             asm_equal,
             passed,
             error: None,
@@ -301,7 +340,9 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
             name,
             abstract_ms: 0.0,
             direct_ms: 0.0,
+            cpp_ms: None,
             ratio: f64::INFINITY,
+            cpp_ratio: None,
             asm_equal: None,
             passed: false,
             error: Some(msg),
@@ -396,12 +437,20 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     Some(false) => "\"different\"",
                     None => "null",
                 };
+                let cpp_ms = r
+                    .cpp_ms
+                    .map_or("null".to_string(), |v| format!("{v:.3}"));
+                let cpp_ratio = r
+                    .cpp_ratio
+                    .map_or("null".to_string(), |v| format!("{v:.4}"));
                 format!(
-                    "{{\"name\":{},\"abstract_ms\":{:.3},\"direct_ms\":{:.3},\"ratio\":{:.4},\"asm\":{},\"passed\":{},\"error\":{}}}",
+                    "{{\"name\":{},\"abstract_ms\":{:.3},\"direct_ms\":{:.3},\"cpp_ms\":{},\"ratio\":{:.4},\"cpp_ratio\":{},\"asm\":{},\"passed\":{},\"error\":{}}}",
                     json_string(&r.name),
                     r.abstract_ms,
                     r.direct_ms,
+                    cpp_ms,
                     if r.ratio.is_finite() { r.ratio } else { 0.0 },
+                    cpp_ratio,
                     asm,
                     r.passed,
                     r.error.as_deref().map_or("null".to_string(), json_string),
@@ -423,8 +472,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         );
         let _ = writeln!(
             stdout,
-            "  {:<16} {:>10} {:>10} {:>8} {:>10}  status",
-            "abstraction", "abstract", "direct", "ratio", "asm(-O2)"
+            "  {:<16} {:>10} {:>10} {:>8} {:>10} {:>8} {:>10}  status",
+            "abstraction", "abstract", "direct", "vs_dir", "hand.cpp", "vs_cpp", "asm(-O2)"
         );
         for r in &results {
             if let Some(err) = &r.error {
@@ -435,13 +484,21 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     Some(false) => "different",
                     None => "n/a",
                 };
+                let cpp_col = r
+                    .cpp_ms
+                    .map_or_else(|| "n/a".to_string(), |v| format!("{v:>8.2}ms"));
+                let cpp_ratio_col = r
+                    .cpp_ratio
+                    .map_or_else(|| "n/a".to_string(), |v| format!("{v:>7.3}x"));
                 let _ = writeln!(
                     stdout,
-                    "  {:<16} {:>8.2}ms {:>8.2}ms {:>7.3}x {:>10}  {}",
+                    "  {:<16} {:>8.2}ms {:>8.2}ms {:>7.3}x {:>10} {:>8} {:>10}  {}",
                     r.name,
                     r.abstract_ms,
                     r.direct_ms,
                     r.ratio,
+                    cpp_col,
+                    cpp_ratio_col,
                     asm,
                     if r.passed { "PASS" } else { "FAIL" }
                 );
