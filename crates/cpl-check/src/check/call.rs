@@ -1074,8 +1074,12 @@ impl<'a> Checker<'a> {
                         Some(params) if !inside => ("takes", params),
                         _ => ("has", fields),
                     };
-                    let own = (generics.is_empty() && (ctor.is_none() || inside)).then_some((name, &fields[..]));
+                    let is_generated_ctor = ctor.is_none() || inside;
+                    let own = (generics.is_empty() && is_generated_ctor).then_some((name, &fields[..]));
                     if self.fields_ctor(own, args) {
+                        if is_generated_ctor {
+                            self.move_ctor_args(args);
+                        }
                         return Ty::Named {
                             name: name.to_string(),
                             args: type_args,
@@ -1086,6 +1090,9 @@ impl<'a> Checker<'a> {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
                     }
                     self.args(callee_text, verb, params, args, call, &mut bindings);
+                    if is_generated_ctor {
+                        self.move_ctor_args(args);
+                    }
                     // Type arguments left out are read off the values.
                     let type_args = if type_args.len() < generics.len()
                         && generics

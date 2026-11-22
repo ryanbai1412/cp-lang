@@ -1479,6 +1479,18 @@ impl FileCtx<'_> {
     /// whose names was assigned since. Empty for almost every file.
     fn replays(&mut self, current: usize) -> Vec<Replay> {
         let items = self.items.clone();
+        if matches!(
+            items[current].parsed.stmts.first().map(|s| &s.kind),
+            Some(
+                StmtKind::Fn(_)
+                    | StmtKind::Struct(_)
+                    | StmtKind::Enum(_)
+                    | StmtKind::Trait { .. }
+                    | StmtKind::Impl { .. }
+            )
+        ) {
+            return Vec::new();
+        }
         if !items[..current].iter().any(|item| item.flow != Flow::None) {
             return Vec::new();
         }
@@ -1492,7 +1504,7 @@ impl FileCtx<'_> {
         for (index, item) in items[..current].iter().enumerate() {
             match &item.flow {
                 Flow::None => {}
-                Flow::View(name) => {
+                Flow::View(name) | Flow::Capture(name) => {
                     let mentioned = |k: usize| names[k].0.contains(name);
                     let live_after = (current + 1..items.len()).any(mentioned);
                     if !(live_after || mentioned(current)) {
@@ -1520,15 +1532,15 @@ impl FileCtx<'_> {
                         });
                     }
                 }
-                Flow::Move(src) => {
-                    if !names[current].0.contains(src) {
-                        continue;
-                    }
-                    let reset = (index + 1..current).any(|k| {
-                        names[k].1.contains(src)
-                            || items[k].decls.iter().any(|d| d.name == *src)
+                Flow::Move(srcs) => {
+                    let any_live = srcs.iter().any(|src| {
+                        names[current].0.contains(src)
+                            && !(index + 1..current).any(|k| {
+                                names[k].1.contains(src)
+                                    || items[k].decls.iter().any(|d| d.name == *src)
+                            })
                     });
-                    if !reset {
+                    if any_live {
                         out.push(Replay {
                             item: item.clone(),
                             live_after: false,

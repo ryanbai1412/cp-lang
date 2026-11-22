@@ -172,6 +172,8 @@ pub mod codes {
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
 
+    /// A captured variable moved while a closure or nested fn capturing it is still live.
+    pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
     /// A heap value read after `let b = a` moved it.
     pub const USE_AFTER_MOVE: Code = Code("E0608");
 

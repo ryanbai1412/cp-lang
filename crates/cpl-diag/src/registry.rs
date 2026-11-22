@@ -547,6 +547,15 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0607"),
+        title: "Moved while captured by a closure",
+        summary: "A variable was moved while a closure or nested fn that captures it is still in use.",
+        explanation: "A closure captures heap variables and `var`s by reference, so they cannot move while the closure is alive. Clone the value (`x.clone()`) or finish calling the closure first.",
+        trigger: "let xs = [1, 2]\nlet f = () => xs.len\nlet ys = xs\nprint(f() + ys.len)\n",
+        fix: "let xs = [1, 2]\nlet f = () => xs.len\nlet ys = xs.clone()\nprint(f() + ys.len)\n",
+        mode: "check",
+    },
+    CodeInfo {
         code: Code("E0608"),
         title: "Use of moved value",
         summary: "A heap value (`List`, `Map`, `Str`, or a struct holding one) was used after being moved into another binding.",

@@ -137,6 +137,9 @@ pub(crate) struct Hold {
     /// `for x in xs`: `xs` is lent to the loop, for reading, until it
     /// ends.
     in_loop: bool,
+    /// Closure capture hold: prevents moving `root` (E0607) while the closure
+    /// lives, without blocking reads or writes between calls (R05.10.2).
+    is_capture: bool,
 }
 
 /// What a top-level statement leaves behind for the statements after it.
@@ -146,10 +149,32 @@ pub enum Flow {
     None,
     /// `let part = a[l..=r]`: `a` stays lent while `part` is in use.
     View(String),
+    /// `let f = () => ...`: captured variables cannot move while `f` lives.
+    Capture(String),
     /// `assert i != j`: holds until one of these names is assigned.
     Assert(Vec<String>),
-    /// `let b = a` / `b = a`: `a` was moved if its type is a heap value (§128).
-    Move(String),
+    /// `let b = a` / `b = a` / `S(a)`: moved if its type is a heap value (§128).
+    Move(Vec<String>),
+}
+
+fn ctor_move_args(e: &Expr) -> Vec<String> {
+    let ExprKind::Call { callee, args } = &unparen(e).kind else {
+        return Vec::new();
+    };
+    let is_type_name = match &unparen(callee).kind {
+        ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_uppercase()),
+        ExprKind::Generic { base, .. } => matches!(&unparen(base).kind, ExprKind::Name(n) if n.chars().next().is_some_and(|c| c.is_ascii_uppercase())),
+        _ => false,
+    };
+    if !is_type_name {
+        return Vec::new();
+    }
+    args.iter()
+        .filter_map(|a| match &unparen(&a.value).kind {
+            ExprKind::Name(src) if !a.mutable => Some(src.clone()),
+            _ => None,
+        })
+        .collect()
 }
 
 pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
@@ -169,6 +194,9 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             otherwise,
             ..
         } => {
+            if matches!(unparen(init).kind, ExprKind::Lambda { .. }) {
+                return Flow::Capture(name.clone());
+            }
             let view = match &unparen(init).kind {
                 ExprKind::Index { indices, .. } => indices
                     .iter()
@@ -183,9 +211,14 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 Flow::View(name.clone())
             } else if otherwise.is_none() {
                 if let ExprKind::Name(src) = &unparen(init).kind {
-                    Flow::Move(src.clone())
+                    Flow::Move(vec![src.clone()])
                 } else {
-                    Flow::None
+                    let moves = ctor_move_args(init);
+                    if !moves.is_empty() {
+                        Flow::Move(moves)
+                    } else {
+                        Flow::None
+                    }
                 }
             } else {
                 Flow::None
@@ -198,9 +231,14 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             ..
         } => {
             if let ExprKind::Name(src) = &unparen(init).kind {
-                Flow::Move(src.clone())
+                Flow::Move(vec![src.clone()])
             } else {
-                Flow::None
+                let moves = ctor_move_args(init);
+                if !moves.is_empty() {
+                    Flow::Move(moves)
+                } else {
+                    Flow::None
+                }
             }
         }
         StmtKind::Assign {
@@ -211,12 +249,17 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             // Only plain variable assignment `b = a` moves `a`; slice stores (`dp[0, ..] = lst`) copy cells.
             if let (ExprKind::Name(t), ExprKind::Name(src)) = (&target.kind, &unparen(value).kind) {
                 if t != src {
-                    Flow::Move(src.clone())
+                    Flow::Move(vec![src.clone()])
                 } else {
                     Flow::None
                 }
             } else {
-                Flow::None
+                let moves = ctor_move_args(value);
+                if !moves.is_empty() {
+                    Flow::Move(moves)
+                } else {
+                    Flow::None
+                }
             }
         }
         _ => Flow::None,
@@ -1223,15 +1266,69 @@ impl<'a> Checker<'a> {
         };
         match (&replay.item.flow, &stmt.kind) {
             (Flow::Assert(_), StmtKind::Assert { cond, .. }) => self.add_facts(cond, false),
-            (Flow::Move(src), _) => {
-                let ty = match self.env.global(src).as_deref() {
-                    Some(Def::Value { ty, .. }) => Some(ty.clone()),
+            (Flow::Move(srcs), _) => {
+                // If the statement is a call (`Bag(a)`), only treat it as a move when
+                // the callee is a generated struct constructor (no custom `new`).
+                let init_expr = match &stmt.kind {
+                    StmtKind::Let { init: Some(e), .. } => Some(unparen(e)),
+                    StmtKind::Assign { value, .. } => Some(unparen(value)),
                     _ => None,
                 };
-                if let Some(ty) = ty {
-                    if self.is_heap_type(&ty) {
-                        self.moved.insert(src.clone(), Span::new(0, 0));
+                let is_generated_ctor = match init_expr.map(|e| &e.kind) {
+                    Some(ExprKind::Call { callee, .. }) => {
+                        let type_name = match &unparen(callee).kind {
+                            ExprKind::Name(n) => Some(n.as_str()),
+                            ExprKind::Generic { base, .. } => match &unparen(base).kind {
+                                ExprKind::Name(n) => Some(n.as_str()),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        type_name.is_some_and(|n| {
+                            matches!(
+                                self.type_def(n).as_deref(),
+                                Some(Def::Struct { ctor: None, .. })
+                            )
+                        })
                     }
+                    _ => true,
+                };
+                if is_generated_ctor {
+                    for src in srcs {
+                        let ty = match self.env.global(src).as_deref() {
+                            Some(Def::Value { ty, .. }) => Some(ty.clone()),
+                            _ => None,
+                        };
+                        if let Some(ty) = ty {
+                            if self.is_heap_type(&ty) {
+                                self.moved.insert(src.clone(), Span::new(0, 0));
+                            }
+                        }
+                    }
+                }
+            }
+            (
+                Flow::Capture(name),
+                StmtKind::Let {
+                    init: Some(init), ..
+                },
+            ) => {
+                let until = match current.iter().rev().find(|s| mentions(s, name)) {
+                    _ if replay.live_after => ELSEWHERE,
+                    Some(last) => last.span,
+                    None => return,
+                };
+                for cap in self.lambda_ref_captures(init) {
+                    self.lends.holds.push(Hold {
+                        name: name.clone(),
+                        root: cap,
+                        steps: Vec::new(),
+                        mutable: false,
+                        at: ELSEWHERE,
+                        until,
+                        in_loop: false,
+                        is_capture: true,
+                    });
                 }
             }
             (
@@ -1277,10 +1374,140 @@ impl<'a> Checker<'a> {
                     at: ELSEWHERE,
                     until,
                     in_loop: false,
+                    is_capture: false,
                 });
             }
             _ => {}
         }
+    }
+
+    /// Variables captured by reference by a lambda: local `var`s, local heap
+    /// values, parameters, or top-level heap/`var` values (R05.10.1).
+    pub(crate) fn lambda_ref_captures(&mut self, expr: &Expr) -> Vec<String> {
+        let ExprKind::Lambda { params, body, .. } = &unparen(expr).kind else {
+            return Vec::new();
+        };
+        let mut bound = HashSet::new();
+        for p in params {
+            super::types::pattern_types(p, &Ty::Unknown, &mut |n, _| {
+                bound.insert(n.to_string());
+            });
+        }
+        let mut caps = Vec::new();
+        for n in names_in(body) {
+            if bound.contains(&n) || caps.contains(&n) {
+                continue;
+            }
+            let by_ref = if let Some(local) = self.local(&n) {
+                let ty = local.ty.clone();
+                local.mutable || local.keyword == "param" || self.is_heap_type(&ty)
+            } else if let Some(def) = self.global(&n) {
+                match &*def {
+                    Def::Value { ty, mutable, .. } => *mutable || self.is_heap_type(ty),
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            if by_ref {
+                caps.push(n);
+            }
+        }
+        caps
+    }
+
+    /// Generated struct constructors move owned heap arguments (R2, R02.6.3).
+    pub(crate) fn move_ctor_args(&mut self, args: &[Arg]) {
+        for arg in args {
+            if arg.mutable {
+                continue;
+            }
+            if let ExprKind::Name(src) = &unparen(&arg.value).kind {
+                if !self.is_owned_movable_var(src) {
+                    continue;
+                }
+                let ty = self
+                    .local(src)
+                    .map(|l| l.ty.clone())
+                    .or_else(|| match self.global(src).as_deref() {
+                        Some(Def::Value { ty, .. }) => Some(ty.clone()),
+                        _ => None,
+                    });
+                if let Some(ty) = ty {
+                    if self.is_heap_type(&ty) {
+                        self.mark_moved(src, arg.value.span);
+                    }
+                }
+            }
+        }
+    }
+
+    /// True when `name` is an owned variable (not a parameter or lent view)
+    /// that can be moved out of.
+    pub(crate) fn is_owned_movable_var(&mut self, name: &str) -> bool {
+        if let Some(local) = self.local(name) {
+            local.keyword != "param" && !self.lends.views.contains_key(&local.span)
+        } else if self.in_fn == 0 {
+            matches!(self.global(name).as_deref(), Some(Def::Value { .. }))
+                && !self.lends.global_views.contains_key(name)
+        } else {
+            false
+        }
+    }
+
+    /// Records that `src` was moved at `span`, rejecting moves of a variable
+    /// while a closure captures it (E0607) or a lend borrows it (E0602).
+    pub(crate) fn mark_moved(&mut self, src: &str, span: Span) {
+        if let Some(hold) = self.lends.holds.iter().find(|h| h.root == src) {
+            let lent_to = hold.name.clone();
+            let is_capture = hold.is_capture;
+            let at = hold.at;
+            let until = hold.until;
+            if is_capture {
+                let message = format!(
+                    "`{src}` can't be moved here: it is captured by `{lent_to}`, which is still used below"
+                );
+                if let Some(diag) = self.error(codes::MOVED_WHILE_CAPTURED, span, message) {
+                    if at != ELSEWHERE {
+                        diag.labels.push(cpl_diag::Label {
+                            span: at,
+                            message: format!("captured by `{lent_to}` here"),
+                        });
+                    }
+                    if until != ELSEWHERE {
+                        diag.labels.push(cpl_diag::Label {
+                            span: until,
+                            message: format!("`{lent_to}` is last used here"),
+                        });
+                    }
+                    diag.help = Some(format!(
+                        "clone it (`{src}.clone()`) or finish using `{lent_to}` before moving `{src}`"
+                    ));
+                }
+            } else {
+                let message = format!(
+                    "`{src}` can't be moved here: it is lent to `{lent_to}` until its last use"
+                );
+                if let Some(diag) = self.error(codes::USED_WHILE_LENT, span, message) {
+                    if at != ELSEWHERE {
+                        diag.labels.push(cpl_diag::Label {
+                            span: at,
+                            message: format!("lent to `{lent_to}` here"),
+                        });
+                    }
+                    if until != ELSEWHERE {
+                        diag.labels.push(cpl_diag::Label {
+                            span: until,
+                            message: format!("`{lent_to}` is last used here"),
+                        });
+                    }
+                    diag.help = Some(format!(
+                        "finish with `{lent_to}` first, or clone `{src}` with `{src}.clone()`"
+                    ));
+                }
+            }
+        }
+        self.moved.insert(src.to_string(), span);
     }
 
     pub(crate) fn note_view(&mut self, e: &Expr, kind: &'static str) {
@@ -1299,6 +1526,24 @@ impl<'a> Checker<'a> {
     /// `let name = <view>`: the root stays lent until the last statement
     /// of `rest` that names `name`.
     pub(crate) fn begin_hold(&mut self, stmt: &Stmt, name: &str, value: &Expr, rest: &[Stmt]) {
+        if matches!(unparen(value).kind, ExprKind::Lambda { .. }) {
+            let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
+                return;
+            };
+            for cap in self.lambda_ref_captures(value) {
+                self.lends.holds.push(Hold {
+                    name: name.to_string(),
+                    root: cap,
+                    steps: Vec::new(),
+                    mutable: false,
+                    at: stmt.span,
+                    until: last.span,
+                    in_loop: false,
+                    is_capture: true,
+                });
+            }
+            return;
+        }
         let Some(kind) = self.view_kind(value) else {
             return;
         };
@@ -1350,6 +1595,7 @@ impl<'a> Checker<'a> {
             at: stmt.span,
             until: last.span,
             in_loop: false,
+            is_capture: false,
         });
     }
 
@@ -1394,6 +1640,7 @@ impl<'a> Checker<'a> {
             at: iter.span,
             until: stmt.span,
             in_loop: true,
+            is_capture: false,
         });
     }
 
@@ -1602,6 +1849,9 @@ impl<'a> Checker<'a> {
 
         for index in 0..self.lends.holds.len() {
             let hold = &self.lends.holds[index];
+            if hold.is_capture {
+                continue;
+            }
             let Some(what) = does(self, &hold.root) else {
                 continue;
             };
@@ -1766,6 +2016,9 @@ impl<'a> Checker<'a> {
         };
         for index in 0..self.lends.holds.len() {
             let hold = &self.lends.holds[index];
+            if hold.is_capture {
+                continue;
+            }
             if hold.root != place.root || place.via.as_deref() == Some(hold.name.as_str()) {
                 continue;
             }

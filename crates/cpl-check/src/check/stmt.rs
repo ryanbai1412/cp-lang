@@ -705,21 +705,19 @@ impl<'a> Checker<'a> {
                 } else {
                     declared.or(init_ty.clone()).unwrap_or(Ty::Error)
                 };
-                // §128: `let b = a` / `var b = a` on a heap local moves `a`.
+                // §128: `let b = a` / `var b = a` on a heap variable moves `a`.
                 if otherwise.is_none() && !fills {
                     if let Some(Expr {
                         kind: ExprKind::Name(src),
                         span: src_span,
                     }) = init
                     {
-                        let is_owned_local = self
-                            .local(src)
-                            .is_some_and(|l| l.keyword != "param");
+                        let is_owned = self.is_owned_movable_var(src);
                         let src_is_heap = init_ty
                             .as_ref()
                             .is_some_and(|t| self.is_heap_type(t));
-                        if is_owned_local && src_is_heap {
-                            self.moved.insert(src.clone(), *src_span);
+                        if is_owned && src_is_heap {
+                            self.mark_moved(src, *src_span);
                         }
                     }
                 }
@@ -1000,11 +998,9 @@ impl<'a> Checker<'a> {
                     if let ExprKind::Name(tname) = &target.kind {
                         self.moved.remove(tname);
                         if let ExprKind::Name(sname) = &value.kind {
-                            let is_owned_local = self
-                                .local(sname)
-                                .is_some_and(|l| l.keyword != "param");
-                            if tname != sname && is_owned_local && self.is_heap_type(&value_ty) {
-                                self.moved.insert(sname.clone(), value.span);
+                            let is_owned = self.is_owned_movable_var(sname);
+                            if tname != sname && is_owned && self.is_heap_type(&value_ty) {
+                                self.mark_moved(sname, value.span);
                             }
                         }
                     }
