@@ -525,6 +525,24 @@ impl<'a> Checker<'a> {
 
     /// A domain written with two literal ends holds at most 2^31 - 1
     /// values: a position is an `i32` in the generated code.
+    /// `In + Out` in a `domain` declaration: the disjoint union of domains.
+    fn domain_sum(&mut self, def: &ast::Expr) -> bool {
+        let ExprKind::Binary {
+            op: ast::BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } = &def.kind
+        else {
+            return false;
+        };
+        let part = |c: &mut Self, e: &ast::Expr| {
+            c.domain_sum(e)
+                || matches!(e.kind, ExprKind::Name(_)) && matches!(c.infer(e), Ty::Domain(_))
+        };
+        part(self, lhs) && part(self, rhs)
+    }
+
     fn domain_size(&mut self, def: &ast::Expr) {
         let ExprKind::Range {
             lo: Some(lo),
@@ -994,7 +1012,9 @@ impl<'a> Checker<'a> {
                 self.leave_body(body);
             }
             StmtKind::Domain { name, def } => {
-                self.infer(def);
+                if !self.domain_sum(def) {
+                    self.infer(def);
+                }
                 self.domain_size(def);
                 self.type_hover(name);
                 if !top_level {
@@ -1567,7 +1587,9 @@ impl<'a> Checker<'a> {
                 // Owned domains and constants were declared on entry; this
                 // checks their values.
                 StmtKind::Domain { def, .. } => {
-                    self.infer(def);
+                    if !self.domain_sum(def) {
+                        self.infer(def);
+                    }
                 }
                 StmtKind::Const {
                     init: Some(init), ..

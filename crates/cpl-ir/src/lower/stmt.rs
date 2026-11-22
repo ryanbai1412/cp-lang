@@ -1562,6 +1562,29 @@ impl<'a> Lowerer<'a> {
         self.init_domain_id(id, def, out);
     }
 
+    /// `domain Node = In + Out`: the domains of a disjoint union, in order.
+    fn domain_sum_parts(&mut self, def: &ast::Expr) -> Option<Vec<DomainId>> {
+        let ast::ExprKind::Binary {
+            op: ast::BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } = &def.kind
+        else {
+            return None;
+        };
+        let mut parts = self.domain_sum_part(lhs)?;
+        parts.extend(self.domain_sum_part(rhs)?);
+        Some(parts)
+    }
+
+    fn domain_sum_part(&mut self, e: &ast::Expr) -> Option<Vec<DomainId>> {
+        match &e.kind {
+            ast::ExprKind::Name(name) => self.resolve_domain_name(name).map(|d| vec![d]),
+            _ => self.domain_sum_parts(e),
+        }
+    }
+
     pub(super) fn init_domain_id(&mut self, id: DomainId, def: &ast::Expr, out: &mut Vec<Stmt>) {
         if let Some(factors) = self.resolve_product_factors(def) {
             self.product_domains.insert(id, factors.clone());
@@ -1574,6 +1597,22 @@ impl<'a> Lowerer<'a> {
                     def.span,
                 );
             }
+            let lo = self.int_lit(0, def.span);
+            out.push(Stmt::DefDomain { id, lo, len });
+            return;
+        }
+        if let Some(parts) = self.domain_sum_parts(def) {
+            let mut lens = parts
+                .into_iter()
+                .map(|d| self.mk(ExprKind::DomainLen(d), Ty::Int, def.span));
+            let first = lens.next().unwrap();
+            let len = lens.fold(first, |acc, l| {
+                self.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(acc), Box::new(l)),
+                    Ty::Int,
+                    def.span,
+                )
+            });
             let lo = self.int_lit(0, def.span);
             out.push(Stmt::DefDomain { id, lo, len });
             return;
