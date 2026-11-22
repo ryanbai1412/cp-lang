@@ -23,7 +23,7 @@ target = "every problem < 10 s"
 [[metric]]
 name = "ten_million_budget_test"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
-today = "FAIL: examples/debugging/shortest_path.cp does not compile (E0301 V.first/V.last)"
+today = "FAIL on overhead only (all demos compile): scalar 8.48x, array 9.69x untraced; 1.09 s / 1.65 s recorded"
 target = "pass"
 
 [[metric]]
@@ -77,7 +77,7 @@ target = "pass, plus a browser test, both in the gate"
 [[metric]]
 name = "debug_demos_compile"
 command = "for f in examples/debugging/*.cp; do target/release/cpl check $f; done"
-today = "2/3 (shortest_path.cp: 4 x E0301); all 3 still spell @brute, not @alt(program)"
+today = "3/3; all 3 still spell @brute, not @alt(program)"
 target = "3/3, v0.3 spellings"
 
 [[metric]]

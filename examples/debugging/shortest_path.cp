@@ -14,22 +14,22 @@ for e in E:
 
 var dist: [V]?Int = none
 var heap = MinHeap<(Int, V)>()
-dist[V.first] = 0
-heap.push((0, V.first))
+dist[V.first!] = 0
+heap.push((0, V.first!))
 while let (d, u) = heap.pop():
     for road in adj[u]:
         if dist[road.to] == none:
             dist[road.to] = d + road.w
             heap.push((d + road.w, road.to))
-print(dist[V.last] ?? -1)
+print(dist[V.last!] ?? -1)
 
 @brute(main)
 fn bellman_ford():
     var far: [V]?Int = none
-    far[V.first] = 0
+    far[V.first!] = 0
     for _ in V:
         for e in E:
             let r = roads[e]
             if let du = far[r.u]: far[r.v] min= du + r.w
             if let dv = far[r.v]: far[r.u] min= dv + r.w
-    print(far[V.last] ?? -1)
+    print(far[V.last!] ?? -1)

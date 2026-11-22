@@ -106,3 +106,20 @@ fn a_changed_signature_runs_the_whole_file_and_says_so() {
         "{out}"
     );
 }
+
+#[test]
+fn every_debugging_demo_checks_clean() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/debugging");
+    let mut demos: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "cp"))
+        .collect();
+    demos.sort();
+    assert!(demos.len() >= 3, "{demos:?}");
+    for demo in demos {
+        let name = demo.file_name().unwrap().to_str().unwrap();
+        let (code, _, err) = cpl(&dir, &["check", name]);
+        assert_eq!(code, 0, "{}: {err}", demo.display());
+    }
+}
