@@ -18,7 +18,7 @@ ends, `.first`/`.last` are optional.
    closures.
 4. **Identity vs offset.** A domain slice keeps its positions
    (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0 (pending:
-   2a recommends keeping keys there too).
+   2a and 2b propose keeping keys there too).
 5. **Views are lent values with the rules of `mut a[i]`.** A value built
    from a lent part is lent; no lifetime annotations, never stored, returned
    only by a fn declared `lends`. In-place verbs
@@ -86,7 +86,7 @@ for its result (`sorted`, `tally`, `scan`).
 > **Pending:** the rule below is the current hybrid.
 > `2a-identity-vs-offset.md` recommends identity everywhere instead: `List`
 > and `Str` slices would keep their keys too, and `w.rebase` would give the
-> rare 0-based view. That needs Ryan's call.
+> rare 0-based view. `2b-keys.md` works it through. That needs Ryan's call.
 
 The key type decides. A domain position names an element (round 1's index
 safety), so it means the same element in the array and in every view of it:
