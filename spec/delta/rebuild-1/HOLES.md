@@ -281,6 +281,9 @@ exists is unclear. Picked `pre[r] - pre[l.l]` (01).
 H-COLLECT-KEYS. R04b.1.6: `.collect()` of an indexed view gives
 `[w.keys]T`. `seq.cp:859`: `collect<S: Seq, T>(self: S) -> List<T>`, which
 is always a `List`.
+Resolved: R04b.1.6 and R07.4.4 now say `.collect()` builds a `List`
+keyed from 0 (decision 186), which is what `seq.cp` declares; keys are kept
+with `[w.keys] k => w[k]`.
 
 H-Z-KEYS. R04b.5.3 says `z_function` returns `[K]Int` keyed by
 `s.keys`. `strings.cp:297` has `z_function<S: Indexed, K>(s: S) -> [K]Int`,
