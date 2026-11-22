@@ -436,6 +436,16 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            // `let x: = 1`: the annotation is empty, so drop its `:`.
+            T::Eq if self.prev_kind() == Some(T::Colon) => {
+                let colon = self.tokens[self.pos - 1].span;
+                let found = self.peek().describe();
+                let message = format!("expected a type after `:`, found {found}");
+                let diag = Diagnostic::error(codes::EXPECTED_TYPE, self.error_span(), message)
+                    .with_fix("remove the `:`", colon, "");
+                self.error(diag);
+                TypeKind::Error
+            }
             _ => {
                 let after = self.prev_kind().map_or("here", |k| k.describe());
                 self.error_expected(codes::EXPECTED_TYPE, &format!("a type after {after}"), None);
