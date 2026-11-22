@@ -335,7 +335,11 @@ fn a_download_that_fails_its_checksum_installs_nothing() {
         let archive = std::fs::read_dir(world.releases.join(folder))
             .unwrap()
             .flatten()
-            .find(|e| e.file_name().to_string_lossy().starts_with("cpl-"))
+            // The archive, not its `.sha256`: read_dir's order differs by filesystem.
+            .find(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                name.starts_with("cpl-") && (name.ends_with(".tar.gz") || name.ends_with(".zip"))
+            })
             .unwrap()
             .path();
         let mut bytes = std::fs::read(&archive).unwrap();
