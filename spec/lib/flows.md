@@ -303,9 +303,8 @@ let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 
 domain Node = Item + Pair
 fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
-let items = [Pair] e => [Node(pairs[e].u), Node(pairs[e].v)]
-fn before(v: Node) = match v: Item(i) => [], Pair(e) => items[e]
-print(max_closure(before: before, profit: profit).value)
+let needs = Graph.directed([(u: Node(i), v: Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]])
+print(max_closure(before: needs, profit: profit).value)
 ```
 
 The port flattened `Item + Pair + Src + Snk` into `0..n + m + 2`, wrote the

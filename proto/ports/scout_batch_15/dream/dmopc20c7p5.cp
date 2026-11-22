@@ -16,8 +16,14 @@ domain Node = Item + Pair
 let profit = [Node] x => match x:
     Item(i) => -cost[i]
     Pair(p) => pairs[p].w
-let needs = [(u: Node(p), v: Node(i)) for p in Pair for i in [pairs[p].u, pairs[p].v]]
-print(max_closure(profit, needs).value)
+var unlocks: [Item]List<Node> = []
+for p in Pair:
+    for i in [pairs[p].u, pairs[p].v]:
+        unlocks[i].push(Node(p))
+fn before(x: Node) -> List<Node> = match x:
+    Item(i) => unlocks[i]
+    Pair(p) => []
+print(max_closure(before: before, profit: x => profit[x]).value)
 
 // The same cut as an explicit network, for models that are not a closure:
 //
