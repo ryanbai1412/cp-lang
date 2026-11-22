@@ -63,7 +63,8 @@ pub struct Fenwick<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
     /// example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
-    pub fn fold(self, r: Range<D>) -> T = todo
+    pub fn fold(self, r: Range<D>) -> T:
+        self.prefix(r.end) - self.prefix(r.start)
 
     /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
     /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
@@ -110,7 +111,8 @@ pub struct Fenwick<D, T>:
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `Fenwick([1, 2, 3]).get(1) == 2`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T:
+        self.prefix(i.r) - self.prefix(i.l)
 
     /// Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for
     /// `f[i] = x`.
@@ -118,7 +120,8 @@ pub struct Fenwick<D, T>:
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.set(1, 5); f.all == 9`
-    pub fn set(mut self, i: D, x: T) = todo
+    pub fn set(mut self, i: D, x: T):
+        self.add(i, x - self.get(i))
 
     /// The sum of every position of `D`, kept current by `add`, `set` and `clear`.
     ///
@@ -126,7 +129,8 @@ pub struct Fenwick<D, T>:
     /// empty: zero on an empty domain
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T:
+        self.prefix(D.cuts.nth(D.K))
 
     /// The sum of every position right of the boundary `b`: `all - prefix(b)`. The end cut gives zero.
     ///
@@ -134,7 +138,8 @@ pub struct Fenwick<D, T>:
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).suffix((0..1).r) == 5`
     /// example: `Fenwick([1, 2, 3]).suffix((0..3).r) == 0`
-    pub fn suffix(self, b: Cut<D>) -> T = todo
+    pub fn suffix(self, b: Cut<D>) -> T:
+        self.all - self.prefix(b)
 
     /// The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most
     /// `target`. For non-negative values.
@@ -144,14 +149,27 @@ pub struct Fenwick<D, T>:
     /// traps: never (negative values give an unspecified cut, not a trap)
     /// example: `Fenwick([1, 2, 3]).first_gt(3) == Some((0..3).r)`
     /// example: `Fenwick([1, 2, 3]).first_gt(6) == None`
-    pub fn first_gt(self, target: Int) -> ?Cut<D> = todo
+    pub fn first_gt(self, target: Int) -> ?Cut<D>:
+        if target < 0: return D.cuts.nth(0)
+        var p = 0
+        var rest = target
+        var step = bit_ceil(D.K + 1) / 2
+        while step > 0:
+            if p + step <= D.K:
+                assert t[p + step] >= 0, "`first_gt` needs non-negative values"
+                if t[p + step] <= rest:
+                    p += step
+                    rest -= t[p]
+            step /= 2
+        if p == D.K: None else: D.cuts.nth(p + 1)
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
     /// cost: O(|D|)
     /// traps: never
     /// example: `var f = Fenwick([1, 2, 3]); f.clear(); f.all == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for p in 0..t.len: t[p] = T.zero
 
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
 /// memory is (R + 1) * (C + 1) values.
@@ -197,28 +215,38 @@ pub struct Fenwick2D<R, C, T>:
     /// traps: when a range of a non-empty rectangle reaches outside its domain
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.fold(0..2, 1..2) == 2`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.fold(0..2, 1..1) == 0`
-    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
+    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
+        let r0 = rows.start.ord
+        let r1 = rows.end.ord
+        let c0 = cols.start.ord
+        let c1 = cols.end.ord
+        self.corner(r1, c1) - self.corner(r0, c1) - self.corner(r1, c0) + self.corner(r0, c0)
 
     /// The sum of every cell above the row cut `r` and left of the column cut `c`.
     ///
     /// cost: O(log |R| log |C|)
     /// traps: never
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.prefix((0..1).r, (0..2).r) == 1`
-    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T:
+        self.corner(r.ord, c.ord)
 
     /// The current value of the cell `(r, c)`.
     ///
     /// cost: O(log |R| log |C|)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.get(1, 1) == 2`
-    pub fn get(self, r: R, c: C) -> T = todo
+    pub fn get(self, r: R, c: C) -> T:
+        let p = r.to_idx
+        let q = c.to_idx
+        self.corner(p + 1, q + 1) - self.corner(p, q + 1) - self.corner(p + 1, q) + self.corner(p, q)
 
     /// Reset every cell to zero, keeping the domains and the allocation.
     ///
     /// cost: O(|R| |C|)
     /// traps: never
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.clear(); f.get(1, 1) == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for p in 0..t.len: t[p] = T.zero
 
 /// Range add and point get via a difference Fenwick tree.
 /// `DualFenwick<D, Int>()` starts at zero and `DualFenwick<D, Int>(a)` from an array, in O(n).
@@ -285,13 +313,28 @@ pub struct DualFenwick<D, T>:
     /// cost: O(|D|)
     /// traps: never
     /// example: `var d = DualFenwick([1, 2, 3]); d.clear(); d.get(0) == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for p in 0..t.len: t[p] = T.zero
 
 /// O(n log n) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):
 /// register all update coordinates with `add_point`, call `build()`, then run `add` and `sum`
 /// in O(log^2 n).
+fn lower_bound(a: List<Int>, x: Int) -> Int:
+    var lo = 0
+    var hi = a.len
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if a[mid] < x: lo = mid + 1
+        else: hi = mid
+    lo
+
 pub struct SparseFenwick2D<T>:
     n: Int
+    pts: List<(Int, Int)>
+    xs: List<Int>
+    ys: List<List<Int>>
+    ft: List<List<T>>
+    built: Bool
 
     /// An empty offline 2-D Fenwick builder. Use it in two phases: register every point that will
     /// ever be updated with `add_point`, call `build` once, then use `add` and `sum`.
@@ -299,14 +342,17 @@ pub struct SparseFenwick2D<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var f = SparseFenwick2D<Int>(); f.build(); f.fold(0..10, 0..10) == 0`
-    pub fn new() -> SparseFenwick2D<T> = todo
+    pub fn new() -> SparseFenwick2D<T>:
+        SparseFenwick2D(0, [], [], [], [], false)
 
     /// Register the point `(x, y)` as a future `add` target. Registering a point twice is harmless.
     ///
     /// cost: O(1) amortized
     /// traps: after `build`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(5, 7); f.add_point(5, 7); f.build(); f.add(5, 7, 3); f.fold(0..10, 0..10) == 3`
-    pub fn add_point(mut self, x: Int, y: Int) = todo
+    pub fn add_point(mut self, x: Int, y: Int):
+        assert not built, "`add_point` after `build`"
+        pts.push((x, y))
 
     /// Compress the registered `x` coordinates, and per `x` bucket the `y` coordinates it can
     /// receive, and allocate the bucket trees at zero. Ends the registration phase.
@@ -314,14 +360,42 @@ pub struct SparseFenwick2D<T>:
     /// cost: O(n log n) for `n` registered points; memory O(n log n)
     /// traps: when called a second time
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.fold(1..2, 2..3) == 0`
-    pub fn build(mut self) = todo
+    pub fn build(mut self):
+        assert not built, "`build` called twice"
+        built = true
+        var all_x: List<Int> = []
+        for (x, _) in pts: all_x.push(x)
+        xs = all_x.sorted().deduped()
+        n = xs.len
+        ys = List.filled(n + 1, [])
+        for (x, y) in pts:
+            var i = lower_bound(xs, x) + 1
+            while i <= n:
+                ys[i].push(y)
+                i += i & -i
+        ft = List.filled(n + 1, [])
+        for i in 0..=n:
+            ys[i] = ys[i].sorted().deduped()
+            ft[i] = List.filled(ys[i].len + 1, T.zero)
 
     /// Add `v` at the registered point `(x, y)`.
     ///
     /// cost: O(log^2 n)
     /// traps: before `build`, or when `(x, y)` was never registered
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..2, 0..10) == 5`
-    pub fn add(mut self, x: Int, y: Int, v: T) = todo
+    pub fn add(mut self, x: Int, y: Int, v: T):
+        assert built, "`add` before `build`"
+        var i = lower_bound(xs, x)
+        assert i < n and xs[i] == x, "`add` at a point that was never registered"
+        i += 1
+        while i <= n:
+            var j = lower_bound(ys[i], y)
+            assert j < ys[i].len and ys[i][j] == y, "`add` at a point that was never registered"
+            j += 1
+            while j <= ys[i].len:
+                ft[i][j] = ft[i][j] + v
+                j += j & -j
+            i += i & -i
 
     /// The total added at registered points with `x` in `xs` and `y` in `ys`. The ranges are over
     /// raw coordinates; points outside them, or never registered, contribute nothing.
@@ -331,7 +405,21 @@ pub struct SparseFenwick2D<T>:
     /// traps: before `build`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..10, 3..5) == 7`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 5); f.fold(2..2, 0..10) == 0`
-    pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T = todo
+    fn corner(self, x: Int, y: Int) -> T:
+        var acc = T.zero
+        var i = lower_bound(xs, x)
+        while i > 0:
+            var j = lower_bound(ys[i], y)
+            while j > 0:
+                acc = acc + ft[i][j]
+                j -= j & -j
+            i -= i & -i
+        acc
+
+    pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T:
+        assert built, "`fold` before `build`"
+        if xs.start >= xs.end or ys.start >= ys.end: return T.zero
+        self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(xs.end, ys.start) + self.corner(xs.start, ys.start)
 
 @test
 fn sums_match_a_plain_array() = todo
