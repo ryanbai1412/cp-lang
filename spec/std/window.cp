@@ -5,7 +5,7 @@
 //! two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo
 //! and divide-and-conquer DP all accept a `Track`.
 use std.algebra.{Op}
-use std.dsu.{Mark}
+use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
 
 /// A sliding fold queue over `op`. `push` and `pop` are O(1) amortized; `all` is O(1).
@@ -146,19 +146,47 @@ pub trait Undo:
     fn mark(mut self) -> Mark
     fn undo_to(mut self, snap: Mark)
 
-// blocked: `(mut S, T) -> ()` fn types don't parse (GAPS.md window)
+impl Undo for Dsu<V>:
+    fn mark(mut self) -> Mark = self.mark()
+    fn undo_to(mut self, snap: Mark) = self.undo_to(snap)
+
+impl Undo for DsuOf<V, T>:
+    fn mark(mut self) -> Mark = self.mark()
+    fn undo_to(mut self, snap: Mark) = self.undo_to(snap)
+
+impl Undo for ParityDsu<V>:
+    fn mark(mut self) -> Mark = self.mark()
+    fn undo_to(mut self, snap: Mark) = self.undo_to(snap)
+
+impl Undo for PotentialDsu<V>:
+    fn mark(mut self) -> Mark = self.mark()
+    fn undo_to(mut self, snap: Mark) = self.undo_to(snap)
+
 /// The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds at the back
 /// and drops from the front runs on a structure that can only undo its newest change (a
 /// rollback DSU in a two-pointer pass). `add(mut state, x)` applies one element; `state`
 /// always holds exactly the window's elements. Each element is applied O(log n) times
 /// amortized, so a pass of n pushes and pops costs O(n log n) applications.
-pub struct Undoing<S, T>(state: S, add: (mut S, T) -> ()):
+pub struct Undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()):
+    items: List<T> = []
+    is_b: List<Bool> = []
+    marks: List<Mark> = []
+    a_cnt: Int = 0
+
+    fn push_entry(mut self, x: T, b: Bool):
+        marks.push(state.mark())
+        add(mut state, x)
+        items.push(x)
+        is_b.push(b)
+        if not b: a_cnt += 1
+
     /// Push `x` at the back: one `add` on top of the current state.
     ///
     /// cost: O(1) applications of `add` amortized
     /// traps: never (beyond what `add` traps on)
     /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.state.same(V(0), V(1))`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        self.push_entry(x, true)
 
     /// Drop the front element, which must be `x`. The element removed is the stored oldest one;
     /// `x` names it for the `Track` protocol and is not compared. Undoes back past the oldest
@@ -167,23 +195,60 @@ pub struct Undoing<S, T>(state: S, add: (mut S, T) -> ()):
     /// cost: O(log n) applications of `add` amortized
     /// traps: on an empty `Undoing`
     /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.push((V(1), V(2))); u.pop((V(0), V(1))); u.state.same(V(1), V(2)) and not u.state.same(V(0), V(1))`
-    pub fn pop(mut self, x: T) = todo
+    pub fn pop(mut self, x: T):
+        assert not items.is_empty, "pop on empty Undoing"
+        if a_cnt == 0:
+            let base = marks[0]
+            var rev_items: List<T> = []
+            while not items.is_empty:
+                rev_items.push(items.pop()!)
+                is_b.pop()
+                marks.pop()
+            state.undo_to(base)
+            for i in 0..rev_items.len - 1:
+                self.push_entry(rev_items[i], false)
+            return
+        if not is_b[items.len - 1]:
+            let m = marks.pop()!
+            items.pop()
+            is_b.pop()
+            a_cnt -= 1
+            state.undo_to(m)
+            return
+        var b_buf: List<T> = []
+        var a_buf: List<T> = []
+        var base = marks[marks.len - 1]
+        while not items.is_empty:
+            let item = items.pop()!
+            let b = is_b.pop()!
+            base = marks.pop()!
+            if b:
+                b_buf.push(item)
+            else:
+                a_buf.push(item)
+                a_cnt -= 1
+                if a_buf.len == b_buf.len or a_cnt == 0:
+                    break
+        state.undo_to(base)
+        for i in (0..b_buf.len).rev:
+            self.push_entry(b_buf[i], true)
+        for i in (1..a_buf.len).rev:
+            self.push_entry(a_buf[i], false)
 
     /// The structure with exactly the window's elements applied.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..3; let u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
-    @get pub fn state(self) -> S = todo
+    @get pub fn state(self) -> S = state
 
-// blocked: `(mut S, T) -> ()` fn types don't parse (GAPS.md window)
 /// `Undoing` over `state`, holding no elements; see there. `state` is taken as the base: the
 /// window never undoes past it.
 ///
 /// cost: O(1)
 /// traps: never
 /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(2))); u.state.same(V(2), V(0))`
-pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = todo
+pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = Undoing(state, add)
 
 /// A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
 /// expands before shrinking. O(|change|) pushes and pops per move.
