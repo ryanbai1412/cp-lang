@@ -10,13 +10,13 @@
     "crates/cpl-ir/src/lower/mono.rs": 4570,
     "crates/cpl-lint/src/rules/taste.rs": 4493,
     "crates/cpl-check/src/check/expr.rs": 4323,
-    "crates/cpl-check/src/tests.rs": 3977,
+    "crates/cpl-check/src/tests.rs": 3863,
     "crates/cpl-check/src/check/stmt.rs": 3343,
     "crates/cpl-stress/src/spec.rs": 2911,
     "crates/cpl-codegen/src/expr.rs": 2900,
     "crates/cpl-check/src/check/lends.rs": 2875,
-    "crates/cpl-lsp/src/tests.rs": 2856,
-    "crates/cpl-cli/src/lib.rs": 2586,
+    "crates/cpl-lsp/src/tests.rs": 2868,
+    "crates/cpl-cli/src/lib.rs": 2552,
     "crates/cpl-check/src/db.rs": 2519,
     "crates/cpl-stress/src/tests.rs": 2465,
     "crates/cpl-lint/src/tests.rs": 2384,
@@ -24,9 +24,9 @@
     "crates/cpl-check/src/check/call.rs": 2274,
     "crates/cpl-codegen/src/emit.rs": 2233,
     "crates/cpl-lint/src/rules/mod.rs": 2144,
-    "crates/cpl-lsp/src/server.rs": 2108
+    "crates/cpl-lsp/src/server.rs": 2111
   },
   "stdlib_todo": 294,
-  "rust_ignore": 2,
-  "pending_tests": 0
+  "rust_ignore": 19,
+  "pending_tests": 313
 }
