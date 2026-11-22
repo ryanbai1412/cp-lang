@@ -23,7 +23,7 @@ struct Gate:
     kids: ?(Int, Int)
 
 @!multitest
-let n: Int = read()
+let n: 1..=5000 = read()
 var x = [i + 1 for i in 0..n]
 var gates = [Gate(i, i + 1, false, none) for i in 0..n]
 
@@ -56,7 +56,7 @@ fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
     right.reverse()
 
     var core = m
-    while let a = left.last, let b = right.last:
+    while let a = left.last and let b = right.last:
         if probe_reversed(gates[a].l..gates[b].r) < gates[core].l:
             core = join(core, right.pop()!, not is_max)
         else:
