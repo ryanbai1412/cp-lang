@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
+import { History, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { type Status, StatusBadge } from '@/components/status-badge';
@@ -64,6 +64,24 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
     }
   }, [source, stdin]);
 
+  const trace = useCallback(async () => {
+    // Opened before the await: a popup opened after it has no user activation and is blocked.
+    const viewer = window.open('', '_blank');
+    setTab('output');
+    setResult({ kind: 'running' });
+    try {
+      const r = await cpl.trace(source, stdin);
+      setResult({ kind: 'output', stdout: r.stdout, stderr: r.stderr, ok: r.ok, diagnostics: r.diagnostics });
+      if (r.trace && viewer) {
+        viewer.sessionStorage.setItem('cp-live-trace', JSON.stringify(r.trace));
+        viewer.location.href = '/trace.html#live';
+      } else viewer?.close();
+    } catch (e) {
+      viewer?.close();
+      setResult({ kind: 'error', message: (e as Error).message });
+    }
+  }, [source, stdin]);
+
   const showCpp = useCallback(async () => {
     setTab('cpp');
     setCpp('// Building…');
@@ -84,6 +102,9 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <Play />}
           Run
         </Button>
+        <Button size="sm" variant="outline" onClick={trace} disabled={result.kind === 'running'} title="Record every step and open the time-travel debugger">
+          <History /> Trace
+        </Button>
         {result.kind === 'running' && (
           <Button size="sm" variant="ghost" onClick={() => stop().then(() => setResult({ kind: 'idle' }))}>
             <Square /> Stop
@@ -97,7 +118,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           {shareMenu && <ShareMenu source={source} stdin={stdin} />}
           {playgroundLink && (
             <Button size="sm" variant="outline" asChild>
-              <a href={`/play#${share}`}>Open in playground</a>
+              <a href={`/play#${share}`} suppressHydrationWarning>Open in playground</a>
             </Button>
           )}
         </div>

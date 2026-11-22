@@ -9,3 +9,6 @@ public/wasm/
 generated/
 worker/.wrangler/
 content/docs/ref/
+public/trace.html
+public/trace-demo.html
+AGENTS.md

@@ -1,45 +1,94 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Status } from '@/components/status-badge';
+import { highlight } from '@/lib/highlight';
 
 const dir = join(process.cwd(), 'content/landing');
 
-export interface Snippet {
+export interface Showcase {
   id: string;
   title: string;
   caption: string;
   status: Status;
-  source: string;
-  stdin: string;
+  lines: number;
+  html: string;
+  href?: string;
 }
 
-const tabs: Omit<Snippet, 'source' | 'stdin'>[] = [
+const syntax = [
   {
-    id: 'multitest',
-    title: 'Multitest',
-    status: 'runs',
-    caption: 'The test count is read for you, and nothing leaks from one test to the next.',
+    id: 'input',
+    title: 'Typed input',
+    caption:
+      "The statement's format and limits are written once. They drive parsing, validation and the width of every value.",
   },
   {
-    id: 'optionals',
-    title: 'No sentinels',
-    status: 'runs',
-    caption: "`?Int` means 'maybe no answer'. No -1 or INF to forget.",
+    id: 'commands',
+    title: 'Commands',
+    caption: "A switch on 'I', 'Q' and 'E' with hand-written reads becomes an enum, and match checks every case is handled.",
   },
   {
-    id: 'domains',
-    title: 'Index spaces',
-    status: 'runs',
-    caption: 'Positions of V cannot be mixed with other indices, and the input is validated against the statement.',
+    id: 'records',
+    title: 'Records',
+    caption: 'Named fields come straight from the input. An unreachable answer is None, printed as -1 in one place.',
+  },
+  {
+    id: 'tables',
+    title: 'Tables',
+    caption: 'Build a table over an index space and ask a question about all of it, the way the editorial writes it.',
   },
 ];
 
-export function landingSnippets(): Snippet[] {
-  return tabs.map((t) => {
-    const read = (ext: string) => {
-      const p = join(dir, `${t.id}.${ext}`);
-      return existsSync(p) ? readFileSync(p, 'utf8') : '';
-    };
-    return { ...t, source: read('cp'), stdin: read('in') };
-  });
+const library = [
+  {
+    id: 'btoi20p3',
+    title: 'Rollback DSU as a queue',
+    caption:
+      'BOI 2020 Joker, the whole solution. The editorial needs divide and conquer over a rollback DSU; here minimal finds the shortest windows with an odd cycle and undoing lets the DSU drop from the front.',
+  },
+  {
+    id: 'ioi05p2',
+    title: 'Lazy segment tree',
+    caption:
+      'IOI 2005 Mountain, the whole solution. You write the monoid and the action; SegTree gives range assign, binary search on the tree and coordinate compression through pieces.',
+  },
+  {
+    id: 'cco21p4',
+    title: 'Graph pipelines',
+    caption:
+      'CCO 2021 Travelling Merchant, the whole solution. Peel dead ends off the reversed graph, keep the rest, and settle answers from a heap.',
+  },
+  {
+    id: 'egoi23p4',
+    title: 'Algebra as values',
+    caption:
+      'EGOI 2023 Bikes vs Cars, the whole solution. One closure routine runs over two semirings, and Kruskal takes a key for the maximum forest.',
+  },
+];
+
+async function load(group: string, items: { id: string; title: string; caption: string }[], link: boolean) {
+  return Promise.all(
+    items.map(async (t): Promise<Showcase> => {
+      const source = readFileSync(join(dir, group, `${t.id}.spec.cp`), 'utf8').trimEnd();
+      return {
+        ...t,
+        status: 'checks',
+        lines: source.split('\n').length,
+        html: await highlight(source, 'cp'),
+        href: link && existsSync(join(process.cwd(), '../corpus/problems', t.id)) ? `/corpus/${t.id}` : undefined,
+      };
+    }),
+  );
+}
+
+export const syntaxShowcases = () => load('syntax', syntax, false);
+export const libraryShowcases = () => load('library', library, true);
+
+export function debugDemo() {
+  const read = (f: string) => readFileSync(join(dir, 'debug', f), 'utf8');
+  const stress = JSON.parse(readFileSync(join(process.cwd(), 'content/generated/stress.json'), 'utf8')) as {
+    command: string;
+    output: string;
+  };
+  return { source: read('buy.cp'), stdin: read('buy.in'), stress };
 }

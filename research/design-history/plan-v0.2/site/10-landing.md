@@ -4,6 +4,21 @@ Status: proposed. One screen of "what it looks like" and "why", then
 proof, then where to go. The first thing a visitor sees is CP Lang code
 (Ryan: "on the home page we just need to showcase the syntax asap").
 
+## Value proposition (Ryan, 2026-11-21)
+
+Three pillars, in this order, each with its own section and evidence:
+
+1. Clean, expressive syntax: hero tabs of short 0.3 programs (`checks`).
+2. A powerful standard library: whole solutions to real olympiad
+   problems, lifted from `corpus/problems/<id>/spec.cp` (`checks`).
+3. Easy debugging: a planted bug, real `cpl stress --trace --explain`
+   output regenerated on every build, and the trace viewer on the shrunk
+   case (`runs`, today's compiler).
+
+"Bugs you can't write" and "submit with confidence" are supporting
+lines, not pillars; the sections below that lead with them are
+superseded by this list.
+
 ## Order of sections
 
 1. Beta banner

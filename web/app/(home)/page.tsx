@@ -1,12 +1,15 @@
-import { ArrowRight, BookOpen, Bug, FlaskConical, Gauge, GraduationCap, Code2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Code2, GraduationCap } from 'lucide-react';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import Link from 'next/link';
 import { Runner } from '@/components/runner';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { bench } from '@/lib/bench';
 import { corpus } from '@/lib/corpus';
-import { landingSnippets } from '@/lib/landing';
+import { debugDemo, libraryShowcases, type Showcase, syntaxShowcases } from '@/lib/landing';
 
 const starts = [
   { href: '/learn/start', icon: GraduationCap, title: 'Solve your first problem', text: 'Two minutes, in the browser, no install.' },
@@ -14,14 +17,57 @@ const starts = [
   { href: '/docs', icon: BookOpen, title: 'Look something up', text: 'Guides, the language reference and the library.' },
 ];
 
-const tools = [
-  { icon: FlaskConical, title: 'Stress testing', text: 'cpl stress runs your solution against a brute and shrinks the failing case.' },
-  { icon: Bug, title: 'Traces', text: 'Step through a run and see every value in source terms.' },
-  { icon: Gauge, title: 'explain', text: 'See the widths, layouts and costs the compiler chose.' },
+const pillars = [
+  { href: '#syntax', title: 'Clean, expressive syntax', text: 'The code reads like the editorial.' },
+  { href: '#library', title: 'A powerful standard library', text: 'Hard problems in a dozen lines.' },
+  { href: '#debugging', title: 'Easy debugging', text: 'Stress test, shrink, then step through time.' },
 ];
 
-export default function Home() {
-  const snippets = landingSnippets();
+function Showcases({ items }: { items: Showcase[] }) {
+  return (
+    <Tabs defaultValue={items[0].id} className="min-w-0">
+      <TabsList className="h-auto flex-wrap justify-start">
+        {items.map((s) => (
+          <TabsTrigger key={s.id} value={s.id}>
+            {s.title}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {items.map((s) => (
+        <TabsContent key={s.id} value={s.id}>
+          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">
+              <span>{s.lines} lines</span>
+              <span className="ml-auto flex items-center gap-3">
+                {s.href && (
+                  <Link href={s.href} className="hover:underline">
+                    Compare with the C++ <ArrowRight className="inline size-3.5" />
+                  </Link>
+                )}
+                <StatusBadge status={s.status} />
+              </span>
+            </div>
+            <div
+              className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"
+              dangerouslySetInnerHTML={{ __html: s.html }}
+            />
+            <p className="border-t px-3 py-2 text-sm text-muted-foreground">{s.caption}</p>
+          </div>
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
+export default async function Home() {
+  const [syntax, library] = await Promise.all([syntaxShowcases(), libraryShowcases()]);
+  const debug = debugDemo();
+  const entries = corpus();
+  const inGallery = new Set(entries.map((e) => e.problem));
+  for (const s of library) if (!inGallery.has(s.id)) s.href = undefined;
+  const modules = readdirSync(join(process.cwd(), 'content/docs/ref/std')).filter(
+    (f) => /\.mdx?$/.test(f) && !f.startsWith('index.'),
+  ).length;
   const { ports } = bench();
   const ratios = ports
     .filter((p) => p.above_floor && p.time_ratio != null)
@@ -29,17 +75,29 @@ export default function Home() {
     .sort((a, b) => a - b);
   const median = ratios[Math.floor(ratios.length / 2)];
   const p95 = ratios[Math.ceil(0.95 * ratios.length) - 1];
-  const problems = corpus().length;
+  const problems = entries.length;
   return (
     <main className="container mx-auto max-w-6xl px-4">
-      <section className="grid items-center gap-10 py-16 lg:grid-cols-[1fr_1.2fr]">
-        <div className="space-y-6">
+      <section id="syntax" className="grid items-start gap-10 py-16 lg:grid-cols-[1fr_1.3fr]">
+        <div className="space-y-6 lg:pt-10">
           <p className="text-sm text-muted-foreground">Beta · CP Lang 0.3</p>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Write the idea. Submit fast C++17.</h1>
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Write the editorial, not the boilerplate.
+          </h1>
           <p className="text-lg text-muted-foreground">
-            CP Lang is a language for competitive programming. Types carry what the statement tells you, common bugs
-            can&apos;t be written, and every program compiles to one readable C++17 file you submit anywhere.
+            CP Lang is a language for competitive programming. It compiles to one readable C++17 file you submit
+            anywhere.
           </p>
+          <ul className="space-y-3">
+            {pillars.map((p) => (
+              <li key={p.href}>
+                <a href={p.href} className="group block">
+                  <span className="font-medium group-hover:underline">{p.title}.</span>{' '}
+                  <span className="text-muted-foreground">{p.text}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
               <Link href="/learn/start">
@@ -51,23 +109,61 @@ export default function Home() {
             </Button>
           </div>
         </div>
-        <Tabs defaultValue={snippets[0].id}>
-          <TabsList>
-            {snippets.map((s) => (
-              <TabsTrigger key={s.id} value={s.id}>
-                {s.title}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {snippets.map((s) => (
-            <TabsContent key={s.id} value={s.id}>
-              <Runner source={s.source} stdin={s.stdin} status={s.status} caption={s.caption} />
-            </TabsContent>
-          ))}
-        </Tabs>
+        <Showcases items={syntax} />
       </section>
 
-      <section className="grid gap-4 pb-16 md:grid-cols-3">
+      <section id="library" className="border-t py-16">
+        <div className="mb-8 max-w-2xl space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight">A standard library built for contests</h2>
+          <p className="text-muted-foreground">
+            Each tab is a complete solution to a real olympiad problem. The library has {modules} modules, and every
+            function documents its cost.{' '}
+            <Link href="/docs/ref/std" className="text-foreground hover:underline">
+              Browse the library <ArrowRight className="inline size-3.5" />
+            </Link>
+          </p>
+        </div>
+        <Showcases items={library} />
+        <p className="mt-3 text-sm text-muted-foreground">
+          These are written in CP Lang 0.3. They type-check against the 0.3 spec and do not run yet; the examples below
+          and in the course run today.
+        </p>
+      </section>
+
+      <section id="debugging" className="border-t py-16">
+        <div className="mb-8 max-w-2xl space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Find the bug in seconds</h2>
+          <p className="text-muted-foreground">
+            This solution has a bug. The brute force and the generator live in the same file, so one command finds a
+            failing input, shrinks it, and names the first value that differs. Then you step through both runs side by
+            side.
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Runner source={debug.source} stdin={debug.stdin} status="runs" caption="Run it on the shrunk case: it prints 1, the answer is 2." />
+          <div className="min-w-0 space-y-6">
+            <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <p className="border-b px-3 py-2 font-mono text-xs">$ {debug.stress.command}</p>
+              <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed">{debug.stress.output}</pre>
+              <p className="border-t px-3 py-2 text-sm text-muted-foreground">
+                Real output from today&apos;s compiler, regenerated on every build.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b px-3 py-2 text-sm">
+            <span className="font-medium">Time-travel trace of the shrunk case</span>
+            <span className="text-muted-foreground">solution and brute, step by step</span>
+            <a href="/trace-demo.html" className="ml-auto text-muted-foreground hover:underline">
+              Open full screen <ArrowRight className="inline size-3.5" />
+            </a>
+          </div>
+          <iframe src="/trace-demo.html" title="Trace of the failing case" className="h-[640px] w-full" loading="lazy" />
+        </div>
+      </section>
+
+      <section className="grid gap-4 border-t py-16 md:grid-cols-3">
         {starts.map(({ href, icon: Icon, title, text }) => (
           <Link key={href} href={href} className="group">
             <Card className="h-full transition-colors group-hover:bg-accent">
@@ -79,19 +175,6 @@ export default function Home() {
             </Card>
           </Link>
         ))}
-      </section>
-
-      <section className="border-t py-16">
-        <h2 className="mb-8 text-2xl font-semibold tracking-tight">Doubt to evidence, fast</h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {tools.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="space-y-2">
-              <Icon className="size-5 text-muted-foreground" />
-              <h3 className="font-medium">{title}</h3>
-              <p className="text-sm text-muted-foreground">{text}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="grid gap-4 border-t py-16 md:grid-cols-2">
