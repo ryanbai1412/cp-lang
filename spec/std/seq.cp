@@ -2216,13 +2216,14 @@ pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>:
             used[next - 1] = false
 
 /// O(1). Steerable item yielded by `subsequences` (decision 126, W6).
-pub struct SubseqStep<T>(items: List<T>):
+pub struct SubseqStep<T>(items: List<T>, pruned: Bool = false):
     /// O(1). Skip extending this prefix in the `subsequences` search tree.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2].subsequences().filter(s => s.items.len <= 1 or { s.prune(); false }).count() == 3`
-    pub fn prune(mut self) = todo
+    pub fn prune(mut self):
+        pruned = true
 
 /// O(k) per subsequence. All subsequences of `self` in lex order; supports `step.prune()` (decision 126, W6).
 ///
@@ -2235,14 +2236,17 @@ pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
     let n = self.len
     var pick: List<Int> = []
     while true:
-        yield SubseqStep<T>([self.nth(i) for i in pick])
-        let next = if pick.len > 0: pick[pick.len - 1] + 1 else: 0
-        if next < n:
-            pick.push(next)
-        else:
+        var step = SubseqStep<T>([self.nth(i) for i in pick], false)
+        yield step
+        if not step.pruned:
+            let next = if pick.len > 0: pick[pick.len - 1] + 1 else: 0
+            if next < n:
+                pick.push(next)
+                continue
+        while pick.len > 0 and pick[pick.len - 1] + 1 >= n:
             pick.pop()
-            if pick.len == 0: return
-            pick[pick.len - 1] += 1
+        if pick.len == 0: return
+        pick[pick.len - 1] += 1
 
 /// O(n log n), O(n) memory. The positions of one longest increasing subsequence by `by`;
 /// `strict: false` allows equal neighbours. Longest non-increasing is `by: desc`-style `x => -x`

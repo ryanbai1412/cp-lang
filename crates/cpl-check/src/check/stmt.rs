@@ -1868,9 +1868,11 @@ impl<'a> Checker<'a> {
                 let iter_ty = self.infer(iter);
                 self.iterating_range = prev_iterating;
                 let elem = self.element_ty(&iter_ty);
+                let steerable = matches!(&iter_ty, Ty::Named { name, .. } if name == "Gen")
+                    && matches!(&elem, Ty::Named { .. });
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
-                self.bind(pat, &elem, false, "for");
+                self.bind(pat, &elem, steerable, "for");
                 let mark = self.lend_mark();
                 self.hold_iterated(stmt, iter, &iter_ty);
                 self.block(body);

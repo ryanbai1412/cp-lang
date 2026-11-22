@@ -2679,6 +2679,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let f = &self.program.fns[fn_id];
         if *cid != fn_id
             || !self.fed_ok[fn_id]
+            || matches!(&f.ret, Ty::List(elem) if matches!(**elem, Ty::Struct(_)))
             || f.locals.len() > 512
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()

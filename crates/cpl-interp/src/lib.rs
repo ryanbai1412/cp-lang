@@ -2882,18 +2882,19 @@ impl<'p, 'o> Interp<'p, 'o> {
     /// One value of the `yields` fn that is running goes to the body of
     /// the loop it feeds. An `Err` with `left` set means the body left
     /// the loop, and the fn stops where it is.
-    fn feed(&mut self, value: Value, span: Span) -> Res<()> {
+    fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
         let fed = self.fed_loops.last().expect("asked by the caller");
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
         self.base = caller;
         self.stack[caller + slot] = value;
         let flow = self.block(body);
+        let updated = self.stack[caller + slot].clone();
         self.base = callee;
         self.frame_locals.extend(locals);
         let left = match flow? {
-            Flow::Next | Flow::Continue(None) => return Ok(()),
-            Flow::Continue(Some(target)) if target == id => return Ok(()),
+            Flow::Next | Flow::Continue(None) => return Ok(updated),
+            Flow::Continue(Some(target)) if target == id => return Ok(updated),
             Flow::Break(None) => Flow::Next,
             Flow::Break(Some(target)) if target == id => Flow::Next,
             other => other,
@@ -4632,7 +4633,16 @@ impl<'p, 'o> Interp<'p, 'o> {
         if let (PlaceKind::Local(slot), Some(fed)) = (&place.kind, self.fed_loops.last()) {
             if fed.callee == self.base && fed.acc == *slot {
                 match (op, arg_vals.pop()) {
-                    (Mutation::Push, Some(value)) => self.feed(value, span)?,
+                    (Mutation::Push, Some(value)) => {
+                        let updated = self.feed(value, span)?;
+                        if let Some(Expr {
+                            kind: ExprKind::Local(item_slot),
+                            ..
+                        }) = args.first()
+                        {
+                            self.stack[self.base + *item_slot] = updated;
+                        }
+                    }
                     (Mutation::Extend, Some(Value::List(items))) => {
                         for item in items.iter() {
                             self.feed(item.clone(), span)?;

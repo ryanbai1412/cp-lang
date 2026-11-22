@@ -676,12 +676,14 @@ impl<'p> Emitter<'p> {
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
                 if !rev && matches!(seq.kind, ExprKind::Call(..)) {
-                    let decl = if ty.is_scalar() || var != name {
-                        format!("{cpp} {var}")
+                    let (decl, pushed_first): (String, &[String]) = if matches!(ty, Ty::Struct(_)) && !hoisted {
+                        (format!("auto&& {name}"), &[])
+                    } else if ty.is_scalar() || var != name {
+                        (format!("{cpp} {var}"), &first)
                     } else {
-                        format!("const {cpp}& {var}")
+                        (format!("const {cpp}& {var}"), &first)
                     };
-                    if self.pushed_loop(id, &decl, &first, seq, body, out) {
+                    if self.pushed_loop(id, &decl, pushed_first, seq, body, out) {
                         return;
                     }
                 }
