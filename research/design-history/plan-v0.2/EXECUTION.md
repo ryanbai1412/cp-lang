@@ -16,7 +16,9 @@ Measured, "contest-ready" means:
 | Write, run, build, submit loop | `cpl run`, `cpl build`, `cpl test`, `cpl stress` and `cpl judge` work on any corpus problem |
 | Corpus | 100 of 100 `spec.cp` ports run in both engines and match expected outputs |
 | Conformance | at least 90% of the 503 cases met, and none of the core ch1–ch10 cases missed without a logged reason |
-| Output | every corpus port under 64 KB; p95 under 32 KB; runtime p50 at most 1.0x originals |
+| Output | every corpus port under 64 KB; p95 under 32 KB; runtime p50 at most 1.0x and p95 at most 1.5x originals |
+| Tuning headroom | every port reaches at most 1.1x with an optional hand-tuned `perf.cp` beside its `spec.cp`; `just bench` checks each one |
+| Zero-cost abstractions | `bench/zero-cost/` pairs each abstraction (domains, optionals, iterators and closures, operation values, `SegTree`/`Prefix`, `Mod`) with hand-written CP Lang and requires equal runtime, and equal `-O2` assembly where feasible |
 | Editor | LSP gives diagnostics, hover with types and sizes, completion and go-to on the 100 ports |
 | Bugs | no known wrong-answer bug in either engine; differential fuzz clean for 30 minutes |
 | Docs | reference generated from the stdlib; error index complete |
