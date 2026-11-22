@@ -1105,3 +1105,23 @@ print(if a == Some([false, true]): 1 else: 0)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "1\n");
 }
+
+#[test]
+fn generic_enum_qualified_variant() {
+    let src = "\
+enum Boxed<T>:
+  One(T)
+  Empty
+
+fn wrap<T>(x: T) -> Boxed<T>:
+  Boxed.One(x)
+
+let b = wrap(42)
+match b:
+  Boxed.One(k) => print(k)
+  Boxed.Empty => print(-1)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "42\n");
+}

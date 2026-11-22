@@ -3039,6 +3039,16 @@ impl<'a> Lowerer<'a> {
                         self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                     }
                 }
+                ("Edged" | "Weighted" | "Target", Ty::Record(rfields)) if args.len() == 1 => {
+                    let field_name = match name.text.as_str() {
+                        "Edged" => "e",
+                        "Weighted" => "w",
+                        _ => "to",
+                    };
+                    if let Some((_, fty)) = rfields.iter().find(|(fnm, _)| fnm == field_name) {
+                        self.unify_ast_ty(&args[0], fty, tpl_mod, gen_names, env);
+                    }
+                }
                 (_, concrete_seq)
                     if args.len() == 1
                         && matches!(

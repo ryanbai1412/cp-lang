@@ -7651,6 +7651,60 @@ impl<'a> Lowerer<'a> {
                     }
                 };
             }
+            Some(Sym::GenEnum(gid)) => {
+                let id = match hint {
+                    Some(Ty::Enum(eid)) => Some(*eid),
+                    _ => {
+                        let decl = self.gen_enums[gid].decl;
+                        let tpl_mod = self.gen_enums[gid].mod_id;
+                        let gen_names: Vec<String> =
+                            decl.generics.iter().map(|g| g.text.clone()).collect();
+                        let mut inferred: GenEnv = HashMap::new();
+                        if let Some(variant) =
+                            decl.variants.iter().find(|v| v.name.text == name.text)
+                        {
+                            for (f, arg) in variant.fields.iter().zip(args) {
+                                let dlen = self.diags.len();
+                                let probed = self.expr(&arg.value, None);
+                                self.diags.truncate(dlen);
+                                if probed.ty != Ty::Error {
+                                    self.unify_ast_ty(
+                                        &f.1,
+                                        &probed.ty,
+                                        tpl_mod,
+                                        &gen_names,
+                                        &mut inferred,
+                                    );
+                                }
+                            }
+                        }
+                        if inferred.len() == gen_names.len() {
+                            let gargs: Vec<GenArg> =
+                                gen_names.iter().map(|g| inferred[g].clone()).collect();
+                            Some(self.instantiate_enum(gid, gargs))
+                        } else {
+                            None
+                        }
+                    }
+                };
+                if let Some(id) = id {
+                    return match self.enums[id]
+                        .variants
+                        .iter()
+                        .position(|(v, _)| *v == name.text)
+                    {
+                        Some(tag) => self.variant(id, tag, args, span),
+                        None => {
+                            let message = format!(
+                                "`{}` has no variant `{}`",
+                                self.enums[id].name, name.text
+                            );
+                            self.error(codes::UNKNOWN_FIELD, name.span, message);
+                            self.err_expr(span)
+                        }
+                    };
+                }
+            }
             Some(Sym::Domain(id)) => match name.text.as_str() {
                 "cuts" => {
                     return match self.one_arg("cuts", args, &Ty::Int, span) {
