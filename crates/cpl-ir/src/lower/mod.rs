@@ -3941,10 +3941,14 @@ impl<'a> Lowerer<'a> {
             });
         }
         for ast_p in &decl.params {
+            let bare = ast_p.ty.as_ref().map(|t| match &t.kind {
+                ast::TypeKind::Optional(inner) => &**inner,
+                _ => t,
+            });
             if let Some(ast::Type {
                 kind: ast::TypeKind::Named { name, args },
                 ..
-            }) = &ast_p.ty
+            }) = bare
             {
                 if args.is_empty() {
                     if let Some(GenArg::Op(op)) = self.gen_env.get(&name.text) {

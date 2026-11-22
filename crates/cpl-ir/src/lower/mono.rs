@@ -283,6 +283,10 @@ impl<'a> Lowerer<'a> {
     pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.detect_bare_op(inner),
+            ast::ExprKind::Unwrap(inner) => match &inner.kind {
+                ast::ExprKind::Name(n) => self.cx.op_locals.get(n).copied(),
+                _ => None,
+            },
             ast::ExprKind::Name(n) => {
                 if let Some(&op) = self.cx.op_locals.get(n) {
                     return Some(op);
@@ -1740,7 +1744,12 @@ impl<'a> Lowerer<'a> {
                     op_params.push((param.name.text.clone(), op));
                 }
             }
-            if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+            // `op: ?M = None` binds `M` to a bare operator as `op: M` does.
+            let bare_ty = match &pty.kind {
+                ast::TypeKind::Optional(inner) => inner,
+                _ => pty,
+            };
+            if let ast::TypeKind::Named { name, args: targs } = &bare_ty.kind {
                 if targs.is_empty()
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)

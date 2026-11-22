@@ -567,6 +567,10 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::None => Code::primary(format!("{}()", self.ty(&e.ty))),
+            ExprKind::Some(inner) if inner.ty == Ty::Unit => {
+                let inner = self.expr(inner).text;
+                Code::primary(format!("((void)({inner}), true)"))
+            }
             ExprKind::Some(inner) => {
                 let inner = self.expr(inner).text;
                 Code::primary(format!("{}({inner})", self.ty(&e.ty)))

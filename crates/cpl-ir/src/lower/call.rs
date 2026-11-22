@@ -1229,6 +1229,12 @@ impl<'a> Lowerer<'a> {
                             Ty::Unit,
                             arg.value.span,
                         )));
+                    } else if param.ty == Ty::Opt(Box::new(Ty::Unit))
+                        && self.detect_bare_op(&arg.value).is_some()
+                    {
+                        let unit = self.mk(ExprKind::Unit, Ty::Unit, arg.value.span);
+                        let some = ExprKind::Some(Box::new(unit));
+                        lowered.push(Arg::Value(self.mk(some, param.ty.clone(), arg.value.span)));
                     } else if let Some(list) = self.list_given(&param.ty) {
                         // A list where a `[D]T` is asked for is made as
                         // the list it is; passing it sizes `D`.
