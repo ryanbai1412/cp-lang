@@ -463,11 +463,12 @@ impl<'a> Lexer<'a> {
         // Recovery still closes at `close_at`, so the rest of the line stays
         // inside the bracket; only the fix moves to where the closer most
         // likely belongs, as in `let (a, b = p` or `if a[i: ...`.
-        let fix_at = match self.openers.len() == keep + 1 {
-            true => self.end_of_unclosed(&self.openers[keep]).map(|(_, at)| at),
+        let split = match self.openers.len() == keep + 1 {
+            true => self.end_of_unclosed(&self.openers[keep], keep),
             false => Option::None,
-        }
-        .unwrap_or(close_at);
+        };
+        let fix_at = split.map(|(_, at, _)| at).unwrap_or(close_at);
+        let insert_at = split.and_then(|(idx, at, insert)| insert.then_some((idx, at)));
         self.close_layout_blocks(keep + 1, close_at);
         while self.openers.len() > keep {
             let opener = self.openers.pop().unwrap();
@@ -491,6 +492,16 @@ impl<'a> Lexer<'a> {
                         .with_label(Span::point(next_line as u32), "a new statement starts here");
                 }
                 self.out.diagnostics.push(diag);
+                if let Some((idx, at)) = insert_at {
+                    self.out.tokens.insert(
+                        idx,
+                        Token {
+                            kind: closer_kind,
+                            span: Span::point(at as u32),
+                        },
+                    );
+                    continue;
+                }
             }
             self.push_empty(closer_kind, close_at);
         }
@@ -501,9 +512,11 @@ impl<'a> Lexer<'a> {
     }
 
     /// Where the unclosed `opener` most likely ended, outside a type:
-    /// before an `=`, before a `:` that ends the line or sits in brackets,
-    /// or before a `for` in an index. The token index and byte offset.
-    fn end_of_unclosed(&self, opener: &Opener) -> Option<(usize, usize)> {
+    /// before an `=`, before `->` on a fn header, before `=>` on an empty
+    /// `()`, before a `:` that ends the line or sits in brackets, or before
+    /// a `for` in an index or comprehension call. Returns `(token_index,
+    /// byte_offset, insert_synthetic_closer_there)`.
+    fn end_of_unclosed(&self, opener: &Opener, keep: usize) -> Option<(usize, usize, bool)> {
         use TokenKind::*;
         let tokens = &self.out.tokens;
         let at = tokens
@@ -512,22 +525,32 @@ impl<'a> Lexer<'a> {
         let before = at.checked_sub(1).map(|i| tokens[i].kind);
         // `let a: [0..nInt = ...`: in a type the `]` goes before the
         // element type, which no token marks.
-        if matches!(before, Some(Colon | Arrow)) {
+        if opener.kind == LBracket && matches!(before, Some(Colon | Arrow)) {
             return Option::None;
         }
         let indexing = matches!(before, Some(Ident | RParen | RBracket));
+        let in_bracket = keep > 0 && self.openers[keep - 1].kind == LBracket;
         let mut depth = 0usize;
         for (i, t) in tokens.iter().enumerate().skip(at + 1) {
             match t.kind {
                 LParen | LBracket | LBrace => depth += 1,
                 RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
                 _ if depth > 0 => {}
-                Eq | OpEq => return Some((i, tokens[i - 1].span.end as usize)),
+                Arrow if opener.kind == LParen && before != Some(Fn) => {
+                    return Some((i, tokens[i - 1].span.end as usize, true));
+                }
+                FatArrow if opener.kind == LParen && i == at + 1 => {
+                    return Some((i, opener.span.end as usize, true));
+                }
+                Eq | OpEq => return Some((i, tokens[i - 1].span.end as usize, false)),
                 Colon if opener.kind == LBracket || i + 1 == tokens.len() => {
-                    return Some((i, tokens[i - 1].span.end as usize));
+                    return Some((i, tokens[i - 1].span.end as usize, false));
                 }
                 For if opener.kind == LBracket && indexing => {
-                    return Some((i, tokens[i - 1].span.end as usize));
+                    return Some((i, tokens[i - 1].span.end as usize, false));
+                }
+                For if opener.kind == LParen && indexing && in_bracket => {
+                    return Some((i, tokens[i - 1].span.end as usize, true));
                 }
                 _ => {}
             }

@@ -1544,3 +1544,22 @@ fn an_indented_if_after_eq_is_the_value_and_any_other_indented_value_is_planned(
         d.message
     );
 }
+
+#[test]
+fn unclosed_paren_closes_before_arrow_and_comprehension_for() {
+    let src = "fn f(x: Int -> Int = x + 1\n";
+    let d = one_diag(src);
+    assert_eq!(d.code, cpl_diag::codes::UNCLOSED_DELIMITER);
+    let (span, text) = &d.fixes[0].edits[0];
+    let mut fixed = src.to_string();
+    fixed.replace_range(span.start as usize..span.end as usize, text);
+    assert_eq!(fixed, "fn f(x: Int) -> Int = x + 1\n");
+
+    let src = "let ys = [x.bit(b for x in xs for b in 0..3]\n";
+    let d = one_diag(src);
+    assert_eq!(d.code, cpl_diag::codes::UNCLOSED_DELIMITER);
+    let (span, text) = &d.fixes[0].edits[0];
+    let mut fixed = src.to_string();
+    fixed.replace_range(span.start as usize..span.end as usize, text);
+    assert_eq!(fixed, "let ys = [x.bit(b) for x in xs for b in 0..3]\n");
+}
