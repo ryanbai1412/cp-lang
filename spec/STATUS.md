@@ -76,6 +76,10 @@ commits.
 
 ## Open
 
+- **Conformance:** `scripts/conformance.py` runs `spec/conformance`; every
+  case the checker does not meet is a checker or interpreter bug against the
+  spec (wrong diagnostic code, a lint reported as an error, a missing error).
+  `--rules` reports rules with no case once chapters carry `(Rnn.n)` ids.
 - **Library docs to the entry standard** (`std/README.md`): every pub fn states
   `cost`, `traps` and an `example`, plus `empty`, `ties` and `order` where they
   apply. `scripts/spec-stub.py --audit` lists the gaps (all 1,972 entries at
