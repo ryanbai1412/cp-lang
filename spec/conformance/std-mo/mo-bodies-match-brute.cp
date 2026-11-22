@@ -20,9 +20,9 @@ for qi in 0..qs.len:
     var t = 0
     for i in qs[qi]: t += a[i]
     if t != got[qi]: ok = false
-print(ok)
+print(yes(ok))
 let hord = mo_order_hilbert(qs)
-print(hord.sorted() == [i for i in 0..qs.len])
+print(yes(hord.sorted() == [i for i in 0..qs.len]))
 var ups = List<(pos: N, by: Int)>()
 for _ in 0..15: ups.push((pos: N(rng.int(0, 39)), by: rng.int(1, 5)))
 var tq = List<(range: Range<N>, time: Int)>()
@@ -45,4 +45,4 @@ for qi in 0..tq.len:
     var t = 0
     for i in tq[qi].range: t += c[i]
     if t != got2[qi]: ok2 = false
-print(ok2)
+print(yes(ok2))

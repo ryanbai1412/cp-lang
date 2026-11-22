@@ -789,10 +789,14 @@ impl<'a> Checker<'a> {
                     .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
                 for (arg, ty) in args.iter().zip(&tys) {
                     if arg.name.is_none() && !self.implements_print(ty, allow_none) {
-                        let message = format!(
-                            "`{}` has type `{ty}`, which does not implement `Print`",
-                            self.quote(arg.value.span)
-                        );
+                        let snippet = self.quote(arg.value.span);
+                        let message = if matches!(ty, Ty::Bool) {
+                            format!(
+                                "`{snippet}` has type `Bool`, which does not implement `Print`; use `print(yes({snippet}))`"
+                            )
+                        } else {
+                            format!("`{snippet}` has type `{ty}`, which does not implement `Print`")
+                        };
                         self.error(codes::MISSING_IMPL, arg.value.span, message);
                     }
                 }

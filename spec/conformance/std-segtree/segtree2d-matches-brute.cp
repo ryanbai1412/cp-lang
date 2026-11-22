@@ -29,4 +29,4 @@ for _ in 0..200:
     for i in r0..=r1:
         for j in c0..=c1: best = max(best, a[R(i), C(j)])
     if h.fold(R(r0)..=R(r1), C(c0)..=C(c1)) != best: ok = false
-print(ok)
+print(yes(ok))

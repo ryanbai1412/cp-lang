@@ -18,4 +18,4 @@ for _ in 0..100:
     var best = -1_000_000
     for (a, b) in ls: best = max(best, a * x + b)
     if u.at(x) != Some(best): ok = false
-print(ok)
+print(yes(ok))

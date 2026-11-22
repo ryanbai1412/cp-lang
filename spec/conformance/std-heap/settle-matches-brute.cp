@@ -10,7 +10,7 @@ s.offer('a', 2)
 s.offer('a', 4)
 print(show(s.get('a')), show(s.get('b')))
 s.offer('b', 3)
-print(s.settled('a'), show(s.pop()), s.settled('a'))
+print(yes(s.settled('a')), show(s.pop()), yes(s.settled('a')))
 s.offer('a', 1)
 print(show(s.pop()), show(s.pop()), show(s.get('a')))
 var t: Settle<Char, Int> = Settle(best: max)
@@ -40,4 +40,4 @@ for _ in 0..500:
             fin[k] = true
         else:
             ok = false
-print(ok)
+print(yes(ok))

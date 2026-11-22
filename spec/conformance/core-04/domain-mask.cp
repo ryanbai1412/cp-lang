@@ -4,4 +4,4 @@
 domain V = 1..=4
 let chosen: List<V> = [V(2), V(4)]
 let m = V.mask(chosen)
-print(m[V(1)], m[V(2)], m[V(3)], m[V(4)])
+print(yes(m[V(1)]), yes(m[V(2)]), yes(m[V(3)]), yes(m[V(4)]))

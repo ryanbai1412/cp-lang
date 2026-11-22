@@ -1806,8 +1806,8 @@ impl<'a> Checker<'a> {
             | Ty::Str
             | Ty::Range { .. }
             | Ty::Pos(_)
-            | Ty::Bool
             | Ty::Unit => true,
+            Ty::Bool => std::env::var_os("CPL_SPEC").is_none(),
             Ty::Optional(inner) => {
                 if std::env::var_os("CPL_SPEC").is_none() || matches!(inner.as_ref(), Ty::Pos(_)) {
                     return true;

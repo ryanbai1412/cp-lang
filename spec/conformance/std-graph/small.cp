@@ -16,7 +16,7 @@ w[V(2), V(1)] = Some(2)
 w[V(0), V(2)] = Some(5)
 w[V(2), V(0)] = Some(5)
 let pr = prim(w)!
-print(pr.total == 3 and pr.parent[V(0)] == None and pr.parent[V(1)] == Some(V(0)) and pr.parent[V(2)] == Some(V(1)))
+print(yes(pr.total == 3 and pr.parent[V(0)] == None and pr.parent[V(1)] == Some(V(0)) and pr.parent[V(2)] == Some(V(1))))
 domain U = 0..4
 let adj: [U]Bitset<U> = [Bitset.of([U(1), U(2)]), Bitset.of([U(0), U(2)]), Bitset.of([U(0), U(1), U(3)]), Bitset.of([U(2)])]
 print(max_clique(adj))

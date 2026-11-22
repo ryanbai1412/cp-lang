@@ -31,4 +31,4 @@ for _ in 0..300:
     if v.kth(r, k) != Some(ys[k]) or v.count_lt(r, x) != lt or v.rank(r, x) != eq or v.quantile_sum(r, k) != pre: ok = false
     let pv: ?Int = if lt == 0: None else: Some(ys[lt - 1])
     if v.prev_val(r, x) != pv: ok = false
-print(ok)
+print(yes(ok))

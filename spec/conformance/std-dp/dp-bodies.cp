@@ -30,4 +30,4 @@ for _ in 0..200:
                 bv = f(i, j)
                 bj = j
         if got[i].val != bv or got[i].at != bj: ok = false
-print(ok)
+print(yes(ok))

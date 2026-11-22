@@ -1,7 +1,7 @@
 // expect: ok, output "0 1 2 0 0 1 YES\nYES"
 use std.dp.{monge_path, monge_paths}
 let r = monge_paths([0, 1, 2], (a, b) => (b - a) * (b - a))
-print(r.val, r.prev, monge_path([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: 2, count: 2))
+print(r.val, r.prev, yes(monge_path([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: 2, count: 2)))
 var ok = true
 var seed = 7
 for t in 0..60:
@@ -23,4 +23,4 @@ for t in 0..60:
     if got.val != best: ok = false
     for i in 1..n:
         if got.val[got.prev[i]] + c(xs[got.prev[i]], xs[i]) != got.val[i]: ok = false
-print(ok)
+print(yes(ok))

@@ -9,9 +9,9 @@ print(h.at_next(0) ?? -1, h.at_next(2) ?? -1)
 var g = MonotoneHull<Int>(min)
 g.add(Line(1, 0), tag: 7)
 g.add(Line(-1, 2), tag: 3)
-print(g.best_next(1) == Some((val: 1, tag: 3)))
+print(yes(g.best_next(1) == Some((val: 1, tag: 3))))
 h.clear()
-print(h.at(0) == None)
+print(yes(h.at(0) == None))
 var rng = Rng(9)
 var ok = true
 for _ in 0..200:
@@ -32,4 +32,4 @@ for _ in 0..200:
             if (use_max and v > best) or (not use_max and v < best): best = v
         if hh.at(x) != Some(best) or hh.at_next(x) != Some(best): ok = false
         x += rng.int(0, 3)
-print(ok)
+print(yes(ok))

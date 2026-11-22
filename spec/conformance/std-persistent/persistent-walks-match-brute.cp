@@ -34,4 +34,4 @@ for _ in 0..200:
         s2 += arrs[j][g - 1]
         g -= 1
     if u.left_while(vs[j], Q.cuts.nth(from), z => z <= lim).ord != g: ok = false
-print(ok)
+print(yes(ok))

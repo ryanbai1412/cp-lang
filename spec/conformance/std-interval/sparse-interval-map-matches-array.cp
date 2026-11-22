@@ -38,4 +38,4 @@ for _ in 0..300:
     if z.runs != runs: ok = false
     for i in -20..20:
         if z.get(i) != arr[i + 20]: ok = false
-print(ok)
+print(yes(ok))

@@ -36,4 +36,4 @@ for _ in 0..300:
     for i in r0..=r1:
         for j in c0..=c1: best = min(best, b[X(i), Y(j)])
     if st.fold(X(r0)..=X(r1), Y(c0)..=Y(c1)) != best: ok = false
-print(ok)
+print(yes(ok))

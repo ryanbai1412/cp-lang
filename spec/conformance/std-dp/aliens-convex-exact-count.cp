@@ -6,7 +6,7 @@ fn best(lam: Int) -> (val: Int, count: Int):
         let v = (c - 3) * (c - 3) + lam * c
         if v < b.val: b = (val: v, count: c)
     b
-print(aliens(5, best) == 4, aliens(3, best), aliens(0, best), aliens(7, best, lambdas: -100..=100))
+print(yes(aliens(5, best) == 4), aliens(3, best), aliens(0, best), aliens(7, best, lambdas: -100..=100))
 fn pick(lam: Int) -> (val: Int, count: Int):
     var (v, c) = (0, 0)
     for x in [-5, -3, -1, 2, 4]:

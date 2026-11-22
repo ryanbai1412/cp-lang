@@ -21,4 +21,4 @@ for l in L:
     if c.left[l]: cov += 1
 for r in R:
     if c.right[r]: cov += 1
-print(cov == 500)
+print(yes(cov == 500))
