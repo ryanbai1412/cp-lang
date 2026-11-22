@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1355 (995 passing). Rules: 521.
+Cases: 1356 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 1355 (995 passing). Rules: 521.
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 87 cases; 0 uncovered, 3 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
-- R09 (09-contexts-checks.md): 25 rules, 37 cases; 4 uncovered, 5 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 25 rules, 38 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 44 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -492,7 +492,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R09.1.1 [1+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
-- R09.1.3 [2+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
+- R09.1.3 [3+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
 - R09.1.4 [0+ 0-] **uncovered**: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [1+ 1-]: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
