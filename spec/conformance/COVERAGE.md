@@ -6,17 +6,17 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1640 (995 passing). Rules: 527.
+Cases: 1666 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R03 (03-numbers-layout.md): 24 rules, 46 cases; 0 uncovered, 7 happy-path only, 4 negative only
-- R04 (04-indices.md): 60 rules, 79 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 24 rules, 48 cases; 0 uncovered, 7 happy-path only, 4 negative only
+- R04 (04-indices.md): 60 rules, 80 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 43 rules, 92 cases; 0 uncovered, 3 happy-path only, 4 negative only
+- R05 (05-ownership.md): 43 rules, 93 cases; 0 uncovered, 3 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 24 rules, 60 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 101 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 67 cases; 0 uncovered, 2 happy-path only, 5 negative only
@@ -148,9 +148,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.9 [0+ 1-] *negative only*: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
 - R03.1.8 [0+ 1-] *negative only*: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-] *happy-path only*: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
-- R03.2.2 [1+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
+- R03.2.2 [2+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
 - R03.2.3 [1+ 1-]: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...
-- R03.2.4 [1+ 0-]: **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, ...
+- R03.2.4 [2+ 0-]: **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, ...
 - R03.2.5 [1+ 0-]: **Several payload variants:** the largest variant (first on a tie) sets the layout. Every ...
 - R03.2.6 [1+ 0-] *happy-path only*: **Otherwise a tag byte** beside the largest payload, rounded up to alignment: when no fiel...
 - R03.2.7 [1+ 0-] *happy-path only*: `[V]?T` is `[V]T` with spares wherever `T` has one: the distance array `[V]?Int` is 8 byte...
@@ -187,7 +187,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [1+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
-- R04.4.1 [3+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
+- R04.4.1 [4+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.5 [1+ 2-]: Only the literal `a..b` does it. A stored cut range never becomes a piece: `let s = j..i; ...
 - R04.4.6 [1+ 1-]: Only half-open: `j..=i` on cuts names no piece, so it's an error where a `Range<V>` is exp...
@@ -302,7 +302,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R05.2.1 [1+ 0-] *happy-path only*: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
 - R05.2.2 [1+ 3-]: **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`, `SegTree` and any ...
-- R05.3.1 [1+ 1-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
+- R05.3.1 [2+ 1-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
@@ -739,7 +739,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 8 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 55 case(s)
+- R0401 Assertion failed: 63 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 9 case(s)
 - R0502 Input outside its read contract: 2 case(s)
