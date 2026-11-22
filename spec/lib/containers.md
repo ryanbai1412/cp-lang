@@ -97,6 +97,10 @@ variants recur:
 
 ### 1.4 Heaps
 
+> Superseded by `std/heap.cp`: one type per shape (`Heap`, `ErasableHeap`,
+> `IndexedHeap`, `MeldHeap`) with `by:`; `MinHeap`/`MaxHeap` are aliases of
+> `Heap`, `peek` returns an unnamed `?(D, K)`, and `of(xs, by:)` builds in O(n).
+
 `MinHeap<T>` and `MaxHeap<T>` (chosen by name, never a hidden comparator flag;
 mixed tie-breaking via `Desc<T>`) cover standard priority queues, Dijkstra, and
 greedy scheduling. Three gaps appear across contests:
@@ -158,7 +162,7 @@ one heap node per entry (high RSS and cache misses). In C++, contestants reach
 for `gp_hash_table` or a custom open-addressing flat table (`FlatMap<Int, V>`)
 when `n >= 2e5` and hash lookups are the bottleneck.
 
-`std.hashmap` provides `FlatMap<V>` and `FlatSet` (open-addressing linear
+`std.hashmap` provides `FlatMap<V>` (open-addressing linear
 probing over `Int` keys with salted `splitmix64`, power-of-two table, load
 factor <= 0.5, O(1) expected lookup/insert/remove, ~16 bytes/entry vs ~48 bytes
 for `std::unordered_map`). It is explicit by name — never silently substituted
@@ -249,6 +253,11 @@ Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals
 agrees with brute-force 0/1 subset sums on random small weight multisets.
 
 ### 2.2 `std.bag` (augmented ordered multiset, set, and map with cursors)
+
+> Superseded in part: decision 103 replaces `first_ge`/`first_gt`/`last_le`/
+> `last_lt`/`count_range` with `range(r)` views, and the monotone searches are
+> `first_true`/`last_true` (decision 137, `core/04-indices.md`), not
+> `bsearch_first`/`bsearch_last`. `drain(r)` is `drain_range(r)`.
 
 `SortedBag<K>` is backed by a randomized treap over flat arrays with a recycled
 free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2) and parent
@@ -377,8 +386,7 @@ struct PotentialDsu<V>                        // O(alpha(n)), O(log n) after mar
     fn undo_to(mut self, snap: Mark)          // O(1) per undone unite
 
 struct RollbackArray<D, T>                    // O(1) get/set/mark, O(changes) undo
-    fn new(init: [D]T) -> RollbackArray<D, T> // O(D.K)
-    fn filled(val: T) -> RollbackArray<D, T>  // O(D.K)
+    fn new(init: D -> T) -> RollbackArray<D, T> // O(n), n = D.count; filled is new(_ => v)
     fn get(self, i: D) -> T                   // O(1)
     fn set(mut self, i: D, val: T)            // O(1)
     fn mark(self) -> Mark                     // O(1)
@@ -393,6 +401,8 @@ unites, contradictions, and rollbacks; `RollbackArray` matches full array
 snapshots across random `set`/`mark`/`undo_to` sequences.
 
 ### 2.5 `std.heap`
+
+> Superseded: see the note in 1.4 and `std/heap.cp`.
 
 ```cp
 // Existing: MinHeap<T>, MaxHeap<T>
@@ -469,10 +479,10 @@ struct TwoStackFold<T>                        // O(1) amortized queue monoid fol
 // New in std.marks:
 struct MarkMap<D, T>                          // O(1) get/set/remove/clear
     fn new(default: T) -> MarkMap<D, T>       // O(D.K) once
-    fn get(self, v: D) -> T                   // O(1); default when unset
+    fn get(self, v: D) -> ?T                  // O(1); None when unset
     fn set(mut self, v: D, x: T)              // O(1)
     fn contains(self, v: D) -> Bool           // O(1)
-    fn remove(mut self, v: D) -> Bool         // O(1)
+    fn remove(mut self, v: D) -> ?T           // O(1); the old value
     fn clear(mut self)                        // O(1) epoch bump
     @get fn len(self) -> Int                  // O(1)
     @get fn is_empty(self) -> Bool            // O(1)
@@ -481,7 +491,7 @@ struct Interner<K>                            // online key <-> 0..len id
     fn new() -> Interner<K>                   // O(1)
     @get fn len(self) -> Int                  // O(1)
     @get fn is_empty(self) -> Bool            // O(1)
-    fn id(mut self, k: K) -> Int              // O(log n)
+    fn id(mut self, k: K) -> Int              // O(1) expected (HashMap)
     fn get(self, k: K) -> ?Int                // O(log n)
     fn key(self, idx: Int) -> K               // O(1)
     @get fn keys(self) -> List<K>             // O(1)
@@ -502,7 +512,7 @@ keys when constant factor and memory matter:
 
 ```cp
 struct FlatMap<V>                             // O(1) expected; open addressing
-    fn new(cap: Int = 16) -> FlatMap<V>       // O(cap)
+    fn new(default_val: V, cap: Int = 16) -> FlatMap<V> // O(cap)
     @get fn len(self) -> Int                  // O(1)
     @get fn is_empty(self) -> Bool            // O(1)
     fn clear(mut self)                        // O(table_size)
@@ -510,7 +520,7 @@ struct FlatMap<V>                             // O(1) expected; open addressing
     fn get(self, k: Int) -> ?V                // O(1) expected
     fn set(mut self, k: Int, v: V)            // O(1) expected
     fn remove(mut self, k: Int) -> ?V         // O(1) expected (backward shift)
-    fn each(self) -> yields (key: Int, val: V)// O(table_size)
+    @get fn items(self) -> yields (Int, V)    // O(table_size); also keys, values
 ```
 
 Uses a per-instance random `splitmix64` salt (initialized from `rand`) so
@@ -771,9 +781,7 @@ After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
   prefix/range sums on `SortedBag`. If a second user appears, the general
   mechanism is a monoid-augmented `SortedBag<K, M: Monoid>` (matching `SegTree`
   / `Fenwick`), not an ad-hoc `.sum` field on `SortedBag<K>`.
-- **`PMultiset` (1 user):** deferred because only a single dream asks for a
-  persistent multiset. Wait for a second user before adding a persistent treap
-  surface.
+- **`PMultiset`:** now in `std.persistent` (no longer deferred).
 - **`MinHeap(by:)` (resolved by existing idiom):** `cf2159f.cp` reads cleanly
   with `stdlib/heap.cp`'s documented `(key, payload)` / `(key, desc(v))` entry
   idiom (`var heap = MinHeap<(Int, Seg)>()`), with zero comparator indirection.
