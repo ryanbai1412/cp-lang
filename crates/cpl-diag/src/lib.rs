@@ -150,6 +150,7 @@ pub mod codes {
     pub const MUT_OF_IMMUTABLE: Code = Code("E0403");
     /// A `var`-bound lambda that calls itself.
     pub const VAR_LAMBDA_RECURSION: Code = Code("E0406");
+    pub const DUPLICATE_VARIANT_TAG: Code = Code("E0407");
 
     pub const UNSUPPORTED: Code = Code("E0501");
     /// A warning: a statement that only works out a value.
@@ -176,6 +177,10 @@ pub mod codes {
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
     /// A heap value read after `let b = a` moved it.
     pub const USE_AFTER_MOVE: Code = Code("E0608");
+
+    pub const AMBIGUOUS_METHOD: Code = Code("E0701");
+    pub const QUESTION_IN_CONDITION: Code = Code("E0803");
+    pub const INFERENCE_NEEDS_ANNOTATION: Code = Code("E0806");
 
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");

@@ -33,6 +33,8 @@ pub enum Def {
         defaults: Vec<Option<Ty>>,
         /// Fields in declaration order: also the constructor's parameters.
         fields: Vec<crate::ty::Param>,
+        /// Field names declared with `var` (assignable after construction).
+        var_fields: Vec<String>,
         methods: Vec<(String, Ty)>,
         /// The parameters of `fn new(..)` when the struct defines it:
         /// outside the struct's body, `S(..)` calls `new`.

@@ -277,6 +277,7 @@ impl<'a> Checker<'a> {
                 span,
                 name: lookup_name.to_string(),
                 top_level: false,
+                in_lambda: false,
             });
             self.hovers.push(HoverEntry {
                 span,
@@ -889,6 +890,12 @@ impl<'a> Checker<'a> {
                         lazy: false,
                     })
                     .collect();
+                let var_fields: Vec<String> = s
+                    .fields
+                    .iter()
+                    .filter(|f| f.mutable)
+                    .map(|f| f.name.text.clone())
+                    .collect();
                 let (methods, getters, mutators) = self.method_sigs(&s.methods, &self_ty);
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
@@ -910,6 +917,7 @@ impl<'a> Checker<'a> {
                         generics,
                         defaults,
                         fields,
+                        var_fields,
                         methods,
                         ctor,
                         getters,

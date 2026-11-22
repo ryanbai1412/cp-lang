@@ -781,6 +781,41 @@ impl Database {
             }
             sink.push(diag);
         }
+        if std::env::var_os("CPL_SPEC").is_some() {
+            for (index, item) in items.iter().enumerate() {
+                for stmt in &item.parsed.stmts {
+                    if let StmtKind::Use { names, alias, .. } = &stmt.kind {
+                        let imported: Vec<(&str, Span)> = if let Some(a) = alias {
+                            vec![(&a.text, a.span)]
+                        } else {
+                            names.iter().map(|n| (n.text.as_str(), n.span)).collect()
+                        };
+                        for (iname, ispan) in imported {
+                            if let Some(&def_index) = scope.names.get(iname) {
+                                if let Some(decl) =
+                                    items[def_index].decls.iter().find(|d| d.name == iname)
+                                {
+                                    let dspan =
+                                        decl.span.shift(ranges[def_index].span.start);
+                                    let diag = Diagnostic::error(
+                                        codes::DUPLICATE_DEFINITION,
+                                        dspan,
+                                        format!(
+                                            "`{iname}` is already imported by `use` in this file"
+                                        ),
+                                    )
+                                    .with_label(
+                                        ispan.shift(ranges[index].span.start),
+                                        format!("`{iname}` imported here"),
+                                    );
+                                    sink.push(diag);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         for (index, check) in checks.iter().enumerate() {
             let offset = ranges[index].span.start;
             for r in check.refs.iter().filter(|r| r.top_level) {
@@ -808,8 +843,13 @@ impl Database {
                 } else {
                     format!("`{}` is used here before it is set on line {line}", r.name)
                 };
+                let code = if r.in_lambda && std::env::var_os("CPL_SPEC").is_some() {
+                    codes::UNRESOLVED_NAME
+                } else {
+                    codes::USED_BEFORE_SET
+                };
                 let mut diag =
-                    Diagnostic::error(codes::USED_BEFORE_SET, r.span.shift(offset), message);
+                    Diagnostic::error(code, r.span.shift(offset), message);
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")

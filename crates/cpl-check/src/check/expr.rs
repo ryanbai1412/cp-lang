@@ -699,13 +699,22 @@ impl<'a> Checker<'a> {
         let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
             return;
         };
-        if variants.iter().any(|(_, fields)| !fields.is_empty()) {
+        if std::env::var_os("CPL_SPEC").is_none()
+            && variants.iter().any(|(_, fields)| !fields.is_empty())
+        {
             return;
+        }
+        fn irrefutable(pat: &Pattern) -> bool {
+            match &pat.kind {
+                PatternKind::Wildcard | PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Error => true,
+                PatternKind::Tuple(items) => items.iter().all(irrefutable),
+                _ => false,
+            }
         }
         // `None`: the pattern takes every value.
         fn named(pat: &Pattern, variants: &[(String, Vec<Ty>)], out: &mut Vec<String>) -> Option<()> {
             match &pat.kind {
-                PatternKind::Variant { path, args } if args.is_empty() => {
+                PatternKind::Variant { path, args } if args.iter().all(irrefutable) => {
                     out.push(path.last()?.text.clone());
                     Some(())
                 }
@@ -802,6 +811,16 @@ impl<'a> Checker<'a> {
     pub(crate) fn cond(&mut self, cond: &Cond) {
         match cond {
             Cond::Expr(expr) => {
+                let in_opt_fn = matches!(
+                    self.fns.last().map(|(_, r, _, _)| r),
+                    Some(Ty::Optional(_))
+                );
+                if !in_opt_fn {
+                    if let Some(try_span) = Self::find_bare_try(expr) {
+                        let message = "`?` cannot be used directly in a condition; write `(... ?? false)`".to_string();
+                        self.error(codes::QUESTION_IN_CONDITION, try_span, message);
+                    }
+                }
                 let ty = self.infer(expr);
                 self.require_bool(&ty, expr, "the condition");
             }
@@ -809,6 +828,16 @@ impl<'a> Checker<'a> {
                 self.infer(expr);
             }
             Cond::Guard { test, and } => {
+                let in_opt_fn = matches!(
+                    self.fns.last().map(|(_, r, _, _)| r),
+                    Some(Ty::Optional(_))
+                );
+                if !in_opt_fn {
+                    if let Some(try_span) = Self::find_bare_try(test) {
+                        let message = "`?` cannot be used directly in a condition; write `(... ?? false)`".to_string();
+                        self.error(codes::QUESTION_IN_CONDITION, try_span, message);
+                    }
+                }
                 let ty = self.infer(test);
                 self.require_bool(&ty, test, "the condition");
                 self.cond(and);
@@ -824,6 +853,30 @@ impl<'a> Checker<'a> {
                     self.cond(and);
                 }
             }
+        }
+    }
+
+    fn find_bare_try(expr: &Expr) -> Option<Span> {
+        match &expr.kind {
+            ExprKind::Try(_) => Some(expr.span),
+            ExprKind::Binary { op: BinOp::Coalesce, .. } => None,
+            ExprKind::Binary { lhs, rhs, .. } => {
+                Self::find_bare_try(lhs).or_else(|| Self::find_bare_try(rhs))
+            }
+            ExprKind::Compare { first, rest } => {
+                Self::find_bare_try(first).or_else(|| {
+                    rest.iter().find_map(|(_, rhs)| Self::find_bare_try(rhs))
+                })
+            }
+            ExprKind::Unary { expr: operand, .. }
+            | ExprKind::Paren(operand)
+            | ExprKind::Unwrap(operand)
+            | ExprKind::Field { base: operand, .. } => Self::find_bare_try(operand),
+            ExprKind::Call { callee, args } => Self::find_bare_try(callee)
+                .or_else(|| args.iter().find_map(|a| Self::find_bare_try(&a.value))),
+            ExprKind::Index { base, indices } => Self::find_bare_try(base)
+                .or_else(|| indices.iter().find_map(Self::find_bare_try)),
+            _ => None,
         }
     }
 
@@ -1143,7 +1196,7 @@ impl<'a> Checker<'a> {
             _ => false,
         };
         let spec = std::env::var_os("CPL_SPEC").is_some();
-        if inclusive && hi_is_bounds && !self.expected_bounds_range && (!spec || self.expected_piece) {
+        if !spec && inclusive && hi_is_bounds && !self.expected_bounds_range {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)
@@ -1218,6 +1271,29 @@ impl<'a> Checker<'a> {
         right: &Ty,
         right_expr: &Expr,
     ) {
+        if std::env::var_os("CPL_SPEC").is_some()
+            && !tests_none
+            && matches!(
+                op,
+                ast::CmpOp::Lt | ast::CmpOp::Le | ast::CmpOp::Gt | ast::CmpOp::Ge
+            )
+            && (matches!(left, Ty::Optional(_)) || matches!(right, Ty::Optional(_)))
+        {
+            let op_str = match op {
+                ast::CmpOp::Lt => "<",
+                ast::CmpOp::Le => "<=",
+                ast::CmpOp::Gt => ">",
+                ast::CmpOp::Ge => ">=",
+                _ => "?",
+            };
+            let message = format!(
+                "optional values can't be ordered with `{op_str}`"
+            );
+            if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, left_expr.span, message) {
+                diag.help = Some("unwrap with `??` or `!` before comparing".into());
+            }
+            return;
+        }
         if std::env::var_os("CPL_SPEC").is_some()
             && !tests_none
             && !left.is_vague()
@@ -1994,6 +2070,53 @@ impl<'a> Checker<'a> {
                         _ => {}
                     }
                 }
+                {
+                    let has_inherent = match self.type_def(type_name).as_deref() {
+                        Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) => {
+                            methods.iter().any(|(m, _)| m == &name.text)
+                        }
+                        _ => false,
+                    };
+                    if !has_inherent {
+                        let mut trait_hits: Vec<String> = Vec::new();
+                        for (trait_name, def) in self.env.impls(type_name) {
+                            let Some(tn) = trait_name else { continue };
+                            let has_in_impl = matches!(
+                                &*def,
+                                Def::Impl { methods, .. }
+                                    if methods.iter().any(|(m, _)| m == &name.text)
+                            );
+                            let has_in_trait = self
+                                .type_def(tn.split('<').next().unwrap_or(&tn))
+                                .as_deref()
+                                .is_some_and(|d| {
+                                    matches!(
+                                        d,
+                                        Def::Trait { methods, .. }
+                                            if methods.iter().any(|m| m.name == name.text)
+                                    )
+                                });
+                            if (has_in_impl || has_in_trait) && !trait_hits.contains(&tn) {
+                                trait_hits.push(tn);
+                            }
+                        }
+                        if trait_hits.len() >= 2 {
+                            let message = format!(
+                                "`{type_name}.{}` is ambiguous: both `{}` and `{}` define it",
+                                name.text, trait_hits[0], trait_hits[1]
+                            );
+                            if let Some(diag) =
+                                self.error(codes::AMBIGUOUS_METHOD, name.span, message)
+                            {
+                                diag.help = Some(format!(
+                                    "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
+                                    trait_hits[0], name.text, trait_hits[1], name.text
+                                ));
+                            }
+                            return Ty::Error;
+                        }
+                    }
+                }
                 self.members_of(type_name).map(|members| {
                     let bindings = members.bindings(args);
                     (
@@ -2539,12 +2662,28 @@ impl<'a> Checker<'a> {
                             }
                         }
                     }
-                    if matches!(got, Ty::Named { name, .. } if name == "Range") {
-                        slice = true;
-                        kept.push(want.clone());
-                        continue;
+                    if let Ty::Named { name, args } = got {
+                        if name == "Range" {
+                            if std::env::var_os("CPL_SPEC").is_some()
+                                && matches!(args.as_slice(), [Ty::Pos(d)] if d.ends_with(".cuts"))
+                                && !matches!(want, Ty::Pos(w) if w.ends_with(".cuts"))
+                            {
+                                let message = format!(
+                                    "`{}` is a cut range (`{got}`), not a position range for `{}`",
+                                    self.quote(index_expr.span),
+                                    self.quote(base.span)
+                                );
+                                self.error(codes::TYPE_MISMATCH, index_expr.span, message);
+                            }
+                            slice = true;
+                            kept.push(want.clone());
+                            continue;
+                        }
                     }
-                    if self.fits(got, want) || self.literal_position(index_expr, want) {
+                    if self.fits(got, want)
+                        || (std::env::var_os("CPL_SPEC").is_none()
+                            && self.literal_position(index_expr, want))
+                    {
                         continue;
                     }
                     let message = format!(

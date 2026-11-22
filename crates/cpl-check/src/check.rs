@@ -91,6 +91,8 @@ pub struct GlobalRef {
     /// True if the use runs as part of the file's top-level code, not
     /// inside a fn body.
     pub top_level: bool,
+    /// True if the use is inside a top-level lambda.
+    pub in_lambda: bool,
 }
 
 pub(crate) struct Checker<'a> {
@@ -160,6 +162,8 @@ pub(crate) struct Checker<'a> {
     pub(crate) local_effects: HashMap<String, lends::Effects>,
     /// Parallel to `fns`: true when the enclosing fn has a `lends` clause.
     pub(crate) fn_lends: Vec<bool>,
+    /// Sibling local fns and the sibling `let`/`var` names they capture.
+    pub(crate) local_fn_captures: Vec<(String, Vec<String>)>,
 }
 
 pub(crate) struct Checked {
@@ -209,6 +213,7 @@ impl<'a> Checker<'a> {
             memo_captured: Vec::new(),
             local_effects: HashMap::new(),
             fn_lends: Vec::new(),
+            local_fn_captures: Vec::new(),
         }
     }
 
@@ -617,7 +622,8 @@ impl<'a> Checker<'a> {
             self.refs.push(GlobalRef {
                 span,
                 name: name.to_string(),
-                top_level: self.fns.is_empty(),
+                top_level: self.in_fn == 0,
+                in_lambda: self.in_fn == 0 && !self.fns.is_empty(),
             });
             self.hovers.push(HoverEntry {
                 span,

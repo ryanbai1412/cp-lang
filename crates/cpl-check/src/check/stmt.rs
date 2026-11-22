@@ -112,12 +112,31 @@ impl<'a> Checker<'a> {
         let mut last = Ty::Unit;
         let present = self.present.len();
         let memo_captured = self.memo_captured.len();
+        let local_fn_captures = self.local_fn_captures.len();
         if !top_level {
             self.declare_local_types(stmts);
+            let mut sibling_vars: Vec<String> = Vec::new();
+            for stmt in stmts {
+                if let StmtKind::Let { pat, .. } = &stmt.kind {
+                    pattern_types(pat, &Ty::Unknown, &mut |name, _| {
+                        sibling_vars.push(name.to_string());
+                    });
+                }
+            }
             for stmt in stmts {
                 if let StmtKind::Fn(f) = &stmt.kind {
                     let sig = self.quietly(|c| c.fn_sig(f, None));
                     self.declare(&f.name.text, f.name.span, sig, false, "fn");
+                    let eff = super::lends::own_effects(f);
+                    let caps: Vec<String> = eff
+                        .reads
+                        .into_iter()
+                        .chain(eff.writes)
+                        .filter(|n| sibling_vars.contains(n))
+                        .collect();
+                    if !caps.is_empty() {
+                        self.local_fn_captures.push((f.name.text.clone(), caps));
+                    }
                 }
             }
         }
@@ -145,6 +164,7 @@ impl<'a> Checker<'a> {
         }
         self.present.truncate(present);
         self.memo_captured.truncate(memo_captured);
+        self.local_fn_captures.truncate(local_fn_captures);
         last
     }
 
@@ -709,6 +729,43 @@ impl<'a> Checker<'a> {
                 let guessed = declared.is_none()
                     && self.sink.encloses_poison(stmt.span)
                     && crate::db::head_leaves_open(self.src, stmt);
+                if declared.is_none() && !guessed {
+                    let is_bare_none = matches!(
+                        init,
+                        Some(Expr { kind: ExprKind::None, .. })
+                    );
+                    let is_bare_read = matches!(
+                        init,
+                        Some(Expr {
+                            kind: ExprKind::Call { callee, args },
+                            ..
+                        }) if args.is_empty()
+                            && matches!(&callee.kind, ExprKind::Name(n) if n == "read")
+                    ) && matches!(init_ty.as_ref(), Some(Ty::Unknown));
+                    if is_bare_none {
+                        let name = self.quote(pat.span);
+                        let message = format!(
+                            "`{name}` needs a type annotation because `None` has no element type"
+                        );
+                        if let Some(diag) = self.error(
+                            codes::INFERENCE_NEEDS_ANNOTATION,
+                            pat.span,
+                            message,
+                        ) {
+                            diag.help = Some(format!("write `{keyword} {name}: ?Int = None`"));
+                        }
+                    } else if is_bare_read {
+                        let name = self.quote(pat.span);
+                        let message = "`read()` needs a type annotation to know what to read".to_string();
+                        if let Some(diag) = self.error(
+                            codes::INFERENCE_NEEDS_ANNOTATION,
+                            pat.span,
+                            message,
+                        ) {
+                            diag.help = Some(format!("write `{keyword} {name}: Int = read()`"));
+                        }
+                    }
+                }
                 let ty = if guessed {
                     Ty::Error
                 } else {
@@ -757,6 +814,12 @@ impl<'a> Checker<'a> {
                                 Some(Def::Variant { .. })
                             ) =>
                     {
+                        if std::env::var_os("CPL_SPEC").is_some() {
+                            let message = format!(
+                                "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
+                            );
+                            self.error(cpl_diag::Code("E0208"), pat.span, message);
+                        }
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
                     }
                     _ if otherwise.is_some() && refutable(pat) => {
@@ -863,7 +926,31 @@ impl<'a> Checker<'a> {
                     args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
+                let mut seen_tags: Vec<(String, Span)> = Vec::new();
                 for variant in &e.variants {
+                    if let Some(tag_expr) = &variant.tag {
+                            let tag_text = self.quote(tag_expr.span);
+                            if let Some((_, prev_span)) =
+                                seen_tags.iter().find(|(t, _)| t == &tag_text)
+                            {
+                                let message = format!(
+                                    "enum `{}` already has a variant with `@tag({tag_text})`",
+                                    e.name.text
+                                );
+                                if let Some(diag) = self.error(
+                                    codes::DUPLICATE_VARIANT_TAG,
+                                    tag_expr.span,
+                                    message,
+                                ) {
+                                    diag.labels.push(cpl_diag::Label {
+                                        span: *prev_span,
+                                        message: "first `@tag` here".to_string(),
+                                    });
+                                }
+                            } else {
+                                seen_tags.push((tag_text, tag_expr.span));
+                            }
+                    }
                     let fields: Vec<Ty> = variant
                         .fields
                         .iter()
@@ -967,6 +1054,39 @@ impl<'a> Checker<'a> {
                 let self_ty = self.resolve_type(target);
                 self.self_ty = Some(self_ty.clone());
                 self.bounds_exist(bounds);
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    if trait_name.is_none()
+                        && self.quote(target.span).contains('.')
+                    {
+                        self.error(
+                            codes::UNSUPPORTED,
+                            target.span,
+                            "inherent `impl` must be in the same module as the type".to_string(),
+                        );
+                    } else if let Some(tr) = trait_name {
+                        let file_names = self.env.names();
+                        let target_head = type_head(target);
+                        let trait_head = type_head(tr);
+                        let target_local =
+                            target_head.as_ref().is_some_and(|t| file_names.contains(t));
+                        let trait_local =
+                            trait_head.as_ref().is_some_and(|t| file_names.contains(t));
+                        if !target_local
+                            && !trait_local
+                            && !matches!(&self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error)
+                        {
+                            self.error(
+                                codes::UNSUPPORTED,
+                                tr.span,
+                                format!(
+                                    "orphan `impl`: neither `{}` nor `{}` is defined in this module",
+                                    self.quote(tr.span),
+                                    self.quote(target.span)
+                                ),
+                            );
+                        }
+                    }
+                }
                 if let Some(trait_name) = trait_name {
                     self.impl_matches_trait(trait_name, target, &body.stmts);
                     if type_head(trait_name).as_deref() == Some("Index") {
@@ -1029,6 +1149,38 @@ impl<'a> Checker<'a> {
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
                 self.require_mutable(target, "assigned");
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    if let ExprKind::Field { base, name } = &target.kind {
+                        let base_ty = self.quietly(|c| c.infer(base));
+                        if let Ty::Named { name: sname, .. } = &base_ty {
+                            let fixed_field = match self.type_def(sname).as_deref() {
+                                Some(Def::Struct { fields, var_fields, .. }) => {
+                                    fields.iter().any(|f| f.name == name.text)
+                                        && !var_fields.iter().any(|f| f == &name.text)
+                                }
+                                _ => false,
+                            };
+                            if fixed_field {
+                                let base_text = self.quote(base.span);
+                                let message = format!(
+                                    "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
+                                    name.text
+                                );
+                                if let Some(diag) = self.error(
+                                    cpl_diag::Code("E0405"),
+                                    target.span,
+                                    message,
+                                ) {
+                                    diag.help = Some(format!(
+                                        "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
+                                        name.text,
+                                        name.text
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
                 self.check_access(target, true);
                 if let Some((root, _)) = Self::root_name(target) {
                     self.check_memo_capture_write(root, target.span);
@@ -1492,6 +1644,7 @@ impl<'a> Checker<'a> {
                     span: name.span,
                     name: name.text.clone(),
                     top_level: false,
+                    in_lambda: false,
                 });
                 return Some(methods.clone());
             }

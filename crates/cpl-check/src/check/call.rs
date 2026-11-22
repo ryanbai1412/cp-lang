@@ -96,6 +96,28 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+        if let ExprKind::Name(fn_name) = &callee.kind {
+            if let Some(caps) = self
+                .local_fn_captures
+                .iter()
+                .rev()
+                .find(|(n, _)| n == fn_name)
+                .map(|(_, c)| c.clone())
+            {
+                for cap in caps {
+                    if self.local(&cap).is_none() {
+                        self.error(
+                            codes::USED_BEFORE_SET,
+                            callee.span,
+                            format!(
+                                "`{fn_name}` captures `{cap}`, which is not initialized yet"
+                            ),
+                        );
+                        break;
+                    }
+                }
+            }
+        }
         if let Some(on_self) = self.implicit_self_method(callee) {
             return self.call(call, &on_self, args);
         }
@@ -703,6 +725,24 @@ impl<'a> Checker<'a> {
                     }
                 }
                 if tys.len() >= 2 {
+                    let mut first_dom: Option<&str> = None;
+                    for (arg, ty) in args.iter().zip(&tys) {
+                        if let Ty::Array { index, .. } = ty {
+                            if let [Ty::Pos(d)] = index.as_slice() {
+                                if let Some(prev) = first_dom {
+                                    if prev != d {
+                                        let message = format!(
+                                            "`zip` expects matching domains, but `{}` is indexed by `{d}` instead of `{prev}`",
+                                            self.quote(arg.value.span)
+                                        );
+                                        self.error(codes::WRONG_DOMAIN, arg.value.span, message);
+                                    }
+                                } else {
+                                    first_dom = Some(d.as_str());
+                                }
+                            }
+                        }
+                    }
                     let elems: Vec<Ty> = tys.iter().map(|t| self.element_ty(t)).collect();
                     return Some(Ty::Named {
                         name: "Zip".into(),
@@ -952,16 +992,18 @@ impl<'a> Checker<'a> {
                 }
                 "sort" | "reverse" | "shuffle"
                     if std::env::var_os("CPL_SPEC").is_some()
-                        && !base_ty.is_indexed_mut()
                         && !matches!(base_ty, Ty::Domain(_)) =>
                 {
-                    let message = format!(
-                        "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
-                        name.text,
-                        self.quote(base.span)
-                    );
-                    self.error(codes::MISSING_IMPL, name.span, message);
-                    return Some(Ty::Error);
+                    if !base_ty.is_indexed_mut() {
+                        let message = format!(
+                            "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
+                            name.text,
+                            self.quote(base.span)
+                        );
+                        self.error(codes::MISSING_IMPL, name.span, message);
+                        return Some(Ty::Error);
+                    }
+                    self.require_mutable(base, "changed in place (needs `mut`)");
                 }
                 "sort" if matches!(base_ty, Ty::Domain(_)) => {
                     return Some(Ty::list(elem));
@@ -1111,6 +1153,17 @@ impl<'a> Checker<'a> {
                     }
                 }
                 self.settle(&ret.subst(&bindings))
+            }
+            Ty::Named {
+                name,
+                args: type_args,
+            } if name == "Range"
+                && matches!(type_args.as_slice(), [Ty::Pos(d)] if d.ends_with(".cuts")) =>
+            {
+                for arg in args {
+                    self.infer(&arg.value);
+                }
+                type_args[0].clone()
             }
             Ty::Named {
                 name,
@@ -1505,6 +1558,24 @@ impl<'a> Checker<'a> {
                 if index.len() == 1 && name == "List" && args.len() == 1 && self.fits(&args[0], elem) {
                     continue;
                 }
+            }
+            if std::env::var_os("CPL_SPEC").is_some()
+                && callee != "List"
+                && callee != "zip"
+                && matches!(&want, Ty::Named { name, .. } if name == "List")
+                && self.view_kind(&arg.value) == Some("slice")
+            {
+                let arg_text = self.quote(arg.value.span);
+                let message = format!(
+                    "`{callee}` {verb} {}, but `{arg_text}` is a slice view, not a `List`",
+                    want.with_article(),
+                );
+                if let Some(diag) = self.error(codes::TYPE_MISMATCH, arg.value.span, message) {
+                    diag.help = Some(format!(
+                        "copy it with `List({arg_text})` or accept `Seq` / `Indexed`"
+                    ));
+                }
+                continue;
             }
             self.expect_fits(&arg_ty, &want, &arg.value, |c, got, want| {
                 let slot = if param.name.is_empty() {
