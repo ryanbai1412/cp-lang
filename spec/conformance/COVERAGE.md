@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1210 (296 passing). Rules: 521.
+Cases: 1212 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 1210 (296 passing). Rules: 521.
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
 - R10 (10-io.md): 16 rules, 42 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 14 rules, 13 cases; 3 uncovered, 2 happy-path only, 2 negative only
+- R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
 
@@ -546,7 +546,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.4 [0+ 0-] **uncovered**: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [2+ 0-] *happy-path only*: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [1+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
-- R11.3.3 [1+ 0-] *happy-path only*: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
+- R11.3.3 [1+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.5 [0+ 0-] **uncovered**: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
 - R11.4.1 [1+ 0-]: The first line of a solution is a compiler stamp, added by the formatter: `// cpl 0.3.0`. ...
 - R11.4.2 [0+ 0-] **uncovered**: `cp.toml` pins the stdlib and each library root by content hash. Old solutions rebuild byt...
@@ -619,7 +619,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
-- E0201 Unresolved name: 1 case(s)
+- E0201 Unresolved name: 2 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 5 case(s)
 - E0204 Unknown type: 1 case(s)
@@ -629,7 +629,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 value_name_case *(0.3)*: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
 - E0302 Type mismatch: 20 case(s)
-- E0303 Wrong number of arguments: 4 case(s)
+- E0303 Wrong number of arguments: 5 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
