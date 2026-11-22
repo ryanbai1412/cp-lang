@@ -75,8 +75,8 @@ and exact signed integer convolution (requested by
 the algorithm. Both linear
 and cyclic convolutions (`cyclic: true`) occur regularly. Alongside NTT,
 bitwise convolutions (`convolve(a, b, on: |)`, `on: &`, `on: ^`) and
-subset/superset zeta-Mobius transforms (`sos_sub`, `sos_sup`, `sos_sub_inv`,
-`sos_sup_inv`) cover `O(n 2^n)` bitmask DP.
+subset/superset zeta-Mobius transforms (one `sos(a, over: Sub | Sup,
+inverse:)`) cover `O(n 2^n)` bitmask DP.
 
 Sixth, **dense matrices and Gaussian elimination**: linear recurrences and
 walk counting (`Mat.pow`, `Mat.apply`), matrix-DP segment trees
@@ -114,7 +114,7 @@ fn choose2(n: Int) -> Int                           // O(1); n * (n - 1) / 2, 0 
 // Bit and digit helpers
 fn bit_len(x: Int) -> Int                           // O(1); 0 for x == 0
 fn digits(self: Int, base: Int = 10) -> List<Int>   // O(log_base x); lowest digit first
-@get fn sign(self: Int) -> Int                      // O(1); -1, 0, or 1
+@get fn sign(self: Int) -> Sign                     // O(1); Neg, Zero or Pos
 fn bit(self: Int, i: Int) -> Bool                   // O(1); bit 0 is lowest
 @get fn is_pow2(self: Int) -> Bool                  // O(1); x > 0 and x & (x - 1) == 0
 fn splitmix64(x: U64) -> U64                        // O(1); 64-bit mixing finalizer
@@ -125,7 +125,7 @@ fn pow_mod(a: Int, e: Int, m: Int) -> Int           // O(log e); e >= 0, m >= 1
 fn inv_mod(a: Int, m: Int) -> ?Int                  // O(log m); m >= 1, none if gcd(a, m) != 1
 fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
                                                     // O(log min(m1, m2)); non-coprime allowed
-fn crt_all(eqs: List<(r: Int, m: Int)>) -> ?(r: Int, m: Int)
+fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int)
                                                     // O(k log M); folds crt over a system
 fn mod_log(a: Int, b: Int, m: Int) -> ?Int          // O(sqrt m); smallest x >= 0: a^x = b (mod m)
 fn mod_sqrt(a: Int, p: Int) -> ?Int                 // O(log^2 p); prime p, x^2 = a (mod p)
@@ -142,8 +142,8 @@ fn phi(x: Int) -> Int                               // O(sqrt x); Euler's totien
 
 // Linear sieve and multiplicative tables
 struct Sieve:                                       // O(n) time and memory
-    spf: List<Int>                                  // smallest prime factor, 0 for 0 and 1
-    primes: List<Int>                               // all primes in 2..=n, ascending
+    spf: List<0..=2_000_000_000>                    // smallest prime factor, 0 for 0 and 1
+    primes: List<0..=2_000_000_000>                 // all primes in 2..=n, ascending
     fn new(n: Int) -> Sieve                         // O(n)
     fn is_prime(self, x: Int) -> Bool               // O(1)
     fn factor(self, x: Int) -> List<(Int, Int)>     // O(log x)
@@ -155,20 +155,18 @@ struct Sieve:                                       // O(n) time and memory
 
 fn sieve_multiplicative<T>(
     n: Int,
-    one: T,
-    mul: (T, T) -> T,
     prime_pow: (Int, Int, Int) -> T,
 ) -> List<T>
     // O(n) time and memory; computes f[0..=n] for any multiplicative f
-    // with f(1) = one, f(a * b) = mul(f(a), f(b)) for gcd(a, b) = 1,
+    // with f(1) = T.one, f(a * b) = f(a) * f(b) for gcd(a, b) = 1,
     // and f(p^k) = prime_pow(p, k, p^k) for every prime power p^k <= n.
 ```
 
-Why `sieve_multiplicative` takes `one`, `mul`, and `prime_pow`: passing `mul`
-explicitly (typically `(a, b) => a * b`, or a pair-combining function when
-computing two statistics at once) works for `Int`, `Mod<P>`, and user structs
-alike, requires no extra core trait bounds, and runs in strict `O(n)` time by
-tracking the largest prime-power divisor `low[i]` of each `i`.
+`sieve_multiplicative` takes only `prime_pow`; `T.one` and `*` come from the
+value type, as for every other algebraic default, so `Int`, `Mod<P>` and user
+structs with `One` and `Mul` all work. Two statistics at once use a record
+type with its own `*`. It runs in strict `O(n)` time by tracking the largest
+prime-power divisor `low[i]` of each `i`.
 
 ### 2.2 `std.mod`: modular arithmetic and combinatorics
 
@@ -182,10 +180,12 @@ struct Mod<P>(v: 0..P):
     let zero = Mod(0)
     let one = Mod(1 % P)
     fn new(x: Int) -> Mod<P>                        // O(1); Euclidean reduction into 0..P
-    fn pow(self, e: Int) -> Mod<P>                  // O(log |e|); negative e uses inv
+    // x ** e via `impl Pow`: O(log |e|); negative e uses inv
     fn try_inv(self) -> ?Mod<P>                     // O(log P); none if gcd(v, P) != 1
-    @get fn inv(self) -> Mod<P>                     // O(log P); traps if non-invertible
-    // impls: Add, Sub, Neg, Mul, Div, Show
+    fn inv(self) -> Mod<P>                          // O(log P); traps if non-invertible
+    // also: from_int, sqrt, log, inv_all; Comb.derange, Barrett, PrimePowerComb,
+    // ModComb (see the std.mod stub)
+    // impls: Add, Sub, Neg, Mul, Div, Pow, Show
 
 struct Comb<M>:
     fn new(limit: Int = 0) -> Comb<M>               // O(limit) time and memory; exact size
@@ -224,7 +224,7 @@ adds cyclic convolution and bitwise transforms.
 
 ```cp
 // Number-theoretic transform and polynomial convolution
-fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false)
+fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
     // O(n log n) in place; a.len a power of 2 dividing P - 1.
     // Uses radix-4 Montgomery butterflies for standard primes (998244353,
     // 469762049, 167772161, 754974721) and primitive_root(P) for any other
@@ -244,7 +244,7 @@ fn convolve<T, O, R>(
 
 // Subset/superset zeta-Mobius transforms in place (n = 2^k)
 enum SosOver = Sub | Sup
-fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false)
+fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)
 ```
 
 Notice the uniform design: one `convolve` (ops-ranges §13), with `cyclic:`,
@@ -385,7 +385,7 @@ Every module enforces its mathematical laws in `@test`:
   and strong pseudoprimes; `factor(x) == s.factor(x)` and
   their product equals `x`; `pow_mod(a, mod_log(a, b, m)!, m) == b % m`;
   `mod_sqrt(a, p)! ** 2 % p == a % p`; `sieve_multiplicative` satisfies
-  `f[a * b] == mul(f[a], f[b])` for coprime `a, b`.
+  `f[a * b] == f[a] * f[b]` for coprime `a, b`.
 - `std.mod`: `Mod<P>` satisfies `laws_hold(Monoid<Mod<P>>.of(+), xs)` and
   `laws_hold(Monoid<Mod<P>>.of(*), xs)`; `x * x.inv == Mod.one` when
   `gcd(x.v, P) == 1`; `Comb<P>.choose` satisfies Pascal's identity and
@@ -522,8 +522,6 @@ let lim = ns.max() + 1
 let comb = Z.comb(lim)
 let odd_div_sum = sieve_multiplicative(
     lim,
-    one: 1,
-    mul: (a, b) => a * b,
     prime_pow: (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
 )
 

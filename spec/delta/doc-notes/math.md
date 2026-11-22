@@ -34,8 +34,8 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `best_rational`: ties go to the smaller denominator, then the smaller value.
 - `continued_fraction`: floor division, so `a0` may be negative; the last term is at least 2 except in a one-term expansion.
 - `Ratio`, `BigInt`: `Ratio.new` puts the sign in the numerator; `BigInt.from_str` accepts an optional `-` and one or more digits (leading zeros allowed, no `+`, no whitespace); `BigInt.divmod` is Euclidean like `Int`.
-- Contradiction: math.md §2.1 has `@get fn sign(self: Int) -> Int`; the stub returns the `Sign` enum. Docs follow the stub.
-- Contradiction: math.md §2.1 has `sieve_multiplicative(n, one, mul, prime_pow)`; the stub has `(n, prime_pow)` and relies on `T.one` and `*`. Docs follow the stub.
-- Contradiction: math.md §2.1 types `Sieve.spf` and `primes` as `List<Int>`; the stub uses `List<0..=2_000_000_000>`. Docs follow the stub.
-- Contradiction: math.md gives `crt_all(eqs: List<(r: Int, m: Int)>) -> ?(r: Int, m: Int)` with named fields; the stub uses unnamed tuples. Docs follow the stub.
-- Contradiction (duplication): `iroot` and `nth_root` are the same function, as are `Sieve.divisors` and `Sieve.each_divisor`, and `each_divisor(x)` is `divisors(x)` unsorted. "One way per job" says one of each pair should go.
+- Contradiction: math.md §2.1 has `@get fn sign(self: Int) -> Int`; the stub returns the `Sign` enum. Docs follow the stub. (resolved: stub `Sign` kept; chapter fixed)
+- Contradiction: math.md §2.1 has `sieve_multiplicative(n, one, mul, prime_pow)`; the stub has `(n, prime_pow)` and relies on `T.one` and `*`. Docs follow the stub. (resolved: stub kept (`T.one`, `*`); chapter and example fixed)
+- Contradiction: math.md §2.1 types `Sieve.spf` and `primes` as `List<Int>`; the stub uses `List<0..=2_000_000_000>`. Docs follow the stub. (resolved: stub types kept; chapter fixed)
+- Contradiction: math.md gives `crt_all(eqs: List<(r: Int, m: Int)>) -> ?(r: Int, m: Int)` with named fields; the stub uses unnamed tuples. Docs follow the stub. (resolved: stub kept; chapter fixed)
+- Contradiction (duplication): `iroot` and `nth_root` are the same function, as are `Sieve.divisors` and `Sieve.each_divisor`, and `each_divisor(x)` is `divisors(x)` unsorted. "One way per job" says one of each pair should go. (resolved: `nth_root` and `Sieve.each_divisor` removed; free `each_divisor` kept (no allocation, unsorted) beside sorted `divisors`; decision 167)

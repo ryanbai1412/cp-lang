@@ -16,6 +16,6 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `Comb.multinomial`: chose the product of prefix `choose` calls, so Lucas applies past `M.MOD`; the empty list gives 1.
 - `Barrett.mul`/`Barrett.reduce`: chose to trap outside the stated input ranges (`a, b` in `0..m`; `a < m * m`) rather than return an unspecified residue.
 - `PrimePowerComb.new`: traps when `p` is not prime, `e < 1` or `p^e` overflows; `choose` returns 0 outside `0..=n`. `ModComb.new` traps when `m < 1`; `m == 1` gives 0.
-- Contradiction: spec/lib/math.md §2.2 declares `@get fn inv(self)`, the stub has a plain `pub fn inv(self)`. Left as in the stub; docs use `x.inv()`.
-- Contradiction: spec/lib/math.md §2.2 lists `fn pow(self, e: Int)` as a method; the stub has `impl Pow` instead. Not a pub fn, so not documented here.
-- Contradiction: spec/lib/math.md §2.2 does not list `Mod.from_int`, `sqrt`, `log`, `inv_all`, `Comb.derange`, `Barrett`, `PrimePowerComb` or `ModComb`; the stub has them. Left as in the stub.
+- Contradiction: spec/lib/math.md §2.2 declares `@get fn inv(self)`, the stub has a plain `pub fn inv(self)`. Left as in the stub; docs use `x.inv()`. (resolved: stub kept (O(log P), so a method); chapter fixed)
+- Contradiction: spec/lib/math.md §2.2 lists `fn pow(self, e: Int)` as a method; the stub has `impl Pow` instead. Not a pub fn, so not documented here. (resolved: stub `impl Pow` kept; chapter fixed)
+- Contradiction: spec/lib/math.md §2.2 does not list `Mod.from_int`, `sqrt`, `log`, `inv_all`, `Comb.derange`, `Barrett`, `PrimePowerComb` or `ModComb`; the stub has them. Left as in the stub. (resolved: stub kept; chapter now lists them)
