@@ -227,3 +227,18 @@ cost: O(n log n), about 20 steps: pts has at most k = 7 items
 ```
 
 The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+
+== hover @ 89:8
+```cp
+fn collect() -> Int
+  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls
+  documented costs: seen.sorted O((n * k) log (n * k)), about 28583794 (2.9e7) steps, once
+```
+
+== hover @ 94:12
+```cp
+sorted() -> List<T>
+cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
+```
+
+A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.

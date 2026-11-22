@@ -2433,6 +2433,17 @@ steps are not multiplied by how often the call runs, nor summed into the fn's. H
 anywhere, top level included, adds the same steps to its `cost:` line (`about 3521929 (3.5e6) steps:
 cells has at most n = 200000 (2e5) items`). Reverse by dropping `proven_sizes` and `steps_of`.
 
+29.45. **A list built by pushes in counted loops has that many items at most.** A list bound once
+as `var xs: List<T> = []`, whose length only `push` and `pop` change, all in its own scope (no fn,
+lambda, assignment, lend or `mut` argument touches it), has at most the sum over its `push` calls
+of how often each runs: `2 * n` for two pushes in `for k in 0..n`, `n + n * q + 1` across nested
+loops. A push inside a `while`, an unbounded `for` or a lambda leaves the list unsized, and so does
+a count that reaches `LEN_MAX` (a loop over `0..xs.len`). The size feeds the steps of 29.44: of the
+1,278 calls with a documented cost in the ports and examples, 56 get steps, 17 of them on lists.
+Along with it, `sort`, `reverse`, `swap` and `fill` count as keeping a list's length (amending
+29.39): the catalog marks them mutating, but they only move or overwrite elements, so a sort no
+longer drops an index proof. Reverse by dropping `Bounds::pushed` and `keeps_len`'s `IN_PLACE`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

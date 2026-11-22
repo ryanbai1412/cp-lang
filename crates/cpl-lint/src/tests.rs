@@ -1950,8 +1950,11 @@ print(head)
     // Reading the queue between the test and the index changes nothing.
     let read = queue.replace("    let u = q[head]\n", "    let seen = q.contains(9)\n    let u = q[head]\n");
     assert_eq!(proofs(&read), ["0 <= head < q.len"]);
-    let sorted = queue.replace("    let u = q[head]\n", "    q.sort()\n    let u = q[head]\n");
-    assert_eq!(proofs(&sorted), Vec::<String>::new());
+    // Reordering in place keeps the length; emptying it does not.
+    let sorted = queue.replace("    let u = q[head]\n", "    q.sort()\n    q.reverse()\n    let u = q[head]\n");
+    assert_eq!(proofs(&sorted), ["0 <= head < q.len"]);
+    let cleared = queue.replace("    let u = q[head]\n", "    q.clear()\n    let u = q[head]\n");
+    assert_eq!(proofs(&cleared), Vec::<String>::new());
     assert!([&late, &same].iter().all(|src| cpl_syntax::parse_file(src).diagnostics.is_empty()));
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_14/noi19p1.cp");
     let port = &std::fs::read_to_string(path).unwrap();
@@ -2007,4 +2010,25 @@ fn a_method_call_knows_the_size_of_an_array_receiver() {
     );
     let s = |t: &str| t.to_string();
     assert_eq!(sizes(&src), [(s("a"), 1000, s("q")), (s("b"), 600000, s("n * 3"))]);
+}
+
+#[test]
+fn a_list_only_pushed_in_counted_loops_has_a_bounded_size() {
+    let sizes = |src: &str| -> Vec<(String, u128, String)> {
+        crate::proven_sizes(src)
+            .into_iter()
+            .map(|s| (src[s.receiver.0 as usize..s.receiver.1 as usize].to_string(), s.max, s.count))
+            .collect()
+    };
+    let head = "let n: 1..=200000 = read()\nlet q: 1..=1000 = read()\ndomain V = 1..=n\n";
+    let src = format!(
+        "{head}fn f():\n    var xs: List<Int> = []\n    for v in V:\n        xs.push(v)\n        for j in 0..q:\n            xs.push(j)\n    xs.push(0)\n    xs.pop()\n    print(xs.sorted())\n\
+         fn g():\n    var ys: List<Int> = []\n    var i = 0\n    while i < n:\n        ys.push(i)\n        i += 1\n    print(ys.sorted())\n\
+         fn h():\n    var zs: List<Int> = []\n    zs.push(1)\n    zs.extend([1, 2])\n    print(zs.sorted())\n\
+         fn k():\n    var ws: List<Int> = []\n    let add = (x: Int) => ws.push(x)\n    add(1)\n    print(ws.sorted())\n"
+    );
+    let s = |t: &str| t.to_string();
+    let got = sizes(&src);
+    assert_eq!(got.iter().rfind(|(r, ..)| r == "xs"), Some(&(s("xs"), 200200001, s("n + n * q + 1"))));
+    assert!(got.iter().all(|(r, ..)| r == "xs"), "{got:?}");
 }

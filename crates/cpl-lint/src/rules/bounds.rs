@@ -67,6 +67,9 @@ pub(crate) struct Bounds {
     /// Arrays bound with a type that bounds their cells: how many at most,
     /// as a number and as factors of the source.
     sizes: HashMap<String, (u128, Vec<super::Factor>)>,
+    /// Lists that start empty and only `push` or `pop` change, all in their
+    /// own scope: how many `push` calls the source has for each.
+    pushed: HashMap<String, usize>,
 }
 
 /// The most a `.len` is taken to be: only relations bound it usefully.
@@ -295,6 +298,9 @@ impl Bounds {
             decls: HashMap<String, u32>,
             sources: Vec<(String, Expr)>,
             seqs: HashSet<String>,
+            empty: HashSet<String>,
+            pushes: HashMap<String, usize>,
+            pops: HashMap<String, usize>,
         }
         impl Visitor for Scan {
             fn stmt(&mut self, stmt: &Stmt) {
@@ -335,6 +341,9 @@ impl Bounds {
                     if let Some(init) = init {
                         if let PatternKind::Name(n) = &pat.kind {
                             self.sources.push((n.clone(), init.clone()));
+                            if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
+                                self.empty.insert(n.clone());
+                            }
                         }
                         if let (PatternKind::Tuple(ps), ExprKind::Tuple(es)) = (&pat.kind, &init.kind) {
                             for (p, e) in ps.iter().zip(es) {
@@ -355,6 +364,13 @@ impl Bounds {
                             if !keeps_len(&name.text) {
                                 if let Some(n) = root(base) {
                                     self.change(n, at);
+                                    if let ExprKind::Name(n) = &base.kind {
+                                        match (name.text.as_str(), args.len()) {
+                                            ("push", 1) => *self.pushes.entry(n.clone()).or_default() += 1,
+                                            ("pop", 0) => *self.pops.entry(n.clone()).or_default() += 1,
+                                            _ => {}
+                                        }
+                                    }
                                 }
                                 self.change_row(base, at);
                             }
@@ -418,6 +434,16 @@ impl Bounds {
                 self.bound_once(seq) && !self.fn_writes.contains(seq) && scan.local(n)
             })
             .cloned()
+            .collect();
+        self.pushed = scan
+            .empty
+            .iter()
+            .filter(|n| self.bound_once(n) && !self.fn_writes.contains(*n) && scan.local(n))
+            .filter_map(|n| {
+                let pushes = scan.pushes.get(n).copied().unwrap_or(0);
+                let changes = scan.changes.iter().filter(|c| c.0 == *n).count();
+                (changes == pushes + scan.pops.get(n).copied().unwrap_or(0)).then(|| (n.clone(), pushes))
+            })
             .collect();
         loop {
             let more: Vec<String> = scan
@@ -512,6 +538,11 @@ impl Bounds {
 
     pub(crate) fn size(&self, name: &str) -> Option<&(u128, Vec<super::Factor>)> {
         self.sizes.get(name)
+    }
+
+    /// How many `push` calls build `name`, a list nothing else lengthens.
+    pub(crate) fn pushes(&self, name: &str) -> Option<usize> {
+        self.pushed.get(name).copied()
     }
 
     /// A test proved `name` is in `value`: what was known about it stays.
@@ -894,12 +925,15 @@ pub(crate) fn row_root(e: &Expr) -> Option<&str> {
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn keeps_len(method: &str) -> bool {
     use cpl_check::{builtin_members, Receiver};
+    // The catalog only says whether a method mutates; these only move or
+    // overwrite elements.
+    const IN_PLACE: [&str; 4] = ["sort", "reverse", "swap", "fill"];
     let mut members = [Receiver::List, Receiver::Str]
         .into_iter()
         .flat_map(builtin_members)
         .filter(|m| m.name == method)
         .peekable();
-    members.peek().is_some() && members.all(|m| !m.mutates)
+    members.peek().is_some() && members.all(|m| !m.mutates || IN_PLACE.contains(&m.name))
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -211,10 +211,14 @@ pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
     proven(file)
         .sizes
         .into_iter()
-        .map(|(receiver, max, factors)| crate::ProvenSize {
+        .map(|(receiver, max, terms)| crate::ProvenSize {
             receiver,
             max,
-            count: render_count(file, &factors),
+            count: if terms.iter().flatten().all(|f| matches!(f, Factor::Number(_))) {
+                max.to_string()
+            } else {
+                render_sum(file, &terms)
+            },
         })
         .collect()
 }
@@ -280,10 +284,21 @@ fn len_of(seq: &cpl_syntax::ast::Expr) -> cpl_syntax::ast::Expr {
     Expr { kind: ExprKind::Field { base: Box::new(seq.clone()), name }, span: seq.span }
 }
 
+/// A sum of products of loop counts.
+type Terms = Vec<Vec<Factor>>;
+
+/// A `push` call's list, how often it runs, and the counts of the loops around it.
+type Push = (String, Option<u128>, Vec<Factor>);
+
 struct Proven {
     names: Vec<(u32, i128, i128)>,
     /// Each method call's receiver of a bounded size, with that size.
-    sizes: Vec<((u32, u32), u128, Vec<Factor>)>,
+    sizes: Vec<((u32, u32), u128, Terms)>,
+    /// Each `push` onto a list `Bounds::pushes` counts, by call: the list,
+    /// and how often the call runs with the counts of the loops around it.
+    pushes: std::collections::HashMap<(u32, u32), Push>,
+    /// Each method call on such a list: its receiver and the list.
+    pushed_calls: Vec<((u32, u32), String)>,
     exprs: Vec<crate::ProvenExpr>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
@@ -306,6 +321,8 @@ impl Default for Proven {
         Proven {
             names: Vec::new(),
             sizes: Vec::new(),
+            pushes: std::collections::HashMap::new(),
+            pushed_calls: Vec::new(),
             exprs: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
@@ -340,6 +357,28 @@ fn proven(file: &File) -> Proven {
         l.count = render_count(file, &chain[chain.len() - 1..]);
         l.total_count = l.total.map(|_| render_count(file, chain));
     }
+    let mut lists: std::collections::HashMap<&str, Option<(u128, Terms)>> = std::collections::HashMap::new();
+    let mut sites: Vec<_> = out.pushes.iter().collect();
+    sites.sort_by_key(|(at, _)| **at);
+    for (_, (name, around, factors)) in sites {
+        let entry = lists.entry(name).or_insert(Some((0, Vec::new())));
+        *entry = entry.take().and_then(|(sum, mut terms)| {
+            terms.push(if factors.is_empty() { vec![Factor::Number(1)] } else { factors.clone() });
+            Some((sum.checked_add((*around)?)?, terms))
+        });
+    }
+    let sizes: Vec<_> = out
+        .pushed_calls
+        .iter()
+        .filter_map(|(at, name)| {
+            let (max, terms) = lists.get(name.as_str()).cloned().flatten()?;
+            // A loop over `0..xs.len` counts up to `LEN_MAX`, which bounds nothing.
+            let all = terms.len() == bounds.pushes(name)? && max < bounds::LEN_MAX as u128;
+            let terms = if terms.len() <= 6 { terms } else { vec![vec![Factor::Number(max)]] };
+            all.then_some((*at, max, terms))
+        })
+        .collect();
+    out.sizes.extend(sizes);
     out.names.sort();
     out.names.dedup();
     out.exprs.sort_by_key(|e| e.op);
@@ -444,10 +483,18 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
             }
         }
         ExprKind::Call { callee, args } => {
-            if let ExprKind::Field { base: recv, .. } = &callee.kind {
+            if let ExprKind::Field { base: recv, name: method } = &callee.kind {
                 if let ExprKind::Name(name) = &recv.kind {
+                    let at = (base + recv.span.start, base + recv.span.end);
                     if let Some((max, factors)) = bounds.size(name) {
-                        out.sizes.push(((base + recv.span.start, base + recv.span.end), *max, factors.clone()));
+                        out.sizes.push((at, *max, vec![factors.clone()]));
+                    }
+                    if bounds.pushes(name).is_some() {
+                        out.pushed_calls.push((at, name.clone()));
+                        if method.text == "push" {
+                            let call = (base + expr.span.start, base + expr.span.end);
+                            out.pushes.insert(call, (name.clone(), out.around, out.factors.clone()));
+                        }
                     }
                 }
             }
