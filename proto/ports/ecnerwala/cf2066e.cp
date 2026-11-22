@@ -10,6 +10,8 @@
 // more than doubles every two steps and there are O(log(total)) stuck points.
 // At each, some gap among the unique barrels >= b must be <= have.
 
+enum Delta: Add | Remove
+
 let max_v = 1_000_000
 domain Vol = 0..=max_v
 
@@ -18,43 +20,48 @@ domain Vol = 0..=max_v
 // (none when u is not unique or is the largest).
 var count: [Vol]Int = 0
 var total = 0
-var unique = SortedSet<Int>()
+var unique = SortedSet<Vol>()
 var unique_sum = Fenwick<Vol, Int>()
 var gap = SegTree<Vol, ?Int>(min, fill: none)
 
-fn refresh_gap(u: Int): gap.set(Vol(u), unique.range(u + 1..).first.map(w => w - u))
+fn refresh_gap(u: Vol):
+    gap.set(u, if let nxt = u.next: unique.range(nxt..).first.map(w => w - u) else: none)
 
-fn put(v: Vol, delta: -1..=1):
+fn put(v: Vol, d: Delta):
+    let sign = match d:
+        Delta.Add => 1
+        Delta.Remove => -1
     let was_unique = count[v] == 1
-    count[v] += delta
-    total += delta * v.ord
+    count[v] += sign
+    total += sign * v.ord
     let is_unique = count[v] == 1
     if is_unique == was_unique: return
     if is_unique:
-        unique.add(v.ord)
+        unique.add(v)
         unique_sum.add(v, v.ord)
-        refresh_gap(v.ord)
+        refresh_gap(v)
     else:
-        unique.remove(v.ord)
+        unique.remove(v)
         unique_sum.add(v, -v.ord)
         gap.set(v, none)
-    if let u = unique.range(..v.ord).last: refresh_gap(u)
+    if let u = unique.range(..v).last: refresh_gap(u)
 
-fn safe_before(b: Int) -> Int = total - unique_sum.sum(Vol(b)..)
+fn safe_before(b: Vol) -> Int = total - unique_sum.sum(b..)
 
 fn identifiable() -> Bool:
     let last = unique.last ?? return true
     var at = unique.first
     while let b = at and b != last:
         let have = safe_before(b)
-        if b > have and gap.fold(Vol(b)..)! > have: return false
-        at = unique.range(max(have, b) + 1..).first
+        if b.ord > have and gap.fold(b..)! > have: return false
+        let next_v = max(have, b.ord) + 1
+        at = if next_v <= max_v: unique.range(Vol(next_v)..).first else: none
     true
 
 let (n, q): (1..=200_000, 1..=200_000) = read()
-for v in read<[n]1..=max_v>(): put(Vol(v), +1)
+for v in read<[n]1..=max_v>(): put(Vol(v), Delta.Add)
 print(if identifiable(): "Yes" else: "No")
 repeat q:
     let (op, v): (Char, 1..=max_v) = read()
-    put(Vol(v), if op == '+': +1 else: -1)
+    put(Vol(v), if op == '+': Delta.Add else: Delta.Remove)
     print(if identifiable(): "Yes" else: "No")
