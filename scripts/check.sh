@@ -240,7 +240,7 @@ if [ "$mode" = commit ]; then
     step_end
     printf '\nstep times (s):\n'
     printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
-    printf '\ncheck: commit-tier checks passed in %ss; scripts/land.sh runs --fast on the rebased tip\n' \
+    printf '\ncheck: commit-tier checks passed in %ss; scripts/land.sh runs --land on the rebased tip and CI runs --fast\n' \
         "$(( $(date +%s) - gate_t0 ))"
     exit 0
 fi
