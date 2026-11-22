@@ -833,7 +833,12 @@ impl<'a> Checker<'a> {
             format!("{subject} is {what}, so it can't be {action}")
         };
         let var_at = decl.filter(|_| keyword == "let").and_then(|d| let_before(self.src, d));
-        if let Some(diag) = self.error(codes::ASSIGN_TO_LET, span, message) {
+        let code = if action.contains("`mut`") {
+            codes::MUT_OF_IMMUTABLE
+        } else {
+            codes::ASSIGN_TO_LET
+        };
+        if let Some(diag) = self.error(code, span, message) {
             diag.help = Some(help);
             if let Some(decl) = decl {
                 diag.labels.push(cpl_diag::Label {

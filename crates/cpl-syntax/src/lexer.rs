@@ -293,6 +293,10 @@ impl<'a> Lexer<'a> {
                     .with_fix(format!("indent {enclosing} spaces"), span, fix_to),
                 );
                 self.line_indent = enclosing;
+                // Which block the line belongs to is a guess, so what it
+                // says about names in scope is not reported.
+                let line_end = self.src[self.pos..].find('\n').map_or(self.src.len(), |n| self.pos + n);
+                self.out.poisoned.push(Span::new(self.pos as u32, line_end as u32));
             }
         }
     }
@@ -872,8 +876,11 @@ impl<'a> Lexer<'a> {
             while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
                 self.pos += 1;
             }
-            self.push(TokenKind::Label, start);
-            return;
+            if self.peek() != b'\'' {
+                self.push(TokenKind::Label, start);
+                return;
+            }
+            self.pos += 1;
         }
         let span = Span::new(start as u32, self.pos as u32);
         self.out.poisoned.push(span);

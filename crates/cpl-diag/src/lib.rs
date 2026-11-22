@@ -114,6 +114,8 @@ pub mod codes {
     pub const EXPECTED_NAME: Code = Code("E0108");
     pub const UNMATCHED_CLOSER: Code = Code("E0109");
     pub const UNPARENTHESIZED_COALESCE: Code = Code("E0110");
+    /// `a < b > c`, or a chain with `==`: split it with `and`.
+    pub const MIXED_COMPARISON_CHAIN: Code = Code("E0111");
 
     pub const UNRESOLVED_NAME: Code = Code("E0201");
     pub const DUPLICATE_DEFINITION: Code = Code("E0202");
@@ -145,7 +147,8 @@ pub mod codes {
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
     pub const MUT_OF_IMMUTABLE: Code = Code("E0403");
-    pub const TOP_LEVEL_VAR_IN_FN: Code = Code("E0404");
+    /// A `var`-bound lambda that calls itself.
+    pub const VAR_LAMBDA_RECURSION: Code = Code("E0406");
 
     pub const UNSUPPORTED: Code = Code("E0501");
     /// A warning: a statement that only works out a value.
@@ -176,7 +179,12 @@ pub mod codes {
     pub const OVERFLOW: Code = Code("R0202");
     pub const DIVISION_BY_ZERO: Code = Code("R0203");
     pub const UNWRAP_NONE: Code = Code("R0301");
+    pub const RANGE_STORE: Code = Code("R0201");
+    pub const ASSERTION_FAILED: Code = Code("R0401");
     pub const TODO_REACHED: Code = Code("R0402");
+    pub const BAD_INPUT_TOKEN: Code = Code("R0501");
+    pub const INPUT_OUT_OF_CONTRACT: Code = Code("R0502");
+    pub const STACK_EXHAUSTED: Code = Code("R0601");
 
     pub const INTERNAL: Code = Code("E9999");
 }
@@ -280,7 +288,8 @@ impl Diagnostic {
 /// Collects diagnostics and keeps one per root cause.
 ///
 /// Two rules make "one missing `)` never cascades" hold across phases:
-/// an exact repeat (same code and span) is dropped, and anything reported
+/// a second diagnostic of the same severity at exactly the same span is
+/// dropped (the first names the problem there), and anything reported
 /// inside a *poisoned* span is dropped. The parser poisons the span of each
 /// syntax error it recovers from, so the checker stays quiet about code the
 /// parser could not read.
@@ -325,7 +334,7 @@ impl Sink {
         if self
             .diags
             .iter()
-            .any(|d| d.code == diag.code && d.span == diag.span)
+            .any(|d| d.span == diag.span && (d.code == diag.code || d.severity == diag.severity))
         {
             return;
         }
