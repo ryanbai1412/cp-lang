@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1410 (995 passing). Rules: 521.
+Cases: 1413 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -750,8 +750,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - **algebra** (34/46 named by a case)
   - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
-- **bag** (148/161 named by a case)
-  - uncovered: `BagCursor`, `SortedBag.drain_range`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
+- **bag** (154/161 named by a case)
+  - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
   - uncovered: `BeatsSegTree.min_val`
 - **bitset** (89/92 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1928 of 2222 std items are named by a case.
+1934 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
