@@ -2,6 +2,7 @@ apio07p1
 apio09p2
 apio23p1
 apio23p2
+atcoder_dp_j
 btoi17p1
 btoi18p2
 btoi18p3
@@ -41,7 +42,6 @@ cpc21c1p5
 dmopc20c4p3
 dmopc20c7p1
 dmopc21c4p4
-dpj
 egoi22p4
 egoi23p2
 etsr23r1p2

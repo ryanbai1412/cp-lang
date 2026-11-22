@@ -3329,7 +3329,7 @@ fn an_index_of_the_arrays_own_domain_is_proven_by_its_type() {
         }
         out
     };
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/problems/dpl/port.cp");
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/problems/atcoder_dp_l/port.cp");
     let port = std::fs::read_to_string(path).unwrap();
     assert_eq!(
         proofs(&port),

@@ -1498,7 +1498,7 @@ print(p[3] - p[1])
         "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
     );
 
-    // 1D domain bounds (proto/ports/dpm.cp shape) -> prefix(ways) and pre.prefix(...)
+    // 1D domain bounds (corpus/problems/atcoder_dp_m/port.cp shape) -> prefix(ways) and pre.prefix(...)
     let dom_pref = "\
 domain C = 0..=4
 let ways: [C]Int = [1, 2, 3, 4, 5]
