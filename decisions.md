@@ -5614,3 +5614,21 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   with no `spec/std` above it, finds no spec stdlib and stays on 0.2 until
   `spec/std` is built into the binary as `stdlib/` is.
 - **Reverse.** Drop `default_to_spec_edition` in `cpl-cli` and its call.
+
+## 210. `checks` and `lint` contexts are compiler-provided (debt) (2026-11-22)
+
+- **Decision.** `context io:` is declared in `spec/std/io.cp` using the
+  general `context` mechanism, while `checks` (`ranges`, `overflow`,
+  `bounds`, `unwrap`, `div`, `asserts`, `reads`: `on | off`) and `lint`
+  (one field per lint in the `cpl-lint` catalog: `allow | warn | deny`)
+  are compiler-provided special cases in `cpl-check`, `cpl-lint`, and
+  `cpl-ir`.
+- **Why.** `checks` and `lint` have open or compiler-coupled field sets
+  (every lint name in `cpl-lint`, and `on`/`off`/`allow`/`warn`/`deny`
+  level tokens not yet declared as stdlib enum types) and directly govern
+  codegen traps and lint suppression. Logging this as debt keeps `io` and
+  user contexts on the general mechanism without blocking v0.3 contexts
+  on compiler-generated stdlib declarations.
+- **Reverse.** Declare `checks` and `lint` in `spec/std` once literal/enum
+  context field types and lint-catalog reflection exist, and remove the
+  special cases in `cpl-check`'s `check_with` and `cpl-lint`'s `Allows`.

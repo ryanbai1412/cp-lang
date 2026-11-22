@@ -515,3 +515,11 @@ fn formats_loop_else() {
     assert_eq!(fmt(src), want);
     assert_eq!(fmt(want), want);
 }
+
+#[test]
+fn formats_context_with_and_fn_uses() {
+    let src = "context opt:\n  k: Int = 2\nfn pick() -> Int uses opt = opt.k\nwith io(base: 1)\nwith io(sep: \",\"):\n  print(pick())\n";
+    let want = "context opt:\n    k: Int = 2\nfn pick() -> Int uses opt = opt.k\nwith io(base: 1)\nwith io(sep: \",\"):\n    print(pick())\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+}

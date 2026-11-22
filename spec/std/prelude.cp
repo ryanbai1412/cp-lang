@@ -24,7 +24,7 @@ use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condens
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap, Settle}
 use std.interval.{IntervalMap}
-use std.io.{Wire, read_all, yes}
+use std.io.{Wire, io, read_all, yes}
 use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}

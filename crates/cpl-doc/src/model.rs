@@ -335,6 +335,23 @@ impl Extractor<'_> {
         let above = self.first_line(stmt);
         let item = match &stmt.kind {
             StmtKind::Fn(decl) => self.fn_item(stmt, decl),
+            StmtKind::Context { name, fields } => {
+                let mut item = self.item(
+                    Kind::Struct,
+                    &name.text,
+                    self.head(stmt, ':'),
+                    line,
+                    above,
+                );
+                for field in fields {
+                    let at = self.docs.line_of(field.name.span.start + self.base);
+                    let signature =
+                        format!("{}: {}", field.name.text, squeeze(self.text(field.ty.span)));
+                    item.members
+                        .push(self.item(Kind::Field, &field.name.text, signature, at, at));
+                }
+                item
+            }
             StmtKind::Struct(decl) => {
                 let mut item = self.item(
                     Kind::Struct,

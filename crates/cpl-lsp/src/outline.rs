@@ -224,6 +224,23 @@ impl Reader<'_> {
                     .collect();
                 e
             }
+            StmtKind::Context { name, fields } => {
+                let mut e = entry(name, Kind::Struct, self.header(name.span));
+                e.members = fields
+                    .iter()
+                    .map(|f| Entry {
+                        name: f.name.text.clone(),
+                        kind: Kind::Field,
+                        public: true,
+                        detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
+                        doc: String::new(),
+                        params: Vec::new(),
+                        instance: true,
+                        members: Vec::new(),
+                    })
+                    .collect();
+                e
+            }
             StmtKind::Struct(s) => {
                 let mut e = entry(&s.name, Kind::Struct, self.header(s.name.span));
                 e.members = s

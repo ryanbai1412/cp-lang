@@ -3637,3 +3637,26 @@ fn printing_an_array_or_list_of_fixed_size_values_costs_its_size() {
     let costs: Vec<_> = costs.iter().map(|(_, n, c)| format!("{n} {c}")).collect();
     assert_eq!(costs, ["print O(|V|)", "ask O(|V| * |V|)"]);
 }
+
+#[test]
+fn checks_with_field_names_types_and_fn_uses() {
+    let mut db = Database::new();
+    db.set_file(
+        "ok.cp",
+        "context opt:\n    k: Int = 1\nwith io(base: 1, sep: \",\", precision: 2)\nwith opt(k: 5):\n    let x: Int = opt.k\n    print(x)\nfn f() -> Int uses opt = opt.k\n",
+    );
+    let diags = db.diagnostics("ok.cp");
+    assert!(diags.is_empty(), "{diags:?}");
+
+    db.set_file("bad_field.cp", "with io(nope: 1):\n    print(1)\n");
+    let codes_bf: Vec<_> = db.diagnostics("bad_field.cp").iter().map(|d| d.code).collect();
+    assert!(codes_bf.contains(&cpl_diag::codes::UNKNOWN_FIELD), "{codes_bf:?}");
+
+    db.set_file("bad_type.cp", "with io(base: 2):\n    print(1)\n");
+    let codes_bt: Vec<_> = db.diagnostics("bad_type.cp").iter().map(|d| d.code).collect();
+    assert!(codes_bt.contains(&cpl_diag::codes::TYPE_MISMATCH), "{codes_bt:?}");
+
+    db.set_file("bad_uses.cp", "fn f() uses nope:\n    print(1)\n");
+    let codes_bu: Vec<_> = db.diagnostics("bad_uses.cp").iter().map(|d| d.code).collect();
+    assert!(codes_bu.contains(&cpl_diag::codes::UNRESOLVED_NAME), "{codes_bu:?}");
+}

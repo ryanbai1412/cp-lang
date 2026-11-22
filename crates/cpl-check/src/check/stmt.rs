@@ -1548,13 +1548,8 @@ impl<'a> Checker<'a> {
                 }
                 self.declare(&name.text, name.span, Ty::Record(fs), false, "context");
             }
-            StmtKind::With { args, body, .. } => {
-                for arg in args {
-                    if !context_constant(&arg.value) {
-                        let message = "a context value is a compile-time constant; pass a runtime value as an argument instead".to_string();
-                        self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message);
-                    }
-                }
+            StmtKind::With { ctx, args, body } => {
+                self.check_with(ctx, args);
                 if let Some(body) = body {
                     return self.block(body);
                 }
@@ -2168,6 +2163,17 @@ impl<'a> Checker<'a> {
                 owner: None,
             });
         }
+        for ctx in &f.uses {
+            if !matches!(ctx.text.as_str(), "checks" | "lint")
+                && self.context_record_fields(&ctx.text).is_none()
+            {
+                self.error(
+                    codes::UNRESOLVED_NAME,
+                    ctx.span,
+                    format!("unknown context `{}` in `uses` clause", ctx.text),
+                );
+            }
+        }
         let outer = self.generics.len();
         let outer_bounds = self.param_bounds.len();
         self.generics
@@ -2522,6 +2528,163 @@ impl Checker<'_> {
             self.bind(pat, &ty, false, "for");
             self.block(body);
             self.pop_scope();
+        }
+    }
+
+    fn context_record_fields(&mut self, name: &str) -> Option<Vec<(String, Ty)>> {
+        if let Some(local) = self.local(name) {
+            if local.keyword == "context" {
+                if let Ty::Record(fields) = &local.ty {
+                    return Some(fields.clone());
+                }
+            }
+        }
+        if let Some(Def::Value {
+            keyword: "context",
+            ty: Ty::Record(fields),
+            ..
+        }) = self.global(name).as_deref()
+        {
+            return Some(fields.clone());
+        }
+        if name == "io" {
+            return Some(vec![
+                (
+                    "base".into(),
+                    Ty::Range {
+                        lo: Some(0),
+                        hi: Some(1),
+                        text: "0..=1".into(),
+                    },
+                ),
+                ("sep".into(), Ty::Str),
+                ("answers".into(), Ty::Tuple(vec![Ty::Str, Ty::Str])),
+                ("precision".into(), Ty::Optional(Box::new(Ty::Int))),
+            ]);
+        }
+        None
+    }
+
+    fn check_with(&mut self, ctx: &ast::Name, args: &[ast::Arg]) {
+        if ctx.text == "checks" {
+            const CHECK_FIELDS: &[&str] = &[
+                "ranges", "overflow", "bounds", "unwrap", "div", "asserts", "reads",
+            ];
+            for arg in args {
+                let Some(name) = &arg.name else {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        arg.value.span,
+                        "arguments to `with checks(...)` must be named".to_string(),
+                    );
+                    continue;
+                };
+                if !CHECK_FIELDS.contains(&name.text.as_str()) {
+                    self.error(
+                        codes::UNKNOWN_FIELD,
+                        name.span,
+                        format!("context `checks` has no field `{}`", name.text),
+                    );
+                }
+                if !matches!(&arg.value.kind, ExprKind::Name(v) if matches!(v.as_str(), "on" | "off"))
+                {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        arg.value.span,
+                        "expected `on` or `off` for `checks` context field".to_string(),
+                    );
+                }
+            }
+            return;
+        }
+        if ctx.text == "lint" {
+            for arg in args {
+                if arg.name.is_none() {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        arg.value.span,
+                        "arguments to `with lint(...)` must be named".to_string(),
+                    );
+                    continue;
+                }
+                if !matches!(
+                    &arg.value.kind,
+                    ExprKind::Name(v) if matches!(v.as_str(), "allow" | "warn" | "deny")
+                ) {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        arg.value.span,
+                        "expected `allow`, `warn`, or `deny` for `lint` context field".to_string(),
+                    );
+                }
+            }
+            return;
+        }
+        let Some(fields) = self.context_record_fields(&ctx.text) else {
+            self.error(
+                codes::UNRESOLVED_NAME,
+                ctx.span,
+                format!("unknown context `{}`", ctx.text),
+            );
+            for arg in args {
+                self.infer(&arg.value);
+            }
+            return;
+        };
+        for arg in args {
+            if !context_constant(&arg.value) {
+                let message = "a context value is a compile-time constant; pass a runtime value as an argument instead".to_string();
+                self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message);
+            }
+            let Some(name) = &arg.name else {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    arg.value.span,
+                    format!("arguments to `with {}(...)` must be named", ctx.text),
+                );
+                self.infer(&arg.value);
+                continue;
+            };
+            let Some((_, expected)) = fields.iter().find(|(n, _)| n == &name.text) else {
+                self.error(
+                    codes::UNKNOWN_FIELD,
+                    name.span,
+                    format!("context `{}` has no field `{}`", ctx.text, name.text),
+                );
+                self.infer(&arg.value);
+                continue;
+            };
+            let got = self.infer(&arg.value);
+            if !matches!(expected, Ty::Error | Ty::Unknown)
+                && !matches!(got, Ty::Error | Ty::Unknown)
+            {
+                let target = match expected {
+                    Ty::Optional(inner)
+                        if !matches!(got, Ty::Optional(_))
+                            && !matches!(arg.value.kind, ExprKind::None) =>
+                    {
+                        inner.as_ref()
+                    }
+                    other => other,
+                };
+                if let Ty::Range { lo, hi, .. } = target {
+                    if let ExprKind::Int(n) = arg.value.kind {
+                        let in_lo = lo.map_or(true, |l| n >= l);
+                        let in_hi = hi.map_or(true, |h| n <= h);
+                        if !in_lo || !in_hi {
+                            self.error(
+                                codes::TYPE_MISMATCH,
+                                arg.value.span,
+                                format!("expected `{expected}`, got `{n}`"),
+                            );
+                        }
+                        continue;
+                    }
+                }
+                self.expect_fits(&got, target, &arg.value, |_, got, want| {
+                    format!("expected `{want}`, got `{got}`")
+                });
+            }
         }
     }
 }

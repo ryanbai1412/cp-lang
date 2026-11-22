@@ -61,3 +61,10 @@ pub struct Wire():
 /// example: `read_all<Int>(until: x => x == 0) == [5, 7] and read<Int>() == 9` (stdin `5 7 0 9`)
 /// example: `read_all<Int>() == []` (empty stdin)
 pub fn read_all<T>(until: ?(T -> Bool) = None) -> List<T> = todo
+
+/// Compile-time I/O settings: 0/1-based counted domains, field separator, `yes` words, and float precision.
+pub context io:
+    base: 0..=1 = 0
+    sep: Str = " "
+    answers: (Str, Str) = ("YES", "NO")
+    precision: ?Int = None

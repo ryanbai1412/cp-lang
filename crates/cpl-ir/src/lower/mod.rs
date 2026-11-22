@@ -1380,6 +1380,9 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     ast::StmtKind::Context { name, fields } => {
+                        if m != 0 && name.text == "io" {
+                            continue;
+                        }
                         let prev = self.cur_mod;
                         self.cur_mod = m;
                         let field_tys: Vec<(String, Ty)> = fields
