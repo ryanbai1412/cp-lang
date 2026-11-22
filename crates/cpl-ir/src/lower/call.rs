@@ -6407,7 +6407,9 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let is_view_expr = matches!(&base.kind, ast::ExprKind::Index { .. })
-            || matches!(&base.kind, ast::ExprKind::Field { name, .. } if name.text == "rev");
+            || matches!(&base.kind, ast::ExprKind::Field { name, .. } if name.text == "rev")
+            || matches!(&base.kind, ast::ExprKind::Call { callee, .. }
+                if matches!(&callee.kind, ast::ExprKind::Field { name, .. } if name.text == "keyed"));
         if !is_place(base) && !is_view_expr {
             return None;
         }
@@ -7339,6 +7341,11 @@ impl<'a> Lowerer<'a> {
                 if base_is_seq {
                     return self.lower_map(base, &func.value, span);
                 }
+            }
+        }
+        if name.text == "keyed" {
+            if let Some(keyed) = self.lower_keyed(base, args, span) {
+                return keyed;
             }
         }
         // `xs.filter(x => cond)` returns a `List<T>` of elements satisfying `cond`.
@@ -11402,6 +11409,71 @@ impl<'a> Lowerer<'a> {
             Iter::Seq(seq, false) => self.map_seq(seq, elem_ty, func_ast, span),
             iter => self.lower_map_iter(iter, elem_ty, func_ast, span),
         }
+    }
+
+    /// `s.keyed()` / `s.keyed(keys)` on a list or view: the same cells, keyed
+    /// in walk order from the first key of `keys` (`0..` by default), O(1)
+    /// (R12.4.2, R04a.9.6). `None` leaves `by:` and other sequences to the
+    /// std definition.
+    fn lower_keyed(&mut self, base: &ast::Expr, args: &[ast::Arg], span: Span) -> Option<Expr> {
+        let keys = match args {
+            [] => None,
+            [arg] if !arg.mutable && arg.name.as_ref().is_none_or(|n| n.text == "keys") => {
+                Some(&arg.value)
+            }
+            _ => return None,
+        };
+        let elem = match self.probe_ty_silent(base)? {
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+                *elem
+            }
+            _ => return None,
+        };
+        let dim = match keys {
+            None => Dim::Int,
+            Some(keys) => match self.probe_ty_silent(keys)? {
+                Ty::Range(k) => match *k {
+                    Ty::Pos(d) | Ty::Bound(d) => Dim::Pos(d),
+                    Ty::Int => Dim::Int,
+                    _ => return None,
+                },
+                _ => return None,
+            },
+        };
+        let seq = self.expr(base, None);
+        let res = if matches!(seq.ty, Ty::List(_)) {
+            Ty::Keyed(Box::new(elem), dim)
+        } else {
+            Ty::ListView(Box::new(elem), dim)
+        };
+        // A view must not outlive its cells, so a temporary gets a slot.
+        let seq = if matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+            seq
+        } else {
+            let slot = self.new_slot("cells", seq.ty.clone());
+            self.cx.pending.push(Stmt::Let(slot, Some(seq)));
+            self.local(slot, span)
+        };
+        let lo = match keys {
+            None => self.int_lit(0, span),
+            Some(keys) => {
+                let keys = self.expr(keys, None);
+                let keys = self.hold_view(keys, span);
+                self.mk(
+                    ExprKind::Builtin(Builtin::RangeLo, vec![keys]),
+                    Ty::Int,
+                    span,
+                )
+            }
+        };
+        let lo = self.hold_view(lo, span);
+        let len = self.len_of(seq.clone(), span);
+        let hi = self.int_sum(lo.clone(), len);
+        Some(self.mk(
+            ExprKind::Builtin(Builtin::Rekey, vec![seq, lo, hi]),
+            res,
+            span,
+        ))
     }
 
     /// `seq.map(f)` as a list, keyed like `seq` when `seq` is a view:
