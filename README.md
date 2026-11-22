@@ -218,5 +218,5 @@ a change to the prototype, the WebAssembly build or the VS Code
 extension, run the slow suites too:
 
 ```text
-$ scripts/check.sh --full             # adds proto_fuzz, the budget tests, the wasm smoke test, the VS Code tests and proto/run_all.sh
+$ scripts/check.sh --full             # adds the prover fuzzer, the budget tests, the wasm smoke test and the VS Code tests
 ```

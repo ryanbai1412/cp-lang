@@ -38,3 +38,6 @@ still on `main`. Restore one with `git push origin <sha>:refs/heads/<name>`.
 |---|---|
 | `subs/submissions/` | byte-identical to `corpus/submissions/` |
 | `subs/body_*.cpp`, `subs/*.txt` | a 50-file sample of solution bodies, each contained in its `corpus/submissions/<id>.cpp` |
+| `proto/cp.py`, `cpc/`, `cpi/`, `run_all.sh`, `bench.py`, `loc.py`, `interact.py`, `perf/`, `PLAN.md`, `tests/*.py` | the retired Python prototype; `cpl` replaces it, and `decisions.md` keeps what it proved |
+| `crates/cpl-verify/` | tested only the prototype; the three-way differential harness in `plan/ARCHITECTURE.md` replaces it |
+| `tools/bench/`, `bench/max_n_audit.py` | built ports with the prototype; `bench/rust_latency_audit.py` and `bench/rust_max_n_audit.py` remain |

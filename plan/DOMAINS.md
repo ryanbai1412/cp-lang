@@ -24,7 +24,7 @@ bottom, under the old numbering.
 | 11 | Editor and LSP | `crates/cpl-lsp`, `editors/` | Everything the compiler knows, in the editor |
 | 12 | Docs, site, playground | `docs/`, `site/`, `crates/cpl-wasm` | Writable from the docs alone |
 | 13 | Corpus and hill-climb | `corpus/problems/` | Real problems that drive the design |
-| 14 | Validation and scoreboard | `proto/ports/`, `scripts/scoreboard.py`, `crates/cpl-verify` | Ports gated against their C++ originals, measured on every push |
+| 14 | Validation and scoreboard | `corpus/problems/`, `scripts/scoreboard.py`, `scripts/corpus-tests.py` | Ports gated against their C++ originals, measured on every push |
 
 ## 1. Spec and conformance
 
