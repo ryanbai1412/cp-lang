@@ -20,7 +20,7 @@ enum Side: Left | Right
 let (n, q): (1..=200_000, 1..=200_000) = read()
 domain Row = 1..=n
 var row: [Side, Row]Int = 0
-var freq: [Side, 0..n]Int = 0
+var freq: [Side, 0..q]Int = 0
 var h: [Side]U64 = 0
 
 fn add(s: Side, r: Row):
