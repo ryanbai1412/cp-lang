@@ -3,7 +3,7 @@
 
 For each fix commit (subject `syntax|check|ir|interp|codegen: ...` naming a
 fix and touching compiler `src/`), the compiler-source part
-of the commit is reverse-applied in a scratch worktree at HEAD, cpl-conform
+of the commit is reverse-applied (three-way when it no longer applies cleanly) in a scratch worktree at HEAD, cpl-conform
 is rebuilt, and the conformance suite is rerun. The fix is caught when a case
 that passes at HEAD fails with the fix reverted. Tests are never reverted.
 Commits that no longer reverse-apply or build are reported, not counted.
@@ -90,6 +90,12 @@ def main():
             files = src_only(git("show", "--format=", "--name-only", sha).stdout.split())
             patch = git("diff", f"{sha}^", sha, "--", *files).stdout
             ap_ = subprocess.run(["git", "apply", "-R"], cwd=wt, input=patch, text=True, capture_output=True)
+            if ap_.returncode:
+                git("checkout", "-f", "-q", "HEAD", cwd=wt)
+                ap_ = subprocess.run(["git", "apply", "-R", "--3way"], cwd=wt, input=patch, text=True,
+                                     capture_output=True)
+                if ap_.returncode == 0 and git("diff", "--name-only", "--diff-filter=U", cwd=wt).stdout.strip():
+                    ap_ = subprocess.CompletedProcess(ap_.args, 1)
             if ap_.returncode:
                 rows.append((sha, subj, "does not reverse-apply", []))
                 print(f"{sha[:8]} skip (does not reverse-apply)", flush=True)
