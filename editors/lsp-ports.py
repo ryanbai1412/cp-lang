@@ -17,7 +17,7 @@ feature, on how many ports it works:
   latency      median didChange -> publishDiagnostics under 50 ms
 
 A request that gets no answer within 5 s counts as a hang and fails every
-feature of that port. Set CPL_SPEC/CPL_STD to measure the spec mode.
+feature of that port.
 """
 import json
 import os

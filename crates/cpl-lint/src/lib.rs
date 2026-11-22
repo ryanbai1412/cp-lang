@@ -170,7 +170,7 @@ pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
     default: Level::Warn,
     title: "`use` of a name the prelude already provides",
     summary: "`use std.tree.{Rooted}` imports what the prelude gives every program",
-    explanation: "The prelude (`stdlib/prelude.cp`) brings in each of its names when a program uses it, so `use std.tree.{Rooted}` or `use std.mod.Mod` says nothing. `cpl fix` drops the name, and the `use` when nothing is left. An alias, a glob, a `pub use` and the imports of a library (a file with `pub` items) are left alone.",
+    explanation: "The prelude (`spec/std/prelude.cp`) brings in each of its names when a program uses it, so `use std.tree.{Rooted}` or `use std.mod.Mod` says nothing. `cpl fix` drops the name, and the `use` when nothing is left. An alias, a glob, a `pub use` and the imports of a library (a file with `pub` items) are left alone.",
     trigger: "use std.tree.{Rooted}\ndomain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
     fix: "domain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
 };

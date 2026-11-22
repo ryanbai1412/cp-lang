@@ -115,9 +115,7 @@ console.log("SHARE_OK");
                 p = Path(tmp) / fname
                 p.write_text(src)
                 cmd = [str(CPL), mode, str(p)]
-                # The WASM build has no environment, so it runs the default edition.
-                env = {k: v for k, v in os.environ.items() if k not in ("CPL_EDITION", "CPL_STD")}
-                res = subprocess.run(cmd, input=inp if mode == "run" else None, cwd=REPO, capture_output=True, text=True, timeout=15, env=env)
+                res = subprocess.run(cmd, input=inp if mode == "run" else None, cwd=REPO, capture_output=True, text=True, timeout=15)
                 # Normalize filename to `main.cp` because WASM uses `main.cp`.
                 cli_expected.append({
                     "mode": mode,

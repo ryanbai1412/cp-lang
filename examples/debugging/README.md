@@ -9,8 +9,7 @@ reference in the same file:
 | `shortest_path.cp` | Dijkstra on a graph | a vertex's distance is set once and never relaxed |
 | `shows.cp` | `@!multitest` greedy | shows are sorted by start, not by end |
 
-Every command below runs from this directory with today's default `cpl`
-(no `CPL_SPEC`). The generated `*.tests/` and `*.trace.html` files are
+Every command below runs from this directory. The generated `*.tests/` and `*.trace.html` files are
 ignored by git, so the demo starts clean each time.
 
 ## 1. `cpl stress` finds and shrinks a counterexample

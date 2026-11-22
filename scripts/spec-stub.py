@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Check spec/std/*.cp, or reduce it to reference docs (every fn body `todo`).
 
-spec/std is moving toward the one library tree: signatures, docs and costs,
-with bodies ported from stdlib/ (scripts/port-bodies.py) where they exist.
+spec/std is the standard library: signatures, docs, costs and bodies.
 Without --check, only fn bodies change: headers, docs, traits, structs and bodiless
 trait methods are kept as written. `lends` fns keep their bodies, since the
 checker needs the `lend place` to type the place they return.

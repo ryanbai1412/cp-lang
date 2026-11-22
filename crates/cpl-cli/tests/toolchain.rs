@@ -94,8 +94,7 @@ impl World {
             .current_dir(cwd)
             .env("CPL_HOME", &self.home)
             .env("CPL_RELEASES_URL", self.url())
-            .env_remove("CPL_VERSION")
-            .env_remove("CPL_STD");
+            .env_remove("CPL_VERSION");
         for (key, value) in env {
             command.env(key, value);
         }
@@ -357,7 +356,6 @@ fn install_ps1_installs_a_checked_windows_toolchain() {
     assert!(stdout.contains("to your PATH"), "{stdout}");
     let toolchain = world.home.join("toolchains/edge-2026-11-21-aaaaaaaa");
     assert_eq!(std::fs::read(toolchain.join("bin/cpl.exe")).unwrap(), std::fs::read(CPL).unwrap());
-    assert!(toolchain.join("stdlib/prelude.cp").is_file());
     assert!(toolchain.join("release.json").is_file());
     assert_eq!(std::fs::read(world.home.join("bin/cpl.exe")).unwrap(), std::fs::read(CPL).unwrap());
     let settings = std::fs::read_to_string(world.home.join("settings.toml")).unwrap();

@@ -4,11 +4,11 @@
 //! over sequences that `plan/12-domains-and-sequences.md` writes bare
 //! (`sum`, `count`, `all`, `any`, `find`, `first`, `last`, `argmax`,
 //! `argmin`), and the intrinsics the libraries are written on top of
-//! (`rand`, `sort`, `swap`, `popcount`, ...; `stdlib/README.md` lists them).
+//! (`rand`, `sort`, `swap`, `popcount`, ...; `spec/std/README.md` lists them).
 //!
 //! Everything else, `std` included, is cp source and resolves through
 //! `use`. The `std` names a program has without writing one are listed in
-//! `stdlib/prelude.cp`, which [`names`] reads.
+//! `spec/std/prelude.cp`, which [`names`] reads.
 
 use std::sync::OnceLock;
 
@@ -55,7 +55,7 @@ pub fn std_method(name: &str) -> String {
 }
 
 /// Every fn, method and getter name the active standard library declares.
-/// A struct's fields are not members of the built-in types (R02.6.4). Under `CPL_SPEC`, a member of a built-in
+/// A struct's fields are not members of the built-in types (R02.6.4). A member of a built-in
 /// type that the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
@@ -420,7 +420,7 @@ pub const TYPE_NAMES: &[&str] = &[
     "Indexed",
 ];
 
-/// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
+/// The traits of `plan/19-index-and-lends.md` and `spec/std/README.md`.
 pub const TRAIT_NAMES: &[&str] = &[
     "Index",
     "Seq",

@@ -77,7 +77,6 @@ fn lsp_reports_what_check_reports_against_the_spec() {
     use std::io::Write;
     use std::process::Stdio;
 
-    let std_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../spec/std");
     let dir = std::env::temp_dir().join(format!("cpl-cli-spec-lsp-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("a.cp");
@@ -86,16 +85,12 @@ fn lsp_reports_what_check_reports_against_the_spec() {
     let check = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("check")
         .arg(&file)
-        .env("CPL_SPEC", "1")
-        .env("CPL_STD", std_dir)
         .output()
         .expect("cpl check runs");
     let check_err = String::from_utf8_lossy(&check.stderr).into_owned();
 
     let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["lsp", "--stdio"])
-        .env("CPL_SPEC", "1")
-        .env("CPL_STD", std_dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -259,8 +254,6 @@ fn the_default_edition_checks_what_the_spec_rejects() {
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("check")
         .arg(&path)
-        .env_remove("CPL_SPEC")
-        .env_remove("CPL_EDITION")
         .output()
         .expect("cpl runs");
     let stderr = String::from_utf8(out.stderr).unwrap();
@@ -1419,8 +1412,6 @@ fn lsp_completes_and_hovers_the_v03_stdlib_with_no_edition_set() {
 
     let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["lsp", "--stdio"])
-        .env_remove("CPL_SPEC")
-        .env_remove("CPL_STD")
         .current_dir(std::env::temp_dir())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

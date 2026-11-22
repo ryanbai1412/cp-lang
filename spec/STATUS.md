@@ -60,14 +60,13 @@ Run from the repo root:
 
 ```
 scripts/check.sh --fast                                   # the gate, under 180 s
-CPL_SPEC=1 CPL_STD=$PWD/spec/std scripts/spec-check.sh    # gold and port dreams vs the stubs
+scripts/spec-check.sh                                     # gold and port dreams vs the stubs
 scripts/spec-stub.py --check                              # every std body is `todo`, documented
 scripts/corpus.py build && scripts/corpus.py check        # corpus records
-CPL_SPEC=1 CPL_STD=$PWD/spec/std target/debug/cpl check corpus/problems/<p>/spec.cp
+target/debug/cpl check corpus/problems/<p>/spec.cp
 ```
 
-`CPL_STD` makes `spec/std` shadow `stdlib/`. Without it, `cpl check` checks
-against the 0.2 library and reports false gaps. The pre-commit hook runs a
+The pre-commit hook runs a
 public-history scan, so keep hosts, home paths and session links out of
 commits.
 

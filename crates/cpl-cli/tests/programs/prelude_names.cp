@@ -1,4 +1,4 @@
-// Names of `stdlib/prelude.cp` need no `use`: types and fns alike.
+// Names of `spec/std/prelude.cp` need no `use`: types and fns alike.
 let n: 1..=10 = read()
 domain V = 0..n
 var d = Dsu<V>()

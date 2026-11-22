@@ -40,7 +40,7 @@ _TESTS = _PROSE + [
     "corpus/submissions/*", "corpus/statements/*", "plan/*",
 ]
 STAGES = {
-    # rustc reads only crates/, stdlib/ (cpl-check's build.rs) and the
+    # rustc reads only crates/, spec/std/ (cpl-check's build.rs) and the
     # include_str! targets; test_check_cache.py keeps those out of here.
     "clippy": _TESTS + [
         "README.md", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",

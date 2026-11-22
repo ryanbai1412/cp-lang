@@ -1,10 +1,8 @@
 # The standard library stubs
 
-Every public module of the standard library, as the spec wants it: signatures, doc comments and
-costs. Bodies come from `stdlib/` where one matches (`scripts/port-bodies.py`); the rest are
-`todo` and count as unimplemented. The library chapters in
-`spec/lib/` give the model and the examples; these files are the contract an implementation is
-held to. A file here shadows `stdlib/` when `CPL_STD=spec/std`.
+Every public module of the standard library, written in CP Lang and built into `cpl`: signatures,
+doc comments, costs and bodies. The library chapters in `spec/lib/` give the model and the
+examples; these files are the contract an implementation is held to.
 
 ## What every public fn documents
 
