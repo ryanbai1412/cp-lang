@@ -7,16 +7,37 @@
 /// lists the pairs with every earlier `j`), so `read<[Pair<V>]Int>()` reads one. An array over it
 /// takes two positions in either order: `d[u, v] == d[v, u]`, trapping when `u == v`.
 pub struct Pair<V>(lo: V, hi: V):
-    /// The pair of `u` and `v`, in either order. Traps when `u == v`. O(1).
+    /// The pair of `u` and `v`, in either order: the smaller position becomes `lo`.
+    ///
+    /// cost: O(1)
+    /// traps: when `u == v`
+    /// example: `Pair<0..4>.new(3, 1).lo == 1`
+    /// example: `Pair<0..4>.new(3, 1) == Pair<0..4>.new(1, 3)`
     pub fn new(u: V, v: V) -> Pair<V> = todo
 
-    /// `None` when `u == v`, else `Pair(u, v)`. O(1).
+    /// The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping
+    /// [`new`](Pair.new).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pair<0..4>.at(2, 2) == None`
+    /// example: `Pair<0..4>.at(2, 0) == Some(Pair<0..4>.new(0, 2))`
     pub fn at(u: V, v: V) -> ?Pair<V> = todo
 
-    /// The pair's other end: `p.other(p.lo) == p.hi`. Traps when `v` is not in `p`. O(1).
+    /// The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.
+    ///
+    /// cost: O(1)
+    /// traps: when `v` is neither `self.lo` nor `self.hi`
+    /// example: `Pair<0..4>.new(1, 3).other(3) == 1`
     pub fn other(self, v: V) -> V = todo
 
-/// The full matrix of a per-pair table: `m[u, v] == m[v, u] == d[u, v]`, and `diag` on the
-/// diagonal. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)` is a distance matrix for
-/// `floyd_warshall`. O(n²).
+/// The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for
+/// `u != v`, and `diag` at every `m[v, v]`. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)`
+/// is a distance matrix for `floyd_warshall`.
+///
+/// cost: O(n²) for `n == V.count`; allocates the matrix
+/// empty: the empty matrix when `V` is empty; `[[diag]]` when `V` has one position
+/// order: keyed by `(V, V)`, row-major
+/// traps: never
+/// example: `let d: [Pair<0..3>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
 pub fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T = todo
