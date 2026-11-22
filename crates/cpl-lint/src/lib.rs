@@ -576,8 +576,9 @@ pub struct ProvenLoop {
 pub struct ProvenFn {
     pub name: (u32, u32),
     /// The sum over its `for` loops of how often each body runs, nested
-    /// loops multiplied, calls not followed; `None` when a `while` or an
-    /// unbounded `for` makes the count unknown.
+    /// loops multiplied, plus each call of a fn in the file times that fn's
+    /// count; `None` when a `while`, an unbounded `for`, recursion or a call
+    /// in a lambda makes the count unknown.
     pub steps: Option<u128>,
 }
 

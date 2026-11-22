@@ -45,8 +45,90 @@ pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
     proven(file).loops
 }
 
+/// Each fn's iterations per call: its own loops plus, for each call of a
+/// fn declared in the file, how often the call runs times that fn's own
+/// count. Recursion, or a call inside a lambda, makes the count unknown.
 pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
-    proven(file).fns
+    #[derive(Clone, Copy)]
+    enum State {
+        Todo,
+        Busy,
+        Done(Option<u128>),
+    }
+    fn steps(i: usize, fns: &[FnCost], by_name: &std::collections::HashMap<&str, usize>, state: &mut [State]) -> Option<u128> {
+        match state[i] {
+            State::Done(n) => return n,
+            State::Busy => return None,
+            State::Todo => state[i] = State::Busy,
+        }
+        let mut total = fns[i].own;
+        for (callee, times) in &fns[i].calls {
+            if let Some(&j) = by_name.get(callee.as_str()) {
+                let each = steps(j, fns, by_name, state);
+                total = match each {
+                    Some(0) => total,
+                    _ => total.zip(times.zip(each)).and_then(|(t, (n, e))| t.checked_add(n.checked_mul(e)?)),
+                };
+            }
+        }
+        state[i] = State::Done(total);
+        total
+    }
+    let fns = proven(file).fns;
+    let mut by_name = std::collections::HashMap::new();
+    for (i, f) in fns.iter().enumerate() {
+        by_name.entry(f.name.as_str()).or_insert(i);
+    }
+    let mut state = vec![State::Todo; fns.len()];
+    (0..fns.len())
+        .map(|i| (fns[i].at, steps(i, &fns, &by_name, &mut state)))
+        .filter(|&(_, steps)| steps != Some(0))
+        .map(|(name, steps)| crate::ProvenFn { name, steps })
+        .collect()
+}
+
+/// A fn's own loop iterations per call (`None` when a loop has no count)
+/// and the fns it calls by name, each with how often the call runs.
+struct FnCost {
+    name: String,
+    at: (u32, u32),
+    own: Option<u128>,
+    calls: Vec<(String, Option<u128>)>,
+}
+
+/// The calls by name in `block`, each with its offset, and the spans of
+/// what runs an unknown number of times or not here: lambdas, tables,
+/// comprehensions and nested fns.
+/// Calls by name with their offsets, and the spans that hide calls.
+type Calls = (Vec<(String, u32)>, Vec<(u32, u32)>);
+
+fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
+    use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_block, Visitor};
+    struct Found(Vec<(String, u32)>, Vec<(u32, u32)>);
+    impl Visitor for Found {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Fn(_) = stmt.kind {
+                self.1.push((stmt.span.start, stmt.span.end));
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            match &expr.kind {
+                ExprKind::Call { callee, .. } => {
+                    if let ExprKind::Name(name) = &callee.kind {
+                        self.0.push((name.clone(), expr.span.start));
+                    }
+                }
+                ExprKind::Lambda { .. } | ExprKind::Table { .. } | ExprKind::Comprehension { .. } => {
+                    self.1.push((expr.span.start, expr.span.end));
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut calls = Found(Vec::new(), Vec::new());
+    walk_block(block, &mut calls);
+    (calls.0, calls.1)
 }
 
 pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
@@ -94,7 +176,9 @@ struct Proven {
     exprs: Vec<crate::ProvenExpr>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
-    fns: Vec<crate::ProvenFn>,
+    fns: Vec<FnCost>,
+    /// The statement of each loop in `loops`, in the same order.
+    loop_stmts: Vec<(u32, u32)>,
     /// How many times the innermost enclosing loops run in all.
     around: Option<u128>,
     /// Whether the fn being read has a loop with no proven count.
@@ -109,6 +193,7 @@ impl Default for Proven {
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
+            loop_stmts: Vec::new(),
             around: Some(1),
             unbounded: false,
         }
@@ -505,6 +590,7 @@ fn ranges_of_stmt(
                         times,
                         total,
                     });
+                    proven.loop_stmts.push((base + stmt.span.start, base + stmt.span.end));
                 }
                 forget(pat, &mut inner);
                 if let (
@@ -635,13 +721,31 @@ fn ranges_of_stmt(
                     let (first, unbounded) = (proven.loops.len(), std::mem::take(&mut proven.unbounded));
                     ranges_in(base, &block.stmts, &[], &mut inner, proven);
                     let loops = &proven.loops[first..];
-                    if proven.unbounded || !loops.is_empty() {
-                        let steps = (!proven.unbounded)
-                            .then(|| loops.iter().try_fold(0u128, |sum, l| sum.checked_add(l.total?)))
-                            .flatten();
-                        let name = (base + decl.name.span.start, base + decl.name.span.end);
-                        proven.fns.push(crate::ProvenFn { name, steps });
-                    }
+                    let own = (!proven.unbounded)
+                        .then(|| loops.iter().try_fold(0u128, |sum, l| sum.checked_add(l.total?)))
+                        .flatten();
+                    let (found, hidden) = calls_in(block);
+                    let inside = |at: u32, (start, end): (u32, u32)| start <= at && at < end;
+                    let calls = found
+                        .into_iter()
+                        .map(|(name, at)| {
+                            let at = base + at;
+                            if hidden.iter().any(|&(s, e)| inside(at, (base + s, base + e))) {
+                                return (name, None);
+                            }
+                            let stmts = &proven.loop_stmts[first..];
+                            let innermost = (0..loops.len())
+                                .filter(|&i| inside(at, stmts[i]))
+                                .min_by_key(|&i| stmts[i].1 - stmts[i].0);
+                            (name, innermost.map_or(Some(1), |i| loops[i].total))
+                        })
+                        .collect();
+                    proven.fns.push(FnCost {
+                        name: decl.name.text.clone(),
+                        at: (base + decl.name.span.start, base + decl.name.span.end),
+                        own,
+                        calls,
+                    });
                     proven.around = around;
                     proven.unbounded = unbounded;
                 }

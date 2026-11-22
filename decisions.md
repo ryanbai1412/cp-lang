@@ -2393,11 +2393,15 @@ count too; a subdomain position does not, since its name alone is not the array'
 Reverse by dropping `TypedIndex` and the fallback in the LSP's `index_hover`.
 
 29.41. **A fn's hover counts the loop iterations of one call.** Hovering a fn with a loop shows
-`loops: at most 1600000 (1.6e6) iterations per call, calls inside not counted`: the sum over its
-`for` loops of how often each body runs, nested loops multiplied, from the same proven counts as
-a loop's own hover. A `while` or a `for` with no proven count makes the total unknown, and then
-nothing is shown; of the 1,095 fns with a loop in the ports and examples, 147 get a count. Calls, stdlib costs and comprehensions are not followed, which the text says;
-this is an iteration count, not the `O(..)` estimate `plan/60` asks for. Reverse by dropping
+`loops: at most 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the
+stdlib not counted`: the sum over its `for` loops of how often each body runs, nested loops
+multiplied, from the same proven counts as a loop's own hover, plus for each call by name of a fn
+in the file how often the call runs times that fn's count. A `while`, a `for` with no proven
+count, recursion, or a call inside a lambda, table or comprehension makes the total unknown, and
+then nothing is shown; of the 1,334 fns in the ports and examples with a loop or such a call, 106 get
+a count (147 of 1,095 before calls were followed, when a call to a fn that never stops was simply
+left out). Method calls, stdlib costs and comprehensions themselves are not counted,
+which the text says; this is an iteration count, not the `O(..)` estimate `plan/60` asks for. Reverse by dropping
 `proven_fns` and its use in the LSP hover.
 
 ## 30. Front-end recovery (2026-11-21)

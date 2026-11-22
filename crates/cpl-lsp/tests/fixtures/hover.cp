@@ -73,3 +73,6 @@ fn sc$0an():
         for j in 0..k:
             print(v, j)
 sca$0n()
+fn re$0scan():
+    for i in 0..3:
+        scan()

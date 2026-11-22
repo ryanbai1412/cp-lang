@@ -1792,6 +1792,13 @@ fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
         fns(&src),
         [some("grid", Some(200000 + 200000000 + 1000)), some("walk", None), some("over", None)]
     );
+    let calls = format!(
+        "{src}fn twice():\n    for i in 0..2:\n        grid()\n    plain(3)\n\
+         fn again(k: Int):\n    again(k - 1)\n    grid()\n\
+         fn mapped():\n    let ys = [1, 2].map(x => grid())\n"
+    );
+    let found = fns(&calls);
+    assert_eq!(found[3..], [some("twice", Some(2 + 2 * 200201000)), some("again", None), some("mapped", None)]);
 }
 
 #[test]

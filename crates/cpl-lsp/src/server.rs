@@ -236,7 +236,7 @@ impl Server {
                     .and_then(|f| f.steps);
                 if let Some(steps) = steps {
                     hover.text += &format!(
-                        "\n  loops: at most {} iterations per call, calls inside not counted",
+                        "\n  loops: at most {} iterations per call, with the fns it calls; methods and the stdlib not counted",
                         count_text(steps)
                     );
                 }
