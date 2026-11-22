@@ -3180,6 +3180,10 @@ pub struct AhoCorasick<A>:
 /// Online multi-pattern Aho-Corasick via log-decomposed static buckets.
 pub struct DynamicAhoCorasick<A>:
     alpha: 0..=2_000_000_000
+    n: Int
+    stored: Trie<A>
+    added: AcBuckets<A>
+    removed: AcBuckets<A>
 
     /// An empty online pattern set over the alphabet domain `A`; call it as
     /// `DynamicAhoCorasick<A>()`.
@@ -3187,21 +3191,21 @@ pub struct DynamicAhoCorasick<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicAhoCorasick<Char>().is_empty`
-    pub fn new() -> DynamicAhoCorasick<A> = todo
+    pub fn new() -> DynamicAhoCorasick<A> = DynamicAhoCorasick<A>(A.K, 0, Trie<A>(), AcBuckets<A>([], [], []), AcBuckets<A>([], [], []))
 
     /// The number of patterns stored, copies counted.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.add("a"); d.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = n
 
     /// True when no patterns are stored.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.remove("a"); d.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = n == 0
 
     /// Stores one more copy of `pattern`.
     ///
@@ -3209,7 +3213,11 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: an empty pattern matches at every `at` in `0..=|text|`
     /// traps: when an element of `pattern` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.len == 1`
-    pub fn add<S: Seq>(mut self, pattern: S) = todo
+    pub fn add<S: Seq>(mut self, pattern: S):
+        let word: List<A> = [a for a in pattern]
+        let _ = stored.add(word)
+        added.add(word)
+        n += 1
 
     /// Removes one stored copy of `pattern`.
     ///
@@ -3217,7 +3225,11 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: removes a copy of the empty pattern
     /// traps: when no copy of `pattern` is stored
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.remove("ab"); d.count_matches("ab") == 0`
-    pub fn remove<S: Seq>(mut self, pattern: S) = todo
+    pub fn remove<S: Seq>(mut self, pattern: S):
+        let word: List<A> = [a for a in pattern]
+        assert stored.remove(word), "`remove(pattern)` needs a stored copy of `pattern`"
+        removed.add(word)
+        n -= 1
 
     /// The total number of occurrences of all stored patterns in `text`, overlaps and copies
     /// counted.
@@ -3226,7 +3238,39 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: `0` for an empty `text` unless an empty pattern is stored
     /// traps: when an element of `text` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.add("b"); d.count_matches("abb") == 3`
-    pub fn count_matches<S: Seq>(self, text: S) -> Int = todo
+    pub fn count_matches<S: Seq>(self, text: S) -> Int = added.count(text) - removed.count(text)
+
+struct AcBuckets<A>:
+    pats: List<List<List<A>>>
+    acs: List<AhoCorasick<A>>
+    hits: List<List<Int>>
+
+    @allow(unproven_list_index)
+    fn add(mut self, word: List<A>):
+        var group: List<List<A>> = [word]
+        while not pats.is_empty and pats[pats.len - 1].len == group.len:
+            for w in pats[pats.len - 1]: group.push(w)
+            let _ = pats.pop()
+            let _ = acs.pop()
+            let _ = hits.pop()
+        let ac = AhoCorasick<A>(group)
+        var hit = List.filled(ac.len, 0)
+        for v in ac.fail_order():
+            hit[v] = ac.ends[v].len + (if v == 0: 0 else: hit[ac.fail[v]])
+        pats.push(group)
+        acs.push(ac)
+        hits.push(hit)
+
+    @allow(unproven_list_index)
+    fn count<S: Seq>(self, text: S) -> Int:
+        var total = 0
+        for b in 0..acs.len:
+            var state = 0
+            total += hits[b][0]
+            for a in text:
+                state = acs[b].step(state, a)
+                total += hits[b][state]
+        total
 
 // ---- tests
 
@@ -3870,3 +3914,25 @@ fn dynamic_hash_matches_rolling_hash_after_updates():
     let g = DynamicHash<P>([P] p => p.to_idx % 2)
     assert g.len == 6 and g.get(P(0)..P(2)) == g.get(P(2)..P(4))
     assert g.is_palindrome(P(1)..P(4)) and not g.is_palindrome(P(0)..P(2))
+
+@test
+fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
+    for _ in 0..10:
+        var d = DynamicAhoCorasick<Char>()
+        var live: List<List<Char>> = []
+        for _ in 0..25:
+            if not live.is_empty and rand(0, 2) == 0:
+                let i = rand(0, live.len - 1)
+                d.remove(live[i])
+                live = [live[k] for k in 0..live.len if k != i]
+            else:
+                let w = random_word(rand(0, 3), 2)
+                d.add(w)
+                live.push(w)
+            assert d.len == live.len and d.is_empty == live.is_empty
+            let text = random_word(rand(0, 8), 2)
+            var want = 0
+            for w in live:
+                for i in 0..=text.len - w.len:
+                    if (0..w.len).all(j => text[i + j] == w[j]): want += 1
+            assert d.count_matches(text) == want
