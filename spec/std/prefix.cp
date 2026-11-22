@@ -1,6 +1,6 @@
 //! Prefix sums, prefix/suffix monoid folds, and offline difference arrays.
 //!
-//! Call `prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in O(n) or
+//! Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in O(n) or
 //! O(r * c), then answer any `.fold(...)` or `.prefix(...)` query in O(1).
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for O(1) offline range/rectangle adds and O(n) /
 //! O(r * c) `finish()`.
@@ -92,13 +92,15 @@ pub struct FillPrefix<D, T>:
 
 /// Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s,
 /// `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
-/// Construct statically with `prefix(a)` in O(|D|) / O(|R| * |C|) / O(a.len), or incrementally
+/// Construct statically with `Prefix(a)` in O(|D|) / O(|R| * |C|) / O(a.len), or incrementally
 /// with `Prefix<...>.filling(order: FillOrder.Forward | FillOrder.Reverse)` and O(1) `.set(...)`
 /// in fill order; `.fold(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
+/// On `a: [R, C]T`, `Prefix(a)` is the 2-D `Prefix<R, C, T>`, folding rectangles with
+/// `fold(rows, cols)`; it is never a 1-D table over the cells.
 pub struct Prefix<D, T>:
     p: [D.cuts]T
 
-    /// Build 1-D prefix sums over `a: [D]T`; `prefix(a)` calls it.
+    /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
     ///
     /// cost: O(|D|) time and space
     /// empty: a table whose every query is zero
@@ -278,11 +280,11 @@ pub struct _FillPrefix2 < R, C, T >:
             return self.p[rows.start, cols.start] - self.p[rows.end, cols.start] - self.p[rows.start, cols.end] + self.p[rows.end, cols.end]
         self.prefix(rows.end, cols.end) - self.prefix(rows.start, cols.end) - self.prefix(rows.end, cols.start) + self.prefix(rows.start, cols.start)
 
-/// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
+/// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
     p: [R.cuts, C.cuts]T
 
-    /// Build 2-D prefix sums over `a: [R, C]T`; `prefix(a)` on a grid calls it.
+    /// Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
     ///
     /// cost: O(|R| * |C|) time and space
     /// empty: a table whose every query is zero
@@ -370,11 +372,11 @@ pub struct _FillPrefixList < T >:
             return self.p[r.start] - self.p[r.end]
         self.prefix(r.end) - self.prefix(r.start)
 
-/// Internal list shape of `Prefix<T>`, constructed by `prefix(a)` or `Prefix<T>.filling(n, ...)`.
+/// Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
 pub struct _PrefixList < T >:
     p: List<T>
 
-    /// Build 1-D prefix sums over `a: List<T>`; `prefix(a)` on a list calls it.
+    /// Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
     ///
     /// cost: O(a.len) time and space
     /// empty: a table whose every query is zero

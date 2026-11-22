@@ -234,8 +234,10 @@ dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   // cost, then hops
 
 An action is a monoid of tags (`F`) plus `apply`, which says what a tag does
 to a folded value of `n` leaves. Tags compose **in time order**,
-`tags.op(old, new)`, the same left-to-right rule as values, so there is no
-separate `compose(new, old)` convention to get backwards.
+`tags.op(old, new)`, the same left-to-right rule as values. The
+`std.algebra.Action` struct spells the same thing as function composition:
+its `compose(new, old)` applies `old` first, so `compose(new, old) ==
+tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 
 ```python
 pub trait Action<M, F>:              // M is the fold op's type, e.g. type of `+`

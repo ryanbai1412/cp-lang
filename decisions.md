@@ -5661,3 +5661,25 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   read would make `w.at(k)` and `w[k]` disagree on every view.
 - **Reverse.** Define `at` as the walk offset, rename the trait method
   (`get`), and rewrite R05.6.3 and R12.4.13.
+
+## 214. `{}` is not a `Subset` literal (2026-11-22)
+
+- **Decision.** `std.subset` and `lib/search-dp.md` wrote the empty subset
+  as `{}`, but core has no `{}` literal and the parser reads it as an empty
+  block. The empty subset is `Subset<B>.empty`; `{}` where a `Subset` is
+  expected is E0301. A core literal for one std type breaks the small-core
+  rule.
+- **Reverse.** Add an empty-collection literal to the core grammar, typed
+  by the expected type, and write it back into the std and lib docs.
+
+## 215. `Prefix(a)` on a grid is the 2-D prefix (2026-11-22)
+
+- **Decision.** `std.prefix` documented a free `prefix(a)` that std never
+  defines; the constructor is `Prefix(a)`, as `lib/ops-ranges.md` writes it.
+  On `a: [R, C]T`, `Prefix(a)` infers `Prefix<R, C, T>` and folds
+  rectangles with `fold(rows, cols)`; a one-range `fold` on it is E0303.
+  Contestants who pass a grid want rectangle sums; a row-major 1-D table
+  over the cells is never what `Prefix(grid)` means.
+- **Reverse.** Make `Prefix(a)` 1-D over the product domain and require
+  `Prefix<R, C, T>(a)` for rectangles.
+

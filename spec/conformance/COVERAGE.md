@@ -6,22 +6,22 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1689 (995 passing). Rules: 527.
+Cases: 1779 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R03 (03-numbers-layout.md): 24 rules, 48 cases; 0 uncovered, 7 happy-path only, 4 negative only
-- R04 (04-indices.md): 60 rules, 80 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 88 cases; 0 uncovered, 5 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 89 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R03 (03-numbers-layout.md): 24 rules, 50 cases; 0 uncovered, 7 happy-path only, 4 negative only
+- R04 (04-indices.md): 60 rules, 81 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 43 rules, 93 cases; 0 uncovered, 3 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 24 rules, 60 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 101 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R04b (04b-keys.md): 27 rules, 58 cases; 0 uncovered, 0 happy-path only, 3 negative only
+- R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
+- R06 (06-control-functions.md): 24 rules, 71 cases; 0 uncovered, 1 happy-path only, 1 negative only
+- R07 (07-sequences.md): 87 rules, 102 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 67 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 61 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 62 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 23 cases; 0 uncovered, 6 happy-path only, 0 negative only
@@ -34,7 +34,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
 - R01.1.2 [1+ 1-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
-- R01.1.3 [1+ 0-] *happy-path only*: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
+- R01.1.3 [2+ 0-] *happy-path only*: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
 - R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
 - R01.2.3 [1+ 2-]: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
@@ -66,7 +66,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.4 [1+ 0-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
 - R01.6.5 [1+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
-- R01.6.7 [1+ 1-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
+- R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
 - R01.7.1 [1+ 1-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
 - R01.7.2 [2+ 0-]: `for` and `while` take an `else:` that runs when the loop ended without `break`; a labelle...
 - R01.7.3 [1+ 1-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
@@ -105,14 +105,14 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.5.1 [1+ 0-]: Tuples `(Int, V)` are positional; `.0`, `.1` and destructuring read them.
 - R02.5.2 [1+ 1-]: Records `(lo: Int, hi: V)` are anonymous structs with named fields. Two record types are e...
 - R02.5.3 [1+ 0-]: Record update copies with replacements: `a with to: u` or `(..a, to: u)`.
-- R02.5.4 [1+ 1-]: Row types `R: (u: V, v: V, ..)` accept any record with at least those fields, and `..R wit...
+- R02.5.4 [2+ 1-]: Row types `R: (u: V, v: V, ..)` accept any record with at least those fields, and `..R wit...
 - R02.6.1 [1+ 1-]: Fields are fixed after construction unless declared `var`; assigning a non-`var` field is ...
 - R02.6.2 [1+ 1-]: Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`; fields with defau...
 - R02.6.3 [1+ 1-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
 - R02.6.4 [1+ 1-]: `struct List<T>` with no body is opaque: its fields are private to its module. A struct bo...
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
 - R02.6.6 [1+ 0-] *happy-path only*: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
-- R02.6.7 [1+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
+- R02.6.7 [2+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
 - R02.7.1 [1+ 0-]: Variants are `PascalCase` names in their enum's scope, like `Some` and `None` of `?T` (dec...
 - R02.7.2 [1+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
@@ -148,7 +148,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.9 [0+ 1-] *negative only*: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
 - R03.1.8 [0+ 1-] *negative only*: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-] *happy-path only*: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
-- R03.2.2 [2+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
+- R03.2.2 [3+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
 - R03.2.3 [1+ 1-]: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...
 - R03.2.4 [2+ 0-]: **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, ...
 - R03.2.5 [1+ 0-]: **Several payload variants:** the largest variant (first on a tie) sets the layout. Every ...
@@ -161,7 +161,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.4 [0+ 1-] *negative only*: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
 - R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
-- R03.5.1 [1+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
+- R03.5.1 [2+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
 
@@ -211,7 +211,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.18 [1+ 0-]: | `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one ...
 - R04.4.19 [2+ 0-]: | `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last...
 - R04.4.20 [1+ 0-]: | `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; wit...
-- R04.4.21 [1+ 0-]: | `a[r]`, `pre.fold(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal ...
+- R04.4.21 [1+ 1-]: | `a[r]`, `pre.fold(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal ...
 - R04.7.1 [1+ 0-]: | 0 | `None` | `r.l` | outside `r` (guard first)
 - R04.7.2 [1+ 0-]: | 1 | `None` | `r.l` | the element
 - R04.7.3 [1+ 0-]: | ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first`
@@ -280,7 +280,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.8 [0+ 1-] *negative only*: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
 - R04b.1.9 [0+ 1-] *negative only*: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [0+ 3-] *negative only*: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
-- R04b.1.11 [1+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
+- R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
 - R04b.3.1 [1+ 1-]: make `f` generic as above, using `first`, `nth` and `items`;
 - R04b.3.2 [1+ 0-]: call `f(List(w))`, an O(len) copy keyed from 0.
 - R04b.4.1 [1+ 0-]: | Work in the caller's keys | take `[K]T` | `K` itself; nothing to build
@@ -300,48 +300,48 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R05: 05-ownership.md
 
-- R05.2.1 [1+ 0-] *happy-path only*: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
-- R05.2.2 [1+ 3-]: **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`, `SegTree` and any ...
-- R05.3.1 [2+ 1-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
+- R05.2.1 [2+ 0-] *happy-path only*: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
+- R05.2.2 [3+ 4-]: **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`, `SegTree` and any ...
+- R05.3.1 [2+ 2-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
-- R05.3.5 [1+ 3-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
-- R05.6.1 [1+ 1-]: **Meaning.** The result is a lent value whose sources are every non-plain parameter, or th...
+- R05.3.5 [2+ 7-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
+- R05.6.1 [1+ 2-]: **Meaning.** The result is a lent value whose sources are every non-plain parameter, or th...
 - R05.6.2 [1+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
 - R05.6.3 [2+ 1-]: **`lends mut T`** is a place: the caller can assign through it, `a[i] = 5` is `a.at(i) = 5...
 - R05.6.4 [1+ 1-]: **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So `let row = rows[i...
-- R05.7.1 [1+ 1-]: a parameter (R4), and anything a `lends` fn returns (§6);
-- R05.7.2 [1+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
-- R05.7.3 [1+ 1-]: a generator value with a lent argument (`dfs(g, s)`, `dfs(mut seen)`);
+- R05.7.1 [1+ 2-]: a parameter (R4), and anything a `lends` fn returns (§6);
+- R05.7.2 [2+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
+- R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
 - R05.7.4 [1+ 1-]: a loop item, for the iteration (§9);
-- R05.7.5 [2+ 2-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
-- R05.7.6 [3+ 7-]: **Read lend:** the sources can be read, but not written, resized or moved.
-- R05.7.7 [1+ 2-]: **`mut` lend:** the sources can't be touched at all except through it.
-- R05.7.8 [1+ 2-]: returned, except from a fn declared `lends` (§6);
+- R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
+- R05.7.6 [7+ 10-]: **Read lend:** the sources can be read, but not written, resized or moved.
+- R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
+- R05.7.8 [1+ 3-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
-- R05.7.10 [1+ 1-]: stored in a top-level `var`.
-- R05.8.1 [1+ 2-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
-- R05.8.2 [2+ 3-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
+- R05.7.10 [2+ 2-]: stored in a top-level `var`.
+- R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
+- R05.8.2 [3+ 4-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
-- R05.8.4 [1+ 3-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
-- R05.9.1 [1+ 2-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
-- R05.9.2 [1+ 1-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
+- R05.8.4 [1+ 7-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
+- R05.9.1 [3+ 5-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
+- R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 0-] *happy-path only*: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
-- R05.9.4 [1+ 1-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
-- R05.10.1 [2+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
-- R05.10.2 [1+ 3-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
-- R05.10.3 [2+ 3-]: **Calls.** Captures are borrowed per call (R10), and `mut` captures are exclusive for that...
+- R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
+- R05.10.1 [4+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
+- R05.10.2 [2+ 3-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
+- R05.10.3 [2+ 4-]: **Calls.** Captures are borrowed per call (R10), and `mut` captures are exclusive for that...
 - R05.10.4 [2+ 1-]: **Arguments.** A closure passed to a fn is a parameter there (R4): the callee can call it ...
 - R05.10.5 [1+ 0-]: **Recursion.** Nested fns and `let`-bound lambdas may call themselves.
 - R05.10.6 [1+ 1-]: **Spelling differences only.** A nested `fn` can take explicit type parameters (`fn go<T>(...
 - R05.10.7 [1+ 0-]: **`return`** inside a lambda returns from the lambda. (Non-local exit from closures is def...
-- R05.10.8 [1+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
+- R05.10.8 [2+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
 - R05.10.9 [0+ 1-] *negative only*: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [0+ 1-] *negative only*: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
-- R05.10.11 [0+ 1-] *negative only*: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
+- R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
 - R05.10.12 [0+ 1-] *negative only*: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
-- R05.10.13 [1+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
+- R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-] *happy-path only*: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
 ### R06: 06-control-functions.md
@@ -366,7 +366,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.3.5 [1+ 1-]: Generators are push-only; there is no cursor. Lockstep over two generators is `List(g)` fi...
 - R06.4.1 [2+ 2-]: `@memo(array)` / `@memo(map)`: cache a function. The storage is spelled, never picked (rou...
 - R06.4.2 [1+ 1-]: `@get`: an O(1) read-only method called without parentheses.
-- R06.4.3 [1+ 0-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
+- R06.4.3 [9+ 3-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
 - R06.5.1 [1+ 0-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
@@ -426,7 +426,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.5.9 [1+ 3-]: **Lending: the rules of `mut a[i]`, over a range.** Any number of read views coexist with ...
 - R07.5.10 [1+ 1-]: **Lifetime: second-class, no annotations.** A value is lent if any part of it is (a field,...
 - R07.5.11 [2+ 1-]: **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed` over `V` (a `mut` o...
-- R07.5.12 [1+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
+- R07.5.12 [2+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
 - R07.6.1 [2+ 0-] *happy-path only*: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
@@ -523,7 +523,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.1.1 [8+ 3-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
+- R10.1.1 [9+ 3-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
 - R10.1.2 [3+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
@@ -633,9 +633,9 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
-- E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 24 case(s)
-- E0303 Wrong number of arguments: 5 case(s)
+- E0301 Wrong index domain: 12 case(s)
+- E0302 Type mismatch: 25 case(s)
+- E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
@@ -649,24 +649,24 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0314 Match is not exhaustive: 4 case(s)
 - E0315 not_a_token_type *(0.3)*: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 3 case(s)
-- E0402 Missing `mut` at call site: 1 case(s)
-- E0403 `mut` of an immutable binding: 2 case(s)
+- E0402 Missing `mut` at call site: 2 case(s)
+- E0403 `mut` of an immutable binding: 4 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 3 case(s)
+- E0503 Removed syntax from an older version: 6 case(s)
 - E0504 Planned syntax, not implemented yet: **no case**
-- E0601 Aliased mutable lend: 9 case(s)
-- E0602 Variable mutated while lent: 22 case(s)
-- E0603 Lent value escapes its scope: 11 case(s)
+- E0601 Aliased mutable lend: 12 case(s)
+- E0602 Variable mutated while lent: 33 case(s)
+- E0603 Lent value escapes its scope: 17 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 20 case(s)
-- E0607 Moved while captured by a closure: 2 case(s)
-- E0608 Use of moved value: 9 case(s)
+- E0607 Moved while captured by a closure: 3 case(s)
+- E0608 Use of moved value: 12 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 bare_op_tuple *(0.3)*: 1 case(s)
@@ -723,10 +723,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0520 Hand-rolled binary search: 1 case(s)
 - L0521 Hand-rolled prefix sum: 1 case(s)
 - L0522 Copy-mutate-writeback on a slice: 1 case(s)
-- L0601 Right side changes the place it assigns: 1 case(s)
+- L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
-- L0604 Generator holding a `mut` lend walked twice: 1 case(s)
+- L0604 Generator holding a `mut` lend walked twice: 2 case(s)
 - L0605 Literal index into a slice that keeps source keys: 3 case(s)
 - L0606 Wide array of `Int`: 1 case(s)
 - L0607 Large array of padded elements: 1 case(s)
@@ -738,9 +738,9 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0201 Range store out of range: 8 case(s)
 - R0202 Integer overflow: 8 case(s)
 - R0203 Division by zero: 3 case(s)
-- R0301 Unwrap of None: 6 case(s)
+- R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 71 case(s)
-- R0402 todo reached: 1 case(s)
+- R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 9 case(s)
 - R0502 Input outside its read contract: 2 case(s)
 - R0601 Stack exhausted: 1 case(s)
@@ -749,14 +749,36 @@ and `spec/diagnostics.md`, with the cases that expect each.
 
 2 of 135 testable codes have no negative case.
 
+## Spec code blocks
+
+Every fenced block in `spec/core`. A block is covered when one case
+holds all its code lines (comments aside), and spec-only when the
+line above its fence is `<!-- spec-only: reason -->`.
+
+- 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
+- 01-lexical-grammar.md: 5 blocks, 1 with a case, 4 spec-only, 0 neither
+- 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
+- 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
+- 04-indices.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
+- 04b-keys.md: 13 blocks, 3 with a case, 10 spec-only, 0 neither
+- 05-ownership.md: 56 blocks, 53 with a case, 3 spec-only, 0 neither
+- 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
+- 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
+- 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
+- 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
+- 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
+- 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
+
+0 of 108 blocks have neither a case nor a spec-only reason.
+
 ## Standard library
 
 Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (36/51 named by a case)
-  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (37/51 named by a case)
+  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
@@ -771,8 +793,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (95/124 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **graph** (98/124 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -781,8 +803,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (29/30 named by a case)
   - uncovered: `flip_action`
 - **marks** (46/46 named by a case)
-- **math** (71/83 named by a case)
-  - uncovered: `fixed`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
+- **math** (72/83 named by a case)
+  - uncovered: `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (59/63 named by a case)
   - uncovered: `Mat.new`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (5/6 named by a case)
@@ -801,20 +823,20 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (202/216 named by a case)
-  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (203/216 named by a case)
+  - uncovered: `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **strings** (182/195 named by a case)
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (124/171 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.tour`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.sub_at`, `Rooted.events`, `VirtualTree`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `Events.enter`, `Events.exit`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`
+- **tree** (126/171 named by a case)
+  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.tour`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.sub_at`, `Rooted.events`, `VirtualTree`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `Events.enter`, `Events.exit`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2032 of 2245 std items are named by a case.
+2040 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
