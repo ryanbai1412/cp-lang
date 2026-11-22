@@ -82,8 +82,8 @@ the repository. Delete this file once every step is done.
 | Rust | Cargo workspace, `rust-toolchain.toml`, nextest, clippy, rustfmt | Done |
 | Python | root `pyproject.toml`, `uv.lock`, Python 3.12, ruff, pytest | Done |
 | JS/TS | root `package.json`, `pnpm-workspace.yaml` (`web/`, `editors/vscode/`) | Done |
-| Tasks | `justfile`: `just check`, `just check-full`, `just test`, `just fmt`, `just bench`, `just docs`, `just site`, `just conformance`, `just worktree` | Done |
-| Hooks | lefthook (optional; `scripts/install-hooks.sh` still active) | Open |
+| Tasks | `justfile`: `just check`, `just check-full`, `just test`, `just conform`, `just fmt`, `just bench`, `just docs`, `just site`, `just web-build`, `just web-smoke`, `just hooks`, `just next-decision`, `just check-links`, `just worktree` | Done |
+| Hooks | zero-dependency `scripts/install-hooks.sh` + `just hooks` (skipped `lefthook` to avoid an extra binary) | Done |
 | CI | none for now (no GitHub Actions); the local hook is the gate. Add later | Done |
 
 The site generator stays in Python.
@@ -141,7 +141,8 @@ Language tools on our own code:
 
 ## Other cleanup items
 
-- Conformance gate: the number of met cases never drops.
+- Done: Conformance ratchet live in `crates/cpl-conform` (`just conform --check`, `research/scoreboard.json`); `scripts/conformance.py`, `scripts/scoreboard.py`, `scripts/test_scoreboard.py`, and `scripts/fix-spelling-drift.py` deleted and recorded in `research/MIGRATION.md`.
+- Done: `scripts/next-decision.py` (`just next-decision`) and `scripts/check-doc-links.py` (`just check-links`), each with unit tests.
 - Done: one perf harness. `bench/rust_latency_audit.py` and
   `bench/rust_max_n_audit.py` stay; `bench/max_n_audit.py`, `tools/bench/`
   and `proto/bench.py` are deleted.
@@ -149,10 +150,10 @@ Language tools on our own code:
   generator was not kept: it generated the prototype's subset, and the
   type-directed generator in `plan/ARCHITECTURE.md` replaces it.
 - Done: `proto/` deleted (`ports/` moved into `corpus/problems/<id>/`, `tests/` moved to `crates/cpl-cli/tests/cases/`).
-- Done: `bench/corpus_registry.py` deleted; `auto_strip` folded into `scripts/scoreboard.py` over `corpus/problems/`.
-- Open: Rename `stdlib/spec.cp` to `stdlib/brute.cp` (owned by stdlib session).
-- Open: Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
-- Deferred (other sessions): `crates/cpl-conform` (session 71e45566), interpreter consolidation, removing stdlib privilege, splitting monolith files (`plan/ARCHITECTURE.md`).
+- Done: `bench/corpus_registry.py` deleted; `auto_strip` folded into `scripts/scoreboard.py` (subsequently superseded by `crates/cpl-conform`).
+- Deferred (stdlib lane): Rename `stdlib/spec.cp` to `stdlib/brute.cp` (not touched while stdlib lane is active).
+- Deferred (requires Ryan's approval / release cleanup): Delete remote branches (`origin/devin/rebuild-1`, `origin/devin/spec` are merged; unmerged branches must not be deleted without Ryan's approval).
+- Deferred (compiler/interp/test-harness lanes, tracked in `plan/ARCHITECTURE.md`): one language mode without `CPL_SPEC`, interpreter VM consolidation, removing stdlib privilege, splitting monolith files, folding `crates/cpl-cli/tests/cases/*` + `just bless`, moving timing tests out of the commit gate, and auto-generating `DOMAINS.md`/`STATUS.md`/`REPO.md` tables.
 
 ## Duplicated-helper audit
 
