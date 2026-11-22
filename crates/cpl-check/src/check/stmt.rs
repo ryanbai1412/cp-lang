@@ -3155,7 +3155,7 @@ impl<'a> Checker<'a> {
     fn collect_returned_exprs<'b>(block: &'b ast::Block, out: &mut Vec<&'b Expr>) {
         for (i, stmt) in block.stmts.iter().enumerate() {
             match &stmt.kind {
-                StmtKind::Return(Some(e)) => out.push(e),
+                StmtKind::Return(Some(e)) | StmtKind::Lend { place: e, .. } => out.push(e),
                 StmtKind::Expr(e) if i + 1 == block.stmts.len() => out.push(e),
                 StmtKind::Expr(Expr {
                     kind:

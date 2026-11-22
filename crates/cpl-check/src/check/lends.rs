@@ -2806,10 +2806,17 @@ impl<'a> Checker<'a> {
             .iter()
             .enumerate()
             .filter_map(|(at, stmt)| match &stmt.kind {
-                StmtKind::Lend { mutable, place } => Some((at, stmt, *mutable, place)),
+                StmtKind::Lend { mutable, place } => {
+                    Some((stmts.get(at + 1), Some(stmt.span), *mutable, place))
+                }
                 _ => None,
             });
-        let (Some((at, stmt, mutable, place)), None) = (found.next(), found.next()) else {
+        // `fn lo(mut self) -> lends mut Int = self.xs[0]` lends its body as declared.
+        let single = match &f.body {
+            ast::FnBody::Expr(place) => Some((None, None, lends.mutable, place)),
+            _ => found.next().filter(|_| found.next().is_none()),
+        };
+        let Some((after, lend_at, mutable, place)) = single else {
             let message = format!(
                 "`{name}` is declared `lends`, so every path through it must reach one `lend place`"
             );
@@ -2822,18 +2829,19 @@ impl<'a> Checker<'a> {
             self.lends.lend_reported = true;
             return;
         };
-        if let Some(after) = stmts.get(at + 1) {
+        if let Some(after) = after {
             if receiver.is_some_and(|p| !p.mutable) {
                 let message =
                     format!("code after the `lend` changes `self`, so `{name}` takes `mut self`");
                 self.error(codes::BAD_PROJECTION, after.span, message);
             }
         }
-        self.lends.lend_at = Some(stmt.span);
+        self.lends.lend_at = lend_at;
+        let span = lend_at.unwrap_or(place.span);
         if mutable && !lends.mutable {
             let message =
                 format!("`{name}` is declared `lends` without `mut`, so it can't `lend mut`");
-            if let Some(diag) = self.error(codes::BAD_PROJECTION, stmt.span, message) {
+            if let Some(diag) = self.error(codes::BAD_PROJECTION, span, message) {
                 diag.help = Some("declare it `lends mut`".into());
             }
         } else if !mutable && lends.mutable {
@@ -2841,7 +2849,7 @@ impl<'a> Checker<'a> {
                 "`{name}` is declared `lends mut`, so the body ends with `mut {}`",
                 show(place)
             );
-            self.error(codes::BAD_PROJECTION, stmt.span, message);
+            self.error(codes::BAD_PROJECTION, span, message);
         }
         let root = root_name(place);
         if !root.is_some_and(|root| root == "self" || fields.iter().any(|f| f == root)) {
