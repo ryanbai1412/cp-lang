@@ -422,10 +422,40 @@ pub struct SparseFenwick2D<T>:
         self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(xs.end, ys.start) + self.corner(xs.start, ys.start)
 
 @test
-fn sums_match_a_plain_array() = todo
+fn sums_match_a_plain_array():
+    domain V = 0..37
+    var f = Fenwick<V, Int>()
+    var a = List.filled(37, 0)
+    var seed = 7
+    for _ in 0..300:
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        let (i, x) = (seed % 37, seed / 37 % 21 - 10)
+        f.add(V(i), x)
+        a[i] += x
+        let lo = seed / 1000 % 37
+        let hi = lo + seed / 100000 % (38 - lo)
+        var want = 0
+        for j in lo..hi: want += a[j]
+        assert f.fold(V.cuts.nth(lo)..V.cuts.nth(hi)) == want
+        assert f.prefix(V.cuts.nth(hi)) == f.fold(V.cuts.nth(0)..V.cuts.nth(hi))
+        assert f.get(V(i)) == a[i]
 
 @test
-fn empty_and_half_open_ranges() = todo
+fn empty_and_half_open_ranges():
+    domain V = 0..5
+    let a: [V]Int = [3, 1, 4, 1, 5]
+    var f = Fenwick<V, Int>(a)
+    assert f.fold(V(2)..V(2)) == 0
+    assert f.fold(V(1)..V(3)) == 5
+    assert f.fold(V(1)..=V(3)) == 6
+    assert f.prefix(V.cuts.nth(0)) == 0
+    assert f.suffix(V.cuts.nth(5)) == 0
+    assert f.suffix(V.cuts.nth(3)) == 6
+    f.set(V(4), 0)
+    assert f.fold(V(0)..=V(4)) == 9
+    domain E = 0..0
+    let g = Fenwick<E, Int>()
+    assert g.prefix(E.cuts.nth(0)) == 0
 
 @test
 fn first_ge_finds_the_kth():
@@ -442,10 +472,40 @@ fn first_ge_finds_the_kth():
     assert f.kth(5) == None
 
 @test
-fn two_dimensions_match_a_plain_grid() = todo
+fn two_dimensions_match_a_plain_grid():
+    domain R = 0..6
+    domain C = 0..9
+    var f = Fenwick2D<R, C, Int>()
+    var g = List.filled(54, 0)
+    var seed = 11
+    for _ in 0..200:
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        let (r, c, x) = (seed % 6, seed / 6 % 9, seed / 54 % 9 - 4)
+        f.add(R(r), C(c), x)
+        g[r * 9 + c] += x
+        let (r0, c0) = (seed / 1000 % 6, seed / 7000 % 9)
+        let (r1, c1) = (r0 + seed / 70000 % (7 - r0), c0 + seed / 700000 % (10 - c0))
+        var want = 0
+        for i in r0..r1:
+            for j in c0..c1: want += g[i * 9 + j]
+        assert f.fold(R.cuts.nth(r0)..R.cuts.nth(r1), C.cuts.nth(c0)..C.cuts.nth(c1)) == want
+        assert f.get(R(r), C(c)) == g[r * 9 + c]
 
 @test
 fn xor_matches_a_plain_array() = todo
 
 @test
-fn dual_and_range_fenwick_match_brute() = todo
+fn dual_and_range_fenwick_match_brute():
+    domain V = 0..23
+    var f = DualFenwick<V, Int>()
+    var a = List.filled(23, 0)
+    var seed = 5
+    for _ in 0..300:
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        let lo = seed % 23
+        let hi = lo + seed / 23 % (24 - lo)
+        let x = seed / 1000 % 15 - 7
+        f.add(V.cuts.nth(lo)..V.cuts.nth(hi), x)
+        for j in lo..hi: a[j] += x
+        let i = seed / 100000 % 23
+        assert f.get(V(i)) == a[i]

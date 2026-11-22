@@ -1773,7 +1773,9 @@ pub fn perm_order<V>(p: [V]V) -> Int:
             seen[u] = true
             u = p[u]
             len += 1
-        ord = ord / gcd(ord, len) * len
+        var (a, b) = (ord, len)
+        while b != 0: (a, b) = (b, a % b)
+        ord = ord / a * len
     ord
 
 /// O(|I| + |V|), O(|I| + |V|) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`None` images).

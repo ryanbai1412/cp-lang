@@ -326,20 +326,47 @@ pub struct Deque<T>:
 /// Doubly-linked list supporting O(1) end pushes/pops and O(1) splicing (`splice_back`, `splice_front`).
 pub struct LinkedList<T>:
     _len: Int
+    head: Int
+    tail: Int
+    nx: List<Int>
+    pv: List<Int>
+    val: List<T>
+    flip: Bool
+
+    fn fwd(self, i: Int) -> Int = if flip: pv[i] else: nx[i]
+
+    fn bwd(self, i: Int) -> Int = if flip: nx[i] else: pv[i]
+
+    fn set_fwd(mut self, i: Int, j: Int):
+        if flip: pv[i] = j else: nx[i] = j
+
+    fn set_bwd(mut self, i: Int, j: Int):
+        if flip: nx[i] = j else: pv[i] = j
+
+    fn node(mut self, x: T) -> Int:
+        val.push(x)
+        nx.push(-1)
+        pv.push(-1)
+        _len += 1
+        val.len - 1
 
     /// Create an empty `LinkedList<T>`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var l: LinkedList<Int> = LinkedList(); l.len == 0`
-    pub fn new() -> LinkedList<T> = todo
+    pub fn new() -> LinkedList<T>:
+        LinkedList(0, -1, -1, [], [], [], false)
 
     /// Create a singleton `LinkedList<T>` containing `x`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.of(5).each().collect() == [5]`
-    pub fn of(x: T) -> LinkedList<T> = todo
+    pub fn of(x: T) -> LinkedList<T>:
+        var l = LinkedList<T>.new()
+        l.push(x)
+        l
 
     /// Build a `LinkedList<T>` from `xs`, front to back.
     ///
@@ -347,21 +374,26 @@ pub struct LinkedList<T>:
     /// empty: an empty list
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
-    pub fn from_list(xs: List<T>) -> LinkedList<T> = todo
+    pub fn from_list(xs: List<T>) -> LinkedList<T>:
+        var l = LinkedList<T>.new()
+        for x in xs: l.push(x)
+        l
 
     /// Number of elements currently in the list.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.from_list([1, 2, 3]).len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        _len
 
     /// Whether the list is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `LinkedList.of(1).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        _len == 0
 
     /// The front element, or `None` when the list is empty (as `Deque.first`).
     ///
@@ -370,7 +402,8 @@ pub struct LinkedList<T>:
     /// ties: none: there is one front
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).first == Some(1)`
-    @get pub fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T:
+        if head < 0: None else: Some(val[head])
 
     /// The back element, or `None` when the list is empty (as `Deque.last`).
     ///
@@ -379,21 +412,36 @@ pub struct LinkedList<T>:
     /// ties: none: there is one back
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).last == Some(2)`
-    @get pub fn last(self) -> ?T = todo
+    @get pub fn last(self) -> ?T:
+        if tail < 0: None else: Some(val[tail])
 
     /// Append `x` to the back.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push(2); l.each().collect() == [1, 2]`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        let k = self.node(x)
+        if tail < 0:
+            head = k
+        else:
+            self.set_fwd(tail, k)
+            self.set_bwd(k, tail)
+        tail = k
 
     /// Prepend `x` to the front.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push_front(0); l.each().collect() == [0, 1]`
-    pub fn push_front(mut self, x: T) = todo
+    pub fn push_front(mut self, x: T):
+        let k = self.node(x)
+        if head < 0:
+            tail = k
+        else:
+            self.set_bwd(head, k)
+            self.set_fwd(k, head)
+        head = k
 
     /// Remove and return the back element, or `None` if empty.
     ///
@@ -401,7 +449,14 @@ pub struct LinkedList<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop() == Some(2) and l.len == 1`
-    pub fn pop(mut self) -> ?T = todo
+    pub fn pop(mut self) -> ?T:
+        if tail < 0: return None
+        let x = val[tail]
+        let t = self.bwd(tail)
+        if t < 0: head = -1 else: self.set_fwd(t, -1)
+        tail = t
+        _len -= 1
+        Some(x)
 
 
     /// Remove and return the front element, or `None` if empty.
@@ -410,7 +465,14 @@ pub struct LinkedList<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop_front() == Some(1) and l.first == 2`
-    pub fn pop_front(mut self) -> ?T = todo
+    pub fn pop_front(mut self) -> ?T:
+        if head < 0: return None
+        let x = val[head]
+        let h = self.fwd(head)
+        if h < 0: tail = -1 else: self.set_bwd(h, -1)
+        head = h
+        _len -= 1
+        Some(x)
 
     /// Splice all elements of `other` onto the back of `self`, consuming `other`.
     ///
@@ -436,14 +498,20 @@ pub struct LinkedList<T>:
     /// empty: does nothing
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2, 3]); a.reverse(); a.each().collect() == [3, 2, 1]`
-    pub fn reverse(mut self) = todo
+    pub fn reverse(mut self):
+        (head, tail) = (tail, head)
+        flip = not flip
 
     /// Remove all elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.clear(); a.is_empty`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        (_len, head, tail, flip) = (0, -1, -1, false)
+        nx = []
+        pv = []
+        val = []
 
     /// Yield elements front to back.
     ///
@@ -452,7 +520,11 @@ pub struct LinkedList<T>:
     /// order: front to back
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
-    pub fn each(self) -> yields T = todo
+    pub fn each(self) -> yields T:
+        var u = head
+        while u >= 0:
+            yield val[u]
+            u = self.fwd(u)
 
     /// Yield elements back to front.
     ///
@@ -461,7 +533,11 @@ pub struct LinkedList<T>:
     /// order: back to front
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each_rev().collect() == [2, 1]`
-    pub fn each_rev(self) -> yields T = todo
+    pub fn each_rev(self) -> yields T:
+        var u = tail
+        while u >= 0:
+            yield val[u]
+            u = self.bwd(u)
 
 @test
 fn a_deque_matches_a_list():

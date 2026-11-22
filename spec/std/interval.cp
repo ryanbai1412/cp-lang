@@ -517,27 +517,50 @@ fn interval_map_matches_dense_array():
 /// Maintains maximal constant runs; `assign` is O((1 + removed) log runs) amortized.
 pub struct SparseIntervalMap<T>:
     _init: T
+    lo: Int
+    hi: Int
+    segs: Map<Int, (hi: Int, val: T)>
+
+    fn split(mut self, x: Int):
+        if let (s, seg) = segs.last_le(x):
+            if s < x and x < seg.hi:
+                segs[s] = (hi: x, val: seg.val)
+                segs[x] = (hi: seg.hi, val: seg.val)
+
+    fn merge_at(mut self, x: Int):
+        if let cur = segs.get(x):
+            if let (pl, p) = segs.last_lt(x):
+                if p.hi == x and p.val == cur.val:
+                    let _ = segs.remove(x)
+                    segs[pl] = (hi: cur.hi, val: p.val)
 
     /// A map giving every coordinate of `lo..hi` the value `init`: one run, or None when `lo == hi`.
     ///
     /// cost: O(1)
     /// traps: when `lo > hi`
     /// example: `SparseIntervalMap(0, 1_000_000_000, 0).runs == 1`
-    pub fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T> = todo
+    pub fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T>:
+        assert lo <= hi, "`SparseIntervalMap` needs `lo <= hi`"
+        var m = Map<Int, (hi: Int, val: T)>()
+        if lo < hi: m[lo] = (hi: hi, val: init)
+        SparseIntervalMap(init, lo, hi, m)
 
     /// The number of maximal runs of equal values.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.runs == 3`
-    @get pub fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int:
+        segs.len
 
     /// The value at coordinate `i`.
     ///
     /// cost: O(log runs)
     /// traps: when `i` is outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.get(4) == 1`
-    pub fn get(self, i: Int) -> T = todo
+    pub fn get(self, i: Int) -> T:
+        assert lo <= i and i < hi, "`get` coordinate outside the map"
+        segs.last_le(i)!.1.val
 
     /// The maximal run containing coordinate `i` and its value.
     ///
@@ -545,7 +568,10 @@ pub struct SparseIntervalMap<T>:
     /// order: the run's coordinates in ascending order
     /// traps: when `i` is outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.run_at(7).range == 5..10`
-    pub fn run_at(self, i: Int) -> (range: Range<Int>, val: T) = todo
+    pub fn run_at(self, i: Int) -> (range: Range<Int>, val: T):
+        assert lo <= i and i < hi, "`run_at` coordinate outside the map"
+        let (s, seg) = segs.last_le(i)!
+        (range: s..seg.hi, val: seg.val)
 
     /// Give every coordinate of `r` the value `val`, then merge with equal neighbouring runs.
     /// `on_old` is called with each old run overlapping `r`, clipped to `r`, and its old value; the
@@ -557,7 +583,20 @@ pub struct SparseIntervalMap<T>:
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.assign(5..7, 1); m.runs == 3`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); var old: List<Int> = []; m.assign(4..6, 2, on_old: (_, v) => old.push(v)); old == [1, 0]`
-    pub fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ()) = todo
+    pub fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ()):
+        let (a, b) = (r.start, r.start + r.len)
+        if a >= b: return
+        assert lo <= a and b <= hi, "`assign` range outside the map"
+        self.split(a)
+        self.split(b)
+        var pos = a
+        while pos < b:
+            let old = segs.remove(pos)!
+            on_old(pos..old.hi, old.val)
+            pos = old.hi
+        segs[a] = (hi: b, val: val)
+        self.merge_at(b)
+        self.merge_at(a)
 
 
     /// Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge
@@ -567,7 +606,21 @@ pub struct SparseIntervalMap<T>:
     /// empty: changes nothing and calls `f` never
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.update(0..4, v => v + 1); m.get(0) == 1 and m.get(3) == 2 and m.get(4) == 1`
-    pub fn update(mut self, r: Range<Int>, f: T -> T) = todo
+    pub fn update(mut self, r: Range<Int>, f: T -> T):
+        let (a, b) = (r.start, r.start + r.len)
+        if a >= b: return
+        assert lo <= a and b <= hi, "`update` range outside the map"
+        self.split(a)
+        self.split(b)
+        var starts: List<Int> = []
+        var pos = a
+        while pos < b:
+            let seg = segs.get(pos)!
+            segs[pos] = (hi: seg.hi, val: f(seg.val))
+            starts.push(pos)
+            pos = seg.hi
+        self.merge_at(b)
+        for k in (0..starts.len).rev: self.merge_at(starts[k])
 
     /// Every run overlapping `r`, clipped to `r`, with its value.
     ///
@@ -576,7 +629,16 @@ pub struct SparseIntervalMap<T>:
     /// order: ascending coordinates
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.range(4..6).map(p => p.range).collect() == [4..5, 5..6]`
-    pub fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T) = todo
+    pub fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T):
+        let (a, b) = (r.start, r.start + r.len)
+        if a >= b: return
+        assert lo <= a and b <= hi, "`range` outside the map"
+        var pos = a
+        while pos < b:
+            let (_, seg) = segs.last_le(pos)!
+            let e = min(seg.hi, b)
+            yield (range: pos..e, val: seg.val)
+            pos = e
 
     /// Every maximal run with its value.
     ///
@@ -585,7 +647,8 @@ pub struct SparseIntervalMap<T>:
     /// order: ascending coordinates
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each().map(p => p.val).collect() == [0, 1, 0]`
-    pub fn each(self) -> yields (range: Range<Int>, val: T) = todo
+    pub fn each(self) -> yields (range: Range<Int>, val: T):
+        for (s, seg) in segs.items: yield (range: s..seg.hi, val: seg.val)
 
     /// Every maximal run with its value, last first.
     ///
@@ -594,4 +657,6 @@ pub struct SparseIntervalMap<T>:
     /// order: descending coordinates
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each_rev().map(p => p.range).collect() == [5..10, 3..5, 0..3]`
-    pub fn each_rev(self) -> yields (range: Range<Int>, val: T) = todo
+    pub fn each_rev(self) -> yields (range: Range<Int>, val: T):
+        let all = [(s, seg) for (s, seg) in segs.items]
+        for k in (0..all.len).rev: yield (range: all[k].0..all[k].1.hi, val: all[k].1.val)

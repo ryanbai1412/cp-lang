@@ -33,13 +33,15 @@ pub struct SortedBag<K>:
     live: Int
     root: Int
     rng: U64
+    lo: ?K
+    hi: ?K
 
     /// Create an empty `SortedBag<K>`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b: SortedBag<Int> = SortedBag(); b.len == 0`
-    pub fn new() -> SortedBag<K> = SortedBag([], [], 0, -1, U64(0x5e3779b97f4a7c15))
+    pub fn new() -> SortedBag<K> = SortedBag([], [], 0, -1, U64(0x5e3779b97f4a7c15), None, None)
 
     /// Build a `SortedBag` containing every element of `xs`.
     ///
@@ -59,21 +61,24 @@ pub struct SortedBag<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        self.sub_of(root)
 
     /// Number of distinct keys currently in the bag.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).distinct == 2`
-    @get pub fn distinct(self) -> Int = todo
+    @get pub fn distinct(self) -> Int:
+        live
 
     /// Whether the bag has no elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SortedBag.of([1]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        root < 0
 
     /// Remove all elements from the bag.
     ///
@@ -87,6 +92,8 @@ pub struct SortedBag<K>:
         free = []
         live = 0
         root = -1
+        lo = None
+        hi = None
 
     /// Move the bag's contents out in O(1), leaving `self` empty.
     ///
@@ -94,11 +101,13 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b = SortedBag.of([1, 2]); let t = b.take(); b.is_empty and t.to_list() == [1, 2]`
     pub fn take(mut self) -> SortedBag<K>:
-        let out = SortedBag(nodes, free, live, root, rng)
+        let out = SortedBag(nodes, free, live, root, rng, lo, hi)
         nodes = []
         free = []
         live = 0
         root = -1
+        lo = None
+        hi = None
         out
 
     /// Insert one copy of `x` into the bag. Always returns `true`.
@@ -113,6 +122,7 @@ pub struct SortedBag<K>:
         root = r
         unchecked:
             if root >= 0: nodes[root].par = -1
+        self.refresh()
         true
 
     fn add_unique(mut self, x: K) -> Bool:
@@ -120,6 +130,7 @@ pub struct SortedBag<K>:
         root = r
         unchecked:
             if root >= 0: nodes[root].par = -1
+        self.refresh()
         added
 
     /// Insert `c >= 0` copies of `x` into the bag.
@@ -136,6 +147,7 @@ pub struct SortedBag<K>:
         root = r
         unchecked:
             if root >= 0: nodes[root].par = -1
+        self.refresh()
 
     /// Remove one copy of `x` if present; returns `true` if a copy was removed.
     ///
@@ -147,6 +159,7 @@ pub struct SortedBag<K>:
         root = r
         unchecked:
             if root >= 0: nodes[root].par = -1
+        self.refresh()
         removed > 0
 
     /// Remove all copies of `x` and return how many were removed.
@@ -160,6 +173,7 @@ pub struct SortedBag<K>:
         root = r
         unchecked:
             if root >= 0: nodes[root].par = -1
+        self.refresh()
         removed
 
     /// How many copies of `x` are currently in the bag.
@@ -193,7 +207,8 @@ pub struct SortedBag<K>:
     /// ties: none: copies of the least key are equal
     /// traps: never
     /// example: `SortedBag.of([3, 1, 1]).first == Some(1)`
-    @get pub fn first(self) -> ?K = todo
+    @get pub fn first(self) -> ?K:
+        lo
 
     /// The largest element, or `None` when empty. O(1), kept current by every update.
     ///
@@ -202,7 +217,8 @@ pub struct SortedBag<K>:
     /// ties: none: copies of the greatest key are equal
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).last == Some(3)`
-    @get pub fn last(self) -> ?K = todo
+    @get pub fn last(self) -> ?K:
+        hi
 
     /// Remove and return one copy of the smallest element, or `None` when empty.
     ///
@@ -228,7 +244,10 @@ pub struct SortedBag<K>:
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
     /// example: `var b = SortedBag.of([1, 4, 4, 6]); b.take_first(x => x >= 3) == Some(4) and b.to_list() == [1, 4, 6]`
     /// example: `var b = SortedBag.of([1]); b.take_first(x => x >= 3) == None and b.len == 1`
-    pub fn take_first(mut self, ok: K -> Bool) -> ?K = todo
+    pub fn take_first(mut self, ok: K -> Bool) -> ?K:
+        let x = self.first_true(ok)
+        if let v = x: let _ = self.remove(v)
+        x
 
     /// O(log n + k). Removes the elements whose value lies in `r`, yielding them in order.
     ///
@@ -442,7 +461,17 @@ pub struct SortedBag<K>:
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x > 9) == None`
-    pub fn first_true(self, ok: K -> Bool) -> ?K = todo
+    pub fn first_true(self, ok: K -> Bool) -> ?K:
+        var best: ?K = None
+        var u = root
+        unchecked:
+            while u >= 0:
+                if ok(nodes[u].key):
+                    best = Some(nodes[u].key)
+                    u = nodes[u].left
+                else:
+                    u = nodes[u].right
+        best
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     /// Checks monotonicity at the boundary. O(log n) expected.
@@ -453,7 +482,17 @@ pub struct SortedBag<K>:
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x < 1) == None`
-    pub fn last_true(self, ok: K -> Bool) -> ?K = todo
+    pub fn last_true(self, ok: K -> Bool) -> ?K:
+        var best: ?K = None
+        var u = root
+        unchecked:
+            while u >= 0:
+                if ok(nodes[u].key):
+                    best = Some(nodes[u].key)
+                    u = nodes[u].right
+                else:
+                    u = nodes[u].left
+        best
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
@@ -739,7 +778,25 @@ pub struct SortedBag<K>:
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a = SortedBag.of([1, 3]); var b = SortedBag.of([3, 2]); a.absorb(mut b); a.to_list() == [1, 2, 3, 3] and b.is_empty`
-    pub fn absorb(mut self, mut other: SortedBag<K>) = todo
+    pub fn absorb(mut self, mut other: SortedBag<K>):
+        if self.len < other.len:
+            let (n0, f0, l0, r0, g0, lo0, hi0) = (nodes, free, live, root, rng, lo, hi)
+            nodes = other.nodes
+            free = other.free
+            live = other.live
+            root = other.root
+            rng = other.rng
+            lo = other.lo
+            hi = other.hi
+            other.nodes = n0
+            other.free = f0
+            other.live = l0
+            other.root = r0
+            other.rng = g0
+            other.lo = lo0
+            other.hi = hi0
+        for (k, c) in other.entries(): self.add_many(k, c)
+        other.clear()
 
     /// Sum of all elements (for additive `K`). O(1) when augmented, O(n) otherwise.
     ///
@@ -750,7 +807,24 @@ pub struct SortedBag<K>:
     /// empty: `K.zero`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `SortedBag.of([2, 2, 5]).sum() == 9`
-    pub fn sum(self) -> K = todo
+    pub fn sum(self) -> K:
+        var t = K.zero
+        for (k, c) in self.entries():
+            for _ in 0..c: t = t + k
+        t
+
+    fn refresh(mut self):
+        if root < 0:
+            lo = None
+            hi = None
+            return
+        unchecked:
+            var u = root
+            while nodes[u].left >= 0: u = nodes[u].left
+            lo = Some(nodes[u].key)
+            u = root
+            while nodes[u].right >= 0: u = nodes[u].right
+            hi = Some(nodes[u].key)
 
     fn sub_of(self, t: Int) -> Int:
         if t < 0: return 0
@@ -897,14 +971,16 @@ pub struct SortedSet<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `SortedSet.of([3, 1, 3]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        bag.distinct
 
     /// Whether the set is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SortedSet.of([1]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        bag.is_empty
 
     /// Remove all keys from the set.
     ///
@@ -918,7 +994,8 @@ pub struct SortedSet<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SortedSet.of([1, 2]); let t = s.take(); s.is_empty and t.to_list() == [1, 2]`
-    pub fn take(mut self) -> SortedSet<K> = todo
+    pub fn take(mut self) -> SortedSet<K>:
+        SortedSet(bag.take())
 
     /// Insert `x` if absent; returns `true` when `x` was newly inserted.
     ///
@@ -961,7 +1038,8 @@ pub struct SortedSet<K>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `SortedSet.of([4, 1, 9]).first == Some(1)`
-    @get pub fn first(self) -> ?K = todo
+    @get pub fn first(self) -> ?K:
+        bag.first
 
     /// Largest key in the set, or `None`. O(1), kept current by every update.
     ///
@@ -970,7 +1048,8 @@ pub struct SortedSet<K>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `SortedSet.of([4, 1, 9]).last == Some(9)`
-    @get pub fn last(self) -> ?K = todo
+    @get pub fn last(self) -> ?K:
+        bag.last
 
     /// Remove and return the smallest key, or `None`.
     ///
@@ -1031,7 +1110,8 @@ pub struct SortedSet<K>:
     /// ties: none: keys are distinct; the least key wins
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
     /// example: `SortedSet.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
-    pub fn first_true(self, ok: K -> Bool) -> ?K = todo
+    pub fn first_true(self, ok: K -> Bool) -> ?K:
+        bag.first_true(ok)
 
     /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     ///
@@ -1040,7 +1120,8 @@ pub struct SortedSet<K>:
     /// ties: none: keys are distinct; the greatest key wins
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
     /// example: `SortedSet.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
-    pub fn last_true(self, ok: K -> Bool) -> ?K = todo
+    pub fn last_true(self, ok: K -> Bool) -> ?K:
+        bag.last_true(ok)
 
     /// Remove and return the maximal run of keys strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest key (ascending)
@@ -1142,7 +1223,13 @@ pub struct SortedSet<K>:
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a = SortedSet.of([1, 3]); var b = SortedSet.of([3, 2]); a.absorb(mut b); a.to_list() == [1, 2, 3] and b.is_empty`
-    pub fn absorb(mut self, mut other: SortedSet<K>) = todo
+    pub fn absorb(mut self, mut other: SortedSet<K>):
+        if bag.distinct < other.bag.distinct:
+            let small = bag.take()
+            bag = other.bag.take()
+            other.bag = small
+        for (k, _) in other.bag.entries(): let _ = bag.add_unique(k)
+        other.bag.clear()
 
 /// Order-statistic ordered map from `K` to `V` backed by a randomized treap.
 /// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are O(log n).
@@ -1150,14 +1237,20 @@ pub struct SortedSet<K>:
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every
 /// entry-returning method gives `(key, val)`.
 pub struct SortedMap<K, V>:
-    _len: Int
+    ks: SortedBag<K>
+    vals: HashMap<K, V>
+
+    fn entry(self, k: ?K) -> ?(K, V) = if let x = k: Some((x, vals.get(x)!)) else: None
+
+    fn at(self, c: ?BagCursor) -> ?(K, V) = if let x = c: Some((ks.key_of(x), vals.get(ks.key_of(x))!)) else: None
 
     /// Create an empty `SortedMap<K, V>`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.len == 0`
-    pub fn new() -> SortedMap<K, V> = todo
+    pub fn new() -> SortedMap<K, V>:
+        SortedMap(SortedBag<K>.new(), HashMap<K, V>())
 
     /// Preallocate treap node pool for at least `cap` entries.
     ///
@@ -1171,56 +1264,72 @@ pub struct SortedMap<K, V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(1, "b"); m.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        ks.len
 
     /// Whether the map is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        ks.is_empty
 
     /// Remove all entries.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.clear(); m.get(1) == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        ks.clear()
+        vals = HashMap<K, V>()
 
     /// Move contents out in O(1), leaving `self` empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); let t = m.take(); m.is_empty and t.get(1) == Some("a")`
-    pub fn take(mut self) -> SortedMap<K, V> = todo
+    pub fn take(mut self) -> SortedMap<K, V>:
+        let t = SortedMap(ks.take(), vals)
+        vals = HashMap<K, V>()
+        t
 
     /// Look up `k`, returning `None` if absent.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.get(1) == Some("a") and m.get(2) == None`
-    pub fn get(self, k: K) -> ?V = todo
+    pub fn get(self, k: K) -> ?V:
+        vals.get(k)
 
     /// Whether `k` is present.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.contains(1) and not m.contains(2)`
-    pub fn contains(self, k: K) -> Bool = todo
+    pub fn contains(self, k: K) -> Bool:
+        vals.get(k) != None
 
     /// Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`).
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m[1] = "a"; m[1] = "b"; m.get(1) == Some("b")`
-    pub fn set(mut self, k: K, v: V) = todo
+    pub fn set(mut self, k: K, v: V):
+        if vals.get(k) == None: let _ = ks.add(k)
+        vals[k] = v
 
     /// Remove `k` and return its previous value, or `None` if absent.
     ///
     /// cost: O(log n) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.remove(1) == Some("a") and m.remove(1) == None`
-    pub fn remove(mut self, k: K) -> ?V = todo
+    pub fn remove(mut self, k: K) -> ?V:
+        let v = vals.get(k)
+        if v != None:
+            let _ = ks.remove(k)
+            let _ = vals.remove(k)
+        v
 
     /// Smallest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
     ///
@@ -1229,7 +1338,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.first == Some((1, "a"))`
-    @get pub fn first(self) -> ?(K, V) = todo
+    @get pub fn first(self) -> ?(K, V):
+        self.entry(ks.first)
 
     /// Largest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
     ///
@@ -1238,7 +1348,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.last == Some((3, "c"))`
-    @get pub fn last(self) -> ?(K, V) = todo
+    @get pub fn last(self) -> ?(K, V):
+        self.entry(ks.last)
 
     /// Remove and return the smallest `(key, val)` pair, or `None`.
     ///
@@ -1246,7 +1357,10 @@ pub struct SortedMap<K, V>:
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_first() == Some((1, "a")) and m.len == 1`
-    pub fn pop_first(mut self) -> ?(K, V) = todo
+    pub fn pop_first(mut self) -> ?(K, V):
+        let e = self.entry(ks.first)
+        if let (k, _) = e: let _ = self.remove(k)
+        e
 
     /// Remove and return the largest `(key, val)` pair, or `None`.
     ///
@@ -1254,7 +1368,10 @@ pub struct SortedMap<K, V>:
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_last() == Some((3, "c")) and m.len == 1`
-    pub fn pop_last(mut self) -> ?(K, V) = todo
+    pub fn pop_last(mut self) -> ?(K, V):
+        let e = self.entry(ks.last)
+        if let (k, _) = e: let _ = self.remove(k)
+        e
 
     /// Smallest entry with key `>= k`, or `None`.
     ///
@@ -1263,7 +1380,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.first_ge(2) == Some((3, "c")) and m.first_ge(3) == Some((3, "c"))`
-    pub fn first_ge(self, k: K) -> ?(K, V) = todo
+    pub fn first_ge(self, k: K) -> ?(K, V):
+        self.at(ks.cursor_ge(k))
 
     /// Smallest entry with key `> k`, or `None`.
     ///
@@ -1272,7 +1390,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.first_gt(1) == Some((3, "c")) and m.first_gt(3) == None`
-    pub fn first_gt(self, k: K) -> ?(K, V) = todo
+    pub fn first_gt(self, k: K) -> ?(K, V):
+        self.at(ks.cursor_gt(k))
 
     /// Largest entry with key `<= k`, or `None`.
     ///
@@ -1281,7 +1400,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.last_le(2) == Some((1, "a")) and m.last_le(0) == None`
-    pub fn last_le(self, k: K) -> ?(K, V) = todo
+    pub fn last_le(self, k: K) -> ?(K, V):
+        self.at(ks.cursor_le(k))
 
     /// Largest entry with key `< k`, or `None`.
     ///
@@ -1290,7 +1410,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.last_lt(3) == Some((1, "a")) and m.last_lt(1) == None`
-    pub fn last_lt(self, k: K) -> ?(K, V) = todo
+    pub fn last_lt(self, k: K) -> ?(K, V):
+        self.at(ks.cursor_lt(k))
 
     /// Number of entries with key strictly less than `k`.
     ///
@@ -1298,7 +1419,8 @@ pub struct SortedMap<K, V>:
     /// empty: `0`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.rank(3) == 1 and m.rank(9) == 2`
-    pub fn rank(self, k: K) -> Int = todo
+    pub fn rank(self, k: K) -> Int:
+        ks.rank(k)
 
     /// The `i`-th entry in key order (0-based), or `None`.
     ///
@@ -1308,7 +1430,8 @@ pub struct SortedMap<K, V>:
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.nth(1) == Some((3, "c")) and m.nth(2) == None`
-    pub fn nth(self, i: Int) -> ?(K, V) = todo
+    pub fn nth(self, i: Int) -> ?(K, V):
+        self.entry(ks.nth(i))
 
     /// Smallest entry where monotone `ok(k, v)` becomes true, or `None`.
     ///
@@ -1319,7 +1442,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct; the least key wins
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.first_true((k, v) => v >= 30) == Some((4, 40))`
-    pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
+    pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V):
+        self.entry(ks.first_true(k => ok(k, vals.get(k)!)))
 
     /// Largest entry where monotone `ok(k, v)` still holds, or `None`.
     ///
@@ -1330,7 +1454,8 @@ pub struct SortedMap<K, V>:
     /// ties: none: keys are distinct; the greatest key wins
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.last_true((k, v) => k <= 5) == Some((4, 40))`
-    pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
+    pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V):
+        self.entry(ks.last_true(k => ok(k, vals.get(k)!)))
 
     /// Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds.
     ///
@@ -1342,7 +1467,11 @@ pub struct SortedMap<K, V>:
     /// order: ascending key with `after` or no bound, descending with `before`; a new `List`, keyed from 0
     /// traps: when both `after` and `before` are given
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.drain(after: 1, while: (k, v) => v < 50) == [(4, 40)] and m.len == 2`
-    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)> = todo
+    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>:
+        let gone = ks.drain(after: after, before: before, while: k => ok(k, vals.get(k)!))
+        var out: List<(K, V)> = []
+        for k in gone: out.push((k, vals.remove(k)!))
+        out
 
     /// Split off and return all entries with key `>= k`.
     ///
@@ -1373,7 +1502,22 @@ pub struct SortedMap<K, V>:
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a: SortedMap<Int, Int> = SortedMap(); a.set(1, 10); var b: SortedMap<Int, Int> = SortedMap(); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
-    pub fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None) = todo
+    pub fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None):
+        var small = other.take()
+        var flip = false
+        if small.len > self.len:
+            let big = small
+            small = self.take()
+            ks = big.ks
+            vals = big.vals
+            flip = true
+        for (k, v) in small.items:
+            if let old = vals.get(k):
+                if let j = join: vals[k] = if flip: j(v, old) else: j(old, v)
+                elif not flip: vals[k] = v
+            else:
+                let _ = ks.add(k)
+                vals[k] = v
 
     /// O(1) to make. Yields `(key, val)` pairs in ascending key order.
     ///
@@ -1382,7 +1526,8 @@ pub struct SortedMap<K, V>:
     /// order: ascending key
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.items.collect() == [(1, "a"), (3, "c")]`
-    @get pub fn items(self) -> yields (K, V) = todo
+    @get pub fn items(self) -> yields (K, V):
+        for k in ks.entries(): yield (k.key, vals.get(k.key)!)
 
     /// Yield `(key, val)` pairs in descending key order.
     ///
@@ -1391,7 +1536,8 @@ pub struct SortedMap<K, V>:
     /// order: descending key
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.each_rev().collect() == [(3, "c"), (1, "a")]`
-    pub fn each_rev(self) -> yields (K, V) = todo
+    pub fn each_rev(self) -> yields (K, V):
+        for k in ks.entries_rev(): yield (k.key, vals.get(k.key)!)
 
     ///
     ///
@@ -1400,7 +1546,8 @@ pub struct SortedMap<K, V>:
     /// order: ascending key
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.keys.collect() == [1, 3]`
-    @get pub fn keys(self) -> yields K = todo
+    @get pub fn keys(self) -> yields K:
+        for k in ks.entries(): yield k.key
 
     ///
     ///
@@ -1409,7 +1556,8 @@ pub struct SortedMap<K, V>:
     /// order: ascending key
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.values.collect() == ["a", "c"]`
-    @get pub fn values(self) -> yields V = todo
+    @get pub fn values(self) -> yields V:
+        for k in ks.entries(): yield vals.get(k.key)!
 
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Supports O(log n) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and O(1) `all`.
@@ -1721,8 +1869,12 @@ pub struct AugSortedSet<K, T>:
 /// `N` is `r.len`; the table keeps one count per value and one per block of about `sqrt(N)`
 /// values. Writes outside `r` trap; reads outside `r` see a count of 0.
 pub struct BucketCount:
-    _lo: Int
-    _hi: Int
+    lo: Int
+    hi: Int
+    bs: Int
+    total: Int
+    cnt: List<Int>
+    blk: List<Int>
 
     /// O(r.len). Create an empty bucketed frequency table over `r`.
     ///
@@ -1730,7 +1882,11 @@ pub struct BucketCount:
     /// empty: an empty `r` gives a table every write traps on
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.len == 0`
-    pub fn new(r: Range<Int>) -> BucketCount = todo
+    pub fn new(r: Range<Int>) -> BucketCount:
+        let n = max(r.len, 0)
+        var bs = 1
+        while bs * bs < n: bs += 1
+        BucketCount(r.start, r.start + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
 
     /// O(1). Add `delta` (default 1; may be negative) copies of `x`.
     ///
@@ -1739,7 +1895,13 @@ pub struct BucketCount:
     /// cost: O(1)
     /// traps: when `x` is not in `r`; when the count of `x` would become negative
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.count(7) == 2 and b.len == 3`
-    pub fn add(mut self, x: Int, delta: Int = 1) = todo
+    pub fn add(mut self, x: Int, delta: Int = 1):
+        assert lo <= x and x < hi, "`x` is outside the table's range"
+        let i = x - lo
+        assert cnt[i] + delta >= 0, "the count of `x` would become negative"
+        cnt[i] += delta
+        blk[i / bs] += delta
+        total += delta
 
     /// O(1). Remove `delta` (default 1) copies of `x`.
     ///
@@ -1748,14 +1910,16 @@ pub struct BucketCount:
     /// cost: O(1)
     /// traps: when `x` is not in `r`; when the count of `x` would become negative
     /// example: `var b = BucketCount(0..10); b.add(7, 2); b.remove(7); b.count(7) == 1`
-    pub fn remove(mut self, x: Int, delta: Int = 1) = todo
+    pub fn remove(mut self, x: Int, delta: Int = 1):
+        self.add(x, -delta)
 
     /// O(1). Multiplicity of `x`.
     ///
     /// cost: O(1)
     /// traps: never; an `x` outside `r` has count 0
     /// example: `var b = BucketCount(0..10); b.add(3); b.count(3) == 1 and b.count(4) == 0 and b.count(99) == 0`
-    pub fn count(self, x: Int) -> Int = todo
+    pub fn count(self, x: Int) -> Int:
+        if lo <= x and x < hi: cnt[x - lo] else: 0
 
     /// O(sqrt(N)). Number of elements strictly less than `x`.
     ///
@@ -1765,7 +1929,14 @@ pub struct BucketCount:
     /// empty: `0`
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.count_lt(7) == 1 and b.count_lt(8) == 3`
-    pub fn count_lt(self, x: Int) -> Int = todo
+    pub fn count_lt(self, x: Int) -> Int:
+        if x <= lo: return 0
+        if x >= hi: return total
+        let i = x - lo
+        var acc = 0
+        for b in 0..i / bs: acc += blk[b]
+        for j in i / bs * bs..i: acc += cnt[j]
+        acc
 
     /// O(sqrt(N)). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
     ///
@@ -1775,28 +1946,44 @@ pub struct BucketCount:
     /// ties: none: the `k`-th element is one value
     /// traps: when `k` is not in `0..len`
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.kth(0) == 3 and b.kth(1) == 7 and b.kth(2) == 7`
-    pub fn kth(self, k: Int) -> Int = todo
+    pub fn kth(self, k: Int) -> Int:
+        assert 0 <= k and k < total, "`k` is outside `0..len`"
+        var left = k
+        var b = 0
+        while left >= blk[b]:
+            left -= blk[b]
+            b += 1
+        var j = b * bs
+        while left >= cnt[j]:
+            left -= cnt[j]
+            j += 1
+        lo + j
 
     ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4, 3); b.len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        total
 
     /// O(1). Whether the table is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4); b.remove(4); b.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        total == 0
 
     /// O(r.len). Reset all counts to zero.
     ///
     /// cost: O(r.len)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4); b.clear(); b.count(4) == 0 and b.len == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for i in 0..cnt.len: cnt[i] = 0
+        for b in 0..blk.len: blk[b] = 0
+        total = 0
 
 @test
 fn sorted_bag_basics_duplicates_and_take():
@@ -1834,16 +2021,90 @@ fn sorted_bag_basics_duplicates_and_take():
     assert moved.is_empty and moved.len == 0 and moved.last == None
 
 @test
-fn sorted_bag_matches_sorted_list_on_random_ops() = todo
+fn sorted_bag_matches_sorted_list_on_random_ops():
+    var b = SortedBag<Int>()
+    var plain: List<Int> = []
+    for _ in 0..400:
+        let x = rand(0, 20)
+        let op = rand(0, 3)
+        if op == 0:
+            assert b.add(x)
+            var i = 0
+            while i < plain.len and plain[i] <= x: i += 1
+            plain.insert(i, x)
+        elif op == 1:
+            var i = 0
+            while i < plain.len and plain[i] != x: i += 1
+            assert b.remove(x) == (i < plain.len)
+            if i < plain.len: plain = [plain[j] for j in 0..plain.len if j != i]
+        elif op == 2:
+            var lt = 0
+            for v in plain:
+                if v < x: lt += 1
+            assert b.rank(x) == lt
+        else:
+            let k = rand(-1, plain.len)
+            assert b.nth(k) == (if 0 <= k and k < plain.len: Some(plain[k]) else: None)
+        assert b.len == plain.len
+        assert b.first == (if plain.len > 0: Some(plain[0]) else: None)
+        assert b.last == (if plain.len > 0: Some(plain[plain.len - 1]) else: None)
+    assert b.to_list() == plain
 
 @test
-fn sorted_bag_inversion_count_and_generic_keys() = todo
+fn sorted_bag_inversion_count_and_generic_keys():
+    let a = [3, 1, 2, 3, 0, 2]
+    var seen = SortedBag<Int>()
+    var inv = 0
+    for x in a:
+        inv += seen.len - seen.rank(x + 1)
+        let _ = seen.add(x)
+    var brute = 0
+    for i in 0..a.len:
+        for j in i + 1..a.len:
+            if a[i] > a[j]: brute += 1
+    assert inv == brute
+    var words = SortedBag<Str>()
+    for w in ["pear", "apple", "fig", "apple"]: let _ = words.add(w)
+    assert words.to_list() == ["apple", "apple", "fig", "pear"] and words.distinct == 3
+    var pts = SortedBag<(Int, Int)>()
+    for p in [(2, 1), (1, 5), (2, 0)]: let _ = pts.add(p)
+    assert pts.first == Some((1, 5)) and pts.last == Some((2, 1)) and pts.rank((2, 0)) == 1
 
 @test
-fn sorted_bag_cursors_entries_and_recycling() = todo
+fn sorted_bag_cursors_entries_and_recycling():
+    var b = SortedBag<Int>()
+    for x in [4, 1, 4, 7, 4]: let _ = b.add(x)
+    assert b.entries().collect() == [(key: 1, count: 1), (key: 4, count: 3), (key: 7, count: 1)]
+    assert b.entries_rev().collect() == [(key: 7, count: 1), (key: 4, count: 3), (key: 1, count: 1)]
+    let c = b.cursor_at(4)!
+    assert b.key_of(c) == 4 and b.count_of(c) == 3
+    assert b.key_of(b.next_cursor(c)!) == 7 and b.key_of(b.prev_cursor(c)!) == 1
+    assert b.next_cursor(b.cursor_last()!) == None and b.prev_cursor(b.cursor_first()!) == None
+    assert b.key_of(b.cursor_ge(5)!) == 7 and b.key_of(b.cursor_gt(4)!) == 7
+    assert b.key_of(b.cursor_le(3)!) == 1 and b.key_of(b.cursor_lt(4)!) == 1 and b.cursor_lt(1) == None
+    for round in 0..50:
+        for x in 0..20: let _ = b.add(x + round)
+        assert b.len == 25 and b.distinct >= 20
+        for x in 0..20: assert b.remove(x + round)
+        assert b.to_list() == [1, 4, 4, 4, 7]
 
 @test
-fn sorted_set_operations_range_and_bsearch() = todo
+fn sorted_set_operations_range_and_bsearch():
+    var s = SortedSet<Int>()
+    for x in [5, 1, 9, 5, 3]: let _ = s.add(x)
+    assert s.to_list() == [1, 3, 5, 9] and s.len == 4
+    assert not s.add(3) and s.remove(3) and not s.remove(3)
+    s.set(4, true)
+    s.set(9, false)
+    assert s.to_list() == [1, 4, 5] and s.contains(4) and not s.contains(9)
+    assert s.first_true(x => x >= 2) == Some(4) and s.first_true(x => x > 5) == None
+    assert s.last_true(x => x < 5) == Some(4) and s.last_true(x => x < 1) == None
+    assert s.rank(5) == 2 and s.nth(2) == Some(5) and s.nth(3) == None
+    assert s.each().collect() == [1, 4, 5] and s.each_rev().collect() == [5, 4, 1]
+    var t = SortedSet<Int>.of([4, 7])
+    s.absorb(mut t)
+    assert s.to_list() == [1, 4, 5, 7] and t.is_empty
+    assert s.pop_first() == Some(1) and s.pop_last() == Some(7) and s.to_list() == [4, 5]
 
 @test
 fn sorted_set_and_bag_drain_after_before_and_random():

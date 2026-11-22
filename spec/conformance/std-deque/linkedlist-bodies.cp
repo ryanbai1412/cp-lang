@@ -1,0 +1,16 @@
+// expect: ok, output "0 YES 5\n3 1 3\n0 1 2 3 4 4 3 2 1 0\n4 3 2 1 0 0 4 3 1\n8 3 2 1 9 5\nYES none"
+use std.deque.{LinkedList}
+var e: LinkedList<Int> = LinkedList()
+print(e.len, e.is_empty, LinkedList.of(5).each().collect())
+var l = LinkedList.from_list([1, 2, 3])
+print(l.len, l.first, l.last)
+l.push(4)
+l.push_front(0)
+print(l.each().collect(), l.each_rev().collect())
+l.reverse()
+print(l.each().collect(), l.pop(), l.pop_front(), l.first, l.last)
+l.push(9)
+l.push_front(8)
+print(l.each().collect(), l.len)
+l.clear()
+print(l.is_empty, l.pop())

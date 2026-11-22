@@ -661,13 +661,47 @@ pub fn prefix_excl<D, T, M>(op: M, a: [D]T) -> [D]T:
     [D] i => m.op(pre[i.l], suf[i.r])
 
 @test
-fn one_d_sums_match_brute() = todo
+fn one_d_sums_match_brute():
+    domain V = 1..=9
+    let a = [V] _ => rand(-20, 20)
+    let p = Prefix<V, Int>(a)
+    for l in V.cuts:
+        for r in V.cuts:
+            if r < l: continue
+            var want = 0
+            for i in V:
+                if l <= i.l and i.r <= r: want += a[i]
+            assert p.fold(l..r) == want
+            assert p.prefix(r) - p.prefix(l) == want
+    for i in V: assert p.get(i) == a[i]
 
 @test
-fn two_d_sums_match_brute() = todo
+fn two_d_sums_match_brute():
+    domain R = 0..4
+    domain C = 1..=5
+    let g = [R, C] (_, _) => rand(-9, 9)
+    let p = Prefix<R, C, Int>(g)
+    for r0 in R.cuts:
+        for r1 in R.cuts:
+            for c0 in C.cuts:
+                for c1 in C.cuts:
+                    if r1 < r0 or c1 < c0: continue
+                    var want = 0
+                    for r in R:
+                        for c in C:
+                            if r0 <= r.l and r.r <= r1 and c0 <= c.l and c.r <= c1: want += g[r, c]
+                    assert p.fold(r0..r1, c0..c1) == want
 
 @test
-fn a_plain_range_and_list_take_plain_ints() = todo
+fn a_plain_range_and_list_take_plain_ints():
+    let xs = [4, -1, 7, 0, 3]
+    let p = Prefix<Int>(xs)
+    for lo in 0..=5:
+        for hi in lo..=5:
+            var want = 0
+            for i in lo..hi: want += xs[i]
+            assert p.fold(lo..hi) == want
+            assert p.prefix(hi) - p.prefix(lo) == want
 
 @test
 fn prefix_and_suffix_folds_cover_outside_ranges():
@@ -676,7 +710,7 @@ fn prefix_and_suffix_folds_cover_outside_ranges():
     let pref = prefix_fold(max, a)
     let suff = suffix_fold(max, a)
     for l in V:
-        for r in l..=V.last:
+        for r in l..=V.last!:
             let range = l..=r
             var want = Int.MIN
             for i in V:
@@ -716,10 +750,48 @@ fn diff_1d_and_2d_match_brute():
         for c in C: assert got2[r, c] == g[r, c]
 
 @test
-fn filling_1d_forward_and_reverse_match_brute() = todo
+fn filling_1d_forward_and_reverse_match_brute():
+    domain V = 0..7
+    let a = [V] _ => rand(-5, 5)
+    var f = Prefix<V, Int>.filling()
+    for i in V:
+        f.set(i, a[i])
+        assert f.prefix(i.r) == Prefix<V, Int>(a).prefix(i.r)
+    var b = Prefix<V, Int>.filling(order: FillOrder.Reverse)
+    for k in (0..7).rev:
+        let i = V.nth(k)
+        b.set(i, a[i])
+        var want = 0
+        for j in i..=V.last!: want += a[j]
+        assert b.fold(i..=V.last!) == want
 
 @test
-fn filling_2d_forward_and_reverse_match_brute() = todo
+fn filling_2d_forward_and_reverse_match_brute():
+    domain R = 0..3
+    domain C = 0..4
+    let g = [R, C] (_, _) => rand(-5, 5)
+    let full = Prefix<R, C, Int>(g)
+    var f = Prefix<R, C, Int>.filling()
+    for r in R:
+        for c in C:
+            f.set(r, c, g[r, c])
+            assert f.prefix(r.r, c.r) == full.prefix(r.r, c.r)
+    var b = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)
+    for rk in (0..3).rev:
+        for ck in (0..4).rev:
+            let (r, c) = (R.nth(rk), C.nth(ck))
+            b.set(r, c, g[r, c])
+            assert b.fold(r..=R.last!, c..=C.last!) == full.fold(r..=R.last!, c..=C.last!)
 
 @test
-fn filling_list_forward_and_reverse_match_brute() = todo
+fn filling_list_forward_and_reverse_match_brute():
+    let xs = [rand(-5, 5) for _ in 0..8]
+    let full = Prefix<Int>(xs)
+    var f = Prefix<Int>.filling(8)
+    for i in 0..8:
+        f.set(i, xs[i])
+        assert f.prefix(i + 1) == full.prefix(i + 1)
+    var b = Prefix<Int>.filling(8, order: FillOrder.Reverse)
+    for i in (0..8).rev:
+        b.set(i, xs[i])
+        assert b.fold(i..8) == full.fold(i..8)

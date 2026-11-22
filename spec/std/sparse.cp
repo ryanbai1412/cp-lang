@@ -209,6 +209,12 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
 /// idempotent operation (`min`, `max`, `gcd`, `&`, `|`).
 pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     table: List<T>
+    h: Int
+    w: Int
+    lr: Int
+    lc: Int
+
+    fn at(self, kr: Int, kc: Int, i: Int, j: Int) -> Int = ((kr * lc + kc) * h + i) * w + j
 
     /// Build a 2-D sparse table for the idempotent, associative `op` over the grid `a`: one
     /// `SparseTable` level per power-of-two row height and column width. Keeps the domains `R`, `C`.
@@ -218,7 +224,23 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// order: the table keeps the domains `R` and `C` of `a`
     /// traps: never (a non-idempotent `op` gives unspecified folds)
     /// example: `SparseTable2D(max, [2, 2] (r, c) => r * 2 + c).fold(0..2, 0..2) == 3`
-    pub fn new(op: (T, T) -> T, a: [R, C]T) -> SparseTable2D<R, C, T> = todo
+    pub fn new(op: (T, T) -> T, a: [R, C]T) -> SparseTable2D<R, C, T>:
+        let (h, w) = (R.K, C.K)
+        if h == 0 or w == 0: return SparseTable2D(op, [], h, w, 0, 0)
+        let (lr, lc) = (bit_width(h), bit_width(w))
+        var s = SparseTable2D(op, List.filled(lr * lc * h * w, a[R.first!, C.first!]), h, w, lr, lc)
+        for r in R:
+            for c in C: s.table[r.to_idx * w + c.to_idx] = a[r, c]
+        for kr in 0..lr:
+            for kc in 0..lc:
+                if kr == 0 and kc == 0: continue
+                for i in 0..h - (1 << kr) + 1:
+                    for j in 0..w - (1 << kc) + 1:
+                        s.table[s.at(kr, kc, i, j)] = if kr == 0:
+                            op(s.table[s.at(0, kc - 1, i, j)], s.table[s.at(0, kc - 1, i, j + (1 << (kc - 1)))])
+                        else:
+                            op(s.table[s.at(kr - 1, kc, i, j)], s.table[s.at(kr - 1, kc, i + (1 << (kr - 1)), j)])
+        s
 
     /// The fold of `op` over the rectangle `rows` by `cols`, both non-empty: four overlapping
     /// power-of-two blocks combined with `op`.
@@ -227,7 +249,13 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// empty: traps when either range is empty; use `try_fold`
     /// traps: when either range is empty or reaches outside its domain
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).fold(1..2, 0..2) == 2`
-    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
+    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
+        let (r0, r1) = rows.ends
+        let (c0, c1) = cols.ends
+        assert r0 < r1 and c0 < c1, "`fold` needs a non-empty rectangle"
+        let (kr, kc) = (bit_width(r1 - r0) - 1, bit_width(c1 - c0) - 1)
+        let (i2, j2) = (r1 - (1 << kr), c1 - (1 << kc))
+        op(op(table[self.at(kr, kc, r0, c0)], table[self.at(kr, kc, r0, j2)]), op(table[self.at(kr, kc, i2, c0)], table[self.at(kr, kc, i2, j2)]))
 
     /// The rectangle fold like `fold`, or `None` when `rows` or `cols` is empty.
     ///
@@ -236,19 +264,34 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// traps: when a range reaches outside its domain on a non-empty rectangle
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).try_fold(0..2, 1..1) == None`
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).try_fold(0..2, 1..2) == Some(1)`
-    pub fn try_fold(self, rows: Range<R>, cols: Range<C>) -> ?T = todo
+    pub fn try_fold(self, rows: Range<R>, cols: Range<C>) -> ?T:
+        let (r0, r1) = rows.ends
+        let (c0, c1) = cols.ends
+        if r0 >= r1 or c0 >= c1: None else: Some(self.fold(rows, cols))
 
     /// The original cell value `a[r, c]`.
     ///
     /// cost: O(1)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).get(1, 0) == 2`
-    pub fn get(self, r: R, c: C) -> T = todo
+    pub fn get(self, r: R, c: C) -> T:
+        table[r.to_idx * w + c.to_idx]
 
 /// O(|D|) build and memory; O(1) range min/max query via block-of-64 bitmask RMQ (Four Russians).
 /// Useful for O(1) LCA and memory-tight static RMQ where O(n log n) space is too large.
 pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     n: Int
+    vals: List<T>
+    mask: List<U64>
+    nb: Int
+    top: List<Int>
+
+    fn better(self, i: Int, j: Int) -> Int = if before(vals[j], vals[i]): j else: i
+
+    fn in_block(self, l: Int, r: Int) -> Int:
+        let base = l - l % 64
+        let m = mask[r] & ~((U64(1) << (l - base)) - U64(1))
+        base + bit_width(m & (~m + U64(1))) - 1
 
     /// Build a linear-space range-best structure over `a`, where `before(x, y)` means `x` is better
     /// than `y` (default `<`, so the best is the minimum). Blocks of 64 positions carry a sparse
@@ -259,7 +302,25 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// order: the structure keeps the domain `D` of `a`
     /// traps: never (`before` must be a strict weak order, or results are unspecified)
     /// example: `LinearRmq([3, 1, 4]).best(0..3) == 1`
-    pub fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x < y) -> LinearRmq<D, T> = todo
+    pub fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x < y) -> LinearRmq<D, T>:
+        let vals = [a[i] for i in D]
+        let n = vals.len
+        let nb = (n + 63) / 64
+        var q = LinearRmq<D, T>(before, n, vals, [], nb, [])
+        for b in 0..nb:
+            var cur: U64 = U64(0)
+            for i in 64 * b..min(64 * b + 64, n):
+                while cur != U64(0) and before(vals[i], vals[64 * b + bit_width(cur) - 1]):
+                    cur ^= U64(1) << (bit_width(cur) - 1)
+                cur |= U64(1) << (i - 64 * b)
+                q.mask.push(cur)
+        for b in 0..nb: q.top.push(q.in_block(64 * b, min(64 * b + 64, n) - 1))
+        var k = 1
+        while (1 << k) <= nb:
+            for b in 0..nb:
+                q.top.push(if b + (1 << k) <= nb: q.better(q.top[(k - 1) * nb + b], q.top[(k - 1) * nb + b + (1 << (k - 1))]) else: q.top[(k - 1) * nb + b])
+            k += 1
+        q
 
     /// The position of the best element of the non-empty range `r` under `before`; the leftmost
     /// when several are equally best (neither is `before` the other).
@@ -270,7 +331,17 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 1, 4]).argbest(0..4) == 1`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).argbest(0..3) == 2`
-    pub fn argbest(self, r: Range<D>) -> D = todo
+    pub fn argbest(self, r: Range<D>) -> D:
+        let (lo, hi) = r.ends
+        assert lo < hi, "`argbest` needs a non-empty range"
+        let h = hi - 1
+        let (bl, bh) = (lo / 64, h / 64)
+        if bl == bh: return D.nth(self.in_block(lo, h))
+        var ans = self.in_block(lo, 64 * bl + 63)
+        if bl + 1 < bh:
+            let k = bit_width(bh - bl - 1) - 1
+            ans = self.better(ans, self.better(top[k * nb + bl + 1], top[k * nb + bh - (1 << k)]))
+        D.nth(self.better(ans, self.in_block(64 * bh, h)))
 
     /// The value of the best element of the non-empty range `r` under `before`; `a[argbest(r)]`.
     ///
@@ -279,7 +350,8 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// ties: equal-best values are interchangeable; the value at the leftmost is returned
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).best(0..3) == 4`
-    pub fn best(self, r: Range<D>) -> T = todo
+    pub fn best(self, r: Range<D>) -> T:
+        vals[self.argbest(r).to_idx]
 
     /// The value of the best element of `r` like `best`, or `None` when `r` is empty.
     ///
@@ -289,7 +361,9 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `LinearRmq([3, 1]).try_best(1..1) == None`
     /// example: `LinearRmq([3, 1]).try_best(0..2) == Some(1)`
-    pub fn try_best(self, r: Range<D>) -> ?T = todo
+    pub fn try_best(self, r: Range<D>) -> ?T:
+        let (lo, hi) = r.ends
+        if lo >= hi: None else: Some(self.best(r))
 
 @test
 fn range_min_matches_brute_force():

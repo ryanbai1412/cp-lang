@@ -891,13 +891,46 @@ pub type MaxHeap<T> = Heap<T>
 /// `best` picks the better of two priorities and must return one of its arguments, like `min`
 /// and `max`; with any other function the popped priorities are unspecified. Keys are hashed.
 pub struct Settle<K, P>(best: (P, P) -> P = min):
+    cur: HashMap<K, P> = HashMap()
+    done: HashMap<K, Bool> = HashMap()
+    q: List<(P, K)> = []
+
+    fn better(self, a: Int, b: Int) -> Bool:
+        let (x, y) = (q[a].0, q[b].0)
+        x != y and best(x, y) == x
+
+    fn sift_up(mut self, i0: Int):
+        var i = i0
+        while i > 0 and self.better(i, (i - 1) / 2):
+            q.swap(i, (i - 1) / 2)
+            i = (i - 1) / 2
+
+    fn sift_down(mut self):
+        var i = 0
+        while true:
+            var c = 2 * i + 1
+            if c >= q.len: return
+            if c + 1 < q.len and self.better(c + 1, c): c += 1
+            if not self.better(c, i): return
+            q.swap(i, c)
+            i = c
+
     /// Offer priority `p` for key `k`: an unsettled key keeps `best(old, p)` (or `p` when it
     /// had None); a settled key ignores the offer.
     ///
     /// cost: O(log n) amortized, `n` the offers so far
     /// traps: never
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('a', 2); s.offer('a', 4); s.get('a') == Some(2)`
-    pub fn offer(mut self, k: K, p: P) = todo
+    pub fn offer(mut self, k: K, p: P):
+        if done.get(k) != None: return
+        if let old = cur.get(k):
+            let b = best(old, p)
+            if b == old: return
+            cur[k] = b
+        else:
+            cur[k] = p
+        q.push((cur[k], k))
+        self.sift_up(q.len - 1)
     /// Settle and return the unsettled key whose priority is best, with that priority, or
     /// `None` when every offered key has settled.
     ///
@@ -908,17 +941,26 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('b', 3)) and s.settled('b')`
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('b', 3); s.pop(); s.offer('b', 1); s.pop() == None`
     /// example: `var s: Settle<Char, Int> = Settle(best: max); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('a', 5))`
-    pub fn pop(mut self) -> ?(K, P) = todo
+    pub fn pop(mut self) -> ?(K, P):
+        while q.len > 0:
+            let (p, k) = q[0]
+            q.swap(0, q.len - 1)
+            let _ = q.pop()
+            self.sift_down()
+            if done.get(k) == None and cur.get(k) == Some(p):
+                done[k] = true
+                return Some((k, p))
+        None
     /// Whether `k` has popped.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 1); not s.settled('a') and s.pop() == Some(('a', 1)) and s.settled('a')`
-    pub fn settled(self, k: K) -> Bool = todo
+    pub fn settled(self, k: K) -> Bool = done.get(k) != None
     /// The best priority offered for `k` so far (for a settled key, the one it popped with),
     /// or `None` if `k` was never offered.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 4); s.get('a') == Some(4) and s.get('b') == None`
-    pub fn get(self, k: K) -> ?P = todo
+    pub fn get(self, k: K) -> ?P = cur.get(k)

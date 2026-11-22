@@ -13,7 +13,9 @@
 /// example: `yes(true) == "YES"`
 /// example: `yes(false) == "NO"`
 /// example: `yes(false, answers: ("Possible", "Impossible")) == "Impossible"`
-pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str = todo
+pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str:
+    let (y, n) = if let pair = answers: pair else: ("YES", "NO")
+    if ok: y else: n
 
 /// Interactive mode. Constructing one (`let wire = Wire()`) makes every read and the program's
 /// exit flush stdout first; a program that never builds one never flushes early. O(1).

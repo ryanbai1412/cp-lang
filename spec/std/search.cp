@@ -229,7 +229,21 @@ pub fn parallel_bsearch<I>(
 /// traps: never
 /// example: `gallop_first(0, i => i * i >= 50) == Some(8)`
 /// example: `gallop_first(10, i => i >= 3) == Some(10)`
-pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I = todo
+pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I:
+    if ok(from): return Some(from)
+    var (lo, step) = (from, 1)
+    while true:
+        let hi = lo + step
+        if hi < lo: return None
+        if ok(hi):
+            var (l, h) = (lo, hi)
+            while h - l > 1:
+                let m = l + (h - l) / 2
+                if ok(m): h = m else: l = m
+            return Some(h)
+        lo = hi
+        step *= 2
+    None
 
 /// The largest ratio `num / den` over a family of choices (Dinkelbach's method), where
 /// `solve(l)` returns the choice maximizing `num - l * den`.

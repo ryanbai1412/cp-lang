@@ -454,7 +454,33 @@ fn marks_basic_operations_and_clear():
     assert m.add(V(7)) and V(7) in m and m.len == 1
 
 @test
-fn marks_matches_bool_array_across_many_rounds() = todo
+fn marks_matches_bool_array_across_many_rounds():
+    domain V = 0..30
+    var m = Marks<V>()
+    var mm = MarkMap<V, Int>(0)
+    for _ in 0..40:
+        var plain: [V]Bool = false
+        var vals: [V]Int = 0
+        for _ in 0..60:
+            let v = V(rand(0, 29))
+            let x = rand(1, 9)
+            if rand(0, 2) == 0:
+                assert m.remove(v) == plain[v]
+                assert mm.remove(v) == (if plain[v]: Some(vals[v]) else: None)
+                plain[v] = false
+            else:
+                assert m.add(v) == (not plain[v])
+                mm.set(v, x)
+                plain[v] = true
+                vals[v] = x
+        var count = 0
+        for v in V:
+            assert (v in m) == plain[v]
+            assert mm.get(v) == (if plain[v]: Some(vals[v]) else: None)
+            if plain[v]: count += 1
+        assert m.len == count
+        m.clear()
+        mm.clear()
 
 @test
 fn marks_over_char_and_one_based_domains():
