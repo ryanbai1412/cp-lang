@@ -570,6 +570,29 @@ pub struct ProvenLoop {
     pub total: Option<u128>,
 }
 
+/// A fn with a loop in its body, and how many loop iterations one call
+/// makes at most, by the declared bounds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenFn {
+    pub name: (u32, u32),
+    /// The sum over its `for` loops of how often each body runs, nested
+    /// loops multiplied, calls not followed; `None` when a `while` or an
+    /// unbounded `for` makes the count unknown.
+    pub steps: Option<u128>,
+}
+
+/// Each fn with a loop in its body; a file with a syntax error has none.
+pub fn proven_fns(src: &str) -> Vec<ProvenFn> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_fns(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// An index `i` in `xs[i]` the bounds and relations prove is in
 /// `0..xs.len`, for a sequence whose length never changes.
 #[derive(Clone, Debug, PartialEq, Eq)]

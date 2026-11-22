@@ -171,3 +171,15 @@ domain Col = 0..4
   storage: 1 byte per position
   in bounds of grid[Row.first, Col.last]: Row.first: Row, Col.last: Col, the index spaces of grid
 ```
+
+== hover @ 71:6
+```cp
+fn scan()
+  loops: at most 1600000 (1.6e6) iterations per call, calls inside not counted
+```
+
+== hover @ 75:4
+```cp
+fn scan()
+  loops: at most 1600000 (1.6e6) iterations per call, calls inside not counted
+```

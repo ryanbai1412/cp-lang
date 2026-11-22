@@ -2392,6 +2392,14 @@ or a slice gets nothing. `dp[v, k]` over `domain State = (V, K)` and `g[p]` with
 count too; a subdomain position does not, since its name alone is not the array's domain.
 Reverse by dropping `TypedIndex` and the fallback in the LSP's `index_hover`.
 
+29.41. **A fn's hover counts the loop iterations of one call.** Hovering a fn with a loop shows
+`loops: at most 1600000 (1.6e6) iterations per call, calls inside not counted`: the sum over its
+`for` loops of how often each body runs, nested loops multiplied, from the same proven counts as
+a loop's own hover. A `while` or a `for` with no proven count makes the total unknown, and then
+nothing is shown; of the 1,095 fns with a loop in the ports and examples, 147 get a count. Calls, stdlib costs and comprehensions are not followed, which the text says;
+this is an iteration count, not the `O(..)` estimate `plan/60` asks for. Reverse by dropping
+`proven_fns` and its use in the LSP hover.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

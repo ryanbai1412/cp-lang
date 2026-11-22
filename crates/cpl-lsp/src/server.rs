@@ -230,6 +230,16 @@ impl Server {
                 if let Some(index) = self.index_hover(&uri, offset, true) {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
+                let steps = cpl_lint::proven_fns(&analysis.text)
+                    .into_iter()
+                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "))
+                    .and_then(|f| f.steps);
+                if let Some(steps) = steps {
+                    hover.text += &format!(
+                        "\n  loops: at most {} iterations per call, calls inside not counted",
+                        count_text(steps)
+                    );
+                }
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 Ok(Reply::result(obj([
                     (

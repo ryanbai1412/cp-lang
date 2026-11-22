@@ -45,6 +45,10 @@ pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
     proven(file).loops
 }
 
+pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
+    proven(file).fns
+}
+
 pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
     proven(file).indexes
 }
@@ -90,8 +94,11 @@ struct Proven {
     exprs: Vec<crate::ProvenExpr>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
+    fns: Vec<crate::ProvenFn>,
     /// How many times the innermost enclosing loops run in all.
     around: Option<u128>,
+    /// Whether the fn being read has a loop with no proven count.
+    unbounded: bool,
 }
 
 impl Default for Proven {
@@ -101,7 +108,9 @@ impl Default for Proven {
             exprs: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
+            fns: Vec::new(),
             around: Some(1),
+            unbounded: false,
         }
     }
 }
@@ -489,6 +498,7 @@ fn ranges_of_stmt(
                 };
                 let around = proven.around;
                 let total = around.zip(times).and_then(|(a, t)| a.checked_mul(t));
+                proven.unbounded |= times.is_none();
                 if let Some(times) = times {
                     proven.loops.push(crate::ProvenLoop {
                         head: (base + stmt.span.start, base + pat.span.start),
@@ -530,6 +540,7 @@ fn ranges_of_stmt(
                 body,
                 else_body,
             } => {
+                proven.unbounded = true;
                 let invariant = match (cond, entry) {
                     (Cond::Expr(test), Some(entry)) => loop_invariant(base, test, &body.stmts, entry, bounds),
                     _ => Vec::new(),
@@ -621,8 +632,18 @@ fn ranges_of_stmt(
                 if let FnBody::Block(block) = &decl.body {
                     inner.declare_fn(&decl.name.text);
                     let around = proven.around.replace(1);
+                    let (first, unbounded) = (proven.loops.len(), std::mem::take(&mut proven.unbounded));
                     ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                    let loops = &proven.loops[first..];
+                    if proven.unbounded || !loops.is_empty() {
+                        let steps = (!proven.unbounded)
+                            .then(|| loops.iter().try_fold(0u128, |sum, l| sum.checked_add(l.total?)))
+                            .flatten();
+                        let name = (base + decl.name.span.start, base + decl.name.span.end);
+                        proven.fns.push(crate::ProvenFn { name, steps });
+                    }
                     proven.around = around;
+                    proven.unbounded = unbounded;
                 }
             }
             _ => {}

@@ -68,3 +68,8 @@ for v in V:
     for r in Row:
         grid[r, Col.first] += xs$0[v]
 print(grid[Row.first, C$0ol.last])
+fn sc$0an():
+    for v in V:
+        for j in 0..k:
+            print(v, j)
+sca$0n()

@@ -1775,6 +1775,26 @@ fn a_for_loop_knows_how_often_it_runs() {
 }
 
 #[test]
+fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
+    let fns = |src: &str| -> Vec<(String, Option<u128>)> {
+        let name = |f: &crate::ProvenFn| src[f.name.0 as usize..f.name.1 as usize].to_string();
+        crate::proven_fns(src).iter().map(|f| (name(f), f.steps)).collect()
+    };
+    let head = "let n: 1..=200000 = read()\nlet q: 1..=1000 = read()\ndomain V = 1..=n\n";
+    let src = format!(
+        "{head}fn grid():\n    for v in V:\n        for i in 0..q:\n            print(v, i)\n    for i in 0..q:\n        print(i)\n\
+         fn walk(k: Int):\n    var t = 0\n    while t < k:\n        t += 1\n\
+         fn plain(k: Int) -> Int:\n    return k + 1\n\
+         fn over(xs: List<Int>):\n    for x in xs:\n        print(x)\n"
+    );
+    let some = |s: &str, n| (s.to_string(), n);
+    assert_eq!(
+        fns(&src),
+        [some("grid", Some(200000 + 200000000 + 1000)), some("walk", None), some("over", None)]
+    );
+}
+
+#[test]
 fn the_prover_names_the_inputs_an_overflow_needs() {
     let overflows = |src: &str| -> Vec<Option<String>> {
         crate::proven_expr_ranges(src).into_iter().map(|e| e.overflow).collect()
