@@ -1,14 +1,23 @@
 'use client';
 
-import { Loader2, Play, RotateCcw, Square } from 'lucide-react';
+import { Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { type Status, StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cpl, stop, type Diagnostic } from '@/lib/cpl';
+import { tools } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+
+const compilerVersion = tools.version.replace(/^cpl /, '');
 
 export interface RunnerProps {
   source: string;
@@ -18,6 +27,7 @@ export interface RunnerProps {
   className?: string;
   editorHeight?: string;
   playgroundLink?: boolean;
+  shareMenu?: boolean;
 }
 
 type Result =
@@ -35,7 +45,8 @@ export function formatDiagnostics(diagnostics: Diagnostic[], source: string): st
     .join('\n\n');
 }
 
-export function Runner({ source: initial, stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true }: RunnerProps) {
+export function Runner({ source: initial, stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
+  shareMenu = false, }: RunnerProps) {
   const [source, setSource] = useState(initial);
   const [stdin, setStdin] = useState(initialStdin);
   const [result, setResult] = useState<Result>({ kind: 'idle' });
@@ -83,6 +94,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
         </Button>
         <div className="ml-auto flex items-center gap-2">
           {status && <StatusBadge status={status} />}
+          {shareMenu && <ShareMenu source={source} stdin={stdin} />}
           {playgroundLink && (
             <Button size="sm" variant="outline" asChild>
               <a href={`/play#${share}`}>Open in playground</a>
@@ -143,4 +155,50 @@ export function decodeShare(hash: string): { src: string; in: string } | null {
   } catch {
     return null;
   }
+}
+
+function ShareMenu({ source, stdin }: { source: string; stdin: string }) {
+  const [note, setNote] = useState('');
+  const copy = async (url: string, what: string) => {
+    await navigator.clipboard.writeText(url);
+    history.replaceState(null, '', url);
+    setNote(`${what} copied`);
+  };
+  const short = async () => {
+    setNote('Creating…');
+    try {
+      const r = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ src: source, in: stdin, version: compilerVersion }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
+      const { url } = (await r.json()) as { url: string };
+      await copy(new URL(url, location.origin).toString(), 'Short link');
+    } catch (e) {
+      setNote(`Short links aren't available here (${(e as Error).message})`);
+    }
+  };
+  return (
+    <>
+      {note && (
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          {note}
+        </span>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline">
+            <Share2 /> Share
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => copy(`${location.origin}/play#${encodeShare(source, stdin)}`, 'Link')}>
+            Copy link (stays in the URL)
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={short}>Create short link (for chat)</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
 }

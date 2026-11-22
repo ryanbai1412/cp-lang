@@ -1,0 +1,12 @@
+name = "cplang-site"
+main = "index.ts"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "../out"
+binding = "ASSETS"
+run_worker_first = ["/p/*", "/api/*"]
+
+[[r2_buckets]]
+binding = "SHARES"
+bucket_name = "cplang-shares"
