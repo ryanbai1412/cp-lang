@@ -20,6 +20,7 @@ options:
   --check         fail if any suite's pass count drops or a passing case regresses
   --write         update the scoreboard JSON with the suites that were run
   --scoreboard P  scoreboard JSON path (default: research/scoreboard.json)
+  --causes        group failing cases by root cause, sorted by count
   --rules         check spec/core rule coverage against spec/conformance
   --strict        fail on unmet conformance cases (or uncovered rules with --rules)
   --verbose       print failing case details
@@ -40,6 +41,7 @@ fn main() -> ExitCode {
     let mut suites: Vec<Suite> = Vec::new();
     let mut check = false;
     let mut write = false;
+    let mut causes = false;
     let mut rules_only = false;
     let mut strict = false;
     let mut verbose = false;
@@ -56,6 +58,7 @@ fn main() -> ExitCode {
             }
             "--check" => check = true,
             "--write" => write = true,
+            "--causes" => causes = true,
             "--rules" => rules_only = true,
             "--strict" => strict = true,
             "--verbose" | "-v" => verbose = true,
@@ -149,6 +152,17 @@ fn main() -> ExitCode {
             report.total,
             format_counts(report)
         );
+        if causes && !report.causes.is_empty() {
+            println!("  causes ({} distinct):", report.causes.len());
+            for entry in &report.causes {
+                let ex = if entry.examples.is_empty() {
+                    String::new()
+                } else {
+                    format!("  [{}]", entry.examples.join(", "))
+                };
+                println!("    {:>4}  {}{}", entry.count, entry.cause, ex);
+            }
+        }
         if verbose {
             for (case_id, status) in &report.cases {
                 if status != "pass" && status != "untested" && status != "skip" {

@@ -11,6 +11,13 @@ pub struct CaseOutcome {
     pub detail: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CauseEntry {
+    pub cause: String,
+    pub count: usize,
+    pub examples: Vec<String>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SuiteReport {
     pub total: usize,
@@ -18,6 +25,191 @@ pub struct SuiteReport {
     pub counts: BTreeMap<String, usize>,
     pub cases: BTreeMap<String, String>,
     pub details: BTreeMap<String, String>,
+    pub causes: Vec<CauseEntry>,
+}
+
+/// Extracts the first `error[CODE]: msg` / `warning[CODE]: msg` / `lint[CODE]: msg`
+/// from `s`, returning `(code, first_line_message)`.
+fn extract_first_diag(s: &str) -> Option<(String, String)> {
+    for prefix in ["error[", "warning[", "lint["] {
+        if let Some(pos) = s.find(prefix) {
+            let rest = &s[pos + prefix.len()..];
+            if let Some(end) = rest.find(']') {
+                let code = rest[..end].trim().to_string();
+                let after = rest[end + 1..].trim_start_matches(':').trim_start();
+                let line = after.lines().next().unwrap_or("").trim();
+                return Some((code, normalize_message(line)));
+            }
+        }
+    }
+    None
+}
+
+/// Replaces backtick-quoted identifiers/types, quoted literals, and absolute paths
+/// so equivalent diagnostics group under one root cause.
+pub fn normalize_message(msg: &str) -> String {
+    let mut out = String::with_capacity(msg.len());
+    let bytes = msg.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'`' => {
+                if let Some(end) = msg[i + 1..].find('`') {
+                    let inner = &msg[i + 1..i + 1 + end];
+                    if inner == "todo" {
+                        out.push_str("`todo`");
+                    } else {
+                        out.push_str("`<id>`");
+                    }
+                    i += end + 2;
+                    continue;
+                }
+                out.push('`');
+                i += 1;
+            }
+            b'"' => {
+                let mut j = i + 1;
+                while j < bytes.len() {
+                    if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                        j += 2;
+                    } else if bytes[j] == b'"' {
+                        j += 1;
+                        break;
+                    } else {
+                        j += 1;
+                    }
+                }
+                out.push_str("\"<str>\"");
+                i = j;
+            }
+            _ => {
+                let ch = msg[i..].chars().next().unwrap();
+                out.push(ch);
+                i += ch.len_utf8();
+            }
+        }
+    }
+    let trimmed = out.trim();
+    if trimmed.len() > 140 {
+        let mut end = 140;
+        while !trimmed.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}...", &trimmed[..end])
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Classifies a non-passing case outcome into a normalized root cause string.
+/// Returns `None` for non-failure statuses (`pass`, `skip`, `untested`).
+pub fn classify_cause(status: &str, detail: &str) -> Option<String> {
+    if matches!(status, "pass" | "skip" | "untested") {
+        return None;
+    }
+    if status == "panic" || detail.starts_with("panic:") {
+        let line = detail.lines().next().unwrap_or("panic").trim();
+        return Some(format!("panic: {}", normalize_message(line)));
+    }
+    if status == "wrong" {
+        return Some("wrong output".into());
+    }
+    if status == "timeout" {
+        return Some("timeout".into());
+    }
+    if status == "cxx_err" {
+        let mut msg = "g++ error";
+        for line in detail.lines() {
+            let t = line.trim();
+            if let Some(pos) = t.find("error:") {
+                msg = t[pos..].trim();
+                break;
+            }
+            if let Some(pos) = t.find(": In ") {
+                msg = t[pos + 2..].trim();
+            }
+        }
+        return Some(format!("cxx_err: {}", normalize_message(msg)));
+    }
+    if let Some(rest) = detail.strip_prefix("wanted ") {
+        if let Some((want_part, got_part)) = rest.split_once("; got") {
+            let want = want_part.trim();
+            let got = got_part.trim_start_matches(':').trim();
+            if want == "ok" || want.starts_with("output ") {
+                if let Some((code, msg)) = extract_first_diag(got) {
+                    return Some(format!("{code}: {msg}"));
+                }
+                if want.starts_with("output ") {
+                    return Some("wrong output".into());
+                }
+                return Some(format!(
+                    "wanted {want}; got {}",
+                    normalize_message(got.lines().next().unwrap_or(""))
+                ));
+            }
+            let is_trap = want.starts_with("trap ") || want.starts_with("a trap ");
+            let expected_code = want
+                .strip_prefix("a trap ")
+                .or_else(|| want.strip_prefix("trap "))
+                .unwrap_or(want)
+                .split_whitespace()
+                .next()
+                .unwrap_or(want);
+            if got.contains(": no errors") || got.is_empty() {
+                return Some(format!("missing {expected_code} (no error emitted)"));
+            }
+            if let Some((actual_code, msg)) = extract_first_diag(got) {
+                if actual_code == expected_code {
+                    return Some(format!("wrong line for {expected_code}: {msg}"));
+                }
+                return Some(format!("wanted {expected_code}; got {actual_code}: {msg}"));
+            }
+            if is_trap && got.starts_with("exit 0") {
+                return Some(format!("missing trap {expected_code} (exited 0)"));
+            }
+            return Some(format!(
+                "wanted {expected_code}; got {}",
+                normalize_message(got.lines().next().unwrap_or(""))
+            ));
+        }
+    }
+    if let Some((code, msg)) = extract_first_diag(detail) {
+        return Some(format!("{code}: {msg}"));
+    }
+    let first = detail.lines().next().unwrap_or(status).trim();
+    if first.is_empty() {
+        Some(status.to_string())
+    } else {
+        Some(format!("{status}: {}", normalize_message(first)))
+    }
+}
+
+pub fn compute_causes(
+    cases: &BTreeMap<String, String>,
+    details: &BTreeMap<String, String>,
+) -> Vec<CauseEntry> {
+    let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (id, status) in cases {
+        let detail = details.get(id).map(String::as_str).unwrap_or("");
+        if let Some(cause) = classify_cause(status, detail) {
+            grouped.entry(cause).or_default().push(id.clone());
+        }
+    }
+    let mut entries: Vec<CauseEntry> = grouped
+        .into_iter()
+        .map(|(cause, mut ids)| {
+            ids.sort();
+            let count = ids.len();
+            ids.truncate(5);
+            CauseEntry {
+                cause,
+                count,
+                examples: ids,
+            }
+        })
+        .collect();
+    entries.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.cause.cmp(&b.cause)));
+    entries
 }
 
 impl SuiteReport {
@@ -34,12 +226,14 @@ impl SuiteReport {
         }
         let passed = counts.get("pass").copied().unwrap_or(0);
         let total = cases.len();
+        let causes = compute_causes(&cases, &details);
         SuiteReport {
             total,
             passed,
             counts,
             cases,
             details,
+            causes,
         }
     }
 
@@ -53,6 +247,23 @@ impl SuiteReport {
             .map(|(k, v)| (k.clone(), Value::Int(*v as i64)))
             .collect();
         obj.insert("counts".into(), Value::Object(counts));
+        if !self.causes.is_empty() {
+            let causes: Vec<Value> = self
+                .causes
+                .iter()
+                .map(|c| {
+                    let mut entry = BTreeMap::new();
+                    entry.insert("cause".into(), Value::String(c.cause.clone()));
+                    entry.insert("count".into(), Value::Int(c.count as i64));
+                    entry.insert(
+                        "examples".into(),
+                        Value::Array(c.examples.iter().cloned().map(Value::String).collect()),
+                    );
+                    Value::Object(entry)
+                })
+                .collect();
+            obj.insert("causes".into(), Value::Array(causes));
+        }
         let cases: BTreeMap<String, Value> = self
             .cases
             .iter()
@@ -86,6 +297,36 @@ impl SuiteReport {
                 *counts.entry(status.clone()).or_insert(0) += 1;
             }
         }
+        let mut causes = Vec::new();
+        if let Some(arr) = obj.get("causes").and_then(Value::as_array) {
+            for item in arr {
+                if let Some(o) = item.as_object() {
+                    let cause = o
+                        .get("cause")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string();
+                    let count = o.get("count").and_then(Value::as_usize).unwrap_or(0);
+                    let examples = o
+                        .get("examples")
+                        .and_then(Value::as_array)
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(Value::as_str)
+                                .map(str::to_string)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    if !cause.is_empty() {
+                        causes.push(CauseEntry {
+                            cause,
+                            count,
+                            examples,
+                        });
+                    }
+                }
+            }
+        }
         let total = obj
             .get("total")
             .and_then(Value::as_usize)
@@ -100,6 +341,7 @@ impl SuiteReport {
             counts,
             cases,
             details: BTreeMap::new(),
+            causes,
         })
     }
 }

@@ -13,6 +13,13 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn as_array(&self) -> Option<&[Value]> {
+        match self {
+            Value::Array(a) => Some(a),
+            _ => None,
+        }
+    }
+
     pub fn as_object(&self) -> Option<&BTreeMap<String, Value>> {
         match self {
             Value::Object(m) => Some(m),

@@ -54,6 +54,51 @@ fn header_parser_handles_all_expect_forms() {
 }
 
 #[test]
+fn causes_grouping_and_roundtrip() {
+    let mut map = BTreeMap::new();
+    map.insert(
+        "a.cp".into(),
+        CaseOutcome {
+            status: "fail".into(),
+            detail: "wanted ok; got: error[E0302]: expected `Int`, found `Bool`".into(),
+        },
+    );
+    map.insert(
+        "b.cp".into(),
+        CaseOutcome {
+            status: "fail".into(),
+            detail: "wanted ok; got: error[E0302]: expected `Str`, found `Int`".into(),
+        },
+    );
+    map.insert(
+        "c.cp".into(),
+        CaseOutcome {
+            status: "fail".into(),
+            detail: "wanted ok; got: error[R0402]: `todo` reached".into(),
+        },
+    );
+    map.insert(
+        "d.cp".into(),
+        CaseOutcome {
+            status: "pass".into(),
+            detail: String::new(),
+        },
+    );
+    let mut sb = Scoreboard::default();
+    sb.suites
+        .insert("conformance".into(), SuiteReport::from_outcomes(map));
+    let causes = &sb.suites["conformance"].causes;
+    assert_eq!(causes.len(), 2);
+    assert_eq!(causes[0].cause, "E0302: expected `<id>`, found `<id>`");
+    assert_eq!(causes[0].count, 2);
+    assert_eq!(causes[1].cause, "R0402: `todo` reached");
+    assert_eq!(causes[1].count, 1);
+
+    let parsed = Scoreboard::from_json_str(&sb.to_json_string()).unwrap();
+    assert_eq!(parsed.suites["conformance"].causes, *causes);
+}
+
+#[test]
 fn scoreboard_json_roundtrip() {
     let board = make_board(
         "conformance",

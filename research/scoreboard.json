@@ -648,6 +648,1128 @@
         "std-tree/lift-chain.cp": "pass",
         "std-tree/lift.cp": "pass"
       },
+      "causes": [
+        {
+          "cause": "R0402: `todo` reached",
+          "count": 37,
+          "examples": [
+            "core-01/chain-ok.cp",
+            "core-02/some-and-none-or.cp",
+            "core-04/a2-compare-by-order.cp",
+            "core-04/b1-argmax-in-range.cp",
+            "core-04/b2-find-in-suffix.cp"
+          ]
+        },
+        {
+          "cause": "E0302: expected `<id>`, found `<id>`",
+          "count": 17,
+          "examples": [
+            "core-01/local-items.cp",
+            "core-04/e1-generic-param-takes-slice.cp",
+            "core-04/g1-array-and-list-agree.cp",
+            "core-04/range-len-walk-ends.cp",
+            "core-04/rekey-onto-range.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0606; got no diagnostic",
+          "count": 15,
+          "examples": [
+            "core-02/named-struct-needs-impl.cp",
+            "core-06/generator-no-zip.cp",
+            "core-08/bound-unmet.cp",
+            "core-08/derive-needs-fields.cp",
+            "core-08/generic-checked-at-definition.cp"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 13,
+          "examples": [
+            "core-02/array-builders.cp",
+            "core-02/large-local-array.cp",
+            "core-03/narrow-arith-same-answer.cp",
+            "core-03/optional-array-no-spare.cp",
+            "core-04/b4-prefix-of-range.cp"
+          ]
+        },
+        {
+          "cause": "wrong output",
+          "count": 13,
+          "examples": [
+            "core-04/b3-items-are-keys.cp",
+            "core-04/c1-source-key-into-view.cp",
+            "core-04/c2-nested-slice.cp",
+            "core-04/open-from-cut-walks-cuts.cp",
+            "core-05/mut-generator-rewalk-sees-writes.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0302; got no diagnostic",
+          "count": 10,
+          "examples": [
+            "core-02/no-implicit-float.cp",
+            "core-02/record-field-order.cp",
+            "core-02/record-no-dropping.cp",
+            "core-04/closed-cut-range-not-piece.cp",
+            "core-04/e1-list-param-rejects-slice.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0602; got no diagnostic",
+          "count": 10,
+          "examples": [
+            "core-05/generator-holds-lent-arg.cp",
+            "core-05/heap-element-is-lent.cp",
+            "core-05/lent-source-not-moved.cp",
+            "core-05/mut-place-excludes-reads.cp",
+            "core-05/no-resize-while-place-lent.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0603; got no diagnostic",
+          "count": 9,
+          "examples": [
+            "core-05/closure-arg-not-kept.cp",
+            "core-05/closure-not-returned.cp",
+            "core-05/loop-item-not-kept.cp",
+            "core-05/rb1-q05-return-lent-without-lends.cp",
+            "core-05/rb1-q42-closure-escapes-local.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` does not implement `<id>`",
+          "count": 8,
+          "examples": [
+            "core-04/a4-zip-offsets.cp",
+            "core-04/dom-range.cp",
+            "core-04/h-keyed-counts-from-zero.cp",
+            "core-04/piece-into-fold.cp",
+            "core-04/zip-keyed-by-first.cp"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet, and deferred: a context, `<id>` (see spec/core/09-contexts-checks.md §9.1)",
+          "count": 8,
+          "examples": [
+            "core-09/checks-off-block.cp",
+            "core-09/context-precedence.cp",
+            "core-09/context-uses-inferred-for-lambda.cp",
+            "core-09/lint-allowed.cp",
+            "core-10/counted-domain-base.cp"
+          ]
+        },
+        {
+          "cause": "E0201: no `<id>` in scope",
+          "count": 7,
+          "examples": [
+            "core-04/a9-length-only.cp",
+            "core-04/e2-table-keyed-like-input.cp",
+            "core-04/lyndon-starts-are-keys.cp",
+            "core-04/min-rotation-is-key.cp",
+            "core-04/palindromes-longest-at-key.cp"
+          ]
+        },
+        {
+          "cause": "E0108: expected a field name, found `<id>`",
+          "count": 5,
+          "examples": [
+            "core-02/row-bound.cp",
+            "core-02/var-field-assign.cp",
+            "core-08/row-bound.cp",
+            "core-08/row-per-record-type.cp",
+            "core-08/row-without.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0301; got no diagnostic",
+          "count": 5,
+          "examples": [
+            "core-02/domain-index-only.cp",
+            "core-04/rebase-keys-dont-mix.cp",
+            "core-04/zip-pairs-domains-rejected.cp",
+            "core-07/domain-slice-raw-int.cp",
+            "core-07/zip-domain-mismatch.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0902; got no diagnostic",
+          "count": 5,
+          "examples": [
+            "core-02/let-keeps-range.cp",
+            "core-03/const-range-store.cp",
+            "core-03/rb1-q30-const-range-store.cp",
+            "core-04/literal-outside-domain.cp",
+            "core-04/rb1-q12-literal-outside-domain.cp"
+          ]
+        },
+        {
+          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
+          "count": 4,
+          "examples": [
+            "core-04/bsearch-flip-cut.cp",
+            "core-04/literal-position.cp",
+            "core-04/rb1-q13-literal-inside-min-count.cp",
+            "core-05/rb1-q02-view-dies-before-write.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [R, C]Int, but `<id>` is a [P]Int",
+          "count": 4,
+          "examples": [
+            "core-04/bare-dotdot-in-index.cp",
+            "core-04/f1-row-and-column-views.cp",
+            "core-04/f2-sub-rectangle.cp",
+            "core-04/prod-index-whole-or-parts.cp"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` gives a default for an optional, but the left side is a `<id>`",
+          "count": 4,
+          "examples": [
+            "core-01/optional-chaining.cp",
+            "core-02/question-extent.cp",
+            "core-04/dom-at.cp",
+            "core-10/parse-none-on-leftover.cp"
+          ]
+        },
+        {
+          "cause": "E0603: storing it in a `<id>` would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "count": 4,
+          "examples": [
+            "core-04/a8-copy-counts-from-zero.cp",
+            "core-04/e1-list-copy-fix.cp",
+            "core-07/collect-keeps-keys.cp",
+            "core-07/list-of-view-is-fresh.cp"
+          ]
+        },
+        {
+          "cause": "R0101: index 2 is outside a list of length 2",
+          "count": 4,
+          "examples": [
+            "core-02/list-slice-keys.cp",
+            "core-04/g2-rev-keeps-keys.cp",
+            "core-04/g3-widen-keeps-indices.cp",
+            "core-04/h-map-keeps-keys.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0302; got E0301: expected V, got ?V: `<id>` may step outside V",
+          "count": 4,
+          "examples": [
+            "core-04/dom-first-not-position.cp",
+            "core-04/pos-arith-not-position.cp",
+            "core-04/rb1-q11-first-is-optional.cp",
+            "core-04/rb1-q15-no-int-to-position.cp"
+          ]
+        },
+        {
+          "cause": "E0107: expected the end of the statement, found `<id>`",
+          "count": 3,
+          "examples": [
+            "core-05/cache-skipped-by-eq.cp",
+            "core-05/cache-write-through-read-self.cp",
+            "core-08/conditional-on-bound.cp"
+          ]
+        },
+        {
+          "cause": "E0107: expected the end of the statement, found a name",
+          "count": 3,
+          "examples": [
+            "core-09/standard-and-user-contexts.cp",
+            "core-10/parse-shapes.cp",
+            "core-10/print-shapes.cp"
+          ]
+        },
+        {
+          "cause": "E0305: a `<id>` can't be indexed",
+          "count": 3,
+          "examples": [
+            "core-04/h-drop-take-keys.cp",
+            "core-04/rebase-fresh-domain.cp",
+            "core-07/take-drop-clamped.cp"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle `<id>` of a domain as a value yet",
+          "count": 3,
+          "examples": [
+            "core-04/c3-halves-index-source.cp",
+            "core-04/first-last-true.cp",
+            "core-04/range-halve.cp"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle this pattern outside a `<id>` yet",
+          "count": 3,
+          "examples": [
+            "core-02/nested-optional.cp",
+            "core-03/int-min-plus-one-not-none.cp",
+            "core-03/struct-niche.cp"
+          ]
+        },
+        {
+          "cause": "missing R0101 (no error emitted)",
+          "count": 3,
+          "examples": [
+            "core-04/d1-literal-slice-index-traps.cp",
+            "core-04/d2-counter-loop-traps.cp",
+            "core-07/slice-out-of-keys-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0305; got no diagnostic",
+          "count": 3,
+          "examples": [
+            "core-04/h-filter-has-no-keys.cp",
+            "core-07/filter-not-indexed.cp",
+            "core-12/filter-not-indexed.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0503; got no diagnostic",
+          "count": 3,
+          "examples": [
+            "core-01/double-index.cp",
+            "core-04/bsearch-first-removed.cp",
+            "core-11/removed-spelling.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0806; got no diagnostic",
+          "count": 3,
+          "examples": [
+            "core-02/inference-needs-annotation.cp",
+            "core-02/rb1-q28-no-forward-inference.cp",
+            "core-10/read-needs-type.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0605; got no diagnostic",
+          "count": 3,
+          "examples": [
+            "core-04/d1-literal-slice-index-lint.cp",
+            "core-04/d2-counter-loop-lint.cp",
+            "core-07/slice-literal-index-lint.cp"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 2,
+          "examples": [
+            "core-08/trait-qualified-call.cp",
+            "core-10/parse-range-order.cp"
+          ]
+        },
+        {
+          "cause": "E0201: no `<id>` in scope, and not in the stdlib (yet)",
+          "count": 2,
+          "examples": [
+            "core-05/nested-fn-mutual-and-generic.cp",
+            "core-08/law-declared.cp"
+          ]
+        },
+        {
+          "cause": "E0203: List<Int> has no `<id>` in the spec: no std module declares it",
+          "count": 2,
+          "examples": [
+            "core-04/h-step-keeps-source-keys.cp",
+            "core-07/while-adapters.cp"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` is not a type `<id>` knows",
+          "count": 2,
+          "examples": [
+            "core-02/implicit-type-param.cp",
+            "core-08/associated-type.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes the value out of an optional, but this is a `<id>`",
+          "count": 2,
+          "examples": [
+            "core-04/dom-pattern-refutes.cp",
+            "core-04/prod-at-neighbour.cp"
+          ]
+        },
+        {
+          "cause": "E0603: returning it would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "count": 2,
+          "examples": [
+            "core-05/lends-fn-returns-view.cp",
+            "core-05/lends-rest-of-block-returns.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0103; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-01/rb1-q36-no-comma-enum.cp",
+            "core-02/enum-comma-form-rejected.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0202; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-08/row-duplicate-field.cp",
+            "core-11/use-collides-with-local.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0203; got E0108: expected a field name, found `<id>`",
+          "count": 2,
+          "examples": [
+            "core-08/row-body-sees-named-fields.cp",
+            "core-08/row-without-missing.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0308; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-02/optional-compare.cp",
+            "core-02/rb1-q23-optional-ordering-does-not-lift.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0311; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-05/memo-captured-var-written.cp",
+            "core-06/memo-array-unbounded.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-08/inherent-outside-module.cp",
+            "core-08/no-orphan-impl.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0602; got E0107: expected the end of the statement, found `<id>`",
+          "count": 2,
+          "examples": [
+            "core-05/cache-lend-no-unknown-call.cp",
+            "core-05/cache-walk-then-find.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0608; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-02/generated-ctor-moves.cp",
+            "core-12/move-into-struct.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0702; got E0202: `<id>` is already defined in this file",
+          "count": 2,
+          "examples": [
+            "core-02/no-overload.cp",
+            "core-06/no-overload-by-type.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0704; got E0108: expected a field name, found `<id>`",
+          "count": 2,
+          "examples": [
+            "core-08/row-missing-field.cp",
+            "core-08/row-not-on-struct.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0802; got E0504: not implemented yet, and deferred: a context, `<id>` (see spec/core/09-contexts-checks.md §9.1)",
+          "count": 2,
+          "examples": [
+            "core-09/rb1-q40-with-must-come-first.cp",
+            "core-09/with-not-first.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0803; got no diagnostic",
+          "count": 2,
+          "examples": [
+            "core-02/question-in-condition.cp",
+            "core-02/rb1-q26-question-in-condition.cp"
+          ]
+        },
+        {
+          "cause": "E0102: a record field needs a name: write `<id>`",
+          "count": 1,
+          "examples": [
+            "core-01/record-update.cp"
+          ]
+        },
+        {
+          "cause": "E0102: expected a value after `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-09/trusted-and-cpp.cp"
+          ]
+        },
+        {
+          "cause": "E0103: expected `<id>` after `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-08/trait-alias.cp"
+          ]
+        },
+        {
+          "cause": "E0103: expected `<id>` or `<id>` to start the body of `<id>`, found a name",
+          "count": 1,
+          "examples": [
+            "core-09/context-lexical-and-uses.cp"
+          ]
+        },
+        {
+          "cause": "E0105: expected a type",
+          "count": 1,
+          "examples": [
+            "core-08/field-trait.cp"
+          ]
+        },
+        {
+          "cause": "E0107: expected the end of the statement, found a number",
+          "count": 1,
+          "examples": [
+            "core-04/table-over-keys.cp"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know a fn named `<id>`",
+          "count": 1,
+          "examples": [
+            "core-06/tool-roles-leave-item.cp"
+          ]
+        },
+        {
+          "cause": "E0203: Pair<V> has no field or method `<id>`",
+          "count": 1,
+          "examples": [
+            "core-04/pair-symmetric.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` expects a struct with `<id>`s",
+          "count": 1,
+          "examples": [
+            "core-08/laws-hold.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared an Int, but `<id>` is a ?V",
+          "count": 1,
+          "examples": [
+            "core-04/pos-arith-is-int.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Cmd for `<id>`, but `<id>` is a Bool",
+          "count": 1,
+          "examples": [
+            "core-10/parse-enum-command.cp"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes an Int for `<id>`, but `<id>` is a List",
+          "count": 1,
+          "examples": [
+            "core-06/generator-lockstep-via-list.cp"
+          ]
+        },
+        {
+          "cause": "E0302: a `<id>` can't be turned into a `<id>`",
+          "count": 1,
+          "examples": [
+            "core-04/range-mid-small.cp"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` needs the argument `<id>`",
+          "count": 1,
+          "examples": [
+            "core-04/dom-cuts.cp"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` takes 0 arguments, but 1 was given",
+          "count": 1,
+          "examples": [
+            "core-07/take-on-generator.cp"
+          ]
+        },
+        {
+          "cause": "E0303: a `<id>` takes 2 indices, but 1 were given",
+          "count": 1,
+          "examples": [
+            "core-07/grid-row-and-block.cp"
+          ]
+        },
+        {
+          "cause": "E0304: `<id>` is an Int, not a fn",
+          "count": 1,
+          "examples": [
+            "core-02/get-defaults.cp"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` adds numbers, not `<id>`",
+          "count": 1,
+          "examples": [
+            "core-07/flatten.cp"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` can't be applied to `<id>` and `<id>`",
+          "count": 1,
+          "examples": [
+            "core-02/product-union-domains.cp"
+          ]
+        },
+        {
+          "cause": "E0401: only a variable, a field, or an element can be assigned to",
+          "count": 1,
+          "examples": [
+            "core-05/lends-mut-place.cp"
+          ]
+        },
+        {
+          "cause": "E0503: `<id>` clauses were removed in CP Lang 0.2.2",
+          "count": 1,
+          "examples": [
+            "core-08/bounds-three-ways.cp"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet: a `<id>` binding inside a pattern, `<id>` (not in the design)",
+          "count": 1,
+          "examples": [
+            "core-01/var-in-pattern.cp"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet: a fresh type made from values, `<id>` (see spec/core/02-values-types.md §2.9)",
+          "count": 1,
+          "examples": [
+            "core-13/mod-runtime.cp"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet: a string type over given bytes, `<id>` (not in the design)",
+          "count": 1,
+          "examples": [
+            "core-02/constrained-str.cp"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet: a type of listed literal values, `<id>` (not in the design)",
+          "count": 1,
+          "examples": [
+            "core-02/literal-union-match.cp"
+          ]
+        },
+        {
+          "cause": "E0601: `<id>` and `<id>` may be the same storage, and both are lent `<id>` to this call: Array.at(Range) lends disjoint parts only when `<id>`, and...",
+          "count": 1,
+          "examples": [
+            "core-05/slices-proved-apart.cp"
+          ]
+        },
+        {
+          "cause": "E0603: `<id>` would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "count": 1,
+          "examples": [
+            "core-04/a7-consume-front.cp"
+          ]
+        },
+        {
+          "cause": "R0001: internal: expected tuple/struct",
+          "count": 1,
+          "examples": [
+            "core-01/left-to-right.cp"
+          ]
+        },
+        {
+          "cause": "R0001: the input ended where a number was expected (input line 1, column 1)",
+          "count": 1,
+          "examples": [
+            "core-04/first-is-optional.cp"
+          ]
+        },
+        {
+          "cause": "R0001: the interpreter itself failed; this is a bug in cpl",
+          "count": 1,
+          "examples": [
+            "core-07/adjacent.cp"
+          ]
+        },
+        {
+          "cause": "R0101: index 3 is outside a list of length 3",
+          "count": 1,
+          "examples": [
+            "core-07/slice-keeps-keys.cp"
+          ]
+        },
+        {
+          "cause": "R0202: integer overflow: `<id>` does not fit in an `<id>` (64 bits)",
+          "count": 1,
+          "examples": [
+            "core-09/unchecked-block.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0005; got E0102: expected a value after `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-01/bad-float.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0102; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-04/bare-dotdot-outside-index.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0103; got E0603: returning it would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "count": 1,
+          "examples": [
+            "core-01/rb1-q09-lends-needs-arrow.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0111; got E0309: chained comparisons cannot contain `<id>` or `<id>`",
+          "count": 1,
+          "examples": [
+            "core-01/rb1-q34-chain-with-eq.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0111; got E0309: chained comparisons must point in one direction",
+          "count": 1,
+          "examples": [
+            "core-01/chain-mixed.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0201; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-05/lambda-name-not-hoisted.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0205; got E0201: no `<id>` in scope",
+          "count": 1,
+          "examples": [
+            "core-06/capture-uninitialized-at-call.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0207; got E0201: no `<id>` in scope",
+          "count": 1,
+          "examples": [
+            "core-11/mod-private.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0208; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-01/uppercase-value.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0302; got E0201: no `<id>` in scope, and not in the stdlib (yet)",
+          "count": 1,
+          "examples": [
+            "core-08/law-must-be-bool.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0314; got E0504: not implemented yet: a type of listed literal values, `<id>` (not in the design)",
+          "count": 1,
+          "examples": [
+            "core-02/literal-union-nonexhaustive.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0314; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-02/enum-nonexhaustive.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0403; got E0401: `<id>` is a `<id>`, so it can't be passed as `<id>`",
+          "count": 1,
+          "examples": [
+            "core-06/mut-param-of-let.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0403; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-07/in-place-needs-var.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0405; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-02/fixed-field.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0406; got E0201: `<id>` cannot refer to itself recursively; bind it with `<id>`",
+          "count": 1,
+          "examples": [
+            "core-06/var-lambda-no-recursion.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0407; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-02/duplicate-tag.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got E0103: expected `<id>` after `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-08/trait-alias-no-impl.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got E0103: expected `<id>` and the field's type, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-08/no-inheritance.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got E0103: expected `<id>` to close the type parameters, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-08/no-higher-kinded.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got E0105: expected a type",
+          "count": 1,
+          "examples": [
+            "core-08/no-dyn.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0501; got E0107: expected the end of the statement, found a name",
+          "count": 1,
+          "examples": [
+            "core-08/no-macros.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0601; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-05/closure-arg-capture-conflicts.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0602; got E0603: returning it would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "count": 1,
+          "examples": [
+            "core-05/lends-result-freezes-source.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0603; got E0105: expected a type",
+          "count": 1,
+          "examples": [
+            "core-05/lends-named-source-only.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0604; got E0107: expected the end of the statement, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-05/cache-no-lend-escapes.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0606; got E0004: `<id>` isn't used in cp",
+          "count": 1,
+          "examples": [
+            "core-08/trait-message.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0606; got E0105: expected a type",
+          "count": 1,
+          "examples": [
+            "core-08/field-trait-struct-opt-in.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0607; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-05/captured-not-moved.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0608; got E0102: a record field needs a name: write `<id>`",
+          "count": 1,
+          "examples": [
+            "core-12/record-update-moves.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0701; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-08/ambiguous-method.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0703; got E0504: not implemented yet: an operator used as a value, `<id>` (see spec/lib/ops-ranges.md §1.)",
+          "count": 1,
+          "examples": [
+            "lib-ops-ranges/bare-op-tuple.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0705; got E0310: `<id>` has no parameter named `<id>`",
+          "count": 1,
+          "examples": [
+            "lib-ops-ranges/fenwick-no-act.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0706; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-07/fold-no-identity-is-optional.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0801; got E0504: not implemented yet, and deferred: a context, `<id>` (see spec/core/09-contexts-checks.md §9.1)",
+          "count": 1,
+          "examples": [
+            "core-09/context-not-constant.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0902; got E0504: not implemented yet: a string type over given bytes, `<id>` (not in the design)",
+          "count": 1,
+          "examples": [
+            "core-02/constrained-str-bad-const.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0301; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-09/lint-fires.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0602; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-07/chain-walked-twice-lint.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0604; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-05/mut-generator-rewalk-lint.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0606; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-03/wide-array-lint.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0608; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-07/parens-mean-work.cp"
+          ]
+        },
+        {
+          "cause": "wanted L0609; got E0107: expected the end of the statement, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-05/cache-written-outside.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0001; got E0302: expected `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-04/rekey-length-mismatch-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0101; got E0302: expected `<id>`, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-04/h-step-skipped-key-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0101; got R0402: `todo` reached",
+          "count": 1,
+          "examples": [
+            "core-04/nth-past-end-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0102; got E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 1,
+          "examples": [
+            "core-04/cuts-call-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0102; got R0001: 4 is not in `<id>`, which is 1..=3",
+          "count": 1,
+          "examples": [
+            "core-09/domain-conversion-trap.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0102; got R0001: 5 is not in `<id>`, which is 1..=4",
+          "count": 1,
+          "examples": [
+            "core-04/dom-call-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0201; got E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 1,
+          "examples": [
+            "core-03/range-store-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0201; got R0001: 12 is outside `<id>`",
+          "count": 1,
+          "examples": [
+            "core-03/proofs-cross-no-calls.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0201; got R0001: 15 is outside `<id>`",
+          "count": 1,
+          "examples": [
+            "core-03/rb1-q31-range-store-traps-checked.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0201; got R0001: 9 is outside `<id>`",
+          "count": 1,
+          "examples": [
+            "core-09/range-store-trap.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0301; got E0302: `<id>` takes the value out of an optional, but this is a `<id>`",
+          "count": 1,
+          "examples": [
+            "core-02/unwrap-array.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0401; got R0001: assertion failed: n > 0",
+          "count": 1,
+          "examples": [
+            "core-09/assert-trap.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0401; got R0001: assertion failed: x > 5: x is 3",
+          "count": 1,
+          "examples": [
+            "core-01/assert-message.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0501; got R0001: the input ended where a number was expected (input line 1, column 1)",
+          "count": 1,
+          "examples": [
+            "core-10/bad-token-trap.cp"
+          ]
+        },
+        {
+          "cause": "wanted R0501; got R0402: `todo` reached",
+          "count": 1,
+          "examples": [
+            "core-10/read-after-read-all.cp"
+          ]
+        },
+        {
+          "cause": "wanted W0101; got no diagnostic",
+          "count": 1,
+          "examples": [
+            "core-06/droppable.cp"
+          ]
+        },
+        {
+          "cause": "wanted a; got E0107: expected the end of the statement, found a number",
+          "count": 1,
+          "examples": [
+            "core-04/table-over-keys-traps-outside.cp"
+          ]
+        },
+        {
+          "cause": "wanted a; got E0108: expected a field name, found `<id>`",
+          "count": 1,
+          "examples": [
+            "core-03/named-width-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted a; got E0301: `<id>` expects P, but `<id>` is an (Int, Int)",
+          "count": 1,
+          "examples": [
+            "core-04/prod-call-traps.cp"
+          ]
+        },
+        {
+          "cause": "wanted a; got E0504: not implemented yet, and deferred: a context, `<id>` (see spec/core/09-contexts-checks.md §9.1)",
+          "count": 1,
+          "examples": [
+            "core-09/checks-on-block.cp"
+          ]
+        },
+        {
+          "cause": "wrong line for E0601: `<id>` and `<id>` may be the same storage, and both are lent `<id>` to this call: Array.at lends disjoint parts only when `<id>`, and that i...",
+          "count": 1,
+          "examples": [
+            "core-05/rb1-q08-swap-unproven-distinct.cp"
+          ]
+        },
+        {
+          "cause": "wrong line for E0608: `<id>` was already moved",
+          "count": 1,
+          "examples": [
+            "core-05/heap-move.cp"
+          ]
+        }
+      ],
       "counts": {
         "fail": 347,
         "pass": 297
@@ -758,6 +1880,211 @@
         "yac6p4": "error",
         "yac7p3": "error"
       },
+      "causes": [
+        {
+          "cause": "E0302: expected `<id>`, found `<id>`",
+          "count": 8,
+          "examples": [
+            "ccc20s4",
+            "coci21c2p5",
+            "etsr23r4p2",
+            "ioi05p2",
+            "noi06p3"
+          ]
+        },
+        {
+          "cause": "R0402: `todo` reached",
+          "count": 7,
+          "examples": [
+            "ccc03s4",
+            "ccc18s4",
+            "cco19p5",
+            "ceoi19pp1",
+            "cheerio1s3"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 4,
+          "examples": [
+            "btoi15p3",
+            "cco21p4",
+            "shoi16p1",
+            "yac6p4"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 3,
+          "examples": [
+            "btoi17p2",
+            "mccc4j4",
+            "noi15p1"
+          ]
+        },
+        {
+          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
+          "count": 3,
+          "examples": [
+            "apio09p3",
+            "ioi09p3",
+            "ucrpc21h"
+          ]
+        },
+        {
+          "cause": "E0302: can't compare a `<id>` with a `<id>`",
+          "count": 3,
+          "examples": [
+            "coci21c1p1",
+            "noip20p3",
+            "sac22cc2p5"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
+          "count": 2,
+          "examples": [
+            "noi02p3",
+            "sdoi17r1p2"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` is not a type `<id>` knows",
+          "count": 2,
+          "examples": [
+            "ccc04s5",
+            "cco21p2"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle a domain expression that does not produce a range, count, or index space yet",
+          "count": 2,
+          "examples": [
+            "coci21c2p4",
+            "noi09p4"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` has no input format for a `<id>`",
+          "count": 2,
+          "examples": [
+            "etsr23r1p4",
+            "ioi01p1"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` declares no domain `<id>`",
+          "count": 1,
+          "examples": [
+            "dmpg16g2"
+          ]
+        },
+        {
+          "cause": "E0204: an array is indexed by a domain or a length: `<id>`, `<id>`",
+          "count": 1,
+          "examples": [
+            "cco20p4"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is a type, and a value is needed here",
+          "count": 1,
+          "examples": [
+            "noip14p6"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes the value out of an optional, but this is a `<id>`",
+          "count": 1,
+          "examples": [
+            "egoi23p7"
+          ]
+        },
+        {
+          "cause": "E0302: a `<id>` can't be taken apart into 2 names",
+          "count": 1,
+          "examples": [
+            "btoi20p3"
+          ]
+        },
+        {
+          "cause": "E0302: a `<id>` can't walk over a `<id>`",
+          "count": 1,
+          "examples": [
+            "cco21p5"
+          ]
+        },
+        {
+          "cause": "E0302: can't tell what this empty list holds",
+          "count": 1,
+          "examples": [
+            "btoi18p4"
+          ]
+        },
+        {
+          "cause": "E0302: let-else needs a ?T, and `<id>` is a Cell",
+          "count": 1,
+          "examples": [
+            "noip09p4"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` can't look inside a `<id>`",
+          "count": 1,
+          "examples": [
+            "noip10p1"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle `<id>` of a domain as a value yet",
+          "count": 1,
+          "examples": [
+            "noi14p5"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle an unbounded range value yet",
+          "count": 1,
+          "examples": [
+            "ccc02s4"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` is not in scope during lowering",
+          "count": 1,
+          "examples": [
+            "noi17p2"
+          ]
+        },
+        {
+          "cause": "E0501: projection has no `<id>` statement",
+          "count": 1,
+          "examples": [
+            "etsr23r3p3"
+          ]
+        },
+        {
+          "cause": "E0504: not implemented yet: a fresh type made from values, `<id>` (see spec/core/02-values-types.md §2.9)",
+          "count": 1,
+          "examples": [
+            "btoi17p6"
+          ]
+        },
+        {
+          "cause": "R0001: 1 is outside `<id>` (input line 1, column 1)",
+          "count": 1,
+          "examples": [
+            "nccc10s4"
+          ]
+        },
+        {
+          "cause": "wrong output",
+          "count": 1,
+          "examples": [
+            "aac5p4"
+          ]
+        }
+      ],
       "counts": {
         "error": 43,
         "pass": 2,
@@ -1184,6 +2511,31 @@
         "corpus/yac6p4": "skip",
         "corpus/yac7p3": "skip"
       },
+      "causes": [
+        {
+          "cause": "cxx_err: In lambda function:",
+          "count": 3,
+          "examples": [
+            "conformance/core-05/closure-captures-at-call.cp",
+            "conformance/core-06/rb1-q06-closure-mutates-capture.cp",
+            "conformance/core-06/two-closures-share-var.cp"
+          ]
+        },
+        {
+          "cause": "cxx_err: error: variable or field ‘n’ declared void",
+          "count": 1,
+          "examples": [
+            "conformance/core-02/struct-methods.cp"
+          ]
+        },
+        {
+          "cause": "cxx_err: error: variable or field ‘top’ declared void",
+          "count": 1,
+          "examples": [
+            "conformance/core-02/struct-defaults.cp"
+          ]
+        }
+      ],
       "counts": {
         "cxx_err": 5,
         "pass": 182,
@@ -3877,6 +5229,663 @@
         "window.cp:90": "todo",
         "window.cp:97": "todo"
       },
+      "causes": [
+        {
+          "cause": "R0402: `todo` reached",
+          "count": 1295,
+          "examples": [
+            "algebra.cp:108",
+            "algebra.cp:125",
+            "algebra.cp:132",
+            "algebra.cp:140",
+            "algebra.cp:141"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` takes a domain by name, and `<id>` is a range",
+          "count": 188,
+          "examples": [
+            "beats.cp:30",
+            "dsu.cp:100",
+            "dsu.cp:109",
+            "dsu.cp:118",
+            "dsu.cp:144"
+          ]
+        },
+        {
+          "cause": "E0302: expected `<id>`, found `<id>`",
+          "count": 178,
+          "examples": [
+            "algebra.cp:71",
+            "algebra.cp:72",
+            "dp.cp:121",
+            "dp.cp:413",
+            "dp.cp:428"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [V]List<V>, but `<id>` is a List<List<Int>>",
+          "count": 115,
+          "examples": [
+            "graph.cp:1070",
+            "graph.cp:1071",
+            "graph.cp:1082",
+            "graph.cp:1158",
+            "graph.cp:1159"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
+          "count": 71,
+          "examples": [
+            "seq.cp:1028",
+            "seq.cp:1037",
+            "seq.cp:1046",
+            "seq.cp:1055",
+            "strings.cp:100"
+          ]
+        },
+        {
+          "cause": "R0001: an array literal needs one value per position",
+          "count": 67,
+          "examples": [
+            "beats.cp:152",
+            "beats.cp:174",
+            "beats.cp:196",
+            "beats.cp:254",
+            "beats.cp:271"
+          ]
+        },
+        {
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
+          "count": 48,
+          "examples": [
+            "dp.cp:47",
+            "mo.cp:181",
+            "poly.cp:153",
+            "poly.cp:154",
+            "rand.cp:72"
+          ]
+        },
+        {
+          "cause": "R0001: fn `<id>` ended without a value",
+          "count": 44,
+          "examples": [
+            "bitset.cp:101",
+            "bitset.cp:121",
+            "bitset.cp:122",
+            "bitset.cp:131",
+            "bitset.cp:148"
+          ]
+        },
+        {
+          "cause": "E0302: can't compare a `<id>` with a `<id>`",
+          "count": 40,
+          "examples": [
+            "flow.cp:1034",
+            "flow.cp:1047",
+            "flow.cp:1064",
+            "flow.cp:1145",
+            "flow.cp:1481"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared an [E](u: V, v: V), but `<id>` is a List<(u: Int, v: Int)>",
+          "count": 31,
+          "examples": [
+            "graph.cp:1210",
+            "graph.cp:1211",
+            "graph.cp:1231",
+            "graph.cp:127",
+            "graph.cp:128"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 30,
+          "examples": [
+            "algebra.cp:478",
+            "flow.cp:1035",
+            "flow.cp:1048",
+            "flow.cp:1120",
+            "heap.cp:24"
+          ]
+        },
+        {
+          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
+          "count": 21,
+          "examples": [
+            "graph.cp:1346",
+            "graph.cp:1501",
+            "graph.cp:357",
+            "graph.cp:367",
+            "graph.cp:755"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared an [E](u: V, v: V, w: Int), but `<id>` is a List<(u: Int, v: Int, w: Int)>",
+          "count": 19,
+          "examples": [
+            "graph.cp:1101",
+            "graph.cp:1111",
+            "graph.cp:1112",
+            "graph.cp:1123",
+            "graph.cp:1124"
+          ]
+        },
+        {
+          "cause": "E0401: only a variable, a field, or an element can be assigned to",
+          "count": 13,
+          "examples": [
+            "beats.cp:214",
+            "beats.cp:215",
+            "beats.cp:234",
+            "beats.cp:235",
+            "beats.cp:264"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` does not implement `<id>`",
+          "count": 11,
+          "examples": [
+            "flow.cp:1520",
+            "seq.cp:1099",
+            "seq.cp:1108",
+            "seq.cp:1126",
+            "seq.cp:1145"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [V]V, but `<id>` is a List<Int>",
+          "count": 11,
+          "examples": [
+            "graph.cp:1392",
+            "graph.cp:1399",
+            "graph.cp:1407",
+            "graph.cp:1414",
+            "graph.cp:1421"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` is not a type `<id>` knows",
+          "count": 8,
+          "examples": [
+            "graph.cp:157",
+            "graph.cp:879",
+            "graph.cp:895",
+            "segtree.cp:129",
+            "segtree.cp:171"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared an [I]I, but `<id>` is a List<Int>",
+          "count": 7,
+          "examples": [
+            "tree.cp:1711",
+            "tree.cp:1718",
+            "tree.cp:1725",
+            "tree.cp:1732",
+            "tree.cp:1741"
+          ]
+        },
+        {
+          "cause": "E0304: `<id>` is read without parentheses: `<id>`",
+          "count": 7,
+          "examples": [
+            "bag.cp:1067",
+            "bag.cp:1922",
+            "bag.cp:1931",
+            "bag.cp:1939",
+            "bag.cp:1947"
+          ]
+        },
+        {
+          "cause": "R0001: 1 is not in `<id>`, which is empty",
+          "count": 7,
+          "examples": [
+            "seq.cp:1526",
+            "seq.cp:1543",
+            "seq.cp:1551",
+            "seq.cp:748",
+            "seq.cp:882"
+          ]
+        },
+        {
+          "cause": "E0102: expected a value after `<id>`, found `<id>`",
+          "count": 6,
+          "examples": [
+            "opt.cp:19",
+            "opt.cp:9",
+            "seq.cp:1365",
+            "seq.cp:186",
+            "seq.cp:55"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [0..2](u: V, v: V, w: Int), but `<id>` is a List<(u: Int, v: Int, w: Int)>",
+          "count": 6,
+          "examples": [
+            "tree.cp:2077",
+            "tree.cp:2085",
+            "tree.cp:2095",
+            "tree.cp:2105",
+            "tree.cp:2113"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Cut<D> for `<id>`, but `<id>` is an Int",
+          "count": 6,
+          "examples": [
+            "prefix.cp:120",
+            "prefix.cp:121",
+            "prefix.cp:152",
+            "prefix.cp:50",
+            "prefix.cp:66"
+          ]
+        },
+        {
+          "cause": "E0201: no `<id>` in scope",
+          "count": 4,
+          "examples": [
+            "search.cp:19",
+            "search.cp:63",
+            "search.cp:76",
+            "seq.cp:1421"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Cut<R> for `<id>`, but `<id>` is an Int",
+          "count": 4,
+          "examples": [
+            "prefix.cp:200",
+            "prefix.cp:216",
+            "prefix.cp:273",
+            "prefix.cp:274"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<R> for `<id>`, but `<id>` is a Range<0..=1>",
+          "count": 4,
+          "examples": [
+            "prefix.cp:236",
+            "prefix.cp:249",
+            "prefix.cp:283",
+            "prefix.cp:471"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` has 1 field (bridges), but `<id>` is missing",
+          "count": 4,
+          "examples": [
+            "graph.cp:1467",
+            "graph.cp:1475",
+            "graph.cp:1482",
+            "graph.cp:1489"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` needs the argument `<id>`",
+          "count": 4,
+          "examples": [
+            "seq.cp:1266",
+            "seq.cp:1598",
+            "seq.cp:2190",
+            "seq.cp:364"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` takes 1 argument, but 2 were given",
+          "count": 4,
+          "examples": [
+            "poly.cp:141",
+            "poly.cp:142",
+            "poly.cp:143",
+            "poly.cp:144"
+          ]
+        },
+        {
+          "cause": "E0305: a `<id>` can't be indexed",
+          "count": 4,
+          "examples": [
+            "bag.cp:1215",
+            "deque.cp:238",
+            "hashmap.cp:273",
+            "hashmap.cp:274"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<1..=2>",
+          "count": 3,
+          "examples": [
+            "prefix.cp:129",
+            "prefix.cp:516",
+            "prefix.cp:524"
+          ]
+        },
+        {
+          "cause": "E0301: can't compare a `<id>` with a `<id>`",
+          "count": 2,
+          "examples": [
+            "seq.cp:625",
+            "seq.cp:686"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a (to: V, w: Int), but `<id>` is a (to: Int, w: Int)",
+          "count": 2,
+          "examples": [
+            "graph.cp:44",
+            "graph.cp:53"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [0..2](u: V, v: V), but `<id>` is a List<(u: Int, v: Int)>",
+          "count": 2,
+          "examples": [
+            "tree.cp:139",
+            "tree.cp:169"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..2>",
+          "count": 2,
+          "examples": [
+            "prefix.cp:79",
+            "window.cp:184"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..4>",
+          "count": 2,
+          "examples": [
+            "bitset.cp:457",
+            "bitset.cp:465"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<1..=3>",
+          "count": 2,
+          "examples": [
+            "prefix.cp:552",
+            "prefix.cp:560"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<R> for `<id>`, but `<id>` is a Range<1..=1>",
+          "count": 2,
+          "examples": [
+            "prefix.cp:237",
+            "prefix.cp:486"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` is not in scope during lowering",
+          "count": 2,
+          "examples": [
+            "seq.cp:2120",
+            "seq.cp:2201"
+          ]
+        },
+        {
+          "cause": "E0005: this number does not fit in an `<id>` (64 bits)",
+          "count": 1,
+          "examples": [
+            "geometry.cp:41"
+          ]
+        },
+        {
+          "cause": "E0105: expected a type",
+          "count": 1,
+          "examples": [
+            "matrix.cp:312"
+          ]
+        },
+        {
+          "cause": "E0203: ColorMatroid<Int, Int> has no field or method `<id>`",
+          "count": 1,
+          "examples": [
+            "flow.cp:1552"
+          ]
+        },
+        {
+          "cause": "E0203: GraphicMatroid<Int, Int> has no field or method `<id>`",
+          "count": 1,
+          "examples": [
+            "flow.cp:1539"
+          ]
+        },
+        {
+          "cause": "E0203: List<(val: _, count: 0..=10)> has no `<id>` in the spec: no std module declares it",
+          "count": 1,
+          "examples": [
+            "dp.cp:295"
+          ]
+        },
+        {
+          "cause": "E0203: power uses `<id>`, not `<id>`",
+          "count": 1,
+          "examples": [
+            "poly.cp:563"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` changes `<id>` in place, and a list is given to a `<id>` as a copy; pass an array such as a `<id>`",
+          "count": 1,
+          "examples": [
+            "seq.cp:936"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is a type, and a value is needed here",
+          "count": 1,
+          "examples": [
+            "strings.cp:286"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is declared a [P]List<P>, but `<id>` is a List<List<Int>>",
+          "count": 1,
+          "examples": [
+            "tree.cp:336"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a List<V> for `<id>`, but `<id>` is a List<Int>",
+          "count": 1,
+          "examples": [
+            "tree.cp:2149"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..1>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:110"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..=0>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:531"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..=1>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:444"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<0..=2>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:569"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<1..3>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:431"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<1..4>",
+          "count": 1,
+          "examples": [
+            "window.cp:176"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<1..8>",
+          "count": 1,
+          "examples": [
+            "bitset.cp:448"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<2..5>",
+          "count": 1,
+          "examples": [
+            "bitset.cp:456"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<D> for `<id>`, but `<id>` is a Range<Int>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:80"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` takes a Range<R> for `<id>`, but `<id>` is a Range<0..=0>",
+          "count": 1,
+          "examples": [
+            "prefix.cp:262"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` takes 0 arguments, but 1 was given",
+          "count": 1,
+          "examples": [
+            "seq.cp:1117"
+          ]
+        },
+        {
+          "cause": "E0303: a `<id>` takes 2 indices, but 1 were given",
+          "count": 1,
+          "examples": [
+            "grid.cp:198"
+          ]
+        },
+        {
+          "cause": "E0309: `<id>` is a generic fn and is only called, as `<id>`: its type parameters come from its arguments",
+          "count": 1,
+          "examples": [
+            "seq.cp:1535"
+          ]
+        },
+        {
+          "cause": "E0309: chained comparisons must point in one direction",
+          "count": 1,
+          "examples": [
+            "rand.cp:96"
+          ]
+        },
+        {
+          "cause": "E0402: `<id>` changes `<id>`, so the argument must be passed as `<id>`",
+          "count": 1,
+          "examples": [
+            "lazy.cp:371"
+          ]
+        },
+        {
+          "cause": "E0501: `<id>` and `<id>` can't handle a range with neither end yet",
+          "count": 1,
+          "examples": [
+            "bag.cp:1022"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: ((-1).bit(100) == true)",
+          "count": 1,
+          "examples": [
+            "math.cp:431"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: ([5, 6, 7][1..].keys == 1..3)",
+          "count": 1,
+          "examples": [
+            "seq.cp:1068"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: ([r.len for r in \"<str>\".runs()] == [2, 1, 3])",
+          "count": 1,
+          "examples": [
+            "seq.cp:570"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (any_segments_meet([(Pt(0, 0), Pt(2, 2)), (Pt(5, 5), Pt(6, 6)), (Pt(0, 2), Pt(2, 0))]) == Some((0, 2)))",
+          "count": 1,
+          "examples": [
+            "geometry.cp:1969"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (arg(Pt(1, 1)) == arg(Pt(2, 2)))",
+          "count": 1,
+          "examples": [
+            "geometry.cp:255"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (choose2(-3) == 0)",
+          "count": 1,
+          "examples": [
+            "math.cp:111"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (mod_sqrt(2, 7) == Some(3))",
+          "count": 1,
+          "examples": [
+            "math.cp:782"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (mod_sqrt(9, 7) == Some(3))",
+          "count": 1,
+          "examples": [
+            "math.cp:783"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (r.next() == 0x6E789E6AA1B965F4)",
+          "count": 1,
+          "examples": [
+            "rand.cp:24"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (r.next() == 0xE220A8397B1DCDAF)",
+          "count": 1,
+          "examples": [
+            "rand.cp:13"
+          ]
+        },
+        {
+          "cause": "R0001: assertion failed: (r.next() == 10451216379200822465)",
+          "count": 1,
+          "examples": [
+            "rand.cp:25"
+          ]
+        }
+      ],
       "counts": {
         "error": 860,
         "pass": 835,
