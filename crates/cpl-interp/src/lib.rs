@@ -78,6 +78,8 @@ impl Trap {
             codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
             codes::TODO_REACHED
+        } else if m.contains(" is not in `") {
+            codes::DOMAIN_CAST
         } else if m.starts_with("index ") && m.contains("outside") {
             codes::INDEX_OUT_OF_RANGE
         } else {

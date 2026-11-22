@@ -4,7 +4,11 @@ Status: draft for 0.3.0. Every error, warning, lint and trap has a
 stable code that never changes meaning. A message names the place, the
 rule and the fix; one diagnostic per root cause. Codes marked *(0.3)*
 are specified here and not yet emitted (`delta/0.2.md`); the rest are
-emitted by 0.2.x (`crates/cpl-diag`, `crates/cpl-lint`).
+emitted by 0.2.x (`crates/cpl-diag`, `crates/cpl-lint`). A *(retired)* code is never emitted
+and never reused; a *(reserved)* one is kept for a check that reports
+under another code today. `crates/cpl-cli/tests/catalogue.rs` holds the
+table to the compiler: every emitted code has a trigger that produces
+exactly it and a fix that clears it.
 
 Families: `E00` lexing, `E01` parsing, `E02` names, `E03` types and
 domains, `E04` mutation, `E05` unsupported and removed, `E06` lending,
@@ -24,7 +28,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0007 | bad_char_literal | `'é'` is not ASCII |
 | E0101-E0109 | parser structure | unclosed, expected expression/token/block/type/pattern/name, unmatched closer |
 | E0110 | unparenthesized_coalesce | `a ?? b + c` needs parentheses |
-| E0111 | mixed_comparison_chain *(0.3)* | `a < b > c` or a chain with `==`; split it with `and` |
+| E0111 | mixed_comparison_chain | `a < b > c` or a chain with `==`; split it with `and` |
 | E0201 | unresolved_name | with the nearest names and a `use` fix for stdlib names |
 | E0202 | duplicate_definition | |
 | E0203 | unknown_field | |
@@ -38,7 +42,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0303 | wrong_arg_count | |
 | E0304 | not_callable | |
 | E0305 | not_indexable | |
-| E0306 | position_arithmetic | `v + 1` on a position; use `v.next` or `V(Int(v) + 1)` |
+| E0306 | position_arithmetic *(reserved)* | `v + 1` on a position; use `v.next` or `V(Int(v) + 1)` |
 | E0307 | condition_not_bool | |
 | E0308 | optional_compare | `?Int < Int` does not lift; use `?? ` or `if let` |
 | E0309 | bad_operands | |
@@ -46,13 +50,13 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0311 | bad_memo | `@memo(array)` needs bounded parameter types; `n: Int` is unbounded; use `@memo(map)` or a range |
 | E0312 | debug_changes | `debug(...)` argument has side effects |
 | E0313 | domain_escapes | a value of fresh type `V` leaves its block |
-| E0314 | non_exhaustive_match *(0.3)* | this `match` has no arm for `R` |
+| E0314 | non_exhaustive_match | this `match` has no arm for `R` |
 | E0401 | assign_to_let | |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | |
-| E0404 | top_level_var_in_fn | |
+| E0404 | top_level_var_in_fn *(retired)* | never emitted: a `fn` may read and write a top-level `var` |
 | E0405 | assign_fixed_field *(0.3)* | `e.w` is not `var`; declare `var w` or rebuild with `e with w: x` |
-| E0406 | var_lambda_recursion *(0.3)* | a `var`-bound lambda cannot call itself |
+| E0406 | var_lambda_recursion | a `var`-bound lambda cannot call itself |
 | E0407 | duplicate_variant_tag *(0.3)* | two variants of one enum read as the same token; give one a different `@tag` |
 | E0501 | unsupported | |
 | E0502 | non_ascii | |
@@ -65,7 +69,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0605 | bad_index_impl | |
 | E0606 | missing_impl | with the trait's own message (`SegTree` needs `Op<T>`: an associative `fn (T, T) -> T`) |
 | E0607 | moved_while_captured *(0.3)* | `xs` is captured by `f` (line N) and cannot move |
-| E0608 | heap_copy *(0.3)* | `let b = a` moved `a`; use `a.clone()` to copy |
+| E0608 | heap_copy | `let b = a` moved `a`; use `a.clone()` to copy |
 | E0701 | ambiguous_method *(0.3)* | names both candidates; write `Trait.m(x)` |
 | E0702 | overload_by_type *(0.3)* | two `f` with the same labels |
 | E0703 | bare_op_tuple *(0.3)* | `(+, max)` is not an operation; write `each(+, max)` or `Semiring(max, +)` |
@@ -78,11 +82,11 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0804 | dropped_question *(0.3)* | a `?` whose result is dropped |
 | E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |
 | E0806 | inference_needs_annotation *(0.3)* | `var x = None`; annotate `?Int` |
-| E0901 | no_u8 *(0.3)* | `U8` is not a type; use `0..=255` |
+| E0901 | no_u8 | `U8` is not a type; use `0..=255` |
 | E0902 | range_store_unprovable_const *(0.3)* | a constant out of the range type |
 | E0903 | int128_unavailable *(0.3)* | `I128` on a judge without `__int128` |
 | E0904 | memory_over_profile *(0.3)* | peak memory at the input bounds exceeds the judge's limit (with the largest arrays) |
-| E9998 | internal_unsupported | |
+| E9998 | internal_unsupported *(retired)* | never emitted; unsupported constructs are E0501 |
 | E9999 | internal | |
 
 ## Warnings

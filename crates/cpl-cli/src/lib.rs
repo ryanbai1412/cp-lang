@@ -1819,7 +1819,7 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
                 first = false;
                 let _ = write!(
                     stdout,
-                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":{},\"lint_name\":null}}",
+                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":{},\"input\":{},\"lint_name\":null}}",
                     json_escape(info.code.0),
                     json_escape(info.title),
                     json_escape(info.summary),
@@ -1827,6 +1827,7 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
                     json_escape(info.trigger),
                     json_escape(info.fix),
                     json_escape(info.mode),
+                    json_escape(info.input),
                 );
             }
             for lint in cpl_lint::LINTS {

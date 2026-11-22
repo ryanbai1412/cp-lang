@@ -130,7 +130,6 @@ pub mod codes {
     pub const WRONG_ARG_COUNT: Code = Code("E0303");
     pub const NOT_CALLABLE: Code = Code("E0304");
     pub const NOT_INDEXABLE: Code = Code("E0305");
-    pub const POSITION_ARITHMETIC: Code = Code("E0306");
     pub const CONDITION_NOT_BOOL: Code = Code("E0307");
     pub const OPTIONAL_COMPARE: Code = Code("E0308");
     pub const BAD_OPERANDS: Code = Code("E0309");
@@ -176,6 +175,7 @@ pub mod codes {
 
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
+    pub const DOMAIN_CAST: Code = Code("R0102");
     pub const OVERFLOW: Code = Code("R0202");
     pub const DIVISION_BY_ZERO: Code = Code("R0203");
     pub const UNWRAP_NONE: Code = Code("R0301");

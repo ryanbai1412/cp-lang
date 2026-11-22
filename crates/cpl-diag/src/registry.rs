@@ -15,6 +15,8 @@ pub struct CodeInfo {
     pub trigger: &'static str,
     pub fix: &'static str,
     pub mode: &'static str,
+    /// Standard input for a `run` trigger and its fix.
+    pub input: &'static str,
 }
 
 /// Look up a diagnostic code (e.g. `"E0301"` or `"e0301"`).
@@ -32,6 +34,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "if true:\n\tprint(1)\n",
         fix: "if true:\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0002"),
@@ -41,6 +44,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "if true:\n    let x = 1\n  print(x)\n",
         fix: "if true:\n    let x = 1\n    print(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0003"),
@@ -50,6 +54,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let s = \"hello\n",
         fix: "let s = \"hello\"\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0004"),
@@ -59,6 +64,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = $1\n",
         fix: "let x = 1\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0005"),
@@ -68,6 +74,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 0b102\n",
         fix: "let x = 0b101\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0006"),
@@ -77,6 +84,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1\n    let y = 2\n",
         fix: "let x = 1\nlet y = 2\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0007"),
@@ -86,6 +94,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let c = 'ab'\n",
         fix: "let s = \"ab\"\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0101"),
@@ -95,6 +104,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = (1 + 2\n",
         fix: "let x = (1 + 2)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0102"),
@@ -104,6 +114,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1 +\n",
         fix: "let x = 1 + 2\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0103"),
@@ -113,6 +124,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "if true\n    print(1)\n",
         fix: "if true:\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0104"),
@@ -122,6 +134,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "if true:\nprint(1)\n",
         fix: "if true:\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0105"),
@@ -131,6 +144,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x: = 1\n",
         fix: "let x: Int = 1\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0106"),
@@ -140,6 +154,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "match 1:\n    => print(1)\n",
         fix: "match 1:\n    _ => print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0107"),
@@ -149,6 +164,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1 2\n",
         fix: "let x = 1 + 2\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0108"),
@@ -158,6 +174,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn 123():\n    print(1)\n",
         fix: "fn f():\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0109"),
@@ -167,6 +184,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1 + 2)\n",
         fix: "let x = (1 + 2)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0110"),
@@ -176,6 +194,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let a: ?Int = 1\nlet b = a ?? 0 + 1\n",
         fix: "let a: ?Int = 1\nlet b = (a ?? 0) + 1\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0111"),
@@ -185,6 +204,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let a = 1\nlet b = 2\nlet c = 3\nprint(a < b > c)\n",
         fix: "let a = 1\nlet b = 2\nlet c = 3\nprint(a < b and c < b)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0201"),
@@ -194,6 +214,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "print(not_defined)\n",
         fix: "let defined = 1\nprint(defined)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0202"),
@@ -203,6 +224,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn f() -> Int: 1\nfn f() -> Int: 2\n",
         fix: "fn f() -> Int: 1\nfn g() -> Int: 2\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0203"),
@@ -212,6 +234,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "struct Pt(x: Int, y: Int)\nlet p = Pt(1, 2)\nprint(p.z)\n",
         fix: "struct Pt(x: Int, y: Int)\nlet p = Pt(1, 2)\nprint(p.x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0204"),
@@ -221,6 +244,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x: DoesNotExist = 1\n",
         fix: "let x: Int = 1\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0205"),
@@ -230,6 +254,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "print(x)\nlet x = 1\n",
         fix: "let x = 1\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0206"),
@@ -239,6 +264,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "use std.no_such_module.{foo}\n",
         fix: "use std.math.{gcd}\nprint(gcd(12, 18))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0207"),
@@ -248,6 +274,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "use std.strings.{sa_is}\n",
         fix: "use std.strings.{z_function}\nprint(z_function(\"ababa\"))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0301"),
@@ -257,6 +284,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "domain Row = 1..=3\ndomain Col = 1..=3\nlet a: [Row]Int = 0\nprint(a[Col.first])\n",
         fix: "domain Row = 1..=3\ndomain Col = 1..=3\nlet a: [Row]Int = 0\nprint(a[Row.first])\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0302"),
@@ -266,6 +294,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x: Int = \"abc\"\n",
         fix: "let x: Int = 123\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0303"),
@@ -275,6 +304,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn add(a: Int, b: Int) -> Int: a + b\nprint(add(1))\n",
         fix: "fn add(a: Int, b: Int) -> Int: a + b\nprint(add(1, 2))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0304"),
@@ -284,6 +314,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 5\nprint(x(1))\n",
         fix: "let x = 5\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0305"),
@@ -293,6 +324,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 5\nprint(x[0])\n",
         fix: "let a = [5]\nprint(a[0])\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0306"),
@@ -302,6 +334,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "",
         fix: "domain V = 1..=3\nlet x = V.last - V.first\nprint(x)\n",
         mode: "reserved",
+        input: "",
     },
     CodeInfo {
         code: Code("E0307"),
@@ -311,6 +344,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1\nif x:\n    print(1)\n",
         fix: "let x = 1\nif x != 0:\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0308"),
@@ -320,6 +354,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let a: ?Int = 1\nlet b: ?Int = 2\nif a < b:\n    print(1)\n",
         fix: "let a: ?Int = 1\nlet b: ?Int = 2\nif let x = a, y = b and x < y:\n    print(1)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0309"),
@@ -329,6 +364,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = \"a\" + 1\n",
         fix: "let x = \"a\" + \"1\"\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0310"),
@@ -338,6 +374,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn f(x: Int) -> Int: x\nprint(f(y: 1))\n",
         fix: "fn f(x: Int) -> Int: x\nprint(f(x: 1))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0311"),
@@ -347,6 +384,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "@memo\nfn bad(mut x: Int) -> Int:\n    x += 1\n    return x\n",
         fix: "@memo\nfn fib(n: 0..=20) -> Int:\n    if n <= 1: return n\n    return fib(n - 1) + fib(n - 2)\nprint(fib(10))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0312"),
@@ -356,6 +394,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var x = 0\nfn bump() -> Int:\n    x += 1\n    return x\ndebug(bump())\n",
         fix: "var x = 0\nx += 1\ndebug(x)\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0313"),
@@ -365,6 +404,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn bad(k: Int) -> [0..k]Int:\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    return a\n",
         fix: "fn good(k: Int) -> (domain P, [P]Int):\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    return (Local, a)\nlet (domain Q, vals) = good(3)\nprint(Q.count, vals[Q(0)])\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0401"),
@@ -374,6 +414,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1\nx = 2\n",
         fix: "var x = 1\nx = 2\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0402"),
@@ -383,6 +424,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn inc(mut x: Int):\n    x += 1\nvar a = 0\ninc(a)\n",
         fix: "fn inc(mut x: Int):\n    x += 1\nvar a = 0\ninc(mut a)\nprint(a)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0403"),
@@ -392,6 +434,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn add(mut xs: List<Int>):\n    xs.push(1)\nlet a = [1, 2]\nadd(mut a)\nprint(a)\n",
         fix: "fn add(mut xs: List<Int>):\n    xs.push(1)\nvar a = [1, 2]\nadd(mut a)\nprint(a)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0406"),
@@ -401,6 +444,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var f = (n: Int) => if n == 0: 0 else: f(n - 1)\nprint(f(3))\n",
         fix: "let f = (n: Int) -> Int => if n == 0: 0 else: f(n - 1)\nprint(f(3))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0501"),
@@ -410,6 +454,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn bad() -> Int:\n    yield 1\n    return 0\nprint(bad())\n",
         fix: "fn ok() -> Int: 1\nprint(ok())\n",
         mode: "build",
+        input: "",
     },
     CodeInfo {
         code: Code("E0502"),
@@ -419,6 +464,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let s = \"café\"\n",
         fix: "let s = \"cafe\"\nprint(s)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0503"),
@@ -428,6 +474,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "if true:\n    print(1)\nelse if false:\n    print(2)\n",
         fix: "if true:\n    print(1)\nelif false:\n    print(2)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0504"),
@@ -437,6 +484,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let s: Str(len: 1..=10) = read()\nprint(s.len)\n",
         fix: "let s: Str = read()\nprint(s.len)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0601"),
@@ -446,6 +494,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn add_both(mut a: Int, mut b: Int):\n    a += 1\n    b += 1\nvar x = 0\nadd_both(mut x, mut x)\n",
         fix: "fn add_both(mut a: Int, mut b: Int):\n    a += 1\n    b += 1\nvar x = 0, y = 0\nadd_both(mut x, mut y)\nprint(x, y)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0602"),
@@ -455,6 +504,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var a = [1, 2, 3]\nfor x in a:\n    a.push(x)\n",
         fix: "var a = [1, 2, 3]\nlet n = a.len\nfor i in 0..n:\n    a.push(a[i])\nprint(a)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0603"),
@@ -464,6 +514,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn bad(a: [0..3]Int) -> [0..2]Int:\n    return a[0..2]\n",
         fix: "fn ok(a: [0..3]Int) -> List<Int>:\n    return [x for x in a[0..2]]\nprint(ok([1, 2, 3]))\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0604"),
@@ -473,6 +524,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "struct Box(v: Int)\nimpl Box:\n    fn view(self) lends Int:\n        let x = self.v\n",
         fix: "struct Box(v: Int)\nimpl Box:\n    fn view(self) lends Int:\n        lend self.v\nlet b = Box(42)\nprint(b.view())\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0605"),
@@ -482,6 +534,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var n = 5\nstruct Id(i: Int)\nimpl Index for Id:\n    let K = n\n",
         fix: "let n = 5\ndomain Id = 0..n\nprint(Id.count)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0606"),
@@ -491,6 +544,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "struct Vec2(x: Int, y: Int)\nlet a = Vec2(1, 2) + Vec2(3, 4)\n",
         fix: "struct Vec2(x: Int, y: Int)\nimpl Add for Vec2:\n    fn add(self, other: Vec2) -> Vec2: Vec2(self.x + other.x, self.y + other.y)\nlet a = Vec2(1, 2) + Vec2(3, 4)\nprint(a.x, a.y)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0608"),
@@ -500,6 +554,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let a = [1, 2, 3]\nlet b = a\nprint(a.len, b.len)\n",
         fix: "let a = [1, 2, 3]\nlet b = a.copy()\nprint(a.len, b.len)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("W0101"),
@@ -509,6 +564,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x = 1\nx + 2\nprint(x)\n",
         fix: "let x = 1\nlet y = x + 2\nprint(y)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0314"),
@@ -518,6 +574,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "enum Dir: L, R\nlet d = Dir.L\nmatch d:\n    L: print(1)\n",
         fix: "enum Dir: L, R\nlet d = Dir.L\nmatch d:\n    L: print(1)\n    R: print(2)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("L0601"),
@@ -527,6 +584,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var xs = [1, 2]\nxs[0] = xs.pop()!\nprint(xs)\n",
         fix: "var xs = [1, 2]\nlet last = xs.pop()!\nxs[0] = last\nprint(xs)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0901"),
@@ -536,6 +594,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x: U8 = 3\nprint(x)\n",
         fix: "let x: 0..=255 = 3\nprint(x)\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("R0001"),
@@ -545,6 +604,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let s = 70\nprint(1 << s)\n",
         fix: "let s = 7\nprint(1 << s)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0101"),
@@ -554,6 +614,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let xs = [1, 2]\nlet i = 5\nprint(xs[i])\n",
         fix: "let xs = [1, 2]\nlet i = 1\nprint(xs[i])\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0202"),
@@ -563,6 +624,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var x = 4e18\nx = x * 3\nprint(x)\n",
         fix: "var x = 4e18\nx = x / 3\nprint(x)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0203"),
@@ -572,6 +634,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let z = 0\nprint(5 / z)\n",
         fix: "let z = 1\nprint(5 / z)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0301"),
@@ -581,6 +644,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let x: ?Int = None\nprint(x!)\n",
         fix: "let x: ?Int = None\nprint(x ?? -1)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0201"),
@@ -590,6 +654,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "var x: 0..10 = 0\nlet k = 7\nx = k * 2\nprint(x)\n",
         fix: "var x: 0..10 = 0\nlet k = 7\nx = k\nprint(x)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0401"),
@@ -599,6 +664,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "let k = 1\nassert k > 2\nprint(k)\n",
         fix: "let k = 3\nassert k > 2\nprint(k)\n",
         mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("R0402"),
@@ -608,6 +674,47 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "fn f() -> Int = todo\nprint(f())\n",
         fix: "fn f() -> Int = 1\nprint(f())\n",
         mode: "run",
+        input: "",
+    },
+    CodeInfo {
+        code: Code("R0102"),
+        title: "Value outside a domain",
+        summary: "`D(x)` was given an `Int` that is not a position of `D`.",
+        explanation: "`D(x)` turns an `Int` into a position and checks it lies in `D`; the trap names the value and the domain's range. Bring the value into range first, or test it with `x in D.ords`.",
+        trigger: "domain D = 0..3\nlet k = 7\nlet d = D(k)\nprint(d)\n",
+        fix: "domain D = 0..3\nlet k = 7\nlet d = D(k % 3)\nprint(d)\n",
+        mode: "run",
+        input: "",
+    },
+    CodeInfo {
+        code: Code("R0501"),
+        title: "Bad input token",
+        summary: "`read` met a token that is not the type it reads, or the input ended.",
+        explanation: "The trap gives the line and column of the token and the type expected. Check the input format against the statement, or read the token with the type it has.",
+        trigger: "let n: Int = read()\nprint(n)\n",
+        fix: "let s: Str = read()\nprint(s)\n",
+        mode: "run",
+        input: "abc\n",
+    },
+    CodeInfo {
+        code: Code("R0502"),
+        title: "Input outside its read contract",
+        summary: "A value read into a range type is outside the range.",
+        explanation: "`let n: 1..=5 = read()` states the constraint from the statement, and the read checks it. The trap gives the value, the range and the input position: the input breaks the constraint, or the declared range is wrong.",
+        trigger: "let n: 1..=5 = read()\nprint(n)\n",
+        fix: "let n: 1..=10 = read()\nprint(n)\n",
+        mode: "run",
+        input: "9\n",
+    },
+    CodeInfo {
+        code: Code("R0601"),
+        title: "Stack exhausted",
+        summary: "A recursion went deeper than the stack allows.",
+        explanation: "Usually a recursion with no base case for some input. If the depth is genuinely large, check that the judge profile's stack is big enough, or write the recursion as a loop.",
+        trigger: "fn f(n: Int) -> Int = f(n + 1) + 1\nprint(f(0))\n",
+        fix: "fn f(n: Int) -> Int = if n == 0: 0 else: f(n - 1) + 1\nprint(f(10))\n",
+        mode: "run",
+        input: "",
     },
     CodeInfo {
         code: Code("E9999"),
@@ -617,6 +724,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         trigger: "",
         fix: "",
         mode: "internal",
+        input: "",
     },
 ];
 

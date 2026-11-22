@@ -298,6 +298,7 @@ def check_error_index():
                     [str(CPL), "run", str(trig)],
                     cwd=REPO,
                     capture_output=True,
+                    input=entry.get("input", ""),
                     text=True,
                     timeout=15,
                 )
@@ -307,6 +308,7 @@ def check_error_index():
                     [str(CPL), "run", str(fix)],
                     cwd=REPO,
                     capture_output=True,
+                    input=entry.get("input", ""),
                     text=True,
                     timeout=15,
                 )
