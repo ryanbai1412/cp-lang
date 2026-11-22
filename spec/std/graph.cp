@@ -313,7 +313,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// cost: O(deg u)
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g.has(0, 2) and not g.has(2, 0)`
-    pub fn has(self, u: V, v: V) -> Bool = todo
+    pub fn has(self, u: V, v: V) -> Bool:
+        for i in start[u.to_idx]..start[u.to_idx + 1]:
+            if arcs[i].to == v: return true
+        false
 
     /// The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape
     /// `std.flow` matchings take.
@@ -331,7 +334,23 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: keyed by `(from, to)`
     /// traps: when some vertex cannot reach another
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let h = Graph.undirected(es).hops(); h[0, 2] == 2 and h[1, 1] == 0`
-    pub fn hops(self) -> [V, V]Int = todo
+    pub fn hops(self) -> [V, V]Int:
+        var out: [V, V]Int = -1
+        for s in V:
+            out[s, s] = 0
+            var q = [s]
+            var head = 0
+            while head < q.len:
+                let u = q[head]
+                head += 1
+                let d = out[s, u] + 1
+                for i in start[u.to_idx]..start[u.to_idx + 1]:
+                    let v = arcs[i].to
+                    if out[s, v] < 0:
+                        out[s, v] = d
+                        q.push(v)
+            assert head == V.K, "hops: graph is not strongly connected"
+        out
 
 
     /// Every edge once, as `Edge(e, u, v)` with its ends as given to the build. Needs arcs that
@@ -341,7 +360,21 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: increasing `e`
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
-    pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E> = todo
+    pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>:
+        var seen: [E]Bool = false
+        var us: [E]?V = None
+        var vs: [E]?V = None
+        for u in V:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                let a = arcs[i]
+                let eid = a.e
+                if not seen[eid]:
+                    seen[eid] = true
+                    us[eid] = Some(u)
+                    vs[eid] = Some(a.to)
+        for e in E:
+            if seen[e]:
+                yield Edge(e, us[e]!, vs[e]!)
 
     /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
     /// edges it uses. The search takes arcs in input order and descends at once (recursive order,
@@ -835,7 +868,9 @@ pub struct Paths<V, W, A>:
     /// order: settling order (the `order` list), so distances never decrease for `bfs`, `bfs01`, `dial`, `dijkstra` and `fixed_cost_paths`; for `bellman_ford` each vertex comes after its parent
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; bfs(g, from: [V(0)]).iter().collect() == [(v: 0, d: 0), (v: 1, d: 1), (v: 2, d: 2)]`
-    pub fn iter(self) -> yields (v: V, d: W) = todo
+    pub fn iter(self) -> yields (v: V, d: W):
+        for v in order:
+            yield (v: v, d: dist[v]!)
 
     /// The arcs on some shortest path: for each reached `u`, the arcs `a` of `g.out(u)` with
     /// `p[a.to] == p[u] + w(a)`, where `w(a)` is `a.w` for `Weighted` arcs and `1` otherwise.
@@ -909,7 +944,37 @@ pub struct Paths<V, W, A>:
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: V(1)); p[1] == Some(1) and p[2] == None`
-pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
+pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc>:
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var order = List<V>()
+    var q = List<V>()
+    var head = 0
+    var stopped = false
+    for s in from:
+        if dist[s] == None and enter(s, 0):
+            dist[s] = Some(0)
+            q.push(s)
+            if until == Some(s):
+                order.push(s)
+                stopped = true
+                break
+    while not stopped and head < q.len:
+        let u = q[head]
+        head += 1
+        order.push(u)
+        let nd = dist[u]! + 1
+        for a in g.out(u):
+            let v = a.to
+            if dist[v] == None and enter(v, nd):
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                q.push(v)
+                if until == Some(v):
+                    order.push(v)
+                    stopped = true
+                    break
+    Paths(dist:, back:, order:)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances when every weight is 0 or 1, from every vertex of `from` at distance
@@ -921,7 +986,34 @@ pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) 
 /// ties: a vertex's back pointer is the first arc to give it its final distance
 /// traps: on an arc whose weight is not 0 or 1, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 0), (u: 2, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: [V(0)]); p[1] == Some(0) and p.path(1) == Some([0, 2, 1])`
-pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
+pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, hashed: Bool = false) -> Paths<V, Int, G.Arc>:
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var dq = Deque<V>()
+    for s in from:
+        if dist[s] == None:
+            dist[s] = Some(0)
+            dq.push(s)
+    while let u = dq.pop_front():
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until == Some(u): break
+        let du = dist[u]!
+        for a in g.out(u):
+            let w = a.w
+            assert w == 0 or w == 1, "bfs01: edge weight must be 0 or 1"
+            let v = a.to
+            let nd = du + w
+            let better = if let dv = dist[v]: nd < dv else: true
+            if better:
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                if w == 0: dq.push_front(v)
+                else: dq.push(v)
+    Paths(dist:, back:, order:)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)` pairs (a
@@ -1426,7 +1518,41 @@ fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Exit(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(0, None)]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(1, Some(1)), Again(0, 2), Exit(0, None)]`
-pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc> = todo
+pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>:
+    var vis: [V]Bool = false
+    let no_via: ?G.Arc = None
+    for s in from:
+        if vis[s]: continue
+        vis[s] = true
+        yield Visit.Enter(s, no_via)
+        var stk_v = [s]
+        var stk_via: List<?G.Arc> = [no_via]
+        var stk_arcs: List<List<G.Arc>> = [g.out(s).collect()]
+        var stk_i = [0]
+        while stk_v.len > 0:
+            let top = stk_v.len - 1
+            let u = stk_v[top]
+            let i = stk_i[top]
+            if i < stk_arcs[top].len:
+                stk_i[top] = i + 1
+                let a = stk_arcs[top][i]
+                let v = a.to
+                if vis[v]:
+                    yield Visit.Again(u, a)
+                else:
+                    vis[v] = true
+                    yield Visit.Enter(v, Some(a))
+                    stk_v.push(v)
+                    stk_via.push(Some(a))
+                    stk_arcs.push(g.out(v).collect())
+                    stk_i.push(0)
+            else:
+                let via = stk_via[top]
+                stk_v.pop()
+                stk_via.pop()
+                stk_arcs.pop()
+                stk_i.pop()
+                yield Visit.Exit(u, via)
 
 /// Every vertex reachable from `from`, each once, sources included. `reachable(g, from:
 /// [s]).count()`, `List(...)` or `.contains(v)` ask the usual questions; to avoid some
@@ -1940,7 +2066,15 @@ pub fn arborescence<V, E, W>(edges: [E](u: V, v: V, w: W, ..), root: V) -> ?(tot
 /// order: keyed by `E`
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; spanning_forest(Graph.undirected(es)) == [true, false, true]`
-pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool = todo
+pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
+    var in_tree: [E]Bool = false
+    var dsu = Dsu<V>()
+    for u in V:
+        for a in g.out(u):
+            let v = a.to
+            if dsu.unite(u, v):
+                in_tree[a.e] = true
+    in_tree
 
 /// O(n) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 pub struct Functional<V>:
