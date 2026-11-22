@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1327 (995 passing). Rules: 521.
+Cases: 1332 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 30 case(s)
+- R0401 Assertion failed: 31 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -805,8 +805,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
-- **strings** (160/195 named by a case)
-  - uncovered: `KmpAutomaton`, `KmpAutomaton.new`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (163/195 named by a case)
+  - uncovered: `KmpAutomaton`, `KmpAutomaton.new`, `Palindromes`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (91/171 named by a case)
@@ -814,7 +814,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1867 of 2222 std items are named by a case.
+1870 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
