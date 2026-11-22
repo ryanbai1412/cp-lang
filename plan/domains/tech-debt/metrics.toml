@@ -1,0 +1,143 @@
+# Architecture & tech-debt metrics. Every value measured 2026-11-22 on main 4e2de3cd
+# from the repo root. `today` is the measured count; `target` is the v0.3 goal.
+# `--list NAME` on measure.py prints the offenders behind a count.
+
+[[metric]]
+name = "rs_over_cap"
+command = "python3 plan/domains/tech-debt/measure.py rs_over_cap"
+today = 24
+target = "<= 8, none new"
+milestone = "M3"
+
+[[metric]]
+name = "edition_refs"
+command = "python3 plan/domains/tech-debt/measure.py edition_refs"
+today = 92
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "rust_ignore"
+command = "python3 plan/domains/tech-debt/measure.py rust_ignore"
+today = 19
+target = "<= 3"
+milestone = "M3"
+
+[[metric]]
+name = "ir_builtin_names"
+command = "python3 plan/domains/tech-debt/measure.py ir_builtin_names"
+today = 89
+target = "<= signed floor (Q1; proposed 30)"
+milestone = "M3"
+
+[[metric]]
+name = "backend_std_names"
+command = "python3 plan/domains/tech-debt/measure.py backend_std_names"
+today = 17
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "dup_fn_bodies"
+command = "python3 plan/domains/tech-debt/measure.py dup_fn_bodies"
+today = 5
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "crate_edges"
+command = "python3 plan/domains/tech-debt/measure.py crate_edges"
+today = 75
+target = "no new edge without plan/ARCHITECTURE.md in the same commit"
+milestone = "M2"
+
+[[metric]]
+name = "dev_crate_edges"
+command = "python3 plan/domains/tech-debt/measure.py dev_crate_edges"
+today = 3
+target = "informational: test-only edges that would be layer violations if shipped"
+milestone = "M2"
+
+[[metric]]
+name = "layer_violations"
+command = "python3 plan/domains/tech-debt/measure.py layer_violations"
+today = 1
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "tree_walker"
+command = "python3 plan/domains/tech-debt/measure.py tree_walker"
+today = 1
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "v02_port_files"
+command = "python3 plan/domains/tech-debt/measure.py v02_port_files"
+today = 877
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "spec_std_refs"
+command = "python3 plan/domains/tech-debt/measure.py spec_std_refs"
+today = 151
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "direct_python"
+command = "python3 plan/domains/tech-debt/measure.py direct_python"
+today = 13
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "stale_arch_paths"
+command = "python3 plan/domains/tech-debt/measure.py stale_arch_paths"
+today = 0
+target = "0"
+milestone = "M2"
+
+[[metric]]
+name = "largest_rs_file"
+command = "find crates -path '*/src/*' -name '*.rs' | xargs wc -l | sort -n | tail -2 | head -1"
+today = 15367
+target = "<= 4000"
+milestone = "M3"
+
+[[metric]]
+name = "stdlib_todo"
+command = "python3 scripts/debt-ratchet.py --check (stdlib_todo)"
+today = 294
+target = "never up; stdlib lane sets the drop"
+milestone = "ratchet"
+
+[[metric]]
+name = "pending_tests"
+command = "python3 scripts/debt-ratchet.py --check (pending_tests)"
+today = 0
+target = "0"
+milestone = "ratchet"
+
+[[metric]]
+name = "unlanded_branches"
+command = "git branch -r --list 'origin/devin/*' | while read b; do git cherry origin/main $b | grep -q '^+' && echo $b; done | wc -l"
+today = 57
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "cold_review_median"
+command = "rubric scores logged per lane in plan/domains/tech-debt/worklog.md"
+today = "unmeasured"
+target = ">= 4 of 5, two rounds per lane"
+milestone = "M2, M3"
+
+[[metric]]
+name = "probe_files_touched"
+command = "probes P1-P4 logged in plan/domains/tech-debt/worklog.md"
+today = "unmeasured"
+target = "<= 3 files each"
+milestone = "M2, M3"
