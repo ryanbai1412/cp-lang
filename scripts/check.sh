@@ -3,7 +3,9 @@
 # this repository: this script, run on your machine, is the gate.
 #
 #   scripts/check.sh           same as --fast
-#   scripts/check.sh --fast    what the pre-commit hook runs (about 10 s warm)
+#   scripts/check.sh --commit  what the pre-commit hook runs: the checks the
+#                              staged paths can reach (scripts/affected.py)
+#   scripts/check.sh --fast    what scripts/land.sh and CI run on every tip
 #   scripts/check.sh --full    --fast, then the slow suites (15 minutes or more)
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
@@ -29,6 +31,12 @@
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #
+# --commit  1, rustfmt, clippy of the touched crates, and the nextest tests
+#           of every crate that can reach them except the end-to-end suites
+#           (profile `commit` in .config/nextest.toml), plus the unit tests
+#           of touched scripts and the snippet gate for web/ and docs/. A
+#           path scripts/affected.py does not know runs --fast instead.
+#
 # Needs cargo with clippy, python3 and node; --full also needs npm, pnpm, a
 # Playwright Chromium, g++ and the wasm target (rustup target add wasm32-unknown-unknown).
 set -euo pipefail
@@ -45,6 +53,7 @@ use_cache=1
 for arg in "$@"; do
     case "$arg" in
         --fast) mode=fast ;;
+        --commit) mode=commit ;;
         --full) mode=full ;;
         --no-cache) use_cache=0 ;;
         -h | --help) sed -n '2,25s/^# \{0,1\}//p' "$0"; exit 0 ;;
@@ -171,6 +180,53 @@ fi
 need cargo "see https://rustup.rs"
 cpl="$target/debug/cpl"
 
+# Which --fast leaves to --full (the reasons are above the nextest step).
+slow_tests=(
+    products_and_variable_divisors_are_never_decided_wrongly
+    front_end_check_is_under_50_ms
+    recovery_scoreboard
+    fix_it_scoreboard
+    committed_scoreboard_ratchet
+)
+slow_filter='binary(budget)'
+for t in "${slow_tests[@]}"; do slow_filter+=" or test(/(^|::)$t\$/)"; done
+
+if [ "$mode" = commit ]; then
+    while IFS='=' read -r key value; do
+        printf -v "sel_$key" '%s' "$value"
+    done < <(uv run --quiet python scripts/affected.py)
+    if [ "$sel_all" = 1 ]; then
+        printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
+        mode=fast
+    fi
+fi
+if [ "$mode" = commit ]; then
+    step "cargo fmt --all --check"
+    cargo fmt --all --check || fail "Rust files are not formatted; run: cargo fmt --all"
+    if [ -n "$sel_packages" ]; then
+        step "cargo clippy of the touched crates and nextest of the crates they reach"
+        read -ra pkgs <<<"$sel_packages"
+        cargo clippy -q $(printf -- '-p %s ' "${pkgs[@]}") --all-targets -- -D warnings
+        cargo nextest run --workspace --profile commit --no-fail-fast \
+            -E "($sel_filter) & not ($slow_filter)"
+    fi
+    if [ -n "$sel_script_tests" ]; then
+        step "script unit tests: $sel_script_tests"
+        read -ra tests <<<"$sel_script_tests"
+        uv run --quiet python -m unittest "${tests[@]}"
+    fi
+    if [ "$sel_site" = 1 ]; then
+        step "site snippet gate (node web/scripts/gate.mjs)"
+        node web/scripts/gate.mjs
+    fi
+    step_end
+    printf '\nstep times (s):\n'
+    printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
+    printf '\ncheck: commit-tier checks passed in %ss; scripts/land.sh runs --fast on the rebased tip\n' \
+        "$(( $(date +%s) - gate_t0 ))"
+    exit 0
+fi
+
 step "cargo fmt --all --check"
 cargo fmt --all --check || fail "Rust files are not formatted; run: cargo fmt --all"
 
@@ -203,7 +259,7 @@ if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -224,22 +280,13 @@ trap cleanup EXIT
 # - committed_scoreboard_ratchet runs the same conformance+corpus+docs ratchet
 #   as `cpl-conform all --check` below (which also checks `diff`), so running
 #   both in --fast would execute ~3,400 cases twice.
-slow_tests=(
-    products_and_variable_divisors_are_never_decided_wrongly
-    front_end_check_is_under_50_ms
-    recovery_scoreboard
-    fix_it_scoreboard
-    committed_scoreboard_ratchet
-)
 if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
     echo "cached (tree unchanged outside its excludes)"
 else
     if cargo nextest --version >/dev/null 2>&1; then
         step "cargo nextest run --workspace (without the --full tests)"
-        filter='binary(budget)'
-        for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
-        cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
+        cargo nextest run --workspace --no-fail-fast -E "not ($slow_filter)"
         step "cargo test --workspace --doc"
         cargo test -q --workspace --doc
     else

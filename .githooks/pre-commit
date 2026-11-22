@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-# Runs the fast checks before every commit. Turn it on once per clone with
-# scripts/install-hooks.sh; skip it for one commit with `git commit --no-verify`.
-exec "$(git rev-parse --show-toplevel)/scripts/check.sh" --fast
+# Runs the commit tier of the gate (the checks the staged paths can reach)
+# before every commit; scripts/land.sh runs the full fast gate on the tip.
+# Turn it on once per clone with scripts/install-hooks.sh; skip it for one commit with `git commit --no-verify`.
+exec "$(git rev-parse --show-toplevel)/scripts/check.sh" --commit

@@ -11,3 +11,9 @@ priority = 50
 [[profile.default.overrides]]
 filter = 'test(every_row_of_the_catalog_runs_with_the_type_it_names) | test(stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input) | test(=build_matches_cpl_build) | test(deep_recursion_runs_on_the_stack_each_judge_gives) | test(every_runtime_error_of_cpl_run_stops_the_judge_build_too) | test(swaps_truncations_fills_and_repeats_at_the_edges)'
 priority = 20
+
+# The commit tier (scripts/check.sh --commit) skips the end-to-end suites:
+# they drive whole programs through the CLI, LSP and conformance corpus, and
+# take most of the fast gate's time. The land tier (--fast) runs them all.
+[profile.commit]
+default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | package(cpl-conform)))'
