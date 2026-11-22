@@ -7,15 +7,21 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi07p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_23/noi07p1.cp",
    "proto/ports/scout_batch_23/today/noi07p1.cp",
    "proto/ports/scout_batch_27/noi07p1.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "shortest-paths",
+  "counting"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "path-counting Floyd-Warshall over [V, V]?Int; F64 precision print."
 }
