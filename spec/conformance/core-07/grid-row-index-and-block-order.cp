@@ -5,4 +5,5 @@ domain C = 1..=3
 let g = [R, C] (r, c) => Int(r) * 10 + Int(c)
 let row2 = g[R(2)]
 let blk = g[R(1)..=R(2), C(2)..=C(3)]
-print(row2[C(3)], blk[0], blk[1], blk[2], blk[3])
+let xs = [x for x in blk]
+print(row2[C(3)], xs)
