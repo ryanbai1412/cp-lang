@@ -6,13 +6,13 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1636 (995 passing). Rules: 526.
+Cases: 1640 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R03 (03-numbers-layout.md): 23 rules, 45 cases; 0 uncovered, 7 happy-path only, 3 negative only
+- R03 (03-numbers-layout.md): 24 rules, 46 cases; 0 uncovered, 7 happy-path only, 4 negative only
 - R04 (04-indices.md): 60 rules, 79 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
@@ -21,10 +21,10 @@ Cases: 1636 (995 passing). Rules: 526.
 - R07 (07-sequences.md): 87 rules, 101 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 67 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 59 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 61 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R13 (13-lowering.md): 22 rules, 22 cases; 0 uncovered, 7 happy-path only, 0 negative only
+- R13 (13-lowering.md): 22 rules, 23 cases; 0 uncovered, 7 happy-path only, 0 negative only
 
 ## Rules
 
@@ -145,6 +145,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.5 [2+ 2-]: **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is one byte per elemen...
 - R03.1.6 [3+ 0-] *happy-path only*: **Narrow arithmetic when proven.** Semantically every operation is in `Int`. When the rang...
 - R03.1.7 [1+ 1-]: To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every node write is t...
+- R03.1.9 [0+ 1-] *negative only*: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
 - R03.1.8 [0+ 1-] *negative only*: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-] *happy-path only*: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
 - R03.2.2 [1+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
@@ -522,12 +523,12 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.1.1 [8+ 2-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
+- R10.1.1 [8+ 3-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
 - R10.1.2 [3+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [6+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [8+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [8+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -578,7 +579,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R13: 13-lowering.md
 
-- R13.1.1 [1+ 0-] *happy-path only*: One deterministic C++17 file: a stamp, the used runtime pieces, the used library instances...
+- R13.1.1 [2+ 0-] *happy-path only*: One deterministic C++17 file: a stamp, the used runtime pieces, the used library instances...
 - R13.1.2 [1+ 0-]: `main` starts a thread with the profile's stack (default 1 GB, halving down to 8 MB) and r...
 - R13.1.3 [1+ 0-]: Input is one bulk `fread` and a hand-written parser; output is one buffer written at exit ...
 - R13.1.4 [1+ 0-] *happy-path only*: Release builds compile with the profile's flags and emit no checks (chapter 9). The loweri...
@@ -646,6 +647,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0312 Mutating expression inside `debug(...)`: 1 case(s)
 - E0313 Fresh domain escapes its declaring block: 1 case(s)
 - E0314 Match is not exhaustive: 4 case(s)
+- E0315 not_a_token_type *(0.3)*: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 3 case(s)
 - E0402 Missing `mut` at call site: 1 case(s)
 - E0403 `mut` of an immutable binding: 2 case(s)
@@ -675,12 +677,12 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
 - E0804 `?` whose result is dropped: 1 case(s)
-- E0805 fresh_type_leaks_test *(0.3)*: **no case**
+- E0805 fresh_type_leaks_test *(0.3)*: 1 case(s)
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 Range store not provable: 8 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
-- E0904 memory_over_profile *(0.3)*: **no case**
+- E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
 - L0001 Unknown lint name: 2 case(s)
@@ -745,7 +747,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-5 of 134 testable codes have no negative case.
+3 of 135 testable codes have no negative case.
 
 ## Standard library
 

@@ -52,6 +52,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0312 | debug_changes | `debug(...)` argument has side effects |
 | E0313 | domain_escapes | a value of fresh type `V` leaves its block |
 | E0314 | non_exhaustive_match | this `match` has no arm for `R` |
+| E0315 | not_a_token_type *(0.3)* | `read<Bool>()`: `Bool` is not a token type; read a `Str` and compare it, or use a type `read` takes (R10.2.3) |
 | E0401 | assign_to_let | |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | |
@@ -95,7 +96,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | Code | Name | |
 |---|---|---|
 | W0101 | unused_value | a result is dropped (see `@droppable`) |
-| W0201 | size_near_limit *(0.3)* | output C++ above 75 % of the profile's limit |
+| W0201 | size_near_limit *(0.3)* | output C++ above 32 KB, or half of a smaller `source_kb` (R13.1.1) |
 
 ## Lints
 
