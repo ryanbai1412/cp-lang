@@ -550,6 +550,51 @@ impl Database {
                         if prev_dot {
                             dot_ident_tokens.insert(s);
                         }
+                    } else if tok.kind == cpl_syntax::TokenKind::Str {
+                        let s = &text[tok.span.start as usize..tok.span.end as usize];
+                        if s.contains('{') {
+                            let mut i = 0;
+                            let bytes = s.as_bytes();
+                            while i < bytes.len() {
+                                if bytes[i] == b'\\' {
+                                    i += 2;
+                                    continue;
+                                }
+                                if bytes[i] == b'{' {
+                                    if i + 1 < bytes.len() && bytes[i + 1] == b'{' {
+                                        i += 2;
+                                        continue;
+                                    }
+                                    let start = i + 1;
+                                    let mut depth = 1usize;
+                                    i = start;
+                                    while i < bytes.len() && depth > 0 {
+                                        match bytes[i] {
+                                            b'{' => depth += 1,
+                                            b'}' => depth -= 1,
+                                            _ => {}
+                                        }
+                                        i += 1;
+                                    }
+                                    if depth == 0 && i > start {
+                                        let inner = &s[start..i - 1];
+                                        let mut inner_prev_dot = false;
+                                        for itok in cpl_syntax::lex(inner).tokens {
+                                            if itok.kind == cpl_syntax::TokenKind::Ident {
+                                                let is = &inner[itok.span.start as usize..itok.span.end as usize];
+                                                ident_tokens.insert(is);
+                                                if inner_prev_dot {
+                                                    dot_ident_tokens.insert(is);
+                                                }
+                                            }
+                                            inner_prev_dot = itok.kind == cpl_syntax::TokenKind::Dot;
+                                        }
+                                    }
+                                    continue;
+                                }
+                                i += 1;
+                            }
+                        }
                     }
                     prev_dot = tok.kind == cpl_syntax::TokenKind::Dot;
                 }
