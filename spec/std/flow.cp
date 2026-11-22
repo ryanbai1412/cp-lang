@@ -16,7 +16,7 @@ pub struct Arc(id: 0..2_147_483_648):
     /// cost: O(1)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.source(a.rev) == 1 and a.rev.rev == a`
-    @get pub fn rev(self) -> Arc = todo
+    @get pub fn rev(self) -> Arc = Arc(id ^ 1)
 
 /// A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
 /// `add` is O(1). `max_flow` is O(V^2 E) in general, O(E sqrt(V)) on unit
@@ -120,7 +120,7 @@ pub struct FlowGraph<V>:
         var total = 0
         while total < limit:
             let level = self.levels(s)
-            if level[t] == none:
+            if level[t] == None:
                 cut_from = s
                 break
             var next: [V]Int = 0
@@ -158,14 +158,20 @@ pub struct FlowGraph<V>:
     /// cost: O(1)
     /// traps: when the flow on `a` exceeds the new capacity (lower it with `reset` first), or `cap` is negative
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(2)); g.max_flow(0, 1); g.set_cap(a, Some(5)); g.max_flow(0, 1) == 3`
-    pub fn set_cap(mut self, a: Arc, cap: ?Int) = todo
+    pub fn set_cap(mut self, a: Arc, cap: ?Int):
+        let c = cap ?? 1 << 60
+        let f = cap0[a.id] - left[a.id]
+        assert c >= 0 and f <= c, "`set_cap(a, cap)` needs `0 <= flow(a) <= cap`"
+        cap0[a.id] = c
+        left[a.id] = c - f
+        cut_from = None
 
     /// The capacity left on `a` in the residual network: `cap(a) - flow(a)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.max_flow(0, 1, limit: Some(2)); g.residual(a) == 3 and g.residual(a.rev) == 2`
-    pub fn residual(self, a: Arc) -> Int = todo
+    pub fn residual(self, a: Arc) -> Int = left[a.id]
 
     /// Every arc `add` or `add_both` returned, lazily; never a reverse arc. O(1) to make.
     ///
@@ -174,7 +180,8 @@ pub struct FlowGraph<V>:
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 2, Some(1)); g.arcs.collect() == [a, b]`
-    @get pub fn arcs(self) -> yields Arc = todo
+    @get pub fn arcs(self) -> yields Arc:
+        for k in 0..to.len / 2: yield Arc(2 * k)
 
     /// The arcs `add` or `add_both` returned whose source is `u`, lazily; never a reverse arc.
     ///
@@ -183,7 +190,9 @@ pub struct FlowGraph<V>:
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); g.add(1, 2, Some(1)); let c = g.add(0, 2, Some(1)); g.out(0).collect() == [a, c]`
-    pub fn out(self, u: V) -> yields Arc = todo
+    pub fn out(self, u: V) -> yields Arc:
+        for a in head[u]:
+            if a.id % 2 == 0: yield a
 
     /// The added arcs crossing the minimum cut `min_cut(s)` from the source side to the other, after
     /// `max_flow(s, t)` ran to completion. Every one is saturated and their capacities sum to the
@@ -193,7 +202,9 @@ pub struct FlowGraph<V>:
     /// order: the order `add` returned them
     /// traps: like `min_cut`, when the flow from `s` is missing or stale
     /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(5)); let b = g.add(1, 2, Some(1)); g.max_flow(0, 2); g.cut_arcs(0) == [b]`
-    pub fn cut_arcs(self, s: V) -> List<Arc> = todo
+    pub fn cut_arcs(self, s: V) -> List<Arc>:
+        let side = self.min_cut(s)
+        [Arc(2 * k) for k in 0..to.len / 2 if side[to[2 * k + 1]] and not side[to[2 * k]]]
 
     /// The current `s`-`t` flow split into paths, each with the amount it carries; the amounts sum
     /// to the net flow out of `s`. Cycles of flow are skipped. Does not change the flow.
@@ -206,7 +217,40 @@ pub struct FlowGraph<V>:
     /// order: discovery order, as above
     /// traps: when `s == t`
     /// example: `var g = FlowGraph<0..4>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 3, Some(1)); let c = g.add(0, 2, Some(1)); let d = g.add(2, 3, Some(1)); g.max_flow(0, 3); g.paths(0, 3).collect() == [(arcs: [a, b], amount: 1), (arcs: [c, d], amount: 1)]`
-    pub fn paths(self, s: V, t: V) -> yields (arcs: List<Arc>, amount: Int) = todo
+    pub fn paths(self, s: V, t: V) -> yields (arcs: List<Arc>, amount: Int):
+        assert s != t, "`paths(s, t)` needs `s != t`"
+        var spare = [if k % 2 == 0: cap0[k] - left[k] else: 0 for k in 0..to.len]
+        var next: [V]Int = 0
+        var on: [V]?Int = None
+        while true:
+            var path = List<Arc>()
+            var u = s
+            on[s] = 0
+            while u != t:
+                while next[u] < head[u].len and spare[head[u][next[u]].id] <= 0: next[u] += 1
+                if next[u] == head[u].len: break
+                let a = head[u][next[u]]
+                let v = to[a.id]
+                path.push(a)
+                if let k = on[v]:
+                    var least = Int.MAX
+                    for i in k..path.len: least = min(least, spare[path[i].id])
+                    for i in k..path.len: spare[path[i].id] -= least
+                    while path.len > k:
+                        on[to[path.last!.id]] = None
+                        path.pop()
+                    on[v] = k
+                    u = v
+                else:
+                    on[v] = path.len
+                    u = v
+            for a in path: on[to[a.id]] = None
+            on[s] = None
+            if u != t: return
+            var least = Int.MAX
+            for a in path: least = min(least, spare[a.id])
+            for a in path: spare[a.id] -= least
+            yield (arcs: path, amount: least)
 
     /// The same maximum flow amount as `max_flow(s, t)` by push-relabel (highest label, gap
     /// heuristic), often several times faster than Dinic on dense or unit-capacity grids. Adds to
@@ -291,7 +335,7 @@ pub struct FlowGraph<V>:
                 at += 1
                 for a in head[u]:
                     let v = to[a.id]
-                    if left[a.id] > 0 and level[v] == none:
+                    if left[a.id] > 0 and level[v] == None:
                         level[v] = level[u]! + 1
                         queue.push(v)
         level
@@ -402,7 +446,12 @@ pub struct CostFlow<V>:
     /// cost: O(1)
     /// traps: when the flow on `a` exceeds the new capacity, or `cap` is negative
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(1), 2); g.min_cost_flow(0, 1); g.set_cap(a, Some(3)); g.min_cost_flow(0, 1) == (flow: 2, cost: 4)`
-    pub fn set_cap(mut self, a: Arc, cap: ?Int) = todo
+    pub fn set_cap(mut self, a: Arc, cap: ?Int):
+        let c = cap ?? 1 << 60
+        let f = cap0[a.id] - left[a.id]
+        assert c >= 0 and f <= c, "`set_cap(a, cap)` needs `0 <= flow(a) <= cap`"
+        cap0[a.id] = c
+        left[a.id] = c - f
 
     /// Every arc `add` returned, lazily; never a reverse arc. O(1) to make.
     ///
@@ -411,7 +460,8 @@ pub struct CostFlow<V>:
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(1), 0); let b = g.add(1, 0, Some(1), 0); g.arcs.collect() == [a, b]`
-    @get pub fn arcs(self) -> yields Arc = todo
+    @get pub fn arcs(self) -> yields Arc:
+        for k in 0..to.len / 2: yield Arc(2 * k)
 
     /// Saturates every negative-cost cycle of the residual network, so the stored flow becomes a
     /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or
@@ -503,7 +553,21 @@ pub struct CostFlow<V>:
 
     /// Potentials under which every residual arc has a nonnegative reduced cost: all zero
     /// when no residual arc is negative, else Bellman-Ford from every vertex at once.
-    fn potentials(self) -> [V]Int = todo
+    fn potentials(self) -> [V]Int:
+        var pot: [V]Int = 0
+        var changed = true
+        var rounds = 0
+        unchecked:
+            while changed:
+                changed = false
+                rounds += 1
+                assert rounds <= V.len + 1, "a negative-cost cycle has spare capacity"
+                for u in V:
+                    for a in head[u]:
+                        if left[a.id] > 0 and pot[u] + price[a.id] < pot[to[a.id]]:
+                            pot[to[a.id]] = pot[u] + price[a.id]
+                            changed = true
+        pot
 
 /// A maximum-weight closure (project selection): the set `take` of vertices with the largest
 /// total `profit` such that an arc `u -> v` of `before` means taking `v` forces taking `u`
@@ -1427,7 +1491,7 @@ fn bounded_flows_match_brute_force():
         let st = [x for x in all_bounded_flows(arcs, s, t) if x.0 >= 0]
         let (big, small) = (max_bounded_flow(arcs, s, t), min_bounded_flow(arcs, s, t))
         assert (big == None) == st.is_empty and (small == None) == st.is_empty
-        if big == none: continue
+        if big == None: continue
         feasible += 1
         assert big!.value == max(x.0 for x in st) and small!.value == min(x.0 for x in st)
         assert st.contains((big!.value, [x for x in big!.flow]))
