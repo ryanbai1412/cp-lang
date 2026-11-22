@@ -2847,7 +2847,7 @@ impl<'a> Lowerer<'a> {
             "Slice" => match arg(self, 0) {
                 Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => Ty::ListView(e),
                 Ty::Str | Ty::StrView => Ty::StrView,
-                Ty::Array { elem, .. } => Ty::ListView(elem),
+                Ty::Array { elem, .. } => Ty::List(elem),
                 other => other,
             },
             "Opt" => Ty::opt(arg(self, 0)),
