@@ -71,8 +71,10 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 - So a pattern needs no lookup to read: a capitalized name is a variant
   or constant, a lowercase name binds. `match h: Big => ...` tests the
   variant; `match h: big => ...` binds `big`. (R01.3.3)
-- In an expression, `Name<` opens type arguments only when `Name` is
-  capitalized and what follows parses as type arguments closed by `>`.
+- In an expression, `Name<` opens type arguments when `Name` is
+  capitalized and what follows parses as type arguments closed by `>`,
+  and `name<` (lowercase) when the closing `>` is immediately followed by
+  `(`, as in `s.parse<Mod<P>>()`.
   So `a < b` is a comparison and `SegTree<0..=4e9>(+, a)` needs no
   turbofish. A lowercase generic function takes its type arguments from
   the expected type, or explicitly as `read<[n]Int>()`. (R01.3.4)
@@ -172,7 +174,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 - Operands and arguments evaluate left to right. Assignment evaluates
   the right side first, then the place (chapter 5). (R01.5.4)
 - `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also
-  operation values (`xs.fold(or)`, `SegTree(max, a)`; `lib/ops-ranges.md`). (R01.5.5)
+  operation values (`xs.fold(or)`, `SegTree(max, a)`; `lib/ops-ranges.md`).
+  `add` is the prelude name of `+` as a value: the same value, so `act: +`
+  and `act: add` are one argument. (R01.5.5)
 
 ## 1.6 Statements
 
@@ -292,7 +296,10 @@ function body and use its runtime domains (decision 136). (R01.9.1)
 
 EBNF over the token stream. `NL` ends a logical line; `INDENT` and
 `DEDENT` come from layout. `block := ':' (simple_stmts NL | NL INDENT
-stmt+ DEDENT)`.
+stmt+ DEDENT)`. On one line, `if c: s1 else: s2` (and `elif`) with simple
+statements is an `if_stmt`: the `NL` before `else` is optional when the
+whole statement fits on one line. In a type position, `[D]` is followed by
+a type, so `[V]-1e9..=1e9` is a range type whose ends may be signed.
 
 ```ebnf
 file        := (directive | item)*
@@ -348,6 +355,7 @@ compound    := if_stmt | for_stmt | while_stmt | match_stmt | with_stmt
              | unchecked | decorator* fn_decl
 if_stmt     := 'if' cond block ('elif' cond block)* ('else' block)?
 cond        := 'let' pattern '=' expr (',' cond)* | expr (',' cond)*
+             | place ('min=' | 'max=') expr      // true when improved (R01.6.4)
 for_stmt    := (LABEL ':')? 'for' clause (',' clause)* block ('else' block)?
 clause      := pattern 'in' expr ('if' expr)?
 while_stmt  := (LABEL ':')? 'while' cond block ('else' block)?

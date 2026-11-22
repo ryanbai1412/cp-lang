@@ -45,7 +45,9 @@ built-in list. Rules:
   so a library never depends on what a program happened to import. (R11.3.1)
 - The prelude is the vocabulary of the `lib/` chapters, by rule rather
   than by request (decision 150): every pub type and free function in a
-  chapter's main tables is in it, and nothing else is. Adding an API to a
+  chapter's main tables is in it, and nothing else is.
+  `std/prelude.cp` is the authoritative list; `scripts/spec-stub.py`
+  checks it against the tables. Adding an API to a
   chapter's table adds it to the prelude; a helper the tables don't list
   needs a `use`. There is no name budget: the cost of a prelude name is a
   collision, not a count. (R11.3.2)

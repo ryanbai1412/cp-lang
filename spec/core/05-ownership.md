@@ -112,7 +112,9 @@ print(k + j)                // fine
 
 `let b = a` where `a` is used again is the error above, never a silent
 copy (decision 128). Moving out of a place that stays alive, such as an
-element, is `xs[i].take()`, which leaves the type's default behind.
+element, is `xs[i].take()`, which exists only where the type has an empty
+value to leave behind: `None` in a `?T`, the empty `List`, `Str`, map or
+set. For anything else, `xs[i].replace(x)` returns the old value.
 
 ## 3. Bindings and places
 
@@ -804,7 +806,7 @@ both(mut p.left, mut p.left)
 ```python
 var depth: [V]Int = 0
 fn visit(v: V, from: ?V):
-    for (to: u) in g[v]:
+    for (to: u, ..) in g[v]:
         if u != from:
             depth[u] = depth[v] + 1
             visit(u, v)
