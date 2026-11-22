@@ -81,6 +81,10 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
 /// case), or `none` if malformed or out of `Int` range. `"ff".parse_int(base: 16) == some(255)`.
 pub fn parse_int(self: Str, base: Int = 10) -> ?Int = todo
 
+/// O(|self|). `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `none` if a
+/// token is malformed, out of `T`'s range, or left over: `"-12".parse<Mod<7>>() == some(2)`.
+pub fn parse<T: Read>(self: Str) -> ?T = todo
+
 /// O(n). `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`.
 /// Keyed by `s.keys`, so `z_function(s[l..])[i]` takes `i` from the slice (2b).
 /// Works on any `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion. O(n).

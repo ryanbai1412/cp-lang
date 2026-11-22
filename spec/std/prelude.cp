@@ -83,7 +83,9 @@ use std.seq.{
     windows,
     zip,
 }
+use std.poly.{eval}
 use std.sparse.{SparseTable}
+use std.subset.{Subset}
 use std.strings.{
     RollingHash,
     SuffixArray,

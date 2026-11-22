@@ -181,8 +181,6 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
 /// each position (`xs.lis_ends().max()` is the LIS length; `xs.lis()` in `std.seq` gives one).
 pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int = todo
 
-/// O(2^popcount(m)). Every submask of `m`, from `m` down to 0.
-pub fn submasks(m: Int) -> yields Int = todo
 
 /// O(2^(bits - popcount(m))). Every mask of `bits` bits containing `m`,
 /// from `m` up.

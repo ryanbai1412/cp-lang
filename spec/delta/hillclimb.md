@@ -43,6 +43,13 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- noip09p4: `Subset<B>` (lib/search-dp.md's `B.subsets`) had prose but no stub; `std.subset` now
+  declares it (one word, set algebra, `items`, `subsets`, `supersets`) and the prelude imports
+  it. The duplicate `submasks` in `std.dp` is gone (`std.math` keeps the raw-`Int` one).
+- noip14p6: `Str.parse<T>()` reads any `Read` type from a string by `read`'s rules, and a
+  `Mod<P>` token is any-length decimal reduced mod `P` (core 10.2). Polynomial `eval` is one
+  method over any ring, `coef.eval(x)`, in the prelude.
+- yac6p3: no change; `Wire` plus `print`/`read` was enough.
 - noi14p5: chapter 5's exercise named `a.swap(i, j)`; the stub is `swap_at`, so the doc now says
   `a.swap_at(i, j)` (the free `swap` keeps its two-place meaning).
 - noi09p4: `max_closure` joins the prelude.

@@ -33,8 +33,9 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> = todo
 /// Requires `n >= 0`. O(n log n + log^2 P).
 pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> = todo
 
-/// Evaluates `a(x)` via Horner's method. O(a.len).
-pub fn eval<P>(a: List<Mod<P>>, x: Mod<P>) -> Mod<P> = todo
+/// `self(x)` by Horner's rule, over any ring (`Mod<P>`, `Int`, `F64`, `Mat`): `coef.eval(x)`
+/// with `coef[k]` the coefficient of `x^k`. O(self.len).
+pub fn eval<S: Indexed, T>(self: S, x: T) -> T = todo
 
 fn trim_poly<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 

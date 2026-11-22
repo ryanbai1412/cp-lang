@@ -16,13 +16,19 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noip14p6/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_8/noip14p6.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "math",
+  "hashing"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Str.parse<Mod<P>>() under two primes; coef.eval(x)"
 }
