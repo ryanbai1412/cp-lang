@@ -15,10 +15,10 @@ domain I = read(1..=2e5)
 struct Span(lo: I.bounds, hi: I.bounds)  // leftmost and rightmost cut of one parity
 
 fn hull(x: ?Span, y: ?Span) -> ?Span:
-    if let a = x, let b = y: Span(min(a.lo, b.lo), max(a.hi, b.hi)) else: x ?? y
+    if let a = x and let b = y: Span(min(a.lo, b.lo), max(a.hi, b.hi)) else: x ?? y
 
 fn wide(left: ?Span, right: ?Span) -> Bool:
-    if let l = left, let r = right: r.hi.ord - l.lo.ord > 1 else: false
+    if let l = left and let r = right: r.hi.ord - l.lo.ord > 1 else: false
 
 // The extreme cuts of each parity on one side of a gap.
 struct Ends(even: ?Span, odd: ?Span):
@@ -41,7 +41,7 @@ fn feasible(v: Int) -> Bool:
         var ends = if b.odd: Ends(none, here) else: Ends(here, none)
         let next = cuts.get(t + 1).filter(x => x.class == b.class)
         let top = next.map(x => peak.fold(b.at..x.at))
-        while let s = stk.last, (top ?? s.top) >= s.top:
+        while let s = stk.last and (top ?? s.top) >= s.top:
             let (m, left) = stk.pop()!
             if m & v == v and left.reaches(ends):
                 return true
