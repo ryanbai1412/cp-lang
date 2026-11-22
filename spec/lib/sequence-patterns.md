@@ -118,7 +118,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool)
 | `Window(op)` | fold queue | `w.all <= k` |
 | `Counter<K>` | count up / down; `.distinct` kept | `c.distinct <= k` |
 | `Bag<T>` (sorted multiset) | insert / erase one | `b.max! - b.min! <= d` |
-| `track(add:, remove:)` | your two closures | your own predicate |
+| `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
 | `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied O(log n) times amortized | `u => not u.state.consistent` |
 
 ```python
@@ -136,7 +136,10 @@ let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
   with `state: Track<T>` replaces `add:`/`remove:` closures; Mo pushes and
   pops at both ends, so it needs a state whose answer ignores order
   (`Counter`, `Bag`), and `Window(op)` there needs `Commutative`.
-  `track(add:, remove:)` keeps the closure form one call away.
+  `track(s, add:, remove:)` keeps the closure form one call away.
+- **Results are keyed by the right end.** `maximal` and `minimal` return
+  `[D]Slice` (`[D]?Slice`), like the ring forms, so "the group ending at
+  `i`" is `g[i]` and the starts are `g.map(p => p.first!)`.
 - **The moving window over positions** (`Window<D>(enter, leave)` today,
   for divide-and-conquer DP costs) becomes `Sweep(state)` with
   `s.move(to: r)`, again over a `Track`. This frees the name `Window` for
@@ -256,7 +259,7 @@ from the front.
 | `diffs`, `adjacent_diff`, `with_next` | `a.pairs.map(...)`, `Diff` (round 5), `a.with_prev` |
 | `record_highs` | `a.scan(max)` and a filter |
 | `chunk_by`, `run_ranges` (already gone) | `runs` |
-| `mo(add:, remove:)` | `mo(queries, state, answer:)`; `track(add:, remove:)` |
+| `mo(add:, remove:)` | `mo(queries, state, answer:)`; `track(s, add:, remove:)` |
 
 ## Open
 

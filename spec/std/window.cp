@@ -32,11 +32,18 @@ pub trait Track<T>:
     fn push(mut self, x: T)
     fn pop(mut self, x: T)
 
-/// A `Track` from two closures. O(1).
-pub fn track<T>(add: T -> (), remove: T -> ()) -> Tracked<T> = todo
+/// A `Track` over any structure: `add(mut state, x)` applies an element at the back and
+/// `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`. The same shape
+/// as `undoing`, for structures that can remove directly. O(1).
+pub fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T> = todo
 
-/// A `Track` built from closures.
-pub struct Tracked<T>(add: T -> (), remove: T -> ())
+/// A `Track` built from a structure and two closures.
+pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
+    pub fn push(mut self, x: T) = todo
+    pub fn pop(mut self, x: T) = todo
+
+    /// The structure with exactly the window's elements applied. O(1).
+    pub @get fn state(self) -> S = todo
 
 /// A structure that can return to an earlier state, newest change first: `Dsu`, `ParityDsu`,
 /// `WeightedDsu`, `DsuWith`, `RollbackArray`, and any user struct with these two methods.

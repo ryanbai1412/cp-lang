@@ -82,6 +82,11 @@ pub struct Rooted<V, Pre>:
     /// O(1). The parent of `v`; `none` at the root.
     pub fn parent(self, v: V) -> ?V = todo
 
+    /// O(1). The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost`
+    /// on a tree read with a `cost` field); `none` at a root. Edge data stays on the arcs, so no
+    /// `[V]` side array is built from the edge list.
+    pub fn up_arc<A>(self, v: V) -> ?A = todo
+
     /// O(n). Reorder a vertex-indexed array `[V]T` into preorder `[t.Pre]T` (`out[t.pos(v)] ==
     /// a[v]`).
     pub fn reorder<T>(self, a: [V]T) -> [Pre]T = todo

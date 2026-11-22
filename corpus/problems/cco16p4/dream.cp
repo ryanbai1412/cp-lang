@@ -1,13 +1,14 @@
 // cco16p4: two n x n red/white patterns are equivalent when toggles of 2x2 blocks turn one into
-// the other. Sweeping the top-left (n-1)^2 cells to white leaves a canonical last row and column;
-// count pairs with the same canonical form.
+// the other. Sweeping every cell off the last row and column to white leaves a canonical last
+// row and column; count pairs with the same canonical form.
 let (n, q) = read<(2..=10, 1..=100_000)>()
+domain N = 1..=n
 fn canon() -> Int:
-    var g: [n, n]Bool = read<[n, n]Char>().map(c => c == 'R').collect()
-    for i in 0..n - 1:
-        for j in 0..n - 1:
+    var g: [N, N]Bool = read<[N, N]Char>().map(c => c == 'R')
+    for i in ..N.last!:
+        for j in ..N.last!:
             if g[i, j]:
-                for (di, dj) in [(0, 0), (0, 1), (1, 0), (1, 1)]:
-                    g[i + di, j + dj] ^= true
-    chain(g[.., n - 1], g[n - 1, ..]).fold((m, b) => m * 2 + b.int, 0)
+                for (a, b) in [(i, j), (i, j.next!), (i.next!, j), (i.next!, j.next!)]:
+                    g[a, b] ^= true
+    chain(g[.., N.last!], g[N.last!, ..]).fold((m, b) => m * 2 + b.int, 0)
 print([canon() for _ in 0..q].tally().values.map(c => c * (c - 1) / 2).sum())

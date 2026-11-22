@@ -659,10 +659,11 @@ pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
 
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
 /// `state: Track`. `ok` must be monotone under shrinking. O(n) amortized.
-pub fn maximal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields Slice<S> = todo
+pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool) -> [D]Slice<[D]T> = todo
 
-/// For each right end, the shortest piece ending there that is `ok`, or none. O(n) amortized.
-pub fn minimal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields ?Slice<S> = todo
+/// For each right end, the shortest piece ending there that is `ok`, or none, keyed by that
+/// end like the ring forms. O(n) amortized.
+pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool) -> [D]?Slice<[D]T> = todo
 
 /// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
 /// element is still a position of `a`. Replaces doubling the array.

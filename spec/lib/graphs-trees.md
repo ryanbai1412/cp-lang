@@ -220,6 +220,7 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 | Form | Meaning | Cost |
 |---|---|---|
 | `t.parent(v)` | `?V` | O(1) |
+| `t.up_arc(v)` | `?A`: the arc `v` was entered by, with its fields (`t.up_arc(v)!.cost`) | O(1) |
 | `t.children(v)` | `Indexed` view of `v`'s children (stored contiguously) | O(1) |
 | `t.depth(v)`, `t.size(v)` | edges from the root; vertices in the subtree | O(1) |
 | `t.order` | every vertex, parents before children (BFS order); `.rev` is children first | O(1) |

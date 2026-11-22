@@ -6,19 +6,17 @@ let (n, heads, k) = read<(1..=300, 2..=300, 1..=300)>()
 domain F = 1..=n
 let branches = read<[n - 1](a: F, b: F, cost: 0..=100_000)>()
 let t = Rooted(Graph.undirected(branches), root: F.first!)
-var up: [F]Int = 0
-for br in branches:
-    up[if t.parent(br.a) == br.b: br.a else: br.b] = br.cost
 let tropical = Semiring(min, +)
-fn clash(w: 0..2, wc: 0..2, c: F) -> Int:
-    if w == wc and (w == 1 or heads == 2): up[c] else: 0
-// eat(v)[w][x]: the cheapest for v's subtree when head w (0 small, 1 big) eats v and the big head
-// eats x of its fruits.
-fn eat(v: F) -> [0..2]List<?Int>:
-    var best: [0..2]List<?Int> = [[some(0), none], [none, some(0)]]
+enum Head: Small, Big
+fn clash(w: Head, wc: Head, c: F) -> Int:
+    if w == wc and (w == Head.Big or heads == 2): t.up_arc(c)!.cost else: 0
+// eat(v)[w][x]: the cheapest for v's subtree when head w eats v and the big head eats x of its
+// fruits.
+fn eat(v: F) -> [Head]List<?Int>:
+    var best: [Head]List<?Int> = [Head] w => if w == Head.Big: [none, some(0)] else: [some(0), none]
     for c in t.children(v):
         let sub = eat(c)
         let via = (w, wc) => convolve(best[w], sub[wc].map(x => x + clash(w, wc, c)).collect(), over: tropical, shape: Curved.Neither)
-        best = [0..2] w => zip(via(w, 0), via(w, 1)).map(((p, q)) => min(p, q)).collect()
+        best = [Head] w => zip(via(w, Head.Small), via(w, Head.Big)).map(((p, q)) => min(p, q)).collect()
     best
-print(if heads - 1 + k > n: -1 else: eat(t.root)[1][k]!)
+print(if heads - 1 + k > n: -1 else: eat(t.root)[Head.Big][k]!)

@@ -113,3 +113,11 @@ Open questions raised by dreams:
 
 - Legacy `directed_of_pairs` and friends in `std.graph` predate
   `Graph.directed`; remove.
+- coci21c2p5, cco21p5, cheerio1s3, cco16p4, btoi15p3, noip99p1, btoi17p6, noi02p3 (review):
+  raw `0..n` loops, sentinels and offset indices replaced by domains, cuts and open-ended
+  ranges (`a.r..`, `pts[p.r..]`), `g.deg`, `by: desc`, `inf`, a `Head` enum instead of `[0..2]`.
+  Forced: `track(state, add:, remove:)` now has `undoing`'s shape (closures take `mut state`,
+  `ok` reads `t.state`), so a two-pointer state can be any structure; `maximal`/`minimal` on a
+  `[D]T` return `[D]Slice` keyed by right end, like the ring forms (coci21c2p5 binary-searches
+  the starts); `Rooted.up_arc(v)` returns the arc into `v` with its fields, replacing the
+  parent-cost side array built from the edge list (noi02p3).
