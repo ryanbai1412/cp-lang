@@ -857,6 +857,7 @@ impl<'a> Checker<'a> {
                     Def::Fn {
                         ty,
                         generics: f.generics.iter().map(|g| g.text.clone()).collect(),
+                        bounds: extract_bounds(&f.bounds),
                     },
                 ));
                 out
@@ -1336,5 +1337,300 @@ pub(crate) fn own_domains(ty: &ast::Type, f: &mut dyn FnMut(&ast::Name)) {
         TypeKind::Record(fields) => fields.iter().for_each(|(_, t)| own_domains(t, f)),
         TypeKind::Named { args, .. } => args.iter().for_each(|a| own_domains(a, f)),
         _ => {}
+    }
+}
+
+/// Extracts `(param_name, [trait_names])` from AST `bounds`.
+pub(crate) fn extract_bounds(bounds: &[ast::Bound]) -> Vec<(String, Vec<String>)> {
+    bounds
+        .iter()
+        .map(|b| {
+            let traits = b.traits.iter().filter_map(type_head).collect();
+            (b.name.text.clone(), traits)
+        })
+        .collect()
+}
+
+impl<'a> Checker<'a> {
+    /// True when trait `sub` is `want` or transitively inherits from `want`.
+    pub(crate) fn trait_implies(&mut self, sub: &str, want: &str) -> bool {
+        let mut stack = vec![sub.to_string()];
+        let mut seen = Vec::new();
+        while let Some(cur) = stack.pop() {
+            if cur == want {
+                return true;
+            }
+            if seen.iter().any(|s| s == &cur) {
+                continue;
+            }
+            seen.push(cur.clone());
+            match cur.as_str() {
+                "Ord" => stack.push("Eq".into()),
+                "IndexedMut" => stack.push("Indexed".into()),
+                "Indexed" => {
+                    stack.push("Sized".into());
+                    stack.push("Bidir".into());
+                    stack.push("Keyed".into());
+                }
+                "Sized" | "Bidir" | "Keyed" => stack.push("Seq".into()),
+                _ => {}
+            }
+            if let Some(Def::Trait { supers, .. }) = self.global(&cur).as_deref() {
+                stack.extend(supers.iter().cloned());
+            }
+        }
+        false
+    }
+
+    /// True when the in-scope type parameter `param` has a bound implying `trait_name`.
+    pub(crate) fn param_has_bound(&mut self, param: &str, trait_name: &str) -> bool {
+        let traits: Vec<String> = self
+            .param_bounds
+            .iter()
+            .filter(|(p, _)| p == param)
+            .flat_map(|(_, ts)| ts.iter().cloned())
+            .collect();
+        traits.iter().any(|t| self.trait_implies(t, trait_name))
+    }
+
+    /// True when `ty` implements `trait_name`, via explicit `impl`, structural
+    /// derivation (`Eq`/`Ord`/`Hash`/`Print`), built-in sequence capability, or
+    /// type-parameter bounds.
+    pub(crate) fn implements_trait(&mut self, ty: &Ty, trait_name: &str) -> bool {
+        let mut seen = Vec::new();
+        self.implements_trait_inner(ty, trait_name, &mut seen)
+    }
+
+    fn implements_trait_inner(
+        &mut self,
+        ty: &Ty,
+        trait_name: &str,
+        seen: &mut Vec<String>,
+    ) -> bool {
+        match ty {
+            Ty::Error | Ty::Unknown => return true,
+            Ty::Param(p) => return self.param_has_bound(p, trait_name),
+            _ => {}
+        }
+        if let Ty::Named { name, .. } = ty {
+            if self
+                .global(&crate::def::impl_name(Some(trait_name), name))
+                .is_some()
+            {
+                return true;
+            }
+            let impl_traits: Vec<String> = self
+                .env
+                .impls(name)
+                .into_iter()
+                .filter_map(|(t, _)| t)
+                .collect();
+            if impl_traits
+                .iter()
+                .any(|t| t.split('<').next().unwrap_or(t) == trait_name)
+            {
+                return true;
+            }
+        }
+        match trait_name {
+            "Eq" | "Ord" | "Hash" => self.derives_structural(ty, trait_name, seen),
+            "Print" => self.derives_print(ty, false, seen),
+            "Seq" => ty.is_seq(),
+            "Sized" => ty.is_sized(),
+            "Indexed" => ty.is_indexed(),
+            "Bidir" => ty.is_bidir(),
+            "Keyed" => ty.is_keyed(),
+            "IndexedMut" => ty.is_indexed_mut(),
+            "Contains" => match ty {
+                Ty::Str | Ty::Domain(_) => true,
+                Ty::Named { name, .. } => matches!(
+                    name.as_str(),
+                    "Set"
+                        | "HashSet"
+                        | "SortedSet"
+                        | "SortedBag"
+                        | "Map"
+                        | "HashMap"
+                        | "SortedMap"
+                        | "Bitset"
+                        | "Range"
+                        | "Counter"
+                        | "Bag"
+                ),
+                _ => false,
+            },
+            "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
+            "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" => ty.is_numeric(),
+            "Target" => match ty {
+                Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
+                _ => false,
+            },
+            "Weighted" => match ty {
+                Ty::Record(fields) => fields.iter().any(|(n, _)| n == "w"),
+                _ => false,
+            },
+            _ => match ty {
+                Ty::Record(fields) => {
+                    if let Some(Def::Trait { methods, .. }) = self.global(trait_name).as_deref() {
+                        methods
+                            .iter()
+                            .filter(|m| m.required)
+                            .all(|m| fields.iter().any(|(n, _)| n == &m.name))
+                    } else {
+                        true
+                    }
+                }
+                _ => false,
+            },
+        }
+    }
+
+    fn derives_structural(
+        &mut self,
+        ty: &Ty,
+        trait_name: &str,
+        seen: &mut Vec<String>,
+    ) -> bool {
+        match ty {
+            Ty::Error | Ty::Unknown => true,
+            Ty::Param(p) => self.param_has_bound(p, trait_name),
+            Ty::Int
+            | Ty::I128
+            | Ty::U64
+            | Ty::Bool
+            | Ty::Char
+            | Ty::Str
+            | Ty::Unit
+            | Ty::Range { .. }
+            | Ty::Pos(_)
+            | Ty::Domain(_) => true,
+            Ty::Float => trait_name != "Hash",
+            Ty::Fn { .. } => false,
+            Ty::Optional(inner) => self.implements_trait_inner(inner, trait_name, seen),
+            Ty::Tuple(items) => items
+                .iter()
+                .all(|t| self.implements_trait_inner(t, trait_name, seen)),
+            Ty::Record(fields) => fields
+                .iter()
+                .all(|(_, t)| self.implements_trait_inner(t, trait_name, seen)),
+            Ty::Array { elem, .. } => self.implements_trait_inner(elem, trait_name, seen),
+            Ty::Named { name, args } => {
+                if seen.iter().any(|s| s == name) {
+                    return true;
+                }
+                if trait_name == "Ord" && matches!(name.as_str(), "HashMap" | "HashSet") {
+                    return false;
+                }
+                match self.type_def(name).as_deref().cloned() {
+                    Some(Def::Struct {
+                        generics, fields, ..
+                    }) => {
+                        seen.push(name.clone());
+                        let mut bindings = crate::ty::Bindings::new();
+                        for (g, a) in generics.iter().zip(args) {
+                            bindings.insert(g.clone(), a.clone());
+                        }
+                        let ok = fields.iter().all(|f| {
+                            let fty = f.ty.subst(&bindings);
+                            self.implements_trait_inner(&fty, trait_name, seen)
+                        });
+                        seen.pop();
+                        ok
+                    }
+                    Some(Def::Enum { variants, .. }) => {
+                        seen.push(name.clone());
+                        let ok = variants.iter().all(|(_, fs)| {
+                            fs.iter()
+                                .all(|fty| self.implements_trait_inner(fty, trait_name, seen))
+                        });
+                        seen.pop();
+                        ok
+                    }
+                    _ => args
+                        .iter()
+                        .all(|a| self.implements_trait_inner(a, trait_name, seen)),
+                }
+            }
+            Ty::TypeName(_) => false,
+        }
+    }
+
+    /// True when `ty` can be passed to `print(...)`.
+    /// When `allow_none` is true (`print(x, none: "...")`), `?T` is printable if `T` is.
+    pub(crate) fn implements_print(&mut self, ty: &Ty, allow_none: bool) -> bool {
+        let mut seen = Vec::new();
+        self.derives_print(ty, allow_none, &mut seen)
+    }
+
+    fn derives_print(&mut self, ty: &Ty, allow_none: bool, seen: &mut Vec<String>) -> bool {
+        match ty {
+            Ty::Error | Ty::Unknown => true,
+            Ty::Param(p) => self.param_has_bound(p, "Print"),
+            Ty::Int
+            | Ty::I128
+            | Ty::U64
+            | Ty::Float
+            | Ty::Char
+            | Ty::Str
+            | Ty::Range { .. }
+            | Ty::Pos(_)
+            | Ty::Bool
+            | Ty::Unit => true,
+            Ty::Optional(inner) => {
+                if std::env::var_os("CPL_SPEC").is_none() {
+                    return true;
+                }
+                allow_none && self.derives_print(inner, allow_none, seen)
+            }
+            Ty::Fn { .. } => false,
+            Ty::Tuple(items) => items
+                .iter()
+                .all(|t| self.derives_print(t, allow_none, seen)),
+            Ty::Record(fields) => fields
+                .iter()
+                .all(|(_, t)| self.derives_print(t, allow_none, seen)),
+            Ty::Array { elem, .. } => self.derives_print(elem, allow_none, seen),
+            Ty::Named { name, args } => {
+                if seen.iter().any(|s| s == name) {
+                    return true;
+                }
+                if name == "List" && args.len() == 1 {
+                    return self.derives_print(&args[0], allow_none, seen);
+                }
+                match self.type_def(name).as_deref().cloned() {
+                    Some(Def::Struct {
+                        generics, fields, ..
+                    }) => {
+                        seen.push(name.clone());
+                        let mut bindings = crate::ty::Bindings::new();
+                        for (g, a) in generics.iter().zip(args) {
+                            bindings.insert(g.clone(), a.clone());
+                        }
+                        let ok = fields.iter().all(|f| {
+                            let fty = f.ty.subst(&bindings);
+                            self.derives_print(&fty, allow_none, seen)
+                        });
+                        seen.pop();
+                        ok
+                    }
+                    Some(Def::Enum {
+                        variants, tagged, ..
+                    }) => {
+                        if tagged {
+                            return true;
+                        }
+                        seen.push(name.clone());
+                        let ok = variants.iter().all(|(_, fs)| {
+                            fs.iter()
+                                .all(|fty| self.derives_print(fty, allow_none, seen))
+                        });
+                        seen.pop();
+                        ok
+                    }
+                    _ => true,
+                }
+            }
+            Ty::Domain(_) | Ty::TypeName(_) => true,
+        }
     }
 }

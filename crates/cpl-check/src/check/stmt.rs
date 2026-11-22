@@ -1472,6 +1472,21 @@ impl<'a> Checker<'a> {
             return;
         };
         let trait_text = self.quote(trait_ty.span);
+        // Check supertrait requirements (R08.1.3): `impl Sub for T` requires `impl Super for T`.
+        if let ast::TypeKind::Named { name, .. } = &trait_ty.kind {
+            if let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() {
+                let target_ty = self.resolve_type(target);
+                for sup in supers {
+                    if !self.implements_trait(&target_ty, &sup) {
+                        let target_text = self.quote(target.span);
+                        let message = format!(
+                            "`impl {trait_text} for {target_text}` requires `impl {sup} for {target_text}`"
+                        );
+                        self.error(codes::MISSING_IMPL, trait_ty.span, message);
+                    }
+                }
+            }
+        }
         let defined: Vec<&ast::Name> = body
             .iter()
             .filter_map(|m| match &m.kind {
@@ -1680,8 +1695,11 @@ impl<'a> Checker<'a> {
             });
         }
         let outer = self.generics.len();
+        let outer_bounds = self.param_bounds.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
+        self.param_bounds
+            .extend(super::types::extract_bounds(&f.bounds));
         self.bounds_exist(&f.bounds);
         self.in_fn += 1;
         self.push_scope();
@@ -1820,6 +1838,7 @@ impl<'a> Checker<'a> {
         }
         self.in_fn -= 1;
         self.generics.truncate(outer);
+        self.param_bounds.truncate(outer_bounds);
     }
 }
 

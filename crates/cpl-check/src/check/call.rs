@@ -471,7 +471,7 @@ impl<'a> Checker<'a> {
             3 => "triples",
             _ => return None,
         };
-        let Some(Def::Fn { ty, generics }) = self.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
+        let Some(Def::Fn { ty, generics, .. }) = self.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
         else {
             return None;
         };
@@ -527,6 +527,40 @@ impl<'a> Checker<'a> {
             .map(|arg| self.quietly(|c| c.infer(&arg.value)))
             .collect();
         match (name.as_str(), tys.as_slice()) {
+            ("print", _) => {
+                let allow_none = args
+                    .iter()
+                    .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
+                for (arg, ty) in args.iter().zip(&tys) {
+                    if arg.name.is_none() && !self.implements_print(ty, allow_none) {
+                        let message = format!(
+                            "`{}` has type `{ty}`, which does not implement `Print`",
+                            self.quote(arg.value.span)
+                        );
+                        self.error(codes::MISSING_IMPL, arg.value.span, message);
+                    }
+                }
+                None
+            }
+            ("zip", _) => {
+                for (arg, ty) in args.iter().zip(&tys) {
+                    if arg.name.is_none() && !self.implements_trait(ty, "Indexed") {
+                        let message = format!(
+                            "`zip` requires `Indexed`, but `{}` has type `{ty}`",
+                            self.quote(arg.value.span)
+                        );
+                        self.error(codes::MISSING_IMPL, arg.value.span, message);
+                    }
+                }
+                if tys.len() >= 2 {
+                    let elems: Vec<Ty> = tys.iter().map(|t| self.element_ty(t)).collect();
+                    return Some(Ty::Named {
+                        name: "Zip".into(),
+                        args: vec![Ty::Tuple(elems)],
+                    });
+                }
+                None
+            }
             // `none` is neither skipped nor passed on by `sum` (v2.2).
             ("sum", [over]) => {
                 let elem = self.element_ty(over);
@@ -744,8 +778,34 @@ impl<'a> Checker<'a> {
                 {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" | "sorted" => {
+                "filter" => {
+                    return Some(Ty::Named {
+                        name: "Filter".into(),
+                        args: vec![elem],
+                    });
+                }
+                "sorted" => {
                     return Some(Ty::list(elem));
+                }
+                "argmax" | "argmin" if !base_ty.is_keyed() => {
+                    let message = format!(
+                        "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
+                        name.text,
+                        self.quote(base.span)
+                    );
+                    self.error(codes::MISSING_IMPL, name.span, message);
+                    return Some(Ty::Error);
+                }
+                "sort" | "reverse" | "shuffle"
+                    if !base_ty.is_indexed_mut() && !matches!(base_ty, Ty::Domain(_)) =>
+                {
+                    let message = format!(
+                        "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
+                        name.text,
+                        self.quote(base.span)
+                    );
+                    self.error(codes::MISSING_IMPL, name.span, message);
+                    return Some(Ty::Error);
                 }
                 "sort" if matches!(base_ty, Ty::Domain(_)) => {
                     return Some(Ty::list(elem));
@@ -865,6 +925,31 @@ impl<'a> Checker<'a> {
             Ty::Fn { params, ret } => {
                 let mut bindings = Bindings::new();
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
+                let callee_name = match &callee.kind {
+                    ExprKind::Name(n) => Some(n.as_str()),
+                    ExprKind::Generic { base, .. } => match &base.kind {
+                        ExprKind::Name(n) => Some(n.as_str()),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if let Some(fn_name) = callee_name {
+                    if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
+                        for (param, traits) in bounds {
+                            if let Some(bound_ty) = bindings.get(&param) {
+                                let bound_ty = self.settle(bound_ty);
+                                for trait_name in traits {
+                                    if !self.implements_trait(&bound_ty, &trait_name) {
+                                        let message = format!(
+                                            "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
+                                        );
+                                        self.error(codes::MISSING_IMPL, call.span, message);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 self.settle(&ret.subst(&bindings))
             }
             Ty::Named {

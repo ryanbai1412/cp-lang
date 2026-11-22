@@ -100,6 +100,8 @@ pub(crate) struct Checker<'a> {
     sink: Sink,
     scopes: Vec<HashMap<String, Local>>,
     generics: Vec<String>,
+    /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
+    pub(crate) param_bounds: Vec<(String, Vec<String>)>,
     hovers: Vec<HoverEntry>,
     /// The optionals a test has shown to hold a value here, by name.
     present: Vec<String>,
@@ -172,6 +174,7 @@ impl<'a> Checker<'a> {
             sink: Sink::with_poisoned(poisoned),
             scopes: vec![HashMap::new()],
             generics: Vec::new(),
+            param_bounds: Vec::new(),
             hovers: Vec::new(),
             present: Vec::new(),
             as_written: false,

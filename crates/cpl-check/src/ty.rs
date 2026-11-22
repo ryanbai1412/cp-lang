@@ -95,8 +95,14 @@ impl Ty {
             Ty::Str => Some(Ty::Char),
             Ty::Domain(d) => Some(Ty::Pos(d.clone())),
             Ty::Array { index, elem } if index.len() == 1 => Some((**elem).clone()),
+            Ty::Named { name, args } if name == "List" => {
+                Some(args.first().cloned().unwrap_or(Ty::Unknown))
+            }
             Ty::Named { name, args }
-                if matches!(name.as_str(), "List" | "Range" | "Seq" | "Iter" | "Gen") && args.len() == 1 =>
+                if matches!(
+                    name.as_str(),
+                    "Range" | "Seq" | "Iter" | "Gen" | "Filter" | "Zip"
+                ) && args.len() == 1 =>
             {
                 Some(args[0].clone())
             }
@@ -110,9 +116,37 @@ impl Ty {
         self.seq_elem().is_some()
     }
 
-    /// True when this type implements the built-in `Indexed` trait.
+    /// True when this type implements the built-in `Sized` trait (known O(1) `.len`).
+    pub fn is_sized(&self) -> bool {
+        match self {
+            Ty::Named { name, .. }
+                if matches!(name.as_str(), "Gen" | "Iter" | "Seq" | "Filter") =>
+            {
+                false
+            }
+            _ => self.seq_elem().is_some(),
+        }
+    }
+
+    /// True when this type implements the built-in `Indexed` trait (O(1) random read).
     pub fn is_indexed(&self) -> bool {
-        self.seq_elem().is_some()
+        self.is_sized()
+    }
+
+    /// True when this type implements the built-in `Bidir` trait (`.last`, `.rev`).
+    pub fn is_bidir(&self) -> bool {
+        match self {
+            Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter" | "Seq") => false,
+            _ => self.seq_elem().is_some(),
+        }
+    }
+
+    /// True when this type implements the built-in `Keyed` trait (`.items`, `.argmax`, `.argmin`).
+    pub fn is_keyed(&self) -> bool {
+        match self {
+            Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter" | "Seq") => false,
+            _ => self.seq_elem().is_some(),
+        }
     }
 
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).

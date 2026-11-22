@@ -387,7 +387,7 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             let titled = with_generics(name, generics);
             render_value(&titled, ty, lookup)
         }
-        Def::Fn { ty, generics } => fn_text(&with_generics(name, generics), ty),
+        Def::Fn { ty, generics, .. } => fn_text(&with_generics(name, generics), ty),
         Def::Struct {
             generics,
             fields,

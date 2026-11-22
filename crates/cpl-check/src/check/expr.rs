@@ -129,8 +129,15 @@ impl<'a> Checker<'a> {
                 for (op, right_expr) in rest {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
-                    if !matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        self.comparable(&left, left_expr, &right, right_expr);
+                    if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
+                        if matches!(&right, Ty::Named { name, .. } if name == "List") {
+                            let message = format!(
+                                "`in` requires `Contains`, which `{right}` does not implement"
+                            );
+                            self.error(codes::MISSING_IMPL, right_expr.span, message);
+                        }
+                    } else {
+                        self.comparable(*op, tests_none, &left, left_expr, &right, right_expr);
                     }
                     left = right;
                     left_expr = right_expr;
@@ -294,7 +301,7 @@ impl<'a> Checker<'a> {
                         ExprKind::Name(name) if self.local(name).is_none() => {
                             match self.global(name).as_deref() {
                                 Some(
-                                    Def::Value { ty, generics, .. } | Def::Fn { ty, generics },
+                                    Def::Value { ty, generics, .. } | Def::Fn { ty, generics, .. },
                                 ) if !generics.is_empty() => Some((ty.clone(), generics.clone())),
                                 _ => None,
                             }
@@ -853,6 +860,28 @@ impl<'a> Checker<'a> {
         } else {
             self.infer(lhs)
         };
+        if let Ty::Param(param) = &left {
+            let trait_name = match op {
+                BinOp::Add => Some("Add"),
+                BinOp::Sub => Some("Sub"),
+                BinOp::Mul => Some("Mul"),
+                BinOp::Div => Some("Div"),
+                BinOp::Rem => Some("Rem"),
+                BinOp::Pow => Some("Pow"),
+                _ => None,
+            };
+            if let Some(trait_name) = trait_name {
+                if !self.param_has_bound(param, trait_name) {
+                    let message = format!(
+                        "`{}` requires `{param}: {trait_name}`, which is not in the bounds",
+                        op.text()
+                    );
+                    self.error(codes::MISSING_IMPL, op_span, message);
+                    self.infer(rhs);
+                    return Ty::Error;
+                }
+            }
+        }
         let past = self.present.len();
         let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| self.call_writes(f, x));
         self.present.extend(held.into_iter().map(String::from));
@@ -1167,7 +1196,35 @@ impl<'a> Checker<'a> {
             .then(|| (trait_name, name.clone()))
     }
 
-    fn comparable(&mut self, left: &Ty, left_expr: &Expr, right: &Ty, right_expr: &Expr) {
+    fn comparable(
+        &mut self,
+        op: ast::CmpOp,
+        tests_none: bool,
+        left: &Ty,
+        left_expr: &Expr,
+        right: &Ty,
+        right_expr: &Expr,
+    ) {
+        if !tests_none
+            && !left.is_vague()
+            && !right.is_vague()
+            && !matches!(left, Ty::Param(_) | Ty::TypeName(_))
+        {
+            let req = match op {
+                ast::CmpOp::Eq | ast::CmpOp::Ne => Some("Eq"),
+                ast::CmpOp::Lt | ast::CmpOp::Le | ast::CmpOp::Gt | ast::CmpOp::Ge => Some("Ord"),
+                _ => None,
+            };
+            if let Some(trait_name) = req {
+                if !self.implements_trait(left, trait_name) {
+                    let message = format!(
+                        "`{left}` does not implement `{trait_name}`"
+                    );
+                    self.error(codes::MISSING_IMPL, left_expr.span, message);
+                    return;
+                }
+            }
+        }
         let (Ty::Pos(a), Ty::Pos(b)) = (left, right) else {
             return;
         };
@@ -1507,8 +1564,33 @@ impl<'a> Checker<'a> {
         }
         if let Some(elem) = base_ty.seq_elem() {
             match name.text.as_str() {
-                "len" => return Ty::Int,
+                "len" => {
+                    if !base_ty.is_sized() {
+                        let message = format!(
+                            "`.len` requires `Sized`, which `{base_ty}` does not implement"
+                        );
+                        self.error(codes::MISSING_IMPL, name.span, message);
+                        return Ty::Error;
+                    }
+                    return Ty::Int;
+                }
                 "is_empty" => return Ty::Bool,
+                "last" | "rev" if !base_ty.is_bidir() => {
+                    let message = format!(
+                        "`.{}` requires `Bidir`, which `{base_ty}` does not implement",
+                        name.text
+                    );
+                    self.error(codes::MISSING_IMPL, name.span, message);
+                    return Ty::Error;
+                }
+                "items" | "keys" if !base_ty.is_keyed() => {
+                    let message = format!(
+                        "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
+                        name.text
+                    );
+                    self.error(codes::MISSING_IMPL, name.span, message);
+                    return Ty::Error;
+                }
                 "first" | "last" if base_ty == Ty::Str => {
                     return Ty::Optional(Box::new(elem));
                 }
@@ -2493,6 +2575,22 @@ impl<'a> Checker<'a> {
                 ty.clone()
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
+            Ty::Named { name, .. } if name == "Filter" => {
+                let message = format!(
+                    "`{}` has type `{base_ty}`, which is not indexed",
+                    self.quote(base.span)
+                );
+                self.error(codes::NOT_INDEXABLE, expr.span, message);
+                Ty::Error
+            }
+            Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter") => {
+                let message = format!(
+                    "`{}` has type `{base_ty}`, which does not implement `Indexed`",
+                    self.quote(base.span)
+                );
+                self.error(codes::MISSING_IMPL, expr.span, message);
+                Ty::Error
+            }
             Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
