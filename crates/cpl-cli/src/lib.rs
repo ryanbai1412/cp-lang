@@ -1829,24 +1829,6 @@ pub fn lsp() -> u8 {
     }
 }
 
-fn json_escape(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     match rest {
         ["--json"] => {
@@ -1860,14 +1842,14 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
                 let _ = write!(
                     stdout,
                     "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":{},\"input\":{},\"lint_name\":null}}",
-                    json_escape(info.code.0),
-                    json_escape(info.title),
-                    json_escape(info.summary),
-                    json_escape(info.explanation),
-                    json_escape(info.trigger),
-                    json_escape(info.fix),
-                    json_escape(info.mode),
-                    json_escape(info.input),
+                    cpl_json::escape_string(info.code.0),
+                    cpl_json::escape_string(info.title),
+                    cpl_json::escape_string(info.summary),
+                    cpl_json::escape_string(info.explanation),
+                    cpl_json::escape_string(info.trigger),
+                    cpl_json::escape_string(info.fix),
+                    cpl_json::escape_string(info.mode),
+                    cpl_json::escape_string(info.input),
                 );
             }
             for lint in cpl_lint::LINTS {
@@ -1878,13 +1860,13 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
                 let _ = write!(
                     stdout,
                     "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":\"lint\",\"lint_name\":{}}}",
-                    json_escape(lint.code.0),
-                    json_escape(lint.title),
-                    json_escape(lint.summary),
-                    json_escape(lint.explanation),
-                    json_escape(lint.trigger),
-                    json_escape(lint.fix),
-                    json_escape(lint.name),
+                    cpl_json::escape_string(lint.code.0),
+                    cpl_json::escape_string(lint.title),
+                    cpl_json::escape_string(lint.summary),
+                    cpl_json::escape_string(lint.explanation),
+                    cpl_json::escape_string(lint.trigger),
+                    cpl_json::escape_string(lint.fix),
+                    cpl_json::escape_string(lint.name),
                 );
             }
             let _ = writeln!(stdout, "\n]");
@@ -1960,9 +1942,9 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
             let _ = writeln!(
                 stdout,
                 "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}{comma}",
-                json_escape(&entry.site),
-                json_escape(kind),
-                json_escape(&detail),
+                cpl_json::escape_string(&entry.site),
+                cpl_json::escape_string(kind),
+                cpl_json::escape_string(&detail),
             );
         }
         for (i, site) in dropped.iter().enumerate() {
@@ -1970,8 +1952,8 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
             let _ = writeln!(
                 stdout,
                 "  {{\"site\":{},\"lowering\":\"dropped_field\",\"detail\":{}}}{comma}",
-                json_escape(site),
-                json_escape(DROPPED),
+                cpl_json::escape_string(site),
+                cpl_json::escape_string(DROPPED),
             );
         }
         let _ = writeln!(stdout, "]");

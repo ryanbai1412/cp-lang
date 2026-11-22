@@ -271,7 +271,7 @@ impl Playground {
             Ok(result) => result.to_json(),
             Err(error) => format!(
                 "{{\"status\":\"error\",\"error\":{}}}\n",
-                cpl_stress::cli::json_string(&error.0)
+                cpl_json::escape_string(&error.0)
             ),
         }
     }

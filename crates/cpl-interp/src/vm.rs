@@ -11975,16 +11975,16 @@ impl VmStats {
                 if i > 0 {
                     s.push(',');
                 }
-                let escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
-                s.push_str(&format!("[\"{escaped}\",{v}]"));
+                let escaped = cpl_json::escape_string(k);
+                s.push_str(&format!("[{escaped},{v}]"));
             }
             s.push_str("],\"loop_top\":[");
             for (i, (k, v)) in loop_entries.iter().take(20).enumerate() {
                 if i > 0 {
                     s.push(',');
                 }
-                let escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
-                s.push_str(&format!("[\"{escaped}\",{v}]"));
+                let escaped = cpl_json::escape_string(k);
+                s.push_str(&format!("[{escaped},{v}]"));
             }
             s.push_str("]}");
             eprintln!("{s}");

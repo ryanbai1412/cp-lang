@@ -109,7 +109,7 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
             }
             "/trace.json" => ("application/json", shown.document.clone()),
             "/live" => {
-                let error = shown.error.as_deref().map_or("null".to_string(), crate::trace::json_string);
+                let error = shown.error.as_deref().map_or("null".to_string(), cpl_json::escape_script_safe_string);
                 ("application/json", format!("{{\"version\":{},\"error\":{error}}}", shown.version))
             }
             _ => ("text/plain", String::new()),
@@ -130,7 +130,7 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
 /// or `{"error": ...}`.
 fn replay(run: &Run, body: &str) -> String {
     use crate::dap::Json;
-    let error = |message: &str| format!("{{\"error\":{}}}", crate::trace::json_string(message.trim_end()));
+    let error = |message: &str| format!("{{\"error\":{}}}", cpl_json::escape_script_safe_string(message.trim_end()));
     let Ok(request) = cpl_json::parse(body) else { return error("the replay request is not JSON") };
     let (Some(original), Some(step)) = (
         request.get("original").and_then(Json::as_str),

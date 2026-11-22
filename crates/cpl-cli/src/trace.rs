@@ -142,11 +142,6 @@ pub fn against_brute(path: &Path, input: &str, explain: bool) -> Result<cpl_stre
     })
 }
 
-/// `text` as a JSON string.
-pub fn json_string(text: &str) -> String {
-    cpl_json::escape_script_safe_string(text)
-}
-
 /// What `cpl run --format json` prints: the editor's inline values.
 pub fn run_report(
     recording: &Recording,
@@ -161,18 +156,18 @@ pub fn run_report(
             format!(
                 "{{\"line\":{},\"name\":{},\"value\":{}}}",
                 live.line,
-                json_string(&live.name),
-                json_string(&live.value)
+                cpl_json::escape_script_safe_string(&live.name),
+                cpl_json::escape_script_safe_string(&live.value)
             )
         })
         .collect();
     let mut out = format!(
         "{{\"values\":[{}],\"stdout\":{},\"time_ms\":{millis}",
         values.join(","),
-        json_string(&String::from_utf8_lossy(stdout))
+        cpl_json::escape_script_safe_string(&String::from_utf8_lossy(stdout))
     );
     if let Some((line, message)) = error {
-        out += &format!(",\"error\":{{\"line\":{line},\"message\":{}}}", json_string(message));
+        out += &format!(",\"error\":{{\"line\":{line},\"message\":{}}}", cpl_json::escape_script_safe_string(message));
     }
     out.push_str("}\n");
     out

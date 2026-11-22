@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use cpl_stress::cli::json_string;
+use cpl_json::escape_string as json_string;
 
 use crate::zero_cost::emit_cpp;
 

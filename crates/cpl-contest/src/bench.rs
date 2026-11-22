@@ -9,7 +9,7 @@
 use cpl_stress::args::Args;
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
-use cpl_stress::cli::json_string;
+use cpl_json::escape_string as json_string;
 use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value};
 use std::io::Write;
 use std::time::Duration;

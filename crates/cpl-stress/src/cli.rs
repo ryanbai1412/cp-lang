@@ -284,9 +284,7 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
     Ok(program)
 }
 
-pub fn json_string(text: &str) -> String {
-    cpl_json::escape_string(text)
-}
+use cpl_json::escape_string as json_string;
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
 pub fn report_json(

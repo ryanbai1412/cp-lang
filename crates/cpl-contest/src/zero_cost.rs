@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use cpl_stress::cli::json_string;
+use cpl_json::escape_string as json_string;
 
 pub const DEFAULT_DIR: &str = "bench/zero-cost";
 pub const DEFAULT_REPS: usize = 5;
