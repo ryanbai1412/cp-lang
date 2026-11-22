@@ -74,7 +74,7 @@ struct Pair<A, B = Int>: a: A, b: B
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
   types are types and may be arguments. (R08.2.4)
-- Type-parameter defaults fill omitted trailing arguments. (R08.2.5)
+- Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static call, `SegTree<V, Int>.of(max, f)` or `Box<Int>.empty()`, fix those parameters before inference, with the defaults filling the rest, so they decide the result type as they do on a constructor. (R08.2.5)
 - **Trait aliases** name a bundle of bounds:
   `trait WeightedNext<V, W> = Next<V> where Arc: Target<V> + Weighted<W>`. (R08.2.6)
 - **Associated types** are reached through the implementing type or a

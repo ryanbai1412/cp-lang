@@ -190,7 +190,12 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   share a type: `let n, m: 1..=2e5 = read()`; `var a, b: Int = 0` fills
   each with the value. (R01.6.1)
 - `let p = e else: block` binds or runs the block, which must leave
-  (`return`, `break`, `continue` or a trap). (R01.6.2)
+  (`return`, `break`, `continue` or a trap); a block that can fall
+  through is E0112. `p` is any pattern, refutable or not: on a `?T` a
+  bare name binds the payload, so `let y = x else:` and
+  `let Some(y) = x else:` are the same. The bindings are in scope after
+  the statement, unwrapped, at top level as in a `fn` or loop body, and
+  not inside the block (E0201). (R01.6.2)
 - `var` inside a pattern makes that one binding mutable:
   `for (var left, v) in items:`. (R01.6.3)
 - Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound

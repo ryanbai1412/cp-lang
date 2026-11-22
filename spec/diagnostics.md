@@ -30,6 +30,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0101-E0109 | parser structure | unclosed, expected expression/token/block/type/pattern/name, unmatched closer |
 | E0110 | unparenthesized_coalesce | `a ?? b + c` needs parentheses |
 | E0111 | mixed_comparison_chain | `a < b > c` or a chain with `==`; split it with `and` |
+| E0112 | else_falls_through *(0.3)* | the `else` block of `let p = e else:` can reach its end; end it with `return`, `break`, `continue` or a trap (R01.6.2) |
 | E0201 | unresolved_name | with the nearest names and a `use` fix for stdlib names |
 | E0202 | duplicate_definition | |
 | E0203 | unknown_field | |

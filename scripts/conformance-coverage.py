@@ -27,6 +27,10 @@ NEGATIVE_WORDS = re.compile(
 )
 
 
+def rule_key(rid):
+    return [(int(p), "") if p.isdigit() else (int(p[:2]), p[2:]) for p in rid.split(".")]
+
+
 def rule_texts():
     rules = {}
     for path in sorted((SPEC / "core").glob("*.md")):
@@ -131,7 +135,31 @@ def mentions(label, name, corpus):
     return re.search(rf"\.{re.escape(name)}(?![\w])", corpus) is not None
 
 
-def spec_blocks(all_cases):
+def fnv_id(text):
+    h = 0xCBF29CE484222325
+    for b in text.encode():
+        h = ((h ^ b) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:012x}"[:10]
+
+
+def marker_above(lines, i):
+    """The `<!-- kind: text -->` comment right above line i, as (kind, text)."""
+    if i == 0:
+        return None, None
+    end = i - 1
+    if not lines[end].strip().endswith("-->"):
+        return None, None
+    start = end
+    while start >= 0 and "<!--" not in lines[start]:
+        start -= 1
+    if start < 0:
+        return None, None
+    body = " ".join(l.strip() for l in lines[start : end + 1])
+    m = re.match(r"<!--\s*(spec-only|given):\s*(.*?)\s*-->$", body)
+    return (m.group(1), m.group(2)) if m else (None, None)
+
+
+def spec_blocks(all_cases, block_status=None):
     def norm(line):
         if line.lstrip().startswith("///"):
             return ""
@@ -148,9 +176,13 @@ def spec_blocks(all_cases):
                 while j < len(lines) and not lines[j].startswith("```"):
                     j += 1
                 body = [b for b in (norm(x) for x in lines[i + 1 : j]) if b]
-                m = re.match(r"<!-- spec-only: (.+) -->$", lines[i - 1].strip()) if i else None
+                kind, reason = marker_above(lines, i)
                 hit = next((cid for cid, s in sets if body and all(b in s for b in body)), None)
-                out.append((path.name, i + 1, hit, m.group(1) if m else None, body[0] if body else ""))
+                code = "\n".join(lines[i + 1 : j]) + "\n"
+                bid = f"core/{path.name}#{fnv_id(code)}"
+                if not hit and (block_status or {}).get(bid) == "pass":
+                    hit = f"spec-blocks {bid}"
+                out.append((path.name, i + 1, hit, reason if kind == "spec-only" else None, body[0] if body else ""))
                 i = j
             i += 1
     return out
@@ -171,6 +203,18 @@ def main():
         by_chapter[rid.split(".")[0]].append(rid)
     home = {ch: max({rules[r][0] for r in rids}, key=lambda f: sum(rules[r][0] == f for r in rids))
             for ch, rids in by_chapter.items()}
+
+    def forbids(rid):
+        return bool(NEGATIVE_WORDS.search(rules[rid][2]))
+
+    def gap(rid):
+        if not pos[rid]:
+            return "no accept case"
+        if forbids(rid) and not neg[rid]:
+            return "no reject case"
+        return None
+
+    gaps = {rid: g for rid in rules if (g := gap(rid))}
 
     out = []
     w = out.append
@@ -199,6 +243,30 @@ def main():
             f"- R{ch} ({home[ch]}): {len(rids)} rules, {len(chapter_cases)} cases; "
             f"{len(none_)} uncovered, {len(happy)} happy-path only, {len(nopos)} negative only"
         )
+    w("")
+    w("## Accept and reject coverage per chapter")
+    w("")
+    w("Accept: rules with a positive case. Reject: rules whose text forbids,")
+    w("traps or limits something (the reject column's denominator) with a")
+    w("negative case. Complete: rules with no gap in `rule-gaps.txt`.")
+    w("")
+    w("| Chapter | Rules | Accept | Forbidding | Reject | Complete |")
+    w("|---|---|---|---|---|---|")
+    tot = [0, 0, 0, 0, 0]
+    for ch in sorted(by_chapter):
+        rids = by_chapter[ch]
+        row = [
+            len(rids),
+            sum(1 for r in rids if pos[r]),
+            sum(1 for r in rids if forbids(r)),
+            sum(1 for r in rids if forbids(r) and neg[r]),
+            sum(1 for r in rids if r not in gaps),
+        ]
+        tot = [a + b for a, b in zip(tot, row)]
+        n, a, f, rj, c = row
+        w(f"| R{ch} | {n} | {a} ({100 * a // n}%) | {f} | {rj} ({100 * rj // max(f, 1)}%) | {c} ({100 * c // n}%) |")
+    n, a, f, rj, c = tot
+    w(f"| all | {n} | {a} ({100 * a // n}%) | {f} | {rj} ({100 * rj // max(f, 1)}%) | {c} ({100 * c // n}%) |")
     w("")
     w("## Rules")
     w("")
@@ -247,22 +315,25 @@ def main():
     w("## Spec code blocks")
     w("")
     w("Every fenced block in `spec/core`. A block is covered when one case")
-    w("holds all its code lines (comments aside), and spec-only when the")
-    w("line above its fence is `<!-- spec-only: reason -->`.")
+    w("holds all its code lines (comments aside) or the `spec-blocks` suite")
+    w("checks it, and spec-only when the line above its fence is")
+    w("`<!-- spec-only: reason -->`. A `<!-- given: code -->` comment there")
+    w("holds the declarations the block takes from the prose; `spec-blocks`")
+    w("prepends it.")
     w("")
-    blocks = spec_blocks(all_cases)
-    gaps = 0
+    blocks = spec_blocks(all_cases, scoreboard["suites"].get("spec-blocks", {}).get("cases", {}))
+    block_gaps = 0
     for name in sorted({b[0] for b in blocks}):
         mine = [b for b in blocks if b[0] == name]
         covered = sum(1 for b in mine if b[2])
         only = sum(1 for b in mine if not b[2] and b[3])
         missing = [b for b in mine if not b[2] and not b[3]]
-        gaps += len(missing)
+        block_gaps += len(missing)
         w(f"- {name}: {len(mine)} blocks, {covered} with a case, {only} spec-only, {len(missing)} neither")
         for b in missing:
             w(f"  - line {b[1]}: `{b[4][:60]}`")
     w("")
-    w(f"{gaps} of {len(blocks)} blocks have neither a case nor a spec-only reason.")
+    w(f"{block_gaps} of {len(blocks)} blocks have neither a case nor a spec-only reason.")
     w("")
     w("## Standard library")
     w("")
@@ -293,13 +364,32 @@ def main():
             w(f"- {u}")
     text = "\n".join(out) + "\n"
     target = CONF / "COVERAGE.md"
+    gaps_file = CONF / "rule-gaps.txt"
+    baseline = set()
+    if gaps_file.exists():
+        baseline = {l.split()[0] for l in gaps_file.read_text().split("\n") if l and not l.startswith("#")}
+    new = sorted(r for r in gaps if f"R{r}" not in baseline)
+    if new and "--allow-new-gaps" not in sys.argv:
+        print("rule coverage went down; these rules lost (or never had) a case:")
+        for r in new:
+            print(f"  R{r}: {gaps[r]}: {rules[r][0]}:{rules[r][1]}")
+        print("add the cases, or rerun with --allow-new-gaps for a rule that can't have one yet")
+        return 1
+    gaps_text = (
+        "# Rules still missing an accept case, or a reject case when their text\n"
+        "# forbids something. Generated by scripts/conformance-coverage.py; the\n"
+        "# gate fails when a rule not listed here has a gap, so this only shrinks.\n"
+        + "".join(f"R{r} {gaps[r]}\n" for r in sorted(gaps, key=rule_key))
+    )
     if "--check" in sys.argv:
-        if target.read_text() != text:
-            print("spec/conformance/COVERAGE.md is stale; run scripts/conformance-coverage.py")
+        stale = [f for f, want in ((target, text), (gaps_file, gaps_text)) if not f.exists() or f.read_text() != want]
+        if stale:
+            print(", ".join(str(f.relative_to(ROOT)) for f in stale) + " stale; run scripts/conformance-coverage.py")
             return 1
         return 0
     target.write_text(text)
-    print(f"wrote {target.relative_to(ROOT)}")
+    gaps_file.write_text(gaps_text)
+    print(f"wrote {target.relative_to(ROOT)} and {gaps_file.relative_to(ROOT)} ({len(gaps)} rule gaps)")
     return 0
 
 

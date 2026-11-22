@@ -299,6 +299,10 @@ else
     cache_save stdlib_test
 fi
 
+step "conformance coverage: COVERAGE.md current, no new rule gaps"
+python3 scripts/conformance-coverage.py --check ||
+    fail "rule coverage gate failed; see above, then rerun: python3 scripts/conformance-coverage.py"
+
 step "stdlib/prelude.cp: at most 80 names"
 prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
