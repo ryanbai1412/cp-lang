@@ -103,7 +103,7 @@ const hero = [
     id: 'prefix',
     title: 'Prefix sums',
     caption:
-      'The array is 1-based because the statement is. Prefix sums live on the cuts between positions, so a range is its right cut minus its left cut and there is no l - 1 to get wrong.',
+      'The array is 1-based because the statement is. Prefix takes the range the way the statement writes it, so there is no l - 1 to get wrong.',
   },
   {
     id: 'optional',
