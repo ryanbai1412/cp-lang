@@ -1345,6 +1345,47 @@ impl<'a> Lowerer<'a> {
         }
         let fields = self.structs[id].def.fields.clone();
         let Some(decl) = self.structs[id].decl else {
+            if self.structs[id].def.name.starts_with("_local_") {
+                let name = self.structs[id].def.name.clone();
+                let mut given: Vec<Option<&ast::Arg>> = vec![None; fields.len()];
+                for (i, arg) in args.iter().enumerate() {
+                    let index = match &arg.name {
+                        Some(arg_name) => fields.iter().position(|(f, _)| *f == arg_name.text),
+                        None => (i < fields.len()).then_some(i),
+                    };
+                    match index {
+                        Some(index) => given[index] = Some(arg),
+                        None => {
+                            let message = match &arg.name {
+                                Some(arg_name) => {
+                                    format!("`{name}` has no field `{}`", arg_name.text)
+                                }
+                                None => format!(
+                                    "`{name}` has {} fields, but {} values were given",
+                                    fields.len(),
+                                    args.len()
+                                ),
+                            };
+                            self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
+                            return self.err_expr(span);
+                        }
+                    }
+                }
+                let mut values = Vec::new();
+                for ((field, ty), arg) in fields.iter().zip(given) {
+                    if let Some(arg) = arg {
+                        values.push(self.expect(&arg.value, ty));
+                    } else {
+                        self.error(
+                            codes::WRONG_ARG_COUNT,
+                            span,
+                            format!("`{name}` needs a value for `{field}`"),
+                        );
+                        return self.err_expr(span);
+                    }
+                }
+                return self.mk(ExprKind::Tuple(values), Ty::Struct(id), span);
+            }
             self.error(
                 codes::NOT_CALLABLE,
                 span,

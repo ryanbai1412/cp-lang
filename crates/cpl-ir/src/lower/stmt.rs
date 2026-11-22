@@ -1197,6 +1197,46 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            ast::StmtKind::Struct(decl) if !self.at_top_level() => {
+                let id = self.structs.len();
+                let sname = format!("_local_{}_{}", decl.name.text, id);
+                let fields: Vec<(String, Ty)> = decl
+                    .fields
+                    .iter()
+                    .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
+                    .collect();
+                self.structs.push(StructInfo {
+                    def: StructDef {
+                        name: sname,
+                        fields,
+                        fixed: Default::default(),
+                        narrow_ints: Default::default(),
+                        show_fn: None,
+                        eq_fn: None,
+                        lt_fn: None,
+                        cached_fields: Default::default(),
+                    },
+                    decl: None,
+                    mod_id: self.cur_mod,
+                    offset: self.offset,
+                    origin_gen: None,
+                    env: HashMap::new(),
+                    methods: HashMap::new(),
+                    trait_methods: HashMap::new(),
+                    op_methods: Vec::new(),
+                    gen_methods: HashMap::new(),
+                    getters: HashSet::new(),
+                    projections: HashMap::new(),
+                    consts: HashMap::new(),
+                    owned_domains: HashMap::new(),
+                    owned_domain_inits: Vec::new(),
+                    laws: Vec::new(),
+                    index_domain: None,
+                });
+                if let Some(scope) = self.cx.local_syms.last_mut() {
+                    scope.insert(decl.name.text.clone(), Sym::Struct(id));
+                }
+            }
             ast::StmtKind::Struct(_)
             | ast::StmtKind::TypeAlias { .. }
             | ast::StmtKind::Trait { .. }
