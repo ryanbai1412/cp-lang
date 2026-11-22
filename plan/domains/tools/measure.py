@@ -5,6 +5,7 @@
   python3 plan/domains/tools/measure.py help        commands whose `--help` exits 0
   python3 plan/domains/tools/measure.py json        commands whose help offers JSON
   python3 plan/domains/tools/measure.py corpus      cpl check time and cpl build bytes per port
+  python3 plan/domains/tools/measure.py golden      end-to-end tests per command (crates/*/tests/*.rs)
 
 Uses $CPL, else target/release/cpl (build it first: cargo build --release -p cpl-cli).
 """
@@ -57,5 +58,33 @@ def corpus():
     print(f"C++ max {big[3]} B ({big[4]})  over 32 KB {sum(r[3] > 32768 for r in built)}  over 64 KB {sum(r[3] > 65536 for r in built)}")
 
 
+def golden():
+    """Per command, the #[test] fns in crates/*/tests/*.rs that run the cpl
+    binary with it: the command's name as the first argument of a call in the
+    test, or
+    in a helper fn of the same file it calls."""
+    cmds = commands()
+    arg = re.compile(r'(?:&\[|\.arg\(|\.args\(\[|(?<![.\w])\w+\(&?\[?)\s*(?:&?OsStr::new\()?"([a-z]+)"')
+    counts = {c: 0 for c in cmds}
+    for path in sorted(glob.glob(os.path.join(ROOT, "crates/*/tests/*.rs"))):
+        text = open(path).read()
+        if "CARGO_BIN_EXE_cpl" not in text and "target/release/cpl" not in text:
+            continue
+        fns = re.split(r"(?<!#\[test\])\n(?=(?:#\[test\]\n)?(?:pub )?fn )", text)
+        uses = {}
+        for body in fns:
+            name = re.match(r"(?:#\[test\]\n)?(?:pub )?fn (\w+)", body)
+            if name:
+                uses[name.group(1)] = (body.startswith("#[test]"), body, {c for c in arg.findall(body) if c in counts})
+        for test, body, direct in uses.values():
+            if not test:
+                continue
+            called = {c for h, (t, _, cs) in uses.items() if not t and re.search(rf"\b{h}\(", body) for c in cs}
+            for c in direct | called:
+                counts[c] += 1
+    print("  ".join(f"{c} {n}" for c, n in counts.items()))
+    print(f"commands {len(cmds)}  with a test {sum(n > 0 for n in counts.values())}  without {sorted(c for c, n in counts.items() if n == 0)}")
+
+
 if __name__ == "__main__":
-    {"spec-sync": spec_sync, "help": help_, "json": json_, "corpus": corpus}[sys.argv[1]]()
+    {"spec-sync": spec_sync, "help": help_, "json": json_, "corpus": corpus, "golden": golden}[sys.argv[1]]()

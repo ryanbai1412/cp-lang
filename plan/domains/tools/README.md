@@ -35,6 +35,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 |---|---|---|---|---|
 | spec/CLI command mismatches | `measure.py spec-sync` | 14 (7 spec-only, 7 CLI-only) | 0 | M1 |
 | commands with `--help` | `measure.py help` | 23/23 | 23/23 | M1 |
+| end-to-end tests per command | `measure.py golden` | 18/23 have one; none: doc, fix, judge, judges, new; 1-3: 10 more | each >= 4 | M1 |
 | commands offering `--json` | `measure.py json` | 9/23 | all that print results (~19) | M2 |
 | `cpl check` wall time, corpus p95 | `measure.py corpus` | 78.5 ms (p50 26.7, max 125.9; 877 ports, 450 check clean) | < 500 ms (spec); hold < 100 ms | - |
 | largest corpus C++ | `measure.py corpus` | 48,375 B (cf2255f); 1 of 449 over 32 KB | 0 over 32 KB | M2 |
@@ -46,7 +47,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 | tools files over the 2,000-line cap | `python3 scripts/debt-ratchet.py --check` | 3 (cli lib.rs 2,552; lsp server.rs 2,111; lsp tests.rs 2,868) | 0 | M1 |
 | unlanded commits on `devin/wip-editor-lsp` | `git cherry origin/main origin/devin/wip-editor-lsp` | 5 | 0 | M1 |
 
-`measure.py` is `plan/domains/tools/measure.py`. Not measured yet: golden-test coverage per command (M1 adds the test that counts it); `explain` sections per port (M2's test).
+`measure.py` is `plan/domains/tools/measure.py`. Not measured yet: `explain` sections per port (M2's test).
 
 ## Judgment rubric
 A cold agent scores each 1-5 with a reason, on fixed samples; the trend is the signal.
