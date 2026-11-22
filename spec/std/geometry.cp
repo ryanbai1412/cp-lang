@@ -10,6 +10,8 @@
 //! - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128`
 //!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
+use std.bag.{SortedSet}
+
 fn igcd(a0: Int, b0: Int) -> Int:
     var a = a0
     var b = b0
@@ -2629,11 +2631,29 @@ fn cover(mut cnt: List<Int>, mut len: List<Int>, ys: List<Int>, v: Int, l: Int, 
 @allow(unproven_list_index)
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
     let keys = [k for k in pts.keys]
-    let faces = planar_face_cycles([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges])
-    [[keys[i] for i in f] for f in faces]
+    let walk = planar_walk([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges])
+    [[keys[i] for i in f] for f in walk.faces]
+
+struct PlanarWalk:
+    faces: List<List<Int>>
+    off: List<Int>
+    face_of: List<Int>
+    half: List<(Int, Int, Int)>
+
+    @allow(unproven_list_index)
+    fn at(self, u: Int, v: Int) -> Int:
+        var lo = 0
+        var hi = half.len
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if (half[mid].0, half[mid].1) < (u, v): lo = mid + 1 else: hi = mid
+        half[lo].2
+
+    @allow(unproven_list_index)
+    fn side(self, u: Int, v: Int) -> Int = face_of[off[u] + self.at(u, v)]
 
 @allow(unproven_list_index)
-fn planar_face_cycles(ps: List<Pt>, edges: List<(Int, Int)>) -> List<List<Int>>:
+fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     let n = ps.len
     var adj: List<List<Int>> = [[] for _ in 0..n]
     var norm: List<(Int, Int)> = []
@@ -2653,8 +2673,9 @@ fn planar_face_cycles(ps: List<Pt>, edges: List<(Int, Int)>) -> List<List<Int>>:
     for u in 0..n:
         for j in 0..adj[u].len: half.push((u, adj[u][j], j))
     half.sort()
+    var walk = PlanarWalk([], off, List.filled(off[n], 0), half)
     var done = List.filled(off[n], false)
-    var faces: List<List<Int>> = []
+    var raw: List<List<Int>> = []
     for u in 0..n:
         for j in 0..adj[u].len:
             if done[off[u] + j]: continue
@@ -2662,20 +2683,20 @@ fn planar_face_cycles(ps: List<Pt>, edges: List<(Int, Int)>) -> List<List<Int>>:
             var (a, k) = (u, j)
             while not done[off[a] + k]:
                 done[off[a] + k] = true
+                walk.face_of[off[a] + k] = raw.len
                 cyc.push(a)
                 let b = adj[a][k]
-                var lo = 0
-                var hi = half.len
-                while lo < hi:
-                    let mid = (lo + hi) / 2
-                    if (half[mid].0, half[mid].1) < (b, a): lo = mid + 1 else: hi = mid
-                let back = half[lo].2
                 let deg = adj[b].len
+                k = (walk.at(b, a) + deg - 1) % deg
                 a = b
-                k = (back + deg - 1) % deg
-            faces.push(least_rotation(cyc))
-    faces.sort()
-    faces
+            raw.push(least_rotation(cyc))
+    var order = [f for f in 0..raw.len]
+    order.sort(by: f => raw[f])
+    var rank = List.filled(raw.len, 0)
+    for i in 0..order.len: rank[order[i]] = i
+    for h in 0..walk.face_of.len: walk.face_of[h] = rank[walk.face_of[h]]
+    walk.faces = [raw[f] for f in order]
+    walk
 
 @allow(unproven_list_index)
 fn least_rotation(cyc: List<Int>) -> List<Int>:
@@ -2699,7 +2720,111 @@ pub fn point_location_planar<V>(
     pts: [V]Pt,
     edges: List<(V, V)>,
     queries: List<Pt>,
-) -> List<?Int> = todo
+) -> List<?Int>:
+    let keys = [k for k in pts.keys]
+    locate_planar([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges], queries)
+
+struct SweepSeg(a: Pt, b: Pt, id: Int)
+
+impl Ord for SweepSeg:
+    fn lt(s, t):
+        if s.id == t.id: return false
+        var c = 0
+        if s.a.x <= t.a.x:
+            c = turn(s.a, s.b, t.a)
+            if c == 0: c = turn(s.a, s.b, t.b)
+        else:
+            c = -turn(t.a, t.b, s.a)
+            if c == 0: c = -turn(t.a, t.b, s.b)
+        if c == 0: s.id < t.id else: c > 0
+
+@allow(unproven_list_index)
+fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> List<?Int>:
+    let walk = planar_walk(ps, edges)
+    let nf = walk.faces.len
+    var outer = List.filled(nf, false)
+    var probes = copy(queries)
+    var probed: List<Int> = []
+    for f in 0..nf:
+        let cyc = walk.faces[f]
+        var area = I128(0)
+        for i in 0..cyc.len: area += ps[cyc[i]].cross128(ps[cyc[(i + 1) % cyc.len]])
+        if area > I128(0): continue
+        outer[f] = true
+        var low = cyc[0]
+        for v in cyc:
+            if (ps[v].y, ps[v].x) < (ps[low].y, ps[low].x): low = v
+        probes.push(ps[low])
+        probed.push(f)
+    let below = sweep_below(ps, edges, walk, probes)
+    var parent: List<?Int> = [None for _ in 0..nf]
+    for i in 0..probed.len: parent[probed[i]] = below[queries.len + i].0
+    var verts: List<(Int, Int)> = [(p.x, p.y) for p in ps]
+    verts.sort()
+    var upright: List<(Int, Int, Int)> = []
+    for (u, v) in edges:
+        if ps[u].x == ps[v].x: upright.push((ps[u].x, min(ps[u].y, ps[v].y), max(ps[u].y, ps[v].y)))
+    upright.sort()
+    var out: List<?Int> = []
+    for i in 0..queries.len:
+        let q = queries[i]
+        var vi = 0
+        var vh = verts.len
+        while vi < vh:
+            let mid = (vi + vh) / 2
+            if verts[mid] < (q.x, q.y): vi = mid + 1 else: vh = mid
+        var ui = 0
+        var uh = upright.len
+        while ui < uh:
+            let mid = (ui + uh) / 2
+            if (upright[mid].0, upright[mid].1) <= (q.x, q.y): ui = mid + 1 else: uh = mid
+        let on_vertex = vi < verts.len and verts[vi] == (q.x, q.y)
+        let on_upright = ui > 0 and upright[ui - 1].0 == q.x and q.y <= upright[ui - 1].2
+        if on_vertex or on_upright or below[i].1:
+            out.push(None)
+            continue
+        var f = below[i].0
+        while f != None and outer[f!]: f = parent[f!]
+        out.push(f)
+    out
+
+@allow(unproven_list_index)
+fn sweep_below(ps: List<Pt>, edges: List<(Int, Int)>, walk: PlanarWalk, probes: List<Pt>) -> List<(?Int, Bool)>:
+    var segs: List<(Int, Int)> = []
+    for (u, v) in edges:
+        if ps[u].x < ps[v].x: segs.push((u, v))
+        elif ps[v].x < ps[u].x: segs.push((v, u))
+    let m = segs.len
+    var by_start = [i for i in 0..m]
+    by_start.sort(by: i => ps[segs[i].0].x)
+    var by_end = [i for i in 0..m]
+    by_end.sort(by: i => ps[segs[i].1].x)
+    var by_x = [i for i in 0..probes.len]
+    by_x.sort(by: i => probes[i].x)
+    var live = List.filled(m, false)
+    var active = SortedSet<SweepSeg>.new()
+    var out: List<(?Int, Bool)> = [(None, false) for _ in 0..probes.len]
+    var si = 0
+    var ei = 0
+    for qi in by_x:
+        let q = probes[qi]
+        while ei < m and ps[segs[by_end[ei]].1].x <= q.x:
+            let e = by_end[ei]
+            if live[e]:
+                let _ = active.remove(SweepSeg(ps[segs[e].0], ps[segs[e].1], e))
+                live[e] = false
+            ei += 1
+        while si < m and ps[segs[by_start[si]].0].x <= q.x:
+            let e = by_start[si]
+            if ps[segs[e].1].x > q.x:
+                let _ = active.add(SweepSeg(ps[segs[e].0], ps[segs[e].1], e))
+                live[e] = true
+            si += 1
+        let lo = active.last_true(s => turn(s.a, s.b, q) > 0)
+        let hi = active.first_true(s => turn(s.a, s.b, q) <= 0)
+        let on = hi != None and turn(hi!.a, hi!.b, q) == 0
+        out[qi] = (if lo == None: None else: Some(walk.side(segs[lo!.id].0, segs[lo!.id].1)), on)
+    out
 
 /// The Delaunay triangulation of distinct integer points (`|coords| <= 1e9`), exact in `I128`,
 /// as counter-clockwise handle triples.
@@ -4077,3 +4202,49 @@ fn voronoi_cells_tile_the_box_with_points_nearest_their_site():
             assert a > 0.0
             total += a / 2.0
         assert abs(total - 144.0) < 1e-6
+
+@test
+fn point_location_planar_matches_the_least_enclosing_face():
+    for _ in 0..30:
+        let k = rand(2, 5)
+        let n = k * k
+        domain G = 0..n
+        let pts = [G] g => Pt(2 * (g.to_idx % k), 2 * (g.to_idx / k))
+        var edges: List<(Int, Int)> = []
+        for i in 0..n:
+            let (x, y) = (i % k, i / k)
+            if x + 1 < k and rand(0, 2) > 0: edges.push((i, i + 1))
+            if y + 1 < k and rand(0, 2) > 0: edges.push((i + k, i))
+            if x + 1 < k and y + 1 < k:
+                let pick = rand(0, 2)
+                if pick == 1: edges.push((i, i + k + 1))
+                if pick == 2: edges.push((i + 1, i + k))
+        let keyed = [(G(u), G(v)) for (u, v) in edges]
+        let faces = [[g.to_idx for g in f] for f in planar_faces(pts, keyed)]
+        let qs = [Pt(rand(-1, 2 * k - 1), rand(-1, 2 * k - 1)) for _ in 0..30]
+        let got = point_location_planar(pts, keyed, qs)
+        let ps = [pts[G(i)] for i in 0..n]
+        for qi in 0..qs.len:
+            let q = qs[qi]
+            var on = ps.contains(q)
+            for (u, v) in edges:
+                let (a, b) = (ps[u], ps[v])
+                if (b - a).cross128(q - a) == I128(0) and min(a.x, b.x) <= q.x and q.x <= max(a.x, b.x) and min(a.y, b.y) <= q.y and q.y <= max(a.y, b.y): on = true
+            var want: ?Int = None
+            var best = 0
+            if not on:
+                for f in 0..faces.len:
+                    let cyc = faces[f]
+                    var area = 0
+                    var inside = false
+                    for i in 0..cyc.len:
+                        let a = ps[cyc[i]]
+                        let b = ps[cyc[(i + 1) % cyc.len]]
+                        area += a.x * b.y - a.y * b.x
+                        if (a.y <= q.y) != (b.y <= q.y):
+                            let c = (b - a).cross128(q - a)
+                            if (c > I128(0)) == (b.y > a.y): inside = not inside
+                    if area > 0 and inside and (want == None or area < best):
+                        want = Some(f)
+                        best = area
+            assert got[qi] == want
