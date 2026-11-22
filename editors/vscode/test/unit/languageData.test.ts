@@ -92,7 +92,7 @@ function shipped() {
     const declared = new Map<string, string>();
     for (const file of fs.readdirSync(stdlib).filter(name => name.endsWith('.cp'))) {
         for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
-            const decl = /^(?:@get )?pub (?:@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+            const decl = /^(?:@get )?pub (?:@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain|context) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
             const getter = /^(?:@get )?pub @get |^@get pub /.test(line);
             // `<fn>_of_pairs`/`<fn>_of_triples` are what `T.fn(list)` resolves to, not names to type.
             // A `_` name is the stdlib's own helper, not one a contestant types.
@@ -109,7 +109,7 @@ function shipped() {
         imported,
         stdlibFns: kinds('fn'),
         stdlibTypes: kinds('struct', 'enum', 'trait', 'type', 'domain'),
-        stdlibConsts: kinds('const'),
+        stdlibConsts: kinds('const', 'context'),
     };
 }
 

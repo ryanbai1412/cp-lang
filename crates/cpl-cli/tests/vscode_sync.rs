@@ -129,7 +129,9 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
                 getter |= *attr == "@get";
                 words.next();
             }
-            let kinds = ["fn", "struct", "enum", "trait", "type", "const", "domain"];
+            let kinds = [
+                "fn", "struct", "enum", "trait", "type", "const", "domain", "context",
+            ];
             let Some(kind) = words
                 .next()
                 .and_then(|word| kinds.into_iter().find(|kind| *kind == word))
