@@ -309,7 +309,7 @@ step "cpl fmt --check stdlib"
 
 # Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
 if [ "$scoreboard_cached" -eq 0 ]; then
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_skill_gen.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -319,6 +319,10 @@ fi
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
+
+step "bundled skill (scripts/skill-gen.py --check)"
+python3 scripts/skill-gen.py --check --cpl "$cpl" \
+    || fail "bundled skill check failed; rerun: python3 scripts/skill-gen.py && python3 scripts/skill-gen.py --check"
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
