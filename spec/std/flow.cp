@@ -5,6 +5,7 @@
 //! Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`,
 //! `source`, `target`. Everything whose input is a table or an edge list is a function
 //! over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
+use std.graph.{Next}
 use std.heap.{MinHeap}
 use std.seq.{next_permutation}
 
@@ -139,7 +140,7 @@ pub struct FlowGraph<V>:
     /// traps: when no completed `max_flow` or `push_relabel` from `s` came since the last `add`, `set_cap` or `reset`
     /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(5)); g.add(1, 2, Some(1)); g.max_flow(0, 2); g.min_cut(0) == [true, true, false]`
     pub fn min_cut(self, s: V) -> [V]Bool:
-        assert cut_from == s, "min_cut(s) needs a completed max_flow(s, t) first"
+        assert cut_from == Some(s), "min_cut(s) needs a completed max_flow(s, t) first"
         let level = self.levels(s)
         [V] v => level[v] != None
 
@@ -359,7 +360,7 @@ pub struct FlowGraph<V>:
                     let a = path.pop()
                     u = to[a.rev.id]
                     next[u] += 1
-        let amount = min(most, min(left[a.id] for a in path))
+        let amount = min(most, [left[a.id] for a in path].min()!)
         for a in path:
             left[a.id] -= amount
             left[a.rev.id] += amount
@@ -621,9 +622,23 @@ pub struct CostFlow<V>:
 /// ties: the smallest optimal closure (contained in every other)
 /// order: `take` keyed by `V`
 /// traps: never
-/// example: `let p = [3, -1, -5]; max_closure([[], [0], []], profit: v => p[v]) == (value: 2, take: [true, true, false])`
-/// example: `max_closure([[]], profit: _ => 0) == (value: 0, take: [false])`
-pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool) = todo
+/// example: `domain V = 0..3; let before: [V]List<V> = [[], [0], []]; let p = [3, -1, -5]; max_closure(before, profit: v => p[v.to_idx]) == (value: 2, take: [true, true, false])`
+/// example: `domain V = 0..1; let before: [V]List<V> = [[]]; max_closure(before, profit: _ => 0) == (value: 0, take: [false])`
+pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool):
+    domain N = 0..V.K + 2
+    let (s, t) = (N(V.K), N(V.K + 1))
+    var g = FlowGraph<N>()
+    var gain = 0
+    for v in V:
+        let p = profit(v)
+        if p > 0:
+            g.add(s, N(v.to_idx), p)
+            gain += p
+        elif p < 0: g.add(N(v.to_idx), t, -p)
+        for a in before.out(v): g.add(N(a.to.to_idx), N(v.to_idx), cap: None)
+    let lost = g.max_flow(s, t)
+    let side = g.min_cut(s)
+    (value: gain - lost, take: [V] v => side[N(v.to_idx)])
 
 /// A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take: its
 /// `size`, and the partner of each vertex on either side (`None` when unmatched).
@@ -1277,9 +1292,9 @@ fn bounded_flow<V, E>(
 pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>:
     var g = FlowGraph<V>()
     for e in E: g.add_both(edges[e].u, edges[e].v, edges[e].w)
-    var parent: [V]V = V.first
+    var parent: [V]V = V.first!
     var tree = List<(u: V, v: V, w: Int)>()
-    for i in V.after(V.first):
+    for i in V.after(V.first!):
         g.reset()
         let w = g.max_flow(i, parent[i])
         let side = g.min_cut(i)
@@ -1371,7 +1386,26 @@ fn textbook_network():
     assert g.max_flow(V(0), V(5)) == 0
 
 @test
-fn min_cut_equals_max_flow_on_random_networks() = todo
+fn min_cut_equals_max_flow_on_random_networks():
+    domain V = 0..6
+    for _ in 0..30:
+        var g = FlowGraph<V>()
+        var es: List<(Int, Int, Int)> = []
+        for _ in 0..rand(0, 12):
+            let (u, v, c) = (rand(0, 5), rand(0, 5), rand(0, 6))
+            if u == v: continue
+            g.add(V(u), V(v), c)
+            es.push((u, v, c))
+        let f = g.max_flow(V(0), V(5))
+        var best = Int.MAX
+        for m in 0..64:
+            if m & 1 == 0 or m & 32 != 0: continue
+            best min= sum(c for (u, v, c) in es if (m >> u) & 1 == 1 and (m >> v) & 1 == 0)
+        assert f == best
+        let side = g.min_cut(V(0))
+        assert side[V(0)] and not side[V(5)]
+        assert sum(c for (u, v, c) in es if side[V(u)] and not side[V(v)]) == f
+        assert sum(g.cap(a) for a in g.cut_arcs(V(0))) == f
 
 @test
 fn bipartite_matching_with_undirected_and_unit_arcs():
@@ -1404,10 +1438,47 @@ fn hungarian_matches_brute_force_on_random_matrices():
         assert sorted([h.mate[i].to_idx for i in L]) == [0, 1, 2, 3]
 
 @test
-fn push_relabel_agrees_with_dinic_and_leaves_a_valid_flow() = todo
+fn push_relabel_agrees_with_dinic_and_leaves_a_valid_flow():
+    domain V = 0..7
+    for _ in 0..30:
+        var g = FlowGraph<V>()
+        var h = FlowGraph<V>()
+        var arcs: List<Arc> = []
+        for _ in 0..rand(0, 15):
+            let (u, v) = (V.nth(rand(0, 6)), V.nth(rand(0, 6)))
+            let c = rand(0, 9)
+            g.add(u, v, c)
+            arcs.push(h.add(u, v, c))
+        let want = g.max_flow(V(0), V(6))
+        assert h.push_relabel(V(0), V(6)) == want
+        var net: [V]Int = 0
+        for a in arcs:
+            assert 0 <= h.flow(a) <= h.cap(a)
+            net[h.source(a)] -= h.flow(a)
+            net[h.target(a)] += h.flow(a)
+        for v in V:
+            assert net[v] == (if v == V(0): -want elif v == V(6): want else: 0)
+        assert h.min_cut(V(0)) == g.min_cut(V(0))
 
 @test
-fn flow_over_a_product_domain_matches_flat_numbering() = todo
+fn flow_over_a_product_domain_matches_flat_numbering():
+    domain R = 0..3
+    domain C = 0..4
+    domain P = (R, C)
+    domain N = 0..12
+    for _ in 0..20:
+        var g = FlowGraph<P>()
+        var h = FlowGraph<N>()
+        for _ in 0..rand(0, 20):
+            let (a, b) = (P.nth(rand(0, 11)), P.nth(rand(0, 11)))
+            let c = rand(0, 5)
+            g.add(a, b, c)
+            h.add(N(a.to_idx), N(b.to_idx), c)
+        let (s, t) = (P.first!, P.last!)
+        assert g.max_flow(s, t) == h.max_flow(N(0), N(11))
+        let side = g.min_cut(s)
+        let flat = h.min_cut(N(0))
+        for p in P: assert side[p] == flat[N(p.to_idx)]
 
 @test
 fn an_arc_without_a_capacity_is_never_cut():
@@ -1435,7 +1506,23 @@ fn reset_restores_initial_capacities():
     assert g.max_flow(V(0), V(3)) == 3
 
 @test
-fn a_limit_stops_the_flow_and_arcs_know_their_ends() = todo
+fn a_limit_stops_the_flow_and_arcs_know_their_ends():
+    domain V = 0..5
+    for _ in 0..30:
+        var g = FlowGraph<V>()
+        var full = FlowGraph<V>()
+        for _ in 0..rand(1, 10):
+            let (u, v) = (V.nth(rand(0, 4)), V.nth(rand(0, 4)))
+            let c = rand(0, 6)
+            let a = g.add(u, v, c)
+            full.add(u, v, c)
+            assert g.source(a) == u and g.target(a) == v
+            assert g.source(a.rev) == v and g.target(a.rev) == u and a.rev.rev == a
+        let want = full.max_flow(V(0), V(4))
+        let k = rand(0, want + 2)
+        let first = g.max_flow(V(0), V(4), limit: k)
+        assert first == min(k, want)
+        assert first + g.max_flow(V(0), V(4)) == want
 
 @test
 fn min_cost_flow_agrees_with_hungarian_and_its_slope_is_convex():
@@ -1472,10 +1559,49 @@ fn min_cost_flow_respects_the_limit_and_negative_costs():
     assert net.min_cost_flow(V(0), V(3)) == (flow: 4, cost: 16)
 
 @test
-fn max_closure_matches_brute_force() = todo
+fn max_closure_matches_brute_force():
+    domain V = 0..6
+    for _ in 0..40:
+        let before = [V] _ => [V.nth(rand(0, 5)) for _ in 0..rand(0, 2)]
+        let p = [V] _ => rand(-6, 6)
+        let got = max_closure(before, profit: v => p[v])
+        var best = 0
+        for m in 0..64:
+            var closed = true
+            for u in V:
+                for v in before[u]:
+                    if (m >> v.to_idx) & 1 == 1 and (m >> u.to_idx) & 1 == 0: closed = false
+            if closed: best max= sum(p[v] for v in V if (m >> v.to_idx) & 1 == 1)
+        assert got.value == best
+        assert sum(p[v] for v in V if got.take[v]) == best
+        for u in V:
+            for v in before[u]: assert not got.take[v] or got.take[u]
 
 @test
-fn max_matching_matches_brute_force_and_the_cover_proves_it() = todo
+fn max_matching_matches_brute_force_and_the_cover_proves_it():
+    domain L = 0..5
+    domain R = 0..5
+    for _ in 0..40:
+        let adj = [L] _ => [R.nth(rand(0, 4)) for _ in 0..rand(0, 3)]
+        let m = max_matching(adj)
+        // best[mask]: the largest matching of the first left vertices into the rights in `mask`
+        var best = List.filled(32, 0)
+        for l in L:
+            var next = best.copy()
+            for mask in 0..32:
+                for r in adj[l]:
+                    let bit = 1 << r.to_idx
+                    if mask & bit != 0: next[mask] max= best[mask ^ bit] + 1
+            best = next
+        assert m.size == best[31]
+        assert sum(1 for l in L if m.mate[l] != None) == m.size
+        for l in L:
+            if let r = m.mate[l]:
+                assert adj[l].contains(r) and m.back[r] == Some(l)
+        let cover = min_vertex_cover(adj)
+        assert sum(1 for l in L if cover.left[l]) + sum(1 for r in R if cover.right[r]) == m.size
+        for l in L:
+            for r in adj[l]: assert cover.left[l] or cover.right[r]
 
 @test
 fn rectangular_assignment_matches_brute_force_both_ways():
@@ -1498,16 +1624,84 @@ fn rectangular_assignment_matches_brute_force_both_ways():
         assert sorted([lo.mate[i].to_idx for i in L]).len == 3
 
 @test
-fn general_matching_matches_brute_force() = todo
+fn general_matching_matches_brute_force():
+    domain V = 0..8
+    for _ in 0..40:
+        var edge = [V] _ => [V] _ => false
+        for _ in 0..rand(0, 12):
+            let (u, v) = (V.nth(rand(0, 7)), V.nth(rand(0, 7)))
+            if u != v:
+                edge[u][v] = true
+                edge[v][u] = true
+        let adj = [V] u => [v for v in V if edge[u][v]]
+        let got = general_matching(adj)
+        // best[mask]: the largest matching inside the vertex set `mask`
+        var best = List.filled(256, 0)
+        for mask in 1..256:
+            var low = 0
+            while (mask >> low) & 1 == 0: low += 1
+            let rest = mask ^ (1 << low)
+            best[mask] = best[rest]
+            for v in V:
+                if (rest >> v.to_idx) & 1 == 1 and edge[V(low)][v]:
+                    best[mask] max= best[rest ^ (1 << v.to_idx)] + 1
+        assert got.size == best[255]
+        assert sum(1 for v in V if got.mate[v] != None) == 2 * got.size
+        for v in V:
+            if let u = got.mate[v]: assert edge[u][v] and got.mate[u] == Some(v)
 
 @test
-fn weighted_general_matching_matches_brute_force() = todo
+fn weighted_general_matching_matches_brute_force():
+    domain V = 0..6
+    for _ in 0..40:
+        let es = [
+            (u: V.nth(u), v: V.nth((u + rand(1, 5)) % 6), w: rand(0, 20)) for u in [rand(0, 5) for _ in 0..rand(1, 9)]
+        ]
+        var wt = [V] _ => [V] _ => -1
+        for e in es:
+            wt[e.u][e.v] max= e.w
+            wt[e.v][e.u] max= e.w
+        let got = max_weight_general_matching(es)
+        var best = List.filled(64, 0)
+        for mask in 1..64:
+            var low = 0
+            while (mask >> low) & 1 == 0: low += 1
+            let rest = mask ^ (1 << low)
+            best[mask] = best[rest]
+            for v in V:
+                if (rest >> v.to_idx) & 1 == 1 and wt[V(low)][v] >= 0:
+                    best[mask] max= best[rest ^ (1 << v.to_idx)] + wt[V(low)][v]
+        assert got.total == best[63]
+        var total = 0
+        for v in V:
+            if let u = got.mate[v]:
+                assert got.mate[u] == Some(v) and wt[u][v] >= 0
+                if u.to_idx < v.to_idx: total += wt[u][v]
+        assert total == got.total
 
 fn all_bounded_flows<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
     s: ?V,
     t: ?V,
-) -> List<(Int, List<Int>)> = todo
+) -> List<(Int, List<Int>)>:
+    // every integer flow with lo <= flow[e] <= hi, conserved at every vertex but `s` and `t`,
+    // with its net outflow at `s` (0 for a circulation)
+    var out: List<(Int, List<Int>)> = []
+    var f = [arcs[e].lo for e in E]
+    while true:
+        var net: [V]Int = 0
+        for e in E:
+            net[arcs[e].u] -= f[e.to_idx]
+            net[arcs[e].v] += f[e.to_idx]
+        if V.all(v => net[v] == 0 or Some(v) == s or Some(v) == t):
+            out.push((if let x = s: -net[x] else: 0, f.copy()))
+        var i = 0
+        while i < E.K and f[i] == arcs[E.nth(i)].hi:
+            f[i] = arcs[E.nth(i)].lo
+            i += 1
+        if i == E.K: break
+        f[i] += 1
+    out
 
 @test
 fn bounded_flows_match_brute_force():
@@ -1528,22 +1722,58 @@ fn bounded_flows_match_brute_force():
         if let f = got:
             assert every.contains((0, [x for x in f]))
             circ += 1
-        let (s, t) = (V.first, V.last)
+        let (s, t) = (V.first!, V.last!)
         let st = [x for x in all_bounded_flows(arcs, s, t) if x.0 >= 0]
         let (big, small) = (max_bounded_flow(arcs, s, t), min_bounded_flow(arcs, s, t))
         assert (big == None) == st.is_empty and (small == None) == st.is_empty
         if big == None: continue
         feasible += 1
-        assert big!.value == max(x.0 for x in st) and small!.value == min(x.0 for x in st)
+        assert big!.value == [x.0 for x in st].max()! and small!.value == [x.0 for x in st].min()!
         assert st.contains((big!.value, [x for x in big!.flow]))
         assert st.contains((small!.value, [x for x in small!.flow]))
     assert circ > 0 and feasible > 10
 
 @test
-fn gomory_hu_tree_gives_every_pairwise_min_cut() = todo
+fn gomory_hu_tree_gives_every_pairwise_min_cut():
+    domain V = 0..6
+    for _ in 0..30:
+        let es = [(u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)]
+        let tree = gomory_hu(es)
+        assert tree.len == 5
+        // the min cut between a and b is the lightest tree edge on their path
+        for a in V:
+            var light = [V] _ => Int.MAX
+            var seen = [V] _ => false
+            var stack: List<V> = [a]
+            seen[a] = true
+            while not stack.is_empty:
+                let x = stack.pop()
+                for e in tree:
+                    for (p, q) in [(e.u, e.v), (e.v, e.u)]:
+                        if p == x and not seen[q]:
+                            seen[q] = true
+                            light[q] = min(light[x], e.w)
+                            stack.push(q)
+            for b in V:
+                if a == b: continue
+                var cut = Int.MAX
+                for m in 0..64:
+                    if (m >> a.to_idx) & 1 == 1 and (m >> b.to_idx) & 1 == 0:
+                        cut min= sum(e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1))
+                assert seen[b] and light[b] == cut
 
 @test
-fn global_min_cut_matches_brute_force() = todo
+fn global_min_cut_matches_brute_force():
+    domain V = 0..6
+    for _ in 0..30:
+        let es = [(u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)]
+        let got = global_min_cut(es)
+        var best = Int.MAX
+        for m in 1..63:
+            best min= sum(e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1))
+        assert got.w == best
+        assert V.any(v => got.side[v]) and V.any(v => not got.side[v])
+        assert sum(e.w for e in es if got.side[e.u] != got.side[e.v]) == best
 
 
 /// O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
