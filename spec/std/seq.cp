@@ -33,7 +33,10 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// empty: `U.zero`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
-pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
+pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
+    var out = U.zero
+    for x in self: out += of(x)
+    out
 
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
@@ -41,7 +44,14 @@ pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
 /// empty: `None`
 /// traps: never
 /// example: `[1, 2].mean() == Some(1.5)`
-pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
+pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
+    var total = 0.0
+    var n = 0
+    for x in self:
+        total += of(x)
+        n += 1
+    if n == 0: return None
+    Some(total / F64(n))
 
 /// The least element by `by`, the first on ties; `None` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
@@ -53,7 +63,13 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
-pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+    var best: ?T = None
+    for x in self:
+        if let b = best:
+            if by(x) < by(b): best = Some(x)
+        else: best = Some(x)
+    best
 
 /// The greatest element by `by`, the first on ties; `None` when empty.
 ///
@@ -62,7 +78,13 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
-pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+    var best: ?T = None
+    for x in self:
+        if let b = best:
+            if by(x) > by(b): best = Some(x)
+        else: best = Some(x)
+    best
 
 /// How many elements satisfy `p`.
 ///
@@ -70,7 +92,11 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// empty: `0`
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
-pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
+pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int:
+    var n = 0
+    for x in self:
+        if p(x): n += 1
+    n
 
 /// Whether some element satisfies `p`; stops at the first.
 ///
@@ -78,7 +104,10 @@ pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
 /// empty: `false`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
-pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+    for x in self:
+        if p(x): return true
+    false
 
 /// Whether every element satisfies `p`; stops at the first that doesn't.
 ///
@@ -86,7 +115,10 @@ pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 /// empty: `true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
-pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+    for x in self:
+        if not p(x): return false
+    true
 
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`.
 ///
@@ -727,7 +759,10 @@ pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `(1..=10).find(x => x * x > 20) == Some(5)`
-pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T = todo
+pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
+    for x in self:
+        if p(x): return Some(x)
+    None
 
 /// Gives the items of a list a fresh domain, so arrays over them are index-safe:
 /// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, O(1).
@@ -1167,7 +1202,10 @@ pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T = todo
 /// order: input order; the container the context expects, else a `List`
 /// traps: never
 /// example: `(1..4).map(x => x * x).collect() == [1, 4, 9]`
-pub fn collect<S: Seq, T>(self: S) -> List<T> = todo
+pub fn collect<S: Seq, T>(self: S) -> List<T>:
+    var out: List<T> = []
+    for x in self: out.push(x)
+    out
 
 /// `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items`
 /// gives `(key, x)`, and `argmax`/`find` answer with keys. By default the k-th element gets
@@ -1191,7 +1229,10 @@ pub struct Keys<S, I, K>(src: S, keys: I, by: ?K)
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].take_while(x => x < 3).collect() == [1, 2]`
-pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
+pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T:
+    for x in self:
+        if not keep(x): return
+        yield x
 
 /// O(1) per step. Skip leading elements while `drop(x)` holds, then yield the rest.
 ///
@@ -1200,7 +1241,12 @@ pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].drop_while(x => x < 3).collect() == [5, 1]`
-pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T = todo
+pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
+    var dropping = true
+    for x in self:
+        if dropping and drop(x): continue
+        dropping = false
+        yield x
 
 /// O(1) per step. Lazily yield `f(x)` for each element where it is not `None`:
 /// `dag[c].filter_map(a => best(a.to)).max()`.
@@ -1210,7 +1256,9 @@ pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T = todo
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 3].filter_map(x => if x != 2: Some(x * 10) else: None).collect() == [10, 30]`
-pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U = todo
+pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U:
+    for x in self:
+        if let y = f(x): yield y
 
 /// O(1) per yielded element. Lazily map each element to a sequence and yield all inner elements in order.
 ///
@@ -1219,7 +1267,9 @@ pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U = todo
 /// order: outer order, then each inner sequence's order
 /// traps: never
 /// example: `[1, 2].flat_map(x => 0..x).collect() == [0, 0, 1]`
-pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V = todo
+pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V:
+    for x in self:
+        for y in f(x): yield y
 
 /// O(1) per yielded element. Lazily concatenate a sequence of sequences.
 ///
@@ -1228,7 +1278,9 @@ pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V = todo
 /// order: outer order, then inner order
 /// traps: never
 /// example: `[[1], [], [2, 3]].flatten().collect() == [1, 2, 3]`
-pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T = todo
+pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T:
+    for xs in self:
+        for x in xs: yield x
 
 /// O(1) per step. Yield the `Some` values of a sequence of `?T`, skipping `None`.
 ///
@@ -1237,7 +1289,9 @@ pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T = todo
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None, Some(3)].present().collect() == [1, 3]`
-pub fn present<S: Seq, T>(self: S) -> yields T = todo
+pub fn present<S: Seq, T>(self: S) -> yields T:
+    for x in self:
+        if let y = x: yield y
 
 /// O(n), O(n) memory. Unwrap every `?T` into a `List<T>`, or return `None` if any element is `None`.
 ///
@@ -1246,7 +1300,12 @@ pub fn present<S: Seq, T>(self: S) -> yields T = todo
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None].all_some() == None`
-pub fn all_some<S: Seq, T>(self: S) -> ?List<T> = todo
+pub fn all_some<S: Seq, T>(self: S) -> ?List<T>:
+    var out: List<T> = []
+    for x in self:
+        if let y = x: out.push(y)
+        else: return None
+    Some(out)
 
 /// O(1) per step. Lazily concatenate `a` then `b` without copying.
 ///
@@ -1255,7 +1314,9 @@ pub fn all_some<S: Seq, T>(self: S) -> ?List<T> = todo
 /// order: all of `a`, then all of `b`
 /// traps: never
 /// example: `chain([1], [2, 3]).collect() == [1, 2, 3]`
-pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T = todo
+pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T:
+    for x in a: yield x
+    for x in b: yield x
 
 /// O(1) per step. Cartesian product `(x, y)` for `x in a`, `y in b` in lexicographic order.
 ///
@@ -1264,7 +1325,9 @@ pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T = todo
 /// order: lexicographic, `a` outer
 /// traps: never
 /// example: `product([1, 2], "xy").count() == 4`
-pub fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
+pub fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+    for x in a:
+        for y in b: yield (x, y)
 
 /// O(1) per step. One-shot stream `from, step(from), step(step(from)), ...` until `None`.
 ///
@@ -1273,7 +1336,11 @@ pub fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
 /// order: `from`, `step(from)`, ... until `None`
 /// traps: never
 /// example: `iterate(Some(1), x => if x < 8: Some(2 * x) else: None).collect() == [1, 2, 4, 8]`
-pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T = todo
+pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T:
+    var cur = from
+    while let x = cur:
+        yield x
+        cur = step(x)
 
 /// O(1) per step. Every element paired with the next one, ending with `(last, None)`.
 ///
@@ -1310,7 +1377,12 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T> =
 /// empty: `None`
 /// traps: never
 /// example: `[3, 4].reduce((a, b) => a * b) == Some(12)`
-pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T = todo
+pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
+    var acc: ?T = None
+    for x in self:
+        if let a = acc: acc = Some(f(a, x))
+        else: acc = Some(x)
+    acc
 
 /// O(n). Seeded left fold into an arbitrary accumulator `Acc`.
 ///
@@ -1318,7 +1390,10 @@ pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T = todo
 /// empty: `init`
 /// traps: never
 /// example: `[1, 2, 3].fold((s, x) => s * 10 + x, 0) == 123`
-pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc = todo
+pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
+    var acc = init
+    for x in self: acc = f(acc, x)
+    acc
 
 /// O(n). Maximum element (under `by:`) together with its multiplicity, or `None` when empty.
 ///
@@ -1412,7 +1487,14 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 5, 4].adjacent_diff() == [3, 2, -1]`
-pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T> = todo
+pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T>:
+    var out: List<T> = []
+    var prev: ?T = None
+    for x in self:
+        if let p = prev: out.push(x - p)
+        else: out.push(x)
+        prev = Some(x)
+    out
 
 /// O(1). Explicit piece `Range<D>` between cuts `lo` and `hi` (explicit twin of `lo..hi` in decision 124; traps if `lo > hi`).
 ///

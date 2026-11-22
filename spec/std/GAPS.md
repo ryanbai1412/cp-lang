@@ -31,3 +31,16 @@ line when the gap closes and the body lands.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - algebra: `Semiring(min, +)` (site `tables.spec.cp`): operation values don't resolve in `cpl run` (E0201 "doesn't know the name `min` here"; `+` is typed `Int`, E0302 "expected `Int`, found `(Int, Int) -> Int`"); the struct itself needs no body.
 - dsu: the site's `content/landing/lib/dsu.cp` reaching `todo`: plain `Dsu<V>` (`new`/`unite`/`same`/`size`/`find`/`components`) runs in this tree (`spec/conformance/std-dsu`); the remaining `todo`s are `PersistentDsu` and `@cache`-blocked bodies, so the snippet likely calls one of those.
+||||||| parent of 111ff8a4 (stdlib: give seq folds and stream generators bodies)
+- seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
+- seq, `flatten`: inference binds the element type `T` to the inner sequence (`expected List<Int>, found Int`).
+- seq, `fold`: a method call `xs.fold(f, init)` is not resolved to the stdlib function (`no method fold that cpl run knows`).
+- seq, `min` / `max` (example with `by: .0`): tuple-field shorthand `.0` as a closure is not parsed.
+- heap, `Heap.new` / `Heap.of` (example with `by: desc`): `desc` is not known to `cpl run`.
+- deque, `Deque.set` (example `q[0] = 9`): a struct cannot implement indexing (`can't be indexed`).
+- fenwick / sparse, examples like `Fenwick([1, 2, 3])` and `Fenwick2D<0..2, 0..2, Int>()`: a list literal is not accepted as a `[D]T` argument (`an array literal needs one value per position`), and a range is not accepted where a domain is named; the bodies run over a declared `domain` (see `spec/conformance/std-fenwick`, `std-sparse`).
+- segtree, `SegTree.new` (and so `all`, `monoid`, `try_fold`, `clear`, `walk`, which need a tree to test): `apply`'s tag type `F` is not a declared parameter (`F is not a type cpl run knows`), the struct's header parameter `m: Monoid<T>` captures the `op` argument, and `at`'s `-> lends mut T` does not parse.
+- window, `Window.new` examples (`Window(+)`, `Window(max)`): a bare operator is not accepted for the header parameter `op: M`, and `max`/`min` are unknown names to `cpl run`; `Window<Int, (Int, Int) -> Int>.new(f)` works.
+- window, `Window.pop`: `w.pop()` resolves to `Track.pop(x)` (`pop needs the argument x`) instead of the inherent zero-argument `pop`; the body is verified through its private helper.
+- prefix, most examples (`p.fold(1..=2)`, `p.prefix(2)`, `p.get(1)`): an integer literal is not converted to a `D` position, `Cut<D>` or `Range<D>` at a call; the bodies run when written with `D(1)` (see `spec/conformance/std-prefix`).
+- prefix, `scan` / `cyclic_sum`: left `todo`; `scan` returns `Prefix<D, T>` for any op, which has no field for a non-`+` fold yet, and `RingRange`'s accessors are themselves unimplemented.
