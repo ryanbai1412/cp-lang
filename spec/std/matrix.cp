@@ -85,7 +85,7 @@ pub struct Mat<T>:
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = Mat<Int>.identity(2); m.at(0, 0) += 4; m.get(0, 0) == 5`
-    pub fn at(self, r: Int, c: Int) lends mut T:
+    pub fn at(self, r: Int, c: Int) -> lends mut T:
         lend mut data[r * cols + c]
 
     /// The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.

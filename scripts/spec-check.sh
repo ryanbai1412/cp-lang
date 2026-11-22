@@ -10,6 +10,7 @@ if grep -lE "^(<<<<<<<|>>>>>>>|\|\|\|\|\|\|\|) " "$root"/spec/std/*.cp "$root"/s
     echo "spec-check: unresolved merge conflict markers in the files above" >&2; exit 1
 fi
 if [ $# -eq 0 ]; then
+    python3 "$root/scripts/spec-vocab.py" | tail -1
     python3 "$root/scripts/spec-stub.py" --check >/dev/null ||
         echo "spec-check: WARNING: spec/std has fn bodies; run scripts/spec-stub.py" >&2
     mapfile -t gold < <(grep -v '^#' "$root/spec/GOLD.txt" | sed '/^$/d; s|^|'"$root"'/|')

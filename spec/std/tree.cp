@@ -1209,8 +1209,7 @@ fn lazy_link_cut_keeps_path_order_under_assignment() = todo
 /// `Incr`: `r`'s values sit just above `l`'s; `Decr`: just below; `Partial`: the union is
 /// not an interval on its own and only closes further up; `Full`: `r` fills the gaps of a
 /// `Partial` `l`, closing an interval in neither order.
-pub enum PermKind: Leaf, Incr, Decr, Partial, Full
-
+pub enum PermKind = Leaf | Incr | Decr | Partial | Full
 /// A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or
 /// `Inner(l, r, kind)` with its two children and how they join.
 pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)

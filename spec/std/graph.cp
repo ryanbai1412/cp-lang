@@ -166,7 +166,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: the arcs in input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
-    pub fn at(self, u: V) lends Slice<A> = todo
+    pub fn at(self, u: V) -> lends Slice<A> = todo
 
     /// The arcs out of `u`, lazily: the `Next` implementation.
     ///
@@ -218,7 +218,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// cost: O(1) to make; `f` runs on every arc read
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; dijkstra(Graph.directed(es).weighted(a => 5), from: [(V(0), 0)])[2] == Some(10)`
-    pub fn weighted<W>(self, f: A -> W) lends Reweighted<Graph<V, A>, A -> W> = todo
+    pub fn weighted<W>(self, f: A -> W) -> lends Reweighted<Graph<V, A>, A -> W> = todo
 
     /// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
     /// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input

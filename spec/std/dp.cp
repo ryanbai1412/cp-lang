@@ -30,7 +30,7 @@ pub struct Line(k: Int, m: Int):
 /// `xs.len`; memory is O(lines) cells, allocated as lines arrive.
 pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     lines: List<?L>
-    // a cell's children; 0 is none, since the root is no cell's child
+    // a cell's children; 0 means no cell, since the root is no cell's child
     left: List<Int>
     right: List<Int>
 

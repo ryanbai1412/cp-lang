@@ -62,7 +62,7 @@ keeps it at its stated cost (decision 142):
         fn at(self, k: K) -> T                                              // O(1) s[k]
         keys: Range<K>                                                      // contiguous keys
     pub trait IndexedMut<K, T>: Indexed<K, T>:
-        fn at(mut self, k: K) lends mut T                                   // s[k] is a place
+        fn at(mut self, k: K) -> lends mut T                                   // s[k] is a place
     pub trait Contains<T>:               fn contains(self, x: T) -> Bool    // `x in s`, sub-linear only
 
 | Needs | Operations |
@@ -125,10 +125,10 @@ stubs need nothing more:
         fn iter_rev(self) -> yields T =
             for x in self.src.rev:
                 if self.keep(x): yield x
-    pub fn filter<S: Seq<T>, T, P: T -> Bool>(self: S, keep: P) lends Filter<S, P> =
+    pub fn filter<S: Seq<T>, T, P: T -> Bool>(self: S, keep: P) -> lends Filter<S, P> =
         Filter(self, keep)
     fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]
-    pub fn at(mut self, i: D) lends mut T       // a writable place: the same keyword
+    pub fn at(mut self, i: D) -> lends mut T       // a writable place: the same keyword
 
 A `for` over a generator pastes its body at the loop and each `yield x`
 becomes the loop body, so `for y in a.filter(p).map(f): b(y)` is

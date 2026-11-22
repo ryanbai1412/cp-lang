@@ -209,7 +209,7 @@ A fn whose result borrows from its arguments declares it:
 
 ```python
 fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]       // read lend
-pub fn at(mut self, i: D) lends mut T                    // a writable place
+pub fn at(mut self, i: D) -> lends mut T                    // a writable place
 fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
 ```
 
@@ -834,7 +834,7 @@ a[l] = 0
 
 **33.**
 ```python
-fn evens(xs: [V]Int) lends Filter<[V]Int, Int -> Bool> = xs.filter(x => x % 2 == 0)
+fn evens(xs: [V]Int) -> lends Filter<[V]Int, Int -> Bool> = xs.filter(x => x % 2 == 0)
 for x in evens(a): a[l] += x
 ```
 <details><summary>Answer</summary>No. The result borrows <code>a</code> for the loop, and the body writes <code>a</code> (R12).</details>

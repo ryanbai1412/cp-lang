@@ -273,7 +273,7 @@ facts are arrays over it and a leaf's missing children are a trap, not a
 `-1`:
 
 ```cp
-enum PermKind: Leaf, Incr, Decr, Partial, Full
+enum PermKind = Leaf | Incr | Decr | Partial | Full
 struct PermTree<I, V, Node>
     root: Node; kind: [Node]PermKind; first, last: [Node]I; lo, hi: [Node]V
     fn of(p: [I]V) -> PermTree<I, V, _>           // O(n)
