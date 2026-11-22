@@ -73,6 +73,24 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over))
 
+    /// Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    pub fn of<A, M>(a: A, op: M) -> Action<T, F>:
+        let m = Monoid<T>.of(op)
+        if same(a, add):
+            if same(op, +):
+                return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, m)
+            return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, m)
+        if same(a, assign):
+            if same(op, +):
+                return Action(None, (nf, of) => nf ?? of, (f, v, span) => if let x = f: x * span else: v, m)
+            return Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, m)
+        if same(a, affine):
+            return Action((T.one, T.zero), (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1), (f, v, span) => f.0 * v + f.1 * span, m)
+        a
+
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(x: T)
 
@@ -481,16 +499,28 @@ pub trait Selective<T>: Idempotent<T>
 /// example: `fold(each(+, max), [(1, 5), (2, 3)]) == (3, 5)`
 pub fn each<Ms>(..ms: Ms) -> Ms = todo
 
+/// Marker type for the stock `add` action.
+pub struct AddAction
+
+/// Marker type for the stock `assign` action.
+pub struct AssignAction
+
+/// Marker type for the stock `affine` action.
+pub struct AffineAction
+
+/// Marker type for the stock `flip` action.
+pub struct FlipAction
+
 /// Stock action: add a tag to every element. On `+` a span of `n` changes by `f * n`; on
 /// `min`/`max` by `f`. Tags commute, so a `SegTree` with it never pushes down. O(1).
-pub const add = todo
+pub const add: AddAction = AddAction()
 
 /// Stock action: assign a tag to every element (`?T` tags, `None` is no-op). O(1) on `+`,
 /// `min`, `max`; O(log n) folding `f` `n` times for other ops.
-pub const assign = todo
+pub const assign: AssignAction = AssignAction()
 
 /// Stock action: `x -> a * x + b` on `+` folds (span `n`: `a * s + b * n`). Not commutative.
-pub const affine = todo
+pub const affine: AffineAction = AffineAction()
 
 /// Stock action: swap the two halves of a `Flip<T>` value.
-pub const flip = todo
+pub const flip: FlipAction = FlipAction()

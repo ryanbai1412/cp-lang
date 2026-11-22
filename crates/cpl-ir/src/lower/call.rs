@@ -222,6 +222,17 @@ impl<'a> Lowerer<'a> {
                             span,
                         );
                     }
+                    if let (Some(ta), Some(tb)) = (
+                        self.probe_ty_silent(&args[0].value),
+                        self.probe_ty_silent(&args[1].value),
+                    ) {
+                        let is_marker = |t: &Ty| {
+                            matches!(t, Ty::Struct(s) if self.structs[*s].def.fields.is_empty())
+                        };
+                        if is_marker(&ta) || is_marker(&tb) {
+                            return self.mk(ExprKind::Bool(ta == tb), Ty::Bool, span);
+                        }
+                    }
                 }
                 // A plain call of two values is the core binary `min`/`max`, even
                 // where the `Seq` fold of that name is in scope (std.seq).
@@ -949,11 +960,63 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
+            if let Some(act_arg) =
+                args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
+            {
+                if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&act_arg.value) {
+                    let sname = self.structs[sid].def.name.as_str();
+                    let elem_ty = match inferred.get("T") {
+                        Some(GenArg::Ty(t)) => t.clone(),
+                        _ => Ty::Int,
+                    };
+                    let inferred_f = if let Some((orig_gid, gargs)) = &self.structs[sid].origin_gen
+                    {
+                        if self.gen_structs[*orig_gid].decl.name.text == "Action"
+                            && gargs.len() == 2
+                        {
+                            match &gargs[1] {
+                                GenArg::Ty(t) => Some(t.clone()),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        let base = sname
+                            .strip_prefix('m')
+                            .and_then(|rest| rest.split_once('_'))
+                            .map_or(sname, |(_, b)| b);
+                        match base {
+                            "AddAction" => Some(elem_ty),
+                            "AssignAction" => Some(Ty::opt(elem_ty)),
+                            "AffineAction" => Some(Ty::Tuple(vec![elem_ty.clone(), elem_ty])),
+                            "FlipAction" => Some(Ty::Bool),
+                            _ => None,
+                        }
+                    };
+                    if let Some(f_ty) = inferred_f {
+                        inferred.insert("F".to_string(), GenArg::Ty(f_ty));
+                    }
+                }
+            }
+        }
         let mut final_args = Vec::with_capacity(gen_names.len());
-        for g in &gen_names {
+        for (i, g) in gen_names.iter().enumerate() {
             match inferred.get(g) {
                 Some(a) => final_args.push(a.clone()),
-                None => final_args.push(GenArg::Ty(Ty::Int)),
+                None => {
+                    if let Some(Some(def_ty)) = decl.generic_defaults.get(i) {
+                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                        let resolved = self.resolve_ty(def_ty);
+                        self.gen_env = saved_env;
+                        self.cur_mod = saved_mod;
+                        final_args.push(GenArg::Ty(resolved));
+                    } else {
+                        final_args.push(GenArg::Ty(Ty::Int));
+                    }
+                }
             }
         }
         self.emit_anon_product_defs(&final_args, span);

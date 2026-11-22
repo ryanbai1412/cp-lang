@@ -611,8 +611,7 @@ impl<'p> Emitter<'p> {
             // there. Fns don't compare, so the optionals can't.
             ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), x, none)
             | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
-                if none.kind == ExprKind::None
-                    && matches!(&x.ty, Ty::Opt(inner) if matches!(**inner, Ty::Fn(..))) =>
+                if none.kind == ExprKind::None && matches!(&x.ty, Ty::Opt(_)) =>
             {
                 let code = self.expr(x);
                 let has = format!("{}.has_value()", code.at(PRIMARY));
