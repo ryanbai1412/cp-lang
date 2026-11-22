@@ -76,7 +76,7 @@ may never outlive the variable (R8). That is the whole checker.
   can't outlive it.
 
 ```python
-let walk = dfs(g, s, mut seen)   // seen lent `mut` from here...
+let walk = dfs(g, from: [s], seen: mut seen)   // seen lent `mut` from here...
 print(seen[x])                   // error: seen is lent to walk
 let n = walk.count()             // ...to here
 
@@ -237,7 +237,7 @@ fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> // borrows only a
 **R6. What is lent.** A value is lent when any part of it is lent:
 - a parameter (R4), and anything a `lends` fn returns (§6); (R05.7.1)
 - a struct, tuple or enum with a lent field (`Filter(self, keep)`); (R05.7.2)
-- a generator value with a lent argument (`dfs(g, s)`, `dfs(mut seen)`); (R05.7.3)
+- a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut seen)`); (R05.7.3)
 - a loop item, for the iteration (§9); (R05.7.4)
 - a closure or nested fn that captures a local `var`, a local heap value or
   a parameter (§10). (R05.7.5)
@@ -342,9 +342,9 @@ R6 to R8 cover it with nothing extra. The same struct built from an owned
 value owns it (`Filter(xs, p)` moves `xs`).
 
 A **generator value** is a generator fn with its arguments filled in:
-`let g = dfs(graph, s)` runs nothing. It holds its arguments like a struct
+`let g = dfs(graph, from: [s])` runs nothing. It holds its arguments like a struct
 holds fields, so `divisors(12)` is owned (it can be stored or returned),
-`dfs(graph, s)` is lent from `graph`, and `dfs(graph, s, mut seen)` is a
+`dfs(graph, from: [s])` is lent from `graph`, and `dfs(graph, from: [s], seen: mut seen)` is a
 `mut` lend of `seen`.
 
 **R12. Walking.** `for x in g: B` calls the generator with `B` as its loop
@@ -362,8 +362,8 @@ state of its arguments.
 
 ```python
 var seen: [V]Bool = false
-for v in dfs(g, s, mut seen):
-    seen[v] = true          // error: seen is lent `mut` to the dfs for the whole loop
+for step in dfs(g, from: [s], seen: mut seen):
+    seen[s] = true          // error: seen is lent `mut` to the dfs for the whole loop
 ```
 ```python
 for x in xs: xs.push(x)          // error: xs is read-lent to the loop
@@ -756,15 +756,15 @@ print(part.sum())
 **23.**
 ```python
 var seen: [V]Bool = false
-for v in dfs(g, s, mut seen):
-    if seen[v]: print(v)
+for step in dfs(g, from: [s], seen: mut seen):
+    if seen[s]: print(s)
 ```
 <details><summary>Answer</summary>No. <code>seen</code> is <code>mut</code>-lent to the generator for the whole walk, so even reading it is excluded (R12). Fix: let the generator report it, or materialize the walk with <code>List(...)</code> first.</details>
 
 **24.**
 ```python
 var seen: [V]Bool = false
-let walk = dfs(g, s, mut seen)
+let walk = dfs(g, from: [s], seen: mut seen)
 let n1 = walk.count()
 let n2 = walk.count()
 ```
