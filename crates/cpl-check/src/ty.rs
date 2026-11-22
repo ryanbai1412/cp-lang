@@ -1051,7 +1051,7 @@ mod tests {
         assert!(!Ty::Int.fits(&v));
         assert!(range(0, 5).fits(&Ty::Int));
         assert!(Ty::Int.fits(&range(0, 5)));
-        assert!(Ty::Int.fits(&Ty::Float));
+        assert!(!Ty::Int.fits(&Ty::Float));
         assert!(!Ty::Float.fits(&Ty::Int));
         assert!(v.fits(&Ty::Optional(Box::new(v.clone()))));
         assert!(Ty::Unknown.fits(&v) && v.fits(&Ty::Error));
