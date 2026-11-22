@@ -359,7 +359,9 @@ pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
             if inv_n != T.zero:
                 for i in 0..n: a[i] = a[i] * inv_n
             else:
-                for i in 0..n: a[i] = a[i] / n_t
+                for i in 0..n:
+                    assert a[i] % n_t == T.zero, "`fwht(inverse: true)` needs every entry divisible by `n`"
+                    a[i] = a[i] / n_t
 
 /// O(log^2 n) amortized per step, O(n log^2 n) total. Online (relaxed) NTT convolution:
 /// supply `(a[k], b[k])` one step at a time and immediately receive `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
