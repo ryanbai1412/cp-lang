@@ -1011,7 +1011,14 @@ pub fn bit_subsets(n: Int, k: Int) -> yields Int:
 /// traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
 /// example: `dirichlet_convolve([0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, 2, 2, 3, 2, 4]`
 /// example: `dirichlet_convolve([0, 1, 2, 3], [0, 1, 0, 0], 3) == [0, 1, 2, 3]`
-pub fn dirichlet_convolve<T>(a: List<T>, b: List<T>, n: Int) -> List<T> = todo
+pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<T>:
+    assert n >= 0, "dirichlet_convolve requires n >= 0"
+    assert a.len >= n + 1 and b.len >= n + 1, "dirichlet_convolve requires a.len and b.len >= n + 1"
+    var c = List.filled(n + 1, T.zero)
+    for i in 1..=n:
+        for j in 1..=n / i:
+            c[i * j] += a[i] * b[j]
+    c
 
 /// The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).
 ///
@@ -1023,12 +1030,29 @@ pub fn dirichlet_convolve<T>(a: List<T>, b: List<T>, n: Int) -> List<T> = todo
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 /// example: `dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, -1, -1, 0, -1, 1]`
-pub fn dirichlet_inv<T>(a: List<T>, n: Int) -> List<T> = todo
+pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: Int) -> List<T>:
+    assert n >= 0, "dirichlet_inv requires n >= 0"
+    var b = List.filled(n + 1, T.zero)
+    if n == 0: return b
+    assert a.len >= n + 1, "dirichlet_inv requires a.len >= n + 1"
+    let inv1 = T.one / a[1]
+    assert inv1 * a[1] == T.one, "dirichlet_inv requires an invertible a[1]"
+    var acc = List.filled(n + 1, T.zero)
+    for k in 1..=n:
+        b[k] = if k == 1: inv1 else: T.zero - inv1 * acc[k]
+        for d in 2..=n / k:
+            acc[d * k] += a[d] * b[k]
+    b
 
 /// O(n^(2/3)) time and memory. Stateful Du's sieve cache for prefix sums of a multiplicative function `f`
 /// given prefix sums of `g` and `f * g`.
-pub struct DirichletSum<T>:
+pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     n: Int
+    pre: List<T>
+    g_sum: Int -> T
+    fg_sum: Int -> T
+    g1: T
+    memo: Map<Int, T>
 
     /// A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up
     /// to `n`.
@@ -1043,7 +1067,11 @@ pub struct DirichletSum<T>:
     /// empty: an empty `f_small` makes every query use the recursion
     /// traps: when `n < 0`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
-    pub fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T> = todo
+    pub fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>:
+        assert n >= 0, "DirichletSum requires n >= 0"
+        var pre = List.filled(max(f_small.len, 1), T.zero)
+        for k in 1..f_small.len: pre[k] = pre[k - 1] + f_small[k]
+        DirichletSum(n: n, pre: pre, g_sum: g_sum, fg_sum: fg_sum, g1: g_sum(1), memo: Map<Int, T>())
 
     /// The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.
     ///
@@ -1054,7 +1082,22 @@ pub struct DirichletSum<T>:
     /// traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
-    pub fn sum(mut self, m: Int) -> T = todo
+    pub fn sum(mut self, m: Int) -> T:
+        assert 0 <= m and m <= self.n, "DirichletSum.sum requires m in 0..=n"
+        if m < self.pre.len: return self.pre[m]
+        if let v = self.memo.get(m): return v
+        let inv1 = T.one / self.g1
+        assert inv1 * self.g1 == T.one, "DirichletSum requires an invertible g(1)"
+        var r = (self.fg_sum)(m)
+        var i = 2
+        while i <= m:
+            let q = m / i
+            let j = m / q
+            r -= ((self.g_sum)(j) - (self.g_sum)(i - 1)) * self.sum(q)
+            i = j + 1
+        let res = r * inv1
+        self.memo[m] = res
+        res
 
 /// The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.
 ///
@@ -1063,7 +1106,15 @@ pub struct DirichletSum<T>:
 /// example: `sum_phi(10) == 32`
 /// example: `sum_phi(1) == 1`
 /// example: `sum_phi(0) == 0`
-pub fn sum_phi(n: Int) -> Int = todo
+pub fn sum_phi(n: Int) -> Int:
+    if n <= 0: return 0
+    let lim = min(n, du_limit(n))
+    var phi_small = [k for k in 0..=lim]
+    for p in 2..=lim:
+        if phi_small[p] == p:
+            for k in (p..=lim).step(p): phi_small[k] -= phi_small[k] / p
+    var ds = DirichletSum<Int>(n, phi_small, m => m, m => if m % 2 == 0: m / 2 * (m + 1) else: (m + 1) / 2 * m)
+    ds.sum(n)
 
 /// The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
 ///
@@ -1072,7 +1123,25 @@ pub fn sum_phi(n: Int) -> Int = todo
 /// example: `sum_mobius(10) == -1`
 /// example: `sum_mobius(1) == 1`
 /// example: `sum_mobius(0) == 0`
-pub fn sum_mobius(n: Int) -> Int = todo
+pub fn sum_mobius(n: Int) -> Int:
+    if n <= 0: return 0
+    let lim = min(n, du_limit(n))
+    var mu = List.filled(lim + 1, 1)
+    mu[0] = 0
+    var composite = List.filled(lim + 1, false)
+    for p in 2..=lim:
+        if not composite[p]:
+            for k in (p..=lim).step(p):
+                if k > p: composite[k] = true
+                mu[k] = -mu[k]
+            if p <= lim / p:
+                for k in (p * p..=lim).step(p * p): mu[k] = 0
+    var ds = DirichletSum<Int>(n, mu, m => m, m => if m >= 1: 1 else: 0)
+    ds.sum(n)
+
+fn du_limit(n: Int) -> Int:
+    let c = iroot(n, 3)
+    max(2, c * c)
 
 /// The prefix sum `sum_{k=1..=n} f(k)` of a multiplicative `f` (Min_25 sieve).
 ///
@@ -1086,7 +1155,35 @@ pub fn sum_mobius(n: Int) -> Int = todo
 /// traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 /// example: `sum_multiplicative(10, (p, e, pe) => 1, [0, 1, 2, 3, 4]) == 10`
 /// example: `sum_multiplicative(10, (p, e, pe) => e + 1, [0, 2, 4, 6, 8]) == 27`
-pub fn sum_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T = todo
+pub fn sum_multiplicative<T: Add + Sub + Mul>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T:
+    assert n >= 0, "sum_multiplicative requires n >= 0"
+    if n == 0:
+        assert prime_sum.is_empty, "sum_multiplicative requires one prime_sum per distinct n / i"
+        return T.zero
+    let s = isqrt(n)
+    let total = if n / s == s: 2 * s - 1 else: 2 * s
+    assert prime_sum.len == total, "sum_multiplicative requires one prime_sum per distinct n / i"
+    fn g(v: Int) -> T = if v <= s: prime_sum[v - 1] else: prime_sum[total - n / v]
+    var composite = List.filled(s + 1, false)
+    var primes: List<Int> = []
+    for p in 2..=s:
+        if not composite[p]:
+            primes.push(p)
+            for k in (p * p..=s).step(p): composite[k] = true
+    fn rec(x: Int, j: Int) -> T:
+        var r = g(x) - (if j == 0: T.zero else: g(primes[j - 1]))
+        var i = j
+        while i < primes.len and primes[i] <= x / primes[i]:
+            let p = primes[i]
+            var pe = p
+            var e = 1
+            while pe <= x / p:
+                r += prime_pow(p, e, pe) * rec(x / pe, i + 1) + prime_pow(p, e + 1, pe * p)
+                pe *= p
+                e += 1
+            i += 1
+        r
+    rec(n, 0) + T.one
 
 /// Every integer solution of `a*x + b*y = c` as `x = x0 + k * step_x`, `y = y0 - k * step_y`,
 /// or `None` if `gcd(a, b)` does not divide `c`.
@@ -1372,7 +1469,15 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// cost: O(1)
     /// traps: never
     /// example: `BigInt.from_int(-42).to_str() == "-42"`
-    pub fn from_int(x: Int) -> BigInt = todo
+    pub fn from_int(x: Int) -> BigInt:
+        var limbs: List<Int> = []
+        var y = x
+        while y != 0:
+            let r = y % BIG_BASE
+            let d = if y < 0 and r != 0: BIG_BASE - r else: r
+            limbs.push(d)
+            y = if y < 0 and r != 0: y / BIG_BASE + 1 else: y / BIG_BASE
+        BigInt(neg: x < 0, limbs: limbs)
 
     /// Parse a decimal integer: an optional leading `-`, then one or more digits.
     ///
@@ -1383,7 +1488,21 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// example: `BigInt.from_str("-000123").to_str() == "-123"`
     /// example: `BigInt.from_str("-0").to_str() == "0"`
     /// example: `BigInt.from_str("123456789012345678901234567890").to_str() == "123456789012345678901234567890"`
-    pub fn from_str(s: Str) -> BigInt = todo
+    pub fn from_str(s: Str) -> BigInt:
+        let neg = s.len > 0 and s[0] == '-'
+        let start = if neg: 1 else: 0
+        assert s.len > start, "BigInt.from_str needs at least one digit"
+        var limbs: List<Int> = []
+        var hi = s.len
+        while hi > start:
+            let lo = max(start, hi - 9)
+            var v = 0
+            for i in lo..hi:
+                assert s[i].is_digit, "BigInt.from_str needs decimal digits"
+                v = v * 10 + Int(s[i]) - Int('0')
+            limbs.push(v)
+            hi = lo
+        big_make(neg, limbs)
 
     /// The decimal text of `self`: no leading zeros, a `-` only when negative, `"0"` for zero.
     ///
@@ -1391,7 +1510,19 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// traps: never
     /// example: `BigInt.from_int(0).to_str() == "0"`
     /// example: `BigInt.from_int(-7).to_str() == "-7"`
-    pub fn to_str(self) -> Str = todo
+    pub fn to_str(self) -> Str:
+        if self.limbs.is_empty: return "0"
+        var cs: List<Char> = []
+        for i in 0..self.limbs.len:
+            var v = self.limbs[i]
+            let last = i == self.limbs.len - 1
+            var k = 0
+            while (last and v > 0) or (not last and k < 9):
+                cs.push(Char(48 + v % 10))
+                v /= 10
+                k += 1
+        if self.neg: cs.push('-')
+        Str([cs[cs.len - 1 - i] for i in 0..cs.len])
 
     /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|`, as for `Int`.
     ///
@@ -1399,14 +1530,22 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// traps: when `d` is zero
     /// example: `BigInt.from_int(-7).divmod(BigInt.from_int(3)) == (BigInt.from_int(-3), BigInt.from_int(2))`
     /// example: `BigInt.from_int(7).divmod(BigInt.from_int(-3)) == (BigInt.from_int(-2), BigInt.from_int(1))`
-    pub fn divmod(self, d: BigInt) -> (BigInt, BigInt) = todo
+    pub fn divmod(self, d: BigInt) -> (BigInt, BigInt):
+        assert not d.limbs.is_empty, "BigInt division by zero"
+        let (qm, rm) = big_divmod_mag(self.limbs, d.limbs)
+        var q = big_make(self.neg != d.neg, qm)
+        var r = big_make(self.neg, rm)
+        if r.neg:
+            r = r + d.abs()
+            q = if d.neg: q + BigInt.from_int(1) else: q - BigInt.from_int(1)
+        (q, r)
 
     /// The absolute value.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `BigInt.from_int(-5).abs() == BigInt.from_int(5)`
-    pub fn abs(self) -> BigInt = todo
+    pub fn abs(self) -> BigInt = BigInt(neg: false, limbs: self.limbs)
 
     /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0)` is 0.
     ///
@@ -1414,28 +1553,113 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// traps: never
     /// example: `BigInt.gcd(BigInt.from_int(12), BigInt.from_int(-18)) == BigInt.from_int(6)`
     /// example: `BigInt.gcd(BigInt.from_int(0), BigInt.from_int(0)) == BigInt.from_int(0)`
-    pub fn gcd(a: BigInt, b: BigInt) -> BigInt = todo
+    pub fn gcd(a: BigInt, b: BigInt) -> BigInt:
+        var (x, y) = (a.abs(), b.abs())
+        while not y.limbs.is_empty:
+            (x, y) = (y, x.divmod(y).1)
+        x
 
 impl Add for BigInt:
-    fn add(a, b) = todo
+    fn add(a, b) = big_add(a, b.neg, b.limbs)
 
 impl Sub for BigInt:
-    fn sub(a, b) = todo
+    fn sub(a, b) = big_add(a, not b.neg, b.limbs)
 
 impl Neg for BigInt:
-    fn neg(a) = todo
+    fn neg(a) = big_make(not a.neg, a.limbs)
 
 impl Mul for BigInt:
-    fn mul(a, b) = todo
+    fn mul(a, b) = big_make(a.neg != b.neg, big_mul_mag(a.limbs, b.limbs))
 
 impl Div for BigInt:
-    fn div(a, b) = todo
+    fn div(a, b) = a.divmod(b).0
 
 impl Ord for BigInt:
-    fn lt(a, b) = todo
+    fn lt(a, b):
+        if a.neg != b.neg: return a.neg
+        let c = big_cmp_mag(a.limbs, b.limbs)
+        if a.neg: c > 0 else: c < 0
 
 impl Show for BigInt:
-    fn show(a) = todo
+    fn show(a) = a.to_str()
+
+const BIG_BASE = 1_000_000_000
+
+fn big_make(neg: Bool, limbs: List<Int>) -> BigInt:
+    var l = limbs
+    while not l.is_empty and l[l.len - 1] == 0: l.pop()
+    BigInt(neg: neg and not l.is_empty, limbs: l)
+
+fn big_cmp_mag(a: List<Int>, b: List<Int>) -> Int:
+    if a.len != b.len: return if a.len < b.len: -1 else: 1
+    for i in (0..a.len).rev:
+        if a[i] != b[i]: return if a[i] < b[i]: -1 else: 1
+    0
+
+fn big_add_mag(a: List<Int>, b: List<Int>) -> List<Int>:
+    var out: List<Int> = []
+    var carry = 0
+    for i in 0..max(a.len, b.len):
+        let v = (if i < a.len: a[i] else: 0) + (if i < b.len: b[i] else: 0) + carry
+        out.push(v % BIG_BASE)
+        carry = v / BIG_BASE
+    if carry > 0: out.push(carry)
+    out
+
+fn big_sub_mag(a: List<Int>, b: List<Int>) -> List<Int>:
+    var out: List<Int> = []
+    var borrow = 0
+    for i in 0..a.len:
+        var v = a[i] - borrow - (if i < b.len: b[i] else: 0)
+        borrow = 0
+        if v < 0:
+            v += BIG_BASE
+            borrow = 1
+        out.push(v)
+    out
+
+fn big_add(a: BigInt, bneg: Bool, b: List<Int>) -> BigInt:
+    if a.neg == bneg: return big_make(a.neg, big_add_mag(a.limbs, b))
+    if big_cmp_mag(a.limbs, b) >= 0: big_make(a.neg, big_sub_mag(a.limbs, b)) else: big_make(bneg, big_sub_mag(b, a.limbs))
+
+fn big_mul_mag(a: List<Int>, b: List<Int>) -> List<Int>:
+    if a.is_empty or b.is_empty: return []
+    var out = List.filled(a.len + b.len, 0)
+    for i in 0..a.len:
+        var carry = 0
+        for j in 0..b.len:
+            let v = out[i + j] + a[i] * b[j] + carry
+            out[i + j] = v % BIG_BASE
+            carry = v / BIG_BASE
+        var k = i + b.len
+        while carry > 0:
+            let v = out[k] + carry
+            out[k] = v % BIG_BASE
+            carry = v / BIG_BASE
+            k += 1
+    while not out.is_empty and out[out.len - 1] == 0: out.pop()
+    out
+
+fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
+    var q = List.filled(a.len, 0)
+    var r: List<Int> = []
+    for i in (0..a.len).rev:
+        var shifted = [a[i]]
+        for x in r: shifted.push(x)
+        r = shifted
+        while not r.is_empty and r[r.len - 1] == 0: r.pop()
+        var (lo, hi) = (0, BIG_BASE - 1)
+        while lo < hi:
+            let guess = (lo + hi + 1) / 2
+            if big_cmp_mag(big_mul_mag(b, [guess]), r) <= 0:
+                lo = guess
+            else:
+                hi = guess - 1
+        if lo > 0:
+            r = big_sub_mag(r, big_mul_mag(b, [lo]))
+            while not r.is_empty and r[r.len - 1] == 0: r.pop()
+        q[i] = lo
+    (q, r)
 
 @test
 fn gcd_lcm_and_bezout():
