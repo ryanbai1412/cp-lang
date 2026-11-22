@@ -1,6 +1,6 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fileSamples, parts, planLenses } from '../../src/samples';
+import { fileSamples, parts, planLenses, replayLenses } from '../../src/samples';
 
 test('fileSamples orders scratch inputs and test folders by number', () => {
     const found = fileSamples('d', ['d.cp', 'i10', 'i2', 'o2', 'notes'], ['2.in', '1.in', '1.out', 'hand-1.in'], ['1.in']);
@@ -95,5 +95,13 @@ test('planLenses on a file with no samples and no brute still offers Run and Tra
     assert.deepEqual(
         planLenses('print(1)\n', two).map(l => l.title),
         ['$(play) Run on i1', 'Run on all 2 samples', 'Trace'],
+    );
+});
+
+test('replayLenses puts Replay above each fn of the solution, not its tools', () => {
+    const text = ['fn most() -> Int:', '    return 1', '', '@brute(main)', 'fn slow():', '    print(1)', 'print(most())'].join('\n');
+    assert.deepEqual(
+        replayLenses(text).map(l => [l.line, l.title, l.command, l.args]),
+        [[0, '$(debug-restart) Replay this call', 'cp.replayCall', [{ fn: 'most' }]]],
     );
 });

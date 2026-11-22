@@ -3,7 +3,7 @@
 
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { fileSamples, planLenses, Sample } from './samples';
+import { fileSamples, planLenses, replayLenses, Sample } from './samples';
 
 async function names(folder: vscode.Uri): Promise<string[]> {
     try {
@@ -41,6 +41,8 @@ export class LensProvider implements vscode.CodeLensProvider, vscode.Disposable 
             watcher,
             watcher.onDidCreate(() => this.changed.fire()),
             watcher.onDidDelete(() => this.changed.fire()),
+            vscode.debug.onDidStartDebugSession(() => this.changed.fire()),
+            vscode.debug.onDidTerminateDebugSession(() => this.changed.fire()),
             vscode.workspace.onDidChangeConfiguration(event => {
                 if (event.affectsConfiguration('cp.codeLens')) {
                     this.changed.fire();
@@ -55,6 +57,9 @@ export class LensProvider implements vscode.CodeLensProvider, vscode.Disposable 
             return [];
         }
         const specs = planLenses(document.getText(), await samplesOf(document));
+        if (vscode.debug.activeDebugSession?.type === 'cp') {
+            specs.push(...replayLenses(document.getText()));
+        }
         return specs.map(spec => {
             const line = Math.min(spec.line, document.lineCount - 1);
             return new vscode.CodeLens(new vscode.Range(line, 0, line, 0), {

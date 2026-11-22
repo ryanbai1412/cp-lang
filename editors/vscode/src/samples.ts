@@ -105,7 +105,7 @@ export function parts(text: string): Part[] {
 export interface LensSpec {
     line: number;
     title: string;
-    command: 'cp.runSample' | 'cp.runAllSamples' | 'cp.stress' | 'cp.trace';
+    command: 'cp.runSample' | 'cp.runAllSamples' | 'cp.stress' | 'cp.trace' | 'cp.replayCall';
     args: unknown[];
 }
 
@@ -172,4 +172,15 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
         });
     }
     return out;
+}
+
+/**
+ * While a debug session is stopped: a lens above each fn of the solution
+ * that runs its call at the current step again with the fn as edited.
+ */
+export function replayLenses(text: string): LensSpec[] {
+    const tools = new Set(['brute', 'checker', 'interactor', 'grader']);
+    return parts(text)
+        .filter(part => !part.decorators.some(d => tools.has(d.name)))
+        .map(part => ({ line: part.fnLine, title: '$(debug-restart) Replay this call', command: 'cp.replayCall', args: [{ fn: part.name }] }));
 }

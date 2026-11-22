@@ -53,6 +53,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 return new vscode.DebugAdapterExecutable(binary, ['dap']);
             },
         }),
+        command('cp.replayCall', async (target?: unknown, call?: { fn?: string }) => {
+            const session = vscode.debug.activeDebugSession;
+            if (session?.type !== 'cp') {
+                void vscode.window.showInformationMessage('Replay needs a CP Lang debug session stopped at the call.');
+                return;
+            }
+            // From the call stack VS Code passes the frame; from a lens, the document and the fn.
+            const frameId = (target as { frameId?: unknown } | undefined)?.frameId;
+            const args = call?.fn ? { fn: call.fn } : typeof frameId === 'number' ? { frameId } : {};
+            try {
+                const body = await session.customRequest('replayCall', args);
+                const report = String(body?.report ?? '');
+                output.appendLine(report);
+                const [first, second] = report.split('\n');
+                void vscode.window.showInformationMessage(`${first}: ${second}`, 'Show report').then(choice => {
+                    if (choice) {
+                        output.show(true);
+                    }
+                });
+            } catch (error) {
+                void vscode.window.showErrorMessage(`Replay: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }),
         command('cp.restartServer', () => client.restart()),
         command('cp.showOutput', () => output.show()),
         command('cp.clearOverlays', () => {

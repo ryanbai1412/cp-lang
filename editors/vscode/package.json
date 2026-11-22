@@ -77,6 +77,11 @@
         "category": "CP"
       },
       {
+        "command": "cp.replayCall",
+        "title": "Replay This Call",
+        "category": "CP"
+      },
+      {
         "command": "cp.toggleLiveValues",
         "title": "Toggle Live Sample Values",
         "category": "CP"
@@ -126,6 +131,17 @@
         {
           "command": "cp.clearOverlays",
           "when": "editorLangId == cp"
+        },
+        {
+          "command": "cp.replayCall",
+          "when": "debugType == cp && inDebugMode"
+        }
+      ],
+      "debug/callstack/context": [
+        {
+          "command": "cp.replayCall",
+          "when": "debugType == cp && callStackItemType == 'stackFrame'",
+          "group": "navigation"
         }
       ]
     },
