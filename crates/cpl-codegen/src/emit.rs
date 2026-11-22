@@ -529,6 +529,7 @@ impl<'p> Emitter<'p> {
                 } else if ty.is_scalar()
                     || self.facts.stores((Some(id), false, slot)) > 2
                     || self.sunk[id].contains(&slot)
+                    || matches!(ty, Ty::Struct(sid) if !self.program.structs[*sid].cached_fields.is_empty())
                 {
                     format!("{cpp} {name}")
                 } else {
@@ -1123,7 +1124,10 @@ impl<'p> Emitter<'p> {
                                 fn_work.push(show_fn);
                             }
                         } else {
-                            for (_, fty) in &s.fields {
+                            for (i, (_, fty)) in s.fields.iter().enumerate() {
+                                if s.cached_fields.contains(&i) {
+                                    continue;
+                                }
                                 mark_show_ty(
                                     fty,
                                     program,

@@ -135,13 +135,15 @@ impl<'p> Emitter<'p> {
                 vec![(**key).clone(), (**value).clone()]
             }
             Ty::Struct(id) => {
-                if self.program.structs[*id].show_fn.is_some() {
+                let def = &self.program.structs[*id];
+                if def.show_fn.is_some() {
                     Vec::new()
                 } else {
-                    self.program.structs[*id]
-                        .fields
+                    def.fields
                         .iter()
-                        .map(|(_, t)| t.clone())
+                        .enumerate()
+                        .filter(|(i, _)| !def.cached_fields.contains(i))
+                        .map(|(_, (_, t))| t.clone())
                         .collect()
                 }
             }
@@ -187,14 +189,17 @@ impl<'p> Emitter<'p> {
                 b.push_str(&fields(self, items, "    "));
             }
             Ty::Struct(id) => {
-                if let Some(show_fn) = program.structs[*id].show_fn {
+                let def = &program.structs[*id];
+                if let Some(show_fn) = def.show_fn {
                     let name = crate::names::fn_name(&program.fns[show_fn].name);
                     b.push_str(&format!("    cpl::put_str({name}(v));\n"));
                 } else {
-                    let items: Vec<(Code, &Ty)> = program.structs[*id]
+                    let items: Vec<(Code, &Ty)> = def
                         .fields
                         .iter()
-                        .map(|(name, t)| (Code::primary(format!("v.{}", ident(name))), t))
+                        .enumerate()
+                        .filter(|(i, _)| !def.cached_fields.contains(i))
+                        .map(|(_, (name, t))| (Code::primary(format!("v.{}", ident(name))), t))
                         .collect();
                     b.push_str(&fields(self, items, "    "));
                 }

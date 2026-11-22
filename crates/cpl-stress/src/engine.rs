@@ -47,6 +47,7 @@ pub trait ChoiceSource: Sync {
 pub struct ProcessEngine<'a> {
     pub fast: &'a Program,
     pub brute: Option<&'a Program>,
+    pub cold: Option<&'a Program>,
     pub judge: &'a Judge,
     pub limit: Duration,
 }
@@ -86,13 +87,36 @@ impl Engine for ProcessEngine<'_> {
             .judge
             .run(self.fast, input, expected.as_deref(), self.limit)
             .map_err(|e| io(self.fast, e))?;
-        Ok((!judged.verdict.accepted()).then(|| {
-            (
+        if !judged.verdict.accepted() {
+            return Ok(Some((
                 judged.verdict,
                 expected.unwrap_or_default(),
                 judged.outcome.stdout,
-            )
-        }))
+            )));
+        }
+        if let Some(cold) = self.cold {
+            let cold_out = cold
+                .run(input, self.limit * 10)
+                .map_err(|e| io(cold, e))?;
+            if !cold_out.ok() {
+                return Ok(Some((
+                    Verdict::Wrong(format!(
+                        "@cache cold run failed ({:?}) while cached run succeeded",
+                        cold_out.exit
+                    )),
+                    cold_out.stdout,
+                    judged.outcome.stdout,
+                )));
+            }
+            if let Some(why) = first_difference(&cold_out.stdout, &judged.outcome.stdout) {
+                return Ok(Some((
+                    Verdict::Wrong(format!("@cache changed the output ({why})")),
+                    cold_out.stdout,
+                    judged.outcome.stdout,
+                )));
+            }
+        }
+        Ok(None)
     }
 }
 

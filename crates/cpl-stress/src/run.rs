@@ -142,9 +142,23 @@ pub fn stress(
     judge: &Judge,
     options: &Options,
 ) -> Result<Report, StressError> {
+    stress_with_cold(source, fast, brute, None, judge, options)
+}
+
+/// Like [`stress`], also comparing each accepted run against a `@cache`
+/// cold-mode build when `cold` is `Some`.
+pub fn stress_with_cold(
+    source: &Source,
+    fast: &Program,
+    brute: Option<&Program>,
+    cold: Option<&Program>,
+    judge: &Judge,
+    options: &Options,
+) -> Result<Report, StressError> {
     let engine = ProcessEngine {
         fast,
         brute,
+        cold,
         judge,
         limit: options.limit,
     };

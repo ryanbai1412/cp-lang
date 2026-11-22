@@ -55,6 +55,28 @@ pub fn lower(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
     lower_impl(analysis, None)
 }
 
+/// Lowers a file in `@cache` cold mode: read-`self` methods on structs with
+/// `@cache` fields receive a copy of `self`, undoing cache writes at exit.
+pub fn lower_cold_cache(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry_with_cold(analysis, None, false, true)
+}
+
+/// True when any struct in `analysis` (the file itself) declares a `@cache` field.
+pub fn has_cached_fields(analysis: &Analysis) -> bool {
+    fn in_stmts(stmts: &[ast::Stmt]) -> bool {
+        stmts.iter().any(|s| match &s.kind {
+            ast::StmtKind::Struct(sd) => {
+                sd.fields.iter().any(|f| f.cached) || in_stmts(&sd.methods)
+            }
+            _ => false,
+        })
+    }
+    analysis
+        .items
+        .iter()
+        .any(|item| in_stmts(&item.syntax.parsed.stmts))
+}
+
 /// Lowers a single `@test` function of `analysis` as the program's entrypoint.
 pub fn lower_test(analysis: &Analysis, test_name: &str) -> Result<Program, Vec<Diagnostic>> {
     lower_impl(analysis, Some(test_name))
@@ -213,8 +235,18 @@ fn lower_entry(
     test_name: Option<&str>,
     judge: bool,
 ) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry_with_cold(analysis, test_name, judge, false)
+}
+
+fn lower_entry_with_cold(
+    analysis: &Analysis,
+    test_name: Option<&str>,
+    judge: bool,
+    cold_cache: bool,
+) -> Result<Program, Vec<Diagnostic>> {
     let mut lw = Lowerer::new(analysis);
     lw.judge = judge;
+    lw.cold_cache = cold_cache;
     // Whatever the judge sends goes out at once. A solution with a judge
     // in its file talks to it, so it reads as it goes and never all the
     // input at once.
@@ -749,6 +781,8 @@ struct Lowerer<'a> {
     interactive: bool,
     /// Lowering an `@interactor` as the program, not the solution.
     judge: bool,
+    /// Undoes `@cache` writes made through read-only `self` at method exit.
+    cold_cache: bool,
     /// Lowering a `@brute(main)` or a `@checker` as the program.
     aside: Option<Aside>,
     /// Top-level names set below the input header: the solution's own
@@ -868,6 +902,7 @@ impl<'a> Lowerer<'a> {
             until_eof: false,
             interactive: false,
             judge: false,
+            cold_cache: false,
             aside: None,
             tail_names: HashSet::new(),
             announce_tests: false,
@@ -2524,9 +2559,10 @@ impl<'a> Lowerer<'a> {
             if i == 0 && param.name.text == "self" && self.sigs[id].owner.is_some() {
                 // A method that grows a cache works on the caller's struct.
                 let owner = self.sigs[id].owner.expect("checked above");
-                let cached = self.structs[owner]
-                    .decl
-                    .is_some_and(|sd| cache::grows_cache(sd, decl));
+                let cached = !self.cold_cache
+                    && self.structs[owner]
+                        .decl
+                        .is_some_and(|sd| cache::grows_cache(sd, decl));
                 self.sigs[id].receiver = Some(param.mutable || cached);
                 continue;
             }

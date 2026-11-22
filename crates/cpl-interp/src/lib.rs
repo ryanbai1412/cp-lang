@@ -1871,13 +1871,25 @@ impl<'p, 'o> Interp<'p, 'o> {
                         return Ok(indices);
                     }
                     Value::Map(entries) if op == AssignOp::Set => {
-                        Rc::make_mut(entries).insert(key.clone(), value);
+                        let k = match &base.ty {
+                            Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
+                                value::strip_cached(key, kt, program)
+                            }
+                            _ => key.clone(),
+                        };
+                        Rc::make_mut(entries).insert(k, value);
                         return Ok(indices);
                     }
                     Value::Map(entries) => {
+                        let k = match &base.ty {
+                            Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
+                                value::strip_cached(key, kt, program)
+                            }
+                            _ => key.clone(),
+                        };
                         let map = Rc::make_mut(entries);
                         let next =
-                            if let Some(old) = map.get(key).cloned() {
+                            if let Some(old) = map.get(&k).cloned() {
                                 combine(op, old, value, place.span)?
                             } else {
                                 match op {
@@ -1899,7 +1911,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                                     ),
                                 }
                             };
-                        map.insert(key.clone(), next);
+                        map.insert(k, next);
                         return Ok(indices);
                     }
                     Value::Moved => return trap(place.span, LENT),
@@ -2747,20 +2759,28 @@ impl<'p, 'o> Interp<'p, 'o> {
                     ),
                 }
             }
-            Value::Map(entries) => match entries.get(&values[0]) {
-                Some(value) => Ok(value.clone()),
-                None => {
-                    let mut key = Vec::new();
-                    if let Ty::Map(key_ty, _) = &base.ty {
-                        show(&mut key, &values[0], key_ty, 6, self.program, &self.domains);
+            Value::Map(entries) => {
+                let lookup_key = match &base.ty {
+                    Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
+                        value::strip_cached(&values[0], kt, self.program)
                     }
-                    let key: String = key.iter().map(|b| *b as char).collect();
-                    trap(
-                        span,
-                        format!("the key `{key}` is not in the map; `m.get(k)` gives an optional"),
-                    )
+                    _ => values[0].clone(),
+                };
+                match entries.get(&lookup_key) {
+                    Some(value) => Ok(value.clone()),
+                    None => {
+                        let mut key = Vec::new();
+                        if let Ty::Map(key_ty, _) | Ty::HashMap(key_ty, _) = &base.ty {
+                            show(&mut key, &values[0], key_ty, 6, self.program, &self.domains);
+                        }
+                        let key: String = key.iter().map(|b| *b as char).collect();
+                        trap(
+                            span,
+                            format!("the key `{key}` is not in the map; `m.get(k)` gives an optional"),
+                        )
+                    }
                 }
-            },
+            }
             Value::Moved => trap(span, LENT),
             _ => trap(span, "internal: index of a value that has no elements"),
         }
@@ -3273,12 +3293,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                     return Ok(Ordering::Equal);
                 }
                 let fields = self.program.structs[*id].fields.clone();
+                let cached = self.program.structs[*id].cached_fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
                     let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
-                    for ((_, ft), (lv, rv)) in fields
+                    for (i, ((_, ft), (lv, rv))) in fields
                         .iter()
                         .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                        .enumerate()
                     {
+                        if cached.contains(&i) {
+                            continue;
+                        }
                         let o = self.cmp_ty_val(ft, lv, rv, span)?;
                         if o != Ordering::Equal {
                             return Ok(o);
@@ -3658,7 +3683,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         // copying a map to ask it one question makes a loop quadratic.
         if let (Builtin::Contains | Builtin::MapGet, [holder, key]) = (op, args) {
             if matches!(holder.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
-                let key = self.eval(key)?;
+                let key = value::strip_cached(&self.eval(key)?, &key.ty, self.program);
                 let held = match &holder.kind {
                     ExprKind::Local(slot) => self.local(*slot),
                     ExprKind::Global(id) => &self.globals[*id],
@@ -4148,13 +4173,17 @@ impl<'p, 'o> Interp<'p, 'o> {
             },
             Builtin::Contains => {
                 let needle = values.next().unwrap_or_default();
+                let key_needle = args
+                    .get(1)
+                    .map(|a| value::strip_cached(&needle, &a.ty, self.program))
+                    .unwrap_or_else(|| needle.clone());
                 Value::Bool(match &first {
                     Value::List(items) => items.contains(&needle),
                     Value::ListView(view) => view.contains(&needle),
                     Value::MutView(mv) => self.mut_view_to_vec(mv, span)?.contains(&needle),
                     Value::Array(array) => array.contains(&needle),
-                    Value::Set(items) => items.contains(&needle),
-                    Value::Map(entries) => entries.contains_key(&needle),
+                    Value::Set(items) => items.contains(&key_needle),
+                    Value::Map(entries) => entries.contains_key(&key_needle),
                     Value::Str(bytes) => match &needle {
                         Value::Char(c) => bytes.contains(c),
                         Value::Str(part) => {
@@ -4192,6 +4221,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Builtin::MapGet => {
                 let key = values.next().unwrap_or_default();
+                let key = args
+                    .get(1)
+                    .map(|a| value::strip_cached(&key, &a.ty, self.program))
+                    .unwrap_or(key);
                 match &first {
                     Value::Map(entries) => optional(entries.get(&key).cloned()),
                     _ => Value::Opt(OptVal::None),
@@ -4200,6 +4233,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt => {
                 use std::ops::Bound::{Excluded, Included, Unbounded};
                 let key = values.next().unwrap_or_default();
+                let key = args
+                    .get(1)
+                    .map(|a| value::strip_cached(&key, &a.ty, self.program))
+                    .unwrap_or(key);
                 let range = match op {
                     Builtin::FirstGe => (Included(key), Unbounded),
                     Builtin::FirstGt => (Excluded(key), Unbounded),
@@ -4855,6 +4892,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 _ => return trap(span, "internal: this value can't be changed that way"),
             });
         }
+        let program = self.program;
         let cell = self.resolve(place, &mut indices.iter())?;
         Ok(match (op, cell) {
             (_, Value::Moved) => return trap(span, LENT),
@@ -4906,10 +4944,26 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Some(v) => v,
                 None => return trap(span, "pop from an empty list"),
             },
-            (Mutation::Insert, Value::Set(items)) => Value::Bool(Rc::make_mut(items).insert(arg)),
-            (Mutation::Remove, Value::Set(items)) => Value::Bool(Rc::make_mut(items).remove(&arg)),
+            (Mutation::Insert, Value::Set(items)) => {
+                let k = match &place.ty {
+                    Ty::Set(kt) | Ty::HashSet(kt) => value::strip_cached(&arg, kt, program),
+                    _ => arg,
+                };
+                Value::Bool(Rc::make_mut(items).insert(k))
+            }
+            (Mutation::Remove, Value::Set(items)) => {
+                let k = match &place.ty {
+                    Ty::Set(kt) | Ty::HashSet(kt) => value::strip_cached(&arg, kt, program),
+                    _ => arg,
+                };
+                Value::Bool(Rc::make_mut(items).remove(&k))
+            }
             (Mutation::Remove, Value::Map(entries)) => {
-                Value::Bool(Rc::make_mut(entries).remove(&arg).is_some())
+                let k = match &place.ty {
+                    Ty::Map(kt, _) | Ty::HashMap(kt, _) => value::strip_cached(&arg, kt, program),
+                    _ => arg,
+                };
+                Value::Bool(Rc::make_mut(entries).remove(&k).is_some())
             }
             (Mutation::Clear, Value::List(items)) => {
                 Rc::make_mut(items).clear();

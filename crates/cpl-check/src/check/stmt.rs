@@ -1672,10 +1672,14 @@ impl<'a> Checker<'a> {
                         if let Ty::Named { name: sname, .. } = &base_ty {
                             let fixed_field = match self.type_def(sname).as_deref() {
                                 Some(Def::Struct {
-                                    fields, var_fields, ..
+                                    fields,
+                                    var_fields,
+                                    cached_fields,
+                                    ..
                                 }) => {
                                     fields.iter().any(|f| f.name == name.text)
                                         && !var_fields.iter().any(|f| f == &name.text)
+                                        && !cached_fields.iter().any(|f| f == &name.text)
                                 }
                                 _ => false,
                             };

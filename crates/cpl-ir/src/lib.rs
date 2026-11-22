@@ -95,8 +95,8 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
 }
 
 pub use lower::{
-    brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker,
-    lower_gen, lower_gen_read, lower_judge, lower_test,
+    brute, checker, generator, has_cached_fields, interactor, list_tests, lower, lower_brute,
+    lower_checker, lower_cold_cache, lower_gen, lower_gen_read, lower_judge, lower_test,
 };
 pub use show::{sep_of, Sep};
 

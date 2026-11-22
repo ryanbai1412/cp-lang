@@ -1141,6 +1141,82 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
     }
 }
 
+pub(crate) fn ty_has_cached(ty: &Ty, program: &Program) -> bool {
+    match ty {
+        Ty::Struct(id) => {
+            let s = &program.structs[*id];
+            !s.cached_fields.is_empty()
+                || s.fields.iter().any(|(_, t)| ty_has_cached(t, program))
+        }
+        Ty::Tuple(ts) => ts.iter().any(|t| ty_has_cached(t, program)),
+        Ty::Record(fs) => fs.iter().any(|(_, t)| ty_has_cached(t, program)),
+        Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) => ty_has_cached(t, program),
+        Ty::Array { elem, .. } => ty_has_cached(elem, program),
+        Ty::Map(k, v) | Ty::HashMap(k, v) => {
+            ty_has_cached(k, program) || ty_has_cached(v, program)
+        }
+        Ty::Enum(id) => program.enums[*id]
+            .variants
+            .iter()
+            .any(|(_, fs)| fs.iter().any(|t| ty_has_cached(t, program))),
+        _ => false,
+    }
+}
+
+pub(crate) fn strip_cached(val: &Value, ty: &Ty, program: &Program) -> Value {
+    if !ty_has_cached(ty, program) {
+        return val.clone();
+    }
+    match (val, ty) {
+        (Value::Tuple(fields), Ty::Struct(id)) => {
+            let s = &program.structs[*id];
+            let mut scratch = [Value::Unit];
+            let slice = fields.as_slice(&mut scratch);
+            let out: Vec<Value> = s
+                .fields
+                .iter()
+                .zip(slice.iter())
+                .enumerate()
+                .map(|(i, ((_, ft), v))| {
+                    if s.cached_fields.contains(&i) {
+                        zero(ft, program)
+                    } else {
+                        strip_cached(v, ft, program)
+                    }
+                })
+                .collect();
+            Value::tuple(out)
+        }
+        (Value::Tuple(fields), Ty::Tuple(ts)) => {
+            let mut scratch = [Value::Unit];
+            let slice = fields.as_slice(&mut scratch);
+            Value::tuple(
+                ts.iter()
+                    .zip(slice.iter())
+                    .map(|(t, v)| strip_cached(v, t, program))
+                    .collect(),
+            )
+        }
+        (Value::Tuple(fields), Ty::Record(fs)) => {
+            let mut scratch = [Value::Unit];
+            let slice = fields.as_slice(&mut scratch);
+            Value::tuple(
+                fs.iter()
+                    .zip(slice.iter())
+                    .map(|((_, t), v)| strip_cached(v, t, program))
+                    .collect(),
+            )
+        }
+        (Value::Opt(OptVal::Boxed(inner)), Ty::Opt(t)) => {
+            Value::Opt(OptVal::Boxed(Rc::new(strip_cached(inner, t, program))))
+        }
+        (Value::List(items), Ty::List(t)) => Value::List(Rc::new(
+            items.iter().map(|v| strip_cached(v, t, program)).collect(),
+        )),
+        _ => val.clone(),
+    }
+}
+
 /// A float with `digits` after the point, as C's `%.*f` writes it.
 pub(crate) fn show_float(out: &mut Vec<u8>, value: f64, digits: u32) {
     use std::io::Write;
@@ -1200,19 +1276,27 @@ pub(crate) fn show(
         (Value::Tuple(fields), _) => {
             let mut scratch = [Value::Unit];
             let fields = fields.as_slice(&mut scratch);
-            let tys: Vec<Ty> = match ty {
-                Ty::Struct(id) => program.structs[*id]
-                    .fields
-                    .iter()
-                    .map(|(_, t)| t.clone())
-                    .collect(),
-                other => other.fields().unwrap_or_default(),
+            let (tys, cached): (Vec<Ty>, Option<&std::collections::BTreeSet<usize>>) = match ty {
+                Ty::Struct(id) => (
+                    program.structs[*id]
+                        .fields
+                        .iter()
+                        .map(|(_, t)| t.clone())
+                        .collect(),
+                    Some(&program.structs[*id].cached_fields),
+                ),
+                other => (other.fields().unwrap_or_default(), None),
             };
+            let mut shown = 0usize;
             for (i, (field, field_ty)) in fields.iter().zip(&tys).enumerate() {
-                if i > 0 {
+                if cached.is_some_and(|c| c.contains(&i)) {
+                    continue;
+                }
+                if shown > 0 {
                     out.push(b' ');
                 }
                 rec(out, field, field_ty);
+                shown += 1;
             }
         }
         (Value::Enum(tag, payload), Ty::Enum(id)) => {

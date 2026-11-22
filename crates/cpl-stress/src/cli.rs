@@ -2,7 +2,7 @@
 
 use crate::judge::{declared, Judge};
 use crate::program::Program;
-use crate::run::{save, stress, Options, Report, Source};
+use crate::run::{save, stress_with_cold, Options, Report, Source};
 use crate::spec::InputSpec;
 use cpl_diag::Span;
 use cpl_interp::trace::Divergence;
@@ -463,7 +463,20 @@ pub fn run_with(
         (None, None, Some("cp")) => swap_in_part_brutes(&src),
         _ => None,
     };
-    if args.brute.is_none() && own_brute.is_none() && part_brute.is_none() && judge == Judge::Tokens
+    let has_cached = args.fast.is_none()
+        && args.file.extension().is_some_and(|e| e == "cp")
+        && src.contains("@cache")
+        && {
+            let mut db = cpl_check::Database::new();
+            db.set_file(&name, src.as_str());
+            db.analyze(&name)
+                .is_some_and(|analysis| cpl_ir::has_cached_fields(&analysis))
+        };
+    if args.brute.is_none()
+        && own_brute.is_none()
+        && part_brute.is_none()
+        && !has_cached
+        && judge == Judge::Tokens
     {
         return fail(format!(
             "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
@@ -506,7 +519,7 @@ pub fn run_with(
     };
     // The two builds are the whole wait before the first case, so they
     // run side by side.
-    let (fast, brute) = std::thread::scope(|scope| {
+    let (fast, brute, cold) = std::thread::scope(|scope| {
         let brute = scope.spawn(|| match (&args.brute, &own_brute) {
             (Some(path), _) => resolve(path).map(Some),
             (None, Some((fn_name, _))) => Program::resolve_brute(&args.file, fn_name)
@@ -517,8 +530,21 @@ pub fn run_with(
                 None => Ok(None),
             },
         });
+        let cold = scope.spawn(|| {
+            if has_cached {
+                Program::resolve_cold_cache(&args.file)
+                    .map(Some)
+                    .map_err(|e| e.to_string())
+            } else {
+                Ok(None)
+            }
+        });
         let fast = solution(&args.file, args.fast.as_deref());
-        (fast, brute.join().expect("a build does not panic"))
+        (
+            fast,
+            brute.join().expect("a build does not panic"),
+            cold.join().expect("a build does not panic"),
+        )
     });
     let fast = match fast {
         Ok(program) => program,
@@ -528,8 +554,19 @@ pub fn run_with(
         Ok(brute) => brute,
         Err(message) => return fail(message),
     };
+    let cold = match cold {
+        Ok(cold) => cold,
+        Err(message) => return fail(message),
+    };
 
-    let report = match stress(&source, &fast, brute.as_ref(), &judge, &args.options) {
+    let report = match stress_with_cold(
+        &source,
+        &fast,
+        brute.as_ref(),
+        cold.as_ref(),
+        &judge,
+        &args.options,
+    ) {
         Ok(report) => report,
         Err(error) => return fail(error.to_string()),
     };

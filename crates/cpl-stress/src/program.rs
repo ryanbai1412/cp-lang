@@ -252,6 +252,7 @@ fn compile_with(
 #[derive(Clone, Copy)]
 enum Part {
     Solution,
+    ColdCache,
     Brute,
     /// The `@gen` fn, called with this size.
     Gen(i64),
@@ -287,6 +288,7 @@ fn emit_cpp(
     let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
     let lowered = match part {
         Part::Solution => cpl_ir::lower(&analysis),
+        Part::ColdCache => cpl_ir::lower_cold_cache(&analysis),
         Part::Brute => {
             let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@brute(main)"))?;
             cpl_ir::lower_brute(&analysis, &brute_fn)
@@ -390,6 +392,16 @@ impl Program {
         Ok(Program {
             name: path.display().to_string(),
             argv: build_judged(path, Some(text), Part::Solution)?,
+            env: Vec::new(),
+        })
+    }
+
+    /// The solution in `@cache` cold mode (cache writes through read `self`
+    /// are undone at method exit), to check P1 against the normal run.
+    pub fn resolve_cold_cache(path: &Path) -> Result<Program, BuildError> {
+        Ok(Program {
+            name: format!("{} (@cache cold)", path.display()),
+            argv: build_judged(path, None, Part::ColdCache)?,
             env: Vec::new(),
         })
     }

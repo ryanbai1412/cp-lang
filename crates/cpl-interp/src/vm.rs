@@ -3944,7 +3944,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         value: &'p Expr,
     ) -> bool {
         if let PlaceKind::Index(map_place, indices) = &place.kind {
-            if matches!(map_place.ty, Ty::Map(_, _)) && indices.len() == 1 {
+            if matches!(&map_place.ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                && indices.len() == 1
+            {
                 let saved_ops = self.ops.len();
                 let saved_spans = self.spans.len();
                 let saved_places = self.places.len();
@@ -4316,7 +4318,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 (dst_val, dst_some)
             }
             ExprKind::Builtin(Builtin::MapGet, args)
-                if args.len() == 2 && matches!(args[0].ty, Ty::Map(_, _)) =>
+                if args.len() == 2
+                    && matches!(&args[0].ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program)) =>
             {
                 let map_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -4337,7 +4340,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Builtin(
                 b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
                 args,
-            ) if args.len() == 2 && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _)) => {
+            ) if args.len() == 2
+                && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _))
+                && !crate::value::ty_has_cached(&args[1].ty, self.program) => {
                 let mode = match b {
                     Builtin::FirstGe => 0,
                     Builtin::FirstGt => 1,
@@ -5266,7 +5271,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && matches!(
                         args[0].ty,
                         Ty::Set(_) | Ty::Map(_, _) | Ty::List(_) | Ty::Array { .. }
-                    ) =>
+                    )
+                    && !crate::value::ty_has_cached(&args[1].ty, self.program) =>
             {
                 let src_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -5282,6 +5288,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
                 if args.len() == 1
+                    && !crate::value::ty_has_cached(&args[0].ty, self.program)
                     && ((matches!(m, Mutation::Insert) && matches!(place.ty, Ty::Set(_)))
                         || (matches!(m, Mutation::Remove)
                             && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _)))) =>
@@ -5313,7 +5320,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::Map(_, _)) && indices.len() == 1 =>
+                if matches!(&base.ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                    && indices.len() == 1 =>
             {
                 let Ty::Map(kty, _) = &base.ty else { unreachable!() };
                 let map_v = self.compile_expr_v(base);
@@ -6253,7 +6261,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Builtin(Builtin::MapGet, args)
-                if args.len() == 2 && matches!(args[0].ty, Ty::Map(_, _)) =>
+                if args.len() == 2
+                    && matches!(&args[0].ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program)) =>
             {
                 let map_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -6270,7 +6279,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Builtin(
                 b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
                 args,
-            ) if args.len() == 2 && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _)) => {
+            ) if args.len() == 2
+                && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _))
+                && !crate::value::ty_has_cached(&args[1].ty, self.program) => {
                 let mode = match b {
                     Builtin::FirstGe => 0,
                     Builtin::FirstGt => 1,
@@ -6315,7 +6326,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::Map(_, _)) && indices.len() == 1 =>
+                if matches!(&base.ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                    && indices.len() == 1 =>
             {
                 let Ty::Map(kty, _) = &base.ty else { unreachable!() };
                 let map_v = self.compile_expr_v(base);
