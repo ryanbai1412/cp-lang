@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1689 (995 passing). Rules: 527.
+Cases: 1699 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 1689 (995 passing). Rules: 527.
 - R04 (04-indices.md): 60 rules, 80 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 43 rules, 93 cases; 0 uncovered, 3 happy-path only, 4 negative only
+- R05 (05-ownership.md): 43 rules, 96 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 60 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 101 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 67 cases; 0 uncovered, 2 happy-path only, 5 negative only
@@ -339,9 +339,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.8 [1+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
 - R05.10.9 [0+ 1-] *negative only*: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [0+ 1-] *negative only*: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
-- R05.10.11 [0+ 1-] *negative only*: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
+- R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
 - R05.10.12 [0+ 1-] *negative only*: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
-- R05.10.13 [1+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
+- R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-] *happy-path only*: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
 ### R06: 06-control-functions.md
@@ -771,8 +771,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (95/124 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **graph** (98/124 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -814,7 +814,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2032 of 2245 std items are named by a case.
+2035 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
