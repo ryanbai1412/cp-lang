@@ -1199,7 +1199,7 @@ impl<'a> Lowerer<'a> {
                                                     decl: f,
                                                 },
                                             );
-                                        } else if !f.generics.is_empty() {
+                                        } else if !f.generics.is_empty() || self.takes_trait(f, m) {
                                             let gfid = self.gen_fns.len();
                                             self.gen_fns.push(GenFnTemplate {
                                                 mod_id: m,
@@ -2023,6 +2023,18 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.product_factor_from_ord(&factors[idx].1, ord, span)
+    }
+
+    /// `fn new(next: Next<V>)`: a trait-typed parameter makes the fn generic in
+    /// that argument's type, as an explicit `<N: Next<V>>` would.
+    pub(super) fn takes_trait(&self, f: &ast::FnDecl, m: usize) -> bool {
+        f.params.iter().any(|p| {
+            matches!(
+                &p.ty,
+                Some(ast::Type { kind: ast::TypeKind::Named { name, .. }, .. })
+                    if matches!(self.mod_syms[m].get(&name.text), Some(Sym::Trait(_)))
+            )
+        })
     }
 
     /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
@@ -5732,6 +5744,7 @@ fn type_has_hole(ty: &ast::Type) -> bool {
     match &ty.kind {
         ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"),
         ast::TypeKind::Named { args, .. } => args.iter().any(type_has_hole),
+        ast::TypeKind::Optional(t) => type_has_hole(t),
         _ => false,
     }
 }

@@ -1006,7 +1006,7 @@ impl<'a> Lowerer<'a> {
                                 decl: f,
                             },
                         );
-                    } else if !f.generics.is_empty() {
+                    } else if !f.generics.is_empty() || self.takes_trait(f, tpl_mod) {
                         let gfid = self.gen_fns.len();
                         self.gen_fns.push(GenFnTemplate {
                             mod_id: tpl_mod,
@@ -1247,7 +1247,7 @@ impl<'a> Lowerer<'a> {
                                     decl: f,
                                 },
                             );
-                        } else if !f.generics.is_empty() {
+                        } else if !f.generics.is_empty() || self.takes_trait(f, imp_mod) {
                             let gfid = self.gen_fns.len();
                             self.gen_fns.push(GenFnTemplate {
                                 mod_id: imp_mod,
