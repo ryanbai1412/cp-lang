@@ -265,6 +265,12 @@ Both are designed in, not bolted onto the interpreter:
 6. **Test roles are queries.** Stress compares solution and brute event by
    event and reports the first diverging state.
 7. **Incomplete programs run.** `todo` traps at its location.
+8. **Edit, re-run, replay.** One action re-records from the edited file on
+   the pinned input; the cursor returns to the same logical position; the
+   first step where the old and new runs differ is highlighted. Any recorded
+   call can be replayed alone after an edit: state at its entry is rebuilt
+   from the recording and only that call runs. One implementation in the
+   interpreter serves the editor (DAP), the browser (wasm) and the CLI.
 
 ## A6. Testing
 
