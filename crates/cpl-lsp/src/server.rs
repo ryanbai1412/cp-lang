@@ -1426,6 +1426,17 @@ fn steps_power(t: &[String], at: &mut usize, n: f64) -> Option<f64> {
     Some(base.powi(steps_exponent(t, at)?))
 }
 
+/// The steps of a cost written in domain sizes, `O(log |V|)`, at their most
+/// positions; none if it names anything else.
+fn domain_steps(cost: &str, domains: &[(String, u128)]) -> Option<f64> {
+    let mut cost = cost.to_string();
+    for (d, size) in domains {
+        cost = cost.replace(&format!("|{d}|"), &format!("({size})"));
+    }
+    let names_n = cost.split(|c: char| !c.is_alphanumeric() && c != '_').any(|w| w == "n");
+    (!cost.contains('|') && !names_n).then(|| steps_of(&cost, 0.0)).flatten()
+}
+
 /// A documented cost with its size `n` written as `size`: `O(n log n)` for
 /// `ys.len` is `O(ys.len log ys.len)`.
 fn size_in(cost: &str, size: &str) -> String {
@@ -1462,13 +1473,17 @@ fn fn_call_costs(
     let costs = db.costs_in(uri, f.body.0, f.body.1);
     let text = db.analyze(uri).map_or_else(String::new, |a| a.text.to_string());
     let sizes = if costs.is_empty() { Vec::new() } else { cpl_lint::proven_sizes(&text) };
+    let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) { cpl_lint::domain_sizes(&text) } else { Vec::new() };
     for (span, name, cost) in &costs {
         let receiver = name
             .starts_with('.')
             .then(|| receiver_before(&text, span.start as usize))
             .flatten();
         let size = sizes.iter().find(|s| s.receiver.1 + 1 == span.start);
-        let steps = size.and_then(|s| steps_of(cost, s.max as f64));
+        let steps = match size {
+            Some(s) => steps_of(cost, s.max as f64),
+            None => domain_steps(cost, &domains),
+        };
         let (name, cost) = match (receiver, size) {
             (Some(r), Some(s)) if s.count.chars().all(|c| c.is_alphanumeric() || c == '_') => {
                 (format!("{r}{name}"), size_in(cost, &s.count))

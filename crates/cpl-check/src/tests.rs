@@ -3349,3 +3349,18 @@ fn ask_conversions_and_rand_cost_o1_for_values_of_a_fixed_size() {
     assert_eq!(hover(&mut db, 0, "rand"), o1("rand"));
     assert_eq!(hover(&mut db, 2, "Int("), None);
 }
+
+#[test]
+fn a_method_cost_names_the_receivers_domain_for_the_structs() {
+    let src = "domain V = 0..10\nfn f(bit: Fenwick<V, Int>, g: Fenwick2D<V, V, Int>, v: V) -> Int:\n    \
+               bit.sum(..v) + g.sum(.., ..)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, name: &str| {
+        let at = src.find(name).unwrap() as u32;
+        let text = db.hover("a.cp", at).unwrap().text;
+        text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string)
+    };
+    assert_eq!(cost(&mut db, "sum(..v)").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, "sum(.., ..)").as_deref(), Some("O(log |V| * log |V|)"));
+}

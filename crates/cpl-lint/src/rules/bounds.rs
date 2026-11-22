@@ -868,6 +868,12 @@ impl Bounds {
     }
 
     /// How many values the domain `name` has, at most.
+    pub(crate) fn domains(&self) -> Vec<(String, u128)> {
+        let mut out: Vec<(String, u128)> = self.domains.iter().map(|(d, n)| (d.clone(), *n)).collect();
+        out.sort();
+        out
+    }
+
     pub(crate) fn domain_size(&self, name: &str) -> Option<u128> {
         self.domains.get(name).copied()
     }

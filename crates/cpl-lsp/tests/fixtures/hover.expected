@@ -271,3 +271,18 @@ fn widest(cells: [V]Int) -> Span
 fn echo()
   estimated cost: O(n), about 600000 (6e5) steps at max input
 ```
+
+== hover @ 121:7
+```cp
+fn prefixes(bit: Fenwick<V, Int>)
+  documented costs: bit.sum O(log |V|), about 18 steps each, n = 200000 (2e5) times
+  estimated cost: O(n + n * (log |V|)), about 3921929 (3.9e6) steps at max input
+```
+
+== hover @ 123:20
+```cp
+sum: fn(r: Range<V>) -> Int
+cost: O(log |V|)
+```
+
+The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).

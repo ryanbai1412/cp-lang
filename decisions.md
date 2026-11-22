@@ -2497,6 +2497,15 @@ estimate went from 28 to 35 of 2,158. Assumption: `ask`'s cost leaves out the ju
 which the contestant does not pay for in steps; an `ask` whose reply is not bound with a declared
 type still blocks the estimate. Reverse by dropping the `ask`, conversion and `rand` cases.
 
+29.51. **A method's cost may name its struct's domains.** A doc's `|D|` or `D.K`, for a type
+parameter `D` of the method's struct, is written as the receiver's domain: `bit.sum` on a
+`Fenwick<V, Int>` hovers `cost: O(log |V|)`, and a fn's estimate evaluates `|V|` at the most
+positions the bounds give `V`. The Fenwick trees' methods now state their cost this way, e.g.
+`O(log |D|)` for `add`; a doc's bare `n` is still evaluated only as the receiver's length, since
+it means different things on different structs. Fns in the ports and examples with an estimate
+went from 35 to 39 of 2,161. Building a stdlib struct (`Fenwick<V, Int>(a)`) still blocks an
+estimate. Reverse by dropping `in_receiver_domains` and `domain_steps`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

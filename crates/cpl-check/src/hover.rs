@@ -77,7 +77,20 @@ impl Database {
             doc_above(&source, def.span.start)
         });
         let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
-        let text = match doc.as_deref().and_then(cost_of) {
+        let receiver = item.check.hovers.iter().find(|e| e.span.end + 1 == entry.span.start);
+        let generics = match (entry.keyword, entry.owner.as_deref(), receiver.map(|r| &r.ty)) {
+            ("field", Some(owner), Some(Ty::Named { name, args })) if name == owner => {
+                match self.lookup(path, &analysis, owner).as_deref() {
+                    Some(Def::Struct { generics, .. }) => {
+                        generics.iter().cloned().zip(args.iter().cloned()).collect()
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => Vec::new(),
+        };
+        let cost = doc.as_deref().and_then(cost_of).map(|c| in_receiver_domains(&c, &generics));
+        let text = match cost {
             Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
                 format!("{text}\ncost: {cost}")
             }
@@ -269,6 +282,20 @@ fn doc_above(text: &str, at: u32) -> Option<String> {
     lines.reverse();
     let doc = lines.join("\n").trim().to_string();
     (!doc.is_empty()).then_some(doc)
+}
+
+/// A method's documented cost with its struct's domain parameters written as
+/// the receiver's: `O(log |D|)` on a `Fenwick<V, Int>` is `O(log |V|)`, and so
+/// is `O(log D.K)`.
+fn in_receiver_domains(cost: &str, generics: &[(String, Ty)]) -> String {
+    let mut out = cost.to_string();
+    for (g, arg) in generics {
+        if let Ty::Pos(d) = arg {
+            out = out.replace(&format!("|{g}|"), &format!("|{d}|"));
+            out = out.replace(&format!("{g}.K"), &format!("|{d}|"));
+        }
+    }
+    out
 }
 
 /// The smallest entry under the cursor.

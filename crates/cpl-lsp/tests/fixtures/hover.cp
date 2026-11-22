@@ -118,3 +118,6 @@ fn ec$0ho():
     for _ in 0..n:
         let (x, y): (Int, Int) = read()
         print(x + y, "and {x * y}")
+fn pre$0fixes(bit: Fenwick<V, Int>):
+    for v in V:
+        print(bit.s$0um(..v))
