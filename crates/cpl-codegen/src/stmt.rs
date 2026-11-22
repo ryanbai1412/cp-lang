@@ -721,7 +721,7 @@ impl<'p> Emitter<'p> {
                     self.indent += 1;
                     // A view returned by a call over a temporary container (e.g. `nat().take(3)`)
                     // borrows that container; pin the temporary in this block so it outlives the loop.
-                    let seq_text = if matches!(seq.ty, Ty::ListView(_) | Ty::StrView) {
+                    let seq_text = if matches!(seq.ty, Ty::ListView(..) | Ty::StrView) {
                         if let ExprKind::Call(fid, args) = &seq.kind {
                             let needs_pin = args.iter().any(|a| match a {
                                 cpl_ir::Arg::Value(e) => {
