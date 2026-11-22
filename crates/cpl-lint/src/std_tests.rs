@@ -26,3 +26,19 @@ fn a_library_module_may_write_range_tree_loops() {
     let program = include_str!("../../../spec/lints/hand_rolled_range_tree/before.cp");
     assert!(codes(program).contains(&HAND_ROLLED_RANGE_TREE.code.0));
 }
+
+#[test]
+fn a_library_module_may_build_a_sieve_or_prefix_sums() {
+    let math = include_str!("../../../spec/std/math.cp");
+    assert!(!codes(math).contains(&HAND_ROLLED_SIEVE.code.0));
+    let prefix = include_str!("../../../spec/std/prefix.cp");
+    assert!(!codes(prefix).contains(&HAND_ROLLED_PREFIX_SUM.code.0));
+}
+
+#[test]
+fn a_fn_is_not_told_to_call_itself() {
+    let src = "pub fn first(xs: List<Int>) -> ?Int = xs.find(_ => true)\n";
+    assert!(!codes(src).contains(&FREE_FOLD.code.0));
+    let call = "let xs = [1, 2]\nprint(xs.find(_ => true))\n";
+    assert!(codes(call).contains(&FREE_FOLD.code.0));
+}

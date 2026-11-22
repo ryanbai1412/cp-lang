@@ -791,8 +791,9 @@ pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> 
 
 fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
     let allows = Allows::collect(file);
-    // A library module is where Fenwick and segment-tree loops belong.
     let library = file.top_level().any(|(_, stmt)| stmt.public);
+    let mut fns = Fns::default();
+    file.walk(&mut fns, |fns, base| fns.base = base);
     let mut findings = allows.unknown;
     findings.extend(rules::run(file, config));
 
@@ -803,8 +804,8 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
             .regions
             .iter()
             .any(|(span, name)| *name == lint.name && span.contains(diag.span));
-        let library_only = library && lint.code == HAND_ROLLED_RANGE_TREE.code;
-        if level == Level::Allow || allowed || library_only {
+        let library_only = library && LIBRARY_LOOPS.iter().any(|l| l.code == lint.code);
+        if level == Level::Allow || allowed || library_only || fns.defines(lint, &diag) {
             continue;
         }
         diag.severity = if level == Level::Deny {
@@ -817,6 +818,44 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
     out.sort_by_key(|d| (d.span.start, d.span.end, d.code));
     out.dedup();
     out
+}
+
+/// Lints that point to a std structure: a library module is where the
+/// loops that build one are written.
+const LIBRARY_LOOPS: &[&Lint] = &[
+    &HAND_ROLLED_RANGE_TREE,
+    &HAND_ROLLED_SIEVE,
+    &HAND_ROLLED_PREFIX_SUM,
+];
+
+/// Lints whose message names the call to write instead.
+const NAME_THE_CALL: &[&Lint] = &[&FREE_FOLD, &HAND_ROLLED_ANSWER_SEARCH];
+
+/// Each fn of a file, so a finding that says "this is `first`" is not
+/// reported inside `fn first` itself.
+#[derive(Default)]
+struct Fns {
+    base: u32,
+    spans: Vec<(Span, String)>,
+}
+
+impl Visitor for Fns {
+    fn stmt(&mut self, stmt: &Stmt) {
+        if let StmtKind::Fn(decl) = &stmt.kind {
+            let quoted = format!("`{}`", decl.name.text);
+            self.spans.push((stmt.span.shift(self.base), quoted));
+        }
+    }
+}
+
+impl Fns {
+    fn defines(&self, lint: &Lint, diag: &Diagnostic) -> bool {
+        NAME_THE_CALL.iter().any(|l| l.code == lint.code)
+            && self
+                .spans
+                .iter()
+                .any(|(span, quoted)| span.contains(diag.span) && diag.message.contains(quoted))
+    }
 }
 
 /// The `@allow(name)` decorators of a file.
