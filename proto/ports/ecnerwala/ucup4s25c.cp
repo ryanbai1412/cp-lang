@@ -1,10 +1,17 @@
-// UCup 4 Stage 25 (Zagreb) C: build the directed graph of ordered adjacent
-// pairs across all 6 permutations of each input triple, compute SCCs, and
-// check whether any intra-SCC edge violates BFS depth + 1 (mod 3).
+// UCup 4 Stage 25 (Zagreb) C — Non-3-Divisible Directed Cycle in Pair Graph
+//
+// Each input triple `(a, b, c)` permits all 6 ordered transitions
+// `(x, y) -> (y, z)` between consecutive ordered pairs. Build the directed
+// graph on distinct ordered pairs, compute its SCCs, and run a BFS within each
+// SCC from one representative `rep[c]`.
+//
+// An SCC contains a directed cycle of length not divisible by 3 iff some
+// intra-SCC edge `(u, v)` violates `dist[v] == dist[u] + 1 (mod 3)`.
+
 use std.seq.{get_or_insert_with}
 
 @!multitest
-let m: Int = read()
+let m: 1..=100_000 = read()
 var verts: Map<(Int, Int), Int> = Map()
 var raw_edges: List<(Int, Int)> = []
 
