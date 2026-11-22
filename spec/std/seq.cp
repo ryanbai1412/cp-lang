@@ -896,7 +896,9 @@ pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
 /// order: the list's order, keyed by the fresh domain
 /// traps: never
 /// example: `let (domain I, xs) = [7, 8].with_domain(); xs[I.first!] == 7`
-pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T) = todo
+pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T):
+    domain I = 0..self.len
+    (I:, [I] i => self[i.to_idx])
 
 /// The cycle of a permutation through `from`: `from`, `perm[from]`, ... until it
 /// returns to `from`. O(1) to make, O(cycle length) to walk.
