@@ -748,6 +748,7 @@ pub struct Poly<T>(c: List<T>):
         for i in 0..c.len: out.push(c[i] / T.from_int(i + 1))
         Poly(out)
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
     /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
     ///
@@ -755,7 +756,6 @@ pub struct Poly<T>(c: List<T>):
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).len == 3`
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).at(2) == 7`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn transposed_mul(self, b: Poly<T>) -> Poly<T> = todo
 
     /// Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).
@@ -767,44 +767,44 @@ pub struct Poly<T>(c: List<T>):
     pub fn truncated(self, n: Int) -> Poly<T>:
         Poly([self.at(i) for i in 0..n])
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn inv(self, n: Int) -> Poly<T> = todo
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn log(self, n: Int) -> Poly<T> = todo
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn exp(self, n: Int) -> Poly<T> = todo
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
     ///
     /// cost: O(n log n)
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn pow(self, k: Int, n: Int) -> Poly<T> = todo
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
     /// cost: O(n log n + log^2 P)
     /// traps: when `n < 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn sqrt(self, n: Int) -> ?Poly<T> = todo
 
     /// The value at `x` by Horner's rule.
@@ -817,12 +817,12 @@ pub struct Poly<T>(c: List<T>):
         for i in (0..c.len).rev: acc = acc * x + c[i]
         acc
 
+    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The Taylor shift `self(x + c)`, as `taylor_shift`.
     ///
     /// cost: O(n log n)
     /// traps: when `T` cannot divide by the factorials below `n` (`n > P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     pub fn shift(self, c: T) -> Poly<T> = todo
 
 impl Add for Poly<T>:

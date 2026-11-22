@@ -42,6 +42,7 @@ pub struct Rooted<V, Pre>:
     /// The inverse of `tin` / `pos`.
     at: [Pre]V
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`,
     /// `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and
     /// `Rooted(root: r, next: u => ...)` for anything else.
@@ -60,6 +61,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(0).collect() == [1, 2] and t.children(1).collect() == [3, 4] and t.depth(4) == 2`
     pub fn new<N>(next: N, root: V) -> Rooted<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or
     /// the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key
     /// is the root.
@@ -73,6 +75,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..3; let par: [V]?V = [None, Some(0), Some(1)]; let t = Rooted.from_parents(par); t.depth(2) == 2 and t.parent(1) == Some(0)`
     pub fn from_parents<P: Keyed>(par: P) -> Rooted<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// `from_parents` for parents that may not form a forest: `None` when they have a cycle.
     ///
     ///     let t = Rooted.try_from_parents(up) else: print("NO"); return
@@ -83,6 +86,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
     pub fn try_from_parents<P: Keyed>(par: P) -> ?Rooted<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// One tree per root: `next` must reach every vertex from exactly one of `from`.
     ///
     /// Each tree is built as `new` builds it. The trees sit one after another in `t.Pre`, in the
@@ -95,6 +99,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj, from: [2, 0]); t.roots.collect() == [2, 0] and t.root_of(1) == 0`
     pub fn forest<N>(next: N, from: List<V>) -> Rooted<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     fn build<N, A>(next: N, roots: List<V>, len: A -> Int) = todo
 
     fn finish(
@@ -107,6 +112,7 @@ pub struct Rooted<V, Pre>:
         k1: [V]0..=V.count,
     ) = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The roots in the order given: one for `new`, one per tree for `forest`, key order for
     /// `from_parents`.
     ///
@@ -130,6 +136,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.parent(3) == Some(1) and t.parent(0) == None`
     pub fn parent(self, v: V) -> ?V = par[v]
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree
     /// read with a `cost` field); `None` at a root. Edge data stays on the arcs, so no `[V]` side
     /// array is built from the edge list.
@@ -159,6 +166,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(1).collect() == [3, 4] and t.children(2).count() == 0`
     pub fn children(self, v: V) -> yields V = [bfs[i] for i in k0[v]..k1[v]]
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The arcs from `v` down to its children, with every field `next` gave them
     /// (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
     ///
@@ -169,6 +177,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.child_arcs(1).map(a => a.to).collect() == [2]`
     pub fn child_arcs<A>(self, v: V) -> yields A = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// For each child `c` of `v`, in child order, the fold with `op` of `f` over `v`'s other
     /// children: the step of a rerooting DP, with no division or inverse.
     ///
@@ -306,6 +315,7 @@ pub struct Rooted<V, Pre>:
         domain Shape = 0..known.len
         (Shape:, of: [V] v => Shape(of[v]))
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
     ///
     /// cost: O(1); a view of the stored sizes
@@ -315,6 +325,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [5, 3, 1, 1, 1]`
     @get pub fn subtree_sizes(self) -> [V]Int = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than
     /// half its vertices. Found by walking heavy children down from the root while the heavy
     /// child's subtree is more than half.
@@ -325,6 +336,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.centroid() == 1`
     pub fn centroid(self) -> V = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Every centroid of the tree holding `t.root`, one or two. Two happen only when the number of
     /// vertices is even and one edge splits the tree in halves.
     ///
@@ -336,6 +348,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain P = 0..4; let adj: [P]List<P> = [[1], [0, 2], [1, 3], [2]]; Rooted(adj, root: 0).centroids() == [1, 2]`
     pub fn centroids(self) -> List<V> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v, via:)` when
     /// entering `v` and `Exit(v, via:)` when leaving its subtree, `via` the parent (`None` at a
     /// root, and a tree has no `Again`), children in `t.Pre` order, each tree of a forest
@@ -464,6 +477,7 @@ pub struct Rooted<V, Pre>:
             x = par[top[x]]!
         at[tin[x].offset(-left)!]
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The vertex `k` edges from `a` on the path to `b` (`a` for `k == 0`), or `None` if the path
     /// is shorter.
     ///
@@ -472,6 +486,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.jump(3, 2, 2) == Some(0) and t.jump(3, 2, 3) == Some(2) and t.jump(3, 2, 4) == None`
     pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The highest ancestor `u` of `v` such that `pred(u)` holds, or `None` when `pred(v)` is false.
     /// `pred` must be true and then false on the way up, and is checked only where the search
     /// probes it.
@@ -586,6 +601,7 @@ pub struct Rooted<V, Pre>:
             st.push(x)
         VirtualTree<V, K>(vs, up, len, key)
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The edge length from `v` up to its parent: 0 at a root, 1 unless the arcs are `Weighted`.
     ///
     /// cost: O(1)
@@ -593,6 +609,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.w(3) == 1 and t.w(0) == 0`
     pub fn w(self, v: V) -> Int = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// `v`, its parent, and so on up to its root.
     ///
     /// cost: O(1) per vertex, O(depth(v)) in all
@@ -602,6 +619,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.ancestors(3).collect() == [3, 1, 0]`
     pub fn ancestors(self, v: V) -> yields V = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The top of the heavy chain through `v`: the highest vertex reached by heavy edges.
     ///
     /// cost: O(1)
@@ -610,6 +628,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.top(3) == 0 and t.top(4) == 4 and t.top(2) == 2`
     pub fn top(self, v: V) -> V = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The heavy chain through `v` as one range of positions, its top first.
     ///
     /// cost: O(1)
@@ -619,6 +638,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chain(3).map(p => t.at[p]).collect() == [0, 1, 3] and t.chain(2).count() == 1`
     pub fn chain(self, v: V) -> Range<Pre> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The subtree of `v` were the tree rooted at `root`, as at most two ranges of positions:
     /// `sub(v)` when `root` is outside it, all of `t.Pre` when `v == root`, and otherwise
     /// everything except the subtree of the child of `v` toward `root`.
@@ -630,6 +650,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub_at(1, 3).flat_map(r => r.map(p => t.at[p])).collect() == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
     pub fn sub_at(self, v: V, root: V) -> yields Range<Pre> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Whether `c` lies on the path from `a` to `b`, ends included.
     ///
     /// cost: O(log n)
@@ -637,6 +658,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.on_path(1, 3, 2) and t.on_path(3, 3, 2) and not t.on_path(4, 3, 2)`
     pub fn on_path(self, c: V, a: V, b: V) -> Bool = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The one vertex on all three paths between `a`, `b` and `c`: the deepest of their pairwise
     /// lowest common ancestors.
     ///
@@ -676,6 +698,7 @@ pub struct Rooted<V, Pre>:
         y: ?(len: Int, u: V, v: V),
     ) -> ?(len: Int, u: V, v: V) = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Every vertex ordered by depth, each depth in `t.Pre` order, over a fresh domain, so the
     /// descendants of `v` at one depth are one range.
     ///
@@ -686,6 +709,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(1).map(b => ly.at[b]).collect() == [1, 2]`
     pub fn layers(self) -> Layers<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The 2n enter and exit events of `tour` over a fresh domain, for Mo's algorithm on paths and
     /// on subtrees.
     ///
@@ -696,6 +720,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).count() == 6`
     pub fn events(self) -> Events<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours
     /// joined by a tree edge, children in `t.Pre` order. `by:` reorders each vertex's children
     /// by a key, stably, so `by: c => c in deep` walks the children in `deep` last. A walk that
@@ -710,6 +735,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..3; let adj: [V]List<V> = [[1, 2], [0], [0]]; let t = Rooted(adj, root: 0); t.euler_tour(by: c => c == 1).collect() == [0, 2, 0, 1, 0]`
     pub fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The long-path decomposition, for DP indexed by depth merged in O(n) in total. The tallest
     /// child is the first in child order on ties.
     ///
@@ -720,6 +746,7 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.height == [2, 1, 0, 0, 0] and lp.deep[1] == Some(3)`
     pub fn long_paths(self) -> LongPaths<V, _> = todo
 
+    // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The subtree of `v` in `t.Pre` order as `std.dp` steps: `step.state` is the vertex,
     /// `step.depth` its depth below `v`, and `step.prune()` skips the rest of its subtree
     /// (decision 126).

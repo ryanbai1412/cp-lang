@@ -1046,6 +1046,7 @@ pub struct SuffixArray:
         if i == n or j == n: return 0
         lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
 
+    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
     ///
@@ -1057,6 +1058,7 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").rank_range("c") == 4..4`
     pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> = todo
 
+    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
     ///
     /// cost: O(|pat| log n + occurrences)
@@ -1067,6 +1069,7 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").find_all("ana").collect() == [3, 1]`
     pub fn find_all<P: Indexed>(self, pat: P) -> yields Int = todo
 
+    // blocked: `SuffixArray` isn't generic over its element type (GAPS.md strings `SuffixArray`)
     /// The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
     ///
     /// cost: O(|pat| log n)
@@ -2056,6 +2059,7 @@ pub struct SuffixAutomaton<A>:
             for v in 1..links.len: kids[links[v]].push(v)
         kids
 
+    // blocked: no inverse of `to_idx` on a generic domain (GAPS.md strings `kth_substring`)
     /// The `k`-th (0-based) non-empty substring in lexicographic order, as its letters, or
     /// `None` when there are not that many. With `distinct: false` each substring counts once
     /// per occurrence. A proper prefix comes before its extensions.
@@ -2527,6 +2531,7 @@ pub struct Trie<A>:
         ends = [0]
         pass = [0]
 
+    // blocked: no inverse of `to_idx` on a generic domain (GAPS.md strings `Trie.kth`)
     /// The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters;
     /// `None` when fewer than `k + 1` words are stored. A word comes before its extensions.
     ///

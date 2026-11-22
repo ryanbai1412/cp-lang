@@ -156,6 +156,7 @@ pub struct Comb<M>:
     @cache f: List<M>
     @cache g: List<M>
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.
     ///
     /// The tables hold `min(limit, P - 1) + 1` entries and grow on demand later (doubling, capped at
@@ -166,10 +167,13 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
     pub fn new(limit: Int = 0) -> Comb<M> = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     fn grow(self, want: Int) = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     fn ensure(self, n: Int) = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).
     ///
     /// cost: O(1) amortized
@@ -179,6 +183,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
     pub fn fact(self, n: Int) -> M = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `1 / n!`, for `0 <= n < M.MOD`.
     ///
     /// cost: O(1) amortized
@@ -187,6 +192,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
     pub fn inv_fact(self, n: Int) -> M = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `1 / i`, for `1 <= i < M.MOD`, from the factorials: `(i - 1)! / i!`.
     ///
     /// cost: O(1) amortized
@@ -198,6 +204,7 @@ pub struct Comb<M>:
         let p = M.MOD
         self.choose(n / p, k / p) * self.choose(n % p, k % p)
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of `k`-subsets of `n` things, `n! / (k! (n - k)!)`; 0 when `k` is outside `0..=n`.
     ///
     /// For `n < M.MOD` it reads the tables. For `n >= M.MOD` it uses Lucas's theorem on the base-`P`
@@ -211,6 +218,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; Comb<Z>().choose(7, 1) == Z(0)`
     pub fn choose(self, n: Int, k: Int) -> M = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of ordered selections of `k` out of `n` things, `n! / (n - k)!`; 0 when `k` is
     /// outside `0..=n`.
     ///
@@ -252,6 +260,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
     pub fn catalan(self, n: Int) -> M = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of derangements `!n`: permutations of `n` things with no fixed point.
     ///
     /// `!0 = 1`, `!1 = 0`, and `!n = (n - 1)(!(n - 1) + !(n - 2))`; the values are tabled like the
@@ -264,6 +273,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(5) == Z(44)`
     pub fn derange(self, n: Int) -> M = todo
 
+    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`.
     ///
     /// It is computed as the product of `choose(k_1 + ... + k_i, k_i)`, so Lucas applies and the

@@ -153,6 +153,7 @@ pub struct Concave(start: Int, base: Int):
     pub fn add_linear(mut self, k: Int):
         base += k * start
         slopes.apply_all(Slide(k, 0))
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the largest `f(y)` over `y <= x` in the domain; the domain is unchanged
     /// and every falling slope becomes 0.
     ///
@@ -160,8 +161,8 @@ pub struct Concave(start: Int, base: Int):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.prefix_max(); f.at(0) == -2 and f.at(4) == 0`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn prefix_max(mut self) = todo
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the largest `f(y)` over `y >= x` in the domain; the domain is unchanged
     /// and every rising slope becomes 0.
     ///
@@ -169,7 +170,6 @@ pub struct Concave(start: Int, base: Int):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.suffix_max(); f.at(0) == 0 and f.at(4) == -2`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn suffix_max(mut self) = todo
     /// Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both
     /// grow by `d`.
@@ -179,6 +179,7 @@ pub struct Concave(start: Int, base: Int):
     /// example: `var f = Concave.point(0); f.add_const(7); f.shift(5); f.lo == 5 and f.at(5) == 7`
     pub fn shift(mut self, d: Int):
         start += d
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the largest old `f(y)` over `x - b <= y <= x - a`; the domain becomes
     /// `lo + a ..= hi + b`. The same as `max_convolve(Concave.flat(a..=b))`.
     ///
@@ -186,8 +187,8 @@ pub struct Concave(start: Int, base: Int):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: when `a > b`
     /// example: `var f = Concave.point(0); f.add_const(1); f.slide_max(-1, 2); f.lo == -1 and f.hi == 2 and f.at(2) == 1`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn slide_max(mut self, a: Int, b: Int) = todo
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// The points where `f` reaches its maximum, as a half-open range; by concavity they are
     /// contiguous.
     ///
@@ -197,7 +198,6 @@ pub struct Concave(start: Int, base: Int):
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.argmax() == 2..3`
     /// example: `Concave.flat(0..=4).argmax() == 0..5`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn argmax(mut self) -> Range<Int> = todo
 
 /// O(log n) expected per slope operation, for n slopes.
@@ -295,21 +295,21 @@ pub struct Convex(neg: Concave):
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_linear(-2); f.at(3) == -6`
     pub fn add_linear(mut self, k: Int) = neg.add_linear(-k)
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the smallest `f(y)` over `y <= x` in the domain; the domain is unchanged.
     ///
     /// cost: O(log n) expected
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.prefix_min(); f.at(0) == 2 and f.at(4) == 0`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn prefix_min(mut self) = todo
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the smallest `f(y)` over `y >= x` in the domain; the domain is unchanged.
     ///
     /// cost: O(log n) expected
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.suffix_min(); f.at(0) == 0 and f.at(4) == 2`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn suffix_min(mut self) = todo
     /// Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both
     /// grow by `d`.
@@ -318,6 +318,7 @@ pub struct Convex(neg: Concave):
     /// traps: never
     /// example: `var f = Convex.point(0); f.add_const(7); f.shift(5); f.lo == 5 and f.at(5) == 7`
     pub fn shift(mut self, d: Int) = neg.shift(d)
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// Replace `f(x)` with the smallest old `f(y)` over `x - b <= y <= x - a`; the domain becomes
     /// `lo + a ..= hi + b`. The same as `min_convolve(Convex.flat(a..=b))`.
     ///
@@ -325,8 +326,8 @@ pub struct Convex(neg: Concave):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: when `a > b`
     /// example: `var f = Convex.point(0); f.add_const(1); f.slide_min(-1, 2); f.lo == -1 and f.hi == 2 and f.at(-1) == 1`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn slide_min(mut self, a: Int, b: Int) = todo
+    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     /// The points where `f` reaches its minimum, as a half-open range; by convexity they are
     /// contiguous.
     ///
@@ -335,7 +336,6 @@ pub struct Convex(neg: Concave):
     /// ties: every minimizing point is included
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.argmin() == 2..3`
-    // blocked: needs `LazyTreap.erase_range`/`split_at`/`append`, still `todo` in std.lazy
     pub fn argmin(mut self) -> Range<Int> = todo
 
 @test
