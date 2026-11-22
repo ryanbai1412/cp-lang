@@ -660,6 +660,19 @@ pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
     })
 }
 
+/// Each list only pushed to in counted loops, with the most elements it
+/// can hold: the number of pushes (decision 29.45).
+pub fn list_sizes(src: &str) -> Vec<(String, u128)> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::list_sizes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// The most positions each top-level domain can have, from the bounds of
 /// its range: `domain V = 0..n` after `let n: 1..=2e5 = read()` has 200000.
 pub fn domain_sizes(src: &str) -> Vec<(String, u128)> {

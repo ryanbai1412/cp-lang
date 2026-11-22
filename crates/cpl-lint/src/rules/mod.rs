@@ -242,6 +242,10 @@ pub(crate) fn domain_sizes(file: &File) -> Vec<(String, u128)> {
     bounds::Bounds::of(file).domains()
 }
 
+pub(crate) fn list_sizes(file: &File) -> Vec<(String, u128)> {
+    proven(file).lists
+}
+
 pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
     proven(file)
         .sizes
@@ -334,6 +338,8 @@ struct Proven {
     pushes: std::collections::HashMap<(u32, u32), Push>,
     /// Each method call on such a list: its receiver and the list.
     pushed_calls: Vec<((u32, u32), String)>,
+    /// Each list only pushed to in counted loops, with its most elements.
+    lists: Vec<(String, u128)>,
     exprs: Vec<crate::ProvenExpr>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
@@ -358,6 +364,7 @@ impl Default for Proven {
             sizes: Vec::new(),
             pushes: std::collections::HashMap::new(),
             pushed_calls: Vec::new(),
+            lists: Vec::new(),
             exprs: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
@@ -414,6 +421,15 @@ fn proven(file: &File) -> Proven {
         })
         .collect();
     out.sizes.extend(sizes);
+    out.lists = lists
+        .iter()
+        .filter_map(|(name, size)| {
+            let (max, terms) = size.as_ref()?;
+            (Some(terms.len()) == bounds.pushes(name) && *max < bounds::LEN_MAX as u128)
+                .then(|| (name.to_string(), *max))
+        })
+        .collect();
+    out.lists.sort();
     out.names.sort();
     out.names.dedup();
     out.exprs.sort_by_key(|e| e.op);

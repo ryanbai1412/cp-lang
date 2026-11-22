@@ -1772,6 +1772,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
 }
 
 /// The most memory the input bounds let the file's top-level values take,
+/// lists only pushed to in counted loops among them,
 /// against the memory limit of the judge its build is for. Clicking it
 /// lists the judges. None under 1 KB.
 fn memory_lens(
@@ -1780,7 +1781,15 @@ fn memory_lens(
     path: &str,
     text: &str,
 ) -> Option<(String, Vec<String>)> {
-    let (bytes, unbounded) = db.storage(uri)?;
+    let (mut bytes, values) = db.storage(uri)?;
+    let lists = cpl_lint::list_sizes(text);
+    let mut unbounded = Vec::new();
+    for (name, per) in values {
+        match (per, lists.iter().find(|(list, _)| *list == name)) {
+            (Some(per), Some((_, most))) => bytes += most * u128::from(per),
+            _ => unbounded.push(name),
+        }
+    }
     if bytes < 1024 {
         return None;
     }

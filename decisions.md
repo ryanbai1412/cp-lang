@@ -5541,3 +5541,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop `memory_lens` in `cpl-lsp`'s `server.rs` and
   `Database::storage` in `cpl-check`'s `hover.rs`.
 
+
+## 205. The memory lens counts lists of proven size (2026-11-22)
+
+- **Decision.** A top-level list of fixed-size elements that the bounds
+  analysis already sizes (it starts empty and only `push` and `pop` change
+  it, each inside counted loops, decision 29.45) counts in the memory lens at
+  its most elements times its element size. Other lists are still named as
+  not counted.
+- **Why.** Most top-level values the lens skipped were lists (483 of the
+  names it left out of the 877 ports in `corpus/problems`). With this, 442
+  ports get a lens (was 434) and 119 count every value (was 106); the same 2
+  come out over the limit.
+- **Reverse.** Drop the `cpl_lint::list_sizes` lookup in `memory_lens` in
+  `cpl-lsp`'s `server.rs`.

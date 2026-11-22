@@ -48,8 +48,10 @@ pub struct Symbol {
 impl Database {
     /// What to show when the cursor is at `offset`.
     /// The most bytes the file's top-level values take at max input, and
-    /// the names of those whose size has no bound, such as lists.
-    pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<String>)> {
+    /// the names of those whose size has no bound, with the size of each
+    /// element for a list of fixed-size values.
+    #[allow(clippy::type_complexity)]
+    pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<(String, Option<u64>)>)> {
         let analysis = self.analyze(path)?;
         let mut names: Vec<String> = analysis.scope.names.keys().cloned().collect();
         names.sort();
@@ -62,9 +64,13 @@ impl Database {
                 continue;
             };
             let mut lookup = |n: &str| self.lookup(path, &analysis, n);
-            match value_bytes(ty, &mut lookup) {
-                Some(bytes) => total += bytes,
-                None => unbounded.push(name),
+            match (value_bytes(ty, &mut lookup), ty) {
+                (Some(bytes), _) => total += bytes,
+                (None, Ty::Named { name: list, args }) if list == "List" && args.len() == 1 => {
+                    let per = size(&args[0], &mut lookup);
+                    unbounded.push((name, per));
+                }
+                (None, _) => unbounded.push((name, None)),
             }
         }
         Some((total, unbounded))
