@@ -48,6 +48,7 @@ fn ports() -> Vec<PathBuf> {
     let mut ports: Vec<PathBuf> = SPEC_PORTS
         .iter()
         .map(|id| root().join(format!("corpus/problems/{id}/spec.cp")))
+        .chain(v03_ports())
         .collect();
     ports.sort();
     ports
@@ -260,6 +261,33 @@ fn every_port_compiles_with_every_judges_flags() {
         failures.extend(failed);
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The tracked ports moved to v0.3 (`corpus/sets/v03.txt`): each `port.cp`
+/// checks today. The set grows as the mechanical move lands; lint and fmt
+/// use it as their false-positive corpus.
+fn v03_ports() -> Vec<PathBuf> {
+    std::fs::read_to_string(root().join("corpus/sets/v03.txt"))
+        .unwrap()
+        .lines()
+        .map(str::trim)
+        .filter(|id| !id.is_empty() && !id.starts_with('#'))
+        .map(|id| root().join(format!("corpus/problems/{id}/port.cp")))
+        .collect()
+}
+
+#[test]
+fn every_v03_port_checks() {
+    let ports = v03_ports();
+    assert!(!ports.is_empty(), "corpus/sets/v03.txt is empty");
+    let failed: Vec<String> = parallel(&ports, |port| {
+        let out = cpl_cli::run(&["check", port.to_str().unwrap()]);
+        (out.code != 0).then(|| format!("{}:\n{}", port.display(), out.stderr))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    assert!(failed.is_empty(), "{}", failed.join("\n"));
 }
 
 /// The corpus problems whose `spec.cp` passes its tests under `cpl-conform
