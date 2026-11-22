@@ -84,7 +84,8 @@ pub struct FillPrefix<D, T>:
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f.fold(0..2) == 12`
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(order: FillOrder.Reverse); f.set(2, 4); f.set(1, 6); f.fold(1..) == 10`
     pub fn fold(self, r: Range<D>) -> T:
-        if rev and not r.is_empty:
+        if r.is_empty: return T.zero
+        if rev:
             let in_filled = r.start.ord > next
             assert in_filled
             return self.p[r.start] - self.p[r.end]
@@ -273,7 +274,8 @@ pub struct _FillPrefix2 < R, C, T >:
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.set(1, 0, 3); f.fold(0..=1, 0..=0) == 4`
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(order: FillOrder.Reverse); f.set(1, 1, 5); f.set(1, 0, 6); f.fold(1..=1, 0..=1) == 11`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
-        if rev and not rows.is_empty and not cols.is_empty:
+        if rows.is_empty or cols.is_empty: return T.zero
+        if rev:
             let in_filled = rows.start.ord * C.K + cols.start.ord > next
             assert in_filled
             return self.p[rows.start, cols.start] - self.p[rows.end, cols.start] - self.p[rows.start, cols.end] + self.p[rows.end, cols.end]
@@ -365,7 +367,8 @@ pub struct _FillPrefixList < T >:
     /// traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
     /// example: `var f = Prefix<Int>.filling(3, order: FillOrder.Reverse); f.set(2, 4); f.set(1, 1); f.fold(1..3) == 5`
     pub fn fold(self, r: Range<Int>) -> T:
-        if rev and r.start < r.end:
+        if r.start >= r.end: return T.zero
+        if rev:
             let in_filled = r.start > next
             assert in_filled
             return self.p[r.start] - self.p[r.end]
