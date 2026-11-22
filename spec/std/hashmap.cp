@@ -447,6 +447,12 @@ pub struct Counter<K, V = Int>:
     @get pub fn values(self) -> yields V:
         for (_, v) in m.items: yield v
 
+pub fn push<K>(mut self: Counter<K, Int>, x: K):
+    self.add(x, 1)
+
+pub fn pop<K>(mut self: Counter<K, Int>, x: K):
+    self.add(x, -1)
+
 @test
 fn flat_map_matches_builtin_hash_map():
     var fm = FlatMap<Int>(0)

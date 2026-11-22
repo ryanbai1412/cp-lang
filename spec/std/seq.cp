@@ -11,8 +11,6 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 
-use std.window.{Track}
-
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
