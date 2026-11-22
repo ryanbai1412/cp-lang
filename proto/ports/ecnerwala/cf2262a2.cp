@@ -1,8 +1,19 @@
-// Codeforces 2262 A2: count subsets of 0..n that avoid every bucket
-// [a[i] * i, (a[i] + 1) * i) yet hit each lower bucket [j * i, (j + 1) * i),
-// j < a[i].  `need[lo]` is the smallest right end of a must-hit interval
-// starting at or after lo; ways[i] counts valid choices whose smallest chosen
-// point is i, so the next chosen point must be below need[i].
+// Codeforces 2262 A2 — Bucket-Avoidance Subset Counting
+//
+// Count subsets of `0..n` that avoid every forbidden bucket
+// `[a[i] * i, (a[i] + 1) * i)` (marked via difference array `diff` / prefix
+// sum `cover`) yet hit every lower bucket `[j * i, (j + 1) * i)` for
+// `j < a[i]`.
+//
+// After suffix-minimizing `need`, `need[lo]` is the tightest right endpoint
+// of any must-hit interval starting at or after `lo`. Scanning `i` from `n - 1`
+// down to `0`, `ways[i]` counts valid subsets whose smallest element is `i`:
+// if `i` is uncovered (`cover.prefix(i + 1) == 0`), the next chosen element
+// must lie in `i + 1..need[i]`, whose running sum is maintained in `tot` by
+// shrinking `hi` down to `need[i]`.
+
+use std.seq.{suffix_scan_in_place}
+
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
 
@@ -16,7 +27,7 @@ for i in 1..=n:
     diff[min(n, a[i] * i)] += 1
     diff[min(n, a[i] * i + i)] -= 1
 let cover = prefix(diff)
-for i in (0..n).rev: need[i] min= need[i + 1]
+suffix_scan_in_place(mut need, min)
 
 var ways: [0..=n]Z = 0
 ways[n] = 1
