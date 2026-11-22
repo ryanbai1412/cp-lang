@@ -76,6 +76,11 @@ commits.
 
 ## Open
 
+- **Library docs to the entry standard** (`std/README.md`): every pub fn states
+  `cost`, `traps` and an `example`, plus `empty`, `ties` and `order` where they
+  apply. `scripts/spec-stub.py --audit` lists the gaps (all 1,972 entries at
+  the start); `--check` ratchets on `std/doc-baseline.json`. Converting, most
+  used modules first (`seq`, `graph`, `tree`, `segtree`).
 - **Other triangle shapes.** `Pair<V>` (164) covers the lower triangle
   without its diagonal, which is both corpus cases. An upper triangle (row
   `i` lists every later `j`) walks the pairs in a different order, and a
