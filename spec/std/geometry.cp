@@ -280,6 +280,7 @@ pub fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool =
 /// cost: O(n) time and memory
 /// empty: `[]`
 /// order: left to right, by `(x, y)`; a new `List`, keyed from 0
+/// ties: equal points count once; with `collinear: false` the chain keeps only the two ends of a straight stretch
 /// traps: when `sorted_pts` is not sorted by `(x, y)`
 /// example: `lower_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, 0)]`
 /// example: `lower_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == [Pt(0, 0), Pt(2, 0)]`
@@ -292,6 +293,7 @@ pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> = t
 /// cost: O(n) time and memory
 /// empty: `[]`
 /// order: left to right, by `(x, y)`; a new `List`, keyed from 0
+/// ties: equal points count once; with `collinear: false` the chain keeps only the two ends of a straight stretch
 /// traps: when `sorted_pts` is not sorted by `(x, y)`
 /// example: `upper_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 0)]`
 pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> = todo
@@ -330,6 +332,7 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 /// cost: O(n) time and memory
 /// empty: `[]`
 /// order: left to right; a new `List` of keys of `pts`
+/// ties: equal points keep the smallest position
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `lower_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 1, 3]`
 pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
@@ -340,6 +343,7 @@ pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 /// cost: O(n) time and memory
 /// empty: `[]`
 /// order: left to right; a new `List` of keys of `pts`
+/// ties: equal points keep the smallest position
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `upper_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 2, 3]`
 pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
@@ -447,6 +451,7 @@ fn min_yx_idx(poly: List<Pt>) -> Int = todo
 /// cost: O(|a| + |b|) time and memory
 /// empty: traps
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// ties: the start is the least `(y, x)`, which is unique
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_sum([Pt(0, 0), Pt(1, 0), Pt(1, 1), Pt(0, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 1), Pt(1, 2), Pt(0, 2)]`
 /// example: `minkowski_sum([Pt(1, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(1, 1), Pt(2, 1), Pt(1, 2)]`
@@ -459,6 +464,7 @@ pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 /// cost: O(|a| + |b|) time and memory
 /// empty: traps
 /// order: left to right; a new `List`, keyed from 0
+/// ties: collinear sums are dropped, keeping the two ends
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_upper([Pt(0, 0), Pt(1, 1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 1), Pt(3, 0)]`
 pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
@@ -469,6 +475,7 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 /// cost: O(|a| + |b|) time and memory
 /// empty: traps
 /// order: left to right; a new `List`, keyed from 0
+/// ties: collinear sums are dropped, keeping the two ends
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_lower([Pt(0, 0), Pt(1, -1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, -1), Pt(3, 0)]`
 pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
