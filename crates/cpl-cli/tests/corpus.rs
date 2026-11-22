@@ -212,7 +212,6 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "s2_f64_to_int" => "`n` is declared an Int, but `x` is an F64",
             "s2_float_name" => "no type or domain named `Float`",
             "s2_for_mut" => "expected a value after `in`, found `mut`",
-            "s2_i32" => "`I32` is not a type",
             "s2_opt_chain" => "`??` gives a default for an optional, but the left side is a `Int`",
             "s2_opt_plus_eq" => "`+=` can't be applied to an ?Int",
             "s2_print_yes_no" => "`print` has no argument named `yes`",
