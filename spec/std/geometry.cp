@@ -680,7 +680,10 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 /// ties: collinear sums are dropped, keeping the two ends
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_lower([Pt(0, 0), Pt(1, -1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, -1), Pt(3, 0)]`
-pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
+pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt>:
+    assert a.len > 0 and b.len > 0, "minkowski_lower requires non-empty hulls"
+    let up = minkowski_upper([-a[a.len - 1 - i] for i in 0..a.len], [-b[b.len - 1 - i] for i in 0..b.len])
+    [-up[up.len - 1 - i] for i in 0..up.len]
 
 /// Whether two non-empty counter-clockwise convex polygons share at least one point, boundary
 /// included. Exact in `I128`.
@@ -691,7 +694,9 @@ pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 /// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(1, 1), Pt(3, 1), Pt(3, 3), Pt(1, 3)]) == true`
 /// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(2, 2), Pt(3, 2), Pt(3, 3)]) == true`
 /// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(5, 5), Pt(6, 5), Pt(6, 6)]) == false`
-pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool = todo
+pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool:
+    assert a.len > 0 and b.len > 0, "convex_polygons_overlap requires non-empty polygons"
+    locate_convex(minkowski_sum(a, [-q for q in b]), Pt(0, 0)) != Location.Outside
 
 /// The intersection of two counter-clockwise convex polygons, as a counter-clockwise polygon.
 ///
@@ -1133,7 +1138,18 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
 /// traps: never
 /// example: `hull_width([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 2.0`
 /// example: `hull_width([Pt(0, 0), Pt(4, 0), Pt(4, 1), Pt(0, 1)]) == 1.0`
-pub fn hull_width(hull: List<Pt>) -> F64 = todo
+pub fn hull_width(hull: List<Pt>) -> F64:
+    let n = hull.len
+    if n < 3: return 0.0
+    var best = -1.0
+    var j = 1
+    for i in 0..n:
+        let a = hull[i]
+        let e = hull[(i + 1) % n] - a
+        while cross128(e, hull[(j + 1) % n] - a) > cross128(e, hull[j] - a): j = (j + 1) % n
+        let w = F64(cross128(e, hull[j] - a)) / e.len
+        if best < 0.0 or w < best: best = w
+    best
 
 /// The two edges of the counter-clockwise convex polygon `hull` that the line through `a` and
 /// `b` crosses, as `(i, j)` with `i < j`, or `None` if the line misses the interior.
@@ -1180,7 +1196,21 @@ pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)> = todo
 /// empty: traps
 /// traps: when the polygon has zero area
 /// example: `polygon_centroid([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == Vec(1.0, 1.0)`
-pub fn polygon_centroid(poly: List<Vec>) -> Vec = todo
+pub fn polygon_centroid(poly: List<Vec>) -> Vec:
+    let n = poly.len
+    assert n > 0, "polygon_centroid requires a polygon"
+    var a2 = 0.0
+    var cx = 0.0
+    var cy = 0.0
+    for i in 0..n:
+        let p = poly[i]
+        let q = poly[(i + 1) % n]
+        let c = p.cross(q)
+        a2 += c
+        cx += (p.x + q.x) * c
+        cy += (p.y + q.y) * c
+    assert a2 != 0.0, "polygon_centroid requires a polygon with non-zero area"
+    Vec(cx / (3.0 * a2), cy / (3.0 * a2))
 
 /// The kernel of the counter-clockwise simple polygon `poly`: the points that see the whole
 /// interior, as a counter-clockwise convex polygon (half-plane intersection of the edges).
@@ -1298,6 +1328,7 @@ pub struct Vec(x: F64, y: F64):
     /// example: `Vec(0.0, 1.0).angle == PI / 2.0`
     @get pub fn angle(self) -> F64 = atan2(y, x)
 
+    // blocked: no `cos`/`sin` in scope (GAPS.md geometry `Vec.from_angle`)
     /// The unit vector `Vec(cos(rad), sin(rad))`.
     ///
     /// cost: O(1)
@@ -1467,7 +1498,27 @@ pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec:
 /// example: `segment_intersect(Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0)) == [Vec(1.0, 1.0)]`
 /// example: `segment_intersect(Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(3.0, 0.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0), Vec(2.0, 0.0)]`
 /// example: `segment_intersect(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0)) == []`
-pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
+pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> List<Vec>:
+    let d1 = b - a
+    let d2 = d - c
+    let cr = d1.cross(d2)
+    if abs(cr) > eps:
+        let t = (c - a).cross(d2) / cr
+        let u = (c - a).cross(d1) / cr
+        if t >= -eps and t <= 1.0 + eps and u >= -eps and u <= 1.0 + eps: return [a + d1 * t]
+        return []
+    if abs((c - a).cross(d1)) > eps or abs((a - c).cross(d2)) > eps: return []
+    let lo = vmax(vmin(a, b), vmin(c, d))
+    let hi = vmin(vmax(a, b), vmax(c, d))
+    if vless(hi, lo):
+        if lo.dist(hi) <= eps: return [lo]
+        return []
+    if lo.dist(hi) <= eps: return [lo]
+    [lo, hi]
+
+fn vless(p: Vec, q: Vec) -> Bool = p.x < q.x or (p.x == q.x and p.y < q.y)
+fn vmin(p: Vec, q: Vec) -> Vec = if vless(q, p): q else: p
+fn vmax(p: Vec, q: Vec) -> Vec = if vless(p, q): q else: p
 
 /// The first point where the ray from `o` in direction `dir` meets the closed segment `a b`, or
 /// `None`.
@@ -1480,7 +1531,21 @@ pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> Lis
 /// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(2.0, -1.0), Vec(2.0, 1.0)) == Some(Vec(2.0, 0.0))`
 /// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(-1.0, 0.0), Vec(2.0, -1.0), Vec(2.0, 1.0)) == None`
 /// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(3.0, 0.0), Vec(5.0, 0.0)) == Some(Vec(3.0, 0.0))`
-pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec = todo
+pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec:
+    assert dir.x != 0.0 or dir.y != 0.0, "ray_hits_segment needs a non-zero direction"
+    let d2 = b - a
+    let cr = dir.cross(d2)
+    if abs(cr) > eps:
+        let t = (a - o).cross(d2) / cr
+        let u = (a - o).cross(dir) / cr
+        if t >= -eps and u >= -eps and u <= 1.0 + eps: return Some(o + dir * t)
+        return None
+    if abs((a - o).cross(dir)) > eps or abs((b - o).cross(dir)) > eps: return None
+    let ta = (a - o).dot(dir)
+    let tb = (b - o).dot(dir)
+    if ta < -eps and tb < -eps: return None
+    if (ta <= eps and tb >= -eps) or (tb <= eps and ta >= -eps): return Some(o)
+    Some(if ta < tb: a else: b)
 
 /// The centre of the circle through `a`, `b` and `c`, or `None` when
 /// `|(b - a).cross(c - a)| <= eps` (collinear).
@@ -1570,7 +1635,14 @@ pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle:
 /// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(10.0, 3.0), Vec(-10.0, 3.0)) == [Vec(4.0, 3.0), Vec(-4.0, 3.0)]`
 /// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 5.0), Vec(10.0, 5.0)) == [Vec(0.0, 5.0)]`
 /// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 9.0), Vec(10.0, 9.0)) == []`
-pub fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
+pub fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>:
+    assert a != b, "circle_line_intersect needs two distinct points"
+    let foot = project(circle.c, a, b)
+    let dist = foot.dist(circle.c)
+    if dist > circle.r + eps: return []
+    if abs(dist - circle.r) <= eps: return [foot]
+    let off = (b - a).unit * sqrt(circle.r * circle.r - dist * dist)
+    [foot - off, foot + off]
 
 /// The points where the circles `a` and `b` meet: two when they cross, one when tangent (within
 /// `eps`), None when apart, nested, or identical (infinitely many).
@@ -1582,7 +1654,18 @@ pub fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) ->
 /// example: `circle_intersect(Circle(Vec(0.0, 0.0), 5.0), Circle(Vec(8.0, 0.0), 5.0)) == [Vec(4.0, -3.0), Vec(4.0, 3.0)]`
 /// example: `circle_intersect(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(2.0, 0.0), 1.0)) == [Vec(1.0, 0.0)]`
 /// example: `circle_intersect(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(5.0, 0.0), 1.0)) == []`
-pub fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec> = todo
+pub fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec>:
+    let d = b.c - a.c
+    let dist = d.len
+    if dist <= eps: return []
+    if dist > a.r + b.r + eps or dist < abs(a.r - b.r) - eps: return []
+    let x = (dist * dist + a.r * a.r - b.r * b.r) / (2.0 * dist)
+    let mid = a.c + d * (x / dist)
+    if abs(dist - (a.r + b.r)) <= eps or abs(dist - abs(a.r - b.r)) <= eps: return [mid]
+    let h2 = a.r * a.r - x * x
+    let h = if h2 > 0.0: sqrt(h2) else: 0.0
+    let off = d.perp * (h / dist)
+    [mid - off, mid + off]
 
 /// The points of `circle` where a tangent line through `p` touches it: two when `p` is outside,
 /// `[p]` when `p` is on the circle (within `eps`), None when inside.
@@ -1594,7 +1677,16 @@ pub fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec> = to
 /// example: `circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0)]`
 /// example: `circle_tangents(Circle(Vec(0.0, 0.0), 2.0), Vec(1.0, 0.0)) == []`
 /// example: `let t = circle_tangents(Circle(Vec(0.0, 0.0), 3.0), Vec(5.0, 0.0)); t.len == 2 and close(t[0].x, 1.8) and close(t[0].y, -2.4) and close(t[1].y, 2.4)`
-pub fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
+pub fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec>:
+    let v = p - circle.c
+    let d2 = v.norm2
+    let dist = sqrt(d2)
+    let r = circle.r
+    if abs(dist - r) <= eps: return [p]
+    if dist < r: return []
+    let base = circle.c + v * (r * r / d2)
+    let off = v.perp * (r * sqrt(d2 - r * r) / d2)
+    [base - off, base + off]
 
 /// The common tangent segments `(p1, p2)` of the circles `a` and `b`, `p1` on `a` and `p2` on
 /// `b`: the outer tangents, or the inner ones (crossing between the centres) with `inner: true`.
@@ -1614,7 +1706,20 @@ pub fn circle_circle_tangents(
     b: Circle,
     inner: Bool = false,
     eps: F64 = 1e-9,
-) -> List<(Vec, Vec)> = todo
+) -> List<(Vec, Vec)>:
+    let d = b.c - a.c
+    let rb = if inner: -b.r else: b.r
+    let dr = a.r - rb
+    let d2 = d.norm2
+    let h2 = d2 - dr * dr
+    if d2 <= eps or h2 < -eps: return []
+    let h = if h2 > 0.0: sqrt(h2) else: 0.0
+    var out: List<(Vec, Vec)> = []
+    for sign in [-1.0, 1.0]:
+        let v = (d * dr + d.perp * (h * sign)) / d2
+        out.push((a.c + v * a.r, b.c + v * rb))
+    if abs(h2) <= eps: out.pop()
+    out
 
 /// The area of the intersection of the disks `a` and `b`: 0.0 when apart, the smaller disk's
 /// `area` when one contains the other (within `eps`), else the sum of the two circular segments.
@@ -1624,7 +1729,18 @@ pub fn circle_circle_tangents(
 /// example: `circle_circle_area(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(5.0, 0.0), 1.0)) == 0.0`
 /// example: `circle_circle_area(Circle(Vec(0.0, 0.0), 2.0), Circle(Vec(0.0, 0.0), 1.0)) == PI`
 /// example: `close(circle_circle_area(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(1.0, 0.0), 1.0)), 1.228369698608757)`
-pub fn circle_circle_area(a: Circle, b: Circle, eps: F64 = 1e-9) -> F64 = todo
+pub fn circle_circle_area(a: Circle, b: Circle, eps: F64 = 1e-9) -> F64:
+    let d = a.c.dist(b.c)
+    if d >= a.r + b.r - eps: return 0.0
+    if d <= abs(a.r - b.r) + eps:
+        let r = if a.r < b.r: a.r else: b.r
+        return pi() * r * r
+    lens_part(a.r, b.r, d) + lens_part(b.r, a.r, d)
+
+fn lens_part(r: F64, o: F64, d: F64) -> F64:
+    let c = (d * d + r * r - o * o) / (2.0 * d * r)
+    let s = sqrt(1.0 - c * c)
+    r * r * (atan2(s, c) - s * c)
 
 /// The inverse of `p` in the circle `across`: `c + (p - c) * (r * r / (p - c).norm2)`.
 ///
@@ -2210,7 +2326,53 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
 /// example: `rects_union_area([Rect(0..2, 0..2), Rect(1..3, 1..3)]) == 7`
 /// example: `rects_union_area([Rect(0..2, 0..2), Rect(0..2, 0..2)]) == 4`
 /// example: `rects_union_area([]) == 0`
-pub fn rects_union_area(rects: List<Rect>) -> Int = todo
+pub fn rects_union_area(rects: List<Rect>) -> Int:
+    var ys: List<Int> = []
+    var ev: List<(x: Int, k: Int, lo: Int, hi: Int)> = []
+    for r in rects:
+        if r.is_empty: continue
+        ys.push(r.y.start)
+        ys.push(r.y.end)
+    sort(mut ys)
+    var u: List<Int> = []
+    for y in ys:
+        if u.is_empty or u[u.len - 1] != y: u.push(y)
+    ys = u
+    if ys.len < 2: return 0
+    for r in rects:
+        if r.is_empty: continue
+        let lo = lower_idx(ys, r.y.start)
+        let hi = lower_idx(ys, r.y.end)
+        ev.push((x: r.x.start, k: 1, lo: lo, hi: hi))
+        ev.push((x: r.x.end, k: -1, lo: lo, hi: hi))
+    sort(mut ev)
+    let m = ys.len - 1
+    var cnt = List.filled(4 * m, 0)
+    var len = List.filled(4 * m, 0)
+    var area = 0
+    for i in 0..ev.len:
+        if i > 0: area += len[1] * (ev[i].x - ev[i - 1].x)
+        cover(mut cnt, mut len, ys, 1, 0, m, ev[i].lo, ev[i].hi, ev[i].k)
+    area
+
+fn lower_idx(xs: List<Int>, v: Int) -> Int:
+    var lo = 0
+    var hi = xs.len
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if xs[mid] < v: lo = mid + 1
+        else: hi = mid
+    lo
+
+fn cover(mut cnt: List<Int>, mut len: List<Int>, ys: List<Int>, v: Int, l: Int, r: Int, lo: Int, hi: Int, k: Int):
+    if hi <= l or r <= lo: return
+    if lo <= l and r <= hi:
+        cnt[v] += k
+    else:
+        let mid = (l + r) / 2
+        cover(mut cnt, mut len, ys, 2 * v, l, mid, lo, hi, k)
+        cover(mut cnt, mut len, ys, 2 * v + 1, mid, r, lo, hi, k)
+    len[v] = if cnt[v] > 0: ys[r] - ys[l] else: if r - l == 1: 0 else: len[2 * v] + len[2 * v + 1]
 
 /// The faces of the planar straight-line graph with vertices `pts` and undirected `edges`, each
 /// as its cycle of vertices: bounded faces counter-clockwise, the outer face of each connected
@@ -2423,7 +2585,14 @@ pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)> = todo
 /// traps: when a face index is out of range
 /// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]) == 1`
 /// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 3, 1), (0, 1, 2), (0, 2, 3), (1, 3, 2)]) == -1`
-pub fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128 = todo
+pub fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128:
+    var v = I128(0)
+    for (a, b, c) in faces:
+        let p = pts[a]
+        let q = pts[b]
+        let r = pts[c]
+        v += I128(p.x) * (I128(q.y) * I128(r.z) - I128(q.z) * I128(r.y)) + I128(p.y) * (I128(q.z) * I128(r.x) - I128(q.x) * I128(r.z)) + I128(p.z) * (I128(q.x) * I128(r.y) - I128(q.y) * I128(r.x))
+    v
 
 /// O(1) value type. A 3D floating-point point or vector.
 pub struct Vec3(x: F64, y: F64, z: F64):
