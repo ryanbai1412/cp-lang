@@ -145,11 +145,45 @@ for j in ..i:                        // every cut before i
 let best = a[..c].max()              // the prefix left of cut c
 ```
 
-The language's implicit conversions stay a closed list, none user-extensible:
-`T` to `?T`, a range type to a wider one (`1..=5` to `Int`), and literal
-typing (integer to position or cut, cut range to piece). A general implicit
-`Into` is the C++ trap: conversions that don't show and overloads that turn
-ambiguous.
+The language's implicit conversions are this closed list, none
+user-extensible. Each applies wherever an expected type is known: a
+binding or field with a declared type, an argument, a return value, an
+assignment, and either operand of `==`, `!=` or a comparison whose other
+operand fixes the type. Nothing else converts. (R04.4.22)
+
+1. **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with
+   `from`. Free. (R04.4.23)
+2. **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to
+   `-5..=100`). Free. Arithmetic on range types yields `Int` (chapter 3),
+   so a sum of weights `1..=1e9` is an `Int`, and a path distance or
+   `dist: [V]?W` built from one is `Int` unless declared narrower.
+   (R04.4.24)
+3. **Integer literal to position or cut** of an integer domain (R04.2.18).
+   For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`),
+   a literal outside the domain at its largest count is a compile error;
+   one inside the domain at its smallest count is proven; one between is
+   checked like any unproven position. (R04.4.25)
+4. **Cut range to piece:** a literal `j..i` whose ends are cuts, where a
+   `Range<V>` is expected, is the piece between them (R04.4.21).
+   (R04.4.26)
+5. **Scalar to array fill:** a value `x: T` where `[D]T` is expected is
+   the array over `D` with every element `x`, evaluated once:
+   `var dist: [V]?Int = None`, `var dp: [0..=n]Int = 0`. Same as
+   `[D].filled(x)`; `[D]` followed by a value without `=>` is a type,
+   never a table. (R04.4.27)
+
+**Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`,
+or a counted `[n]`, which is `0..n`) used as an answer space or array
+dimension is an anonymous domain: it satisfies `Domain`, its positions are
+the `Int`s in it, and the cut before position `x` is the `Int` `x`, so its
+cuts run `lo..=hi` for `lo..hi`. `(1..=5).bsearch(x => x >= 3)` is `3`,
+the first position where `ok` holds, and `Graph.directed` accepts the
+counted edges of `read<[m](u: V, v: V)>()`. R04.2.16 (`Int(c)` counts the
+positions before `c`) is for declared domains, where the two agree when
+the base is 0. (R04.4.28)
+
+A general implicit `Into` is the C++ trap: conversions that don't show and
+overloads that turn ambiguous.
 
 ### Methods
 
