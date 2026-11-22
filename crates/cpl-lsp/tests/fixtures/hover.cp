@@ -81,3 +81,7 @@ fn ra$0nked(ys: List<Int>) -> Int:
         print(v, ys.sorted().len)
     let f = (x: Int) => ys.sorted().len + x
     ys.sorted().len + f(1)
+let pts: [0..k]Int = read()
+fn ord$0er(cells: [V]Int):
+    for j in 0..k:
+        print(pts.sorted().len, cells.sorted().len)

@@ -1319,6 +1319,83 @@ fn receiver_before(text: &str, at: usize) -> Option<&str> {
     (!path.starts_with('.') && !path.starts_with(|c: char| c.is_ascii_digit())).then_some(path)
 }
 
+/// A documented cost's value when its size `n` is `n`, logs base 2: `O(n
+/// log n)`, `O(n^2)`, `O(log^2 n)`; `None` for any other name in it.
+fn steps_of(cost: &str, n: f64) -> Option<f64> {
+    let body = cost.trim_end_matches(" amortized").strip_prefix("O(")?.strip_suffix(')')?;
+    let mut tokens = Vec::new();
+    let mut chars = body.chars().peekable();
+    while let Some(&c) = chars.peek() {
+        if c.is_whitespace() {
+            chars.next();
+        } else if c.is_alphanumeric() {
+            let mut word = String::new();
+            while let Some(&c) = chars.peek().filter(|c| c.is_alphanumeric()) {
+                word.push(c);
+                chars.next();
+            }
+            tokens.push(word);
+        } else {
+            tokens.push(c.to_string());
+            chars.next();
+        }
+    }
+    let mut at = 0;
+    let value = steps_sum(&tokens, &mut at, n)?;
+    (at == tokens.len() && value.is_finite()).then_some(value.max(1.0))
+}
+
+fn steps_sum(t: &[String], at: &mut usize, n: f64) -> Option<f64> {
+    let mut total = steps_product(t, at, n)?;
+    while t.get(*at).is_some_and(|s| s == "+") {
+        *at += 1;
+        total += steps_product(t, at, n)?;
+    }
+    Some(total)
+}
+
+fn steps_product(t: &[String], at: &mut usize, n: f64) -> Option<f64> {
+    let mut total = steps_power(t, at, n)?;
+    loop {
+        match t.get(*at).map(String::as_str) {
+            Some("*") => *at += 1,
+            Some("+") | Some(")") | None => return Some(total),
+            _ => {}
+        }
+        total *= steps_power(t, at, n)?;
+    }
+}
+
+fn steps_exponent(t: &[String], at: &mut usize) -> Option<i32> {
+    if t.get(*at).is_some_and(|s| s == "^") {
+        *at += 1;
+        let e = t.get(*at)?.parse().ok()?;
+        *at += 1;
+        return Some(e);
+    }
+    Some(1)
+}
+
+fn steps_power(t: &[String], at: &mut usize, n: f64) -> Option<f64> {
+    let token = t.get(*at)?.clone();
+    *at += 1;
+    let base = match token.as_str() {
+        "n" => n,
+        "log" => {
+            let e = steps_exponent(t, at)?;
+            return Some(steps_power(t, at, n)?.log2().max(1.0).powi(e));
+        }
+        "(" => {
+            let inner = steps_sum(t, at, n)?;
+            (t.get(*at)? == ")").then_some(())?;
+            *at += 1;
+            inner
+        }
+        number => number.parse().ok()?,
+    };
+    Some(base.powi(steps_exponent(t, at)?))
+}
+
 /// A documented cost with its size `n` written as `size`: `O(n log n)` for
 /// `ys.len` is `O(ys.len log ys.len)`.
 fn size_in(cost: &str, size: &str) -> String {
@@ -1345,14 +1422,21 @@ fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn
     let mut out = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
     let text = db.analyze(uri).map_or_else(String::new, |a| a.text.to_string());
+    let sizes = if costs.is_empty() { Vec::new() } else { cpl_lint::proven_sizes(&text) };
     for (span, name, cost) in &costs {
         let receiver = name
             .starts_with('.')
             .then(|| receiver_before(&text, span.start as usize))
             .flatten();
-        let (name, cost) = match receiver {
-            Some(r) => (format!("{r}{name}"), size_in(cost, &format!("{r}.len"))),
-            None => (name.clone(), cost.clone()),
+        let size = sizes.iter().find(|s| s.receiver.1 + 1 == span.start);
+        let steps = size.and_then(|s| steps_of(cost, s.max as f64));
+        let (name, cost) = match (receiver, size) {
+            (Some(r), Some(s)) if s.count.chars().all(|c| c.is_alphanumeric() || c == '_') => {
+                (format!("{r}{name}"), size_in(cost, &s.count))
+            }
+            (Some(r), Some(s)) => (format!("{r}{name}"), size_in(cost, &format!("({})", s.count))),
+            (Some(r), None) => (format!("{r}{name}"), size_in(cost, &format!("{r}.len"))),
+            (None, _) => (name.clone(), cost.clone()),
         };
         let inside = |r: &&cpl_lint::Run| r.span.0 <= span.start && span.end <= r.span.1;
         let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
@@ -1365,6 +1449,11 @@ fn fn_call_costs(db: &mut cpl_check::Database, uri: &str, f: &cpl_lint::ProvenFn
                 _ => format!("{} times", count_text(*t)),
             },
             Some(_) => "an unknown number of times".to_string(),
+        };
+        let cost = match steps {
+            Some(s) if times == "once" => format!("{cost}, about {} steps,", count_text(s.ceil() as u128)),
+            Some(s) => format!("{cost}, about {} steps each,", count_text(s.ceil() as u128)),
+            None => cost,
         };
         out.push(format!("{name} {cost} {times}"));
     }

@@ -64,6 +64,9 @@ pub(crate) struct Bounds {
     /// Names some binding or assignment of reads a `.len`: their intervals
     /// reach `LEN_MAX`, which says nothing worth showing.
     long: HashSet<String>,
+    /// Arrays bound with a type that bounds their cells: how many at most,
+    /// as a number and as factors of the source.
+    sizes: HashMap<String, (u128, Vec<super::Factor>)>,
 }
 
 /// The most a `.len` is taken to be: only relations bound it usefully.
@@ -113,7 +116,7 @@ impl Bounds {
         let mut bounds = Bounds::default();
         bounds.count_bindings(file);
         // In source order: a bound can only use what is declared above it.
-        for (_, stmt) in file.top_level() {
+        for (base, stmt) in file.top_level() {
             match &stmt.kind {
                 StmtKind::Const {
                     name,
@@ -129,6 +132,9 @@ impl Bounds {
                 } => {
                     if let (PatternKind::Name(name), Some(range)) = (&pat.kind, bounds.range(ty)) {
                         bounds.input(name, range);
+                    }
+                    if let (PatternKind::Name(name), Some(size)) = (&pat.kind, super::array_size(base, ty, &bounds)) {
+                        bounds.set_size(name, size);
                     }
                 }
                 StmtKind::Let {
@@ -491,11 +497,21 @@ impl Bounds {
 
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
         self.defs.remove(name);
+        self.sizes.remove(name);
         self.unrelate(name);
         match value {
             Some(value) => self.values.insert(name.to_string(), value),
             None => self.values.remove(name),
         };
+    }
+
+    /// From here on `name` is an array of at most `size` cells.
+    pub(crate) fn set_size(&mut self, name: &str, size: (u128, Vec<super::Factor>)) {
+        self.sizes.insert(name.to_string(), size);
+    }
+
+    pub(crate) fn size(&self, name: &str) -> Option<&(u128, Vec<super::Factor>)> {
+        self.sizes.get(name)
     }
 
     /// A test proved `name` is in `value`: what was known about it stays.

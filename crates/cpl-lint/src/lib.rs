@@ -629,6 +629,30 @@ pub struct ProvenIndex {
     pub proof: String,
 }
 
+/// A method call's receiver, an array whose declared type bounds how many
+/// cells it has.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenSize {
+    pub receiver: (u32, u32),
+    pub max: u128,
+    /// `max` in the source's terms, as `ProvenLoop::total_count`: `n` for
+    /// `[0..n]Int`, `R * C` for `[R, C]Int`.
+    pub count: String,
+}
+
+/// Each method call on an array of bounded size; a file with a syntax error
+/// has none.
+pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_sizes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// Each index proven in bounds; a file with a syntax error has none.
 pub fn proven_indexes(src: &str) -> Vec<ProvenIndex> {
     let parsed = cpl_syntax::parse_file(src);

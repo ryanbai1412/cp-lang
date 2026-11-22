@@ -1991,3 +1991,20 @@ print(f([[1], [2, 3]]))
     assert!(proofs(port).contains(&"kids[v][i] 0 <= i < kids[v].len".to_string()), "{:?}", proofs(port));
 }
 
+
+#[test]
+fn a_method_call_knows_the_size_of_an_array_receiver() {
+    let sizes = |src: &str| -> Vec<(String, u128, String)> {
+        crate::proven_sizes(src)
+            .into_iter()
+            .map(|s| (src[s.receiver.0 as usize..s.receiver.1 as usize].to_string(), s.max, s.count))
+            .collect()
+    };
+    let head = "let n: 1..=200000 = read()\nlet q: 1..=1000 = read()\ndomain V = 1..=n\ndomain R = 0..3\n";
+    let src = format!(
+        "{head}let a: [0..q]Int = read()\nfn f(b: [V, R]Int, c: List<Int>):\n    print(a.sorted(), b.sorted(), c.sorted())\n\
+         fn g(a: List<Int>):\n    print(a.sorted())\n"
+    );
+    let s = |t: &str| t.to_string();
+    assert_eq!(sizes(&src), [(s("a"), 1000, s("q")), (s("b"), 600000, s("n * 3"))]);
+}

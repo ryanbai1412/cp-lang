@@ -196,3 +196,10 @@ fn ranked(ys: List<Int>) -> Int
   loops: at most n = 200000 (2e5) iterations per call, with the fns it calls
   documented costs: ys.sorted O(ys.len log ys.len) n = 200000 (2e5) times; ys.sorted O(ys.len log ys.len) an unknown number of times; ys.sorted O(ys.len log ys.len) once
 ```
+
+== hover @ 85:7
+```cp
+fn order(cells: [V]Int)
+  loops: at most k = 7 iterations per call, with the fns it calls
+  documented costs: pts.sorted O(k log k), about 20 steps each, k = 7 times; cells.sorted O(n log n), about 3521929 (3.5e6) steps each, k = 7 times
+```

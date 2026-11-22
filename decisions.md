@@ -2422,6 +2422,16 @@ O(ys.len log ys.len)`), since the `n` of a doc is not the input `n`. They are no
 built-in methods document no cost, so a sum would silently leave them out. At most four are
 listed, then `and k more`. Reverse by dropping `Database::costs_in` and `fn_call_costs`.
 
+29.44. **A call on an array of bounded size shows its steps at max input.** When the receiver is
+a `let` or param whose declared type is an array over domains or ranges the bounds size (`[V]Int`,
+`[0..q]Int`, `[R, C]Int`), the cost's `n` is written as that size in the source's terms (`O(n log
+n)`, `O((n * 3) log (n * 3))`) and evaluated at the size's maximum, logs base 2, as `about 3521929
+(3.5e6) steps each`. Only costs built from `n`, numbers, `log`, `^`, `*`, `+` and parentheses are
+evaluated; any other name (`deg u`, `|D|`) leaves the cost unevaluated. A `List` receiver has no
+size, since pushes change it: 9 of the 627 listed calls in the ports and examples get steps. The
+steps are not multiplied by how often the call runs, nor summed into the fn's. Reverse by dropping
+`proven_sizes` and `steps_of`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

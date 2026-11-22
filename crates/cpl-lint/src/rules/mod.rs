@@ -207,6 +207,43 @@ pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
     proven(file).indexes
 }
 
+pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
+    proven(file)
+        .sizes
+        .into_iter()
+        .map(|(receiver, max, factors)| crate::ProvenSize {
+            receiver,
+            max,
+            count: render_count(file, &factors),
+        })
+        .collect()
+}
+
+/// How many cells an array of type `ty` has at most, and that count as
+/// factors: `[V]` is `V`, `[0..n]` is `n`, `[R, C]` is `R * C`.
+fn array_size(base: u32, ty: &cpl_syntax::ast::Type, bounds: &bounds::Bounds) -> Option<(u128, Vec<Factor>)> {
+    use cpl_syntax::ast::TypeKind;
+    let TypeKind::Array { index, .. } = &ty.kind else {
+        return None;
+    };
+    let mut total = 1u128;
+    let mut factors = Vec::new();
+    for t in index {
+        let size = bounds.type_size(t)?;
+        total = total.checked_mul(size)?;
+        factors.push(match &t.kind {
+            TypeKind::Named { name, args } if args.is_empty() && bounds.domain_size(&name.text).is_some() => {
+                Factor::Domain(name.text.clone(), size)
+            }
+            TypeKind::Range { lo: Some(lo), hi: Some(hi), inclusive } if counts_from_start(lo, *inclusive) => {
+                Factor::Text(base + hi.span.start, base + hi.span.end)
+            }
+            _ => Factor::Number(size),
+        });
+    }
+    Some((total, factors))
+}
+
 /// Why `index` is in `0..len`, as a chain of comparisons the relations prove:
 /// `0 <= lo <= mid < hi <= ys.len`. A step through a third name is shown
 /// only when the direct relation is what that step proves.
@@ -245,6 +282,8 @@ fn len_of(seq: &cpl_syntax::ast::Expr) -> cpl_syntax::ast::Expr {
 
 struct Proven {
     names: Vec<(u32, i128, i128)>,
+    /// Each method call's receiver of a bounded size, with that size.
+    sizes: Vec<((u32, u32), u128, Vec<Factor>)>,
     exprs: Vec<crate::ProvenExpr>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
@@ -266,6 +305,7 @@ impl Default for Proven {
     fn default() -> Proven {
         Proven {
             names: Vec::new(),
+            sizes: Vec::new(),
             exprs: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
@@ -313,7 +353,7 @@ fn proven(file: &File) -> Proven {
 
 /// How often one loop runs, in the source's terms where it can be.
 #[derive(Clone, Debug)]
-enum Factor {
+pub(crate) enum Factor {
     /// The `n` of `0..n` or `1..=n`, as a span of the file.
     Text(u32, u32),
     /// A domain and its size.
@@ -404,6 +444,13 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
             }
         }
         ExprKind::Call { callee, args } => {
+            if let ExprKind::Field { base: recv, .. } = &callee.kind {
+                if let ExprKind::Name(name) = &recv.kind {
+                    if let Some((max, factors)) = bounds.size(name) {
+                        out.sizes.push(((base + recv.span.start, base + recv.span.end), *max, factors.clone()));
+                    }
+                }
+            }
             arith(base, callee, bounds, out);
             args.iter().for_each(|a| arith(base, &a.value, bounds, out));
         }
@@ -460,6 +507,11 @@ fn ranges_in(
             }
         }
         ranges_of_stmt(base, stmts, i, top, bounds, entry.as_ref(), proven);
+        if let StmtKind::Let { pat, ty: Some(ty), .. } = &stmt.kind {
+            if let (cpl_syntax::ast::PatternKind::Name(name), Some(size)) = (&pat.kind, array_size(base, ty, bounds)) {
+                bounds.set_size(name, size);
+            }
+        }
         if let Some((name, relations, now)) = carry {
             for (other, d) in relations {
                 bounds.relate(&name, &other, d);
@@ -866,6 +918,9 @@ fn ranges_of_stmt(
                     match param.ty.as_ref().and_then(|t| inner.range(t)) {
                         Some(range) => inner.input(&param.name.text, range),
                         None => inner.bind(&param.name.text, None),
+                    }
+                    if let Some(size) = param.ty.as_ref().and_then(|t| array_size(base, t, &inner)) {
+                        inner.set_size(&param.name.text, size);
                     }
                 }
                 if let FnBody::Block(block) = &decl.body {
