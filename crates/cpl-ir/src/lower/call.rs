@@ -1183,7 +1183,17 @@ impl<'a> Lowerer<'a> {
                         ok = false;
                     }
                     let mut place = place;
-                    if let Some((d, lo)) = self.range_domain_of(&param.ty, &place.ty) {
+                    let synthetic_dom = self.range_domain_of(&param.ty, &place.ty).or_else(|| {
+                        if self.list_given(&param.ty).is_some_and(|list| list == place.ty) {
+                            if let Ty::Array { dims, .. } = &param.ty {
+                                if let [Dim::Pos(d)] = dims.as_slice() {
+                                    return Some((*d, 0));
+                                }
+                            }
+                        }
+                        None
+                    });
+                    if let Some((d, lo)) = synthetic_dom {
                         let len = self.mk(
                             ExprKind::Builtin(
                                 Builtin::Len,
@@ -1205,18 +1215,7 @@ impl<'a> Lowerer<'a> {
                         pre_stmts.push(size);
                         place.ty = param.ty.clone();
                     }
-                    if self
-                        .list_given(&param.ty)
-                        .is_some_and(|list| list == place.ty)
-                    {
-                        let message = format!(
-                            "`{name}` changes `{}` in place, and a list is given to a `[D]T` as a copy; pass an array such as a `[0..n]T`",
-                            param.name
-                        );
-                        self.error(codes::TYPE_MISMATCH, arg.value.span, message);
-                        ok = false;
-                    } else if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error
-                    {
+                    if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error {
                         self.mismatch(arg.value.span, &param.ty, &place.ty);
                         ok = false;
                     }
