@@ -2669,8 +2669,8 @@ impl Checker<'_> {
                 };
                 if let Ty::Range { lo, hi, .. } = target {
                     if let ExprKind::Int(n) = arg.value.kind {
-                        let in_lo = lo.map_or(true, |l| n >= l);
-                        let in_hi = hi.map_or(true, |h| n <= h);
+                        let in_lo = lo.is_none_or(|l| n >= l);
+                        let in_hi = hi.is_none_or(|h| n <= h);
                         if !in_lo || !in_hi {
                             self.error(
                                 codes::TYPE_MISMATCH,
