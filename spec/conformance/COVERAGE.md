@@ -6,16 +6,16 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2042 (995 passing). Rules: 528.
+Cases: 2069 (995 passing). Rules: 528.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 96 cases; 0 uncovered, 4 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 91 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R03 (03-numbers-layout.md): 24 rules, 50 cases; 0 uncovered, 7 happy-path only, 4 negative only
+- R02 (02-values-types.md): 50 rules, 92 cases; 0 uncovered, 7 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 24 rules, 51 cases; 0 uncovered, 7 happy-path only, 3 negative only
 - R04 (04-indices.md): 61 rules, 86 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 49 cases; 0 uncovered, 1 happy-path only, 4 negative only
-- R04b (04b-keys.md): 27 rules, 59 cases; 0 uncovered, 0 happy-path only, 3 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
+- R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 72 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 103 cases; 0 uncovered, 2 happy-path only, 2 negative only
@@ -35,11 +35,11 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
-| R02 | 50 | 49 (98%) | 29 | 22 (75%) | 42 (84%) |
-| R03 | 24 | 20 (83%) | 17 | 10 (58%) | 13 (54%) |
+| R02 | 50 | 50 (100%) | 29 | 22 (75%) | 43 (86%) |
+| R03 | 24 | 21 (87%) | 17 | 10 (58%) | 14 (58%) |
 | R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
-| R04a | 39 | 35 (89%) | 4 | 3 (75%) | 34 (87%) |
-| R04b | 27 | 24 (88%) | 6 | 6 (100%) | 24 (88%) |
+| R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
+| R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 40 (93%) | 23 | 20 (86%) | 37 (86%) |
 | R06 | 24 | 23 (95%) | 17 | 16 (94%) | 22 (91%) |
 | R07 | 87 | 85 (97%) | 23 | 21 (91%) | 83 (95%) |
@@ -49,7 +49,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 14 | 12 (85%) | 7 | 5 (71%) | 10 (71%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 1 (14%) | 16 (72%) |
-| all | 528 | 502 (95%) | 222 | 178 (80%) | 458 (86%) |
+| all | 528 | 508 (96%) | 222 | 178 (80%) | 464 (87%) |
 
 ## Rules
 
@@ -158,7 +158,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.10.2 [1+ 1-]: `let` keeps the computed range of its initializer; an unannotated `var` widens to `Int`; `...
 - R02.10.3 [1+ 0-]: Function signatures are written in full except that a single-capital type parameter used i...
 - R02.11.1 [1+ 3-]: No implicit numeric conversions except into a wider range of the same type and `T` into `?...
-- R02.11.2 [0+ 1-] *negative only*: No implicit copies of heap values (`.clone()`), no implicit allocation behind an O(1)-look...
+- R02.11.2 [1+ 1-]: No implicit copies of heap values (`.clone()`), no implicit allocation behind an O(1)-look...
 - R02.11.3 [1+ 1-]: No inheritance, no subtyping, no overloading by argument type (decision 127), no user-defi...
 
 ### R03: 03-numbers-layout.md
@@ -183,7 +183,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.1 [1+ 0-]: **Testing `None` is one compare** with the fixed pattern.
 - R03.3.2 [1+ 0-]: **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`, so `None` is alread...
 - R03.3.3 [1+ 1-]: **Producing a spare value is an overflow.** `Int` arithmetic that lands on `INT64_MIN` tra...
-- R03.3.4 [0+ 1-] *negative only*: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
+- R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
 - R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
 - R03.5.1 [2+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
@@ -291,7 +291,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.11.2 [2+ 1-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
 - R04a.11.3 [1+ 1-]: **`w.rebase`**: an O(1) view of `w` keyed `0..w.len`, for the rare relative case (D3, or E...
 - R04a.11.4 [1+ 1-]: **Per-element results are keyed like their input** (`[S.keys]T`), so `z_function(s[l..])[i...
-- R04a.11.5 [0+ 2-] *negative only*: **Diagnostics:** a literal index into a slice is a lint ("`w` starts at `l`; use `w.first`...
+- R04a.11.5 [1+ 2-]: **Diagnostics:** a literal index into a slice is a lint ("`w` starts at `l`; use `w.first`...
 - R04a.11.6 [1+ 1-]: **Copies count from 0:** `List(w)`, `Str(w)` and `.collect()` build fresh sequences, keyed...
 
 ### R04b: 04b-keys.md
@@ -303,9 +303,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, O(1...
-- R04b.1.8 [0+ 1-] *negative only*: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
-- R04b.1.9 [0+ 1-] *negative only*: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
-- R04b.1.10 [0+ 3-] *negative only*: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
+- R04b.1.8 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
+- R04b.1.9 [1+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
+- R04b.1.10 [1+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
 - R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
 - R04b.3.1 [1+ 1-]: make `f` generic as above, using `first`, `nth` and `items`;
 - R04b.3.2 [1+ 0-]: call `f(List(w))`, an O(len) copy keyed from 0.
@@ -861,10 +861,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **timetree** (11/11 named by a case)
 - **tree** (126/171 named by a case)
   - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.tour`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.sub_at`, `Rooted.events`, `VirtualTree`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `Events.enter`, `Events.exit`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`
-- **window** (19/22 named by a case)
-  - uncovered: `Track`, `Tracked`, `Undo`
+- **window** (20/22 named by a case)
+  - uncovered: `Tracked`, `Undo`
 
-2080 of 2245 std items are named by a case.
+2081 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
