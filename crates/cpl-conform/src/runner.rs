@@ -21,6 +21,7 @@ pub fn configure_spec_env(root: &Path) {
 pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
+    db.remove_file(path);
     let diagnostics: Vec<Diagnostic> = analysis
         .diagnostics
         .iter()
@@ -55,6 +56,7 @@ pub fn compile_program(
 ) -> Result<CompiledProgram, CompileError> {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
+    db.remove_file(path);
     if !analysis.diagnostics.is_empty()
         && analysis
             .diagnostics
