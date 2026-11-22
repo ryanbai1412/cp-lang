@@ -114,6 +114,12 @@ impl<'a> Checker<'a> {
         let memo_captured = self.memo_captured.len();
         if !top_level {
             self.declare_local_types(stmts);
+            for stmt in stmts {
+                if let StmtKind::Fn(f) = &stmt.kind {
+                    let sig = self.quietly(|c| c.fn_sig(f, None));
+                    self.declare(&f.name.text, f.name.span, sig, false, "fn");
+                }
+            }
         }
         for (k, stmt) in stmts.iter().enumerate() {
             last = self.stmt(stmt, top_level);
@@ -932,12 +938,16 @@ impl<'a> Checker<'a> {
                 }
                 let self_ty = Ty::Param("Self".into());
                 let scope = self.enter_body(&generics, self_ty.clone());
+                let outer_bounds = self.param_bounds.len();
+                self.param_bounds
+                    .push(("Self".into(), vec![name.text.clone()]));
                 for sup in supers {
                     self.trait_exists(sup);
                 }
                 self.type_hover(name);
                 self.owned(&name.text, &body.stmts);
                 self.methods(&body.stmts, &self_ty);
+                self.param_bounds.truncate(outer_bounds);
                 self.leave_body(scope);
             }
             StmtKind::Impl {
@@ -1190,7 +1200,9 @@ impl<'a> Checker<'a> {
                 if let (Some(value), Some(value_ty)) = (value, value_ty) {
                     if !(self.fns.is_empty() && matches!(value_ty, Ty::Unit)) {
                         self.returns(value, &value_ty);
-                        self.no_escape(value, "`return`");
+                        if !self.fn_lends.last().copied().unwrap_or(false) {
+                            self.no_escape(value, "`return`");
+                        }
                         self.no_escape_return(value, "`return`");
                     }
                 }
@@ -1209,6 +1221,9 @@ impl<'a> Checker<'a> {
             StmtKind::Unchecked(body) => return self.block(body),
             StmtKind::Law { params, body, .. } => {
                 self.push_scope();
+                if let Some(self_ty) = self.self_ty.clone() {
+                    self.declare("self", stmt.span, self_ty, false, "self");
+                }
                 for param in params {
                     let ty = match &param.ty {
                         Some(ty) => self.resolve_type(ty),
@@ -1216,7 +1231,16 @@ impl<'a> Checker<'a> {
                     };
                     self.declare(&param.name.text, param.name.span, ty, false, "param");
                 }
-                self.infer(body);
+                let ty = self.infer(body);
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
+                        format!(
+                            "a `law` must return a `Bool`, but `{}` is {}",
+                            c.quote(body.span),
+                            got.with_article()
+                        )
+                    });
+                }
                 self.pop_scope();
             }
             StmtKind::Lend { place, .. } => {
@@ -1832,7 +1856,9 @@ impl<'a> Checker<'a> {
                         if !statement_like {
                             c.fixed_read(last, ret);
                             c.returns(last, &ty);
-                            c.no_escape(last, "returning it");
+                            if !c.fn_lends.last().copied().unwrap_or(false) {
+                                c.no_escape(last, "returning it");
+                            }
                             c.no_escape_return(last, "returning it");
                         }
                     }
@@ -1846,7 +1872,9 @@ impl<'a> Checker<'a> {
                     let ty = c.infer(expr);
                     c.fixed_read(expr, ret);
                     c.returns(expr, &ty);
-                    c.no_escape(expr, "returning it");
+                    if !c.fn_lends.last().copied().unwrap_or(false) {
+                        c.no_escape(expr, "returning it");
+                    }
                     c.no_escape_return(expr, "returning it");
                 }
                 FnBody::None => {}

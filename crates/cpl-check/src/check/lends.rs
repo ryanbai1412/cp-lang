@@ -1089,6 +1089,35 @@ impl<'a> Checker<'a> {
     }
 
     fn step_disjoint(&mut self, a: &Proj, b: &Proj) -> bool {
+        if a.name == "slice" && b.name == "slice" && a.args.len() == 1 && b.args.len() == 1 {
+            if let (
+                ExprKind::Range {
+                    lo: lo1,
+                    hi: hi1,
+                    inclusive: false,
+                    ..
+                },
+                ExprKind::Range {
+                    lo: lo2,
+                    hi: hi2,
+                    inclusive: false,
+                    ..
+                },
+            ) = (&unparen(&a.args[0]).kind, &unparen(&b.args[0]).kind)
+            {
+                let ab = hi1
+                    .as_deref()
+                    .zip(lo2.as_deref())
+                    .is_some_and(|(x, y)| show(x) == show(y));
+                let ba = hi2
+                    .as_deref()
+                    .zip(lo1.as_deref())
+                    .is_some_and(|(x, y)| show(x) == show(y));
+                if ab || ba {
+                    return true;
+                }
+            }
+        }
         match &a.law {
             Law::Element => {
                 a.args.len() == b.args.len()
@@ -1592,6 +1621,35 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                // `lends` fn call: holds all `mut` or heap-typed args.
+                let is_lends_fn = match &unparen(callee).kind {
+                    ExprKind::Name(n) => {
+                        matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. }))
+                    }
+                    ExprKind::Generic { base, .. } => match &unparen(base).kind {
+                        ExprKind::Name(n) => {
+                            matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. }))
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                };
+                if is_lends_fn {
+                    let mut out = Vec::new();
+                    for arg in args {
+                        let is_mut = arg.mutable;
+                        let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                        if is_mut || self.is_heap_type(&arg_ty) {
+                            if let Some(mut place) = self.place(&arg.value) {
+                                place.steps.clear();
+                                out.push(("lent view", place, !is_mut, is_mut));
+                            }
+                        }
+                    }
+                    if !out.is_empty() {
+                        return out;
+                    }
+                }
                 // Generator call: holds all non-copy or `mut` args.
                 let ret_ty = self.quietly(|c| c.infer(e));
                 if matches!(&ret_ty, Ty::Named { name, .. } if name == "Gen") {
@@ -1786,6 +1844,14 @@ impl<'a> Checker<'a> {
                 }
             }
             return;
+        }
+        if let ExprKind::Field { base, name } = &iter.kind {
+            if name.text == "keys" {
+                let base_ty = self.quietly(|c| c.infer(base));
+                if matches!(base_ty, Ty::Array { .. }) {
+                    return;
+                }
+            }
         }
         let stored = match iter_ty {
             Ty::Array { .. } => true,
@@ -2428,6 +2494,9 @@ impl<'a> Checker<'a> {
                 format!("`.{}(...)`", name.text)
             }
             (_, Ty::TypeName(name) | Ty::Named { name, .. }) => {
+                if matches!(name.as_str(), "List" | "Str") {
+                    return;
+                }
                 format!("storing it in a `{name}`")
             }
             _ => return,

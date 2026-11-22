@@ -230,7 +230,7 @@ impl Ty {
             // code is checked again with real types at each use.
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
-            (a, Ty::Float) if a.is_int() => true,
+            (a, Ty::Float) if a.is_int() => std::env::var_os("CPL_SPEC").is_none(),
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
             (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
@@ -249,11 +249,20 @@ impl Ty {
             }
             // A record with more fields fits where fewer are asked for:
             // edges `(u, v, w)` are edges `(u, v)`.
-            (Ty::Record(a), Ty::Record(b)) => b.iter().all(|(bn, bt)| {
-                a.iter()
-                    .find(|(an, _)| an == bn)
-                    .is_some_and(|(_, at)| at.fits_in(bt, number))
-            }),
+            (Ty::Record(a), Ty::Record(b)) => {
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    a.len() == b.len()
+                        && a.iter()
+                            .zip(b)
+                            .all(|((an, at), (bn, bt))| an == bn && at.fits_in(bt, number))
+                } else {
+                    b.iter().all(|(bn, bt)| {
+                        a.iter()
+                            .find(|(an, _)| an == bn)
+                            .is_some_and(|(_, at)| at.fits_in(bt, number))
+                    })
+                }
+            }
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
             }

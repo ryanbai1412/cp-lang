@@ -343,12 +343,21 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Tuple(tys)
             }
-            ExprKind::Record(fields) => Ty::Record(
-                fields
-                    .iter()
-                    .map(|(name, value)| (name.text.clone(), self.infer(value)))
-                    .collect(),
-            ),
+            ExprKind::Record(fields) => {
+                let mut seen: Vec<&str> = Vec::new();
+                let mut out = Vec::with_capacity(fields.len());
+                for (name, value) in fields {
+                    if seen.contains(&name.text.as_str()) {
+                        let message =
+                            format!("duplicate field `{}` in record", name.text);
+                        self.error(codes::DUPLICATE_DEFINITION, name.span, message);
+                    } else {
+                        seen.push(&name.text);
+                    }
+                    out.push((name.text.clone(), self.infer(value)));
+                }
+                Ty::Record(out)
+            }
             ExprKind::Map(entries) => {
                 let (mut key, mut value) = (Ty::Unknown, Ty::Unknown);
                 for (i, (k, v)) in entries.iter().enumerate() {
@@ -1938,6 +1947,16 @@ impl<'a> Checker<'a> {
                     return Ty::Named { name: "List".into(), args: vec![elem] };
                 }
             }
+            if let Ty::Array { index, elem } = &base_ty {
+                if index.len() == 1 {
+                    let item = if name.text == "keys" {
+                        index[0].clone()
+                    } else {
+                        (**elem).clone()
+                    };
+                    return Ty::Named { name: "List".into(), args: vec![item] };
+                }
+            }
         }
         let found = match &base_ty {
             Ty::Record(fields) => {
@@ -1991,6 +2010,23 @@ impl<'a> Checker<'a> {
                             .collect::<Vec<_>>(),
                     )
                 })
+            }
+            Ty::Param(param) => {
+                let bounds: Vec<String> = self
+                    .param_bounds
+                    .iter()
+                    .filter(|(p, _)| p == param)
+                    .flat_map(|(_, ts)| ts.iter().cloned())
+                    .collect();
+                for trait_name in bounds {
+                    if let Some(Def::Trait { methods, .. }) = self.type_def(&trait_name).as_deref()
+                    {
+                        if let Some(m) = methods.iter().find(|m| m.name == name.text) {
+                            return m.ty.clone();
+                        }
+                    }
+                }
+                return Ty::Unknown;
             }
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {

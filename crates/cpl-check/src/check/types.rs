@@ -858,6 +858,7 @@ impl<'a> Checker<'a> {
                         ty,
                         generics: f.generics.iter().map(|g| g.text.clone()).collect(),
                         bounds: extract_bounds(&f.bounds),
+                        lends: f.lends.is_some(),
                     },
                 ));
                 out
