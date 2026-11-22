@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Test } from './practice';
 
@@ -141,11 +141,13 @@ const problems: Problem[] = [
 
 export interface QuickProblem extends Problem {
   source: string;
+  runs: boolean;
 }
 
 export function quickstart(): QuickProblem[] {
-  return problems.map((p) => ({
-    ...p,
-    source: readFileSync(join(process.cwd(), 'content/quickstart', `${p.id}.cp`), 'utf8'),
-  }));
+  const dir = join(process.cwd(), 'content/quickstart');
+  return problems.map((p) => {
+    const runs = existsSync(join(dir, `${p.id}.cp`));
+    return { ...p, runs, source: readFileSync(join(dir, runs ? `${p.id}.cp` : `${p.id}.spec.cp`), 'utf8') };
+  });
 }

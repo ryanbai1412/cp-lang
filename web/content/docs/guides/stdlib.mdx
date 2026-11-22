@@ -59,7 +59,7 @@ Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other contai
 - **`Deque<T>`:** `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, `.first -> ?T`, `.last -> ?T`, `q[i]`.
 - **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. For mixed-order keys inside tuples or `sort(..., by:)`, wrap descending fields with `desc(x)` (type `Desc<T>`):
 
-```cp
+```cp status=checks
 use std.algebra.{desc}
 
 domain V = 0..4

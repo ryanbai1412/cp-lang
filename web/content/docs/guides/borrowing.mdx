@@ -65,7 +65,7 @@ The implementation model is an inlined callback (there is no `inline` keyword; `
 
 That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or `List.push_id` handles. Functions that find a useful sub-range return a `Range<V>`, then the caller reopens `a[span]` when needed. If you truly want independent storage, ask for `.copy()`.
 
-```cp
+```cp status=checks
 domain V = 1..=4
 let a: [V]Int = [V] v => v.to_idx + 1
 fn find_span(a: [V]Int) -> Range<V>:

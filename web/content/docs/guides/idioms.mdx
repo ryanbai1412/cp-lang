@@ -92,7 +92,7 @@ print(deg)
 
 Use key functions with `desc(...)` for multi-key sorting, `MinHeap` / `MaxHeap` for priority queues, `SortedBag` for multisets (`remove_one`), and `HashMap` where `m[k]` returns `V` directly (auto-inserting the default on miss — never apply `??` or `!` to `m[k]`) while `m.get(k)` returns `?V`:
 
-```cp
+```cp status=checks
 var pts: List<(Int, Int)> = [(2, 5), (1, 3), (2, 1)]
 pts.sort(by: p => (p.0, desc(p.1)))
 

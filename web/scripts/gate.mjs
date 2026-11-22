@@ -1,6 +1,6 @@
 // The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
-// its status from the compiler, never by hand. Every snippet must pass the 0.3
-// checker (`CPL_SPEC=1 CPL_STD=spec/std cpl check`). `runs`: today's compiler
+// its status from the compiler, never by hand. Every snippet must pass
+// `cpl check`. `runs`: the compiler
 // also runs it (matching `.out` when given) and emits C++. `checks`: it does
 // not run yet, so the page shows it without Run and without output.
 // A practice problem's ref.cp must also pass every test in its tests.json.
@@ -80,20 +80,7 @@ for (const s of snippets) {
   const file = join(tmp, 'main.cp');
   writeFileSync(file, s.source);
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
-  const v03 = { CPL_SPEC: '1', CPL_STD: join(repo, 'spec/std') };
-  const check = sh(['check', file], v03);
-  const specBuild = sh(['build', file, '-o', join(tmp, 'spec.cpp')], v03);
-  const specRun =
-    specBuild.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], v03, s.stdin) : specBuild;
-  const specOk =
-    specBuild.status === 0 &&
-    specRun.status === 0 &&
-    (s.expected == null || specRun.stdout.trimEnd() === s.expected.trimEnd());
-  const specNote = specOk
-    ? ''
-    : specBuild.status === 0 && specRun.status === 0
-      ? `output ${JSON.stringify(specRun.stdout)} != expected`
-      : first(specBuild.status === 0 ? specRun : specBuild) || (specRun.stderr || '').split('\n')[0];
+  const check = sh(['check', file]);
   const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
   const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], {}, s.stdin) : build;
   const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
@@ -105,7 +92,7 @@ for (const s of snippets) {
     status = 'checks';
     note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);
   }
-  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? {} : { note }), spec: specOk ? 'runs' : specNote };
+  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? {} : { note }) };
   if (rank[status] < rank[s.declared]) {
     failed++;
     console.error(`gate: ${s.id} is ${status}, declared ${s.declared}: ${note}`);
@@ -118,34 +105,17 @@ const pages = {};
 for (const [id, r] of Object.entries(results)) {
   if (id.includes('@test')) continue;
   const page = id.replace(/#\d+$/, '').replace(/\/[^/]+\.cp$/, '/');
-  const p = (pages[page] ??= { runs: 0, checks: 0, fails: 0, spec: 0, notes: [], specNotes: [] });
+  const p = (pages[page] ??= { runs: 0, checks: 0, fails: 0, notes: [] });
   p[r.status]++;
-  if (r.spec === 'runs') p.spec++;
-  else if (r.status !== 'fails') p.specNotes.push(`  - \`${id}\`: ${r.spec}`);
   if (r.status !== 'runs') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
 }
-const all = Object.values(pages);
 writeFileSync(
   join(web, '.gate/report.md'),
-  [
-    '# Snippet status by page',
-    '',
-    'Every snippet passes the 0.3 checker unless counted under "not 0.3". "Runs in 0.3 mode" is `cpl run` with',
-    '`CPL_SPEC=1 CPL_STD=spec/std`; "runs in the browser" is the default mode the WASM build uses, which decides the Run button.',
-    '',
-    '| page | snippets | runs in 0.3 mode | runs in the browser | not 0.3 |',
-    '|---|---|---|---|---|',
-  ]
-    .concat(
-      Object.entries(pages).map(
-        ([k, p]) => `| ${k} | ${p.runs + p.checks + p.fails} | ${p.spec} | ${p.runs} | ${p.fails} |`,
-      ),
-    )
-    .concat(['', '## Fails in 0.3 mode', ''], all.flatMap((p) => p.specNotes))
-    .concat(['', '## Fails in the browser (default mode)', ''], all.flatMap((p) => p.notes))
+  ['# Snippet status by page', '', '| page | snippets | runs | check-only | fails the checker |', '|---|---|---|---|---|']
+    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.fails} | ${p.runs} | ${p.checks} | ${p.fails} |`))
+    .concat(['', '## Does not run', ''], Object.values(pages).flatMap((p) => p.notes))
     .join('\n') + '\n',
 );
 const counts = Object.values(results).reduce((c, r) => ((c[r.status] = (c[r.status] ?? 0) + 1), c), {});
-const specRuns = Object.values(results).filter((r) => r.spec === 'runs').length;
-console.log(`gate: ${snippets.length} snippets`, counts, `0.3-mode runs: ${specRuns}`, failed ? `${failed} below declared` : 'ok');
+console.log(`gate: ${snippets.length} snippets`, counts, failed ? `${failed} below declared` : 'ok');
 process.exit(failed ? 1 : 0);

@@ -66,7 +66,7 @@ print(empty.first ?? -1, empty.last ?? -1) // -1 -1
 
 Prefix sums, difference arrays, and knapsack tables live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.cuts` with `V.K + 1` positions.
 
-```cp
+```cp status=checks
 let n: 1..=100 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -85,7 +85,7 @@ Every element `v: V` sits between two boundaries:
 
 The same `.l`/`.r` notation works directly in multi-dimensional DP tables such as 0/1 knapsack (`[I.cuts, 0..=cap]Int`):
 
-```cp
+```cp status=checks
 let n: 1..=50 = read()
 let cap: 1..=1000 = read()
 domain I = 1..=n
@@ -151,7 +151,7 @@ The imported `p.adj4` yields in-bounds orthogonal neighbors. `std.grid` also dec
 
 Coordinate compression produces a fresh nominal domain `xs.D` together with value lookup and inverse mapping:
 
-```cp
+```cp status=checks
 let all_coords = [30, 10, 20]
 let queries = [10, 30]
 let xs = compress(all_coords)
