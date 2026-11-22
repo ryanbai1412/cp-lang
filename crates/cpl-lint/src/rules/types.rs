@@ -95,6 +95,11 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
         ExprKind::Field { base, name } if matches!(name.text.as_str(), "ord" | "idx") => {
             Some(&**base)
         }
+        ExprKind::Call { callee, args }
+            if args.len() == 1 && matches!(&callee.kind, ExprKind::Name(n) if n == "Int") =>
+        {
+            Some(&args[0].value)
+        }
         _ => None,
     };
     let text = |side: &Expr| side.span.shift(base).text(src).to_string();

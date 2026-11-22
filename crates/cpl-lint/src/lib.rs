@@ -23,7 +23,7 @@ pub mod cli;
 pub use config::{Config, ConfigError};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
-use cpl_syntax::ast::{ExprKind, Stmt};
+use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};
 use cpl_syntax::ParsedItem;
 use walk::Visitor;
 
@@ -833,7 +833,70 @@ impl Allows {
             },
         };
         file.walk(&mut collector, |c, base| c.base = base);
+        let mut contexts = Contexts {
+            base: 0,
+            out: &mut collector.out,
+        };
+        let mut leading = Vec::new();
+        for (base, stmt) in file.top_level() {
+            contexts.base = base;
+            if matches!(stmt.kind, StmtKind::With { body: None, .. }) {
+                leading.push((base, stmt));
+            }
+            cpl_syntax::visit::walk_stmt(stmt, &mut contexts);
+        }
+        // A bare line at the top of the file covers the rest of it.
+        for (base, stmt) in leading {
+            contexts.base = base;
+            let start = stmt.span.shift(base).start;
+            contexts.allow(stmt, Span::new(start, u32::MAX));
+        }
         collector.out
+    }
+}
+
+/// The `with lint(name: allow)` contexts of a file. (R09.4.4)
+struct Contexts<'a> {
+    base: u32,
+    out: &'a mut Allows,
+}
+
+impl Contexts<'_> {
+    fn allow(&mut self, stmt: &Stmt, covered: Span) {
+        let StmtKind::With { ctx, args, .. } = &stmt.kind else {
+            return;
+        };
+        if ctx.text != "lint" {
+            return;
+        }
+        for arg in args {
+            let Some(field) = &arg.name else { continue };
+            match lint_named(&field.text) {
+                Some(lint) if matches!(&arg.value.kind, ExprKind::Name(v) if v == "allow") => {
+                    self.out.regions.push((covered, lint.name))
+                }
+                Some(_) => {}
+                None => self
+                    .out
+                    .unknown
+                    .push(unknown_lint(&field.text, field.span.shift(self.base))),
+            }
+        }
+    }
+}
+
+impl cpl_syntax::visit::Visitor for Contexts<'_> {
+    fn block(&mut self, block: &Block) {
+        for stmt in &block.stmts {
+            if matches!(stmt.kind, StmtKind::With { body: None, .. }) {
+                self.allow(stmt, stmt.span.to(block.span).shift(self.base));
+            }
+        }
+    }
+    fn stmt(&mut self, stmt: &Stmt) {
+        if matches!(stmt.kind, StmtKind::With { body: Some(_), .. }) {
+            self.allow(stmt, stmt.span.shift(self.base));
+        }
     }
 }
 
