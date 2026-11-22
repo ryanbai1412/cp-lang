@@ -213,7 +213,9 @@ type Z = Mod(read<Prime>())         // runtime modulus
   the block. Passing it to a call is always fine. (R02.9.2)
 - A function may return a fresh type existentially:
   `fn components(...) -> (domain P, [V]P)`; the caller binds it with
-  `let (domain P, ...) = ...`. User code can write such functions. (R02.9.3)
+  `let (domain P, ...) = ...`. User code can write such functions: the
+  body returns a tuple whose `domain` slot is a domain declared in the
+  body, `(J, [J] j => 0)`. (R02.9.3)
 - A fresh type carries runtime data (a domain's count, a modulus) in one
   static slot per declaration site, saved and restored when a recursive
   block re-enters. Generic code reads the slot; nothing is passed
