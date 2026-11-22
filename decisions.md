@@ -4292,7 +4292,9 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   `argmax` need `Keyed`, `sorted()` needs `Seq`, `sort()` needs
   `IndexedMut`. Adapters implement each capability they keep O(1), so
   `Filter` has `Seq`, `Keyed` and `Bidir` impls. Generators are `Seq` only;
-  `.enumerate()` makes any `Seq` `Keyed` by a counter. `Bidir` avoids a
+  `s.keyed(keys)` attaches keys by walk order (default `0..`, a counter) and
+  `s.keyed(by: f)` takes them from values, so `enumerate` stays out (60):
+  the counter walk is `s.keyed().items`. `Bidir` avoids a
   clash with `std.algebra`'s `Reversible` (fold values read backwards).
 - **Why.** Ryan: "argmax just wants smth that has the concept of having
   keys ... `.find` clearly doesn't need random access". With identity keys,

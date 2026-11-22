@@ -67,7 +67,7 @@ keeps it at its stated cost (decision 142):
 
 | Needs | Operations |
 |---|---|
-| `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `enumerate()`, `collect()`, `sorted()` |
+| `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `keyed()`, `collect()`, `sorted()` |
 | `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys |
 | `Sized` | `.len` |
 | `Bidir` | `.rev`, `.last` as an O(1) property |
@@ -76,8 +76,10 @@ keeps it at its stated cost (decision 142):
 | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` |
 
 Generators are `Seq` only: a yield number is not an identity, so
-`dfs(s).argmax()` is an error suggesting `.enumerate()` or `.max()`.
-`.enumerate()` makes any `Seq` `Keyed` by an `Int` counter. Sortedness is a
+`dfs(s).argmax()` is an error suggesting `.keyed(by: v => v)` or `.max()`.
+`s.keyed(keys)` makes any `Seq` `Keyed`, pairing by walk order (`keys`
+defaults to `0..`, a counter); `s.keyed(by: f)` takes each key from its
+value. There is no `enumerate`: `for (i, x) in g.keyed().items` (decision 60). Sortedness is a
 precondition checked in debug builds, not a trait. `Map` is `Keyed`,
 `Sized` and `Contains` with its own `[]`; there is no `Lookup` trait.
 

@@ -116,7 +116,7 @@ this is a stdlib convention, not a new feature.
 | `.even`, `.step(k)` | source keys, strided | renumbered `0, 1, 2…` |
 | `.map(f)` | source keys | renumbered |
 | `.filter(p)`, generators | no keys (`Seq`) | no keys |
-| `.enumerate()` | `(counter, x)`, counter from 0 | `(counter, x)` |
+| `.keyed().items` | `(counter, x)`, counter from 0 | `(counter, x)` |
 | `.items` | `(key, x)` | `(offset, x)` |
 
 ## Tally
@@ -148,7 +148,7 @@ and for `Int` keys alike, so there is one rule.
 What comes with it:
 1. **Order-based pairing** for every operation that combines two sequences
    (group A).
-2. **`.items` gives keys; `.enumerate()` gives a 0-based counter.** Use
+2. **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use
    `.items` when the index goes back into a sequence.
 3. **`w.rebase`**: an O(1) view of `w` keyed `0..w.len`, for the rare
    relative case (D3, or E1 with a fn written 0-based). It allocates nothing.
@@ -166,5 +166,5 @@ What comes with it:
    (`List(w)`)? An O(1) view costs nothing, so I lean towards having it.
 2. Does `Str` slicing stay key-preserving in printed output and hashing?
    Yes: printing and hashing are order-only (A1, A2).
-3. Does `.enumerate()` survive at all? It duplicates `.items` on a fresh
+3. Does `.enumerate()` survive at all? (Settled by 142: no; `.keyed()` is the counter form.) It duplicates `.items` on a fresh
    `List`. I lean towards keeping it for counters over generators.

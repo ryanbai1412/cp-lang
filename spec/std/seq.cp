@@ -331,6 +331,15 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 /// The same operation as `List(s)`; the postfix form is for chains.
 pub fn collect<S: Seq, T>(self: S) -> List<T> = todo
 
+/// `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items`
+/// gives `(key, x)`, and `argmax`/`find` answer with keys. By default the k-th element gets
+/// the k-th key of `keys` (`0..` is a counter: `for (i, x) in g.keyed().items`); with `by:`
+/// each key is `by(x)` (`dfs(s).keyed(by: v => v)`). Passing both is an error. O(1) to make.
+pub fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = none) -> Keys<S, I, K> = todo
+
+/// The view `keyed` returns.
+pub struct Keys<S, I, K>(src: S, keys: I, by: ?K)
+
 /// O(1) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
 

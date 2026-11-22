@@ -75,7 +75,7 @@ a.items           # (i, a[i]) pairs with a's own indices
 | Capability | What it guarantees | Examples |
 |---|---|---|
 | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g[u]` |
-| `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.filter(p)`, `s.take_while(p)`, `Map`, `x.enumerate()` |
+| `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` |
 | `Sized` | O(1) `s.len` | collections, ranges, `Indexed` views, sets, maps |
 | `Bidir<T>` | `s.rev` walks backwards; `s.last` is O(1) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` |
 | `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in O(1), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` |
