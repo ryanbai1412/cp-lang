@@ -2,6 +2,9 @@
 //! and this module adds what a cell can do: `p.adj4`, `p.adj8`, `p.step(d)` and `p.ray(d)`. A
 //! grid is a graph by writing its moves: `bfs(p => p.adj4.filter(q => g[q] != '#'), from: [s])`.
 
+const DR = [-1, -1, 0, 1, 1, 1, 0, -1]
+const DC = [0, 1, 1, 1, 0, -1, -1, -1]
+
 /// One of the four directions up, right, down, left (clockwise, rows growing downwards).
 pub struct Dir4(k: Int):
     /// Up: one row towards row 0, delta `(-1, 0)`.
@@ -58,27 +61,27 @@ pub struct Dir4(k: Int):
     /// traps: never
     /// example: `Dir4.up().cw == Dir4.right()`
     /// example: `Dir4.left().cw == Dir4.up()`
-    @get pub fn cw(self) -> Dir4 = todo
+    @get pub fn cw(self) -> Dir4 = Dir4((k + 1) % 4)
     /// A quarter turn counter-clockwise, the inverse of `cw`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.up().ccw == Dir4.left()`
     /// example: `Dir4.down().cw.ccw == Dir4.down()`
-    @get pub fn ccw(self) -> Dir4 = todo
+    @get pub fn ccw(self) -> Dir4 = Dir4((k + 3) % 4)
     /// The opposite direction, a half turn: its delta is the negated delta.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.up().back == Dir4.down()`
     /// example: `Dir4.right().back == Dir4.left()`
-    @get pub fn back(self) -> Dir4 = todo
+    @get pub fn back(self) -> Dir4 = Dir4((k + 2) % 4)
     /// The change in (row, column) of one step.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.all().map(d => d.delta) == [(-1, 0), (0, 1), (1, 0), (0, -1)]`
-    @get pub fn delta(self) -> (Int, Int) = todo
+    @get pub fn delta(self) -> (Int, Int) = (DR[2 * k], DC[2 * k])
 
 /// One of the eight directions, clockwise from up: the four of `Dir4` and the diagonals between.
 pub struct Dir8(k: Int):
@@ -102,7 +105,10 @@ pub struct Dir8(k: Int):
     /// traps: `letters.len != 8`
     /// example: `Dir8.from("abcdefgh", 'c') == Some(Dir8.all()[2])`
     /// example: `Dir8.from("abcdefgh", 'x') == None`
-    pub fn from(letters: Str, ch: Char) -> ?Dir8 = todo
+    pub fn from(letters: Str, ch: Char) -> ?Dir8:
+        for k in 0..8:
+            if letters[k] == ch: return Dir8(k)
+        None
     /// An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from
     /// up-left to up.
     ///
@@ -110,25 +116,25 @@ pub struct Dir8(k: Int):
     /// traps: never
     /// example: `Dir8.all()[0].cw.delta == (-1, 1)`
     /// example: `Dir8.all()[7].cw == Dir8.all()[0]`
-    @get pub fn cw(self) -> Dir8 = todo
+    @get pub fn cw(self) -> Dir8 = Dir8((k + 1) % 8)
     /// An eighth of a turn counter-clockwise, the inverse of `cw`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[0].ccw == Dir8.all()[7]`
-    @get pub fn ccw(self) -> Dir8 = todo
+    @get pub fn ccw(self) -> Dir8 = Dir8((k + 7) % 8)
     /// The opposite direction, four eighths round: its delta is the negated delta.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[1].back.delta == (1, -1)`
-    @get pub fn back(self) -> Dir8 = todo
+    @get pub fn back(self) -> Dir8 = Dir8((k + 4) % 8)
     /// The change in (row, column) of one step; each part is `-1`, `0` or `1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[3].delta == (1, 1)`
-    @get pub fn delta(self) -> (Int, Int) = todo
+    @get pub fn delta(self) -> (Int, Int) = (DR[k], DC[k])
 
 /// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that
 /// step leaves the grid `(R, C)`.
@@ -174,7 +180,10 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj4.collect() == [(R(0), C(1)), (R(1), C(0))]`
-@get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C) = todo
+@get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C):
+    for d in Dir4.all():
+        let q = step(self, d)
+        if q != None: yield q!
 
 /// The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in
 /// `Dir8.all()`, skipping steps that leave the grid.
@@ -185,7 +194,10 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj8.collect().len == 8`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj8.collect() == [(R(0), C(1)), (R(1), C(1)), (R(1), C(0))]`
-@get pub fn adj8<R, C>(self: (R, C)) -> yields (R, C) = todo
+@get pub fn adj8<R, C>(self: (R, C)) -> yields (R, C):
+    for d in Dir8.all():
+        let q = step(self, d)
+        if q != None: yield q!
 
 /// A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every
 /// cell. The result is owned, not a view.
@@ -196,4 +208,4 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(2), R(1)] == 12`
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(0)].collect() == [0, 10]`
-pub fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = todo
+pub fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, c]
