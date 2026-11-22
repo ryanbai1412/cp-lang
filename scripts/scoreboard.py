@@ -50,7 +50,9 @@ DEFAULT_BASELINE = os.path.join(ROOT, "research", "scoreboard.json")
 
 SIZE_WARN = 48 * 1024
 SIZE_LIMIT = 64 * 1024
-PERF_FLOOR_MS = 10.0
+# A runtime ratio counts only when the original runs at least this long on the
+# port's max input; shorter runs measure process startup, not the algorithm.
+PERF_FLOOR_MS = 100.0
 
 # Regression thresholds for --check against baseline
 EMITTED_GROWTH_RATIO = 1.05
@@ -775,12 +777,15 @@ def parse_review_score(port_name, reviews_dir=REVIEWS_DIR):
 
 def _git_last_touch_order(repo_root, paths):
     """Return {rel_path: commit_index} where 0 is the most recent commit touching rel_path."""
-    if not os.path.isdir(os.path.join(repo_root, ".git")):
+    if not os.path.exists(os.path.join(repo_root, ".git")):
         return {}
+    # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inherited, they override repo_root.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         r = subprocess.run(
             ["git", "log", "--format=format:COMMIT", "--name-only", "--", *paths],
             cwd=repo_root,
+            env=env,
             capture_output=True,
             text=True,
             check=True,
@@ -875,6 +880,16 @@ def summarize_taste_reviews(port_records, reviews_dir=REVIEWS_DIR, repo_root=ROO
     }
 
 
+def perf_counts(perf):
+    """A max-input runtime measurement whose ratio means something: see PERF_FLOOR_MS."""
+    return bool(
+        perf
+        and perf.get("measured")
+        and perf.get("time_ratio") is not None
+        and (perf.get("orig_ms") or 0) >= PERF_FLOOR_MS
+    )
+
+
 def generate_max_input(p, orig_bin, work_dir, explicit_specs):
     """Produce a max-size deterministic input for benchmarking port vs orig.
 
@@ -901,6 +916,8 @@ def generate_max_input(p, orig_bin, work_dir, explicit_specs):
             pass
 
     spec = explicit_specs.get(p["id"]) or explicit_specs.get(p["name"])
+    if spec is not None and spec[4] is None:
+        return None, spec[3]
     if spec is not None:
         inp = os.path.join(work_dir, "max.in")
         try:
@@ -1001,6 +1018,16 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         if not ok_orig:
             out["diff_detail"] = f"orig compile: {orig_compiler}"
             return out
+        # Runtime compares one compiler's code with the same compiler's: when the
+        # original needs zig c++ (clang), the port's timed binary is built with it too.
+        perf_bin = port_bin
+        if orig_compiler == "zig c++":
+            perf_bin = os.path.join(work, "port_zig")
+            cz = sh(["zig", "c++", "-std=c++17", "-O2", "-w", cpp_path, "-o", perf_bin])
+            if cz.returncode != 0:
+                err = (cz.stderr.strip().splitlines() or ["zig c++ port failed"])[0][:140]
+                out["diff_detail"] = f"zig c++ port: {err}"
+                return out
 
         # 1. Differential verification on samples + small generated cases (plus interpreter time)
         diff_cases = []
@@ -1105,7 +1132,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
 
         if p["interactor"]:
             w_orig, st0 = run_interactive(p["interactor"], max_inp, [orig_bin], os.path.join(work, "mo0"), 15.0)
-            w_port, st1 = run_interactive(p["interactor"], max_inp, [port_bin], os.path.join(work, "mo1"), 15.0)
+            w_port, st1 = run_interactive(p["interactor"], max_inp, [perf_bin], os.path.join(work, "mo1"), 15.0)
             if st0 == "ok" and st1 == "ok":
                 orig_ms = round(w_orig * 1000.0, 2)
                 cpp_ms = round(w_port * 1000.0, 2)
@@ -1113,6 +1140,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                     "measured": True,
                     "interactive": True,
                     "input_source": max_label,
+                    "compiler": orig_compiler,
                     "input_bytes": os.path.getsize(max_inp),
                     "cpp_ms": cpp_ms,
                     "orig_ms": orig_ms,
@@ -1127,6 +1155,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                     "measured": False,
                     "interactive": True,
                     "input_source": max_label,
+                    "compiler": orig_compiler,
                     "reason": f"orig={st0}, port={st1}",
                 }
             return out
@@ -1135,12 +1164,13 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         o_orig = os.path.join(work, "max_orig.out")
         o_port = os.path.join(work, "max_port.out")
         orig_wall_rss, orig_rss, st0 = run_timed([orig_bin], max_inp, o_orig, 15.0, rss=True)
-        port_wall_rss, port_rss, st1 = run_timed([port_bin], max_inp, o_port, 15.0, rss=True)
+        port_wall_rss, port_rss, st1 = run_timed([perf_bin], max_inp, o_port, 15.0, rss=True)
         if st0 != "ok" or st1 != "ok":
             out["perf"] = {
                 "measured": False,
                 "interactive": False,
                 "input_source": max_label,
+                "compiler": orig_compiler,
                 "reason": f"orig={st0}, port={st1}",
             }
             return out
@@ -1148,7 +1178,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         orig_times = [orig_wall_rss]
         port_times = [port_wall_rss]
         for _ in range(max(0, runs - 1)):
-            w1, _, s1 = run_timed([port_bin], max_inp, o_port, 15.0, rss=False)
+            w1, _, s1 = run_timed([perf_bin], max_inp, o_port, 15.0, rss=False)
             w0, _, s0 = run_timed([orig_bin], max_inp, o_orig, 15.0, rss=False)
             if s1 == "ok":
                 port_times.append(w1)
@@ -1160,6 +1190,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             "measured": True,
             "interactive": False,
             "input_source": max_label,
+            "compiler": orig_compiler,
             "input_bytes": os.path.getsize(max_inp),
             "cpp_ms": cpp_ms,
             "orig_ms": orig_ms,
@@ -1169,6 +1200,12 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             "rss_ratio": round(port_rss / orig_rss, 3) if orig_rss > 0 else None,
             "output_match": matched,
         }
+        if orig_ms < PERF_FLOOR_MS:
+            out["perf"]["measured"] = False
+            out["perf"]["reason"] = (
+                f"original runs {orig_ms} ms on {max_label}, under {PERF_FLOOR_MS:.0f} ms: "
+                "needs a generator at the statement's max constraints"
+            )
         if not matched:
             out["diff_ok"] = False
             out["diff_detail"] = f"max-size output mismatch ({max_label})"
@@ -1181,7 +1218,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             ratio_inp, ratio_src, ratio_cpp_ms = max_inp, max_label, cpp_ms
         elif diff_cases:
             ratio_inp, ratio_src = max(diff_cases, key=lambda c: os.path.getsize(c[0]))
-            w_c, _, s_c = run_timed([port_bin], ratio_inp, os.path.join(work, "icpp.out"), 10.0, rss=False)
+            w_c, _, s_c = run_timed([perf_bin], ratio_inp, os.path.join(work, "icpp.out"), 10.0, rss=False)
             if s_c == "ok":
                 ratio_cpp_ms = round(w_c * 1000.0, 2)
         if ratio_inp is not None and ratio_cpp_ms is not None and ratio_cpp_ms > 0:
@@ -1595,7 +1632,7 @@ SPELLING_DRIFT_SPECS = {
                 r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\b(?!\s*\()"
             ),
             ".getter()": re.compile(
-                r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\s*\(\s*\)"
+                r"(?:(?<![A-Za-z0-9_])(?![A-Z])[A-Za-z0-9_]+|[\)\]])\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\s*\(\s*\)"
             ),
         },
     },
@@ -1855,19 +1892,9 @@ def compute_totals(
     emitted_vals = [b for b, _ in emitted]
     max_emitted, max_emitted_port = max(emitted, default=(None, None))
 
-    perf_recs = [r for r in port_records if (r.get("perf") or {}).get("measured")]
-    time_ratios = [
-        (r["perf"]["time_ratio"], r["id"])
-        for r in perf_recs
-        if r["perf"].get("time_ratio") is not None
-        and max(r["perf"].get("cpp_ms") or 0, r["perf"].get("orig_ms") or 0) >= PERF_FLOOR_MS
-    ]
-    all_time_ratios = [
-        (r["perf"]["time_ratio"], r["id"])
-        for r in perf_recs
-        if r["perf"].get("time_ratio") is not None
-    ]
-    t_use = time_ratios if time_ratios else all_time_ratios
+    perf_recs = [r for r in port_records if perf_counts(r.get("perf"))]
+    time_ratios = [(r["perf"]["time_ratio"], r["id"]) for r in perf_recs]
+    t_use = time_ratios
     t_vals = [v for v, _ in t_use]
     t_max, t_max_port = max(t_use, default=(None, None))
     t_p50 = round(statistics.median(t_vals), 3) if t_vals else None
@@ -1993,6 +2020,7 @@ def compute_totals(
         "perf": {
             "measured": len(perf_recs),
             "above_floor": len(time_ratios),
+            "unmeasured": sum(1 for r in port_records if (r.get("perf") or {}).get("reason")),
             "floor_ms": PERF_FLOOR_MS,
             "mismatches": sum(1 for r in perf_recs if not r["perf"].get("output_match", True)),
             "time_p50": t_p50,
@@ -2253,14 +2281,8 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
             cp = r.get("perf") or {}
             if bp.get("measured") and bp.get("output_match") and cp.get("measured") and not cp.get("output_match"):
                 record_regression(f"max-size output mismatch: {pid}", pid=pid)
-            if (
-                bp.get("measured")
-                and cp.get("measured")
-                and bp.get("time_ratio") is not None
-                and cp.get("time_ratio") is not None
-                and max(cp.get("cpp_ms") or 0, cp.get("orig_ms") or 0) >= PERF_FLOOR_MS
-                and max(bp.get("cpp_ms") or 0, bp.get("orig_ms") or 0) >= PERF_FLOOR_MS
-            ):
+            same_input = bp.get("input_source") == cp.get("input_source")
+            if perf_counts(bp) and perf_counts(cp) and same_input:
                 br = bp["time_ratio"]
                 cr = cp["time_ratio"]
                 if cr > br * PERF_REGRESSION_RATIO:
@@ -2278,6 +2300,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
                 and ci.get("ratio") is not None
                 and (ci.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
                 and (bi.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
+                and bi.get("ratio_source") == ci.get("ratio_source")
             ):
                 bir, cir = bi["ratio"], ci["ratio"]
                 if cir > bir * PERF_REGRESSION_RATIO:
@@ -2794,11 +2817,13 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         f"({t.get('interactive_ports', 0)} interactive, {t.get('checker_ports', 0)} checker)"
     )
     tok = t["tokens"]
+    stripped = tok["median_stripped_ratio"]
+    stripped = f"{stripped:.3f}x" if stripped is not None else "n/a"
     print(
         f"  tokens:    cp={tok['cp_total']:,} vs orig={tok['orig_total']:,} "
-        f"(median {tok['median_ratio']:.3f}x raw, {tok['median_stripped_ratio']:.3f}x stripped; "
+        f"(median {tok['median_ratio']:.3f}x raw, {stripped} stripped; "
         f">1.0x: {tok['over_1_0x_raw']} raw, {tok['over_1_0x_stripped']} stripped)"
-        if tok["median_ratio"] is not None
+        if tok["median_ratio"] is not None and tok["median_stripped_ratio"] is not None
         else "  tokens:    n/a"
     )
     dm = t.get("dream") or {}
@@ -2819,7 +2844,8 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         p50_tag = "PASS" if pf.get("p50_ok") else "FAIL"
         max_tag = "PASS" if pf.get("max_ok") else "FAIL"
         print(
-            f"  perf:      {pf['measured']} measured ({pf['above_floor']} >= {pf['floor_ms']:.0f}ms), "
+            f"  perf:      {pf['measured']} measured (original >= {pf['floor_ms']:.0f}ms; "
+            f"{pf.get('unmeasured', 0)} unmeasured), "
             f"time p50={pf['time_p50']}x (goal <={TIME_P50_GOAL}x: {p50_tag}) "
             f"p95={pf['time_p95']}x "
             f"max={pf['time_max']}x (goal <={TIME_MAX_GOAL}x: {max_tag}, {pf.get('over_1_5x', 0)} >{TIME_MAX_GOAL}x, {pf['time_max_port']}), "
@@ -2947,7 +2973,9 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         print("\nPer-port details:")
         for r in report["ports"]:
             perf_s = ""
-            if (r.get("perf") or {}).get("measured"):
+            if (r.get("perf") or {}).get("reason"):
+                perf_s = f" | perf: unmeasured ({r['perf']['reason']})"
+            elif (r.get("perf") or {}).get("measured"):
                 p = r["perf"]
                 rss_s = f"{p['rss_ratio']}x" if p.get("rss_ratio") is not None else "n/a"
                 perf_s = f" | t={p['cpp_ms']}ms/{p['orig_ms']}ms ({p['time_ratio']}x) rss={rss_s}"

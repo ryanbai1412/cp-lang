@@ -1,15 +1,13 @@
-# Friction report: ucup5s05e (Universal Cup 5 Stage 5 E)
+# ucup5s05e friction report
 
-Rewrote `proto/ports/ecnerwala/ucup5s05e.cp` to replace its hand-rolled monotone-chain `fn chain(side: Int)` and `type Site = (p: Pt, id: Int)` wrapper with `domain P = 1..=n` and `std.geometry.{convex_hull_idx, turn}` (`convex_hull_idx(pts, collinear: true)`).
-
-- Gate: `proto/ports/ecnerwala/gate.sh ucup5s05e 50` passed (`PASS ucup5s05e (0 samples, 50 random cases)`).
-- Tokens: `702 -> 625` (`-77` contestant tokens; `0.05x` raw original, `0.44x` stripped).
-- Emitted C++: `25,054 -> 24,819 B` (`-235 B`).
-
-## Splitting `convex_hull_idx` back into lower and upper x-monotone chains takes 5 lines of index math
-
-- **Severity:** low
-- **Goal it hurts:** express
-- **Area:** geometry (`plan/STDLIB.md`)
-- **What happened:** The port needs x-monotone lower and upper hull chains with original point IDs (`P`) so it can binary-search each chain by query `x`. `std.geometry` provides `convex_hull_idx(pts, collinear: true)` (which computes both chains internally and concatenates them) and value-only `lower_hull`/`upper_hull`, so the port finds the rightmost index `rm` and slices `hull[..=rm]` and `[hull[0]] + hull[rm..].rev` back out.
-- **General fix:** Keep `convex_hull_idx` as the single indexed hull primitive for now (5 lines is cheap and avoids adding `_idx` twins for `lower_hull`/`upper_hull`); revisit only if multiple ports need indexed half-hulls.
+## Missing stdlib: `k`-subsets / `combinations(k)` on sequences in `std.seq`
+- **Where:** `proto/ports/ecnerwala/dream/ucup5s05e.cp` line 43 (`proto/ports/ecnerwala/ucup5s05e.cp` lines 43–47).
+- **What felt wrong:** Testing every 3-element subset of a small candidate list requires three nested index loops (`for i in 0..cands.len: for j in i + 1..cands.len: for k in j + 1..cands.len:`) with an early return.
+- **Goal it hurts:** express.
+- **Ideal code:**
+  ```cp
+  if let tri = cands.combinations(3).first(t => in_tri(pts[t[0]], pts[t[1]], pts[t[2]], c)):
+      return tri
+  ```
+- **General fix:** Add `combinations(k)` (or a `triples()` / `combinations(k: Int)` iterator/helper) to `std.seq` that yields `k`-element combinations in index order without duplicating nested index loops.
+- **Severity:** low.

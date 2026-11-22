@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a `some x` pattern (not in the design)
+  --> planned_a_some_x_pattern.cp:1:9
+  |
+1 | for (x, some y) in [(1, 2)]:
+  |         ^^^^
+  = help: bind the optional, then unwrap it with `if let x = o:`
+
+planned_a_some_x_pattern.cp: 1 error

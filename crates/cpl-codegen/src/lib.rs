@@ -6,6 +6,7 @@ mod expr;
 mod names;
 mod niche;
 mod ranges;
+mod rowcache;
 mod runtime;
 mod scope;
 mod show;
@@ -13,7 +14,7 @@ mod stmt;
 mod unordered;
 mod walk;
 
-pub use devirt::{ClosureLowering, ClosureMode, explain_closures};
+pub use devirt::{ClosureLowering, ClosureMode, explain_closures, explain_dropped_fields};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

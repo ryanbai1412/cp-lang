@@ -11,7 +11,7 @@ struct KS:
     v: List<F64>
 
     fn make(msz: Int) -> KS:
-        KS(msz: msz, v: [0.0])
+        KS(msz:, v: [0.0])
 
     fn update(mut self, arr: List<F64>):
         let n = self.v.len

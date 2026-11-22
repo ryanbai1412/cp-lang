@@ -6,6 +6,20 @@ use crate::ty::{Bindings, Param};
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
 
 impl<'a> Checker<'a> {
+    /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
+    /// them, or a string of fixed text around them.
+    pub(crate) fn fixed_size(&mut self, e: &Expr) -> bool {
+        if let ExprKind::Str(pieces) = &e.kind {
+            return pieces.iter().all(|p| match p {
+                cpl_syntax::ast::StrPiece::Text(_) => true,
+                cpl_syntax::ast::StrPiece::Expr(e) => self.fixed_size(e),
+                cpl_syntax::ast::StrPiece::Spec(e, _) => self.fixed_size(e),
+            });
+        }
+        let ty = self.quietly(|c| c.infer(e));
+        ty.is_fixed_size()
+    }
+
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         if let Some(on_self) = self.implicit_self_method(callee) {
             return self.call(call, &on_self, args);
@@ -49,8 +63,21 @@ impl<'a> Checker<'a> {
         } else {
             self.call_kind(call, callee, callee_ty.clone(), args)
         };
+        if receiver.is_none() && matches!(ty, Ty::Unknown) {
+            if let Some(known) = self.catalog_ret(callee) {
+                ty = known;
+            }
+        }
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
+        }
+        let fixed_args = match &callee.kind {
+            ExprKind::Name(n) if n == "print" => true,
+            ExprKind::Name(n) if ["Int", "I128", "U64", "F64", "Char", "Bool"].contains(&n.as_str()) => args.len() == 1,
+            _ => false,
+        };
+        if fixed_args && args.iter().all(|a| self.fixed_size(&a.value)) {
+            self.fixed_io.push(callee.span);
         }
         self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);
@@ -676,6 +703,16 @@ impl<'a> Checker<'a> {
                     return Some(Ty::list(Ty::list(elem)));
                 }
                 "first" => {
+                    return Some(Ty::Optional(Box::new(elem)));
+                }
+                "last"
+                    if matches!(
+                        args,
+                        [arg] if arg.name.is_none()
+                            && (matches!(arg.value.kind, ExprKind::Lambda { .. })
+                                || matches!(self.quietly(|c| c.infer(&arg.value)), Ty::Fn { .. }))
+                    ) =>
+                {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
                 "filter" | "sorted" => {
@@ -1317,21 +1354,7 @@ impl Checker<'_> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return Vec::new();
         };
-        let base_ty = self.quietly(|c| c.infer(base));
-        let (owner, elem) = match &base_ty {
-            Ty::Str => ("Str", Some(Ty::Char)),
-            Ty::Array { .. } => ("[D]T", base_ty.seq_elem()),
-            Ty::Named { name, args } => (
-                match name.as_str() {
-                    "HashSet" => "Set",
-                    "HashMap" => "Map",
-                    other => other,
-                },
-                base_ty.seq_elem().or_else(|| (args.len() == 1).then(|| args[0].clone())),
-            ),
-            _ => return Vec::new(),
-        };
-        let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
+        let Some((member, elem)) = self.catalog_row(base, &name.text) else {
             return Vec::new();
         };
         let params = split_top(member.params);
@@ -1358,15 +1381,40 @@ impl Checker<'_> {
             .map_or_else(|| vec![takes], split_top);
         takes
             .iter()
-            .map(|t| match t.trim() {
-                "T" => elem.clone().unwrap_or(Ty::Unknown),
-                "Char" => Ty::Char,
-                "Int" => Ty::Int,
-                "Bool" => Ty::Bool,
-                "Str" => Ty::Str,
-                _ => Ty::Unknown,
-            })
+            .map(|t| catalog_ty(t, &elem).unwrap_or(Ty::Unknown))
             .collect()
+    }
+
+    /// The catalog row for `base.name` on a built-in type, and the
+    /// element type its `T` stands for.
+    fn catalog_row(&mut self, base: &Expr, name: &str) -> Option<(&'static crate::builtins::BuiltinMember, Option<Ty>)> {
+        let base_ty = self.quietly(|c| c.infer(base));
+        let (owner, elem) = match &base_ty {
+            Ty::Str => ("Str", Some(Ty::Char)),
+            Ty::Array { .. } => ("[D]T", base_ty.seq_elem()),
+            Ty::Named { name, args } => (
+                match name.as_str() {
+                    "HashSet" => "Set",
+                    "HashMap" => "Map",
+                    other => other,
+                },
+                base_ty.seq_elem().or_else(|| (args.len() == 1).then(|| args[0].clone())),
+            ),
+            _ => return None,
+        };
+        Some((crate::builtins::builtin_member(owner, name)?, elem))
+    }
+
+    /// What a built-in method returns when nothing more specific knows:
+    /// its catalog row's type, e.g. the element for `a.sum()` on a `[V]Int`.
+    /// Optional returns (`?T` for `pop`) stay unknown: the checker still
+    /// takes them on trust as the element.
+    fn catalog_ret(&mut self, callee: &Expr) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let (member, elem) = self.catalog_row(base, &name.text)?;
+        catalog_ty(member.ret, &elem)
     }
 
     /// `(i, j) => ...` passed where `(I, I) -> Int` is wanted: its unwritten
@@ -1383,6 +1431,18 @@ impl Checker<'_> {
                 }
             }
         }
+    }
+}
+
+/// A catalog type string the checker can read without the row's generics.
+fn catalog_ty(text: &str, elem: &Option<Ty>) -> Option<Ty> {
+    match text.trim() {
+        "T" => elem.clone(),
+        "Char" => Some(Ty::Char),
+        "Int" => Some(Ty::Int),
+        "Bool" => Some(Ty::Bool),
+        "Str" => Some(Ty::Str),
+        _ => None,
     }
 }
 

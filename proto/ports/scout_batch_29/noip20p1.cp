@@ -24,7 +24,7 @@ fn raised(x: Amount, exp: [Small]Int) -> Wide:
 
 fn plus(x: Amount, y: Amount) -> Amount:
     let exp = [Small] p => max(x.exp[p], y.exp[p])
-    (num: raised(x, exp).plus(raised(y, exp)), exp: exp)
+    (num: raised(x, exp).plus(raised(y, exp)), exp:)
 
 /// `x` split over `d` pipes, `d` from 1 to 5.
 fn shared(x: Amount, d: Int) -> Amount:
@@ -34,7 +34,7 @@ fn shared(x: Amount, d: Int) -> Amount:
         while rest % primes[p] == 0:
             rest /= primes[p]
             exp[p] += 1
-    (num: x.num, exp: exp)
+    (num: x.num, exp:)
 
 let (n, m): (Int, Int) = read()
 domain Junction = 1..=n

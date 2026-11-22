@@ -31,6 +31,13 @@
 - **General fix:** Add `List.pop_while` and `?T.filter` / `?T.map` combinators.
 - **Severity:** low
 
+## No `.somes` on `List<?T>` and no table slice assignment (`q[start..] = suffix`)
+- **Where:** `dream/wtf26d.cp` lines 60, 71 (`[a, b].somes.min()`, `[some(v), next_cap, conds.active_cap(pos)].somes.min()`) and line 134 (`q[start..] = suffix`).
+- **What felt wrong:** Folding `min` over optional values requires writing a helper `min_pos` or filtering `[u for opt in opts if let u = opt]` by hand; copying a `List<Val>` into a tail slice of `[Pos]Val` requires walking an optional cursor `dst: ?Pos` by hand.
+- **Goal it hurts:** express
+- **General fix:** Add `.somes` on `List<?T>` (or `min` over `?T`) and slice assignment `a[start..] = xs` on domain tables.
+- **Severity:** low
+
 ## Measurements
 - **Contestant-written tokens:** 858 (port) vs 874 (dream, **0.98x**).
 - **Emitted C++ bytes:** ~20.1 KB (31% of 64 KB limit; grew from 16.1 KB after replacing raw `Int` sentinels with `Pos`/`Val` domains and `CondStack`).

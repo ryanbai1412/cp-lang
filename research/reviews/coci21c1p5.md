@@ -1,6 +1,7 @@
 # coci21c1p5
 
-Score: 2/5
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 96359635. The header (lines 1-7) states the plan. The body hand-rolls two binary searches, packs per-layer lists into a flat index space with `off[]` offsets, and runs the DFS through a global `cur` with `(INF, -1)` sentinels. No dream exists, so the score is capped at 3.
 
@@ -21,3 +22,9 @@ Baseline review, cold, on main 96359635. The header (lines 1-7) states the plan.
 ## Gaps that need the language
 
 - Per-layer segment trees over different domains (`List<SegTree<D, T>>`), which the header names as the reason for flat packing. No friction report exists; flag it.
+
+## Cold review (HEAD)
+
+Dream (new) 4/5, port 4/5 (port = dream, in both `scout_batch_35` and `scout_batch_30`), cold-reviewed on current main. It checks with zero errors. The binary searches, `INF` sentinels, flat offsets and global `dfs` flag from the baseline are gone: `tails.first_ge` builds the levels (lines 18-24), and one stack walk extracts the chains (lines 30-45). The header (lines 5-10) gives the reason for each discard rule.
+- Minor: the `while true` driver (line 30) checks for a finished chain before its `break` test. Levels are raw `Int` indices into `List<List<Pos>>` and `next: [0..len]Int` (lines 17, 27); a `domain Level = 0..len` would type them.
+- Minor: the header does not say why greedy extraction gives the maximum number of chains.

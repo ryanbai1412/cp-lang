@@ -4,8 +4,8 @@
 // the line a*x + b*y + c = 0.  Each diamond side is cut where it crosses a
 // mirror, so every piece folds to a straight diagonal segment; a piece meets
 // the line in one point or, when parallel and on it, in a whole x-interval.
-// Sweeping the x-events counts distinct points (b != 0 after the swap, so x
-// determines the point).
+// The answer is the length of the union of those x-intervals (b != 0 after the
+// swap, so x determines the point).
 use std.geometry.{dot}
 
 // Reflect a coordinate back into 0..=m.
@@ -21,6 +21,17 @@ fn to_mirror(s: Int, e: Int, m: Int) -> Int:
     let gap = d % m
     min(if gap == 0: m else: gap, abs(s - e))
 
+fn union_len(spans: List<(Int, Int)>) -> Int:
+    var total = 0
+    var reach: ?Int = none
+    for (lo, hi) in spans.sorted():
+        let from = max(lo, reach ?? lo)
+        if hi > from: total += hi - from
+        reach = max(hi, reach ?? hi)
+    total
+
+fn signs(p: Pt) -> Pt = Pt(p.x.sign, p.y.sign)
+
 @!multitest
 let (n, px, py, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
 
@@ -34,12 +45,11 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
     else:
         (Pt(qa, qb), Pt(px - 1, py - 1))
 
-    var evts: List<(Int, Int)> = []
-    let shifts = [Pt(t, 0), Pt(0, t), Pt(-t, 0), Pt(0, -t)]
+    let corners = [origin + Pt(t, 0), origin + Pt(0, t), origin + Pt(-t, 0), origin + Pt(0, -t)]
+    var spans: List<(Int, Int)> = []
     for z in 0..4:
-        var cur = origin + shifts[z]
-        let diff = origin + shifts[(z + 1) % 4] - cur
-        let dir = Pt(diff.x.sign, diff.y.sign)
+        var cur = corners[z]
+        let dir = signs(corners[(z + 1) % 4] - cur)
         // the folded side is periodic with period 2m
         var left = min(t, 2 * m)
         while left > 0:
@@ -52,27 +62,17 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
             left -= len
             let v = fold_pt(cur, m)
             let at = dot(u, normal) + c
-            let dv = v - u
-            let step = Pt(dv.x.sign, dv.y.sign)
+            let step = signs(v - u)
             let slope = dot(step, normal)
             if slope == 0:
-                if at == 0:
-                    evts.push((min(u.x, v.x), 1))
-                    evts.push((max(u.x, v.x) + 1, -1))
+                if at == 0: spans.push((min(u.x, v.x), max(u.x, v.x) + 1))
             elif at % slope == 0:
                 let k = -at / slope
                 if 0 <= k and k <= len:
                     let x = u.x + step.x * k
-                    evts.push((x, 1))
-                    evts.push((x + 1, -1))
+                    spans.push((x, x + 1))
+    union_len(spans)
 
-    var (open, prev, ans) = (0, 0, 0)
-    for (x, d) in evts.sorted():
-        if open > 0: ans += x - prev
-        open += d
-        prev = x
-    ans
-
-for _ in 0..q:
-    let (a, b, c, t): (Int, Int, Int, Int) = read()
+repeat q:
+    let (a, b, c, t): (Int, Int, Int, 0..) = read()
     print(front(a, b, c, t))

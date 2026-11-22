@@ -1,61 +1,68 @@
-// Codeforces 2229 I: rerooting tree DP using max-plus convolution bottom-up
-// and transposed max-plus convolution top-down over prefix child products.
-const INF = 1_000_000_000_000_000_000
-
-fn conv_vecs(a: List<Int>, b: List<Int>) -> List<Int>:
-    var res = List.filled(a.len + b.len - 1, -INF)
-    for i in 0..a.len:
-        for j in 0..b.len:
-            res[i + j] max= a[i] + b[j]
-    res
-
-fn conv_transpose(a: List<Int>, b: List<Int>) -> List<Int>:
-    let alen = a.len
-    let aa: [0..alen]Int = [0..alen] idx => a[idx]
-    var res = List.filled(alen - b.len + 1, -INF)
-    for i in 0..alen - b.len + 1:
-        for j in 0..b.len:
-            res[i] max= aa[i + j] + b[j]
-    res
-
-fn shift_down(mut dp: List<Int>, weight: Int):
-    dp.push(-INF)
-    for i in (1..dp.len).rev:
-        dp[i] max= dp[i - 1] + weight * i
-
+// Codeforces 2229 I: rerooted max-plus tree knapsack.
+// Rooted anywhere, the score is the sum over a in S of w(a) * |S in subtree(a)|:
+// a's weight counts once for every chosen node at or below it.
+//
+// down[v][i]: the best total of the terms of subtree(v)'s nodes when exactly i
+// of S lie inside. Children join by max-plus convolution, then v is chosen or
+// not: f[i] max= f[i - 1] + w(v) * i. Every count 0..=size is reachable, so
+// down has no "impossible" entry.
+//
+// up[v][i]: rerooted at v, the best total of the terms of the nodes outside
+// subtree(v), given i of S inside; none where impossible. At the root it is
+// "all k inside". The part a child c contributes is split off a functional
+// by the transposed convolution split(f, b)[i] = max over j of f[i + j] + b[j].
+// For each child c of v: split off c's siblings (the later ones are already
+// gone, the earlier ones are their prefix join), then v itself, whose subtree
+// rerooted at c holds the k - i chosen nodes outside subtree(c). With every
+// child split off, up[v][1] + w(v) * k is the answer with v as the root.
 @!multitest
-let (n, k): (Int, Int) = read()
+let (n, k): (2..=4000, Int) = read()
 domain V = 1..=n
-let w: [V]Int = read()
+let w: [V]1..=1_000_000_000 = read()
 let edges: [0..n - 1](u: V, v: V) = read()
-let t = Rooted(Graph.undirected(edges), root: V(1))
-let ch: [V]List<V> = [V] u => t.children(u).sorted(by: v => t.size(v))
+let t = Rooted(Graph.undirected(edges), root: V.first)
+let kids: [V]List<V> = [V] u => t.children(u).sorted(by: c => t.size(c))
 
-var dp_down: [V]List<Int> = []
-var prefs: [V]List<List<Int>> = []
-for cur in t.at.rev:
-    var cur_dp: List<Int> = [0]
-    var cur_prefs: List<List<Int>> = []
-    for nxt in ch[cur]:
-        cur_prefs.push(cur_dp)
-        cur_dp = conv_vecs(cur_dp, dp_down[nxt])
-    shift_down(mut cur_dp, w[cur])
-    dp_down[cur] = cur_dp
-    prefs[cur] = cur_prefs
+// Every total is nonnegative, so 0 is below each max-plus entry.
+fn join(a: List<Int>, b: List<Int>) -> List<Int>:
+    var res: List<Int> = [0 for _ in 0..a.len + b.len - 1]
+    for i in 0..a.len:
+        for j in 0..b.len: res[i + j] max= a[i] + b[j]
+    res
+
+fn split(f: List<?Int>, b: List<Int>) -> List<?Int>:
+    var res: List<?Int> = [none for _ in 0..f.len - b.len + 1]
+    for i in 0..res.len:
+        for j in 0..b.len:
+            if let x = f[i + j]: res[i] max= x + b[j]
+    res
+
+var down: [V]List<Int> = []
+var joined_before: [V]List<List<Int>> = []
+for v in t.at.rev:
+    var f = [0]
+    for c in kids[v]:
+        joined_before[v].push(f)
+        f = join(f, down[c])
+    down[v] = [
+        if i == 0: f[0] elif i == f.len: f[i - 1] + w[v] * i else: max(
+            f[i],
+            f[i - 1] + w[v] * i,
+        ) for i in 0..=f.len
+    ]
 
 var ans: [V]Int = 0
-var dp_up: [V]List<Int> = []
-dp_up[V(1)] = [if i == k: 0 else: -INF for i in 0..=n]
-for cur in t.at:
-    var cur_up = dp_up[cur]
-    for z in (0..ch[cur].len).rev:
-        let nxt = ch[cur][z]
-        var nxt_up = conv_transpose(cur_up, prefs[cur][z])
-        for i in 0..nxt_up.len - 1:
-            nxt_up[i] max= nxt_up[i + 1] + w[cur] * (k - i)
-        nxt_up.pop()
-        dp_up[nxt] = nxt_up
-        cur_up = conv_transpose(cur_up, dp_down[nxt])
-    ans[cur] = cur_up[1] + w[cur] * k
+var up: [V]List<?Int> = []
+up[t.root] = [if i == k: 0 else: none for i in 0..=n]
+for v in t.at:
+    var f = up[v]
+    for (z, c) in kids[v].items.rev:
+        var g = split(f, joined_before[v][z])
+        for i in 0..g.len - 1:
+            if let x = g[i + 1]: g[i] max= x + w[v] * (k - i)
+        g.pop()
+        up[c] = g
+        f = split(f, down[c])
+    ans[v] = f[1]! + w[v] * k
 
 print(ans)

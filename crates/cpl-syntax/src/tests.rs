@@ -1432,3 +1432,45 @@ fn tagged_variants_and_mut_lambda_parameters_parse() {
     let src = "enum Cmd:\n    @tag(\"1\") Add(x: Int)\n    @tag(\"3\") Stop\nlet f = (mut d, e) => d.push(e)\n";
     assert!(codes(src).is_empty(), "{:?}", codes(src));
 }
+
+#[test]
+fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
+    let cases = [
+        ("let a = true\nlet b = a && a\n", "`&&` is `and` in cp", "and"),
+        ("let a = true\nlet b = a || a\n", "`||` is `or` in cp", "or"),
+        ("for i in 0..<3:\n    print(i)\n", "`..<` is `..` in cp", ""),
+        ("let a: [0..<3]Int = read()\n", "`..<` is `..` in cp", ""),
+        ("if let x = f() && x > 0:\n    print(x)\n", "`&&` is `and` in cp", "and"),
+        ("while x > 0 || y > 0:\n    x -= 1\n", "`||` is `or` in cp", "or"),
+    ];
+    for (src, message, replacement) in cases {
+        let d = one_diag(src);
+        assert_eq!(d.message, message, "{src:?}");
+        assert_eq!(d.fixes[0].edits[0].1, replacement, "{src:?}");
+    }
+    let d = one_diag("let a = true\nlet b = !a\n");
+    assert_eq!(d.fixes[0].edits[0].1, "not ");
+}
+
+#[test]
+fn rust_let_mut_is_reported_as_var_and_read_as_one() {
+    let d = one_diag("let mut x = 1\nx += 1\n");
+    assert_eq!(d.message, "`let mut` is `var` in cp");
+    assert_eq!(d.fixes[0].edits[0].1, "var");
+    let d = one_diag("var xs = [1]\nwhile let mut c = xs.pop():\n    print(c)\n");
+    assert_eq!(d.message, "a binding in a `let` condition can't be `mut`");
+    assert_eq!(d.fixes[0].edits[0].1, "");
+}
+
+#[test]
+fn single_bitwise_operators_are_not_c_style_logic() {
+    assert_eq!(codes("let b = 6 & 3 | 1\nlet c = 6 & &3\n").len(), 1);
+    assert!(codes("let b = 6 & 3 | 1\n").is_empty());
+}
+
+#[test]
+fn an_indented_if_after_eq_is_the_value_and_any_other_indented_value_is_planned() {
+    assert!(codes("let a =\n    if true:\n        1\n    else:\n        2\nprint(a)\n").is_empty());
+    let d = one_diag("let a =\n    1\nprint(a)\n");
+    assert!(d.message.contains("a value on the indented lines after `=`"), "{}", d.message);
+}

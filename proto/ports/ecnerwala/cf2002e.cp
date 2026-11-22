@@ -18,6 +18,6 @@ for _ in 0..n:
         if top.val == val: dies += top.dies - gone
         gone = top.dies
         stack.pop()
-    stack.push((dies: dies, val: val))
+    stack.push((dies:, val:))
     strength.push(stack[0].dies)
 print(strength)

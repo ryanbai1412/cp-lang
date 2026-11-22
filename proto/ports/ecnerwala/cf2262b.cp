@@ -1,46 +1,47 @@
-// The tournament is decided by its prefix maxima: only a prefix maximum ever
-// becomes champion, so the forfeits are the prefix maxima after the first,
-// minus the ones a champion eats. A champion that eats a prefix maximum more
-// than doubles before it falls, so at most ~30 champions eat; walk only those.
-// Removals run backwards as insertions.
+// Codeforces 2262 B: Culling Game.
+// Only a prefix maximum ("top") can ever become champion, and every top after
+// the first wins its first fight by forfeit, so the answer is (#tops - 1) minus
+// the tops some champion beats instead of forfeiting to. Call a top c an
+// eater when it beats the next top q, i.e. a[c..q) sums to at least a[q].
+// An eater keeps absorbing tops until the first top above its running sum;
+// each absorbed top is larger than everything before it, so the sum doubles
+// per top absorbed and the walk takes O(log max a) searches. A forfeit to a
+// non-eater changes nothing, so only eaters need walking.
+// Removals are answered backwards, as insertions.
 @!multitest
 let n: 1..=200_000 = read()
 domain I = 1..=n
-let a: [I]1..=1e9 = read()
+let a: [I]1..=1_000_000_000 = read()
 let p: [0..n]I = read()
 
 var total = Fenwick<I, Int>()
 var tops = SortedSet<I>()
-var eaters: Set<I> = Set()
-
-fn next_top(c: I) -> ?I = if let c1 = c.next: tops.range(c1..).first else: none
+var eaters = SortedSet<I>()
 
 fn recheck(c: I):
-    let eats = if let q = next_top(c): total.sum(c..q) >= a[q] else: false
-    eaters.set(c, on: eats)
+    eaters.set(c, on: tops.range(c.r..).first.map(q => total.sum(c..q) >= a[q]) ?? false)
 
 fn insert(i: I):
     total.add(i, a[i])
     let before = tops.range(..i).last
-    if let c = before, a[c] >= a[i]:
+    if let c = before and a[c] >= a[i]:
         recheck(c)
         return
-    for q in tops.drain(after: i, while: q => a[q] <= a[i]):
-        eaters.remove(q)
-    let _ = tops.add(i)
+    for q in tops.drain(after: i, while: q => a[q] <= a[i]): eaters.remove(q)
+    tops.add(i)
     if let c = before: recheck(c)
     recheck(i)
+
+// Where eater c's run ends: grow past every top its sum through `stop` beats.
+fn reach(c: I, stop: I.bounds) -> I.bounds:
+    let nxt = tops.bsearch_first(q => a[q] > total.sum(c.l..stop)).map(q => q.l) ?? I.end
+    if nxt == stop: stop else: reach(c, nxt)
 
 fn forfeits() -> Int:
     var lost = tops.len - 1
     var from = I.first
     while let c = eaters.range(from..).first:
-        var stop = if let q = next_top(c): q.l else: I.end
-        loop:
-            let s = total.sum(c.l..stop)
-            let reach = if let q = tops.bsearch_first(q => a[q] > s): q.l else: I.end
-            if reach == stop: break
-            stop = reach
+        let stop = reach(c, tops.range(c.r..).first.map(q => q.l) ?? I.end)
         lost -= tops.range(c.l..stop).len - 1
         if let s = stop.right: from = s else: break
     lost

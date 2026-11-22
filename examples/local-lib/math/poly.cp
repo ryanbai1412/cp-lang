@@ -1035,7 +1035,7 @@ impl SubproductTree:
         while i >= 1:
             nodes[i] = convolve(nodes[2 * i], nodes[2 * i + 1])
             i -= 1
-        SubproductTree(n: n, pts: pts, nodes: nodes)
+        SubproductTree(n:, pts:, nodes:)
 
     /// Root polynomial `prod_{i=0}^{n-1} (x - pts[i])`.
     pub fn product(self) -> List<Z>:

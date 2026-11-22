@@ -43,7 +43,7 @@ for id in 0..q:
     for dx in 0..=rem:
         let (cx, cy) = (x2 - dx, y2 - (rem - dx))
         if cx >= x1 and cy >= y1:
-            buckets[cx, cy].push((x1: x1, y1: y1, x2: x2, y2: y2, kv: kv, id: id))
+            buckets[cx, cy].push((x1:, y1:, x2:, y2:, kv:, id:))
 
 var dp: [0..n, 0..m, KDom]?Int = none
 var dp2: [D3, D3, KDom]?Int = none

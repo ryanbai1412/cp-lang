@@ -291,6 +291,7 @@ inline std::string read_str() { std::string r; read_str_into(r); return r; }
 // undefined and print whatever the machine left.
 inline ll ediv(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(((uint64_t)a | (uint64_t)b) <= 0xFFFFFFFFULL, 1)) return (ll)((uint32_t)a / (uint32_t)b);
     ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
 }
 ",
@@ -498,7 +499,7 @@ template <class T, int K> struct Grid {
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
-    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}; for (int k = 0; k < K; k++) if ((unsigned long long)ix[k] >= (unsigned long long)n[k]) fail(\"index outside the array\"); return at(i...); }
+    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
     template <class... I> T& ck(I... i) { return d[in(i...)]; }
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
@@ -1594,6 +1595,24 @@ template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i =
         needs: &["at"],
         code: "\
 template <class A, class B> auto list_concat_at(const A& a, const B& b, ll i) -> decltype(at(a, i)) { if (i < 0) fail(\"index outside the list\"); if ((size_t)i < a.size()) return a[(size_t)i]; return at(b, i - (ll)a.size()); }
+",
+    },
+    Piece {
+        name: "rec",
+        needs: &[],
+        code: "\
+// A recursive local closure, passed itself first.
+template <class F> struct Rec { F f; template <class... A> decltype(auto) operator()(A&&... a) { return f(*this, (A&&)a...); } };
+template <class F> Rec<F> rec(F f) { return {f}; }
+",
+    },
+    Piece {
+        name: "lazy",
+        needs: &[],
+        code: "\
+// A row a loop reaches by indices it never changes, found on first use.
+template <class F> struct Lazy { F f; decltype(f()) p = 0; auto& operator()() { return *(p ? p : p = f()); } };
+template <class F> Lazy<F> lazy(F f) { return {f}; }
 ",
     },
 ];

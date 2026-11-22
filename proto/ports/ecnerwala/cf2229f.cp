@@ -1,21 +1,31 @@
-// Codeforces 2229 F: remove the maximum element, then binary search over all
-// subset sums with a bitmask DP verifying K disjoint blocks of sum >= thresh.
+// Codeforces 2229 F — Maximum Minimum Block Sum
+//
+// Exchange argument for the final element: any valid arrangement contributes
+// `last + thresh`, where `last` is the final standalone element and `thresh`
+// is the minimum block sum across `k` disjoint blocks formed from the other
+// `m = n - 1` elements. Swapping the global maximum `fin = a_in[best_i]` into
+// the final slot increases `last` by `fin - last` while decreasing at most one
+// block's sum by `fin - last`, so `last + thresh` can never decrease.
+//
+// The optimal threshold `thresh` must be one of the `2^m` subset sums of the
+// remaining `a`, computed in sorted order via `std.dp.subset_sums(a)` in
+// O(2^m). Binary searching over `sorted_sums` runs at most `m` calls to
+// `can_reach` (each O(m * 2^m) bitmask DP `dp[mask] = (cnt, rem)`, pruned
+// immediately when `thresh > total_sum / k`), for O(m^2 * 2^m) worst-case time.
+
+use std.dp.{subset_sums}
 use std.seq.{argmax}
 
 @!multitest
-let (n, k): (Int, Int) = read()
-let a_in: [0..n]Int = read()
+let (n, k): (1..=21, 1..=21) = read()
+let a_in: [0..n]1..=10 ** 9 = read()
 let best_i = a_in.argmax()!
 let fin = a_in[best_i]
 let a = [a_in[i] for i in 0..n if i != best_i]
 let m = a.len
 let total_masks = 1 << m
 
-var sums: [0..total_masks]Int = 0
-for i in 0..m:
-    let bit = 1 << i
-    for j in 0..bit: sums[bit + j] = sums[j] + a[i]
-let sorted_sums = sums.sorted()
+let sorted_sums = subset_sums(a)
 let total_sum = sorted_sums.last!
 
 fn can_reach(thresh: Int) -> Bool:

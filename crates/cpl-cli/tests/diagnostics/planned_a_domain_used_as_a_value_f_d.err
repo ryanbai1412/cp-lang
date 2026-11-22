@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a domain used as a value, `f(D)` (see design/spec/21-index-spaces.md §21.5)
+  --> planned_a_domain_used_as_a_value_f_d.cp:3:9
+  |
+3 | print(f(D))
+  |         ^
+  = help: loop over it with `for v in D`, or pass its range, `D.first ..= D.last`
+
+planned_a_domain_used_as_a_value_f_d.cp: 1 error

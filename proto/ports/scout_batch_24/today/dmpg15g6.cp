@@ -75,7 +75,7 @@ for qi in Q:
         ans[qi] = check_ok(r - l + 1)
         rollback(mk, -1, 0, -1, 0)
     else:
-        by_blk[l / blk].push((r: r, qi: qi.to_idx))
+        by_blk[l / blk].push((r:, qi: qi.to_idx))
 
 for b in 0..num_blk:
     if by_blk[b].len == 0: continue

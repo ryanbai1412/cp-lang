@@ -1,27 +1,40 @@
+// Codeforces 2089 B1 — Canteen (Easy Version)
+//
+// Each round subtracts min(a[i], b[i]) at every index and rotates `a` forward
+// by 1 until all `a[i]` reach 0 (with sum a <= sum b).
+//
+// Because sum(a[i] - b[i]) <= 0, rotating the circle to start right after the
+// minimum prefix sum of `a[i] - b[i]` ensures every surplus from `a` is
+// absorbed before wrapping past the cut. In that linearized order, each demand
+// `b[i]` drains the nearest earlier supply `a[pos]` (LIFO stack), taking
+// `i + 1 - pos` rounds; the answer is the maximum over all matched pairs.
+
+struct Supply(qty: Int, pos: Int)
+
 @!multitest
-let (n, _k): (Int, Int) = read()
-let a: [0..n]Int = read()
-let b: [0..n]Int = read()
+let (n, _k): (1..=200_000, 0..=10 ** 14) = read()
+let a: [0..n]0..=10 ** 9 = read()
+let b: [0..n]0..=10 ** 9 = read()
 
 var pref = 0
 var min_val = 0
-var min_pos = 0
+var start = 0
 for i in 0..n:
     pref += a[i] - b[i]
     if pref < min_val:
         min_val = pref
-        min_pos = i + 1
+        start = i + 1
 
-var stk: List<(Int, Int)> = []
+var stk: List<Supply> = []
 var ans = 0
 for i in 0..n:
-    let idx = (min_pos + i) % n
-    stk.push((a[idx], i))
+    let idx = (start + i) % n
+    stk.push(Supply(a[idx], i))
     var rem = b[idx]
-    while let (c, pos) = stk.last, rem > 0:
-        let t = min(c, rem)
-        ans max= i + 1 - pos
+    while let top = stk.last and rem > 0:
+        let take = min(top.qty, rem)
+        ans max= i + 1 - top.pos
         stk.pop()
-        if c > t: stk.push((c - t, pos))
-        rem -= t
+        if top.qty > take: stk.push(Supply(top.qty - take, top.pos))
+        rem -= take
 print(ans)

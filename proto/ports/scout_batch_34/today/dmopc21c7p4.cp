@@ -22,7 +22,7 @@ domain Item = 0..n
 var all_entries: List<(key: Int, tag: Int, a: Int, b: Int)> = []
 for i in Item:
     let (a, b): (Int, Int) = read()
-    all_entries.push((key: -(a - b), tag: i.to_idx, a: a, b: b))
+    all_entries.push((key: -(a - b), tag: i.to_idx, a:, b:))
 
 let q: Int = read()
 var q_kind: List<Int> = []
@@ -36,7 +36,7 @@ for qi in 0..q:
     else:
         let (a, b): (Int, Int) = read()
         let tag = n + qi
-        all_entries.push((key: -(a - b), tag: tag, a: a, b: b))
+        all_entries.push((key: -(a - b), tag:, a:, b:))
         q_kind.push(1)
         q_arg.push(t - 1)
 

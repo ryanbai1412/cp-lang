@@ -8,48 +8,35 @@
 // positions in Pos order.
 
 @!multitest
-use std.algebra.Monoid
+use std.seq.{buckets}
 
-let n: 2..=500_000 = read()
-domain Pos = 0..n
-domain Val = 1..=n
+domain Pos = read(2..=500_000)
+domain Val = 1..=Pos.count
 let a: [Pos]Val = read()
 let c: [Pos]?Val = read(none: 0)
+let fixed: [Val]?Pos = c.inverse()
 
-var fixed: [Val]?Pos = none
-for i in Pos:
-    if let v = c[i]: fixed[v] = i
-
-fn sweep(forward: Bool, edge: Pos, op: fn(Pos, Pos) -> Pos) -> [Val]Pos:
+fn sweep<S: Seq>(order: S, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [Val]Pos:
     var out: [Val]Pos = edge
     var st = SegTree<Val, Pos>(Monoid(edge, op))
-    for k in Pos:
-        let i = if forward: k else: Pos(n - 1 - k.ord)
-        let v = a[i]
+    for v in order:
         if let p = fixed[v]: st.set(v, p)
-        out[v] = if forward: st.fold(..=v) else: st.fold(v..)
+        out[v] = if below: st.fold(..=v) else: st.fold(v..)
     out
 
-let lo = sweep(true, Pos.first, max)
-let hi = sweep(false, Pos.last, min)
+let lo = sweep(a, Pos.first, max, below: true)
+let hi = sweep(a.rev, Pos.last, min, below: false)
 
-var by_lo: [Pos]List<Val> = []
-for v in Val: by_lo[lo[v]].push(v)
-
+let by_lo = buckets(lo)
 var pq = MinHeap<(Pos, Val)>()
 var b: [Pos]Val = Val.first
 
-fn solve() -> Bool:
-    for i in Pos:
-        for v in by_lo[i]: pq.push((hi[v], v))
-        let (deadline, v) = pq.pop() ?? return false
-        if deadline < i: return false
-        if let want = c[i]:
-            if v != want: return false
-        b[i] = v
-    true
+for i in Pos:
+    for v in by_lo[i]: pq.push((hi[v], v))
+    let (deadline, v) = pq.pop() ?? return print(-1)
+    if deadline < i: return print(-1)
+    if let want = c[i]:
+        if v != want: return print(-1)
+    b[i] = v
 
-if solve():
-    print(b)
-else:
-    print(-1)
+print(b)

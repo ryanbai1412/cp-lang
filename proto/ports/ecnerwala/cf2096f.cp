@@ -15,45 +15,46 @@ use std.window.{MonoDeque}
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n
-let st: [0..m](some: Bool, a: V, b: V) = read()
+domain S = 1..=m
+let st: [S](some: Bool, a: V, b: V) = read()
 
 var cover = LazySegTree<V, Int>(AddMin, fill: 0)
 var ends: [V]MonoDeque<Int> = MonoDeque()
-var shortest = SegTree<V, Int>(min, fill: n + 1)
+var shortest = SegTree<V, ?Int>(min, fill: none)
 
-fn fits(i: Int) -> Bool:
+fn fits(i: S) -> Bool:
     let s = st[i]
     if s.some: return cover.fold(s.a..=s.b) == 0
     let lo = cover.min_left(to: s.a.l, ok: c => c > 0)
     let hi = cover.max_right(from: s.b.r, ok: c => c > 0)
-    lo == hi or shortest.fold(lo..hi) >= hi.ord
+    shortest.fold(lo..hi).map(e => e >= hi.ord) ?? true
 
-fn take(i: Int):
+fn take(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].push(at: i, val: s.b.ord)
-        shortest.set(s.a, ends[s.a].best!)
+        ends[s.a].push(at: i.ord, val: s.b.ord)
+        shortest.set(s.a, ends[s.a].best)
     else:
         cover.apply(s.a..=s.b, 1)
 
-fn drop(i: Int):
+fn drop(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].drop_before(i + 1)
-        shortest.set(s.a, ends[s.a].best ?? (n + 1))
+        ends[s.a].drop_before(i.ord + 1)
+        shortest.set(s.a, ends[s.a].best)
     else:
         cover.apply(s.a..=s.b, -1)
 
-var first_fit: [0..m]Int = 0
-var l = 0
-for r in 0..m:
+var first_fit: [S]S = S.first
+var l = S.first
+for r in S:
     while not fits(r):
         drop(l)
-        l += 1
+        l = l.next!
     take(r)
     first_fit[r] = l
 
 let q: Int = read()
 for _ in 0..q:
-    let (ql, qr): (1..=m, 1..=m) = read()
-    print(if ql - 1 >= first_fit[qr - 1]: "YES" else: "NO")
+    let (ql, qr): (S, S) = read()
+    print(if ql >= first_fit[qr]: "YES" else: "NO")

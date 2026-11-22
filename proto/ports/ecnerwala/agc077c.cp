@@ -4,14 +4,18 @@
 // Start from the transitive tournament (i -> j for i < j), where vertex i has
 // out-degree parity (n - 1 - i) mod 2, and flip both endpoints for each given
 // backward edge (u > v).
-// - When k is even, the condition always holds.
-// - When k is odd, we need exactly n / 2 vertices with odd out-degree.
+// - When k is even, every allowed k-step parity balance reduces to a condition
+//   satisfied by every tournament, so the answer is always "Yes".
+// - When k is odd, we need exactly `target = floor(n / 2)` vertices with odd
+//   out-degree. Because the sum of all out-degrees in any tournament is
+//   `n * (n - 1) / 2`, and `n * (n - 1) / 2 ≡ floor(n / 2) (mod 2)` for every
+//   n (both n = 2t and n = 2t + 1 give parity t mod 2), the total number of
+//   odd-out-degree vertices ALWAYS has the same parity as `target`.
 // Each allowed flip toggles two endpoints of an edge in the complement graph,
 // so inside a complement component of size sz with `odd` initially-odd vertices
 // we can achieve any odd count in [odd % 2, sz - (sz - odd) % 2] of the same
-// parity as `odd`. Summing these intervals gives [lo, hi] for the whole graph.
-
-use std.graph.undirected_of_pairs
+// parity as `odd`. Summing these intervals gives [lo, hi] with the same parity
+// as `target`, so `lo <= target <= hi` is both necessary and sufficient.
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -31,30 +35,35 @@ if k % 2 == 0:
 
 var forbidden: [V]List<V> = []
 for (u, v) in edges:
-    forbidden[u].push(v)
-    forbidden[v].push(u)
+    for (a, b) in [(u, v), (v, u)]: forbidden[a].push(b)
 for u in V: forbidden[u].sort()
-var unvisited = Set(V)
+
+fn complement_components() -> List<List<V>>:
+    var unvisited = Set(V)
+    var comps: List<List<V>> = []
+    for start in V if start in unvisited:
+        var comp: List<V> = []
+        fn dfs(cur: V):
+            unvisited.remove(cur)
+            comp.push(cur)
+            var cursor: ?V = V.first
+            var ai = 0
+            while let at = cursor:
+                if let nxt = unvisited.first_ge(at):
+                    while ai < forbidden[cur].len and forbidden[cur][ai] < nxt: ai += 1
+                    if ai == forbidden[cur].len or forbidden[cur][ai] != nxt: dfs(nxt)
+                    cursor = nxt.next
+                else:
+                    break
+        dfs(start)
+        comps.push(comp)
+    comps
 
 var lo = 0
 var hi = 0
-for start in V if start in unvisited:
-    var sz = 0
-    var odd = 0
-    fn dfs(cur: V):
-        unvisited.remove(cur)
-        sz += 1
-        if odd_out[cur]: odd += 1
-        var cursor: ?V = V.first
-        var ai = 0
-        while let at = cursor:
-            if let nxt = unvisited.first_ge(at):
-                while ai < forbidden[cur].len and forbidden[cur][ai] < nxt: ai += 1
-                if ai == forbidden[cur].len or forbidden[cur][ai] != nxt: dfs(nxt)
-                cursor = nxt.next
-            else:
-                break
-    dfs(start)
+for comp in complement_components():
+    let sz = comp.len
+    let odd = count(odd_out[v] for v in comp)
     lo += odd % 2
     hi += sz - (sz - odd) % 2
 

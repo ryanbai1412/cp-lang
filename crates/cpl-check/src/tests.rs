@@ -88,6 +88,17 @@ fn indexing_with_the_wrong_domain_names_both_domains() {
 }
 
 #[test]
+fn a_domain_mismatch_labels_where_each_index_space_comes_from() {
+    let src = "domain V = 1..=9\nfn f(m: 1..=9, b: [V]Int) -> Int:\n    return b[m]\n";
+    let d = one(src);
+    let labels: Vec<_> = d.labels.iter().map(|l| (l.span.text(src), l.message.as_str())).collect();
+    assert_eq!(
+        labels,
+        [("b", "`b` is declared over V here"), ("m", "`m` is declared as a 1..=9 here")]
+    );
+}
+
+#[test]
 fn indexing_with_a_plain_number_says_how_to_convert() {
     let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nfor i in 1..=n:\n    print(a[i])\n");
     assert_eq!(d.message, "`a` is indexed by V, but `i` is a 1..=n");
@@ -95,6 +106,12 @@ fn indexing_with_a_plain_number_says_how_to_convert() {
         d.help.as_deref(),
         Some("convert it with `V(i)`, or write `a.raw[i]` to index by number")
     );
+    let src = "let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nfor i in 1..=n:\n    print(a[i])\n";
+    let mut fixed = src.to_string();
+    for (span, text) in d.fixes[0].edits.iter().rev() {
+        fixed.replace_range(span.start as usize..span.end as usize, text);
+    }
+    assert!(fixed.ends_with("print(a[V(i)])\n"), "{fixed}");
 }
 
 #[test]
@@ -127,6 +144,13 @@ fn unknown_names_suggest_the_closest_one() {
         ("E0204", "no type or domain named `Raod`")
     );
     assert_eq!(d.help.as_deref(), Some("did you mean `Road`?"));
+}
+
+#[test]
+fn a_capitalized_name_is_never_suggested_a_lowercase_local() {
+    let d = one("let rope = 1\nprint(Rope)\nprint(rope)\n");
+    assert_eq!(d.code.0, "E0201");
+    assert!(!d.help.as_deref().unwrap_or("").contains("`rope`"), "{:?}", d.help);
 }
 
 #[test]
@@ -1649,6 +1673,32 @@ fn reading_an_enum_needs_its_tags() {
     );
     let ok = format!("@tags(\"X\", \"O\")\nenum Tile:\n    X\n    O\n{rest}");
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
+}
+
+/// A missing stdlib `use` goes into the file's line for that module, else
+/// below its other `use`s, else above its first line of code.
+#[test]
+fn an_import_joins_its_module_line_or_the_file_header() {
+    let cases = [
+        ("use std.math.{gcd}\nprint(1)\n", "use std.math.{gcd, lcm}\nprint(1)\n"),
+        ("use std.math.{}\nprint(1)\n", "use std.math.{lcm}\nprint(1)\n"),
+        (
+            "use std.seq.{zip}\nuse std.dsu.{Dsu}\nprint(1)\n",
+            "use std.seq.{zip}\nuse std.dsu.{Dsu}\nuse std.math.{lcm}\nprint(1)\n",
+        ),
+        ("// a header\n\nprint(1)\n", "// a header\n\nuse std.math.{lcm}\nprint(1)\n"),
+        ("use std.seq.{zip}", "use std.seq.{zip}\nuse std.math.{lcm}\n"),
+    ];
+    for (text, want) in cases {
+        let (span, edit) = crate::import_edit(text, "math", "lcm");
+        let mut got = text.to_string();
+        got.replace_range(span.start as usize..span.end as usize, &edit);
+        assert_eq!(got, want);
+    }
+    // The checker's quick fix uses it, wherever in the file the name is.
+    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(floor_sum(a, 3, 1, 0))\n";
+    let fix = &one(src).fixes[0];
+    assert_eq!(fix.edits, vec![(Span::point(17), ", floor_sum".to_string())]);
 }
 
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is
@@ -3178,4 +3228,228 @@ fn f(i: Int) -> Int:
     p.rows + p.cols
 ";
     assert!(codes(src).is_empty(), "{:?}", check(src));
+}
+
+#[test]
+fn recursive_let_lambda_checks_and_var_self_ref_is_error() {
+    assert_eq!(
+        codes("let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)\nprint(fact(5))\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)\nprint(fact(5))\n"),
+        ["E0201"]
+    );
+}
+
+#[test]
+fn bounds_literals_and_cut_range_conversion() {
+    let ok = "\
+domain V = 0..5
+fn cost(piece: Range<V>) -> Int = piece.len
+var c: V.bounds = 0
+c = 1
+var dp: [V.bounds]Int = 0
+for i in V.bounds:
+    for j in V.bounds.first..i:
+        dp[i] += cost(j..i)
+let a: [V]Int = 1
+let s = a[V.bounds.first..V.bounds.last]
+print(c, dp[V.bounds.last], s.len)
+";
+    assert_eq!(codes(ok), Vec::<&str>::new());
+
+    // Inclusive cut range `j..=i` must not convert to `Range<V>`.
+    let bad_incl = "\
+domain V = 0..5
+fn cost(piece: Range<V>) -> Int = piece.len
+for i in V.bounds:
+    for j in V.bounds.first..i:
+        print(cost(j..=i))
+";
+    assert_eq!(codes(bad_incl), ["E0301"]);
+}
+
+#[test]
+fn chained_comparisons_reject_mixed_direction_and_equality() {
+    assert_eq!(
+        codes("let x = 3\nprint(1 < x <= 5, 5 >= x > 1, x == 3, x != 4)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(codes("let x = 3\nprint(1 < x > 2)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 1, c = 1\nprint(a == b == c)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 2\nprint(a < b == c)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 3\nprint(a != b != c)\n"), ["E0309"]);
+}
+
+#[test]
+fn moved_from_heap_values_are_rejected() {
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a\nprint(a.len, b.len)\n"),
+        ["E0608"]
+    );
+    assert_eq!(
+        codes("let s = \"hi\"\nlet t = s\nprint(s.len, t.len)\n"),
+        ["E0608"]
+    );
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a.copy()\nprint(a.len, b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a\nprint(b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var a = [1, 2]\nlet b = a\na = [3]\nprint(a.len, b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("let x = 10\nlet y = x\nprint(x, y)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("fn f():\n    let a = [1, 2]\n    let b = a\n    print(a.len, b.len)\nf()\n"),
+        ["E0608"]
+    );
+}
+
+#[test]
+fn an_index_of_the_arrays_own_domain_is_proven_by_its_type() {
+    let proofs = |src: &str| {
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let mut out = Vec::new();
+        for item in analysis.items.iter() {
+            for t in &item.check.typed_indexes {
+                let access = t.access.shift(item.offset);
+                out.push(format!("{} {}", &src[access.start as usize..access.end as usize], t.proof));
+            }
+        }
+        out
+    };
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/wave2/dpl.cp");
+    let port = std::fs::read_to_string(path).unwrap();
+    assert_eq!(
+        proofs(&port),
+        [
+            "a[l] l: I, the index space of a",
+            "a[l] l: I, the index space of a",
+            "a[r] r: I, the index space of a",
+        ]
+    );
+    let src = "let n: 1..=10 = read()
+domain V = 1..=n
+domain E = 1..n
+domain R = 0..3
+domain C = 0..4
+var g: [R, C]Int = 0
+let xs: [V]Int = read()
+let ys: [E]Int = read()
+for e in E:
+    g[R.first, C.last] += xs[V.first] + ys[e]
+print(xs[V.first..=V.last].sum())
+";
+    assert_eq!(
+        proofs(src),
+        [
+            "g[R.first, C.last] R.first: R, C.last: C, the index spaces of g",
+            "xs[V.first] V.first: V, the index space of xs",
+            "ys[e] e: E, the index space of ys",
+        ]
+    );
+    let pairs = "let n: 1..=10 = read()
+domain V = 1..=n
+domain K = 0..3
+domain State = (V, K)
+domain R = 0..3
+domain C = 0..4
+var dp: [State]Int = 0
+var g: [R, C]Int = 0
+let p: (R, C) = (R.first, C.last)
+for v in V:
+    dp[v, K.first] = g[p]
+print(dp[V.first, K.last])
+";
+    assert_eq!(
+        proofs(pairs),
+        [
+            "dp[v, K.first] v: V, K.first: K, the index spaces of dp",
+            "g[p] p: (R, C), the index space of g",
+            "dp[V.first, K.last] V.first: V, K.last: K, the index spaces of dp",
+        ]
+    );
+    let wrong = src.replace("ys[e]", "xs[e]");
+    assert!(!codes(&wrong).is_empty());
+    assert!(!proofs(&wrong).iter().any(|p| p.starts_with("xs[e]")));
+}
+
+#[test]
+fn a_prelude_call_hovers_its_doc_and_the_cost_of_its_shape() {
+    let src = "let n: 1..=10 = read()\nfn f(a: Int, xs: List<Int>) -> Int:\n    \
+               abs(a) + max(a, n) + min(xs) + isqrt(n)\n";
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let abs = db.hover("a.cp", at("abs")).unwrap();
+    assert_eq!((abs.span.start, abs.span.end), (at("abs"), at("abs") + 3));
+    assert_eq!(abs.text, "abs: built-in\ncost: O(1)");
+    assert!(abs.doc.unwrap().starts_with("The absolute value"));
+    let cost = |db: &mut Database, needle| db.hover("a.cp", at(needle)).unwrap().text;
+    assert_eq!(cost(&mut db, "max("), "max: built-in\ncost: O(1)");
+    assert_eq!(cost(&mut db, "min("), "min: built-in\ncost: O(n)");
+    assert!(cost(&mut db, "isqrt").ends_with("\ncost: O(1)"));
+    assert_eq!(cost(&mut db, "read"), "read: built-in\ncost: O(1)");
+}
+
+#[test]
+fn print_and_read_cost_o1_only_for_values_of_a_fixed_size() {
+    let src = "fn f(xs: List<Int>, s: Str):\n    let (a, b): (Int, 1..=9) = read()\n    \
+               print(a, \"is {b}\")\n    print(xs)\n    print(s)\n    let t: Str = read()\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let hover = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).unwrap().text
+    };
+    assert_eq!(hover(&mut db, 0, "read"), "read: built-in\ncost: O(1)");
+    assert_eq!(hover(&mut db, 0, "print"), "print: built-in\ncost: O(1)");
+    assert_eq!(hover(&mut db, 1, "print"), "print: built-in");
+    assert_eq!(hover(&mut db, 2, "print"), "print: built-in");
+    assert_eq!(hover(&mut db, 1, "read"), "read: built-in");
+}
+
+#[test]
+fn ask_conversions_and_rand_cost_o1_for_values_of_a_fixed_size() {
+    let src = "fn f(c: Char, s: Str):\n    let r: 0..=1 = ask(\"?\", c)\n    \
+               let t: Int = ask(s)\n    print(Int(c) + Int(r == 1) + rand(1, 6) + Int(s))\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let hover = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).map(|h| h.text)
+    };
+    let o1 = |name: &str| Some(format!("{name}: built-in\ncost: O(1)"));
+    assert_eq!(hover(&mut db, 0, "ask"), o1("ask"));
+    assert_eq!(hover(&mut db, 1, "ask").as_deref(), Some("ask: built-in"));
+    assert_eq!(hover(&mut db, 0, "Int("), o1("Int"));
+    assert_eq!(hover(&mut db, 1, "Int("), o1("Int"));
+    assert_eq!(hover(&mut db, 0, "rand"), o1("rand"));
+    assert_eq!(hover(&mut db, 2, "Int("), None);
+}
+
+#[test]
+fn a_method_cost_names_the_receivers_domain_for_the_structs() {
+    let src = "domain V = 0..10\nfn f(bit: Fenwick<V, Int>, g: Fenwick2D<V, V, Int>, v: V) -> Int:\n    \
+               bit.sum(..v) + g.sum(.., ..)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, name: &str| {
+        let at = src.find(name).unwrap() as u32;
+        let text = db.hover("a.cp", at).unwrap().text;
+        text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string)
+    };
+    assert_eq!(cost(&mut db, "sum(..v)").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, "sum(.., ..)").as_deref(), Some("O(log |V| * log |V|)"));
 }

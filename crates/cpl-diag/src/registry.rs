@@ -484,6 +484,15 @@ pub const REGISTRY: &[CodeInfo] = &[
         mode: "check",
     },
     CodeInfo {
+        code: Code("E0607"),
+        title: "Use of moved value",
+        summary: "A heap value (`List`, `Map`, `Str`, or a struct holding one) was used after being moved into another binding.",
+        explanation: "Binding `let b = a` on a heap value moves `a` so copies stay visible. Write `a.copy()` if you still need `a`, or `a.take()` to leave `a` empty.",
+        trigger: "let a = [1, 2, 3]\nlet b = a\nprint(a.len, b.len)\n",
+        fix: "let a = [1, 2, 3]\nlet b = a.copy()\nprint(a.len, b.len)\n",
+        mode: "check",
+    },
+    CodeInfo {
         code: Code("W0101"),
         title: "Unused expression value",
         summary: "A standalone statement computed a value and discarded it.",

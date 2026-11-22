@@ -99,7 +99,7 @@ fn mo_order_and_steps_answer_distinct_counts():
         queries.push(l..=r)
     var freq = List.filled(6, 0)
     var distinct = 0
-    var win = I.first.l..I.first.l
+    var win: Range<I> = I.first.l..I.first.l
     var ans = List.filled(queries.len, 0)
     for qi in mo_order(queries):
         let target = queries[qi]

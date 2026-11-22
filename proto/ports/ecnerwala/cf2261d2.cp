@@ -1,7 +1,23 @@
-// Codeforces 2261 D2: give every restriction a random 64-bit key and xor it
-// over its range, so two positions hash alike exactly when the same
-// restrictions cover both. Equal neighbours in position order force a cut
-// between them; the cuts are then paired up into intervals.
+// Codeforces 2261 D2 — XOR-Hashed Restriction Cuts
+//
+// Give every restriction `[l, r]` a random 62-bit key and XOR it over its
+// range via `diff`, so two positions share `hash` iff the exact same
+// restrictions cover both.
+//
+// Every pair `(a, b)` of equal-hash positions must be separated by at least
+// one cut. Sweeping `next[i]` (`?Int`, nearest later equal-hash partner,
+// propagated forward when no cut is placed at `i + 1`) greedily places cuts
+// at minimal positions.
+//
+// Pairing construction: we output `half = cuts.len / 2` intervals
+// `[cuts[i] + 1, cuts[i + half]]`. Because every cut `c` is either a left
+// boundary (`c + 1`) or a right boundary (`c`) of one of the `half` intervals,
+// any two positions separated by at least one cut lie on opposite sides of at
+// least one interval boundary, except possibly the outermost pair
+// `(first_bad, last_bad)` if every cut lies strictly between them and both sit
+// outside all intervals — so we prepend `0` when `hash[first_bad] == hash[last_bad]`,
+// and append `n` when `cuts.len` is odd to pair the cuts evenly.
+
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
 var diff: [0..=n]Int = 0
@@ -10,10 +26,9 @@ for _ in 0..m:
     let key = rand(0, (1 << 62) - 1)
     diff[l - 1] ^= key
     diff[r] ^= key
-let hash = scan(diff[0..n], (a, b) => a ^ b)
+let hash = scan(diff[0..n], ^)
 
-// next[i]: the nearest later position with the same hash as i, else n
-var next: [0..n]Int = n
+var next: [0..n]?Int = none
 var (first_bad, last_bad): (?Int, ?Int) = (none, none)
 let order = (0..n).sorted(by: i => (hash[i], i))
 for (a, b) in order.adjacent if hash[a] == hash[b]:
@@ -22,7 +37,7 @@ for (a, b) in order.adjacent if hash[a] == hash[b]:
     last_bad max= b
 
 var cuts: List<Int> = []
-if let f = first_bad, let l = last_bad, hash[f] == hash[l]: cuts.push(0)
+if let f = first_bad and let l = last_bad and hash[f] == hash[l]: cuts.push(0)
 for i in 0..n - 1:
     if next[i] == i + 1: cuts.push(i + 1)
     else: next[i + 1] min= next[i]

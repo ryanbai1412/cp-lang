@@ -505,10 +505,10 @@ struct FnCx {
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.
     break_out: HashMap<LoopId, LoopId>,
-    /// The flag a `break` sets for a loop with an `else`, and the flag the
-    /// next loop opened takes.
-    else_flags: HashMap<LoopId, Slot>,
-    pending_else: Option<Slot>,
+    /// For loops with a trailing `else:` (decision 125), maps the loop's
+    /// break target `LoopId` to the `Bool` flag that stays `true` unless
+    /// a `break` targets that loop.
+    loop_else: HashMap<LoopId, Slot>,
     dos: Vec<DoFrame>,
     /// The `x ?? return` that is the whole right side of the statement
     /// being lowered, and the test it puts ahead of that statement.
@@ -812,6 +812,12 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The checker accepted every name, so a name lowering does not know
+    /// after an earlier lowering error lost its binding to that error.
+    fn reported_an_error(&self) -> bool {
+        self.diags.iter().any(|d| d.severity == cpl_diag::Severity::Error)
+    }
+
     fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let span = self.span(span);
         let message = message.into();
@@ -882,6 +888,64 @@ impl<'a> Lowerer<'a> {
             (self.cur_mod, self.offset) = saved;
         }
         (judge_fns, entry_fns)
+    }
+
+    /// On the error just reported for `.name` of a `ty`: the member it is
+    /// a typo of, with the fix. Candidates are the built-in members (a
+    /// range has a list's too), the record's fields and every fn in reach that takes `self`.
+    fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
+        use cpl_check::Receiver;
+        const POS_MEMBERS: [&str; 19] = [
+            "after", "ahead", "back", "before", "count", "cyc", "first", "idx", "is_empty", "label",
+            "len", "next", "offset", "ord", "prev", "rank", "to_idx", "with", "without",
+        ];
+        const RANGE_MEMBERS: [&str; 10] =
+            ["end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step"];
+        let receiver = match ty {
+            Ty::Str => Some(Receiver::Str),
+            Ty::List(_) => Some(Receiver::List),
+            Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
+            Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+            Ty::Array { .. } => Some(Receiver::Array),
+            _ => None,
+        };
+        let mut names: Vec<&str> = receiver
+            .into_iter()
+            .flat_map(cpl_check::builtin_members)
+            .map(|m| m.name)
+            .collect();
+        if let Ty::Record(fields) = ty {
+            names.extend(fields.iter().map(|(f, _)| f.as_str()));
+        }
+        match ty {
+            Ty::Pos(_) | Ty::Bound(_) => names.extend(POS_MEMBERS),
+            Ty::Range(_) => {
+                names.extend(RANGE_MEMBERS);
+                names.extend(cpl_check::builtin_members(Receiver::List).map(|m| m.name));
+            }
+            _ => {}
+        }
+        for (sym_name, sym) in &self.mod_syms[self.cur_mod] {
+            let decl = match *sym {
+                Sym::Fn(fid) => self.sigs[fid].decl,
+                Sym::GenFn(gfid) => self.gen_fns[gfid].decl,
+                _ => continue,
+            };
+            if decl.params.first().is_some_and(|p| p.name.text == "self") {
+                names.push(sym_name.strip_suffix(" of std").unwrap_or(sym_name));
+            }
+        }
+        let Some(s) = cpl_check::closest(name, names.into_iter()) else {
+            return;
+        };
+        let span = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("did you mean `{s}`?"));
+            last.fixes.push(cpl_diag::Fix {
+                title: format!("change to `{s}`"),
+                edits: vec![(span, s)],
+            });
+        }
     }
 
     fn help(&mut self, help: impl Into<String>) {
@@ -4046,6 +4110,111 @@ impl<'a> Lowerer<'a> {
             });
         }
         match (want, &e.ty) {
+            // §124: integer literal / arithmetic to `D.bounds`.
+            (Ty::Bound(d), Ty::Int) => {
+                let d = *d;
+                Ok(self.cast(Cast::Trust, e, Ty::Bound(d)))
+            }
+            // §124: half-open cut range `Range<D.bounds>` -> `Range<D>` (same two ints, free).
+            (Ty::Range(want_elem), Ty::Range(got_elem))
+                if matches!(
+                    (want_elem.as_ref(), got_elem.as_ref()),
+                    (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2
+                ) =>
+            {
+                Ok(Expr {
+                    ty: want.clone(),
+                    ..e
+                })
+            }
+            (Ty::List(want_elem), Ty::List(got_elem))
+                if matches!(
+                    (want_elem.as_ref(), got_elem.as_ref()),
+                    (Ty::Range(w), Ty::Range(g))
+                        if matches!((w.as_ref(), g.as_ref()), (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2)
+                ) =>
+            {
+                Ok(Expr {
+                    ty: want.clone(),
+                    ..e
+                })
+            }
+            // §124: tuple element-wise coercion (e.g. `(Int, Range<D.bounds>)` -> `(Int, Range<D>)`).
+            (Ty::Tuple(want_items), Ty::Tuple(got_items))
+                if want_items.len() == got_items.len()
+                    && want_items.iter().zip(got_items).any(|(w, g)| w != g) =>
+            {
+                let want_items = want_items.clone();
+                if let ExprKind::Tuple(elems) = e.kind {
+                    let mut out_elems = Vec::with_capacity(elems.len());
+                    for (el, w) in elems.into_iter().zip(&want_items) {
+                        match self.try_coerce(el, w) {
+                            Ok(c) => out_elems.push(c),
+                            Err(orig) => {
+                                return Err(Expr {
+                                    kind: ExprKind::Tuple(vec![orig]),
+                                    ty: e.ty,
+                                    span,
+                                });
+                            }
+                        }
+                    }
+                    return Ok(self.mk(ExprKind::Tuple(out_elems), Ty::Tuple(want_items), span));
+                }
+                let got_ty = e.ty.clone();
+                let mut ok = true;
+                let coerced = self.do_expr(Some(&Ty::Tuple(want_items.clone())), span, |lw, out| {
+                    let held = lw.hold(e.clone(), out);
+                    let mut elems = Vec::with_capacity(want_items.len());
+                    for (i, w) in want_items.iter().enumerate() {
+                        let field_ty = match &got_ty {
+                            Ty::Tuple(gs) => gs[i].clone(),
+                            _ => Ty::Error,
+                        };
+                        let f = lw.mk(ExprKind::Field(Box::new(held.clone()), i), field_ty, span);
+                        match lw.try_coerce(f, w) {
+                            Ok(c) => elems.push(c),
+                            Err(_) => {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        let tup = lw.mk(ExprKind::Tuple(elems), Ty::Tuple(want_items.clone()), span);
+                        out.push(Stmt::Give(tup));
+                    }
+                });
+                if ok {
+                    return Ok(coerced);
+                }
+                Err(e)
+            }
+            (Ty::List(want_elem), Ty::DomainVal) => {
+                if let ExprKind::DomainVal(d) = e.kind {
+                    if **want_elem == Ty::Pos(d) {
+                        return Ok(self.positions(d, span));
+                    }
+                }
+                Err(e)
+            }
+            (Ty::Range(want_elem), Ty::DomainVal) => {
+                if let ExprKind::DomainVal(d) = e.kind {
+                    if **want_elem == Ty::Pos(d) {
+                        let lo = self.int_lit(0, span);
+                        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        return Ok(self.mk(
+                            ExprKind::Range {
+                                lo: Box::new(lo),
+                                hi: Box::new(hi),
+                            },
+                            Ty::Range(Box::new(Ty::Pos(d))),
+                            span,
+                        ));
+                    }
+                }
+                Err(e)
+            }
             (Ty::Str, Ty::StrView) => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
                 ty: Ty::Str,

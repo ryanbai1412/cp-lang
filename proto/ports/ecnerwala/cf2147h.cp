@@ -5,22 +5,15 @@
 use std.flow.gomory_hu
 
 @!multitest
-let n: 1..=50 = read()
-let m: 0..=1225 = read()
+let (n, m): (1..=50, 0..=1225) = read()
 domain V = 1..=n
 let edges = read<[m](u: V, v: V, w: 1..=1_000_000)>()
-
-fn answer(colors: List<Bitset<V>>):
-    print(colors.len)
-    for c in colors:
-        print(c.len)
-        print(c)
 
 var g = 0
 for e in gomory_hu(edges): g = gcd(g, e.w)
 
-if g != 1:
-    answer([V.all])
+let colors: List<Bitset<V>> = if g != 1:
+    [V.all]
 else:
     var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
 
@@ -30,7 +23,7 @@ else:
     // Gallai's induction: remove an odd-degree v after complementing its neighborhood;
     // on the way back v joins the side where its degree is even.
     fn even_split(alive: Bitset<V>) -> Bitset<V>:
-        let v = alive.find(v => (odd[v] & alive).len % 2 == 1) ?? return Bitset<V>.empty
+        let v = V.first(v => v in alive and (odd[v] & alive).len % 2 == 1) ?? return Bitset<V>.empty
         let rest = alive.without(v)
         let nbr = odd[v] & rest
         complement_within(nbr)
@@ -40,4 +33,9 @@ else:
         side
 
     let side = even_split(V.all)
-    answer([V.all - side, side])
+    [V.all - side, side]
+
+print(colors.len)
+for c in colors:
+    print(c.len)
+    print(c)

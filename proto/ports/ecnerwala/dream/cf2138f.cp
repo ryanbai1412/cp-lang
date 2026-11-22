@@ -24,33 +24,31 @@ fn fits(a: Vec, b: Vec) -> Bool = 0.5 <= (a - b).len <= 1.0
 
 struct Step(u: Vec, v: Vec, at: Vec)
 
-fn ladder(off_init: Vec, on_init: Vec, rungs: List<(off: Vec, on: Vec)>) -> List<Step>:
-    var off_tip = off_init
-    var on_tip = on_init
-    var steps: List<Step> = []
+fn ladder(off0: Vec, on0: Vec, rungs: List<(off: Vec, on: Vec)>) -> List<Step>:
+    var (off_tip, on_tip) = (off0, on0)
+    var out: List<Step> = []
     for r in rungs:
-        steps.push(Step(off_tip, on_tip, r.off))
+        out.push(Step(off_tip, on_tip, r.off))
         off_tip = r.off
-        steps.push(Step(off_tip, on_tip, r.on))
+        out.push(Step(off_tip, on_tip, r.on))
         on_tip = r.on
-    steps
+    out
 
-let steps =
-    if m % 2 == 0:
-        let d = t / k
-        let side = Vec(0.5, d.y - 0.5)
-        ladder(p2, p1, [(side + d * (i - 1), d * i) for i in 1..=k])
-    else:
-        let d = t.unit
-        let (t1, t0) = (t - d * (k - 1), t - d * k)
-        let fallback_start = Vec(0.5, 0.75) + Vec(0.75, 0.5) * sqrt(3.0 / 13.0)
-        let start = if fits(t0, p2): t0 else: fallback_start
-        let s = [Vec(x, y) / 64 for x in -64..=64 for y in -64..=64]
-            .find(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
-        let opening = [Step(p1, p2, s), Step(p2, s, start), Step(s, start, t1)]
-        opening + ladder(s, t1, [(s + d * (i - 1), t0 + d * i) for i in 2..=k])
+let steps = if m % 2 == 0:
+    let d = t / k
+    let side = Vec(0.5, d.y - 0.5)
+    ladder(p2, p1, [(side + d * (i - 1), d * i) for i in 1..=k])
+else:
+    let d = t.unit
+    let (t1, t0) = (t - d * (k - 1), t - d * k)
+    let fallback_start = Vec(0.5, 0.75) + Vec(0.75, 0.5) * sqrt(3.0 / 13.0)
+    let start = if fits(t0, p2): t0 else: fallback_start
+    let s = [Vec(x, y) / 64 for x in -64..=64 for y in -64..=64]
+        .first(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
+    let opening = [Step(p1, p2, s), Step(p2, s, start), Step(s, start, t1)]
+    opening + ladder(s, t1, [(s + d * (i - 1), t0 + d * i) for i in 2..=k])
 
-var id: Map<Vec, Int> = [p1: 1, p2: 2]
+var id: Map<Vec, Int> = { p1: 1, p2: 2 }
 print(m)
 for st in steps:
     print("{id[st.u]!} {id[st.v]!} {st.at.x:.20f} {st.at.y:.20f}")

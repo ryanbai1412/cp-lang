@@ -1,0 +1,8 @@
+warning[L0601]: `xs` is changed on the right side of an assignment to `xs[0]`, and the two may be the same storage: one contains the other
+  --> lint_same_place_pop_alias.cp:3:9
+  |
+3 | xs[0] = xs.pop()!
+  |         ^^
+  = help: compute the right side first (`let t = ...`), then assign
+
+lint_same_place_pop_alias.cp: 1 warning

@@ -313,7 +313,7 @@ pub struct CostFlow<V>:
                 flow += amount
                 total += amount * unit
                 if last_unit == unit: curve.pop()
-                curve.push((flow: flow, cost: total))
+                curve.push((flow:, cost: total))
                 last_unit = unit
         curve
 
@@ -353,7 +353,7 @@ pub fn max_closure<V, E>(profit: [V]Int, needs: [E](u: V, v: V)) -> (value: Int,
     for e in E: g.add(N(needs[e].u.to_idx), N(needs[e].v.to_idx), cap: none)
     let value = gain - g.max_flow(s, t)
     let side = g.min_cut(s)
-    (value: value, take: [V] v => side[N(v.to_idx)])
+    (value:, take: [V] v => side[N(v.to_idx)])
 
 /// A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take:
 /// its `size`, and the partner of each vertex on either side (`none` when unmatched).
@@ -397,7 +397,7 @@ pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]
                             if old != none: free = old!
                         size += 1
                         path = []
-    (size: size, mate: mate, back: back)
+    (size:, mate:, back:)
 
 /// A minimum vertex cover of the bipartite graph `adj`: every edge has a marked end, and
 /// exactly `max_matching(adj).size` vertices are marked (Konig). The unmarked vertices are
@@ -409,7 +409,7 @@ pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool
     for u in L:
         if level[u] != none:
             for v in adj[u]: right[v] = true
-    (left: [L] u => level[u] == none, right: right)
+    (left: [L] u => level[u] == none, right:)
 
 /// Breadth-first layers of the left side by alternating paths: free vertices are layer 0,
 /// and a matched vertex is one deeper than a left vertex adjacent to its partner.
@@ -434,14 +434,14 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0
 /// Hungarian algorithm, O(L^2 R) time, O(L R) calls of `weight`.
 pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
     let mate = hungarian::<L, R>((l, r) => -weight(l, r))
-    (total: sum(weight(l, mate[l]) for l in L), mate: mate)
+    (total: sum(weight(l, mate[l]) for l in L), mate:)
 
 /// The minimum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`
 /// (needs `L.K <= R.K`), minimizing `total`, the sum of `weight(l, mate[l])`.
 /// Hungarian algorithm, O(L^2 R) time, O(L R) calls of `weight`.
 pub fn min_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
     let mate = hungarian::<L, R>(weight)
-    (total: sum(weight(l, mate[l]) for l in L), mate: mate)
+    (total: sum(weight(l, mate[l]) for l in L), mate:)
 
 /// Minimum-cost assignment of rows `L` into columns `R` with potentials `u`, `v`; row and
 /// column 0 are the sentinel of the e-maxx formulation, so indices are 1-based inside.
@@ -575,7 +575,7 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
                 mate[y] = x
                 mate[x] = y
                 y = next
-    (size: size, mate: [V] v => if mate[v.to_idx] == -1: none else: V.nth(mate[v.to_idx]))
+    (size:, mate: [V] v => if mate[v.to_idx] == -1: none else: V.nth(mate[v.to_idx]))
 
 /// Weighted blossom state over vertices 1..=n and blossoms n+1..=2n; index 0 is "none".
 /// Edge cells are a (2n+1)^2 table: cell k = u * m + v holds the original edge (eu, ev, ew)
@@ -848,7 +848,7 @@ pub fn max_weight_general_matching<V, E>(
     for u in 1..=n:
         if g.mate[u] > u: total += g.ew[u * m + g.mate[u]]
     (
-        total: total,
+        total:,
         mate: [V] v => if g.mate[v.to_idx + 1] == 0: none else: V.nth(g.mate[v.to_idx + 1] - 1),
     )
 
@@ -929,7 +929,7 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
         let side = g.min_cut(i)
         for j in V.after(i):
             if side[j] and parent[j] == parent[i]: parent[j] = i
-        tree.push((u: i, v: parent[i], w: w))
+        tree.push((u: i, v: parent[i], w:))
     tree
 
 /// A minimum cut of the undirected graph `edges` over all vertex pairs: its weight `w`
@@ -975,7 +975,7 @@ pub fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V
             mat[i * n + s] = mat[s * n + i]
     var side: [V]Bool = false
     for i in best_group: side[V.nth(i)] = true
-    (w: best, side: side)
+    (w: best, side:)
 
 @test
 fn textbook_network():
@@ -1333,7 +1333,7 @@ fn bounded_flows_match_brute_force():
             (
                 u: V.nth(rand(0, 3)),
                 v: V.nth(rand(0, 3)),
-                lo: lo,
+                lo:,
                 hi: lo + rand(0, 2),
             ) for lo in [rand(0, 5) / 4 for _ in 0..rand(1, 6)]
         ]

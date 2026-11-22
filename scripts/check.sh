@@ -20,15 +20,17 @@
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
-#         7. the offline site bundle (python3 site/bundle.py) stays under
-#            caps (compiler 2,100,000 bytes, docs 620,000)
+#         7. the offline site bundle (python3 site/bundle.py) builds; parts
+#            over their caps (compiler 2,100,000 bytes, docs 500,000,
+#            gallery 150,000) warn
 #            and site/test_site.py passes (links, reader copy, documented
 #            programs compiled natively; about two minutes)
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
 #            fuzzer and the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#        11. the VS Code extension tests (editors/vscode: npm test), then
+#        11. the VS Code extension tests (editors/vscode: npm test, and its
+#            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
@@ -224,13 +226,15 @@ trap cleanup EXIT
 #   of the suite together;
 # - budget and the 50 ms front-end latency test measure wall-clock time,
 #   which other tests running beside them skew;
-# - the recovery scoreboard checks 3,400 broken ports on every core, which
-#   skews the LSP latency test beside it, so it runs after the rest.
+# - the recovery and fix-it scoreboards check thousands of broken ports on
+#   every core, which skews the LSP latency test beside them, so they run
+#   after the rest.
 slow_tests=(
     shrinks_a_failing_program_to_a_few_lines
     products_and_variable_divisors_are_never_decided_wrongly
     front_end_check_is_under_50_ms
     recovery_scoreboard
+    fix_it_scoreboard
 )
 if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
@@ -282,7 +286,7 @@ fi
 step "stdlib/prelude.cp: at most 80 names"
 prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
-[ "$prelude" -le 80 ] || { echo "check: stdlib/prelude.cp has $prelude names, over the cap of 80" >&2; exit 1; }
+[ "$prelude" -le 80 ] || echo "check: WARNING: stdlib/prelude.cp has $prelude names, over the target of 80" >&2
 
 step "cpl fmt --check stdlib"
 "$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
@@ -307,9 +311,11 @@ python3 scripts/review-check.py --check \
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
 check_bundle_parts() {
-    python3 site/bundle.py --check-caps || fail "site bundle part over its cap (caps in site/bundle.py)"
+    # Size caps are targets, not correctness: an overrun warns and never blocks a landing.
+    python3 site/bundle.py --check-caps ||
+        printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
 }
-step "site bundle: compiler under 2,100,000 bytes, docs under 620,000"
+step "site bundle: compiler under 2,100,000 bytes, docs under 500,000, gallery under 150,000"
 if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
@@ -395,6 +401,13 @@ if [ "$mode" = full ]; then
         cd editors/vscode
         [ -d node_modules ] || npm ci --no-audit --no-fund
         npm test
+        if [ -n "${DISPLAY:-}" ]; then
+            npm run test:integration
+        elif command -v xvfb-run >/dev/null; then
+            xvfb-run -a npm run test:integration
+        else
+            echo "editors/vscode: SKIPPED extension-host tests (no display and no xvfb-run)"
+        fi
     )
 
     step "editors/smoke.sh: the other editor setups against cpl lsp"

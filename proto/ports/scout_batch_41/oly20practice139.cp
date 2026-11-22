@@ -28,7 +28,7 @@ struct Block:
             let at = if let top = self.hull.last:
                 ceil_div(top.line.b - cur.b, cur.m - top.line.m)
             else: 0
-            self.hull.push((at: at, line: cur))
+            self.hull.push((at:, line: cur))
 
     fn add_prefix(mut self, k: Int):
         for i in 0..k: self.v[i] += 1

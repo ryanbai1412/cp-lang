@@ -215,6 +215,11 @@ impl<'a> Checker<'a> {
                 return Ty::Unknown;
             }
             return match self.named_type(head, head_span, Vec::new()) {
+                Ty::Pos(_) if member == "Cut" => {
+                    let member_span = Span::new(head_span.end + 1, span.end);
+                    self.planned(member_span, &cpl_syntax::planned::CUT_DOMAIN);
+                    Ty::Error
+                }
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),

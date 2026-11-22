@@ -1,4 +1,4 @@
-// Codeforces 2124 I: Lexicographic Partition.
+// Codeforces 2124 I: Lexicographic Partition (dream).
 // Input `x[i]` is the 1-based depth of index `i` in the prefix-extremum tree:
 // `x[0] = 1`, each `i >= 1` has `2 <= x[i] <= x[i - 1] + 1`, and its parent is
 // the most recent vertex at depth `x[i] - 1`.
@@ -6,10 +6,11 @@
 // earlier child, so `p` must precede its children in value order (`is_ext[p]`);
 // otherwise `p` follows its children. A valid permutation exists iff no vertex
 // and its parent are both `is_ext`.
-// Because each subtree's value order concatenates its children in index order
-// with `u` placed before (`is_ext[u]`) or after (`not is_ext[u]`), the value
-// order is simply an Euler-style DFS emitting `u` in preorder when `is_ext[u]`
-// and postorder otherwise.
+// Because each vertex `u` independently chooses preorder (`is_ext[u]`) or
+// postorder (`not is_ext[u]`) relative to its children (so neither `tree.Pre`
+// nor `tree.Post` alone suffices), an iterative stack DFS emits this mixed
+// Euler order safely at `n <= 2e5`, and `let pos = order.inverse()` converts
+// value positions into 1-based ranks in O(n).
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -18,13 +19,11 @@ let x: [V]1..=200_000 = read()
 
 fn build_perm() -> ?[V]Int:
     var last_at_depth: [0..=n]?V = none
-    last_at_depth[x[V(0)]] = V(0)
+    last_at_depth[x[V.first]] = V.first
     var par: [V]?V = none
     var is_ext: [V]Bool = false
 
-    for i in 1..n:
-        let u = V(i)
-        let prev = V(i - 1)
+    for u in V if let prev = u.prev:
         if x[u] > x[prev] + 1 or x[u] == 1: return none
         let p = last_at_depth[x[u] - 1]!
         par[u] = p
@@ -32,20 +31,21 @@ fn build_perm() -> ?[V]Int:
         last_at_depth[x[u]] = u
 
     for u in V:
-        if let p = par[u]:
-            if is_ext[u] and is_ext[p]: return none
+        if let p = par[u], is_ext[u] and is_ext[p]: return none
 
     let tree = Rooted.from_parents(par)
     var order: List<V> = []
-    fn visit(u: V):
-        if is_ext[u]: order.push(u)
-        for c in tree.children(u): visit(c)
-        if not is_ext[u]: order.push(u)
-    visit(V(0))
+    var stack: List<(V, Bool)> = [(V.first, false)]
+    while let (u, post) = stack.pop():
+        if post:
+            order.push(u)
+        else:
+            if is_ext[u]: order.push(u) else: stack.push((u, true))
+            for c in tree.children(u).rev: stack.push((c, false))
 
-    var perm: [V]Int = 0
-    for (rank, u) in order.items: perm[u] = rank + 1
-    some(perm)
+    let pos = order.inverse()
+    let rank: [V]Int = [V] u => pos[u] + 1
+    some(rank)
 
 if let perm = build_perm():
     print("YES")

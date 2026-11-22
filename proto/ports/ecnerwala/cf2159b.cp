@@ -1,12 +1,24 @@
+// Codeforces 2159 B — Rectangles
+//
+// For each cell (i, j), find the minimum area of an axis-aligned rectangle
+// containing (i, j) whose four corners are all '1' (or 0 if none exists).
+//
+// Transpose if n0 > m0 so n <= m (hence n <= sqrt(n * m) and O(n^2 * m) is
+// O((n * m)^(3/2))). Iterate rectangle height l from min(n, m) down to 2 and
+// top row i0 from n - l down to 0: between consecutive columns j0 < j1 where
+// both g[i0, j] and g[i0 + l - 1, j] are '1', the rectangle [i0..=i1] x
+// [j0..=j1] has area `l * (j1 - j0 + 1)`, updating `ans[i0, j0..=j1]`.
+// Propagating `ans[i0 + 1, ..] min= ans[i0, ..]` after each height-l row
+// covers every interior row of all rectangles of height >= l in O(n * m).
+
 @!multitest
-let (n0, m0): (Int, Int) = read()
+let (n0, m0): (2..=250_000, 2..=250_000) = read()
 let rows: [0..n0]Str = read()
 let tr = n0 > m0
 let (n, m) = if tr: (m0, n0) else: (n0, m0)
 let g = [0..n, 0..m] (i, j) => (if tr: rows[j][i] else: rows[i][j]) == '1'
 
-let cap = n * m
-var ans: [0..n, 0..m]Int = cap + 1
+var ans: [0..n, 0..m]?Int = none
 for l in (2..=min(n, m)).rev:
     for i0 in (0..=n - l).rev:
         let i1 = i0 + l - 1
@@ -23,6 +35,5 @@ for l in (2..=min(n, m)).rev:
                 j0 += 1
         ans[i0 + 1, ..] min= ans[i0, ..]
 
-fn clean(v: Int) -> Int = if v > cap: 0 else: v
 for i in 0..n0:
-    print([clean(if tr: ans[j, i] else: ans[i, j]) for j in 0..m0])
+    print([(if tr: ans[j, i] else: ans[i, j]) ?? 0 for j in 0..m0])

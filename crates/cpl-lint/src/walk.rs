@@ -123,19 +123,26 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             walk_expr(v, target);
             walk_expr(v, value);
         }
-        StmtKind::LoopElse { looped, otherwise } => {
-            walk_stmt(v, looped);
-            walk_stmts(v, &otherwise.stmts);
-        }
-        StmtKind::While { cond, body } => {
+        StmtKind::While {
+            cond,
+            body,
+            else_body,
+        } => {
             v.enter(Scope::Loop);
             v.while_loop(cond);
             walk_cond(v, cond);
             walk_stmts(v, &body.stmts);
             v.exit(Scope::Loop);
+            if let Some(else_body) = else_body {
+                walk_scoped(v, Scope::Block, &else_body.stmts);
+            }
         }
         StmtKind::For {
-            pat, iter, body, ..
+            pat,
+            iter,
+            body,
+            else_body,
+            ..
         } => {
             walk_expr(v, iter);
             v.enter(Scope::Loop);
@@ -143,6 +150,9 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             walk_pattern(v, pat, Bind::Pattern);
             walk_stmts(v, &body.stmts);
             v.exit(Scope::Loop);
+            if let Some(else_body) = else_body {
+                walk_scoped(v, Scope::Block, &else_body.stmts);
+            }
         }
         StmtKind::Assert { cond, message } => {
             walk_expr(v, cond);

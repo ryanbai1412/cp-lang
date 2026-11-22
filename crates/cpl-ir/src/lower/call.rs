@@ -2040,7 +2040,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Every position of a domain, first to last, as a list.
-    fn positions(&mut self, d: DomainId, span: Span) -> Expr {
+    pub(super) fn positions(&mut self, d: DomainId, span: Span) -> Expr {
         let list_ty = Ty::list(Ty::Pos(d));
         self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
             let all = lw.temp(list_ty.clone());
@@ -2495,6 +2495,7 @@ impl<'a> Lowerer<'a> {
                         }],
                         param_tys: Vec::new(),
                         param_mut: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(ast::Expr {
                             kind: ast::ExprKind::Call {
                                 callee: Box::new(mk_name(fn_name)),
@@ -3050,6 +3051,7 @@ impl<'a> Lowerer<'a> {
                         ],
                         param_tys: Vec::new(),
                         param_mut: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(ast::Expr {
                             kind: ast::ExprKind::Call {
                                 callee: Box::new(mk_name(fn_name)),
@@ -3356,6 +3358,7 @@ impl<'a> Lowerer<'a> {
             params: vec![ast::Pattern { kind: ast::PatternKind::Name(var.clone()), span: at }],
             param_tys: Vec::new(),
             param_mut: Vec::new(),
+                        ret_ty: None,
             body: Box::new(key),
         });
         let call = mk(ast::ExprKind::Call {
@@ -4494,6 +4497,7 @@ impl<'a> Lowerer<'a> {
                     name.text
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.member_typo(&ty, &name.text, name.span);
                 match (&ty, name.text.as_str()) {
                     // An arc of a graph built from a list of pairs is the
                     // neighbour, with no record around it.
@@ -5396,10 +5400,15 @@ impl<'a> Lowerer<'a> {
                 return self.lower_group_by(base, &key.value, span);
             }
         }
-        // `xs.first(x => cond)` returns `?T`.
+        // `xs.first(x => cond)` / `xs.last(x => cond)` returns `?T`.
         if let ([test], "first") = (args, name.text.as_str()) {
             if test.name.is_none() && base_is_seq {
-                return self.lower_first_where(base, &test.value, span);
+                return self.lower_first_or_last_where(base, &test.value, true, span);
+            }
+        }
+        if let ([test], "last") = (args, name.text.as_str()) {
+            if test.name.is_none() && base_is_seq && self.is_test(&test.value) {
+                return self.lower_first_or_last_where(base, &test.value, false, span);
             }
         }
         // `xs.reach(while: (a, b) => ..., cyclic: Bool = false)` returns `List<Int>`.
@@ -5451,6 +5460,7 @@ impl<'a> Lowerer<'a> {
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);
         if self.is_sorted_range_expr(base)
+            || matches!(self.sym(base), Some(Sym::Domain(_)))
             || matches!(
                 seq_ty,
                 Some(
@@ -7223,6 +7233,7 @@ impl<'a> Lowerer<'a> {
                     self.show(&ty)
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.member_typo(&ty, method, name.span);
                 for arg in args {
                     self.expr(&arg.value, None);
                 }
@@ -7289,6 +7300,7 @@ impl<'a> Lowerer<'a> {
                         }],
                         param_tys: vec![None],
                         param_mut: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(idx_expr),
                     },
                     span: at,
@@ -7337,6 +7349,7 @@ impl<'a> Lowerer<'a> {
                         }],
                         param_tys: Vec::new(),
                         param_mut: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(call),
                     },
                     span: at,
@@ -7575,7 +7588,25 @@ impl<'a> Lowerer<'a> {
                 )
             }
             other => {
-                self.unsupported(name.span, &format!("`.{other}` of a domain as a value"));
+                const MEMBERS: [&str; 13] = [
+                    "len", "size", "count", "empty", "full", "first", "pairs", "last", "start", "end", "all",
+                    "rev", "bounds",
+                ];
+                match cpl_check::closest(other, MEMBERS.into_iter()) {
+                    Some(s) => {
+                        let message = format!("a domain has no member `{other}`");
+                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        let at = self.span(name.span);
+                        if let Some(last) = self.diags.last_mut() {
+                            last.help = Some(format!("did you mean `{s}`?"));
+                            last.fixes.push(cpl_diag::Fix {
+                                title: format!("change to `{s}`"),
+                                edits: vec![(at, s)],
+                            });
+                        }
+                    }
+                    None => self.unsupported(name.span, &format!("`.{other}` of a domain as a value")),
+                }
                 self.err_expr(span)
             }
         }
@@ -8508,7 +8539,13 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn lower_first_where(&mut self, base: &ast::Expr, pred_ast: &ast::Expr, span: Span) -> Expr {
+    fn lower_first_or_last_where(
+        &mut self,
+        base: &ast::Expr,
+        pred_ast: &ast::Expr,
+        stop_at_first: bool,
+        span: Span,
+    ) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         if matches!(elem_ty, Ty::Error) {
             return self.err_expr(span);
@@ -8539,12 +8576,14 @@ impl<'a> Lowerer<'a> {
                 AssignOp::Set,
                 some_val,
             );
+            let mut then_stmts = vec![set_found];
+            if stop_at_first {
+                then_stmts.push(Stmt::Break(Some(lid)));
+            }
             let body = Block {
                 stmts: vec![Stmt::If(
                     cond,
-                    Block {
-                        stmts: vec![set_found, Stmt::Break(Some(lid))],
-                    },
+                    Block { stmts: then_stmts },
                     Block::default(),
                 )],
             };

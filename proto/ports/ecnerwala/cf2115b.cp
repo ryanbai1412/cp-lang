@@ -12,24 +12,28 @@
 @!multitest
 let (n, q): (1..=300_000, 0..=300_000) = read()
 domain Slot = 1..=n
+domain Step = 0..q
 domain V = 1..=n + q
 struct Op(x: Slot, y: Slot, z: Slot)
 
-let b: [Slot]Int = read()
-let ops: [0..q]Op = read()
+fn initial(i: Slot) -> V = V.at(i.ord)
+fn version(t: Step) -> V = V.at(n + t.ord)
 
-var cur: [Slot]V = [Slot] i => V(i.ord + 1)
+let b: [Slot]Int = read()
+let ops: [Step]Op = read()
+
+var cur: [Slot]V = [Slot] i => initial(i)
 var edges: List<(V, V)> = []
-for i in 0..q:
-    let op = ops[i]
-    let v = V(n + 1 + i)
+for t in Step:
+    let op = ops[t]
+    let v = version(t)
     edges.push((cur[op.x], v))
     edges.push((cur[op.y], v))
     cur[op.z] = v
 
 let g = Graph.directed(edges)
 let rev = Graph.directed([(v, u) for (u, v) in edges])
-var indeg: [V]Int = [V] u => rev[u].len
+var indeg: [V]Int = [V] u => rev.deg(u)
 var val_of: [V]?Int = none
 
 let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => e.val, desc: true)
@@ -40,11 +44,10 @@ fn fix(u: V, v: Int):
         work.push(u)
 
 for (val, st) in targets:
-    if let prev = val_of[st]:
-        if prev != val:
-            print(-1)
-            return
-    else:
+    if let prev = val_of[st] and prev != val:
+        print(-1)
+        return
+    if val_of[st] == none:
         fix(st, val)
         while let u = work.pop():
             for p in rev[u]: fix(p, val)
@@ -52,4 +55,4 @@ for (val, st) in targets:
                 indeg[w] -= 1
                 if indeg[w] == 0: fix(w, val)
 
-print([val_of[V(i.ord + 1)] ?? 0 for i in Slot])
+print([val_of[initial(i)] ?? 0 for i in Slot])

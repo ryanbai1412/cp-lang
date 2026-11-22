@@ -46,16 +46,15 @@ let masks = build_masks()
 var value_of = Map<Int, MaxVal>()
 for v in MaxVal: value_of[masks[v]] = v
 
-let t: 1..=40 = read()
-repeat t:
-    let n: 2..=845 = read()
-    domain Pos = 1..=n
-    var sig: [Pos]Int = 0
-    for q in Query:
-        let held = [v for v in MaxVal if v.ord < n and masks[v].bit(q.ord)]
-        if held.is_empty: continue
-        let kind = if q == Query.first: 4 else: 2
-        print(kind, held.len, held)
-        let resp: [0..held.len]Pos = read()
-        for p in resp: sig[p] |= 1 << q.ord
-    print("!", [value_of[sig[p]] for p in Pos])
+@!multitest
+let n: 2..=845 = read()
+domain Pos = 1..=n
+var sig: [Pos]Int = 0
+for q in Query:
+    let held = [v for v in MaxVal if v.ord < n and masks[v].bit(q.ord)]
+    if held.is_empty: continue
+    let kind = if q == Query.first: 4 else: 2
+    print(kind, held.len, held)
+    let resp: [0..held.len]Pos = read()
+    for p in resp: sig[p] |= 1 << q.ord
+print("!", [value_of[sig[p]] for p in Pos])

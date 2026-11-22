@@ -1,7 +1,7 @@
 // AtCoder AGC 079 A: value i must come after everything in p[i]..i, which
 // makes a forest; the count of valid orders is n! over the product of subtree
 // sizes. A stack of (rightmost index, size) merges each subtree as it closes.
-const P = 998244353
+const P = 998_244_353
 type Z = Mod<P>
 let comb = Comb<Z>()
 
@@ -17,5 +17,5 @@ for (i, pi) in p.items:
         size += b.size
         blocks.pop()
     den *= size
-    blocks.push((r: i, size: size))
+    blocks.push((r: i, size:))
 print(comb.fact(n - 1) / den)

@@ -1,6 +1,7 @@
 # ucup5s02h
 
-Score: 2/5
+Score: 3/5
+Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -18,3 +19,44 @@ A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1`
 ## Language gaps
 
 No friction report exists. Missing: a parity (bipartite) DSU in the stdlib if the lane could not find one.
+
+## Cold review (HEAD)
+
+Dream 3/5 (new), port → 3/5, rescored on current main; sent back. The header derives the spanning-tree colouring and the hull's monotonicity.
+- Bug: `(a.x - b.x) ^ 2` (line 24) is xor; §70 spells powers `**`.
+- Owed: the dream calls `pull` (line 31), `never_weakest` (line 35) and `hull_pairs` (line 68), but defines none of them. Bring over the port's `never_weakest`, or name the stdlib facility a friction item asks for.
+- Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu` component ids and count, `GroupTree.others`, `pop_while`.
+- Minor: `colour.unite(c, Pin, ...)` (line 52) passes a `C` for a `Node` (E0301), which the sum domain would fix.
+
+Port 3/5: the hull test is hand `I128` cross-multiplication (lines 21-30, 57-62; `Frac` is reported).
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored cold on current main; sent back. `**` replaces `^`, and `pull`, `never_weakest` and `hull_pairs` are now defined.
+- Owed: `never_weakest` (lines 30-35) is the port's hand `I128` cross-multiplication, in a dream that already has `Frac`. The condition `d * d >= 4 * a1 * a3` isn't derived from line 29's claim. Write it with `Frac`/`pull`, or derive the inequality.
+- Owed: line 82's `max_by= (...), by: ...` doesn't parse (E0107), and line 84's `for e in best if let e:` isn't an accepted filter (E0103). Neither is in decisions.md or a friction item.
+- Owed: line 88 passes `C.filter(...)`, a `List<C>`, where `hull_pairs` takes `List<Charge>` (E0302); map through `ch`.
+- Reported gaps: `Frac`, the `C | Pin` sum domain (the `Pin`/`Node` errors), `ParityDsu` component ids and `side`, `GroupTree.others`, `min_by` and `pop_while`.
+
+Port 3/5 unchanged: the hull test is the same hand `I128` algebra (`Frac` is reported).
+
+## Cold review (HEAD, second rewrite)
+
+Dream 3/5, rescored cold on current main; sent back. `never_weakest` is now derived (lines 29-36) without `I128`, `max_by=` and `if let e:` are gone, and `hull_pairs` gets `List<Charge>`.
+- Owed: line 84 builds the edge from `h.id`, but `Charge` (line 20) has no `id`, and `j: C` needs the charge's index. The hulls must keep the `C` they came from (store `C` in `Hull`, or give `Charge` an `id: C`). The checker misses it only because `GroupTree` is unresolved.
+- Owed: `gap(h, ch[c])` is computed in `min_by` (line 82) and again on line 84; keep the minimum with its gap.
+- Owed: the `idx + 1 < pts.len` guard inside the `pop_while` (line 47) keeps the query pointer valid, but nothing says so.
+- Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree.others`/`path`, `min_by` and `pop_while`.
+
+## Cold review (HEAD, port rescore)
+
+Dream 3/5 → 4/5, rescored cold on current main. `Hull<Id>` stores `(ch, id)`, so the edge's `j: C` is typed; `gap` is computed once per candidate (line 83); line 46 explains the `idx + 1 < pts.len` guard.
+- The only errors are reported gaps: `Frac`, the `C | Pin` sum domain (and the two E0301s it causes on `colour.unite`), `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree`, `min_by` and `pop_while`.
+- Minor: `hull_pairs` makes a `Hull<Int>` only to throw the ids away (line 58). Line 83 is 114 characters. "It is enough to two-colour the spanning tree of weakest pulls" (line 6) is asserted, not argued.
+
+## Cold review (HEAD)
+
+Port 3/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header now derives Boruvka and the `Hull` invariant. `Pt` and `ParityDsu<Node>` remove the `.0`/`.1` tuples and the `2 * i + 1` encoding. Owed today:
+- Charges are raw `Int`s, so `Node.at(i)` appears 9 times (lines 77-114) and `Pt.id: Int` (line 19). A `domain C = 0..n` for charges, with `pin` as the extra node, says it once.
+- The segment-tree climb `node = cc + v; while node > 1: …; node >>= 1` is written twice (lines 95-98, 103-106) on raw heap indices. Name it once.
+- `(num: 1, den: 226_000_000)` (line 111) is an unexplained seed, and `n: Int` (line 65) has no bound to justify it.

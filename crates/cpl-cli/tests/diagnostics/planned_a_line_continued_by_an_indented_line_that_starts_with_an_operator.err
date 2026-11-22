@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a line continued by an indented line that starts with an operator (see design/spec/10-syntax.md §10.1)
+  --> planned_a_line_continued_by_an_indented_line_that_starts_with_an_operator.cp:2:5
+  |
+2 |     + 2
+  |     ^^^
+  = help: wrap the expression in parentheses, inside which it can span lines
+
+planned_a_line_continued_by_an_indented_line_that_starts_with_an_operator.cp: 1 error

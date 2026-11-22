@@ -46,7 +46,7 @@ fn completions(s: Walk, z: Int, o: Int) -> Z =
 domain Cnt = 0..=k
 var rays: [Cnt, Cnt]Z = 0
 // w first hits at (z, o) and at every (z + t, o - t) after it.
-fn ray(z: Int, o: Int, w: Z): rays[z, o] += w
+fn ray(z: Int, o: Int, w: Z): rays[Cnt(z), Cnt(o)] += w
 fn first_hits_from(s: Walk):
     if s.lnds == k:
         ray(s.zeros, s.ones, 1)
@@ -74,7 +74,8 @@ for c in a:
         phase = Split(base: walk)
         walk = Walk(0, 0, 0)
 
-for z in 0..k, o in 1..=k:
-    rays[z + 1, o - 1] += rays[z, o]
+for z in Cnt, o in Cnt:
+    if let nz = z.next and let po = o.prev:
+        rays[nz, po] += rays[z, o]
 // rays[z, o] is now the number of first hits at (z, o).
-print(ans + sum(rays[z, o] * long_lnds(x - z, y - o, k) for z in Cnt, o in Cnt))
+print(ans + sum(rays[z, o] * long_lnds(x - z.ord, y - o.ord, k) for z in Cnt, o in Cnt))

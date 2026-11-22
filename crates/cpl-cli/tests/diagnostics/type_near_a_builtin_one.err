@@ -1,0 +1,8 @@
+error[E0204]: no type or domain named `Max`, and not in the stdlib (yet)
+  --> type_near_a_builtin_one.cp:1:8
+  |
+1 | let m: Max<Int> = read()
+  |        ^^^
+  = help: did you mean `Map`?
+
+type_near_a_builtin_one.cp: 1 error

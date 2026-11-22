@@ -21,7 +21,7 @@ var cities: [0..n]City = City(x: 0, y: 0, id: 0)
 for i in 0..n:
     let x: Int = read()
     let y: Int = read()
-    cities[i] = City(x: x, y: y, id: i)
+    cities[i] = City(x:, y:, id: i)
 
 struct Portal:
     lx: Int
@@ -39,7 +39,7 @@ for i in 0..m:
     let ly: Int = read()
     let ry: Int = read()
     adj[u - 1].push((n + i, t))
-    portals[i] = Portal(lx: lx, rx: rx, ly: ly, ry: ry)
+    portals[i] = Portal(lx:, rx:, ly:, ry:)
 
 // Build static X-segment tree of y-sorted buckets by inserting cities in
 // increasing y order (zero per-node sorting needed!).

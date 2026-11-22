@@ -22,7 +22,7 @@ let by_value = sorted(C, by: c => a[c])
 var gaps: List<(cost: Int, u: C, v: C)> = []
 for i in 1..n:
     let (u, v) = (by_value[i - 1], by_value[i])
-    gaps.push((cost: a[v] - a[u], u: u, v: v))
+    gaps.push((cost: a[v] - a[u], u:, v:))
 
 var total = 0
 for g in gaps.sorted(by: g => g.cost):

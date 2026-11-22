@@ -29,16 +29,16 @@ domain I = 1..=n
 let p: [I]I = read()
 let q: [I]I = read()
 
-let (_, mate) = min_weight_matching<I, I>((i, j) => abs(i - j) + abs(p[i] - q[j]))
+var (_, mate) = min_weight_matching<I, I>((i, j) => abs(i - j) + abs(p[i] - q[j]))
 
 // Stage 1: move each element from i to mate[i].
-var moving = mate.clone()
-var ops = sort_perm(mut moving)
+var ops = sort_perm(mut mate)
 
 // Stage 2: value v now sits at pos_of[v] and must become q[pos_of[v]].
 let inv_p = p.inverse()
 var pos_of = [I] v => mate[inv_p[v]]
-for (u, v) in sort_perm([I] v => q[pos_of[v]]):
+var target = [I] v => q[pos_of[v]]
+for (u, v) in sort_perm(mut target):
     ops.push((pos_of[u], pos_of[v]))
     pos_of.swap_at(u, v)
 

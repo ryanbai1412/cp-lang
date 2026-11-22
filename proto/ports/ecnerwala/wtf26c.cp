@@ -1,59 +1,51 @@
-// AtCoder WTF 2026 C: 2D DP accelerated per step by 1D NTT convolution over
-// flattened (i, j) coordinates, followed by two inclusion-exclusion passes.
+// AtCoder WTF 2026 C.
+//
+// For each g, `labelled[g]` counts the structures whose groups take labels
+// from a set of g. It is `dp[n, 0]` of a 2D DP over the sorted `a`: after
+// step `cur`, `dp[i, j]` has `i` closed and `j` open slots; a step either
+// keeps a slot (weight `cur + 1 - i` or `j + 1`) or, weighted `a[cur] + 1`,
+// joins the DP with the `claim` table of that g by a 2D convolution, where
+// `claim[i, j] = C(i + j, i) * sum_{k < g} k^i (k + 1)^j`.
+// Two binomial inversions then give the answer:
+//   exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]
+//   ans[g]   = exact[g]    - sum_{h < g} C(n - h, g - h) ans[h]
 use std.ntt.{convolve}
 
-const MOD = 998_244_353
-type Z = Mod<MOD>
+type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
 let n: Int = read()
 let a: [0..n]Int = read()
 
-var ways_groups: [0..=n]Z = 0
-var claim_sum: [0..n, 0..n]Z = 0
-for g_cnt in 1..=n:
-    let k = g_cnt - 1
-    var pk: [0..n]Z = 1
-    var pk1: [0..n]Z = 1
-    for i in 1..n:
-        pk[i] = pk[i - 1] * k
-        pk1[i] = pk1[i - 1] * (k + 1)
-    var claim: [0..n, 0..n]Z = 0
-    for i in 0..n:
-        for j in 0..n - i:
-            claim_sum[i, j] += pk[i] * pk1[j]
-            claim[i, j] = claim_sum[i, j] * comb.choose(i + j, i)
+// The product of `x` and `y` on rows 0..rows and columns 0..cols, through one
+// 1D convolution: row stride 2 * rows - 1 keeps row sums from wrapping.
+fn convolve_2d(x: [0..=n, 0..=n]Z, y: [0..=n, 0..=n]Z, rows: Int, cols: Int) -> [0..=n, 0..=n]Z:
+    let stride = 2 * rows - 1
+    fn flat(m: [0..=n, 0..=n]Z) -> List<Z> =
+        [if t % stride < rows: m[t % stride, t / stride] else: Z(0) for t in 0..stride * cols]
+    let prod = convolve(flat(x), flat(y))
+    [0..=n, 0..=n] (i, j) => if i < rows and j < cols: prod[i + stride * j] else: Z(0)
+
+var labelled: [0..=n]Z = 0
+var power_sum: [0..=n, 0..=n]Z = 0
+for g in 1..=n:
+    for i in 0..n, j in 0..n - i: power_sum[i, j] += Z(g - 1) ** i * Z(g) ** j
+    let claim = [0..=n, 0..=n] (i, j) => power_sum[i, j] * comb.choose(i + j, i)
 
     var dp: [0..=n, 0..=n]Z = 0
     dp[0, 0] = 1
     for cur in 0..n:
-        let cur_a = Z(a[cur] + 1)
-        let stride = 2 * cur + 1
-        let max_j = n - 1 - cur
-        let sz = stride * (max_j + 1)
-        var mul_a: [0..sz]Z = 0
-        var mul_b: [0..sz]Z = 0
-        var ndp: [0..=n, 0..=n]Z = 0
-        for i in 0..=cur:
-            for j in 0..=max_j:
-                ndp[i, j] += dp[i, j] * (cur + 1 - i)
-                ndp[i + 1, j] += dp[i, j + 1] * (j + 1)
-                let idx = i + stride * j
-                mul_a[idx] = claim[i, j] * cur_a
-                mul_b[idx] = dp[i, j]
-        let res = convolve([mul_a[t] for t in 0..sz], [mul_b[t] for t in 0..sz])
-        for i in 0..=cur:
-            for j in 0..=max_j:
-                ndp[i + 1, j] += res[i + stride * j]
-        dp = ndp
-    ways_groups[g_cnt] = dp[n, 0]
+        let (rows, cols) = (cur + 1, n - cur)
+        let joined = convolve_2d(claim, dp, rows, cols)
+        var next: [0..=n, 0..=n]Z = 0
+        for i in 0..rows, j in 0..cols:
+            next[i, j] += dp[i, j] * (cur + 1 - i)
+            next[i + 1, j] += dp[i, j + 1] * (j + 1) + joined[i, j] * (a[cur] + 1)
+        dp = next
+    labelled[g] = dp[n, 0]
 
-for g in 1..=n:
-    for h in g + 1..=n:
-        ways_groups[h] -= comb.choose(h, g) * ways_groups[g]
+var ans = labelled
+for h in 1..=n, g in 1..h: ans[h] -= comb.choose(h, g) * ans[g]
+for g in 1..=n, h in 1..g: ans[g] -= comb.choose(n - h, g - h) * ans[h]
 
-for g in 1..=n:
-    for h in 1..g:
-        ways_groups[g] -= ways_groups[h] * comb.choose(n - h, g - h)
-
-print(ways_groups[1..=n])
+print(ans[1..=n])

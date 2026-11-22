@@ -7,7 +7,7 @@ struct KS:
     v: List<F64>
 
     fn new(msz: Int) -> KS:
-        return KS(msz: msz, v: [0.0])
+        return KS(msz:, v: [0.0])
 
     fn update(mut self, arr: List<F64>):
         let n = self.v.len

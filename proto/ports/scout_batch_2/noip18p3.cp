@@ -40,7 +40,7 @@ fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
             tracks += 1
         else:
             spare = a[i]
-    (tracks: tracks, spare: spare)
+    (tracks:, spare:)
 
 fn tracks_of(k: Int) -> Int:
     var tracks = 0

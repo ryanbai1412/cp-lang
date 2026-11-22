@@ -26,8 +26,8 @@ for c in C:
 var roads: [C]List<(to: C, time: F64)> = []
 for _ in 0..m:
     let (u, v, time): (Int, Int, F64) = read()
-    if u != h: roads[C(u)].push((to: C(v), time: time))  // nobody leaves h
-    if v != h: roads[C(v)].push((to: C(u), time: time))
+    if u != h: roads[C(u)].push((to: C(v), time:))  // nobody leaves h
+    if v != h: roads[C(v)].push((to: C(u), time:))
 
 fn times(starts: List<(C, F64)>) -> [C]?F64 = dijkstra(c => roads[c], starts, r => r.time)
 

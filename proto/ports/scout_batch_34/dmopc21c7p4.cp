@@ -34,7 +34,7 @@ type Entry = (a: Int, b: Int, tag: Int)
 var all_entries: List<Entry> = []
 for i in Item:
     let (a, b): (Int, Int) = read()
-    all_entries.push((a: a, b: b, tag: i.to_idx))
+    all_entries.push((a:, b:, tag: i.to_idx))
 
 let q: 1..=2e5 = read()
 enum Op:
@@ -50,7 +50,7 @@ for qi in 0..q:
     else:
         let (a, b): (Int, Int) = read()
         let tag = n + qi
-        all_entries.push((a: a, b: b, tag: tag))
+        all_entries.push((a:, b:, tag:))
         ops.push(Set(Item.from_idx(t - 1)!, tag))
 
 all_entries.sort(by: e => -(e.a - e.b))

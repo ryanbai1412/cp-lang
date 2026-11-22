@@ -28,14 +28,15 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expr(&mut self) -> Expr {
         let start = self.start();
-        // Lambdas: `x => x + 1`, `(a, b) => a + b`.
+        // Lambdas: `x => x + 1`, `(a, b) => a + b`, `(n: Int) -> Int => ...`.
         let lambda = match self.peek() {
             T::Ident => self.peek_n(1) == T::FatArrow,
             T::LParen => {
-                self.tokens
-                    .get(after_group(self.tokens, self.pos))
-                    .map(|t| t.kind)
-                    == Some(T::FatArrow)
+                let after = after_group(self.tokens, self.pos);
+                matches!(
+                    self.tokens.get(after).map(|t| t.kind),
+                    Some(T::FatArrow) | Some(T::Arrow)
+                )
             }
             _ => false,
         };
@@ -65,19 +66,42 @@ impl<'a> Parser<'a> {
             } else {
                 (vec![self.pattern()], Vec::new(), Vec::new())
             };
-            self.bump();
+            let ret_ty = self.eat(T::Arrow).then(|| self.ty());
+            if !self.eat(T::FatArrow) {
+                self.error_expected(
+                    codes::EXPECTED_TOKEN,
+                    "`=>` to start the lambda body",
+                    Some("=>"),
+                );
+            }
             let body = Box::new(self.lambda_body());
             return Expr {
                 kind: ExprKind::Lambda {
                     params,
                     param_tys,
                     param_mut,
+                    ret_ty,
                     body,
                 },
                 span: self.span_from(start),
             };
         }
         let base = self.coalesce();
+        for (word, planned) in [
+            ("default", &crate::planned::MAP_DEFAULT),
+            ("then", &crate::planned::THEN_CHAIN),
+        ] {
+            if self.at_ident(word) && !matches!(self.peek_n(1), T::Colon | T::Eq | T::Comma | T::RParen) {
+                let start = self.start();
+                while self.at_ident(word) {
+                    self.bump();
+                    self.coalesce();
+                }
+                let span = self.span_from(start);
+                self.planned(span, planned);
+                return base;
+            }
+        }
         if !self.at_ident("with") {
             return base;
         }
@@ -193,7 +217,7 @@ impl<'a> Parser<'a> {
     pub(super) fn or(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.and();
-        while self.at(T::Or) {
+        while self.at(T::Or) || self.c_logic(T::Pipe, "or") {
             lhs = self.binary(start, BinOp::Or, lhs, Self::and);
         }
         lhs
@@ -249,10 +273,36 @@ impl<'a> Parser<'a> {
             };
         }
         // `and let` goes on to another binding, not another operand.
-        while self.at(T::And) && self.peek_n(1) != T::Let {
+        while (self.at(T::And) && self.peek_n(1) != T::Let) || self.c_logic(T::Amp, "and") {
             lhs = self.binary(start, BinOp::And, lhs, Self::not);
         }
         lhs
+    }
+
+    /// `&&` where `and` goes on to another condition: reported, then
+    /// read as `and`.
+    pub(super) fn c_and(&mut self) -> bool {
+        let found = self.c_logic(T::Amp, "and");
+        if found {
+            self.bump();
+        }
+        found
+    }
+
+    /// `&&` or `||` from C: reported with the word to write, then read as
+    /// that word. Leaves the second character for [`Self::binary`].
+    fn c_logic(&mut self, half: TokenKind, word: &str) -> bool {
+        if !self.doubled(half) {
+            return false;
+        }
+        let span = Span::new(self.start(), self.span_n(1).end);
+        let op = if half == T::Amp { "&&" } else { "||" };
+        self.error(
+            Diagnostic::error(codes::UNEXPECTED_TOKEN, span, format!("`{op}` is `{word}` in cp"))
+                .with_fix(format!("replace with `{word}`"), span, word),
+        );
+        self.bump();
+        true
     }
 
     pub(super) fn not(&mut self) -> Expr {
@@ -317,6 +367,26 @@ impl<'a> Parser<'a> {
     fn chain(&mut self) -> Expr {
         let start = self.start();
         let first = self.range();
+        if self.at(T::Lt)
+            && self.peek_n(1) == T::DotDot
+            && self.tokens[self.pos].span.end == self.tokens[self.pos + 1].span.start
+        {
+            let op = self.start();
+            self.bump();
+            self.bump();
+            let span = self.span_from(op);
+            self.planned(span, &crate::planned::START_EXCLUSIVE_RANGE);
+            let hi = self.starts_expr().then(|| Box::new(self.bit_or()));
+            return Expr {
+                kind: ExprKind::Range {
+                    lo: Some(Box::new(first)),
+                    hi,
+                    inclusive: false,
+                    step: None,
+                },
+                span: self.span_from(start),
+            };
+        }
         let mut rest = Vec::new();
         while let Some(op) = self.cmp_op() {
             self.bump();
@@ -364,7 +434,7 @@ impl<'a> Parser<'a> {
             Some(Box::new(lo))
         };
         let inclusive = self.at(T::DotDotEq);
-        self.bump();
+        self.range_op();
         let hi = if self.starts_expr() {
             Some(Box::new(self.bit_or()))
         } else {
@@ -426,7 +496,7 @@ impl<'a> Parser<'a> {
     fn bit_or(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.bit_xor();
-        while self.at(T::Pipe) {
+        while self.at(T::Pipe) && !self.doubled(T::Pipe) {
             lhs = self.binary(start, BinOp::BitOr, lhs, Self::bit_xor);
         }
         lhs
@@ -444,7 +514,7 @@ impl<'a> Parser<'a> {
     fn bit_and(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.shift();
-        while self.at(T::Amp) {
+        while self.at(T::Amp) && !self.doubled(T::Amp) {
             lhs = self.binary(start, BinOp::BitAnd, lhs, Self::shift);
         }
         lhs
@@ -492,6 +562,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn unary(&mut self) -> Expr {
+        if matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket) {
+            return self.power();
+        }
         let op = match self.peek() {
             T::Plus => UnOp::Pos,
             T::Minus => UnOp::Neg,
@@ -589,6 +662,7 @@ impl<'a> Parser<'a> {
                 params,
                 param_tys: Vec::new(),
                 param_mut: Vec::new(),
+                ret_ty: None,
                 body,
             },
             span,
@@ -667,6 +741,7 @@ impl<'a> Parser<'a> {
                 params,
                 param_tys: Vec::new(),
                 param_mut: Vec::new(),
+                ret_ty: None,
                 body,
             },
             span,
@@ -834,6 +909,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::None
             }
+            T::Ident if self.text() == "lazy" && self.peek_n(1) == T::LBracket => {
+                let span = self.span();
+                self.planned(span, &crate::planned::LAZY_ARRAY);
+                self.bump();
+                self.bracket()
+            }
             T::Ident => {
                 let mut name = self.name();
                 if name.text == "Some" {
@@ -892,7 +973,32 @@ impl<'a> Parser<'a> {
                 } else if self.eat(T::RParen) {
                     ExprKind::Tuple(Vec::new())
                 } else {
-                    let first = self.expr();
+                    let sequence = self.at(T::Let);
+                    let first = if sequence {
+                        Expr {
+                            kind: ExprKind::Error,
+                            span: self.span(),
+                        }
+                    } else {
+                        self.expr()
+                    };
+                    if sequence || self.at(T::Semi) {
+                        let mut depth = 1u32;
+                        while depth > 0 && !self.at(T::Eof) {
+                            match self.peek() {
+                                T::LParen => depth += 1,
+                                T::RParen => depth -= 1,
+                                _ => {}
+                            }
+                            self.bump();
+                        }
+                        let span = self.span_from(start);
+                        self.planned(span, &crate::planned::PAREN_SEQUENCE);
+                        return Expr {
+                            kind: ExprKind::Error,
+                            span,
+                        };
+                    }
                     if self.at(T::Comma) {
                         self.bump();
                         if self.at(T::Ident) && self.peek_n(1) == T::Colon {
@@ -912,6 +1018,28 @@ impl<'a> Parser<'a> {
                 }
             }
             T::LBracket => self.bracket(),
+            T::Dot if self.peek_n(1) == T::Ident => {
+                self.bump();
+                self.bump();
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::IMPLICIT_MEMBER);
+                ExprKind::Error
+            }
+            T::LBrace if self.brace_literal().is_some() => {
+                let planned = self.brace_literal().unwrap();
+                self.pos = after_group(self.tokens, self.pos);
+                let span = self.span_from(start);
+                self.planned(span, planned);
+                ExprKind::Error
+            }
+            T::Let if self.let_in() => {
+                while !matches!(self.peek(), T::Newline | T::Dedent | T::Eof) {
+                    self.bump();
+                }
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::LET_IN);
+                ExprKind::Error
+            }
             T::LBrace => {
                 self.bump();
                 ExprKind::Block(self.brace_block(start))
@@ -927,6 +1055,18 @@ impl<'a> Parser<'a> {
                 );
                 self.bump();
                 return self.unary();
+            }
+            k if (BINARY_OPS.contains(&k) || matches!(k, T::And | T::Or))
+                && matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket)
+                && matches!(
+                    self.prev_kind(),
+                    Some(T::Colon | T::Comma | T::LParen | T::Eq)
+                ) =>
+            {
+                let span = self.span();
+                self.bump();
+                self.planned(span, &crate::planned::OPERATOR_VALUE);
+                ExprKind::Error
             }
             _ => {
                 let after = self
@@ -1067,77 +1207,79 @@ impl<'a> Parser<'a> {
         (name, value)
     }
 
-    /// At `, pat in`: the comma continues a comprehension's clauses.
-    fn comma_starts_clause(&self) -> bool {
-        if !self.at(T::Comma) {
-            return false;
-        }
-        let kind = |k: usize| self.tokens.get(self.pos + k).map(|t| t.kind);
-        match kind(1) {
-            Some(T::Ident) => kind(2) == Some(T::In),
-            Some(T::LParen) => {
-                let mut depth = 0usize;
-                let mut k = 1;
-                while let Some(t) = kind(k) {
-                    match t {
-                        T::LParen => depth += 1,
-                        T::RParen => {
-                            depth -= 1;
-                            if depth == 0 {
-                                return kind(k + 1) == Some(T::In);
-                            }
-                        }
-                        T::Newline | T::Eof => return false,
-                        _ => {}
-                    }
-                    k += 1;
-                }
-                false
-            }
-            _ => false,
-        }
-    }
-
-    /// Parses one or more `for pat in iter [if cond]`.
+    /// Parses one or more `for pat in iter [if cond]` (or comma-separated
+    /// `for a in A, b in B if cond`, mirroring `for` statements).
     fn clauses(&mut self) -> Vec<Clause> {
         let mut clauses = Vec::new();
-        // `for i in V, j in V` chains clauses like a `for` statement does.
-        while self.eat(T::For) || (!clauses.is_empty() && self.comma_starts_clause() && self.eat(T::Comma)) {
-            let pat = self.pattern();
-            self.expect(T::In, "`in` after the comprehension variable");
-            // Stop before `if`, which here is the filter.
-            let iter = if self.at(T::Question) {
-                self.optional_type_iter()
-            } else {
-                self.coalesce()
-            };
-            // Comprehension and generator filters use `if` only.
-            let mut conds = Vec::new();
-            while self.eat(T::If)
-                || (self.at_ident("where") && {
-                    let span = self.span();
-                    self.error(
-                        Diagnostic::error(
-                            codes::REMOVED_SYNTAX,
-                            span,
-                            "comprehension filters use `if`, not `where`",
-                        )
-                        .with_help("use `if` to filter a comprehension or generator")
-                        .with_fix("replace `where` with `if`", span, "if"),
-                    );
-                    self.bump();
-                    true
-                })
-            {
-                conds.push(if self.at(T::Let) {
-                    self.let_guard()
+        while self.eat(T::For) {
+            loop {
+                let pat = self.pattern();
+                self.expect(T::In, "`in` after the comprehension variable");
+                // Stop before `if`, which here is the filter.
+                let iter = if self.at(T::Question) {
+                    self.optional_type_iter()
                 } else {
-                    Cond::Expr(self.coalesce())
-                });
+                    self.coalesce()
+                };
+                // Comprehension and generator filters use `if` only.
+                let mut conds = Vec::new();
+                while self.eat(T::If)
+                    || (self.at_ident("where") && {
+                        let span = self.span();
+                        self.error(
+                            Diagnostic::error(
+                                codes::REMOVED_SYNTAX,
+                                span,
+                                "comprehension filters use `if`, not `where`",
+                            )
+                            .with_help("use `if` to filter a comprehension or generator")
+                            .with_fix("replace `where` with `if`", span, "if"),
+                        );
+                        self.bump();
+                        true
+                    })
+                {
+                    conds.push(if self.at(T::Let) {
+                        self.let_guard()
+                    } else {
+                        Cond::Expr(self.coalesce())
+                    });
+                }
+                clauses.push(Clause { pat, iter, conds });
+                if self.at(T::Comma) && self.comma_starts_clause() {
+                    self.bump();
+                } else {
+                    break;
+                }
             }
-            clauses.push(Clause { pat, iter, conds });
         }
         clauses
+    }
+
+    /// True if a `,` inside a comprehension is followed by `pat in ...`.
+    fn comma_starts_clause(&self) -> bool {
+        let mut i = 1;
+        let mut depth = 0u32;
+        loop {
+            match self.peek_n(i) {
+                T::LParen | T::LBracket => depth += 1,
+                T::RParen | T::RBracket => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                }
+                T::In if depth == 0 => return true,
+                T::Comma | T::Colon | T::Eq | T::For | T::If | T::Newline | T::Eof
+                    if depth == 0 =>
+                {
+                    return false;
+                }
+                T::Eof => return false,
+                _ => {}
+            }
+            i += 1;
+        }
     }
 
     /// `let pat = value`, then `and` with a test or another `let`,
@@ -1148,7 +1290,7 @@ impl<'a> Parser<'a> {
         let pat = self.pattern();
         self.expect(T::Eq, "`=` after the pattern in `if let`");
         let value = self.not();
-        let and = if self.eat(T::And) {
+        let and = if self.eat(T::And) || self.c_and() {
             Some(Box::new(if self.at(T::Let) {
                 self.let_guard()
             } else {
@@ -1171,6 +1313,55 @@ impl<'a> Parser<'a> {
             None
         };
         Cond::Let { pat, value, and }
+    }
+
+    /// `{k: v}` or `{x for x in xs}` on one line: a map or set, not a block.
+    fn brace_literal(&self) -> Option<&'static crate::planned::Planned> {
+        let (mut depth, mut colon, mut comp, mut keyword) = (0u32, false, false, false);
+        for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return if comp && !colon {
+                            Some(&crate::planned::BRACE_SET)
+                        } else if colon {
+                            Some(&crate::planned::BRACE_MAP)
+                        } else {
+                            None
+                        };
+                    }
+                }
+                T::Newline | T::Indent | T::Dedent | T::Eof => return None,
+                T::Colon if depth == 1 && !keyword && i > self.pos + 1 => colon = true,
+                T::If | T::Elif | T::Else | T::While | T::Let | T::Var | T::Match | T::Return
+                    if depth == 1 =>
+                {
+                    keyword = true
+                }
+                T::For | T::In if depth == 1 && i > self.pos + 1 => comp = true,
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// `let y = x in y + 1`: an `in` after the `=` on the same line.
+    fn let_in(&self) -> bool {
+        let mut seen_eq = false;
+        let mut depth = 0u32;
+        for t in &self.tokens[self.pos..] {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth = depth.saturating_sub(1),
+                T::Newline | T::Indent | T::Dedent | T::Eof => return false,
+                T::Eq if depth == 0 => seen_eq = true,
+                T::In if depth == 0 && seen_eq => return true,
+                _ => {}
+            }
+        }
+        false
     }
 
     fn if_expr(&mut self) -> ExprKind {
@@ -1464,7 +1655,7 @@ fn names_a_type(ty: &crate::ast::Type) -> bool {
     }
 }
 
-const BINARY_OPS: &[TokenKind] = &[
+pub(super) const BINARY_OPS: &[TokenKind] = &[
     T::Plus,
     T::Minus,
     T::Star,

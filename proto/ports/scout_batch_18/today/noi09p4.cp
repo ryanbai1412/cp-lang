@@ -19,7 +19,7 @@ for r in Row:
             indeg[pr, pc] += 1
         if c.to_idx + 1 < m:
             let right = Col(c.to_idx + 1)
-            dep[r, right].push((r: r, c: c))
+            dep[r, right].push((r:, c:))
             indeg[r, c] += 1
 
 var can_eat: [Row, Col]Bool = [Row, Col] (_, _) => false

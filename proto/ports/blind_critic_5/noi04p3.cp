@@ -57,7 +57,7 @@ for _ in 0..q:
     let x2 = x2_in - 1
     let y2 = y2_in - 1
     if x1 != x2 or y1 != y2:
-        let qr = Query(x1: x1, y1: y1, x2: x2, y2: y2)
+        let qr = Query(x1:, y1:, x2:, y2:)
         queries[y1].push(qr)
         if y1 != y2:
             queries[y2].push(qr)

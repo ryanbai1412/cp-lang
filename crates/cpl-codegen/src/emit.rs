@@ -96,6 +96,9 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
+    /// Non-escaping closures passed to call-only parameters; immutable non-scalar
+    /// captures can be borrowed by reference instead of deep-copied.
+    pub borrow_closures: BTreeSet<usize>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
     pub niche_types: std::cell::Cell<u8>,
@@ -117,6 +120,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// The slot the next emitted closure is bound to when it names itself.
+    pub rec_slot: Option<usize>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
@@ -140,6 +145,8 @@ pub(crate) struct Emitter<'p> {
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
+    /// The statement being written stores a local read for the last time.
+    pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -162,6 +169,9 @@ pub(crate) struct Emitter<'p> {
     /// `(list, index)` slots of the loops being written whose index
     /// walks `0..list.len` over a list the body leaves at that length.
     pub inside: Vec<(usize, usize)>,
+    /// Rows the loops being written reach once: the row, the pointer
+    /// that holds it, and the C++ that reaches it the first time.
+    pub row_ptrs: Vec<(crate::rowcache::Row, String, String)>,
     /// How deep the statement being written is indented.
     pub indent: usize,
     /// For a profiled build: the span of each statement that counts its
@@ -202,6 +212,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
+            borrow_closures: BTreeSet::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,
@@ -214,6 +225,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            rec_slot: None,
             const_globals: BTreeSet::new(),
             tail: None,
             in_setup: false,
@@ -229,11 +241,13 @@ impl<'p> Emitter<'p> {
             rows,
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
+            moves_last: false,
             pushers: BTreeMap::new(),
             pushing: None,
             bodies: Vec::new(),
             found: Vec::new(),
             inside: Vec::new(),
+            row_ptrs: Vec::new(),
             indent: 0,
             sites: None,
             counted: Default::default(),
@@ -418,7 +432,8 @@ impl<'p> Emitter<'p> {
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
-        let named = crate::scope::named_params(&f.body, f.params.len());
+        let mut named = crate::scope::named_params(&f.body, f.params.len());
+        named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
         let tparams = self.devirt.template_params(id);
         let params: Vec<String> = f
             .params
@@ -731,9 +746,11 @@ impl<'p> Emitter<'p> {
                 let def = &program.structs[*id];
                 out.push_str(&format!("struct {} {{\n", ident(&def.name)));
                 let mut names = Vec::new();
-                for (field, field_ty) in &def.fields {
-                    let field_idx = names.len();
+                for (field_idx, (field, field_ty)) in def.fields.iter().enumerate() {
                     let name = ident(field);
+                    if self.devirt.unread_field(*id, field_idx) {
+                        continue;
+                    }
                     if self.devirt.field_elidable(*id, field_idx) {
                         out.push_str(&format!("    bool {name} = false;\n"));
                         names.push(name);
@@ -748,10 +765,10 @@ impl<'p> Emitter<'p> {
                     ) {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
-                    } else if let Some(w) = self.narrow_ints.get(&(*id, names.len())) {
+                    } else if let Some(w) = self.narrow_ints.get(&(*id, field_idx)) {
                         cpp = w.cpp().into();
                     } else if let Some(l) =
-                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, names.len()))
+                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, field_idx))
                     {
                         cpp = self.ty_with_elem_layout(field_ty, Some(l));
                     }
@@ -1782,9 +1799,14 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
     const MAX_LINES: usize = 16;
     let body = def.trim_start_matches('\n').split_once('\n').map_or("", |(_, b)| b);
+    let stmts = body
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && *l != "}" && *l != "} else {" && !l.starts_with("cpl::fail("))
+        .count();
     !signature.starts_with("template")
         && !signature.contains(" main(")
-        && body.lines().count() <= MAX_LINES
+        && stmts <= MAX_LINES
         && !body.contains(&format!("{name}("))
 }
 

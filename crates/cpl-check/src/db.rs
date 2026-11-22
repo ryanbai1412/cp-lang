@@ -23,7 +23,7 @@
 //! the signature re-checks exactly the items that looked the fn up.
 
 use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
-use crate::check::{Checker, Env, GlobalRef, HoverEntry};
+use crate::check::{Checker, Env, GlobalRef, HoverEntry, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::modules::{FsLoader, Loader};
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
@@ -74,6 +74,10 @@ pub struct ItemCheck {
     pub diagnostics: Vec<Diagnostic>,
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
+    pub typed_indexes: Vec<TypedIndex>,
+    /// Where `print` or `read` is called with values of a fixed size (numbers,
+    /// characters and tuples of them): the callee.
+    pub fixed_io: Vec<Span>,
 }
 
 #[derive(Debug)]
@@ -314,6 +318,19 @@ impl Database {
 
     pub fn file_text(&self, path: &str) -> Option<Arc<str>> {
         self.files.get(path).map(|f| f.text.clone())
+    }
+
+    /// Whether the file's text was read from disk rather than set by the editor.
+    pub fn file_loaded(&self, path: &str) -> bool {
+        self.files.get(path).is_some_and(|f| f.loaded)
+    }
+
+    /// Puts back what `file_text` and `file_loaded` said before a trial edit.
+    pub fn restore_file(&mut self, path: &str, text: Arc<str>, loaded: bool) {
+        self.store(path, text, false);
+        if let Some(file) = self.files.get_mut(path) {
+            file.loaded = loaded;
+        }
     }
 
     pub fn stats(&self) -> Stats {
@@ -647,10 +664,43 @@ impl Database {
         for &span in &lexed.poisoned {
             sink.poison(span);
         }
+        // A `let` assigned in many places is one mistake, at the `let`.
+        let mut assigned_lets = Vec::new();
         for ((range, item), check) in ranges.iter().zip(items.iter()).zip(&checks) {
             let offset = range.span.start;
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
-                sink.push(diag.clone().shift(offset));
+                let mut diag = diag.clone().shift(offset);
+                // The checker sees one item; where a `use` goes is the file's.
+                for fix in diag.fixes.iter_mut().filter(|_| diag.code == codes::UNRESOLVED_NAME) {
+                    if let [(_, line)] = &fix.edits[..] {
+                        let import = line.trim_end().strip_prefix("use std.");
+                        if let Some((module, name)) = import.and_then(|i| i.split_once(".{")) {
+                            let name = name.trim_end_matches('}');
+                            fix.edits = vec![crate::prelude::import_edit(&text, module, name)];
+                        }
+                    }
+                }
+                if diag.code == codes::WRONG_DOMAIN {
+                    for label in &mut diag.labels {
+                        if label.span.is_empty() {
+                            label.span = global_decl(label.span, &text, &scope, &items, &ranges)
+                                .unwrap_or(label.span);
+                        }
+                    }
+                    diag.labels.retain(|l| !l.span.is_empty());
+                }
+                if diag.code == codes::ASSIGN_TO_LET {
+                    if diag.labels.is_empty() {
+                        declare_with_var(&mut diag, &text, &scope, &items, &ranges);
+                    }
+                    if let Some(decl) = diag.labels.first().map(|l| l.span) {
+                        if assigned_lets.contains(&decl) {
+                            continue;
+                        }
+                        assigned_lets.push(decl);
+                    }
+                }
+                sink.push(diag);
             }
         }
         let imports_ok = import_diags.is_empty();
@@ -1413,6 +1463,22 @@ impl FileCtx<'_> {
                         });
                     }
                 }
+                Flow::Move(src) => {
+                    if !names[current].0.contains(src) {
+                        continue;
+                    }
+                    let reset = (index + 1..current).any(|k| {
+                        names[k].1.contains(src)
+                            || items[k].decls.iter().any(|d| d.name == *src)
+                    });
+                    if !reset {
+                        out.push(Replay {
+                            item: item.clone(),
+                            live_after: false,
+                            written: false,
+                        });
+                    }
+                }
             }
         }
         out
@@ -1565,6 +1631,8 @@ impl FileCtx<'_> {
             diagnostics: checked.diagnostics,
             hovers: checked.hovers,
             refs: checked.refs,
+            typed_indexes: checked.typed_indexes,
+            fixed_io: checked.fixed_io,
         });
         self.db.checks.insert(
             key,
@@ -1670,4 +1738,49 @@ fn is_prelude(path: &str) -> bool {
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
     path.contains("/stdlib/") || path.starts_with("stdlib/") || path.starts_with("std/")
+}
+
+/// The declaration of the top-level name that starts at `at`.
+fn global_decl(
+    at: Span,
+    text: &str,
+    scope: &Scope,
+    items: &[Arc<ItemSyntax>],
+    ranges: &[cpl_syntax::ItemRange],
+) -> Option<Span> {
+    let rest = text.get(at.start as usize..)?;
+    let len = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+    let name = &rest[..len];
+    let &index = scope.names.get(name)?;
+    let decl = items[index].decls.iter().find(|d| d.name == name)?;
+    Some(decl.span.shift(ranges[index].span.start))
+}
+
+/// Assigning a top-level `let` from another item: point at its
+/// declaration and offer to make it a `var` there.
+fn declare_with_var(
+    diag: &mut Diagnostic,
+    text: &str,
+    scope: &Scope,
+    items: &[Arc<ItemSyntax>],
+    ranges: &[cpl_syntax::ItemRange],
+) {
+    let name = diag.span.text(text);
+    let Some(&index) = scope.names.get(name) else {
+        return;
+    };
+    let Some(decl) = items[index].decls.iter().find(|d| d.name == name) else {
+        return;
+    };
+    let decl = decl.span.shift(ranges[index].span.start);
+    diag.labels.push(cpl_diag::Label {
+        span: decl,
+        message: "declared here".into(),
+    });
+    if let Some(at) = crate::check::let_before(text, decl) {
+        diag.fixes.push(cpl_diag::Fix {
+            title: format!("declare `{name}` with `var`"),
+            edits: vec![(at, "var".into())],
+        });
+    }
 }

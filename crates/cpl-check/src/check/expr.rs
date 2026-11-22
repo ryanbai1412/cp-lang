@@ -114,13 +114,53 @@ impl<'a> Checker<'a> {
                 };
                 let mut left = side(self, first);
                 let mut left_expr: &Expr = first;
+                let mut any_vague = left.is_vague();
                 for (op, right_expr) in rest {
                     let right = side(self, right_expr);
+                    any_vague |= right.is_vague();
                     if !matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
                         self.comparable(&left, left_expr, &right, right_expr);
                     }
                     left = right;
                     left_expr = right_expr;
+                }
+                // §130: chained comparisons must point in one direction and cannot contain `==` or `!=`.
+                let is_module_generic_call = matches!(
+                    &first.kind,
+                    ExprKind::Field { base, .. }
+                        if matches!(&base.kind, ExprKind::Name(m) if self.env.is_module(m))
+                ) && rest.len() == 2
+                    && rest[0].0 == ast::CmpOp::Lt
+                    && rest[1].0 == ast::CmpOp::Gt;
+                if rest.len() >= 2 && !any_vague && !is_module_generic_call {
+                    let has_lt = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Lt | ast::CmpOp::Le));
+                    let has_gt = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Gt | ast::CmpOp::Ge));
+                    let has_eq = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Eq | ast::CmpOp::Ne));
+                    if has_eq {
+                        if let Some(diag) = self.error(
+                            codes::BAD_OPERANDS,
+                            expr.span,
+                            "chained comparisons cannot contain `==` or `!=`".to_string(),
+                        ) {
+                            diag.help = Some("join the comparisons with `and` instead".to_string());
+                        }
+                    } else if has_lt && has_gt {
+                        if let Some(diag) = self.error(
+                            codes::BAD_OPERANDS,
+                            expr.span,
+                            "chained comparisons must point in one direction".to_string(),
+                        ) {
+                            diag.help = Some(
+                                "split mixed `<` and `>` comparisons with `and`".to_string(),
+                            );
+                        }
+                    }
                 }
                 if rest.iter().any(|(op, _)| *op == ast::CmpOp::Order) {
                     return Ty::Unknown;
@@ -155,8 +195,11 @@ impl<'a> Checker<'a> {
                     // except when the enclosing context explicitly expects `Range<V.cuts>`.
                     (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
                         let spec = std::env::var_os("CPL_SPEC").is_some();
+                        let both_cuts =
+                            bounds_domain(&lo_ty).is_some() && bounds_domain(&hi_ty).is_some();
                         if self.expected_bounds_range
                             || (spec && (*inclusive || !self.expected_piece))
+                            || (self.iterating_range && both_cuts && !*inclusive)
                         {
                             Ty::Pos(bd)
                         } else {
@@ -346,6 +389,7 @@ impl<'a> Checker<'a> {
                 params,
                 param_tys,
                 param_mut,
+                ret_ty,
                 body,
             } => {
                 let given = match self.lambda_params.iter().position(|(at, _)| *at == expr.span) {
@@ -374,17 +418,35 @@ impl<'a> Checker<'a> {
                     });
                 }
                 // A lambda's `return` and trailing value belong to the lambda.
+                let declared_ret = ret_ty.as_ref().map(|t| self.resolve_type(t));
                 let lam_depth = self.scopes.len();
-                self.fns.push((String::new(), Ty::Unknown, false, lam_depth));
+                self.fns.push((
+                    String::new(),
+                    declared_ret.clone().unwrap_or(Ty::Unknown),
+                    false,
+                    lam_depth,
+                ));
                 self.branch += 1;
                 let ret = self.infer(body);
                 self.branch -= 1;
                 self.fns.pop();
                 self.pop_scope();
-                if any_typed {
+                let final_ret = if let Some(dret) = declared_ret {
+                    if !matches!(ret, Ty::Unknown | Ty::Error) && !self.fits(&ret, &dret) {
+                        self.error(
+                            codes::TYPE_MISMATCH,
+                            body.span,
+                            format!("expected `{dret}`, found `{ret}`"),
+                        );
+                    }
+                    dret
+                } else {
+                    ret
+                };
+                if any_typed || ret_ty.is_some() {
                     Ty::Fn {
                         params: sig_params,
-                        ret: Box::new(ret),
+                        ret: Box::new(final_ret),
                     }
                 } else {
                     Ty::Unknown
@@ -402,6 +464,8 @@ impl<'a> Checker<'a> {
                 // branches that follow, it does not.
                 let mark = self.lend_mark();
                 let present = self.present.len();
+                let saved_moved = self.moved.clone();
+                let mut post_moved = saved_moved.clone();
                 // `if const` with a test known here picks its branch now:
                 // the others are not compiled, so they are not checked.
                 let mut picked = false;
@@ -409,6 +473,7 @@ impl<'a> Checker<'a> {
                     if picked {
                         break;
                     }
+                    self.moved = saved_moved.clone();
                     self.push_scope();
                     self.cond(cond);
                     let known = match cond {
@@ -428,6 +493,21 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.block(body);
                     self.branch -= value;
+                    let branch_leaves = matches!(
+                        body.stmts.last().map(|s| &s.kind),
+                        Some(
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
+                    );
+                    if !branch_leaves {
+                        for (k, v) in &self.moved {
+                            if self.local(k).is_some() {
+                                post_moved.entry(k.clone()).or_insert(*v);
+                            }
+                        }
+                    }
                     self.present.truncate(past);
                     let failed = narrow::past(cond, &branches[at + 1..], otherwise.as_ref(), &mut |f, x| self.call_writes(f, x));
                     self.present.extend(failed.into_iter().map(String::from));
@@ -455,9 +535,17 @@ impl<'a> Checker<'a> {
                 let result_ty = match otherwise {
                     Some(_) if picked => result.unwrap_or(Ty::Unit),
                     Some(body) => {
+                        self.moved = saved_moved.clone();
                         self.branch += value;
                         let ty = self.block(body);
                         self.branch -= value;
+                        if !leaves(body) {
+                            for (k, v) in &self.moved {
+                                if self.local(k).is_some() {
+                                    post_moved.entry(k.clone()).or_insert(*v);
+                                }
+                            }
+                        }
                         match result {
                             Some(first) if first.is_vague() => ty,
                             Some(first) => first.widen(),
@@ -466,6 +554,7 @@ impl<'a> Checker<'a> {
                     }
                     None => Ty::Unit,
                 };
+                self.moved = post_moved;
                 self.present.truncate(present);
                 self.lend_reset(mark);
                 if let Some(cond) = after {
@@ -476,8 +565,11 @@ impl<'a> Checker<'a> {
             ExprKind::Match { scrutinee, arms } => {
                 let value = u32::from(self.plain_if.take() != Some(expr.span));
                 let scrutinee_ty = self.infer_optional(scrutinee);
+                let saved_moved = self.moved.clone();
+                let mut post_moved = saved_moved.clone();
                 let mut result = None;
                 for arm in arms {
+                    self.moved = saved_moved.clone();
                     self.push_scope();
                     self.bind(&arm.pat, &scrutinee_ty, false, "let");
                     if let Some(guard) = &arm.guard {
@@ -487,6 +579,21 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.block(&arm.body);
                     self.branch -= value;
+                    let arm_leaves = matches!(
+                        arm.body.stmts.last().map(|s| &s.kind),
+                        Some(
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
+                    );
+                    if !arm_leaves {
+                        for (k, v) in &self.moved {
+                            if self.local(k).is_some() {
+                                post_moved.entry(k.clone()).or_insert(*v);
+                            }
+                        }
+                    }
                     self.pop_scope();
                     // The value is the first arm's that has one: an arm
                     // that leaves (`Skip => continue`) has none.
@@ -497,6 +604,7 @@ impl<'a> Checker<'a> {
                         result = Some(ty.widen());
                     }
                 }
+                self.moved = post_moved;
                 let result = result.unwrap_or(Ty::Unit);
                 self.require_every_variant(&scrutinee_ty, arms, expr.span);
                 result
@@ -1793,6 +1901,10 @@ impl<'a> Checker<'a> {
                         name: "Range".into(),
                         args: vec![Ty::Pos(format!("{domain}.cuts"))],
                     },
+                    "Cut" => {
+                        self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
+                        Ty::Error
+                    }
                     "pairs" => Ty::Named {
                         name: "List".into(),
                         args: vec![Ty::Tuple(vec![
@@ -2068,6 +2180,33 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Records `expr` as in bounds when each index has exactly the domain
+    /// type it stands for: a position of it, or the same type parameter.
+    fn note_typed_index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr], got: &[Ty], want: &[Ty]) {
+        fn space(got: &Ty, want: &Ty) -> bool {
+            match (got, want) {
+                (Ty::Pos(a), Ty::Pos(b)) | (Ty::Param(a), Ty::Param(b)) => a == b,
+                (Ty::Tuple(a), Ty::Tuple(b)) => a.len() == b.len() && a.iter().zip(b).all(|(a, b)| space(a, b)),
+                _ => false,
+            }
+        }
+        if indices.is_empty() || got.len() != indices.len() || want.len() != indices.len() {
+            return;
+        }
+        if !got.iter().zip(want).all(|(got, want)| space(got, want)) {
+            return;
+        }
+        let proofs: Vec<String> =
+            indices.iter().zip(got).map(|(e, ty)| format!("{}: {ty}", self.quote(e.span))).collect();
+        let spaces = if proofs.len() == 1 { "space" } else { "spaces" };
+        self.typed_indexes.push(crate::check::TypedIndex {
+            access: expr.span,
+            seq: base.span,
+            index: Span::new(indices[0].span.start, indices[indices.len() - 1].span.end),
+            proof: format!("{}, the index {spaces} of {}", proofs.join(", "), self.quote(base.span)),
+        });
+    }
+
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         let base_ty = self.infer(base);
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
@@ -2141,6 +2280,8 @@ impl<'a> Checker<'a> {
                     unreachable!()
                 };
                 let factors = self.product_factors(dom).unwrap();
+                let wants: Vec<Ty> = factors.iter().map(|(_, want)| want.clone()).collect();
+                self.note_typed_index(expr, base, indices, &index_tys, &wants);
                 for ((got, (_, want)), index_expr) in
                     index_tys.iter().zip(&factors).zip(indices)
                 {
@@ -2164,6 +2305,7 @@ impl<'a> Checker<'a> {
                         || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == index.len())) =>
             {
                 let want = Ty::Tuple(index.clone());
+                self.note_typed_index(expr, base, indices, &index_tys, std::slice::from_ref(&want));
                 self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
                     format!(
                         "`{}` is indexed by {}, but `{}` is {}",
@@ -2217,6 +2359,34 @@ impl<'a> Checker<'a> {
                 // the columns alone.
                 let mut kept = Vec::new();
                 for ((want, got), index_expr) in index.iter().zip(&index_tys).zip(indices) {
+                    if let (
+                        ExprKind::Range { hi: Some(hi), inclusive: true, .. },
+                        Ty::Named { name, args },
+                        Ty::Pos(dom),
+                    ) = (&index_expr.kind, got, want)
+                    {
+                        if name == "Range" && args.len() == 1 {
+                            if let Ty::Pos(cut) = &args[0] {
+                                if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                                    let msg = format!(
+                                        "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
+                                        self.quote(hi.span)
+                                    );
+                                    if let Some(diag) =
+                                        self.error(codes::WRONG_DOMAIN, index_expr.span, msg)
+                                    {
+                                        diag.help = Some(
+                                            "use half-open `..` for the positions between two cuts"
+                                                .to_string(),
+                                        );
+                                    }
+                                    slice = true;
+                                    kept.push(want.clone());
+                                    continue;
+                                }
+                            }
+                        }
+                    }
                     if matches!(got, Ty::Named { name, .. } if name == "Range") {
                         slice = true;
                         kept.push(want.clone());
@@ -2249,9 +2419,19 @@ impl<'a> Checker<'a> {
                         {
                             diag.help = Some(help);
                         }
-                    } else if let Some(diag) =
-                        self.error(codes::WRONG_DOMAIN, index_expr.span, message)
-                    {
+                    } else {
+                        let origins = [
+                            self.origin(base, &format!("declared over {want}")),
+                            self.origin(index_expr, &format!("declared as {}", got.with_article())),
+                        ];
+                        let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message)
+                        else {
+                            continue;
+                        };
+                        diag.labels.extend(origins.into_iter().flatten());
+                        if let (true, false, Ty::Pos(domain)) = (got.is_int(), boundary, want) {
+                            diag.fixes.push(convert_to(domain, index_expr.span));
+                        }
                         diag.help = Some(if boundary {
                             "a position and the boundaries around it are different indices; use `.l` / `.r` for the boundaries on either side of a position".to_string()
                         } else if got.is_int() {
@@ -2260,6 +2440,9 @@ impl<'a> Checker<'a> {
                             format!("index with {}", want.with_article())
                         });
                     }
+                }
+                if !slice {
+                    self.note_typed_index(expr, base, indices, &index_tys, index);
                 }
                 if slice {
                     // A slice is its array seen through a range: lent,
@@ -2322,13 +2505,46 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `got.fits(want)`, with an `Int` fitting a number struct and
-    /// product tuples/records fitting their product domain.
+    /// If `dom` is a cut domain (`D.bounds` or `domain Cut = D.bounds`),
+    /// returns the underlying position domain name `D`.
+    pub(crate) fn bounds_base_domain(&mut self, dom: &str) -> Option<String> {
+        if let Some(base) = dom.strip_suffix(".bounds") {
+            return Some(base.to_string());
+        }
+        if let Some(Def::Domain(info)) = self.env.global(dom).as_deref() {
+            if let Some(base) = info.text.strip_suffix(".bounds") {
+                return Some(base.to_string());
+            }
+        }
+        None
+    }
+
+    /// `got.fits(want)`, with an `Int` fitting a number struct, cut-domain
+    /// values/ranges (§124), and product tuples/records fitting their product domain.
     pub(crate) fn fits(&mut self, got: &Ty, want: &Ty) -> bool {
         if got.fits_in(want, &mut |name| self.is_number(name)) {
             return true;
         }
         match (got, want) {
+            // §124: integer literals and checked arithmetic fit `D.bounds`.
+            (a, Ty::Pos(dom)) if a.is_int() && self.bounds_base_domain(dom).is_some() => {
+                return true;
+            }
+            // §124: half-open cut range `Range<D.bounds>` fits `Range<D>`.
+            (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })
+                if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 =>
+            {
+                if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
+                    if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                        return true;
+                    }
+                }
+            }
+            (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })
+                if an == "List" && bn == "List" && aa.len() == 1 && ba.len() == 1 =>
+            {
+                return self.fits(&aa[0], &ba[0]);
+            }
             (Ty::Tuple(items), Ty::Pos(dom)) => {
                 if let Some(factors) = self.product_factors(dom) {
                     return items.len() == factors.len()
@@ -2346,7 +2562,10 @@ impl<'a> Checker<'a> {
                         });
                 }
             }
-            (Ty::Tuple(_) | Ty::Record(_), Ty::Optional(inner)) => {
+            (Ty::Tuple(a), Ty::Tuple(b)) if a.len() == b.len() => {
+                return a.iter().zip(b).all(|(g, w)| self.fits(g, w));
+            }
+            (_, Ty::Optional(inner)) => {
                 return self.fits(got, inner);
             }
             _ => {}
@@ -2404,6 +2623,36 @@ impl<'a> Checker<'a> {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
         let got = &self.narrowed(got, want);
+        // §124: `j..=i` over cuts never converts to `Range<D>`.
+        if let ExprKind::Range { hi: Some(hi), inclusive: true, .. } = &at.kind {
+            let inner_want = match want {
+                Ty::Optional(inner) => inner.as_ref(),
+                other => other,
+            };
+            if let (
+                Ty::Named { name: an, args: aa },
+                Ty::Named { name: bn, args: ba },
+            ) = (got, inner_want)
+            {
+                if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 {
+                    if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
+                        if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                            let msg = format!(
+                                "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
+                                self.quote(hi.span)
+                            );
+                            if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, msg) {
+                                diag.help = Some(
+                                    "use half-open `..` for the positions between two cuts"
+                                        .to_string(),
+                                );
+                            }
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
         if self.fits(got, want)
             || matches!(at.kind, ExprKind::None)
             || got.has_error()
@@ -2466,6 +2715,10 @@ impl<'a> Checker<'a> {
             }
             return false;
         }
+        if matches!(got, Ty::Domain(_)) && !matches!(want, Ty::Domain(_)) {
+            self.planned(at.span, &cpl_syntax::planned::DOMAIN_VALUE);
+            return false;
+        }
         let text = message(self, got, want);
         let code = if matches!((got, want), (Ty::Pos(_), _) | (_, Ty::Pos(_))) {
             codes::WRONG_DOMAIN
@@ -2473,9 +2726,12 @@ impl<'a> Checker<'a> {
             codes::TYPE_MISMATCH
         };
         let quoted = self.quote(at.span);
+        let origin = self.origin(at, &format!("declared as {}", got.with_article()));
         if let Some(diag) = self.error(code, at.span, text) {
+            diag.labels.extend(origin);
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));
+                diag.fixes.push(convert_to(domain, at.span));
             }
         }
         false
@@ -2520,6 +2776,35 @@ impl Checker<'_> {
             return !self.local_product_domains.contains_key(&base);
         }
         matches!(self.type_def(&base).as_deref(), Some(Def::Domain(info)) if info.factors.is_empty())
+    }
+}
+
+impl Checker<'_> {
+    /// Where the index space of a plain name comes from: its declaration,
+    /// as "`name` is <what> here". A top-level name is declared in another
+    /// item, so its label is left as a point at the use for the database
+    /// to move onto the declaration.
+    fn origin(&mut self, expr: &Expr, what: &str) -> Option<cpl_diag::Label> {
+        let ExprKind::Name(name) = &expr.kind else {
+            return None;
+        };
+        let span = match self.local(name).map(|local| local.span) {
+            Some(span) => span,
+            None if self.env.global(name).is_some() => Span::point(expr.span.start),
+            None => return None,
+        };
+        Some(cpl_diag::Label {
+            span,
+            message: format!("`{name}` is {what} here"),
+        })
+    }
+}
+
+/// Wraps the number at `span` in `domain(...)`, the checked conversion.
+fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
+    cpl_diag::Fix {
+        title: format!("convert with `{domain}(...)`"),
+        edits: vec![(Span::point(span.start), format!("{domain}(")), (Span::point(span.end), ")".into())],
     }
 }
 

@@ -2248,6 +2248,264 @@ gives each unwritten parameter its type, with `T` the receiver's element, before
 inferred: one rule for every built-in method that takes a lambda, and the body is checked with
 real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
 
+29.25. **The editor's overflow warning names inputs the prover found, and is a note.** An
+interval hull that leaves `Int` is only a suspicion (`a - b` with `a >= b` known, a `var`'s
+hull), so the editor asks `cpl-prover` for inputs in their declared ranges that overflow the
+operation and shows a soft note only when it finds some: `area * area overflows Int when n =
+55109`. Only names it can follow take part (range-typed inputs and params, immutable `let`s of
+arithmetic over them); a narrowed name, a loop variable or a `var` makes it say nothing, so a
+note is never a false alarm. It is a note in the editor, not a lint, until the checker owns
+ranges; it fires on none of the 305 ports and examples. Reverse: drop `Bounds::overflow` and
+`overflows` in the server.
+
+29.26. **`var`s that read each other get one joint hull.** A binary search's `lo = mid + 1`
+reads `mid`, a `let` in the loop, and `mid` reads `hi`, a later `var`, so solving one `var` at a
+time gave none of them a range. Now each `var`'s hull is solved with every `var` and `let` in
+its scope that one place in the file binds (so each use reads that binding), iterating to the
+least fixed point (up to 72 rounds, enough to halve a gap of `10^18`). A `var` that never settles
+is dropped and the rest solved again. Top-level statements now keep the ranges of names bound
+above them; fn and impl bodies still see only declared ranges, since they may run anywhere.
+Reverse: restore `var_range`'s one-name solve and the per-statement `Bounds` clone.
+
+29.27. **A loop with no `break` leaves its condition false, and a fn's writes block narrowing.**
+After `while w > 9:` with no `break` and no `else`, the statements that follow see `w <= 9`,
+unless they assign `w`. A name that any fn or lambda body assigns is never narrowed, by a loop or
+an `if`, since a call can change it between the test and the use. Reverse: drop the post-loop
+`narrow` call, `breaks` and `Bounds::fn_writes`.
+
+29.28. **An assignment in a `while` body reads the names its condition bounds.** `c += 1` under
+`while c < n:` sees `c < n`, so `c` keeps `0..=n` instead of having no range. Only assignments
+directly in the body, and only names no earlier statement there assigns. Hulls now grow until a
+round of assignments stays inside them, jumping to the edge of `Int` after 64 rounds, then shrink
+while each round stays inside: a guarded counter's first hull is wider than it needs. Reverse:
+drop `guarded` and its lookup in `var_range`'s round.
+
+29.29. **Completion offers stdlib names that need a `use`, and adds it.** Before, a name outside
+the prelude completed only after its `use` was written, so the contestant had to know the module.
+Now names of two or more letters complete from every stdlib module, ranked after what is in
+scope, with the module shown and the `use` as an extra edit. The unresolved-name quick fix had put
+its `use` at the start of the item holding the name, possibly mid-file; both now share
+`cpl_check::import_edit`, which joins the module's existing `use` line or goes below the last one.
+Reverse: drop the `STD_NAMES` loop in `scope_completion` and the fix rewrite in `Database`.
+
+29.30. **Rename reaches files on disk that import the name.** A contest folder holds one solution
+per problem, most of them closed, all importing the same `lib`. Renaming a library fn from one file
+left the closed ones broken. Rename now also edits each `.cp` file of the project (the folder of
+the nearest `cp.toml`, else the file's own) with a `use` line naming the old name, checked by the
+same go-to-definition test as open files. The scan reads at most 5000 entries and skips hidden
+folders, `target`, `dist` and `node_modules`. Reverse: drop `rename::project_files`.
+
+29.31. **A comparison of two names bounds their difference.** Intervals alone give `n - a` in
+`-8..=100` inside `if a < n:`, though it is at least 1. The bounds now keep, per pair of names, an
+interval for `a - b` that a condition proved, and `a - b` is cut to it. A pair is forgotten when
+either name is bound again, and never recorded for a name the branch or any fn assigns, so the
+relation holds wherever it is read. Only a difference of two plain names reads it, which keeps the
+analysis linear (no closure over chains like `a < b < c`). Reverse: drop `Bounds::diffs`.
+
+29.32. **A `for` loop's head hovers how often it runs, with no warning.** `plan/60` asks for the
+estimate and for a soft warning on likely TLE. The count is the size of the range or domain the
+loop walks, times the counts of the `for`s around it; a `while` or a walk over a list makes the
+total unknown, and a fn body counts from 1, since its callers are not followed. On the ports and
+examples 12 of 1307 counted loops pass 1e10 in all, in solutions that pass their tests, so the
+bound overstates the work there and a warning on it would be a false alarm; the warning waits for
+a cost the checker derives. Reverse: drop `proven_loops` and `loop_hover`.
+
+29.33. **A relation holds until a statement assigns one of its names.** 29.31 recorded no relation
+for a name the block assigns anywhere, so a binary search's body, which always assigns `lo` or
+`hi`, got none. A loop's condition holds at the top of each pass, so the relation is now recorded
+regardless and dropped before the first statement that assigns either name (a compound statement
+counts as a whole, so a nested loop that writes the name drops it before it is entered). `let m =
+(x + y) / 2` relates `m` to both ends: `m - x` is half of `y - x` rounded down, `y - m` half rounded
+up. Reverse: pass the block back to `relate` and drop `relate_midpoint`.
+
+29.34. **Relations follow assignments, `if`s and `while` loops.** After `x = y + c` (also `x += c`),
+`x - z` is `y - z` shifted by `c` for each relation of `y`. The branches of an `if` start from what
+held before it, and after it each relation every branch (and the fall-through) proves holds, as their
+hull; names a branch declares are left out. A `while` that compares two names its body assigns
+starts from their difference on entry (a `var` holds its initial value until assigned), runs its
+body again until that stops widening, at most three times, and keeps the result as an invariant
+inside the loop and, with no `break`, after it, where the failed condition then narrows it: a
+binary search ends with `lo - hi = 0`. A body with `continue` gets no invariant, since `continue`
+returns to the condition without the rest of the body. A test that narrows a name now keeps its
+relations. A difference that is a constant only because of a relation hovers as `= 0`. The extra
+body passes cost at most four times a loop's analysis, more for nested searches; the latency gate
+still passes. Reverse: drop `carried`, `join` and `loop_invariant`.
+
+29.35. **Rename is refused when it would change what a name means.** Before answering, the server
+applies the edits to every file it renames in, re-checks them, and asks go-to-definition again at
+each use of the old and the new name; if any resolves to a different declaration than before (two
+locals merged, `x` captured by a nearer `let y` once `x` becomes `y`, a global shadowed), the rename
+is refused with the line of the first such use. With that check, the old blanket refusal of a name
+already declared at the top level applies only when the renamed declaration is itself top-level, so
+a local may take a global's name it doesn't use. Uses in files the rename doesn't edit are not
+re-checked. Reverse by dropping `rename::changed_meaning` and the `top_level` condition.
+
+29.36. **Hover shows why an index is in bounds.** `xs.len` becomes a name the relations track
+(`xs.len`) when `xs` is bound once and never assigned, lent, passed `mut` or the receiver of a
+method call anywhere in the file, so its length never changes; it is in `0..=i64::MAX`. Then
+`var hi = xs.len` relates `hi` to it, `var (lo, hi) = (0, xs.len)` binds each name as its own `var`,
+`let mid = (lo + hi) / 2` relates `mid` to whatever `lo` and `hi` are related to, and `for i in
+0..xs.len` keeps `i < xs.len`. An index `xs[i]` with `i` at least 0 and `i - xs.len` below 0 hovers
+the chain that proves it (`0 <= lo <= mid < hi <= ys.len`). Ranges a `.len` bounds only by that
+type limit are not shown. Two changes came with it: a `while` invariant that still moves after two
+rounds widens to what the names' values allow instead of being dropped, and a write in a fn to a
+name that fn declared earlier no longer counts as a write some call could make, so a fn's own locals
+get relations; an `if` test is read before the branches' assignments clear relations. Reverse by
+dropping `Bounds::fixed`/`atom` (back to plain names), `in_bounds` and `index_hover`.
+
+29.37. **A list's length is fixed once nothing changes it any more.** A sequence bound once whose
+length some statement changes (`push`, assignment, `mut` argument, any method call on it) has its
+`.len` tracked from the end of its last change, or of the outermost loop around that change which
+its declaration is outside of, since the loop's next turn could change it again. A change inside a
+fn or lambda body declared outside the sequence's own scope could happen at any call, so that
+sequence gets no fixed length. A `.len` read before that point is not a name the relations know,
+so no fact about it is made where it could still move: `xs[i]` followed by `xs.push` gets no proof,
+even though the push comes after the use. Ports and examples with an index proof: 64 to 121, none
+lost. Reverse by dropping `Bounds::stable` (back to sequences no statement ever changes).
+
+29.38. **A row's length is a name too.** `g[u].len` joins the relations when `g` is bound once,
+`u` is a plain name, and nothing changes the length of any row of `g` from that point on: a change
+to `g` itself or to some `g[e]` (assignment, `mut` argument, method call such as `g[e].push`) counts,
+a change to an element `g[e][f]` does not. The rows are tracked as one sequence, so pushing to any
+row stops every `g[_].len` proof, even for a different row. A fact about `g[u].len` is dropped
+wherever `u` is assigned or bound again. `for j in 0..g[u].len: g[u][j]` gets `0 <= j < g[u].len`;
+ports and examples with an index proof: 121 to 137. Reverse by dropping the `Index` arm of
+`Bounds::atom` and `row_of`.
+
+29.39. **A length is a name that statements change, like a `var`.** Supersedes the offsets of
+29.37: `xs.len` of a tracked sequence (bound once, changed only by statements of its own scope) is
+in the relations everywhere, and a statement that assigns, lends, passes `mut` or calls a method on
+`xs` (`g` or `g[e]` for `g[u].len`) drops what was known about it, the way an assignment drops a
+`var`'s. A length changed inside a statement is dropped before anything in that statement reads it,
+so `q.pop()! + q[head]` gets no proof. This proves the breadth-first queue, `while head < q.len:
+let u = q[head]` followed by pushes, and a search re-run after each pop. A method call counts as a change
+unless every built-in list or string method of that name leaves its receiver alone (`contains`,
+`sum`; not `sort`, whose length stays but which the catalog marks as mutating; on wasm, every call
+counts). Ports and examples with an index proof: 137 to 177, none lost.
+Reverse by restoring `Bounds::stable` from 29.37.
+
+29.40. **A domain array's index is proven by its type.** The checker records each index of a
+`[V]T` or `[R, C]T` whose every index is a `V` (a domain position, or the same type parameter in a
+generic fn), and hover shows `xs[v]: in bounds, v: V, the index space of xs`. The type is the
+proof, so no range analysis is involved; an index whose type is unknown (`tree.parent(v)` today)
+or a slice gets nothing. `dp[v, k]` over `domain State = (V, K)` and `g[p]` with `p: (R, C)`
+count too; a subdomain position does not, since its name alone is not the array's domain.
+Reverse by dropping `TypedIndex` and the fallback in the LSP's `index_hover`.
+
+29.41. **A fn's hover counts the loop iterations of one call.** Hovering a fn with a loop shows
+`loops: at most 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the
+stdlib not counted`: the sum over its `for` loops of how often each body runs, nested loops
+multiplied, from the same proven counts as a loop's own hover, plus for each call by name of a fn
+in the file how often the call runs times that fn's count. A `while`, a `for` with no proven
+count, recursion, or a call inside a lambda, table or comprehension makes the total unknown, and
+then nothing is shown; of the 1,334 fns in the ports and examples with a loop or such a call, 106 get
+a count (147 of 1,095 before calls were followed, when a call to a fn that never stops was simply
+left out). Method calls, stdlib costs and comprehensions themselves are not counted,
+which the text says; this is an iteration count, not the `O(..)` estimate `plan/60` asks for. Reverse by dropping
+`proven_fns` and its use in the LSP hover.
+
+29.42. **A loop's count is named in the source's terms.** The `for` hover reads `runs at most
+k = 7 times` and `n * k = 1400000 (1.4e6) times in all`: a range `0..q` or `1..=q` counts as `q`,
+a domain declared `1..=n` (or `0..n`) as `n`, and any other range as its number, so `2..q + 1`
+shows `999`, not `q - 1`. A count that is only numbers is not repeated. A fn's hover writes its
+count the same way, as a sum with equal terms gathered (`3 + 3 * n + 3 * n * k = 4800003`), and
+only the number past six terms. Reverse by dropping
+`ProvenLoop::count` and `total_count`.
+
+29.43. **A fn's hover lists its calls' documented costs, not a sum.** Each call in the fn's body
+whose doc states a cost above `O(1)` (the same `cost:` its own hover shows) is listed with how
+often it runs per call: once, a loop's count (`n = 200000 (2e5) times`), or `an unknown number of
+times` inside a `while`, an unbounded loop, a lambda, a table or a comprehension; calls in a
+nested fn are left to that fn. The cost's `n` is written as the receiver's size (`ys.sorted
+O(ys.len log ys.len)`), since the `n` of a doc is not the input `n`. They are not added into one
+`O(..)` with steps at max input: most receivers' sizes have no proven bound, and 102 of the 152
+built-in methods document no cost, so a sum would silently leave them out. At most four are
+listed, then `and k more`. Reverse by dropping `Database::costs_in` and `fn_call_costs`.
+
+29.44. **A call on an array of bounded size shows its steps at max input.** When the receiver is
+a `let` or param whose declared type is an array over domains or ranges the bounds size (`[V]Int`,
+`[0..q]Int`, `[R, C]Int`), the cost's `n` is written as that size in the source's terms (`O(n log
+n)`, `O((n * 3) log (n * 3))`) and evaluated at the size's maximum, logs base 2, as `about 3521929
+(3.5e6) steps each`. Only costs built from `n`, numbers, `log`, `^`, `*`, `+` and parentheses are
+evaluated; any other name (`deg u`, `|D|`) leaves the cost unevaluated. A `List` receiver has no
+size, since pushes change it: 9 of the 627 listed calls in the ports and examples get steps. The
+steps are not multiplied by how often the call runs, nor summed into the fn's. Hovering such a call
+anywhere, top level included, adds the same steps to its `cost:` line (`about 3521929 (3.5e6) steps:
+cells has at most n = 200000 (2e5) items`). Reverse by dropping `proven_sizes` and `steps_of`.
+
+29.45. **A list built by pushes in counted loops has that many items at most.** A list bound once
+as `var xs: List<T> = []`, whose length only `push` and `pop` change, all in its own scope (no fn,
+lambda, assignment, lend or `mut` argument touches it), has at most the sum over its `push` calls
+of how often each runs: `2 * n` for two pushes in `for k in 0..n`, `n + n * q + 1` across nested
+loops. A push inside a `while`, an unbounded `for` or a lambda leaves the list unsized, and so does
+a count that reaches `LEN_MAX` (a loop over `0..xs.len`). The size feeds the steps of 29.44: of the
+1,278 calls with a documented cost in the ports and examples, 56 get steps, 17 of them on lists.
+Along with it, `sort`, `reverse`, `swap` and `fill` count as keeping a list's length (amending
+29.39): the catalog marks them mutating, but they only move or overwrite elements, so a sort no
+longer drops an index proof. Reverse by dropping `Bounds::pushed` and `keeps_len`'s `IN_PLACE`.
+
+29.46. **A fn's hover estimates one call's steps only when nothing is left out.** When every loop
+of the fn has a count and every call outside the fns of the file has a documented cost that can be
+evaluated, the hover shows `estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max
+input` in place of the loop line: its loop iterations, plus each documented call's steps times how
+often it runs, an `O(1)` call counting one step. The `O(..)` is the sum of those terms in the
+source's terms, dropped past 100 characters. Any uncounted part (a lambda, table or comprehension;
+a call whose doc states no cost, such as `print`, `min` or `push`; a cost on a receiver of unknown
+size; a call through an expression) means no estimate, so the number is never an undercount of
+what it names. Operators and getters count as one step each: no doc states otherwise, and a string
+`+` is the one known exception. Only 13 of the 2,142 fns in the ports and examples get one: of the
+694 whose loops all have a count, the calls most often left without a cost are `push` (66 fns),
+`min` (33), `read` (31), `max` (30), `print` (27) and type constructors (`Node`, `Int`, `some`).
+Reverse by dropping `ProvenFn::callees` and `fn_total`.
+
+29.47. **The compiler's own prelude fns hover with a doc and the cost of their call's shape.**
+`abs`, `min`, `max`, `minmax`, `choose2`, `popcount`, `ctz`, `bit_width`, `bit_ceil`, `isqrt`,
+`swap` and `some` have no cp source, so they hovered nothing; `prelude::value_doc` now gives each a
+one-line doc with its cost, and `push` and `pop` document `O(1)` in the built-in catalog. The cost
+follows the call's shape: `min(a, b)` is `O(1)` per argument, `min(xs)` walks `xs` in `O(n)`. With
+these, `fn spread` in the hover fixture (a loop of `min(least, abs(cells[v]))`) gets `estimated
+cost: O(n), about 600001 (6e5) steps at max input`. Assumption: comparing two values counts as
+`O(1)`, like an operator, though `min` of two lists compares them element by element. `print`,
+`read` and type constructors still document no cost, since what they cost depends on the size of
+what they write, read or build. Reverse by dropping `value_doc` and its fallback in
+`Database::hover`.
+
+29.48. **Building a struct declared in the file counts as one step.** A call `Span(lo, hi)` to a
+struct of the file only moves its arguments into the fields, so `ProvenFn::builds` lists it and a
+fn's estimate adds one step per time it runs, instead of leaving the fn without an estimate.
+`fn widest` in the hover fixture (a loop building a `Span` from `min` and `max`) gets `estimated
+cost: O(n), about 800001 (8e5) steps at max input`. Assumption: a field default is a constant, so
+building costs nothing beyond the arguments, which are counted where they are written. A generic
+struct (`Pair<Int>(..)`), a variant and a built-in type such as `List(xs)`, which copies, stay
+uncounted. Reverse by dropping `builds`.
+
+29.49. **`print` and `read` cost `O(1)` when their values have a fixed size.** The checker records
+in `ItemCheck::fixed_io` a `print` whose arguments are all numbers, characters, tuples of them or
+strings of fixed text around them (`print(a + b, "and {a * b}")`), and a `let` of a declared fixed
+type bound to `read()` (`let (a, b): (Int, 1..=9) = read()`); their hover says `cost: O(1)`, so a
+fn's estimate counts them as one step. Any other `print` or `read` hovers a doc with no cost and
+still leaves the fn without an estimate. Fns in the ports and examples with an estimate went from
+25 to 28 of 2,150; `ask` (20 fns), `print` and `read` of lists or strings, and `Int(..)` are now
+the calls that most often block one. Assumption: a position counts as not fixed, since its label
+may be a string. Reverse by dropping `fixed_io`.
+
+29.50. **`ask`, scalar conversions and `rand` cost `O(1)` too.** `ask` bound by a `let` of a
+declared fixed type, with fixed-size arguments (`let r: 0..=1 = ask("?", c)`), joins `read` in
+`fixed_io`, and so do `Int(..)`, `I128`, `U64`, `F64`, `Char` and `Bool` of one fixed-size
+value; `rand()` and `rand(lo, hi)` are always `O(1)`. Fns in the ports and examples with an
+estimate went from 28 to 35 of 2,158. Assumption: `ask`'s cost leaves out the judge's own time,
+which the contestant does not pay for in steps; an `ask` whose reply is not bound with a declared
+type still blocks the estimate. Reverse by dropping the `ask`, conversion and `rand` cases.
+
+29.51. **A method's cost may name its struct's domains.** A doc's `|D|` or `D.K`, for a type
+parameter `D` of the method's struct, is written as the receiver's domain: `bit.sum` on a
+`Fenwick<V, Int>` hovers `cost: O(log |V|)`, and a fn's estimate evaluates `|V|` at the most
+positions the bounds give `V`. The Fenwick trees' methods now state their cost this way, e.g.
+`O(log |D|)` for `add`; a doc's bare `n` is still evaluated only as the receiver's length, since
+it means different things on different structs. Fns in the ports and examples with an estimate
+went from 35 to 39 of 2,161. Building a stdlib struct (`Fenwick<V, Int>(a)`) still blocks an
+estimate. Reverse by dropping `in_receiver_domains` and `domain_steps`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
@@ -2408,6 +2666,38 @@ real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
   `const`, so every tool sees ordinary declarations); the second turns a bare "not in scope" into the fix (add `self`).
   Fields already resolve bare inside methods that take `self`. *Reversible:* the `while` after the
   first `const` in `parser/stmt.rs`; the `field_of_self` branch in `Checker::unresolved`.
+
+- **30.11 C spellings (`&&`, `||`, `!x`, `..<`) are errors with the cp spelling as the fix, and parse
+  as that spelling.** *Reason:* they are the commonest slips from C++ and Python, the fix is exact,
+  and recovering as `and`/`or`/`not`/`..` keeps the rest of the file checked. A single `&` or `|`
+  stays bitwise. *Reversible:* `Parser::c_logic` and `Parser::range_op` in `cpl-syntax`.
+- **30.12 `cpl fix` applies the fixes errors carry first, then lint fixes.** It is the editor's
+  quick fixes run in a loop (at most 8 rounds); once no error is left it also makes the fixes
+  `cpl lint --fix` makes, which the lint codemods (L0204, L0415, L0510, L0511) document as `cpl fix`.
+  Assigning to a `let` fixes the declaration (`let` becomes `var`), and only the first assignment to
+  one `let` is reported. A plain number where a domain is needed gets `V(...)` as its fix. *Reason:*
+  one command for every machine-applicable fix; lint fixes wait for a file without errors so a
+  codemod never rewrites a program that does not check. The fix-it benchmark measures error fixes
+  alone (`apply_error_fixes`). *Reversible:* `cpl_cli::apply_error_fixes` and `apply_lint_fixes`;
+  drop the `ASSIGN_TO_LET` de-duplication in `db.rs`.
+- **30.13 Fix-its are measured on a second benchmark of common mistakes.** The broken-ports edits
+  (cut a value, drop a closer) have no single right fix, so `fix_it_scoreboard` plants one mistake
+  per copy instead (C spellings, `let` for a `var`, a misspelled member) and counts errors with a
+  fix and copies a `cpl fix` restores byte for byte. Ratchet: fix-its on at least 88% of errors and
+  restoring at least 95% of the copies that report one. Only this benchmark applies every fix: the
+  broken-ports scoreboard counts fix-its but skips the rewrite, which kept the recovery test inside
+  the fast gate's time. *Reversible:* delete `fix_it_scoreboard`.
+- **30.14 A domain or range mismatch labels where each side's index space comes from.** The
+  message already names both spaces (`a` is indexed by V, but `n` is a 1..=9); a label on each plain
+  name's declaration says where each got it (`a` is declared over V here, `n` is declared as a
+  1..=9 here). A top-level name declared in another item is labelled as a point at its use, and the
+  database moves the label onto the declaration. *Reason:* the fix is usually at the declaration,
+  not the use. *Reversible:* `Checker::origin` and the `WRONG_DOMAIN` branch in `db.rs`.
+- **30.15 After a lowering error, `cpl run` does not report names it does not know.** The checker
+  has accepted every name by the time lowering runs, so an unknown name there means an earlier
+  lowering error dropped its binding (`for (i, c) in s.item:` loses `i` and `c`). *Reason:* one error
+  per root cause; this cut the member-typo benchmark from 656 to 522 errors. *Reversible:*
+  `Lower::reported_an_error` in `cpl-ir/src/lower/mod.rs`.
 
 ## 31. Generated C++: stack, layout and niches (0.3)
 
@@ -3099,8 +3389,8 @@ The area's design is `spec/lib/flows.md`; these are its calls.
 1. **Three-tier static closure lowering in `cpl-codegen` (`devirt.rs`, `emit.rs`, `expr.rs`, `stmt.rs`), with `std::function` only for genuinely dynamic values.**
    - *Direct elision (`StaticDirect`):* when a struct fn-field or fn parameter holds a single statically known zero-capture closure and never escapes to a dynamic `std::function` home or assignment, calls emit directly as `cpl_fnN(...)` and the `std::function` field/parameter is replaced with a 1-byte `bool` placeholder (`false` at construction/call sites). Eliminates `std::function` completely from `Monoid`, `Action`, `SegTree`, `LazySegTree`, `DualSegTree`, `SparseTable`, `DisjointSparseTable`.
    - *Template functor parameters (`StaticTemplate`):* any non-recursive, non-entry/judge/hook function with a non-`mut`, non-reassigned `Ty::Fn` parameter that is not directly elided lowers to a C++17 function template (`template <class F0, ...>`, `F0&& p`), passing lambdas (including capturing/mutable ones) by type with zero `std::function` and full inlining.
-   - *Local `auto` bindings (`StaticLocalAuto`):* any non-hoisted, non-reassigned, non-recursive local closure binding (`let f = ...` or nested `fn via(...) = ...`) emits `auto f = [...](...) { ... };` instead of `std::function<...>`.
-   - *Dynamic fallback (`DynamicStdFunction`):* genuinely dynamic fn values (struct fields holding multiple or capturing closures, recursive local closures, recursive/entry/judge fn parameters, mutable/reassigned fn slots) retain `std::function`. `#include <functional>` is emitted only when `std::function` appears in the output.
+   - *Local `auto` bindings (`StaticLocalAuto`):* any non-hoisted, non-reassigned local closure binding (`let f = ...` or nested `fn via(...) = ...`) emits `auto f = [...](...) { ... };` instead of `std::function<...>`.
+   - *Dynamic fallback (`DynamicStdFunction`):* genuinely dynamic fn values (struct fields holding multiple or capturing closures, recursive/entry/judge fn parameters, mutable/reassigned fn slots) retain `std::function`. `#include <functional>` is emitted only when `std::function` appears in the output.
    - *Visibility (`cpl explain <file.cp>`):* `cpl explain <file.cp>` (and `--json`) runs `cpl_codegen::explain_closures` and reports every fn-typed site's lowering mode (`static: direct`, `static: template`, `static: auto`, or `dynamic: std::function` with reason), fulfilling the "nothing secret under the hood" rule.
    - *Return-tuple move:* returning a struct/tuple literal moves owned non-scalar local fields (`std::move(table)`) when unreferenced by sibling fields, preventing O(n log n) vector copies on range-structure constructors (`DisjointSparseTable` 35.4 ms / 1.98x → 18.9 ms / 1.09x vs matched C++17).
    *Reverse:* revert `elidable`, `template_params`, `local_auto`, and `explain_closures` in `crates/cpl-codegen/src/devirt.rs`, the `emit.rs`/`expr.rs`/`stmt.rs` hooks, and `explain_file` in `crates/cpl-cli/src/lib.rs`.
@@ -3862,7 +4152,6 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Evidence.** Interp/C++17 parity test `crates/cpl-cli/tests/programs/seq_mut_slice.cp` (covering `List<Int>`, `[D]Int`, `[D.bounds]Int`, `[0..6]Int`, nested and disjoint slices); checker compile-fail tests in `crates/cpl-check/src/tests.rs` (`mutable_slice_views_lend_and_reject_aliasing`); `cpl explain` test in `crates/cpl-cli/src/lib.rs`; matched benchmark `bench/seq/slice_sort.cp` (`xs[l..r].sort()` vs `std::sort(xs.data() + l, xs.data() + r)`): **1.05x** (213.9 ms vs 202.9 ms, 9,393 B emitted C++); port migrations: `cf2207h3.cp` (678 → 658 tokens, -20, `gate.sh` PASS) and `cf2207h1.cp` (1,007 → 813 tokens, -194, `gate.sh` PASS). Closes `research/frictions/cf2207h3.md` #1b.
 - **Reverse.** Restore `note_readonly_view` for list/array slices in `cpl-check/src/check/expr.rs`, remove `Ty::MutView` / `ExprKind::MutSlice` / `cpl::MutView`, and revert `cf2207h3.cp` / `cf2207h1.cp`.
 
-
 ## 124. A half-open range of cuts is also the piece it bounds (2026-11-21)
 
 - **Decision.** With cuts `j, i: D.bounds`, `j..i` is a `Range<D.bounds>`
@@ -3898,8 +4187,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Why.** "Search, and handle not-found" is a common contest shape that
   otherwise needs a `found` flag, which is a stale-state bug site.
 - **Reverse.** Delete the form; a codemod rewrites it to a flag.
-- **Status.** Accepted; not implemented (today `else` after a loop is
-  E0107).
+- **Status.** Implemented (parser, checker, formatter, LSP, IR, interpreter, and C++17 codegen; parity test `crates/cpl-cli/tests/programs/loop_else.cp`, fmt test `formats_loop_else`, LSP test `folding_ranges_cover_loop_else`).
 
 ## 126. Library loops are generators; early exit stays in `for` (2026-11-21)
 
@@ -4048,6 +4336,11 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   enum workaround and it hurts readability, add declared view enums that
   lower to that method call, keeping exhaustiveness and `cpl explain`.
 - **Status.** Accepted (closed by design).
+
+## 133. Number unused
+
+`main` and `devin/spec` both used 133–142 before they merged; `main`'s
+entries were renumbered to 169–178. 133 itself is now §169.
 
 ## 134. Field defaults and constrained string types (2026-11-21)
 
@@ -4808,3 +5101,180 @@ the stub. Prose-only fixes are marked in the notes; the API changes:
   `Counter<K, V>`. A default type argument keeps one type. `.distinct` was the same number as `len`
   (no stored entry equals `init`), so it is dropped: one name per idea. Reverse: add `distinct` as
   an alias and remove the default.
+
+
+## 169. Named-argument and record-field punning `f(x:)` (2026-11-21)
+
+- **Decision.** A named call argument or parenthesized record field whose value is a variable of the same name may be written in punned shorthand: `f(moves:, cost:, step:)` means `f(moves: moves, cost: cost, step: step)`, and `(moves:, cost:)` means `(moves: moves, cost: cost)`.
+- **Mechanism.** Parser-only desugaring in `Parser::arg` and `ExprKind::Record` (`crates/cpl-syntax/src/parser/expr.rs`): when a `name:` label is immediately followed by `,` or `)`, the parser builds `ExprKind::Name(name)` at `name.span`. No checker, IR, interpreter, or C++ codegen special case is needed; LSP hover resolves the local's type through the synthesized expression span. `cpl-fmt` preserves tokens strictly and formats punned calls/records without spaces before `:` or `,`. Lint `L0209` (`redundant_arg_name`) warns on `name: name` with a machine-applicable `cpl fix` to `name:`.
+- **Evidence.** Corpus audit found 155 exact `name: name` sites across 54 port files and 75 across 10 stdlib files (52 reviewed port files and all 10 stdlib files migrated via `L0209`; 2 unreviewed ports left untouched for review-check). Interp/C++17 parity test `crates/cpl-cli/tests/programs/named_arg_punning.cp` (`345 12 7`), formatter test `formats_punned_named_args_and_records`, LSP test `hover_on_punned_named_arg_shows_local_type`, lint test `redundant_arg_name_shortens_to_punning`, and docs in `site/content/types-and-control.md`.
+- **Reverse.** Remove the punning branch in `Parser::arg` and `ExprKind::Record`, remove `L0209`, and expand `name:` back to `name: name`.
+
+## 170. A runtime ratio counts only when the original runs 100 ms (2026-11-21)
+
+The scoreboard's runtime p50/max and the per-port runtime ratchet count a port
+only when its original runs at least 100 ms on the port's max input
+(`PERF_FLOOR_MS`, was 10 ms on either side). Below that the ratio measures
+process startup and the scanner, not the algorithm: 142 ports were measured,
+136 of them on inputs whose original ran 2-99 ms, and the 6 left had p50
+1.54x where the summary said about 1.0x. A port below the floor is recorded
+as `perf: unmeasured` with the reason; it gets counted again once its
+generator (or a spec in `bench/corpus_generators.py`) reaches the
+statement's max constraints. Specs at max constraints were added for
+cf2261g, cf2115f1, ucup5s01a and cf2062h (n = 14). A spec with no generator
+marks its port unmeasured with the spec's reason instead of falling back to
+the adaptive probe: cf2157c, whose statement limits are not on file. Reverse: set `PERF_FLOOR_MS` back to 10
+and apply it to `max(cpp_ms, orig_ms)`.
+
+The ratio compares one compiler with itself: when the original only builds
+with `zig c++` (C++23 deducing `this`, as in cf2261g), the port's timed
+binary is built with `zig c++` too, and `perf.compiler` records which. Before,
+such a port's g++ build was timed against a clang-built original, which put
+cf2261g at 1.39x where the same compiler gives 0.99x. Reverse: time
+`port_bin` in `evaluate_full_port` again.
+
+## 171. A loop reaches a row it never moves once (2026-11-21)
+
+Inside `for x in ..`, a row of a nested array reached by indices the body
+never changes (`ways[mid][lo]` inside `for rest`) is found and checked the
+first time the body reaches it, then reused through a pointer
+(`cpl::lazy`). It is kept only when nothing in the body can move the row or
+change a size checked on the way to it: no store, push or `mut` argument at
+a shallower depth of the same array, no closure or call through a fn value,
+and no call to a fn whose summary writes that array; a row of a parameter
+is kept only in a body with no calls. Rows reached without a check are not
+cached. Each check that is skipped would pass, and a loop that never reaches
+the row never checks it, so traps and output are unchanged: it majorizes
+(the cost is a few bytes per loop). Why now: cf2062h's subset loop repeated
+`cpl::at(cpl::at(ways, mid), lo)` per element and ran 0.62 s vs the
+original's 0.46 s; with this it runs 0.39 s. Corpus: +10,314 B over 29
+programs (max +4.7%, cf2062h), none broken. Reverse: return no rows from
+`Emitter::loop_rows` in `crates/cpl-codegen/src/rowcache.rs`.
+
+## 172. A local read for the last time moves into its place (2026-11-21)
+
+`x = y`, where `y` is a local its block declared and the rest of the block
+never names (no read, store or `mut` argument) and the block has no closure,
+writes `x = std::move(y)`. The next pass of a loop declares `y` afresh, so
+nothing can see the moved-from value: output and traps are unchanged and
+the store is never slower, so it majorizes. Comprehension blocks already
+moved their result this way; this is the same rule for any block. Why now:
+ucup5s01a's `dp = next` per round copied a 500-element row: 1.16-1.25 s
+before, 1.10-1.17 s after, vs 1.08-1.23 s for the original (same input,
+same g++). Corpus: +1,111 B over 87 programs, none broken. Reverse: return
+false from `last_read` in `crates/cpl-codegen/src/stmt.rs`.
+
+## 173. A recursive local closure is passed itself, not a `std::function` (2026-11-21)
+
+Implements §127 for nested `fn`s. A local closure or nested `fn` that
+calls itself, bound once and not hoisted, emits
+`auto go = cpl::rec([...](auto& go_2, ll u) { ... go_2(...) })`: the
+lambda takes itself as its first parameter instead of capturing its own
+`std::function`, so every call is a direct, inlinable call of one
+closure type. `cpl::Rec` passes `*this` first, so `go(1)`, `go` passed on
+as a value and the body's own calls all keep the source's argument list.
+`cpl explain` reports it `static: auto`. Why: the indirect call through
+`std::function` blocked inlining on every recursive step; on a 2e6-node
+subtree-size DFS run 20 times, 1.09 s -> 0.97 s against 0.83 s for the
+hand-written self-passing lambda (the rest is the checked `adj[u]` and
+the reading loop). Corpus: programs emitting `std::function` 61 -> 37;
+the 24 programs that lost it grow +143 to +201 B (+4,366 B in total),
+the price of `Rec` over `#include <functional>`. Reverse: drop the
+`local_rec` arm of `Stmt::Let` in `crates/cpl-codegen/src/stmt.rs`.
+
+## 174. A recursive fn's closure parameter is a template (2026-11-21)
+
+Implements §127 for fn parameters of recursive fns. A fn-typed parameter of
+a fn in a call cycle is a template parameter (`template <class F0> ll
+walk(ll n, F0&& f)`), monomorphized per closure type like any other fn's,
+when every call to that fn from inside its cycle passes a template fn
+parameter of the caller straight on: `walk(n - 1, f)`, or `odd(n - 1, f)`
+inside `even`. Then the recursion instantiates one closure type. A call
+that passes anything else, such as `wrap(n - 1, x => f(x) + 1)`, would
+instantiate without end, so that parameter keeps `std::function` and
+`cpl explain` says "a call in its recursion passes a different closure".
+A parameter that only ever holds one closure was already lowered direct.
+Why: the indirect call through `std::function` blocked inlining on each
+step; a 2e6-node tree walk with two different weight closures, run 10
+times each, goes 1.04 s -> 0.98 s against 0.84 s for the hand-written
+template (the rest is the checked `adj[u]` and the reading loop). Corpus:
+no program had the shape, so programs emitting `std::function` stay at 37;
+parity test `rec_fn_param`. Reverse: put `|| self.recursive_fns.contains(&id)`
+back in `compute_template_params` and drop
+`keep_recursive_templates_finite` in `crates/cpl-codegen/src/devirt.rs`.
+
+## 175. Offline bundle splits port galleries into a lazy `gallery` part (2026-11-21)
+
+- **Decision.** `site/bundle.py` ships `ports.html` (keeping its side-by-side
+  `Accepted C++` pane) and `exemplars.html` plus their `#gallery-share-ref=`
+  payloads in a separate gzipped `gallery` part (`CAPS = {"compiler": 2_100_000,
+  "docs": 500_000, "gallery": 150_000}`), unpacked lazily by `site/offline.html`
+  on first visit to a gallery page. `site/exemplars.py` emits `#share=` Try-it
+  links only for the 12 featured side-by-side pairs (linking featured index rows
+  to `#ex-<id>` instead of embedding full port source for every dream in the
+  index table).
+- **Why.** Every new dream in `proto/ports/` previously added ~1.2 KiB gzipped
+  directly into `docs` (pushing `docs` to 611 KiB against the 620 KiB cap).
+  Splitting `gallery` makes `docs` invariant to port count (436 KiB vs 500 KiB
+  cap) and cuts `gallery` to 90 KiB (vs 150 KiB cap) with O(1) featured cards.
+- **Reverse.** Merge `gallery_pages` and `gallery_shares` back into `docs` in
+  `site/bundle.py`, remove `ensureGallery()` in `site/offline.html`, and restore
+  per-row `_share_href` in `site/exemplars.py`.
+
+## 176. A fn field nothing reads is dropped (2026-11-21)
+
+Step one of §127 for struct fields. A field of fn or optional-fn type that
+no expression reads (no `s.f`, no `mut s.f` argument) holds no behaviour, so
+it is elided like a field holding one known closure: a `bool` placeholder,
+constructors pass `false`, and a store `s.f = g` is left out. A value or
+store is left out only when evaluating it runs nothing and cannot trap (a
+variable, a captureless closure, `none`, `some` of one), so the interpreter
+and the C++ still agree. `cpl explain` reports `[static: dropped]`. The
+common case is `SegTree.source`/`LazySegTree.source` in a program that never
+calls `refresh`: it was a `std::optional<std::function<...>>` even when every
+construction left it `none`. A `?fn` field that is read keeps
+`std::function` with "optional fn field that is read". Why: the
+`std::function` costs size and pulls `<functional>` for nothing. Corpus:
+programs emitting `std::function` 37 -> 22; the 15 that changed shrink
+81-157 B each (1,480 B total); no g++ syntax failure is new. Parity test
+`unread_fn_field`. Reverse: drop `drop_unread_fn_fields` in
+`crates/cpl-codegen/src/devirt.rs` and the unread-store skip in
+`StmtEmitter::assign`. *Amended by §178:* such a field is now left out of
+the struct entirely, like any unread field, instead of a `bool` placeholder.
+
+## 177. Dream gaps get one error that names the construct (2026-11-21)
+
+- **Decision.** Each class of dream construct the front end does not have is reported once, at the construct, as `E0504` "not implemented yet: <feature> (see design/…)" or "(not in the design)": a domain parameter `fn f<domain D>`, several domains on one `domain` line, a value on the indented lines after `=`, a line continued by an indented operator line, statements in parentheses `(a; b)`, the range spelling `lo <.. hi`, a domain used as a value, the cuts of a domain spelled `D.Cut` (design §21.4; today `D.bounds`), an operator used as a value (`compose: +`, design `stdlib/ranges.md` §6.1; read as an error node), and a `var` binding inside a pattern (`(var a, b)`; the binding is read as a plain name and its mutability is not checked, so the one error is the `var`). Planned forms met while the parser speculates are queued and reported only if that branch is kept. `Sink::finish` keeps only the first `E0504` per message, since every later use of the feature is the same root cause. An unknown type close to a built-in or stdlib type says "not in the stdlib (yet)" beside the did-you-mean; a type used as a value is reported as a back-end limitation.
+- **Why.** The dream gate counted 29/60 dreams whose first error named the missing capability; generic "expected X" and mismatch errors hid what each dream needs. Each fix is a class of construct with a golden in `crates/cpl-cli/tests/diagnostics/`.
+- **Reverse.** Drop the entries from `PLANNED` in `crates/cpl-syntax/src/planned.rs` with their parser/checker call sites, the `speculative_planned` queue in `crates/cpl-syntax/src/parser.rs`, the `E0504` dedup in `Sink::finish`, and the `Dim::Enum` arm in `Lowerer::list`.
+- **Addendum.** More classes are named the same way: `match` arms on the `match` line (`match x: 0 => a; _ => b`, read into real arms), `let … in`, maps `{k: v}` and sets `{x for x in xs}` in braces, `m default 0`, `lazy[D] i => …`, `domain A = V if p(v)`, a pattern in place of a parameter name (`fn f((r, c): Pt)`, design §14.1; the parameter binds and the pattern is unpacked on the body's first line, so later errors surface), `some x` patterns, `[_]T`, `a <=> b then c <=> d`, `.member` without its type, and types of literal values (`'+' | '-'`). A context `with io(...)` says "not implemented yet, and deferred" (`DEFERRED` in `planned.rs`). An indented `if` or `match` after `=` is the value (the core lane implemented it); any other indented value stays planned. `let mut x` is read as `var x` with a fix, and `mut` in a `let` condition is an error whose fix removes it. A capitalized unknown name is offered only capitalized names, since it is a type or a variant. *Why:* the owner's dream buckets (indented arms, stray tokens, `?` in a branch, contexts); the gate went from 64/84 first errors and 167/219 errors named to 68/84 and 182/219. *Reverse:* drop the entries and their call sites, `DEFERRED` with `Planned::deferred`, and the `let mut` and label arms in `stmt.rs`, `pattern.rs` and `item.rs`.
+
+## 178. A field nothing reads is left out, with its stores (2026-11-21)
+
+- **Decision.** §176 for every field type. A struct field that no
+  expression reads is left out of the emitted struct, its constructors and
+  its `cpl_tie`. A read is `s.f`, `mut s.f` as an argument, a store that is
+  not a plain `=` (`s.f += 1` reads `s.f`), or any operation that sees the
+  whole value: comparing, ordering, hashing, printing, reading from input,
+  sorting naturally, or using the struct as a map key or set element, which
+  keeps every field of that struct and of the structs inside it. A store
+  `place = v` into a dropped field writes nothing; it is left out only when
+  the place cannot trap (every index is a position of the domain its array
+  is over), and `v` is still evaluated as `(void)(v);` unless it runs
+  nothing, so its traps and effects stay (reading an array at positions of
+  its domains runs nothing). A local whose only uses are such stores,
+  `xs.push(v)` of a value that runs nothing, and being placed in a dropped
+  field is left out with them, which is what removes the work; repeated
+  until nothing more goes, since a dropped store reads nothing. A
+  parameter used only that way stays in the signature as
+  `[[maybe_unused]] const T&`, so it is not copied. A
+  method that is never called reads nothing. `cpl explain` lists each
+  dropped field as `[dropped] struct S.f`.
+- **Why.** Result structs carry witnesses most callers never read:
+  `Paths.back` and `Paths.order` in std.graph. g++ keeps the stores because
+  the arrays escape through the returned struct. The interpreter still
+  computes every field; since nothing reads a dropped field, both print the
+  same and trap at the same place.
+- **Reverse.** Drop `drop_unread_fields`/`drop_dead_locals` in
+  `crates/cpl-codegen/src/devirt.rs` (back to fn fields only) and the
+  `dropped_store` skips in `crates/cpl-codegen/src/stmt.rs`.

@@ -8,6 +8,8 @@
 // positions in Pos order.
 
 @!multitest
+use std.seq.{buckets}
+
 domain Pos = read(2..=500_000)
 domain Val = 1..=Pos.count
 let a: [Pos]Val = read()
@@ -25,7 +27,7 @@ fn sweep<S: Seq>(order: S, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [
 let lo = sweep(a, Pos.first!, max, below: true)
 let hi = sweep(a.rev, Pos.last!, min, below: false)
 
-let by_lo = Val.group(by: v => lo[v])
+let by_lo = buckets(lo)
 var pq = MinHeap<(Pos, Val)>()
 var b: [Pos]Val = Val.first!
 

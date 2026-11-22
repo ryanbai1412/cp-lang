@@ -56,7 +56,9 @@ impl<'p> Emitter<'p> {
                 }
                 _ => None,
             };
+            self.moves_last = last_read(block, k);
             self.stmt(stmt, out);
+            self.moves_last = false;
         }
         self.tail = None;
     }
@@ -783,7 +785,26 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// A store into a dropped field or local (decision 178).
+    fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
+        let dead_root = matches!(crate::walk::root(place), (false, slot)
+            if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot));
+        (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
+    }
+
+    fn dropped_value(&mut self, value: &Expr, out: &mut String) {
+        if !self.devirt.skippable_value(value) {
+            let value = self.flatten(value, out);
+            let text = self.expr(value).text;
+            self.line(out, &format!("(void)({text});"));
+        }
+    }
+
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        if self.dropped_store(place, op) {
+            self.dropped_value(value, out);
+            return;
+        }
         if let (AssignOp::Set, PlaceKind::Global(id)) = (op, &place.kind) {
             if self.const_globals.contains(id) {
                 return;
@@ -837,10 +858,14 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
-        // A value built by its own block (a comprehension) is not
-        // read again: it moves into the place.
-        if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
-            let made_here = stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
+        // A value built by its own block (a comprehension), or a block's
+        // local read for the last time, is not read again: it moves.
+        let last = std::mem::take(&mut self.moves_last);
+        if let (AssignOp::Set, ExprKind::Local(built)) = (op, &value.kind) {
+            let made_here = last && std::ptr::eq(value, whole)
+                || flat(whole).is_some_and(|(stmts, _)| {
+                    stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
+                });
             if made_here && !value.ty.is_scalar() && !matches!(value.ty, Ty::Fn(..)) {
                 v.text = format!("std::move({})", v.text);
             }
@@ -1054,6 +1079,11 @@ impl<'p> Emitter<'p> {
         }
         let program = self.program;
         match stmt {
+            Stmt::Let(slot, _) if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot) => {}
+            Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => self.dropped_value(value, out),
+            Stmt::Expr(e)
+                if self.closure_id.is_none()
+                    && self.devirt.skippable_push(e).is_some_and(|slot| self.devirt.dead_local(self.fn_id, slot)) => {}
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
             Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
@@ -1091,6 +1121,20 @@ impl<'p> Emitter<'p> {
             }
             Stmt::Continue(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
                 self.line(out, "return 0;")
+            }
+            Stmt::Let(slot, Some(init))
+                if matches!(self.locals()[*slot].ty, Ty::Fn(..))
+                    && self.closure_id.is_none()
+                    && !self.hoisted.contains(slot)
+                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
+                    && self.facts.stores((self.fn_id, false, *slot)) <= 1 =>
+            {
+                let ExprKind::Closure(cid) = init.kind else { unreachable!() };
+                self.need("rec");
+                self.rec_slot = Some(*slot);
+                let text = self.emit_closure(cid, false).text;
+                let name = self.names[*slot].clone();
+                self.line(out, &format!("auto {name} = cpl::rec({text});"));
             }
             Stmt::Let(slot, init) => {
                 let tail = self.tail.take();
@@ -1185,10 +1229,15 @@ impl<'p> Emitter<'p> {
                         self.expr_with_elem_layout(init, elem_l.as_ref()).text
                     },
                 };
+                let auto = matches!(ty, Ty::Fn(..))
+                    && self.closure_id.is_none()
+                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
+                    && self.facts.stores((self.fn_id, false, *slot)) <= 1;
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.
+                    let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
                 } else if self.reads_in_place(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
@@ -1197,11 +1246,7 @@ impl<'p> Emitter<'p> {
                 } else if let Some(args) = sized_ctor(&cpp, &text) {
                     // `std::vector<ll> f((size_t)(n), 1);`: the type once.
                     self.line(out, &format!("{cpp} {name}({args});"));
-                } else if matches!(ty, Ty::Fn(..))
-                    && self.closure_id.is_none()
-                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
-                    && self.facts.stores((self.fn_id, false, *slot)) <= 1
-                {
+                } else if auto {
                     self.line(out, &format!("auto {name} = {text};"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));
@@ -1221,7 +1266,21 @@ impl<'p> Emitter<'p> {
             Stmt::For(id, slot, iter, body) => {
                 let inside = walk::inside_list(*slot, iter, body, self.locals());
                 self.inside.extend(inside);
+                let rows = self.loop_rows(*slot, body);
+                let (start, mark) = (out.len(), self.row_ptrs.len());
+                self.row_ptrs.extend(rows);
                 self.for_stmt(*id, *slot, iter, body, out);
+                let rows = self.row_ptrs.split_off(mark);
+                if !rows.is_empty() {
+                    self.need("lazy");
+                    let lead = pad(self.indent);
+                    let mut head = format!("{lead}{{\n");
+                    for (_, name, code) in &rows {
+                        head.push_str(&format!("{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"));
+                    }
+                    out.insert_str(start, &head);
+                    self.line(out, "}");
+                }
                 self.inside.truncate(self.inside.len() - usize::from(inside.is_some()));
             }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
@@ -1246,9 +1305,13 @@ impl<'p> Emitter<'p> {
                                     Ty::Struct(s) => Some(s),
                                     _ => None,
                                 };
+                                let dropped: Vec<bool> = (0..items.len())
+                                    .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                                    .collect();
                                 let rendered: Vec<String> = items
                                     .iter()
                                     .enumerate()
+                                    .filter(|(idx, _)| !dropped[*idx])
                                     .map(|(idx, item)| {
                                         if struct_id.is_some_and(|s| {
                                             self.devirt.field_elidable(s, idx)
@@ -1452,6 +1515,26 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         }
     });
     (reads && quiet).then_some((map, key))
+}
+
+/// True when statement `k` of `block` is `x = y` with `y` a local the
+/// block declared and never mentions again. The next pass of a loop
+/// declares `y` afresh, so nothing can read it after the store.
+fn last_read(block: &Block, k: usize) -> bool {
+    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else { return false };
+    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) = (&value.kind, &place.kind) else {
+        return false;
+    };
+    if walk::root(place) == (false, *slot)
+        || !block.stmts[..k].iter().any(|stmt| matches!(stmt, Stmt::Let(s, _) if s == slot))
+    {
+        return false;
+    }
+    let mut seen = false;
+    walk::deep_exprs(block, &mut |e| seen |= matches!(e.kind, ExprKind::Closure(_)));
+    let rest = Block { stmts: block.stmts[k + 1..].to_vec() };
+    walk::deep_exprs(&rest, &mut |e| seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot));
+    !seen && !Effects::of_block(&rest).locals.contains(slot)
 }
 
 /// What the statements after a `let` in its block can do, for

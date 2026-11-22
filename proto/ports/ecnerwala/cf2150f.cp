@@ -17,13 +17,13 @@ let m: n - 1..=n * (n - 1) / 2 = read()
 domain V = 1..=n
 let edges: [0..m](V, V) = read()
 var joined_by_edge: [Sym<V>]Bool = false
-var tree: [V]List<V> = []
+var tree_edges: List<(V, V)> = []
 var dsu = Dsu<V>()
 for (u, v) in edges:
     joined_by_edge[u, v] = true
     if dsu.unite(u, v):
-        tree[u].push(v)
-        tree[v].push(u)
+        tree_edges.push((u, v))
+let tree = Graph.undirected(tree_edges)
 let t = Rooted(tree, V.first)
 let d = t.diameter()
 let L = ceil_div(d.len, 2)

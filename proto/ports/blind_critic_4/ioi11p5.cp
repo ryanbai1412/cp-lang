@@ -1,6 +1,18 @@
-// IOI '11 P5 — Dancing Elephants (runnable proto/cpc port of ioi11p5_draft.cp)
-// Prototype deltas vs v2.1 draft: no struct field defaults, no `for mut`,
-// no `List.filled`/`List.insert`/`List.remove`, standalone stdio driver for differential testing.
+// IOI 2011 P5 — Dancing Elephants: online minimum unit-length-`l` camera cover
+// over `n` moving elephants via sqrt-decomposition buckets.
+//
+// Partition the sorted elephant coordinates into buckets of size `B = max(2, isqrt(n))`
+// (`B >= 2` avoids rebuilding after every single update when `n = 1`). Every `B`
+// updates we re-partition all `n` positions, so each bucket stays `O(B)` in size.
+//
+// Inside each bucket, a right-to-left two-pointer pass precomputes for every
+// index `i` the greedy jump `Jump(end, count)` needed to cover `xs[i..]` with
+// cameras of length `l`: placing a camera at `[xs[i], xs[i] + l]` jumps to the
+// first `nxt` with `xs[nxt] > xs[i] + l` (or leaves the bucket in 1 camera).
+//
+// Each move updates at most two buckets in `O(B)`, and each query folds across
+// the `O(n / B)` buckets carrying `cover: ?Int`, jumping to the first uncovered
+// elephant in each bucket via `xs.first_gt` in `O(log B)` — `O(q sqrt(n) log n)` total.
 
 let n: 1..=150_000 = read()
 let l: 0..=1_000_000_000 = read()
@@ -8,124 +20,69 @@ let q: 1..=150_000 = read()
 
 domain E = 0..n
 var pos: [E]Int = read()
+let b_size = max(2, isqrt(n))
 
-var B = 1
-while B * B < n:
-    B += 1
-if B < 2:
-    B = 2
+struct Jump(end: Int, count: Int)
 
-var bxs: List<List<Int>> = []
-var bend: List<List<Int>> = []
-var bcnt: List<List<Int>> = []
+struct Bucket:
+    xs: List<Int>
+    jumps: List<Jump>
 
-fn rebuild_bucket(bi: Int):
-    let k = bxs[bi].len
-    bend[bi].clear()
-    bcnt[bi].clear()
-    for _ in 0..k:
-        bend[bi].push(0)
-        bcnt[bi].push(0)
-    var j = k - 1
-    for i in (0..k).rev:
-        while j > i and bxs[bi][j] > bxs[bi][i] + l:
-            j -= 1
-        let nxt = j + 1
-        if nxt >= k:
-            bend[bi][i] = bxs[bi][i] + l
-            bcnt[bi][i] = 1
-        else:
-            bend[bi][i] = bend[bi][nxt]
-            bcnt[bi][i] = bcnt[bi][nxt] + 1
+    fn rebuild(mut self):
+        let k = self.xs.len
+        self.jumps = List.filled(k, Jump(0, 0))
+        var j = k - 1
+        for i in (0..k).rev:
+            while j > i and self.xs[j] > self.xs[i] + l:
+                j -= 1
+            let nxt = j + 1
+            self.jumps[i] = if nxt >= k:
+                Jump(self.xs[i] + l, 1)
+            else:
+                Jump(self.jumps[nxt].end, self.jumps[nxt].count + 1)
 
-fn rebuild_all():
-    var all: List<Int> = [pos[e] for e in E]
-    all.sort()
-    bxs.clear()
-    bend.clear()
-    bcnt.clear()
-    var i = 0
-    while i < n:
-        var cur: List<Int> = []
-        var j = i
-        while j < n and j < i + B:
-            cur.push(all[j])
-            j += 1
-        bxs.push(cur)
-        var e1: List<Int> = []
-        var c1: List<Int> = []
-        bend.push(e1)
-        bcnt.push(c1)
-        rebuild_bucket(bxs.len - 1)
-        i = j
+    fn remove(mut self, x: Int):
+        self.xs.remove(self.xs.first_ge(x)!)
+        self.rebuild()
 
-fn bucket_remove(bi: Int, x: Int):
-    let k = bxs[bi].len
-    var idx = 0
-    while idx < k and bxs[bi][idx] != x:
-        idx += 1
-    var i = idx
-    while i + 1 < k:
-        bxs[bi][i] = bxs[bi][i + 1]
-        i += 1
-    bxs[bi].pop()
-    rebuild_bucket(bi)
+    fn insert(mut self, x: Int):
+        self.xs.insert(self.xs.first_ge(x) ?? self.xs.len, x)
+        self.rebuild()
 
-fn bucket_insert(bi: Int, x: Int):
-    bxs[bi].push(x)
-    var i = bxs[bi].len - 1
-    while i > 0 and bxs[bi][i - 1] > bxs[bi][i]:
-        let t = bxs[bi][i]
-        bxs[bi][i] = bxs[bi][i - 1]
-        bxs[bi][i - 1] = t
-        i -= 1
-    rebuild_bucket(bi)
+fn make_bucket(xs: List<Int>) -> Bucket:
+    var b = Bucket(xs, [])
+    b.rebuild()
+    b
 
-fn first_gt_idx(bi: Int, lim: Int) -> Int:
-    let lo = bsearch_first(0..bxs[bi].len, mid => bxs[bi][mid] > lim) ?? bxs[bi].len
-    return lo
+fn bucket_for(buckets: List<Bucket>, x: Int) -> Int = first(
+    i for i in 0..buckets.len if not buckets[i].xs.is_empty and x <= buckets[i].xs.last!
+) ?? (buckets.len - 1)
 
-rebuild_all()
+fn rebuild_all() -> List<Bucket>:
+    let all = [pos[e] for e in E].sorted()
+    [make_bucket(all[i..min(i + b_size, n)]) for i in (0..n).step(b_size)]
+
+var buckets = rebuild_all()
 var ops = 0
 
-for _ in 0..q:
-    let idx_raw: Int = read()
-    let y: Int = read()
-    let e = E.from_idx(idx_raw)!
+repeat q:
+    let (e, y): (E, Int) = read()
     let old_x = pos[e]
     pos[e] = y
 
-    var rem_bi = bxs.len - 1
-    for bi in 0..bxs.len:
-        let k = bxs[bi].len
-        if k > 0 and bxs[bi][0] <= old_x and old_x <= bxs[bi][k - 1]:
-            rem_bi = bi
-            break
-    bucket_remove(rem_bi, old_x)
-
-    var ins_bi = bxs.len - 1
-    for bi in 0..bxs.len:
-        let k = bxs[bi].len
-        if k > 0 and y <= bxs[bi][k - 1]:
-            ins_bi = bi
-            break
-    bucket_insert(ins_bi, y)
+    buckets[bucket_for(buckets, old_x)].remove(old_x)
+    buckets[bucket_for(buckets, y)].insert(y)
 
     ops += 1
-    if ops >= B:
+    if ops >= b_size:
         ops = 0
-        rebuild_all()
+        buckets = rebuild_all()
 
     var ans = 0
-    var has_cover = false
-    var cover = 0
-    for bi in 0..bxs.len:
-        let k = bxs[bi].len
-        if k == 0:
-            continue
-        let start = if not has_cover: 0 else: first_gt_idx(bi, cover)
-        if start < k:
-            ans += bcnt[bi][start]
-            cover = bend[bi][start]
-            has_cover = true
+    var cover: ?Int = none
+    for b in buckets if not b.xs.is_empty:
+        let start = if let c = cover: b.xs.first_gt(c) else: some(0)
+        if let idx = start:
+            ans += b.jumps[idx].count
+            cover = some(b.jumps[idx].end)
     print(ans)

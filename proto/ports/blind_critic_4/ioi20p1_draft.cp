@@ -53,7 +53,7 @@ fn solve_layers(k: Int, r: List<Int>) -> List<Int>:
         over: Monoid(MaxPos<V>(), merge_max),
     )
     var st = LazySegTree<V, MaxPos<V>>(act, init_nodes)
-    var ring = ActiveRing<V>(n: n, k: k)
+    var ring = ActiveRing<V>(n:, k:)
 
     var layer: [V]Int = 0
     var done = 0
@@ -109,7 +109,7 @@ struct JumpTable:
                 if let mid = lift[p - 1][j]:
                     lift[p][j] = lift[p - 1][mid]
 
-        return JumpTable(n: n, logn: logn, layers: dbl, lift: lift)
+        return JumpTable(n:, logn:, layers: dbl, lift:)
 
     fn reaches_lt(self, u0: Int, v0: Int) -> Bool:
         if self.layers[u0] >= self.layers[v0]:

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a `let … in` expression, `let y = x in y + 1` (not in the design)
+  --> planned_a_let_in_expression_let_y_x_in_y_1.cp:1:23
+  |
+1 | fn f(x: Int) -> Int = let y = x - 1 in y * 2
+  |                       ^^^^^^^^^^^^^^^^^^^^^^
+  = help: give the fn a block body, with `let y = x` on its own line
+
+planned_a_let_in_expression_let_y_x_in_y_1.cp: 1 error

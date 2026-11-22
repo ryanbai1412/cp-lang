@@ -24,7 +24,7 @@ let by_depth = V.group(by: t.depth)
 let ans = [
     layer.len + Int(d > 0 and layer.all(u => t.parent(u) == t.parent(layer[0])))
     for (d, layer) in by_depth.items
-].max!
+].max()!
 
 domain Slot = 0..ans
 var resp: [Slot]List<V> = []
@@ -37,7 +37,7 @@ for (d, layer) in by_depth.items.rev:
         last_depth[loc] = d
         if let par = t.parent(u): forbidden_loc[par] = loc
 
-    let forbiddens = [(u: u, loc: fl) for u in layer if let fl = forbidden_loc[u]]
+    let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
         let s = Slot.first(x => last_depth[x] != some(d + 1))!
         place(forbiddens[0].u, s)

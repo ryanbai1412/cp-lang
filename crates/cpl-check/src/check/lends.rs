@@ -148,6 +148,8 @@ pub enum Flow {
     View(String),
     /// `assert i != j`: holds until one of these names is assigned.
     Assert(Vec<String>),
+    /// `let b = a` / `b = a`: `a` was moved if its type is a heap value (§128).
+    Move(String),
 }
 
 pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
@@ -164,6 +166,7 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                     ..
                 },
             init: Some(init),
+            otherwise,
             ..
         } => {
             let view = match &unparen(init).kind {
@@ -178,6 +181,40 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             };
             if view {
                 Flow::View(name.clone())
+            } else if otherwise.is_none() {
+                if let ExprKind::Name(src) = &unparen(init).kind {
+                    Flow::Move(src.clone())
+                } else {
+                    Flow::None
+                }
+            } else {
+                Flow::None
+            }
+        }
+        StmtKind::Let {
+            mutable: true,
+            init: Some(init),
+            otherwise: None,
+            ..
+        } => {
+            if let ExprKind::Name(src) = &unparen(init).kind {
+                Flow::Move(src.clone())
+            } else {
+                Flow::None
+            }
+        }
+        StmtKind::Assign {
+            target,
+            op: ast::AssignOp::Set,
+            value,
+        } => {
+            // Only plain variable assignment `b = a` moves `a`; slice stores (`dp[0, ..] = lst`) copy cells.
+            if let (ExprKind::Name(t), ExprKind::Name(src)) = (&target.kind, &unparen(value).kind) {
+                if t != src {
+                    Flow::Move(src.clone())
+                } else {
+                    Flow::None
+                }
             } else {
                 Flow::None
             }
@@ -1186,6 +1223,17 @@ impl<'a> Checker<'a> {
         };
         match (&replay.item.flow, &stmt.kind) {
             (Flow::Assert(_), StmtKind::Assert { cond, .. }) => self.add_facts(cond, false),
+            (Flow::Move(src), _) => {
+                let ty = match self.env.global(src).as_deref() {
+                    Some(Def::Value { ty, .. }) => Some(ty.clone()),
+                    _ => None,
+                };
+                if let Some(ty) = ty {
+                    if self.is_heap_type(&ty) {
+                        self.moved.insert(src.clone(), Span::new(0, 0));
+                    }
+                }
+            }
             (
                 Flow::View(name),
                 StmtKind::Let {

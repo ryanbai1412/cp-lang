@@ -1,0 +1,23 @@
+error[E0301]: `a` is indexed by V, but `n` is a 1..=9
+  --> domain_origins.cp:4:9
+  |
+1 | let n: 1..=9 = read()
+  |     - `n` is declared as a 1..=9 here
+3 | let a: [V]Int = read()
+  |     - `a` is declared over V here
+4 | print(a[n])
+  |         ^
+  = help: convert it with `V(n)`, or write `a.raw[n]` to index by number
+
+error[E0301]: `b` is indexed by V, but `m` is a 1..=9
+  --> domain_origins.cp:6:14
+  |
+5 | fn f(m: 1..=9, b: [V]Int) -> Int:
+  |      - `m` is declared as a 1..=9 here
+5 | fn f(m: 1..=9, b: [V]Int) -> Int:
+  |                - `b` is declared over V here
+6 |     return b[m]
+  |              ^
+  = help: convert it with `V(m)`, or write `b.raw[m]` to index by number
+
+domain_origins.cp: 2 errors

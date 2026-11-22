@@ -21,8 +21,8 @@ for k in 0..n:
     let ub = raw_x[b] - raw_y[b]
     let vb = raw_x[b] + raw_y[b]
     let d = max(abs(ua - ub), abs(va - vb)) - 1
-    pts.push((key_d: -d, id: 2 * k, u: ua, v: va, d: d))
-    pts.push((key_d: -d, id: 2 * k + 1, u: ub, v: vb, d: d))
+    pts.push((key_d: -d, id: 2 * k, u: ua, v: va, d:))
+    pts.push((key_d: -d, id: 2 * k + 1, u: ub, v: vb, d:))
     all_v.push(va)
     all_v.push(vb)
     if d >= 0:
@@ -62,8 +62,8 @@ fn cdq_query(l: Int, r: Int):
         if p.d < 0: continue
         let lo = y_at(p.v - p.d)
         let hi = y_at(p.v + p.d)
-        right.push((u: p.u + p.d, sgn: 1, lo: lo, hi: hi, id: p.id))
-        right.push((u: p.u - p.d - 1, sgn: -1, lo: lo, hi: hi, id: p.id))
+        right.push((u: p.u + p.d, sgn: 1, lo:, hi:, id: p.id))
+        right.push((u: p.u - p.d - 1, sgn: -1, lo:, hi:, id: p.id))
     left.sort(by: e => e.u)
     right.sort(by: e => e.u)
     var li = 0
@@ -90,8 +90,8 @@ fn cdq_cover(l: Int, r: Int):
         if p.d < 0: continue
         let lo = y_at(p.v - p.d)
         let hi1 = y_at(p.v + p.d + 1)
-        left.push((u: p.u - p.d, sgn: 1, lo: lo, hi1: hi1))
-        left.push((u: p.u + p.d + 1, sgn: -1, lo: lo, hi1: hi1))
+        left.push((u: p.u - p.d, sgn: 1, lo:, hi1:))
+        left.push((u: p.u + p.d + 1, sgn: -1, lo:, hi1:))
     var right: List<(u: Int, y: Y, id: Int)> = []
     for i in m..r:
         let p = pts[i]

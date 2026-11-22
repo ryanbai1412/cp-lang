@@ -243,7 +243,7 @@ pub fn subset_sums(xs: List<Int>) -> List<Int>:
     out
 
 struct Counted(k: Int, m: Int, used: Int):
-    fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used: used)
+    fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used:)
 
 /// Shortest paths over nodes `0..n` along increasing edges `j -> i` of weight
 /// `w(j, i)`: `val[i]` is the least total weight from node 0 to `i`, and
@@ -258,7 +258,7 @@ pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<In
     var val = List.filled(max(n, 1), K.zero)
     var prev = List.filled(max(n, 1), 0)
     let rows = n - 1
-    if rows <= 0: return (val: val, prev: prev)
+    if rows <= 0: return (val:, prev:)
     var top = 0
     while (2 << top) <= rows: top += 1
     var sv: List<List<K>> = [[] for _ in 0..top]
@@ -331,7 +331,7 @@ pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<In
                 bat[l] += 1
             l -= 1
         (val[inp + 1], prev[inp + 1]) = (nv, nc)
-    (val: val, prev: prev)
+    (val:, prev:)
 
 @test
 fn li_chao_matches_a_scan_over_lines_and_segments():
@@ -345,12 +345,12 @@ fn li_chao_matches_a_scan_over_lines_and_segments():
             if rand(0, 1) == 0:
                 low.add(l)
                 high.add(l)
-                lines.push((l: l, a: lo, b: hi))
+                lines.push((l:, a: lo, b: hi))
             else:
                 let (a, b) = (rand(lo - 3, hi), rand(lo, hi + 3))
                 low.add(l, on: a..=b)
                 high.add(l, on: a..=b)
-                lines.push((l: l, a: a, b: b))
+                lines.push((l:, a:, b:))
             for x in lo..=hi:
                 let here = [e.l.at(x) for e in lines if e.a <= x and x <= e.b]
                 assert low.at(x) == min(here)
@@ -369,7 +369,7 @@ fn dnc_layers_match_the_quadratic_dp():
         for x in a: pre.push(pre.last! + x)
         let cost = (j, i) => (pre[i] - pre[j]) * (pre[i] - pre[j])
         var fast: List<?Int> = [if i == 0: 0 else: none for i in 0..=n]
-        var slow = fast
+        var slow = fast.copy()
         for _ in 0..rand(1, 4):
             fast = dnc_layer(fast, cost)
             var next: List<?Int> = List.filled(n + 1, none)

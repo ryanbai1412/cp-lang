@@ -1,8 +1,19 @@
-// Codeforces 2219 C: root the tree at any '1' vertex and run tree DP where
-// dp0[u] / dp1[u] is the minimum expected cost when u's parent edge is usable /
-// not usable, greedily adding children sorted by dp1[c] - dp0[c].
+// Codeforces 2219 C — Expected Random-Walk Exit Tree DP
+//
+// Root the tree at any '1' vertex (which has 0 exit cost). For each vertex `u`:
+// - `dp0[u]` = minimum expected cost in `u`'s subtree when `u` may exit via
+//   its parent edge.
+// - `dp1[u]` = minimum expected cost when `u` must exit into one of its
+//   children (`none` if no child has a finite `dp1`).
+//
+// At a '0' vertex `u` of degree `deg`, start with all children in `dp0` mode
+// (`base = sum(dp0[c])`) and greedily switch children into `dp1` mode in
+// increasing order of marginal cost `dp1[c] - dp0[c]`. With `k` switched
+// children, `u` has `k` valid exit edges without the parent (expected wait
+// `deg / k`) and `k + 1` with the parent (expected wait `deg / (k + 1)`).
+
 @!multitest
-let n: Int = read()
+let n: 2..=200_000 = read()
 let s: Str = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
@@ -19,7 +30,7 @@ for u in t.at.rev:
         dp0[u] = base
         dp1[u] = base
         continue
-    let ch = sorted([d1 - dp0[c] for c in t.children(u) if let d1 = dp1[c]])
+    let ch = [d1 - dp0[c] for c in t.children(u) if let d1 = dp1[c]].sorted()
     let deg = F64(g[u].len)
     var b0 = base + deg
     var b1: ?F64 = none

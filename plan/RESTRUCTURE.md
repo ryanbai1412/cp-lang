@@ -87,6 +87,51 @@ the repository. Delete this file once every step is done.
 
 The site generator stays in Python.
 
+mise and just do different jobs: mise installs and pins tool versions (run
+once per machine); just runs project commands (run daily). Commands stay in
+the `justfile`, not mise tasks, so dropping mise never breaks a command.
+
+## Tooling improvements (during cleanup)
+
+Tests:
+- One home per kind: `spec/conformance/` for language meaning (rule IDs),
+  per-crate golden dirs for tool behaviour. Fold `proto/tests/*` and
+  `crates/cpl-cli/tests/programs` into those.
+- Expectations live in the test file (`// error:` header), never in a Rust
+  `match` beside it. One `just bless` updates every golden kind.
+- Timing tests (budget, latency, profile, benchmark) move to `just bench`
+  with a quiet-machine check, out of the commit gate; under load they fail
+  without a real bug.
+- One language mode: v0.3 behaviour without the `CPL_SPEC` env switch;
+  old behaviour, if needed, behind an explicit edition flag.
+- The random program generator moves into `crates/` as an interpreter vs
+  C++ differential test with shrinking.
+- Conformance ratchet: the met count never drops; newly met cases are
+  recorded automatically.
+
+Docs that code reads:
+- A link checker over code and markdown fails the fast gate when a cited
+  path or section disappears (planned-feature links, `plan/STDLIB.md`,
+  `design/EXEMPLARS`).
+- A script assigns the next decision number, so branches cannot collide.
+
+Scripts:
+- The ~60 loose Python scripts become one tested package with subcommands
+  (conformance, stub audit, scoreboard); scripts nothing calls are deleted.
+- The `justfile` is the only entry point; `check.sh` logic moves behind it.
+  `just check` runs only tests of changed crates (target under a minute);
+  `just test` runs everything, before push.
+
+Agent ergonomics:
+- Generate the agent half of `DOMAINS.md`, `STATUS.md` counts and the
+  `REPO.md` tree instead of hand-maintaining them.
+- `just worktree <name>`: an isolated worktree with its own `target/`.
+- `mise install && just check` is the whole onboarding.
+
+Language tools on our own code:
+- `cpl fmt --check` and `cpl lint` over corpus, stdlib and conformance in
+  the gate; LSP golden snapshots cover every diagnostic code.
+
 ## Other cleanup items
 
 - Conformance gate: the number of met cases never drops.

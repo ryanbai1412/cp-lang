@@ -1,18 +1,21 @@
-// Codeforces 2183 D1: bucket tree vertices by depth; answer is max over depths of
-// layer size, plus 1 when every vertex in a non-root layer shares one parent.
+// Codeforces 2183 D1 — Tree Coloring (Easy Version)
+//
+// Each operation picks an independent set containing at most one vertex per
+// depth, so every depth layer needs at least `layer.len` operations. Moreover,
+// no vertex can share an operation with its parent: if every vertex in a
+// non-root layer `d > 0` shares a single parent `p0`, that parent cannot pair
+// with any vertex in the layer, forcing `layer.len + 1` operations. This lower
+// bound is tight by assigning colors layer-by-layer avoiding each vertex's parent.
+
 @!multitest
-let n: Int = read()
+let n: 2..=200_000 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted(Graph.undirected(edges), root: V(1))
 
-var by_depth: [0..n]List<V> = []
-for v in V: by_depth[t.depth(v)].push(v)
-
 var ans = 0
-for d in 0..n:
-    if by_depth[d].is_empty: break
-    let p0 = t.parent(by_depth[d][0])
-    let same_parent = d > 0 and all(t.parent(v) == p0 for v in by_depth[d])
-    ans max= by_depth[d].len + Int(same_parent)
+for layer in V.group(by: t.depth):
+    let p0 = t.parent(layer[0])
+    let same_parent = p0 != none and all(t.parent(v) == p0 for v in layer)
+    ans max= layer.len + Int(same_parent)
 print(ans)

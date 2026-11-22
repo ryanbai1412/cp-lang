@@ -28,12 +28,12 @@ struct Box:
     tag: Int
 
 var a = Box(items: [1, 2], tag: 1)
-var b = a
+var b = Box(items: a.items.copy(), tag: a.tag)
 b.items.push(3)
 b.tag = 2
 print(a, "|", b)
 var row: [3]Int = 7
-var other = row
+var other = row.copy()
 other[0] = 0
 print(row, other)
 var lists: List<List<Int>> = [[1], [2]]

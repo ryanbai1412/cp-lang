@@ -21,6 +21,12 @@ impl<'a> Parser<'a> {
 
     fn pattern_atom(&mut self) -> Pattern {
         let start = self.start();
+        if self.at_ident("some") && self.peek_n(1) == T::Ident {
+            let span = self.span();
+            self.planned(span, &crate::planned::SOME_PATTERN);
+            self.bump();
+            return self.pattern_atom();
+        }
         let kind = match self.peek() {
             T::Ident if self.text() == "_" => {
                 self.bump();
@@ -73,6 +79,16 @@ impl<'a> Parser<'a> {
                 }
             }
             T::Ident => PatternKind::Name(self.name().text),
+            T::Var => {
+                let span = self.span();
+                self.bump();
+                self.planned(span, &crate::planned::VAR_PATTERN);
+                let inner = self.pattern();
+                if self.speculating == 0 {
+                    self.sink.poison(self.span_from(start));
+                }
+                return inner;
+            }
             T::SelfKw => {
                 self.bump();
                 PatternKind::Name("self".into())
@@ -94,6 +110,20 @@ impl<'a> Parser<'a> {
             | T::False
             | T::None
             | T::Minus => PatternKind::Literal(Box::new(self.unary())),
+            T::Mut if self.prev_kind() == Some(T::Let) => {
+                let span = self.span();
+                self.error(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        "a binding in a `let` condition can't be `mut`",
+                    )
+                    .with_help("copy it where it changes: `var x = x` at the top of the block")
+                    .with_fix("remove `mut`", Span::new(span.start, self.span_n(1).start), ""),
+                );
+                self.bump();
+                return self.pattern_atom();
+            }
             _ => {
                 let after = self.prev_kind().map_or("here", |k| k.describe());
                 self.error_expected(

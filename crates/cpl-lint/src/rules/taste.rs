@@ -5,11 +5,11 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, BY_TWIN, HAND_ROLLED_ANSWER_SEARCH, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM, HAND_ROLLED_RANGE_TREE,
-    HAND_ROLLED_SIEVE,
-    HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN,
-    PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
+    File, Finding, BY_TWIN, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
+    HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
+    HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP,
+    SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -51,7 +51,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
         }
     }
-    file.walk(&mut Declared(&mut rule.declared, &mut rule.sorted_containers), |_, _| {});
+    file.walk(
+        &mut Declared(&mut rule.declared, &mut rule.sorted_containers),
+        |_, _| {},
+    );
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
     rule.findings.extend(repeated_literals(file));
@@ -152,7 +155,13 @@ impl<'a> Taste<'a> {
     }
 
     /// The edits that make `decl` start at `init` and drop the loop after it.
-    fn fold(&self, init: &Expr, next: &Stmt, call: &str, new_init: String) -> Option<Vec<(Span, String)>> {
+    fn fold(
+        &self,
+        init: &Expr,
+        next: &Stmt,
+        call: &str,
+        new_init: String,
+    ) -> Option<Vec<(Span, String)>> {
         // A `?` would leave the comprehension, not the fn.
         if self.declared.contains(call) || has_try(next) {
             return None;
@@ -160,12 +169,20 @@ impl<'a> Taste<'a> {
         let src = self.src.as_bytes();
         let delta = self.next_base - self.base;
         let mut end = next.span.end + delta;
-        while end > next.span.start + delta && src[(end + self.base) as usize - 1].is_ascii_whitespace() {
+        while end > next.span.start + delta
+            && src[(end + self.base) as usize - 1].is_ascii_whitespace()
+        {
             end -= 1;
         }
         Some(vec![
             (init.span, new_init),
-            (Span { start: init.span.end, end }, String::new()),
+            (
+                Span {
+                    start: init.span.end,
+                    end,
+                },
+                String::new(),
+            ),
         ])
     }
 
@@ -191,6 +208,7 @@ impl<'a> Taste<'a> {
             self.index_only(stmt);
             self.answer_search(stmts, i);
             self.prefix_sum(stmts, i);
+            self.copy_mutate_writeback(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 self.symmetric(stmt, next);
@@ -221,7 +239,11 @@ impl<'a> Taste<'a> {
         if mentions(pred_text, found.lo) || mentions(pred_text, found.hi) || has_try(stmt) {
             return;
         }
-        let call = if found.up { "bsearch_last" } else { "bsearch_first" };
+        let call = if found.up {
+            "bsearch_last"
+        } else {
+            "bsearch_first"
+        };
         let mut diag = Diagnostic::warning(
             HAND_ROLLED_ANSWER_SEARCH.code,
             stmt.span,
@@ -235,7 +257,8 @@ impl<'a> Taste<'a> {
         let mut call_name = call.to_string();
         if let Some((first, a, b)) = bounds_decl(stmts, i, found.lo, found.hi) {
             let later: Vec<&str> = stmts[i + 1..].iter().map(|&(b, s)| at(b, s.span)).collect();
-            let simple = |e: &Expr| !at(base, e.span).contains('(') || matches!(e.kind, ExprKind::Paren(_));
+            let simple =
+                |e: &Expr| !at(base, e.span).contains('(') || matches!(e.kind, ExprKind::Paren(_));
             let (fb, fs) = stmts[first];
             if !later.iter().any(|t| mentions(t, found.hi)) && simple(b) && simple(a) {
                 let a_text = at(fb, a.span);
@@ -243,7 +266,8 @@ impl<'a> Taste<'a> {
                 let pred = if found.keep {
                     pred_text.to_string()
                 } else {
-                    negated(found.pred, |e| at(base, e.span)).unwrap_or_else(|| format!("not ({pred_text})"))
+                    negated(found.pred, |e| at(base, e.span))
+                        .unwrap_or_else(|| format!("not ({pred_text})"))
                 };
                 let after_a = match walk::unparen(a).kind {
                     ExprKind::Int(v) => (v + 1).to_string(),
@@ -257,7 +281,11 @@ impl<'a> Taste<'a> {
                 let reassigned = later.iter().any(|t| assigns(t, found.lo));
                 let keyword = if reassigned { "var" } else { "let" };
                 let sorted = (!found.up && is_int_lit(a, 0))
-                    .then(|| sorted_lookup(found.pred, found.mid, found.keep, b_text, |e| at(base, e.span)))
+                    .then(|| {
+                        sorted_lookup(found.pred, found.mid, found.keep, b_text, |e| {
+                            at(base, e.span)
+                        })
+                    })
                     .flatten();
                 let text = if let Some(lookup) = sorted {
                     call_name = lookup.0;
@@ -265,18 +293,17 @@ impl<'a> Taste<'a> {
                 } else if found.up {
                     format!(
                         "{keyword} {} = bsearch_last({after_a}..={b_text}, {} => {pred}) ?? {a_or}",
-                        found.lo,
-                        found.mid
+                        found.lo, found.mid
                     )
                 } else {
                     format!(
                         "{keyword} {} = bsearch_first({a_text}..{b_text}, {} => {pred}) ?? {b_or}",
-                        found.lo,
-                        found.mid
+                        found.lo, found.mid
                     )
                 };
                 // The note after the bounds (`var (lo, hi) = (0, n)  // ..`) stays.
-                let decls = &self.src[(fb + fs.span.start) as usize..(base + stmt.span.start) as usize];
+                let decls =
+                    &self.src[(fb + fs.span.start) as usize..(base + stmt.span.start) as usize];
                 let notes: Vec<&str> = decls
                     .lines()
                     .filter_map(|line| line.find("//").map(|at| &line[at + 2..]))
@@ -403,6 +430,180 @@ impl<'a> Taste<'a> {
         self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
 
+    /// Copy-mutate-writeback on a slice (L0522):
+    ///   `let sub = xs[l..r].sorted(..); for i in l..r: xs[i] = sub[i - l]`
+    /// or
+    ///   `var sub = xs[l..r].to_list(); sub.sort(..); for i in 0..sub.len: xs[l + i] = sub[i]`
+    /// rewrites to `xs[l..r].sort(..)` when `sub` is not read afterward.
+    fn copy_mutate_writeback(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
+        let (first_base, first_stmt) = stmts[i];
+        let StmtKind::Let {
+            pat,
+            init: Some(init),
+            otherwise: None,
+            ..
+        } = &first_stmt.kind
+        else {
+            return;
+        };
+        let PatternKind::Name(sub_name) = &pat.kind else {
+            return;
+        };
+        let at = |b: u32, span: Span| {
+            self.src[(b + span.start) as usize..(b + span.end) as usize].trim()
+        };
+
+        let Some(found) = self.match_copy_mutate_pair(stmts, i, sub_name, first_base, init) else {
+            return;
+        };
+        let Some(&(wb_base, wb_stmt)) = stmts.get(found.wb_idx) else {
+            return;
+        };
+        if !is_slice_writeback_loop(
+            self.src,
+            wb_base,
+            wb_stmt,
+            &found.target,
+            sub_name,
+            &found.range,
+            found.lo.as_deref(),
+        ) {
+            return;
+        }
+        let replacement = format!(
+            "{}[{}].{}({})",
+            found.target, found.range, found.method, found.args
+        );
+        let mut diag = Diagnostic::warning(
+            COPY_SORT_WRITEBACK.code,
+            first_stmt.span,
+            format!(
+                "copies `{}[{}]`, mutates it, and writes it back: use `{replacement}`",
+                found.target, found.range
+            ),
+        )
+        .with_help(format!("mutate the slice in place: `{replacement}`"));
+
+        let sub_used_after = stmts[found.wb_idx + 1..]
+            .iter()
+            .any(|&(b, s)| mentions(at(b, s.span), sub_name));
+        if !sub_used_after {
+            let end = trim_end(self.src, wb_base, wb_stmt.span) + wb_base - first_base;
+            let span = Span {
+                start: first_stmt.span.start,
+                end,
+            };
+            diag.fixes.push(Fix {
+                title: format!("use `{replacement}`"),
+                edits: vec![(span, replacement)],
+            });
+        }
+        self.base = first_base;
+        self.push(&COPY_SORT_WRITEBACK, diag);
+    }
+
+    fn match_copy_mutate_pair(
+        &self,
+        stmts: &[(u32, &Stmt)],
+        i: usize,
+        sub_name: &str,
+        first_base: u32,
+        init: &Expr,
+    ) -> Option<CopyMutate> {
+        let at = |b: u32, span: Span| {
+            self.src[(b + span.start) as usize..(b + span.end) as usize].trim()
+        };
+
+        // Form 1 (2 statements): `let/var sub = xs[l..r].sorted(..)` / `.reversed()` / `.rotated_left(..)` / `.rotated_right(..)`
+        if let ExprKind::Call { callee, args, .. } = &init.kind {
+            if let ExprKind::Field { base, name } = &callee.kind {
+                if let Some((target, range, lo)) =
+                    extract_contiguous_slice(self.src, first_base, base)
+                {
+                    let in_place = match name.text.as_str() {
+                        "sorted" => Some("sort"),
+                        "reversed" => Some("reverse"),
+                        "rotated_left" => Some("rotate_left"),
+                        "rotated_right" => Some("rotate_right"),
+                        _ => None,
+                    };
+                    if let Some(method) = in_place {
+                        let args =
+                            call_args_text(self.src, first_base, init.span, callee.span, args);
+                        return Some(CopyMutate {
+                            target,
+                            range,
+                            lo,
+                            method,
+                            args,
+                            wb_idx: i + 1,
+                        });
+                    }
+                    // Form 2a (3 statements): `var sub = xs[l..r].to_list()` + `sub.sort(..)` + writeback
+                    if name.text == "to_list" && args.is_empty() {
+                        if let Some((method, args)) =
+                            match_in_place_mut_stmt(self.src, stmts.get(i + 1)?, sub_name)
+                        {
+                            return Some(CopyMutate {
+                                target,
+                                range,
+                                lo,
+                                method,
+                                args,
+                                wb_idx: i + 2,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Form 2b (3 statements): `var sub = [xs[k] for k in l..r]` + `sub.sort(..)` + writeback
+        if let ExprKind::Comprehension { body, clauses } = &init.kind {
+            if clauses.len() == 1 {
+                let Clause { pat, iter, conds } = &clauses[0];
+                if conds.is_empty() {
+                    if let PatternKind::Name(var) = &pat.kind {
+                        if let ExprKind::Range {
+                            lo,
+                            hi: _,
+                            inclusive: _,
+                            step: None,
+                        } = &iter.kind
+                        {
+                            if let ExprKind::Index { base, indices } = &body.kind {
+                                if indices.len() == 1
+                                    && matches!(&indices[0].kind, ExprKind::Name(n) if n == var)
+                                {
+                                    let target = at(first_base, base.span).to_string();
+                                    let range = at(first_base, iter.span).to_string();
+                                    let lo =
+                                        lo.as_ref().map(|e| at(first_base, e.span).to_string());
+                                    if let Some((method, args)) = match_in_place_mut_stmt(
+                                        self.src,
+                                        stmts.get(i + 1)?,
+                                        sub_name,
+                                    ) {
+                                        return Some(CopyMutate {
+                                            target,
+                                            range,
+                                            lo,
+                                            method,
+                                            args,
+                                            wb_idx: i + 2,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     /// `let _ = f(..)` where `f` is a fn of this file that returns a value.
     fn discarded(&mut self, stmt: &Stmt) {
         let StmtKind::Let {
@@ -472,7 +673,10 @@ impl<'a> Taste<'a> {
                         _ => false,
                     }
             }
-            (StmtKind::Expr(ea), StmtKind::Expr(eb)) => match (self.push_call(ea, self.base), self.push_call(eb, self.next_base)) {
+            (StmtKind::Expr(ea), StmtKind::Expr(eb)) => match (
+                self.push_call(ea, self.base),
+                self.push_call(eb, self.next_base),
+            ) {
                 (Some((la, ua, va, ra)), Some((lb, ub, vb, rb))) => {
                     la == lb && ua == vb && va == ub && ua != va && ra == rb
                 }
@@ -503,7 +707,11 @@ impl<'a> Taste<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        let ExprKind::Index { base: list, indices } = &base.kind else {
+        let ExprKind::Index {
+            base: list,
+            indices,
+        } = &base.kind
+        else {
             return None;
         };
         if name.text != "push" || indices.len() != 1 || args.len() != 1 {
@@ -530,12 +738,15 @@ impl<'a> Taste<'a> {
             pat,
             iter,
             body,
+            else_body: None,
         } = &next.kind
         else {
             return;
         };
         let init_text = self.text(init.span);
-        if !matches!(init_text, "none" | "false" | "true") || !breaks_after_setting(&body.stmts, name) {
+        if !matches!(init_text, "none" | "false" | "true")
+            || !breaks_after_setting(&body.stmts, name)
+        {
             return;
         }
         let (call, fix) = match self.exact_search(name, init_text, pat, iter, body) {
@@ -638,6 +849,7 @@ impl<'a> Taste<'a> {
             pat,
             iter,
             body,
+            else_body: None,
         } = &next.kind
         else {
             return;
@@ -663,9 +875,7 @@ impl<'a> Taste<'a> {
             _ => (None, only),
         };
         match &only.kind {
-            StmtKind::Assign { target, op, value }
-                if matches!(&target.kind, ExprKind::Name(n) if n == name) =>
-            {
+            StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == name) => {
                 self.reduce(name, init, pat, iter, cond, op, value, decl, next)
             }
             StmtKind::Expr(e) => {
@@ -705,7 +915,11 @@ impl<'a> Taste<'a> {
         }
         let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
         let comp = format!("[{v} for {p} in {it}{filter}]");
-        let text = if items.is_empty() { comp.clone() } else { format!("{i} + {comp}") };
+        let text = if items.is_empty() {
+            comp.clone()
+        } else {
+            format!("{i} + {comp}")
+        };
         let mut diag = Diagnostic::warning(
             PUSH_LOOP.code,
             self.pair_span(decl.span, next.span),
@@ -735,7 +949,17 @@ impl<'a> Taste<'a> {
         let ExprKind::Compare { first, rest } = &lhs.kind else {
             return;
         };
-        let (ExprKind::Name(x), [(CmpOp::Ne, Expr { kind: ExprKind::None, .. })]) = (&first.kind, &rest[..]) else {
+        let (
+            ExprKind::Name(x),
+            [(
+                CmpOp::Ne,
+                Expr {
+                    kind: ExprKind::None,
+                    ..
+                },
+            )],
+        ) = (&first.kind, &rest[..])
+        else {
             return;
         };
         struct Unwraps<'n>(&'n str, bool);
@@ -771,7 +995,10 @@ impl<'a> Taste<'a> {
         // `xs.find(x => ..)` is the element a test holds for: `xs.first(..)`,
         // where `xs.find(x)` is the index of a value.
         if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if method.text == "find" && test.name.is_none() && matches!(test.value.kind, ExprKind::Lambda { .. }) {
+            if method.text == "find"
+                && test.name.is_none()
+                && matches!(test.value.kind, ExprKind::Lambda { .. })
+            {
                 let mut diag = Diagnostic::warning(
                     FREE_FOLD.code,
                     method.span,
@@ -804,9 +1031,12 @@ impl<'a> Taste<'a> {
             "min" | "max" => {
                 !seq.mutable
                     && (args.len() == 1
-                        || (args.len() == 2 && args[1].name.as_ref().map(|n| n.text.as_str()) == Some("by")))
+                        || (args.len() == 2
+                            && args[1].name.as_ref().map(|n| n.text.as_str()) == Some("by")))
             }
-            "count" | "all" | "any" | "first" => args.len() == 2 && positional && is_test(&args[1].value),
+            "count" | "all" | "any" | "first" => {
+                args.len() == 2 && positional && is_test(&args[1].value)
+            }
             "sorted" => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
             "sort" => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
             _ => false,
@@ -822,11 +1052,21 @@ impl<'a> Taste<'a> {
             return;
         }
         let recv = self.text(seq.value.span);
-        let recv = if postfix(&seq.value) { recv.to_string() } else { format!("({recv})") };
+        let recv = if postfix(&seq.value) {
+            recv.to_string()
+        } else {
+            format!("({recv})")
+        };
         let rest = match (args.get(1), args.last()) {
             (Some(second), Some(last)) => {
-                let start = second.name.as_ref().map_or(second.value.span.start, |n| n.span.start);
-                self.text(Span { start, end: last.value.span.end })
+                let start = second
+                    .name
+                    .as_ref()
+                    .map_or(second.value.span.start, |n| n.span.start);
+                self.text(Span {
+                    start,
+                    end: last.value.span.end,
+                })
             }
             _ => "",
         };
@@ -911,7 +1151,10 @@ impl<'a> Taste<'a> {
             let mut edits = vec![(method.span, base.to_string())];
             if !key_is_by {
                 edits.push((
-                    Span { start: key.value.span.start, end: key.value.span.start },
+                    Span {
+                        start: key.value.span.start,
+                        end: key.value.span.start,
+                    },
                     "by: ".to_string(),
                 ));
             }
@@ -965,7 +1208,11 @@ impl<'a> Taste<'a> {
             format!("{base}({}, by: {key_text})", self.text(seq.value.span))
         } else {
             let recv = self.text(seq.value.span);
-            let recv = if postfix(&seq.value) { recv.to_string() } else { format!("({recv})") };
+            let recv = if postfix(&seq.value) {
+                recv.to_string()
+            } else {
+                format!("({recv})")
+            };
             format!("{recv}.{base}({prefix}by: {key_text})")
         };
         let mut diag = Diagnostic::warning(
@@ -1120,7 +1367,8 @@ impl<'a> Taste<'a> {
         let StmtKind::Use { path, names, .. } = &stmt.kind else {
             return;
         };
-        if path.len() == 3 && names.is_empty() && path[0].text == "std" && path[1].text == "prefix" {
+        if path.len() == 3 && names.is_empty() && path[0].text == "std" && path[1].text == "prefix"
+        {
             let replacement = match path[2].text.as_str() {
                 "prefix1" | "prefix2" | "prefix_n" => String::new(),
                 "Prefix1" | "Prefix2" | "PrefixN" => "use std.prefix.Prefix".into(),
@@ -1147,7 +1395,14 @@ impl<'a> Taste<'a> {
         let has_old = names.iter().any(|n| {
             matches!(
                 n.text.as_str(),
-                "prefix1" | "prefix2" | "prefix_n" | "Prefix1" | "Prefix2" | "PrefixN" | "Diff1" | "Diff2"
+                "prefix1"
+                    | "prefix2"
+                    | "prefix_n"
+                    | "Prefix1"
+                    | "Prefix2"
+                    | "PrefixN"
+                    | "Diff1"
+                    | "Diff2"
             )
         });
         if !has_old {
@@ -1208,9 +1463,15 @@ impl<'a> Taste<'a> {
             _ => return,
         };
         let replacement = match (name.text.as_str(), args.as_slice()) {
-            ("first_ge", [a]) if a.name.is_none() => format!("range({}..).first", self.text(a.value.span)),
-            ("last_le", [a]) if a.name.is_none() => format!("range(..={}).last", self.text(a.value.span)),
-            ("last_lt", [a]) if a.name.is_none() => format!("range(..{}).last", self.text(a.value.span)),
+            ("first_ge", [a]) if a.name.is_none() => {
+                format!("range({}..).first", self.text(a.value.span))
+            }
+            ("last_le", [a]) if a.name.is_none() => {
+                format!("range(..={}).last", self.text(a.value.span))
+            }
+            ("last_lt", [a]) if a.name.is_none() => {
+                format!("range(..{}).last", self.text(a.value.span))
+            }
             ("first_gt", [a]) if a.name.is_none() => {
                 let q = self.text(a.value.span);
                 if is_int_key {
@@ -1235,7 +1496,10 @@ impl<'a> Taste<'a> {
             expr.span,
             format!("use `.{replacement}` instead of `.{}`", name.text),
         )
-        .with_help(format!("`cpl fix` rewrites `.{}` to `.{replacement}`", name.text));
+        .with_help(format!(
+            "`cpl fix` rewrites `.{}` to `.{replacement}`",
+            name.text
+        ));
         diag.fixes.push(Fix {
             title: format!("rewrite `.{}` to `.{replacement}`", name.text),
             edits: vec![(replace_span, replacement)],
@@ -1324,7 +1588,11 @@ impl<'a> Taste<'a> {
         for inner in &body.stmts {
             walk::walk_stmt(&mut uses, inner);
         }
-        let inside = |span: Span| uses.reads.iter().any(|r| r.start <= span.start && span.end <= r.end);
+        let inside = |span: Span| {
+            uses.reads
+                .iter()
+                .any(|r| r.start <= span.start && span.end <= r.end)
+        };
         if !uses.ok || uses.reads.is_empty() || !uses.names.iter().all(|s| inside(*s)) {
             return;
         }
@@ -1430,6 +1698,7 @@ fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
     let StmtKind::While {
         cond: Cond::Expr(cond),
         body,
+        else_body: None,
     } = &stmt.kind
     else {
         return None;
@@ -1446,11 +1715,10 @@ fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
     };
     let StmtKind::Let {
         mutable: false,
-        pat:
-            Pattern {
-                kind: PatternKind::Name(mid),
-                ..
-            },
+        pat: Pattern {
+            kind: PatternKind::Name(mid),
+            ..
+        },
         init: Some(m),
         otherwise: None,
         guard: None,
@@ -1476,7 +1744,8 @@ fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
     let (t, e) = (bound_move(then, mid)?, bound_move(other, mid)?);
     // A first search sets `hi = mid` and `lo = mid + 1`; a last one sets
     // `lo = mid` and `hi = mid - 1`.
-    let (keep_name, keep_step, skip_name, skip_step) = if up { (lo, 0, hi, -1) } else { (hi, 0, lo, 1) };
+    let (keep_name, keep_step, skip_name, skip_step) =
+        if up { (lo, 0, hi, -1) } else { (hi, 0, lo, 1) };
     let keep = if t == (keep_name, keep_step) && e == (skip_name, skip_step) {
         true
     } else if e == (keep_name, keep_step) && t == (skip_name, skip_step) {
@@ -1517,7 +1786,8 @@ fn midpoint(m: &Expr, lo: &str, hi: &str) -> Option<bool> {
     if let Some(sum) = halved(m) {
         let (sum, up) = plus_one(&sum);
         let (op, a, b) = bin(&sum)?;
-        return (op == BinOp::Add && ((is(a, lo) && is(b, hi)) || (is(a, hi) && is(b, lo)))).then_some(up);
+        return (op == BinOp::Add && ((is(a, lo) && is(b, hi)) || (is(a, hi) && is(b, lo))))
+            .then_some(up);
     }
     let (BinOp::Add, base, half) = bin(m)? else {
         return None;
@@ -1535,11 +1805,12 @@ fn midpoint(m: &Expr, lo: &str, hi: &str) -> Option<bool> {
 /// A block that is only `x = mid`, `x = mid + 1` or `x = mid - 1`.
 fn bound_move<'a>(block: &'a Block, mid: &str) -> Option<(&'a str, i128)> {
     let [Stmt {
-        kind: StmtKind::Assign {
-            target,
-            op: AssignOp::Set,
-            value,
-        },
+        kind:
+            StmtKind::Assign {
+                target,
+                op: AssignOp::Set,
+                value,
+            },
         ..
     }] = block.stmts.as_slice()
     else {
@@ -1565,15 +1836,19 @@ fn bound_move<'a>(block: &'a Block, mid: &str) -> Option<(&'a str, i128)> {
 /// The statements right before `stmts[i]` that declare `lo` and `hi`:
 /// `var (lo, hi) = (a, b)`, or `var lo = a` then `var hi = b`. Gives the
 /// index of the first of them and `a`, `b`.
-fn bounds_decl<'a>(stmts: &[(u32, &'a Stmt)], i: usize, lo: &str, hi: &str) -> Option<(usize, &'a Expr, &'a Expr)> {
+fn bounds_decl<'a>(
+    stmts: &[(u32, &'a Stmt)],
+    i: usize,
+    lo: &str,
+    hi: &str,
+) -> Option<(usize, &'a Expr, &'a Expr)> {
     let prev = stmts.get(i.checked_sub(1)?)?.1;
     if let StmtKind::Let {
         mutable: true,
-        pat:
-            Pattern {
-                kind: PatternKind::Tuple(names),
-                ..
-            },
+        pat: Pattern {
+            kind: PatternKind::Tuple(names),
+            ..
+        },
         ty: None,
         init: Some(init),
         otherwise: None,
@@ -1629,8 +1904,13 @@ fn sorted_lookup<'e>(
     if expr_name(ix) != Some(mid) || end != format!("{list}.len") || mentions(text(target), mid) {
         return None;
     }
-    let by = field.map(|f| format!(", by: v => v.{f}")).unwrap_or_default();
-    Some((method.to_string(), format!("{list}.{method}({}{by})", text(target))))
+    let by = field
+        .map(|f| format!(", by: v => v.{f}"))
+        .unwrap_or_default();
+    Some((
+        method.to_string(),
+        format!("{list}.{method}({}{by})", text(target)),
+    ))
 }
 
 /// `a < b` as `a >= b`, and so on for one comparison.
@@ -1662,7 +1942,8 @@ fn unchecked_spans(file: &File) -> Vec<(u32, u32)> {
     impl Visitor for Scan {
         fn stmt(&mut self, stmt: &Stmt) {
             if let StmtKind::Unchecked(_) = &stmt.kind {
-                self.spans.push((self.base + stmt.span.start, self.base + stmt.span.end));
+                self.spans
+                    .push((self.base + stmt.span.start, self.base + stmt.span.end));
             }
         }
     }
@@ -1727,7 +2008,9 @@ fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
         matches!(&s.kind, StmtKind::Assign { target, op: AssignOp::Set, .. }
             if matches!(&target.kind, ExprKind::Name(n) if n == name))
     };
-    stmts.windows(2).any(|w| sets(&w[0]) && matches!(w[1].kind, StmtKind::Break(None)))
+    stmts
+        .windows(2)
+        .any(|w| sets(&w[0]) && matches!(w[1].kind, StmtKind::Break(None)))
         || stmts.iter().any(|s| match &s.kind {
             StmtKind::Expr(Expr {
                 kind:
@@ -1737,8 +2020,12 @@ fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
                     },
                 ..
             }) => {
-                branches.iter().any(|(_, b)| breaks_after_setting(&b.stmts, name))
-                    || otherwise.as_ref().is_some_and(|b| breaks_after_setting(&b.stmts, name))
+                branches
+                    .iter()
+                    .any(|(_, b)| breaks_after_setting(&b.stmts, name))
+                    || otherwise
+                        .as_ref()
+                        .is_some_and(|b| breaks_after_setting(&b.stmts, name))
             }
             StmtKind::Unchecked(b) => breaks_after_setting(&b.stmts, name),
             _ => false,
@@ -1754,7 +2041,9 @@ fn pushed_onto<'e>(e: &'e Expr, name: &str) -> Option<&'e Expr> {
         return None;
     };
     match (&base.kind, &args[..]) {
-        (ExprKind::Name(n), [arg]) if n == name && method.text == "push" && arg.name.is_none() => Some(&arg.value),
+        (ExprKind::Name(n), [arg]) if n == name && method.text == "push" && arg.name.is_none() => {
+            Some(&arg.value)
+        }
         _ => None,
     }
 }
@@ -1782,7 +2071,10 @@ fn iter_text<'s>(iter: &Expr, text: &'s str) -> std::borrow::Cow<'s, str> {
 
 /// An initial value `sum` can start from: a number or a `.zero`.
 fn numeric(init: &str) -> bool {
-    init.ends_with(".zero") || init.trim_start_matches('-').starts_with(|c: char| c.is_ascii_digit())
+    init.ends_with(".zero")
+        || init
+            .trim_start_matches('-')
+            .starts_with(|c: char| c.is_ascii_digit())
 }
 
 /// `text` mentions the identifier `name`.
@@ -1791,7 +2083,8 @@ fn mentions(text: &str, name: &str) -> bool {
 }
 
 fn words(text: &str) -> impl Iterator<Item = &str> {
-    text.split(|c: char| !(c.is_alphanumeric() || c == '_')).filter(|w| !w.is_empty())
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .filter(|w| !w.is_empty())
 }
 
 fn idents(src: &str) -> HashSet<&str> {
@@ -1826,7 +2119,10 @@ fn repeated_literals(file: &File) -> Vec<Finding> {
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Int(v) = expr.kind {
                 if v >= 1000 {
-                    self.seen.entry(v).or_default().push(expr.span.shift(self.base));
+                    self.seen
+                        .entry(v)
+                        .or_default()
+                        .push(expr.span.shift(self.base));
                 }
             }
         }
@@ -1839,7 +2135,11 @@ fn repeated_literals(file: &File) -> Vec<Finding> {
     file.walk(&mut ints, |i, base| i.base = base);
     let input_types = ints.input_types;
     for spans in ints.seen.values_mut() {
-        spans.retain(|s| !input_types.iter().any(|t| t.start <= s.start && s.end <= t.end));
+        spans.retain(|s| {
+            !input_types
+                .iter()
+                .any(|t| t.start <= s.start && s.end <= t.end)
+        });
     }
     let lines = cpl_diag::LineIndex::new(file.src);
     let mut out = Vec::new();
@@ -2273,11 +2573,13 @@ fn is_recursive_segtree_fn(decl: &FnDecl, body: &Block) -> bool {
                                     lhs,
                                     rhs,
                                     ..
-                                } if matches!(walk::unparen(lhs).kind, ExprKind::Compare { .. })
-                                    && matches!(
-                                        walk::unparen(rhs).kind,
-                                        ExprKind::Compare { .. }
-                                    ) =>
+                                } if matches!(
+                                    walk::unparen(lhs).kind,
+                                    ExprKind::Compare { .. }
+                                ) && matches!(
+                                    walk::unparen(rhs).kind,
+                                    ExprKind::Compare { .. }
+                                ) =>
                                 {
                                     self.has_range_or_point_guard = true;
                                 }
@@ -2405,12 +2707,8 @@ fn hand_rolled_string_algos(file: &File) -> Vec<Finding> {
         fn warn(&mut self, span: Span, msg: &str, help: &str) {
             self.findings.push(Finding {
                 lint: &HAND_ROLLED_STRING_ALGO,
-                diag: Diagnostic::warning(
-                    HAND_ROLLED_STRING_ALGO.code,
-                    span.shift(self.base),
-                    msg,
-                )
-                .with_help(help),
+                diag: Diagnostic::warning(HAND_ROLLED_STRING_ALGO.code, span.shift(self.base), msg)
+                    .with_help(help),
             });
         }
     }
@@ -2558,7 +2856,7 @@ fn is_kmp_prefix_loop(for_var: &str, body: &Block) -> bool {
     impl Visitor for Check<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
-                StmtKind::While { cond, body } => {
+                StmtKind::While { cond, body, .. } => {
                     let Some(cond_e) = cond_expr(cond) else {
                         return;
                     };
@@ -2677,7 +2975,7 @@ fn is_z_function_loop(for_var: &str, body: &Block) -> bool {
             if self.found {
                 return;
             }
-            if let StmtKind::While { cond, body } = &stmt.kind {
+            if let StmtKind::While { cond, body, .. } = &stmt.kind {
                 let Some(cond_e) = cond_expr(cond) else {
                     return;
                 };
@@ -3034,7 +3332,7 @@ fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
     impl Visitor for Scan {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
-                StmtKind::While { cond, body } if is_dsu_path_halving_loop(cond, body) => {
+                StmtKind::While { cond, body, .. } if is_dsu_path_halving_loop(cond, body) => {
                     self.warn(
                         &HAND_ROLLED_DSU,
                         stmt.span,
@@ -3221,7 +3519,7 @@ fn is_dsu_recursive_or_two_pass_fn(decl: &FnDecl, body: &Block) -> bool {
     let mut chase_arrs: Vec<String> = Vec::new();
     let mut compress_arrs: Vec<String> = Vec::new();
     for stmt in &body.stmts {
-        if let StmtKind::While { cond, body: wb } = &stmt.kind {
+        if let StmtKind::While { cond, body: wb, .. } = &stmt.kind {
             let cond_arr = if let Some((arr, _)) = dsu_not_root_cond(cond) {
                 Some(arr.to_string())
             } else if let Cond::Let { value, .. } = cond {
@@ -3286,10 +3584,11 @@ fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
                 StmtKind::Let {
-                    pat: Pattern {
-                        kind: PatternKind::Name(v),
-                        ..
-                    },
+                    pat:
+                        Pattern {
+                            kind: PatternKind::Name(v),
+                            ..
+                        },
                     init: Some(init),
                     ..
                 } if is_mul_of_var(init, self.outer) => {
@@ -3325,10 +3624,11 @@ fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
                     }
                 }
                 StmtKind::For {
-                    pat: Pattern {
-                        kind: PatternKind::Name(p),
-                        ..
-                    },
+                    pat:
+                        Pattern {
+                            kind: PatternKind::Name(p),
+                            ..
+                        },
                     body: inner_body,
                     ..
                 } => {
@@ -3568,7 +3868,10 @@ fn split_add_with_prev<'a>(
 }
 
 fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
-    let StmtKind::For { pat, iter, body, .. } = &stmt.kind else {
+    let StmtKind::For {
+        pat, iter, body, ..
+    } = &stmt.kind
+    else {
         return None;
     };
     let PatternKind::Name(var) = &pat.kind else {
@@ -3869,10 +4172,7 @@ fn prefix_zero_decl<'a>(
 /// Checks that every occurrence of `arr` in `later` is a read-only `arr[ix]`
 /// expression (no mutation, no bare pass, no method call, no shadowing).
 /// Returns `(stmt_base, index_expr_span, ix_span)` for every `arr[ix]`.
-fn collect_pure_index_reads(
-    later: &[(u32, &Stmt)],
-    arr: &str,
-) -> Option<Vec<(u32, Span, Span)>> {
+fn collect_pure_index_reads(later: &[(u32, &Stmt)], arr: &str) -> Option<Vec<(u32, Span, Span)>> {
     struct Collector<'a> {
         arr: &'a str,
         base: u32,
@@ -3938,4 +4238,256 @@ fn collect_pure_index_reads(
         }
     }
     Some(c.reads)
+}
+
+struct CopyMutate {
+    target: String,
+    range: String,
+    lo: Option<String>,
+    method: &'static str,
+    args: String,
+    wb_idx: usize,
+}
+
+fn extract_contiguous_slice(
+    src: &str,
+    base: u32,
+    expr: &Expr,
+) -> Option<(String, String, Option<String>)> {
+    let at = |span: Span| src[(base + span.start) as usize..(base + span.end) as usize].trim();
+    let ExprKind::Index {
+        base: target,
+        indices,
+    } = &expr.kind
+    else {
+        return None;
+    };
+    if indices.len() != 1 {
+        return None;
+    }
+    let ExprKind::Range {
+        lo,
+        hi: _,
+        inclusive: _,
+        step: None,
+    } = &indices[0].kind
+    else {
+        return None;
+    };
+    let target_text = at(target.span).to_string();
+    let range_text = at(indices[0].span).to_string();
+    let lo_text = lo.as_ref().map(|e| at(e.span).to_string());
+    Some((target_text, range_text, lo_text))
+}
+
+fn call_args_text(
+    src: &str,
+    base: u32,
+    call_span: Span,
+    callee_span: Span,
+    args: &[Arg],
+) -> String {
+    if args.is_empty() {
+        return String::new();
+    }
+    let tail = &src[(base + callee_span.end) as usize..(base + call_span.end) as usize];
+    if let (Some(open), Some(close)) = (tail.find('('), tail.rfind(')')) {
+        if open < close {
+            return tail[open + 1..close].trim().to_string();
+        }
+    }
+    String::new()
+}
+
+fn match_in_place_mut_stmt(
+    src: &str,
+    stmt_entry: &(u32, &Stmt),
+    sub_name: &str,
+) -> Option<(&'static str, String)> {
+    let (base, stmt) = *stmt_entry;
+    let StmtKind::Expr(expr) = &stmt.kind else {
+        return None;
+    };
+    let ExprKind::Call { callee, args, .. } = &expr.kind else {
+        return None;
+    };
+    let ExprKind::Field {
+        base: recv,
+        name: method,
+    } = &callee.kind
+    else {
+        return None;
+    };
+    if !matches!(&recv.kind, ExprKind::Name(n) if n == sub_name) {
+        return None;
+    }
+    let m = match method.text.as_str() {
+        "sort" => "sort",
+        "reverse" => "reverse",
+        "rotate_left" => "rotate_left",
+        "rotate_right" => "rotate_right",
+        "scan_in_place" => "scan_in_place",
+        "suffix_scan_in_place" => "suffix_scan_in_place",
+        _ => return None,
+    };
+    Some((m, call_args_text(src, base, expr.span, callee.span, args)))
+}
+
+fn is_zero_lo(lo_text: Option<&str>) -> bool {
+    matches!(lo_text, None | Some("0"))
+}
+
+fn is_sum_with(src: &str, base: u32, expr: &Expr, var: &str, lo_text: Option<&str>) -> bool {
+    if is_zero_lo(lo_text) {
+        return matches!(&expr.kind, ExprKind::Name(n) if n == var);
+    }
+    let Some(lo) = lo_text else {
+        return false;
+    };
+    let at = |span: Span| src[(base + span.start) as usize..(base + span.end) as usize].trim();
+    match &expr.kind {
+        ExprKind::Binary {
+            op: BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } => {
+            (matches!(&lhs.kind, ExprKind::Name(n) if n == var) && at(rhs.span) == lo)
+                || (matches!(&rhs.kind, ExprKind::Name(n) if n == var) && at(lhs.span) == lo)
+        }
+        _ => false,
+    }
+}
+
+fn is_diff_with(src: &str, base: u32, expr: &Expr, var: &str, lo_text: Option<&str>) -> bool {
+    if is_zero_lo(lo_text) {
+        return matches!(&expr.kind, ExprKind::Name(n) if n == var);
+    }
+    let Some(lo) = lo_text else {
+        return false;
+    };
+    let at = |span: Span| src[(base + span.start) as usize..(base + span.end) as usize].trim();
+    matches!(
+        &expr.kind,
+        ExprKind::Binary {
+            op: BinOp::Sub,
+            lhs,
+            rhs,
+            ..
+        } if matches!(&lhs.kind, ExprKind::Name(n) if n == var) && at(rhs.span) == lo
+    )
+}
+
+fn is_slice_writeback_loop(
+    src: &str,
+    base: u32,
+    stmt: &Stmt,
+    target_text: &str,
+    sub_name: &str,
+    range_text: &str,
+    lo_text: Option<&str>,
+) -> bool {
+    let at = |span: Span| src[(base + span.start) as usize..(base + span.end) as usize].trim();
+    let StmtKind::For {
+        pat, iter, body, ..
+    } = &stmt.kind
+    else {
+        return false;
+    };
+    if body.stmts.len() != 1 {
+        return false;
+    }
+    let StmtKind::Assign {
+        target,
+        op: AssignOp::Set,
+        value,
+    } = &body.stmts[0].kind
+    else {
+        return false;
+    };
+    let ExprKind::Index {
+        base: dst_base,
+        indices: dst_indices,
+    } = &target.kind
+    else {
+        return false;
+    };
+    if dst_indices.len() != 1 || at(dst_base.span) != target_text {
+        return false;
+    }
+    let dst_idx = &dst_indices[0];
+
+    // Pattern A: `for (i, v) in sub.items: xs[l + i] = v`
+    if let PatternKind::Tuple(parts) = &pat.kind {
+        if parts.len() == 2 {
+            if let (PatternKind::Name(idx_var), PatternKind::Name(val_var)) =
+                (&parts[0].kind, &parts[1].kind)
+            {
+                let is_items = matches!(
+                    &iter.kind,
+                    ExprKind::Field { base: ib, name }
+                        if matches!(&ib.kind, ExprKind::Name(n) if n == sub_name)
+                            && name.text == "items"
+                );
+                if is_items
+                    && is_sum_with(src, base, dst_idx, idx_var, lo_text)
+                    && matches!(&value.kind, ExprKind::Name(n) if n == val_var)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    let PatternKind::Name(idx_var) = &pat.kind else {
+        return false;
+    };
+    let ExprKind::Index {
+        base: rhs_base,
+        indices: rhs_indices,
+    } = &value.kind
+    else {
+        return false;
+    };
+    if rhs_indices.len() != 1 || !matches!(&rhs_base.kind, ExprKind::Name(n) if n == sub_name) {
+        return false;
+    }
+    let rhs_idx = &rhs_indices[0];
+
+    // Pattern B: `for i in l..r: xs[i] = sub[i - l]`
+    if at(iter.span) == range_text
+        && matches!(&dst_idx.kind, ExprKind::Name(n) if n == idx_var)
+        && is_diff_with(src, base, rhs_idx, idx_var, lo_text)
+    {
+        return true;
+    }
+
+    // Pattern C: `for i in 0..sub.len: xs[l + i] = sub[i]` (or `0..r - l`)
+    if let ExprKind::Range {
+        lo: Some(rlo),
+        hi: Some(rhi),
+        inclusive: false,
+        step: None,
+    } = &iter.kind
+    {
+        if at(rlo.span) == "0"
+            && matches!(&rhs_idx.kind, ExprKind::Name(n) if n == idx_var)
+            && is_sum_with(src, base, dst_idx, idx_var, lo_text)
+        {
+            let hi_txt = at(rhi.span);
+            if hi_txt == format!("{sub_name}.len")
+                || lo_text.is_some_and(|lo| {
+                    matches!(
+                        &rhi.kind,
+                        ExprKind::Binary { op: BinOp::Sub, rhs, .. } if at(rhs.span) == lo
+                    )
+                })
+            {
+                return true;
+            }
+        }
+    }
+
+    false
 }

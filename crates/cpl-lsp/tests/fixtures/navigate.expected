@@ -1,0 +1,32 @@
+== diagnostics
+(none)
+
+== definition @ 5:11
+here 2:4-2:9
+
+== definition @ 6:22
+(none)
+
+== references @ 5:11
+here 2:4-2:9
+here 5:9-5:14
+here 6:7-6:12
+
+== references @ 6:22
+(empty)
+
+== documentHighlight @ 5:11
+2:4-2:9
+5:9-5:14
+6:7-6:12
+
+== documentHighlight @ 6:22
+(empty)
+
+== rename @ 5:11
+here 2:4-2:9 -> renamed
+here 5:9-5:14 -> renamed
+here 6:7-6:12 -> renamed
+
+== rename @ 6:22
+(none)

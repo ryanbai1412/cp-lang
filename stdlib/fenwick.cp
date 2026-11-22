@@ -19,14 +19,14 @@ pub struct Fenwick<D, T>:
                 if q <= D.K: t[q] = t[q] + t[p]
         Fenwick(t)
 
-    /// `a[i] += x`.
+    /// `a[i] += x`. O(log |D|).
     pub fn add(mut self, i: D, x: T):
         var p = i.to_idx + 1
         while p < t.len:
             t[p] = t[p] + x
             p += p & -p
 
-    /// The sum of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
+    /// The sum of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not. O(log |D|).
     pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero
@@ -35,7 +35,7 @@ pub struct Fenwick<D, T>:
             p -= p & -p
         acc
 
-    /// The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero.
+    /// The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
     pub fn sum(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
         var acc = T.zero
@@ -50,7 +50,7 @@ pub struct Fenwick<D, T>:
         acc
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
-    /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
+    /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log |D|).
     pub fn first_ge(self, target: Int) -> ?Cut<D>:
         if target <= 0: return D.cuts.nth(0)
         var p = 0
@@ -68,7 +68,7 @@ pub struct Fenwick<D, T>:
 
     /// The `k`-th position, counting from 1, when each position stands for as many items as
     /// its value: the first `d` with `prefix` through `d` at least `k`, or `none` when there
-    /// are fewer than `k` items. For non-negative values. O(log n).
+    /// are fewer than `k` items. For non-negative values. O(log |D|).
     pub fn kth(self, k: Int) -> ?D:
         assert k >= 1, "`kth` counts from 1"
         let b = self.first_ge(k)
@@ -91,14 +91,14 @@ pub struct XorFenwick<D, T>:
                 if q <= D.K: t[q] = t[q] ^ t[p]
         XorFenwick(t)
 
-    /// `a[i] ^= x`.
+    /// `a[i] ^= x`. O(log |D|).
     pub fn flip(mut self, i: D, x: T):
         var p = i.to_idx + 1
         while p < t.len:
             t[p] = t[p] ^ x
             p += p & -p
 
-    /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
+    /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not. O(log |D|).
     pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero
@@ -107,7 +107,7 @@ pub struct XorFenwick<D, T>:
             p -= p & -p
         acc
 
-    /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero.
+    /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero. O(log |D|).
     pub fn xor(self, r: Range<D>) -> T = self.prefix(r.end) ^ self.prefix(r.start)
 
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
@@ -118,7 +118,7 @@ pub struct Fenwick2D<R, C, T>:
     /// Create an all-zero 2D Fenwick tree over `(R, C)`. O(|R| * |C|).
     pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.K + 1) * (C.K + 1), T.zero))
 
-    /// `a[r, c] += x`.
+    /// `a[r, c] += x`. O(log |R| * log |C|).
     pub fn add(mut self, r: R, c: C, x: T):
         var p = r.to_idx + 1
         while p <= R.K:
@@ -139,7 +139,7 @@ pub struct Fenwick2D<R, C, T>:
             p -= p & -p
         acc
 
-    /// The sum of the rectangle `rows` by `cols`.
+    /// The sum of the rectangle `rows` by `cols`. O(log |R| * log |C|).
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
         let ((r1, r2), (c1, c2)) = (rows.ends, cols.ends)
         if r1 == r2 or c1 == c2: return T.zero
@@ -171,14 +171,14 @@ pub struct DualFenwick<D, T>:
             t[p] = t[p] + x
             p += p & -p
 
-    /// Add `x` to every position in `r`. O(log n).
+    /// Add `x` to every position in `r`. O(log |D|).
     pub fn add(mut self, r: Range<D>, x: T):
         let (lo, hi) = r.ends
         if lo == hi: return
         self.add_at(lo + 1, x)
         if hi < D.K: self.add_at(hi + 1, T.zero - x)
 
-    /// Current value at position `i`. O(log n).
+    /// Current value at position `i`. O(log |D|).
     pub fn get(self, i: D) -> T:
         var p = i.to_idx + 1
         var acc = T.zero
@@ -218,14 +218,14 @@ pub struct RangeFenwick<D>:
             b2[p] += v2
             p += p & -p
 
-    /// Add `x` to every position in `r`. O(log n).
+    /// Add `x` to every position in `r`. O(log |D|).
     pub fn add(mut self, r: Range<D>, x: Int):
         let (lo, hi) = r.ends
         if lo == hi: return
         self.add_at(lo + 1, x, x * lo)
         if hi < D.K: self.add_at(hi + 1, -x, -x * hi)
 
-    /// The sum of everything left of boundary `b`. O(log n).
+    /// The sum of everything left of boundary `b`. O(log |D|).
     pub fn prefix(self, b: Cut<D>) -> Int:
         let k = b.ord
         var p = k
@@ -237,7 +237,7 @@ pub struct RangeFenwick<D>:
             p -= p & -p
         s1 * k - s2
 
-    /// The sum of a range `r`. O(log n).
+    /// The sum of a range `r`. O(log |D|).
     pub fn sum(self, r: Range<D>) -> Int:
         let (lo, hi) = r.ends
         if lo == hi: 0 else: self.prefix(r.end) - self.prefix(r.start)

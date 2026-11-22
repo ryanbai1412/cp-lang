@@ -64,6 +64,9 @@ class EvaluateTest(unittest.TestCase):
 
 class AddedPortNamesTest(unittest.TestCase):
     def test_only_the_staged_change_counts(self):
+        # A pre-commit hook exports GIT_DIR and GIT_INDEX_FILE; the scratch repo must not see them.
+        hook_env = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("GIT_")}
+        self.addCleanup(os.environ.update, hook_env)
         with tempfile.TemporaryDirectory() as d:
             # A commit hook exports GIT_DIR and friends; unset, they would aim these at the real repo.
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}

@@ -1,0 +1,288 @@
+== diagnostics
+12:17-12:18 L0203 this binding hides the top-level `n`
+help: from here on `n` means the binding; give it another name if the top-level one is meant below
+15:1-18:1 L0504 a loop that only accumulates `best` is one `max`
+help: write `max(min(n, 50) * 2 for v in V)`
+25:1-31:1 L0520 a hand-rolled binary search: this is `bsearch_first`
+help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone along the range
+51:5-55:5 L0520 a hand-rolled binary search: this is `bsearch_first`
+help: `let left = bsearch_first(.., at => ..)`: the predicate must be monotone along the range
+59:9-59:22 L0505 `u` is only used as `g[u]`
+help: iterate the values: `for x in g:`
+96:5-99:5 L0504 a loop that only accumulates `best` is one `max`
+help: write `max(cells[v] for v in V)`
+96:9-96:13 L0203 this local hides the top-level `best`
+help: from here on `best` means the local; give it another name if the top-level one is meant below
+11:12-11:23 overflow `area * area` overflows Int when n = 55109
+11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
+
+== hover @ 5:8
+```cp
+total: Int
+```
+
+== hover @ 5:17
+```cp
+sum() -> T
+```
+
+The sum of the cells; `0` when empty.
+
+== hover @ 7:2
+```cp
+for: runs at most n = 200000 (2e5) times
+```
+
+== hover @ 7:6
+```cp
+v: V
+  domain V = 1..=n, n <= 2e5
+  storage: 4 bytes
+```
+
+== hover @ 8:11
+```cp
+half: Int in 0..=100000
+```
+
+== hover @ 9:25
+```cp
+k: Int in 1..=7
+```
+
+== hover @ 9:31
+```cp
+len: Int
+```
+
+How many cells.
+
+== hover @ 10:14
+```cp
+n * n: Int in 1..=40000000000
+```
+
+== hover @ 11:17
+```cp
+area * area: Int in 4..=1600016000040000000000
+  overflows Int when n = 55109
+```
+
+== hover @ 12:24
+(none)
+
+== hover @ 13:20
+```cp
+(n - 1) ** 2: Int in 0..=39999600001
+```
+
+== hover @ 13:32
+```cp
+area / 3: Int in 0..=13333400000
+```
+
+== hover @ 14:18
+```cp
+area % 1000: Int in 0..=999
+```
+
+== hover @ 14:30
+```cp
+n % 2: Int in 0..=1
+```
+
+== hover @ 15:7
+```cp
+best: Int
+```
+
+== hover @ 17:26
+```cp
+min(n, 50) * 2: Int in 2..=100
+```
+
+== hover @ 18:37
+```cp
+best: Int
+```
+
+== hover @ 20:13
+```cp
+n - 50: Int in 1..=199950
+```
+
+== hover @ 22:13
+```cp
+n - 10: Int in -9..=40
+```
+
+== hover @ 26:10
+```cp
+mid: Int in 0..=200000
+```
+
+== hover @ 31:8
+```cp
+lo: Int in 0..=200001
+```
+
+== hover @ 31:14
+```cp
+lo - hi: Int = 0
+```
+
+== hover @ 35:7
+```cp
+small: Int in 3..=27
+```
+
+== hover @ 38:6
+```cp
+for: runs at most k = 7 times
+  n * k = 1400000 (1.4e6) times in all, with the loops around it
+```
+
+== hover @ 44:13
+```cp
+b - c: Int in 1..=100000
+```
+
+== hover @ 53:14
+```cp
+zs[at]: in bounds, 0 <= left <= at < right <= zs.len
+```
+
+== hover @ 53:16
+```cp
+at: Int
+  in bounds of zs[at]: 0 <= left <= at < right <= zs.len
+```
+
+== hover @ 61:22
+```cp
+g[u][j]: in bounds, 0 <= j < g[u].len
+```
+
+== hover @ 69:33
+```cp
+xs[v]: in bounds, v: V, the index space of xs
+```
+
+== hover @ 70:24
+```cp
+domain Col = 0..4
+  at most 4 positions
+  storage: 1 byte per position
+  in bounds of grid[Row.first, Col.last]: Row.first: Row, Col.last: Col, the index spaces of grid
+```
+
+== hover @ 71:6
+```cp
+fn scan()
+  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+```
+
+== hover @ 75:4
+```cp
+fn scan()
+  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+```
+
+== hover @ 76:6
+```cp
+fn rescan()
+  estimated cost: O(3 + 3 * n + 3 * n * k), about 4800003 (4.8e6) steps at max input
+```
+
+== hover @ 79:6
+```cp
+fn ranked(ys: List<Int>) -> Int
+  loops: at most n = 200000 (2e5) iterations per call, with the fns it calls
+  documented costs: ys.sorted O(ys.len log ys.len) n = 200000 (2e5) times; ys.sorted O(ys.len log ys.len) an unknown number of times; ys.sorted O(ys.len log ys.len) once
+```
+
+== hover @ 83:10
+```cp
+sorted() -> List<T>
+cost: O(n log n)
+```
+
+A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+
+== hover @ 85:7
+```cp
+fn order(cells: [V]Int)
+  documented costs: pts.sorted O(k log k), about 20 steps each, k = 7 times; cells.sorted O(n log n), about 3521929 (3.5e6) steps each, k = 7 times
+  estimated cost: O(k + k * (k log k) + k * (n log n)), about 24653649 (2.5e7) steps at max input
+```
+
+== hover @ 87:41
+```cp
+sorted() -> List<T>
+cost: O(n log n), about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5) items
+```
+
+The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+
+== hover @ 88:13
+```cp
+sorted() -> List<T>
+cost: O(n log n), about 20 steps: pts has at most k = 7 items
+```
+
+The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+
+== hover @ 89:8
+```cp
+fn collect() -> Int
+  documented costs: seen.sorted O((n * k) log (n * k)), about 28583794 (2.9e7) steps, once
+  estimated cost: O(n + n * k + (n * k) log (n * k)), about 31583794 (3.2e7) steps at max input
+```
+
+== hover @ 94:12
+```cp
+sorted() -> List<T>
+cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
+```
+
+A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+
+== hover @ 95:7
+```cp
+fn tally(cells: [V]Int) -> Int
+  documented costs: cells.sorted O(n log n), about 3521929 (3.5e6) steps, once
+  estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max input
+```
+
+== hover @ 101:6
+```cp
+fn spread(cells: [V]Int) -> Int
+  estimated cost: O(n), about 600001 (6e5) steps at max input
+```
+
+== hover @ 111:6
+```cp
+fn widest(cells: [V]Int) -> Span
+  estimated cost: O(n), about 800001 (8e5) steps at max input
+```
+
+== hover @ 117:6
+```cp
+fn echo()
+  estimated cost: O(n), about 600000 (6e5) steps at max input
+```
+
+== hover @ 121:7
+```cp
+fn prefixes(bit: Fenwick<V, Int>)
+  documented costs: bit.sum O(log |V|), about 18 steps each, n = 200000 (2e5) times
+  estimated cost: O(n + n * (log |V|)), about 3921929 (3.9e6) steps at max input
+```
+
+== hover @ 123:20
+```cp
+sum: fn(r: Range<V>) -> Int
+cost: O(log |V|)
+```
+
+The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).

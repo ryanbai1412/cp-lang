@@ -1,7 +1,7 @@
 # wtf26d
 
-Score: 2/5
-Dream: pending cold rescore (rewritten: drops invalid `?? (print; return)`, passes `had_inv` explicitly so `can_place` is pure, proves disjoint suffix blocks + decreasing-order optimality in header, replaces `p_to_block`/`block_cursor` with `sorted(by: (block_of, -v.ord))` + `zip`)
+Score: 4/5
+Dream: 4/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -59,3 +59,30 @@ Dream 2 → 3/5, rescored after 9aa24cb4; sent back. The header states the greed
 - The header claims, without proof, that the blocks are disjoint and that filling them in decreasing order is optimal (lines 11-14).
 
 The port score (2/5) holds.
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored after f69a1ce4; sent back. `can_place` is now pure, the invalid `?? (print; return)` is gone, and the suffix fill is a `sorted` plus `zip`.
+- It fails to check. `pop_while` (line 28) is a reported gap, but `.somes` (line 66) and `take_while` (line 112) are not in the stdlib and have no friction item. Lines 112 and 121 index `[Pos]` arrays with `Int` (E0301).
+- The block partition (lines 100-117) is still hand bookkeeping: `block_of` with an `n` sentinel (line 102), a `block_id` counter and `last_thresh`. Line 112 is a 150-character chain. The header (lines 13-17) doesn't say why `min_p` is the block's left end.
+
+The port score (2/5) holds; the port was not touched.
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored cold on current main; sent back. The header now derives the witness choice and the disjoint blocks, and the `block_of` sentinel is gone.
+- Owed: the suffix copy (lines 135-138) walks `dst!` by hand; write `q[start..] = suffix`.
+- Owed: `min_pos` (line 59) re-implements `min` over optionals, and lines 73-75 filter `some`s by hand to take a minimum.
+- Owed: `seen_inversion` is a mutable global (line 64) that is also threaded as `had_inv` (lines 66-90); keep one of the two.
+- Reported gaps: `pop_while` (line 33; the `max_p` E0203 follows from it) and `Option.filter` (line 36).
+
+## Cold review (HEAD)
+
+Dream 3/5 → 4/5, rescored cold on current main. `q[start..] = suffix`, `.somes.min()` and a local `had_inv` close the three owed items; the header derives the witness choice and block disjointness.
+- The only errors are `pop_while` (line 33; the `max_p` E0203 follows) and `.somes` (lines 60, 71), both reported.
+- Minor: `can_place` and `commit_place` each compute `required_cap` (lines 78, 87), so the fact lives twice. Lines 119-124 pop `conds.items` directly, bypassing `CondStack`.
+
+## Cold review (HEAD)
+
+Port 2/5 → 4/5, rescored cold on current main (dream 4/5 unchanged). The port now follows the dream and checks with zero errors. It has `p.inverse()`, the `CondStack` methods, `required_cap`/`can_place`/`commit_place`, `pick_witness`, `Val.rev.first` and `q[start..] = suffix`, and the header derives the prefix, invariant and block steps. Its remaining workarounds are for reported gaps. `min_pos` folds two optional minimums by hand (lines 59-62) where the dream has `.somes.min()`. Lines 133-135 hand-write `pop_while`.
+- Minor: `commit_place` calls `required_cap` again after `can_place` has already computed it (lines 87, 96). Lines 33, 81 and 133 use comma guards where `while let … and` / `elif let … and` is the decisions 4.9 spelling.
