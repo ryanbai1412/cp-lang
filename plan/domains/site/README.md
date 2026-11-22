@@ -1,6 +1,6 @@
 # site
 
-Segment: E. Experience. Owns: `web/` (content, Learn, playground, share links, UI) and the snippet gate (`web/scripts/gate.mjs`). Status (2026-11-22): cp-lang.org is live and green: build, gate, typecheck, unit and browser smoke all pass. The follow-up branch and the docs-only eval are the gaps.
+Segment: E. Experience. Owns: `web/` (content, Learn, playground, share links, UI) and the snippet gate (`web/scripts/gate.mjs`). Status (2026-11-22): cp-lang.org is live and green: build, gate, typecheck, unit and browser smoke all pass. The docs-only eval (cannot run) and CI for `scripts/site-check.sh` are the gaps.
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md)
 
@@ -70,13 +70,12 @@ Probes (cold agent, pass/fail + time):
 ## Improve (highest impact first)
 
 1. Restore the docs-only eval (needs the statement fetcher and a model key) and point it at the served docs; it is the domain's bar and cannot run today.
-2. Land `devin/v02-delete-site-followup`: wasm cap, `scripts/site-check.sh`, smoke in a cached stage. None of it is on main.
+2. Run `scripts/site-check.sh` in CI (infra request filed); it is on main and green locally.
 3. Search index: 2.7 MB gzipped, larger than the compiler; split or trim the generated reference.
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
-5. Fix `/docs/guides/` (broken breadcrumb on 16 reference pages); add the link check to the gate.
-6. Guide code blocks live (Run) when they run; today they are static.
-7. Learn: 5 more chapters, 8 more problems.
-8. `cpl doc` HTML in the site's design; trace viewer links back.
+5. Guide code blocks live (Run) when they run; today they are static.
+6. Learn: 5 more chapters, 8 more problems.
+7. `cpl doc` HTML in the site's design; trace viewer links back.
 
 ## Ryan's role
 

@@ -4,4 +4,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22
 - Note from lint-fmt: added the `cpl fmt is idempotent and keeps meaning on every .cp file` step to `scripts/check.sh` (runs `scripts/fmt_check.py` directly, so `direct_python` stays 13, beside nextest, cached as stage `fmt_corpus` in `scripts/check_cache.py`; about 6 s on 8 cores, cold), plus `scripts/test_fmt_check.py` in the script unit tests. Revert that commit to drop it.
+- Request from site: the docs-only eval cannot run. `.github/workflows/writable-from-docs.yml` calls `scripts/fetch-statement.py`, deleted in `e4fc2a14`, and `corpus/statements/` is absent (`python3 scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` finds 0 of 55 statements). Please restore a working statement step (with idioms, who own the statements) and point the bundle at the served `/llms-full.txt` so the eval reads what cp-lang.org serves.
+- Request from site: run `scripts/site-check.sh` (wasm build and size cap, site build, snippet gate, link check, browser smoke) in `.github/workflows/site.yml` before deploy; it needs pnpm and a Playwright Chromium.
+- Note from site: to wire `scripts/site-check.sh`, site touched infra files directly: `scripts/check.sh` (`--full` runs it), `scripts/check_cache.py` (`site_smoke` stage), `scripts/test_check_cache.py`, `justfile` (`just site`).
+- Note from site: `python3 -m unittest scripts.test_check_cache.CheckCacheTest.test_land_carries_queued_lanes_in_one_gated_train` fails on `origin/main` (a leftover `refs/locks/queue/*-rider` ref).
 - Lane opened.

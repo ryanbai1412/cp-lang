@@ -7,4 +7,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Review packet: README, PLAN, metrics.toml, ARCHITECTURE; 3 questions in plan/QUESTIONS.md. Evidence: every value in metrics.toml from a run on this tip.
 - Request (infra): `scripts/ports-page.py` fails (imports `scoreboard`, deleted in ea2b88ff), so token ratio is unmeasurable; want a token-count helper and `skill-gen.py --check` in the fast gate.
 - Request (coordinator): DOMAINS.md names no owner for `crates/cpl-conform`; idioms owns the corpus suite and scoreboard data only.
+- Request from site: the docs-only eval has no statements. `research/writable-from-docs-set.json` names 55 problems, but `corpus/statements/` is absent and `scripts/fetch-statement.py` was deleted in `e4fc2a14`. Please commit the 55 statements (or restore the fetcher) so `python3 scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` runs; infra has the matching CI request.
 - Lane opened.
