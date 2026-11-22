@@ -196,7 +196,9 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 /// ties: not applicable; position decides
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
-@get pub fn last<S: Bidir, T>(self: S) -> ?T = todo
+@get pub fn last<S: Bidir, T>(self: S) -> ?T:
+    for x in self.iter_rev(): return Some(x)
+    None
 
 /// The last element satisfying `p`, `None` if None does; walks backwards and stops there.
 ///
@@ -219,7 +221,35 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// traps: never (beyond what `by` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: .0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false) = todo
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false):
+    let n = self.len
+    let ks = self.keys
+    var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
+    var b = a.clone()
+    var w = 1
+    while w < n:
+        var lo = 0
+        while lo < n:
+            let mid = if lo + w < n: lo + w else: n
+            let hi = if lo + 2 * w < n: lo + 2 * w else: n
+            var (i, j) = (lo, mid)
+            for k in lo..hi:
+                let right = j < hi and (i >= mid or (if desc: a[i].0 < a[j].0 else: a[j].0 < a[i].0))
+                if right:
+                    b[k] = a[j]
+                    j += 1
+                else:
+                    b[k] = a[i]
+                    i += 1
+            lo = hi
+        let c = a
+        a = b
+        b = c
+        w *= 2
+    var t = 0
+    for k in ks:
+        self[k] = a[t].1
+        t += 1
 
 /// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
 /// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
@@ -231,7 +261,10 @@ pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bo
 /// traps: never (beyond what `by` traps on)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(desc: true) == [3, 2, 1]`
-pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T> = todo
+pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T>:
+    var out: List<T> = [x for x in self]
+    sort(mut out, by: by, desc: desc)
+    out
 
 /// O(n). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
@@ -1682,6 +1715,7 @@ pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashM
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
 pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+    assert k >= 0, "min_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
     if k < ps.len and k > 0: select(mut ps, k - 1, by: p => (p.0, p.1))
@@ -1696,6 +1730,7 @@ pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
 pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+    assert k >= 0, "max_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
     if k < ps.len and k > 0: select(mut ps, k - 1, cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
