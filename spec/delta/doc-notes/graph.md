@@ -5,7 +5,7 @@ One bullet per contradiction or silent choice found while bringing
 
 ## Contradictions
 
-- `Graph.dfs_tree` / `DfsTree`: decision 147 says `g.dfs_tree(root)` returns `(tree: Rooted, tree_edge: [E]Bool)` and `DfsTree` goes; the stub still has `DfsTree`. Documented the stub as is.
+- `Graph.dfs_tree` / `DfsTree` (resolved): `dfs_tree` now returns `(tree: Rooted, tree_edge: [E]Bool)` per decision 147, `DfsTree` is removed, and `Rooted.euler_tour(by:)` orders children (the gold port `ioi25_worldmap` needed it).
 - `dfs` / `Visit`: decisions 146-147 and graphs-trees.md agree on `step.prune()`, `Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)` and a shared `seen:`; the stub has `Visit: Enter(v), Exit(v)` and "`continue` after `Enter` still descends". Documented the stub.
 - `Adj`, `directed_of_pairs`, `undirected_of_pairs`, `*_of_triples`, `adjacency`: graphs-trees.md names `Graph` and `[V]List` as the representations and decision 146 lists per-shape builders as the reverse option; the stub keeps them. Documented them as thin builders.
 - `directed_of_triples` / `undirected_of_triples` -> `Adj<V, (V, W)>`: a positional `(V, W)` is neither a vertex nor a record with `to`/`w`, so it is not `Target`/`Weighted` and `Adj.matrix`, `next`, `transpose` cannot apply. Documented as if the tuple reads as `(to, w)`.
