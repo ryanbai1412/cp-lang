@@ -1512,7 +1512,8 @@ def run_bug_replay_suite(cpl, suite_dir=BUG_REPLAY_DIR):
     def _eval_one(c):
         path = os.path.join(suite_dir, c["file"])
         chk = sh([cpl, "check", path], timeout=10)
-        if chk.returncode != 0:
+        cout = (chk.stdout or "") + (chk.stderr or "")
+        if chk.returncode != 0 or "warning[" in cout:
             outcome = "prevented"
         else:
             lnt = sh([cpl, "lint", path], timeout=10)
