@@ -273,6 +273,7 @@ pub const subset = Disjoint()
 /// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: lcm) == [0, 1, 3, 3]`
 /// example: `convolve([0, 1, 3], [0, 2, 5], over: Semiring(min, +), shape: Both) == [0, 1, 3, 5, 8]`
 /// example: `let e: List<Int> = []; convolve([1, 2], e) == []`
+@allow(unproven_list_index)
 pub fn convolve<T, O, R>(
     a: List<T>,
     b: List<T>,
@@ -280,7 +281,20 @@ pub fn convolve<T, O, R>(
     over: R = Semiring(+, *),
     shape: ?Curved = None,
     cyclic: Bool = false,
-) -> List<T> = todo
+) -> List<T>:
+    let na = a.len
+    let nb = b.len
+    if cyclic:
+        assert na == nb, "cyclic convolution requires equal-length inputs"
+    if na == 0 or nb == 0: return []
+    let n_out = if cyclic: na else: na + nb - 1
+    var out = List.filled(n_out, T.zero)
+    for i in 0..na:
+        for j in 0..nb:
+            let idx = if cyclic: on(i, j) % na else: on(i, j)
+            if idx >= 0 and idx < n_out:
+                out[idx] = out[idx] + a[i] * b[j]
+    out
 
 /// Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
 pub enum SosOver = Sub | Sup
