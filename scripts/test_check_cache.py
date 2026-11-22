@@ -291,5 +291,102 @@ class CheckCacheTest(unittest.TestCase):
         self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
         self.assertNotIn("-after", locks)
 
+    def test_land_lock_heartbeat_keeps_live_gate_and_expires_after_max_hold(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote = os.path.join(tmp, "remote.git")
+            def git(*a, cwd=tmp):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote)
+            seed = os.path.join(tmp, "seed")
+            git("init", "-q", "-b", "main", seed)
+            git("-c", "user.name=t", "-c", "user.email=t@example.com",
+                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
+            git("push", "-q", remote, "HEAD:main", cwd=seed)
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\nsleep 4\n"
+                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            work = os.path.join(tmp, "work")
+            git("clone", "-q", remote, work)
+            git("config", "user.name", "holder", cwd=work)
+            git("config", "user.email", "t@example.com", cwd=work)
+            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
+                f.write("a\n")
+            git("add", "a.md", cwd=work)
+            git("commit", "-qm", "docs: a", cwd=work)
+            git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
+            land = os.path.join(root, "scripts", "land.sh")
+            # Gate sleeps 4s with TTL=2s and LOCK_BEAT=1s: heartbeat must refresh
+            # the lock past TTL, then stop once MAX_HOLD=2s is reached.
+            r = subprocess.run(
+                [land, remote], cwd=work, capture_output=True, text=True,
+                env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": "holder",
+                     "CPL_LAND_TTL": "2", "CPL_LAND_LOCK_BEAT": "1",
+                     "CPL_LAND_MAX_HOLD": "2", "CPL_LAND_TRAIN": "0"})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("lock hold limit (2s) reached", r.stderr)
+            self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
+
+    def test_land_queues_fairly_in_arrival_order(self):
+        # With CPL_LAND_TRAIN=0, two queued lanes must land in strict FIFO order.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote = os.path.join(tmp, "remote.git")
+            def git(*a, cwd=tmp):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote)
+            seed = os.path.join(tmp, "seed")
+            git("init", "-q", "-b", "main", seed)
+            git("-c", "user.name=t", "-c", "user.email=t@example.com",
+                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
+            git("push", "-q", remote, "HEAD:main", cwd=seed)
+            order_log = os.path.join(tmp, "order.log")
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\n"
+                        f'git log -1 --format=%s >> "{order_log}"\n'
+                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            lanes = {}
+            for lane in ("first", "second"):
+                work = os.path.join(tmp, lane)
+                git("clone", "-q", remote, work)
+                git("config", "user.name", lane, cwd=work)
+                git("config", "user.email", "t@example.com", cwd=work)
+                with open(os.path.join(work, f"{lane}.md"), "w", encoding="utf-8") as f:
+                    f.write(lane + "\n")
+                git("add", f"{lane}.md", cwd=work)
+                git("commit", "-qm", f"docs: {lane}", cwd=work)
+                git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
+                lanes[lane] = work
+            empty = git("hash-object", "-t", "tree", "-w", "/dev/null", cwd=seed)
+            busy = git("commit-tree", empty, "-m", "land lock: other", cwd=seed)
+            git("push", "-q", remote, f"{busy}:refs/locks/land", cwd=seed)
+            land = os.path.join(root, "scripts", "land.sh")
+            procs = {}
+            for lane, poll in (("first", "2"), ("second", "1")):
+                procs[lane] = subprocess.Popen(
+                    [land, remote], cwd=lanes[lane], stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, text=True,
+                    env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": lane,
+                         "CPL_LAND_POLL": poll, "CPL_LAND_TRAIN": "0"})
+                deadline = time.time() + 30
+                while f"-{lane}" not in git("ls-remote", remote, "refs/locks/queue/*"):
+                    self.assertLess(time.time(), deadline, f"{lane} never queued")
+                    time.sleep(0.2)
+            git("push", "-q", remote, ":refs/locks/land", cwd=seed)
+            for lane, p in procs.items():
+                out, err = p.communicate(timeout=60)
+                self.assertEqual(p.returncode, 0, f"{lane}: {err}")
+            with open(order_log, encoding="utf-8") as f:
+                order = [line.strip() for line in f if line.strip()]
+            self.assertEqual(order, ["docs: first", "docs: second"])
+
 if __name__ == "__main__":
     unittest.main()

@@ -29,11 +29,13 @@ main() {
 remote="${1:-origin}"
 lock=refs/locks/land
 queue=refs/locks/queue
-ttl="${CPL_LAND_TTL:-1200}"
+ttl="${CPL_LAND_TTL:-120}"
+lock_beat="${CPL_LAND_LOCK_BEAT:-30}"
+max_hold="${CPL_LAND_MAX_HOLD:-480}"
 gate="${CPL_LAND_GATE:-scripts/check.sh --fast}"
 me="${CPL_LANE:-$(git config user.name || echo lander)}"
-beat="${CPL_LAND_BEAT:-120}"
-poll="${CPL_LAND_POLL:-20}"
+beat="${CPL_LAND_BEAT:-60}"
+poll="${CPL_LAND_POLL:-10}"
 train_max="${CPL_LAND_TRAIN:-8}"
 markers_ttl=21600
 name="$( [ -n "${CPL_LAND_URGENT:-}" ] && echo 0 || date +%s%N)-$$-$(printf %s "$me" | tr -c 'A-Za-z0-9_-' '_')"
@@ -44,7 +46,9 @@ cd "$(git rev-parse --show-toplevel)"
 empty=$(git hash-object -t tree -w /dev/null)
 start=$(git rev-parse HEAD)
 
-held=""
+held_file=$(mktemp)
+lock_hb_pid=""
+lock_t0=0
 queued=""
 back=""
 trap 'cleanup' EXIT
@@ -75,12 +79,14 @@ for attempt in 1 2 3 4 5; do
     [ "$train_max" -gt 0 ] && board
     git checkout -q --detach "$tip"
     relock
+    start_lock_heartbeat
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
         $gate || bisect
     else
         $gate
     fi
+    stop_lock_heartbeat
     refs=("$tip:refs/heads/main")
     for r in "${riders[@]}"; do
         refs+=("$(git commit-tree "$empty" -p "$tip" -m "landed: $r"):refs/locks/done/$r")
@@ -114,9 +120,55 @@ retry() {
     "$@"
 }
 
+held_get() { [ -f "$held_file" ] && cat "$held_file" || true; }
+
+held_set() {
+    printf '%s\n' "$1" > "$held_file.tmp" && mv "$held_file.tmp" "$held_file"
+}
+
+stop_lock_heartbeat() {
+    if [ -n "${lock_hb_pid:-}" ]; then
+        kill "$lock_hb_pid" 2>/dev/null || true
+        wait "$lock_hb_pid" 2>/dev/null || true
+        lock_hb_pid=""
+    fi
+}
+
+# Refresh refs/locks/land periodically while gating so a live holder stays
+# locked past $ttl, while a dead holder auto-expires in $ttl and a hung gate
+# stops refreshing after $max_hold.
+start_lock_heartbeat() {
+    stop_lock_heartbeat
+    [ "$lock_beat" -gt 0 ] || return 0
+    [ -n "$(held_get)" ] || return 0
+    (
+        trap 'kill $(jobs -p) 2>/dev/null || true; exit 0' TERM INT
+        while :; do
+            sleep "$lock_beat" &
+            wait $! || exit 0
+            if [ "$max_hold" -gt 0 ] && [ $(( $(date +%s) - lock_t0 )) -ge "$max_hold" ]; then
+                echo "land: lock hold limit (${max_hold}s) reached; stopping lock heartbeat" >&2
+                exit 0
+            fi
+            cur=$(held_get)
+            [ -n "$cur" ] || exit 0
+            token=$(git commit-tree "$empty" -m "land lock: $me")
+            if git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
+                held_set "$token"
+            else
+                exit 0
+            fi
+        done
+    ) &
+    lock_hb_pid=$!
+}
+
 release() {
-    [ -n "$held" ] && git push -q --force-with-lease="$lock:$held" "$remote" ":$lock" 2>/dev/null
-    held=""
+    stop_lock_heartbeat
+    local cur
+    cur=$(held_get)
+    [ -n "$cur" ] && git push -q --force-with-lease="$lock:$cur" "$remote" ":$lock" 2>/dev/null
+    held_set ""
     return 0
 }
 
@@ -127,12 +179,14 @@ dequeue() {
 }
 
 cleanup() {
+    stop_lock_heartbeat
     if [ -n "$back" ]; then
         git rebase --abort 2>/dev/null || true
         git checkout -q -f "$back" 2>/dev/null || true
     fi
     release
     dequeue
+    rm -f "$held_file" "$held_file.tmp"
 }
 
 age() { echo $(( $(date +%s) - $(git log -1 --format=%ct "$1") )); }
@@ -164,7 +218,7 @@ carried() { [ -n "$(retry git ls-remote "$remote" "refs/locks/done/$name")" ]; }
 
 # Returns 0 holding the lock, or 1 when a train already carried our commits.
 acquire() {
-    local token cur since holder
+    local token cur since holder stale_holder
     while :; do
         carried && return 1
         heartbeat
@@ -172,6 +226,7 @@ acquire() {
             sleep "$poll"
             continue
         fi
+        stale_holder=""
         if [ -n "$cur" ]; then
             git fetch -q "$remote" "$lock" 2>/dev/null || continue
             since=$(age FETCH_HEAD)
@@ -181,7 +236,7 @@ acquire() {
                 sleep "$poll"
                 continue
             fi
-            echo "land: taking over stale lock from $holder" >&2
+            stale_holder="$holder"
         fi
         holder=$(live_tickets | head -n1)
         if [ -n "$holder" ] && [ "$holder" != "$ticket" ]; then
@@ -189,9 +244,11 @@ acquire() {
             sleep "$poll"
             continue
         fi
+        [ -n "$stale_holder" ] && echo "land: taking over stale lock from $stale_holder" >&2
         token=$(git commit-tree "$empty" -m "land lock: $me")
         if git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
-            held=$token
+            held_set "$token"
+            lock_t0=$(date +%s)
             if carried; then
                 release
                 return 1
@@ -242,10 +299,17 @@ mark() {
 
 # Keep the lock fresh across the several gates a split train can take.
 relock() {
-    local token
+    stop_lock_heartbeat
+    if [ "$max_hold" -gt 0 ] && [ $(( $(date +%s) - lock_t0 )) -ge "$max_hold" ]; then
+        echo "land: lock hold limit (${max_hold}s) reached; gating without refreshing lock" >&2
+        return 0
+    fi
+    local cur token
+    cur=$(held_get)
+    [ -n "$cur" ] || return 0
     token=$(git commit-tree "$empty" -m "land lock: $me")
-    if retry git push -q --force-with-lease="$lock:$held" "$remote" "$token:$lock" 2>/dev/null; then
-        held=$token
+    if retry git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
+        held_set "$token"
     else
         echo "land: could not refresh the lock; gating anyway" >&2
     fi
@@ -261,8 +325,10 @@ bisect() {
         mid=$(( (lo + hi) / 2 ))
         git checkout -q -f --detach "${prefix[$mid]}"
         relock
+        start_lock_heartbeat
         echo "land: gating the holder with ${mid} rider(s)" >&2
         if $gate; then lo=$mid; else hi=$mid; fi
+        stop_lock_heartbeat
     done
     if [ "$lo" -lt 0 ]; then
         echo "land: the holder fails the gate alone; nobody is marked solo" >&2
