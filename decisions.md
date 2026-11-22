@@ -4492,3 +4492,20 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   where `checks(ranges: off)` was needed to drop release range checks.
 - **Reverse.** Default `release_checks` to the checked-build set.
 
+## 149. Numbers: storage widths, niches and layout (2026-11-21)
+
+- **Decision.** Adopt `spec/api/6-numbers.md`: locals compute in `Int`;
+  storage takes the narrowest width its type allows (ranges, domain
+  positions, `Mod<P>`, `Char`); narrow arithmetic when proven; the fold op
+  decides node width (`Selective` keeps the input range, `+` narrows by
+  the span bound, `SegTree<T>` forces it); fixed spare values per type,
+  `?S` and enums niche-fill Rust-style (first field with enough spares);
+  storage reorders fields against padding; `Packed<S>` and
+  `layout: columns` are explicit; no `U8`/`I32`/`U32` (decision 1.7,
+  corpus has no wrapping-byte use); `cpl explain` and the LSP (hover,
+  inlay hints, code lens) show sizes.
+- **Why.** Ryan wants no i64 bloat in storage, niches that propagate
+  through structs, and visible sizes; register width costs nothing,
+  memory and SIMD lanes do.
+- **Reverse.** Per item; each section of the doc names its alternative.
+

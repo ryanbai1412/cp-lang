@@ -1,6 +1,6 @@
 # Round 6: numbers, widths and niches
 
-Status: proposal for review. Scope: how numbers stay small in memory
+Status: aligned with Ryan 2026-11-21 (decision 149). Scope: how numbers stay small in memory
 without the contestant thinking about bytes, and how `?T` costs nothing
 for ints, structs, records, enums and arrays. Modular arithmetic, floats
 and overflow semantics are summarized where they touch layout; their
@@ -112,6 +112,13 @@ with the node and the value, release truncates.
   it looks only at the writes in the same function.
 - Override with an explicit type in either direction: `[V]Int` widens,
   `[V]0..=4e9` stores 4 bytes.
+- **The editor shows the same facts** from the same computation:
+  - hover on a type or variable gives its size, field storage order,
+    padding and where `none` lives (`?Edge 8 B: none = all-ones in to`);
+  - an inlay hint after each array or structure declaration gives element
+    size and peak bytes at the input bounds (`8 B × 2e5 = 1.6 MB`);
+  - a code lens on `main` gives total static peak against the profile's
+    limit; `wide_array` and padding over 20% come with quick fixes.
 
 ## 2. Spare values
 
