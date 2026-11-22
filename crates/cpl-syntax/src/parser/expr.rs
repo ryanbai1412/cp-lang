@@ -1815,6 +1815,16 @@ pub(crate) fn unescape(text: &str) -> String {
                 Some('t') => out.push('\t'),
                 Some('r') => out.push('\r'),
                 Some('0') => out.push('\0'),
+                Some('x') => {
+                    let hex: String = chars.clone().take(2).collect();
+                    match u8::from_str_radix(&hex, 16) {
+                        Ok(b) if hex.len() == 2 => {
+                            chars.nth(1);
+                            out.push(char::from(b));
+                        }
+                        _ => out.push('x'),
+                    }
+                }
                 Some(other) => out.push(other),
                 None => out.push('\\'),
             },

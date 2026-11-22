@@ -1187,12 +1187,17 @@ fn there_are_thirty_four_keywords_and_no_others() {
 }
 
 #[test]
+fn where_clause_bounds_parse() {
+    let file = parse_file("fn f<T>(x: T) where T: Ord: print(x)\n");
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+}
+
+#[test]
 fn removed_spellings_say_what_replaces_them() {
     for (src, needle) in [
         ("defer cur.pop()\n", "by hand"),
         ("assume x > 0\n", "assert"),
         ("inline fn f(): print(1)\n", "always inlined"),
-        ("fn f<T>(x: T) where T: Ord: print(x)\n", "angle brackets"),
         ("for mut x in xs: x += 1\n", "index"),
         ("if a: print(1)\nelse if b: print(2)\n", "elif"),
         ("@memo(hash)\nfn f(x: Int) -> Int = x\n", "bare `@memo`"),
