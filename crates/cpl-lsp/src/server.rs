@@ -1556,6 +1556,11 @@ fn fn_total(
         let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
         steps += run.map_or(Some(1), |r| r.times)? as f64;
     }
+    for &(start, end) in &f.builds {
+        let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;
+        let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
+        steps += run.map_or(Some(1), |r| r.times)? as f64;
+    }
     Some((steps, terms))
 }
 

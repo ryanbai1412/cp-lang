@@ -597,6 +597,9 @@ pub struct ProvenFn {
     /// name of a call by name to no fn in the file, the member of a method
     /// call, or the whole callee expression otherwise.
     pub callees: Vec<(u32, u32)>,
+    /// Where it builds a struct declared in the file, one step each: the
+    /// fields only move in.
+    pub builds: Vec<(u32, u32)>,
 }
 
 /// A part of a fn's body and how often it runs per call of the fn: `None`

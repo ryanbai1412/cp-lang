@@ -90,6 +90,18 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
     for (i, f) in fns.iter().enumerate() {
         by_name.entry(f.name.as_str()).or_insert(i);
     }
+    struct Structs(std::collections::HashSet<String>);
+    impl cpl_syntax::visit::Visitor for Structs {
+        fn stmt(&mut self, stmt: &cpl_syntax::ast::Stmt) {
+            if let cpl_syntax::ast::StmtKind::Struct(decl) = &stmt.kind {
+                self.0.insert(decl.name.text.clone());
+            }
+        }
+    }
+    let mut structs = Structs(Default::default());
+    for stmt in file.items.iter().flat_map(|(_, item)| &item.stmts) {
+        cpl_syntax::visit::walk_stmt(stmt, &mut structs);
+    }
     let mut state: Vec<State> = fns.iter().map(|_| State::Todo).collect();
     (0..fns.len())
         .map(|i| {
@@ -112,7 +124,15 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
                 callees: f
                     .callees
                     .iter()
-                    .filter(|(name, _)| name.as_ref().is_none_or(|n| !by_name.contains_key(n.as_str())))
+                    .filter(|(name, _)| {
+                        name.as_ref().is_none_or(|n| !by_name.contains_key(n.as_str()) && !structs.0.contains(n))
+                    })
+                    .map(|(_, at)| *at)
+                    .collect(),
+                builds: f
+                    .callees
+                    .iter()
+                    .filter(|(name, _)| name.as_ref().is_some_and(|n| structs.0.contains(n)))
                     .map(|(_, at)| *at)
                     .collect(),
             }

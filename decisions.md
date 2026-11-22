@@ -2470,6 +2470,15 @@ cost: O(n), about 600001 (6e5) steps at max input`. Assumption: comparing two va
 what they write, read or build. Reverse by dropping `value_doc` and its fallback in
 `Database::hover`.
 
+29.48. **Building a struct declared in the file counts as one step.** A call `Span(lo, hi)` to a
+struct of the file only moves its arguments into the fields, so `ProvenFn::builds` lists it and a
+fn's estimate adds one step per time it runs, instead of leaving the fn without an estimate.
+`fn widest` in the hover fixture (a loop building a `Span` from `min` and `max`) gets `estimated
+cost: O(n), about 800001 (8e5) steps at max input`. Assumption: a field default is a constant, so
+building costs nothing beyond the arguments, which are counted where they are written. A generic
+struct (`Pair<Int>(..)`), a variant and a built-in type such as `List(xs)`, which copies, stay
+uncounted. Reverse by dropping `builds`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

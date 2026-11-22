@@ -103,3 +103,13 @@ fn sp$0read(cells: [V]Int) -> Int:
     for v in V:
         least = min(least, abs(cells[v]))
     max(least, 1)
+
+struct Span:
+    lo: Int
+    hi: Int
+
+fn wi$0dest(cells: [V]Int) -> Span:
+    var cur = Span(0, 0)
+    for v in V:
+        cur = Span(min(cur.lo, cells[v]), max(cur.hi, cells[v]))
+    cur

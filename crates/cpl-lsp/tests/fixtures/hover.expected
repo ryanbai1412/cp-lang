@@ -259,3 +259,9 @@ fn tally(cells: [V]Int) -> Int
 fn spread(cells: [V]Int) -> Int
   estimated cost: O(n), about 600001 (6e5) steps at max input
 ```
+
+== hover @ 111:6
+```cp
+fn widest(cells: [V]Int) -> Span
+  estimated cost: O(n), about 800001 (8e5) steps at max input
+```
