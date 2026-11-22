@@ -1,0 +1,8 @@
+// expect: ok, output "YES"
+use std.graph.{bfs01}
+domain V = 0..2
+domain E = 0..1
+let es: [E](u: V, v: V, w: Int) = [(u: V(0), v: V(1), w: 1)]
+let none: List<V> = []
+let p = bfs01(Graph.directed(es), from: none)
+print(yes(p[V(1)] == None))

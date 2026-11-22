@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1230 (296 passing). Rules: 521.
+Cases: 1241 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 14 case(s)
+- R0401 Assertion failed: 15 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -764,10 +764,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (31/31 named by a case)
 - **flow** (44/65 named by a case)
   - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
-- **geometry** (128/158 named by a case)
-  - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `reflect`, `circles_union_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
-- **graph** (63/123 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `two_edge_components`, `Paths.iter`, `Paths.tight`, `bfs01`, `fixed_cost_paths`, `closure`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit.flip`, `TwoSat.add_or`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `dominators`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
+- **geometry** (129/158 named by a case)
+  - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `reflect`, `circles_union_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
+- **graph** (73/123 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1778 of 2222 std items are named by a case.
+1789 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
