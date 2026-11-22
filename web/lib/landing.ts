@@ -88,6 +88,8 @@ export interface Live {
   source: string;
   stdin: string;
   cpp?: string;
+  status: Status;
+  html: string;
 }
 
 const hero = [
@@ -101,7 +103,7 @@ const hero = [
     id: 'prefix',
     title: 'Prefix sums',
     caption:
-      'The array is 1-based because the statement is. Prefix takes the range the way the statement writes it, so there is no l - 1 to get wrong.',
+      'The array is 1-based because the statement is. Prefix sums live on the cuts between positions, so a range is its right cut minus its left cut and there is no l - 1 to get wrong.',
   },
   {
     id: 'optional',
@@ -134,16 +136,26 @@ const lib = [
   },
 ];
 
-function live(group: string, items: { id: string; title: string; caption: string }[]): Live[] {
-  return items.map((t) => {
-    const base = join(dir, group, t.id);
-    return {
-      ...t,
-      source: readFileSync(`${base}.cp`, 'utf8'),
-      stdin: readFileSync(`${base}.in`, 'utf8'),
-      cpp: existsSync(`${base}.cpp`) ? readFileSync(`${base}.cpp`, 'utf8').trimEnd() : undefined,
-    };
-  });
+const gate = () =>
+  JSON.parse(readFileSync(join(process.cwd(), '.gate/status.json'), 'utf8')) as Record<string, { status: Status }>;
+
+function live(group: string, items: { id: string; title: string; caption: string }[]): Promise<Live[]> {
+  const status = gate();
+  return Promise.all(
+    items.map(async (t) => {
+      const base = join(dir, group, t.id);
+      const file = existsSync(`${base}.cp`) ? `${t.id}.cp` : `${t.id}.spec.cp`;
+      const source = readFileSync(join(dir, group, file), 'utf8');
+      return {
+        ...t,
+        source,
+        stdin: readFileSync(`${base}.in`, 'utf8'),
+        cpp: existsSync(`${base}.cpp`) ? readFileSync(`${base}.cpp`, 'utf8').trimEnd() : undefined,
+        status: status[`content/landing/${group}/${file}`].status,
+        html: await highlight(source.trimEnd(), 'cp'),
+      };
+    }),
+  );
 }
 
 export const heroPrograms = () => live('hero', hero);

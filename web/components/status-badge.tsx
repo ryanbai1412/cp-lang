@@ -1,12 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 
-export type Status = 'runs' | 'checks' | 'spec';
+export type Status = 'runs' | 'checks';
 
-const variants = { runs: 'default', checks: 'secondary', spec: 'outline' } as const;
+const variants = { runs: 'default', checks: 'secondary' } as const;
 const titles = {
   runs: 'Runs today in the playground and the compiler',
-  checks: 'Type-checks against the 0.3 spec; does not run yet',
-  spec: 'Designed in the spec; not implemented yet',
+  checks: 'Passes the type checker; the compiler does not run it yet',
 };
 
 export function StatusBadge({ status }: { status: Status }) {

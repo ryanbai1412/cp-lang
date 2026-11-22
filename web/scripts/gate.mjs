@@ -1,11 +1,14 @@
-// The snippet gate: every CP Lang program on the site gets a status from the
-// compiler, never by hand. `runs`: `cpl run` succeeds (and matches `.out`
-// when given) and `cpl build` emits C++. `checks`: the 0.3 spec checker
-// accepts it. `spec`: neither, allowed only when the snippet says so.
+// The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
+// its status from the compiler, never by hand. Every snippet must pass the 0.3
+// checker (`CPL_SPEC=1 CPL_STD=spec/std cpl check`). `runs`: today's compiler
+// also runs it (matching `.out` when given) and emits C++. `checks`: it does
+// not run yet, so the page shows it without Run and without output.
 // A practice problem's ref.cp must also pass every test in its tests.json.
 // Pages take their programs from content/, never from literals in TSX, so
-// everything a visitor can run is covered. Writes .gate/status.json and fails when a snippet is below its declared
-// status. Fragments without input only need to build; with input they must run.
+// everything a visitor can run is covered. Writes .gate/status.json and
+// .gate/report.md (the run/check split per page, and why each check-only
+// snippet does not run), and fails when a snippet is not 0.3 or is below its
+// declared status. Fragments without input only need to build.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -17,7 +20,7 @@ const repo = dirname(web);
 const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
 if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
 
-const rank = { spec: 0, checks: 1, runs: 2 };
+const rank = { fails: 0, checks: 1, runs: 2 };
 const snippets = [];
 
 function walk(dir, f) {
@@ -58,7 +61,7 @@ walk(join(web, 'content'), (p) => {
     while ((m = fence.exec(text))) {
       i++;
       const meta = m[1];
-      const declared = /\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs';
+      const declared = /\bstatus=(runs|checks)\b/.exec(meta)?.[1] ?? 'runs';
       const stdin = /\binput="([^"]*)"/.exec(meta)?.[1]?.replace(/\\n/g, '\n') ?? '';
       snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared });
     }
@@ -76,26 +79,43 @@ let failed = 0;
 for (const s of snippets) {
   const file = join(tmp, 'main.cp');
   writeFileSync(file, s.source);
-  let status = 'spec';
-  let note = '';
+  const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
+  const check = sh(['check', file], { CPL_SPEC: '1', CPL_STD: join(repo, 'spec/std') });
   const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
   const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], {}, s.stdin) : build;
-  if (build.status === 0 && run.status === 0 && (s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd())) status = 'runs';
+  const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
+  let status = 'fails';
+  let note = '';
+  if (check.status !== 0) note = first(check);
+  else if (build.status === 0 && run.status === 0 && matches) status = 'runs';
   else {
-    if (run.status === 0 && s.expected != null && run.stdout.trimEnd() !== s.expected.trimEnd()) note = `output ${JSON.stringify(run.stdout)} != expected`;
-    const check = sh(['check', file], { CPL_SPEC: '1', CPL_STD: join(repo, 'spec/std') });
-    if (check.status === 0) status = 'checks';
-    else note ||= (check.stderr || check.stdout).split('\n').slice(0, 3).join(' ');
+    status = 'checks';
+    note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);
   }
-  results[s.id] = { status, declared: s.declared };
+  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? {} : { note }) };
   if (rank[status] < rank[s.declared]) {
     failed++;
-    console.error(`gate: ${s.id} is ${status}, declared ${s.declared}${note ? `: ${note}` : ''}`);
+    console.error(`gate: ${s.id} is ${status}, declared ${s.declared}: ${note}`);
   }
 }
 
 mkdirSync(join(web, '.gate'), { recursive: true });
 writeFileSync(join(web, '.gate/status.json'), JSON.stringify(results, null, 2) + '\n');
+const pages = {};
+for (const [id, r] of Object.entries(results)) {
+  if (id.includes('@test')) continue;
+  const page = id.replace(/#\d+$/, '').replace(/\/[^/]+\.cp$/, '/');
+  const p = (pages[page] ??= { runs: 0, checks: 0, fails: 0, notes: [] });
+  p[r.status]++;
+  if (r.status !== 'runs') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
+}
+writeFileSync(
+  join(web, '.gate/report.md'),
+  ['# Snippet status by page', '', '| page | runs | checks only | not 0.3 |', '|---|---|---|---|']
+    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs} | ${p.checks} | ${p.fails} |`))
+    .concat(['', '## Not running yet', ''], Object.values(pages).flatMap((p) => p.notes))
+    .join('\n') + '\n',
+);
 const counts = Object.values(results).reduce((c, r) => ((c[r.status] = (c[r.status] ?? 0) + 1), c), {});
 console.log(`gate: ${snippets.length} snippets`, counts, failed ? `${failed} below declared` : 'ok');
 process.exit(failed ? 1 : 0);

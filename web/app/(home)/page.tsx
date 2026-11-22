@@ -2,6 +2,7 @@ import { ArrowRight, BookOpen, Code2, GraduationCap } from 'lucide-react';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Runner } from '@/components/runner';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,11 @@ function LiveTabs({ items }: { items: Live[] }) {
       </TabsList>
       {items.map((s) => (
         <TabsContent key={s.id} value={s.id} className="space-y-3">
-          <Runner source={s.source} stdin={s.stdin} status="runs" caption={s.caption} />
+          {s.status === 'runs' ? (
+            <Runner source={s.source} stdin={s.stdin} status="runs" caption={s.caption} />
+          ) : (
+            <Static html={s.html} caption={s.caption} bar={<StatusBadge status={s.status} />} />
+          )}
           {s.cpp && (
             <details className="rounded-xl border bg-muted/30">
               <summary className="cursor-pointer px-4 py-2 text-sm text-muted-foreground">
@@ -55,6 +60,19 @@ function LiveTabs({ items }: { items: Live[] }) {
         </TabsContent>
       ))}
     </Tabs>
+  );
+}
+
+function Static({ html, caption, bar }: { html: string; caption: string; bar: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">{bar}</div>
+      <div
+        className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      <p className="border-t px-3 py-2 text-sm text-muted-foreground">{caption}</p>
+    </div>
   );
 }
 
@@ -70,24 +88,23 @@ function Showcases({ items }: { items: Showcase[] }) {
       </TabsList>
       {items.map((s) => (
         <TabsContent key={s.id} value={s.id}>
-          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">
-              <span>{s.lines} lines</span>
-              <span className="ml-auto flex items-center gap-3">
-                {s.href && (
-                  <Link href={s.href} className="hover:underline">
-                    Compare with the C++ <ArrowRight className="inline size-3.5" />
-                  </Link>
-                )}
-                <StatusBadge status={s.status} />
-              </span>
-            </div>
-            <div
-              className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"
-              dangerouslySetInnerHTML={{ __html: s.html }}
-            />
-            <p className="border-t px-3 py-2 text-sm text-muted-foreground">{s.caption}</p>
-          </div>
+          <Static
+            html={s.html}
+            caption={s.caption}
+            bar={
+              <>
+                <span>{s.lines} lines</span>
+                <span className="ml-auto flex items-center gap-3">
+                  {s.href && (
+                    <Link href={s.href} className="hover:underline">
+                      Compare with the C++ <ArrowRight className="inline size-3.5" />
+                    </Link>
+                  )}
+                  <StatusBadge status={s.status} />
+                </span>
+              </>
+            }
+          />
         </TabsContent>
       ))}
     </Tabs>
@@ -95,9 +112,12 @@ function Showcases({ items }: { items: Showcase[] }) {
 }
 
 export default async function Home() {
-  const [syntax, library] = await Promise.all([syntaxShowcases(), libraryShowcases()]);
-  const hero = heroPrograms();
-  const lib = libraryPrograms();
+  const [syntax, library, hero, lib] = await Promise.all([
+    syntaxShowcases(),
+    libraryShowcases(),
+    heroPrograms(),
+    libraryPrograms(),
+  ]);
   const debug = debugDemo();
   const entries = corpus();
   const inGallery = new Set(entries.map((e) => e.problem));
@@ -153,10 +173,9 @@ export default async function Home() {
         <div className="mb-8 max-w-2xl space-y-2">
           <h2 className="text-2xl font-semibold tracking-tight">A standard library built for contests</h2>
           <p className="text-muted-foreground">
-            Segment trees, shortest paths, union-find and modular arithmetic are one line each. Every example here
-            runs in your browser.{' '}
-            <Link href="/docs/guides/stdlib" className="text-foreground hover:underline">
-              See what the library has <ArrowRight className="inline size-3.5" />
+            Segment trees, shortest paths, union-find and modular arithmetic are one line each.{' '}
+            <Link href="/docs/ref/std" className="text-foreground hover:underline">
+              Browse the library ({modules} modules) <ArrowRight className="inline size-3.5" />
             </Link>
           </p>
         </div>
@@ -196,20 +215,17 @@ export default async function Home() {
         </div>
       </section>
 
-      <section id="preview" className="border-t py-16">
+      <section id="solutions" className="border-t py-16">
         <div className="mb-8 max-w-2xl space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Where it&apos;s going: CP Lang 0.3</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Whole olympiad solutions</h2>
           <p className="text-muted-foreground">
-            A preview. These are written in CP Lang 0.3, the next version. They type-check against the 0.3 spec and
-            do not run yet. The library tabs are complete solutions to real olympiad problems.{' '}
-            <Link href="/docs/ref/std" className="text-foreground hover:underline">
-              Browse the 0.3 library ({modules} modules) <ArrowRight className="inline size-3.5" />
-            </Link>
+            Complete solutions to real olympiad problems, next to more of the syntax they rely on. These pass the
+            type checker; the compiler does not run them yet, so there is no Run button.
           </p>
         </div>
         <div className="grid gap-8 lg:grid-cols-2">
-          <Showcases items={syntax} />
           <Showcases items={library} />
+          <Showcases items={syntax} />
         </div>
       </section>
 
