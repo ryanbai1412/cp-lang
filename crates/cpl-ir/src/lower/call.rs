@@ -5226,6 +5226,26 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(_), "prev") => {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(ty.clone()))
             }
+            (Ty::Pos(d), "before" | "after") if cpl_check::edition::is_v03() => {
+                let d = *d;
+                let ord = self.cast(Cast::Ord, value, Ty::Int);
+                let (lo, hi) = if name.text == "after" {
+                    (
+                        self.int_add(ord, 1),
+                        self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                    )
+                } else {
+                    (self.int_lit(0, span), ord)
+                };
+                self.mk(
+                    ExprKind::Range {
+                        lo: Box::new(lo),
+                        hi: Box::new(hi),
+                    },
+                    Ty::Range(Box::new(Ty::Pos(d))),
+                    span,
+                )
+            }
             (Ty::Pos(d), "before" | "l") => self.cast(Cast::Trust, value, Ty::Bound(*d)),
             (Ty::Pos(d), "after" | "r") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);

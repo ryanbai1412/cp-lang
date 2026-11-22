@@ -2767,6 +2767,12 @@ impl<'a> Checker<'a> {
                         };
                     }
                     // The boundaries on either side of a position.
+                    // R04.2.19: the pieces on either side of a position.
+                    "before" | "after"
+                        if crate::edition::is_v03() && !domain.ends_with(".cuts") =>
+                    {
+                        return range_of(Ty::Pos(domain.clone()));
+                    }
                     "l" | "r" | "before" | "after" if !domain.ends_with(".cuts") => {
                         return Ty::Pos(format!("{domain}.cuts"));
                     }
