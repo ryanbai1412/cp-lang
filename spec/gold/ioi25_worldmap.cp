@@ -7,7 +7,7 @@
 @grader
 fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=n:
     domain V = 1..=n
-    let g = Graph<V>.undirected(zip(a, b))
+    let g = Graph<V>.undirected([a.keys] e => (u: a[e], v: b[e]))
     let tree = g.dfs_tree(root: V.first!)
     let deep = tree.path(V.first!, V.range.max(by: v => tree.depth(v))!)
     let up = adjacency(g.edges.filter(e => not tree.has(e)).map(e => tree.orient_down(e).rev))
