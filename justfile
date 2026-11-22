@@ -50,9 +50,33 @@ site:
     python3 site/bundle.py
     python3 site/test_site.py
 
-# Run spec conformance checks.
+# Build the Next.js web app (web/).
+web-build:
+    pnpm --dir web build
+
+# Run the Next.js web app smoke suite (expects web/out served on :3000).
+web-smoke:
+    pnpm --dir web smoke
+
+# Run the unified conformance/corpus/docs/diff harness (crates/cpl-conform).
+conform *args:
+    cargo run -p cpl-conform -- {{args}}
+
+# Alias for `just conform`.
 conformance *args:
-    python3 scripts/conformance.py {{args}}
+    cargo run -p cpl-conform -- {{args}}
+
+# Install local git pre-commit and commit-msg hooks.
+hooks:
+    scripts/install-hooks.sh
+
+# Print the next unused decision number in decisions.md.
+next-decision:
+    python3 scripts/next-decision.py
+
+# Check that repo paths cited in live docs exist.
+check-links:
+    python3 scripts/check-doc-links.py
 
 # Check corpus metadata integrity.
 corpus-check:
