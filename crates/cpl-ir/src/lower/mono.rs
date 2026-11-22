@@ -1118,7 +1118,10 @@ impl<'a> Lowerer<'a> {
                                     rhs_resolved,
                                     fn_id,
                                 ));
-                            } else {
+                            } else if imp_trait.is_none()
+                                || !self.structs[sid].methods.contains_key(&f.name.text)
+                            {
+                                // An inherent method of the same name wins the lookup (R08.1.4).
                                 self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
                             }
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
