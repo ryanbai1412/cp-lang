@@ -1289,7 +1289,9 @@ impl<'p> Emitter<'p> {
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Return(Some(value)) | Stmt::Give(value) => {
                 let value = self.flatten(value, out);
-                if value.ty == Ty::Unit {
+                if value.ty == Ty::Error {
+                    self.expr_stmt(value, out);
+                } else if value.ty == Ty::Unit {
                     self.expr_stmt(value, out);
                     self.line(out, "return;");
                 } else {
