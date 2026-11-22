@@ -433,7 +433,9 @@ pub struct MergeSortTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_gt(0..5, 3) == 2`
-    pub fn count_gt(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_gt(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        (hi - lo) - self.count_le(r, x)
 
     /// The number of positions in `r` whose value is `>= x`.
     ///
@@ -441,7 +443,9 @@ pub struct MergeSortTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_ge(0..5, 4) == 2`
-    pub fn count_ge(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_ge(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        (hi - lo) - self.count_lt(r, x)
 
     /// The smallest value in `r` that is `>= x`, or `None`.
     ///
@@ -451,7 +455,23 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 2) == Some(3)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 5) == None`
-    pub fn first_ge(self, r: Range<D>, x: T) -> ?T = todo
+    pub fn first_ge(self, r: Range<D>, x: T) -> ?T:
+        let (lo, hi) = r.ends
+        var (l, h) = (lo + size, hi + size)
+        var best: ?T = None
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    let j = beg[l] + self.lower_idx(l, x)
+                    if j < fin[l] and (best == None or data[j] < best!): best = Some(data[j])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    let j = beg[h] + self.lower_idx(h, x)
+                    if j < fin[h] and (best == None or data[j] < best!): best = Some(data[j])
+                l /= 2
+                h /= 2
+        best
 
     /// The largest value in `r` that is `<= x`, or `None`.
     ///
@@ -461,11 +481,42 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 3) == Some(1)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 0) == None`
-    pub fn last_le(self, r: Range<D>, x: T) -> ?T = todo
+    pub fn last_le(self, r: Range<D>, x: T) -> ?T:
+        let (lo, hi) = r.ends
+        var (l, h) = (lo + size, hi + size)
+        var best: ?T = None
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    let j = beg[l] + self.upper_idx(l, x) - 1
+                    if j >= beg[l] and (best == None or data[j] > best!): best = Some(data[j])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    let j = beg[h] + self.upper_idx(h, x) - 1
+                    if j >= beg[h] and (best == None or data[j] > best!): best = Some(data[j])
+                l /= 2
+                h /= 2
+        best
 
 /// O(|R| * |C|) space. Iterative 2D segment tree: point update and rectangle fold in O(log |R| * log |C|).
 pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     t: List<T>
+
+    fn fold_row(self, i: Int, cl: Int, ch: Int) -> T:
+        let w = C.K
+        var (l, h) = (cl + w, ch + w)
+        var (left, right) = (m.id, m.id)
+        while l < h:
+            if l % 2 == 1:
+                left = m.op(left, t[i * 2 * w + l])
+                l += 1
+            if h % 2 == 1:
+                h -= 1
+                right = m.op(t[i * 2 * w + h], right)
+            l /= 2
+            h /= 2
+        m.op(left, right)
 
     /// A grid tree over `(R, C)` folding with `op`: built from `a`, filled with `fill`, or holding
     /// the identity everywhere. `op` must be `Commutative`, since a rectangle is folded in
@@ -476,28 +527,60 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// order: cells keep the domains `R` and `C` of `a`
     /// traps: when both `a` and `fill` are given
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
-    pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T> = todo
+    pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
+        let m = Monoid<T>.of(op)
+        let (h, w) = (R.K, C.K)
+        var g = SegTree2D<R, C, T>(m, List.filled(4 * h * w, m.id))
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            for r in R:
+                for c in C: g.t[(h + r.to_idx) * 2 * w + w + c.to_idx] = init[r, c]
+        elif let v = fill:
+            for i in h..2 * h:
+                for j in w..2 * w: g.t[i * 2 * w + j] = v
+        for i in h..2 * h:
+            for j in (1..w).rev: g.t[i * 2 * w + j] = m.op(g.t[i * 2 * w + 2 * j], g.t[i * 2 * w + 2 * j + 1])
+        for i in (1..h).rev:
+            for j in 1..2 * w: g.t[i * 2 * w + j] = m.op(g.t[2 * i * 2 * w + j], g.t[(2 * i + 1) * 2 * w + j])
+        g
 
     /// The value of cell `(r, c)`.
     ///
     /// cost: O(1)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(1, 2, 7); g.get(1, 2) == 7`
-    pub fn get(self, r: R, c: C) -> T = todo
+    pub fn get(self, r: R, c: C) -> T:
+        t[(R.K + r.to_idx) * 2 * C.K + C.K + c.to_idx]
 
     /// Make cell `(r, c)` hold `x`.
     ///
     /// cost: O(log |R| * log |C|)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(0, 0, 5); g.all == 13`
-    pub fn set(mut self, r: R, c: C, x: T) = todo
+    pub fn set(mut self, r: R, c: C, x: T):
+        let (h, w) = (R.K, C.K)
+        var i = h + r.to_idx
+        let j0 = w + c.to_idx
+        t[i * 2 * w + j0] = x
+        var j = j0 / 2
+        while j >= 1:
+            t[i * 2 * w + j] = m.op(t[i * 2 * w + 2 * j], t[i * 2 * w + 2 * j + 1])
+            j /= 2
+        i /= 2
+        while i >= 1:
+            j = j0
+            while j >= 1:
+                t[i * 2 * w + j] = m.op(t[2 * i * 2 * w + j], t[(2 * i + 1) * 2 * w + j])
+                j /= 2
+            i /= 2
 
     /// Replace the value `v` of cell `(r, c)` with `f(v)`.
     ///
     /// cost: O(log |R| * log |C|) plus one call of `f`
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.update(2, 2, x => x + 1); g.all == 10`
-    pub fn update(mut self, r: R, c: C, f: T -> T) = todo
+    pub fn update(mut self, r: R, c: C, f: T -> T):
+        self.set(r, c, f(self.get(r, c)))
 
     /// The fold of every cell in rows `rows` and columns `cols`.
     ///
@@ -506,7 +589,21 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// traps: when a non-empty range reaches outside its domain
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).fold(0..2, 1..3) == 4`
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).fold(0..2, 1..1) == 0`
-    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
+    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
+        let (rl, rh) = rows.ends
+        let (cl, ch) = cols.ends
+        var (l, hh) = (rl + R.K, rh + R.K)
+        var (left, right) = (m.id, m.id)
+        while l < hh:
+            if l % 2 == 1:
+                left = m.op(left, self.fold_row(l, cl, ch))
+                l += 1
+            if hh % 2 == 1:
+                hh -= 1
+                right = m.op(self.fold_row(hh, cl, ch), right)
+            l /= 2
+            hh /= 2
+        m.op(left, right)
 
     /// The fold of every cell.
     ///
@@ -514,12 +611,32 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// empty: the identity for an empty grid
     /// traps: never
     /// example: `var g = SegTree2D<0..2, 0..2, Int>(max, fill: 0); g.set(1, 0, 8); g.all == 8`
-    @get pub fn all(self) -> T = todo
+    @get pub fn all(self) -> T:
+        if R.K == 0 or C.K == 0: m.id else: t[2 * C.K + 1]
 
 /// O(|D| log V) build and memory. Wavelet matrix over non-negative integer values:
 /// O(log V) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
 pub struct WaveletMatrix<D>:
     bits: Int
+    n: Int
+    zs: List<Int>
+    cnt: List<Int>
+    zsum: List<Int>
+
+    fn ones(self, l: Int, i: Int) -> Int = cnt[l * (n + 1) + i]
+
+    fn below(self, lo0: Int, hi0: Int, x: Int) -> Int:
+        if x <= 0: return 0
+        if bits < 62 and x >= 1 << bits: return hi0 - lo0
+        var (lo, hi, res) = (lo0, hi0, 0)
+        for l in 0..bits:
+            let (zl, zh) = (lo - self.ones(l, lo), hi - self.ones(l, hi))
+            if (x >> (bits - 1 - l)) & 1 == 1:
+                res += zh - zl
+                (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
+            else:
+                (lo, hi) = (zl, zh)
+        res
 
     /// A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the
     /// largest value (`V` below is that value plus one).
@@ -529,7 +646,34 @@ pub struct WaveletMatrix<D>:
     /// order: positions keep the domain `D` of `a`
     /// traps: when some value is negative
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 2) == Some(3)`
-    pub fn new(a: [D]Int) -> WaveletMatrix<D> = todo
+    pub fn new(a: [D]Int) -> WaveletMatrix<D>:
+        var cur = [a[i] for i in D]
+        let n = cur.len
+        var top = 0
+        for v in cur:
+            assert v >= 0, "`WaveletMatrix` needs non-negative values"
+            top = max(top, v)
+        var bits = 0
+        while (top >> bits) > 0: bits += 1
+        var w = WaveletMatrix<D>(bits, n, [], List.filled(bits * (n + 1), 0), List.filled(bits * (n + 1), 0))
+        for l in 0..bits:
+            let b = bits - 1 - l
+            let base = l * (n + 1)
+            var (zero, one): (List<Int>, List<Int>) = ([], [])
+            for i in 0..n:
+                let v = cur[i]
+                if (v >> b) & 1 == 1:
+                    w.cnt[base + i + 1] = w.cnt[base + i] + 1
+                    w.zsum[base + i + 1] = w.zsum[base + i]
+                    one.push(v)
+                else:
+                    w.cnt[base + i + 1] = w.cnt[base + i]
+                    w.zsum[base + i + 1] = w.zsum[base + i] + v
+                    zero.push(v)
+            w.zs.push(zero.len)
+            for v in one: zero.push(v)
+            cur = zero
+        w
 
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
@@ -541,7 +685,21 @@ pub struct WaveletMatrix<D>:
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 0) == Some(1)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 2) == Some(3)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 5) == None`
-    pub fn kth(self, r: Range<D>, k: Int) -> ?Int = todo
+    pub fn kth(self, r: Range<D>, k: Int) -> ?Int:
+        assert k >= 0, "`kth` needs `k >= 0`"
+        var (lo, hi) = r.ends
+        if k >= hi - lo: return None
+        var rem = k
+        var res = 0
+        for l in 0..bits:
+            let (zl, zh) = (lo - self.ones(l, lo), hi - self.ones(l, hi))
+            if rem < zh - zl:
+                (lo, hi) = (zl, zh)
+            else:
+                rem -= zh - zl
+                res |= 1 << (bits - 1 - l)
+                (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
+        Some(res)
 
     /// The number of positions in `r` holding exactly `x`; 0 for any `x` outside `0..V`.
     ///
@@ -549,7 +707,10 @@ pub struct WaveletMatrix<D>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).rank(0..5, 1) == 2`
-    pub fn rank(self, r: Range<D>, x: Int) -> Int = todo
+    pub fn rank(self, r: Range<D>, x: Int) -> Int:
+        let (lo, hi) = r.ends
+        if x < 0: return 0
+        self.below(lo, hi, x + 1) - self.below(lo, hi, x)
 
     /// The number of positions in `r` whose value is `< x`.
     ///
@@ -557,7 +718,9 @@ pub struct WaveletMatrix<D>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_lt(0..5, 4) == 3`
-    pub fn count_lt(self, r: Range<D>, x: Int) -> Int = todo
+    pub fn count_lt(self, r: Range<D>, x: Int) -> Int:
+        let (lo, hi) = r.ends
+        self.below(lo, hi, x)
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
@@ -565,7 +728,10 @@ pub struct WaveletMatrix<D>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_in(0..5, 1, 3) == 3`
-    pub fn count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int = todo
+    pub fn count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int:
+        let (lo, hi) = r.ends
+        if lo_v > hi_v: return 0
+        self.below(lo, hi, hi_v + 1) - self.below(lo, hi, lo_v)
 
     /// The largest value in `r` that is `< x`, or `None`.
     ///
@@ -575,7 +741,10 @@ pub struct WaveletMatrix<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).prev_val(0..5, 3) == Some(1)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).prev_val(0..5, 1) == None`
-    pub fn prev_val(self, r: Range<D>, x: Int) -> ?Int = todo
+    pub fn prev_val(self, r: Range<D>, x: Int) -> ?Int:
+        let (lo, hi) = r.ends
+        let c = self.below(lo, hi, x)
+        if c == 0: None else: self.kth(r, c - 1)
 
     /// The smallest value in `r` that is `> x`, or `None`.
     ///
@@ -585,7 +754,10 @@ pub struct WaveletMatrix<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).next_val(0..5, 3) == Some(4)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).next_val(0..5, 5) == None`
-    pub fn next_val(self, r: Range<D>, x: Int) -> ?Int = todo
+    pub fn next_val(self, r: Range<D>, x: Int) -> ?Int:
+        let (lo, hi) = r.ends
+        let c = self.below(lo, hi, x + 1)
+        if c >= hi - lo: None else: self.kth(r, c)
 
     /// The sum of the `k` smallest values in `r`, with repeats.
     ///
@@ -595,7 +767,23 @@ pub struct WaveletMatrix<D>:
     /// traps: when `k` is outside `0..=r.len`, or a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).quantile_sum(0..5, 3) == 5`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).quantile_sum(1..3, 0) == 0`
-    pub fn quantile_sum(self, r: Range<D>, k: Int) -> Int = todo
+    pub fn quantile_sum(self, r: Range<D>, k: Int) -> Int:
+        var (lo, hi) = r.ends
+        assert 0 <= k and k <= hi - lo, "`quantile_sum` needs `k` in `0..=r.len`"
+        var rem = k
+        var (res, total) = (0, 0)
+        for l in 0..bits:
+            if rem == 0: return total
+            let base = l * (n + 1)
+            let (zl, zh) = (lo - self.ones(l, lo), hi - self.ones(l, hi))
+            if rem < zh - zl:
+                (lo, hi) = (zl, zh)
+            else:
+                rem -= zh - zl
+                total += zsum[base + hi] - zsum[base + lo]
+                res |= 1 << (bits - 1 - l)
+                (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
+        total + rem * res
 
 /// O(|D| log^2 |D|) space. Dynamic point-update + 2D range value-count and k-th structure
 /// (Fenwick of order trees) over `[D]T`.

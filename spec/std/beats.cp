@@ -264,12 +264,29 @@ pub struct BeatsSegTree<D>:
     /// example: `BeatsSegTree([5, 1, 4]).get(2) == 4`
     pub fn get(mut self, i: D) -> Int = self.sum(i..=i)
 
+    fn div_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, d: Int, rem: Bool):
+        if qr <= nl or nr <= ql: return
+        if ql <= nl and nr <= qr:
+            if rem and mn1[u] >= 0 and mx1[u] < d: return
+            let a = if rem: -d * (mx1[u] / d) else: mx1[u] / d - mx1[u]
+            let b = if rem: -d * (mn1[u] / d) else: mn1[u] / d - mn1[u]
+            if a == b:
+                self.apply_add(u, nr - nl, a)
+                return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.div_rec(2 * u, nl, mid, ql, qr, d, rem)
+        self.div_rec(2 * u + 1, mid, nr, ql, qr, d, rem)
+        self.pull(u)
+
     /// Assign `a[i] = x`, replacing whatever earlier updates left there.
     ///
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.set(1, 9); t.all_max == Some(9)`
-    pub fn set(mut self, i: D, x: Int) = todo
+    pub fn set(mut self, i: D, x: Int):
+        let cur = self.get(i)
+        self.add(i..=i, x - cur)
 
     /// Overwrite every position in `r` with `x`.
     ///
@@ -277,7 +294,9 @@ pub struct BeatsSegTree<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.assign(0..2, 0); t.all_sum == 4`
-    pub fn assign(mut self, r: Range<D>, x: Int) = todo
+    pub fn assign(mut self, r: Range<D>, x: Int):
+        self.chmin(r, x)
+        self.chmax(r, x)
 
     /// Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity. A node whose
     /// values all map to the same shift becomes a single `add` tag, so each value is divided
@@ -288,7 +307,11 @@ pub struct BeatsSegTree<D>:
     /// traps: when `d <= 0`, or a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chdiv(0..3, 2); t.all_sum == 4`
     /// example: `var t = BeatsSegTree([-3]); t.chdiv(0..1, 2); t.get(0) == -2`
-    pub fn chdiv(mut self, r: Range<D>, d: Int) = todo
+    pub fn chdiv(mut self, r: Range<D>, d: Int):
+        assert d > 0, "`chdiv` needs `d > 0`"
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.div_rec(1, 0, n, lo, hi, d, false)
 
     /// Replace every `a[i]` in `r` with `a[i] mod m`, the remainder in `0..m` (floored, so
     /// negative values map into `0..m` too). Nodes whose maximum is below `m` are skipped.
@@ -297,7 +320,11 @@ pub struct BeatsSegTree<D>:
     /// empty: changes nothing
     /// traps: when `m <= 0`, or a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmod(0..3, 3); t.all_sum == 4`
-    pub fn chmod(mut self, r: Range<D>, m: Int) = todo
+    pub fn chmod(mut self, r: Range<D>, m: Int):
+        assert m > 0, "`chmod` needs `m > 0`"
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.div_rec(1, 0, n, lo, hi, m, true)
 
     /// The sum of every current value in `D`.
     ///
@@ -305,7 +332,8 @@ pub struct BeatsSegTree<D>:
     /// empty: zero on an empty domain
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
-    @get pub fn all_sum(self) -> Int = todo
+    @get pub fn all_sum(self) -> Int:
+        if n == 0: 0 else: s[1]
 
     /// The least current value in `D`, or `None` when `D` is empty.
     ///
@@ -314,7 +342,8 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_min == Some(1)`
-    @get pub fn all_min(self) -> ?Int = todo
+    @get pub fn all_min(self) -> ?Int:
+        if n == 0: None else: Some(mn1[1])
 
     /// The greatest current value in `D`, or `None` when `D` is empty.
     ///
@@ -323,7 +352,8 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_max == Some(5)`
-    @get pub fn all_max(self) -> ?Int = todo
+    @get pub fn all_max(self) -> ?Int:
+        if n == 0: None else: Some(mx1[1])
 
 /// O(|D|) space. Segment Tree Beats with historic maximum and historic sum tracking under
 /// range `chmin`, `chmax`, and `add` (Ji Driver with historic tags).

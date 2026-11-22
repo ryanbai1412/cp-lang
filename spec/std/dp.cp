@@ -45,7 +45,9 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// order: no sequence is returned; coordinates run in `over`'s order
     /// traps: when `over` is empty
     /// example: `LiChao(min, over: 0..=10).at(5) == None`
-    pub fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K> = todo
+    pub fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>:
+        assert over.len > 0, "`LiChao` needs a non-empty `over`"
+        LiChao(pick, over.start, over.start + over.len - 1, [None], [0], [0])
 
     /// Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases,
     /// say) without reallocating.
@@ -383,6 +385,32 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
     /// example: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).len == 1`
     @get pub fn len(self) -> Int = todo
 
+fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: List<Int>):
+    if rows.is_empty: return
+    var kept: List<Int> = []
+    for c in cols:
+        while kept.len > 0:
+            let r = rows[kept.len - 1]
+            if f(r, kept[kept.len - 1]) <= f(r, c): break
+            let _ = kept.pop()
+        if kept.len < rows.len: kept.push(c)
+    smawk_rec([rows[i] for i in 0..rows.len if i % 2 == 1], kept, f, mut at)
+    var j = 0
+    var i = 0
+    while i < rows.len:
+        let r = rows[i]
+        let stop = if i + 1 < rows.len: at[rows[i + 1]] else: kept[kept.len - 1]
+        var best = kept[j]
+        var bv = f(r, best)
+        while kept[j] != stop:
+            j += 1
+            let v = f(r, kept[j])
+            if v < bv:
+                bv = v
+                best = kept[j]
+        at[r] = best
+        i += 2
+
 /// For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its
 /// leftmost `col`.
 ///
@@ -395,7 +423,13 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
 /// order: one entry per row, row order
 /// traps: when `rows < 0`, or `cols <= 0` with `rows > 0`
 /// example: `smawk(2, 3, (i, j) => (j - i) * (j - i)) == [(val: 0, at: 0), (val: 0, at: 1)]`
-pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)> = todo
+pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>:
+    assert rows >= 0, "`smawk` needs `rows >= 0`"
+    if rows == 0: return []
+    assert cols > 0, "`smawk` needs `cols > 0` when `rows > 0`"
+    var at: List<Int> = List.filled(rows, 0)
+    smawk_rec([i for i in 0..rows], [j for j in 0..cols], f, mut at)
+    [(val: f(i, at[i]), at: at[i]) for i in 0..rows]
 
 /// O(1) amortized per `add` and per `at_next`, O(log n) per `at`.
 /// The convex hull trick for lines added in slope order: falling slopes for
@@ -404,6 +438,27 @@ pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: 
 /// Each line may carry a `tag` (a photo count, a parent index); `best_next` returns the winning
 /// line's tag, and equal values go to the smaller tag, which is the tie rule `aliens` needs.
 pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
+    // Lines are stored negated under `max`, so the hull is always a lower envelope.
+    ks: List<Int> = []
+    ms: List<Int> = []
+    tags: List<P> = []
+    ptr: Int = 0
+    last: ?Int = None
+
+    fn sign(self) -> Int = if pick(0, 1) == 0: 1 else: -1
+
+    fn val_at(self, i: Int, x: Int) -> Int = ks[i] * x + ms[i]
+
+    fn covered(self, k: Int, m: Int) -> Bool:
+        let (a, b) = (ks.len - 2, ks.len - 1)
+        (m - ms[a]) * (ks[a] - ks[b]) <= (ms[b] - ms[a]) * (ks[a] - k)
+
+    fn pop_line(mut self):
+        let _ = ks.pop()
+        let _ = ms.pop()
+        let _ = tags.pop()
+        if ptr >= ks.len and ptr > 0: ptr = max(ks.len - 1, 0)
+
     /// Add `line`, with `tag`. Slopes must arrive in order: non-increasing for `pick: min`,
     /// non-decreasing for `max`. A line of equal slope keeps only the better intercept, and lines that
     /// are never best are dropped.
@@ -411,7 +466,19 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// cost: O(1) amortized
     /// traps: when the slope goes back
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at(0) == Some(0) and h.at(2) == Some(1)`
-    pub fn add(mut self, line: Line, tag: P = ()) = todo
+    pub fn add(mut self, line: Line, tag: P = ()):
+        let s = self.sign()
+        let (k, m) = (s * line.k, s * line.m)
+        let n = ks.len
+        if n > 0:
+            assert k <= ks[n - 1], "`MonotoneHull.add`: the slope went back"
+            if k == ks[n - 1]:
+                if m >= ms[n - 1]: return
+                self.pop_line()
+        while ks.len >= 2 and self.covered(k, m): self.pop_line()
+        ks.push(k)
+        ms.push(m)
+        tags.push(tag)
     /// The best value at `x` with the tag of the line attaining it, for an `x` that never decreases
     /// between calls (a pointer walks the hull). `None` when empty.
     ///
@@ -419,33 +486,55 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// ties: equal values go to the smaller tag (the rule `aliens` needs)
     /// traps: when `x` is less than the previous `best_next` or `at_next` argument
     /// example: `var h = MonotoneHull<Int>(min); h.add(Line(1, 0), tag: 7); h.add(Line(-1, 2), tag: 3); h.best_next(1) == Some((val: 1, tag: 3))`
-    pub fn best_next(mut self, x: Int) -> ?(val: Int, tag: P) = todo
+    pub fn best_next(mut self, x: Int) -> ?(val: Int, tag: P):
+        assert last == None or x >= last!, "`best_next`/`at_next` need a non-decreasing `x`"
+        last = Some(x)
+        if ks.is_empty: return None
+        while ptr + 1 < ks.len:
+            let (a, b) = (self.val_at(ptr, x), self.val_at(ptr + 1, x))
+            if b <= a: ptr += 1
+            else: break
+        Some((val: self.sign() * self.val_at(ptr, x), tag: tags[ptr]))
     /// The best value at any `x`, by binary search on the hull; `None` when empty.
     ///
     /// cost: O(log n)
     /// ties: only the value is kept
     /// traps: never
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at(5) == Some(-2)`
-    pub fn at(self, x: Int) -> ?Int = todo
+    pub fn at(self, x: Int) -> ?Int:
+        if ks.is_empty: return None
+        var (lo, hi) = (0, ks.len - 1)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if self.val_at(mid + 1, x) < self.val_at(mid, x): lo = mid + 1
+            else: hi = mid
+        Some(self.sign() * self.val_at(lo, x))
     /// `at(x)` for an `x` that never decreases between calls; `None` when empty.
     ///
     /// cost: O(1) amortized
     /// ties: only the value is kept
     /// traps: when `x` is less than the previous `best_next` or `at_next` argument
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at_next(0) == Some(0) and h.at_next(2) == Some(1)`
-    pub fn at_next(mut self, x: Int) -> ?Int = todo
+    pub fn at_next(mut self, x: Int) -> ?Int:
+        if let b = self.best_next(x): Some(b.val) else: None
     /// The number of lines kept on the hull (dominated lines are not counted).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        ks.len
     /// Remove every line and reset the `at_next` pointer, keeping `pick`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.clear(); h.at(0) == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        ks.clear()
+        ms.clear()
+        tags.clear()
+        ptr = 0
+        last = None
 
 /// O(log n) amortized per `add`, O(log n) per `at`.
 /// The convex hull trick with lines in any order and queries at any `x`,
@@ -490,7 +579,20 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
 /// example: `[3, 1, 4, 1, 5].lis_ends() == [1, 1, 2, 1, 3]`
 /// example: `[1, 1, 2].lis_ends(strict: false) == [1, 2, 3]`
 /// example: `[3, 1, 2].lis_ends(by: x => -x) == [1, 2, 2]`
-pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int = todo
+pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int:
+    var tails: List<K> = []
+    var out: [D]Int = 0
+    for i in D:
+        let k = by(self[i])
+        var (lo, hi) = (0, tails.len)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if tails[mid] < k or (not strict and tails[mid] == k): lo = mid + 1
+            else: hi = mid
+        if lo == tails.len: tails.push(k)
+        else: tails[lo] = k
+        out[i] = lo + 1
+    out
 
 
 /// Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.
@@ -500,7 +602,14 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
 /// order: increasing
 /// traps: when `bits < 0` or `m` is not in `0..2^bits`
 /// example: `supermasks(0b01, 2).collect() == [1, 3]`
-pub fn supermasks(m: Int, bits: Int) -> yields Int = todo
+pub fn supermasks(m: Int, bits: Int) -> yields Int:
+    assert bits >= 0 and 0 <= m and m < (1 << bits), "`m` must be a mask of `bits` bits"
+    let full = (1 << bits) - 1
+    var s = m
+    while true:
+        yield s
+        if s == full: break
+        s = (s + 1) | m
 
 /// Every mask of `bits` bits with exactly `k` bits set, increasing (Gosper's hack).
 ///
@@ -509,7 +618,19 @@ pub fn supermasks(m: Int, bits: Int) -> yields Int = todo
 /// order: increasing
 /// traps: when `bits < 0` or `k < 0`
 /// example: `masks_of_size(3, 2).collect() == [3, 5, 6]`
-pub fn masks_of_size(bits: Int, k: Int) -> yields Int = todo
+pub fn masks_of_size(bits: Int, k: Int) -> yields Int:
+    assert bits >= 0 and k >= 0, "`bits` and `k` must be non-negative"
+    if k > bits: return
+    if k == 0:
+        yield 0
+        return
+    let end = 1 << bits
+    var x = (1 << k) - 1
+    while x < end:
+        yield x
+        let c = x & -x
+        let r = x + c
+        x = (((r ^ x) >> 2) / c) | r
 
 /// `out[mask]` is the fold under `op` of `xs[i]` for `i` in `mask`, in increasing `i`;
 /// `out[0]` is `op`'s identity (W10).
@@ -519,7 +640,15 @@ pub fn masks_of_size(bits: Int, k: Int) -> yields Int = todo
 /// order: indexed by mask; within a mask, elements fold in increasing index
 /// traps: never
 /// example: `subset_folds([1, 2, 4], +) == [0, 1, 2, 3, 4, 5, 6, 7]`
-pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T> = todo
+pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
+    let m = Monoid<T>.of(op)
+    let n = xs.len
+    var out: List<T> = List.filled(1 << n, m.id)
+    var top = 0
+    for mask in 1..(1 << n):
+        if mask == 1 << (top + 1): top += 1
+        out[mask] = m.op(out[mask ^ (1 << top)], xs[top])
+    out
 
 /// Depth-first backtracking from `start`, where `next(s)` yields the states one step on. Every
 /// state reached is yielded as a `Step` with `.state` and `.depth` (`start` at depth 0), in

@@ -56,7 +56,8 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// cost: O(1)
     /// traps: never
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.get(t.base, 0) == 1`
-    @get pub fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version:
+        Version(base_root)
 
     fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int:
         if nr - nl == 1: return self.push_node(0, 0, x)
@@ -161,7 +162,21 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// ties: the rightmost qualifying cut
     /// traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.right_while(t.base, 0, s => s <= 3) == 2`
-    pub fn right_while(self, v: Version, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
+    pub fn right_while(self, v: Version, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
+        assert ok(m.id), "`right_while` needs `ok` true on the identity"
+        let (p, _, _) = self.rw(v.root, 0, D.K, from.ord, ok, m.id)
+        D.cuts.nth(max(p, from.ord))
+
+    fn rw(self, u: Int, nl: Int, nr: Int, l: Int, ok: T -> Bool, acc: T) -> (Int, T, Bool):
+        if nr <= l or u == 0: return (nr, acc, false)
+        if l <= nl:
+            let c = m.op(acc, val[u])
+            if ok(c): return (nr, c, false)
+            if nr - nl == 1: return (nl, acc, true)
+        let mid = (nl + nr) / 2
+        let (p, a, stop) = self.rw(left[u], nl, mid, l, ok, acc)
+        if stop: return (p, a, true)
+        self.rw(right[u], mid, nr, l, ok, a)
 
     /// The leftmost cut `b` at or before `to` such that `ok(fold(v, b..to))` holds, reading version
     /// `v`.
@@ -172,7 +187,21 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// ties: the leftmost qualifying cut
     /// traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.left_while(t.base, 3, s => s <= 5) == 1`
-    pub fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
+    pub fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
+        assert ok(m.id), "`left_while` needs `ok` true on the identity"
+        let (p, _, _) = self.lw(v.root, 0, D.K, to.ord, ok, m.id)
+        D.cuts.nth(min(p, to.ord))
+
+    fn lw(self, u: Int, nl: Int, nr: Int, h: Int, ok: T -> Bool, acc: T) -> (Int, T, Bool):
+        if h <= nl or u == 0: return (nl, acc, false)
+        if nr <= h:
+            let c = m.op(val[u], acc)
+            if ok(c): return (nl, c, false)
+            if nr - nl == 1: return (nr, acc, true)
+        let mid = (nl + nr) / 2
+        let (p, a, stop) = self.lw(right[u], mid, nr, h, ok, acc)
+        if stop: return (p, a, true)
+        self.lw(left[u], nl, mid, h, ok, a)
 
     /// For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference
     /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.
@@ -185,7 +214,23 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// traps: when `k < 0`, or a version did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, t.base, 1) == Some(3) and t.diff_kth(v2, t.base, 3) == None`
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 0) == Some(3)`
-    pub fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D = todo
+    pub fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D:
+        assert k >= 0, "`diff_kth` needs `k >= 0`"
+        var (a, b, nl, nr, rem) = (hi.root, lo.root, 0, D.K, k)
+        if D.K == 0 or val[a] - val[b] <= rem: return None
+        while nr - nl > 1:
+            let mid = (nl + nr) / 2
+            let c = val[left[a]] - val[left[b]]
+            if rem < c:
+                a = left[a]
+                b = left[b]
+                nr = mid
+            else:
+                rem -= c
+                a = right[a]
+                b = right[b]
+                nl = mid
+        Some(D.nth(nl))
 
 /// Static range k-th smallest and range rank queries over `[D]T`.
 /// Built in O(n log n) using prefix versions of a persistent count tree; queries run in O(log n).
@@ -311,7 +356,10 @@ pub struct RangeKth<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_lt(0..4, 4) == 2`
-    pub fn count_lt(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_lt(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        if lo == hi or vals.is_empty: return 0
+        self.count_prefix(roots[lo], roots[hi], 0, vals.len, self.lower_val(x))
 
     /// The number of elements of `a` over `r` in `lo_v ..= hi_v` (both ends inclusive); 0 when
     /// `lo_v > hi_v`.
@@ -321,12 +369,61 @@ pub struct RangeKth<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 2, 5) == 3`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 5, 2) == 0`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int = todo
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+        if hi_v < lo_v: return 0
+        self.count_le(r, hi_v) - self.count_lt(r, lo_v)
 
 /// O(q log |D|) space. Path-copying persistent segment tree with lazy range updates:
 /// every `apply`/`set` returns a new `Version` in O(log |D|) time and memory.
 pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
+    left: List<0..=2_000_000_000>
+    right: List<0..=2_000_000_000>
+    val: List<T>
+    tag: List<F>
     base_root: Int
+
+    fn push_node(mut self, l: Int, r: Int, v: T, f: F) -> Int:
+        let id = val.len
+        left.push(l)
+        right.push(r)
+        val.push(v)
+        tag.push(f)
+        id
+
+    fn build_list(mut self, vals: List<T>, nl: Int, nr: Int) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, vals[nl], act.id)
+        let mid = (nl + nr) / 2
+        let lc = self.build_list(vals, nl, mid)
+        let rc = self.build_list(vals, mid, nr)
+        self.push_node(lc, rc, act.over.op(val[lc], val[rc]), act.id)
+
+    fn tagged(mut self, u: Int, span: Int, f: F) -> Int:
+        self.push_node(left[u], right[u], act.apply(f, val[u], span), act.compose(f, tag[u]))
+
+    fn apply_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, f: F) -> Int:
+        if qr <= nl or nr <= ql: return u
+        if ql <= nl and nr <= qr: return self.tagged(u, nr - nl, f)
+        let mid = (nl + nr) / 2
+        let lc = self.apply_rec(self.tagged(left[u], mid - nl, tag[u]), nl, mid, ql, qr, f)
+        let rc = self.apply_rec(self.tagged(right[u], nr - mid, tag[u]), mid, nr, ql, qr, f)
+        self.push_node(lc, rc, act.over.op(val[lc], val[rc]), act.id)
+
+    fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, x, act.id)
+        let mid = (nl + nr) / 2
+        var lc = self.tagged(left[u], mid - nl, tag[u])
+        var rc = self.tagged(right[u], nr - mid, tag[u])
+        if idx < mid: lc = self.set_rec(lc, nl, mid, idx, x)
+        else: rc = self.set_rec(rc, mid, nr, idx, x)
+        self.push_node(lc, rc, act.over.op(val[lc], val[rc]), act.id)
+
+    /// `acc` holds the tags of the ancestors of `u`, which are newer than every tag below them.
+    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, acc: F) -> T:
+        if qr <= nl or nr <= ql: return act.over.id
+        if ql <= nl and nr <= qr: return act.apply(acc, val[u], nr - nl)
+        let mid = (nl + nr) / 2
+        let down = act.compose(acc, tag[u])
+        act.over.op(self.fold_rec(left[u], nl, mid, ql, qr, down), self.fold_rec(right[u], mid, nr, ql, qr, down))
 
     /// Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and
     /// keep it as `base`. Range writes copy O(log n) nodes and their pending tags, never changing an
@@ -336,14 +433,22 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.base) == 6`
-    pub fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F> = todo
+    pub fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>:
+        var t = PersistentLazySegTree<D, T, F>(act, [0], [0], [act.over.id], [act.id], 0)
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            if D.K > 0: t.base_root = t.build_list([init[i] for i in D], 0, D.K)
+        elif let v = fill:
+            if D.K > 0: t.base_root = t.build_list(List.filled(D.K, v), 0, D.K)
+        t
 
     /// The version built by `new`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.get(t.base, 2) == 3`
-    @get pub fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version:
+        Version(base_root)
 
     /// A new version equal to `v` with the tag `f` applied to every position of `r`.
     ///
@@ -351,14 +456,18 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// empty: an empty `r` returns a version equal to `v`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..2, 10); t.all(v) == 26 and t.all(t.base) == 6`
-    pub fn apply(mut self, v: Version, r: Range<D>, f: F) -> Version = todo
+    pub fn apply(mut self, v: Version, r: Range<D>, f: F) -> Version:
+        let (lo, hi) = r.ends
+        if lo == hi: return v
+        Version(self.apply_rec(v.root, 0, D.K, lo, hi, f))
 
     /// A new version equal to `v` with position `i` set to `x`, discarding tags pending above it.
     ///
     /// cost: O(log n) time and memory
     /// traps: when `i` is not in `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..3, 1); let w = t.set(v, 0, 0); t.all(w) == 7`
-    pub fn set(mut self, v: Version, i: D, x: T) -> Version = todo
+    pub fn set(mut self, v: Version, i: D, x: T) -> Version:
+        Version(self.set_rec(v.root, 0, D.K, i.to_idx, x))
 
     /// The fold of `r` in version `v`, left to right, with every applied tag accounted for.
     ///
@@ -366,14 +475,18 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// empty: the monoid identity
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..3, 1); t.fold(v, 1..3) == 7`
-    pub fn fold(self, v: Version, r: Range<D>) -> T = todo
+    pub fn fold(self, v: Version, r: Range<D>) -> T:
+        let (lo, hi) = r.ends
+        if lo == hi: return act.over.id
+        self.fold_rec(v.root, 0, D.K, lo, hi, act.id)
 
     /// The value at position `i` in version `v`, with every applied tag accounted for.
     ///
     /// cost: O(log n)
     /// traps: when `i` is not in `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..3, 1); t.get(v, 1) == 3 and t.get(t.base, 1) == 2`
-    pub fn get(self, v: Version, i: D) -> T = todo
+    pub fn get(self, v: Version, i: D) -> T:
+        self.fold_rec(v.root, 0, D.K, i.to_idx, i.to_idx + 1, act.id)
 
     /// The fold of every position in version `v`, read from its root.
     ///
@@ -381,11 +494,35 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// empty: the monoid identity when `D` is empty
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.apply(t.base, 0..3, 2)) == 12`
-    pub fn all(self, v: Version) -> T = todo
+    pub fn all(self, v: Version) -> T:
+        val[v.root]
 
 /// O(q log |D|) space. Persistent array over domain `D`: O(log |D|) `get` and path-copying `set`.
 pub struct PersistentArray<D, T>:
+    left: List<0..=2_000_000_000>
+    right: List<0..=2_000_000_000>
+    val: List<T>
     base_root: Int
+
+    fn push_node(mut self, l: Int, r: Int, v: T) -> Int:
+        let id = val.len
+        left.push(l)
+        right.push(r)
+        val.push(v)
+        id
+
+    fn build_list(mut self, vals: List<T>, nl: Int, nr: Int) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, vals[nl])
+        let mid = (nl + nr) / 2
+        let lc = self.build_list(vals, nl, mid)
+        let rc = self.build_list(vals, mid, nr)
+        self.push_node(lc, rc, vals[nl])
+
+    fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, x)
+        let mid = (nl + nr) / 2
+        if idx < mid: return self.push_node(self.set_rec(left[u], nl, mid, idx, x), right[u], val[u])
+        self.push_node(left[u], self.set_rec(right[u], mid, nr, idx, x), val[u])
 
     /// Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.
     ///
@@ -393,28 +530,51 @@ pub struct PersistentArray<D, T>:
     /// empty: an empty `D` gives an array with no positions
     /// traps: when both or neither of `a:` and `fill:` are given
     /// example: `var p = PersistentArray(fill: 7); p.get(p.base, 0) == 7`
-    pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T> = todo
+    pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>:
+        var p = PersistentArray<D, T>([0], [0], [], 0)
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            if D.K > 0: p.val.push(init[D.nth(0)])
+            if D.K > 0: p.base_root = p.build_list([init[i] for i in D], 0, D.K)
+        elif let v = fill:
+            p.val.push(v)
+            if D.K > 0: p.base_root = p.build_list(List.filled(D.K, v), 0, D.K)
+        else:
+            assert false, "pass `a:` or `fill:`"
+        p
 
     /// The version built by `new`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var p = PersistentArray(a: [1, 2, 3]); p.get(p.base, 2) == 3`
-    @get pub fn base(self) -> Version = todo
+    @get pub fn base(self) -> Version:
+        Version(base_root)
 
     /// The value at position `i` in version `v`.
     ///
     /// cost: O(log n)
     /// traps: when `i` is not in `D`, or `v` did not come from this array
     /// example: `var p = PersistentArray(a: [1, 2, 3]); p.get(p.base, 1) == 2`
-    pub fn get(self, v: Version, i: D) -> T = todo
+    pub fn get(self, v: Version, i: D) -> T:
+        var (u, nl, nr, idx) = (v.root, 0, D.K, i.to_idx)
+        while nr - nl > 1:
+            let mid = (nl + nr) / 2
+            if idx < mid:
+                u = left[u]
+                nr = mid
+            else:
+                u = right[u]
+                nl = mid
+        val[u]
 
     /// A new version equal to `v` with position `i` set to `x`; `v` is unchanged.
     ///
     /// cost: O(log n) time and memory
     /// traps: when `i` is not in `D`, or `v` did not come from this array
     /// example: `var p = PersistentArray(a: [1, 2, 3]); let v = p.set(p.base, 0, 9); p.get(v, 0) == 9 and p.get(p.base, 0) == 1`
-    pub fn set(mut self, v: Version, i: D, x: T) -> Version = todo
+    pub fn set(mut self, v: Version, i: D, x: T) -> Version:
+        Version(self.set_rec(v.root, 0, D.K, i.to_idx, x))
 
 /// O(log |D|) per update. Hashed persistent multiset over domain `D`:
 /// O(1) equality, O(log |D|) lexicographic comparison (`desc: true` compares largest element first).

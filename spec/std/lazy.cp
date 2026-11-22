@@ -177,7 +177,7 @@ pub struct LazyTreap<T, F>(
     /// cost: O(1)
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = root == None
 
     fn put(mut self, u: ?Int, f: F):
         if let i = u:
@@ -327,7 +327,8 @@ pub struct LazyTreap<T, F>(
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(1..2, 10); t.to_list() == [1, 12]`
-    pub fn apply(mut self, r: Range<Int>, f: F) = todo
+    pub fn apply(mut self, r: Range<Int>, f: F):
+        self.apply_range(r.start, r.start + r.len, f)
 
     /// Reverse the order of the elements at positions `r`. Tags applied earlier keep their effect
     /// on the elements they reached; a later tag sees the new order.
@@ -343,7 +344,12 @@ pub struct LazyTreap<T, F>(
     /// cost: O(log n) expected
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(5); t.erase_at(0) == 6 and t.to_list() == [7]`
-    pub fn erase_at(mut self, pos: Int) -> T = todo
+    pub fn erase_at(mut self, pos: Int) -> T:
+        assert 0 <= pos and pos < self.len, "`erase_at` position out of range"
+        let (a, bc) = self.split_pos(root, pos)
+        let (b, c) = self.split_pos(bc, 1)
+        root = self.merge(a, c)
+        unchecked: return nodes[b!].val
 
     /// Remove the elements at positions `r`; later elements move down by `r.len`.
     ///
@@ -351,7 +357,13 @@ pub struct LazyTreap<T, F>(
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.erase_range(0..2); t.to_list() == [3]`
-    pub fn erase_range(mut self, r: Range<Int>) = todo
+    pub fn erase_range(mut self, r: Range<Int>):
+        let (lo, hi) = (r.start, r.start + r.len)
+        assert 0 <= lo and lo <= hi and hi <= self.len, "`erase_range` out of range"
+        if lo == hi: return
+        let (a, bc) = self.split_pos(root, lo)
+        let (_, c) = self.split_pos(bc, hi - lo)
+        root = self.merge(a, c)
 
     /// Split off the elements at positions `k..len` into a new treap with the same `apply`,
     /// `compose`, `split` and `before`, and return it; `self` keeps positions `0..k`. Pending
