@@ -54,6 +54,24 @@ Owner: Devin (parent session). Status: proposal, 2026-11-21.
    phase is done when its chapters' cases pass, not when the code looks
    complete.
 
+### Keeping the stdlib out of the compiler
+
+Ryan: "stdlib needs to be cp lang i want as little of stdlib in the
+compiler as possible". Enforced mechanically, from the first commit of the
+new spine:
+
+1. **One intrinsics table** (`cpl-rt`), about 150 primitives, each with a
+   Rust twin and a C++ snippet. Growing it needs a decision entry; a test
+   pins the count.
+2. **Name-ban gate.** A script collects every public name in `std/` and
+   fails `just check` when one appears in compiler source outside `cpl-rt`.
+3. **No-privilege test.** A stdlib module copied into a user library under
+   another name type-checks, runs and emits the same C++ as the original.
+4. **Powers are general.** A speed need becomes a general feature any
+   library can use (inlining, law dispatch, `@cpp`), never a name check.
+5. **Tracked.** The scoreboard reports the intrinsic count and stdlib
+   names found in compiler code (target 0).
+
 ## 3. Pipeline and crates
 
 ```text
