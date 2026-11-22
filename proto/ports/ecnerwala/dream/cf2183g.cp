@@ -1,13 +1,15 @@
 // Codeforces 2183 G — Interactive Shift Recovery
 //
-// Positions `a[0..n]` lie in `Pos = 1..=4 * n + 1` (the statement bounds all
-// positions to `<= 4n`, with `+ 1` room for `n = 2` generator instances), and
-// we keep every coordinate 1-based without shifting.
+// The statement bounds all `n` initial positions `a[0..n]` to `Pos = 1..=4 * n`,
+// and we keep every coordinate 1-based without shifting.
 //
-// Recover each shift `ans[i] in 0..=2` from three queries `"R"`, `"RL"`, `"L"`.
-// Comparing the matched positions in `vrl` (shifted right then left) against
-// `vr` (shifted right) directly yields `ans[idx[Pos(v)]!] = r - v` for every
-// element that survives `"RL"`.
+// Recover each shift `ans[i] in 0..=2` from three queries `"R"`, `"RL"`, `"L"`:
+// - Every `v in vrl` is an element that survived shifting right then left, so
+//   it returns to its original position `a[i] in Pos` and matches `r in vr` at
+//   the same index, giving `ans[idx[Pos(v)]!] = r - v`.
+// - Every `v in vl` is shifted left by `0..=2`, so `v <= 4 * n` always; the
+//   only out-of-range values `"L"` can return are `v <= 0` (when `a[i] <= 2`
+//   shifts left past `1`), which `if v >= 1:` drops before recording `vl_has`.
 //
 // Any remaining position `i` (resolved right-to-left) must have `ans[i] >= 1`:
 // - If its right neighbour has `ans[i + 1] == 0` and `a[i + 1] == a[i] + 1`,
@@ -27,9 +29,8 @@ fn ask(s: Str) -> List<Int>:
 
 @!multitest
 let n: 1..=200_000 = read()
-let bound = 4 * n + 2
-domain Pos = 1..=bound
-let a: [0..n]1..=bound = read()
+domain Pos = 1..=4 * n
+let a: [0..n]1..=4 * n = read()
 let vr = ask("R")
 let vrl = ask("RL")
 let vl = ask("L")
@@ -40,7 +41,7 @@ for (i, x) in a.items: idx[Pos(x)] = i
 for (v, r) in zip(vrl, vr): ans[idx[Pos(v)]!] = r - v
 
 var vl_has: [Pos]Bool = false
-for v in vl if 1 <= v <= bound: vl_has[Pos(v)] = true
+for v in vl if v >= 1: vl_has[Pos(v)] = true
 
 for i in (0..n).rev if ans[i] == none:
     if i + 1 < n and ans[i + 1] == 0 and a[i + 1] == a[i] + 1:
