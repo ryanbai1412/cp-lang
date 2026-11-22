@@ -1,23 +1,21 @@
-use std.fenwick.{DualFenwick}
-use std.prefix.{prefix_fold, suffix_fold}
-use std.seq.{buckets}
-
 // Codeforces 2062 E2: The Game (Hard Version).
-// Root at 1 and flatten by preorder so each subtree is a range. A node v wins
-// iff the max weight mx outside sub(v) exceeds w[v], and every node u with
-// w[u] > w[v] is either inside sub(v), attains mx outside sub(v), or is a
-// root-to-leaf path-max ancestor covering all mx-nodes outside sub(v).
-struct MaxInfo<P>:
-    w: Int
-    lo: ?P
-    hi: ?P
-    cnt: Int
+//
+// Cirno opens with u; Daiyousei must answer with a heavier x outside sub(u),
+// and if he can't, he wins. Cirno wins iff such an x exists and every one of
+// them leaves her stuck: nothing heavier than x outside sub(u) and sub(x).
+// Deeper play never changes the outcome (a game-tree brute force agrees for
+// every tree with n <= 9).
+//
+// Let above(x) be the nodes heavier than x outside sub(x), and g(x) their
+// lca. A reply x strands Cirno iff above(x) is empty or sub(u) contains
+// g(x). Call x dangerous when above(x) is nonempty. So u wins iff some
+// heavier node lies outside sub(u) and no dangerous heavier x has both x and
+// g(x) outside sub(u). Sweep weights downward: sub(u) is a preorder range,
+// "x and g(x) both inside" is "lca(x, g(x)) inside", and inclusion-exclusion
+// turns the condition into three range counts. O(n log n).
 
-fn combine<P>(a: MaxInfo<P>, b: MaxInfo<P>) -> MaxInfo<P>:
-    if a.w > b.w: a
-    elif b.w > a.w: b
-    elif a.w == 0: a
-    else: MaxInfo(a.w, a.lo, b.hi, a.cnt + b.cnt)
+use std.seq.{buckets}
+enum Mark: Reply | Target | Meet
 
 @!multitest
 let n: 1..=400_000 = read()
@@ -26,38 +24,37 @@ domain W = 1..=n
 let w: [V]W = read()
 let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first)
 
-// top[v] is the deepest path-maximum on root -> v, so v is a path-max iff top[v] == v.
-let above: ?V = none
-let top = t.down(above, (s, v) => if let u = s, w[u] > w[v]: s else: some(v))
+var heavier = SortedSet<t.Pre>()
+fn above_lca(x: V) -> ?V:
+    let r = t.sub(x)
+    let (before, after) = (heavier.range(..r.start), heavier.range(r.end..))
+    let lo = (before.first ?? after.first) ?? return none
+    let hi = (after.last ?? before.last)!
+    some(t.lca(t.at[lo], t.at[hi]))
 
-let m_max = Monoid(MaxInfo<t.Pre>(0, none, none, 0), (a, b) => combine(a, b))
-let pre_info = [t.Pre] p => MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
-let pref = prefix_fold(m_max, pre_info)
-let suff = suffix_fold(m_max, pre_info)
+var marks = [Mark] _ => Fenwick<t.Pre, Int>.new()
+var dangerous = 0
+fn inside(m: Mark, u: V) -> Int = marks[m].sum(t.sub(u))
+
 let by_w = buckets(w)
-
-var sub_bit = Fenwick<t.Pre, Int>.new()
-var anc_bit = DualFenwick<t.Pre, Int>.new()
 var winners: List<V> = []
-var heavier = 0
-
 for weight in W.rev:
-    let w_val = weight.ord + 1
-    for v in by_w[weight]:
-        let r = t.sub(v)
-        let mx = combine(pref[r.start], suff[r.end])
-        if mx.w > w_val:
-            var covered = sub_bit.sum(r) + mx.cnt
-            let lo = t.at[mx.lo!]
-            if top[lo] == lo, let p = t.parent(lo), let lp = top[p], mx.hi! in t.sub(lp):
-                covered += anc_bit.get(t.pos(lp))
-            if covered == heavier:
-                winners.push(v)
-    for v in by_w[weight]:
-        if top[v] == v:
-            anc_bit.add(t.sub(v), 1)
-        sub_bit.add(t.pos(v), 1)
-        heavier += 1
+    let bucket = by_w[weight]
+    for u in bucket:
+        let r = t.sub(u)
+        let in_sub = marks[Mark.Reply].sum(r)
+        let replies = heavier.len - heavier.range(r).len
+        let fatal = dangerous - in_sub - inside(Mark.Target, u) + inside(Mark.Meet, u)
+        if replies > 0 and fatal == 0:
+            winners.push(u)
+    for x in bucket:
+        if let g = above_lca(x):
+            dangerous += 1
+            marks[Mark.Reply].add(t.pos(x), 1)
+            marks[Mark.Target].add(t.pos(g), 1)
+            marks[Mark.Meet].add(t.pos(t.lca(x, g)), 1)
+    for v in bucket:
+        heavier.add(t.pos(v))
 
 winners.sort()
 print(winners.len, winners)
