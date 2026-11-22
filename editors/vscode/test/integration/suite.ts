@@ -50,7 +50,7 @@ const tests: [string, () => Promise<void>][] = [
                 );
                 return hovers.length > 0 ? hoverText(hovers) : undefined;
             });
-            assert.match(text, /```cp\npre: \[I\.bounds\]Int/);
+            assert.match(text, /```cp\npre: \[I\.cuts\]Int/);
             assert.deepEqual(vscode.languages.getDiagnostics(document.uri), []);
         },
     ],
