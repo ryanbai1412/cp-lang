@@ -36,17 +36,17 @@ let ps = Prefix(+, a)                       # static: O(1) range sums
 ```python
 pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
-    @law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
 
 pub trait Monoid<T> = Op<T> + HasId<T>
 pub trait HasId<T>:
     @get fn id(self) -> T
-    @law ident(a: T) = op(id, a) == a and op(a, id) == a
+    law ident(a: T) = op(id, a) == a and op(a, id) == a
 
 pub trait Group<T> = Monoid<T> + HasInv<T>
 pub trait HasInv<T>:
     fn inv(self, a: T) -> T
-    @law inverse(a: T) = op(a, inv(a)) == id
+    law inverse(a: T) = op(a, inv(a)) == id
 
 pub trait Commutative<T>: Op<T>        # op(a, b) == op(b, a)
 pub trait Idempotent<T>: Op<T>         # op(a, a) == a
@@ -84,7 +84,7 @@ let cat = Op((a: Str, b: Str) => a + b)     # no identity: a semigroup
 ```
 
 With laws, as a named type. The `impl` with no body states a law. It is a
-promise: `cpl stress` samples it and `laws_hold` tests it (the `@law` tier
+promise: `cpl stress` samples it and `laws_hold` tests it (the `law` tier
 in 0-ownership.md).
 
 ```python
@@ -119,8 +119,8 @@ pub trait Action<M, F>:              # M is the fold op's type, e.g. type of `+`
     type Tags: Monoid<F>
     @get fn tags(self) -> Self.Tags
     fn apply(self, f: F, x: M.T, n: Int) -> M.T
-    @law hom(f, a, b) = apply(f, op(a, b), 2) == op(apply(f, a, 1), apply(f, b, 1))
-    @law comp(f, g, x) = apply(tags.op(f, g), x, 1) == apply(g, apply(f, x, 1), 1)
+    law hom(f, a, b) = apply(f, op(a, b), 2) == op(apply(f, a, 1), apply(f, b, 1))
+    law comp(f, g, x) = apply(tags.op(f, g), x, 1) == apply(g, apply(f, x, 1), 1)
 ```
 
 **Stock actions are generic over the fold op**, so one name works on every
@@ -146,6 +146,84 @@ var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
 
 `n` is computed from the node, never stored, so an action that ignores it
 costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
+
+## 2a. Orders
+
+An order is the other operation value every contest program passes around:
+`sort`, `min`/`max`/`argmax`, heaps, ordered sets, `bsearch` over sorted
+data and Dijkstra all take one. One trait and one argument cover them all.
+
+```python
+pub trait Ord:
+    fn cmp(self, b: Self) -> Ordering
+    law total(a, b, c) = ...       # antisymmetric, transitive, total
+```
+
+- Ints, floats (NaN traps in debug), `Str`, `Bool` and `?T` (`none` first)
+  are `Ord`. Tuples and records derive it lexicographically in field order.
+- **`by:` takes a key fn**, and that is the one way to pass an order:
+  `sort(mut es, by: .w)`, `argmax(a, by: x => x.score)`, `Heap(by: .d)`.
+  Omitted, it is the element's own `Ord`.
+- **Descending is `desc(k)`** on the key (exists in `algebra.cp`), so a
+  mixed order is one tuple: `by: e => (e.w, desc(e.name))`. A bare `desc`
+  reverses the whole order: `sort(mut a, by: desc)`.
+- **No comparator argument.** An order a key can't express (fractions
+  compared by cross-multiplying, polar angle) is a small type with
+  `impl Ord`, used as the key: `by: p => Angle(p)`. Then the order has a
+  name, gets the `total` law sampled by stress, and works in every API.
+- Every sort is stable; ties keep input order. `min`, `argmin` and the
+  others return the **first** of equal keys, `max` and `argmax` too.
+
+### Orders make `min` and `max` monoids
+
+A total order is exactly what makes `min` and `max` `Selective` (section
+1). So `min(by: k)` and `max(by: k)` are operation values too, and one
+order serves both sorting and folding:
+
+```python
+let lightest = min(by: .w)                 # an Op on edges: keeps the lighter
+var seg = SegTree(lightest, es)            # range "lightest edge"
+let best = es.fold(max(by: e => (e.w, desc(e.id))))
+```
+
+The identity is `none` on `?T` or the far end of a bounded key, the same as
+plain `min`. Ties keep the left operand, which matches "first of equal
+keys" above, so a segment tree of `min(by:)` returns the leftmost minimum
+with no index trick (this replaces `MinIdx`/`MaxIdx`).
+
+### Heaps
+
+`Heap<T>(by:)` pops the smallest key; `Heap(by: desc)` pops the largest.
+This replaces the `MinHeap`/`MaxHeap` pairs (and the erasable, indexed and
+meldable pairs) with one type each: `Heap`, `ErasableHeap`, `IndexedHeap`,
+`MeldHeap`. `MinMaxHeap` stays, since it pops both ends.
+
+### Dijkstra: a monoid and an order
+
+A shortest-path search needs two things from weights: how a path's cost
+grows by one arc, and which of two costs is better. That is a `Monoid` and
+an `Ord`, the same two concepts:
+
+```python
+pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
+    g: G, from: Seq<(V, W)>, step: M = +, until: ?V = none,
+) -> Paths<V, W, G.Arc>
+```
+
+```python
+dijkstra(g, from: [(s, 0)])                          # sum of weights
+dijkstra(g, from: [(s, 0)], step: max)               # bottleneck path
+dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   # cost, then hops
+```
+
+- Correctness needs one law: extending a path never makes it better,
+  `step(d, w) >= d`. That replaces "traps on a negative weight": debug
+  builds check it on each relaxation and name the arc that broke it.
+- Tuples add field-wise and compare lexicographically, so `(cost, hops)`
+  needs nothing new.
+- `bfs01`, `dial` and `bellman_ford` take the same `step:`. Floyd–Warshall
+  takes `step:` too; it needs `Commutative` only when the graph is
+  undirected.
 
 ## 3. One vocabulary
 
@@ -301,5 +379,6 @@ for i in I:
 2. **Range add, range sum on a `Fenwick`.** Two Fenwicks implement it today
    (`RangeFenwick`). It could be `Fenwick(+, act: add)`, which is the same
    pattern as `SegTree`, or it could stay a named variant.
-3. **Monoid weights for Dijkstra** (round 4) should reuse `Monoid` and
-   `Ord` from here. That is a separate pass.
+3. **Heap names.** `Heap(by: desc)` reads well, but `MaxHeap` is what
+   everyone searches for. A doc alias (search and hover find it) costs
+   nothing; a real second name would break "one way".
