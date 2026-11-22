@@ -9,7 +9,9 @@ checker needs the `lend place` to type the place they return.
 Usage: scripts/spec-stub.py [--check] [FILE...]   (default spec/std/*.cp)
 --check changes nothing and exits 1 if any fn still has a body, or if an
 `@get` member is documented as costing more than O(1) to make: anything
-that does work up front takes parentheses (decision 140).
+that does work up front takes parentheses (decision 140), or if a fn that
+mutates nothing declares no return type: the checker cannot type its result,
+so every method called on it would go unchecked.
 """
 import glob, os, re, sys
 
@@ -130,6 +132,37 @@ def costly_getters(lines):
     return out
 
 
+UNIT_OK = {"prune", "cdq"}  # they act through `self` or a callback and return nothing
+
+
+def untyped(lines):
+    """Pub fns with no `->` and no `mut` parameter: they return something untyped."""
+    out = []
+    for i, line in enumerate(lines):
+        m = re.match(r"\s*(?:@\S+\s+)*pub\s+(?:@\S+\s+)*fn\s+(\w+)", line)
+        if not m or m.group(1) in UNIT_OK or "@test" in line + lines[i - 1]:
+            continue
+        text = "\n".join(lines[i:i + 40])
+        k = len(line[:m.end()])
+        if text[k] == "<":
+            angle = 0
+            for k in range(k, len(text)):
+                angle += (text[k] == "<") - (text[k] == ">" and text[k - 1] != "-")
+                if angle == 0:
+                    break
+            k += 1
+        depth = 0
+        for k in range(k, len(text)):
+            depth += text[k] in "([{"
+            depth -= text[k] in ")]}"
+            if depth == 0:
+                break
+        params, rest = text[:k + 1], text[k + 1:].lstrip()
+        if not rest.startswith(("->", "lends")) and "mut " not in params:
+            out.append((i + 1, m.group(1)))
+    return out
+
+
 def main(argv):
     check = "--check" in argv
     files = [a for a in argv if a != "--check"] or sorted(glob.glob(
@@ -147,6 +180,10 @@ def main(argv):
             for line, name, cost in costly_getters(lines):
                 print(f"{os.path.relpath(f)}:{line}: `@get {name}` costs {cost}; "
                       "work up front takes parentheses")
+                total += 1
+            for line, name in untyped(lines):
+                print(f"{os.path.relpath(f)}:{line}: `{name}` mutates nothing but declares "
+                      "no return type")
                 total += 1
     print(f"spec-stub: {total} fn body(ies) {'with bodies' if check else 'stubbed'}")
     return 1 if check and total else 0

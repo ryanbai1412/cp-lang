@@ -8,7 +8,7 @@
 //! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
 //! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
-//! - Coordinate compression: `compress(all)` -> `Compressed<D, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
+//! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
 
@@ -85,7 +85,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// The pairs `(a.at(i), b.at(i))`, as many as the shorter sequence has.
 /// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). O(min(|a|, |b|)).
-pub fn zip<A: Indexed, B: Indexed>(a: A, b: B) = todo
+pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
@@ -135,8 +135,8 @@ pub fn buckets<D, K>(key: [D]K) -> [K]List<D> = todo
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
 /// was compressed, and `xs.first_ge(val)` / `xs.last_le(val)` the nearest index (`?D`) for any value.
 pub struct Compressed<D, T>(vals: [D]T):
-    /// The value at index `i` (or a `List<T>` slice when given a `Range<D>`). O(1) / O(r.len).
-    pub fn get<K>(self, i: K) = todo
+    /// O(1). The value at index `i`; `slice` takes a `Range<D>`.
+    pub fn get(self, i: D) -> T = todo
 
     /// The compressed values over a range `r` of `xs.D`, as a list. O(r.len).
     pub fn slice(self, r: Range<D>) -> List<T> = todo
@@ -165,10 +165,10 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// The last index whose value is `< val`, or `none`. O(log n).
     pub fn last_lt(self, val: T) -> ?D = todo
 
-/// Coordinate compression: `let xs = compress(all)` sorts the values, drops the duplicates
-/// and gives them a fresh domain `xs.D`, so an array over them is `[xs.D]Int` and an index of
-/// one compression cannot be used in another. Works on any `Seq`. O(n log n).
-pub fn compress<S: Seq, T>(all: S) = todo
+/// Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the
+/// duplicates and binds a fresh domain `C` for them, so an array over them is `[C]Int` and an
+/// index of one compression cannot be used in another. Works on any `Seq`. O(n log n).
+pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 
 /// The first `f(x)` that is not `none`, stopping there; `none` if every one is.
 /// O(1) per element walked.

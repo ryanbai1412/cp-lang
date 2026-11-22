@@ -49,17 +49,17 @@ pub struct Rooted<V, Pre>:
     /// breadth-first spanning tree, so on a graph with extra edges `depth` is the distance
     /// from the root. Stops if some vertex is not reachable from the root.
     /// With `w:`, edges have lengths `w(arc)` and `dist`, `w` and `diameter` use them.
-    pub fn new<N, A>(next: N, root: V, w: A -> Int = a => 1) = todo
+    pub fn new<N, A>(next: N, root: V, w: A -> Int = a => 1) -> Rooted<V, _> = todo
 
     /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `none` at the
     /// root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one
     /// missing key is the root.
-    pub fn from_parents<P: Keyed>(par: P) = todo
+    pub fn from_parents<P: Keyed>(par: P) -> Rooted<V, _> = todo
 
     /// O(n). One tree per root: `next` must reach every vertex from exactly one of `from`. The
     /// trees sit one after another in `t.Pre`, in the order of `from`; `t.root` is the first root.
     /// Paths and lowest common ancestors exist only within one tree (`root_of` tells).
-    pub fn forest<N, A>(next: N, from: List<V>, w: A -> Int = a => 1) = todo
+    pub fn forest<N, A>(next: N, from: List<V>, w: A -> Int = a => 1) -> Rooted<V, _> = todo
 
     fn build<N, A>(next: N, roots: List<V>, len: A -> Int) = todo
 
@@ -222,7 +222,7 @@ pub struct Rooted<V, Pre>:
     /// children first.
     /// `vt.at[x]` is the vertex, `vt.parent[x]` its nearest kept ancestor, `vt.w[x]` the weighted
     /// distance to it (0 at the top) and `vt.key[x]` whether it is a key.
-    pub fn virtual(self, keys: List<V>) = todo
+    pub fn virtual(self, keys: List<V>) -> VirtualTree<V, _> = todo
 
     /// O(1). The edge length from `v` up to its parent: 0 at a root, 1 unless built with `w:`.
     pub fn w(self, v: V) -> Int = todo
@@ -668,7 +668,7 @@ pub struct PermTree<I, V, Node>:
     hi: [Node]V
 
     /// O(n). The tree of `p`, which must be a bijection between two domains of equal size.
-    pub fn new(p: [I]V) = todo
+    pub fn new(p: [I]V) -> PermTree<I, V, _> = todo
 
     /// O(1). The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
     pub fn node(self, v: Node) -> PermNode<I, Node> = todo

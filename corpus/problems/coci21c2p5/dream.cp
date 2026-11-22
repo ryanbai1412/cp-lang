@@ -3,8 +3,8 @@
 // longest group; jumping greedily along those ends with binary lifting answers a query.
 let n = read<1..=200_000>()
 let iv = read<[n](l: 1..=1_000_000_000, r: 1..=1_000_000_000)>()
-let xs = compress(chain(iv.map(x => x.l), iv.map(x => x.r)))
-var cover = SegTree(max, xs.keys.map(k => 0), act: add)
+let (domain C, xs) = compress(chain(iv.map(x => x.l), iv.map(x => x.r)))
+var cover = SegTree(max, [C] c => 0, act: add)
 var after: [0..=n]?(Int, Int) = none
 var j = 0
 for i in 0..n:

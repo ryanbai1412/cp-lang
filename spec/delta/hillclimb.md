@@ -28,6 +28,10 @@ and its notes in that record's `notes`.
 - coci21c2p5: `Lift.climb(v, ok)` for greedy binary-lifting jump counts; `Lift`,
   `LcaTable` and `JumpTree` join the prelude.
 - dmopc21c4p1: `locate` and `Location` join the prelude.
+- coci21c2p5 (follow-up): `compress` returns `(domain C, Compressed<C, T>)` as chapters 4 and
+  7 say; `Rooted.new`/`from_parents`/`forest`, `virtual` and `PermTree.new` declare their
+  fresh-domain results with `_`; `spec-stub.py --check` now fails a pub fn that mutates
+  nothing and declares no return type, since methods on its result went unchecked.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 
