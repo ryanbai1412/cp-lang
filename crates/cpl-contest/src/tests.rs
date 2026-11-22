@@ -245,6 +245,17 @@ fn limits_come_from_the_header_then_cp_toml_then_defaults() {
 }
 
 #[test]
+fn a_problem_without_limits_gets_its_judges_usual_ones() {
+    let dir = scratch("judge-limits");
+    let source = dir.join("d.cp");
+    let cses = Limits::of(&source, "// judge: cses\n");
+    assert_eq!((cses.time, cses.memory_kb), (Duration::from_millis(1000), 512 * 1024));
+    let own = Limits::of(&source, "// judge: cses\n// limits: 3000 ms, 64 MB\n");
+    assert_eq!((own.time, own.memory_kb), (Duration::from_millis(3000), 64 * 1024));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn cases_are_samples_in_order_then_the_rest_by_name() {
     let dir = scratch("cases");
     let tests = dir.join("d.tests");

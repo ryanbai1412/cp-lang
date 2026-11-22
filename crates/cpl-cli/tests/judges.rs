@@ -43,11 +43,15 @@ fn every_port_is_written_for_every_judge_within_its_limit() {
     let ports = ports();
     assert!(ports.len() > 100, "{} ports", ports.len());
     for profile in cpl_judge::builtins() {
-        let sizes = parallel(&ports, |port| {
+        let indexed: Vec<(usize, &PathBuf)> = ports.iter().enumerate().collect();
+        let sizes = parallel(&indexed, |&(i, port)| {
             let cpp = build(port, &profile.name).unwrap_or_else(|e| panic!("{}: {e}", port.display()));
+            if i % 10 == 0 {
+                assert_eq!(build(port, &profile.name).unwrap(), cpp, "{} is not deterministic", port.display());
+            }
             let stamp = format!("// For {}.\n", profile.stamp());
             assert!(cpp.lines().take(3).any(|line| format!("{line}\n") == stamp), "{}", port.display());
-            assert!(cpp.len() <= profile.source_limit, "{}: {} bytes", port.display(), cpp.len());
+            assert!(cpp.len() <= profile.limit(), "{}: {} bytes", port.display(), cpp.len());
             assert!(cpp.contains("static void cpl_main()"), "{}", port.display());
             cpp.len()
         });
@@ -241,6 +245,32 @@ fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     assert!(names.contains(&"runtime") && names.contains(&"your code"), "{}", out.stderr);
 }
 
+/// Ryan's budget, on every judge: over 32 KB warns, over 64 KB fails,
+/// even where the judge itself takes more.
+#[test]
+fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-budget");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let file = scratch.join("a.cp");
+    let path = file.to_str().unwrap();
+    for profile in cpl_judge::builtins() {
+        std::fs::write(&file, format!("print(\"{}\")\n", "x".repeat(40 * 1024))).unwrap();
+        let out = cpl_cli::run(&["build", path, "--judge", &profile.name, "-o", "-"]);
+        assert_eq!(out.code, 0, "{}: {}", profile.name, out.stderr);
+        assert!(out.stderr.contains("over the 32768-byte target and"), "{}: {}", profile.name, out.stderr);
+        assert!(out.stderr.contains("of the 65536-byte limit"), "{}: {}", profile.name, out.stderr);
+
+        std::fs::write(&file, format!("print(\"{}\")\n", "x".repeat(70 * 1024))).unwrap();
+        let out = cpl_cli::run(&["build", path, "--judge", &profile.name, "-o", "-"]);
+        assert_eq!(out.code, 1, "{}: {}", profile.name, out.stderr);
+        assert!(out.stderr.contains("over the 65536-byte limit"), "{}: {}", profile.name, out.stderr);
+        assert!(out.stdout.is_empty(), "{}", profile.name);
+    }
+    std::fs::write(&file, "print(1)\n").unwrap();
+    let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
+    assert!(!out.stderr.contains("warning"), "{}", out.stderr);
+}
+
 fn comment_lines(cpp: &str) -> usize {
     cpp.lines().skip_while(|line| line.starts_with("//")).filter(|line| line.trim_start().starts_with("//")).count()
 }
@@ -356,6 +386,44 @@ fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
 
     let out = cpl_cli::run(&["submit", path, "--judge", "cses"]);
     assert_eq!(out.code, cpl_cli::EXIT_USAGE, "{}", out.stderr);
+}
+
+/// The mid-contest path: one `// judge:` line, the samples, then
+/// `cpl submit --copy` leaves the C++ on the clipboard and in a.cpp.
+#[test]
+fn submit_and_build_copy_the_cpp_to_the_clipboard() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-copy");
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(scratch.join("a.tests")).unwrap();
+    let file = scratch.join("a.cp");
+    let path = file.to_str().unwrap();
+    std::fs::write(&file, "// judge: dmoj\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n").unwrap();
+    std::fs::write(scratch.join("a.tests/1.in"), "1 2\n").unwrap();
+    std::fs::write(scratch.join("a.tests/1.out"), "3\n").unwrap();
+    let clipboard = scratch.join("clipboard");
+    std::env::set_var("CPL_CLIPBOARD", format!("cat > '{}'", clipboard.display()));
+
+    let out = cpl_cli::run(&["submit", path, "--copy"]);
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
+    assert!(stdout.contains("1/1 passed") && stdout.contains("ready to send"), "{stdout}");
+    assert!(out.stderr.contains("to the clipboard"), "{}", out.stderr);
+    let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
+    assert!(cpp.contains("For judge `dmoj`"), "{cpp}");
+    assert_eq!(std::fs::read_to_string(&clipboard).unwrap(), cpp);
+
+    std::fs::remove_file(&clipboard).unwrap();
+    let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "--copy"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
+    assert!(cpp.contains("For judge `codeforces`"));
+    assert_eq!(std::fs::read_to_string(&clipboard).unwrap(), cpp);
+
+    std::env::set_var("CPL_CLIPBOARD", "exit 1");
+    let out = cpl_cli::run(&["build", path, "--copy"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.stderr.contains("warning: `CPL_CLIPBOARD` (`exit 1`) failed"), "{}", out.stderr);
+    std::env::remove_var("CPL_CLIPBOARD");
 }
 
 #[test]
