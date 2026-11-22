@@ -161,12 +161,19 @@ byte:
 - **One payload variant plus k unit variants** (`Option`-like, `enum Cell:
   Wall, Empty, Box(id: V)`): the unit variants take k spare values of the
   payload. `Cell` is 4 bytes.
-- **Several payload variants:** a tag byte beside the largest payload,
-  rounded up to alignment: `enum Ev: Add(v: V), Ask(l: V, r: V)` is 8
-  bytes of payload plus the tag, so 12 bytes. `?Ev` uses a spare tag value
-  and is also 12.
-- The rule is Rust's, restricted to "first spare in declaration order", so
-  it is predictable without reading the compiler.
+- **Several payload variants:** the largest variant (first on a tie) sets
+  the layout. Every other variant is one spare value of a single field of
+  it, the first field in declaration order with enough spares, provided
+  that variant's own fields fit in the bytes outside that field. `enum Ev:
+  Add(v: V), Ask(l: V, r: V)` is 8 bytes: `Add` keeps `v` in `l`'s slot and
+  writes all-ones into `r`'s slot, so a valid `r` means `Ask`. `?Ev` takes
+  another spare of `r` and is also 8.
+- **Otherwise a tag byte** beside the largest payload, rounded up to
+  alignment: when no field has enough spares (every bit pattern is a valid
+  value) or a smaller variant can't fit around the field holding them.
+- The rule is Rust's niche filling, restricted to "first field with enough
+  spares", so it is predictable without reading the compiler; `cpl explain`
+  prints the encoding.
 
 ### Arrays of optionals
 
