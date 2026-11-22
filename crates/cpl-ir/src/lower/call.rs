@@ -4026,10 +4026,18 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
             }
-            (Ty::Bound(d), "left") => {
+            (Ty::Bound(d), "next") => {
+                let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
+                let cuts = self.int_add(len, 1);
+                builtin(self, Builtin::PosNext, vec![value, cuts], Ty::opt(ty.clone()))
+            }
+            (Ty::Bound(_), "prev") => {
+                builtin(self, Builtin::PosPrev, vec![value], Ty::opt(ty.clone()))
+            }
+            (Ty::Bound(d), "left" | "l") => {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(Ty::Pos(*d)))
             }
-            (Ty::Bound(d), "right") => {
+            (Ty::Bound(d), "right" | "r") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let before = self.int_add(ord, -1);
                 let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
@@ -5532,6 +5540,12 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `[V].filled(x)`, `[n].filled(x)`: an array with every cell `x`.
+        if let ast::ExprKind::List(index) = &base.kind {
+            if name.text == "filled" && !index.is_empty() {
+                return self.array_filled(index, args, hint, span);
+            }
+        }
         // `List.filled(n, val)`
         if let ast::ExprKind::Name(n) = &base.kind {
             if n == "List" && self.lookup(n).is_none() && name.text == "filled" {
@@ -5583,7 +5597,7 @@ impl<'a> Lowerer<'a> {
             name: fname,
         } = &base.kind
         {
-            if matches!(fname.text.as_str(), "bounds" | "cuts") && name.text == "nth" {
+            if matches!(fname.text.as_str(), "bounds" | "cuts") && matches!(name.text.as_str(), "nth" | "at") {
                 let dom_id = if let Some(Sym::Domain(id)) = self.sym(dbase) {
                     Some(id)
                 } else if let ast::ExprKind::Name(n) = &dbase.kind {
@@ -5610,6 +5624,12 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 if let Some(id) = dom_id {
+                    if name.text == "at" {
+                        return match self.one_arg("at", args, &Ty::Int, span) {
+                            Some(k) => self.domain_cut(id, k, false, span),
+                            None => self.err_expr(span),
+                        };
+                    }
                     if let Some(val) = self.one_arg("nth", args, &Ty::Int, span) {
                         return self.mk(
                             ExprKind::Cast(Cast::Trust, Box::new(val)),
@@ -5807,6 +5827,12 @@ impl<'a> Lowerer<'a> {
                 };
             }
             Some(Sym::Domain(id)) => match name.text.as_str() {
+                "cuts" => {
+                    return match self.one_arg("cuts", args, &Ty::Int, span) {
+                        Some(k) => self.domain_cut(id, k, true, span),
+                        None => self.err_expr(span),
+                    };
+                }
                 "at" | "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
@@ -7478,6 +7504,54 @@ impl<'a> Lowerer<'a> {
             }
         };
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
+    }
+
+    fn array_filled(&mut self, index: &[ast::Expr], args: &[ast::Arg], hint: Option<&Ty>, span: Span) -> Expr {
+        let mut dims = Vec::new();
+        for e in index {
+            let kind = match &e.kind {
+                ast::ExprKind::Name(n) => ast::TypeKind::Named {
+                    name: ast::Name { text: n.clone(), span: e.span },
+                    args: Vec::new(),
+                },
+                _ => ast::TypeKind::Value(Box::new(e.clone())),
+            };
+            match self.dim(&ast::Type { kind, span: e.span }, true) {
+                Some(d) => dims.push(d),
+                None => return self.err_expr(span),
+            }
+        }
+        let Some(exprs) = self.positional_any("filled", args, 1, span) else {
+            return self.err_expr(span);
+        };
+        let shape: Vec<Dim> = dims.iter().map(DimSpec::dim).collect();
+        let value = match hint {
+            Some(Ty::Array { dims: want, elem }) if *want == shape => self.expect(exprs[0], elem),
+            _ => self.expr(exprs[0], None),
+        };
+        let ty = Ty::Array { dims: shape, elem: Box::new(value.ty.clone()) };
+        self.mk(ExprKind::Fill(dims, Some(Box::new(value))), ty, span)
+    }
+
+    /// `V.cuts(k)` (trapping) or `V.cuts.at(k)` (`?V.cuts`): the cut with
+    /// `k` positions before it.
+    fn domain_cut(&mut self, id: DomainId, k: Expr, trapping: bool, span: Span) -> Expr {
+        let slot = self.temp(Ty::Int);
+        self.cx.pending.push(Stmt::Let(slot, Some(k)));
+        let k = self.local(slot, span);
+        let zero = self.int_lit(0, span);
+        let below = self.mk(ExprKind::Cmp(CmpOp::Lt, Box::new(k.clone()), Box::new(zero)), Ty::Bool, span);
+        let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+        let above = self.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(k.clone()), Box::new(len)), Ty::Bool, span);
+        let outside = self.mk(ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)), Ty::Bool, span);
+        let cut = self.cast(Cast::Trust, k, Ty::Bound(id));
+        if !trapping {
+            return self.spec_opt(Some(outside), cut, span);
+        }
+        let message = format!("that cut is not in `{}.cuts`, which is 0..=`{}.len`", self.domains[id], self.domains[id]);
+        let trap = Stmt::Trap(message, self.span(span));
+        self.cx.pending.push(Stmt::If(outside, Block { stmts: vec![trap] }, Block::default()));
+        cut
     }
 
     /// The `?T` a v0.3 `first`/`last` getter returns: `None` when `empty` holds.

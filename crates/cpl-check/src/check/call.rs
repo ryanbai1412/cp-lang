@@ -118,6 +118,26 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
+        if let (ExprKind::List(index), [value]) = (&base.kind, args) {
+            if name.text != "filled" || index.is_empty() {
+                return None;
+            }
+            let index = index
+                .iter()
+                .map(|e| {
+                    let kind = match &e.kind {
+                        ExprKind::Name(n) => cpl_syntax::ast::TypeKind::Named {
+                            name: cpl_syntax::ast::Name { text: n.clone(), span: e.span },
+                            args: Vec::new(),
+                        },
+                        _ => cpl_syntax::ast::TypeKind::Value(Box::new(e.clone())),
+                    };
+                    self.resolve_type(&Type { kind, span: e.span })
+                })
+                .collect();
+            let elem = self.infer(&value.value);
+            return Some(Ty::Array { index, elem: Box::new(elem) });
+        }
         let prelude = matches!(&base.kind, ExprKind::Name(list)
             if list == "List" && self.local(list).is_none() && self.global(list).is_none());
         let [count, value] = args else {
