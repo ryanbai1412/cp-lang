@@ -2224,7 +2224,7 @@ impl<'a> Checker<'a> {
                         message: format!("the loop goes over `{root}`"),
                     });
                     diag.help = Some(format!(
-                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.copy()`)"
+                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.clone()`)"
                     ));
                 }
                 return;
@@ -2406,7 +2406,7 @@ impl<'a> Checker<'a> {
                         message: format!("the loop goes over `{root}`"),
                     });
                     diag.help = Some(format!(
-                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.copy()`)"
+                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.clone()`)"
                     ));
                 }
                 return;
@@ -2432,7 +2432,7 @@ impl<'a> Checker<'a> {
                     });
                 }
                 diag.help = Some(format!(
-                    "finish with `{name}` first, go through `{name}`, or keep the position and re-project later; `.copy()` keeps an owned copy"
+                    "finish with `{name}` first, go through `{name}`, or keep the position and re-project later; `.clone()` keeps an owned copy"
                 ));
             }
             return;
@@ -2482,7 +2482,7 @@ impl<'a> Checker<'a> {
                 )
             } else {
                 format!(
-                    "keep the range or the row index (a plain value) and re-project where it is used, or keep a copy: `{src}.copy()`"
+                    "keep the range or the row index (a plain value) and re-project where it is used, or keep a copy: `{src}.clone()`"
                 )
             });
         }

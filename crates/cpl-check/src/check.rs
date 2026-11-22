@@ -587,7 +587,7 @@ impl<'a> Checker<'a> {
                 format!("`{name}` was already moved"),
             ) {
                 diag.help = Some(format!(
-                    "use `{name}.copy()` where it was moved if you still need `{name}`"
+                    "use `{name}.clone()` where it was moved if you still need `{name}`"
                 ));
             }
         }

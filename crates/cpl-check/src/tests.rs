@@ -1514,7 +1514,7 @@ fn a_loop_lends_what_it_goes_over() {
     );
     assert_eq!(
         pushed.help.as_deref(),
-        Some("loop over positions instead (`for i in 0..xs.len`), or over a copy (`for x in xs.copy()`)")
+        Some("loop over positions instead (`for i in 0..xs.len`), or over a copy (`for x in xs.clone()`)")
     );
     let called = one(&with_globals("for x in xs:\n    print(grow() + x)\n"));
     assert_eq!(
