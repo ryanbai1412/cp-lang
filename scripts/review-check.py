@@ -21,7 +21,6 @@ import argparse, glob, json, os, re, statistics, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORTS_DIR = os.path.join(ROOT, "corpus", "problems")
-SETS_DIR = os.path.join(ROOT, "corpus", "sets")
 REVIEWS_DIR = os.path.join(ROOT, "research", "reviews")
 BASELINE = os.path.join(REVIEWS_DIR, "baseline.json")
 SCORE_RE = re.compile(r"(?m)^Score:\s*(?:(\d)\s*/\s*5|(pending))\b")
@@ -95,31 +94,19 @@ def parse_review_score_text(text):
 
 
 def discover_ports():
-    set_path = os.path.join(SETS_DIR, "ecnerwala.txt")
-    if not os.path.isfile(set_path):
-        return []
-    stems = [
-        line.strip()
-        for line in _read_text(set_path).splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
     ports = []
-    for stem in stems:
+    for stem in sorted(os.listdir(PORTS_DIR)) if os.path.isdir(PORTS_DIR) else []:
         pdir = os.path.join(PORTS_DIR, stem)
-        cp_path = os.path.join(pdir, "port.cp")
-        orig_path = os.path.join(pdir, "orig.cpp")
-        if not os.path.isfile(cp_path) or not os.path.isfile(orig_path):
+        cp_path = os.path.join(pdir, "spec.cp")
+        if not os.path.isfile(cp_path):
             continue
         dream_path = os.path.join(pdir, "dream.cp")
         ports.append(
             {
-                "id": f"ecnerwala/{stem}",
-                "group": "ecnerwala",
+                "id": stem,
                 "name": stem,
                 "path": os.path.relpath(cp_path, ROOT),
-                "orig_path": os.path.relpath(orig_path, ROOT),
                 "abs_path": cp_path,
-                "abs_orig": orig_path,
                 "dream": dream_path if os.path.isfile(dream_path) else None,
             }
         )
@@ -181,7 +168,7 @@ def touched_port_names(names):
             if len(parts) != 2:
                 continue
             status, path = parts[0].strip(), parts[1].strip()
-            m = re.fullmatch(r"corpus/problems/([^/]+)/port\.cp", path)
+            m = re.fullmatch(r"corpus/problems/([^/]+)/spec\.cp", path)
             if m and m[1] in names:
                 touched.add(m[1])
                 if status.startswith("A"):
