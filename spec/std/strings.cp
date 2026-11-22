@@ -1,7 +1,6 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-use std.seq.{reverse}
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
@@ -699,14 +698,14 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// cost: O(1)
     /// traps: never
     /// example: `manacher("aba").len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = odd.len
 
     /// True when the sequence the radii were computed for is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `manacher("").is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = odd.is_empty
 
     @allow(unproven_list_index)
     /// The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.
@@ -714,7 +713,9 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// cost: O(1)
     /// traps: when `i` is outside `0..self.len`
     /// example: `manacher("abacaba").longest_at(3) == 7`
-    pub fn longest_at(self, i: Int) -> Int = todo
+    pub fn longest_at(self, i: Int) -> Int:
+        assert 0 <= i and i < odd.len, "`longest_at(i)` needs `0 <= i < len`"
+        2 * odd[i] - 1
 
     @allow(unproven_list_index)
     /// The length of the longest even-length palindrome centred on the cut `i` (between
@@ -723,7 +724,9 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// cost: O(1)
     /// traps: when `i` is outside `0..=self.len`
     /// example: `manacher("abba").longest_between(2) == 4`
-    pub fn longest_between(self, i: Int) -> Int = todo
+    pub fn longest_between(self, i: Int) -> Int:
+        assert 0 <= i and i <= odd.len, "`longest_between(i)` needs `0 <= i <= len`"
+        if i == odd.len: 0 else: 2 * even[i]
 
     /// True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence
     /// form a palindrome: `p.is_palindrome(l..r) == is_palindrome(s[l..r])`.
@@ -747,7 +750,11 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// cost: O(n)
     /// traps: never
     /// example: `manacher("aaa").count() == 6`
-    pub fn count(self) -> Int = todo
+    pub fn count(self) -> Int:
+        var total = 0
+        for x in odd: total += x
+        for x in even: total += x
+        total
 
     /// The half-open range `(l, r)` of a longest palindromic substring.
     ///
@@ -756,7 +763,19 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// traps: never
     /// example: `manacher("abacdc").longest() == (0, 3)`
     /// example: `manacher("").longest() == (0, 0)`
-    pub fn longest(self) -> (l: Int, r: Int) = todo
+    pub fn longest(self) -> (l: Int, r: Int):
+        var (best_l, best_r) = (0, 0)
+        unchecked:
+            for i in 0..odd.len:
+                let olen = odd[i] * 2 - 1
+                if olen > best_r - best_l:
+                    best_l = i - odd[i] + 1
+                    best_r = i + odd[i]
+                let elen = even[i] * 2
+                if elen > best_r - best_l:
+                    best_l = i - even[i]
+                    best_r = i + even[i]
+        (l: best_l, r: best_r)
 
 @allow(unproven_list_index)
 /// The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with
@@ -842,7 +861,11 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
         for i in (0..n - 1).rev:
             is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
             if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
-    reverse(mut lms)
+    unchecked:
+        for i in 0..lms.len / 2:
+            let t = lms[i]
+            lms[i] = lms[lms.len - 1 - i]
+            lms[lms.len - 1 - i] = t
     induced_sort(vec, counts, is_l, lms, mut sa)
     let m = lms.len
     var sorted_lms = List.filled(m, 0)
@@ -883,11 +906,68 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     induced_sort(vec, counts, is_l, sorted_lms, mut sa)
     sa
 
+@allow(unproven_list_index)
+fn sa_order<S: Indexed>(s: S) -> List<Int>:
+    let n = s.len
+    if n <= 1: return [i for i in 0..n]
+    var vec = List.filled(n + 1, 0)
+    var alpha = 0
+    var uniq = [s.at(0)]
+    var ids = [0]
+    var small = true
+    unchecked:
+        for i in 1..n:
+            let x = s.at(i)
+            var (lo, hi) = (0, uniq.len)
+            while lo < hi:
+                let mid = (lo + hi) >> 1
+                if uniq[mid] < x: lo = mid + 1 else: hi = mid
+            if lo < uniq.len and uniq[lo] == x:
+                vec[i] = ids[lo]
+            elif uniq.len == 256:
+                small = false
+                break
+            else:
+                let id = uniq.len
+                uniq.push(x)
+                ids.push(id)
+                for j in (lo + 1..uniq.len).rev:
+                    uniq[j] = uniq[j - 1]
+                    ids[j] = ids[j - 1]
+                uniq[lo] = x
+                ids[lo] = id
+                vec[i] = id
+    if small:
+        alpha = uniq.len
+        if alpha == 1: return [n - 1 - i for i in 0..n]
+        var remap = List.filled(alpha, 0)
+        unchecked:
+            for r in 0..alpha: remap[ids[r]] = r + 1
+            for i in 0..n: vec[i] = remap[vec[i]]
+    else:
+        var order = [i for i in 0..n]
+        order.sort(by: i => s.at(i))
+        alpha = 1
+        unchecked:
+            vec[order[0]] = 1
+            for j in 1..n:
+                if s.at(order[j - 1]) < s.at(order[j]): alpha += 1
+                vec[order[j]] = alpha
+        if alpha == n: return order
+    var sa = sa_is(vec, alpha + 1)
+    unchecked:
+        for i in 0..n: sa[i] = sa[i + 1]
+    let _ = sa.pop()
+    sa
+
 /// O(n) SA-IS + Kasai LCP (O(n log n) with RMQ). Suffix array, inverse rank, adjacent LCP, and O(1) LCP/comparison queries.
 pub struct SuffixArray:
     sa: List<Int>
     rank: List<Int>
     lcp: List<Int>
+    rmq: List<Int>
+    log: List<Int>
+    dcum: List<Int>
 
     /// The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the
     /// suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks
@@ -901,21 +981,57 @@ pub struct SuffixArray:
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
     /// example: `SuffixArray("banana").lcp == [1, 3, 0, 0, 2]`
-    pub fn new<S: Indexed>(s: S) -> SuffixArray = todo
+    pub fn new<S: Indexed>(s: S) -> SuffixArray:
+        let n = s.len
+        let sa = sa_order(s)
+        var rank = List.filled(n, 0)
+        unchecked:
+            for j in 0..n: rank[sa[j]] = j
+        var lcp = List.filled(max(n - 1, 0), 0)
+        unchecked:
+            var k = 0
+            for i in 0..n:
+                if rank[i] == n - 1:
+                    k = 0
+                    continue
+                let j = sa[rank[i] + 1]
+                while i + k < n and j + k < n and s.at(i + k) == s.at(j + k): k += 1
+                lcp[rank[i]] = k
+                if k > 0: k -= 1
+        let m = lcp.len
+        var log = List.filled(m + 1, 0)
+        unchecked:
+            for i in 2..m + 1: log[i] = log[i / 2] + 1
+        let levels = if m == 0: 0 else: log[m] + 1
+        var rmq = List.filled(levels * m, 0)
+        unchecked:
+            for i in 0..m: rmq[i] = i
+            for b in 1..levels:
+                let step = 1 << (b - 1)
+                for i in 0..m - (1 << b) + 1:
+                    let x = rmq[(b - 1) * m + i]
+                    let y = rmq[(b - 1) * m + i + step]
+                    rmq[b * m + i] = if lcp[y] < lcp[x]: y else: x
+        var dcum = List.filled(n + 1, 0)
+        unchecked:
+            for r in 0..n:
+                let shared = if r == 0: 0 else: lcp[r - 1]
+                dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
+        SuffixArray(sa, rank, lcp, rmq, log, dcum)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixArray("banana").len == 6`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = sa.len
 
     /// True when the suffix array was built over an empty sequence.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixArray("").is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = sa.is_empty
 
     /// The length of the longest common prefix of the suffixes starting at `i` and `j`. The
     /// empty suffix at `n` is allowed, and `lcp_between(i, i) == n - i`.
@@ -923,7 +1039,12 @@ pub struct SuffixArray:
     /// cost: O(1)
     /// traps: when `i` or `j` is outside `0..=self.len`
     /// example: `SuffixArray("banana").lcp_between(1, 3) == 3`
-    pub fn lcp_between(self, i: Int, j: Int) -> Int = todo
+    pub fn lcp_between(self, i: Int, j: Int) -> Int:
+        let n = sa.len
+        assert 0 <= i and i <= n and 0 <= j and j <= n, "`lcp_between(i, j)` needs `0 <= i, j <= len`"
+        if i == j: return n - i
+        if i == n or j == n: return 0
+        lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
 
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
@@ -961,7 +1082,20 @@ pub struct SuffixArray:
     /// order: a range of ranks, increasing; it holds `rank[i]`
     /// traps: when `i` is outside `0..n` or `len` outside `0..=n - i`
     /// example: `SuffixArray("banana").lcp_range(1, 3) == 1..3`
-    pub fn lcp_range(self, i: Int, len: Int) -> Range<Int> = todo
+    pub fn lcp_range(self, i: Int, len: Int) -> Range<Int>:
+        let n = sa.len
+        assert 0 <= i and i < n and 0 <= len and len <= n - i, "`lcp_range(i, len)` needs `0 <= i < n` and `0 <= len <= n - i`"
+        let p = rank[i]
+        var (lo, hi) = (0, p)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if lcp[self.arg_min(mid, p)] >= len: hi = mid else: lo = mid + 1
+        let left = lo
+        (lo, hi) = (p, n - 1)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if lcp[self.arg_min(p, mid)] >= len: lo = mid else: hi = mid - 1
+        left..lo + 1
 
     /// The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`. A proper
     /// prefix compares less.
@@ -970,14 +1104,29 @@ pub struct SuffixArray:
     /// traps: when a range is not within `0..=n` or has its end before its start
     /// example: `SuffixArray("banana").compare(1, 3, 3, 5) == 0`
     /// example: `SuffixArray("banana").compare(1, 2, 1, 3) == -1`
-    pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int = todo
+    pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int:
+        let n = sa.len
+        assert 0 <= l1 and l1 <= r1 and r1 <= n, "`compare` needs `0 <= l1 <= r1 <= len`"
+        assert 0 <= l2 and l2 <= r2 and r2 <= n, "`compare` needs `0 <= l2 <= r2 <= len`"
+        let (n1, n2) = (r1 - l1, r2 - l2)
+        let m = min(n1, n2)
+        if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
+        if rank[l1] < rank[l2]: -1 else: 1
+
+    @allow(unproven_list_index)
+    fn arg_min(self, lo: Int, hi: Int) -> Int:
+        let b = log[hi - lo]
+        let m = lcp.len
+        let x = rmq[b * m + lo]
+        let y = rmq[b * m + hi - (1 << b)]
+        if lcp[y] < lcp[x]: y else: x
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `SuffixArray("banana").distinct() == 15`
-    pub fn distinct(self) -> Int = todo
+    pub fn distinct(self) -> Int = dcum[sa.len]
 
     /// The longest prefix common to every suffix with rank in `r`: the minimum of `lcp[j]` for
     /// `j in r.start..r.end - 1`, or the suffix's own length when `r` holds one rank.
@@ -987,7 +1136,9 @@ pub struct SuffixArray:
     /// traps: when `r` is empty or reaches outside `0..n`
     /// example: `SuffixArray("banana").lcp_of_ranks(1..3) == 3`
     /// example: `SuffixArray("banana").lcp_of_ranks(3..4) == 6`
-    pub fn lcp_of_ranks(self, r: Range<Int>) -> Int = todo
+    pub fn lcp_of_ranks(self, r: Range<Int>) -> Int:
+        assert 0 <= r.start and r.start < r.end and r.end <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
+        if r.end - r.start == 1: sa.len - sa[r.start] else: lcp[self.arg_min(r.start, r.end - 1)]
 
     /// Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose
     /// adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are
@@ -999,7 +1150,9 @@ pub struct SuffixArray:
     /// traps: when `r.len < 2` or `r` reaches outside `0..n`
     /// example: `SuffixArray("banana").split(0..3) == 1`
     /// example: `SuffixArray("banana").split(0..6) == 3`
-    pub fn split(self, r: Range<Int>) -> Int = todo
+    pub fn split(self, r: Range<Int>) -> Int:
+        assert 0 <= r.start and r.start + 2 <= r.end and r.end <= sa.len, "`split(r)` needs at least two ranks within `0..len`"
+        self.arg_min(r.start, r.end - 1) + 1
 
     /// The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the
     /// positions `l..r` of one occurrence, or `None` when `k >= distinct()`.
@@ -1010,7 +1163,16 @@ pub struct SuffixArray:
     /// traps: when `k < 0`
     /// example: `SuffixArray("banana").kth_distinct(1) == Some(3..5)`
     /// example: `SuffixArray("banana").kth_distinct(15) == None`
-    pub fn kth_distinct(self, k: Int) -> ?Range<Int> = todo
+    pub fn kth_distinct(self, k: Int) -> ?Range<Int>:
+        assert k >= 0, "`kth_distinct(k)` needs `k >= 0`"
+        let n = sa.len
+        if k >= dcum[n]: return None
+        var (lo, hi) = (0, n - 1)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if dcum[mid] <= k: lo = mid else: hi = mid - 1
+        let shared = if lo == 0: 0 else: lcp[lo - 1]
+        Some(sa[lo]..sa[lo] + shared + (k - dcum[lo]) + 1)
 
 /// The suffix array of `s`; the same as `SuffixArray(s)`.
 ///
@@ -1018,7 +1180,7 @@ pub struct SuffixArray:
 /// empty: an empty suffix array
 /// traps: never
 /// example: `suffix_array([3, 1, 2]).sa == [1, 2, 0]`
-pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = todo
+pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = SuffixArray.new(s)
 
 /// O(1) value. One edge of the compressed suffix tree of a sequence, built in O(n) from SA + LCP.
 pub struct SuffixTreeEdge(
