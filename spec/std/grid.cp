@@ -164,12 +164,10 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(0)).ray(Dir8.all()[3]).collect() == [(R(1), C(1)), (R(2), C(2)), (R(3), C(3))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(2)).ray(Dir4.up()).collect() == []`
 pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
-    var out: List<(R, C)> = []
     var p = step(self, d)
     while p != None:
-        out.push(p!)
+        yield p!
         p = step(p!, d)
-    out
 
 /// The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in
 /// `Dir4.all()`, skipping steps that leave the grid.
