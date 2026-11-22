@@ -24,7 +24,7 @@ use crate::value::{Array, ArrayData, CaptureVal, OptVal, SmallFieldKind, TupleVa
 use crate::{describe, trap, Flow, Interp, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FmtArg, FnId, Iter, Local, LoopId,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FmtArg, FmtPiece, FnId, Iter, Local, LoopId,
     Mutation, Place, PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 use std::rc::Rc;
@@ -210,6 +210,9 @@ pub(crate) enum Op {
     BitAndI { dst: u16, a: u16, b: u16 },
     BitOrI { dst: u16, a: u16, b: u16 },
     BitXorI { dst: u16, a: u16, b: u16 },
+    BitAndU64 { dst: u16, a: u16, b: u16 },
+    BitOrU64 { dst: u16, a: u16, b: u16 },
+    BitXorU64 { dst: u16, a: u16, b: u16 },
     ShlI { dst: u16, a: u16, b: u16 },
     ShrI { dst: u16, a: u16, b: u16 },
     NotBool { dst: u16, a: u16 },
@@ -485,6 +488,7 @@ pub(crate) enum Op {
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     ConstV { dst: u16, idx: u32 },
     Print { idx: u32 },
+    Format { idx: u32, dst: u16 },
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
     FallbackExprI { idx: u32, dst: u16, in_loop: bool },
     FallbackExprV { idx: u32, dst: u16, in_loop: bool },
@@ -521,6 +525,11 @@ pub(crate) struct PrintSpec<'p> {
     pub end: Option<u16>,
 }
 
+pub(crate) struct FormatSpec<'p> {
+    pub pieces: &'p [FmtPiece],
+    pub regs: Vec<u16>,
+}
+
 pub(crate) struct Chunk<'p> {
     pub ops: Vec<Op>,
     pub spans: Vec<Span>,
@@ -531,6 +540,7 @@ pub(crate) struct Chunk<'p> {
     pub feed_calls: Vec<FeedCallSpec>,
     pub consts_v: Vec<Value>,
     pub prints: Vec<PrintSpec<'p>>,
+    pub formats: Vec<FormatSpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
     pub fill_tys: Vec<&'p Ty>,
@@ -775,6 +785,7 @@ struct Compiler<'p, 'f> {
     feed_calls: Vec<FeedCallSpec>,
     consts_v: Vec<Value>,
     prints: Vec<PrintSpec<'p>>,
+    formats: Vec<FormatSpec<'p>>,
     fallback_stmts: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
     fill_tys: Vec<&'p Ty>,
@@ -840,6 +851,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             feed_calls: Vec::new(),
             consts_v: Vec::new(),
             prints: Vec::new(),
+            formats: Vec::new(),
             fallback_stmts: Vec::new(),
             fallback_exprs: Vec::new(),
             fill_tys: Vec::new(),
@@ -870,6 +882,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             feed_calls: self.feed_calls,
             consts_v: self.consts_v,
             prints: self.prints,
+            formats: self.formats,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
             fill_tys: self.fill_tys,
@@ -3944,9 +3957,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 | BinOp::Shl
                 | BinOp::Shr),
             ) => Op::BinU64 { dst, a, b, op: bop },
-            AssignOp::Binary(BinOp::BitAnd) => Op::BitAndI { dst, a, b },
-            AssignOp::Binary(BinOp::BitOr) => Op::BitOrI { dst, a, b },
-            AssignOp::Binary(BinOp::BitXor) => Op::BitXorI { dst, a, b },
+            AssignOp::Binary(BinOp::BitAnd) => Op::BitAndU64 { dst, a, b },
+            AssignOp::Binary(BinOp::BitOr) => Op::BitOrU64 { dst, a, b },
+            AssignOp::Binary(BinOp::BitXor) => Op::BitXorU64 { dst, a, b },
             AssignOp::Set => Op::MoveI { dst, src: b },
             _ => return false,
         };
@@ -4786,9 +4799,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow => {
                         Op::BinU64 { dst, a, b, op: *op }
                     }
-                    BinOp::BitAnd => Op::BitAndI { dst, a, b },
-                    BinOp::BitOr => Op::BitOrI { dst, a, b },
-                    BinOp::BitXor => Op::BitXorI { dst, a, b },
+                    BinOp::BitAnd => Op::BitAndU64 { dst, a, b },
+                    BinOp::BitOr => Op::BitOrU64 { dst, a, b },
+                    BinOp::BitXor => Op::BitXorU64 { dst, a, b },
                     _ => return self.emit_fallback_expr_i(expr),
                 };
                 self.emit(inst, span);
@@ -5567,6 +5580,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return dst_v;
         }
         match &expr.kind {
+            ExprKind::Format(pieces) => self.compile_format(pieces, span),
             ExprKind::Str(bytes) => {
                 let idx = self.consts_v.len() as u32;
                 self.consts_v.push(Value::Str(Rc::new(bytes.clone())));
@@ -6397,6 +6411,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    fn compile_format(&mut self, pieces: &'p [FmtPiece], span: Span) -> u16 {
+        let regs: Vec<u16> = pieces
+            .iter()
+            .filter_map(|p| match p {
+                FmtPiece::Text(_) => None,
+                FmtPiece::Value(a) => Some(&a.value),
+                FmtPiece::Number(e, _) => Some(e),
+            })
+            .map(|e| self.compile_expr_v(e))
+            .collect();
+        let dst = self.alloc_v();
+        let idx = self.formats.len() as u32;
+        self.formats.push(FormatSpec { pieces, regs: regs.clone() });
+        self.emit(Op::Format { idx, dst }, span);
+        for reg in regs {
+            if reg >= self.num_local_v {
+                self.emit(Op::ClearV { reg }, span);
+            }
+        }
+        dst
+    }
+
     fn emit_fallback_stmt(&mut self, stmt: &'p Stmt) {
         let idx = self.fallback_stmts.len() as u32;
         self.fallback_stmts.push(stmt);
@@ -7060,7 +7096,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("shift by {bv} is outside 0..64"));
+                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
                     }
                     if av < 0 {
                         return trap(spans[cur_pc], format!("`<<` of the negative number {av}"));
@@ -7074,7 +7110,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("shift by {bv} is outside 0..64"));
+                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
                     }
                     regs_i[dst as usize] = av >> bv;
                 }
@@ -9906,6 +9942,15 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::NegU64 { dst, a } => {
                     regs_i[dst as usize] = (regs_i[a as usize] as u64).wrapping_neg() as i64;
                 }
+                Op::BitAndU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
+                }
+                Op::BitOrU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
+                }
+                Op::BitXorU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
+                }
                 Op::BitNotI { dst, a } => {
                     regs_i[dst as usize] = !regs_i[a as usize];
                 }
@@ -10865,6 +10910,11 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let vals: Vec<Value> = spec.regs.iter().map(|&r| regs_v[r as usize].clone()).collect();
                     let end = spec.end.map(|r| regs_v[r as usize].clone());
                     self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc])?;
+                }
+                Op::Format { idx, dst } => {
+                    let spec = &chunk.formats[idx as usize];
+                    let vals: Vec<Value> = spec.regs.iter().map(|&r| regs_v[r as usize].clone()).collect();
+                    regs_v[dst as usize] = self.format_values(spec.pieces, &vals, spans[cur_pc])?;
                 }
                 Op::FallbackStmt { idx, clear_from_v, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {

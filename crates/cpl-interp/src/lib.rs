@@ -2479,22 +2479,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             ExprKind::Format(pieces) => {
-                let mut text = Vec::new();
+                let mut vals = Vec::new();
                 for piece in pieces {
                     match piece {
-                        FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
-                        FmtPiece::Value(FmtArg { value, digits }) => {
-                            let v = self.eval(value)?;
-                            self.show_val(&mut text, &v, &value.ty, *digits, span)?;
+                        FmtPiece::Text(_) => {}
+                        FmtPiece::Value(FmtArg { value, .. }) | FmtPiece::Number(value, _) => {
+                            vals.push(self.eval(value)?)
                         }
-                        FmtPiece::Number(value, fmt) => match self.eval(value)? {
-                            Value::Int(v) => text.extend(fmt.int(v).bytes()),
-                            Value::Float(v) => text.extend(fmt.float(v).bytes()),
-                            _ => unreachable!("a number format takes an Int or an F64"),
-                        },
                     }
                 }
-                Value::Str(Rc::new(text))
+                self.format_values(pieces, &vals, span)?
             }
             ExprKind::Fill(dims, value) => {
                 let dims = self.dims(dims, span)?;
@@ -3422,6 +3416,29 @@ impl<'p, 'o> Interp<'p, 'o> {
         out.extend_from_slice(&left[i..]);
         out.extend_from_slice(&right[j..]);
         Ok(out)
+    }
+
+    /// Renders a format string; `vals` holds one value per non-text piece, in order.
+    fn format_values(&mut self, pieces: &'p [FmtPiece], vals: &[Value], span: Span) -> Res<Value> {
+        let mut text = Vec::new();
+        let mut vals = vals.iter();
+        for piece in pieces {
+            match piece {
+                FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
+                FmtPiece::Value(FmtArg { value, digits }) => {
+                    let v = vals.next().expect("one value per format piece");
+                    self.show_val(&mut text, v, &value.ty, *digits, span)?;
+                }
+                FmtPiece::Number(_, fmt) => {
+                    match vals.next().expect("one value per format piece") {
+                        Value::Int(v) => text.extend(fmt.int(*v).bytes()),
+                        Value::Float(v) => text.extend(fmt.float(*v).bytes()),
+                        _ => unreachable!("a number format takes an Int or an F64"),
+                    }
+                }
+            }
+        }
+        Ok(Value::Str(Rc::new(text)))
     }
 
     fn print_values(
