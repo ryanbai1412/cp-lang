@@ -30,8 +30,8 @@ Ryan's plan, in order (his words are in `plan/agent-context.md`):
 The spec is done when a fresh agent reading only `spec/` writes contest code
 and answers compile/output questions with few guesses.
 
-- **Round 1** (`delta/rebuild-1/`): 57 holes. 56 are fixed (decisions
-  179–186; the list is at the end of its `HOLES.md`). Open: H-Z-KEYS.
+- **Round 1** (`delta/rebuild-1/`): 57 holes, all fixed (decisions
+  179–186; the list is at the end of its `HOLES.md`).
 - **Round 2** (`delta/rebuild-2/`): running. Target: fewer than 5 holes.
 - `GLOSSARY.md` fixes one term per concept; `scripts/spec-vocab.py` (in
   `scripts/spec-check.sh`) fails on banned spellings.

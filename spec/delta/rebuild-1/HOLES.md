@@ -378,6 +378,7 @@ H-INLINE-IF-STMT, H-NEG-RANGE-TYPE, H-MINEQ-COND, H-PRELUDE-MEMBERSHIP,
 H-TAKE-DEFAULT (185). H-PREFIX-API, H-STR-FIND-STUB,
 H-COLLECT-KEYS, H-REBASE-STUB-FORM, H-DSU-SAME-MUT, H-SEGTREE-DOMAIN-ARG,
 H-STD-FUNCTION, H-POSITIONS-AFTER, H-DIAG-CODES (186); H-STALE-OPEN
-(the `.enumerate()` item is marked settled). Open: H-Z-KEYS, which needs
-the stubs to name a sequence's key type (`S: Indexed<K, T>`).
+(the `.enumerate()` item is marked settled).
+H-Z-KEYS: `z_function`, `prefix_function` and `prefix_matches` now take
+`S: Indexed<K, T>`, so `K` is the input's key type.
 
