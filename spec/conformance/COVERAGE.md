@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1160 (296 passing). Rules: 521.
+Cases: 1167 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -816,12 +816,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Subset`, `Subset.subsets`, `Subset.supersets`
 - **timetree** (8/11 named by a case)
   - uncovered: `TimeTree.event`, `TimeTree.run`, `offline_over`
-- **tree** (65/171 named by a case)
-  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **tree** (76/171 named by a case)
+  - uncovered: `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1627 of 2222 std items are named by a case.
+1638 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
