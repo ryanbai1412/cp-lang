@@ -2,11 +2,11 @@
 
 A from-scratch rebuild of the website, playground, course and docs.
 Facts about today's repo are marked *(verified)*; everything else is a
-proposal. The new-user story is in `92-website-journey.md`.
+proposal. The new-user story is in `01-journey.md`.
 
 Status: decided in outline (Ryan agreed to the plan, 2026-11-21); the
 open decisions in section 8 are still proposed. Where this disagrees
-with `90-docs-and-playground.md`, this document wins.
+with `../90-docs-and-playground.md`, this document wins.
 
 ## 1. Who the site is for
 
