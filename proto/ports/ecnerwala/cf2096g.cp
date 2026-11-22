@@ -1,7 +1,7 @@
 // Codeforces 2096 G (Wonderful Guessing Game): identify 1 fake coin among n
 // in q parallel weighings when at most 1 weighing answer may be erased ('?').
 //
-// Choose q = ceil(log_3 n) + 1 so 3^(q - 1) >= n. Assign each pair (2p - 1, 2p)
+// Choose q = ceil_log3(n) + 1 so 3^(q - 1) >= n. Assign each pair (2p - 1, 2p)
 // a distinct balanced-ternary code of length q - 1 in {-1, 0, +1} and append a
 // checksum digit so the q digits sum to 0 (mod 3):
 //   - coin 2p - 1 gets +code (+1 => Left, -1 => Right, 0 => Off),
@@ -13,35 +13,25 @@
 
 @!interactive
 
-enum Side:
-    Left
-    Right
-    Off
-
-struct Weighing:
-    left: List<Int>
-    right: List<Int>
-    off: List<Int>
+enum Side: Left | Right | Off
 
 fn ceil_log3(n: Int) -> Int:
-    var k = 0
     var p = 1
+    var k = 0
     while p < n:
-        k += 1
         p *= 3
+        k += 1
     k
 
-fn balanced_code(id: Int, len: Int) -> List<Int>:
-    var v = id
-    var total = 0
-    var digits: List<Int> = []
-    for k in 0..len:
-        let r = (if k == len - 1: -total else: v) % 3
-        let d = if r == 2: -1 else: r
-        digits.push(d)
-        total += d
-        v = (v - d) / 3
-    digits
+fn digit_to_side(d: Int) -> Side = match d:
+    1 => Side.Left
+    -1 => Side.Right
+    _ => Side.Off
+
+fn opposite(s: Side) -> Side = match s:
+    Side.Left => Side.Right
+    Side.Right => Side.Left
+    Side.Off => Side.Off
 
 fn parse_side(ch: Char) -> ?Side = match ch:
     'L' => some(Side.Left)
@@ -49,33 +39,42 @@ fn parse_side(ch: Char) -> ?Side = match ch:
     'N' => some(Side.Off)
     _ => none
 
+fn balanced_sides(id: Int, len: Int) -> List<Side>:
+    var v = id
+    var total = 0
+    var out: List<Side> = []
+    for k in 0..len:
+        let r = (if k == len - 1: -total else: v) % 3
+        let d = if r == 2: -1 else: r
+        out.push(digit_to_side(d))
+        total += d
+        v = (v - d) / 3
+    out
+
 @!multitest
 let n: 2..=200_000 = read()
 domain Coin = 1..=n
 let q = ceil_log3(n) + 1
 domain Round = 0..q
 
-var rounds: [Round]Weighing = Weighing([], [], [])
+var rounds: [Round, Side]List<Coin> = []
 for pair in 1..=n / 2:
-    let (a, b) = (2 * pair - 1, 2 * pair)
-    let code = balanced_code(pair, q)
+    let (a, b) = (Coin(2 * pair - 1), Coin(2 * pair))
+    let sides = balanced_sides(pair, q)
     for r in Round:
-        match code[r.ord]:
-            1 =>
-                rounds[r].left.push(a)
-                rounds[r].right.push(b)
-            -1 =>
-                rounds[r].left.push(b)
-                rounds[r].right.push(a)
-            _ =>
-                rounds[r].off.push(a)
-                rounds[r].off.push(b)
+        let s = sides[r.ord]
+        rounds[r, s].push(a)
+        rounds[r, opposite(s)].push(b)
 if n % 2 == 1:
-    for r in Round: rounds[r].off.push(n)
+    for r in Round: rounds[r, Side.Off].push(Coin.last)
 
 print(q)
 for r in Round:
-    print(rounds[r].left.len + rounds[r].right.len, rounds[r].left, rounds[r].right)
+    print(
+        rounds[r, Side.Left].len + rounds[r, Side.Right].len,
+        rounds[r, Side.Left],
+        rounds[r, Side.Right],
+    )
 
 let response: Str = read()
 var hits: [Coin]Int = 0
@@ -83,9 +82,5 @@ var known = 0
 for r in Round:
     if let side = parse_side(response[r.ord]):
         known += 1
-        let coins = match side:
-            Side.Left => rounds[r].left
-            Side.Right => rounds[r].right
-            Side.Off => rounds[r].off
-        for c in coins: hits[Coin(c)] += 1
+        for c in rounds[r, side]: hits[c] += 1
 print(Coin.first(c => hits[c] == known)!)
