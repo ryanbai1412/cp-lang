@@ -853,8 +853,14 @@ impl<'a> Checker<'a> {
     /// R01.3.3: a capitalized pattern name is a variant or a constant, never
     /// a binding, so against a scalar with no such constant it is an error.
     fn capitalized_pattern(&mut self, pat: &cpl_syntax::ast::Pattern, ty: &Ty) {
-        let cpl_syntax::ast::PatternKind::Name(name) = &pat.kind else {
-            return;
+        let name = match &pat.kind {
+            cpl_syntax::ast::PatternKind::Name(name) => name,
+            cpl_syntax::ast::PatternKind::Variant { path, args }
+                if path.len() == 1 && args.is_empty() =>
+            {
+                &path[0].text
+            }
+            _ => return,
         };
         if !name.starts_with(|c: char| c.is_ascii_uppercase())
             || !(ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Str))
