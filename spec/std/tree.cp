@@ -121,14 +121,14 @@ pub struct Rooted<V, Pre>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.at[t.pos(3)] == 3 and t.pos(1) < t.pos(3) and t.pos(4) < t.pos(2)`
-    pub fn pos(self, v: V) -> Pre = todo
+    pub fn pos(self, v: V) -> Pre = tin[v]
 
     /// The parent of `v`; `None` at a root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.parent(3) == Some(1) and t.parent(0) == None`
-    pub fn parent(self, v: V) -> ?V = todo
+    pub fn parent(self, v: V) -> ?V = par[v]
 
     /// The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree
     /// read with a `cost` field); `None` at a root. Edge data stays on the arcs, so no `[V]` side
@@ -147,7 +147,7 @@ pub struct Rooted<V, Pre>:
     /// order: by `t.Pre`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reorder([10, 11, 12, 13, 14]).collect() == [10, 11, 13, 14, 12]`
-    pub fn reorder<T>(self, a: [V]T) -> [Pre]T = todo
+    pub fn reorder<T>(self, a: [V]T) -> [Pre]T = [Pre] p => a[at[p]]
 
     /// The children of `v`, in the order `next` listed them. Children are stored contiguously, so
     /// nothing is allocated.
@@ -157,7 +157,7 @@ pub struct Rooted<V, Pre>:
     /// order: as `next` listed them
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(1).collect() == [3, 4] and t.children(2).count() == 0`
-    pub fn children(self, v: V) -> yields V = todo
+    pub fn children(self, v: V) -> yields V = [bfs[i] for i in k0[v]..k1[v]]
 
     /// The arcs from `v` down to its children, with every field `next` gave them
     /// (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
@@ -191,14 +191,14 @@ pub struct Rooted<V, Pre>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.depth(0) == 0 and t.depth(4) == 2`
-    pub fn depth(self, v: V) -> Int = todo
+    pub fn depth(self, v: V) -> Int = dep[v]
 
     /// The number of vertices in the subtree of `v`, `v` included.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.size(0) == 5 and t.size(1) == 3 and t.size(2) == 1`
-    pub fn size(self, v: V) -> Int = todo
+    pub fn size(self, v: V) -> Int = sz[v]
 
     /// The children of `v` other than its heavy child, in child order. Every vertex has O(log n)
     /// light edges above it, which is what small-to-large merging pays for.
@@ -208,14 +208,19 @@ pub struct Rooted<V, Pre>:
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.light(0).collect() == [2] and t.light(1).collect() == [4]`
-    pub fn light(self, v: V) -> yields V = todo
+    pub fn light(self, v: V) -> yields V:
+        for i in k0[v]..k1[v]:
+            if Some(bfs[i]) != heavy[v]: yield bfs[i]
 
     /// The root of the tree that holds `v`: always `t.root` unless built as a forest.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.root_of(4) == 0`
-    pub fn root_of(self, v: V) -> V = todo
+    pub fn root_of(self, v: V) -> V:
+        var x = top[v]
+        while let p = par[x]: x = top[p]
+        x
 
     /// The vertices of `v`'s subtree in preorder, `v` first: `t.at[p] for p in t.sub(v)`.
     ///
@@ -224,7 +229,8 @@ pub struct Rooted<V, Pre>:
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree(1).collect() == [1, 3, 4] and t.subtree(0).collect() == [0, 1, 3, 4, 2]`
-    pub fn subtree(self, v: V) -> yields V = todo
+    pub fn subtree(self, v: V) -> yields V:
+        for p in self.sub(v): yield at[p]
 
     /// A top-down pass: `out[v] = f(out[parent], v)`, and `f(init, r)` at a root `r`. The state on
     /// the path from the root, such as a prefix maximum or a distance.
@@ -234,7 +240,13 @@ pub struct Rooted<V, Pre>:
     /// order: keyed by `V`; `f` runs in `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.down(0, (d, v) => d + 1) == [1, 2, 2, 3, 3]`
-    pub fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T = todo
+    pub fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T:
+        var out = [V] v => init
+        for p in Pre:
+            let v = at[p]
+            if let q = par[v]: out[v] = f(out[q], v)
+            else: out[v] = f(init, v)
+        out
 
     /// A bottom-up tree DP: `out[v] = finish(fold with op of lift(out[c], c, v) over children c, v)`.
     ///
@@ -283,7 +295,16 @@ pub struct Rooted<V, Pre>:
     /// order: `of` keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let (domain S, of) = t.shapes(); of[3] == of[2] and of[1] != of[0] and S.count == 3`
-    pub fn shapes(self) -> (domain Shape, of: [V]Shape) = todo
+    pub fn shapes(self) -> (domain Shape, of: [V]Shape):
+        var known = Map<List<Int>, Int>()
+        var of: [V]Int = 0
+        for p in Pre.rev:
+            let v = at[p]
+            var key = [of[bfs[i]] for i in k0[v]..k1[v]]
+            key.sort()
+            of[v] = known.get_or_insert(key, known.len)
+        domain Shape = 0..known.len
+        (Shape:, of: [V] v => Shape(of[v]))
 
     /// The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
     ///
@@ -334,7 +355,7 @@ pub struct Rooted<V, Pre>:
     /// order: increasing positions
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub(1).map(p => t.at[p]).collect() == [1, 3, 4]`
-    pub fn sub(self, v: V) -> Range<Pre> = todo
+    pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(sz[v])
 
     /// The positions of `v`'s descendants: `sub(v)` without `v`.
     ///
@@ -343,29 +364,36 @@ pub struct Rooted<V, Pre>:
     /// order: increasing positions
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.below(1).map(p => t.at[p]).collect() == [3, 4] and t.below(2).count() == 0`
-    pub fn below(self, v: V) -> Range<Pre> = todo
+    pub fn below(self, v: V) -> Range<Pre> = tin[v].r..tin[v].r(sz[v])
 
     /// Whether `a` is an ancestor of `b`; a vertex is its own ancestor.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.is_anc(1, 3) and t.is_anc(3, 3) and not t.is_anc(2, 3)`
-    pub fn is_anc(self, a: V, b: V) -> Bool = todo
+    pub fn is_anc(self, a: V, b: V) -> Bool = tin[b] in self.sub(a)
 
     /// The child end of the tree edge between `u` and `v`, in either order.
     ///
     /// cost: O(1)
-    /// ties: none; exactly one end is the child
+    /// ties: None; exactly one end is the child
     /// traps: when `u` and `v` are not joined by a tree edge
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(3, 1) == 3`
-    pub fn lower(self, u: V, v: V) -> V = todo
+    pub fn lower(self, u: V, v: V) -> V:
+        assert par[u] == v or par[v] == u
+        if par[u] == v: u else: v
 
     /// The lowest common ancestor of `a` and `b`, by heavy-path climbing.
     ///
     /// cost: O(log n)
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lca(3, 4) == 1 and t.lca(3, 2) == 0 and t.lca(1, 3) == 1`
-    pub fn lca(self, a: V, b: V) -> V = todo
+    pub fn lca(self, a: V, b: V) -> V:
+        var (x, y) = (a, b)
+        while top[x] != top[y]:
+            if dep[top[x]] < dep[top[y]]: swap(mut x, mut y)
+            x = par[top[x]]!
+        if dep[x] < dep[y]: x else: y
 
     /// The length of the path between `a` and `b`: its number of edges, or the total of its edge
     /// lengths in a tree built from `Weighted` arcs.
@@ -373,7 +401,7 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log n)
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.dist(3, 2) == 3 and t.dist(4, 4) == 0`
-    pub fn dist(self, a: V, b: V) -> Int = todo
+    pub fn dist(self, a: V, b: V) -> Int = far[a] + far[b] - 2 * far[self.lca(a, b)]
 
     /// The simple path of vertices from `a` to `b`, both included.
     ///
@@ -382,7 +410,21 @@ pub struct Rooted<V, Pre>:
     /// order: from `a` to `b`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.path(3, 2) == [3, 1, 0, 2] and t.path(4, 4) == [4]`
-    pub fn path(self, a: V, b: V) -> List<V> = todo
+    pub fn path(self, a: V, b: V) -> List<V>:
+        let c = self.lca(a, b)
+        var up: List<V> = []
+        var x = a
+        while x != c:
+            up.push(x)
+            x = par[x]!
+        up.push(c)
+        var down: List<V> = []
+        var y = b
+        while y != c:
+            down.push(y)
+            y = par[y]!
+        for v in down.rev: up.push(v)
+        up
 
     /// A longest simple path in the tree holding `t.root`: `(len, u, v)` with
     /// `t.dist(u, v) == len`, by two sweeps: `u` is farthest from the root, `v` farthest from `u`.
@@ -391,7 +433,22 @@ pub struct Rooted<V, Pre>:
     /// ties: in each sweep the farthest vertex first in `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.diameter() == (len: 3, u: 3, v: 2)`
-    pub fn diameter(self) -> (len: Int, u: V, v: V) = todo
+    pub fn diameter(self) -> (len: Int, u: V, v: V):
+        var best_len = 0
+        var (du, dv) = (root, root)
+        var down: [V]Int = 0
+        var leaf: [V]V = [V] v => v
+        for p in Pre.rev:
+            let v = at[p]
+            if let par_v = par[v]:
+                let cand = down[v] + (far[v] - far[par_v])
+                if down[par_v] + cand > best_len:
+                    best_len = down[par_v] + cand
+                    (du, dv) = (leaf[par_v], leaf[v])
+                if cand > down[par_v]:
+                    down[par_v] = cand
+                    leaf[par_v] = leaf[v]
+        (len: best_len, u: du, v: dv)
 
     /// The ancestor `k` edges above `v` (`v` itself for `k == 0`), or `None` if that is above the
     /// root.
@@ -399,7 +456,13 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.ancestor(3, 2) == Some(0) and t.ancestor(3, 3) == None and t.ancestor(3, 0) == Some(3)`
-    pub fn ancestor(self, v: V, k: Int) -> ?V = todo
+    pub fn ancestor(self, v: V, k: Int) -> ?V:
+        if k < 0 or k > dep[v]: return None
+        var (x, left) = (v, k)
+        while dep[x] - dep[top[x]] < left:
+            left -= dep[x] - dep[top[x]] + 1
+            x = par[top[x]]!
+        at[tin[x].offset(-left)!]
 
     /// The vertex `k` edges from `a` on the path to `b` (`a` for `k == 0`), or `None` if the path
     /// is shorter.
@@ -432,7 +495,22 @@ pub struct Rooted<V, Pre>:
         a: V,
         b: V,
         edges: Bool = false,
-    ) -> yields (range: Range<Pre>, rising: Bool) = todo
+    ) -> yields (range: Range<Pre>, rising: Bool):
+        var (x, y) = (a, b)
+        var falling = List<Range<Pre>>()
+        while top[x] != top[y]:
+            if dep[top[x]] >= dep[top[y]]:
+                yield (range: tin[top[x]]..=tin[x], rising: true)
+                x = par[top[x]]!
+            else:
+                falling.push(tin[top[y]]..=tin[y])
+                y = par[top[y]]!
+        let skip = if edges: 1 else: 0
+        if dep[x] >= dep[y]:
+            yield (range: tin[y].l(1 - skip)..tin[x].r, rising: true)
+        else:
+            yield (range: tin[x].l(1 - skip)..tin[y].r, rising: false)
+        for r in falling.rev: yield (range: r, rising: false)
 
     /// The fold of the values on the path from `a` to `b`, in that order, read from `ds`: any
     /// structure over `t.Pre` with `fold(range)` and a `monoid` (`SegTree`).
@@ -445,7 +523,13 @@ pub struct Rooted<V, Pre>:
     /// empty: the identity for `a == b` with `edges`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let seg = SegTree(+, t.reorder([1, 2, 4, 8, 16])); t.fold_path(3, 2, seg) == 15 and t.fold_path(3, 2, seg, edges: true) == 14`
-    pub fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T = todo
+    pub fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T:
+        let m = ds.monoid
+        var acc = m.id
+        for c in self.chains(a, b, edges):
+            let part = ds.fold(c.range)
+            acc = m.op(acc, if c.rising: part.rev() else: part)
+        acc
 
     /// Applies the update `tag` to every vertex on the path from `a` to `b`, through
     /// `ds.apply(range, tag)` once per chain range. With `edges`, the lowest common ancestor is
@@ -455,7 +539,8 @@ pub struct Rooted<V, Pre>:
     /// empty: nothing changes for `a == b` with `edges`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var seg = SegTree(+, t.reorder([0, 0, 0, 0, 0]), act: add); t.apply_path(3, 2, seg, 5); t.fold_path(3, 2, seg) == 20 and seg.fold(t.sub(1)) == 10`
-    pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false) = todo
+    pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false):
+        for c in self.chains(a, b, edges): ds.apply(c.range, tag)
 
     /// The tree squeezed down to `keys`: the keys and the lowest common ancestor of every pair, in
     /// a fresh domain `vt.K` in preorder, so `for x in vt.K.rev` visits children first.
@@ -469,7 +554,37 @@ pub struct Rooted<V, Pre>:
     /// order: `vt.K` in `t.Pre` order
     /// traps: when the keys are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let vt = t.virtual([4, 3]); vt.at == [1, 3, 4] and vt.key == [false, true, true] and vt.w == [0, 1, 1]`
-    pub fn virtual(self, keys: List<V>) -> VirtualTree<V, _> = todo
+    pub fn virtual(self, keys: List<V>) -> VirtualTree<V, _>:
+        var ks = List<Pre>()
+        ks.reserve(keys.len)
+        for v in keys: ks.push(tin[v])
+        ks.sort()
+        dedup(mut ks)
+        var ps = List<Pre>()
+        ps.reserve(2 * ks.len)
+        for p in ks: ps.push(p)
+        for i in 1..ks.len: ps.push(tin[self.lca(at[ks[i - 1]], at[ks[i]])])
+        ps.sort()
+        dedup(mut ps)
+        domain K = 0..ps.len
+        var vs: [K]V = self.root
+        var up: [K]?K = None
+        var len: [K]Int = 0
+        var key: [K]Bool = false
+        var st = List<K>()
+        st.reserve(K.count)
+        var j = 0
+        for x in K:
+            vs[x] = at[ps[x.ord]]
+            if j < ks.len and ks[j] == ps[x.ord]:
+                key[x] = true
+                j += 1
+            while st.len > 0 and not self.is_anc(vs[st.last!], vs[x]): st.pop()
+            if let p = st.last:
+                up[x] = p
+                len[x] = far[vs[x]] - far[vs[p]]
+            st.push(x)
+        VirtualTree<V, K>(vs, up, len, key)
 
     /// The edge length from `v` up to its parent: 0 at a root, 1 unless the arcs are `Weighted`.
     ///
@@ -490,7 +605,7 @@ pub struct Rooted<V, Pre>:
     /// The top of the heavy chain through `v`: the highest vertex reached by heavy edges.
     ///
     /// cost: O(1)
-    /// ties: none; the heavy children fix the chain
+    /// ties: None; the heavy children fix the chain
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.top(3) == 0 and t.top(4) == 4 and t.top(2) == 2`
     pub fn top(self, v: V) -> V = todo
@@ -656,14 +771,14 @@ pub struct Centroids<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.parent(0) == Some(1) and cd.parent(1) == None`
-    pub fn parent(self, c: V) -> ?V = todo
+    pub fn parent(self, c: V) -> ?V = cpar[c]
 
     /// The depth of `c` in the centroid tree, at most log2 n.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.depth(1) == 0 and cd.depth(3) == 1 and cd.depth(2) == 2`
-    pub fn depth(self, c: V) -> Int = todo
+    pub fn depth(self, c: V) -> Int = cdep[c]
 
     /// Every centroid whose piece holds `v`, with the tree distance from it: `v` itself at distance
     /// 0, then up the centroid tree. At most log2 n + 1 entries, no allocation.
@@ -673,7 +788,8 @@ pub struct Centroids<V>:
     /// order: nearest centroid first, up to `cd.root`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.ancestors(2).collect() == [(c: 2, dist: 0), (c: 0, dist: 1), (c: 1, dist: 2)]`
-    pub fn ancestors(self, v: V) -> yields (c: V, dist: Int) = todo
+    pub fn ancestors(self, v: V) -> yields (c: V, dist: Int):
+        for x in anc[v]: yield (c: x.c, dist: x.dist)
 
     /// The piece of centroid `c`: each vertex `v`, its distance from `c`, and `branch`, the
     /// neighbour of `c` on the way to `v` (`c` itself for `v == c`). Pairs in different branches are
@@ -684,21 +800,47 @@ pub struct Centroids<V>:
     /// order: breadth-first from `c`, neighbours in the order `next` lists them
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.piece(0).collect() == [(v: 0, dist: 0, branch: 0), (v: 2, dist: 1, branch: 2)] and cd.piece(1).count() == 5`
-    pub fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V) = todo
+    pub fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V):
+        for v in held[c]:
+            let x = anc[v][cdep[v] - cdep[c]]
+            yield (v:, dist: x.dist, branch: x.branch)
 
 // ---- tests
 
 /// A random tree on `V` as adjacency lists, with arcs in both directions.
-fn random_tree<V>(any: V) -> [V]List<V> = todo
+fn random_tree<V>(any: V) -> [V]List<V>:
+    var adj: [V]List<V> = []
+    var label = [v for v in V]
+    shuffle(mut label)
+    for i in 1..V.K:
+        let (c, p) = (label[i], label[rand(0, i - 1)])
+        adj[c].push(p)
+        adj[p].push(c)
+    adj
 
 /// The vertices from `a` to `b`, by climbing parents.
-fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V> = todo
+fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V>:
+    var (x, y) = (a, b)
+    var (left, right) = (List<V>(), List<V>())
+    while x != y:
+        if r.depth(x) >= r.depth(y):
+            left.push(x)
+            x = r.parent(x)!
+        else:
+            right.push(y)
+            y = r.parent(y)!
+    left.push(x)
+    left + right.rev
 
 @test
 fn subtrees_and_chains_are_contiguous() = todo
 
 @test
-fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it() = todo
+fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it():
+    domain V = 0..9
+    let adj = random_tree(V.first)
+    let (a, b) = (Rooted(adj, V.first), Rooted(v => adj[v], V.first))
+    assert [v for v in a.at] == [v for v in b.at] and a.par == b.par and a.sz == b.sz
 
 @test
 fn lca_dist_ancestor_and_step_match_climbing() = todo
@@ -712,7 +854,7 @@ fn path_folds_keep_the_order_from_a_to_b() = todo
 struct Word(s: Str)
 
 impl Reversible for Word:
-    fn rev(self) -> Word = todo
+    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
 
 @test
 fn path_updates_and_subtree_folds_over_one_lazy_tree() = todo
@@ -730,7 +872,20 @@ fn rerooting_counts_connected_sets_through_every_vertex() = todo
 fn orders_lifting_and_the_virtual_tree() = todo
 
 @test
-fn a_tree_from_a_stored_graph() = todo
+fn a_tree_from_a_stored_graph():
+    domain V = 1..=6
+    domain E = 1..=5
+    let edges = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(1), v: V(3)),
+        (u: V(2), v: V(4)),
+        (u: V(2), v: V(5)),
+        (u: V(5), v: V(6)),
+    ][e.to_idx]
+    let g = Graph.undirected(edges)
+    let r = Rooted(g, root: V(1))
+    assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.size(V(2)) == 4
+    assert r.children(V(2)) == [V(4), V(5)] and r.parent(V(6)) == V(5)
 
 @test
 fn from_parents_tour_pos_and_value_owned_pre() = todo
@@ -739,10 +894,28 @@ fn from_parents_tour_pos_and_value_owned_pre() = todo
 fn weighted_rooted_bfs_tree_on_cyclic_graph() = todo
 
 @test
-fn lower_is_the_child_end_of_an_edge() = todo
+fn lower_is_the_child_end_of_an_edge():
+    domain V = 0..9
+    let adj = random_tree(V.first)
+    let r = Rooted(adj, V.first)
+    for v in V:
+        if let p = r.parent(v):
+            assert r.lower(v, p) == v and r.lower(p, v) == v
 
 @test
-fn path_and_diameter_match_pairwise_distances() = todo
+fn path_and_diameter_match_pairwise_distances():
+    domain V = 0..12
+    let adj = random_tree(V.first)
+    let r = Rooted(adj, V.first)
+    let d = r.diameter()
+    assert r.dist(d.u, d.v) == d.len
+    for a in V:
+        for b in V:
+            assert r.dist(a, b) <= d.len
+            let p = r.path(a, b)
+            assert p.first == a and p.last == b and p.len == r.dist(a, b) + 1
+            for k in 0..p.len - 1:
+                assert r.parent(p[k]) == p[k + 1] or r.parent(p[k + 1]) == p[k]
 
 @test
 fn heavy_light_and_subtree_cover_the_children() = todo
@@ -777,7 +950,7 @@ pub struct JumpTree<V>:
     /// cost: O(n)
     /// traps: never
     /// example: `domain V = 0..4; let j = JumpTree<V>(); j.parent(2) == None and j.root_of(2) == 2`
-    pub fn new() -> JumpTree<V> = todo
+    pub fn new() -> JumpTree<V> = JumpTree([V] _ => None, [V] v => v, [V] _ => 0)
 
     /// Hangs `v`, a lone vertex not yet in any tree, below `p`, setting its skew-binary jump
     /// pointer from `p`'s.
@@ -785,35 +958,48 @@ pub struct JumpTree<V>:
     /// cost: O(1)
     /// traps: when `v` already has a parent, or `v == p`
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.parent(2) == Some(1) and j.depth(3) == 2`
-    pub fn add(mut self, v: V, p: V) = todo
+    pub fn add(mut self, v: V, p: V):
+        assert par[v] == None and jump[v] == v and v != p
+        par[v] = Some(p)
+        dep[v] = dep[p] + 1
+        let j = jump[p]
+        jump[v] = if dep[p] - dep[j] == dep[j] - dep[jump[j]]: jump[j] else: p
 
     /// The parent of `v`, or `None` at a root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.parent(1) == Some(0) and j.parent(0) == None`
-    pub fn parent(self, v: V) -> ?V = todo
+    pub fn parent(self, v: V) -> ?V = par[v]
 
     /// The number of edges from `v` up to its root.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.depth(0) == 0 and j.depth(2) == 2`
-    pub fn depth(self, v: V) -> Int = todo
+    pub fn depth(self, v: V) -> Int = dep[v]
 
     /// The root of `v`'s tree.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.root_of(3) == 0`
-    pub fn root_of(self, v: V) -> V = todo
+    pub fn root_of(self, v: V) -> V:
+        var x = v
+        while jump[x] != x: x = jump[x]
+        x
 
     /// The ancestor `k` edges above `v` (`v` for `k == 0`), or `None` if that is above the root.
     ///
     /// cost: O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.ancestor(2, 2) == Some(0) and j.ancestor(2, 3) == None`
-    pub fn ancestor(self, v: V, k: Int) -> ?V = todo
+    pub fn ancestor(self, v: V, k: Int) -> ?V:
+        if k < 0 or k > dep[v]: return None
+        let d = dep[v] - k
+        var x = v
+        while dep[x] > d: x = if dep[jump[x]] >= d: jump[x] else: par[x]!
+        x
 
     /// The lowest common ancestor of `a` and `b`, or `None` in different trees.
     ///
@@ -821,7 +1007,18 @@ pub struct JumpTree<V>:
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.lca(2, 3) == Some(1) and j.lca(2, 0) == Some(0)`
     /// example: `domain V = 0..3; var j = JumpTree<V>(); j.add(1, 0); j.lca(1, 2) == None`
-    pub fn lca(self, a: V, b: V) -> ?V = todo
+    pub fn lca(self, a: V, b: V) -> ?V:
+        var x = if dep[a] > dep[b]: self.ancestor(a, dep[a] - dep[b])! else: a
+        var y = if dep[b] > dep[a]: self.ancestor(b, dep[b] - dep[a])! else: b
+        while x != y:
+            if par[x] == none: return None
+            if jump[x] != jump[y]:
+                x = jump[x]
+                y = jump[y]
+            else:
+                x = par[x]!
+                y = par[y]!
+        x
 
     /// The highest ancestor `u` of `v` such that `pred(u)` holds, or `None` when `pred(v)` is false.
     /// `pred` must be true and then false on the way up.
@@ -944,30 +1141,92 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// empty: `a: None` fills every vertex with the identity
     /// traps: never
     /// example: `domain V = 0..3; var lc = LinkCut<V, Int>(+); lc.get(2) == 0 and not lc.connected(0, 1)`
-    pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T> = todo
+    pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
+        let m = Monoid<T>.of(op)
+        let val = if let init = a: init else: [V] _ => m.id
+        LinkCut(m, [V] _ => None, [V] _ => None, [V] _ => None, [V] _ => false, val, val, [])
 
-    fn top(self, x: V) -> Bool = todo
+    fn top(self, x: V) -> Bool:
+        if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
-    fn turn(mut self, x: V) = todo
+    fn turn(mut self, x: V):
+        let r = agg[x].rev()
+        agg[x] = r
+        flip[x] = not flip[x]
 
-    fn push(mut self, x: V) = todo
+    fn push(mut self, x: V):
+        if flip[x]:
+            let l = lc[x]
+            lc[x] = rc[x]
+            rc[x] = l
+            if let c = lc[x]: self.turn(c)
+            if let c = rc[x]: self.turn(c)
+            flip[x] = false
 
-    fn pull(mut self, x: V) = todo
+    fn pull(mut self, x: V):
+        var s = val[x]
+        if let c = lc[x]: s = m.op(agg[c], s)
+        if let c = rc[x]: s = m.op(s, agg[c])
+        agg[x] = s
 
-    fn rotate(mut self, x: V) = todo
+    fn rotate(mut self, x: V):
+        let p = pa[x]!
+        let g = pa[p]
+        let p_top = self.top(p)
+        if lc[p] == Some(x):
+            lc[p] = rc[x]
+            if let c = rc[x]: pa[c] = Some(p)
+            rc[x] = Some(p)
+        else:
+            rc[p] = lc[x]
+            if let c = lc[x]: pa[c] = Some(p)
+            lc[x] = Some(p)
+        pa[p] = Some(x)
+        pa[x] = g
+        if not p_top, let q = g:
+            if lc[q] == Some(p): lc[q] = Some(x) else: rc[q] = Some(x)
+        self.pull(p)
+        self.pull(x)
 
-    fn splay(mut self, x: V) = todo
+    fn splay(mut self, x: V):
+        stk.clear()
+        var y = x
+        stk.push(y)
+        while not self.top(y):
+            y = pa[y]!
+            stk.push(y)
+        while let z = stk.pop(): self.push(z)
+        while not self.top(x):
+            let p = pa[x]!
+            if not self.top(p):
+                let g = pa[p]!
+                if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
+            self.rotate(x)
 
     // Makes root -> x the preferred path with x at the root of its splay tree; returns the
     // last vertex where the walk joined the old preferred path (the lca with the previous access).
-    fn access(mut self, x: V) -> V = todo
+    fn access(mut self, x: V) -> V:
+        var last: ?V = None
+        var joined = x
+        var y: ?V = Some(x)
+        while let u = y:
+            self.splay(u)
+            rc[u] = last
+            self.pull(u)
+            last = Some(u)
+            joined = u
+            y = pa[u]
+        self.splay(x)
+        joined
 
     /// Makes `v` the root of its tree.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.make_root(0); lc.root_of(2) == 0`
-    pub fn make_root(mut self, v: V) = todo
+    pub fn make_root(mut self, v: V):
+        let _ = self.access(v)
+        self.turn(v)
 
     /// The root of the tree holding `v`: the last vertex made root there, by `make_root`, `link`,
     /// `lca` or `fold_path`.
@@ -975,14 +1234,22 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.root_of(0) == 2 and lc.root_of(3) == 3`
-    pub fn root_of(mut self, v: V) -> V = todo
+    pub fn root_of(mut self, v: V) -> V:
+        let _ = self.access(v)
+        var x = v
+        self.push(x)
+        while let c = lc[x]:
+            x = c
+            self.push(x)
+        self.splay(x)
+        x
 
     /// Whether `u` and `v` are in the same tree.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.connected(0, 2) and not lc.connected(0, 3)`
-    pub fn connected(mut self, u: V, v: V) -> Bool = todo
+    pub fn connected(mut self, u: V, v: V) -> Bool = self.root_of(u) == self.root_of(v)
 
     /// Adds the edge `u`-`v`: `u` becomes the root of its tree, which hangs below `v`, so the
     /// joined tree keeps `v`'s root.
@@ -990,14 +1257,23 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// cost: amortized O(log n), with one `root_of` to check the trees differ
     /// traps: when `u` and `v` are already in one tree
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.link(3, 0); lc.connected(3, 2) and lc.root_of(3) == 2`
-    pub fn link(mut self, u: V, v: V) = todo
+    pub fn link(mut self, u: V, v: V):
+        self.make_root(u)
+        assert self.root_of(v) != u, "link joins two trees; these vertices are already connected"
+        pa[u] = Some(v)
 
     /// Removes the edge `u`-`v`.
     ///
     /// cost: amortized O(log n)
     /// traps: when there is no edge `u`-`v`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.cut(1, 2); not lc.connected(0, 2) and lc.connected(0, 1)`
-    pub fn cut(mut self, u: V, v: V) = todo
+    pub fn cut(mut self, u: V, v: V):
+        self.make_root(u)
+        let _ = self.access(v)
+        assert lc[v] == Some(u) and rc[u] == None, "cut needs an edge between these vertices"
+        lc[v] = None
+        pa[u] = None
+        self.pull(v)
 
     /// The lowest common ancestor of `u` and `v` when their tree is rooted at `root`, which
     /// becomes its root; `None` unless all three are connected.
@@ -1005,28 +1281,38 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.lca(0, 2, 1) == Some(1) and lc.root_of(0) == 1 and lc.lca(0, 3, 1) == None`
-    pub fn lca(mut self, u: V, v: V, root: V) -> ?V = todo
+    pub fn lca(mut self, u: V, v: V, root: V) -> ?V:
+        self.make_root(root)
+        if self.root_of(u) != root or self.root_of(v) != root: return None
+        let _ = self.access(u)
+        Some(self.access(v))
 
     /// The value at `v`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.get(2) == 3`
-    pub fn get(self, v: V) -> T = todo
+    pub fn get(self, v: V) -> T = val[v]
 
     /// Sets the value at `v` to `x`.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.set(2, 10); lc.get(2) == 10 and lc.fold_path(0, 2) == 13`
-    pub fn set(mut self, v: V, x: T) = todo
+    pub fn set(mut self, v: V, x: T):
+        let _ = self.access(v)
+        val[v] = x
+        self.pull(v)
 
     /// The fold of the values on the path from `u` to `v`, in that order; `u` becomes the root.
     ///
     /// cost: amortized O(log n)
     /// traps: when `u` and `v` are in different trees
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.fold_path(0, 2) == 6 and lc.root_of(2) == 0 and lc.fold_path(1, 1) == 2`
-    pub fn fold_path(mut self, u: V, v: V) -> T = todo
+    pub fn fold_path(mut self, u: V, v: V) -> T:
+        self.make_root(u)
+        let _ = self.access(v)
+        agg[v]
 
     /// The number of edges between `a` and `b`; `None` across trees.
     ///
@@ -1089,58 +1375,160 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// empty: `a: None` fills every vertex with the identity
     /// traps: never
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
-    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F> = todo
+    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F>:
+        let val = if let init = a: init else: [V] _ => act.over.id
+        LazyLinkCut(
+            act,
+            [V] _ => None,
+            [V] _ => None,
+            [V] _ => None,
+            [V] _ => false,
+            val,
+            val,
+            [V] _ => 1,
+            [V] _ => act.id,
+            [],
+        )
 
-    fn top(self, x: V) -> Bool = todo
+    fn top(self, x: V) -> Bool:
+        if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
-    fn turn(mut self, x: V) = todo
+    fn turn(mut self, x: V):
+        let r = agg[x].rev()
+        agg[x] = r
+        flip[x] = not flip[x]
 
-    fn put(mut self, x: V, f: F) = todo
+    fn put(mut self, x: V, f: F):
+        val[x] = act.apply(f, val[x], 1)
+        agg[x] = act.apply(f, agg[x], cnt[x])
+        lz[x] = act.compose(f, lz[x])
 
-    fn push(mut self, x: V) = todo
+    fn push(mut self, x: V):
+        if flip[x]:
+            let l = lc[x]
+            lc[x] = rc[x]
+            rc[x] = l
+            if let c = lc[x]: self.turn(c)
+            if let c = rc[x]: self.turn(c)
+            flip[x] = false
+        let f = lz[x]
+        if let c = lc[x]: self.put(c, f)
+        if let c = rc[x]: self.put(c, f)
+        lz[x] = act.id
 
-    fn pull(mut self, x: V) = todo
+    fn pull(mut self, x: V):
+        var s = val[x]
+        var k = 1
+        if let c = lc[x]:
+            s = act.over.op(agg[c], s)
+            k += cnt[c]
+        if let c = rc[x]:
+            s = act.over.op(s, agg[c])
+            k += cnt[c]
+        agg[x] = s
+        cnt[x] = k
 
-    fn rotate(mut self, x: V) = todo
+    fn rotate(mut self, x: V):
+        let p = pa[x]!
+        let g = pa[p]
+        let p_top = self.top(p)
+        if lc[p] == Some(x):
+            lc[p] = rc[x]
+            if let c = rc[x]: pa[c] = Some(p)
+            rc[x] = Some(p)
+        else:
+            rc[p] = lc[x]
+            if let c = lc[x]: pa[c] = Some(p)
+            lc[x] = Some(p)
+        pa[p] = Some(x)
+        pa[x] = g
+        if not p_top, let q = g:
+            if lc[q] == Some(p): lc[q] = Some(x) else: rc[q] = Some(x)
+        self.pull(p)
+        self.pull(x)
 
-    fn splay(mut self, x: V) = todo
+    fn splay(mut self, x: V):
+        stk.clear()
+        var y = x
+        stk.push(y)
+        while not self.top(y):
+            y = pa[y]!
+            stk.push(y)
+        while let z = stk.pop(): self.push(z)
+        while not self.top(x):
+            let p = pa[x]!
+            if not self.top(p):
+                let g = pa[p]!
+                if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
+            self.rotate(x)
 
-    fn access(mut self, x: V) -> V = todo
+    fn access(mut self, x: V) -> V:
+        var last: ?V = None
+        var joined = x
+        var y: ?V = Some(x)
+        while let u = y:
+            self.splay(u)
+            rc[u] = last
+            self.pull(u)
+            last = Some(u)
+            joined = u
+            y = pa[u]
+        self.splay(x)
+        joined
 
     /// Makes `v` the root of its tree.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.make_root(0); lc.root_of(2) == 0`
-    pub fn make_root(mut self, v: V) = todo
+    pub fn make_root(mut self, v: V):
+        let _ = self.access(v)
+        self.turn(v)
 
     /// The root of the tree holding `v`, as for `LinkCut.root_of`.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.root_of(0) == 2`
-    pub fn root_of(mut self, v: V) -> V = todo
+    pub fn root_of(mut self, v: V) -> V:
+        let _ = self.access(v)
+        var x = v
+        self.push(x)
+        while let c = lc[x]:
+            x = c
+            self.push(x)
+        self.splay(x)
+        x
 
     /// Whether `u` and `v` are in the same tree.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.connected(0, 2)`
-    pub fn connected(mut self, u: V, v: V) -> Bool = todo
+    pub fn connected(mut self, u: V, v: V) -> Bool = self.root_of(u) == self.root_of(v)
 
     /// Adds the edge `u`-`v` as `LinkCut.link` does: `u`'s tree hangs below `v`.
     ///
     /// cost: amortized O(log n), with one `root_of` to check the trees differ
     /// traps: when `u` and `v` are already in one tree
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.connected(0, 2) and lc.dist(0, 2) == Some(2)`
-    pub fn link(mut self, u: V, v: V) = todo
+    pub fn link(mut self, u: V, v: V):
+        self.make_root(u)
+        assert self.root_of(v) != u, "link joins two trees; these vertices are already connected"
+        pa[u] = Some(v)
 
     /// Removes the edge `u`-`v`.
     ///
     /// cost: amortized O(log n)
     /// traps: when there is no edge `u`-`v`
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.cut(0, 1); not lc.connected(0, 2) and lc.connected(1, 2)`
-    pub fn cut(mut self, u: V, v: V) = todo
+    pub fn cut(mut self, u: V, v: V):
+        self.make_root(u)
+        let _ = self.access(v)
+        assert lc[v] == Some(u) and rc[u] == None, "cut needs an edge between these vertices"
+        lc[v] = None
+        pa[u] = None
+        self.pull(v)
 
     /// The lowest common ancestor of `u` and `v` when their tree is rooted at `root`, which
     /// becomes its root; `None` unless all three are connected.
@@ -1148,35 +1536,50 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.lca(0, 2, 1) == Some(1)`
-    pub fn lca(mut self, u: V, v: V, root: V) -> ?V = todo
+    pub fn lca(mut self, u: V, v: V, root: V) -> ?V:
+        self.make_root(root)
+        if self.root_of(u) != root or self.root_of(v) != root: return None
+        let _ = self.access(u)
+        Some(self.access(v))
 
     /// The value at `v`, with every update along paths through it applied.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 1, 10); lc.get(1) == 12 and lc.get(2) == 3`
-    pub fn get(mut self, v: V) -> T = todo
+    pub fn get(mut self, v: V) -> T:
+        let _ = self.access(v)
+        val[v]
 
     /// Sets the value at `v` to `x`, replacing every earlier update there.
     ///
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.set(1, 7); lc.fold_path(0, 2) == 11`
-    pub fn set(mut self, v: V, x: T) = todo
+    pub fn set(mut self, v: V, x: T):
+        let _ = self.access(v)
+        val[v] = x
+        self.pull(v)
 
     /// The fold of the values on the path from `u` to `v`, in that order; `u` becomes the root.
     ///
     /// cost: amortized O(log n)
     /// traps: when `u` and `v` are in different trees
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.fold_path(0, 2) == 6`
-    pub fn fold_path(mut self, u: V, v: V) -> T = todo
+    pub fn fold_path(mut self, u: V, v: V) -> T:
+        self.make_root(u)
+        let _ = self.access(v)
+        agg[v]
 
     /// Applies `f` to every value on the path from `u` to `v`; `u` becomes the root.
     ///
     /// cost: amortized O(log n)
     /// traps: when `u` and `v` are in different trees
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 1, 10); lc.fold_path(0, 2) == 26`
-    pub fn apply_path(mut self, u: V, v: V, f: F) = todo
+    pub fn apply_path(mut self, u: V, v: V, f: F):
+        self.make_root(u)
+        let _ = self.access(v)
+        self.put(v, f)
 
     /// The number of edges between `a` and `b`; `None` across trees.
     ///
@@ -1194,16 +1597,86 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
 @test
-fn link_cut_follows_a_changing_forest() = todo
+fn link_cut_follows_a_changing_forest():
+    domain V = 1..=6
+    var lct = LinkCut<V, Int>.new(+, [V] v => v.to_idx + 1)
+    lct.link(V(1), V(2))
+    lct.link(V(2), V(3))
+    lct.link(V(4), V(3))
+    assert lct.connected(V(1), V(4)) and not lct.connected(V(1), V(5))
+    assert lct.fold_path(V(1), V(4)) == 10
+    assert lct.lca(V(3), V(4), V(1)) == Some(V(3)) and lct.lca(V(2), V(4), V(1)) == Some(V(2))
+    assert lct.lca(V(1), V(4), V(3)) == Some(V(3)) and lct.lca(V(1), V(5), V(1)) == None
+    lct.cut(V(2), V(3))
+    assert not lct.connected(V(1), V(4)) and lct.fold_path(V(3), V(4)) == 7
+    lct.set(V(4), 10)
+    lct.link(V(5), V(4))
+    assert lct.fold_path(V(5), V(3)) == 18 and lct.root_of(V(3)) == V(5)
 
 @test
-fn link_cut_matches_a_brute_forest_with_ordered_folds() = todo
+fn link_cut_matches_a_brute_forest_with_ordered_folds():
+    domain V = 1..=9
+    var rng = Rng(7)
+    let w = [V] _ => rng.int(-5, 5)
+    var lct = LinkCut<V, MaxSub>.new(MaxSub.monoid(), [V] v => MaxSub.of(w[v]))
+    var adj: [V]List<V> = []
+    for _ in 0..400:
+        let u = V(rng.int(1, 9))
+        let v = V(rng.int(1, 9))
+        var from: [V]?V = None
+        var seen: [V]Bool = false
+        seen[u] = true
+        var st = [u]
+        while let x = st.pop():
+            for y in adj[x]:
+                if not seen[y]:
+                    seen[y] = true
+                    from[y] = Some(x)
+                    st.push(y)
+        assert lct.connected(u, v) == seen[v]
+        if seen[v] and u != v:
+            var acc = MaxSub.of(w[v])
+            var x = v
+            while let p = from[x]:
+                acc = MaxSub.of(w[p]) + acc
+                x = p
+            assert lct.fold_path(u, v) == acc
+            if rng.int(0, 2) == 0 and from[v] != none:
+                let p = from[v]!
+                lct.cut(v, p)
+                adj[v] = [y for y in adj[v] if y != p]
+                adj[p] = [y for y in adj[p] if y != v]
+        elif not seen[v]:
+            lct.link(u, v)
+            for (x, y) in [(u, v), (v, u)]: adj[x].push(y)
 
 @test
 fn lazy_link_cut_matches_a_brute_forest() = todo
 
 @test
-fn lazy_link_cut_keeps_path_order_under_assignment() = todo
+fn lazy_link_cut_keeps_path_order_under_assignment():
+    domain V = 1..=6
+    let paint = Action<MaxSub, ?Int>(
+        None,
+        (f, g) => f ?? g,
+        (f, x, k) => if let c = f: (
+            if c > 0: MaxSub.of(c).scale(k) else: MaxSub(true, c, c * k, c, c)
+        ) else: x,
+        over: MaxSub.monoid(),
+    )
+    var lct = LazyLinkCut<V, MaxSub, ?Int>.new(
+        paint,
+        [V] v => MaxSub.of([3, -1, 4, -1, 5, -9][v.to_idx]),
+    )
+    for v in 2..=6: lct.link(V(v), V(v - 1))
+    lct.apply_path(V(2), V(3), Some(-2))
+    assert lct.fold_path(V(1), V(6)).best == 5 and lct.fold_path(
+        V(6),
+        V(1),
+    ).total == 3 - 2 - 2 - 1 + 5 - 9
+    lct.apply_path(V(5), V(4), Some(2))
+    assert lct.fold_path(V(1), V(5)).best == 4 and lct.fold_path(V(4), V(2)).pre == 2
+    assert lct.get(V(3)) == MaxSub.of(-2) and lct.lca(V(2), V(6), V(4)) == Some(V(4))
 
 /// How a permutation-tree node joins its two children `l` (earlier positions) and `r`.
 /// `Incr`: `r`'s values sit just above `l`'s; `Decr`: just below; `Partial`: the union is
@@ -1250,21 +1723,25 @@ pub struct PermTree<I, V, Node>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.span(pt.leaf(2)) == 2..3 and pt.kind[pt.leaf(2)] == PermKind.Leaf`
-    pub fn leaf(self, i: I) -> Node = todo
+    pub fn leaf(self, i: I) -> Node = Node(2 * i.ord)
 
     /// The earlier child of the inner node `v`.
     ///
     /// cost: O(1)
     /// traps: when `v` is a leaf
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.span(pt.left(pt.root)) == 0..2`
-    pub fn left(self, v: Node) -> Node = todo
+    pub fn left(self, v: Node) -> Node:
+        assert kind[v] != Leaf, "a leaf has no children"
+        l[v]
 
     /// The later child of the inner node `v`.
     ///
     /// cost: O(1)
     /// traps: when `v` is a leaf
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.right(pt.root) == pt.leaf(2)`
-    pub fn right(self, v: Node) -> Node = todo
+    pub fn right(self, v: Node) -> Node:
+        assert kind[v] != Leaf, "a leaf has no children"
+        r[v]
 
     /// The positions `v` covers, a nonempty range of `I`.
     ///
@@ -1273,7 +1750,7 @@ pub struct PermTree<I, V, Node>:
     /// order: increasing positions
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.span(pt.root) == 0..3`
-    pub fn span(self, v: Node) -> Range<I> = todo
+    pub fn span(self, v: Node) -> Range<I> = first[v].l..last[v].r
 
     /// From the least to the greatest value `v` covers: exactly its values unless `v` is `Partial`.
     ///
@@ -1282,7 +1759,7 @@ pub struct PermTree<I, V, Node>:
     /// order: increasing values
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.vals(pt.left(pt.root)) == 0..2 and pt.vals(pt.leaf(0)) == 1..2`
-    pub fn vals(self, v: Node) -> Range<V> = todo
+    pub fn vals(self, v: Node) -> Range<V> = lo[v].l..hi[v].r
 
 @test
 fn perm_tree_nodes_cover_intervals_of_values() = todo
@@ -1315,7 +1792,7 @@ pub struct Layers<V, B>:
     /// in `level(d)`; `v` itself when `d == depth(v)`.
     ///
     /// cost: O(log n)
-    /// empty: when there are none, including `d < depth(v)`
+    /// empty: when there are None, including `d < depth(v)`
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.below(1, 2).map(b => ly.at[b]).collect() == [3, 4] and ly.below(2, 2).count() == 0`
@@ -1601,7 +2078,7 @@ pub struct KruskalTree<V, N, W>:
     @get pub fn tree(self) -> Rooted<N, _> = todo
 
     /// The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when
-    /// none is); its leaves are what `v` reaches by edges of weight at most `limit`.
+    /// None is); its leaves are what `v` reaches by edges of weight at most `limit`.
     ///
     /// cost: O(log n)
     /// traps: never
@@ -1613,7 +2090,7 @@ pub struct KruskalTree<V, N, W>:
     /// (`kt.top(v, ok: e => roads[e].alt > p)`). `ok` must hold on a prefix of the merge order.
     ///
     /// cost: O(log n) calls of `ok`
-    /// ties: none; the highest such node is unique
+    /// ties: None; the highest such node is unique
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
     pub fn top<E>(self, v: V, ok: E -> Bool) -> N = todo

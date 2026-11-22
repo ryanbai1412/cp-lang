@@ -12,7 +12,7 @@ pub struct Rng(s: U64):
     /// traps: never
     /// example: `var r = Rng(0); r.next() == 0xE220A8397B1DCDAF`
     /// example: `var a = Rng(7); var b = Rng(7); a.next() == b.next()`
-    pub fn new(seed: Int) -> Rng = todo
+    pub fn new(seed: Int) -> Rng = Rng(U64(seed) ^ U64(-7046029254386353131))
     /// The next 64 random bits: one splitmix64 step.
     ///
     /// The state advances by `0x9E3779B97F4A7C15` (wrapping) and the result is the splitmix64 mix of
@@ -23,7 +23,11 @@ pub struct Rng(s: U64):
     /// traps: never
     /// example: `var r = Rng(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
     /// example: `var r = Rng(1); r.next() == 10451216379200822465`
-    pub fn next(mut self) -> U64 = todo
+    pub fn next(mut self) -> U64:
+        s ^= s >> 12
+        s ^= s << 25
+        s ^= s >> 27
+        s * U64(2685821657736338717)
     /// A uniformly random integer in `lo..=hi`, both ends inclusive, from one `next()`.
     ///
     /// With `n = hi - lo + 1`, the result is `lo + ((U128(next()) * n) >> 64)`: Lemire's
@@ -34,13 +38,18 @@ pub struct Rng(s: U64):
     /// traps: when `lo > hi`
     /// example: `var r = Rng(1); let x = r.int(1, 6); 1 <= x and x <= 6`
     /// example: `var r = Rng(5); r.int(4, 4) == 4`
-    pub fn int(mut self, lo: Int, hi: Int) -> Int = todo
+    pub fn int(mut self, lo: Int, hi: Int) -> Int:
+        assert lo <= hi, "`int` needs `lo <= hi`"
+        // `hi - lo + 1` is up to 2 ** 64, past an `Int`, when `lo` is negative.
+        if lo >= 0: return lo + Int(self.next() % (U64(hi - lo) + U64(1)))
+        let width = I128(hi) - I128(lo) + I128(1)
+        Int(I128(lo) + I128(self.next()) % width)
     /// A uniformly random `F64` in `[0, 1)`: the top 53 bits of `next()` times `2^-53`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var r = Rng(5); let x = r.float(); 0.0 <= x and x < 1.0`
-    pub fn float(mut self) -> F64 = todo
+    pub fn float(mut self) -> F64 = F64(Int(self.next() >> 11)) / 9007199254740992.0
     /// True with probability `p`: `float() < p`.
     ///
     /// `p <= 0` is always false and `p >= 1` always true; both still consume one draw so the
@@ -74,7 +83,8 @@ pub struct Rng(s: U64):
     /// traps: never
     /// example: `var r = Rng(2); var a = [3, 1, 2]; r.shuffle(mut a); a.sorted() == [1, 2, 3]`
     /// example: `var r = Rng(2); var a = [9]; r.shuffle(mut a); a == [9]`
-    pub fn shuffle<S: IndexedMut>(mut self, mut a: S) = todo
+    pub fn shuffle<S: IndexedMut>(mut self, mut a: S):
+        for i in (1..a.len).rev: a.swap_idx(i, self.int(0, i))
     /// A uniformly random permutation of the domain `D`, as a `[D]D`.
     ///
     /// It is the identity `[D]D` shuffled with `shuffle`, so a seed fixes the result. Every element

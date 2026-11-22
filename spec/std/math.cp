@@ -10,7 +10,10 @@
 /// example: `gcd(-4, 6) == 2`
 /// example: `gcd(0, -5) == 5`
 /// example: `gcd(0, 0) == 0`
-pub fn gcd(a: Int, b: Int) -> Int = todo
+pub fn gcd(a: Int, b: Int) -> Int:
+    var (x, y) = (abs(a), abs(b))
+    while y != 0: (x, y) = (y, x % y)
+    x
 
 /// The least common multiple of `a` and `b`, never negative; 0 when either is 0.
 ///
@@ -21,7 +24,7 @@ pub fn gcd(a: Int, b: Int) -> Int = todo
 /// example: `lcm(4, 6) == 12`
 /// example: `lcm(-4, 6) == 12`
 /// example: `lcm(0, 5) == 0`
-pub fn lcm(a: Int, b: Int) -> Int = todo
+pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, b) * b)
 
 /// The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.
 ///
@@ -69,7 +72,17 @@ pub fn iroot(x: Int, k: Int) -> Int = todo
 /// example: `fixed(-5, 2, 0) == "-3"`
 /// example: `fixed(7, 2, 1) == "3.5"`
 /// example: `fixed(1, -4, 2) == "-0.25"`
-pub fn fixed(num: Int, den: Int, k: Int) -> Str = todo
+pub fn fixed(num: Int, den: Int, k: Int) -> Str:
+    assert den != 0 and k >= 0
+    let scale = 10 ** k
+    let units = (2 * abs(num) * scale + abs(den)) / (2 * abs(den))
+    var out = if (num < 0) != (den < 0) and units > 0: "-" else: ""
+    out += "{units / scale}"
+    if k == 0: return out
+    let frac = "{units % scale}"
+    out += "."
+    for _ in frac.len..k: out += "0"
+    out + frac
 
 /// The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.
 ///
@@ -83,7 +96,11 @@ pub fn fixed(num: Int, den: Int, k: Int) -> Str = todo
 /// example: `choose(5, 6) == 0`
 /// example: `choose(5, -1) == 0`
 /// example: `choose(60, 30) == 118_264_581_564_861_424`
-pub fn choose(n: Int, k: Int) -> Int = todo
+pub fn choose(n: Int, k: Int) -> Int:
+    if k < 0 or k > n: return 0
+    var r = 1
+    for i in 0..min(k, n - k): r = r * (n - i) / (i + 1)
+    r
 
 /// The number of unordered pairs from `n` things: `n * (n - 1) / 2` for `n >= 2`, else 0.
 ///
@@ -92,7 +109,7 @@ pub fn choose(n: Int, k: Int) -> Int = todo
 /// example: `choose2(5) == 10`
 /// example: `choose2(1) == 0`
 /// example: `choose2(-3) == 0`
-pub fn choose2(n: Int) -> Int = todo
+pub fn choose2(n: Int) -> Int = if n < 2: 0 else: n * (n - 1) / 2
 
 /// `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`.
 ///
@@ -107,7 +124,16 @@ pub fn choose2(n: Int) -> Int = todo
 /// example: `ext_gcd(46, 240) == (2, 47, -9)`
 /// example: `ext_gcd(-4, 6) == (2, 1, 1)`
 /// example: `ext_gcd(0, 0) == (0, 1, 0)`
-pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int) = todo
+pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
+    var (r0, r1) = (a, b)
+    var (x0, x1) = (1, 0)
+    var (y0, y1) = (0, 1)
+    while r1 != 0:
+        let q = r0 / r1
+        (r0, r1) = (r1, r0 - q * r1)
+        (x0, x1) = (x1, x0 - q * x1)
+        (y0, y1) = (y1, y0 - q * y1)
+    if r0 < 0: (g: -r0, x: -x0, y: -y0) else: (g: r0, x: x0, y: y0)
 
 /// `ceil(a / b)` for any non-zero `b`.
 ///
@@ -120,7 +146,7 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int) = todo
 /// example: `ceil_div(-7, 2) == -3`
 /// example: `ceil_div(7, -2) == -3`
 /// example: `ceil_div(6, 3) == 2`
-pub fn ceil_div(a: Int, b: Int) -> Int = todo
+pub fn ceil_div(a: Int, b: Int) -> Int = if b > 0: -((-a) / b) else: -(a / (-b))
 
 /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|` and `self == q * d + r`.
 ///
@@ -132,7 +158,7 @@ pub fn ceil_div(a: Int, b: Int) -> Int = todo
 /// example: `(-7).divmod(3) == (-3, 2)`
 /// example: `7.divmod(-3) == (-2, 1)`
 /// example: `(-7).divmod(-3) == (3, 2)`
-pub fn divmod(self: Int, d: Int) -> (Int, Int) = todo
+pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
 /// O(n) time and memory.
@@ -149,7 +175,19 @@ pub struct Sieve:
     /// traps: when `n < 0` or `n > 2_000_000_000`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(0).is_prime(0) == false`
-    pub fn new(n: Int) -> Sieve = todo
+    pub fn new(n: Int) -> Sieve:
+        var spf: List<0..=2_000_000_000> = List.filled(n + 1, 0)
+        var primes: List<0..=2_000_000_000> = []
+        unchecked:
+            for i in 2..=n:
+                if spf[i] == 0:
+                    spf[i] = i
+                    primes.push(i)
+                let si = spf[i]
+                for p in primes:
+                    if p > si or i * p > n: break
+                    spf[i * p] = p
+        Sieve(spf, primes)
 
     /// Whether `x` is prime, for `0 <= x <= n`: `spf[x] == x` and `x >= 2`.
     ///
@@ -158,7 +196,7 @@ pub struct Sieve:
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(10).is_prime(9) == false`
     /// example: `Sieve(10).is_prime(1) == false`
-    pub fn is_prime(self, x: Int) -> Bool = todo
+    pub fn is_prime(self, x: Int) -> Bool = x >= 2 and spf[x] == x
 
     /// The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.
     ///
@@ -168,7 +206,17 @@ pub struct Sieve:
     /// example: `Sieve(100).factor(60) == [(2, 2), (3, 1), (5, 1)]`
     /// example: `Sieve(100).factor(97) == [(97, 1)]`
     /// example: `Sieve(100).factor(1) == []`
-    pub fn factor(self, x: Int) -> List<(Int, Int)> = todo
+    pub fn factor(self, x: Int) -> List<(Int, Int)>:
+        var out = List<(Int, Int)>()
+        var rest = x
+        while rest > 1:
+            let p = spf[rest]
+            var e = 0
+            while rest % p == 0:
+                rest /= p
+                e += 1
+            out.push((p, e))
+        out
 
     /// Euler's totient of `x` in `1..=n`: how many of `1..=x` are coprime to `x`.
     ///
@@ -176,7 +224,10 @@ pub struct Sieve:
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(100).phi(36) == 12`
     /// example: `Sieve(100).phi(1) == 1`
-    pub fn phi(self, x: Int) -> Int = todo
+    pub fn phi(self, x: Int) -> Int:
+        var acc = x
+        for (p, _) in self.factor(x): acc = acc / p * (p - 1)
+        acc
 
     /// The Mobius function of `x` in `1..=n`: 0 if a square above 1 divides `x`, else -1 to the
     /// number of prime factors.
@@ -187,7 +238,9 @@ pub struct Sieve:
     /// example: `Sieve(100).mobius(12) == 0`
     /// example: `Sieve(100).mobius(6) == 1`
     /// example: `Sieve(100).mobius(1) == 1`
-    pub fn mobius(self, x: Int) -> Int = todo
+    pub fn mobius(self, x: Int) -> Int:
+        let f = self.factor(x)
+        if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
 
     /// Euler's totient of every `0..=n`, with `phi[0] == 0`.
     ///
@@ -195,7 +248,16 @@ pub struct Sieve:
     /// order: `phi[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
-    pub fn phi_table(self) -> List<Int> = todo
+    pub fn phi_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        unchecked:
+            if n >= 1: out[1] = 1
+            for i in 2..=n:
+                let p = spf[i]
+                let q = i / p
+                out[i] = if spf[q] == p: out[q] * p else: out[q] * (p - 1)
+        out
 
     /// The Mobius function of every `0..=n`, with `mu[0] == 0` and `mu[1] == 1`.
     ///
@@ -203,7 +265,16 @@ pub struct Sieve:
     /// order: `mu[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
-    pub fn mobius_table(self) -> List<Int> = todo
+    pub fn mobius_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        unchecked:
+            if n >= 1: out[1] = 1
+            for i in 2..=n:
+                let p = spf[i]
+                let q = i / p
+                out[i] = if spf[q] == p: 0 else: -out[q]
+        out
 
     /// The number of positive divisors of every `0..=n`, with `d[0] == 0`.
     ///
@@ -211,7 +282,21 @@ pub struct Sieve:
     /// order: `d[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
-    pub fn div_count_table(self) -> List<Int> = todo
+    pub fn div_count_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        var cnt = List.filled(n + 1, 0)
+        if n >= 1: out[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            if spf[q] == p:
+                cnt[i] = cnt[q] + 1
+                out[i] = out[q] / (cnt[q] + 1) * (cnt[i] + 1)
+            else:
+                cnt[i] = 1
+                out[i] = out[q] * 2
+        out
 
     /// The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.
     ///
@@ -219,7 +304,23 @@ pub struct Sieve:
     /// order: `sigma[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: when a sum overflows `Int`
     /// example: `Sieve(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
-    pub fn div_sum_table(self) -> List<Int> = todo
+    pub fn div_sum_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        var pp_sum = List.filled(n + 1, 0)
+        if n >= 1:
+            out[1] = 1
+            pp_sum[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            if spf[q] == p:
+                pp_sum[i] = pp_sum[q] * p + 1
+                out[i] = out[q] / pp_sum[q] * pp_sum[i]
+            else:
+                pp_sum[i] = p + 1
+                out[i] = out[q] * (p + 1)
+        out
 
     /// The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.
     ///
@@ -243,7 +344,32 @@ pub struct Sieve:
 /// traps: when `n < 0`
 /// example: `sieve_multiplicative(6, (p, e, pe) => e + 1) == [1, 1, 2, 2, 3, 2, 4]`
 /// example: `sieve_multiplicative(4, (p, e, pe) => pe - pe / p) == [1, 1, 1, 2, 2]`
-pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T> = todo
+pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>:
+    assert n >= 0
+    var res = List.filled(n + 1, T.one)
+    var spf = List.filled(n + 1, 0)
+    var primes = List<Int>()
+    for i in 2..=n:
+        if spf[i] == 0:
+            primes.push(i)
+            var (e, pe) = (1, i)
+            while true:
+                spf[pe] = i
+                res[pe] = prime_pow(i, e, pe)
+                if pe > n / i: break
+                e += 1
+                pe *= i
+        for p in primes:
+            var m = i * p
+            if p == spf[i] or m > n: break
+            var pe = p
+            while true:
+                spf[m] = p
+                res[m] = res[i] * res[pe]
+                m *= p
+                if m > n: break
+                pe *= p
+    res
 
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///
@@ -252,7 +378,7 @@ pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<
 /// example: `bit_len(0) == 0`
 /// example: `bit_len(5) == 3`
 /// example: `bit_len(8) == 4`
-pub fn bit_len(x: Int) -> Int = todo
+pub fn bit_len(x: Int) -> Int = bit_width(x)
 
 /// The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.
 ///
@@ -262,7 +388,13 @@ pub fn bit_len(x: Int) -> Int = todo
 /// example: `1203.digits() == [3, 0, 2, 1]`
 /// example: `0.digits() == [0]`
 /// example: `10.digits(base: 2) == [0, 1, 0, 1]`
-pub fn digits(self: Int, base: Int = 10) -> List<Int> = todo
+pub fn digits(self: Int, base: Int = 10) -> List<Int>:
+    assert self >= 0 and base >= 2
+    var (out, x) = ([self % base], self / base)
+    while x > 0:
+        out.push(x % base)
+        x /= base
+    out
 
 /// `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading
 /// `-` when negative. The inverse of `Str.parse_int`.
@@ -289,7 +421,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 
 /// Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.
 ///
-/// Bits from 63 up repeat the sign: none is set in a non-negative `Int` and all are set in a
+/// Bits from 63 up repeat the sign: None is set in a non-negative `Int` and all are set in a
 /// negative one.
 ///
 /// cost: O(1)
@@ -298,7 +430,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// example: `5.bit(1) == false`
 /// example: `(-1).bit(100) == true`
 /// example: `5.bit(70) == false`
-pub fn bit(self: Int, i: Int) -> Bool = todo
+pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 
 /// Is `self` a power of two? `self > 0 and self & (self - 1) == 0`.
 ///
@@ -320,7 +452,11 @@ pub fn bit(self: Int, i: Int) -> Bool = todo
 /// traps: never
 /// example: `splitmix64(0) == 0xE220A8397B1DCDAF`
 /// example: `splitmix64(1) != splitmix64(2)`
-pub fn splitmix64(x: U64) -> U64 = todo
+pub fn splitmix64(x: U64) -> U64:
+    var z: U64 = x + 0x9e3779b97f4a7c15
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+    z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+    z ^ (z >> 31)
 
 /// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.
 ///
@@ -334,7 +470,42 @@ pub fn splitmix64(x: U64) -> U64 = todo
 /// example: `factor(1) == []`
 /// example: `factor(600_851_475_143) == [(71, 1), (839, 1), (1471, 1), (6857, 1)]`
 /// example: `factor(1_000_000_007) == [(1_000_000_007, 1)]`
-pub fn factor(x: Int) -> List<(Int, Int)> = todo
+pub fn factor(x: Int) -> List<(Int, Int)>:
+    assert x >= 1
+    if x <= 1_000_000:
+        var out = List<(Int, Int)>()
+        var (rest, p) = (x, 2)
+        while p * p <= rest:
+            if rest % p == 0:
+                var e = 0
+                while rest % p == 0:
+                    rest /= p
+                    e += 1
+                out.push((p, e))
+            p += 1
+        if rest > 1: out.push((rest, 1))
+        return out
+    var primes = List<Int>()
+    var rest = x
+    for p in 2..100:
+        while rest % p == 0:
+            primes.push(p)
+            rest /= p
+    var todo = [rest]
+    while let m = todo.pop():
+        if m == 1: continue
+        if is_prime(m):
+            primes.push(m)
+        else:
+            let d = rho(m)
+            todo.push(d)
+            todo.push(m / d)
+    sort(mut primes)
+    var out = List<(Int, Int)>()
+    for p in primes:
+        if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
+        else: out.push((p, 1))
+    out
 
 /// The positive divisors of `x >= 1`, ascending.
 ///
@@ -343,7 +514,15 @@ pub fn factor(x: Int) -> List<(Int, Int)> = todo
 /// traps: when `x < 1`
 /// example: `divisors(12) == [1, 2, 3, 4, 6, 12]`
 /// example: `divisors(1) == [1]`
-pub fn divisors(x: Int) -> List<Int> = todo
+pub fn divisors(x: Int) -> List<Int>:
+    var (small, large) = (List<Int>(), List<Int>())
+    var d = 1
+    while d * d <= x:
+        if x % d == 0:
+            small.push(d)
+            if d * d != x: large.push(x / d)
+        d += 1
+    small + large.rev
 
 /// Every positive divisor of the number whose factorization is `factors`, ascending.
 ///
@@ -356,9 +535,24 @@ pub fn divisors(x: Int) -> List<Int> = todo
 /// traps: when an exponent is negative, or a divisor overflows `Int`
 /// example: `divisors_from_factors([(2, 2), (3, 1)]) == [1, 2, 3, 4, 6, 12]`
 /// example: `divisors_from_factors([]) == [1]`
-pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int> = todo
+pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
+    var out = [1]
+    for (p, e) in factors:
+        let cur = out.len
+        var pk = 1
+        for _ in 0..e:
+            pk *= p
+            for i in 0..cur: out.push(out[i] * pk)
+    sort(mut out)
+    out
 
-fn ext_gcd_x(a: Int, b: Int) -> (Int, Int) = todo
+fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
+    var (r0, r1, x0, x1) = (a, b, 1, 0)
+    while r1 != 0:
+        let q = r0 / r1
+        (r0, r1) = (r1, r0 - q * r1)
+        (x0, x1) = (x1, x0 - q * x1)
+    if r0 < 0: (-r0, -x0) else: (r0, x0)
 
 /// The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `None` if `gcd(a, m) != 1`.
 ///
@@ -370,10 +564,14 @@ fn ext_gcd_x(a: Int, b: Int) -> (Int, Int) = todo
 /// example: `inv_mod(-3, 7) == Some(2)`
 /// example: `inv_mod(2, 4) == None`
 /// example: `inv_mod(5, 1) == Some(0)`
-pub fn inv_mod(a: Int, m: Int) -> ?Int = todo
+pub fn inv_mod(a: Int, m: Int) -> ?Int:
+    assert m >= 1
+    let (g, x) = ext_gcd_x(a % m, m)
+    if g != 1: return None
+    x % m
 
 /// The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with `m = lcm(m1, m2)` and
-/// `0 <= r < m`, or `None` if there is none.
+/// `0 <= r < m`, or `None` if there is None.
 ///
 /// The moduli need not be coprime; the residues may be any `Int`.
 ///
@@ -382,7 +580,14 @@ pub fn inv_mod(a: Int, m: Int) -> ?Int = todo
 /// example: `crt(2, 3, 3, 5) == Some((8, 15))`
 /// example: `crt(1, 4, 3, 6) == Some((9, 12))`
 /// example: `crt(0, 2, 1, 4) == None`
-pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int) = todo
+pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
+    let (g, x) = ext_gcd_x(m1, m2)
+    if (r2 - r1) % g != 0: return None
+    let m = m1 / g * m2
+    let step = m2 / g
+    // x = r1 + m1 * k with k = (r2 - r1) / g * inv(m1 / g) mod (m2 / g)
+    let k = mul_mod((r2 - r1) / g % step, x % step, step)
+    ((r1 + m1 * k) % m, m)
 
 /// The solution of the system `x = r (mod m)` for every `(r, m)` in `eqs`, as `(r, m)` with
 /// `0 <= r < m`, or `None` if inconsistent: `crt` folded left to right from `(0, 1)`.
@@ -393,7 +598,13 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int) = todo
 /// example: `crt_all([(2, 3), (3, 5), (2, 7)]) == Some((23, 105))`
 /// example: `crt_all([(0, 2), (1, 2)]) == None`
 /// example: `crt_all([]) == Some((0, 1))`
-pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int) = todo
+pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
+    var (r, m) = (0, 1)
+    for (ri, mi) in eqs:
+        let next = crt(r, m, ri, mi)
+        if next == none: return None
+        (r, m) = next!
+    (r, m)
 
 /// `a * b mod m` without overflow, in `0..m` for `m >= 1`: through `I128` when the product
 /// could leave `Int`.
@@ -404,7 +615,9 @@ pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int) = todo
 /// traps: when `m < 1`
 /// example: `mul_mod(1_000_000_000_000_000_000, 1_000_000_000_000_000_000, 1_000_000_007) == 2401`
 /// example: `mul_mod(-3, 5, 7) == 6`
-pub fn mul_mod(a: Int, b: Int, m: Int) -> Int = todo
+pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
+    if -3_037_000_499 <= a <= 3_037_000_499 and -3_037_000_499 <= b <= 3_037_000_499: a * b % m
+    else: Int(I128(a) * I128(b) % I128(m))
 
 /// `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.
 ///
@@ -414,7 +627,13 @@ pub fn mul_mod(a: Int, b: Int, m: Int) -> Int = todo
 /// example: `pow_mod(-2, 3, 7) == 6`
 /// example: `pow_mod(0, 0, 7) == 1`
 /// example: `pow_mod(5, 0, 1) == 0`
-pub fn pow_mod(a: Int, e: Int, m: Int) -> Int = todo
+pub fn pow_mod(a: Int, e: Int, m: Int) -> Int:
+    var (acc, x, k) = (1 % m, a % m, e)
+    while k > 0:
+        if k % 2 == 1: acc = mul_mod(acc, x, m)
+        x = mul_mod(x, x, m)
+        k /= 2
+    acc
 
 /// Is `x` prime? Deterministic Miller-Rabin over the first twelve primes, exact for every `Int`.
 ///
@@ -428,14 +647,59 @@ pub fn pow_mod(a: Int, e: Int, m: Int) -> Int = todo
 /// example: `is_prime(561) == false`
 /// example: `is_prime(1) == false`
 /// example: `is_prime(-7) == false`
-pub fn is_prime(x: Int) -> Bool = todo
+pub fn is_prime(x: Int) -> Bool:
+    if x < 2: return false
+    let bases = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+    for p in bases:
+        if x % p == 0: return x == p
+    var (odd, twos) = (x - 1, 0)
+    while odd % 2 == 0:
+        odd /= 2
+        twos += 1
+    for a in bases:
+        var y = pow_mod(a, odd, x)
+        if y == 1 or y == x - 1: continue
+        var composite = true
+        for _ in 1..twos:
+            y = mul_mod(y, y, x)
+            if y == x - 1:
+                composite = false
+                break
+        if composite: return false
+    true
 
 /// `(y * y + c) % x` for `0 <= y < x` and `0 < c < x`, without leaving `Int`.
-fn rho_step(y: Int, c: Int, x: Int) -> Int = todo
+fn rho_step(y: Int, c: Int, x: Int) -> Int:
+    let s = mul_mod(y, y, x)
+    if s >= x - c: s - (x - c) else: s + c
 
 /// A divisor of the odd composite `x` other than 1 and `x`, by Pollard's rho with Brent's
 /// batching. Expected O(x^(1/4) log x).
-fn rho(x: Int) -> Int = todo
+fn rho(x: Int) -> Int:
+    var c = 1
+    while true:
+        var (y, q, g, r) = (2, 1, 1, 1)
+        var (ys, z) = (2, 2)
+        while g == 1:
+            z = y
+            for _ in 0..r: y = rho_step(y, c, x)
+            var k = 0
+            while k < r and g == 1:
+                ys = y
+                for _ in 0..min(128, r - k):
+                    y = rho_step(y, c, x)
+                    q = mul_mod(q, abs(z - y), x)
+                g = gcd(q, x)
+                k += 128
+            r *= 2
+        if g == x:
+            g = 1
+            while g == 1:
+                ys = rho_step(ys, c, x)
+                g = gcd(abs(z - ys), x)
+        if g != x: return g
+        c += 1
+    x
 
 /// Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.
 ///
@@ -444,7 +708,10 @@ fn rho(x: Int) -> Int = todo
 /// example: `phi(36) == 12`
 /// example: `phi(1) == 1`
 /// example: `phi(1_000_000_007) == 1_000_000_006`
-pub fn phi(x: Int) -> Int = todo
+pub fn phi(x: Int) -> Int:
+    var acc = x
+    for (p, _) in factor(x): acc = acc / p * (p - 1)
+    acc
 
 /// The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every
 /// non-zero residue.
@@ -454,9 +721,15 @@ pub fn phi(x: Int) -> Int = todo
 /// example: `primitive_root(7) == 3`
 /// example: `primitive_root(998_244_353) == 3`
 /// example: `primitive_root(2) == 1`
-pub fn primitive_root(p: Int) -> Int = todo
+pub fn primitive_root(p: Int) -> Int:
+    assert is_prime(p)
+    if p == 2: return 1
+    let parts = [q for (q, _) in factor(p - 1)]
+    var g = 2
+    while any(pow_mod(g, (p - 1) / q, p) == 1 for q in parts): g += 1
+    g
 
-/// The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is none.
+/// The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.
 ///
 /// Any `m >= 1` works, including `a` not coprime to `m` (the shared factor is peeled off before
 /// baby-step giant-step). `a^0` is `1 % m`, and `a` and `b` are reduced first.
@@ -468,7 +741,34 @@ pub fn primitive_root(p: Int) -> Int = todo
 /// example: `mod_log(2, 3, 7) == None`
 /// example: `mod_log(0, 0, 5) == Some(1)`
 /// example: `mod_log(2, 1, 1) == Some(0)`
-pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int = todo
+pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
+    assert m >= 1
+    let (a0, b0) = (a % m, b % m)
+    if m == 1 or b0 == 1: return 0
+    var (k, add, cur_b, cur_m) = (1, 0, b0, m)
+    while true:
+        let g = gcd(a0, cur_m)
+        if g == 1: break
+        if k == cur_b: return add
+        if cur_b % g != 0: return None
+        cur_b /= g
+        cur_m /= g
+        k = mul_mod(k, a0 / g, cur_m)
+        add += 1
+    if k == cur_b: return add
+    var n = 1
+    while n * n < cur_m: n += 1
+    var table = HashMap<Int, Int>()
+    var rhs = cur_b
+    for q in 0..=n:
+        table[rhs] = q
+        rhs = mul_mod(rhs, a0, cur_m)
+    let an = pow_mod(a0, n, cur_m)
+    var cur = k
+    for p in 1..=n:
+        cur = mul_mod(cur, an, cur_m)
+        if let q = table.get(cur): return p * n - q + add
+    None
 
 /// A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `None` if `a` is a
 /// quadratic non-residue (Tonelli-Shanks).
@@ -483,7 +783,33 @@ pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int = todo
 /// example: `mod_sqrt(9, 7) == Some(3)`
 /// example: `mod_sqrt(3, 7) == None`
 /// example: `mod_sqrt(0, 7) == Some(0)`
-pub fn mod_sqrt(a: Int, p: Int) -> ?Int = todo
+pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
+    assert is_prime(p)
+    let x = a % p
+    if x == 0 or p == 2: return x
+    if pow_mod(x, (p - 1) / 2, p) != 1: return None
+    if p % 4 == 3: return pow_mod(x, (p + 1) / 4, p)
+    var (q, s) = (p - 1, 0)
+    while q % 2 == 0:
+        q /= 2
+        s += 1
+    var z = 2
+    while pow_mod(z, (p - 1) / 2, p) != p - 1: z += 1
+    var m = s
+    var c = pow_mod(z, q, p)
+    var t = pow_mod(x, q, p)
+    var r = pow_mod(x, (q + 1) / 2, p)
+    while t != 1:
+        var (i, t2) = (1, mul_mod(t, t, p))
+        while t2 != 1:
+            t2 = mul_mod(t2, t2, p)
+            i += 1
+        let b = pow_mod(c, 1 << (m - i - 1), p)
+        m = i
+        c = mul_mod(b, b, p)
+        t = mul_mod(t, c, p)
+        r = mul_mod(r, b, p)
+    r
 
 /// The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the
 /// Euclid-like reduction. Any sign of `a` and `b` works.
@@ -493,7 +819,20 @@ pub fn mod_sqrt(a: Int, p: Int) -> ?Int = todo
 /// example: `floor_sum(4, 10, 6, 3) == 3`
 /// example: `floor_sum(3, 2, -1, 0) == -2`
 /// example: `floor_sum(0, 5, 1, 1) == 0`
-pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int = todo
+pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
+    assert n >= 0 and m > 0
+    var (count, den, slope, start) = (n, m, a, b)
+    var total = 0
+    while true:
+        total += count * (count - 1) / 2 * (slope / den) + count * (start / den)
+        slope %= den
+        start %= den
+        let top = slope * count + start
+        if top < den: break
+        count = top / den
+        start = top % den
+        swap(mut den, mut slope)
+    total
 
 /// Every prime in `lo..hi`, by a segmented sieve; `[]` when the range is empty or below 2.
 ///
@@ -895,58 +1234,236 @@ impl Show for BigInt:
     fn show(a) = todo
 
 @test
-fn gcd_lcm_and_bezout() = todo
+fn gcd_lcm_and_bezout():
+    for _ in 0..200:
+        let (a, b) = (rand(-60, 60), rand(-60, 60))
+        let g = gcd(a, b)
+        assert g >= 0
+        if a != 0 or b != 0:
+            assert a % g == 0 and b % g == 0
+            assert max(d for d in 1..=60 if a % d == 0 and b % d == 0) == g
+        let e = ext_gcd(a, b)
+        assert e.g == g and a * e.x + b * e.y == g
+    assert gcd(0, 0) == 0 and lcm(4, 6) == 12 and lcm(0, 5) == 0 and lcm(-4, 6) == 12
 
 @test
-fn choose_is_pascals_triangle() = todo
+fn choose_is_pascals_triangle():
+    assert choose(0, 0) == 1 and choose(5, 2) == 10 and choose(5, 7) == 0 and choose(5, -1) == 0
+    assert choose(1000000, 3) == 166666166667000000
+    for n in 1..=30:
+        for k in 0..=n: assert choose(n, k) == choose(n - 1, k - 1) + choose(n - 1, k)
 
 @test
-fn division_helpers_round_the_right_way() = todo
+fn division_helpers_round_the_right_way():
+    assert -7 / 2 == -4 and -7 % 2 == 1
+    assert 7 / -2 == -3 and 7 % -2 == 1
+    assert ceil_div(7, -2) == -3 and ceil_div(-7, 2) == -3
+    assert ceil_div(
+        -7,
+        -2,
+    ) == 4 and ceil_div(6, 3) == 2 and ceil_div(6, -3) == -2 and ceil_div(7, 2) == 4
+    for _ in 0..200:
+        let (a, b) = (rand(-50, 50), rand(1, 9) * (rand(0, 1) * 2 - 1))
+        assert a == b * (a / b) + a % b and 0 <= a % b < abs(b)
+        let (q, r) = a.divmod(b)
+        assert (q, r) == divmod(
+            a,
+            b,
+        ) and q == a / b and r == a % b and 0 <= r < abs(b) and q * b + r == a
 
 @test
-fn sieve_and_factorizations_agree() = todo
+fn sieve_and_factorizations_agree():
+    let s = Sieve(200)
+    assert s.primes[0..10] == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+    assert s.primes.len == 46
+    for x in 1..=200:
+        assert s.factor(x) == factor(x)
+        var back = 1
+        for (p, e) in s.factor(x):
+            assert s.is_prime(p)
+            back *= p ** e
+        assert back == x
+        assert divisors(x) == [d for d in 1..=x if x % d == 0]
+    assert not s.is_prime(1) and not s.is_prime(0) and s.is_prime(199)
+    assert factor(1000000007 * 2) == [(2, 1), (1000000007, 1)]
+    assert bit_len(0) == 0 and bit_len(1) == 1 and bit_len(8) == 4 and bit_len(15) == 4
 
 @test
-fn crt_combines_or_refuses() = todo
+fn crt_combines_or_refuses():
+    for m1 in 1..=12:
+        for m2 in 1..=12:
+            for _ in 0..4:
+                let (r1, r2) = (rand(0, m1 - 1), rand(0, m2 - 1))
+                let want = [x for x in 0..lcm(m1, m2) if x % m1 == r1 and x % m2 == r2]
+                let got = crt(r1, m1, r2, m2)
+                if want.is_empty: assert got == None
+                else: assert got == (want[0], lcm(m1, m2))
+    assert crt(2, 1000000007, 3, 998244353)!.0 % 998244353 == 3
 
 @test
-fn fixed_rounds_pads_and_drops_a_zero_sign() = todo
+fn fixed_rounds_pads_and_drops_a_zero_sign():
+    assert fixed(1, 3, 5) == "0.33333" and fixed(2, 3, 5) == "0.66667"
+    assert fixed(-1, 3, 2) == "-0.33" and fixed(1, -3, 2) == "-0.33"
+    assert fixed(-1, 300, 2) == "0.00" and fixed(0, 7, 3) == "0.000"
+    assert fixed(7, 2, 0) == "4" and fixed(7, 2, 1) == "3.5" and fixed(-7, 2, 0) == "-4"
+    assert fixed(1, 8, 2) == "0.13" and fixed(100, 1, 3) == "100.000"
+    assert fixed(5, 1000, 2) == "0.01" and fixed(123456, 1000, 1) == "123.5"
 
 @test
-fn bit_reads_one_bit() = todo
+fn bit_reads_one_bit():
+    assert 10.bit(1) and 10.bit(3)
+    assert not 10.bit(0) and not 10.bit(2) and not 10.bit(40) and not 10.bit(64)
+    for _ in 0..100:
+        let x = rand(0, 1 << 40)
+        assert sum(1 << i for i in 0..41 if x.bit(i)) == x
 
 @test
-fn digits_are_lowest_first() = todo
+fn digits_are_lowest_first():
+    assert 1203.digits() == [3, 0, 2, 1] and 0.digits() == [0] and 5.digits(2) == [1, 0, 1]
+    assert 7 in 1700.digits() and not (7 in 1800.digits())
+    for _ in 0..100:
+        let (x, base) = (rand(0, 1 << 40), rand(2, 16))
+        let ds = x.digits(base)
+        assert sum(ds[i] * base ** i for i in 0..ds.len) == x and all(0 <= d < base for d in ds)
 
 @test
-fn sign_is_minus_one_zero_or_one() = todo
+fn sign_is_minus_one_zero_or_one():
+    assert 5.sign == 1 and (-5).sign == -1 and 0.sign == 0 and (3 - 9).sign == -1
 
 @test
-fn is_pow2_is_one_set_bit() = todo
+fn is_pow2_is_one_set_bit():
+    assert 1.is_pow2 and 2.is_pow2 and 1024.is_pow2 and (1 << 62).is_pow2
+    assert not 0.is_pow2 and not 6.is_pow2 and not (-4).is_pow2 and not 1023.is_pow2
 
 @test
-fn splitmix64_matches_the_reference_values() = todo
+fn splitmix64_matches_the_reference_values():
+    assert splitmix64(0) == 0xe220a8397b1dcdaf
+    assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
+    assert splitmix64(1) != splitmix64(2)
 
 @test
-fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes() = todo
+fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes():
+    let s = Sieve(5000)
+    for x in -3..5000: assert is_prime(x) == (x >= 2 and s.is_prime(x))
+    assert is_prime(998244353) and is_prime(1_000_000_007) and is_prime(1_000_000_000_000_000_003)
+    assert is_prime(9_223_372_036_854_775_783)
+    assert not is_prime(1_000_000_007 * 998244353) and not is_prime(1_000_000_000_000_000_001)
+    for x in [561, 41041, 825265, 3215031751, 2152302898747, 3474749660383, 341550071728321]:
+        assert not is_prime(x)
 
 @test
-fn factor_agrees_with_sieve_and_handles_big_semiprimes() = todo
+fn factor_agrees_with_sieve_and_handles_big_semiprimes():
+    let s = Sieve(2000)
+    for x in 1..2000: assert factor(x) == s.factor(x)
+    for _ in 0..100:
+        let x = rand(1, 1_000_000_000_000)
+        let f = factor(x)
+        assert all(is_prime(q) for (q, _) in f)
+        var back = 1
+        for (q, e) in f: back *= q ** e
+        assert back == x
+    assert factor(1_000_003 * 998244353) == [(1_000_003, 1), (998244353, 1)]
+    assert factor(999_999_937 * 999_999_929) == [(999_999_929, 1), (999_999_937, 1)]
+    assert factor(2 ** 20 * 3 ** 5 * 10007 ** 2) == [(2, 20), (3, 5), (10007, 2)]
+    assert factor(2 ** 62) == [(2, 62)]
+    assert factor(1) == []
+    for x in [9_223_372_036_854_775_783, 3_037_000_493 * 3_037_000_453, 9_223_372_036_854_775_807]:
+        let f = factor(x)
+        assert all(is_prime(q) for (q, _) in f)
+        var back = 1
+        for (q, e) in f: back *= q ** e
+        assert back == x
 
 @test
-fn pow_mod_phi_and_primitive_roots() = todo
+fn pow_mod_phi_and_primitive_roots():
+    assert pow_mod(2, 10, 1000) == 24 and pow_mod(5, 0, 1) == 0 and pow_mod(-2, 3, 7) == 6
+    assert pow_mod(3, 1_000_000_000_000_000_000, 1_000_000_000_000_000_003) == pow_mod(
+        3,
+        1_000_000_000_000_000_000 % 1_000_000_000_000_000_002,
+        1_000_000_000_000_000_003,
+    )
+    let s = Sieve(300)
+    for x in 1..300:
+        assert phi(x) == count(gcd(x, k) == 1 for k in 1..=x)
+        assert s.phi(x) == phi(x)
+        let f = factor(x)
+        let mu = if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
+        assert s.mobius(x) == mu
+    assert primitive_root(998244353) == 3 and primitive_root(1_000_000_007) == 5 and primitive_root(2) == 1
+    for p in [3, 5, 7, 11, 13, 41, 71]:
+        let g = primitive_root(p)
+        assert all(pow_mod(g, (p - 1) / q, p) != 1 for (q, _) in factor(p - 1))
 
 @test
-fn floor_sum_agrees_with_the_loop_for_every_sign() = todo
+fn floor_sum_agrees_with_the_loop_for_every_sign():
+    for _ in 0..400:
+        let (n, m, a, b) = (rand(0, 30), rand(1, 20), rand(-40, 40), rand(-40, 40))
+        assert floor_sum(n, m, a, b) == sum((a * i + b) / m for i in 0..n)
+    assert floor_sum(1_000_000_000, 1_000_000_007, 998_244_353, 123_456_789) == 499122172130479402
 
 @test
-fn choose2_inv_mod_crt_all_and_divisors_from_factors() = todo
+fn choose2_inv_mod_crt_all_and_divisors_from_factors():
+    assert choose2(-1) == 0 and choose2(0) == 0 and choose2(1) == 0
+    assert choose2(2) == 1 and choose2(10) == 45
+    assert inv_mod(3, 10) == 7 and inv_mod(2, 10) == None and inv_mod(0, 1) == 0
+    assert inv_mod(-3, 10) == 3
+    assert crt_all([]) == (0, 1)
+    assert crt_all([(2, 3), (3, 5), (2, 7)]) == (23, 105)
+    assert crt_all([(1, 4), (3, 6)]) == (9, 12)
+    assert crt_all([(1, 4), (2, 6)]) == None
+    for x in 1..=100: assert divisors_from_factors(factor(x)) == divisors(x)
 
 @test
-fn sieve_tables_and_multiplicative_agree() = todo
+fn sieve_tables_and_multiplicative_agree():
+    let s = Sieve(300)
+    let phis = s.phi_table()
+    let mus = s.mobius_table()
+    let dcnt = s.div_count_table()
+    let dsum = s.div_sum_table()
+    let mult_phi = sieve_multiplicative(300, (p, e, pe) => pe - pe / p)
+    let mult_d = sieve_multiplicative(300, (p, e, pe) => e + 1)
+    for x in 1..=300:
+        assert phis[x] == s.phi(x) and mult_phi[x] == phis[x]
+        assert mus[x] == s.mobius(x)
+        let ds = divisors(x)
+        assert dcnt[x] == ds.len and mult_d[x] == dcnt[x]
+        assert dsum[x] == sum(ds)
 
 @test
-fn mod_log_and_mod_sqrt_match_brute_force() = todo
+fn mod_log_and_mod_sqrt_match_brute_force():
+    for m in [1, 2, 6, 12, 13, 24, 35, 37]:
+        for a in 0..min(m, 10):
+            for b in 0..min(m, 10):
+                let got = mod_log(a, b, m)
+                var want: ?Int = None
+                var cur = 1 % m
+                for x in 0..=m:
+                    if cur == b % m:
+                        want = x
+                        break
+                    cur = cur * a % m
+                assert got == want
+    assert mod_log(2, pow_mod(2, 123456, 1_000_003), 1_000_003) == 123456
+    for p in [2, 3, 5, 7, 11, 13, 17, 29, 37, 41, 97]:
+        for a in 0..p:
+            let r = mod_sqrt(a, p)
+            let has = any(x * x % p == a for x in 0..p)
+            if has:
+                assert r != None and r! * r! % p == a
+            else:
+                assert r == None
+    let big_r = mod_sqrt(2, 998_244_353)
+    assert big_r != None and mul_mod(big_r!, big_r!, 998_244_353) == 2
+    let big_r2 = mod_sqrt(3, 998_244_353)
+    assert big_r2 == None
+    let big_r3 = mod_sqrt(9, 998_244_353)
+    assert big_r3 != None and mul_mod(big_r3!, big_r3!, 998_244_353) == 9
+    let big_r4 = mod_sqrt(mul_mod(1234567, 1234567, 998_244_353), 998_244_353)
+    assert big_r4 != None and mul_mod(big_r4!, big_r4!, 998_244_353) == mul_mod(
+        1234567,
+        1234567,
+        998_244_353,
+    )
 
 /// `Int.MAX`, for `Int` tables that start "unreached" when `?Int` with `None` is not wanted.
 /// `min` treats it as its identity; adding to it overflows (a trap in checked builds).

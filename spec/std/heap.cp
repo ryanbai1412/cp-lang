@@ -578,16 +578,56 @@ pub struct MeldHeap<T>:
     pub fn drain(mut self) -> List<T> = todo
 
 @test
-fn pops_in_sorted_order() = todo
+fn pops_in_sorted_order():
+    var h = MinHeap<Int>()
+    var g = MaxHeap<Int>()
+    var xs = [rand(-50, 50) for _ in 0..40]
+    for x in xs:
+        h.push(x)
+        g.push(x)
+    assert h.len == 40 and g.len == 40
+    sort(mut xs)
+    for i in 0..40:
+        assert h.peek == xs[i] and h.pop() == xs[i]
+        assert g.peek == xs[39 - i] and g.pop() == xs[39 - i]
+    assert h.pop() == None and h.is_empty and h.peek == None
+    assert g.pop() == None and g.is_empty and g.peek == None
 
 @test
-fn desc_gives_a_mixed_order() = todo
+fn desc_gives_a_mixed_order():
+    var h = MinHeap<(Int, Desc<Str>)>()
+    for (d, name) in [(2, "b"), (1, "a"), (2, "z"), (1, "m")]: h.push((d, desc(name)))
+    var out: List<Str> = []
+    while let (d, name) = h.pop(): out.push(name.x)
+    assert out == ["m", "a", "z", "b"]
 
 @test
-fn clear_empties_the_heap() = todo
+fn clear_empties_the_heap():
+    var h = MaxHeap<Int>()
+    for x in [3, 1, 4]: h.push(x)
+    h.clear()
+    assert h.is_empty and h.len == 0
+    h.push(7)
+    assert h.pop() == 7
 
 @test
-fn take_and_small_into_large_swap() = todo
+fn take_and_small_into_large_swap():
+    var a = MinHeap<Int>()
+    var b = MinHeap<Int>()
+    for x in [9, 2]: a.push(x)
+    for x in [5, 1, 8, 3, 7]: b.push(x)
+    if a.len < b.len: swap(mut a, mut b)
+    while let x = b.pop(): a.push(x)
+    assert b.is_empty and a.len == 7
+    var moved = a.take()
+    assert a.is_empty and moved.len == 7
+    var got: List<Int> = []
+    while let x = moved.pop(): got.push(x)
+    assert got == [1, 2, 3, 5, 7, 8, 9]
+    var hi = MaxHeap<Int>()
+    for x in [4, 1, 9, 6, 2]: hi.push(x)
+    var hi_moved = hi.take()
+    assert hi.is_empty and hi_moved.pop() == 9 and hi_moved.pop() == 6
 
 @test
 fn heap_of_and_erasable_and_indexed_heaps() = todo
@@ -607,7 +647,7 @@ pub type MaxHeap<T> = Heap<T>
 /// and `max`; with any other function the popped priorities are unspecified. Keys are hashed.
 pub struct Settle<K, P>(best: (P, P) -> P = min):
     /// Offer priority `p` for key `k`: an unsettled key keeps `best(old, p)` (or `p` when it
-    /// had none); a settled key ignores the offer.
+    /// had None); a settled key ignores the offer.
     ///
     /// cost: O(log n) amortized, `n` the offers so far
     /// traps: never

@@ -27,7 +27,7 @@ pub struct Mod<P>(v: 0..P):
     /// example: `Mod<7>(-1) == Mod<7>(6)`
     /// example: `Mod<7>(15) == Mod<7>(1)`
     /// example: `Mod<1>(5) == Mod<1>(0)`
-    pub fn new(x: Int) -> Mod<P> = todo
+    pub fn new(x: Int) -> Mod<P> = Mod(x % P)
 
     /// The multiplicative inverse when `gcd(v, P) == 1`, or `None` otherwise.
     ///
@@ -39,7 +39,14 @@ pub struct Mod<P>(v: 0..P):
     /// example: `Mod<7>(3).try_inv() == Some(Mod<7>(5))`
     /// example: `Mod<6>(4).try_inv() == None`
     /// example: `Mod<7>(0).try_inv() == None`
-    pub fn try_inv(self) -> ?Mod<P> = todo
+    pub fn try_inv(self) -> ?Mod<P>:
+        var (a, b, x, y) = (v, P, 1, 0)
+        while b != 0:
+            let q = a / b
+            (a, b) = (b, a - q * b)
+            (x, y) = (y, x - q * y)
+        if a != 1: return None
+        Mod(x % P)
 
     /// The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
     ///
@@ -63,7 +70,7 @@ pub struct Mod<P>(v: 0..P):
     /// example: `Mod<7>.from_int(-8) == Mod<7>(6)`
     pub fn from_int(x: Int) -> Mod<P> = todo
 
-    /// A square root modulo the prime `P` (Tonelli-Shanks), or `None` when there is none.
+    /// A square root modulo the prime `P` (Tonelli-Shanks), or `None` when there is None.
     ///
     /// Of the two roots `r` and `P - r`, it returns the one with the smaller value `v`; the root of 0
     /// is 0.
@@ -100,13 +107,13 @@ pub struct Mod<P>(v: 0..P):
     pub fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>> = todo
 
 impl Add for Mod<P>:
-    fn add(a, b) = todo
+    fn add(a, b) = Mod(if a.v + b.v >= P: a.v + b.v - P else: a.v + b.v)
 
 impl Sub for Mod<P>:
-    fn sub(a, b) = todo
+    fn sub(a, b) = Mod(if a.v >= b.v: a.v - b.v else: a.v - b.v + P)
 
 impl Neg for Mod<P>:
-    fn neg(a) = todo
+    fn neg(a) = Mod(if a.v == 0: 0 else: P - a.v)
 
 impl Mul for Mod<P>:
     // The product of two residues fits an `Int` only below 3_037_000_500; a larger modulus
@@ -114,13 +121,20 @@ impl Mul for Mod<P>:
     fn mul(a, b) = todo
 
 impl Div for Mod<P>:
-    fn div(a, b) = todo
+    fn div(a, b) = a * b.inv
 
 impl Pow for Mod<P>:
-    fn pow(a, e: Int) -> Mod<P> = todo
+    fn pow(a, e: Int) -> Mod<P>:
+        if e < 0: return a.inv ** (-e)
+        var (base, acc, k) = (a, Mod(1 % P), e)
+        while k > 0:
+            if k % 2 == 1: acc = acc * base
+            base = base * base
+            k /= 2
+        acc
 
 impl Show for Mod<P>:
-    fn show(a) = todo
+    fn show(a) = "{a.v}"
 
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 /// Its tables are `@cache` fields that grow on demand, so an immutable
@@ -168,7 +182,9 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M = todo
 
-    fn choose_lucas(self, n: Int, k: Int) -> M = todo
+    fn choose_lucas(self, n: Int, k: Int) -> M:
+        let p = M.MOD
+        self.choose(n / p, k / p) * self.choose(n % p, k % p)
 
     /// The number of `k`-subsets of `n` things, `n! / (k! (n - k)!)`; 0 when `k` is outside `0..=n`.
     ///
@@ -207,7 +223,10 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(3, 2) == Z(4)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(2, 3) == Z(6)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(0, 0) == Z(1)`
-    pub fn multichoose(self, n: Int, k: Int) -> M = todo
+    pub fn multichoose(self, n: Int, k: Int) -> M:
+        if n == 0: return M(1)
+        if k <= 0 or n < 0: return M(0)
+        self.choose(n + k - 1, n)
 
     /// The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.
     ///
@@ -219,7 +238,7 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
     /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
-    pub fn catalan(self, n: Int) -> M = todo
+    pub fn catalan(self, n: Int) -> M = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
     /// The number of derangements `!n`: permutations of `n` things with no fixed point.
     ///
@@ -316,7 +335,15 @@ pub struct ModComb(m: Int):
     pub fn choose(self, n: Int, k: Int) -> Int = todo
 
 @test
-fn values_stay_reduced() = todo
+fn values_stay_reduced():
+    type M = Mod<7>
+    assert M(-1).v == 6 and M(15).v == 1 and M(7) == M(0)
+    assert M(3) + M(5) == M(1)
+    assert M(3) - M(5) == M(5)
+    assert -M(3) == M(4) and -M(0) == M(0)
+    assert M(3) * M(5) == M(1)
+    assert M(1) / M(3) == M(5)
+    assert "{M(10)}" == "3"
 
 @test
 fn pow_and_inverse() = todo
@@ -325,16 +352,55 @@ fn pow_and_inverse() = todo
 fn mod_values_work_in_generic_structures() = todo
 
 @test
-fn choose_matches_pascals_triangle() = todo
+fn choose_matches_pascals_triangle():
+    type M = Mod<1000000007>
+    // Immutable binding: Comb<M> auto-grows via interior mutability
+    let c = Comb<M>()
+    var row = [M(1)]
+    for n in 0..=30:
+        for k in 0..=n: assert c.choose(n, k) == row[k]
+        assert c.choose(n, n + 1) == M(0) and c.choose(n, -1) == M(0)
+        row = [M(1)] + [row[k] + row[k + 1] for k in 0..n] + [M(1)]
+    assert c.fact(5) == M(120) and c.fact(20) * c.inv_fact(20) == M(1)
+    assert c.arrange(5, 2) == M(20)
+    assert c.multichoose(3, 2) == M(4)
+    assert [c.catalan(n).v for n in 0..8] == [1, 1, 2, 5, 14, 42, 132, 429]
+    // Auto-growth on a small prime clamps before P so (P-1)! stays invertible
+    let small = Comb<Mod<11>>()
+    assert small.choose(10, 4) == Mod<11>(210)
+    assert small.fact(10) == Mod<11>(10)
+    // Pre-sizing allocates exact capacity `limit + 1`
+    let pre = Comb<M>(40)
+    assert pre.choose(40, 20) == c.choose(40, 20)
 
 @test
-fn try_inv_and_modulus_one() = todo
+fn try_inv_and_modulus_one():
+    assert Mod<10>(3).try_inv() == Mod<10>(7)
+    assert Mod<10>(2).try_inv() == None
+    assert Mod<10>(0).try_inv() == None
+    assert Mod<1>(0) == Mod<1>(42) and Mod<1>(0).try_inv() == Mod<1>(0)
+    assert Mod<1>.zero == Mod<1>.one
 
 @test
 fn a_modulus_read_at_run_time() = todo
 
 @test
-fn inv_is_one_over_i() = todo
+fn inv_is_one_over_i():
+    type Z = Mod<1000000007>
+    let c = Comb<Z>()
+    for i in 1..200: assert c.inv(i) * Z(i) == Z(1)
+    assert c.inv(1) == Z(1)
 
 @test
-fn comb_multinomial() = todo
+fn comb_multinomial():
+    type Z = Mod<998_244_353>
+    let c = Comb<Z>(20)
+    assert c.choose(10, 3) == Z(120)
+    assert c.multinomial([]) == Z(1)
+    assert c.multinomial([5]) == Z(1)
+    assert c.multinomial([2, 3, 1]) == Z(60)
+    assert c.multinomial([2, -1, 3]) == Z(0)
+    // Lucas fallback when total >= P
+    let cs = Comb<Mod<7>>()
+    assert cs.multinomial([3, 3, 3]) == cs.choose(9, 3) * cs.choose(6, 3)
+    assert cs.multinomial([5, 5]) == cs.choose(10, 5)

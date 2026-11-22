@@ -12,13 +12,16 @@ use std.seq.{ends}
 pub struct IntervalMap<D, T>:
     segs: Map<Int, (hi: Int, val: T)>
 
-    /// A map that gives every position of `D` the value `init`: one run, or none when `D` is empty.
+    /// A map that gives every position of `D` the value `init`: one run, or None when `D` is empty.
     ///
     /// cost: O(1)
     /// empty: an empty `D` gives zero runs
     /// traps: never
     /// example: `IntervalMap<0..5, Int>(0).runs == 1`
-    pub fn new(init: T) -> IntervalMap<D, T> = todo
+    pub fn new(init: T) -> IntervalMap<D, T>:
+        var m = Map<Int, (hi: Int, val: T)>()
+        if D.K > 0: m[0] = (hi: D.K, val: init)
+        IntervalMap(m)
 
     /// The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
     ///
@@ -27,7 +30,19 @@ pub struct IntervalMap<D, T>:
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).runs == 2`
-    pub fn from(a: [D]T) -> IntervalMap<D, T> = todo
+    pub fn from(a: [D]T) -> IntervalMap<D, T>:
+        var m = Map<Int, (hi: Int, val: T)>()
+        if D.K == 0: return IntervalMap(m)
+        var lo = 0
+        var cur = a[D.nth(0)]
+        for idx in 1..D.K:
+            let v = a[D.nth(idx)]
+            if v != cur:
+                m[lo] = (hi: idx, val: cur)
+                lo = idx
+                cur = v
+        m[lo] = (hi: D.K, val: cur)
+        IntervalMap(m)
 
     /// The number of maximal runs, i.e. one more than the number of adjacent positions whose
     /// values differ (zero for an empty `D`).
@@ -51,7 +66,9 @@ pub struct IntervalMap<D, T>:
     /// traps: when `i` is outside `D`
     /// example: `IntervalMap.from([1, 1, 2]).run_at(1).range == 0..2`
     /// example: `IntervalMap.from([1, 1, 2]).run_at(1).val == 1`
-    pub fn run_at(self, i: D) -> (range: Range<D>, val: T) = todo
+    pub fn run_at(self, i: D) -> (range: Range<D>, val: T):
+        let (lo, seg) = segs.last_le(i.to_idx)!
+        (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
     /// Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all
     /// runs stay maximal. `on_old` is called with each overwritten piece (an old run overlapping
@@ -64,7 +81,62 @@ pub struct IntervalMap<D, T>:
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.runs == 3`
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.assign(1..3, 0); m.runs == 1`
     /// example: `var m = IntervalMap.from([1, 1, 2, 2]); var old: List<Int> = []; m.assign(1..3, 9, on_old: (_, v) => old.push(v)); old == [1, 2]`
-    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()) = todo
+    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()):
+        let (lo, hi) = r.ends
+        if lo >= hi: return
+        var new_lo = lo
+        var new_hi = hi
+        var check_left = true
+        var check_right = true
+        if let (sl, seg) = segs.last_le(lo):
+            if seg.hi >= hi:
+                on_old(r, seg.val)
+                if seg.val == val: return
+                if sl < lo:
+                    segs[sl] = (hi: lo, val: seg.val)
+                    check_left = false
+                else:
+                    let _ = segs.remove(lo)
+                if seg.hi > hi:
+                    segs[hi] = (hi: seg.hi, val: seg.val)
+                    check_right = false
+                if not check_left and not check_right:
+                    segs[lo] = (hi:, val:)
+                    return
+            else:
+                on_old(D.nth(lo).l..D.nth(seg.hi - 1).r, seg.val)
+                if sl < lo:
+                    if seg.val == val:
+                        new_lo = sl
+                    else:
+                        segs[sl] = (hi: lo, val: seg.val)
+                    check_left = false
+                else:
+                    let _ = segs.remove(lo)
+                var pos = seg.hi
+                while pos < hi:
+                    let old = segs.remove(pos)!
+                    if old.hi <= hi:
+                        on_old(D.nth(pos).l..D.nth(old.hi - 1).r, old.val)
+                        pos = old.hi
+                    else:
+                        on_old(D.nth(pos).l..D.nth(hi - 1).r, old.val)
+                        if old.val == val:
+                            new_hi = old.hi
+                        else:
+                            segs[hi] = (hi: old.hi, val: old.val)
+                        check_right = false
+                        break
+        if check_left:
+            if let (pl, pseg) = segs.last_lt(new_lo):
+                if pseg.val == val:
+                    new_lo = pl
+        if check_right:
+            if let nseg = segs.get(new_hi):
+                if nseg.val == val:
+                    let _ = segs.remove(new_hi)
+                    new_hi = nseg.hi
+        segs[new_lo] = (hi: new_hi, val:)
 
 
     /// Give position `i` the value `val` and return the value it had.
@@ -72,7 +144,11 @@ pub struct IntervalMap<D, T>:
     /// cost: O(log runs)
     /// traps: when `i` is outside `D`
     /// example: `var m = IntervalMap.from([1, 2]); m.assign_point(0, 5) == 1 and m.get(0) == 5`
-    pub fn assign_point(mut self, i: D, val: T) -> T = todo
+    pub fn assign_point(mut self, i: D, val: T) -> T:
+        var old: ?T = None
+        fn record(_: Range<D>, v: T): old = v
+        self.assign(i.l..i.r, val, on_old: record)
+        old!
 
     /// Every maximal run with its value.
     ///
@@ -81,7 +157,9 @@ pub struct IntervalMap<D, T>:
     /// order: ascending positions
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).each().map(p => p.val).collect() == [1, 2]`
-    pub fn each(self) -> yields (range: Range<D>, val: T) = todo
+    pub fn each(self) -> yields (range: Range<D>, val: T):
+        for (lo, seg) in segs.items:
+            yield (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
     /// Give position `i` the value `val`; `assign_point` without the old value, and the
     /// write-through place for `m[i] = val`.
@@ -286,14 +364,41 @@ fn interval_map_basic_and_coalescing() = todo
 fn interval_map_from_and_empty_domain() = todo
 
 @test
-fn interval_map_matches_dense_array() = todo
+fn interval_map_matches_dense_array():
+    domain P = 1..=25
+    var rng = Rng(42)
+    var m = IntervalMap<P, Int>.new(0)
+    var ref_a: [P]Int = 0
+    for _ in 0..200:
+        let l = rng.int(1, 25)
+        let r = rng.int(l, 25)
+        let v = rng.int(0, 4)
+        var pos = l
+        var over = List<(range: Range<P>, val: Int)>()
+        m.assign(P(l)..=P(r), v, on_old: (rg, old_v) => over.push((range: rg, val: old_v)))
+        for (rg, old_v) in over:
+            for i in rg:
+                assert i.to_idx + 1 == pos
+                assert ref_a[i] == old_v
+                ref_a[i] = v
+                pos += 1
+        assert pos == r + 1
+        // Verify maximal-run invariant and pointwise agreement.
+        var prev_val: ?Int = None
+        var covered = 0
+        for (rg, cur_v) in m.each():
+            if let pv = prev_val: assert pv != cur_v
+            prev_val = cur_v
+            covered += rg.len
+            for i in rg: assert ref_a[i] == cur_v
+        assert covered == 25
 
 /// Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
 /// Maintains maximal constant runs; `assign` is O((1 + removed) log runs) amortized.
 pub struct SparseIntervalMap<T>:
     _init: T
 
-    /// A map giving every coordinate of `lo..hi` the value `init`: one run, or none when `lo == hi`.
+    /// A map giving every coordinate of `lo..hi` the value `init`: one run, or None when `lo == hi`.
     ///
     /// cost: O(1)
     /// traps: when `lo > hi`

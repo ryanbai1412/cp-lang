@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Reduce spec/std/*.cp to reference docs: every fn body becomes `todo`.
+"""Check spec/std/*.cp, or reduce it to reference docs (every fn body `todo`).
 
-The spec is signatures, doc comments and costs; implementations live in
-stdlib/. Only fn bodies change: headers, docs, traits, structs and bodiless
+spec/std is moving toward the one library tree: signatures, docs and costs,
+with bodies ported from stdlib/ (scripts/port-bodies.py) where they exist.
+Without --check, only fn bodies change: headers, docs, traits, structs and bodiless
 trait methods are kept as written. `lends` fns keep their bodies, since the
 checker needs the `lend place` to type the place they return.
 
 Usage: scripts/spec-stub.py [--check] [FILE...]   (default spec/std/*.cp)
---check changes nothing and exits 1 if any fn still has a body, or if an
+--check changes nothing and exits 1 if an
 `@get` member is documented as costing more than O(1) to make: anything
 that does work up front takes parentheses (decision 140), or if a fn that
 mutates nothing declares no return type: the checker cannot type its result,
@@ -35,7 +36,8 @@ def doc_gaps(lines):
             j -= 1
         labels = {d.split(":", 1)[0] for d in doc if re.match(r"^[a-z]+:", d)}
         header = " ".join(lines[i:i + 6])
-        header = header[:header.find(" = todo")] if " = todo" in header else header
+        end = re.search(r"\)\s*(?:->[^=\n]*?)?(?:\s=\s|:\s*(?:$|\s{2,}))", header)
+        header = header[:end.end()] if end else header
         need = ["cost", "traps", "example"]
         if SEQ_INPUT.search(header.split("->")[0]):
             need.append("empty")
@@ -248,12 +250,12 @@ def main(argv):
     total = 0
     for f in files:
         lines = open(f).read().split("\n")
-        new, n = stub(lines)
-        total += n
-        if n and not check:
-            open(f, "w").write("\n".join(new))
-        if n:
-            print(f"{os.path.relpath(f)}: {n} body(ies){' left' if check else ' stubbed'}")
+        if not check:
+            new, n = stub(lines)
+            total += n
+            if n:
+                open(f, "w").write("\n".join(new))
+                print(f"{os.path.relpath(f)}: {n} body(ies) stubbed")
         if check:
             for line, name, cost in costly_getters(lines):
                 print(f"{os.path.relpath(f)}:{line}: `@get {name}` costs {cost}; "
@@ -271,7 +273,7 @@ def main(argv):
         for name in undocumented_prelude(os.path.join(os.path.dirname(__file__), "..")):
             print(f"spec/std/prelude.cp: `{name}` is in no core or lib chapter (core 11.3)")
             total += 1
-    print(f"spec-stub: {total} fn body(ies) {'with bodies' if check else 'stubbed'}")
+    print(f"spec-stub: {total} {'problem(s)' if check else 'fn body(ies) stubbed'}")
     return 1 if check and total else 0
 
 

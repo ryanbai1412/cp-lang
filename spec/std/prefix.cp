@@ -48,7 +48,15 @@ pub struct FillPrefix<D, T>:
     /// traps: when `i` is not the next position in fill order (out of order, repeated, or after
     /// every position is written)
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f.prefix(2) == 12`
-    pub fn set(mut self, i: D, x: T) = todo
+    pub fn set(mut self, i: D, x: T):
+        let in_order = i.ord == next
+        assert in_order
+        if rev:
+            p[i.l] = x + p[i.r]
+            next -= 1
+        else:
+            p[i.r] = p[i.l] + x
+            next += 1
 
     /// The sum of everything left of boundary `b`; zero at the first cut.
     ///
@@ -57,7 +65,11 @@ pub struct FillPrefix<D, T>:
     /// of `b` is written last)
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f.prefix(1) == 5`
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.prefix(0) == 0`
-    pub fn prefix(self, b: Cut<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T:
+        if b.ord == 0: return T.zero
+        let in_filled = if rev: next < 0 else: b.ord <= next
+        assert in_filled
+        return if rev: self.p[D.cuts.nth(0)] - self.p[b] else: self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.
     ///
@@ -82,7 +94,11 @@ pub struct Prefix<D, T>:
     /// empty: a table whose every query is zero
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
-    pub fn new(a: [D]T) -> Prefix<D, T> = todo
+    pub fn new(a: [D]T) -> Prefix<D, T>:
+        var p: [D.cuts]T = T.zero
+        for i in D:
+            p[i.r] = p[i.l] + a[i]
+        Prefix(p)
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
     ///
@@ -92,7 +108,10 @@ pub struct Prefix<D, T>:
     /// cost: O(|D|) time and space
     /// traps: never
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 2); f.fold(0..1) == 2`
-    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> = todo
+    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
+        let rev = order == FillOrder.Reverse
+        var p: [D.cuts]T = T.zero
+        FillPrefix(p, rev, if rev: D.K - 1 else: 0)
 
     /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
     ///
@@ -100,7 +119,7 @@ pub struct Prefix<D, T>:
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
-    pub fn prefix(self, b: Cut<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
@@ -179,7 +198,15 @@ pub struct _FillPrefix2 < R, C, T >:
     /// cost: O(1)
     /// traps: when `(r, c)` is not the next cell in fill order
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.prefix(1, 2) == 3`
-    pub fn set(mut self, r: R, c: C, x: T) = todo
+    pub fn set(mut self, r: R, c: C, x: T):
+        let in_order = r.ord * C.K + c.ord == next
+        assert in_order
+        if rev:
+            p[r.l, c.l] = x + p[r.r, c.l] + p[r.l, c.r] - p[r.r, c.r]
+            next -= 1
+        else:
+            p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + x
+            next += 1
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
     /// either cut is the first.
@@ -187,7 +214,16 @@ pub struct _FillPrefix2 < R, C, T >:
     /// cost: O(1)
     /// traps: when that rectangle is non-empty and holds a cell not yet written
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.set(1, 0, 3); f.prefix(2, 1) == 4`
-    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T:
+        if r.ord == 0 or c.ord == 0: return T.zero
+        let in_filled = if rev: next < 0 else: (r.ord - 1) * C.K + (c.ord - 1) < next
+        assert in_filled
+        let r0 = R.cuts.nth(0)
+        let c0 = C.cuts.nth(0)
+        return if rev:
+            self.p[r0, c0] - self.p[r, c0] - self.p[r0, c] + self.p[r, c]
+        else:
+            self.p[r, c]
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty.
     ///
@@ -211,7 +247,12 @@ pub struct _Prefix2 < R, C, T >:
     /// empty: a table whose every query is zero
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.fold(0..=1, 0..=2) == 21`
-    pub fn new(a: [R, C]T) -> Prefix<R, C, T> = todo
+    pub fn new(a: [R, C]T) -> Prefix<R, C, T>:
+        var p: [R.cuts, C.cuts]T = T.zero
+        for r in R:
+            for c in C:
+                p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + a[r, c]
+        _Prefix2(p)
 
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major
     /// `order`.
@@ -219,7 +260,10 @@ pub struct _Prefix2 < R, C, T >:
     /// cost: O(|R| * |C|) time and space
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 7); f.fold(0..=0, 0..=0) == 7`
-    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T> = todo
+    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
+        let rev = order == FillOrder.Reverse
+        var p: [R.cuts, C.cuts]T = T.zero
+        _FillPrefix2(p, rev, if rev: R.K * C.K - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
     /// either cut is the first.
@@ -228,7 +272,7 @@ pub struct _Prefix2 < R, C, T >:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(1, 2) == 3`
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(0, 3) == 0`
-    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = self.p[r, c]
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by
     /// inclusion-exclusion over the four corner cuts.
@@ -250,14 +294,26 @@ pub struct _FillPrefixList < T >:
     /// cost: O(1)
     /// traps: when `i` is not the next index in fill order (including any `i` outside `0..n`)
     /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.prefix(2) == 4`
-    pub fn set(mut self, i: Int, x: T) = todo
+    pub fn set(mut self, i: Int, x: T):
+        let in_order = i == next
+        assert in_order
+        if rev:
+            p[i] = x + p[i + 1]
+            next -= 1
+        else:
+            p[i + 1] = p[i] + x
+            next += 1
 
     /// The sum of the first `k` values; zero for `k == 0`.
     ///
     /// cost: O(1)
     /// traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
     /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.prefix(1) == 3`
-    pub fn prefix(self, k: Int) -> T = todo
+    pub fn prefix(self, k: Int) -> T:
+        if k == 0: return T.zero
+        let in_filled = if rev: next < 0 else: k <= next
+        assert in_filled
+        return if rev: self.p[0] - self.p[k] else: self.p[k]
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.
     ///
@@ -277,7 +333,11 @@ pub struct _PrefixList < T >:
     /// empty: a table whose every query is zero
     /// traps: never
     /// example: `Prefix<Int>([3, 1, 4]).prefix(3) == 8`
-    pub fn new(a: List<T>) -> Prefix<T> = todo
+    pub fn new(a: List<T>) -> Prefix<T>:
+        var p = List.filled(a.len + 1, T.zero)
+        for i in 0..a.len:
+            p[i + 1] = p[i] + a[i]
+        _PrefixList(p)
 
     /// Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)`
     /// in `order`.
@@ -285,7 +345,10 @@ pub struct _PrefixList < T >:
     /// cost: O(n) time and space
     /// traps: when `n < 0`
     /// example: `var f = Prefix<Int>.filling(2); f.set(0, 9); f.fold(0..1) == 9`
-    pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T> = todo
+    pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
+        assert n >= 0
+        let rev = order == FillOrder.Reverse
+        _FillPrefixList(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)
 
     /// The sum of the first `k` values; zero for `k == 0`.
     ///
@@ -293,7 +356,7 @@ pub struct _PrefixList < T >:
     /// traps: when `k` is not in `0..=n`
     /// example: `Prefix<Int>([3, 1, 4]).prefix(2) == 4`
     /// example: `Prefix<Int>([3, 1, 4]).prefix(0) == 0`
-    pub fn prefix(self, k: Int) -> T = todo
+    pub fn prefix(self, k: Int) -> T = self.p[k]
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.
     ///
@@ -319,7 +382,12 @@ pub struct _PrefixList < T >:
 /// traps: never (beyond what `op` traps on)
 /// example: `prefix_fold(*, [2, 3, 4])[2] == 6`
 /// example: `prefix_fold(*, [2, 3, 4])[0] == 1`
-pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T = todo
+pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
+    let m = Monoid<T>.of(op)
+    var p: [D.cuts]T = m.id
+    for i in D:
+        p[i.r] = m.op(p[i.l], a[i])
+    p
 
 /// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
 /// with `s[D.cuts.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
@@ -334,7 +402,12 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T = todo
 /// traps: never (beyond what `op` traps on)
 /// example: `suffix_fold(*, [2, 3, 4])[1] == 12`
 /// example: `suffix_fold(*, [2, 3, 4])[3] == 1`
-pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T = todo
+pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
+    let m = Monoid<T>.of(op)
+    var s: [D.cuts]T = m.id
+    for i in D.rev:
+        s[i.l] = m.op(a[i], s[i.r])
+    s
 
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// O(1) range/rectangle `add`, O(|D|) or O(|R| * |C|) `finish`.
@@ -346,7 +419,9 @@ pub struct Diff<D, T>:
     /// cost: O(|D|) time and space
     /// traps: never
     /// example: `domain D = 0..3; Diff<D, Int>().finish()[D(1)] == 0`
-    pub fn new() -> Diff<D, T> = todo
+    pub fn new() -> Diff<D, T>:
+        var d: [D.cuts]T = T.zero
+        Diff(d)
 
     /// Add `x` to every position in `r`; an empty `r` changes nothing.
     ///
@@ -354,7 +429,10 @@ pub struct Diff<D, T>:
     /// empty: no effect
     /// traps: never
     /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(1..3, 5); d.add(2..=3, 1); [d.finish()[v] for v in D] == [0, 5, 6, 1]`
-    pub fn add(mut self, r: Range<D>, x: T) = todo
+    pub fn add(mut self, r: Range<D>, x: T):
+        if r.is_empty: return
+        d[r.start] = d[r.start] + x
+        d[r.end] = d[r.end] - x
 
     /// The accumulated values across `D`: each position's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -364,7 +442,13 @@ pub struct Diff<D, T>:
     /// order: keyed by `D`
     /// traps: never
     /// example: `domain D = 0..3; var d = Diff<D, Int>(); d.add(0..=1, 2); d.finish()[D(1)] == 2 and d.finish()[D(2)] == 0`
-    pub fn finish(self) -> [D]T = todo
+    pub fn finish(self) -> [D]T:
+        var out: [D]T = T.zero
+        var cur = T.zero
+        for i in D:
+            cur = cur + d[i.l]
+            out[i] = cur
+        out
 
 /// Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(|R| * |C|) `finish`.
 pub struct _Diff2 < R, C, T >:
@@ -375,7 +459,9 @@ pub struct _Diff2 < R, C, T >:
     /// cost: O(|R| * |C|) time and space
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..2; Diff<R, C, Int>().finish()[R(1), C(1)] == 0`
-    pub fn new() -> Diff<R, C, T> = todo
+    pub fn new() -> Diff<R, C, T>:
+        var d: [R.cuts, C.cuts]T = T.zero
+        _Diff2(d)
 
     /// Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
     ///
@@ -383,7 +469,12 @@ pub struct _Diff2 < R, C, T >:
     /// empty: no effect when `rows` or `cols` is empty
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
-    pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T) = todo
+    pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):
+        if rows.is_empty or cols.is_empty: return
+        d[rows.start, cols.start] = d[rows.start, cols.start] + x
+        d[rows.start, cols.end] = d[rows.start, cols.end] - x
+        d[rows.end, cols.start] = d[rows.end, cols.start] - x
+        d[rows.end, cols.end] = d[rows.end, cols.end] + x
 
     /// The accumulated grid across `(R, C)`: each cell's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -393,7 +484,15 @@ pub struct _Diff2 < R, C, T >:
     /// order: keyed by `(R, C)`, row-major
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..2; var d = Diff<R, C, Int>(); d.add(1..=1, 0..=1, 4); d.add(0..=1, 1..=1, 1); d.finish()[R(1), C(1)] == 5`
-    pub fn finish(self) -> [R, C]T = todo
+    pub fn finish(self) -> [R, C]T:
+        var p: [R.cuts, C.cuts]T = T.zero
+        var out: [R, C]T = T.zero
+        for r in R:
+            for c in C:
+                let v = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + d[r.l, c.l]
+                p[r.r, c.r] = v
+                out[r, c] = v
+        out
 
 /// O(|D|) space. Online sweep-line difference accumulator: schedule future range adds in O(1)
 /// and advance a cursor through `D` in `order` in O(1) per position.
@@ -495,10 +594,50 @@ fn two_d_sums_match_brute() = todo
 fn a_plain_range_and_list_take_plain_ints() = todo
 
 @test
-fn prefix_and_suffix_folds_cover_outside_ranges() = todo
+fn prefix_and_suffix_folds_cover_outside_ranges():
+    domain V = 1..=8
+    let a = [V] _ => rand(-15, 15)
+    let pref = prefix_fold(max, a)
+    let suff = suffix_fold(max, a)
+    for l in V:
+        for r in l..=V.last:
+            let range = l..=r
+            var want = Int.MIN
+            for i in V:
+                if i < l or i > r: want max= a[i]
+            assert max(pref[range.start], suff[range.end]) == want
 
 @test
-fn diff_1d_and_2d_match_brute() = todo
+fn diff_1d_and_2d_match_brute():
+    domain V = 1..=9
+    var plain: [V]Int = 0
+    var d1 = Diff<V, Int>()
+    for _ in 0..40:
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        let x = rand(-7, 7)
+        for i in l..=r: plain[i] += x
+        d1.add(l..=r, x)
+    d1.add(V(3)..V(3), 99)
+    let got1 = d1.finish()
+    for i in V: assert got1[i] == plain[i]
+
+    domain R = 0..4
+    domain C = 1..=5
+    var g: [R, C]Int = 0
+    var d2 = Diff<R, C, Int>()
+    for _ in 0..40:
+        let r1 = R.nth(rand(0, 3))
+        let r2 = R.nth(rand(r1.to_idx, 3))
+        let c1 = C.nth(rand(0, 4))
+        let c2 = C.nth(rand(c1.to_idx, 4))
+        let x = rand(-5, 5)
+        for r in r1..=r2:
+            for c in c1..=c2: g[r, c] += x
+        d2.add(r1..=r2, c1..=c2, x)
+    let got2 = d2.finish()
+    for r in R:
+        for c in C: assert got2[r, c] == g[r, c]
 
 @test
 fn filling_1d_forward_and_reverse_match_brute() = todo

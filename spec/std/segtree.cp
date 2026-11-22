@@ -58,7 +58,21 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// empty: the identity
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
-    pub fn fold(self, r: Range<D>) -> T = todo
+    pub fn fold(self, r: Range<D>) -> T:
+        let (lo, hi) = r.ends
+        var (l, h) = (lo + size, hi + size)
+        var (a, b) = (m.id, m.id)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    a = m.op(a, t[l])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    b = m.op(t[h], b)
+                l /= 2
+                h /= 2
+        m.op(a, b)
 
     /// The last cut `d` at or right of `from` such that `ok(fold(from..d))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves right) and true on the identity, so `from`
@@ -92,14 +106,20 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// order: position `i` holds `f(i)`
     /// traps: never
     /// example: `let w = [1, 2, 3]; SegTree<0..3, Int>.of(+, i => w[i] * 2).all == 12`
-    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T> = todo
+    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T>:
+        var s = SegTree<D, T>.new(op, [D] i => f(i))
+        s.source = f
+        s
 
     /// Recompute position `i` as `f(i)` with the formula given to `of`, and update its ancestors.
     ///
     /// cost: O(log |D|) plus one call of `f`
     /// traps: when `i` is outside `D`, or the tree was not built with `of`
     /// example: `var w = [1, 2, 3]; var s = SegTree<0..3, Int>.of(+, i => w[i]); w[1] = 10; s.refresh(1); s.all == 14`
-    pub fn refresh(mut self, i: D) = todo
+    pub fn refresh(mut self, i: D):
+        assert source != None  // only a tree built with `of` has a formula
+        let f = source!
+        self.set(i, f(i))
 
     /// The value at position `i`, with every tag applied.
     ///
@@ -107,14 +127,16 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T = t[size + i.to_idx]
 
     /// Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.
     ///
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
-    pub fn set(mut self, i: D, x: T) = todo
+    pub fn set(mut self, i: D, x: T):
+        t[size + i.to_idx] = x
+        self.pull(i)
 
     /// Position `i` as a writable place: `st.at(i) += x`, `st.at(i) max= x`. The ancestors are
     /// updated when the write ends, so each use is one `set`; read with `get` instead.
@@ -126,14 +148,20 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         lend mut t[size + i.to_idx]
         self.pull(i)
 
-    fn pull(mut self, i: D) = todo
+    fn pull(mut self, i: D):
+        var p = i.to_idx + size
+        unchecked:
+            while p > 1:
+                p /= 2
+                t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// Replace the value `v` at `i` with `f(v)`; `set(i, f(get(i)))` in one walk.
     ///
     /// cost: O(log |D|) plus one call of `f`
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.update(2, x => x * 10); s.all == 33`
-    pub fn update(mut self, i: D, f: T -> T) = todo
+    pub fn update(mut self, i: D, f: T -> T):
+        self.set(i, f(self.get(i)))
 
     /// The fold of every position, left to right.
     ///
@@ -184,28 +212,100 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     pub fn walk(self, r: Range<D>) -> yields T = todo
 
 @test
-fn folds_match_a_plain_array() = todo
+fn folds_match_a_plain_array():
+    domain V = 1..=11
+    var a = [V] v => rand(-20, 20)
+    var st = SegTree<V, Int>(max, a)
+    for _ in 0..80:
+        let i = V.nth(rand(0, 10))
+        a[i] = rand(-20, 20)
+        st.set(i, a[i])
+        let l = V.nth(rand(0, 10))
+        let r = V.nth(rand(l.to_idx, 10))
+        assert st.fold(l..=r) == max(a[v] for v in l..=r)
+    assert st.all == max(a[v] for v in V)
+    assert st.fold(V(3)..V(3)) == Int.MIN
+    assert st.fold(..V(4)) == max(a[v] for v in V if v < V(4))
+    assert st.fold(V(4)..) == max(a[v] for v in V if v >= V(4))
 
 @test
-fn at_is_a_writable_leaf() = todo
+fn at_is_a_writable_leaf():
+    domain V = 1..=9
+    var a = [V] v => rand(-20, 20)
+    var st = SegTree<V, Int>(+, a)
+    for _ in 0..60:
+        let i = V.nth(rand(0, 8))
+        let x = rand(-9, 9)
+        if rand(0, 1) == 0:
+            a[i] += x
+            st.at(i) += x
+        else:
+            a[i] = max(a[i], x)
+            st.at(i) max= x
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+    assert st.all == sum(a)
 
 @test
-fn every_bare_operator_folds() = todo
+fn every_bare_operator_folds():
+    domain V = 0..6
+    let a = [V] v => [12, 18, 6, 30, 7, 9][v.to_idx]
+    assert SegTree<V, Int>(+, a).all == 82
+    assert SegTree<V, Int>(min, a).all == 6
+    assert SegTree<V, Int>(gcd, a).fold(V(0)..=V(3)) == 6
+    assert SegTree<V, Int>(^, a).fold(V(0)..=V(1)) == 12 ^ 18
+    assert SegTree<V, Int>(&, a).fold(V(0)..=V(1)) == 12 & 18
+    assert SegTree<V, Int>(|, a).fold(V(0)..=V(1)) == 12 | 18
+    assert SegTree<V, Int>(*, a).fold(V(4)..=V(5)) == 63
+    // over ?Int, `None` is "no value": the identity of max, and what an empty range folds to
+    var best = SegTree<V, ?Int>(max)
+    assert best.all == None
+    best.set(V(2), 5)
+    best.set(V(4), -1)
+    assert best.all == 5 and best.fold(V(3)..) == -1 and best.fold(..V(2)) == None
 
 @test
-fn of_and_refresh_follow_the_formula() = todo
+fn of_and_refresh_follow_the_formula():
+    domain V = 1..=9
+    var a = [V] v => rand(-20, 20)
+    var st = SegTree<V, Int>.of(min, v => a[v] + v.ord)
+    for _ in 0..60:
+        let i = V.nth(rand(0, 8))
+        a[i] = rand(-20, 20)
+        st.refresh(i)
+        assert st.all == min(a[v] + v.ord for v in V)
+        assert st.get(i) == a[i] + i.ord
 
 @test
-fn keeps_the_order_for_non_commutative_monoids() = todo
+fn keeps_the_order_for_non_commutative_monoids():
+    domain P = 0..5
+    let cat = Monoid<Str>("", (a, b) => a + b)
+    var st = SegTree<P, Str>(cat)
+    for (i, w) in [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")]: st.set(P(i), w)
+    assert st.fold(P(1)..=P(3)) == "bcd"
+    assert st.all == "abcde"
 
 @test
 fn right_while_and_left_while_binary_search() = todo
 
 @test
-fn update_changes_one_value_in_place() = todo
+fn update_changes_one_value_in_place():
+    domain V = 0..6
+    var st = SegTree<V, Int>(+, [V] v => v.to_idx)
+    st.update(V(2), x => x + 10)
+    st.update(V(5), x => x * 2)
+    assert st.get(V(2)) == 12 and st.get(V(5)) == 10 and st.all == 15 + 10 + 5
 
 @test
-fn fill_option_initializes_leaves_without_array() = todo
+fn fill_option_initializes_leaves_without_array():
+    domain V = 1..=5
+    var st = SegTree<V, Int>(max, fill: 0)
+    assert st.all == 0 and st.get(V(3)) == 0
+    st.set(V(2), -4)
+    assert st.fold(V(2)..=V(2)) == -4 and st.all == 0
+    let summed = SegTree<V, Int>(+, fill: 7)
+    assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21
 
 /// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 /// Build in O(n log n) time and memory; answer value-range counts over any `Range<D>` in O(log^2 n).
@@ -222,11 +322,57 @@ pub struct MergeSortTree<D, T>:
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
-    pub fn new(a: [D]T) -> MergeSortTree<D, T> = todo
+    pub fn new(a: [D]T) -> MergeSortTree<D, T>:
+        let size = bit_ceil(D.K)
+        var data: List<T> = []
+        var beg: List<0..=2_000_000_000> = List.filled(2 * size, 0)
+        var fin: List<0..=2_000_000_000> = List.filled(2 * size, 0)
+        unchecked:
+            for i in D:
+                let p = size + i.to_idx
+                beg[p] = data.len
+                data.push(a[i])
+                fin[p] = data.len
+            for p in (1..size).rev:
+                let (li, le) = (beg[2 * p], fin[2 * p])
+                let (ri, re) = (beg[2 * p + 1], fin[2 * p + 1])
+                beg[p] = data.len
+                var (i, j) = (li, ri)
+                while i < le and j < re:
+                    if data[i] <= data[j]:
+                        data.push(data[i])
+                        i += 1
+                    else:
+                        data.push(data[j])
+                        j += 1
+                while i < le:
+                    data.push(data[i])
+                    i += 1
+                while j < re:
+                    data.push(data[j])
+                    j += 1
+                fin[p] = data.len
+        MergeSortTree(data, beg, fin, size)
 
-    fn lower_idx(self, u: Int, x: T) -> Int = todo
+    fn lower_idx(self, u: Int, x: T) -> Int:
+        unchecked:
+            let base = beg[u]
+            var (lo, hi) = (base, fin[u])
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if data[mid] < x: lo = mid + 1
+                else: hi = mid
+            return lo - base
 
-    fn upper_idx(self, u: Int, x: T) -> Int = todo
+    fn upper_idx(self, u: Int, x: T) -> Int:
+        unchecked:
+            let base = beg[u]
+            var (lo, hi) = (base, fin[u])
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if data[mid] <= x: lo = mid + 1
+                else: hi = mid
+            return lo - base
 
     /// The number of positions in `r` whose value is `< x`.
     ///
@@ -234,7 +380,20 @@ pub struct MergeSortTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
-    pub fn count_lt(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_lt(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        var (l, h, ans) = (lo + size, hi + size, 0)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    ans += self.lower_idx(l, x)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    ans += self.lower_idx(h, x)
+                l /= 2
+                h /= 2
+        ans
 
     /// The number of positions in `r` whose value is `<= x`.
     ///
@@ -242,7 +401,20 @@ pub struct MergeSortTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_le(0..5, 3) == 3`
-    pub fn count_le(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_le(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        var (l, h, ans) = (lo + size, hi + size, 0)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    ans += self.upper_idx(l, x)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    ans += self.upper_idx(h, x)
+                l /= 2
+                h /= 2
+        ans
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
@@ -251,7 +423,9 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(1..4, 1, 4) == 3`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(0..5, 4, 3) == 0`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int = todo
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+        if lo_v > hi_v: return 0
+        self.count_le(r, hi_v) - self.count_lt(r, lo_v)
 
     /// The number of positions in `r` whose value is `> x`.
     ///

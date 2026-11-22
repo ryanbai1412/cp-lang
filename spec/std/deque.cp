@@ -17,7 +17,7 @@ pub struct Deque<T>:
     /// cost: O(1); nothing is allocated until the first push
     /// traps: never
     /// example: `var q: Deque<Int> = Deque(); q.len == 0`
-    pub fn new() -> Deque<T> = todo
+    pub fn new() -> Deque<T> = Deque([], 0, 0, -1, 1)
 
     /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
     /// then `while let u = q.pop_front(): ...`. O(n).
@@ -30,7 +30,11 @@ pub struct Deque<T>:
     /// traps: never
     /// example: `Deque.of([1, 2, 3]).to_list() == [1, 2, 3]`
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1)`
-    pub fn of(xs: List<T>) -> Deque<T> = todo
+    pub fn of(xs: List<T>) -> Deque<T>:
+        var q = Deque<T>.new()
+        q.reserve(xs.len)
+        for x in xs: q.push(x)
+        q
 
     /// Reserve capacity for at least `cap` elements without reallocating. O(1) when empty, O(cap) otherwise.
     ///
@@ -40,7 +44,14 @@ pub struct Deque<T>:
     /// cost: O(1) when empty, O(cap) otherwise
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.reserve(100); q.to_list() == [1, 2]`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        var c = 1
+        while c < cap: c *= 2
+        if c <= mask + 1: return
+        if buf.is_empty:
+            if c > want: want = c
+        else:
+            self.grow_to(c, buf[head])
 
     /// Number of elements currently in the deque.
     ///
@@ -62,23 +73,49 @@ pub struct Deque<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.clear(); q.len == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        buf = []
+        head = 0
+        n = 0
+        mask = -1
+        want = 1
 
     /// Move the deque's contents out in O(1), leaving `self` empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); let r = q.take(); q.len == 0 and r.to_list() == [1, 2]`
-    pub fn take(mut self) -> Deque<T> = todo
+    pub fn take(mut self) -> Deque<T>:
+        let out = Deque(buf, head, n, mask, want)
+        buf = []
+        head = 0
+        n = 0
+        mask = -1
+        want = 1
+        out
 
-    fn grow_to(mut self, cap: Int, fill: T) = todo
+    fn grow_to(mut self, cap: Int, fill: T):
+        let m = mask
+        var nb = List.filled(cap, fill)
+        unchecked:
+            for i in 0..n:
+                nb[i] = buf[(head + i) & m]
+        swap(mut buf, mut nb)
+        head = 0
+        mask = cap - 1
 
     /// Append `x` to the back of the deque.
     ///
     /// cost: O(1) amortized; a full ring doubles
     /// traps: never
     /// example: `var q = Deque.of([1]); q.push(2); q.to_list() == [1, 2]`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        if n > mask:
+            let cap = if mask < 0: want else: 2 * (mask + 1)
+            self.grow_to(cap, x)
+        unchecked:
+            buf[(head + n) & mask] = x
+        n += 1
 
     /// Prepend `x` to the front of the deque.
     ///
@@ -87,7 +124,14 @@ pub struct Deque<T>:
     /// cost: O(1) amortized; a full ring doubles
     /// traps: never
     /// example: `var q = Deque.of([1]); q.push_front(0); q.to_list() == [0, 1]`
-    pub fn push_front(mut self, x: T) = todo
+    pub fn push_front(mut self, x: T):
+        if n > mask:
+            let cap = if mask < 0: want else: 2 * (mask + 1)
+            self.grow_to(cap, x)
+        unchecked:
+            head = (head - 1) & mask
+            buf[head] = x
+        n += 1
 
     /// Remove and return the back, or `None` when empty.
     ///
@@ -95,7 +139,11 @@ pub struct Deque<T>:
     /// empty: `None`, and the deque stays empty
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop() == Some(2) and q.to_list() == [1]`
-    pub fn pop(mut self) -> ?T = todo
+    pub fn pop(mut self) -> ?T:
+        if n == 0: return None
+        n -= 1
+        unchecked:
+            return Some(buf[(head + n) & mask])
 
     /// Remove and return the front, or `None` when empty.
     ///
@@ -103,7 +151,13 @@ pub struct Deque<T>:
     /// empty: `None`, and the deque stays empty
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1) and q.to_list() == [2]`
-    pub fn pop_front(mut self) -> ?T = todo
+    pub fn pop_front(mut self) -> ?T:
+        if n == 0: return None
+        unchecked:
+            let x = buf[head]
+            head = (head + 1) & mask
+            n -= 1
+            return Some(x)
 
     /// O(k) for `k` removed. Remove and return the longest front run on which `ok` holds,
     /// in order: a queue sorted by key releases everything below a rising threshold.
@@ -172,7 +226,10 @@ pub struct Deque<T>:
     /// traps: when `i` is not in `0..len`
     /// example: `Deque.of([7, 8]).get(1) == 8`
     /// example: `var q = Deque.of([1]); q.push_front(0); q[0] == 0`
-    pub fn get(self, i: Int) -> T = todo
+    pub fn get(self, i: Int) -> T:
+        assert 0 <= i and i < n
+        unchecked:
+            return buf[(head + i) & mask]
 
     /// Overwrite the `i`-th element from the front (W8 `IndexSet` backing `dq[i] = x`).
     ///
@@ -375,13 +432,62 @@ pub struct LinkedList<T>:
     pub fn each_rev(self) -> yields T = todo
 
 @test
-fn a_deque_matches_a_list() = todo
+fn a_deque_matches_a_list():
+    var q: Deque<Int> = []
+    var xs: List<Int> = []
+    for _ in 0..400:
+        let k = rand(0, 5)
+        if k == 0:
+            let x = rand(0, 99)
+            q.push(x)
+            xs.push(x)
+        elif k == 1:
+            let x = rand(0, 99)
+            q.push_front(x)
+            xs = [x] + xs
+        elif k == 2:
+            assert q.pop() == (if xs.is_empty: None else: xs.pop())
+        elif k == 3:
+            let want = xs.first
+            if not xs.is_empty: xs.remove(0)
+            assert q.pop_front() == want
+        else:
+            assert q.len == xs.len and q.is_empty == xs.is_empty
+            assert q.first == xs.first and q.last == xs.last
+            for i in 0..xs.len: assert q[i] == xs[i]
+    q.clear()
+    assert q.is_empty and q.pop() == None and q.pop_front() == None
+    for x in [10, 20, 30]: q.push(x)
+    var moved = q.take()
+    assert q.is_empty and moved.len == 3 and moved.pop_front() == 10 and moved.pop() == 30
 
 @test
-fn a_deque_as_a_bfs_queue() = todo
+fn a_deque_as_a_bfs_queue():
+    // 0-1 BFS on a line: stepping right is free, stepping left costs 1
+    var dist: List<?Int> = [None, None, None, None, None]
+    var q = Deque<Int>()
+    dist[2] = 0
+    q.push(2)
+    while let u = q.pop_front():
+        if u + 1 < 5 and (dist[u + 1] == None or dist[u + 1]! > dist[u]!):
+            dist[u + 1] = dist[u]
+            q.push_front(u + 1)
+        if u >= 1 and (dist[u - 1] == None or dist[u - 1]! > dist[u]! + 1):
+            dist[u - 1] = dist[u]! + 1
+            q.push(u - 1)
+    assert dist == [2, 1, 0, 0, 0]
 
 @test
 fn a_deque_of_a_list_is_a_bfs_queue() = todo
 
 @test
-fn a_deque_reserve_preserves_order() = todo
+fn a_deque_reserve_preserves_order():
+    var q: Deque<Int> = []
+    q.reserve(64)
+    for i in 0..20: q.push(i)
+    for i in 1..=10: q.push_front(-i)
+    q.reserve(256)
+    q.reserve(4)
+    assert q.len == 30
+    assert q[0] == -10 and q[10] == 0 and q[29] == 19
+    assert q.pop_front() == -10 and q.pop() == 19

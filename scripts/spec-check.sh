@@ -13,7 +13,7 @@ if [ $# -eq 0 ]; then
     python3 "$root/scripts/spec-vocab.py" | tail -1
     python3 "$root/scripts/spec-blocks.py" --ratchet
     python3 "$root/scripts/spec-stub.py" --check >/dev/null ||
-        echo "spec-check: WARNING: spec/std has fn bodies; run scripts/spec-stub.py" >&2
+        echo "spec-check: WARNING: spec/std has doc or signature problems; run scripts/spec-stub.py --check" >&2
     mapfile -t gold < <(grep -v '^#' "$root/corpus/gold/GOLD.txt" | sed '/^$/d; s|^|'"$root"'/|')
     python3 "$root/scripts/dream-gaps.py" "${gold[@]}" | sed '1s/^dreams:/gold:/'
     echo

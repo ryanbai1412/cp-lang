@@ -19,7 +19,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `Concave.point(3).at(3) == 0`
-    pub fn point(d: Int) -> Concave = todo
+    pub fn point(d: Int) -> Concave = Concave(d, 0, falling())
 
     /// The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of
     /// `r` and `hi` the last.
@@ -29,7 +29,10 @@ pub struct Concave(start: Int, base: Int):
     /// traps: when `r` is empty
     /// example: `let f = Concave.flat(2..5); f.lo == 2 and f.hi == 4`
     /// example: `var f = Concave.flat(0..=1); f.max() == 0`
-    pub fn flat(r: Range<Int>) -> Concave = todo
+    pub fn flat(r: Range<Int>) -> Concave:
+        var f = Concave.point(r.first!)
+        for _ in 0..r.len - 1: f.slopes.insert(0)
+        f
 
     /// Make room for `n` slopes in total, so later operations do not regrow the storage. Changes
     /// no value.
@@ -37,7 +40,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: O(n)
     /// traps: when `n < 0`
     /// example: `var f = Concave.flat(0..=3); f.reserve(100); f.at(2) == 0`
-    pub fn reserve(mut self, n: Int) = todo
+    pub fn reserve(mut self, n: Int) = start
 
     /// The first point of the domain.
     ///
@@ -62,7 +65,10 @@ pub struct Concave(start: Int, base: Int):
     /// traps: never
     /// example: `var f = Concave.point(0); f.add_const(3); f.max_convolve(Concave.flat(0..=2)); f.hi == 2 and f.at(1) == 3`
     /// example: `var f = Concave.flat(0..=2); f.add_abs(1); var g = Concave.flat(0..=1); g.add_linear(-5); f.max_convolve(g); f.at(3) == -6`
-    pub fn max_convolve(mut self, g: Concave) = todo
+    pub fn max_convolve(mut self, g: Concave):
+        start += g.start
+        base += g.base
+        for s in g.slopes.to_list(): slopes.insert(s)
 
     /// `f(c) += q(c)` for a quadratic `q` with leading coefficient at most 0, so `f` stays concave.
     /// `q` is called at most four times: three points fix it and a fourth checks that it is
@@ -71,14 +77,22 @@ pub struct Concave(start: Int, base: Int):
     /// cost: O(1)
     /// traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is positive
     /// example: `var f = Concave.flat(0..=3); f.add_quadratic(x => -x * x + 1); f.at(2) == -3`
-    pub fn add_quadratic(mut self, q: Int -> Int) = todo
+    pub fn add_quadratic(mut self, q: Int -> Int):
+        let (q0, q1, q2) = (q(start), q(start + 1), q(start + 2))
+        let step = q2 - 2 * q1 + q0
+        assert step <= 0
+        assert q(start + 3) == q0 + 3 * (q2 - q1)
+        base += q0
+        slopes.apply_all(Slide(q1 - q0, step))
 
     /// The value `f(c)`.
     ///
     /// cost: O(log n) expected (O(c - lo + log n) in the current implementation)
     /// traps: when `c` is outside `lo..=hi`
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.at(4) == -3`
-    pub fn at(mut self, c: Int) -> Int = todo
+    pub fn at(mut self, c: Int) -> Int:
+        assert start <= c and c <= start + slopes.len
+        base + slopes.take(c - start).sum()
 
     /// The largest value of `f` over its domain.
     ///
@@ -86,7 +100,12 @@ pub struct Concave(start: Int, base: Int):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.add_const(5); f.max() == 5`
-    pub fn max(mut self) -> Int = todo
+    pub fn max(mut self) -> Int:
+        var best = base
+        for s in slopes.to_list():
+            if s <= 0: break
+            best += s
+        best
 
     /// Add `min(0, x - a)`: a hinge with slope 1 left of `a` and flat from `a` on.
     ///
@@ -169,7 +188,7 @@ pub struct Convex(neg: Concave):
     /// cost: O(1)
     /// traps: never
     /// example: `Convex.point(3).at(3) == 0`
-    pub fn point(d: Int) -> Convex = todo
+    pub fn point(d: Int) -> Convex = Convex(Concave.point(d))
 
     /// The function that is 0 on every point of `r`; its domain is `r`.
     ///
@@ -177,7 +196,7 @@ pub struct Convex(neg: Concave):
     /// empty: traps
     /// traps: when `r` is empty
     /// example: `let f = Convex.flat(2..5); f.lo == 2 and f.hi == 4`
-    pub fn flat(r: Range<Int>) -> Convex = todo
+    pub fn flat(r: Range<Int>) -> Convex = Convex(Concave.flat(r))
 
     /// The first point of the domain.
     ///
@@ -223,7 +242,7 @@ pub struct Convex(neg: Concave):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(1); f.add_const(5); f.min() == 5`
-    pub fn min(mut self) -> Int = todo
+    pub fn min(mut self) -> Int = -neg.max()
 
     /// Add `max(0, a - x)`: slope -1 left of `a` and flat from `a` on.
     ///
@@ -295,7 +314,41 @@ pub struct Convex(neg: Concave):
     pub fn argmin(mut self) -> Range<Int> = todo
 
 @test
-fn concave_matches_a_table_dp() = todo
+fn concave_matches_a_table_dp():
+    for _ in 0..200:
+        var f = Concave.point(rand(-3, 3))
+        var lo = f.lo
+        var t = [0]
+        for _ in 0..rand(1, 12):
+            let pick = rand(0, 2)
+            if pick == 0:
+                let (a, b) = (rand(-3, 0), rand(-20, 20))
+                let c0 = rand(-30, 30)
+                fn q(c: Int) -> Int = a * c * c + b * c + c0
+                f.add_quadratic(q)
+                t = [t[i] + q(lo + i) for i in 0..t.len]
+            else:
+                let (d, w) = (rand(-2, 2), rand(0, 3))
+                f.max_convolve(Concave.flat(d..=d + w))
+                lo += d
+                var u = [Int.MIN for _ in 0..t.len + w]
+                for i in 0..t.len:
+                    for j in 0..=w: u[i + j] = max(u[i + j], t[i])
+                t = u
+        assert f.lo == lo and f.hi == lo + t.len - 1
+        for i in 0..t.len: assert f.at(lo + i) == t[i]
+        assert f.max() == t.max()!
 
 @test
-fn convex_mirrors_concave() = todo
+fn convex_mirrors_concave():
+    for _ in 0..100:
+        var f = Convex.point(0)
+        var g = Concave.point(0)
+        for _ in 0..rand(1, 8):
+            let (a, b, w) = (rand(0, 3), rand(-9, 9), rand(0, 2))
+            f.add_quadratic(c => a * c * c + b * c)
+            g.add_quadratic(c => -(a * c * c + b * c))
+            f.min_convolve(Convex.flat(0..=w))
+            g.max_convolve(Concave.flat(0..=w))
+        for c in f.lo..=f.hi: assert f.at(c) == -g.at(c)
+        assert f.min() == -g.max()

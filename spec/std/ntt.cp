@@ -14,17 +14,148 @@ const P1 = 998_244_353
 const P2 = 469_762_049
 const P3 = 167_772_161
 
-fn root_of(p: Int) -> Int = todo
+fn root_of(p: Int) -> Int = if p == P1 or p == P2 or p == P3: 3
+    elif p == 754_974_721: 11
+    else: primitive_root(p)
 
-fn mont_inv(p: Int) -> Int = todo
+fn mont_inv(p: Int) -> Int:
+    var x: U64 = U64(p)
+    let pu = U64(p)
+    for _ in 0..4: x = x * (U64(2) - pu * x)
+    Int((U64(0) - x) & U64(4_294_967_295))
 
-fn mred(x: Int, p: Int, pinv: Int) -> Int = todo
+fn mred(x: Int, p: Int, pinv: Int) -> Int:
+    let r = (x + (((x & 4_294_967_295) * pinv) & 4_294_967_295) * p) >> 32
+    if r >= p: r - p else: r
 
-fn bit_reverse<T>(mut a: List<T>) = todo
+fn bit_reverse<T>(mut a: List<T>):
+    let n = a.len
+    unchecked:
+        var j = 0
+        for i in 1..n:
+            var bit = n >> 1
+            while (j & bit) != 0:
+                j ^= bit
+                bit >>= 1
+            j ^= bit
+            if i < j:
+                let tmp = a[i]
+                a[i] = a[j]
+                a[j] = tmp
 
-fn ntt_raw(mut a: List<Int>, p: Int, g: Int, inverse: Bool) = todo
+fn ntt_raw(mut a: List<Int>, p: Int, g: Int, inverse: Bool):
+    let n = a.len
+    assert n.is_pow2, "ntt requires a power-of-two length"
+    if n <= 1: return
+    assert (p - 1) % n == 0, "modulus p - 1 must be divisible by n"
+    bit_reverse(mut a)
+    if p < 1_073_741_824:
+        let pinv = mont_inv(p)
+        let r1 = (1 << 32) % p
+        let r2 = r1 * r1 % p
+        var roots = List.filled(n >> 1, 0)
+        unchecked:
+            for i in 0..n: a[i] = mred(a[i] * r2, p, pinv)
+            var len = 2
+            while len <= n:
+                let half = len >> 1
+                var wlen = pow_mod(g, (p - 1) / len, p)
+                if inverse: wlen = pow_mod(wlen, p - 2, p)
+                let wlen_m = mred(wlen * r2, p, pinv)
+                roots[0] = r1
+                for k in 1..half: roots[k] = mred(roots[k - 1] * wlen_m, p, pinv)
+                var i = 0
+                while i < n:
+                    for k in 0..half:
+                        let u = a[i + k]
+                        let v = mred(a[i + k + half] * roots[k], p, pinv)
+                        var x = u + v
+                        if x >= p: x -= p
+                        var y = u - v
+                        if y < 0: y += p
+                        a[i + k] = x
+                        a[i + k + half] = y
+                    i += len
+                len <<= 1
+            if inverse:
+                let inv_n = pow_mod(n, p - 2, p)
+                for i in 0..n: a[i] = mred(a[i] * inv_n, p, pinv)
+            else:
+                for i in 0..n: a[i] = mred(a[i], p, pinv)
+        return
+    let small = p <= 3_037_000_499
+    unchecked:
+        var len = 2
+        while len <= n:
+            let half = len >> 1
+            var wlen = pow_mod(g, (p - 1) / len, p)
+            if inverse: wlen = pow_mod(wlen, p - 2, p)
+            var i = 0
+            while i < n:
+                var w = 1
+                for k in 0..half:
+                    let u = a[i + k]
+                    let v = if small: a[i + k + half] * w % p else: mul_mod(a[i + k + half], w, p)
+                    var x = u + v
+                    if x >= p: x -= p
+                    var y = u - v
+                    if y < 0: y += p
+                    a[i + k] = x
+                    a[i + k + half] = y
+                    w = if small: w * wlen % p else: mul_mod(w, wlen, p)
+                i += len
+            len <<= 1
+        if inverse:
+            let inv_n = pow_mod(n, p - 2, p)
+            for i in 0..n: a[i] = if small: a[i] * inv_n % p else: mul_mod(a[i], inv_n, p)
 
-fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int> = todo
+fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>:
+    if a.is_empty or b.is_empty: return []
+    let na = a.len
+    let nb = b.len
+    if cyclic:
+        assert na == nb, "cyclic convolution requires equal-length inputs"
+    let n_out = if cyclic: na else: na + nb - 1
+    if min(na, nb) <= 60:
+        var out = List.filled(n_out, 0)
+        let small = p <= 3_037_000_499
+        for i in 0..na:
+            let ai = a[i] % p
+            if ai == 0: continue
+            for j in 0..nb:
+                let bj = b[j] % p
+                let prod = if small: ai * bj % p else: mul_mod(ai, bj, p)
+                let idx = if cyclic: (i + j) % na else: i + j
+                var s = out[idx] + prod
+                if s >= p: s -= p
+                out[idx] = s
+        return out
+    let g = root_of(p)
+    let need = if cyclic and na.is_pow2 and (p - 1) % na == 0: na else: bit_ceil(na + nb - 1)
+    assert (p - 1) % need == 0, "modulus p - 1 must be divisible by n"
+    var fa = List.filled(need, 0)
+    var fb = List.filled(need, 0)
+    unchecked:
+        for i in 0..na: fa[i] = a[i] % p
+        for i in 0..nb: fb[i] = b[i] % p
+    ntt_raw(mut fa, p, g, false)
+    ntt_raw(mut fb, p, g, false)
+    let small = p <= 3_037_000_499
+    unchecked:
+        for i in 0..need: fa[i] = if small: fa[i] * fb[i] % p else: mul_mod(fa[i], fb[i], p)
+    ntt_raw(mut fa, p, g, true)
+    if not cyclic:
+        if fa.len > n_out: fa.truncate(n_out)
+        return fa
+    if need == na: return fa
+    var out = List.filled(na, 0)
+    unchecked:
+        for i in 0..na + nb - 1:
+            let idx = i % na
+            var s = out[idx] + fa[i]
+            if s >= p: s -= p
+            out[idx] = s
+    out
 
 /// In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.
 ///
@@ -110,7 +241,25 @@ pub enum SosOver = Sub | Sup
 /// example: `var a = [1, 2, 3, 4]; sos(mut a); a == [1, 3, 4, 10]`
 /// example: `var a = [1, 2, 3, 4]; sos(mut a, over: Sup); a == [10, 6, 7, 4]`
 /// example: `var a = [1, 3, 4, 10]; sos(mut a, inverse: true); a == [1, 2, 3, 4]`
-pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false) = todo
+pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
+    let n = a.len
+    assert n.is_pow2, "sos requires a power-of-two length"
+    var bit = 1
+    match over:
+        Sub:
+            while bit < n:
+                for mask in 0..n:
+                    if (mask & bit) != 0:
+                        if inverse: a[mask] -= a[mask ^ bit]
+                        else: a[mask] += a[mask ^ bit]
+                bit <<= 1
+        Sup:
+            while bit < n:
+                for mask in 0..n:
+                    if (mask & bit) == 0:
+                        if inverse: a[mask] -= a[mask | bit]
+                        else: a[mask] += a[mask | bit]
+                bit <<= 1
 
 /// In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.
 ///
@@ -126,7 +275,33 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false) 
 /// example: `var a = [1, 2]; fwht(mut a); a == [3, -1]`
 /// example: `var a = [1, 2, 3, 4]; fwht(mut a); a == [10, -2, -4, 0]`
 /// example: `var a = [10, -2, -4, 0]; fwht(mut a, inverse: true); a == [1, 2, 3, 4]`
-pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false) = todo
+pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
+    let n = a.len
+    assert n.is_pow2, "fwht requires a power-of-two length"
+    var step = 1
+    unchecked:
+        while step < n:
+            var i = 0
+            while i < n:
+                for j in i..i + step:
+                    let u = a[j]
+                    let v = a[j + step]
+                    a[j] = u + v
+                    a[j + step] = u - v
+                i += step << 1
+            step <<= 1
+    if inverse and n > 1:
+        var n_t = T.one
+        var m = n
+        while m > 1:
+            n_t = n_t + n_t
+            m >>= 1
+        let inv_n = T.one / n_t
+        unchecked:
+            if inv_n != T.zero:
+                for i in 0..n: a[i] = a[i] * inv_n
+            else:
+                for i in 0..n: a[i] = a[i] / n_t
 
 /// O(log^2 n) amortized per step, O(n log^2 n) total. Online (relaxed) NTT convolution:
 /// supply `(a[k], b[k])` one step at a time and immediately receive `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
@@ -220,10 +395,81 @@ pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 
 @test
-fn ntt_round_trip_and_convolve() = todo
+fn ntt_round_trip_and_convolve():
+    type Z = Mod<998_244_353>
+    var a = [Z(i * 7 + 3) for i in 0..16]
+    let orig = [x for x in a]
+    ntt(mut a)
+    ntt(mut a, inverse: true)
+    assert a == orig
+    ntt(mut a, bit_reversed: true)
+    ntt(mut a, inverse: true, bit_reversed: true)
+    assert a == orig
+    // Linear and cyclic convolution vs brute force (both small and NTT paths)
+    for n in [5, 70]:
+        let p = [Z(rand(0, 1000)) for _ in 0..n]
+        let q = [Z(rand(0, 1000)) for _ in 0..n]
+        let lin = convolve(p, q)
+        var want_lin = List.filled(2 * n - 1, Z.zero)
+        for i in 0..n:
+            for j in 0..n: want_lin[i + j] = want_lin[i + j] + p[i] * q[j]
+        assert lin == want_lin
+        let cyc = convolve(p, q, cyclic: true)
+        var want_cyc = List.filled(n, Z.zero)
+        for i in 0..n:
+            for j in 0..n: want_cyc[(i + j) % n] = want_cyc[(i + j) % n] + p[i] * q[j]
+        assert cyc == want_cyc
 
 @test
 fn convolve_matches_brute_force_for_every_value_type() = todo
 
 @test
-fn sos_and_bitwise_convolutions() = todo
+fn sos_and_bitwise_convolutions():
+    for bits in 0..=4:
+        let n = 1 << bits
+        let a = [rand(-20, 20) for _ in 0..n]
+        let b = [rand(-20, 20) for _ in 0..n]
+        var s = [x for x in a]
+        sos(mut s)
+        for mask in 0..n: assert s[mask] == sum(a[sub] for sub in 0..n if (sub & mask) == sub)
+        sos(mut s, inverse: true)
+        assert s == a
+        var u = [x for x in a]
+        sos(mut u, over: Sup)
+        for mask in 0..n: assert u[mask] == sum(a[sup] for sup in 0..n if (sup & mask) == mask)
+        sos(mut u, over: Sup, inverse: true)
+        assert u == a
+        var want_or = List.filled(n, 0)
+        var want_and = List.filled(n, 0)
+        var want_xor = List.filled(n, 0)
+        var want_sub = List.filled(n, 0)
+        for i in 0..n:
+            for j in 0..n:
+                want_or[i | j] += a[i] * b[j]
+                want_and[i & j] += a[i] * b[j]
+                want_xor[i ^ j] += a[i] * b[j]
+                if (i & j) == 0: want_sub[i | j] += a[i] * b[j]
+        assert convolve_or(a, b) == want_or
+        assert convolve_and(a, b) == want_and
+        assert convolve_xor(a, b) == want_xor
+        assert convolve_subset(a, b) == want_sub
+        var w = [x for x in a]
+        fwht(mut w)
+        fwht(mut w, inverse: true)
+        assert w == a
+    // Mod<P> works with sos, fwht, convolve_or, convolve_xor, and convolve_subset
+    type Z = Mod<998_244_353>
+    let ma = [Z(1), Z(2), Z(3), Z(4), Z(5), Z(6), Z(7), Z(8)]
+    let mb = [Z(9), Z(10), Z(11), Z(12), Z(13), Z(14), Z(15), Z(16)]
+    var mw = [x for x in ma]
+    fwht(mut mw)
+    fwht(mut mw, inverse: true)
+    assert mw == ma
+    var want_mxor = List.filled(8, Z(0))
+    var want_msub = List.filled(8, Z(0))
+    for i in 0..8:
+        for j in 0..8:
+            want_mxor[i ^ j] += ma[i] * mb[j]
+            if (i & j) == 0: want_msub[i | j] += ma[i] * mb[j]
+    assert convolve_xor(ma, mb) == want_mxor
+    assert convolve_subset(ma, mb) == want_msub
