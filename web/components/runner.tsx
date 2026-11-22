@@ -108,7 +108,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
   const share = typeof window === 'undefined' ? '' : encodeShare(source, stdin);
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
+    <div className={cn('not-prose overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Button size="sm" onClick={run} disabled={result.kind === 'running'}>
           {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <Play />}

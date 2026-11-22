@@ -51,7 +51,7 @@ export function Solve({ id, starter, reference, tests, children }: SolveProps) {
           <CheckCircle2 />
           <AlertTitle>Accepted</AlertTitle>
           <AlertDescription>
-            <div className="prose prose-sm max-w-none dark:prose-invert">{children}</div>
+            <div className="prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5">{children}</div>
           </AlertDescription>
         </Alert>
       ) : (
@@ -60,7 +60,7 @@ export function Solve({ id, starter, reference, tests, children }: SolveProps) {
         </Button>
       )}
       {(solved || shown) && (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="not-prose overflow-hidden rounded-xl border bg-card shadow-sm">
           <p className="border-b px-3 py-2 text-xs text-muted-foreground">Reference solution</p>
           <CodeEditor value={reference} readOnly />
         </div>
@@ -84,7 +84,7 @@ function CodeTask({ starter, tests, onSolved }: { starter: string; tests: Test[]
     }
   };
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+    <div className="not-prose overflow-hidden rounded-xl border bg-card shadow-sm">
       <CodeEditor value={source} onChange={setSource} onRun={submit} minHeight="200px" className="border-b" />
       <div className="flex items-center gap-2 p-3">
         <Button size="sm" onClick={submit} disabled={busy}>
