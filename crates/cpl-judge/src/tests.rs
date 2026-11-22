@@ -24,7 +24,7 @@ fn every_builtin_has_a_distinct_name_a_compiler_and_a_limit() {
         assert!(!p.compiler.is_empty() && p.source_limit >= 64 * 1024, "{}", p.name);
         assert!(p.warn_at() < p.source_limit);
     }
-    assert_eq!(builtin("generic").unwrap().warn_at(), 48 * 1024);
+    assert_eq!(builtin("generic").unwrap().warn_at(), 32 * 1024);
 }
 
 #[test]

@@ -72,7 +72,7 @@ pub const THREAD_STACK: u64 = 1 << 30;
 impl Profile {
     /// The source size worth a warning: three quarters of the limit.
     pub fn warn_at(&self) -> usize {
-        self.source_limit / 4 * 3
+        self.source_limit / 2
     }
 
     /// What a contestant must know before submitting to a judge that

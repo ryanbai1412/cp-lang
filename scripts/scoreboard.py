@@ -7,7 +7,7 @@ concurrently pushed Rust-era port directories with sibling *_orig.cpp files):
   - Gate status (cpl check, fmt, lint, build <= 64 KB; in full mode also
     differential C++ -O2 and interpreter verification, optional ASan/UBSan)
   - Contestant-written tokens: port vs raw original and library-stripped original
-  - Emitted C++17 size in bytes (warn > 48 KB, fail > 64 KB)
+  - Emitted C++17 size in bytes (warn > 32 KB, fail > 64 KB)
   - Runtime and peak RSS of emitted C++ (-O2) vs original on a max-size input
   - Interpreter (`cpl run`) time
   - Friction summary over research/frictions/*.md and scripts/friction_lint.py
@@ -48,7 +48,7 @@ BUG_REPLAY_DIR = os.path.join(ROOT, "bench", "goal_tests", "bug_replay")
 REVISION_DIR = os.path.join(ROOT, "bench", "goal_tests", "revision")
 DEFAULT_BASELINE = os.path.join(ROOT, "research", "scoreboard.json")
 
-SIZE_WARN = 48 * 1024
+SIZE_WARN = 32 * 1024
 SIZE_LIMIT = 64 * 1024
 # A runtime ratio counts only when the original runs at least this long on the
 # port's max input; shorter runs measure process startup, not the algorithm.
