@@ -22,7 +22,7 @@ await page.getByText('Shrunk to the smallest input that still fails').waitFor({ 
 console.log('stress finds and shrinks the planted bug');
 await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
-await page.getByRole('status').filter({ hasText: '14' }).waitFor({ timeout: 30000 });
+await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 });
 console.log('play run output ok');
 await page.close();
 console.log('page errors:', errors);
