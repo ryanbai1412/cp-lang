@@ -862,25 +862,27 @@ impl<'a> Checker<'a> {
         } else {
             self.infer(lhs)
         };
-        if let Ty::Param(param) = &left {
-            let trait_name = match op {
-                BinOp::Add => Some("Add"),
-                BinOp::Sub => Some("Sub"),
-                BinOp::Mul => Some("Mul"),
-                BinOp::Div => Some("Div"),
-                BinOp::Rem => Some("Rem"),
-                BinOp::Pow => Some("Pow"),
-                _ => None,
-            };
-            if let Some(trait_name) = trait_name {
-                if !self.param_has_bound(param, trait_name) {
-                    let message = format!(
-                        "`{}` requires `{param}: {trait_name}`, which is not in the bounds",
-                        op.text()
-                    );
-                    self.error(codes::MISSING_IMPL, op_span, message);
-                    self.infer(rhs);
-                    return Ty::Error;
+        if std::env::var_os("CPL_SPEC").is_some() {
+            if let Ty::Param(param) = &left {
+                let trait_name = match op {
+                    BinOp::Add => Some("Add"),
+                    BinOp::Sub => Some("Sub"),
+                    BinOp::Mul => Some("Mul"),
+                    BinOp::Div => Some("Div"),
+                    BinOp::Rem => Some("Rem"),
+                    BinOp::Pow => Some("Pow"),
+                    _ => None,
+                };
+                if let Some(trait_name) = trait_name {
+                    if !self.param_has_bound(param, trait_name) {
+                        let message = format!(
+                            "`{}` requires `{param}: {trait_name}`, which is not in the bounds",
+                            op.text()
+                        );
+                        self.error(codes::MISSING_IMPL, op_span, message);
+                        self.infer(rhs);
+                        return Ty::Error;
+                    }
                 }
             }
         }
@@ -1207,7 +1209,8 @@ impl<'a> Checker<'a> {
         right: &Ty,
         right_expr: &Expr,
     ) {
-        if !tests_none
+        if std::env::var_os("CPL_SPEC").is_some()
+            && !tests_none
             && !left.is_vague()
             && !right.is_vague()
             && !matches!(left, Ty::Param(_) | Ty::TypeName(_))

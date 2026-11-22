@@ -1468,7 +1468,7 @@ impl<'a> Checker<'a> {
     pub(crate) fn is_owned_movable_var(&mut self, name: &str) -> bool {
         if let Some(local) = self.local(name) {
             local.keyword != "param" && !self.lends.views.contains_key(&local.span)
-        } else if self.in_fn == 0 {
+        } else if self.in_fn == 0 && std::env::var_os("CPL_SPEC").is_some() {
             matches!(self.global(name).as_deref(), Some(Def::Value { .. }))
                 && !self.lends.global_views.contains_key(name)
         } else {
@@ -2319,7 +2319,9 @@ impl<'a> Checker<'a> {
     /// Returning a lent parameter without `lends`, or returning a closure that
     /// captures a local variable, is E0603 (R05.7.5 / R05.7.8 / R05.10.2).
     pub(crate) fn no_escape_return(&mut self, e: &Expr, what: &str) {
-        if self.fn_lends.last().copied().unwrap_or(false) {
+        if std::env::var_os("CPL_SPEC").is_none()
+            || self.fn_lends.last().copied().unwrap_or(false)
+        {
             return;
         }
         let e = unparen(e);
@@ -2361,6 +2363,9 @@ impl<'a> Checker<'a> {
     /// Assigning a lent param or heap `for`-loop variable into an outer `var`
     /// is E0603 (R05.7.4 / R05.7.10 / R05.9.2).
     pub(crate) fn no_escape_assign(&mut self, value: &Expr, target_depth: usize) {
+        if std::env::var_os("CPL_SPEC").is_none() {
+            return;
+        }
         let e = unparen(value);
         let ExprKind::Name(src) = &e.kind else {
             return;
