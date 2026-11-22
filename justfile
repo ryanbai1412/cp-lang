@@ -24,10 +24,21 @@ fmt:
 fmt-check:
     cargo build -p cpl-cli && target/debug/cpl fmt --check stdlib
 
-# Run the max-N C++ benchmark suite (quiet machine recommended).
+# Run zero-cost abstraction + corpus runtime (including perf.cp) benchmarks (not in fast gate).
 bench *args:
     cargo build --release -p cpl-cli
-    python3 bench/corpus_p95_bench.py {{args}}
+    target/release/cpl bench --zero-cost bench/zero-cost {{args}}
+    target/release/cpl bench --corpus {{args}}
+
+# Run only the zero-cost abstraction benchmark suite.
+bench-zero-cost *args:
+    cargo build --release -p cpl-cli
+    target/release/cpl bench --zero-cost bench/zero-cost {{args}}
+
+# Run only the corpus runtime benchmark suite (writes bench/corpus-p95-results.json).
+bench-corpus *args:
+    cargo build --release -p cpl-cli
+    target/release/cpl bench --corpus {{args}}
 
 # Build and verify the offline docs + playground bundle.
 docs:

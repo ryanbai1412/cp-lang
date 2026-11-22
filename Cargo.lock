@@ -54,7 +54,9 @@ name = "cpl-contest"
 version = "0.2.2"
 dependencies = [
  "cpl-check",
+ "cpl-codegen",
  "cpl-diag",
+ "cpl-ir",
  "cpl-judge",
  "cpl-lint",
  "cpl-stress",

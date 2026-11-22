@@ -16,12 +16,16 @@ use std::time::Duration;
 
 pub const USAGE: &str = "\
 usage: cpl bench <problem> [options]
+       cpl bench --zero-cost [dir] [--reps N] [--max-ratio R] [--format json]
+       cpl bench --corpus [--runs N] [--ports a,b] [--out PATH] [--no-write]
 
 Runs the solution on maximum-size inputs made from the problem's `read()`
 types, in the shapes that break slow or deep solutions, and compares time
 and memory with the problem's limits.
 
 options:
+  --zero-cost        run the zero-cost abstraction pairs (abstract.cp vs direct.cp)
+  --corpus           benchmark corpus/problems/* against original C++ (p50/p95 + perf.cp)
   --fast PROG        run this instead of building the problem
   --time-limit MS    default: the problem's `// limits:` line, or 2000
   --memory-limit MB  default: the problem's `// limits:` line, or 256
@@ -301,6 +305,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
+    }
+    if args.iter().any(|arg| arg == "--zero-cost") {
+        return crate::zero_cost::run(args, stdout, stderr);
+    }
+    if args.iter().any(|arg| arg == "--corpus") {
+        return crate::corpus_bench::run(args, stdout, stderr);
     }
     let parsed = Args::parse(
         args,
