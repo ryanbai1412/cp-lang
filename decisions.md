@@ -5598,3 +5598,19 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   estimated cost are unchanged, since their other loops still have none.
 - **Reverse.** Drop `rules::binding` in `cpl-lint` and its uses.
 
+## 209. The editor checks against edition 0.3 unless told otherwise (2026-11-22)
+
+- **Decision.** `cpl lsp` with no `CPL_SPEC` in its environment sets it,
+  and `CPL_STD` to the `spec/std` folder in the nearest folder above the
+  working folder or the binary, before the server starts. `cpl lsp
+  --edition=0.2` keeps the built-in stdlib. `cpl check` and the other
+  commands are unchanged; `plan/RESTRUCTURE.md` owns their default.
+- **Why.** Every editor starts `cpl lsp`, so one server-side default gives
+  VS Code, JetBrains and Neovim edition 0.3 with no setting. A test opens
+  all 1,338 v0.3 files in `cpl lsp` with no edition set and finds exactly
+  what `CPL_SPEC=1 CPL_STD=spec/std cpl check` and `cpl lint` render, file
+  by file; under `--edition=0.2` 719 of them differ.
+- **Assumption.** A `cpl` binary outside a checkout, run from a folder
+  with no `spec/std` above it, finds no spec stdlib and stays on 0.2 until
+  `spec/std` is built into the binary as `stdlib/` is.
+- **Reverse.** Drop `default_to_spec_edition` in `cpl-cli` and its call.

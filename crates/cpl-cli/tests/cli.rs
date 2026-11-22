@@ -1100,3 +1100,64 @@ fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
     assert!(paths.contains(" dist;") && !paths.contains("back"), "{paths}");
     assert!(!cpp.contains("Grid<std::optional<std::tuple<std::tuple<int, int>, Move>>"), "{cpp}");
 }
+
+#[test]
+fn lsp_completes_and_hovers_the_v03_stdlib_with_no_edition_set() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["lsp", "--stdio"])
+        .env_remove("CPL_SPEC")
+        .env_remove("CPL_STD")
+        .current_dir(std::env::temp_dir())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("cpl lsp starts");
+    let text = "use std.heap.{MinMaxHeap}\\nvar h = MinMaxHeap<Int>()\\nh.push(3)\\nlet a = Lazy\\nlet b = bsearch\\n";
+    let request = |id: u32, method: &str, line: u32, character: u32| {
+        format!(
+            r#"{{"jsonrpc":"2.0","id":{id},"method":"textDocument/{method}","params":{{"textDocument":{{"uri":"file:///a.cp"}},"position":{{"line":{line},"character":{character}}}}}}}"#
+        )
+    };
+    let session = [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.to_string(),
+        format!(
+            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///a.cp","languageId":"cp","version":1,"text":"{text}"}}}}}}"#
+        ),
+        request(2, "hover", 1, 10),
+        request(3, "hover", 2, 3),
+        request(4, "completion", 3, 12),
+        request(5, "completion", 4, 15),
+        r#"{"jsonrpc":"2.0","id":6,"method":"shutdown","params":null}"#.to_string(),
+        r#"{"jsonrpc":"2.0","method":"exit","params":null}"#.to_string(),
+    ];
+    let mut stdin = child.stdin.take().unwrap();
+    for message in &session {
+        stdin.write_all(frame(message).as_bytes()).unwrap();
+    }
+    drop(stdin);
+    let out = child.wait_with_output().expect("cpl lsp exits");
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    let mut reader = std::io::BufReader::new(stdout.as_bytes());
+    let mut replies = std::collections::BTreeMap::new();
+    while let Some(body) = cpl_lsp::read_message(&mut reader).unwrap() {
+        let message = cpl_json::parse(&body).unwrap();
+        if let Some(id) = message.at(&["id"]).as_u64() {
+            replies.insert(id, message.at(&["result"]).clone());
+        }
+    }
+    let hover = |id: u64| replies[&id].at(&["contents", "value"]).as_str().unwrap_or("").to_string();
+    let labels = |id: u64| -> Vec<String> {
+        let items = replies[&id].get("items").unwrap_or(&replies[&id]).as_array().unwrap_or(&[]);
+        items.iter().filter_map(|i| i.at(&["label"]).as_str().map(str::to_string)).collect()
+    };
+    assert!(hover(2).contains("struct MinMaxHeap<T>"), "{}", hover(2));
+    assert!(hover(3).contains("MinMaxHeap.of([2, 5])"), "{}", hover(3));
+    let lazy = labels(4);
+    assert!(lazy.iter().any(|l| l == "LazyTreap"), "{lazy:?}");
+    assert!(!lazy.iter().any(|l| l == "LazySegTree" || l == "DualSegTree"), "{lazy:?}");
+    let search = labels(5);
+    assert!(!search.iter().any(|l| l == "bsearch_first" || l == "bsearch_last"), "{search:?}");
+}

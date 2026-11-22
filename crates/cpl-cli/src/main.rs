@@ -12,7 +12,12 @@ fn main() -> ExitCode {
         panic!("forced ICE for testing");
     }
     // `cpl lsp` and `cpl lsp --stdio` are the same: stdio is the only transport.
-    if args.first().map(String::as_str) == Some("lsp") && args[1..].iter().all(|a| a == "--stdio") {
+    // The editor checks against edition 0.3 unless `--edition=0.2` keeps today's.
+    let lsp_flag = |a: &String| matches!(a.as_str(), "--stdio" | "--edition=0.2" | "--edition=0.3");
+    if args.first().map(String::as_str) == Some("lsp") && args[1..].iter().all(lsp_flag) {
+        if !args.iter().any(|a| a == "--edition=0.2") {
+            cpl_cli::default_to_spec_edition();
+        }
         return ExitCode::from(cpl_cli::lsp());
     }
     if args.first().map(String::as_str) == Some("dap") && args[1..].iter().all(|a| a == "--stdio") {

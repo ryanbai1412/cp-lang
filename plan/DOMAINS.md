@@ -933,7 +933,13 @@ run, test, stress and trace as server code lenses and commands. VS Code and
 JetBrains add the test explorer, the trace panel beside the source and a
 DAP debugger. Fixture tests with cursor markers cover every request, a
 fuzzer proves the server never dies, and a latency benchmark guards 6.1.
-**Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
+**Where we are** (audited 2026-11-21). `cpl lsp` checks against edition 0.3
+with no environment set (`CPL_SPEC` and the nearest `spec/std`; `--edition=0.2`
+keeps the old one), so VS Code, JetBrains and Neovim, which all start `cpl lsp`,
+get it; a test pins that on all 1,338 v0.3 files (`spec/conformance`, the
+corpus's `spec.cp` ports, `examples/`) it publishes exactly what `cpl check`
+and `cpl lint` render, and that hover and completion name `spec/std` items
+(`MinMaxHeap`, never `LazySegTree` or `bsearch_first`). It answers
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
 rename across every open file, the user library that declares the name and each file of the project on disk that imports it
