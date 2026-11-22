@@ -2463,6 +2463,13 @@ impl<'a> Lowerer<'a> {
 
     /// `sep.join(items)`, with `none` written as `none_text` when given.
     fn join(&mut self, sep: Expr, items: Expr, none_text: Option<&Expr>, span: Span) -> Expr {
+        let items = match &items.ty {
+            Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e) => {
+                let list_ty = Ty::list((**e).clone());
+                self.mk(ExprKind::Builtin(Builtin::ToList, vec![items]), list_ty, span)
+            }
+            _ => items,
+        };
         let flat = match &items.ty {
             Ty::List(_) => true,
             Ty::Array { dims, .. } => dims.len() == 1,
