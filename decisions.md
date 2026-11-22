@@ -4657,3 +4657,18 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   existing functions (decision 60: options are named arguments), not new names.
 - **Reverse.** Drop `until:` from `read_all` and `of:` from `group` in `spec/std`, and restore
   the loop in `corpus/problems/ioi05p2/spec.cp`.
+
+## 162. `D.pieces(cuts:)` is coordinate compression for intervals (2026-11-21)
+
+- **Decision.** `r.pieces(cuts: cs)` splits a range (a domain reads as its range) at the given
+  cuts and binds a fresh domain of the pieces between them: `let (domain P, piece) =
+  Rail.pieces(cuts: ...)`, with `piece: [P]Range<D>`. `piece.covering(a..=b)` is the `Range<P>`
+  tiling `a..=b`, trapping if its ends are not among the cuts.
+- **Why.** The blind ioi05p2 dream wrote `Rail.pieces(cuts:)` and `Piece.covering(...)`. The port
+  compressed the points `a` and `b + 1` and then rebuilt each piece's length and the range
+  conversion with `+1`/`-1` arithmetic, the off-by-one class the language exists to remove.
+  Inputs are cuts and pieces are ranges, so the positions/cuts split (chapter 04) carries the
+  proof. The same shape covers union-of-rectangles sweeps and interval painting over huge
+  coordinates. Ryan agreed it is worth having.
+- **Reverse.** Delete `pieces` and `covering` from `spec/std/seq.cp`, drop the paragraph in
+  chapter 04, and restore `compress` in `corpus/problems/ioi05p2/spec.cp`.

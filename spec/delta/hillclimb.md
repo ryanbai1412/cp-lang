@@ -366,3 +366,8 @@ Open questions raised by dreams:
   - Open: egoi23p7 is 2.9x its dream. `Rooted.from_parents` has no failure result for
     invalid parents, and finding the root of the complement graph's DFS forest needs a manual
     Enter/Exit depth count. Both need a closer design look.
+  - Spec change (decision 162): `D.pieces(cuts:)` and `piece.covering(r)` (ioi05p2's dream);
+    the port drops `compress` of `a`/`b + 1` and its hand-built lengths (32 to 28 lines).
+  - Spec question, open: whether `x is pat` in a comprehension's `if` binds for later clauses
+    (`[x for c in cmds if c is Set(a, b, _) for x in [a.l, b.r]]`). The checker says no; the
+    ioi05p2 port uses `flat_map` instead.

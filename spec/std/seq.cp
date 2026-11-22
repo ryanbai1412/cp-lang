@@ -201,6 +201,17 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// index of one compression cannot be used in another. Works on any `Seq`. O(n log n).
 pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 
+/// Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the
+/// non-empty pieces between consecutive cuts (the range's own ends always count; repeats drop),
+/// with `piece[p]` the `Range<D>` that piece covers, in order. It is coordinate compression for
+/// intervals: a segment tree over `P` stores `piece[p].len`, and no +1/-1 converts back.
+/// O(k log k) for k cuts.
+pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>) = todo
+
+/// The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were
+/// made from (traps otherwise). `t.apply(piece.covering(a..=b), x)`. O(log k).
+pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
+
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// O(1) per element walked.
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo

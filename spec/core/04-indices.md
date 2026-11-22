@@ -41,6 +41,13 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1) |
 | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free |
 
+**Pieces.** Coordinate compression for intervals: `let (domain P, piece) =
+D.pieces(cuts: cs)` splits a range at the given cuts into the pieces between them,
+with `piece[p]` the `Range<D>` each covers (so `piece[p].len` is its real length)
+and `piece.covering(a..=b)` the `Range<P>` that tiles `a..=b`. Inputs are cuts,
+pieces are ranges, so the `b + 1` and `- 1` of hand-rolled compression never
+appear (decision 162).
+
 ## Positions and cuts move the same way
 
 | | neighbour of the same kind | the other kind, either side |
