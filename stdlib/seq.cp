@@ -65,30 +65,38 @@ pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
     true
 
 /// The first position of `r` where `ok` holds, or `none`. `ok` must be false and then true
-/// along the range; the two ends are checked against that. O(log n) calls of `ok`.
+/// along the range. At most ceil(log2(r.len + 1)) calls of `ok`, so 30 on `1..=1e9`: few
+/// enough for a query budget in an interactive problem.
 pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I:
     if r.is_empty: return none
     var lo = r.first!
     var hi = r.last!
-    if not ok(hi): return none
-    assert not (ok(lo) and not ok(hi))  // `ok` must not switch back to false
+    // until `ok(hi)` is seen true, `none` is one more outcome; halving the outcomes, not the
+    // positions, is what keeps the count at ceil(log2(r.len + 1))
+    var hi_ok = false
     while lo < hi:
         let mid = (lo + (hi - lo) / 2)!
-        if ok(mid): hi = mid else: lo = (mid + 1)!
-    lo
+        if ok(mid):
+            hi = mid
+            hi_ok = true
+        else: lo = (mid + 1)!
+    if hi_ok or ok(lo): lo else: none
 
 /// The last position of `r` where `ok` holds, or `none`. `ok` must be true and then false
-/// along the range. O(log n) calls of `ok`.
+/// along the range. At most ceil(log2(r.len + 1)) calls of `ok`.
 pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I:
     if r.is_empty: return none
     var lo = r.first!
     var hi = r.last!
-    if not ok(lo): return none
+    var lo_ok = false
     while lo < hi:
         let span = hi - lo
         let mid = (lo + (span - span / 2))!
-        if ok(mid): lo = mid else: hi = (mid - 1)!
-    lo
+        if ok(mid):
+            lo = mid
+            lo_ok = true
+        else: hi = (mid - 1)!
+    if lo_ok or ok(lo): lo else: none
 
 /// Fixed-iteration binary search on `[lo, hi]` for monotone `ok` (false then true).
 /// Returns the least `x` in `[lo, hi]` with `ok(x)` to within `(hi - lo) / 2^steps`, or `none`
@@ -879,6 +887,34 @@ fn binary_search_matches_a_linear_scan():
         let r = lo..lo + n
         assert bsearch_first(r, x => x >= cut) == first(x for x in r if x >= cut)
         assert bsearch_last(r, x => x < cut) == max(x for x in r if x < cut)
+
+@test
+fn binary_search_asks_at_most_log2_of_the_outcomes():
+    // research/dryrun/repro/bsearch_query_count.cp: an interactive budget of 30 on 1..=1e9
+    var calls = 0
+    var cut = 0
+    fn at_least(x: Int) -> Bool:
+        calls += 1
+        x >= cut
+    fn below(x: Int) -> Bool:
+        calls += 1
+        x < cut
+    for s in [1, 2, 3, 500_000_000, 999_999_999, 1_000_000_000, 1_000_000_001]:
+        cut = s
+        calls = 0
+        let f = bsearch_first(1..=1_000_000_000, at_least)
+        assert f == (if s <= 1_000_000_000: some(s) else: none) and calls <= 30
+        calls = 0
+        let l = bsearch_last(1..=1_000_000_000, below)
+        assert l == (if s > 1: some(s - 1) else: none) and calls <= 30
+    cut = 100
+    for n in 0..=17:
+        calls = 0
+        let _ = bsearch_first(0..n, at_least)
+        assert calls <= bit_width(n)
+        calls = 0
+        let _ = bsearch_last(0..n, below)
+        assert calls <= bit_width(n)
 
 @test
 fn binary_search_over_a_domain_and_a_closed_range():

@@ -5337,3 +5337,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Why.** Holes H-PREFIX-API, H-STR-FIND-STUB, H-COLLECT-KEYS, H-REBASE-STUB-FORM, H-DSU-SAME-MUT, H-SEGTREE-DOMAIN-ARG, H-STD-FUNCTION, H-POSITIONS-AFTER and H-DIAG-CODES: each job had two or three spellings across chapters and stubs. `search` follows C++'s `std::search` for subsequences.
 - **Reverse.** Rename back; allowing `find` to take a pattern needs overloading by argument type, which the language bans.
 
+
+## 187. Binary search spends only the queries it needs (2026-11-21)
+
+- **Decision.** `bsearch_first`/`bsearch_last` search the `r.len + 1` outcomes (each position, or `none`) directly, so they call `ok` at most ceil(log2(r.len + 1)) times: 30 on `1..=1e9`. They no longer probe the ends first or assert that `ok` is monotone at the ends.
+- **Why.** A contest dry run found 33/31 calls on `1..=1e9`, so the documented interactive example broke its own `ask(limit: 30)` budget. Every call may be a query, so a debug-only check would make debug and release disagree on an interactor.
+- **Reverse.** Restore the end probes in `stdlib/seq.cp`; interactive budgets then need a hand-written loop.
