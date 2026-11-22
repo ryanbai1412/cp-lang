@@ -3167,3 +3167,15 @@ fn domain_wrap_gives_a_position() {
     let src = "domain P = 0..5\nvar a: [P]Int = 0\nfor p in P: a[P.wrap(Int(p) - 1)] += 1\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn enums_and_product_domains_take_at() {
+    let src = "enum L: A, B, C
+domain P = (rows: 0..3, cols: 0..4)
+fn f(i: Int) -> Int:
+    let l = L.at(i) ?? L.A
+    let p = P.at((i, i + 1)) else: return 0
+    p.rows + p.cols
+";
+    assert!(codes(src).is_empty(), "{:?}", check(src));
+}

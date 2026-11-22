@@ -1074,6 +1074,18 @@ impl<'a> Checker<'a> {
     fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
         match &e.kind {
             ExprKind::Name(name) if name == "Bool" => Some((Ty::Bool, Some(2))),
+            ExprKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+                step: None,
+            } => {
+                let size = match (self.bounds(lo).0, self.bounds(hi).1) {
+                    (Some(lo), Some(hi)) => Some((hi - lo + i128::from(*inclusive)).max(0)),
+                    _ => None,
+                };
+                Some((Ty::Int, size))
+            }
             ExprKind::Name(name) => {
                 if let Some(local) = self.local(name) {
                     if let Ty::Domain(d) = &local.ty {

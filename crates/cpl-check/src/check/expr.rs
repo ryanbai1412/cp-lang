@@ -1401,17 +1401,30 @@ impl<'a> Checker<'a> {
                     };
                 }
                 "at" => {
+                    let (arg, ret) = match &base_ty {
+                        Ty::Domain(d) => match self.product_factors(d) {
+                            Some(factors) => (
+                                Ty::Tuple(vec![Ty::Unknown; factors.len()]),
+                                Ty::Optional(Box::new(elem)),
+                            ),
+                            None if std::env::var_os("CPL_SPEC").is_some() => {
+                                (Ty::Int, Ty::Optional(Box::new(elem)))
+                            }
+                            None => (Ty::Int, elem),
+                        },
+                        _ => (Ty::Int, elem),
+                    };
                     return Ty::Fn {
                         params: vec![crate::Param {
                             name: "i".into(),
-                            ty: Ty::Int,
+                            ty: arg,
                             mutable: false,
                             has_default: false,
                             named_only: false,
                             variadic: false,
                             lazy: false,
                         }],
-                        ret: Box::new(elem),
+                        ret: Box::new(ret),
                     };
                 }
                 "set_at" if base_ty.is_indexed_mut() => {
@@ -1935,6 +1948,20 @@ impl<'a> Checker<'a> {
                     };
                     match name.text.as_str() {
                         "count" | "len" | "K" => return Ty::Int,
+                        "at" => {
+                            return Ty::Fn {
+                                params: vec![crate::ty::Param {
+                                    name: "i".into(),
+                                    ty: Ty::Int,
+                                    mutable: false,
+                                    has_default: false,
+                                    named_only: false,
+                                    variadic: false,
+                                    lazy: false,
+                                }],
+                                ret: Box::new(Ty::Optional(Box::new(elem))),
+                            };
+                        }
                         "first" | "last" => return Ty::Optional(Box::new(elem)),
                         "all" | "rev" => {
                             return Ty::Named {
