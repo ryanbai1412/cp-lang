@@ -8168,9 +8168,11 @@ impl<'a> Lowerer<'a> {
                 self.cast(Cast::Trust, res, Ty::Pos(*d))
             }
             (Ty::Error, _) => {
+                let reported = self.diags.len();
                 for arg in args {
                     self.expr(&arg.value, None);
                 }
+                self.diags.truncate(reported);
                 self.err_expr(span)
             }
             (Ty::Pos(d), "l") => {

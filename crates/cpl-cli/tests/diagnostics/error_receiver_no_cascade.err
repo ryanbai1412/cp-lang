@@ -1,0 +1,15 @@
+error[E0203]: a `List<Int>` has no method `fin` that `cpl run` knows
+  --> error_receiver_no_cascade.cp:2:16
+  |
+2 |     let a = xs.fin(0) ?? return print(0)
+  |                ^^^
+  = help: did you mean `find`?
+
+error[E0203]: a `List<Int>` has no method `sorte` that `cpl run` knows
+  --> error_receiver_no_cascade.cp:3:16
+  |
+3 |     let b = xs.sorte().map(x => x + 1)
+  |                ^^^^^
+  = help: did you mean `sorted`?
+
+error_receiver_no_cascade.cp: 2 errors
