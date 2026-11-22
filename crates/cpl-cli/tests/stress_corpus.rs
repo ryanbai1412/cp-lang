@@ -51,6 +51,10 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
             .arg(&port)
             .arg("--tests")
             .arg(&tests_dir)
+            // The suite runs beside every other test on every core, so the judge's own
+            // limit measures the load, not the solution; this test is about answers.
+            .arg("--time-limit")
+            .arg("30000")
             .output()
             .expect("cpl test runs");
         let stdout = String::from_utf8_lossy(&out.stdout);
