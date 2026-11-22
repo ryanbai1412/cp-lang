@@ -5,7 +5,7 @@
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
 //! - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
-//! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `nth_element`, `merge_sorted`.
+//! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
 //! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
 //! - Coordinate compression: `compress(all)` -> `Compressed<D, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
@@ -46,8 +46,8 @@ pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T> = todo
 pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>) = todo
 
 /// O(n) expected, O(n log n) worst case, O(1) extra space. Introselect partitioning `self` in place
-/// so `self.at(k)` holds the element that would sit at `k` in sorted order (by `by:` or `cmp:`).
-pub fn nth_element<S: IndexedMut, T, K>(
+/// so `self.nth(k)` holds the element that would sit at `k` in sorted order (by `by:` or `cmp:`).
+pub fn select<S: IndexedMut, T, K>(
     mut self: S,
     k: Int,
     by: T -> K = x => x,
@@ -326,6 +326,21 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 /// O(1). The last `min(k, len)` elements, as a view (traps if `k < 0`).
 pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 
+/// O(1). The element `k` steps from the start, 0-based whatever the keys: `s[l..].nth(k)` is
+/// `s[l + k]`, `w.nth(0)` is `w.first!`. Traps when `k` is outside `0..len`.
+pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = todo
+
+/// O(1). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
+/// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
+pub @get fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
+
+/// The view `rebase` returns.
+pub struct Rebased<S>(src: S)
+
+/// O(1). The same cells keyed by `keys`, which must have the same length (traps otherwise):
+/// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
+pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T = todo
+
 /// O(n), allocates. The end of a lazy chain, materialized into the type the context expects
 /// (`List`, `Set`, `Map`, `Str`, `[D]T`), else a `List`: `a.filter(p).map(f).collect()`.
 /// The same operation as `List(s)`; the postfix form is for chains.
@@ -603,7 +618,7 @@ fn argmax_and_argmin_give_the_first_best_index() = todo
 fn prod_and_is_sorted_cover_sequences() = todo
 
 @test
-fn nth_element_merge_sorted_and_rotate_right() = todo
+fn select_merge_sorted_and_rotate_right() = todo
 
 @test
 fn chunk_by_run_ranges_buckets_and_chunks() = todo

@@ -14,7 +14,8 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 @allow(unproven_list_index)
 pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 
-/// O(|self| + |p|). Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. `p` is a `Str` or
+/// O(|self| + |p|). Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. A key of `s`, so on a
+/// slice it is valid on the source: `s[l..].find(c)` needs no `+ l`. `p` is a `Str` or
 /// one `Char`: `"banana".find('n')` is `2`. O(s.len + p.len).
 pub fn find<P>(self: Str, p: P) -> ?Int = todo
 
@@ -80,20 +81,21 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
 pub fn parse_int(self: Str) -> ?Int = todo
 
 /// O(n). `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`.
+/// Keyed by `s.keys`, so `z_function(s[l..])[i]` takes `i` from the slice (2b).
 /// Works on any `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion. O(n).
 @allow(unproven_list_index)
-pub fn z_function<S: Indexed>(s: S) -> List<Int> = todo
+pub fn z_function<S: Indexed, K>(s: S) -> [K]Int = todo
 
 /// O(n). `p[i]` is the length of the longest proper prefix of `s[..=i]` that is also its suffix.
 /// Works on any `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion. O(n).
 @allow(unproven_list_index)
-pub fn prefix_function<S: Indexed>(s: S) -> List<Int> = todo
+pub fn prefix_function<S: Indexed, K>(s: S) -> [K]Int = todo
 
 /// O(|self| + |pat|). The start of every occurrence of `pat` in `self`: `s.find_all(p)`, in increasing order (Knuth-Morris-Pratt).
 /// Works on any `Indexed` sequences (`Str`, `List<T>`, `[D]T`, views) without conversion.
 /// O(text.len + pat.len). An empty pattern occurs at every position, including the end.
 @allow(unproven_list_index)
-pub fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int = todo
+pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K = todo
 
 /// Length of the longest common prefix of `self` and `other`. Works on any `Indexed` sequences. O(min(|self|, |other|)).
 @allow(unproven_list_index)
@@ -117,7 +119,7 @@ pub fn borders<S: Indexed>(s: S) -> yields Int = todo
 /// O(|self| + |pat|). `res[i]` is the length of the longest prefix of `pat` ending at `self[i]` (KMP).
 /// Works on any `Indexed` sequences. O(|self| + |pat|).
 @allow(unproven_list_index)
-pub fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int> = todo
+pub fn prefix_matches<S: Indexed, P: Indexed, K>(self: S, pat: P) -> [K]Int = todo
 
 /// O(|a| + |b|). Length of the longest suffix of `a` that is a prefix of `b` (at most `min(|a|, |b|)`).
 /// Works on any `Indexed` sequences. O(|a| + |b|).
@@ -127,16 +129,16 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int = todo
 /// O(n). Start indices of the unique non-increasing Lyndon factorization of `s` (Duval).
 /// Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn lyndon_factorization<S: Indexed>(s: S) -> List<Int> = todo
+pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K> = todo
 
 /// O(n). Start index of the lexicographically least cyclic rotation of `s` (Duval/Booth).
-/// Ties go to the smallest index; returns `0` for an empty sequence. Works on any `Indexed` sequence. O(n).
+/// Ties go to the smallest key; `none` for an empty sequence. Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn min_rotation<S: Indexed>(s: S) -> Int = todo
+pub fn min_rotation<S: Indexed, K>(s: S) -> ?K = todo
 
 /// O(n). Start index of the lexicographically greatest cyclic rotation of `s` (Duval/Booth).
-/// Ties go to the smallest index; returns `0` for an empty sequence.
-pub fn max_rotation<S: Indexed>(s: S) -> Int = todo
+/// Ties go to the smallest key; `none` for an empty sequence.
+pub fn max_rotation<S: Indexed, K>(s: S) -> ?K = todo
 
 /// O(|pat| * |A|). Prefix (KMP) automaton over alphabet domain `A`, for O(1) transitions in DP.
 pub struct KmpAutomaton<A>:

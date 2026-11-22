@@ -56,7 +56,7 @@ use std.seq.{
     next_greater,
     next_less,
     next_permutation,
-    nth_element,
+    select,
     pairs,
     partition,
     partition_point,

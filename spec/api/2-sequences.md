@@ -17,9 +17,10 @@ ends, `.first`/`.last` are optional.
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
    walked twice (sharper when it holds a `mut` lend) and side-effecting
    closures.
-4. **Identity vs offset.** A domain slice keeps its positions
-   (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0 (pending:
-   2a and 2b propose keeping keys there too).
+4. **Identity everywhere.** Every slice keeps its source's keys
+   (`a[l..=r][i] == a[i]`, `s[2..5][3] == s[3]`), and library functions
+   answer in the keys they were given. `first`, `nth(k)` and `rebase` cover
+   relative access.
 5. **Views are lent values with the rules of `mut a[i]`.** A value built
    from a lent part is lent; no lifetime annotations, never stored, returned
    only by a fn declared `lends`. In-place verbs
@@ -63,7 +64,7 @@ How they relate:
 
 ```python
 a[l..=r]          # view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
-s[2..5]           # a List/Str slice counts from 0: s[2..5][0] is s[2]
+s[2..5]           # keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
 a[l..=r].keys     # l..=r
 a.rev             # walks a backwards; a.rev[i] is still a[i]
 a.map(f)          # Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
@@ -88,32 +89,33 @@ for its result (`sorted`, `tally`, `scan`).
 
 ## Slices: which keys survive
 
-> **Pending:** the rule below is the current hybrid.
-> `2a-identity-vs-offset.md` recommends identity everywhere instead: `List`
-> and `Str` slices would keep their keys too, and `w.rebase` would give the
-> rare 0-based view. `2b-keys.md` works it through. That needs Ryan's call.
-
-The key type decides. A domain position names an element (round 1's index
-safety), so it means the same element in the array and in every view of it:
-an index taken from a view is valid on the source, and nothing is rebased.
+Identity everywhere (decision 143; worked through in `2b-keys.md`): **an
+index names the same element everywhere it is valid.** A slice narrows the
+valid keys and never renames them, for domain arrays, `List` and `Str`
+alike, so an index taken from a view is valid on the source.
 
 ```python
 let w = a[l..=r]
-let best = w.keys.max(by: i => a[i])!    # a position of a, usable anywhere
+let best = w.argmax()!                   # a position of a, usable anywhere
 for (i, x) in w.items: ...               # i runs l..=r, not 0..
-w[V(0)]                                  # traps unless V(0) is in l..=r
+s[2..5][3]                               # s[3]; s[2..5][0] traps
+w.first!, w.nth(k)                       # first element; k steps from the start
+let t = w.rebase                         # O(1) view keyed by a fresh 0..w.len domain t.Idx
 ```
 
-`List<T>` and `Str` are indexed by `Int` offsets, and an offset has no
-identity to keep, so their slices count from 0, as in Python:
-`s[2..5][0]` is `s[2]`, still an O(1) view. Keeping offsets would make
-`rest[i]` for `i in 0..rest.len` silently read the wrong element whenever
-`i` lands inside the slice, and no type stops a plain `Int`. A domain slice
-can't have that bug: `w[i]` takes a `V`, and a `V` outside the slice traps.
-
-An integer literal is never a position into a domain slice: `blk[1..]` on
-`blk = a[l..r]` is an error ("slices keep their positions"), suggesting
-`blk.drop(1)`. On a whole array the literal reads as round 1 says.
+- **Keys in, keys out.** Library functions answer in the keys they were
+  given: `s[l..].find(c)` is a key of `s`, `z_function(s[l..])` is keyed by
+  `l..`, `a[l..r].scan(+)` by `a`'s cuts. Lengths and counts stay `Int`.
+- **Combining two sequences pairs them by walk order**: `==`, `<`,
+  `starts_with`, `+`, slice assignment and `zip`.
+- **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys
+  equal-length cells onto `r` in O(1).
+- **Materializing:** `.collect()` of an indexed view keeps its keys;
+  `List(w)` and `Str(w)` count from 0.
+- **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter
+  used as a slice key (`for k in 0..w.len: w[k]`); both suggest `first`,
+  `nth`, `items` or `rebase`. An out-of-keys read traps naming the slice's
+  keys. A raw `Int` into a domain slice is a compile error.
 
 | View | Indexed by | Walks | Cost |
 |---|---|---|---|
@@ -121,13 +123,13 @@ An integer literal is never a position into a domain slice: `blk[1..]` on
 | `a.rev` | `D` | backwards | O(1) |
 | `a.items` | `D`, gives `(i, a[i])` | in order | O(1) |
 | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per read |
-| `zip(a, b)` | the shared `D`, gives `(a[i], b[i])` over `a.keys.clip(b.keys)` | in order | O(1) |
+| `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | in order | O(1) |
 | `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w.drop(k)` is `w[w.l.next(k) ?? w.r..]` | in order | O(1) |
 | `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | O(1) |
 | `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-major | O(1) |
 
-`zip` needs both sides indexed by the same domain, so zipping a `[V]T` with
-an `[E]T` is a type error. Two lists zip over the shorter one's indices.
+`zip` pairs by walk order and is keyed by its first argument; zipping a
+`[V]T` with an `[E]T` is still a type error. It stops at the shorter side.
 Writing a sequence into a range is slice assignment, not a zip:
 `q[start..] = suffix` copies in order, O(k), and traps in every build if the
 lengths differ.

@@ -4302,3 +4302,23 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   impls per adapter in library code over keying every sequence.
 - **Reverse.** Fold `Keyed` into `Seq` (generators keyed by yield number),
   or stop adapters forwarding `Bidir`.
+
+## 143. Identity everywhere; keys in, keys out (2026-11-21)
+
+- **Decision.** Every slice keeps its source's keys, `List` and `Str`
+  included (`s[2..5][3] == s[3]`), replacing the hybrid in 138. Library
+  functions answer in the keys they were given: `find` and `find_all` give
+  keys, `z_function`, `prefix_function` and `prefix_matches` give `[K]Int`
+  keyed by the input, rotations and Lyndon starts are keys. Combining two
+  sequences pairs by walk order (`zip` is keyed by its first argument).
+  Relative access is `w.first`, `w.nth(k)` and `w.rebase` (a fresh `0..len`
+  domain); `t.rekey(r)` re-keys equal-length cells. `.collect()` of an
+  indexed view keeps keys; `List(w)`/`Str(w)` count from 0. Lints flag a
+  literal slice index and a 0-based counter used as a slice key.
+  `nth_element` is renamed `select` so `nth` means one thing.
+- **Why.** `2a-identity-vs-offset.md`: offset is silently wrong whenever an
+  index crosses a slice boundary; identity traps instead. Ryan: "library
+  functions should always operate in the domain they were given".
+  `2b-keys.md` shows contest, helper and library code.
+- **Reverse.** Restore the hybrid: `List`/`Str` slices count from 0, and the
+  string results go back to `List<Int>` offsets.
