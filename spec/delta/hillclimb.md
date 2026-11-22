@@ -140,7 +140,7 @@ Open questions raised by dreams:
   forced: lambda parameter patterns, named product factors, `is_some_and`, `sum(of:)`, `mean`,
   `print(none:)`, `c.shift(r)`, `D.mask`, `Ring.step`, `outermost`, `g.only`, graph-shaped
   `max_closure`, `child_arcs`, `Lift.of`, `KruskalTree.top/up`, `Settle`, `SortedBag.take_first/
-  drain`, `split_best`. Rejected: `ok` on the wrapped state, bare Dijkstra sources, `Mod(Bool)`.
+  drain`, `split_best`. Rejected: `ok` on the wrapped state (it sees the `Undoing`, so `u.state`), bare Dijkstra sources (`(s, 0)` keeps one spelling), `Mod(Bool)` (write `.int`), `by: desc(.alt)` field shorthand (`w: r => desc(r.alt)`), `kt.tree` (the tree methods live on `KruskalTree`), `SortedBag(gen)` (`SortedBag.of(List(...))`), a value as a type argument (`Settle<roads.keys, _>`; name the domain), and a non-optional `mean` (empty input has none). Checker gap, not spec: `peel` inferring `V` from the callback's parameter.
   `spec.cp` idiom bugs the diff exposed (spec already allowed the dream's form): count-prefixed
   `List` fields in noi09p4, `IntervalMap` and `Lift.climb` in apio09p2, `g.next` in noi05p4,
   `Range` reads in btoi20p3.

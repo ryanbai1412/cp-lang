@@ -36,6 +36,7 @@ g.deg(u)                              // O(1)
 | `keep: a => (to: a.to, w: a.w)` | choose what each arc stores; run once per arc | O(n + m) |
 | `g[u]` | `Indexed` view of `u`'s arcs, in input order | O(1) |
 | `g.deg(u)` | arcs out of `u` | O(1) |
+| `g.next(u)` | where `u`'s arcs lead (`g.out(u)` mapped to `.to`) | O(1) per arc |
 | `g.weighted(f)` | the same graph with `.w` read as `f(a)` | O(1); `f` per read |
 | `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
 | `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | O(1) to make |

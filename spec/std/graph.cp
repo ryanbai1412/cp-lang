@@ -121,6 +121,12 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = todo
 
+    /// O(1) per arc. Where `u`'s arcs lead: `out(u)` mapped to `.to`.
+    pub fn next(self, u: V) -> yields V = todo
+
+    /// O(1). Induced view skipping arcs that touch a vertex `keep` rejects.
+    pub fn only(self, keep: V -> Bool) -> Only<V, Self> = todo
+
     /// O(1) to make: the same graph with `.w` read as `f(a)`. Works on any
     /// `Next`; on a weighted graph it reweights. `f` runs on every arc read.
     pub fn weighted<W>(self, f: A -> W) lends Reweighted<Graph<V, A>, A -> W> = todo
@@ -197,6 +203,12 @@ pub struct Adj<V, A>:
 
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = todo
+
+    /// O(1) per arc. Where `u`'s arcs lead: `out(u)` mapped to `.to`.
+    pub fn next(self, u: V) -> yields V = todo
+
+    /// O(1). Induced view skipping arcs that touch a vertex `keep` rejects.
+    pub fn only(self, keep: V -> Bool) -> Only<V, Self> = todo
 
     /// O(n + m): the table with every arc reversed.
     pub fn transpose(self) -> Adj<V, A> = todo
@@ -566,13 +578,13 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = 
 pub fn edge_blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
-/// `missing.next(u)` does not list. Its own `next(u)` is O(|V|), but `bfs`, `dfs`,
+/// `missing.out(u)` does not reach. Its own `out(u)` is O(|V|), but `bfs`, `dfs`,
 /// `reachable` and `components` over a `Complement` run in O(|V| + m) by keeping the set of
 /// unvisited vertices and scanning only it, so "BFS in the complement graph" and its
 /// components are the ordinary searches: `components(complement(g))`.
 pub struct Complement<V, G>(missing: G):
-    /// O(|V|): every `v != u` that `missing.next(u)` does not list, ascending.
-    pub fn next(self, u: V) -> yields V = todo
+    /// O(|V|): every `v != u` that `missing.out(u)` does not reach, ascending.
+    pub fn out(self, u: V) -> yields V = todo
 
 /// O(1). `Complement` of `missing`; see there.
 pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = todo
@@ -710,4 +722,10 @@ pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool) -> Only<V, G> = todo
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
 pub struct Only<V, G>(g: G, keep: V -> Bool):
-    pub fn next(self, u: V) -> yields G.Arc = todo
+    pub fn out(self, u: V) -> yields G.Arc = todo
+
+    /// O(deg). Arcs out of `u` that the view keeps.
+    pub fn deg(self, u: V) -> Int = todo
+
+    /// O(n + m). The kept arcs reversed, materialized as a `Graph`.
+    pub fn transpose(self) -> Graph<V, G.Arc> = todo
