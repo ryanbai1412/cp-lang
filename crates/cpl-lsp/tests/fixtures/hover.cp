@@ -121,3 +121,12 @@ fn ec$0ho():
 fn pre$0fixes(bit: Fenwick<V, Int>):
     for v in V:
         print(bit.s$0um(..v))
+struct Ed$0ge:
+    to: V
+    w: Int
+    used: Bool
+let e$0s: [V]Edge = [V] v => Edge(v, 0, false)
+let fl$0ag: [V]?Bool = none
+let pa$0irs: [V](V, Int) = [V] v => (v, 0)
+let ad$0j: [V]List<V> = [V] v => []
+print(es[V.first].to, es[V.first].w, es[V.first].used, flag, pairs, adj)

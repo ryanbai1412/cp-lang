@@ -584,15 +584,15 @@ fn files_are_independent() {
 fn hover_shows_type_domain_and_storage() {
     assert_eq!(
         hover(ROADS, "dist: [V]"),
-        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max"
+        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)"
     );
     assert_eq!(
         hover(ROADS, "roads[e]"),
-        "roads: [E]Road\n  domain E = 0..m, m <= 2e5\n  storage: 16 bytes per element, 3.2 MB max"
+        "roads: [E]Road\n  domain E = 0..m, m <= 2e5\n  storage: 16 bytes per element, 3.2 MB max (fields at 0, 4, 8, 12)"
     );
     assert_eq!(hover(ROADS, "n: 1..=2e5"), "n: 1..=2e5\n  storage: 4 bytes");
     assert_eq!(hover(ROADS, "total += r.cost"), "total: Int");
-    assert_eq!(hover(ROADS, "r.cost"), "r: Road\n  storage: 16 bytes");
+    assert_eq!(hover(ROADS, "r.cost"), "r: Road\n  storage: 16 bytes (fields at 0, 4, 8, 12)");
     assert_eq!(
         hover(ROADS, "cost\n    link"),
         "cost: 1..=1e9\n  storage: 4 bytes"
@@ -615,7 +615,7 @@ fn hover_shows_declarations() {
     );
     assert_eq!(
         hover(ROADS, "Road = read()"),
-        "struct Road\n  u: V\n  v: V\n  len: 1..=1e9\n  cost: 1..=1e9\n  storage: 16 bytes"
+        "struct Road\n  u: V  // at 0, 4 bytes\n  v: V  // at 4, 4 bytes\n  len: 1..=1e9  // at 8, 4 bytes\n  cost: 1..=1e9  // at 12, 4 bytes\n  storage: 16 bytes, aligned to 4"
     );
     assert_eq!(
         hover(ROADS, "V = 1..=n"),
@@ -647,16 +647,16 @@ fn hover_works_while_the_file_is_broken() {
         roads_with("link(mut g, r)", "link(mut g, r").replace("print(total)", "print(total +");
     assert_eq!(
         hover(&src, "dist: [V]"),
-        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max"
+        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)"
     );
     assert_eq!(hover(&src, "total +"), "total: Int");
     assert_eq!(
         hover(&src, "g, r\n"),
-        "g: [V]List<(V, Int)>\n  domain V = 1..=n, n <= 2e5"
+        "g: [V]List<(V, Int)>\n  domain V = 1..=n, n <= 2e5\n  storage: grows on the heap; (V, Int): 16 bytes each"
     );
     assert_eq!(
         hover(&src, "roads[e]"),
-        "roads: [E]Road\n  domain E = 0..m, m <= 2e5\n  storage: 16 bytes per element, 3.2 MB max"
+        "roads: [E]Road\n  domain E = 0..m, m <= 2e5\n  storage: 16 bytes per element, 3.2 MB max (fields at 0, 4, 8, 12)"
     );
     // Inside the item that has the syntax error itself.
     let src = roads_with("total += r.cost", "total += r.cost +");

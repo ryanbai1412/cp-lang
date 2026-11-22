@@ -287,3 +287,42 @@ cost: O(log |V|)
 ```
 
 The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
+
+== hover @ 124:10
+```cp
+struct Edge
+  to: V  // at 0, 4 bytes
+  // 4 bytes padding
+  w: Int  // at 8, 8 bytes
+  used: Bool  // at 16, 1 byte
+  // 7 bytes padding
+  storage: 24 bytes, aligned to 8
+```
+
+== hover @ 128:6
+```cp
+es: [V]Edge
+  domain V = 1..=n, n <= 2e5
+  storage: 24 bytes per element, 4.8 MB max (fields at 0, 8, 16; 11 bytes padding)
+```
+
+== hover @ 129:7
+```cp
+flag: [V]?Bool
+  domain V = 1..=n, n <= 2e5
+  storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for none)
+```
+
+== hover @ 130:7
+```cp
+pairs: [V](V, Int)
+  domain V = 1..=n, n <= 2e5
+  storage: 16 bytes per element, 3.2 MB max (fields at 0, 8; 4 bytes padding)
+```
+
+== hover @ 131:7
+```cp
+adj: [V]List<V>
+  domain V = 1..=n, n <= 2e5
+  storage: grows on the heap; V: 4 bytes each
+```

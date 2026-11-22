@@ -705,16 +705,7 @@ pub fn size_of(
         },
         Ty::Optional(inner) => {
             let inner_size = size_of(inner, domain_size, named_size)?;
-            let spare = match &**inner {
-                Ty::Int | Ty::Pos(_) => true,
-                Ty::Range {
-                    lo: Some(lo),
-                    hi: Some(hi),
-                    ..
-                } => hi - lo + 1 < 1i128 << (8 * inner_size),
-                _ => false,
-            };
-            if spare {
+            if has_niche(inner, inner_size) {
                 inner_size
             } else {
                 inner_size + inner_size.clamp(1, 8)
@@ -733,15 +724,60 @@ pub fn size_of(
 
 /// Size of fields laid out in order with natural alignment.
 pub fn struct_size(fields: impl Iterator<Item = Option<u64>>) -> Option<u64> {
+    let sizes: Option<Vec<u64>> = fields.collect();
+    Some(struct_layout(&sizes?).size)
+}
+
+/// Where each field of a struct, tuple or record sits.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Layout {
+    pub offsets: Vec<u64>,
+    pub size: u64,
+    pub align: u64,
+}
+
+impl Layout {
+    /// Unused bytes before field `i`, or after the last field when `i` is
+    /// the field count.
+    pub fn padding_before(&self, i: usize, sizes: &[u64]) -> u64 {
+        let end = |j: usize| if j == 0 { 0 } else { self.offsets[j - 1] + sizes[j - 1] };
+        match self.offsets.get(i) {
+            Some(&at) => at - end(i),
+            None => self.size - end(i),
+        }
+    }
+}
+
+pub fn struct_layout(sizes: &[u64]) -> Layout {
     let mut size = 0u64;
     let mut align = 1u64;
-    for field in fields {
-        let field = field?;
+    let mut offsets = Vec::with_capacity(sizes.len());
+    for &field in sizes {
         let a = field.clamp(1, 8).next_power_of_two().min(8);
         align = align.max(a);
-        size = size.div_ceil(a) * a + field;
+        size = size.div_ceil(a) * a;
+        offsets.push(size);
+        size += field;
     }
-    Some(size.div_ceil(align) * align)
+    Layout {
+        offsets,
+        size: size.div_ceil(align) * align,
+        align,
+    }
+}
+
+/// Whether `?T` stores `None` in a value `T` never takes, so it needs no
+/// flag and costs what `T` costs.
+pub fn has_niche(inner: &Ty, inner_size: u64) -> bool {
+    match inner {
+        Ty::Int | Ty::Pos(_) => true,
+        Ty::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            ..
+        } => inner_size < 16 && hi - lo + 1 < 1i128 << (8 * inner_size),
+        _ => false,
+    }
 }
 
 fn int_width(lo: i128, hi: i128) -> u64 {

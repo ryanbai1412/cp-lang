@@ -12,7 +12,7 @@ use crate::builtins::builtin_member;
 use crate::check::HoverEntry;
 use crate::db::{Analysis, Database};
 use crate::def::{DeclKind, Def};
-use crate::ty::{human_bytes, human_int, size_of, struct_size, Ty};
+use crate::ty::{has_niche, human_bytes, human_int, size_of, struct_layout, struct_size, Ty};
 use cpl_diag::Span;
 use std::sync::Arc;
 
@@ -396,8 +396,37 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             ..
         } => {
             let mut out = format!("struct {}", with_generics(name, generics));
-            for field in fields {
-                out += &format!("\n  {}: {}", field.name, field.ty);
+            let sizes: Option<Vec<u64>> = if generics.is_empty() {
+                fields.iter().map(|f| size(&f.ty, lookup)).collect()
+            } else {
+                None
+            };
+            match &sizes {
+                Some(sizes) if !sizes.is_empty() => {
+                    let layout = struct_layout(sizes);
+                    for (i, field) in fields.iter().enumerate() {
+                        let pad = layout.padding_before(i, sizes);
+                        if pad > 0 {
+                            out += &format!("\n  // {} padding", human_bytes(pad.into()));
+                        }
+                        out += &format!(
+                            "\n  {}: {}  // at {}, {}",
+                            field.name,
+                            field.ty,
+                            layout.offsets[i],
+                            human_bytes(sizes[i].into())
+                        );
+                    }
+                    let pad = layout.padding_before(fields.len(), sizes);
+                    if pad > 0 {
+                        out += &format!("\n  // {} padding", human_bytes(pad.into()));
+                    }
+                }
+                _ => {
+                    for field in fields {
+                        out += &format!("\n  {}: {}", field.name, field.ty);
+                    }
+                }
             }
             for (method, ty) in methods {
                 let line = match projections.iter().find(|p| p.name == *method) {
@@ -419,7 +448,8 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
                     args: Vec::new(),
                 };
                 if let Some(total) = size(&whole, lookup) {
-                    out += &format!("\n  storage: {}", human_bytes(total.into()));
+                    let align = sizes.as_deref().map_or(1, |s| struct_layout(s).align);
+                    out += &format!("\n  storage: {}, aligned to {align}", human_bytes(total.into()));
                 }
             }
             out
@@ -631,6 +661,9 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
                 if let Some(count) = count {
                     out += &format!(", {} max", human_bytes(count as u128 * u128::from(per)));
                 }
+                out += &layout_note(elem, lookup);
+            } else {
+                out += &held_note(elem, lookup);
             }
         }
         Ty::Range { .. }
@@ -641,9 +674,71 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
         | Ty::Named { .. } => {
             if let Some(bytes) = size(ty, lookup) {
                 out += &format!("\n  storage: {}", human_bytes(bytes.into()));
+                out += &layout_note(ty, lookup);
+            } else {
+                out += &held_note(ty, lookup);
             }
         }
         _ => {}
     }
     out
+}
+
+/// How a value of `ty` is laid out, after its size: where `none` goes for
+/// an optional, and each field's offset and the padding for a tuple, record
+/// or struct.
+fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
+    let sizes: Option<Vec<u64>> = match ty {
+        Ty::Optional(inner) => {
+            let Some(inner_size) = size(inner, lookup) else {
+                return String::new();
+            };
+            return if has_niche(inner, inner_size) {
+                " (none is a spare value: no flag)".to_string()
+            } else {
+                format!(
+                    " ({} + {} flag for none)",
+                    human_bytes(inner_size.into()),
+                    human_bytes(inner_size.clamp(1, 8).into())
+                )
+            };
+        }
+        Ty::Tuple(items) => items.iter().map(|t| size(t, lookup)).collect(),
+        Ty::Record(fields) => fields.iter().map(|(_, t)| size(t, lookup)).collect(),
+        Ty::Named { name, args } if args.is_empty() => match lookup(name).as_deref() {
+            Some(Def::Struct { fields, generics, .. }) if generics.is_empty() => {
+                fields.iter().map(|f| size(&f.ty, lookup)).collect()
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    let Some(sizes) = sizes.filter(|s| s.len() > 1) else {
+        return String::new();
+    };
+    let layout = struct_layout(&sizes);
+    let at: Vec<String> = layout.offsets.iter().map(u64::to_string).collect();
+    let padding: u64 = (0..=sizes.len()).map(|i| layout.padding_before(i, &sizes)).sum();
+    let mut note = format!(" (fields at {}", at.join(", "));
+    if padding > 0 {
+        note += &format!("; {} padding", human_bytes(padding.into()));
+    }
+    note + ")"
+}
+
+/// For a type with no fixed size of its own, such as `List<V>`: what each
+/// of its type arguments takes.
+fn held_note(ty: &Ty, lookup: &mut Lookup) -> String {
+    let Ty::Named { args, .. } = ty else {
+        return String::new();
+    };
+    let held: Vec<String> = args
+        .iter()
+        .filter_map(|a| size(a, lookup).map(|s| format!("{a}: {}", human_bytes(s.into()))))
+        .collect();
+    if held.is_empty() {
+        String::new()
+    } else {
+        format!("\n  storage: grows on the heap; {} each", held.join(", "))
+    }
 }

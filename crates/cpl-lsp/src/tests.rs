@@ -243,7 +243,7 @@ fn hover_shows_type_and_cost_with_its_range() {
     assert_eq!(hover.at(&["contents", "kind"]).as_str(), Some("markdown"));
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max\n```")
+        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(6, 13));
     assert_eq!(hover.at(&["range", "end"]), &pos(6, 17));
@@ -847,14 +847,14 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     let hover = hover_at(&mut server, 7, 4);
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\nbest: ?Int\n  storage: 8 bytes\n```")
+        Some("```cp\nbest: ?Int\n  storage: 8 bytes (none is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(7, 4));
     assert_eq!(hover.at(&["range", "end"]), &pos(7, 8));
     let hover = hover_at(&mut server, 2, 4);
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element\n```")
+        Some("```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element (none is a spare value: no flag)\n```")
     );
 }
 
@@ -2275,7 +2275,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     );
     let rev = shown(&mut server, 4, 23);
     assert!(
-        rev.starts_with("```cp\nrev: List<Int>\ncost: O(1)\n```"),
+        rev.starts_with("```cp\nrev: List<Int>\n  storage: grows on the heap; Int: 8 bytes each\ncost: O(1)\n```"),
         "{rev}"
     );
     let fold = shown(&mut server, 4, 28);
