@@ -9,16 +9,14 @@ let g = read<[Row, Col]Char>()
 enum Letter: A, B, C, D, E
 fn spans(k: Int) -> Int = k * (k + 1) / 2
 struct FreeSpans:
-    blocked: [Col]Int
-    runs: Dsu<Col>
-    total: Int
+    var blocked: [Col]Int
+    var runs: Dsu<Col> = Dsu<Col>()
+    var total = 0
 
     fn new(blocked: [Col]Int) -> FreeSpans:
-        var s = FreeSpans(blocked: [Col] c => 1, runs: Dsu<Col>(), total: 0)
+        var s = FreeSpans(blocked: [Col] c => blocked[c] + 1)
         for c in Col:
-            if blocked[c] == 0:
-                s.free(c)
-        s.blocked = blocked
+            s.free(c)
         s
 
     fn free(mut self, c: Col):
@@ -36,18 +34,11 @@ for bot in Row:
     for c in Col:
         if let ch = Letter.at(Int(g[bot, c]) - Int('A')):
             last[c, ch] = bot
-    var free: [Letter.subsets]FreeSpans = [Letter.subsets] s =>
-        FreeSpans.new([Col] c => s.items.count(ch => last[c, ch] != None))
-    var leaves: [Row]List<(Col, Letter)> = []
-    for c in Col:
-        for ch in Letter:
-            if let r = last[c, ch]:
-                leaves[r].push((c, ch))
+    var free = [Letter.subsets] s => FreeSpans.new([Col] c => s.items.count(ch => last[c, ch] != None))
+    let leaving = last.buckets()
     for top in ..=bot:
-        for s in Letter.subsets:
-            count += if s.len % 2 == 0: free[s].total else: -free[s].total
-        for (c, ch) in leaves[top]:
-            for s in Letter.subsets:
-                if ch in s:
-                    free[s].free(c)
+        count += Letter.subsets.sum(of: s => if s.len % 2 == 0: free[s].total else: -free[s].total)
+        for (c, ch) in leaving[Some(top)]:
+            for s in Letter.subsets.filter(s => ch in s):
+                free[s].free(c)
 print(count)

@@ -15,26 +15,18 @@ fn read_triangle(flip: Bool) -> [V, V]?Int:
     m
 let narrow = read_triangle(true)
 let wide = read_triangle(false)
-fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
-    var c = d.clone()
-    floyd_warshall(mut c, over: over)
-    V.all(u => V.all(v => u == v or c[u, v] == want[u, v]))
-var try_wide: [V, V]?Int = None
-var try_narrow: [V, V]?Int = None
-var edges: List<(u: V, v: V, w: Int)> = []
-for u in V:
-    for v in ..u:
-        if (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf):
-            (try_wide[u, v], try_wide[v, u]) = (wide[u, v], wide[u, v])
-            (try_narrow[u, v], try_narrow[v, u]) = (narrow[u, v], narrow[u, v])
-            edges.push((u: u, v: v, w: wide[u, v]!))
-            edges.push((u: u, v: v, w: narrow[u, v]!))
 let widest = Semiring(max, min)
 let narrowest = Semiring(min, max)
+fn fits(u: V, v: V) -> Bool = (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf)
+fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if u != v and fits(u, v): d[u, v] else: None
+fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
+    let c = d.closure(over: over)!
+    (V, V).all((u, v) => u == v or c[u, v] == want[u, v])
 if not (closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow)
-        and closes_to(try_wide, widest, wide) and closes_to(try_narrow, narrowest, narrow)):
+        and closes_to(only_fits(wide), widest, wide) and closes_to(only_fits(narrow), narrowest, narrow)):
     print("NO")
 else:
+    let edges = [(u: u, v: v, w: w!) for (u, v) in V.pairs() if fits(u, v) for w in [wide[u, v], narrow[u, v]]]
     let low = kruskal(edges).take
     let high = kruskal(edges, by: e => desc(e.w)).take
     let keep = edges.keys.filter(e => low[e] or high[e]).collect()
