@@ -3,7 +3,7 @@
 //! Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`),
 //! matching `std.ntt.convolve`. Every truncated operation takes an explicit output
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
-use std.math.{mod_sqrt}
+use std.math.{mod_sqrt, pow_mod}
 use std.mod.{Mod}
 use std.ntt.{ntt}
 
@@ -423,16 +423,7 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
 /// order: one value per point, in `xs` order
 /// traps: when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 3]; let xs: List<Z> = [0, 1, 2]; eval_all(a, xs) == [Z(1), Z(6), Z(17)]`
-pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
-    let n = xs.len
-    if n == 0: return []
-    if a.is_empty: return List.filled(n, Mod<P>(0))
-    if n <= 32 or a.len <= 32:
-        var out = List.filled(n, Mod<P>(0))
-        unchecked:
-            for i in 0..n: out[i] = eval(a, xs[i])
-        return out
-    let nodes = subproduct_tree(xs)
+fn eval_on_tree<P>(a: List<Mod<P>>, nodes: List<List<Mod<P>>>, n: Int) -> List<Mod<P>>:
     let root = nodes[1]
     let reduced = if a.len > n: div_mod(a, root).r else: a
     var r_pad = List.filled(n, Mod<P>(0))
@@ -452,6 +443,64 @@ pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
     unchecked:
         for i in 0..n: out[i] = down[n + i][0]
     out
+
+fn numer_on_tree<P>(nodes: List<List<Mod<P>>>, c: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+    var num: List<List<Mod<P>>> = List.filled(2 * n, [])
+    for i in 0..n: num[n + i] = [c[i]]
+    for i in (1..n).rev:
+        let l = times(num[2 * i], nodes[2 * i + 1])
+        let r = times(num[2 * i + 1], nodes[2 * i])
+        var s = List.filled(max(l.len, r.len), Mod<P>(0))
+        for k in 0..l.len: s[k] += l[k]
+        for k in 0..r.len: s[k] += r[k]
+        num[i] = s
+    num[1]
+
+fn poly_add<P>(a: List<Mod<P>>, b: List<Mod<P>>, sign: Mod<P>) -> List<Mod<P>>:
+    var out = List.filled(max(a.len, b.len), Mod<P>(0))
+    for i in 0..a.len: out[i] += a[i]
+    for i in 0..b.len: out[i] += sign * b[i]
+    trim_poly(out)
+
+fn drop_low<P>(a: List<Mod<P>>, k: Int) -> List<Mod<P>>:
+    if a.len <= k: return []
+    [a[i] for i in k..a.len]
+
+fn hgcd_apply<P>(m: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>), a: List<Mod<P>>, b: List<Mod<P>>) -> (List<Mod<P>>, List<Mod<P>>):
+    let one = Mod<P>(1)
+    (poly_add(times(m.0, a), times(m.1, b), one), poly_add(times(m.2, a), times(m.3, b), one))
+
+fn hgcd_mul<P>(x: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>), y: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>)) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
+    let one = Mod<P>(1)
+    (poly_add(times(x.0, y.0), times(x.1, y.2), one), poly_add(times(x.0, y.1), times(x.1, y.3), one),
+        poly_add(times(x.2, y.0), times(x.3, y.2), one), poly_add(times(x.2, y.1), times(x.3, y.3), one))
+
+fn half_gcd<P>(a0: List<Mod<P>>, b0: List<Mod<P>>) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
+    let one: List<Mod<P>> = [Mod<P>(1)]
+    let zero: List<Mod<P>> = []
+    let id = (one, zero, zero, one)
+    let m = a0.len / 2
+    if b0.len - 1 < m: return id
+    let r = half_gcd(drop_low(a0, m), drop_low(b0, m))
+    let (a, b) = hgcd_apply(r, a0, b0)
+    if b.len - 1 < m: return r
+    let (q, rem) = div_mod(a, b)
+    let step = (zero, one, one, poly_add(zero, q, Mod<P>(-1)))
+    let r2 = hgcd_mul(step, r)
+    let k = 2 * m - (b.len - 1)
+    if k <= 0 or b.len - k >= a0.len: return r2
+    hgcd_mul(half_gcd(drop_low(b, k), drop_low(rem, k)), r2)
+
+pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
+    let n = xs.len
+    if n == 0: return []
+    if a.is_empty: return List.filled(n, Mod<P>(0))
+    if n <= 32 or a.len <= 32:
+        var out = List.filled(n, Mod<P>(0))
+        unchecked:
+            for i in 0..n: out[i] = eval(a, xs[i])
+        return out
+    eval_on_tree(a, subproduct_tree(xs), n)
 
 fn biv_advance<P>(mut c: List<Mod<P>>, l_big: Int, l_step: Int) -> List<Mod<P>>:
     let b_sz = 4 << l_big
@@ -846,6 +895,8 @@ impl Div for Poly<T>:
 /// transposed evaluation, and interpolation.
 pub struct SubproductTree<P>:
     n: Int
+    keep: Int
+    nodes: List<List<Mod<P>>>
 
     /// Build the subproduct tree for the points `xs`: leaf `i` is `x - xs[i]` and each node the
     /// product of its children. With `keep >= 0` every stored product is truncated mod `x^keep`, which
@@ -856,7 +907,14 @@ pub struct SubproductTree<P>:
     /// empty: a tree over no points
     /// traps: when a transform length exceeds what `P` supports
     /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; let t = SubproductTree(xs); t.eval([Z(1), Z(2), Z(3)]) == [Z(1), Z(6), Z(17)]`
-    pub fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P> = todo
+    pub fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>:
+        let n = xs.len
+        if n == 0: return SubproductTree(0, keep, [[Mod<P>(1)]])
+        var nodes = subproduct_tree(xs)
+        if keep >= 0:
+            for i in 1..2 * n:
+                if nodes[i].len > keep: nodes[i].truncate(keep)
+        SubproductTree(n, keep, nodes)
 
     /// Evaluate `f` at every point in the tree: `[f(x) for x in xs]`.
     ///
@@ -865,7 +923,13 @@ pub struct SubproductTree<P>:
     /// order: one value per point, in `xs` order
     /// traps: when the tree was built with `keep >= 0`
     /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree(xs).eval([Z(0), Z(0), Z(1)]) == [Z(1), Z(4)]`
-    pub fn eval(self, f: List<Mod<P>>) -> List<Mod<P>> = todo
+    pub fn eval(self, f: List<Mod<P>>) -> List<Mod<P>>:
+        assert self.keep < 0, "SubproductTree.eval needs a tree built with keep < 0"
+        let n = self.n
+        if n == 0: return []
+        if f.is_empty: return List.filled(n, Mod<P>(0))
+        if n <= 32 or f.len <= 32: return [f.eval(-self.nodes[n + i][0]) for i in 0..n]
+        eval_on_tree(f, self.nodes, n)
 
     /// Transposed multipoint evaluation (Bostan-Lecerf-Schost / Tellegen's principle): the transpose
     /// of `eval` on polynomials of degree `< m`, so `out[k] = sum_i c[i] * xs[i]^k` for `k in 0..m`.
@@ -875,7 +939,21 @@ pub struct SubproductTree<P>:
     /// order: by power `k`, increasing
     /// traps: when `c.len != m`, or `keep` is in `0..m`
     /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; SubproductTree(xs).eval_transposed([Z(1), Z(1)]) == [Z(2), Z(3)]`
-    pub fn eval_transposed(self, c: List<Mod<P>>) -> List<Mod<P>> = todo
+    pub fn eval_transposed(self, c: List<Mod<P>>) -> List<Mod<P>>:
+        let n = self.n
+        assert c.len == n, "SubproductTree.eval_transposed requires c.len == m"
+        assert self.keep < 0 or self.keep >= n, "SubproductTree.eval_transposed needs keep >= m"
+        if n == 0: return []
+        let root = self.nodes[1]
+        var q = List.filled(n, Mod<P>(0))
+        q[0] = Mod<P>(1)
+        for j in 1..n: q[j] = root[n - j]
+        let num = numer_on_tree(self.nodes, c, n)
+        var r = List.filled(n, Mod<P>(0))
+        for i in 0..num.len: r[n - 1 - i] = num[i]
+        var out = times(r, inv(q, n))
+        out.truncate(n)
+        out
 
     /// The unique polynomial of degree `< m` taking values `ys` at the tree's points, as exactly `m`
     /// coefficients. The points must be distinct.
@@ -885,7 +963,19 @@ pub struct SubproductTree<P>:
     /// order: lowest degree first
     /// traps: when `ys.len != m`, two points are equal, or the tree was built with `keep >= 0`
     /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; SubproductTree(xs).interpolate([Z(1), Z(4), Z(9)]) == [Z(1), Z(2), Z(1)]`
-    pub fn interpolate(self, ys: List<Mod<P>>) -> List<Mod<P>> = todo
+    pub fn interpolate(self, ys: List<Mod<P>>) -> List<Mod<P>>:
+        let n = self.n
+        assert ys.len == n, "SubproductTree.interpolate requires ys.len == m"
+        assert self.keep < 0, "SubproductTree.interpolate needs a tree built with keep < 0"
+        if n == 0: return []
+        let d = self.eval(deriv(self.nodes[1]))
+        var w = List.filled(n, Mod<P>(0))
+        for i in 0..n:
+            assert d[i].v != 0, "SubproductTree.interpolate requires distinct points"
+            w[i] = ys[i] / d[i]
+        var out = numer_on_tree(self.nodes, w, n)
+        while out.len < n: out.push(Mod<P>(0))
+        out
 
 /// The exact coefficient `[x^n] (P(x) / Q(x))` via Bostan-Mori (`q[0] != 0`): the `n`-th term of
 /// the linear recurrence with denominator `q` and numerator `p`.
@@ -894,7 +984,19 @@ pub struct SubproductTree<P>:
 /// empty: zero when `p` is empty
 /// traps: when `n < 0`, or `q` is empty or `q[0] == 0`
 /// example: `type Z = Mod<998244353>; let p: List<Z> = [1]; let q: List<Z> = [1, -1, -1]; bostan_mori(p, q, 5) == Z(8)`
-pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P> = todo
+pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>:
+    assert n >= 0, "bostan_mori requires n >= 0"
+    assert not q.is_empty and q[0].v != 0, "bostan_mori requires q[0] != 0"
+    if p.is_empty: return Mod<P>(0)
+    var (a, b, k) = (p, q, n)
+    while k > 0:
+        let bn = [if i % 2 == 0: b[i] else: -b[i] for i in 0..b.len]
+        let u = times(a, bn)
+        let v = times(b, bn)
+        a = [u[i] for i in (k % 2..u.len).step(2)]
+        b = [v[i] for i in (0..v.len).step(2)]
+        k /= 2
+    if a.is_empty: Mod<P>(0) else: a[0] / b[0]
 
 /// The transposed (middle) product: `out[i] = sum_j a[i + j] * b[j]` over `j in 0..b.len`, for each
 /// `i` in `0..max(0, a.len - b.len + 1)` (only complete sums).
@@ -904,7 +1006,8 @@ pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P> = todo
 /// order: by `i`, increasing
 /// traps: when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 3, 4]; let b: List<Z> = [1, 1]; transposed_mul(a, b) == [Z(3), Z(5), Z(7)]`
-pub fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    middle_product(a, b)
 
 /// The compositional inverse `g` with `f(g(x)) == x (mod x^n)` (`f[0] == 0, f[1] != 0`), of length
 /// `n`; `g[0] == 0`.
@@ -914,7 +1017,25 @@ pub fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>> = tod
 /// order: lowest degree first
 /// traps: when `n < 0`; when `n > 0` and `f.len < 2`, `f[0] != 0` or `f[1] == 0`
 /// example: `type Z = Mod<998244353>; let f: List<Z> = [0, 1, 1]; compose_inv(f, 4) == [Z(0), Z(1), Z(-1), Z(2)]`
-pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>> = todo
+pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+    assert n >= 0, "compose_inv requires n >= 0"
+    if n == 0: return []
+    assert f.len >= 2 and f[0].v == 0 and f[1].v != 0, "compose_inv requires f[0] == 0 and f[1] != 0"
+    if n == 1: return [Mod<P>(0)]
+    let df = deriv(f)
+    var g: List<Mod<P>> = [Mod<P>(0), f[1].inv()]
+    var len = 2
+    while len < n:
+        len = min(2 * len, n)
+        var fg = compose(f, g, len)
+        fg[1] -= Mod<P>(1)
+        let corr = times(fg, inv(compose(df, g, len), len))
+        var ng = List.filled(len, Mod<P>(0))
+        for i in 0..len:
+            let gi = if i < g.len: g[i] else: Mod<P>(0)
+            ng[i] = gi - (if i < corr.len: corr[i] else: Mod<P>(0))
+        g = ng
+    g
 
 /// The polynomial power `a(x)^k mod mod_p(x)` where `d = mod_p.len`, by binary powering with
 /// `div_mod`. The result has exactly `deg mod_p` coefficients; `mod_p`'s trailing zeros are
@@ -926,7 +1047,22 @@ pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>> = todo
 /// traps: when `k < 0`, or `mod_p` is zero
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; let m: List<Z> = [-1, 0, 1]; pow_mod_poly(a, 3, m) == [Z(0), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; let m: List<Z> = [-1, 0, 1]; pow_mod_poly(a, 0, m) == [Z(1), Z(0)]`
-pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod<P>>:
+    assert k >= 0, "pow_mod_poly requires k >= 0"
+    let m = trim_poly(mod_p)
+    assert not m.is_empty, "pow_mod_poly requires a nonzero modulus"
+    let d = m.len - 1
+    if d == 0: return []
+    var base = div_mod(a, m).r
+    var acc: List<Mod<P>> = [Mod<P>(1)]
+    var e = k
+    while e > 0:
+        if e % 2 == 1: acc = div_mod(times(acc, base), m).r
+        e /= 2
+        if e > 0: base = div_mod(times(base, base), m).r
+    var out = List.filled(d, Mod<P>(0))
+    for i in 0..min(d, acc.len): out[i] = acc[i]
+    out
 
 /// The monic polynomial GCD via half-GCD, with trailing zeros trimmed; the gcd of two zero
 /// polynomials is the zero polynomial `[]`.
@@ -937,7 +1073,18 @@ pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod
 /// traps: never
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [2, -3, 1]; let b: List<Z> = [3, -4, 1]; gcd_poly(a, b) == [Z(-1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; let b: List<Z> = [2]; gcd_poly(a, b) == [Z(1)]`
-pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    var x = trim_poly(a)
+    var y = trim_poly(b)
+    if x.len < y.len: (x, y) = (y, x)
+    if not y.is_empty and x.len == y.len: (x, y) = (y, div_mod(x, y).r)
+    while not y.is_empty:
+        (x, y) = hgcd_apply(half_gcd(x, y), x, y)
+        if y.is_empty: break
+        (x, y) = (y, div_mod(x, y).r)
+    if x.is_empty: return x
+    let lead = x[x.len - 1].inv()
+    [c * lead for c in x]
 
 /// Bluestein / Chirp-Z evaluation `[a(r^0), a(r^1), ..., a(r^(m - 1))]`.
 ///
@@ -946,7 +1093,28 @@ pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>> = todo
 /// order: by power of `r`, increasing
 /// traps: when `m < 0`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; chirp_z(a, Z(2), 3) == [Z(2), Z(3), Z(5)]`
-pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>> = todo
+pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>:
+    assert m >= 0, "chirp_z requires m >= 0"
+    if m == 0: return []
+    let n = a.len
+    if n == 0: return List.filled(m, Mod<P>(0))
+    if r.v == 0:
+        var out = List.filled(m, a[0])
+        out[0] = eval(a, Mod<P>(1))
+        return out
+    let ri = r.inv()
+    let t = n + m - 1
+    var w = List.filled(t, Mod<P>(1))
+    var wi = List.filled(t, Mod<P>(1))
+    var (step, step_i) = (Mod<P>(1), Mod<P>(1))
+    for i in 1..t:
+        w[i] = w[i - 1] * step
+        wi[i] = wi[i - 1] * step_i
+        step = step * r
+        step_i = step_i * ri
+    let u = [a[i] * wi[i] for i in 0..n]
+    let s = middle_product(w, u)
+    [s[k] * wi[k] for k in 0..m]
 
 /// Given `f(0..n)` for `deg f < n`, return `[f(c), f(c + 1), ..., f(c + m - 1)]`, where `n` is
 /// `ys.len`.
@@ -956,7 +1124,37 @@ pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>> = todo
 /// order: by point, increasing
 /// traps: when `m < 0`, or `n + m > P` (the sample points collide mod `P`)
 /// example: `type Z = Mod<998244353>; let ys: List<Z> = [0, 1, 4]; sample_points_shift(ys, Z(3), 2) == [Z(9), Z(16)]`
-pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P>> = todo
+pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P>>:
+    assert m >= 0, "sample_points_shift requires m >= 0"
+    if m == 0: return []
+    let n = ys.len
+    if n == 0: return List.filled(m, Mod<P>(0))
+    assert n + m <= P, "sample_points_shift requires ys.len + m <= P"
+    let (_, inv_fact) = fact_tables<P>(n)
+    let t = n + m - 1
+    let base = c - Mod<P>(n - 1)
+    let d = [base + Mod<P>(i) for i in 0..t]
+    let h = [if d[i].v == 0: Mod<P>(0) else: d[i].inv() for i in 0..t]
+    var wr = List.filled(n, Mod<P>(0))
+    for i in 0..n:
+        let w = ys[i] * inv_fact[i] * inv_fact[n - 1 - i]
+        wr[n - 1 - i] = if (n - 1 - i) % 2 == 0: w else: -w
+    let s = middle_product(h, wr)
+    var out = List.filled(m, Mod<P>(0))
+    var prod = Mod<P>(1)
+    var zeros = 0
+    for i in 0..n:
+        if d[i].v == 0: zeros += 1
+        else: prod = prod * d[i]
+    for k in 0..m:
+        let x = (c + Mod<P>(k)).v
+        out[k] = if x < n: ys[x] else: prod * s[k]
+        if k + 1 < m:
+            if d[k].v == 0: zeros -= 1
+            else: prod = prod * h[k]
+            if d[k + n].v == 0: zeros += 1
+            else: prod = prod * d[k + n]
+    out
 
 /// The power sums `sum_i xs[i]^k` for `k in 0..=deg` via `-x p'(x) / p(x)`; entry 0 is `xs.len`.
 ///
@@ -965,7 +1163,16 @@ pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P
 /// order: by `k`, increasing
 /// traps: when `deg < 0`
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; power_sums(xs, 2) == [Z(2), Z(3), Z(5)]`
-pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>> = todo
+pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>>:
+    assert deg >= 0, "power_sums requires deg >= 0"
+    var out = List.filled(deg + 1, Mod<P>(0))
+    if xs.is_empty: return out
+    out[0] = Mod<P>(xs.len)
+    if deg == 0: return out
+    let p = rev_poly(prod_linear(xs))
+    let q = times(deriv(p), inv(p, deg))
+    for k in 1..=deg: out[k] = if k - 1 < q.len: -q[k - 1] else: Mod<P>(0)
+    out
 
 @allow(unproven_list_index)
 fn fact_tables<P>(n: Int) -> (List<Mod<P>>, List<Mod<P>>):
@@ -1022,7 +1229,20 @@ pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
 /// order: by row, increasing
 /// traps: when `n < 0`, `k < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling1_col(1, 3); s == [Z(0), Z(1), Z(1), Z(2)]`
-pub fn stirling1_col<P>(k: Int, n: Int) -> List<Mod<P>> = todo
+pub fn stirling1_col<P>(k: Int, n: Int) -> List<Mod<P>>:
+    assert n >= 0 and k >= 0 and n < P, "stirling1_col requires n >= 0, k >= 0 and n < P"
+    var out = List.filled(n + 1, Mod<P>(0))
+    if k > n: return out
+    if k == 0:
+        out[0] = Mod<P>(1)
+        return out
+    let (fact, inv_fact) = fact_tables<P>(n)
+    let len = n - k + 1
+    let base = [Mod<P>(i + 1).inv() for i in 0..len]
+    let lg = log(base, len)
+    let pw = exp([lg[i] * Mod<P>(k) for i in 0..len], len)
+    for i in k..=n: out[i] = pw[i - k] * fact[i] * inv_fact[k]
+    out
 
 /// The Stirling numbers of the second kind column `S(0..=n, k)`, `n + 1` values (zero for rows
 /// below `k`).
@@ -1032,7 +1252,21 @@ pub fn stirling1_col<P>(k: Int, n: Int) -> List<Mod<P>> = todo
 /// order: by row, increasing
 /// traps: when `n < 0`, `k < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_col(2, 4); s == [Z(0), Z(0), Z(1), Z(3), Z(7)]`
-pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>> = todo
+pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>>:
+    assert n >= 0 and k >= 0 and n < P, "stirling2_col requires n >= 0, k >= 0 and n < P"
+    var out = List.filled(n + 1, Mod<P>(0))
+    if k > n: return out
+    if k == 0:
+        out[0] = Mod<P>(1)
+        return out
+    let (fact, inv_fact) = fact_tables<P>(n)
+    let len = n - k + 1
+    let (_, ifb) = fact_tables<P>(len)
+    let base = [ifb[i + 1] for i in 0..len]
+    let lg = log(base, len)
+    let pw = exp([lg[i] * Mod<P>(k) for i in 0..len], len)
+    for i in k..=n: out[i] = pw[i - k] * fact[i] * inv_fact[k]
+    out
 
 /// The Bell numbers `B_0..=B_n`, `n + 1` values.
 ///
