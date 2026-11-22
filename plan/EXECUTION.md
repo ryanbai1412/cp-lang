@@ -21,18 +21,14 @@ Measured, "contest-ready" means:
 | Bugs | no known wrong-answer bug in either engine; differential fuzz clean for 30 minutes |
 | Docs | reference generated from the stdlib; error index complete |
 
-**Honest assessment:** the full v0.3 rewrite in `ARCHITECTURE.md` won't fully
-land in 12 hours. The plan runs two tracks so the morning result is usable
-either way:
+**Approach:** evolve the existing compiler (see "Decision: evolve, don't
+rewrite" in `ARCHITECTURE.md`). The stdlib is already CP Lang; the work is
+merging `spec/std` and `stdlib` into one `std/` with v0.3 names and real
+bodies, making v0.3 the only mode, and closing checker gaps in order of
+corpus failures. The compiler is usable at every step.
 
-- **Track A, ship:** make today's pipeline accept the v0.3 spec
-  syntax and semantics that the 100 `spec.cp` ports use, and harden it.
-  This is what Ryan uses tomorrow.
-- **Track B, build:** the new spine (syntax -> HIR -> types -> MIR ->
-  interpreter -> C++) in new crates, behind `cpl --next`, taking over
-  chapters as they pass their conformance cases.
-
-Track A gets the first hours, because it decides what works in the morning.
+Measured 2026-11-21: 97 of 100 `spec.cp` ports type-check against the
+stubs; 5 check against the implemented stdlib; none run in v0.3 form.
 
 ## 2. Workstreams
 
@@ -46,9 +42,9 @@ child sessions.
 | 1 | Spec finalization | me | round-3 rebuild under 5 holes; 0 vocabulary hits; all blocks parse | 0 (paths) |
 | 2 | Spec safeguards | me | checks below run in `just check` | none |
 | 3 | Harness (`cpl-conform`) | me | one runner and scoreboard JSON for conformance, corpus, doc examples and differential | none |
-| 4 | Track A: v0.3 on today's compiler | me | the corpus row of the table above | 3 |
-| 5 | Track B: new spine | me | ch1–ch5 conformance on `--next`; stdlib prelude and seq in CP Lang | 3 |
-| 6 | Stdlib in CP Lang | children, one module each | module doc examples run on `--next` | 5 (types and MIR) |
+| 4 | One `std/`: v0.3 signatures with bodies; one mode | me | the corpus row of the table above | 3 |
+| 5 | Checker and IR to the target design | me | ch1–ch10 conformance; intrinsics table only in `call.rs` | 3 |
+| 6 | Stdlib bodies | children, one module each | module doc examples run | 4 |
 | 7 | C++ codegen and perf | me | budget rows above; `just bench` report | 4 |
 | 8 | Diagnostics | child | every code in `spec/diagnostics.md` has a case and a fix | 1 |
 | 9 | Interpreter, traces, debugger | me (with 5) | one engine; traps show source values | 5 |
@@ -97,9 +93,9 @@ back:
 | Time | Me | Others |
 |---|---|---|
 | 22:45–23:30 | tech-debt finish and verify; harness skeleton; spec hole batch 1 (stubs) | tech-debt child wraps up; site child |
-| 23:30–02:00 | Track A: the v0.3 forms the corpus `spec.cp` ports need, by failure count; spec safeguards | children: diagnostics, judges, LSP (if allowed) |
+| 23:30–02:00 | merge `spec/std` and `stdlib` into `std/`; drop `CPL_SPEC`; port bodies by corpus usage; spec safeguards | children: diagnostics, judges, LSP (if allowed) |
 | 02:00–03:00 | spec holes batch 2; launch rebuild round 3 | rebuild child (if allowed) |
-| 03:00–07:00 | Track B spine: syntax, HIR, types, MIR, interpreter; first stdlib modules | stdlib children once types and MIR are in (if allowed) |
+| 03:00–07:00 | checker gaps by corpus failure count; library names out of `call.rs`; one interpreter | stdlib children once types and MIR are in (if allowed) |
 | 07:00–09:00 | codegen and perf pass; differential fuzz; corpus green | |
 | 09:00–10:30 | hardening: fix every red row; regenerate docs and scoreboard; morning report | |
 

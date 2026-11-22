@@ -10,21 +10,51 @@ Owner: Devin (parent session). Status: proposal, 2026-11-21.
   back to it) and `cpl-codegen` (C++17).
 - It runs all 100 corpus ports in their 0.2 form and meets 168 of 503
   conformance cases.
-- The structural problems, which incremental fixes don't remove:
-  1. **The stdlib lives in the compiler.** `cpl-ir/src/lower/call.rs`
-     (10k lines) hard-codes library operations, the C++ runtime spells
-     them a second time, and the interpreter a third. This breaks "no
-     privileged stdlib", and every library function costs three
-     implementations.
-  2. **No real generics or traits.** The checker says "borrows, value
-     ranges and overflow, generics and traits are later phases". The v0.3
-     library is generic (`Next<V>`, `Indexed<K, T>`, operation values), so
-     it can't be written today.
-  3. **Two languages in one checker,** switched by the `CPL_SPEC`
-     environment variable.
-  4. **Two interpreters** with different semantics on the edges.
-  5. **Signatures in two places:** `spec/std/*.cp` and the Rust
-     hard-coding.
+- The stdlib is already mostly CP Lang: `stdlib/` has 39 modules and
+  about 21k lines (`SegTree`, `Graph`, `dijkstra`, flows), with generics
+  and `Monoid` values.
+- The structural problems:
+  1. **Two library trees.** `spec/std/*.cp` holds the v0.3 signatures and
+     docs with `todo` bodies; `stdlib/*.cp` holds the 0.2 implementations
+     under older names. The checker only sees `spec/std` when
+     `CPL_SPEC=1 CPL_STD=spec/std` are set.
+  2. **Library names in the compiler.** The lowering special-cases 63
+     method names (`cpl-ir/src/lower/call.rs`). About half are real
+     primitives (`read`, `print`, `popcount`, `len`, `swap`); the rest
+     (`sum`, `sort`, `sorted`, `runs`, `prefix`, `first_ge`, `min`, `max`)
+     belong in CP Lang.
+  3. **Generics and traits are partial.** The checker's own docs list
+     borrows, value ranges, generics and traits as later phases, and
+     built-in member types sometimes disagree with the stubs (for example
+     `Cell.filter(..).min(by:)` is typed `Cell`, not `?Cell`).
+  4. **Two language modes** switched by the `CPL_SPEC` environment variable.
+  5. **Two interpreters** (a tree-walker and a bytecode VM that falls back
+     to it) and monolith files (`vm.rs` 11.6k lines, `call.rs` 10k).
+- Measured 2026-11-21: with the spec stubs, 97 of the 100 corpus `spec.cp`
+  ports type-check; with the default stdlib, 5 do. Nothing in v0.3 form runs
+  end to end yet, because the stubs have no bodies.
+
+## Decision: evolve, don't rewrite
+
+A from-scratch compiler costs weeks before it matches what exists. The
+existing pipeline already has the right shape (one front end, one typed
+lowering, two back ends) and a CP Lang stdlib. So the new architecture
+below is reached by targeted replacement, one boundary at a time, each step
+keeping the corpus green:
+
+1. **One library tree.** `spec/std` and `stdlib` merge into `std/`: v0.3
+   signatures and docs, with bodies ported from `stdlib/`. Stubs without a
+   body stay `todo` and show up as a count.
+2. **One mode.** v0.3 is the only language; `CPL_SPEC` goes.
+3. **Primitives table.** The non-primitive names leave `call.rs` for CP
+   Lang; what remains becomes the intrinsics table.
+4. **Checker to the target design** (traits, generics, local inference),
+   replacing `cpl-check` piece by piece behind the same `Database` API.
+5. **One interpreter** over the IR; the tree-walker goes.
+6. **Split the monoliths** along the crate lines in section 3 as each is
+   touched.
+
+The crate table in section 3 is the end state, not a parallel codebase.
 
 ## 2. Design principles
 
@@ -108,8 +138,9 @@ source --cpl-syntax--> CST (lossless) + AST
 | `cpl-stress`, `cpl-judge` | stress, shrinking, interactor harness, judge profiles | keep, rewire to the new driver |
 | `cpl-conform` | test harness: conformance, corpus, doc examples, differential | replaces scattered runners |
 
-Deleted when the new path replaces them: `cpl-check`, `cpl-ir`,
-`cpl-interp`, `cpl-codegen`, `cpl-verify`, the `CPL_SPEC` switch, `proto/`.
+Today's `cpl-check`, `cpl-ir`, `cpl-interp` and `cpl-codegen` are
+reshaped into these crates step by step; `cpl-verify`, the `CPL_SPEC`
+switch and `proto/` are deleted.
 
 ## 4. Key designs
 
@@ -199,10 +230,9 @@ The order follows dependencies, and each step ends on a test count:
 
 ## 8. Risks
 
-- **Scope:** a full generic compiler plus a 1,982-function stdlib is
-  large. Mitigation: the old pipeline keeps working until the new one
-  passes the corpus, so there is always a usable compiler; stdlib modules
-  are ranked by corpus usage.
+- **Scope:** a 1,982-function stdlib is large. Mitigation: evolve the
+  working compiler instead of replacing it, so there is always a usable
+  compiler; stdlib bodies are ported in order of corpus usage.
 - **Trait solver complexity:** kept simple on purpose (no overlapping
   impls, no specialization in user-visible traits; law dispatch is
   compile-time `if`).
