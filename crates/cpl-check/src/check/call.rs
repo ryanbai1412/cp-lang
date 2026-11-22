@@ -244,14 +244,21 @@ impl<'a> Checker<'a> {
         receiver.unwrap_or(ty)
     }
 
-    /// `read<T>()` is a `T`.
+    /// `read<T>()` (optionally with `base:` / `none:` / `gen:`) is a `T`.
     fn read_ty(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Generic { base, args: tys } = &callee.kind else {
             return None;
         };
-        let (ExprKind::Name(name), [t], []) = (&base.kind, tys.as_slice(), args) else {
+        let (ExprKind::Name(name), [t]) = (&base.kind, tys.as_slice()) else {
             return None;
         };
+        if !args.iter().all(|a| {
+            a.name
+                .as_ref()
+                .is_some_and(|n| matches!(n.text.as_str(), "base" | "none" | "gen"))
+        }) {
+            return None;
+        }
         if name != "read" || self.local(name).is_some() || self.global(name).is_some() {
             return None;
         }

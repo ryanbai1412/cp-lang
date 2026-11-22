@@ -588,15 +588,14 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Name(name) => name.as_str(),
             _ => "",
         };
-        // `read::<Int>()`, `read<1..=3>()`, `read<[n]1..=3>()`: a read that says its own type.
+        // `read::<Int>()`, `read<1..=3>()`, `read<[n]1..=3>()`, `read<[n]E>(base: 1)`: a read that says its own type.
         if name == "read" && self.get_sym(name).is_none() {
             if let [ty] = types {
+                let spec = self.resolve(ty, true);
                 if args.is_empty() {
-                    let spec = self.resolve(ty, true);
                     return self.read(spec, span);
                 }
-                let want = self.resolve_ty(ty);
-                return self.prelude(name, args, Some(&want), span);
+                return self.read_with_args(spec, args, span);
             }
         }
         if matches!(name, "List" | "Set" | "HashSet" | "Map" | "HashMap") {
@@ -1737,15 +1736,10 @@ impl<'a> Lowerer<'a> {
                         return self.read(spec, span);
                     }
                 }
-                // `read(none: 0)`: the number that a `?T` reads as `none`.
-                let absent = args
-                    .iter()
-                    .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
-                    .map(|a| self.expect(&a.value, &Ty::Int));
                 if !args.iter().all(|a| {
                     a.name
                         .as_ref()
-                        .is_some_and(|n| n.text == "gen" || n.text == "none")
+                        .is_some_and(|n| matches!(n.text.as_str(), "gen" | "none" | "base"))
                 }) && self.positional_any("read", args, 0, span).is_none()
                 {
                     return self.err_expr(span);
@@ -1756,18 +1750,7 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 };
                 match self.spec_of(want) {
-                    Some(mut spec) => {
-                        if let Some(absent) = absent {
-                            if !reads_none_as(&mut spec, &absent) {
-                                let message = format!(
-                                    "`none:` is for reading a `?T`, and a `{}` has none",
-                                    self.show(want)
-                                );
-                                self.error(codes::UNKNOWN_ARG_NAME, span, message);
-                            }
-                        }
-                        self.read(spec, span)
-                    }
+                    Some(spec) => self.read_with_args(spec, args, span),
                     None => {
                         let message =
                             format!("`read()` can't tell how much a `{}` is", self.show(want));
@@ -3091,6 +3074,51 @@ impl<'a> Lowerer<'a> {
                 lw.span(span),
             ));
         }))
+    }
+
+    fn read_with_args(&mut self, mut spec: Spec, args: &[ast::Arg], span: Span) -> Expr {
+        if !args.iter().all(|a| {
+            a.name
+                .as_ref()
+                .is_some_and(|n| matches!(n.text.as_str(), "gen" | "none" | "base"))
+        }) && self.positional_any("read", args, 0, span).is_none()
+        {
+            return self.err_expr(span);
+        }
+        if let Some(absent) = args
+            .iter()
+            .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
+            .map(|a| self.expect(&a.value, &Ty::Int))
+        {
+            let want = spec.ty();
+            if !reads_none_as(&mut spec, &absent) {
+                let message = format!(
+                    "`none:` is for reading a `?T`, and a `{}` has none",
+                    self.show(&want)
+                );
+                self.error(codes::UNKNOWN_ARG_NAME, span, message);
+            }
+        }
+        let base_arg = args
+            .iter()
+            .find(|a| a.name.as_ref().is_some_and(|n| n.text == "base"));
+        let saved_ctx = self.contexts.len();
+        let saved_base = self.io_base;
+        if let Some(base) = base_arg {
+            self.contexts.push((
+                self.cur_mod,
+                "io".to_string(),
+                "base".to_string(),
+                base.value.clone(),
+            ));
+            if let ast::ExprKind::Int(n) = base.value.kind {
+                self.io_base = Some(n as i64);
+            }
+        }
+        let out = self.read(spec, span);
+        self.contexts.truncate(saved_ctx);
+        self.io_base = saved_base;
+        out
     }
 
     pub(super) fn read(&mut self, spec: Spec, span: Span) -> Expr {
