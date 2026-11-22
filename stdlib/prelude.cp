@@ -16,7 +16,7 @@ use std.deque.{Deque}
 use std.dsu.{Dsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
-use std.geometry.{ByAngle, Pt}
+use std.geometry.{ByAngle, Pt, turn}
 use std.graph.{Graph, Target, Tree, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4, Dir8, step}
 use std.heap.{MaxHeap, MinHeap}
