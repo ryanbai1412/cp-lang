@@ -4395,8 +4395,14 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   name it with `<G: ...>` when two places must share it. Open to users.
 - **Still open.** Weight algebra: Ryan leans to a monoid-like argument
   (minimax, bottleneck, reliability) over fixed `Ord + Add`; later.
-  Storage format: proposed immutable CSR, arcs carry every edge field
-  by default with `carry:` to narrow, no `add_edge` (use `[V]List`).
+- **Storage (agreed).** `Graph<V, A>` is immutable CSR over an arc record
+  `A`, built in O(n + m) keeping input order; arcs carry `to`, `e` and
+  every other edge field by default; `keep:` narrows what arcs store
+  (dropping `e` makes them not `Edged`). No `add_edge`: a growing graph is
+  `[V]List<Arc>`, which is already a `Next`. Widths come from domains.
+  Rejected for now: `e` in a side table (`e: .table`), rarely worth it.
+- **Still open.** `keep:` syntax (proposed: a fn from the default arc,
+  `keep: a => (to: a.to, w: a.w)`).
 - **Why.** Ryan asked whether `WeightedNext` could bundle the arc bounds
   and called the long signature "a mouthful"; he accepted `Edged` once its
   reason (multi-edge bridges, `[E]` results) was shown.
