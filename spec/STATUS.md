@@ -2,7 +2,7 @@
 
 The current state of the 0.3.0 work, for an agent picking it up cold. Update
 this file whenever a phase moves or an open question closes. Last updated
-2026-11-21, on branch `devin/spec`.
+2026-11-21, on `main`.
 
 ## The plan and how far it got
 
@@ -24,6 +24,17 @@ Ryan's plan, in order (his words are in `plan/agent-context.md`):
    0.3.0. The 0.2.x compiler on this branch accepts most of the new syntax in
    the checker, but the interpreter and C++ lowering lag. See `delta/0.2.md`
    and `delta/parser-gaps.md`.
+
+## Independent rebuilds
+
+The spec is done when a fresh agent reading only `spec/` writes contest code
+and answers compile/output questions with few guesses.
+
+- **Round 1** (`delta/rebuild-1/`): 57 holes. 56 are fixed (decisions
+  179–186; the list is at the end of its `HOLES.md`). Open: H-Z-KEYS.
+- **Round 2** (`delta/rebuild-2/`): running. Target: fewer than 5 holes.
+- `GLOSSARY.md` fixes one term per concept; `scripts/spec-vocab.py` (in
+  `scripts/spec-check.sh`) fails on banned spellings.
 
 ## The loop
 
