@@ -1,7 +1,7 @@
 # ucup4s25c
 
-Score: pending cold rescore (adopted std.marks.Interner<(Int, Int)>, bounded (a,b,c) to 1..=10**9, stated distinctness of triples, used rep[comp[u]] ??= u for first SCC vertex)
-Dream: pending cold rescore (std.marks.Interner, bounded triples, stated distinctness, first-vertex rep)
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 53a08f6f (port = dream). Both files check with zero errors. SCC plus per-component BFS mod 3 is the right structure, and the header (lines 3-9) states the test. Lines 15-18 hand-write an interner where `std.marks.Interner<(Int, Int)>` exists (I probed `id`/`len`).
 
@@ -18,3 +18,9 @@ Baseline review, cold, on main 53a08f6f (port = dream). Both files check with ze
 ## Gaps that need the language
 
 - The `Map<(Int, Int), Int>` slowdown is measured in `research/frictions/ucup4s25c.md`. Re-measure with `Interner`.
+
+## Cold rescore (3f044ab9)
+
+Port 4, dream 4 (port = dream). Rescored cold on main 3f044ab9; both check clean. `std.marks.Interner` replaces the hand map (lines 17, 23), the triples are bounded (line 21), and the header states distinctness (lines 3-5).
+- Minor: every SCC has a vertex, so `rep: [C]?V` (line 29) is never `none` after line 30. The `if let` in line 31 filters nothing.
+- Minor: `raw_edges` is re-wrapped into `V` (line 26) only because `domain V` exists after interning; that is inherent to the order, but one sentence would say why.
