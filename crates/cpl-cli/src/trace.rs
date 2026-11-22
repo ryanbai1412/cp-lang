@@ -30,6 +30,18 @@ fn file_name(path: &str) -> &str {
     Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path)
 }
 
+/// The newest `.in` in the file's `<name>.tests/`: the failing case
+/// `cpl stress` saved last, or a judge case put there.
+pub fn pinned_input(path: &Path) -> Option<std::path::PathBuf> {
+    let dir = path.with_extension("tests");
+    let modified = |p: &Path| p.metadata().and_then(|m| m.modified()).ok();
+    std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|entry| Some(entry.ok()?.path()))
+        .filter(|p| p.extension().is_some_and(|e| e == "in"))
+        .max_by_key(|p| (modified(p), p.clone()))
+}
+
 /// How to record a run of `source`.
 pub fn config(source: &str, only_fn: Option<&str>) -> TraceConfig {
     TraceConfig {

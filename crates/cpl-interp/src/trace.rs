@@ -10,7 +10,7 @@
 use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 
 /// How a run is recorded.
@@ -142,6 +142,88 @@ pub struct Recording {
     pub shown: Vec<Shown>,
     /// With [`TraceConfig::assignments`], in the order they ran.
     pub assigned: Vec<Assigned>,
+}
+
+/// A step in source terms: its line, and which visit to that line it is.
+/// A run recorded again after an edit finds the same place by it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Place {
+    pub line: u32,
+    /// 1-based: the third time the run reached `line` is visit 3.
+    pub visit: usize,
+}
+
+/// The first step at which two runs of a file hold different values or
+/// have printed different output.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Change {
+    /// The step of the later run, or its last step when it ended first.
+    pub step: usize,
+    pub line: u32,
+    /// The variable that differs; `None` when one run ended first.
+    pub variable: Option<String>,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+impl Recording {
+    pub fn place(&self, step: usize) -> Option<Place> {
+        let line = self.steps.get(step)?.line;
+        let visit = self.steps[..=step].iter().filter(|s| s.line == line).count();
+        Some(Place { line, visit })
+    }
+
+    /// The step at `place`: the same visit to the same line, else the
+    /// line's last visit, else the step nearest `fallback`.
+    pub fn find(&self, place: Place, fallback: usize) -> usize {
+        let mut last = None;
+        let mut seen = 0;
+        for (i, step) in self.steps.iter().enumerate() {
+            if step.line == place.line {
+                seen += 1;
+                last = Some(i);
+                if seen == place.visit {
+                    return i;
+                }
+            }
+        }
+        last.unwrap_or_else(|| fallback.min(self.steps.len().saturating_sub(1)))
+    }
+
+    fn values_at(&self, step: usize) -> BTreeMap<&str, &str> {
+        self.steps[step].values.iter().map(|(var, json)| (self.vars[*var].id.as_str(), &**json)).collect()
+    }
+}
+
+/// Where `after`, a run recorded again after an edit, first parts from
+/// `before`. Steps are compared in order: the n-th change of one run against
+/// the n-th of the other, `stdout` included.
+pub fn first_change(before: &Recording, after: &Recording) -> Option<Change> {
+    let label = |run: &Recording, i: usize| run.steps.get(i).map(|s| s.label.clone());
+    for i in 0..before.steps.len().max(after.steps.len()) {
+        if i >= before.steps.len() || i >= after.steps.len() {
+            let step = i.min(after.steps.len().saturating_sub(1));
+            return Some(Change {
+                step,
+                line: after.steps.get(step).map_or(0, |s| s.line),
+                variable: None,
+                before: label(before, i),
+                after: label(after, i),
+            });
+        }
+        let (old, new) = (before.values_at(i), after.values_at(i));
+        let differs = old.keys().chain(new.keys()).find(|id| old.get(*id) != new.get(*id));
+        if let Some(id) = differs {
+            return Some(Change {
+                step: i,
+                line: after.steps[i].line,
+                variable: Some(id.to_string()),
+                before: label(before, i),
+                after: label(after, i),
+            });
+        }
+    }
+    None
 }
 
 pub(crate) struct Tracer {

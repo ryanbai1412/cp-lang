@@ -8,7 +8,7 @@
 //! evaluation, and exception stops on runtime traps.
 
 use crate::{compile_side, render_trap, Side};
-use cpl_interp::trace::{string as json_str, Recording, TraceConfig};
+use cpl_interp::trace::{first_change, string as json_str, Change, Recording, TraceConfig};
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
@@ -63,6 +63,11 @@ struct Session {
     launched: bool,
     /// Step index that holds the final trap step, if the run trapped.
     trap_step: Option<usize>,
+    brute: bool,
+    /// What every recording of this session reads, restarts included.
+    input: Vec<u8>,
+    /// Where the latest restart first changed a value, against the run before it.
+    change: Option<Change>,
 }
 
 impl Session {
@@ -78,6 +83,9 @@ impl Session {
             stop_on_entry: true,
             launched: false,
             trap_step: None,
+            brute: false,
+            input: Vec::new(),
+            change: None,
         }
     }
 
@@ -199,79 +207,35 @@ impl Session {
                     .and_then(|a| a.get("stopOnEntry"))
                     .and_then(Json::as_bool)
                     .unwrap_or(true);
-                let brute = args
+                self.brute = args
                     .and_then(|a| a.get("brute"))
                     .and_then(Json::as_bool)
                     .unwrap_or(false);
-                let input_bytes = if let Some(text) = args.and_then(|a| a.get("inputText")).and_then(Json::as_str) {
-                    text.as_bytes().to_vec()
-                } else if let Some(input_path) = args
-                    .and_then(|a| a.get("input"))
-                    .and_then(Json::as_str)
-                    .filter(|s| !s.is_empty())
-                {
-                    match std::fs::read(input_path) {
-                        Ok(bytes) => bytes,
-                        Err(err) => {
-                            let msg = format!("cannot read input `{input_path}`: {err}");
-                            self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
-                            return Ok(false);
-                        }
-                    }
-                } else {
-                    Vec::new()
-                };
-
-                let side = if brute { Side::Brute } else { Side::Solution };
-                let mut compile_err = String::new();
-                let compiled = match compile_side(program, side, &mut compile_err) {
-                    Ok(c) => c,
-                    Err(_) => {
-                        self.send_output(writer, "stderr", &compile_err)?;
-                        self.send_response(writer, req_seq, command, false, Some(compile_err.trim()), None)?;
-                        return Ok(false);
-                    }
-                };
-
-                let config = TraceConfig {
-                    source: compiled.text.clone(),
-                    record_frames: true,
-                    ..TraceConfig::default()
-                };
-                let mut printed = Vec::new();
-                let observed = cpl_interp::run_observed(
-                    &compiled.program,
-                    cpl_interp::Io::fixed(&input_bytes),
-                    &mut printed,
-                    Some(config),
-                );
                 self.program_path = program.to_string();
                 self.source_name = Path::new(program)
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or(program)
                     .to_string();
-                self.recording = observed.recording.unwrap_or_default();
+                match read_input(program, args) {
+                    Ok((bytes, note)) => {
+                        self.input = bytes;
+                        if let Some(note) = note {
+                            self.send_output(writer, "console", &note)?;
+                        }
+                    }
+                    Err(msg) => {
+                        self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
+                        return Ok(false);
+                    }
+                }
+                if let Err(msg) = self.record(writer)? {
+                    self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
+                    return Ok(false);
+                }
                 self.cursor = 0;
                 self.launched = true;
-                self.trap_message = observed.trap.as_ref().map(|t| render_trap(program, &compiled.text, t));
-                self.trap_step = observed
-                    .trap
-                    .as_ref()
-                    .and_then(|_| self.recording.steps.len().checked_sub(1));
-
                 self.send_response(writer, req_seq, command, true, None, None)?;
-                if !printed.is_empty() {
-                    let out = String::from_utf8_lossy(&printed);
-                    self.send_output(writer, "stdout", &out)?;
-                }
-                if !observed.debug.is_empty() {
-                    let dbg = String::from_utf8_lossy(&observed.debug);
-                    self.send_output(writer, "console", &dbg)?;
-                }
-                if let Some(trap) = self.trap_message.clone() {
-                    self.send_output(writer, "stderr", &trap)?;
-                }
             }
             "setBreakpoints" => {
                 self.breakpoints.clear();
@@ -505,6 +469,11 @@ impl Session {
                 let mut i = self.cursor;
                 while i > 0 {
                     i -= 1;
+                    if let Some(text) = self.change_at(i) {
+                        self.cursor = i;
+                        self.send_stopped(writer, "divergence", Some(&text))?;
+                        return Ok(false);
+                    }
                     if self.breakpoints.contains(&self.recording.steps[i].line) {
                         self.cursor = i;
                         self.send_stopped(writer, "breakpoint", None)?;
@@ -514,12 +483,46 @@ impl Session {
                 self.cursor = 0;
                 self.send_stopped(writer, "step", None)?;
             }
+            // Records the file on disk again, on the same input, and stops
+            // where the old run stood: the same visit to the same line.
             "restart" => {
-                self.cursor = 0;
-                self.send_response(writer, req_seq, command, true, None, None)?;
-                if !self.recording.steps.is_empty() {
-                    self.send_stopped(writer, "entry", None)?;
+                let config = args.and_then(|a| a.get("arguments"));
+                if config.is_some_and(|c| c.get("input").is_some() || c.get("inputText").is_some()) {
+                    match read_input(&self.program_path, config) {
+                        Ok((bytes, _)) => self.input = bytes,
+                        Err(msg) => {
+                            self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
+                            return Ok(false);
+                        }
+                    }
                 }
+                let (at, place) = (self.cursor, self.recording.place(self.cursor));
+                let before = std::mem::take(&mut self.recording);
+                let (trap_message, trap_step) = (self.trap_message.clone(), self.trap_step);
+                if let Err(msg) = self.record(writer)? {
+                    (self.recording, self.trap_message, self.trap_step) = (before, trap_message, trap_step);
+                    let msg = format!("{msg}\nkept the last good recording");
+                    self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
+                    return Ok(false);
+                }
+                self.cursor = place.map_or(0, |p| self.recording.find(p, at));
+                self.change = first_change(&before, &self.recording);
+                self.send_response(writer, req_seq, command, true, None, None)?;
+                if self.recording.steps.is_empty() {
+                    self.send_terminated(writer)?;
+                    return Ok(false);
+                }
+                let note = match &self.change {
+                    None => "re-ran: every value and every print is the same as before".to_string(),
+                    Some(change) => format!("re-ran: {}", describe_change(change)),
+                };
+                self.send_output(writer, "console", &format!("{note}\n"))?;
+                let line = self.recording.steps[self.cursor].line;
+                let kept = match place {
+                    Some(p) if p.line == line => format!("kept your place: line {line}, visit {}", p.visit),
+                    _ => format!("nearest step to where you were: line {line}"),
+                };
+                self.send_stopped(writer, "goto", Some(&kept))?;
             }
             "disconnect" | "terminate" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
@@ -530,6 +533,54 @@ impl Session {
             }
         }
         Ok(false)
+    }
+
+    fn change_at(&self, step: usize) -> Option<String> {
+        self.change.as_ref().filter(|c| c.step == step).map(describe_change)
+    }
+
+    /// Compiles the file as it is on disk now and records one run of it on
+    /// the session's input. On a compile error the old recording stays.
+    fn record(&mut self, writer: &mut dyn Write) -> io::Result<Result<(), String>> {
+        let side = if self.brute { Side::Brute } else { Side::Solution };
+        let mut compile_err = String::new();
+        let program = self.program_path.clone();
+        let compiled = match compile_side(&program, side, &mut compile_err) {
+            Ok(c) => c,
+            Err(_) => {
+                self.send_output(writer, "stderr", &compile_err)?;
+                return Ok(Err(compile_err.trim().to_string()));
+            }
+        };
+        let config = TraceConfig {
+            source: compiled.text.clone(),
+            record_frames: true,
+            ..TraceConfig::default()
+        };
+        let mut printed = Vec::new();
+        let observed = cpl_interp::run_observed(
+            &compiled.program,
+            cpl_interp::Io::fixed(&self.input),
+            &mut printed,
+            Some(config),
+        );
+        self.recording = observed.recording.unwrap_or_default();
+        self.trap_message = observed.trap.as_ref().map(|t| render_trap(&program, &compiled.text, t));
+        self.trap_step = observed
+            .trap
+            .as_ref()
+            .and_then(|_| self.recording.steps.len().checked_sub(1));
+        self.change = None;
+        if !printed.is_empty() {
+            self.send_output(writer, "stdout", &String::from_utf8_lossy(&printed))?;
+        }
+        if !observed.debug.is_empty() {
+            self.send_output(writer, "console", &String::from_utf8_lossy(&observed.debug))?;
+        }
+        if let Some(trap) = self.trap_message.clone() {
+            self.send_output(writer, "stderr", &trap)?;
+        }
+        Ok(Ok(()))
     }
 
     fn advance_continue(&mut self, writer: &mut dyn Write, include_current: bool) -> io::Result<()> {
@@ -543,6 +594,10 @@ impl Session {
                 self.cursor = i;
                 let msg = self.trap_message.clone();
                 return self.send_stopped(writer, "exception", msg.as_deref());
+            }
+            if let Some(text) = self.change_at(i) {
+                self.cursor = i;
+                return self.send_stopped(writer, "divergence", Some(&text));
             }
             if self.breakpoints.contains(&self.recording.steps[i].line) {
                 self.cursor = i;
@@ -586,6 +641,37 @@ fn emit_variable(out: &mut String, name: &str, value: &str, ty: &str) {
 }
 
 // ----- Content-Length stdio framing -----
+
+/// The input a launch names, `inputText` or an `input` file; with neither,
+/// the case `cpl stress` last saved for the file, said in the note.
+fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<String>), String> {
+    if let Some(text) = args.and_then(|a| a.get("inputText")).and_then(Json::as_str) {
+        return Ok((text.as_bytes().to_vec(), None));
+    }
+    let named = args.and_then(|a| a.get("input")).and_then(Json::as_str).filter(|s| !s.is_empty());
+    let (path, note) = match named {
+        Some(path) => (std::path::PathBuf::from(path), None),
+        None => match crate::trace::pinned_input(Path::new(program)) {
+            Some(path) => {
+                let note = format!("input: {} (the last case saved for this file)\n", path.display());
+                (path, Some(note))
+            }
+            None => return Ok((Vec::new(), None)),
+        },
+    };
+    std::fs::read(&path)
+        .map(|bytes| (bytes, note))
+        .map_err(|err| format!("cannot read input `{}`: {err}", path.display()))
+}
+
+fn describe_change(change: &Change) -> String {
+    let was = change.before.as_deref().unwrap_or("the run had ended");
+    let now = change.after.as_deref().unwrap_or("the run has ended");
+    match &change.variable {
+        Some(var) => format!("first change at line {}: `{var}`: {now} (before the edit: {was})", change.line),
+        None => format!("first change at line {}: {now} (before the edit: {was})", change.line),
+    }
+}
 
 fn read_frame(reader: &mut dyn BufRead) -> io::Result<Option<String>> {
     let mut content_length: Option<usize> = None;

@@ -237,3 +237,87 @@ print(x)
 
     dap.finish();
 }
+
+#[test]
+fn dap_restart_rerecords_the_edit_on_the_pinned_input_and_keeps_place() {
+    let path = write_temp(
+        "restart",
+        "\
+let n: 1..=9 = read()
+var total = 0
+for i in 0..n:
+    total += i + 1
+print(total)
+",
+    );
+    let tests = path.with_extension("tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("stress-1.in"), "4\n").unwrap();
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+
+    // No input named: the case `cpl stress` saved is the input, said once.
+    dap.send("launch", Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":false}}")));
+    let note = dap.recv_until("\"category\":\"console\"");
+    assert!(note.contains("stress-1.in"), "the pinned input is not named: {note}");
+    let out = dap.recv_until("\"category\":\"stdout\"");
+    assert!(out.contains("\"output\":\"10\\n\""), "not run on the pinned input: {out}");
+    let launch = dap.recv_until("\"command\":\"launch\"");
+    assert!(launch.contains("\"success\":true"), "launch failed: {launch}");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!("{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{{\"line\":4}}]}}")),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+    for _ in 0..2 {
+        dap.send("continue", Some("{\"threadId\":1}"));
+        let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+    }
+    dap.send("evaluate", Some("{\"expression\":\"total\"}"));
+    let total = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(total.contains("\"result\":\"6\""), "third visit should hold 6: {total}");
+
+    // The edit changes the second visit on: the restart says where, keeps
+    // the third visit, and reverse-continue stops at the first change.
+    std::fs::write(
+        &path,
+        "\
+let n: 1..=9 = read()
+var total = 0
+for i in 0..n:
+    total += 2 * i + 1
+print(total)
+",
+    )
+    .unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let out = dap.recv_until("\"category\":\"stdout\"");
+    assert!(out.contains("\"output\":\"16\\n\""), "restart did not reread the file: {out}");
+    let note = dap.recv_until("re-ran");
+    assert!(note.contains("first change at line 4"), "no first change: {note}");
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"goto\"") && stop.contains("visit 3"), "place not kept: {stop}");
+    dap.send("evaluate", Some("{\"expression\":\"total\"}"));
+    let total = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(total.contains("\"result\":\"9\""), "third visit after the edit should hold 9: {total}");
+    dap.send("reverseContinue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"divergence\""), "no divergence stop: {stop}");
+    dap.send("evaluate", Some("{\"expression\":\"total\"}"));
+    let total = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(total.contains("\"result\":\"4\""), "the first change is the second visit: {total}");
+
+    // A broken edit keeps the last good recording.
+    std::fs::write(&path, "let n: 1..=9 = read(\n").unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let failed = dap.recv_until("\"command\":\"restart\"");
+    assert!(failed.contains("\"success\":false") && failed.contains("kept the last good recording"), "{failed}");
+    dap.send("evaluate", Some("{\"expression\":\"total\"}"));
+    let total = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(total.contains("\"result\":\"4\""), "{total}");
+    dap.finish();
+}
