@@ -172,6 +172,26 @@ switch and `proto/` are deleted.
   emitted C++ under 32 KB; runtime p50 at or below 1.0x the C++ originals.
   `cpl explain` shows layouts, elided checks and inlining.
 
+## 4b. First-class concerns
+
+Each concern says what every phase must preserve, its budget, and the test
+that enforces it. A phase that drops what a concern needs is a bug.
+
+| Concern | Every phase preserves | Budget | Enforced by |
+|---|---|---|---|
+| Editor (LSP) | per-position queries on partial programs; recovery after errors | edit to diagnostics under 50 ms; front end under 200 ms on the largest port | LSP snapshots and latency bench |
+| Diagnostics | source spans and rule IDs through lowering; one error per root cause; a fix-it | every code documented and tested | conformance `expect: E…`; undocumented-code test |
+| Performance | layout facts, inlining and check elision visible in IR | runtime p50 at most 1.0x originals, max 1.5x, 1.1x by tuning | `just bench` against matched C++ |
+| Size | bytes per emitted item; runtime helpers only when used | under 32 KB per solution, 64 KB hard | corpus size report in the scoreboard |
+| Interpreter and C++ agreement | one IR meaning; checks as explicit ops | zero disagreements | differential runs on every test and fuzzing |
+| Source-level traces | variable names and spans on every IR value | traps show source values | trace snapshots |
+| Explain | why each layout, check and inline was chosen | `cpl explain` covers all of them | explain snapshots |
+| Judge targets | profile (standard, flags, stack, ISA) flows to codegen | one profile per supported judge | judge profile tests |
+| Determinism | no hash-order or address dependence | identical bytes on rebuild | build twice and compare |
+| Input generation from types | declared input types reach the stress tools | generators for every input type | `cpl stress` cases |
+| Spec traceability | rule ID from spec to diagnostic, conformance case and docs | every rule has a case | `conformance.py --rules` |
+| Library power | no name checks in the compiler | intrinsics table only | name-ban gate and no-privilege test |
+
 ## 5. How the spec is implemented
 
 The order follows dependencies, and each step ends on a test count:
