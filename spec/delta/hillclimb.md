@@ -371,3 +371,25 @@ Open questions raised by dreams:
   - Spec question, open: whether `x is pat` in a comprehension's `if` binds for later clauses
     (`[x for c in cmds if c is Set(a, b, _) for x in [a.l, b.r]]`). The checker says no; the
     ioi05p2 port uses `flat_map` instead.
+- egoi23p7 port: bans now go through `tally` per top, and `blocked` is built from the ban
+  counts, O(m2). The old `[B] k => B.filter(...)` was O(B²), too slow at 3e5 blocks. The root
+  search is the last vertex a DFS finishes (3 lines, previously a 7-line depth count). Still
+  open: `Rooted.from_parents` has no result for invalid parents (an optional-returning form,
+  following `V.at`/`V(x)`), so the forest check stays hand-written.
+- Process notes from the session that were not yet written down:
+  - The dreams and the spec have one author, so the dreams are not independent of the spec and
+    probably understate friction. The fix is dreams and questions from an agent that reads only
+    `spec/` (the "writable from the docs" test in AGENTS.md), with every disagreement treated
+    as a spec hole.
+  - The checker is laxer than the spec: it accepted inline `(V, V)` and tuple-unpacking lambdas
+    before the spec defined them. "Passes `cpl check`" is not evidence that the spec says so.
+    Conformance task: make the checker reject what the spec doesn't define, starting with the
+    forms named here.
+  - Edge weights: an edge with one weight names it `w`, the implicit weight; with several, use
+    meaningful names and `.weighted(.len)`, so the reader sees which one an algorithm uses.
+  - Triangle inputs (egoi23p4, cco20p4): proposed an unordered-pair domain `Pair<V>`, which walks
+    in lower-triangle order, stores n(n-1)/2 values and indexes `d[Pair(u, v)]` in either order.
+    The alternative is ragged reads `read<[i in V][..i]Int>()`. Awaiting Ryan; upper-triangle
+    input order is the open point.
+- `spec/delta/dream-comparisons.md`: ten blind dreams side by side with their `spec.cp`, with a
+  per-line "vs spec" verdict for each.

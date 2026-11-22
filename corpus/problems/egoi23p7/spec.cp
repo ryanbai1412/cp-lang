@@ -23,21 +23,19 @@ fn solve() -> ?List<(child: V, parent: V)>:
     if B.any(b => top[b] == None):
         return None
     let members = block.buckets()
-    var bans = Counter<(B, B)>()
     var forbidden: [V]HashSet<V> = HashSet()
     for e in banned:
         forbidden[e.child].add(e.parent)
-        if top[block[e.child]] == Some(e.child):
-            bans.add((block[e.child], block[e.parent]))
-    let blocked: [B]List<B> = [B] k => B.filter(c => bans[(c, k)] == members[k].len).collect()
+    var blocked: [B]List<B> = []
+    for c in B:
+        for (k, hits) in forbidden[top[c]!].tally(by: v => block[v]).items:
+            if hits == members[k].len:
+                blocked[k].push(c)
     let hang = complement(blocked)
-    var (depth, root) = (0, B.first!)
-    for step in dfs(hang, from: B):
-        match step:
-            Enter(b) =>
-                if depth == 0: root = b
-                depth += 1
-            Exit(_) => depth -= 1
+    // The last vertex a DFS finishes is the only block that can reach all the others.
+    var root = B.first!
+    for step in dfs(hang, from: B) if step is Exit(b):
+        root = b
     let tree = bfs(hang, from: [root])
     if B.any(b => not tree.reached(b)):
         return None
