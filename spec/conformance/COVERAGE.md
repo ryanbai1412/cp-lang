@@ -6,22 +6,22 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1292 (296 passing). Rules: 521.
+Cases: 1305 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 82 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 83 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 84 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R03 (03-numbers-layout.md): 23 rules, 33 cases; 0 uncovered, 8 happy-path only, 4 negative only
-- R04 (04-indices.md): 59 rules, 70 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
+- R04 (04-indices.md): 59 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 81 cases; 0 uncovered, 7 happy-path only, 3 negative only
-- R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
-- R09 (09-contexts-checks.md): 25 rules, 33 cases; 4 uncovered, 5 happy-path only, 3 negative only
-- R10 (10-io.md): 16 rules, 43 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R07 (07-sequences.md): 87 rules, 82 cases; 0 uncovered, 7 happy-path only, 3 negative only
+- R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R09 (09-contexts-checks.md): 25 rules, 34 cases; 4 uncovered, 5 happy-path only, 3 negative only
+- R10 (10-io.md): 16 rules, 44 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
@@ -43,7 +43,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
 - R01.3.1 [1+ 0-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
 - R01.3.2 [1+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a value binding wit...
-- R01.3.3 [2+ 0-] *happy-path only*: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
+- R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [1+ 0-] *happy-path only*: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
 - R01.3.6 [2+ 0-] *happy-path only*: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
@@ -148,7 +148,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.8 [0+ 1-] *negative only*: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-] *happy-path only*: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
 - R03.2.2 [1+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
-- R03.2.3 [1+ 0-] *happy-path only*: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...
+- R03.2.3 [1+ 1-]: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...
 - R03.2.4 [1+ 0-]: **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, ...
 - R03.2.5 [1+ 0-]: **Several payload variants:** the largest variant (first on a tie) sets the layout. Every ...
 - R03.2.6 [1+ 0-] *happy-path only*: **Otherwise a tag byte** beside the largest payload, rounded up to alignment: when no fiel...
@@ -164,7 +164,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R04: 04-indices.md
 
-- R04.2.1 [2+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
+- R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
 - R04.2.3 [1+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
@@ -441,7 +441,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.2 [1+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [1+ 0-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n)
 - R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n)
-- R07.9.5 [1+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n)
+- R07.9.5 [2+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n)
 - R07.11.1 [2+ 1-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [1+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [1+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | O(n) expected
@@ -458,7 +458,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R08: 08-traits-generics.md
 
-- R08.1.1 [1+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
+- R08.1.1 [4+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [2+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 1-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.4 [2+ 1-]: Method lookup: inherent first, then traits in scope that the type implements; two candidat...
@@ -497,7 +497,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [0+ 1-] *negative only*: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
 - R09.2.2 [0+ 0-] **uncovered**: | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless ...
-- R09.2.3 [1+ 0-] *happy-path only*: **Checks never call user code.** A checked build makes exactly the calls to user functions...
+- R09.2.3 [2+ 0-] *happy-path only*: **Checks never call user code.** A checked build makes exactly the calls to user functions...
 - R09.3.1 [1+ 0-]: | index `a[i]` with `i: D` on `[D]T` | always (the type is the proof) | none | none
 - R09.3.2 [1+ 1-]: | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with val...
 - R09.3.3 [1+ 1-]: | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming val...
@@ -523,7 +523,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [3+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [4+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [4+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [5+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [2+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -622,13 +622,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0201 Unresolved name: 2 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 6 case(s)
-- E0204 Unknown type: 1 case(s)
+- E0204 Unknown type: 2 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 value_name_case *(0.3)*: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 20 case(s)
+- E0302 Type mismatch: 21 case(s)
 - E0303 Wrong number of arguments: 5 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -752,8 +752,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
 - **bag** (142/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
-- **beats** (16/25 named by a case)
-  - uncovered: `BeatsSegTree.chmax`, `BeatsSegTree.min_val`, `BeatsSegTree.max_val`, `HistoricBeatsSegTree`, `HistoricBeatsSegTree.new`, `HistoricBeatsSegTree.chmax`, `HistoricBeatsSegTree.max_val`, `HistoricBeatsSegTree.hist_max`, `HistoricBeatsSegTree.hist_sum`
+- **beats** (24/25 named by a case)
+  - uncovered: `BeatsSegTree.min_val`
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1845 of 2222 std items are named by a case.
+1853 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
