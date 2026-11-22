@@ -30,6 +30,33 @@ fn body(source: &str) -> String {
 }
 
 #[test]
+fn filter_map_sum_fuses_without_intermediate_vectors() {
+    let body = body(
+        "let a: List<Int> = [1, 2, 3, 4]\nprint(a.filter(x => (x & 1) == 0).map(x => x * 3 + 1).sum())\n",
+    );
+    assert!(
+        !body.contains("push_back"),
+        "filter.map.sum should fuse into one loop without intermediate vectors:\n{body}"
+    );
+}
+
+#[test]
+fn power_of_two_div_and_rem_use_shift_and_mask() {
+    let body =
+        body("var a: Int = read()\nprint(a / 2, a % 2, a / 8, a % 8)\na /= 2\na %= 4\nprint(a)\n");
+    assert!(body.contains("a >> 1"), "{body}");
+    assert!(body.contains("a & 1"), "{body}");
+    assert!(body.contains("a >> 3"), "{body}");
+    assert!(body.contains("a & 7"), "{body}");
+    assert!(body.contains("a >>= 1;"), "{body}");
+    assert!(body.contains("a &= 3;"), "{body}");
+    assert!(
+        !body.contains("cpl::divp") && !body.contains("cpl::modp"),
+        "{body}"
+    );
+}
+
+#[test]
 fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
     let body = body(
         "let a: 0..=100 = read()\nlet b: 1..=100 = read()\nprint(a / b, a % b, a % 1000000007)\n",

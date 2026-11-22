@@ -43,7 +43,7 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    fn line(&self, out: &mut String, text: &str) {
+    pub(crate) fn line(&self, out: &mut String, text: &str) {
         out.push_str(&pad(self.indent));
         out.push_str(text);
         out.push('\n');
@@ -118,6 +118,7 @@ impl<'p> Emitter<'p> {
                 }
                 self.line(out, "}");
             }
+            ExprKind::Mutate(Mutation::Push, place, args) if self.fused_push(place, args, out) => {}
             // `s.remove(x)` or `s.insert(x)` for its effect alone: whether
             // `x` was there is not asked, so what answers it is not written.
             ExprKind::Mutate(Mutation::Remove | Mutation::Insert, _, _) => {
@@ -391,7 +392,14 @@ impl<'p> Emitter<'p> {
         true
     }
 
-    fn for_stmt(&mut self, id: LoopId, slot: usize, iter: &Iter, body: &Block, out: &mut String) {
+    pub(crate) fn for_stmt(
+        &mut self,
+        id: LoopId,
+        slot: usize,
+        iter: &Iter,
+        body: &Block,
+        out: &mut String,
+    ) {
         let ty = self.locals()[slot].ty.clone();
         let cpp = self.ty_with_elem_layout(
             &ty,
@@ -727,6 +735,9 @@ impl<'p> Emitter<'p> {
                 };
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                if !rev && self.try_fuse_producer(id, slot, &var, &cpp, &first, seq, body, out) {
+                    return;
+                }
                 if !rev && matches!(seq.kind, ExprKind::Call(..)) {
                     let (decl, pushed_first): (String, &[String]) =
                         if matches!(ty, Ty::Struct(_)) && !hoisted {
@@ -1057,6 +1068,9 @@ impl<'p> Emitter<'p> {
             }),
             AssignOp::Binary(bop) => match (&place.ty, bop) {
                 (Ty::Int, BinOp::Div | BinOp::Rem) => {
+                    if self.pow2_assign(&p, bop == BinOp::Div, value, out) {
+                        return;
+                    }
                     let positive =
                         self.facts.sign(self.fn_id, value) == crate::ranges::Sign::Positive;
                     let helper = match (positive, bop == BinOp::Div) {

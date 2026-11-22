@@ -314,3 +314,25 @@ pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
         other => cty(program, niches, other),
     }
 }
+
+/// A type as the judge's grader writes it: what `cpl::Judge<T>::type` is.
+pub(crate) fn judge_ty(ty: &Ty) -> String {
+    match ty {
+        Ty::Unit => "void".into(),
+        Ty::Int => "int".into(),
+        Ty::Float => "double".into(),
+        Ty::Bool => "bool".into(),
+        Ty::Char => "char".into(),
+        Ty::Str => "std::string".into(),
+        Ty::StrView => "cpl::StrView".into(),
+        Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
+        Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
+        Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", judge_ty(elem)),
+        Ty::MutView(elem) => format!("cpl::MutView<{}>", judge_ty(elem)),
+        Ty::Tuple(items) => {
+            let items: Vec<String> = items.iter().map(judge_ty).collect();
+            format!("std::tuple<{}>", items.join(", "))
+        }
+        _ => unreachable!("lowering lets only these types cross to the judge"),
+    }
+}

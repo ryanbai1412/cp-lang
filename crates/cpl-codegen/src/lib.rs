@@ -1,8 +1,10 @@
 //! Lowering of a checked program to a single C++17 file.
 
 mod devirt;
+mod divrem;
 mod emit;
 mod expr;
+mod fuse;
 mod names;
 mod niche;
 mod ranges;

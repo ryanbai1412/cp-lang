@@ -4,7 +4,6 @@ use crate::emit::{
     pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
 };
 use crate::names::{elem_ty, fn_name, ident, is_plain_enum};
-use crate::ranges::Sign;
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -93,7 +92,7 @@ fn widen(code: &Code) -> Code {
     }
 }
 
-fn infix(l: &Code, sym: &str, r: &Code, prec: u8) -> Code {
+pub(crate) fn infix(l: &Code, sym: &str, r: &Code, prec: u8) -> Code {
     Code::new(format!("{} {sym} {}", l.at(prec), r.at(prec + 1)), prec)
 }
 
@@ -1746,23 +1745,7 @@ impl<'p> Emitter<'p> {
                 infix(&a, sym, b, prec)
             }
             (Ty::Int, BinOp::Div | BinOp::Rem) => {
-                let div = op == BinOp::Div;
-                let dividend = self.facts.sign(self.fn_id, l);
-                let divisor = self.facts.sign(self.fn_id, r);
-                if dividend != Sign::Unknown && divisor == Sign::Positive {
-                    // Nothing is negative: C++'s own operator agrees.
-                    let mut code = infix(a, if div { "/" } else { "%" }, b, MUL);
-                    code.narrow = both_narrow;
-                    return code;
-                }
-                let helper = match (divisor == Sign::Positive, div) {
-                    (true, true) => "divp",
-                    (true, false) => "modp",
-                    (false, true) => "ediv",
-                    (false, false) => "emod",
-                };
-                self.need(helper);
-                Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
+                self.divrem(op == BinOp::Div, l, r, a, b, both_narrow)
             }
             (Ty::Int, BinOp::Pow) => {
                 self.need("ipow");

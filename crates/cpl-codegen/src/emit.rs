@@ -1,6 +1,6 @@
 //! Printing a lowered program as one C++17 file.
 
-use crate::names::{cty, fn_name, ident, is_plain_enum, Niches};
+use crate::names::{cty, fn_name, ident, is_plain_enum, judge_ty, Niches};
 use crate::ranges::Facts;
 use crate::runtime::PIECES;
 use crate::walk;
@@ -162,6 +162,8 @@ pub(crate) struct Emitter<'p> {
     pub pushing: Option<usize>,
     /// The loops over a `yields` fn being written as its callback, innermost last.
     pub bodies: Vec<Pushed>,
+    /// Temporary list slots whose `push` statements run a fused consumer loop body directly.
+    pub fused_pushes: Vec<(usize, crate::fuse::FusedPush)>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
     pub in_setup: bool,
@@ -255,6 +257,7 @@ impl<'p> Emitter<'p> {
             pushers: BTreeMap::new(),
             pushing: None,
             bodies: Vec::new(),
+            fused_pushes: Vec::new(),
             found: Vec::new(),
             inside: Vec::new(),
             row_ptrs: Vec::new(),
@@ -2187,28 +2190,6 @@ fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
     }
     out.push('\n');
     out
-}
-
-/// A type as the judge's grader writes it: what `cpl::Judge<T>::type` is.
-fn judge_ty(ty: &Ty) -> String {
-    match ty {
-        Ty::Unit => "void".into(),
-        Ty::Int => "int".into(),
-        Ty::Float => "double".into(),
-        Ty::Bool => "bool".into(),
-        Ty::Char => "char".into(),
-        Ty::Str => "std::string".into(),
-        Ty::StrView => "cpl::StrView".into(),
-        Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
-        Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
-        Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", judge_ty(elem)),
-        Ty::MutView(elem) => format!("cpl::MutView<{}>", judge_ty(elem)),
-        Ty::Tuple(items) => {
-            let items: Vec<String> = items.iter().map(judge_ty).collect();
-            format!("std::tuple<{}>", items.join(", "))
-        }
-        _ => unreachable!("lowering lets only these types cross to the judge"),
-    }
 }
 
 /// A fn's declaration, and where its definition starts in the text of

@@ -12,7 +12,7 @@
     "crates/cpl-check/src/tests.rs": 3865,
     "crates/cpl-check/src/check/stmt.rs": 3312,
     "crates/cpl-stress/src/spec.rs": 2911,
-    "crates/cpl-codegen/src/expr.rs": 2900,
+    "crates/cpl-codegen/src/expr.rs": 2883,
     "crates/cpl-lsp/src/tests.rs": 2868,
     "crates/cpl-check/src/check/lends.rs": 2860,
     "crates/cpl-cli/src/lib.rs": 2552,
@@ -21,7 +21,7 @@
     "crates/cpl-lint/src/tests.rs": 2384,
     "crates/cpl-interp/src/trace.rs": 2350,
     "crates/cpl-check/src/check/call.rs": 2233,
-    "crates/cpl-codegen/src/emit.rs": 2233,
+    "crates/cpl-codegen/src/emit.rs": 2214,
     "crates/cpl-lint/src/rules/mod.rs": 2146,
     "crates/cpl-lsp/src/server.rs": 2111
   },

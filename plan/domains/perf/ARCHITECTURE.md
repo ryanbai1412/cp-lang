@@ -9,9 +9,11 @@ The code as it is on main (read 2026-11-22). Updated in the same commit as any s
 | File | Lines | What it is for |
 |---|---|---|
 | `src/lib.rs` | 352 | Public API: `emit`, `emit_for`, `emit_profiled`, `emit_within(_for)`, `sizes`, `Target`, `Part`, `Size`, `Fitted`. Fitting a judge's source limit: drop comments, then the source header, then halve indentation. |
-| `src/emit.rs` | 2233 | The `Emitter`: whole-file printing, includes, types, globals, fn order, `main`, judge header and thread stack. |
-| `src/expr.rs` | 2900 | Expressions, indexing (`cpl::at` vs unchecked), builtin calls, map/set ops, IR-shape recognizers (`map_remove_do`). |
-| `src/stmt.rs` | 1797 | Statements and loops. |
+| `src/emit.rs` | 2214 | The `Emitter`: whole-file printing, includes, types, globals, fn order, `main`, judge header and thread stack. |
+| `src/expr.rs` | 2883 | Expressions, indexing (`cpl::at` vs unchecked), builtin calls, map/set ops, IR-shape recognizers (`map_remove_do`). |
+| `src/stmt.rs` | 1811 | Statements and loops. |
+| `src/fuse.rs` | 381 | Producer-consumer loop fusion: a loop over a `do { let v = []; for .. { v.push(e) }; give v }` runs its body at each `push` (`FusedPush`); taken only when the loops' effects don't interleave and one side cannot trap or stop early. |
+| `src/divrem.rs` | 79 | Euclidean `/` `%` on `Int`: plain C++ when signs allow, shift/mask for a power-of-two divisor, else `cpl::ediv`/`emod`/`divp`/`modp`. |
 | `src/runtime.rs` | 1767 | 100 runtime `Piece`s (I/O, `emod`, `at`, `reserve`, judge conversions), each emitted only when used; `unused_lines` trims the rest. |
 | `src/show.rs` | 586 | Printing and reading values. |
 | `src/names.rs` | 316 | C++ names and C++ types (`cty`, `elem_ty`), niche-aware. |
@@ -59,7 +61,7 @@ What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `Narrow
 
 ## Known debt
 
-- `src/expr.rs` (2900) and `src/emit.rs` (2233) are over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json`; `src/stmt.rs` (1797) goes over with the in-flight fusion code, so that lands as `src/fuse.rs`.
+- `src/expr.rs` (2883) and `src/emit.rs` (2214) are over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json` (ratcheted down when fusion and `/` `%` moved out).
 - Bounds-check proof is syntactic (`proven()`): ignores `ranges.rs` facts and `prover`; `for i in 1..n` over `[0; n]` still emits `cpl::at` (root of `strings/z_prefix`, `cf2178h`).
 - `src/devirt.rs` tracks only `Home::Field` and `Home::Param`: `let f = mon.op; f(a, b)` falls back to `std::function` (root of `dryrun/p10_matching`).
 - `src/ranges.rs` and `src/niche.rs` duplicate fact/layout reasoning that `plan/ARCHITECTURE.md` B3 step 6 moves into `cpl-ir` (shared with the interpreter and `prover`).
