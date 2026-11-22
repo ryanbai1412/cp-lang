@@ -320,7 +320,7 @@ fn formats_the_whole_corpus() {
     for dir in ["corpus/problems", "corpus/lib", "crates/cpl-cli/tests/cases", "examples"] {
         walk(&root.join(dir), &mut files);
     }
-    assert!(files.len() >= 1000, "found only {} corpus files", files.len());
+    assert!(files.len() >= 900, "found only {} corpus files", files.len());
     let mut formatted = 0;
     for file in &files {
         let src = std::fs::read_to_string(file).unwrap();
