@@ -408,6 +408,7 @@ fn run_io(
         view_locals: Vec::new(),
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
+        trace_raw: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
@@ -653,6 +654,8 @@ struct Interp<'p, 'o> {
     /// The indices of the place a trace point writes, kept between steps.
     trace_indices: Vec<Value>,
     trace_path: Vec<usize>,
+    /// The named `Int` locals a raw trace step shows, kept between steps.
+    trace_raw: Vec<(&'p str, i64)>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
     #[cfg(not(target_arch = "wasm32"))]
     vm_stats: Option<vm::VmStats>,
@@ -672,7 +675,7 @@ struct Fed<'p> {
 }
 
 /// The global a place is in, when it is in one.
-fn root_global(place: &Place) -> Option<usize> {
+pub(crate) fn root_global(place: &Place) -> Option<usize> {
     match &place.kind {
         PlaceKind::Global(id) => Some(*id),
         PlaceKind::Local(_) => None,
@@ -878,6 +881,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             globals: &self.globals,
             domains: &self.domains,
             locals,
+            raw: None,
             depth: self.call_frames.len(),
             call_frames: &self.call_frames,
         }

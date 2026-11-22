@@ -1458,6 +1458,9 @@ pub(crate) enum Op {
 pub(crate) enum TracePoint<'p> {
     Let(Slot, &'p Expr),
     Assign(&'p Place),
+    /// A write to a global or to a cell of one, with the registers its
+    /// indices were evaluated into again after the write.
+    Cell(&'p Place, Vec<u16>),
     Loop(Slot, Span),
     /// After the loop the variable keeps its last value, not one past the end.
     LoopEnd(Slot),

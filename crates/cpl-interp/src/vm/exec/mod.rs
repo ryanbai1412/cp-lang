@@ -2,7 +2,7 @@ use crate::value::{TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{describe, trap, Interp, Res};
-use cpl_ir::{CmpOp, FnId, LoopId};
+use cpl_ir::{CmpOp, FnId, LoopId, Place, PlaceKind, Ty};
 use std::rc::Rc;
 
 mod calls;
@@ -33,7 +33,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 self.trace_local(slot, init.span);
                 self.trace_assigned_local(slot, init.span);
             }
-            TracePoint::Assign(place) => {
+            TracePoint::Assign(place) | TracePoint::Cell(place, _) => {
                 let mut indices = std::mem::take(&mut self.trace_indices);
                 indices.clear();
                 if self.indices(place, &mut indices).is_ok() {
@@ -49,6 +49,84 @@ impl<'p, 'io> Interp<'p, 'io> {
             }
             TracePoint::LoopEnd(_) => {}
         }
+    }
+
+    /// Reports a write to `place` with the locals read straight from the
+    /// registers, when every local the step shows is a raw `Int`; returns
+    /// whether it did, or the caller must sync the stack and report it.
+    pub(super) fn trace_raw_cell(
+        &mut self,
+        slot_map: &[SlotLoc],
+        regs_i: &[i64],
+        regs_v: &[Value],
+        place: &'p Place,
+        indices: &[u16],
+    ) -> bool {
+        if self.tracer.is_none() || self.assignments() {
+            return false;
+        }
+        let mut raw = std::mem::take(&mut self.trace_raw);
+        raw.clear();
+        let base = self.base;
+        let locals = self.locals();
+        let all_raw = locals.iter().enumerate().all(|(slot, local)| {
+            if local.name.is_empty() || local.name.starts_with('_') {
+                return true;
+            }
+            let Some(held) = self.stack.get(base + slot) else {
+                return true;
+            };
+            let value = match slot_map.get(slot) {
+                Some(SlotLoc::I(r, _)) if !matches!(held, Value::Unit) => {
+                    if !matches!(local.ty, Ty::Int) {
+                        return false;
+                    }
+                    regs_i[*r as usize]
+                }
+                Some(SlotLoc::V(r)) if !matches!(regs_v[*r as usize], Value::Unit) => {
+                    match (&local.ty, &regs_v[*r as usize]) {
+                        (Ty::Int, Value::Int(v)) => *v,
+                        _ => return false,
+                    }
+                }
+                Some(SlotLoc::I(..)) | None | Some(SlotLoc::V(_)) => match held {
+                    Value::Unit | Value::Moved => return true,
+                    _ => return false,
+                },
+                Some(_) => return matches!(held, Value::Unit),
+            };
+            raw.push((local.name.as_str(), value));
+            value.unsigned_abs() <= crate::trace::MAX_EXACT
+        });
+        if all_raw {
+            let mut path = std::mem::take(&mut self.trace_path);
+            path.clear();
+            path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+            let mut tracer = self.tracer.take().expect("traced");
+            let view = crate::trace::View {
+                program: self.program,
+                globals: &self.globals,
+                domains: &self.domains,
+                locals: Vec::new(),
+                raw: Some(&raw),
+                depth: self.call_frames.len(),
+                call_frames: &self.call_frames,
+            };
+            match &place.kind {
+                PlaceKind::Global(id) if tracer.raw_write(*id, &view, place.span, &[]) => {}
+                PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
+                _ => {
+                    let global = crate::root_global(place).expect("a global's cell");
+                    if !tracer.raw_write(global, &view, place.span, &path) {
+                        tracer.changed(global, &view, place.span, &path);
+                    }
+                }
+            }
+            self.tracer = Some(tracer);
+            self.trace_path = path;
+        }
+        self.trace_raw = raw;
+        all_raw
     }
 
     pub(crate) fn run_main_vm(&mut self, compiled: &CompiledProgram<'p>) -> Res<()> {
@@ -324,7 +402,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_i[dst as usize] = ScalarKind::unbox_val(&self.globals[gid as usize]);
                 }
                 Op::StoreGlobalI { gid, src, kind } => {
-                    self.globals[gid as usize] = kind.box_val(regs_i[src as usize]);
+                    set_scalar(&mut self.globals[gid as usize], kind, regs_i[src as usize]);
                 }
                 Op::LoadGlobalOptI {
                     dst_val,

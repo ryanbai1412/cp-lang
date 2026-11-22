@@ -340,7 +340,8 @@ impl Log {
                         Delta::IntItem(small, pos)
                     }
                 };
-                self.push(delta);
+                Arc::make_mut(items)[index] = value;
+                self.changes.push(delta);
                 true
             }
         }

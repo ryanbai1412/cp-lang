@@ -187,6 +187,15 @@ pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64,
     }
 }
 
+/// Stores `raw` boxed as `kind` in `slot`, in place when it already holds an `Int`.
+#[inline(always)]
+pub(super) fn set_scalar(slot: &mut Value, kind: ScalarKind, raw: i64) {
+    match (kind, &mut *slot) {
+        (ScalarKind::Int, Value::Int(held)) => *held = raw,
+        _ => *slot = kind.box_val(raw),
+    }
+}
+
 pub(super) fn quiet(e: &Expr) -> bool {
     let mut quiet = true;
     cpl_ir::walk::deep_expr(e, &mut |e| {

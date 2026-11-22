@@ -3,7 +3,8 @@ use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_diag::Span;
 use cpl_ir::{
-    Arg, AssignOp, Block, Expr, ExprKind, FnId, Iter, LoopId, Mutation, PlaceKind, Slot, Stmt, Ty,
+    Arg, AssignOp, Block, Expr, ExprKind, FnId, Iter, LoopId, Mutation, Place, PlaceKind, Slot,
+    Stmt, Ty,
 };
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -102,6 +103,34 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// A write to `place` the VM reports with raw values: a global, or a
+    /// cell of one whose `Int` indices it evaluates again.
+    fn cell_point(&mut self, place: &'p Place) -> Option<TracePoint<'p>> {
+        let mut indices: Vec<&'p [Expr]> = Vec::new();
+        let mut at: &'p Place = place;
+        loop {
+            match &at.kind {
+                PlaceKind::Global(_) => break,
+                PlaceKind::Index(base, index) => {
+                    indices.push(index);
+                    at = base;
+                }
+                _ => return None,
+            }
+        }
+        let indices: Vec<&'p Expr> = indices.into_iter().rev().flatten().collect();
+        let int =
+            |e: &Expr| ScalarKind::of_ty(&e.ty, self.program) == Some(ScalarKind::Int) && quiet(e);
+        if !indices.iter().all(|e| int(e)) {
+            return None;
+        }
+        let regs = indices
+            .into_iter()
+            .map(|e| self.compile_expr_i(e))
+            .collect();
+        Some(TracePoint::Cell(place, regs))
+    }
+
     pub(super) fn emit_trace(&mut self, point: TracePoint<'p>, span: Span) {
         let idx = self.trace_points.len() as u32;
         self.trace_points.push(point);
@@ -127,7 +156,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             {
                 self.compile_untraced_stmt(stmt);
                 if self.fallback_stmts.len() == fallbacks {
-                    self.emit_trace(TracePoint::Assign(place), place.span);
+                    let point = self.cell_point(place).unwrap_or(TracePoint::Assign(place));
+                    self.emit_trace(point, place.span);
                 }
             }
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) | Stmt::Assert { cond, .. }

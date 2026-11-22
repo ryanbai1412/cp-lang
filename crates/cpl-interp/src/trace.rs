@@ -15,6 +15,7 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 mod log;
+mod raw;
 mod trap;
 pub use log::Steps;
 pub use trap::{shown, trap_config, trap_locals};
@@ -422,6 +423,11 @@ fn members(object: &str) -> Vec<(&str, &str)> {
 
 pub(crate) struct Tracer {
     lines: LineIndex,
+    /// The last span start looked up and its line: a step's span is
+    /// looked up more than once.
+    last_line: std::cell::Cell<(u32, u32)>,
+    /// No option drops or filters steps: every write is a step.
+    unfiltered: bool,
     source: String,
     include_fns: Vec<String>,
     exclude_fns: Vec<String>,
@@ -487,6 +493,9 @@ pub(crate) struct View<'a> {
     pub domains: &'a [(i64, i64)],
     /// The named locals of the innermost call, with their values.
     pub locals: Vec<(&'a str, &'a Ty, &'a Value)>,
+    /// The same locals read straight from the VM's registers, in place of
+    /// `locals`, when each is an exact `Int`.
+    pub raw: Option<&'a [(&'a str, i64)]>,
     /// Current call depth (`0` at top level).
     pub depth: usize,
     /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
@@ -537,6 +546,8 @@ impl Tracer {
         }
         let mut tracer = Tracer {
             lines: LineIndex::new(&config.source),
+            last_line: std::cell::Cell::new((u32::MAX, 0)),
+            unfiltered: false,
             source: config.source.clone(),
             include_fns,
             exclude_fns,
@@ -595,6 +606,12 @@ impl Tracer {
             },
             Kind::Json,
         );
+        tracer.unfiltered = tracer.include_fns.is_empty()
+            && tracer.exclude_fns.is_empty()
+            && tracer.test_cases.is_empty()
+            && tracer.watch.is_empty()
+            && tracer.last_steps.is_none()
+            && tracer.max_depth.is_none();
         tracer
     }
 
@@ -699,7 +716,13 @@ impl Tracer {
     }
 
     pub fn line(&self, span: Span) -> u32 {
-        self.lines.line_of(span.start) + 1
+        let (start, line) = self.last_line.get();
+        if start == span.start {
+            return line;
+        }
+        let line = self.lines.line_of(span.start) + 1;
+        self.last_line.set((span.start, line));
+        line
     }
 
     fn stage_id(&mut self) -> u32 {
@@ -835,6 +858,10 @@ impl Tracer {
                 Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_)
             )
         };
+        if let Some(raw) = view.raw {
+            self.raw_locals(raw);
+            return self.step_rest(view, span, label, checkpoint, focus);
+        }
         let (mut names, mut ints) = (
             std::mem::take(&mut self.local_names),
             std::mem::take(&mut self.local_ints),
@@ -1038,7 +1065,7 @@ impl Tracer {
         if view.program.globals[id].span.end == 0 {
             return;
         }
-        if !self.watched(&view.program.globals[id].name) {
+        if !self.watched(&view.program.globals[id].name) || !self.recording(view.depth) {
             return;
         }
         let line = self.line(span).max(1);
@@ -1841,7 +1868,7 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
 }
 
 /// Past this a JSON number is no longer exact.
-const MAX_EXACT: u64 = 9_007_199_254_740_991;
+pub(crate) const MAX_EXACT: u64 = 9_007_199_254_740_991;
 
 /// Item `index` of a one-dimensional array of `Int`s, when its JSON is
 /// the number itself.
@@ -1852,10 +1879,9 @@ fn int_item(value: &Value, ty: &Ty, index: usize) -> Option<i64> {
     if dims.len() != 1 || !matches!(**elem, Ty::Int) || array.len() > MAX_CELLS {
         return None;
     }
-    match array.get(index)? {
-        Value::Int(v) if v.unsigned_abs() <= MAX_EXACT => Some(v),
-        _ => None,
-    }
+    array
+        .get_int(index)
+        .filter(|v| v.unsigned_abs() <= MAX_EXACT)
 }
 
 /// Item `index` of a one-dimensional array or list, as JSON, as it is in

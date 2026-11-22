@@ -5783,3 +5783,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Make a bare walk yield values (as `[K]V` does) and change
   `spec/conformance/traits/Seq/Map--iter.cp` with it.
 
+
+## 223. A traced VM write to an `Int` global is logged from the registers (2026-11-22)
+
+- **Decision.** In a run nothing filters, a quiet write to a global or to a
+  cell of one (`TracePoint::Cell`) whose shown locals are all exact `Int`s
+  appends to the log straight from the VM registers (`Tracer::raw_write`,
+  `crates/cpl-interp/src/trace/raw.rs`), with no stack sync and no `Value`
+  view. Any filter, a non-`Int` local or a non-`Int` cell takes the old path.
+- **Why.** The 10^7-step budget: scalar 8.48x to 6.46x, array 9.69x to
+  6.37x the untraced run, same log, same memory. `trace.rs` grows 26 lines
+  and `lib.rs` 4 (the `View::raw` field, `last_line` and `unfiltered`); the
+  ratchet allowance is raised in the same commit.
+- **Reverse.** Drop `TracePoint::Cell` from `cell_point`; every write goes
+  through `TracePoint::Assign` again.

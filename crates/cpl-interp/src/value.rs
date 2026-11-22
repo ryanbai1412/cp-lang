@@ -671,6 +671,16 @@ impl Array {
     }
 
     #[inline]
+    pub fn get_int(&self, idx: usize) -> Option<i64> {
+        match &self.data {
+            ArrayData::Int(v) => v.get(idx).copied(),
+            _ => match self.get(idx)? {
+                Value::Int(v) => Some(v),
+                _ => None,
+            },
+        }
+    }
+
     pub fn get(&self, idx: usize) -> Option<Value> {
         match &self.data {
             ArrayData::Int(v) => v.get(idx).copied().map(Value::Int),

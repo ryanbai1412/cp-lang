@@ -1171,17 +1171,25 @@ impl<'p, 'io> Interp<'p, 'io> {
                         regs_i[r as usize] = ScalarKind::unbox_val(held);
                     }
                 }
+                TracePoint::Cell(place, ref indices)
+                    if self.trace_raw_cell(&chunk.slot_map, regs_i, regs_v, place, indices) => {}
                 ref point => {
                     let mut quiet = false;
                     if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
-                        self.stack[self.base + slot] = Value::Moved;
                         // A top-level local takes no step: only its own
                         // slot needs the register's value.
-                        if let SlotLoc::I(r, kind) = chunk.slot_map[slot] {
-                            if self.call_frames.is_empty() && !self.assignments() {
-                                self.stack[self.base + slot] = kind.box_val(regs_i[r as usize]);
+                        match chunk.slot_map[slot] {
+                            SlotLoc::I(r, kind)
+                                if self.call_frames.is_empty() && !self.assignments() =>
+                            {
+                                set_scalar(
+                                    &mut self.stack[self.base + slot],
+                                    kind,
+                                    regs_i[r as usize],
+                                );
                                 quiet = true;
                             }
+                            _ => self.stack[self.base + slot] = Value::Moved,
                         }
                     }
                     if !quiet {
