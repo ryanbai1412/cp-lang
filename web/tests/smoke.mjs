@@ -8,7 +8,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(base + '/');
 await page.getByRole('button', { name: 'Run' }).first().click();
 const out = page.getByRole('status').first();
-await out.filter({ hasText: /^8\s+11\s*$/ }).waitFor({ timeout: 30000 });
+await out.filter({ hasText: /^115\s*$/ }).waitFor({ timeout: 30000 });
 console.log('home run output:', JSON.stringify(await out.innerText()));
 const [viewer] = await Promise.all([
   page.context().waitForEvent('page'),
@@ -17,6 +17,9 @@ const [viewer] = await Promise.all([
 await viewer.getByText('main.cp').first().waitFor({ state: 'attached', timeout: 30000 });
 console.log('trace viewer ok');
 await viewer.close();
+await page.getByRole('button', { name: 'Stress' }).first().click();
+await page.getByText('Shrunk to the smallest input that still fails').waitFor({ timeout: 60000 });
+console.log('stress finds and shrinks the planted bug');
 await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '14' }).waitFor({ timeout: 30000 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { History, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
+import { Bug, History, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { type Status, StatusBadge } from '@/components/status-badge';
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { cpl, stop, type Diagnostic } from '@/lib/cpl';
+import { cpl, stop, type Diagnostic, type StressOutcome } from '@/lib/cpl';
 import { tools } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +34,7 @@ type Result =
   | { kind: 'idle' }
   | { kind: 'running' }
   | { kind: 'output'; stdout: string; stderr: string; ok: boolean; diagnostics: Diagnostic[] }
+  | { kind: 'stress'; outcome: StressOutcome }
   | { kind: 'error'; message: string };
 
 export function formatDiagnostics(diagnostics: Diagnostic[], source: string): string {
@@ -82,6 +83,17 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
     }
   }, [source, stdin]);
 
+  const stress = useCallback(async () => {
+    setTab('output');
+    setResult({ kind: 'running' });
+    try {
+      setResult({ kind: 'stress', outcome: await cpl.stress(source) });
+    } catch (e) {
+      setResult({ kind: 'error', message: (e as Error).message });
+    }
+  }, [source]);
+  const stressable = /^@(brute|alt|check|checker)\b/m.test(source);
+
   const showCpp = useCallback(async () => {
     setTab('cpp');
     setCpp('// Building…');
@@ -105,6 +117,11 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
         <Button size="sm" variant="outline" onClick={trace} disabled={result.kind === 'running'} title="Record every step and open the time-travel debugger">
           <History /> Trace
         </Button>
+        {stressable && (
+          <Button size="sm" variant="outline" onClick={stress} disabled={result.kind === 'running'} title="Run random cases against the brute force and shrink the first one that differs">
+            <Bug /> Stress
+          </Button>
+        )}
         {result.kind === 'running' && (
           <Button size="sm" variant="ghost" onClick={() => stop().then(() => setResult({ kind: 'idle' }))}>
             <Square /> Stop
@@ -131,7 +148,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           <TabsTrigger value="cpp">C++17</TabsTrigger>
         </TabsList>
         <TabsContent value="output" className="px-3 pb-3">
-          <Output result={result} source={source} />
+          <Output result={result} source={source} onUseInput={(input) => { setStdin(input); setTab('input'); }} />
         </TabsContent>
         <TabsContent value="input" className="px-3 pb-3">
           <Textarea value={stdin} onChange={(e) => setStdin(e.target.value)} className="min-h-24 font-mono text-xs" spellCheck={false} />
@@ -145,11 +162,43 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
   );
 }
 
-function Output({ result, source }: { result: Result; source: string }) {
+function Output({ result, source, onUseInput }: { result: Result; source: string; onUseInput: (input: string) => void }) {
   const box = 'min-h-16 max-h-64 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap';
   if (result.kind === 'idle') return <pre className={cn(box, 'text-muted-foreground')}>Press Run (Ctrl+Enter).</pre>;
   if (result.kind === 'running') return <pre className={cn(box, 'text-muted-foreground')}>Loading the compiler and running…</pre>;
   if (result.kind === 'error') return <pre className={cn(box, 'text-destructive')}>{result.message}</pre>;
+  if (result.kind === 'stress') {
+    const o = result.outcome;
+    if (o.status === 'error') return <pre className={cn(box, 'text-destructive')} role="status">{o.error}</pre>;
+    if (o.status === 'ok') return <pre className={box} role="status">{`All ${o.cases} random cases agree.`}</pre>;
+    const c = o.counterexample;
+    const d = c.explain && 'divergence' in c.explain ? c.explain.divergence : null;
+    return (
+      <div className="space-y-2 text-sm" role="status">
+        <p className="font-medium">
+          Case {c.case} of {o.cases} differs ({c.verdict}). Shrunk to the smallest input that still fails:
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[['Input', c.input], ['Expected', c.expected], ['Got', c.got]].map(([label, text]) => (
+            <div key={label}>
+              <p className="mb-1 text-xs text-muted-foreground">{label}</p>
+              <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap">{text}</pre>
+            </div>
+          ))}
+        </div>
+        {d && (
+          <p className="text-muted-foreground">
+            First difference: <code>{d.name}</code>
+            {d.fast && ` is ${d.fast.value} on line ${d.fast.line}`}
+            {d.brute && `, but ${d.brute.value} on line ${d.brute.line} of the brute force`}.
+          </p>
+        )}
+        <Button size="sm" variant="outline" onClick={() => onUseInput(c.input)}>
+          Use as input
+        </Button>
+      </div>
+    );
+  }
   const errors = result.diagnostics.length ? formatDiagnostics(result.diagnostics, source) : result.stderr;
   return (
     <pre className={box} role="status">
