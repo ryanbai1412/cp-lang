@@ -1,5 +1,6 @@
 //! Segment tree over a domain, for any associative operation.
 use std.algebra.{Monoid}
+use std.bag.{SortedBag}
 use std.math.{gcd}
 use std.seq.{ends}
 
@@ -789,6 +790,29 @@ pub struct WaveletMatrix<D>:
 /// (Fenwick of order trees) over `[D]T`.
 pub struct DynamicOrderTree<D, T>:
     n: Int
+    val: List<T> = []
+    bit: List<SortedBag<T>> = []
+
+    fn bump(mut self, i: Int, x: T, put: Bool):
+        var j = i + 1
+        while j <= n:
+            if put: bit[j].add(x)
+            else: bit[j].remove(x)
+            j += j & -j
+
+    fn below(self, end: Int, x: T, le: Bool) -> Int:
+        var acc = 0
+        var j = end
+        while j > 0:
+            acc += bit[j].rank(x)
+            if le: acc += bit[j].count(x)
+            j -= j & -j
+        acc
+
+    fn span_count(self, r: Range<D>, x: T, le: Bool) -> Int:
+        if r.is_empty: return 0
+        let (lo, hi) = (r.first!.ord, r.last!.ord + 1)
+        self.below(hi, x, le) - self.below(lo, x, le)
 
     /// A structure over `a` answering value counts and order statistics on ranges while positions
     /// are reassigned.
@@ -798,21 +822,28 @@ pub struct DynamicOrderTree<D, T>:
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
-    pub fn new(a: [D]T) -> DynamicOrderTree<D, T> = todo
+    pub fn new(a: [D]T) -> DynamicOrderTree<D, T>:
+        var t = DynamicOrderTree<D, T>(D.K, [a[i] for i in D], [SortedBag<T>.new() for _ in 0..D.K + 1])
+        for i in 0..D.K: t.bump(i, t.val[i], true)
+        t
 
     /// Make position `i` hold `x`.
     ///
     /// cost: O(log^2 |D|)
     /// traps: when `i` is outside `D`
     /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(0, 0); t.kth(0..3, 0) == Some(0)`
-    pub fn set(mut self, i: D, x: T) = todo
+    pub fn set(mut self, i: D, x: T):
+        let k = i.ord
+        self.bump(k, val[k], false)
+        val[k] = x
+        self.bump(k, x, true)
 
     /// The value at position `i`.
     ///
     /// cost: O(1)
     /// traps: when `i` is outside `D`
     /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(2, 9); t.get(2) == 9`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T = val[i.ord]
 
     /// The number of positions in `r` whose value is `< x`.
     ///
@@ -820,7 +851,7 @@ pub struct DynamicOrderTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(1..3, 4) == 1`
-    pub fn count_lt(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_lt(self, r: Range<D>, x: T) -> Int = self.span_count(r, x, false)
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
@@ -828,7 +859,9 @@ pub struct DynamicOrderTree<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_in(0..3, 1, 3) == 2`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int = todo
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+        if hi_v < lo_v: return 0
+        self.span_count(r, hi_v, true) - self.span_count(r, lo_v, false)
 
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
