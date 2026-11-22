@@ -108,7 +108,7 @@ library or by this spec:
   not do I/O or mutate captures; a write to something it captured while
   the cache lives is an error. `cpl explain` shows table bytes.
 - `@get`: an O(1) read-only method called without parentheses.
-- `@test`, `@brute(f)`, `@gen`, `@check`, `@interactor`, `@alt`: tool
+- `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool
   roles (`tools/stress.md`); the item is otherwise unchanged.
 - `@cache` on a struct field: compiler-safe interior mutability with an
   author promise of logical correctness (chapter 5 §10a).
