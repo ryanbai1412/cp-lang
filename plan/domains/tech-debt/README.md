@@ -44,7 +44,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 **M2. The gates hold the shape.**
 - [x] Ratchets in `scripts/debt-ratchet.py` for every metric below (one script, one baseline)
 - [x] A new crate edge fails the gate until the baseline and `plan/ARCHITECTURE.md` list it
-- [ ] Round 1 cold review of all 12 lanes, scores in the worklog, findings in owners' worklogs
+- [x] Round 1 cold review of the 11 other lanes, scores in the worklog, findings in owners' worklogs (2026-11-22)
 - [ ] Probe baseline P1-P4 recorded (files, crates, minutes, where stuck)
 - [ ] `plan/ARCHITECTURE.md` part B1 rewritten to measured current state
 
