@@ -10,13 +10,21 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco21p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_33/cco21p2.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "graph",
+  "bfs",
+  "state-space",
+  "math"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "bfs over Int states needed hashed storage: searches gain hashed: true, spelled like @memo(map)."
 }

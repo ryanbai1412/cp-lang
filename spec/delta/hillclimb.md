@@ -20,6 +20,8 @@ and its notes in that record's `notes`.
 - cco20p4: `reachable(g, from:)` becomes the free generator decided in round 4
   (the `Graph.reachable` method goes); `Rooted.euler_tour()`; `dfs`, `Visit`
   and `reachable` join the prelude.
+- cco21p2: `bfs`, `bfs01` and `dijkstra` take `hashed: true` for state spaces
+  that are not bounded types; `Paths` documents both storages.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

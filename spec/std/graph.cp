@@ -304,6 +304,11 @@ fn a_plain_edge_list_needs_no_edge_domain() = todo
 /// distances in `order` are exact, and any other vertex holds `none` or an upper
 /// bound. Cost: the witnesses take one slot per vertex and one write per improving
 /// relaxation, paid even when only `p[v]` is read.
+/// Storage is spelled like `@memo(array)` / `@memo(map)`: by default `dist` and `back`
+/// are dense tables over `V`, which must be a bounded type (a domain, range, enum or a
+/// tuple of them); `hashed: true` on the search makes them hash maps over the states
+/// reached, for state spaces like `Int` values or unbounded tuples. An unbounded `V`
+/// without it is a compile error that names `hashed: true`.
 pub struct Paths<V, W, A>:
     dist: [V]?W
     back: [V]?(from: V, via: A)
@@ -334,13 +339,13 @@ pub struct Paths<V, W, A>:
 /// O(n + m).
 /// Fewest arcs from any of `from` to each vertex; `until: t` stops once `t` is
 /// reached. O(n + m).
-pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = none) -> Paths<V, Int, G.Arc> = todo
+pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = none, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
 
 /// O(n + m).
 /// Shortest distances when every weight `w(a)` is 0 or 1, from every vertex of `from`
 /// at distance 0: a deque, with 0-arcs pushed to the front; `until: t` stops once
 /// `t` is settled. O(n + m); traps on any other weight.
-pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = none) -> Paths<V, Int, G.Arc> = todo
+pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = none, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
 
 /// O((n + m) log n).
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)`
@@ -350,6 +355,7 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
     g: G,
     from: Seq<(V, W)>,
     until: ?V = none,
+    hashed: Bool = false,
 ) -> Paths<V, W, G.Arc> = todo
 
 /// O(|S| |M|) time, O(|S|) memory.
