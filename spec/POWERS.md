@@ -235,6 +235,41 @@ Needs: `SegTree`, `LazySegTree`, `SparseTable`, `Fenwick`, `Matrix`, scans,
 ordered containers (`Ord`), hashing (`Hash`). Status: partial (traits check;
 laws, `T.zero` identities and `Self` at run time do not).
 
+## W10a. Records, associated types and inline bounds (P10)
+
+Graphs (decision 146) need five mechanisms; each is open to user code.
+
+- **Associated types.** A trait names a type its implementor picks, read
+  as `Self.Arc` or `G.Arc`:
+
+      pub trait Next<V>:
+          type Arc: Target<V>
+          fn out(self, u: V) -> yields Self.Arc
+
+- **Trait aliases.** `pub trait WeightedNext<V, W> = Next<V> where
+  Self.Arc: Weighted<W>` names a bound; it has no members and no impls.
+- **Inline bounds.** A trait in a parameter's type is a fresh hidden type
+  parameter, static per caller, like `P: T -> Bool` for fns:
+  `fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>)`. Name it
+  (`<G: Next<V>>(g: G)`) when a return type or a second parameter mentions
+  it.
+- **Field traits.** A trait whose members are all `@get` is satisfied by
+  any record with fields of those names and types: `(to: V, w: Int)` is a
+  `Target<V> + Weighted<Int>`. A named struct opts in with a bodiless
+  `impl Weighted<Int> for Road`.
+- **Row bounds and record update.** `R: (u: V, v: V, ..)` bounds a type
+  parameter to records with at least those fields; `(to: V, ..R without
+  (u, v))` is R's other fields after new ones, in R's order; `(..a, to: u)`
+  is `a` with `to` replaced (heap fields move). No record subtyping: rows
+  only bound type parameters, matched by monomorphization. A generic body
+  sees only the named fields.
+
+Needs: `Graph.directed`/`undirected` over any edge record, `keep:`,
+`transpose`, every graph algorithm's signature, `.weighted(f)`.
+Status: no (stubs load in spec mode; outside it the parser rejects row
+bounds and `without` with E0108, record update E0102, aliases E0103, and
+an inline bound is E0204).
+
 ## W11. Reading and printing (P11)
 
 `read<T>()` and `print(x)` go through `Read` and `Print`, derived for

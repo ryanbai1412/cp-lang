@@ -4401,8 +4401,41 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   (dropping `e` makes them not `Edged`). No `add_edge`: a growing graph is
   `[V]List<Arc>`, which is already a `Next`. Widths come from domains.
   Rejected for now: `e` in a side table (`e: .table`), rarely worth it.
-- **Still open.** `keep:` syntax (proposed: a fn from the default arc,
-  `keep: a => (to: a.to, w: a.w)`).
+- **`keep:` (agreed, trial).** A fn from the default arc to the stored
+  arc, `keep: a => (to: a.to, w: a.w)`, run once per stored arc at build
+  (2m times undirected), so a computed field (`fwd: a.to == edges[a.e].v`)
+  is a stored value. No bare field-list syntax: it would be core syntax for
+  one fn. The stub spells it `keep: ?(EdgeArc<V, E, R> -> B) = none`:
+  `spec-stub.py` reads a lambda default (`= a => a`) as a body.
+- **Records as edges and arcs (agreed, trial).** Row bounds `R: (u: V, v:
+  V, ..)` and `..R without (u, v)` let `directed`/`undirected` take any
+  named edge record; `EdgeArc<V, E, R> = (to: V, e: E, ..R without (u,
+  v))` is the default arc. Anonymous records satisfy field traits (all
+  members `@get`: `Target`, `Weighted`, `Edged`) by their fields; named
+  structs opt in with a bodiless `impl`. Record update `(..a, to: u)`
+  builds `transpose`. Rules that keep rows from leaking: carried fields are
+  plain (a heap field is an error pointing at `keep:`); no record
+  subtyping, rows only bound type parameters; builds need named records
+  (unnamed tuples get a hint with the naming `map`); a clash with `to`/`e`
+  is an error pointing at `keep:`; algorithms bound on field traits, rows
+  only build records (lint); `..R` keeps R's field order; record update
+  moves heap fields under R1/R2; errors name the missing field, never the
+  row; a generic body sees only the named fields. Ryan: "ok it's fine we
+  can try this out for now".
+- **Floyd-Warshall (agreed).** `floyd_warshall(mut d: [V, V]?W) -> Bool`,
+  in place, `false` on a negative cycle; `g.matrix()` builds `d` in
+  O(n^2 + m). Saves an n^2 copy and works for any `W: Ord + Add`.
+- **Proposed, not agreed: DFS.** `step.prune()` after `Enter` (the stub
+  said steer only with `break`); events carry the arc, `Enter(v, via:
+  ?Arc)`; an `Again(from, via)` event for arcs into visited vertices, so
+  custom low-link fits; optional shared `seen: mut [V]Bool`; free
+  `reachable(g, from:)` with no `skip:` (a filter lambda does it);
+  `g.dfs_tree` returns `Rooted` plus `[E]Bool` tree edges, one tree type.
+- **Done.** `spec/std/graph.cp` uses these traits and signatures; the
+  parser now closes a type parameter list on half of `>>`
+  (`G: Next<V>>(`), and `spec-stub.py` skips `where`-clause colons.
+- **Reverse rows.** Per-shape builders (`_of_pairs`, `_of_triples`) and a
+  fixed `(to, e)` arc with fields read through `edges[a.e]`.
 - **Why.** Ryan asked whether `WeightedNext` could bundle the arc bounds
   and called the long signature "a mouthful"; he accepted `Edged` once its
   reason (multi-edge bridges, `[E]` results) was shown.

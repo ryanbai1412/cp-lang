@@ -5,17 +5,18 @@ Built on rounds 1 to 3: vertices and edges are domains, per-vertex data is
 
 ## The model in one paragraph
 
-Vertices and edges are separate domains, so `[V]T` and `[E]T` never mix. A
-graph is stored once, as `Graph<V, E>` (compressed rows), and `g[u]` is an
-O(1) indexed view of the arcs leaving `u`; an arc is `(to: V, e: E)`.
-Every algorithm takes **`next`**: a stored graph, or any function from a
-vertex to what follows it (vertices or arcs), so grids, state spaces and
-filtered graphs need no adjacency build. Weights are read through a
-function of the arc, so one graph serves several weightings. Results that
-name new groups (components, blocks) return a fresh domain. A tree is
-`Rooted`: one structure with a fresh preorder domain `t.Pre` in which every
-subtree and every heavy chain is one range, so range structures (segment
-trees, Fenwicks) index it directly.
+Vertices and edges are separate domains, so `[V]T` and `[E]T` never mix.
+Every algorithm takes a **`Next<V>`**: anything that walks the arcs out of a
+vertex. A stored `Graph`, a `[V]List` of arcs and any fn from a vertex to a
+`Seq` of arcs all are one, so grids, state spaces and filtered graphs need
+no adjacency build. An arc is anything with `.to`; what else it carries
+decides which algorithms take it: `.w` for shortest paths, `.e` for
+bridges. Weights live on the arcs or come from `g.weighted(f)`; no
+algorithm takes a `w:` argument. Results that name new groups (components,
+blocks) return a fresh domain. A tree is `Rooted`: one structure with a
+fresh preorder domain `t.Pre` in which every subtree and every heavy chain
+is one range, so range structures (segment trees, Fenwicks) index it
+directly. Decision 146 records the design and its reasons.
 
 ## Graphs
 
@@ -23,39 +24,125 @@ trees, Fenwicks) index it directly.
 domain V = 1..=n
 domain E = 0..m
 let edges = read<[E](u: V, v: V, w: 1..=1e9)>()
-let g = Graph.undirected(edges)           # or Graph.directed(edges)
+let g = Graph.undirected(edges)       # or .directed; immutable CSR, O(n + m)
 
-for (to: v, e) in g[u]: ...               # arcs out of u; an undirected edge is two arcs, same e
-g[u].len                                  # degree, O(1)
+for a in g[u]: relax(a.to, a.w)       # arcs out of u, input order; a is (to, e, w)
+g.deg(u)                              # O(1)
 ```
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E](u: V, v: V, ...)` | O(n + m) |
+| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E]` of records with `u: V, v: V` | O(n + m) |
+| `keep: a => (to: a.to, w: a.w)` | choose what each arc stores; run once per arc | O(n + m) |
 | `g[u]` | `Indexed` view of `u`'s arcs, in input order | O(1) |
-| `g.has(u, v)` | is there an arc | O(deg u) |
-| `g.transpose()` | arcs reversed, same `E` | O(n + m) |
-| `g.edges` | the `[E]` records it was built from | O(1) |
+| `g.deg(u)` | arcs out of `u` | O(1) |
+| `g.weighted(f)` | the same graph with `.w` read as `f(a)` | O(1); `f` per read |
+| `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
+| `g.matrix()` | `[V, V]?W`, least weight per pair | O(n² + m) |
+| `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | O(n + m) |
+
+### Storage
+
+`Graph<V, A>` is compressed sparse rows: n + 1 offsets and one list of arcs,
+each vertex's arcs contiguous and in input order (a counting sort, so DFS
+order and lexicographic answers are deterministic). An undirected edge is
+two arcs with the same `e`; a loop gives two arcs, so degree counts it
+twice. Integer widths come from the domains.
+
+**What an arc stores.** By default an arc is the edge record with `u`, `v`
+replaced by `to` and `e`, `EdgeArc<V, E, R> = (to: V, e: E, ..R without (u,
+v))`, so `a.w` reads the arc you are already on (the `adj[u].push_back({v,
+w})` layout). `keep:` narrows or computes:
+
+```python
+Graph.undirected(edges)                                 # (to, e, w): 12 bytes at these widths
+Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  # no e: not Edged, 8 bytes
+Graph.directed(edges, keep: a => (to: a.to))            # bare targets
+Graph.undirected(edges, keep: a => (to: a.to, e: a.e, fwd: a.to == edges[a.e].v))
+```
+
+`keep` runs once per stored arc at build (2m times for undirected), and
+what it returns is stored: `a.fwd` is a field load later. The returned
+record decides the capabilities: no `e`, not `Edged`, and `bridges(g)` is a
+compile error that says to keep `e`. Carried fields are copies of plain
+fields; a heap field (`name: Str`) is a compile error at the build that
+points at `keep:`, where you write `.clone()` yourself. The graph does not
+hold `edges`; `edges[a.e]` still works for rarely read fields.
+
+**No `add_edge`.** A graph that grows is the plain container, already a
+`Next`:
+
+```python
+var adj: [V]List<(to: V, w: Int)> = []
+adj[u].push((to: v, w: c))
+dijkstra(adj, from: [(s, 0)])
+```
+
+Rejected: `[V]List` inside `Graph` (one allocation per vertex), forward-star
+lists (poor locality), arcs of `(to, e)` only with fields read from
+`edges[e]` (a cache miss per arc), `e` in a side table (rarely worth it).
 
 Validated input types (`Tree<V>`, `SimpleGraph<V, E>`, `ConnectedGraph`,
 `Dag`, `Digraph`) read like the plain edge list and also tell `cpl stress`
 what to generate and shrink.
 
-### `next`: graphs without building one
+### Traits
 
 ```python
-bfs(g, from: [s])                                   # a stored graph
-bfs(from: [s], next: c => c.adj4.filter(c => grid[c] != '#'))   # a grid: domain Cell = (Row, Col)
-bfs(from: [start], next: st => moves(st))           # a state space; State is a domain or hashable
-dijkstra(g, from: [(s, 0)], w: a => edges[a.e].w)   # weights through the arc
+pub trait Next<V>:
+    type Arc: Target<V>
+    fn out(self, u: V) -> yields Self.Arc
+
+pub trait Target<V>:   @get fn to(self) -> V    # a plain vertex is its own target
+pub trait Weighted<W>: @get fn w(self) -> W
+pub trait Edged<E>:    @get fn e(self) -> E
+
+pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
+pub trait EdgedNext<V, E>    = Next<V> where Self.Arc: Edged<E>
 ```
 
-- `next(u)` returns any `Seq` of vertices or of arcs (anything with `.to`).
-  An algorithm that needs edge ids (bridges, Euler walks) needs arcs.
+A record with a `to`, `w` or `e` field satisfies the matching trait (a field
+is a `@get`); a named struct opts in with a bodiless `impl Weighted<Int>
+for Road`. Signatures use inline bounds and take the weakest capability
+they use:
+
+```python
+pub fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>, until: ?V = none)
+```
+
+| Takes | Algorithms |
+|---|---|
+| `Next` | BFS, DFS, topological order, SCC, components, matching, cycles |
+| `WeightedNext` | Dijkstra, 0-1 BFS, Dial, Bellman-Ford, Johnson, negative cycles |
+| `EdgedNext` | bridges, two-edge components, edge blocks |
+| edge records `(u, v, w, ..)` | Kruskal, arborescence, Euler walks, offline connectivity |
+| `[V, V]` matrix | Floyd-Warshall |
+| own mutable struct | flows |
+
+Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
+
+### Customizing: a lambda over `g.out(u)`
+
+```python
+dijkstra(u => g.out(u).filter(a => !banned[a.e]), from: [(s, 0)])  # arcs keep .w, .e
+bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              # binary search on the answer
+bfs(c => c.adj4().filter(c => grid[c] != '#'), from: [start])      # implicit grid
+dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 # reweight; keeps .to, .e
+dijkstra((v, k) => chain(                                          # state space (vertex, coupons)
+    g.out(v).map(a => (to: (a.to, k), w: a.w)),
+    g.out(v).filter(_ => k < K).map(a => (to: (a.to, k + 1), w: a.w / 2)),
+), from: [((s, 0), 0)])
+```
+
+- `filter` keeps the arc type, so a filtered graph is still `Weighted` and
+  `Edged`; `map` to a record makes new arcs.
+- Nothing is allocated: the lambda is a generator, and captures are lent
+  per call.
+- One way per job: no `g.filter_arcs` or `g.restrict`. `.weighted(f)`
+  exists because it forwards `.e` for you; `.weighted((u, a) => ...)` also
+  passes the source vertex (Johnson potentials).
 - **Storage follows the vertex type.** A domain gives `[V]` arrays; any other
   hashable type gives hash maps. `cpl explain` shows which.
-- A `next` function hides the vertex type, so a call with no `from:` names
-  it: `scc::<V>(next: u => out[u])`.
 
 ### Shortest paths
 
@@ -70,14 +157,22 @@ All return `Paths<V, W, A>`:
 
 | Form | Weights | Cost |
 |---|---|---|
-| `bfs(next, from:, until:)` | unit | O(n + m) |
-| `bfs01(next, from:, w:)` | 0 or 1 | O(n + m) |
-| `dial(next, from:, w:, max_w:)` | small ints | O(n · max_w + m) |
-| `dijkstra(next, from: [(s, d0)], w:, until:)` | non-negative | O(m log n) |
-| `bellman_ford(next, from:, w:)` | any; `none` on a negative cycle | O(n m) |
-| `floyd_warshall(w: [V, V]?W)` | dense | O(n³) |
+| `bfs(g, from:, until:)` | unit | O(n + m) |
+| `bfs01(g, from:, until:)` | 0 or 1 | O(n + m) |
+| `dial(g, from:, max_w:, until:)` | small ints | O(n · max_w + m) |
+| `dijkstra(g, from: [(s, d0)], until:)` | non-negative | O(m log n) |
+| `bellman_ford(g, from:)` | any; `none` on a negative cycle | O(n m) |
+| `floyd_warshall(mut d) -> Bool` | dense, in place; `false` on a negative cycle | O(n³) |
 
-`until: t` stops once `t` is settled. Multi-source is a longer `from:`.
+`until: t` stops once `t` is settled. `from:` is any `Seq`; multi-source is
+a longer one. `p.tight(g)` is the shortest-path DAG.
+
+All-pairs on a dense graph starts from the weight matrix:
+
+```python
+var d = g.matrix()                          # [V, V]?W, O(n² + m)
+if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
+```
 
 ### Traversal generators
 
@@ -98,16 +193,16 @@ Every grouping returns a fresh domain and the map into it:
 
 | Form | Result | Cost |
 |---|---|---|
-| `components(next)` | `(domain C, comp: [V]C)` | O(n + m) |
-| `scc(next)` | `(domain C, comp: [V]C)`, `C` in topological order | O(n + m) |
-| `condense(next, comp)` | `Graph<C, _>` of the components | O(n + m) |
-| `two_edge_components(next)` | `(domain C, comp: [V]C)` | O(n + m) |
-| `blocks(next)` | `(domain B, block: [E]B)`, biconnected blocks of edges | O(n + m) |
-| `bridges(next)`, `cut_vertices(next)` | `[E]Bool`, `[V]Bool` | O(n + m) |
-| `topo(next)` | `?List<V>`, `none` on a cycle | O(n + m) |
-| `two_color(next)` | `?[V]Bool`, `none` when an odd cycle exists | O(n + m) |
-| `find_cycle(next)` | `?List<V>` | O(n + m) |
-| `kruskal(edges, w:)` | `(total, take: [E]Bool)` | O(m log m) |
+| `components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
+| `scc(g)` | `(domain C, comp: [V]C)`, `C` in topological order | O(n + m) |
+| `condense(g, comp)` | `Graph<C, _>` of the components | O(n + m) |
+| `two_edge_components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
+| `blocks(g)` | `(domain B, block: [E]B)`, biconnected blocks of edges | O(n + m) |
+| `bridges(g)`, `cut_vertices(g)` | `[E]Bool`, `[V]Bool` | O(n + m) |
+| `topo(g)` | `?List<V>`, `none` on a cycle | O(n + m) |
+| `two_color(g)` | `?[V]Bool`, `none` when an odd cycle exists | O(n + m) |
+| `find_cycle(g)` | `?List<V>` | O(n + m) |
+| `kruskal(edges)` (records with `w`) | `(total, take: [E]Bool)` | O(m log m) |
 | `euler_walk(edges, directed:)` | `?Walk<V, E>` | O(n + m) |
 | `TwoSat<X>()`, `.add_or(a, b)`, `.solve()` | `?[X]Bool` | O(n + m) |
 | `Functional(next: [V]V)` | `.after(v, k)`, `.on_cycle(v)`, `.cycle_len(v)`, `.root_of(v)` | O(n log n) build |
@@ -182,15 +277,21 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 
 ## Open
 
-1. **`g[u]` as the arcs view** replaces `g.out(u)`, `g.get(u)`, `g.deg(u)`
-   and `g.lists()`. One spelling, O(1), indexed (so `g[u][0]` and
-   `g[u].len` work).
-2. **`from:` always takes a list**, `bfs(g, from: [s])`, so single and
-   multi-source are one form. Alternative: a separate `bfs(g, s)`.
-3. **Hash-backed state spaces.** Storage follows the vertex type: a
+1. **Weight algebra.** Dijkstra's distance is `Ord + Add + Zero` today.
+   Ryan leans to a monoid-like argument so minimax, bottleneck and
+   reliability paths are one call; not designed yet.
+2. **Hash-backed state spaces.** Storage follows the vertex type: a
    domain gives arrays, anything hashable gives maps. Alternative: require
    a domain and make the user `compress` first.
+3. **Tuples as edges.** Builds need named records (`read<[E](u: V, v: V)>`);
+   several dreams still pass unnamed `(V, V)` tuples and need the one-line
+   `map` that names them.
 4. **Names that drift today:** `articulation_points` → `cut_vertices`,
    `biconnected_components` / `edge_blocks` → `blocks`, `Adj` and
-   `*_of_pairs` builders → `Graph`, `subtree_sizes` → `t.size(v)`,
-   `preorder` → `t.order` (BFS) plus `t.tour`.
+   `*_of_pairs` builders → `Graph` or `[V]List`, `subtree_sizes` →
+   `t.size(v)`, `preorder` → `t.order` (BFS) plus `t.tour`.
+5. **DFS.** Proposed (decision 146): `step.prune()` after `Enter`, events
+   carry the arc (`Enter(v, via: ?Arc)`), an `Again(from, via)` event for
+   arcs into visited vertices, an optional shared `seen: mut [V]Bool`, a free
+   `reachable(g, from:)` with no `skip:`, and `g.dfs_tree` folded into
+   `Rooted`.

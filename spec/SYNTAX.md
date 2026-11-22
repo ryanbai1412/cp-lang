@@ -38,6 +38,11 @@ front end (parse and type check) first.
 | Full range `..` | `fen.sum(..)` | 135 | E0102 |
 | Range types as generic args | `PMultiset<0..n>` | 135 | E0301 |
 | Literal-union types | `let (op, v): ('+' \| '-', Vol) = read()` | 135 | E0105 |
+| Row bounds | `fn f<R: (u: V, v: V, ..)>(r: R)` | 146 | E0108 |
+| Row rest | `type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))` | 146 | E0108 |
+| Record update | `(..a, to: u)` | 146 | E0102 |
+| Trait aliases | `trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>` | 146 | E0103 |
+| Inline bounds | `fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>)` | 146 | E0204 |
 
 ## Rejected (a dream using one is fixed instead)
 
