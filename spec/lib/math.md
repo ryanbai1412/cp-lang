@@ -523,7 +523,7 @@ let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
 let lim = ns.max() + 1
 
-let comb = Z.comb(lim)
+let comb = Comb<Z>(lim)
 let odd_div_sum = sieve_multiplicative(
     lim,
     prime_pow: (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
@@ -547,7 +547,7 @@ for n in ns:
 
 Compare with `proto/ports/ecnerwala/cf2135e2.cp`: the 22-line hand-rolled
 linear sieve disappears into a single `sieve_multiplicative` call, and
-`Z.comb(lim)` writes the modulus once.
+`Comb<Z>(lim)` writes the modulus once.
 
 ### 5.3 AtCoder DP R — Walk
 
@@ -601,7 +601,7 @@ repeat q:
 ### 5.5 Codeforces 2084 E — Blossom
 
 Count the sum of `MEX` over all subarrays of all completions of a partial
-permutation `a`. Using `Z.comb(n)` keeps the modulus in one place.
+permutation `a`. Using `Comb<Z>(n)` keeps the modulus in one place.
 
 ```cp
 @!multitest
@@ -617,8 +617,8 @@ var pos: [Val]?Pos = None
 for i in Pos if a[i] >= 0: pos[Val(a[i])] = i
 
 let missing = prefix([Pos] i => if a[i] == -1: 1 else: 0)
-let m = missing.prefix(Pos.last.r)
-let comb = Z.comb(n)
+let m = missing.prefix(Pos.last!.r)
+let comb = Comb<Z>(n)
 // ... sweep Val, accumulating Z(freq[f]) * comb.arrange(f, need) * comb.fact(m - need)
 ```
 
