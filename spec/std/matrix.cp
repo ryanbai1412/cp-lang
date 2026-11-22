@@ -891,33 +891,47 @@ pub struct MatPow<T>:
 
 /// O(n * m / 64) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
 pub struct BitMat(rows: Int, cols: Int):
+    bits: List<Int>
+
     /// A zero GF(2) matrix of `rows x cols`, one bit per entry.
     ///
     /// cost: O(rows * cols / 64) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `BitMat(2, 3).rank() == 0`
-    pub fn new(rows: Int, cols: Int) -> BitMat = todo
+    pub fn new(rows: Int, cols: Int) -> BitMat:
+        assert rows >= 0 and cols >= 0
+        BitMat(rows, cols, List.filled(rows * bit_words(cols), 0))
 
     /// The `n x n` GF(2) identity matrix.
     ///
     /// cost: O(n^2 / 64) time and space
     /// traps: when `n < 0`
     /// example: `BitMat.identity(3).get(1, 1) and not BitMat.identity(3).get(1, 2)`
-    pub fn identity(n: Int) -> BitMat = todo
+    pub fn identity(n: Int) -> BitMat:
+        var m = BitMat.new(n, n)
+        for i in 0..n: m.set(i, i, true)
+        m
 
     /// Read bit `(r, c)`.
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.get(0, 1) and not m.get(1, 0)`
-    pub fn get(self, r: Int, c: Int) -> Bool = todo
+    pub fn get(self, r: Int, c: Int) -> Bool:
+        assert 0 <= r and r < rows and 0 <= c and c < cols
+        ((bits[r * bit_words(cols) + c / 62] >> (c % 62)) & 1) == 1
 
     /// Write bit `(r, c)`.
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.set(0, 1, false); not m.get(0, 1)`
-    pub fn set(mut self, r: Int, c: Int, v: Bool) = todo
+    pub fn set(mut self, r: Int, c: Int, v: Bool):
+        assert 0 <= r and r < rows and 0 <= c and c < cols
+        let k = r * bit_words(cols) + c / 62
+        let bit = 1 << (c % 62)
+        if v: bits[k] = bits[k] | bit
+        else: bits[k] = bits[k] & ~bit
 
     /// The determinant over GF(2): `true` iff the matrix is invertible. The `0 x 0` determinant is
     /// `true`.
@@ -926,7 +940,9 @@ pub struct BitMat(rows: Int, cols: Int):
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.det()`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(1, 0, true); not m.det()`
-    pub fn det(self) -> Bool = todo
+    pub fn det(self) -> Bool:
+        assert rows == cols, "det requires a square matrix"
+        self.rank() == rows
 
     /// The rank over GF(2).
     ///
@@ -934,7 +950,9 @@ pub struct BitMat(rows: Int, cols: Int):
     /// empty: zero
     /// traps: never
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
-    pub fn rank(self) -> Int = todo
+    pub fn rank(self) -> Int:
+        var a = [x for x in bits]
+        bit_rref(rows, cols, mut a).len
 
     /// Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot)
     /// variable `false`, as in `Mat.solve`.
@@ -945,7 +963,9 @@ pub struct BitMat(rows: Int, cols: Int):
     /// traps: when `b.len != rows`
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.solve([true, true]) == Some([false, true])`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve([true, false]) == None`
-    pub fn solve(self, b: List<Bool>) -> ?List<Bool> = todo
+    pub fn solve(self, b: List<Bool>) -> ?List<Bool>:
+        if let sp = self.solve_space(b): return Some(sp.x0)
+        None
 
     /// One solution `x0` and a nullspace basis over GF(2), or `None`. `x0` is `solve(b)`'s solution;
     /// the basis has one vector per free column, in increasing column order, with `true` at that
@@ -956,7 +976,28 @@ pub struct BitMat(rows: Int, cols: Int):
     /// order: basis vectors by increasing free column
     /// traps: when `b.len != rows`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve_space([true, true]) == Some((x0: [true, false], basis: [[true, true]]))`
-    pub fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>) = todo
+    pub fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>):
+        assert b.len == rows, "solve_space needs one right-hand side per row"
+        var aug = BitMat.new(rows, cols + 1)
+        for r in 0..rows:
+            for c in 0..cols:
+                if self.get(r, c): aug.set(r, c, true)
+            if b[r]: aug.set(r, cols, true)
+        let piv = bit_rref(rows, cols + 1, mut aug.bits)
+        if piv.len > 0 and piv[piv.len - 1] == cols: return None
+        var x0 = List.filled(cols, false)
+        var is_piv = List.filled(cols, false)
+        for i in 0..piv.len:
+            x0[piv[i]] = aug.get(i, cols)
+            is_piv[piv[i]] = true
+        var basis = List<List<Bool>>()
+        for f in 0..cols:
+            if is_piv[f]: continue
+            var v = List.filled(cols, false)
+            v[f] = true
+            for i in 0..piv.len: v[piv[i]] = aug.get(i, f)
+            basis.push(v)
+        Some((x0:, basis:))
 
     /// The inverse of a square GF(2) matrix, or `None` when it is singular.
     ///
@@ -964,25 +1005,71 @@ pub struct BitMat(rows: Int, cols: Int):
     /// empty: the `0 x 0` matrix
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); let inv = m.inverse()!; inv.get(0, 1) and inv.get(1, 1) and not inv.get(1, 0)`
-    pub fn inverse(self) -> ?BitMat = todo
+    pub fn inverse(self) -> ?BitMat:
+        assert rows == cols, "inverse requires a square matrix"
+        let n = rows
+        var aug = BitMat.new(n, 2 * n)
+        for r in 0..n:
+            for c in 0..n:
+                if self.get(r, c): aug.set(r, c, true)
+            aug.set(r, n + r, true)
+        let piv = bit_rref(n, 2 * n, mut aug.bits)
+        if n > 0 and piv[n - 1] >= n: return None
+        var out = BitMat.new(n, n)
+        for r in 0..n:
+            for c in 0..n:
+                if aug.get(r, n + c): out.set(r, c, true)
+        Some(out)
 
     /// The matrix product `self * o` over GF(2) (AND for multiply, XOR for add).
     ///
     /// cost: O(rows * cols * o.cols / 64)
     /// traps: when `self.cols != o.rows`
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); let p = m.mul(m); not p.get(0, 1) and p.get(0, 0)`
-    pub fn mul(self, o: BitMat) -> BitMat = todo
+    pub fn mul(self, o: BitMat) -> BitMat:
+        assert cols == o.rows, "mul needs `self.cols == o.rows`"
+        var out = BitMat.new(rows, o.cols)
+        let w = bit_words(o.cols)
+        for i in 0..rows:
+            for t in 0..cols:
+                if self.get(i, t):
+                    for k in 0..w: out.bits[i * w + k] = out.bits[i * w + k] ^ o.bits[t * w + k]
+        out
+
+fn bit_words(cols: Int) -> Int = (cols + 61) / 62
+
+fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
+    let w = bit_words(cols)
+    var piv = List<Int>()
+    var r = 0
+    for c in 0..cols:
+        if r == rows: break
+        let k = c / 62
+        let bit = 1 << (c % 62)
+        var p = r
+        while p < rows and (a[p * w + k] & bit) == 0: p += 1
+        if p == rows: continue
+        if p != r:
+            for j in 0..w: a.swap(p * w + j, r * w + j)
+        for i in 0..rows:
+            if i != r and (a[i * w + k] & bit) != 0:
+                for j in 0..w: a[i * w + j] = a[i * w + j] ^ a[r * w + j]
+        piv.push(c)
+        r += 1
+    piv
 
 /// O(62) per push and query. Online prefix linear basis answering subarray XOR queries over any range `r`.
 pub struct PrefixXorBasis:
     len: Int
+    vecs: List<Int>
+    from: List<Int>
 
     /// An empty prefix XOR basis, with no positions pushed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `PrefixXorBasis().rank(0..0) == 0`
-    pub fn new() -> PrefixXorBasis = todo
+    pub fn new() -> PrefixXorBasis = PrefixXorBasis(0, List.filled(63, 0), List.filled(63, -1))
 
     /// Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the
     /// rightmost source index, so any subarray's span reads off the vectors whose index lies in it.
@@ -990,7 +1077,30 @@ pub struct PrefixXorBasis:
     /// cost: O(62) time and space
     /// traps: when `x < 0` or `x >= 2^62`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.rank(0..2) == 2`
-    pub fn push(mut self, x: Int) = todo
+    pub fn push(mut self, x: Int):
+        assert x >= 0, "`push` needs `x >= 0`"
+        let base = len * 63
+        for b in 0..63:
+            vecs.push(vecs[base + b])
+            from.push(from[base + b])
+        len += 1
+        let top = len * 63
+        var v = x
+        var at = len - 1
+        for b in (0..63).rev:
+            if ((v >> b) & 1) == 0: continue
+            if vecs[top + b] == 0:
+                vecs[top + b] = v
+                from[top + b] = at
+                return
+            if from[top + b] < at:
+                let tv = vecs[top + b]
+                let ta = from[top + b]
+                vecs[top + b] = v
+                from[top + b] = at
+                v = tv
+                at = ta
+            v ^= vecs[top + b]
 
     /// The maximum `init ^ s` for `s` in the span of the values at positions `r`.
     ///
@@ -999,7 +1109,14 @@ pub struct PrefixXorBasis:
     /// ties: None possible; the maximum value is unique
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `init < 0`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.max_xor(1..3) == 6 and p.max_xor(2..3) == 3`
-    pub fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int = todo
+    pub fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int:
+        if r.is_empty: return init
+        let l = r.first!
+        let top = (l + r.len) * 63
+        var res = init
+        for b in (0..63).rev:
+            if from[top + b] >= l and (res ^ vecs[top + b]) > res: res ^= vecs[top + b]
+        res
 
     /// Whether `x` is in the span of the values at positions `r`.
     ///
@@ -1007,7 +1124,14 @@ pub struct PrefixXorBasis:
     /// empty: `true` only for `x == 0`
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `x < 0`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.contains(1..3, 6) and not p.contains(1..2, 3)`
-    pub fn contains(self, r: Range<Int>, x: Int) -> Bool = todo
+    pub fn contains(self, r: Range<Int>, x: Int) -> Bool:
+        if r.is_empty: return x == 0
+        let l = r.first!
+        let top = (l + r.len) * 63
+        var v = x
+        for b in (0..63).rev:
+            if ((v >> b) & 1) == 1 and from[top + b] >= l: v ^= vecs[top + b]
+        v == 0
 
     /// The rank (dimension) of the span of the values at positions `r`.
     ///
@@ -1015,7 +1139,14 @@ pub struct PrefixXorBasis:
     /// empty: zero
     /// traps: when `r` is non-empty and reaches outside `0..len`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.rank(0..3) == 2 and p.rank(2..3) == 1`
-    pub fn rank(self, r: Range<Int>) -> Int = todo
+    pub fn rank(self, r: Range<Int>) -> Int:
+        if r.is_empty: return 0
+        let l = r.first!
+        let top = (l + r.len) * 63
+        var k = 0
+        for b in 0..63:
+            if from[top + b] >= l: k += 1
+        k
 
 /// The determinant of a sparse `n x n` matrix via Wiedemann's algorithm. `entries` lists
 /// `(row, col, value)`; repeated cells add up, and missing cells are zero. Randomized with a fixed
