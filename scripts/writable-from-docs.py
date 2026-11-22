@@ -62,7 +62,8 @@ def load_docs_bundle(root: Path = ROOT) -> str:
 def ported_ids(root: Path = ROOT) -> set[str]:
     return {
         Path(f).parent.name
-        for f in glob.glob(str(root / "corpus/problems/*/port.cp"))
+        for pat in ("corpus/problems/*/spec.cp", "corpus/problems/*/port.cp")
+        for f in glob.glob(str(root / pat))
     }
 
 

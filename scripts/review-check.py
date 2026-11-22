@@ -106,7 +106,9 @@ def discover_ports():
     ports = []
     for stem in stems:
         pdir = os.path.join(PORTS_DIR, stem)
-        cp_path = os.path.join(pdir, "port.cp")
+        cp_path = os.path.join(pdir, "spec.cp")
+        if not os.path.isfile(cp_path):
+            cp_path = os.path.join(pdir, "port.cp")
         orig_path = os.path.join(pdir, "orig.cpp")
         if not os.path.isfile(cp_path) or not os.path.isfile(orig_path):
             continue
@@ -181,7 +183,7 @@ def touched_port_names(names):
             if len(parts) != 2:
                 continue
             status, path = parts[0].strip(), parts[1].strip()
-            m = re.fullmatch(r"corpus/problems/([^/]+)/port\.cp", path)
+            m = re.fullmatch(r"corpus/problems/([^/]+)/(?:spec|port)\.cp", path)
             if m and m[1] in names:
                 touched.add(m[1])
                 if status.startswith("A"):

@@ -82,6 +82,18 @@ check-links:
 corpus-check:
     python3 scripts/corpus.py check
 
+# Regenerate corpus/problems/<id>/tests/NN.{in,ans} from accepted C++ originals.
+corpus-tests-make *args:
+    python3 scripts/corpus-tests.py make {{args}}
+
+# Run the normative spec checks (stub, vocab, dream-gaps).
+spec-check:
+    scripts/spec-check.sh
+
+# Refresh or check the conformance coverage table.
+conformance-coverage *args:
+    python3 scripts/conformance-coverage.py {{args}}
+
 # Create an isolated git worktree with its own Cargo target directory.
 worktree name:
     git worktree add "../cp-lang-{{name}}" -b "{{name}}"
