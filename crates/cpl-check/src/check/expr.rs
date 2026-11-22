@@ -2687,7 +2687,7 @@ impl<'a> Checker<'a> {
                             Ty::list(Ty::Pos(domain.clone())),
                         ])),
                     },
-                    "group" => Ty::Fn {
+                    "group" if std::env::var_os("CPL_SPEC").is_none() => Ty::Fn {
                         params: vec![crate::ty::Param {
                             name: "by".into(),
                             ty: Ty::Fn {

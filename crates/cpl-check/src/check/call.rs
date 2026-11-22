@@ -1146,7 +1146,7 @@ impl<'a> Checker<'a> {
                 "partition" => {
                     return Some(Ty::Tuple(vec![Ty::list(elem.clone()), Ty::list(elem)]));
                 }
-                "group" => {
+                "group" if std::env::var_os("CPL_SPEC").is_none() => {
                     return Some(Ty::list(Ty::list(elem)));
                 }
                 "first" => {

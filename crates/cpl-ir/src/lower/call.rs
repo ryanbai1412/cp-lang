@@ -7173,9 +7173,13 @@ impl<'a> Lowerer<'a> {
                 return self.lower_partition(base, &test.value, span);
             }
         }
-        // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order.
+        // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order (v0.2;
+        // v0.3 dispatches to `std.seq.group` returning `HashMap<K, List<U>>`).
         if let ([key], "group") = (args, name.text.as_str()) {
-            if key.name.as_ref().is_none_or(|n| n.text == "by") && base_is_seq {
+            if std::env::var_os("CPL_SPEC").is_none()
+                && key.name.as_ref().is_none_or(|n| n.text == "by")
+                && base_is_seq
+            {
                 return self.lower_group_by(base, &key.value, span);
             }
         }
