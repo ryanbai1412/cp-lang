@@ -65,6 +65,8 @@ impl Trap {
             codes::INPUT_OUT_OF_CONTRACT
         } else if m.contains("integer overflow") || m.contains("does not fit in") {
             codes::OVERFLOW
+        } else if m.contains(" is outside `") && !m.starts_with("index ") {
+            codes::RANGE_BOUNDS
         } else if m.starts_with("division by zero") {
             codes::DIVISION_BY_ZERO
         } else if m.starts_with("`!` on") || m.contains("unwrapped a `None`") || m.contains("there is no value here") {

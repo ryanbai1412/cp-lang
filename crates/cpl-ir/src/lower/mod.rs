@@ -1077,6 +1077,7 @@ impl<'a> Lowerer<'a> {
                 .iter()
                 .map(|arg| match arg {
                     GenArg::Int(v) => v.to_string(),
+                    GenArg::Range(_, _) => "Int".to_string(),
                     GenArg::Domain(d) => domains[*d].clone(),
                     GenArg::Ty(ty) => crate::show::ty_name(ty, domains, &structs, &self.enums),
                     GenArg::RuntimeInt(_) => "_".to_string(),
@@ -2550,7 +2551,7 @@ impl<'a> Lowerer<'a> {
                 return Spec::Plain(match ga {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
-                    GenArg::Int(_) | GenArg::RuntimeInt(_) => Ty::Int,
+                    GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
                     GenArg::Op(_) => Ty::Unit,
                 });
             }

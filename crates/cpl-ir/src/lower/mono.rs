@@ -34,6 +34,7 @@ pub(super) enum GenArg {
     Int(i64),
     RuntimeInt(GlobalId),
     Op(BareOp),
+    Range(Option<i64>, Option<i64>),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -262,6 +263,7 @@ impl<'a> Lowerer<'a> {
             GenArg::Ty(ty) => self.mangle_ty(ty),
             GenArg::RuntimeInt(gid) => format!("RI{gid}"),
             GenArg::Op(op) => format!("Op_{op:?}"),
+            GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),
         }
     }
 
@@ -640,6 +642,17 @@ impl<'a> Lowerer<'a> {
                     Ty::Pos(d) => GenArg::Domain(d),
                     other => GenArg::Ty(other),
                 }
+            }
+            ast::TypeKind::Range { lo, hi, inclusive } => {
+                let lo_val = lo.as_deref().and_then(|e| self.eval_const_int(e));
+                let hi_val = hi.as_deref().and_then(|e| {
+                    let v = self.eval_const_int(e)?;
+                    Some(if *inclusive { v } else { v - 1 })
+                });
+                if lo_val.is_some() || hi_val.is_some() {
+                    return GenArg::Range(lo_val, hi_val);
+                }
+                GenArg::Ty(Ty::Int)
             }
             ast::TypeKind::Tuple(items) if !items.is_empty() => {
                 let resolved_items: Vec<Ty> = items.iter().map(|t| self.resolve_ty(t)).collect();
@@ -2731,6 +2744,14 @@ impl<'a> Lowerer<'a> {
                                     if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
                                         if a.is_empty() && gen_names.contains(&n.text) {
                                             env.entry(n.text.clone()).or_insert(GenArg::Op(*op));
+                                        }
+                                    }
+                                }
+                                GenArg::Range(lo, hi) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone())
+                                                .or_insert(GenArg::Range(*lo, *hi));
                                         }
                                     }
                                 }

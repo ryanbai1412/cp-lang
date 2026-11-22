@@ -277,6 +277,21 @@ impl<'a> Lowerer<'a> {
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
                 if args.is_empty() {
+                    if let Some(GenArg::Range(lo_c, hi_c)) = self.gen_env.get(&name.text).cloned() {
+                        let lo_expr = lo_c.map(|v| self.int_lit(v, ty.span));
+                        let hi_expr = hi_c.map(|v| self.int_lit(v, ty.span));
+                        return Some(RangeInfo::Scalar(RangeBounds {
+                            lo: lo_expr,
+                            hi: hi_expr,
+                            lo_const: lo_c,
+                            hi_const: hi_c,
+                            text: format!(
+                                "{}..={}",
+                                lo_c.map_or(String::new(), |v| v.to_string()),
+                                hi_c.map_or(String::new(), |v| v.to_string())
+                            ),
+                        }));
+                    }
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
                         let (m, target, off) = self.aliases[aid];
                         let saved_m = std::mem::replace(&mut self.cur_mod, m);

@@ -193,6 +193,7 @@ pub mod codes {
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
     pub const DOMAIN_CAST: Code = Code("R0102");
+    pub const RANGE_BOUNDS: Code = Code("R0201");
     pub const OVERFLOW: Code = Code("R0202");
     pub const DIVISION_BY_ZERO: Code = Code("R0203");
     pub const UNWRAP_NONE: Code = Code("R0301");
