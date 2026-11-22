@@ -3,6 +3,9 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Fixed (main CI red, run 45082394843): go-to-definition into an imported module re-analyzed it as if open, rechecking every item (16 for std/mod.cp; the new assertion in `stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib` fails without the fix: left 19, right 3). It now reads the module's text. Local debug `ports` run: definitions over 100 ms went from about 20 (max 295 ms) to 0. `crates/cpl-lsp/tests/ports.rs` checks correctness only; latency stays in `tests/latency.rs`. Completion still reaches 350 ms on a few files under the same run; next to look at.
+- Done for diagnostics: overflow hints carry `R0202` (`cpl_diag::codes::OVERFLOW`), and `crates/cpl-lsp/tests/fixtures.rs` rejects any code not in the diagnostic or lint catalogue.
+- `crates/cpl-cli/src/commands.rs` holds the help texts and usage table (a pure move out of lib.rs, 2552 to 2351 lines), first step toward one command table.
 - From compiler: `a[l..r].max()` now checks as `?T`, so `rt_min_empty_slice` is rejected for its stated reason and left `NOT_YET` in `crates/cpl-cli/tests/corpus.rs` (the test asks for exactly that). Trivial unblock.
 - Note from debugger: `crates/cpl-cli/src/trace.rs` fills the viewer's new `trace-version` element with `VERSION`, and the versus note (also in `crates/cpl-wasm/src/lib.rs`) says "its brute" instead of `@brute(main)`. Revert that commit to undo.
 - Request from diagnostics: `crates/cpl-lsp/src/server.rs:1832` tags overflow hints with `cpl_diag::Code("overflow")`, which is not a catalogue code, so `cpl explain` and editors cannot look it up. Suggest `cpl_diag::codes::OVERFLOW` (R0202, the trap the hint predicts) or a catalogued W code; diagnostics will add a W code if you prefer that.
