@@ -2123,6 +2123,77 @@ impl<'a> Lowerer<'a> {
                 return found;
             }
         }
+        // Structural trait associated types: if a trait method returns `Self.<item>`
+        // or `yields Self.<item>`, recover `<item>` from the concrete type's matching
+        // method (or sequence-valued adjacency array / function).
+        let self_item = format!("Self.{item}");
+        let unwrap_seq = |seq_ty: &Ty| -> Option<Ty> {
+            match seq_ty {
+                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) | Ty::Range(e) => {
+                    Some((**e).clone())
+                }
+                Ty::Str | Ty::StrView => Some(Ty::Char),
+                Ty::Array { elem, .. } => Some((**elem).clone()),
+                _ => None,
+            }
+        };
+        for tr in &self.traits {
+            for m in &tr.methods {
+                let Some(ret_ast) = &m.ret else { continue };
+                let (matched, yielded) = match &ret_ast.kind {
+                    ast::TypeKind::Named { name, args }
+                        if args.is_empty() && name.text == self_item =>
+                    {
+                        (true, false)
+                    }
+                    ast::TypeKind::Yields(inner) => match &inner.kind {
+                        ast::TypeKind::Named { name, args }
+                            if args.is_empty() && name.text == self_item =>
+                        {
+                            (true, true)
+                        }
+                        _ => (false, false),
+                    },
+                    _ => (false, false),
+                };
+                if !matched {
+                    continue;
+                }
+                if let Ty::Struct(sid) = t {
+                    if let Some(&fn_id) = self.structs[*sid].methods.get(&m.name.text) {
+                        if let Some(ret_ty) = &self.sigs[fn_id].ret {
+                            if yielded {
+                                if let Some(elem) = unwrap_seq(ret_ty) {
+                                    return Some(elem);
+                                }
+                            } else {
+                                return Some(ret_ty.clone());
+                            }
+                        }
+                    }
+                }
+                if yielded {
+                    match t {
+                        Ty::Array { elem, .. } => {
+                            if let Some(arc) = unwrap_seq(elem) {
+                                return Some(arc);
+                            }
+                        }
+                        Ty::Fn(_, ret) => {
+                            if let Some(arc) = unwrap_seq(ret) {
+                                return Some(arc);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        if item == "Item" {
+            if let Some(elem) = unwrap_seq(t) {
+                return Some(elem);
+            }
+        }
         None
     }
 
