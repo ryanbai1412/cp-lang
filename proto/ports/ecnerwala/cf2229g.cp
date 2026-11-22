@@ -11,43 +11,51 @@
 // collected once.
 use std.seq.{merge_sorted}
 
+enum Side: Left, Right
+fn flip(s: Side) -> Side = match s:
+    Left => Side.Right
+    Right => Side.Left
+
 struct House(x: Int, v: Int, d: Int, pref: Int)
 
 @!multitest
-let (n, k, x_in): (Int, Int, Int) = read()
-let x = x_in - 1
-let v: [0..n]Int = read()
+let (n, k): (1..=200_000, 1..=1_000_000_000) = read()
+domain Pos = 1..=n
+let x: Pos = read()
+let v: [Pos]Int = read()
 let road_d: [0..n - 1]Int = read()
 
-fn records(path: List<Int>) -> List<House>:
+fn records(path: List<Pos>) -> List<House>:
     var out: List<House> = []
     var (pref, d) = (0, 0)
     for (s, i) in path.items:
         pref += v[i]
-        if s > 0: d = max(d + 1, road_d[min(i, path[s - 1])])
+        if s > 0: d = max(d + 1, road_d[min(i.ord, path[s - 1].ord)])
         if out.is_empty or out.last!.v <= v[i]: out.push(House(s, v[i], d, pref))
     out
 
-let side: [0..2]List<House> = [records(List((0..=x).rev)), records(List(x..n))]
+let side: [Side]List<House> = [Side] s => match s:
+    Left => records([p for p in (Pos.first..=x).rev])
+    Right => records([p for p in x..=Pos.last])
 let order = merge_sorted(
-    [(h.v, 0, i) for (i, h) in side[0].items if i > 0],
-    [(h.v, 1, i) for (i, h) in side[1].items if i > 0],
+    [(h.v, Side.Left, i) for (i, h) in side[Side.Left].items if i > 0],
+    [(h.v, Side.Right, i) for (i, h) in side[Side.Right].items if i > 0],
 )
 
-var val: [0..2]List<Int> = [0]
-var crossed: [0..2]Int = 0
+var val: [Side]List<Int> = [Side] _ => [0]
+var crossed: [Side]Int = 0
 var ans = v[x] * k
 for (_, z, i) in order:
     let (o, h) = (side[z][i - 1], side[z][i])
     var best = val[z][i - 1] + o.v * (h.d - (h.x - o.x)) + (h.pref - o.pref)
-    let other = 1 - z
-    let met = val[other].len
-    let upto = bsearch_first(crossed[other]..met, j => side[other][j].v > h.v) ?? met
-    for j in crossed[other]..upto:
-        let op = side[other][j]
+    let opp = flip(z)
+    let met = val[opp].len
+    let upto = bsearch_first(crossed[opp]..met, j => side[opp][j].v > h.v) ?? met
+    for j in crossed[opp]..upto:
+        let op = side[opp][j]
         if op.d + h.x + op.x <= h.d:
-            best max= val[other][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
-    crossed[other] = upto
+            best max= val[opp][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
+    crossed[opp] = upto
     val[z].push(best - h.d * h.v)
     if h.d <= k: ans max= val[z][i] + h.v * k
 print(ans)
