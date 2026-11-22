@@ -28,12 +28,13 @@ bytes, never slower), and `cpl explain` prints every layout.
 | Written | Storage | Why it is the type you'd write anyway |
 |---|---|---|
 | `Int`, no bound | 8 bytes | the default; nothing is guessed |
-| `lo..=hi` (static ends) | narrowest of u8/u16/u32/u64 (i8.. when `lo < 0`) that holds the range **and** one spare value | statement bounds: `read<[V]1..=1e9>` |
+| `lo..=hi` (static ends) | narrowest of u8/u16/u32/u64 (i8.. when `lo < 0`) that holds the range; `?` adds a byte only when no spare is left (`0..=255`) | statement bounds: `read<[V]1..=1e9>` |
 | `0..=V.count`, `1..=V.count` | as `V`'s positions | counts, sizes, depths |
 | a domain position `V` | narrowest that holds `V.count + 1` values | every index |
 | `Mod<P>` | u32 when `P < 2^31`, else u64 | the modulus |
 | `Bool` | 1 byte; `Bits<V>` when you ask for bits | |
-| `I32`, `U32`, `U64`, `I128` | exactly that | bit tricks, hashes, explicit control |
+| `Char` | 1 byte, ASCII `0..=127` | strings and grids |
+| `U64`, `I128` | exactly that | hashes and bit tricks (wrapping `U64`); products past i64 (`I128`) |
 | `F64` | 8 bytes | |
 
 - **Domain widths follow the static bound of the count.** `let n =
@@ -50,8 +51,10 @@ bytes, never slower), and `cpl explain` prints every layout.
   one zero-extending load; arithmetic is in `Int`, so `a[i] * a[j]` can't
   overflow 32 bits. Storing into a range-typed slot checks the range
   unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
-  type is a contract; `I32` is storage only (traps in debug, wraps in
-  release).
+  type is a contract.
+- **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is
+  one byte per element, `[V]0..=4e9` four. Decision 1.7 keeps the number
+  types to `Int`, `U64`, `I128` and `F64`; a byte of text is `Char`.
 - **Narrow arithmetic when proven.** Semantically every operation is in
   `Int`. When the range proof shows an expression and its operands fit in
   32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
@@ -95,7 +98,7 @@ that keeps a range closed. No width annotations on structures exist.
   of those). It suggests the annotation, e.g. `[V]0..=1e9`. Purely local:
   it looks only at the writes in the same function.
 - Override with an explicit type in either direction: `[V]Int` widens,
-  `[V]U32` stores 4 bytes with release wrap semantics.
+  `[V]0..=4e9` stores 4 bytes.
 
 ## 2. Spare values
 
@@ -112,7 +115,8 @@ of a use, so two `?Edge`s always agree on layout.
 | `Bool` | 2..=255 | 2 |
 | unit `enum` with k variants | k..=255 | k |
 | `F64` | quiet-NaN payloads (NaN traps in checked runs) | one fixed payload |
-| `I32`, `U32`, `U64`, `I128` | none | needs a flag |
+| `Char` | 128..=255 | 128 |
+| `U64`, `I128` | none | needs a flag |
 | `?T` | `T`'s spares minus the one `none` took | |
 
 ### Structs, records and tuples
@@ -194,7 +198,8 @@ Ranges carry the proofs; the build decides what an unproven step does.
 | `Int` arithmetic proven in range | no check | no check |
 | `Int` arithmetic unproven | trap with values | wraps |
 | store into a range type, unproven | trap | trap (contract); `with checks(ranges: off)` removes it |
-| fixed width (`I32`, `U64`) | trap | wraps |
+| `U64` | wraps | wraps |
+| `I128` arithmetic unproven | trap with values | wraps |
 | `wrapping_add` and friends | wraps | wraps |
 | result range exceeds i64 (`1..=1e9` cubed) | the result is plain `Int`; overflow checks apply | |
 
