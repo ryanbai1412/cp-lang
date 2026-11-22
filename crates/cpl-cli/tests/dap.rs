@@ -2,7 +2,7 @@
 //! breakpoints, call stacks, domain-labeled variables, stepping, backward
 //! time-travel (`stepBack`, `reverseContinue`), hover evaluation, and traps.
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -57,31 +57,14 @@ impl DapClient {
             ),
             None => format!("{{\"seq\":{seq},\"type\":\"request\",\"command\":\"{command}\"}}"),
         };
-        write!(self.stdin, "Content-Length: {}\r\n\r\n{}", body.len(), body).unwrap();
-        self.stdin.flush().unwrap();
+        cpl_lsp::transport::write_raw_message(&mut self.stdin, &body).unwrap();
         seq
     }
 
     fn recv(&mut self) -> String {
-        let mut len: Option<usize> = None;
-        loop {
-            let mut line = String::new();
-            let n = self.stdout.read_line(&mut line).unwrap();
-            assert!(n > 0, "unexpected EOF from cpl dap");
-            let t = line.trim();
-            if t.is_empty() {
-                break;
-            }
-            if let Some((k, v)) = t.split_once(':') {
-                if k.eq_ignore_ascii_case("Content-Length") {
-                    len = v.trim().parse().ok();
-                }
-            }
-        }
-        let len = len.expect("missing Content-Length header");
-        let mut buf = vec![0u8; len];
-        self.stdout.read_exact(&mut buf).unwrap();
-        String::from_utf8(buf).unwrap()
+        cpl_lsp::transport::read_message(&mut self.stdout)
+            .unwrap()
+            .expect("unexpected EOF from cpl dap")
     }
 
     fn recv_until(&mut self, needle: &str) -> String {

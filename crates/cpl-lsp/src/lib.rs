@@ -12,7 +12,7 @@ mod complete;
 mod outline;
 mod rename;
 mod server;
-mod transport;
+pub mod transport;
 
 pub use server::Server;
 pub use transport::{read_message, serve, write_message};

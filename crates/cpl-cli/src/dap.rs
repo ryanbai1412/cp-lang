@@ -31,7 +31,7 @@ pub fn serve_stdio() -> u8 {
 /// Runs the DAP session over arbitrary streams (used by stdio and tests).
 pub fn serve(reader: &mut dyn BufRead, writer: &mut dyn Write) -> io::Result<()> {
     let mut session = Session::new();
-    while let Some(body) = read_frame(reader)? {
+    while let Some(body) = cpl_lsp::transport::read_message(reader)? {
         let Ok(msg) = cpl_json::parse(&body) else {
             continue;
         };
@@ -122,7 +122,7 @@ impl Session {
             out.push_str(body);
         }
         out.push('}');
-        write_frame(writer, &out)
+        cpl_lsp::transport::write_raw_message(writer, &out)
     }
 
     fn send_event(&mut self, writer: &mut dyn Write, event: &str, body_json: Option<&str>) -> io::Result<()> {
@@ -134,7 +134,7 @@ impl Session {
             out.push_str(body);
         }
         out.push('}');
-        write_frame(writer, &out)
+        cpl_lsp::transport::write_raw_message(writer, &out)
     }
 
     fn send_output(&mut self, writer: &mut dyn Write, category: &str, text: &str) -> io::Result<()> {
@@ -939,8 +939,6 @@ fn emit_variable(out: &mut String, name: &str, value: &str, ty: &str) {
     out.push_str(",\"variablesReference\":0}");
 }
 
-// ----- Content-Length stdio framing -----
-
 /// The input a launch names, `inputText` or an `input` file; with neither,
 /// the case `cpl stress` last saved for the file, said in the note.
 fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<String>), String> {
@@ -977,36 +975,6 @@ fn describe_change(change: &Change) -> String {
     }
 }
 
-fn read_frame(reader: &mut dyn BufRead) -> io::Result<Option<String>> {
-    let mut content_length: Option<usize> = None;
-    loop {
-        let mut line = String::new();
-        let n = reader.read_line(&mut line)?;
-        if n == 0 {
-            return Ok(None);
-        }
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            break;
-        }
-        if let Some((k, v)) = trimmed.split_once(':') {
-            if k.eq_ignore_ascii_case("Content-Length") {
-                content_length = v.trim().parse().ok();
-            }
-        }
-    }
-    let len = match content_length {
-        Some(len) => len,
-        None => return Ok(None),
-    };
-    let mut buf = vec![0u8; len];
-    reader.read_exact(&mut buf)?;
-    Ok(Some(String::from_utf8_lossy(&buf).into_owned()))
-}
-
-fn write_frame(writer: &mut dyn Write, body: &str) -> io::Result<()> {
-    write!(writer, "Content-Length: {}\r\n\r\n{}", body.len(), body)
-}
 
 #[cfg(test)]
 mod tests {

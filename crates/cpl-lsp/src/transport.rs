@@ -10,7 +10,7 @@ use std::io::{self, BufRead, Write};
 const MAX_BODY: usize = 256 << 20;
 
 /// Reads one message. `Ok(None)` at a clean end of input.
-pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<String>> {
+pub fn read_message(input: &mut (impl BufRead + ?Sized)) -> io::Result<Option<String>> {
     let mut length = None;
     let mut saw_header = false;
     let mut line = String::new();
@@ -47,10 +47,14 @@ pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<String>> {
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "message body is not UTF-8"))
 }
 
-pub fn write_message(output: &mut impl Write, message: &Value) -> io::Result<()> {
-    let body = message.to_string();
+/// Writes a pre-serialized body framed with a `Content-Length` header and flushes.
+pub fn write_raw_message(output: &mut (impl Write + ?Sized), body: &str) -> io::Result<()> {
     write!(output, "Content-Length: {}\r\n\r\n{body}", body.len())?;
     output.flush()
+}
+
+pub fn write_message(output: &mut (impl Write + ?Sized), message: &Value) -> io::Result<()> {
+    write_raw_message(output, &message.to_string())
 }
 
 /// Serves the protocol until the client sends `exit` or closes the input.
