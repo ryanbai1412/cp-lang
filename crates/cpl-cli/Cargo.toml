@@ -19,6 +19,7 @@ cpl-fmt.workspace = true
 cpl-interp.workspace = true
 cpl-judge.workspace = true
 cpl-ir.workspace = true
+cpl-json.workspace = true
 cpl-lint.workspace = true
 cpl-lsp.workspace = true
 cpl-stress.workspace = true

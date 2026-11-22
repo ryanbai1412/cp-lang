@@ -21,7 +21,7 @@
 //! ```
 
 use cpl_check::Database;
-use cpl_lsp::json::{obj, Value};
+use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::time::{Duration, Instant};
 
@@ -183,7 +183,7 @@ fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     }
     members.push(("method".to_string(), method.into()));
     members.push(("params".to_string(), params));
-    Value::Object(members)
+    Value::Object(members.into_iter().collect())
 }
 
 fn position(src: &str, offset: usize) -> Value {
@@ -197,7 +197,7 @@ fn position(src: &str, offset: usize) -> Value {
 fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
     let wire = message.to_string();
     let start = Instant::now();
-    let parsed = cpl_lsp::json::parse(&wire).unwrap();
+    let parsed = cpl_json::parse(&wire).unwrap();
     let replies: Vec<String> = server
         .handle(&parsed)
         .iter()
@@ -342,7 +342,7 @@ fn lsp_latency(lines: usize) {
                 ("position".to_string(), position(&text, target + 2)),
             ];
             params.extend(extra);
-            message(Some(id), method, Value::Object(params))
+            message(Some(id), method, Value::Object(params.into_iter().collect()))
         };
         let context = obj([("includeDeclaration", true.into())]);
         let (replies, took) = round_trip(

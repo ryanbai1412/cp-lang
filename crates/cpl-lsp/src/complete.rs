@@ -5,7 +5,8 @@
 //! the end (`xs.` is a field access with an empty name). Signatures and
 //! doc comments come from the declarations, through [`Outline`].
 
-use crate::json::{obj, Value};
+use cpl_json::{obj, Value};
+use std::collections::BTreeMap;
 use crate::outline::{Entry, Kind, Outline, Param};
 use cpl_check::{
     builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, DeclKind, FsLoader, HoverEntry,
@@ -276,7 +277,7 @@ fn in_comment_or_string(line: &str) -> bool {
 }
 
 fn item_json(entry: &Entry, sort: u8) -> Value {
-    let mut members = vec![
+    let mut members = BTreeMap::from([
         ("label".to_string(), entry.name.as_str().into()),
         ("kind".to_string(), entry.kind.completion_kind().into()),
         ("detail".to_string(), entry.detail.as_str().into()),
@@ -284,15 +285,15 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
             "sortText".to_string(),
             format!("{sort}{}", entry.name).into(),
         ),
-    ];
+    ]);
     if !entry.doc.is_empty() {
-        members.push((
+        members.insert(
             "documentation".to_string(),
             obj([
                 ("kind", "markdown".into()),
                 ("value", entry.doc.as_str().into()),
             ]),
-        ));
+        );
     }
     Value::Object(members)
 }
@@ -824,18 +825,18 @@ fn scope_completion(
             let (span, new_text) = cpl_check::import_edit(text, module, name);
             let mut item = item_json(&entry, rank(&entry, 4));
             if let Value::Object(members) = &mut item {
-                members.push((
+                members.insert(
                     "labelDetails".to_string(),
                     obj([("description", format!("std.{module}").into())]),
-                ));
-                members.push((
+                );
+                members.insert(
                     "additionalTextEdits".to_string(),
                     vec![obj([
                         ("range", crate::server::range_json(span, text, &cursor.analysis.lines)),
                         ("newText", new_text.into()),
                     ])]
                     .into(),
-                ));
+                );
             }
             items.push(item);
         }
@@ -997,16 +998,16 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
         label.push_str(" -> ");
         label.push_str(&sig.ret);
     }
-    let mut signature = vec![
+    let mut signature = BTreeMap::from([
         ("label".to_string(), label.into()),
         ("parameters".to_string(), Value::Array(parameters)),
         ("activeParameter".to_string(), (active as u32).into()),
-    ];
+    ]);
     if !sig.doc.is_empty() {
-        signature.push((
+        signature.insert(
             "documentation".to_string(),
             obj([("kind", "markdown".into()), ("value", sig.doc.into())]),
-        ));
+        );
     }
     Some(obj([
         ("signatures", vec![Value::Object(signature)].into()),

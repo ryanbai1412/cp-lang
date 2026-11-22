@@ -9,6 +9,7 @@
 
 use crate::{compile_side, render_trap, Side};
 use cpl_interp::trace::{first_change, string as json_str, Change, Recording, TraceConfig};
+pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
@@ -31,7 +32,7 @@ pub fn serve_stdio() -> u8 {
 pub fn serve(reader: &mut dyn BufRead, writer: &mut dyn Write) -> io::Result<()> {
     let mut session = Session::new();
     while let Some(body) = read_frame(reader)? {
-        let Ok(msg) = Json::parse(&body) else {
+        let Ok(msg) = cpl_json::parse(&body) else {
             continue;
         };
         if msg.get("type").and_then(Json::as_str) != Some("request") {
@@ -323,7 +324,7 @@ impl Session {
                 if let Some(step) = self.recording.steps.get(self.cursor) {
                     let mut first = true;
                     if reference == 1 {
-                        if let Ok(Json::Object(map)) = Json::parse(&step.locals) {
+                        if let Ok(Json::Object(map)) = cpl_json::parse(&step.locals) {
                             for (name, val) in map {
                                 if !first {
                                     body.push(',');
@@ -342,7 +343,7 @@ impl Session {
                                 body.push(',');
                             }
                             first = false;
-                            let value = Json::parse(val_json).map_or_else(|_| val_json.to_string(), |v| shown(&v));
+                            let value = cpl_json::parse(val_json).map_or_else(|_| val_json.to_string(), |v| shown(&v));
                             emit_variable(&mut body, &var.name, &value, &var.ty);
                         }
                     }
@@ -665,7 +666,7 @@ impl Session {
         let step = self.recording.steps.get(self.cursor)?;
         if let Some(var) = self.recording.vars.iter().find(|v| v.name == expr || v.id == expr) {
             let (_, value) = step.values.iter().find(|(i, _)| self.recording.vars[*i].id == var.id)?;
-            let value = Json::parse(value).ok()?;
+            let value = cpl_json::parse(value).ok()?;
             return Some((shown(&value), var.ty.clone()));
         }
         self.evaluate(expr).ok().map(|v| (shown(&v.json), String::new()))
@@ -683,14 +684,14 @@ impl Session {
         let mut names = BTreeMap::new();
         for (index, value) in &step.values {
             let var = &self.recording.vars[*index];
-            let labels = Json::parse(&format!("{{\"_\":0{}}}", var.extra))
+            let labels = cpl_json::parse(&format!("{{\"_\":0{}}}", var.extra))
                 .ok()
                 .and_then(|extra| extra.get("labels").cloned());
-            if let Ok(json) = Json::parse(value) {
+            if let Ok(json) = cpl_json::parse(value) {
                 names.insert(var.name.clone(), Valued { json, labels });
             }
         }
-        if let Ok(Json::Object(map)) = Json::parse(&step.locals) {
+        if let Ok(Json::Object(map)) = cpl_json::parse(&step.locals) {
             for (name, json) in map {
                 names.insert(name, Valued { json, labels: None });
             }
@@ -709,12 +710,12 @@ impl Session {
 pub(crate) fn shown(json: &Json) -> String {
     match json {
         Json::Null => "None".into(),
-        Json::Str(s) => s.clone(),
+        Json::String(s) => s.clone(),
         Json::Array(items) => format!("[{}]", items.iter().map(shown).collect::<Vec<_>>().join(", ")),
         Json::Object(map) => {
             format!("({})", map.iter().map(|(k, v)| format!("{k}: {}", shown(v))).collect::<Vec<_>>().join(", "))
         }
-        other => other.to_compact_string(),
+        other => other.to_string(),
     }
 }
 
@@ -892,9 +893,9 @@ impl Eval<'_> {
 
 fn at(list: &Valued, index: &Valued) -> Result<Valued, String> {
     let items = list.json.as_array().ok_or("only a list can be indexed")?;
-    let key = index.json.to_compact_string();
+    let key = index.json.to_string();
     let position = match list.labels.as_ref().and_then(Json::as_array) {
-        Some(labels) => labels.iter().position(|l| l.to_compact_string() == key || shown(l) == key),
+        Some(labels) => labels.iter().position(|l| l.to_string() == key || shown(l) == key),
         None => usize::try_from(int(index)?).ok(),
     };
     let json = position.and_then(|p| items.get(p)).ok_or(format!("{key} is out of range"))?;
@@ -903,7 +904,8 @@ fn at(list: &Valued, index: &Valued) -> Result<Valued, String> {
 
 fn int(value: &Valued) -> Result<i128, String> {
     match &value.json {
-        Json::Num(n) | Json::Str(n) => n.parse().map_err(|_| format!("`{}` is not an integer", shown(&value.json))),
+        Json::Int(n) => Ok(i128::from(*n)),
+        Json::String(n) => n.parse().map_err(|_| format!("`{}` is not an integer", shown(&value.json))),
         other => Err(format!("`{}` is not an integer", shown(other))),
     }
 }
@@ -918,7 +920,11 @@ fn boolean(b: bool) -> Valued {
 
 fn number(n: Option<i128>) -> Result<Valued, String> {
     let n = n.ok_or("the arithmetic overflows")?;
-    Ok(Valued { json: Json::Num(n.to_string()), labels: None })
+    let json = match i64::try_from(n) {
+        Ok(v) => Json::Int(v),
+        Err(_) => Json::String(n.to_string()),
+    };
+    Ok(Valued { json, labels: None })
 }
 
 fn emit_variable(out: &mut String, name: &str, value: &str, ty: &str) {
@@ -958,7 +964,7 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
 }
 
 fn describe_change(change: &Change) -> String {
-    let source = |json: &Option<String>, ended: &str| match json.as_deref().map(Json::parse) {
+    let source = |json: &Option<String>, ended: &str| match json.as_deref().map(cpl_json::parse) {
         Some(Ok(json)) => shown(&json),
         Some(Err(_)) => json.clone().unwrap_or_default(),
         None => ended.to_string(),
@@ -1000,247 +1006,6 @@ fn read_frame(reader: &mut dyn BufRead) -> io::Result<Option<String>> {
 
 fn write_frame(writer: &mut dyn Write, body: &str) -> io::Result<()> {
     write!(writer, "Content-Length: {}\r\n\r\n{}", body.len(), body)
-}
-
-// ----- Minimal self-contained JSON parser -----
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Json {
-    Null,
-    Bool(bool),
-    Num(String),
-    Str(String),
-    Array(Vec<Json>),
-    Object(BTreeMap<String, Json>),
-}
-
-impl Json {
-    pub(crate) fn parse(input: &str) -> Result<Json, ()> {
-        let mut p = Parser {
-            bytes: input.as_bytes(),
-            pos: 0,
-        };
-        let val = p.value()?;
-        p.ws();
-        if p.pos == p.bytes.len() {
-            Ok(val)
-        } else {
-            Err(())
-        }
-    }
-
-    pub(crate) fn get(&self, key: &str) -> Option<&Json> {
-        match self {
-            Json::Object(map) => map.get(key),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_str(&self) -> Option<&str> {
-        match self {
-            Json::Str(s) => Some(s.as_str()),
-            _ => None,
-        }
-    }
-
-    fn as_bool(&self) -> Option<bool> {
-        match self {
-            Json::Bool(b) => Some(*b),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_i64(&self) -> Option<i64> {
-        match self {
-            Json::Num(n) => n.parse().ok(),
-            _ => None,
-        }
-    }
-
-    fn as_array(&self) -> Option<&[Json]> {
-        match self {
-            Json::Array(a) => Some(a.as_slice()),
-            _ => None,
-        }
-    }
-
-    fn to_compact_string(&self) -> String {
-        match self {
-            Json::Null => "null".into(),
-            Json::Bool(b) => b.to_string(),
-            Json::Num(n) => n.clone(),
-            Json::Str(s) => {
-                let mut out = String::new();
-                json_str(&mut out, s);
-                out
-            }
-            Json::Array(items) => {
-                let parts: Vec<String> = items.iter().map(Json::to_compact_string).collect();
-                format!("[{}]", parts.join(", "))
-            }
-            Json::Object(map) => {
-                let parts: Vec<String> = map
-                    .iter()
-                    .map(|(k, v)| format!("{k}: {}", v.to_compact_string()))
-                    .collect();
-                format!("{{{}}}", parts.join(", "))
-            }
-        }
-    }
-}
-
-struct Parser<'a> {
-    bytes: &'a [u8],
-    pos: usize,
-}
-
-impl<'a> Parser<'a> {
-    fn ws(&mut self) {
-        while self.pos < self.bytes.len() && self.bytes[self.pos].is_ascii_whitespace() {
-            self.pos += 1;
-        }
-    }
-
-    fn peek(&self) -> Option<u8> {
-        self.bytes.get(self.pos).copied()
-    }
-
-    fn value(&mut self) -> Result<Json, ()> {
-        self.ws();
-        match self.peek().ok_or(())? {
-            b'{' => self.object(),
-            b'[' => self.array(),
-            b'"' => self.string().map(Json::Str),
-            b't' => self.literal(b"true", Json::Bool(true)),
-            b'f' => self.literal(b"false", Json::Bool(false)),
-            b'n' => self.literal(b"null", Json::Null),
-            b'-' | b'0'..=b'9' => self.number(),
-            _ => Err(()),
-        }
-    }
-
-    fn literal(&mut self, lit: &[u8], val: Json) -> Result<Json, ()> {
-        if self.bytes[self.pos..].starts_with(lit) {
-            self.pos += lit.len();
-            Ok(val)
-        } else {
-            Err(())
-        }
-    }
-
-    fn number(&mut self) -> Result<Json, ()> {
-        let start = self.pos;
-        if self.peek() == Some(b'-') {
-            self.pos += 1;
-        }
-        while self.pos < self.bytes.len()
-            && matches!(self.bytes[self.pos], b'0'..=b'9' | b'.' | b'e' | b'E' | b'+' | b'-')
-        {
-            self.pos += 1;
-        }
-        let text = std::str::from_utf8(&self.bytes[start..self.pos]).map_err(|_| ())?;
-        Ok(Json::Num(text.to_string()))
-    }
-
-    fn string(&mut self) -> Result<String, ()> {
-        if self.peek() != Some(b'"') {
-            return Err(());
-        }
-        self.pos += 1;
-        let mut out = String::new();
-        while self.pos < self.bytes.len() {
-            let b = self.bytes[self.pos];
-            self.pos += 1;
-            match b {
-                b'"' => return Ok(out),
-                b'\\' => {
-                    let esc = *self.bytes.get(self.pos).ok_or(())?;
-                    self.pos += 1;
-                    match esc {
-                        b'"' => out.push('"'),
-                        b'\\' => out.push('\\'),
-                        b'/' => out.push('/'),
-                        b'n' => out.push('\n'),
-                        b'r' => out.push('\r'),
-                        b't' => out.push('\t'),
-                        b'b' => out.push('\x08'),
-                        b'f' => out.push('\x0c'),
-                        b'u' => {
-                            let hex = self.bytes.get(self.pos..self.pos + 4).ok_or(())?;
-                            self.pos += 4;
-                            let s = std::str::from_utf8(hex).map_err(|_| ())?;
-                            let code = u32::from_str_radix(s, 16).map_err(|_| ())?;
-                            out.push(char::from_u32(code).unwrap_or('\u{FFFD}'));
-                        }
-                        _ => return Err(()),
-                    }
-                }
-                _ => {
-                    let start = self.pos - 1;
-                    while self.pos < self.bytes.len()
-                        && self.bytes[self.pos] != b'"'
-                        && self.bytes[self.pos] != b'\\'
-                    {
-                        self.pos += 1;
-                    }
-                    let chunk = std::str::from_utf8(&self.bytes[start..self.pos]).map_err(|_| ())?;
-                    out.push_str(chunk);
-                }
-            }
-        }
-        Err(())
-    }
-
-    fn array(&mut self) -> Result<Json, ()> {
-        self.pos += 1;
-        let mut out = Vec::new();
-        loop {
-            self.ws();
-            if self.peek() == Some(b']') {
-                self.pos += 1;
-                return Ok(Json::Array(out));
-            }
-            out.push(self.value()?);
-            self.ws();
-            match self.peek() {
-                Some(b',') => self.pos += 1,
-                Some(b']') => {
-                    self.pos += 1;
-                    return Ok(Json::Array(out));
-                }
-                _ => return Err(()),
-            }
-        }
-    }
-
-    fn object(&mut self) -> Result<Json, ()> {
-        self.pos += 1;
-        let mut map = BTreeMap::new();
-        loop {
-            self.ws();
-            if self.peek() == Some(b'}') {
-                self.pos += 1;
-                return Ok(Json::Object(map));
-            }
-            let key = self.string()?;
-            self.ws();
-            if self.peek() != Some(b':') {
-                return Err(());
-            }
-            self.pos += 1;
-            let val = self.value()?;
-            map.insert(key, val);
-            self.ws();
-            match self.peek() {
-                Some(b',') => self.pos += 1,
-                Some(b'}') => {
-                    self.pos += 1;
-                    return Ok(Json::Object(map));
-                }
-                _ => return Err(()),
-            }
-        }
-    }
 }
 
 #[cfg(test)]

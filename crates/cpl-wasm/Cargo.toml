@@ -15,6 +15,7 @@ cpl-codegen.workspace = true
 cpl-diag.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true
+cpl-json.workspace = true
 cpl-judge.workspace = true
 cpl-lsp.workspace = true
 cpl-stress.workspace = true

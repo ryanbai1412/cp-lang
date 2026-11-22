@@ -20,7 +20,8 @@ pub mod abi;
 
 use cpl_check::{Database, DeclKind};
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
-use cpl_lsp::json::{self, obj, Value};
+use cpl_json::{self as json, obj, Value};
+use std::collections::BTreeMap;
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -243,7 +244,7 @@ impl Playground {
             Ok(compiled) => compiled,
             Err(mut errors) => {
                 if let Value::Object(members) = &mut errors {
-                    members.push(("cpp".into(), Value::Null));
+                    members.insert("cpp".into(), Value::Null);
                 }
                 return errors;
             }
@@ -342,7 +343,7 @@ impl Playground {
                 (
                     "error",
                     obj([
-                        ("code", Value::Number(-32700.0)),
+                        ("code", (-32700i64).into()),
                         (
                             "message",
                             format!("the message is not JSON: {error}").into(),
@@ -446,7 +447,7 @@ fn outcome<const N: usize>(
     more: [(&str, Value); N],
 ) -> Value {
     let text = Text::new(source);
-    let mut members = vec![
+    let mut members = BTreeMap::from([
         ("ok".to_string(), Value::Bool(code == 0)),
         ("exitCode".to_string(), Value::from(u32::from(code))),
         (
@@ -454,7 +455,7 @@ fn outcome<const N: usize>(
             Value::Array(diagnostics.iter().map(|d| text.diagnostic(d)).collect()),
         ),
         ("stderr".to_string(), stderr.into()),
-    ];
+    ]);
     members.extend(
         more.into_iter()
             .map(|(key, value)| (key.to_string(), value)),
@@ -530,11 +531,11 @@ impl<'a> Text<'a> {
             ("start", self.position(span.start)),
             ("end", self.position(span.end)),
         ]);
-        let mut members = vec![
+        let mut members = BTreeMap::from([
             ("start".to_string(), self.unit(span.start).into()),
             ("end".to_string(), self.unit(span.end).into()),
             ("range".to_string(), range),
-        ];
+        ]);
         members.extend(
             more.into_iter()
                 .map(|(key, value)| (key.to_string(), value)),

@@ -2,7 +2,6 @@ pub mod conformance;
 pub mod corpus;
 pub mod diff;
 pub mod docs;
-pub mod json;
 pub mod runner;
 pub mod scoreboard;
 

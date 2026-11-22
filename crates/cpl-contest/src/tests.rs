@@ -1,6 +1,6 @@
 use super::*;
 use crate::bench::{bench, worst_case, WorstShape};
-use crate::json::Json;
+use cpl_json::{self as json, Value as Json};
 use crate::new::{reads, Scaffold};
 use crate::problem::{cases, source_path, Limits};
 use crate::test::{render, run_cases};
@@ -63,13 +63,13 @@ fn json_reads_values_escapes_and_nesting() {
         r#" {"a": [1, 2.5, -3e2], "s": "x\n\"y\"\u0041", "t": true, "n": null, "o": {}} "#,
     )
     .unwrap();
-    assert_eq!(value.get("a").unwrap().as_array().len(), 3);
-    assert_eq!(value.get("a").unwrap().as_array()[0].as_u64(), Some(1));
-    assert_eq!(value.get("a").unwrap().as_array()[1].as_u64(), None);
+    assert_eq!(value.get("a").unwrap().as_array().unwrap().len(), 3);
+    assert_eq!(value.get("a").unwrap().as_array().unwrap()[0].as_u64(), Some(1));
+    assert_eq!(value.get("a").unwrap().as_array().unwrap()[1].as_u64(), None);
     assert_eq!(value.get("s").unwrap().as_str(), Some("x\n\"y\"A"));
     assert_eq!(value.get("t"), Some(&Json::Bool(true)));
     assert_eq!(value.get("n"), Some(&Json::Null));
-    assert_eq!(value.get("o"), Some(&Json::Object(vec![])));
+    assert_eq!(value.get("o"), Some(&Json::Object(std::collections::BTreeMap::new())));
     assert_eq!(value.get("missing"), None);
     for bad in ["", "{", "[1,", "{\"a\" 1}", "\"open", "1 2", "tru"] {
         assert!(json::parse(bad).is_err(), "{bad}");

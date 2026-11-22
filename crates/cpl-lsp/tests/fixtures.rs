@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use cpl_lsp::json::{obj, Value};
+use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 
 const MARKER: &str = "$0";
@@ -20,7 +20,7 @@ fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     }
     members.push(("method".to_string(), method.into()));
     members.push(("params".to_string(), params));
-    Value::Object(members)
+    Value::Object(members.into_iter().collect())
 }
 
 fn position(src: &str, offset: usize) -> Value {
@@ -31,11 +31,11 @@ fn position(src: &str, offset: usize) -> Value {
 }
 
 fn at(p: &Value) -> String {
-    format!("{}:{}", p.get("line").as_u32().unwrap() + 1, p.get("character").as_u32().unwrap() + 1)
+    format!("{}:{}", p.at(&["line"]).as_u32().unwrap() + 1, p.at(&["character"]).as_u32().unwrap() + 1)
 }
 
 fn span(range: &Value) -> String {
-    format!("{}-{}", at(range.get("start")), at(range.get("end")))
+    format!("{}-{}", at(range.at(&["start"])), at(range.at(&["end"])))
 }
 
 /// A document URI as the reader should see it: the fixture itself, or a
@@ -51,10 +51,10 @@ fn file(uri: &str, own: &str) -> String {
 }
 
 fn location(loc: &Value, own: &str) -> String {
-    let uri = loc.get("uri").as_str().or(loc.get("targetUri").as_str()).unwrap_or("?");
-    let range = match loc.get("range").is_null() {
-        true => loc.get("targetSelectionRange"),
-        false => loc.get("range"),
+    let uri = loc.at(&["uri"]).as_str().or(loc.at(&["targetUri"]).as_str()).unwrap_or("?");
+    let range = match loc.at(&["range"]).is_null() {
+        true => loc.at(&["targetSelectionRange"]),
+        false => loc.at(&["range"]),
     };
     format!("{} {}", file(uri, own), span(range))
 }
@@ -62,7 +62,7 @@ fn location(loc: &Value, own: &str) -> String {
 fn items(result: &Value) -> &[Value] {
     match result {
         Value::Array(items) => items,
-        _ => result.get("items").as_array(),
+        _ => result.at(&["items"]).as_array().unwrap_or(&[]),
     }
 }
 
@@ -76,37 +76,37 @@ fn render(method: &str, result: &Value, own: &str) -> String {
             .iter()
             .take(12)
             .map(|item| {
-                let detail = item.get("detail").as_str().unwrap_or("");
-                format!("{} [{}] {detail}", item.get("label").as_str().unwrap_or("?"), item.get("kind").as_u32().unwrap_or(0))
+                let detail = item.at(&["detail"]).as_str().unwrap_or("");
+                format!("{} [{}] {detail}", item.at(&["label"]).as_str().unwrap_or("?"), item.at(&["kind"]).as_u32().unwrap_or(0))
                     .trim_end()
                     .to_string()
             })
             .collect(),
         "signatureHelp" => {
-            let active = result.get("activeSignature").as_u32().unwrap_or(0) as usize;
-            let sig = &result.get("signatures").as_array()[active];
-            let param = result.get("activeParameter").as_u32().or(sig.get("activeParameter").as_u32());
+            let active = result.at(&["activeSignature"]).as_u32().unwrap_or(0) as usize;
+            let sig = &result.at(&["signatures"]).as_array().unwrap_or(&[])[active];
+            let param = result.at(&["activeParameter"]).as_u32().or(sig.at(&["activeParameter"]).as_u32());
             let labels: Vec<String> = sig
-                .get("parameters")
-                .as_array()
+                .at(&["parameters"])
+                .as_array().unwrap_or(&[])
                 .iter()
-                .map(|p| match p.get("label") {
+                .map(|p| match p.at(&["label"]) {
                     Value::String(s) => s.clone(),
                     offsets => {
-                        let ends: Vec<usize> = offsets.as_array().iter().filter_map(|n| n.as_u32()).map(|n| n as usize).collect();
-                        let units: Vec<u16> = sig.get("label").as_str().unwrap_or("").encode_utf16().collect();
+                        let ends: Vec<usize> = offsets.as_array().unwrap_or(&[]).iter().filter_map(|n| n.as_u32()).map(|n| n as usize).collect();
+                        let units: Vec<u16> = sig.at(&["label"]).as_str().unwrap_or("").encode_utf16().collect();
                         String::from_utf16_lossy(&units[ends[0]..ends[1]])
                     }
                 })
                 .collect();
             let current = param.and_then(|i| labels.get(i as usize)).map_or("-".to_string(), Clone::clone);
-            vec![sig.get("label").as_str().unwrap_or("?").to_string(), format!("active: {current}")]
+            vec![sig.at(&["label"]).as_str().unwrap_or("?").to_string(), format!("active: {current}")]
         }
         "definition" | "references" | "documentHighlight" => match result {
             Value::Array(locs) => locs
                 .iter()
-                .map(|l| match l.get("uri").is_null() && l.get("targetUri").is_null() {
-                    true => span(l.get("range")),
+                .map(|l| match l.at(&["uri"]).is_null() && l.at(&["targetUri"]).is_null() {
+                    true => span(l.at(&["range"])),
                     false => location(l, own),
                 })
                 .collect(),
@@ -114,45 +114,45 @@ fn render(method: &str, result: &Value, own: &str) -> String {
         },
         "rename" => {
             let mut out = Vec::new();
-            if let Value::Object(files) = result.get("changes") {
+            if let Value::Object(files) = result.at(&["changes"]) {
                 for (uri, edits) in files {
-                    for edit in edits.as_array() {
-                        out.push(format!("{} {} -> {}", file(uri, own), span(edit.get("range")), edit.get("newText").as_str().unwrap_or("?")));
+                    for edit in edits.as_array().unwrap_or(&[]) {
+                        out.push(format!("{} {} -> {}", file(uri, own), span(edit.at(&["range"])), edit.at(&["newText"]).as_str().unwrap_or("?")));
                     }
                 }
             }
             out.sort();
             out
         }
-        "codeAction" => result.as_array().iter().map(|a| a.get("title").as_str().unwrap_or("?").to_string()).collect(),
+        "codeAction" => result.as_array().unwrap_or(&[]).iter().map(|a| a.at(&["title"]).as_str().unwrap_or("?").to_string()).collect(),
         "inlayHint" => result
-            .as_array()
+            .as_array().unwrap_or(&[])
             .iter()
             .map(|h| {
-                let label = match h.get("label") {
+                let label = match h.at(&["label"]) {
                     Value::String(s) => s.clone(),
-                    parts => parts.as_array().iter().filter_map(|p| p.get("value").as_str()).collect(),
+                    parts => parts.as_array().unwrap_or(&[]).iter().filter_map(|p| p.at(&["value"]).as_str()).collect(),
                 };
-                format!("{} {label}", at(h.get("position")))
+                format!("{} {label}", at(h.at(&["position"])))
             })
             .collect(),
         "foldingRange" => result
-            .as_array()
+            .as_array().unwrap_or(&[])
             .iter()
             .map(|r| {
-                let kind = r.get("kind").as_str().unwrap_or("region");
-                format!("{}-{} {kind}", r.get("startLine").as_u32().unwrap() + 1, r.get("endLine").as_u32().unwrap() + 1)
+                let kind = r.at(&["kind"]).as_str().unwrap_or("region");
+                format!("{}-{} {kind}", r.at(&["startLine"]).as_u32().unwrap() + 1, r.at(&["endLine"]).as_u32().unwrap() + 1)
             })
             .collect(),
         "documentSymbol" => {
             fn walk(symbols: &[Value], depth: usize, out: &mut Vec<String>) {
                 for s in symbols {
-                    out.push(format!("{}{} [{}]", "  ".repeat(depth), s.get("name").as_str().unwrap_or("?"), s.get("kind").as_u32().unwrap_or(0)));
-                    walk(s.get("children").as_array(), depth + 1, out);
+                    out.push(format!("{}{} [{}]", "  ".repeat(depth), s.at(&["name"]).as_str().unwrap_or("?"), s.at(&["kind"]).as_u32().unwrap_or(0)));
+                    walk(s.at(&["children"]).as_array().unwrap_or(&[]), depth + 1, out);
                 }
             }
             let mut out = Vec::new();
-            walk(result.as_array(), 0, &mut out);
+            walk(result.as_array().unwrap_or(&[]), 0, &mut out);
             out
         }
         _ => vec![result.to_string()],
@@ -224,8 +224,8 @@ fn run(path: &Path) -> String {
     let mut out = String::from("== diagnostics\n");
     let diagnostics: Vec<String> = published
         .iter()
-        .flat_map(|m| m.at(&["params", "diagnostics"]).as_array().to_vec())
-        .map(|d| format!("{} {} {}", span(d.get("range")), d.get("code").as_str().unwrap_or("-"), d.get("message").as_str().unwrap_or("?")))
+        .flat_map(|m| m.at(&["params", "diagnostics"]).as_array().unwrap_or(&[]).to_vec())
+        .map(|d| format!("{} {} {}", span(d.at(&["range"])), d.at(&["code"]).as_str().unwrap_or("-"), d.at(&["message"]).as_str().unwrap_or("?")))
         .collect();
     out.push_str(&if diagnostics.is_empty() { "(none)".to_string() } else { diagnostics.join("\n") });
     out.push('\n');
@@ -238,14 +238,14 @@ fn run(path: &Path) -> String {
             id += 1;
             let reply = reply
                 .iter()
-                .find(|m| !m.get("id").is_null())
+                .find(|m| !m.at(&["id"]).is_null())
                 .unwrap_or_else(|| panic!("{}: no reply to {method}", path.display()));
-            assert!(reply.get("error").is_null(), "{}: {method} failed: {reply}", path.display());
+            assert!(reply.at(&["error"]).is_null(), "{}: {method} failed: {reply}", path.display());
             match whole_file(method) {
                 true => out.push_str(&format!("\n== {method}\n")),
                 false => out.push_str(&format!("\n== {method} @ {}\n", at(&position(&src, offset)))),
             }
-            out.push_str(&render(method, reply.get("result"), &uri));
+            out.push_str(&render(method, reply.at(&["result"]), &uri));
             out.push('\n');
         }
     }

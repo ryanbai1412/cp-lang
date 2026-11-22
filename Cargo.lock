@@ -22,6 +22,7 @@ dependencies = [
  "cpl-fmt",
  "cpl-interp",
  "cpl-ir",
+ "cpl-json",
  "cpl-judge",
  "cpl-lint",
  "cpl-lsp",
@@ -47,6 +48,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-json",
  "cpl-lint",
 ]
 
@@ -58,6 +60,7 @@ dependencies = [
  "cpl-codegen",
  "cpl-diag",
  "cpl-ir",
+ "cpl-json",
  "cpl-judge",
  "cpl-lint",
  "cpl-stress",
@@ -73,6 +76,7 @@ name = "cpl-doc"
 version = "0.2.2"
 dependencies = [
  "cpl-diag",
+ "cpl-json",
  "cpl-syntax",
 ]
 
@@ -103,6 +107,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-json"
+version = "0.2.2"
+
+[[package]]
 name = "cpl-judge"
 version = "0.2.2"
 
@@ -124,6 +132,7 @@ dependencies = [
  "cpl-diag",
  "cpl-fmt",
  "cpl-ir",
+ "cpl-json",
  "cpl-lint",
  "cpl-syntax",
 ]
@@ -162,6 +171,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-json",
  "cpl-judge",
  "cpl-lsp",
  "cpl-stress",

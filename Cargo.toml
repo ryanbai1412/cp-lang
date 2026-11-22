@@ -9,6 +9,7 @@ publish = false
 
 [workspace.dependencies]
 cpl-diag = { path = "crates/cpl-diag" }
+cpl-json = { path = "crates/cpl-json" }
 cpl-syntax = { path = "crates/cpl-syntax" }
 cpl-check = { path = "crates/cpl-check" }
 cpl-codegen = { path = "crates/cpl-codegen" }

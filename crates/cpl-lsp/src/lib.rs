@@ -9,7 +9,6 @@
 //! (`plan/60-editor.md`).
 
 mod complete;
-pub mod json;
 mod outline;
 mod rename;
 mod server;

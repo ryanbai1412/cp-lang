@@ -6,7 +6,7 @@
 //! (or an internal-error diagnostic) and the server keeps running.
 
 use crate::complete::{self, Cursor, StdLib};
-use crate::json::{obj, Value};
+use cpl_json::{obj, Value};
 use crate::rename;
 use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
@@ -64,8 +64,8 @@ impl Server {
     /// Handles one message from the client and returns the messages to
     /// send back, in order.
     pub fn handle(&mut self, message: &Value) -> Vec<Value> {
-        let id = message.get("id").clone();
-        let Some(method) = message.get("method").as_str() else {
+        let id = message.get("id").cloned().unwrap_or(Value::Null);
+        let Some(method) = message.get("method").and_then(Value::as_str) else {
             // A response to a request of ours; the server sends none.
             return if id.is_null() {
                 vec![error(Value::Null, INVALID_REQUEST, "message has no method")]
@@ -75,7 +75,7 @@ impl Server {
         };
         let is_request = !id.is_null();
         let outcome = catch_unwind(AssertUnwindSafe(|| {
-            self.dispatch(method, message.get("params"))
+            self.dispatch(method, message.get("params").unwrap_or(&Value::Null))
         }));
         match outcome {
             Ok(Ok(result)) => {
@@ -97,7 +97,7 @@ impl Server {
                     Vec::new()
                 }
             }
-            Err(panic) => self.recover(method, message.get("params"), id, panic_text(&*panic)),
+            Err(panic) => self.recover(method, message.get("params").unwrap_or(&Value::Null), id, panic_text(&*panic)),
         }
     }
 
@@ -171,7 +171,7 @@ impl Server {
                     .get(uri)
                     .cloned()
                     .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
-                for change in params.get("contentChanges").as_array() {
+                for change in params.get("contentChanges").and_then(Value::as_array).unwrap_or(&[]) {
                     apply_change(&mut text, change)?;
                 }
                 self.db.set_file(uri, text.as_str());
@@ -399,12 +399,12 @@ impl Server {
                 let ranges = folding_ranges(&analysis.text)
                     .into_iter()
                     .map(|(start, end, kind)| {
-                        let mut range = vec![
+                        let mut range = BTreeMap::from([
                             ("startLine".to_string(), start.into()),
                             ("endLine".to_string(), end.into()),
-                        ];
+                        ]);
                         if let Some(kind) = kind {
-                            range.push(("kind".to_string(), kind.into()));
+                            range.insert("kind".to_string(), kind.into());
                         }
                         Value::Object(range)
                     })
@@ -437,7 +437,7 @@ impl Server {
             }
             "textDocument/rename" => {
                 let (uri, offset) = self.position(params)?;
-                let new_name = params.get("newName").as_str().unwrap_or("").to_string();
+                let new_name = params.get("newName").and_then(Value::as_str).unwrap_or("").to_string();
                 if let Some(why) = rename::invalid_name(&new_name) {
                     return Err((INVALID_PARAMS, why));
                 }
@@ -473,7 +473,7 @@ impl Server {
                     .symbols(&target.path)
                     .iter()
                     .any(|s| s.name_span == target.span);
-                let mut changes = Vec::new();
+                let mut changes = BTreeMap::new();
                 let mut planned = Vec::new();
                 for file in files {
                     let spans = if file == uri {
@@ -512,7 +512,7 @@ impl Server {
                     } else {
                         uri_of_path(&file)
                     };
-                    changes.push((file_uri, Value::Array(edits)));
+                    changes.insert(file_uri, Value::Array(edits));
                 }
                 if let Some(why) = rename::changed_meaning(&mut self.db, &planned, &name, &new_name)
                 {
@@ -577,7 +577,7 @@ impl Server {
                 Ok(Reply::result(Value::Array(items)))
             }
             "workspace/symbol" => {
-                let query = params.get("query").as_str().unwrap_or("").to_lowercase();
+                let query = params.get("query").and_then(Value::as_str).unwrap_or("").to_lowercase();
                 let mut paths: Vec<String> = self.docs.keys().cloned().collect();
                 for uri in self.docs.keys() {
                     if let Some(analysis) = self.db.analyze(uri) {
@@ -687,14 +687,14 @@ impl Server {
                                 "edit",
                                 obj([(
                                     "changes",
-                                    Value::Object(vec![(uri.to_string(), edits.into())]),
+                                    Value::Object(BTreeMap::from([(uri.to_string(), edits.into())])),
                                 )]),
                             ),
                         ]));
                     }
                 }
                 // `cpl fix` on the document, for an editor's fix-all (on save).
-                let only = params.at(&["context", "only"]).as_array();
+                let only = params.at(&["context", "only"]).as_array().unwrap_or(&[]);
                 let fix_all = only.is_empty()
                     || only.iter().filter_map(Value::as_str).any(|kind| {
                         "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll")
@@ -709,7 +709,7 @@ impl Server {
                             "edit",
                             obj([(
                                 "changes",
-                                Value::Object(vec![(
+                                Value::Object(BTreeMap::from([(
                                     uri.to_string(),
                                     vec![obj([
                                         (
@@ -719,7 +719,7 @@ impl Server {
                                         ("newText", text.into()),
                                     ])]
                                     .into(),
-                                )]),
+                                )])),
                             )]),
                         ),
                     ]));
@@ -966,7 +966,7 @@ impl Server {
 
     fn position(&mut self, params: &Value) -> Result<(String, u32), (i32, String)> {
         let uri = uri_of(params)?;
-        let position = position_of(params.get("position"))?;
+        let position = position_of(params.get("position").unwrap_or(&Value::Null))?;
         let analysis = self
             .db
             .analyze(uri)
@@ -1086,7 +1086,7 @@ fn error(id: Value, code: i32, message: &str) -> Value {
         (
             "error",
             obj([
-                ("code", Value::Number(f64::from(code))),
+                ("code", Value::Int(i64::from(code))),
                 ("message", message.into()),
             ]),
         ),
@@ -1241,7 +1241,10 @@ fn uri_of(params: &Value) -> Result<&str, (i32, String)> {
 }
 
 fn position_of(value: &Value) -> Result<LineCol, (i32, String)> {
-    match (value.get("line").as_u32(), value.get("character").as_u32()) {
+    match (
+        value.get("line").and_then(Value::as_u32),
+        value.get("character").and_then(Value::as_u32),
+    ) {
         (Some(line), Some(col)) => Ok(LineCol { line, col }),
         _ => Err((INVALID_PARAMS, "missing or malformed position".to_string())),
     }
@@ -1252,16 +1255,15 @@ fn position_of(value: &Value) -> Result<LineCol, (i32, String)> {
 fn apply_change(text: &mut String, change: &Value) -> Result<(), (i32, String)> {
     let new_text = change
         .get("text")
-        .as_str()
+        .and_then(Value::as_str)
         .ok_or((INVALID_PARAMS, "content change without text".to_string()))?;
-    let range = change.get("range");
-    if range.is_null() {
+    let Some(range) = change.get("range").filter(|r| !r.is_null()) else {
         *text = new_text.to_string();
         return Ok(());
-    }
+    };
     let lines = LineIndex::new(text);
-    let start = lines.offset_utf16(position_of(range.get("start"))?, text) as usize;
-    let end = lines.offset_utf16(position_of(range.get("end"))?, text) as usize;
+    let start = lines.offset_utf16(position_of(range.get("start").unwrap_or(&Value::Null))?, text) as usize;
+    let end = lines.offset_utf16(position_of(range.get("end").unwrap_or(&Value::Null))?, text) as usize;
     if start > end {
         return Err((
             INVALID_PARAMS,
@@ -1296,13 +1298,13 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         Severity::Warning => 2,
         Severity::Note => 3,
     };
-    let mut members = vec![
+    let mut members = BTreeMap::from([
         ("range".to_string(), range_json(diag.span, text, lines)),
         ("severity".to_string(), Value::from(severity as u32)),
         ("code".to_string(), diag.code.0.into()),
         ("source".to_string(), "cpl".into()),
         ("message".to_string(), message.into()),
-    ];
+    ]);
     if !diag.labels.is_empty() {
         let related: Vec<Value> = diag
             .labels
@@ -1320,7 +1322,7 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
                 ])
             })
             .collect();
-        members.push(("relatedInformation".to_string(), related.into()));
+        members.insert("relatedInformation".to_string(), related.into());
     }
     Value::Object(members)
 }

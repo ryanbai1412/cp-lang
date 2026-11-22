@@ -14,7 +14,7 @@
 //! ```
 
 use crate::args::Args;
-use crate::json::{self, Json};
+use cpl_json::{self as json, Value as Json};
 use crate::problem::{tests_dir, Limits};
 use cpl_stress::InputSpec;
 use std::io::{Read, Write};
@@ -245,7 +245,7 @@ impl Scaffold {
         };
         let samples = problem
             .get("tests")
-            .map(Json::as_array)
+            .and_then(Json::as_array)
             .unwrap_or_default()
             .iter()
             .filter_map(|test| {

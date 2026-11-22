@@ -6,7 +6,7 @@
 //! diagnostic (see `Server::handle`), so the test fails on that text, which
 //! also catches a panic the server survived.
 
-use cpl_lsp::json::{obj, Value};
+use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 
 const URI: &str = "file:///fuzz/solution.cp";
@@ -52,7 +52,7 @@ fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     }
     members.push(("method".to_string(), method.into()));
     members.push(("params".to_string(), params));
-    Value::Object(members)
+    Value::Object(members.into_iter().collect())
 }
 
 fn position(src: &str, offset: usize) -> Value {
@@ -112,7 +112,7 @@ fn requests(src: &str, rng: &mut Rng) -> Vec<(&'static str, Value)> {
                 ("position".to_string(), p.clone()),
             ];
             members.extend(extra.into_iter().map(|(k, v)| (k.to_string(), v)));
-            Value::Object(members)
+            Value::Object(members.into_iter().collect())
         };
         out.push(("textDocument/hover", with_pos(vec![])));
         out.push(("textDocument/completion", with_pos(vec![])));

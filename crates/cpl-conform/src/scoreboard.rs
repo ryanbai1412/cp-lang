@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::json::{self, Value};
+use cpl_json::{self as json, Value};
 
 pub const SCHEMA_VERSION: i64 = 2;
 
@@ -365,7 +365,7 @@ impl Scoreboard {
     }
 
     pub fn from_json_str(text: &str) -> Result<Self, String> {
-        let val = json::parse(text)?;
+        let val = json::parse(text).map_err(|e| e.to_string())?;
         let suites_obj = val
             .get("suites")
             .and_then(Value::as_object)

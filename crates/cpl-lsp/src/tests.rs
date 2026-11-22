@@ -1,4 +1,4 @@
-use crate::json::{self, obj, Value};
+use cpl_json::{self as json, obj, Value};
 use crate::{serve, write_message, Server};
 
 const URI: &str = "file:///work/roads.cp";
@@ -94,13 +94,13 @@ fn open(text: &str) -> (Server, Vec<Value>) {
 fn diagnostics_of(messages: &[Value]) -> Vec<Value> {
     assert_eq!(messages.len(), 1, "{messages:?}");
     assert_eq!(
-        messages[0].get("method").as_str(),
+        messages[0].at(&["method"]).as_str(),
         Some("textDocument/publishDiagnostics")
     );
     assert_eq!(messages[0].at(&["params", "uri"]).as_str(), Some(URI));
     messages[0]
         .at(&["params", "diagnostics"])
-        .as_array()
+        .as_array().unwrap_or(&[])
         .to_vec()
 }
 
@@ -111,8 +111,8 @@ fn hover_at(server: &mut Server, line: u32, character: u32) -> Value {
         obj([("textDocument", doc()), ("position", pos(line, character))]),
     ));
     assert_eq!(reply.len(), 1);
-    assert_eq!(reply[0].get("id").as_u32(), Some(7));
-    reply[0].get("result").clone()
+    assert_eq!(reply[0].at(&["id"]).as_u32(), Some(7));
+    reply[0].at(&["result"]).clone()
 }
 
 #[test]
@@ -121,9 +121,9 @@ fn initialize_announces_what_the_server_can_do() {
     let reply = server.handle(&request(1, "initialize", obj([])));
     let caps = reply[0].at(&["result", "capabilities"]);
     assert_eq!(caps.at(&["textDocumentSync", "change"]).as_u32(), Some(2));
-    assert_eq!(caps.get("hoverProvider"), &Value::Bool(true));
-    assert_eq!(caps.get("definitionProvider"), &Value::Bool(true));
-    assert_eq!(caps.get("documentSymbolProvider"), &Value::Bool(true));
+    assert_eq!(caps.at(&["hoverProvider"]), &Value::Bool(true));
+    assert_eq!(caps.at(&["definitionProvider"]), &Value::Bool(true));
+    assert_eq!(caps.at(&["documentSymbolProvider"]), &Value::Bool(true));
     assert_eq!(
         reply[0].at(&["result", "serverInfo", "name"]).as_str(),
         Some("cpl")
@@ -134,7 +134,7 @@ fn initialize_announces_what_the_server_can_do() {
 fn requests_before_initialize_are_refused() {
     let mut server = Server::new();
     let reply = server.handle(&request(1, "textDocument/hover", obj([])));
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32002.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32002));
     assert!(server.handle(&did_open(SOURCE)).is_empty());
 }
 
@@ -153,23 +153,23 @@ fn diagnostics_carry_range_code_help_and_related_spans() {
     );
     assert_eq!(diagnostics.len(), 2);
     let d = &diagnostics[0];
-    assert_eq!(d.get("code").as_str(), Some("E0201"));
-    assert_eq!(d.get("source").as_str(), Some("cpl"));
-    assert_eq!(d.get("severity").as_u32(), Some(1));
+    assert_eq!(d.at(&["code"]).as_str(), Some("E0201"));
+    assert_eq!(d.at(&["source"]).as_str(), Some("cpl"));
+    assert_eq!(d.at(&["severity"]).as_u32(), Some(1));
     assert_eq!(
-        d.get("message").as_str(),
+        d.at(&["message"]).as_str(),
         Some("no `w` in scope\nhelp: declare it first: `let w = ...`")
     );
     assert_eq!(d.at(&["range", "start"]), &pos(6, 18));
     assert_eq!(d.at(&["range", "end"]), &pos(6, 19));
     let d = &diagnostics[1];
-    assert_eq!(d.get("code").as_str(), Some("E0401"));
+    assert_eq!(d.at(&["code"]).as_str(), Some("E0401"));
     assert_eq!(d.at(&["range", "start"]), &pos(7, 0));
 
     let (_, diagnostics) = open("type R = Int\ntype R = Bool\n");
-    let related = diagnostics[0].get("relatedInformation").as_array();
+    let related = diagnostics[0].at(&["relatedInformation"]).as_array().unwrap_or(&[]);
     assert_eq!(
-        related[0].get("message").as_str(),
+        related[0].at(&["message"]).as_str(),
         Some("first defined here")
     );
     assert_eq!(related[0].at(&["location", "uri"]).as_str(), Some(URI));
@@ -183,7 +183,7 @@ fn typing_updates_diagnostics_after_every_edit() {
     let published = server.handle(&did_change((8, 0), (8, 0), "print(dist["));
     let diagnostics = diagnostics_of(&published);
     assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
-    assert_eq!(diagnostics[0].get("code").as_str(), Some("E0101"));
+    assert_eq!(diagnostics[0].at(&["code"]).as_str(), Some("E0101"));
     assert_eq!(diagnostics[0].at(&["range", "start"]), &pos(8, 5));
     // Finish the line: clean again.
     let published = server.handle(&did_change((8, 11), (8, 11), "V.first])\n"));
@@ -192,7 +192,7 @@ fn typing_updates_diagnostics_after_every_edit() {
     let published = server.handle(&did_change((5, 5), (5, 10), ""));
     let diagnostics = diagnostics_of(&published);
     assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
-    assert_eq!(diagnostics[0].get("code").as_str(), Some("E0103"));
+    assert_eq!(diagnostics[0].at(&["code"]).as_str(), Some("E0103"));
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn full_document_changes_are_accepted_too() {
         ]),
     );
     let diagnostics = diagnostics_of(&server.handle(&change));
-    assert_eq!(diagnostics[0].get("code").as_str(), Some("E0302"));
+    assert_eq!(diagnostics[0].at(&["code"]).as_str(), Some("E0302"));
 }
 
 #[test]
@@ -219,7 +219,7 @@ fn edits_use_utf16_positions() {
     fn bad_operands(diagnostics: &[Value]) -> &Value {
         diagnostics
             .iter()
-            .find(|d| d.get("code").as_str() == Some("E0309"))
+            .find(|d| d.at(&["code"]).as_str() == Some("E0309"))
             .expect("a diagnostic for `+`")
             .at(&["range", "start"])
     }
@@ -288,14 +288,14 @@ fn definition_and_outline() {
         obj([("textDocument", doc())]),
     ));
     let names: Vec<&str> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter_map(|s| s.get("name").as_str())
+        .filter_map(|s| s.at(&["name"]).as_str())
         .collect();
     assert_eq!(names, vec!["n", "V", "E", "dist", "total"]);
     assert_eq!(
-        reply[0].get("result").as_array()[1].get("kind").as_u32(),
+        reply[0].at(&["result"]).as_array().unwrap_or(&[])[1].at(&["kind"]).as_u32(),
         Some(26)
     );
 }
@@ -313,11 +313,11 @@ fn quick_fixes_come_from_the_diagnostics() {
             ("context", obj([("diagnostics", diagnostics.into())])),
         ]),
     ));
-    let actions = reply[0].get("result").as_array();
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
     assert_eq!(actions.len(), 1);
-    assert_eq!(actions[0].get("title").as_str(), Some("change to `total`"));
-    let edits = actions[0].at(&["edit", "changes"]).get(URI).as_array();
-    assert_eq!(edits[0].get("newText").as_str(), Some("total"));
+    assert_eq!(actions[0].at(&["title"]).as_str(), Some("change to `total`"));
+    let edits = actions[0].at(&["edit", "changes"]).at(&[URI]).as_array().unwrap_or(&[]);
+    assert_eq!(edits[0].at(&["newText"]).as_str(), Some("total"));
     assert_eq!(edits[0].at(&["range", "start"]), &pos(7, 6));
     assert_eq!(edits[0].at(&["range", "end"]), &pos(7, 10));
 }
@@ -326,32 +326,32 @@ fn quick_fixes_come_from_the_diagnostics() {
 fn quick_fixed(server: &mut Server, uri: &str, text: &str, diagnostic: &Value) -> (String, String) {
     let params = obj([
         ("textDocument", obj([("uri", uri.into())])),
-        ("range", diagnostic.get("range").clone()),
+        ("range", diagnostic.at(&["range"]).clone()),
         (
             "context",
             obj([("diagnostics", vec![diagnostic.clone()].into())]),
         ),
     ]);
     let reply = server.handle(&request(9, "textDocument/codeAction", params));
-    let actions = reply[0].get("result").as_array();
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
     let action = actions
         .first()
         .unwrap_or_else(|| panic!("no fix for {diagnostic:?}"));
     let offset = |p: &Value| {
-        let line = p.get("line").as_u32().unwrap() as usize;
+        let line = p.at(&["line"]).as_u32().unwrap() as usize;
         let start: usize = text.split_inclusive('\n').take(line).map(str::len).sum();
-        start + p.get("character").as_u32().unwrap() as usize
+        start + p.at(&["character"]).as_u32().unwrap() as usize
     };
     let mut edits: Vec<(usize, usize, String)> = action
         .at(&["edit", "changes", uri])
-        .as_array()
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|e| {
             let (start, end) = (
                 offset(e.at(&["range", "start"])),
                 offset(e.at(&["range", "end"])),
             );
-            (start, end, e.get("newText").as_str().unwrap().to_string())
+            (start, end, e.at(&["newText"]).as_str().unwrap().to_string())
         })
         .collect();
     edits.sort_by_key(|e| std::cmp::Reverse(e.0));
@@ -359,7 +359,7 @@ fn quick_fixed(server: &mut Server, uri: &str, text: &str, diagnostic: &Value) -
     for (start, end, new) in edits {
         fixed.replace_range(start..end, &new);
     }
-    (action.get("title").as_str().unwrap().to_string(), fixed)
+    (action.at(&["title"]).as_str().unwrap().to_string(), fixed)
 }
 
 /// The most frequent first errors over the broken ports
@@ -425,29 +425,29 @@ fn quick_fixes_import_a_stdlib_name_where_the_file_imports_its_module() {
 fn completion_offers_unimported_stdlib_names_with_their_use() {
     let src = "use std.math.{gcd}\nprint(floor_s|)\n";
     let reply = ask_at("textDocument/completion", src);
-    let items = reply.get("items").as_array();
+    let items = reply.at(&["items"]).as_array().unwrap_or(&[]);
     let item = items
         .iter()
-        .find(|i| i.get("label").as_str() == Some("floor_sum"))
+        .find(|i| i.at(&["label"]).as_str() == Some("floor_sum"))
         .unwrap_or_else(|| panic!("no floor_sum in {items:?}"));
     assert_eq!(item.at(&["labelDetails", "description"]).as_str(), Some("std.math"));
-    assert!(item.get("detail").as_str().unwrap().starts_with("fn floor_sum"));
-    let edits = item.get("additionalTextEdits").as_array();
+    assert!(item.at(&["detail"]).as_str().unwrap().starts_with("fn floor_sum"));
+    let edits = item.at(&["additionalTextEdits"]).as_array().unwrap_or(&[]);
     assert_eq!(edits.len(), 1);
-    assert_eq!(edits[0].get("newText").as_str(), Some(", floor_sum"));
+    assert_eq!(edits[0].at(&["newText"]).as_str(), Some(", floor_sum"));
     assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
     assert_eq!(edits[0].at(&["range", "start", "character"]).as_u32(), Some(17));
     // An imported name, or one the prelude brings, needs no `use`.
     let src = "use std.math.{gcd}\nprint(gc|)\n";
     let reply = ask_at("textDocument/completion", src);
     let gcd: Vec<&Value> = reply
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter(|i| i.get("label").as_str() == Some("gcd"))
+        .filter(|i| i.at(&["label"]).as_str() == Some("gcd"))
         .collect();
     assert_eq!(gcd.len(), 1);
-    assert!(gcd[0].get("additionalTextEdits").as_array().is_empty());
+    assert!(gcd[0].at(&["additionalTextEdits"]).as_array().unwrap_or(&[]).is_empty());
 }
 
 /// A closer dropped mid-line is put back where it was, before the `:` or
@@ -497,11 +497,11 @@ fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
             "textDocument/didOpen",
             obj([("textDocument", doc)]),
         ));
-        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array().unwrap_or(&[]);
         let first = diagnostics
             .first()
             .unwrap_or_else(|| panic!("`{bad}` checked clean"));
-        assert_eq!(first.get("code").as_str(), Some(*code), "{first:?}");
+        assert_eq!(first.at(&["code"]).as_str(), Some(*code), "{first:?}");
         let (got, fixed) = quick_fixed(&mut server, &uri, &broken, first);
         assert_eq!(got, *title);
         assert_eq!(
@@ -525,10 +525,10 @@ fn quick_fixes_cover_c_spellings_and_mutation() {
         ]),
     ));
     let titles: Vec<&str> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter_map(|a| a.get("title").as_str())
+        .filter_map(|a| a.at(&["title"]).as_str())
         .collect();
     assert_eq!(titles, vec!["replace with `and`", "declare `total` with `var`"]);
 }
@@ -547,14 +547,14 @@ fn closing_a_document_clears_its_diagnostics() {
         "textDocument/hover",
         obj([("textDocument", doc()), ("position", pos(0, 4))]),
     ));
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32602));
 }
 
 #[test]
 fn unknown_and_malformed_messages_get_errors_not_crashes() {
     let (mut server, _) = open(SOURCE);
     let reply = server.handle(&request(2, "textDocument/selectionRange", obj([])));
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32601.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32601));
     assert!(server
         .handle(&notification("workspace/didChangeWatchedFiles", obj([])))
         .is_empty());
@@ -563,18 +563,21 @@ fn unknown_and_malformed_messages_get_errors_not_crashes() {
         "textDocument/hover",
         obj([("textDocument", doc())]),
     ));
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32602));
     let reply = server.handle(&request(4, "textDocument/hover", Value::Null));
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32602));
     // Positions far outside the document clamp.
     assert!(hover_at(&mut server, 9999, 9999).is_null());
     // A change for a document that is not open.
     let mut other = did_change((0, 0), (0, 0), "x");
     if let Value::Object(members) = &mut other {
-        members[2].1 = obj([
-            ("textDocument", obj([("uri", "file:///nope.cp".into())])),
-            ("contentChanges", Value::Array(Vec::new())),
-        ]);
+        members.insert(
+            "params".to_string(),
+            obj([
+                ("textDocument", obj([("uri", "file:///nope.cp".into())])),
+                ("contentChanges", Value::Array(Vec::new())),
+            ]),
+        );
     }
     assert!(server.handle(&other).is_empty());
     // The server still works.
@@ -589,14 +592,14 @@ fn a_panic_is_contained_and_reported() {
     let reply = server.handle(&request(8, "cpl/testPanic", obj([("textDocument", doc())])));
     std::panic::set_hook(quiet);
     assert_eq!(reply.len(), 2);
-    assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32603.0));
+    assert_eq!(reply[0].at(&["error", "code"]), &Value::Int(-32603));
     assert!(reply[0]
         .at(&["error", "message"])
         .as_str()
         .unwrap()
         .contains("internal error in cpl while handling `cpl/testPanic`: deliberate test panic"));
     let diagnostics = diagnostics_of(&reply[1..]);
-    assert_eq!(diagnostics[0].get("code").as_str(), Some("E9999"));
+    assert_eq!(diagnostics[0].at(&["code"]).as_str(), Some("E9999"));
     // The open document survived, and the next request is answered.
     assert!(hover_at(&mut server, 6, 13)
         .at(&["contents", "value"])
@@ -609,7 +612,7 @@ fn a_panic_is_contained_and_reported() {
 fn shutdown_then_exit_ends_cleanly() {
     let (mut server, _) = open(SOURCE);
     let reply = server.handle(&request(10, "shutdown", Value::Null));
-    assert_eq!(reply[0].get("result"), &Value::Null);
+    assert_eq!(reply[0].at(&["result"]), &Value::Null);
     assert_eq!(server.exit_code(), None);
     server.handle(&notification("exit", Value::Null));
     assert_eq!(server.exit_code(), Some(0));
@@ -657,18 +660,18 @@ fn a_whole_session_over_the_wire() {
     assert_eq!(code, 0);
     let replies = unframed(&output);
     assert_eq!(replies.len(), 4);
-    assert_eq!(replies[0].get("id").as_u32(), Some(1));
-    let diagnostics = replies[1].at(&["params", "diagnostics"]).as_array();
+    assert_eq!(replies[0].at(&["id"]).as_u32(), Some(1));
+    let diagnostics = replies[1].at(&["params", "diagnostics"]).as_array().unwrap_or(&[]);
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(
-        diagnostics[0].get("message").as_str(),
+        diagnostics[0].at(&["message"]).as_str(),
         Some("`dist` is indexed by V, but `n` is a 1..=2e5\nhelp: convert it with `V(n)`, or write `dist.raw[n]` to index by number")
     );
     assert_eq!(
         replies[2].at(&["result", "contents", "value"]).as_str(),
         Some("```cp\ndomain V = 1..=n\n  at most 2e5 positions (n <= 2e5)\n  storage: 4 bytes per position\n```")
     );
-    assert_eq!(replies[3].get("id").as_u32(), Some(3));
+    assert_eq!(replies[3].at(&["id"]).as_u32(), Some(3));
 }
 
 #[test]
@@ -682,8 +685,8 @@ fn bad_frames_and_bad_json_do_not_stop_the_server() {
         1
     );
     let replies = unframed(&output);
-    assert_eq!(replies[0].at(&["error", "code"]), &Value::Number(-32700.0));
-    assert_eq!(replies[1].get("id").as_u32(), Some(1));
+    assert_eq!(replies[0].at(&["error", "code"]), &Value::Int(-32700));
+    assert_eq!(replies[1].at(&["id"]).as_u32(), Some(1));
 
     let mut output = Vec::new();
     assert!(serve(
@@ -715,13 +718,13 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
             obj([
                 ("uri", uri.as_str().into()),
                 ("languageId", "cp".into()),
-                ("version", Value::Number(1.0)),
+                ("version", Value::Int(1)),
                 ("text", src.into()),
             ]),
         )]),
     ));
     assert_eq!(published.len(), 1);
-    let diags = published[0].at(&["params", "diagnostics"]).as_array();
+    let diags = published[0].at(&["params", "diagnostics"]).as_array().unwrap_or(&[]);
     assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
 
     let hover = server.handle(&request(
@@ -772,7 +775,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
     let text_document = obj([
         ("uri", uri.as_str().into()),
         ("languageId", "cp".into()),
-        ("version", Value::Number(1.0)),
+        ("version", Value::Int(1)),
         ("text", src.into()),
     ]);
     server.handle(&notification(
@@ -834,7 +837,7 @@ fn lines_and_messages(diagnostics: &[Value]) -> Vec<(u32, String)> {
         .iter()
         .map(|d| {
             let line = d.at(&["range", "start", "line"]).as_u32().unwrap();
-            (line, d.get("message").as_str().unwrap().to_string())
+            (line, d.at(&["message"]).as_str().unwrap().to_string())
         })
         .collect()
 }
@@ -868,12 +871,12 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
             ),
     );
     for d in &diagnostics {
-        assert_eq!(d.get("severity").as_u32(), Some(1));
-        assert_eq!(d.get("source").as_str(), Some("cpl"));
+        assert_eq!(d.at(&["severity"]).as_u32(), Some(1));
+        assert_eq!(d.at(&["source"]).as_str(), Some("cpl"));
     }
     let codes: Vec<_> = diagnostics
         .iter()
-        .map(|d| d.get("code").as_str().unwrap())
+        .map(|d| d.at(&["code"]).as_str().unwrap())
         .collect();
     assert_eq!(codes, ["E0309", "E0110", "E0503", "E0309"]);
     let found = lines_and_messages(&diagnostics);
@@ -906,10 +909,10 @@ fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
         "textDocument/formatting",
         obj([("textDocument", doc())]),
     ));
-    let edits = reply[0].get("result").as_array().to_vec();
+    let edits = reply[0].at(&["result"]).as_array().unwrap_or(&[]).to_vec();
     assert_eq!(edits.len(), 1);
     assert_eq!(
-        edits[0].get("newText").as_str(),
+        edits[0].at(&["newText"]).as_str(),
         Some("let x = 1\nprint(x)\n")
     );
     assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
@@ -922,7 +925,7 @@ fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
         "textDocument/formatting",
         obj([("textDocument", doc())]),
     ));
-    assert!(reply[0].get("result").as_array().is_empty());
+    assert!(reply[0].at(&["result"]).as_array().unwrap_or(&[]).is_empty());
 }
 
 #[test]
@@ -934,14 +937,14 @@ fn inlay_hints_show_the_types_that_are_not_written() {
         "textDocument/inlayHint",
         obj([("textDocument", doc())]),
     ));
-    let hints = reply[0].get("result").as_array().to_vec();
+    let hints = reply[0].at(&["result"]).as_array().unwrap_or(&[]).to_vec();
     let shown: Vec<(u32, u32, &str)> = hints
         .iter()
         .map(|hint| {
             (
                 hint.at(&["position", "line"]).as_u32().unwrap(),
                 hint.at(&["position", "character"]).as_u32().unwrap(),
-                hint.get("label").as_str().unwrap(),
+                hint.at(&["label"]).as_str().unwrap(),
             )
         })
         .collect();
@@ -961,14 +964,14 @@ fn inlay_hints_skip_names_in_a_typed_tuple() {
         obj([("textDocument", doc())]),
     ));
     let shown: Vec<(u32, u32, String)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|hint| {
             (
                 hint.at(&["position", "line"]).as_u32().unwrap(),
                 hint.at(&["position", "character"]).as_u32().unwrap(),
-                hint.get("label").as_str().unwrap().to_string(),
+                hint.at(&["label"]).as_str().unwrap().to_string(),
             )
         })
         .collect();
@@ -1001,14 +1004,14 @@ fn inlay_hints_show_the_index_space_of_lambda_parameters() {
     ));
     let line = text.lines().position(|l| l.contains("(i, j) =>")).unwrap() as u32;
     let shown: Vec<(u32, String)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .filter(|hint| hint.at(&["position", "line"]).as_u32() == Some(line))
         .map(|hint| {
             (
                 hint.at(&["position", "character"]).as_u32().unwrap(),
-                hint.get("label").as_str().unwrap().to_string(),
+                hint.at(&["label"]).as_str().unwrap().to_string(),
             )
         })
         .collect();
@@ -1029,14 +1032,14 @@ fn inlay_hints_show_the_index_space_of_lambda_parameters() {
         obj([("textDocument", doc())]),
     ));
     let labels: Vec<(u32, &str)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter(|hint| hint.get("kind").as_u32() == Some(1))
+        .filter(|hint| hint.at(&["kind"]).as_u32() == Some(1))
         .map(|hint| {
             (
                 hint.at(&["position", "line"]).as_u32().unwrap(),
-                hint.get("label").as_str().unwrap(),
+                hint.at(&["label"]).as_str().unwrap(),
             )
         })
         .collect();
@@ -1055,19 +1058,19 @@ fn ask_at(method: &str, src: &str) -> Value {
         method,
         obj([("textDocument", doc()), ("position", pos(line, character))]),
     ));
-    reply[0].get("result").clone()
+    reply[0].at(&["result"]).clone()
 }
 
 fn completions(src: &str) -> Vec<(String, u32, String)> {
     ask_at("textDocument/completion", src)
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|item| {
             (
-                item.get("label").as_str().unwrap().to_string(),
-                item.get("kind").as_u32().unwrap(),
-                item.get("detail").as_str().unwrap_or("").to_string(),
+                item.at(&["label"]).as_str().unwrap().to_string(),
+                item.at(&["kind"]).as_u32().unwrap(),
+                item.at(&["detail"]).as_str().unwrap_or("").to_string(),
             )
         })
         .collect()
@@ -1180,7 +1183,7 @@ fn builtin_domain_and_position_members_are_the_checkers() {
             // The back ends may not lower every one yet (E0501); the checker types them.
             let errors: Vec<&Value> = replies
                 .iter()
-                .filter(|d| d.get("code").as_str() != Some("E0501"))
+                .filter(|d| d.at(&["code"]).as_str() != Some("E0501"))
                 .collect();
             assert!(errors.is_empty(), "{receiver}.{name}: {errors:?}");
             let hover = hover_at(&mut server, 2, 8);
@@ -1230,10 +1233,10 @@ fn completion_offers_locals_declarations_and_the_prelude_with_signatures() {
     assert_eq!(detail_of(&items, "inc"), "fn inc(x: Int) -> Int");
     let reply = ask_at("textDocument/completion", &src);
     let inc = reply
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .find(|i| i.get("label").as_str() == Some("inc"))
+        .find(|i| i.at(&["label"]).as_str() == Some("inc"))
         .unwrap();
     assert_eq!(
         inc.at(&["documentation", "value"]).as_str(),
@@ -1270,14 +1273,14 @@ fn use_std_completes_module_names_and_then_their_exports() {
 fn signature(src: &str) -> (String, u32, Vec<String>) {
     let help = ask_at("textDocument/signatureHelp", src);
     assert!(!help.is_null(), "no signature help in {src:?}");
-    let sig = &help.get("signatures").as_array()[0];
-    let label = sig.get("label").as_str().unwrap().to_string();
+    let sig = &help.at(&["signatures"]).as_array().unwrap_or(&[])[0];
+    let label = sig.at(&["label"]).as_str().unwrap().to_string();
     let params = sig
-        .get("parameters")
-        .as_array()
+        .at(&["parameters"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|p| {
-            let range = p.get("label").as_array();
+            let range = p.at(&["label"]).as_array().unwrap_or(&[]);
             let (s, e) = (
                 range[0].as_u32().unwrap() as usize,
                 range[1].as_u32().unwrap() as usize,
@@ -1285,7 +1288,7 @@ fn signature(src: &str) -> (String, u32, Vec<String>) {
             label[s..e].to_string()
         })
         .collect();
-    (label, help.get("activeParameter").as_u32().unwrap(), params)
+    (label, help.at(&["activeParameter"]).as_u32().unwrap(), params)
 }
 
 #[test]
@@ -1305,7 +1308,7 @@ fn signature_help_tracks_the_argument_being_typed() {
         &format!("{decl}print(walk(1, |"),
     );
     assert_eq!(
-        help.at(&["signatures"]).as_array()[0]
+        help.at(&["signatures"]).as_array().unwrap_or(&[])[0]
             .at(&["documentation", "value"])
             .as_str(),
         Some("Moves along.")
@@ -1337,15 +1340,15 @@ fn inlay_hints_name_the_parameters_of_literal_arguments() {
         obj([("textDocument", doc())]),
     ));
     let hints: Vec<(u32, u32, String, u32)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|h| {
             (
                 h.at(&["position", "line"]).as_u32().unwrap(),
                 h.at(&["position", "character"]).as_u32().unwrap(),
-                h.get("label").as_str().unwrap().to_string(),
-                h.get("kind").as_u32().unwrap(),
+                h.at(&["label"]).as_str().unwrap().to_string(),
+                h.at(&["kind"]).as_u32().unwrap(),
             )
         })
         .collect();
@@ -1366,12 +1369,12 @@ fn the_server_advertises_completion_and_signature_help() {
     let caps = reply[0].at(&["result", "capabilities"]);
     assert_eq!(
         caps.at(&["completionProvider", "triggerCharacters"])
-            .as_array(),
+            .as_array().unwrap_or(&[]),
         [Value::from(".")]
     );
     assert_eq!(
         caps.at(&["signatureHelpProvider", "triggerCharacters"])
-            .as_array(),
+            .as_array().unwrap_or(&[]),
         [Value::from("("), Value::from(",")]
     );
 }
@@ -1402,8 +1405,8 @@ fn starts(values: &[Value]) -> Vec<(u32, u32)> {
         .map(|v| {
             let start = v.at(&["range", "start"]);
             (
-                start.get("line").as_u32().unwrap(),
-                start.get("character").as_u32().unwrap(),
+                start.at(&["line"]).as_u32().unwrap(),
+                start.at(&["character"]).as_u32().unwrap(),
             )
         })
         .collect()
@@ -1415,7 +1418,7 @@ fn references_at(src: &str) -> Vec<(u32, u32)> {
         src,
         obj([("context", obj([("includeDeclaration", true.into())]))]),
     );
-    starts(reply.as_array())
+    starts(reply.as_array().unwrap_or(&[]))
 }
 
 /// Like `ask_at`, with more request params.
@@ -1425,17 +1428,17 @@ fn ask_at_with(method: &str, src: &str, extra: Value) -> Value {
     let line = src[..at].matches('\n').count() as u32;
     let character = (at - src[..at].rfind('\n').map_or(0, |i| i + 1)) as u32;
     let (mut server, _) = open(&text);
-    let mut params = vec![
+    let mut params = std::collections::BTreeMap::from([
         ("textDocument".to_string(), doc()),
         ("position".to_string(), pos(line, character)),
-    ];
+    ]);
     if let Value::Object(more) = extra {
         params.extend(more);
     }
     let reply = server.handle(&request(21, method, Value::Object(params)));
-    let result = reply[0].get("result").clone();
-    if result.is_null() && !reply[0].get("error").is_null() {
-        return reply[0].get("error").clone();
+    let result = reply[0].at(&["result"]).clone();
+    if result.is_null() && !reply[0].at(&["error"]).is_null() {
+        return reply[0].at(&["error"]).clone();
     }
     result
 }
@@ -1482,26 +1485,26 @@ fn references_skip_the_bindings_that_shadow_the_name() {
 fn rename_edits_every_reference_and_refuses_library_names() {
     let src = "fn sq(n: Int) -> Int = n * n\nprint(sq(2) + s|q(3))\n";
     let prepared = ask_at("textDocument/prepareRename", src);
-    assert_eq!(prepared.get("placeholder").as_str(), Some("sq"));
+    assert_eq!(prepared.at(&["placeholder"]).as_str(), Some("sq"));
     let edit = ask_at_with(
         "textDocument/rename",
         src,
         obj([("newName", "square".into())]),
     );
-    let edits = edit.at(&["changes", URI]).as_array();
+    let edits = edit.at(&["changes", URI]).as_array().unwrap_or(&[]);
     assert_eq!(starts(edits), [(0, 3), (1, 6), (1, 14)]);
     assert!(edits
         .iter()
-        .all(|e| e.get("newText").as_str() == Some("square")));
+        .all(|e| e.at(&["newText"]).as_str() == Some("square")));
     // Not a name, a keyword, or a name the prelude owns.
     let bad = ask_at_with("textDocument/rename", src, obj([("newName", "fn".into())]));
     assert!(
-        bad.get("message").as_str().unwrap().contains("keyword"),
+        bad.at(&["message"]).as_str().unwrap().contains("keyword"),
         "{bad:?}"
     );
     let bad = ask_at_with("textDocument/rename", src, obj([("newName", "a b".into())]));
     assert!(
-        bad.get("message").as_str().unwrap().contains("not a name"),
+        bad.at(&["message"]).as_str().unwrap().contains("not a name"),
         "{bad:?}"
     );
     let library = ask_at("textDocument/prepareRename", "print(gc|d(4, 6))\n");
@@ -1531,7 +1534,7 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
             "textDocument/didOpen",
             obj([("textDocument", doc)]),
         ));
-        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array().unwrap_or(&[]);
         assert!(diagnostics.is_empty(), "{published:?}");
     };
     open_at(&mut server, &a, "use kit.geo.{area}\nprint(area(2, 3))\n");
@@ -1549,7 +1552,7 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
         server.handle(&request(2, "textDocument/rename", params))[0].clone()
     };
     let lines = |reply: &Value, uri: &str| -> Vec<(u32, u32)> {
-        let edits = reply.at(&["result", "changes", uri]).as_array();
+        let edits = reply.at(&["result", "changes", uri]).as_array().unwrap_or(&[]);
         starts(edits)
     };
     // From a use: the import and both calls here, the other open file, and
@@ -1568,9 +1571,9 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
         panic!("{reply:?}");
     };
     let c_key = changed
-        .iter()
-        .map(|(k, _)| k.clone())
+        .keys()
         .find(|k| k.ends_with("/c.cp"))
+        .cloned()
         .unwrap_or_else(|| panic!("{c} not renamed: {reply:?}"));
     assert_eq!(lines(&reply, &c_key), [(0, 13), (1, 6)]);
     assert!(!changed.iter().any(|(k, _)| k.ends_with("/d.cp")), "{reply:?}");
@@ -1656,15 +1659,15 @@ fn bare_names_include_the_compiler_prelude() {
     // A stdlib fn that needs a `use` comes with it, after what is in scope.
     let reply = ask_at("textDocument/completion", "z_|\n");
     let z = reply
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .find(|i| i.get("label").as_str() == Some("z_function"))
+        .find(|i| i.at(&["label"]).as_str() == Some("z_function"))
         .cloned()
         .expect("z_function is offered");
-    assert!(z.get("sortText").as_str().unwrap().starts_with('5'), "{z:?}");
+    assert!(z.at(&["sortText"]).as_str().unwrap().starts_with('5'), "{z:?}");
     assert_eq!(
-        z.at(&["additionalTextEdits"]).as_array()[0].get("newText").as_str(),
+        z.at(&["additionalTextEdits"]).as_array().unwrap_or(&[])[0].at(&["newText"]).as_str(),
         Some("use std.strings.{z_function}\n")
     );
 }
@@ -1679,14 +1682,14 @@ fn document_highlight_marks_the_uses_and_the_declaration() {
         obj([("textDocument", doc()), ("position", pos(2, 18))]),
     ));
     let marks: Vec<(u32, u32, u32)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|h| {
             (
                 h.at(&["range", "start", "line"]).as_u32().unwrap(),
                 h.at(&["range", "start", "character"]).as_u32().unwrap(),
-                h.get("kind").as_u32().unwrap(),
+                h.at(&["kind"]).as_u32().unwrap(),
             )
         })
         .collect();
@@ -1714,14 +1717,14 @@ print(f(1))
         obj([("textDocument", doc())]),
     ));
     let ranges: Vec<(u32, u32, Option<&str>)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|r| {
             (
-                r.get("startLine").as_u32().unwrap(),
-                r.get("endLine").as_u32().unwrap(),
-                r.get("kind").as_str(),
+                r.at(&["startLine"]).as_u32().unwrap(),
+                r.at(&["endLine"]).as_u32().unwrap(),
+                r.at(&["kind"]).as_str(),
             )
         })
         .collect();
@@ -1755,14 +1758,14 @@ xs.sort(by: x =>
         obj([("textDocument", doc())]),
     ));
     let ranges: Vec<(u32, u32, Option<&str>)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|r| {
             (
-                r.get("startLine").as_u32().unwrap(),
-                r.get("endLine").as_u32().unwrap(),
-                r.get("kind").as_str(),
+                r.at(&["startLine"]).as_u32().unwrap(),
+                r.at(&["endLine"]).as_u32().unwrap(),
+                r.at(&["kind"]).as_str(),
             )
         })
         .collect();
@@ -1780,7 +1783,7 @@ fn semantic_tokens_classify_what_each_name_resolves_to() {
     ));
     let data: Vec<u32> = reply[0]
         .at(&["result", "data"])
-        .as_array()
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|v| v.as_u32().unwrap())
         .collect();
@@ -1820,12 +1823,12 @@ fn workspace_symbols_find_names_in_open_files_and_the_stdlib_they_use() {
             obj([("query", query.into())]),
         ));
         reply[0]
-            .get("result")
-            .as_array()
+            .at(&["result"])
+            .as_array().unwrap_or(&[])
             .iter()
             .map(|s| {
                 (
-                    s.get("name").as_str().unwrap().to_string(),
+                    s.at(&["name"]).as_str().unwrap().to_string(),
                     s.at(&["location", "uri"]).as_str().unwrap().to_string(),
                 )
             })
@@ -1882,15 +1885,15 @@ fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
             obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
         ));
         reply[0]
-            .get("result")
-            .as_array()
+            .at(&["result"])
+            .as_array().unwrap_or(&[])
             .iter()
             .map(|l| {
                 assert_eq!(l.at(&["command", "command"]).as_str(), Some("cpl.exec"));
                 (
                     l.at(&["command", "title"]).as_str().unwrap().to_string(),
                     l.at(&["command", "arguments"])
-                        .as_array()
+                        .as_array().unwrap_or(&[])
                         .iter()
                         .map(|a| a.as_str().unwrap().to_string())
                         .collect(),
@@ -1933,14 +1936,14 @@ fn inlay_hints_show_the_range_the_bounds_prove() {
         ]),
     ));
     let labels: Vec<(u32, &str)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter(|h| h.get("kind").as_u32() == Some(1))
+        .filter(|h| h.at(&["kind"]).as_u32() == Some(1))
         .map(|h| {
             (
                 h.at(&["position", "line"]).as_u32().unwrap(),
-                h.get("label").as_str().unwrap(),
+                h.at(&["label"]).as_str().unwrap(),
             )
         })
         .collect();
@@ -1950,11 +1953,11 @@ fn inlay_hints_show_the_range_the_bounds_prove() {
 /// The labels completion ranks first, the ones that fit the expected type.
 fn best_fits(src: &str) -> Vec<String> {
     let mut fits: Vec<String> = ask_at("textDocument/completion", src)
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter(|item| item.get("sortText").as_str().unwrap().starts_with('0'))
-        .map(|item| item.get("label").as_str().unwrap().to_string())
+        .filter(|item| item.at(&["sortText"]).as_str().unwrap().starts_with('0'))
+        .map(|item| item.at(&["label"]).as_str().unwrap().to_string())
         .collect();
     fits.sort();
     fits
@@ -2049,12 +2052,12 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
         "textDocument/didOpen",
         obj([("textDocument", doc)]),
     ));
-    let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+    let diagnostics = published[0].at(&["params", "diagnostics"]).as_array().unwrap_or(&[]);
     let never_changed = diagnostics
         .iter()
-        .find(|d| d.get("code").as_str() == Some("L0201"))
+        .find(|d| d.at(&["code"]).as_str() == Some("L0201"))
         .unwrap_or_else(|| panic!("no L0201 in {diagnostics:?}"));
-    assert_eq!(never_changed.get("severity").as_u32(), Some(2));
+    assert_eq!(never_changed.at(&["severity"]).as_u32(), Some(2));
     let (title, fixed) = quick_fixed(&mut server, &uri, &broken, never_changed);
     assert!(title.contains("let"), "{title}");
     assert_eq!(fixed, original);
@@ -2075,13 +2078,13 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
             ),
         ]),
     ));
-    let actions = reply[0].get("result").as_array();
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
     let fix_all = actions
         .iter()
-        .find(|a| a.get("kind").as_str() == Some("source.fixAll.cpl"))
+        .find(|a| a.at(&["kind"]).as_str() == Some("source.fixAll.cpl"))
         .expect("a fix-all action");
-    let edit = &fix_all.at(&["edit", "changes", uri.as_str()]).as_array()[0];
-    let all = edit.get("newText").as_str().unwrap();
+    let edit = &fix_all.at(&["edit", "changes", uri.as_str()]).as_array().unwrap_or(&[])[0];
+    let all = edit.at(&["newText"]).as_str().unwrap();
     assert!(all.contains(good) && !all.contains(bad));
     let left = cpl_lint::lint(all, &cpl_lint::Config::default());
     assert!(left.iter().all(|d| d.fixes.is_empty()), "{left:?}");
@@ -2108,7 +2111,7 @@ fn open_port(server: &mut Server, port: &str, edit: (&str, &str)) -> (String, St
     ));
     let diagnostics = published[0]
         .at(&["params", "diagnostics"])
-        .as_array()
+        .as_array().unwrap_or(&[])
         .to_vec();
     (uri, text, diagnostics)
 }
@@ -2139,7 +2142,7 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
         let (uri, text, diagnostics) = open_port(&mut server, port, (good, bad));
         let old = diagnostics
             .iter()
-            .find(|d| d.get("code").as_str() == Some(code))
+            .find(|d| d.at(&["code"]).as_str() == Some(code))
             .unwrap_or_else(|| panic!("{port}: no {code} for `{bad}` in {diagnostics:?}"));
         let (_, fixed) = quick_fixed(&mut server, &uri, &text, old);
         assert_eq!(
@@ -2193,13 +2196,13 @@ fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
         ),
     ]);
     let reply = server.handle(&request(2, "textDocument/codeAction", params));
-    let actions = reply[0].get("result").as_array();
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
     let [fix_all] = actions else {
         panic!("{actions:?}")
     };
-    assert_eq!(fix_all.get("kind").as_str(), Some("source.fixAll.cpl"));
-    let edits = fix_all.at(&["edit", "changes", uri.as_str()]).as_array();
-    assert_eq!(edits[0].get("newText").as_str(), Some(original.as_str()));
+    assert_eq!(fix_all.at(&["kind"]).as_str(), Some("source.fixAll.cpl"));
+    let edits = fix_all.at(&["edit", "changes", uri.as_str()]).as_array().unwrap_or(&[]);
+    assert_eq!(edits[0].at(&["newText"]).as_str(), Some(original.as_str()));
 }
 
 /// A getter is read without parentheses, so the editor offers it as a
@@ -2233,14 +2236,14 @@ print(b.|)
     assert_eq!(len.1, 10, "{len:?}");
     let reply = ask_at("textDocument/completion", src);
     let area = reply
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .find(|item| item.get("label").as_str() == Some("area"))
+        .find(|item| item.at(&["label"]).as_str() == Some("area"))
         .unwrap()
         .clone();
     assert!(
-        area.get("insertText").as_str().is_none_or(|t| t == "area"),
+        area.at(&["insertText"]).as_str().is_none_or(|t| t == "area"),
         "{area:?}"
     );
 
@@ -2249,7 +2252,7 @@ print(b.|)
     assert!(
         diagnostics
             .iter()
-            .all(|d| d.get("severity").as_u32() != Some(1)),
+            .all(|d| d.at(&["severity"]).as_u32() != Some(1)),
         "{diagnostics:?}"
     );
     let shown = |server: &mut Server, character| {
@@ -2316,13 +2319,13 @@ fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
         ]),
     ));
     let ranged: Vec<(u32, &str)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|h| {
             (
                 h.at(&["position", "line"]).as_u32().unwrap(),
-                h.get("label").as_str().unwrap(),
+                h.at(&["label"]).as_str().unwrap(),
             )
         })
         .filter(|(_, label)| label.contains(" in "))
@@ -2372,15 +2375,15 @@ fn reach_completes_hovers_helps_and_fixes_its_options() {
         "textDocument/completion",
         "let xs = [1, 2]\nprint(xs.rea|)\n",
     )
-    .get("items")
-    .as_array()
+    .at(&["items"])
+    .as_array().unwrap_or(&[])
     .iter()
-    .find(|i| i.get("label").as_str() == Some("reach"))
+    .find(|i| i.at(&["label"]).as_str() == Some("reach"))
     .cloned()
     .unwrap();
-    assert_eq!(reach.get("kind").as_u32(), Some(2));
+    assert_eq!(reach.at(&["kind"]).as_u32(), Some(2));
     assert_eq!(
-        reach.get("detail").as_str(),
+        reach.at(&["detail"]).as_str(),
         Some("reach(while: (Int, Int) -> Bool, cyclic: Bool = false) -> List<Int>")
     );
     let (mut server, _) =
@@ -2392,7 +2395,7 @@ fn reach_completes_hovers_helps_and_fixes_its_options() {
         "textDocument/signatureHelp",
         "let xs = [1, 2]\nprint(xs.reach(while: (a, b) => a < b, |))\n",
     );
-    assert_eq!(help.get("activeParameter").as_u32(), Some(1), "{help:?}");
+    assert_eq!(help.at(&["activeParameter"]).as_u32(), Some(1), "{help:?}");
 }
 
 #[test]
@@ -2453,13 +2456,13 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
         obj([("textDocument", doc())]),
     ));
     let folds: Vec<(u32, u32)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|r| {
             (
-                r.get("startLine").as_u32().unwrap(),
-                r.get("endLine").as_u32().unwrap(),
+                r.at(&["startLine"]).as_u32().unwrap(),
+                r.at(&["endLine"]).as_u32().unwrap(),
             )
         })
         .collect();
@@ -2487,14 +2490,14 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
         ]),
     ));
     let hints: Vec<(u32, u32, &str)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|h| {
             (
                 h.at(&["position", "line"]).as_u32().unwrap(),
                 h.at(&["position", "character"]).as_u32().unwrap(),
-                h.get("label").as_str().unwrap(),
+                h.at(&["label"]).as_str().unwrap(),
             )
         })
         .collect();
@@ -2506,10 +2509,10 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
         &src.replacen("vals[Node.Src]", "vals[Node.|]", 1),
     );
     let variants: Vec<&str> = items
-        .get("items")
-        .as_array()
+        .at(&["items"])
+        .as_array().unwrap_or(&[])
         .iter()
-        .filter_map(|i| i.get("label").as_str())
+        .filter_map(|i| i.at(&["label"]).as_str())
         .collect();
     assert_eq!(variants, ["Src", "Snk", "Cell"]);
     assert_fixes_restore(
@@ -2555,13 +2558,13 @@ else:
         obj([("textDocument", doc())]),
     ));
     let ranges: Vec<(u32, u32)> = reply[0]
-        .get("result")
-        .as_array()
+        .at(&["result"])
+        .as_array().unwrap_or(&[])
         .iter()
         .map(|r| {
             (
-                r.get("startLine").as_u32().unwrap(),
-                r.get("endLine").as_u32().unwrap(),
+                r.at(&["startLine"]).as_u32().unwrap(),
+                r.at(&["endLine"]).as_u32().unwrap(),
             )
         })
         .collect();
@@ -2599,7 +2602,7 @@ fn rename_refuses_a_name_that_would_capture_or_be_captured() {
     ];
     for (src, to) in refused {
         let reply = rename(src, to);
-        let message = reply.get("message").as_str().unwrap_or_else(|| panic!("{src}: {reply:?}"));
+        let message = reply.at(&["message"]).as_str().unwrap_or_else(|| panic!("{src}: {reply:?}"));
         assert!(message.contains(&format!("`{to}`")), "{src}: {message}");
     }
     let allowed = [
@@ -2609,7 +2612,7 @@ fn rename_refuses_a_name_that_would_capture_or_be_captured() {
     ];
     for (src, to) in allowed {
         let reply = rename(src, to);
-        assert!(matches!(reply.get("changes"), Value::Object(_)), "{src}: {reply:?}");
+        assert!(matches!(reply.at(&["changes"]), Value::Object(_)), "{src}: {reply:?}");
     }
 }
 

@@ -6,7 +6,7 @@ use std::io::Write;
 use cpl_interp::replay::Replay;
 use cpl_interp::trace::{Call, Recording};
 
-use crate::dap::{shown, Json};
+use crate::dap::shown;
 use crate::{compile_side, compile_text, trace, Side, EXIT_ERRORS, EXIT_USAGE};
 
 const USAGE: &str = "\
@@ -64,7 +64,7 @@ pub(crate) fn replay_call(
 }
 
 fn value(json: &str) -> String {
-    Json::parse(json).map_or_else(|_| json.to_string(), |v| shown(&v))
+    cpl_json::parse(json).map_or_else(|_| json.to_string(), |v| shown(&v))
 }
 
 /// The call as source: `add(i: 2)`.
@@ -175,7 +175,7 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
             return EXIT_USAGE;
         }
     };
-    let Some(original) = Json::parse(trace::data(&recorded))
+    let Some(original) = cpl_json::parse(trace::data(&recorded))
         .ok()
         .and_then(|json| json.get("source")?.get("code")?.as_str().map(str::to_string))
     else {

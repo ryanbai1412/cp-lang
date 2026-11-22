@@ -4,7 +4,6 @@
 mod args;
 pub mod bench;
 pub mod corpus_bench;
-pub mod json;
 pub mod new;
 pub mod problem;
 pub mod test;

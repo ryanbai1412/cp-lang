@@ -10,7 +10,7 @@
 //! `.wasm` file apart from the interpreter's stack. `tests/smoke.mjs` runs
 //! the built module itself.
 
-use cpl_lsp::json::Value;
+use cpl_json::Value;
 use cpl_wasm::Playground;
 use std::path::{Path, PathBuf};
 
@@ -34,7 +34,7 @@ fn programs() -> Vec<PathBuf> {
 fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value
         .get(key)
-        .as_str()
+        .and_then(Value::as_str)
         .unwrap_or_else(|| panic!("`{key}` is not a string in {value}"))
 }
 
@@ -47,7 +47,7 @@ fn number(value: &Value, path: &[&str]) -> u32 {
 
 fn exit_code(value: &Value) -> u8 {
     let code = number(value, &["exitCode"]);
-    assert_eq!(value.get("ok"), &Value::Bool(code == 0), "{value}");
+    assert_eq!(value.get("ok"), Some(&Value::Bool(code == 0)), "{value}");
     code as u8
 }
 
@@ -90,7 +90,7 @@ fn build_matches_cpl_build() {
         let build = playground.build(file, &source);
 
         assert_eq!(exit_code(&build), cli.code, "{name}: exit status");
-        match build.get("cpp") {
+        match build.get("cpp").unwrap_or(&Value::Null) {
             Value::Null => assert!(cli.stdout.is_empty(), "{name}: only cpl wrote C++"),
             cpp => assert_eq!(
                 cpp.as_str().expect("a string").as_bytes(),
@@ -126,7 +126,7 @@ fn check_matches_cpl_check() {
 
         assert_eq!(text(&check, "stderr"), cli.stderr, "{case}: stderr");
         assert_eq!(exit_code(&check), cli.code, "{case}: exit status");
-        let diagnostics = check.get("diagnostics").as_array();
+        let diagnostics = check.at(&["diagnostics"]).as_array().unwrap_or(&[]);
         assert_eq!(diagnostics.is_empty(), cli.code == 0, "{case}: diagnostics");
     }
 }
@@ -137,7 +137,7 @@ fn a_failed_run_keeps_its_output_and_says_where_it_failed() {
     let run = Playground::new().run("main.cp", source, b"7");
     assert_eq!(run.stdout, b"1\n");
     assert_eq!(exit_code(&run.result), cpl_wasm::EXIT_FAILED);
-    let diagnostics = run.result.get("diagnostics").as_array();
+    let diagnostics = run.result.at(&["diagnostics"]).as_array().unwrap_or(&[]);
     let [failure] = diagnostics else {
         panic!("one failure, not {}", run.result);
     };
@@ -155,7 +155,7 @@ fn positions_are_utf16_code_units() {
     // `é` is two bytes and one code unit, `😀` four bytes and two.
     let source = "// é😀\nprint(total)\n";
     let check = Playground::new().check("main.cp", source);
-    let diagnostics = check.get("diagnostics").as_array();
+    let diagnostics = check.at(&["diagnostics"]).as_array().unwrap_or(&[]);
     let [unknown] = diagnostics else {
         panic!("one diagnostic, not {check}");
     };
@@ -187,6 +187,7 @@ fn hover_definition_and_symbols_answer_at_an_offset() {
     let symbols = playground.symbols("main.cp", source);
     let names: Vec<(&str, &str)> = symbols
         .as_array()
+        .unwrap_or(&[])
         .iter()
         .map(|symbol| (text(symbol, "kind"), text(symbol, "name")))
         .collect();
@@ -197,15 +198,15 @@ fn hover_definition_and_symbols_answer_at_an_offset() {
 fn lsp_messages_reach_the_language_server() {
     let mut playground = Playground::new();
     let replies = playground.lsp(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#);
-    let [reply] = replies.as_array() else {
+    let [reply] = replies.as_array().unwrap_or(&[]) else {
         panic!("one reply, not {replies}");
     };
     assert_eq!(number(reply, &["id"]), 1);
     assert!(!reply.at(&["result", "capabilities"]).is_null(), "{reply}");
 
     let replies = playground.lsp("{");
-    let error = replies.as_array()[0].get("error");
-    assert_eq!(error.get("code"), &Value::Number(-32700.0));
+    let error = replies.as_array().unwrap_or(&[])[0].at(&["error"]);
+    assert_eq!(error.get("code"), Some(&Value::Int(-32700)));
 }
 
 #[test]
@@ -310,13 +311,12 @@ fn slow():
     let cli_json = String::from_utf8(cli.stdout).unwrap();
     let wasm_json = playground.stress(bug_name, buggy, 50, 1, 6);
 
-    let mut cli_val = cpl_lsp::json::parse(&cli_json).expect("valid CLI JSON");
-    let wasm_val = cpl_lsp::json::parse(&wasm_json).expect("valid wasm JSON");
+    let mut cli_val = cpl_json::parse(&cli_json).expect("valid CLI JSON");
+    let wasm_val = cpl_json::parse(&wasm_json).expect("valid wasm JSON");
     // Normalize `saved` (filesystem path on CLI, null in wasm).
     if let Value::Object(members) = &mut cli_val {
-        if let Some((_, Value::Object(ce))) = members.iter_mut().find(|(k, _)| k == "counterexample")
-        {
-            if let Some((_, saved)) = ce.iter_mut().find(|(k, _)| k == "saved") {
+        if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
+            if let Some(saved) = ce.get_mut("saved") {
                 *saved = Value::Null;
             }
         }
