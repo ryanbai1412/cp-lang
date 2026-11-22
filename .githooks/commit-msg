@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enforces the commit subject convention in AGENTS.md: `area: summary`.
 subject="$(grep -v '^#' "$1" | head -1)"
-areas='syntax|check|codegen|interp|stdlib|diag|lsp|editors|fmt|lint|stress|judge|tools|cli|docs|site|design|plan|port|frictions|bench|factory|ci|deps|revert'
+areas='syntax|check|codegen|interp|stdlib|diag|lsp|editors|fmt|lint|stress|judge|tools|cli|docs|site|design|spec|plan|port|frictions|bench|factory|ci|deps|revert'
 case "$subject" in
     Merge\ *|fixup!\ *|squash!\ *) exit 0 ;;
 esac

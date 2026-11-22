@@ -207,9 +207,10 @@ These decide design questions.
   map`. A body, when needed, says why, not what.
 - Areas: `syntax`, `check` (types and analysis), `codegen`, `interp`,
   `stdlib`, `diag`, `lsp`, `editors`, `fmt`, `lint`, `stress`, `judge`,
-  `tools`, `cli`, `docs`, `site`, `design`, `plan`, `port`, `frictions`,
-  `bench`, `factory` (scripts, briefs, retros), `ci`, `deps`, `revert`. An
-  optional scope in parentheses narrows it.
+  `tools`, `cli`, `docs`, `site`, `design`, `spec` (the normative `spec/`),
+  `plan`, `port`, `frictions`, `bench`, `factory` (scripts, briefs,
+  retros), `ci`, `deps`, `revert`. An optional scope in parentheses
+  narrows it.
 - One logical change per commit, each green on its own; a port and its
   friction report go together. Land on `main` with `scripts/land.sh`,
   which gates the exact rebased tip; never rewrite pushed history without
