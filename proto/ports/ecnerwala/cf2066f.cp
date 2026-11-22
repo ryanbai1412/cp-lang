@@ -21,14 +21,15 @@ let a: [PosA]-1e6..=1e6 = read()
 let b: [PosB]-1e6..=1e6 = read()
 
 fn widest_max(r: Range<PosA>) -> Range<PosA>:
-    var best: ?(Int, Int, Range<PosA>) = none
+    let f = r.first!
+    var best = (a[f], 1, f.l..f.r)
     var (start, run) = (r.start, 0)
     for i in r:
         if run < 0: (start, run) = (i.l, 0)
         run += a[i]
         let key = (run, i.r.ord - start.ord, start..i.r)
-        if best == none or (key.0, key.1) >= (best!.0, best!.1): best = key
-    best!.2
+        if (key.0, key.1) >= (best.0, best.1): best = key
+    best.2
 
 fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     if r.is_empty: return []
@@ -91,7 +92,7 @@ fn plan(x: Int) -> ?Plan:
         at = back
     Plan(piece, free!)
 
-let thresholds = [total[s] for s in Seg].sorted(by: t => -t).distinct()
+let thresholds = total.sorted(desc: true).distinct()
 fn first_plan() -> ?(Int, Plan):
     for t in thresholds:
         if let p = plan(t): return some((t, p))
@@ -104,7 +105,7 @@ let (x, plan_x) = first_plan() else:
 var len = [Seg] s => span[s].len
 fn start(s: Seg) -> Int = sum(len[t] for t in Seg if t < s)
 var ops: List<(Int, Int, List<Int>)> = []
-for s in Seg.filter(s => total[s] >= x).sorted(by: s => -total[s]):
+for s in Seg.filter(s => total[s] >= x).sorted(by: s => desc(total[s])):
     let into = if s == plan_x.free: [x] else: b[plan_x.piece[s]].to_list()
     ops.push((start(s) + 1, start(s) + len[s], into))
     len[s] = into.len

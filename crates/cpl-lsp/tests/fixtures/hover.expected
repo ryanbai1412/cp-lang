@@ -24,9 +24,10 @@ total: Int
 == hover @ 5:17
 ```cp
 sum() -> T
+cost: O(n), about 200000 (2e5) steps: xs has at most n = 200000 (2e5) items
 ```
 
-The sum of the cells; `0` when empty.
+The sum of the cells; `0` when empty. O(n).
 
 == hover @ 7:2
 ```cp

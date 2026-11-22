@@ -2506,6 +2506,16 @@ it means different things on different structs. Fns in the ports and examples wi
 went from 35 to 39 of 2,161. Building a stdlib struct (`Fenwick<V, Int>(a)`) still blocks an
 estimate. Reverse by dropping `in_receiver_domains` and `domain_steps`.
 
+29.52. **The built-in catalog states the cost of 79 more methods.** Each is the cost of the
+interpreter and runtime it lowers to: sorted searches (`first_ge`, `last_lt`, ..) on a list,
+string or array are `O(log n)`; `contains`, `count`, `sum`, `fold`, `copy`, `reverse` and the
+like are `O(n)`; `Map` and `Set` lookups, inserts and removals are `O(log n)`, as are
+`Set.min`/`max`, which the interpreter's ordered set finds by descending the tree. A method that
+takes a fn (`fold`, `all`, `filter`) states the cost with an `O(1)` fn; a fn's estimate already
+counts a lambda as unknown work. 43 methods still state no cost, most of them getters. No fn in
+the ports and examples gains an estimate (39 of 2,166): every fn `first_ge` blocked is also
+blocked by something else. Reverse by dropping the added `O(..)` sentences.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
