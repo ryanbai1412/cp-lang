@@ -593,15 +593,6 @@ impl<'a> Parser<'a> {
         if !self.at_ident("where") {
             return;
         }
-        let span = self.span();
-        self.error(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                span,
-                "`where` clauses were removed in CP Lang 0.2.2",
-            )
-            .with_help("write the bound in the angle brackets: `fn f<T: Ord>(...)`"),
-        );
         self.bump();
         loop {
             let name = self.expect_name("a type parameter name after `where`");
