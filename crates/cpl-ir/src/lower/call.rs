@@ -448,7 +448,17 @@ impl<'a> Lowerer<'a> {
             if let Ty::Struct(sid) = val.ty {
                 if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
                     let gargs = self.resolve_gen_args(types);
-                    return self.call_gen_fn(gfid, gargs, Some(Arg::Value(val)), args, span);
+                    let mut_self = self.gen_fns[gfid]
+                        .decl
+                        .params
+                        .first()
+                        .is_some_and(|p| p.name.text == "self" && p.mutable);
+                    let recv_arg = if mut_self {
+                        Arg::Mut(self.place(recv))
+                    } else {
+                        Arg::Value(val)
+                    };
+                    return self.call_gen_fn(gfid, gargs, Some(recv_arg), args, span);
                 }
             }
         }
