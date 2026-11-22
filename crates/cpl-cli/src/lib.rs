@@ -5,7 +5,10 @@ mod dap;
 mod interact;
 mod laws;
 mod profile;
+mod report;
 mod trace;
+
+pub use report::{install_ice_hook, set_crash_context};
 
 use std::io::Write;
 
@@ -63,6 +66,7 @@ commands:
   cover <file> [input]...
                         list the lines and branches no input reached
   watch <problem>       check, lint and test on every save
+  report <file>         write a paste-ready bug report (`--last` after an ICE)
   lsp                   serve the language server protocol on stdio
   dap                   serve the time-travel debug adapter (DAP) on stdio
 
@@ -153,6 +157,7 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),
+        Some("report") => report::report(&rest, stdin, stdout, stderr),
         Some("explain") => explain_code(&rest, stdout, stderr),
         Some("check") if rest.is_empty() => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())

@@ -1,0 +1,19 @@
+name: Bug report
+description: Report a compiler bug, ICE, or interpreter/C++ mismatch
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run `cpl report <file.cp>` (or `cpl report --last` after an internal compiler error) and paste the generated `cpl-report-*.md` below.
+        The report omits environment variables, absolute paths, hostnames, and usernames.
+  - type: textarea
+    id: body
+    attributes:
+      label: Report
+      description: Paste the contents of `cpl-report-<hash>.md` here.
+      placeholder: |
+        Run `cpl report a.cp` or `cpl report --last` and paste the output here.
+    validations:
+      required: true
