@@ -662,8 +662,8 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
                     out += &format!(", {} max", human_bytes(count as u128 * u128::from(per)));
                 }
                 out += &layout_note(elem, lookup);
-            } else {
-                out += &held_note(elem, lookup);
+            } else if let Some(note) = element_note(elem, lookup) {
+                out += &format!("\n  storage: {note}");
             }
         }
         Ty::Range { .. }
@@ -726,19 +726,54 @@ fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
     note + ")"
 }
 
-/// For a type with no fixed size of its own, such as `List<V>`: what each
-/// of its type arguments takes.
+/// For a type with no fixed size of its own, such as `List<V>` or a
+/// record with a `Str` field: what its fixed-size parts take.
 fn held_note(ty: &Ty, lookup: &mut Lookup) -> String {
-    let Ty::Named { args, .. } = ty else {
-        return String::new();
-    };
-    let held: Vec<String> = args
-        .iter()
-        .filter_map(|a| size(a, lookup).map(|s| format!("{a}: {}", human_bytes(s.into()))))
-        .collect();
-    if held.is_empty() {
-        String::new()
-    } else {
-        format!("\n  storage: grows on the heap; {} each", held.join(", "))
+    unsized_note(ty, lookup).map_or_else(String::new, |note| format!("\n  storage: {note}"))
+}
+
+fn unsized_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
+    match ty {
+        Ty::Str => Some("grows on the heap".into()),
+        Ty::Named { args, .. } => {
+            let held: Vec<String> = args
+                .iter()
+                .filter_map(|a| size(a, lookup).map(|s| format!("{a}: {}", human_bytes(s.into()))))
+                .collect();
+            (!held.is_empty()).then(|| format!("grows on the heap; {} each", held.join(", ")))
+        }
+        Ty::Optional(inner) => unsized_note(inner, lookup),
+        Ty::Array { elem, .. } => match size(elem, lookup) {
+            Some(per) => Some(format!("{} per inner element", human_bytes(per.into()))),
+            None => element_note(elem, lookup),
+        },
+        Ty::Tuple(items) => {
+            let named: Vec<(String, &Ty)> = items.iter().enumerate().map(|(i, t)| (i.to_string(), t)).collect();
+            fields_note(&named, lookup)
+        }
+        Ty::Record(fields) => {
+            let named: Vec<(String, &Ty)> = fields.iter().map(|(n, t)| (n.to_string(), t)).collect();
+            fields_note(&named, lookup)
+        }
+        _ => None,
     }
+}
+
+fn element_note(elem: &Ty, lookup: &mut Lookup) -> Option<String> {
+    let note = unsized_note(elem, lookup)?;
+    Some(if matches!(elem, Ty::Named { .. }) { note } else { format!("per element, {note}") })
+}
+
+fn fields_note(fields: &[(String, &Ty)], lookup: &mut Lookup) -> Option<String> {
+    let parts: Vec<String> = fields
+        .iter()
+        .map(|(name, ty)| match size(ty, lookup) {
+            Some(s) => format!("{name}: {}", human_bytes(s.into())),
+            None => match unsized_note(ty, lookup) {
+                Some(note) => format!("{name}: {note}"),
+                None => format!("{name}: not fixed"),
+            },
+        })
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(", "))
 }

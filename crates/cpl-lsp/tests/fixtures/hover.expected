@@ -326,3 +326,17 @@ adj: [V]List<V>
   domain V = 1..=n, n <= 2e5
   storage: grows on the heap; V: 4 bytes each
 ```
+
+== hover @ 132:7
+```cp
+names: [V](name: Str, t: 1..=1000)
+  domain V = 1..=n, n <= 2e5
+  storage: per element, name: grows on the heap, t: 2 bytes
+```
+
+== hover @ 133:7
+```cp
+dists: [V][V]?Int
+  domain V = 1..=n, n <= 2e5
+  storage: per element, 8 bytes per inner element
+```
