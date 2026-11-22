@@ -179,6 +179,7 @@ that enforces it. A phase that drops what a concern needs is a bug.
 
 | Concern | Every phase preserves | Budget | Enforced by |
 |---|---|---|---|
+| Correctness | the spec's meaning through every lowering; checks as explicit ops until proven | zero known miscompiles; every valid program gives the same output in every engine and build; emitted C++ has no undefined behaviour | rule-linked conformance; interpreter vs C++ differential; checked vs release agreement; sanitizer builds of emitted C++; program fuzzing; corpus acceptance; each bug lands with its regression test |
 | Editor (LSP) | per-position queries on partial programs; recovery after errors | edit to diagnostics under 50 ms; front end under 200 ms on the largest port | LSP snapshots and latency bench |
 | Diagnostics | source spans and rule IDs through lowering; one error per root cause; a fix-it | every code documented and tested | conformance `expect: E…`; undocumented-code test |
 | Performance | layout facts, inlining and check elision visible in IR | runtime p50 at most 1.0x originals, max 1.5x, 1.1x by tuning | `just bench` against matched C++ |
