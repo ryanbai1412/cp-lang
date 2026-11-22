@@ -87,6 +87,10 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
 
 /// How many elements satisfy `p` (every element without `p`).
 ///
+/// On a `Bool` sequence `count()` still counts every element, not the
+/// `true` ones: `count(a != b for (a, b) in xs.adjacent)` is the number of
+/// pairs. Count the trues with `count(b => b)`.
+///
 /// cost: O(n)
 /// empty: `0`
 /// traps: never

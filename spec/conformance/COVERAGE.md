@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1686 (995 passing). Rules: 527.
+Cases: 1689 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
@@ -755,8 +755,8 @@ Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (34/46 named by a case)
-  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
+- **algebra** (36/51 named by a case)
+  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
@@ -814,7 +814,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2030 of 2240 std items are named by a case.
+2032 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
