@@ -42,9 +42,9 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Snippets by status | `node web/scripts/gate.mjs` | 197: runs 186, checks 4, spec 7 | spec 0, checks 0 | M3 |
 | Site build | `pnpm --filter cp-lang-web build` | pass, 28.9 s, 239 pages | pass | M1 |
 | Typecheck + unit | `pnpm --dir web typecheck && pnpm --dir web test` | pass, 4/4 tests | pass | M1 |
-| Browser smoke | `node web/tests/smoke.mjs && node web/tests/learn-smoke.mjs` (out served on :3000) | pass, 0 page errors | pass, in CI | M1 |
-| Broken internal links | `pnpm --dir web links` | 1 target (`/docs/guides/`, from 16 pages) | 0 | M1 |
-| cpl.wasm gzipped | `scripts/build-wasm.sh` | 1,761,196 B | ≤ 2,100,000 B, enforced | M1 |
+| Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |
+| Broken internal links | `pnpm --dir web links` | 0 (was 1) | 0 | M1 |
+| cpl.wasm gzipped | `node web/scripts/wasm-size.mjs` | 1,768,985 B | ≤ 2,100,000 B, enforced | M1 |
 | Search index gzipped | `gzip -c web/out/api/search \| wc -c` | 2,690,140 B (15.5 MB raw) | ≤ 500,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |

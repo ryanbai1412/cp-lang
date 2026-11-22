@@ -1,5 +1,5 @@
 # site metrics. Every command was run on 2026-11-22 against main 4b8f504f.
-# browser_smoke needs web/out served on :3000 (npx serve web/out -l 3000);
+# browser_smoke needs a built web/out and a Playwright Chromium (or CDP=<url>);
 # docs_only_eval_pass needs corpus/statements/ and a model key.
 
 [[metric]]
@@ -22,21 +22,21 @@ target = "pass"
 
 [[metric]]
 name = "browser_smoke"
-command = "node web/tests/smoke.mjs && node web/tests/learn-smoke.mjs"
+command = "pnpm --dir web smoke"
 today = "pass, 0 page errors"
 target = "pass, run in CI"
 
 [[metric]]
 name = "broken_internal_links"
 command = "pnpm --dir web links"
-today = 1
+today = 0
 target = 0
 
 [[metric]]
 name = "wasm_gzip_bytes"
-command = "scripts/build-wasm.sh"
-today = 1761196
-target = "<= 2100000, enforced by a check"
+command = "node web/scripts/wasm-size.mjs"
+today = 1768985
+target = "<= 2100000 (enforced in prebuild)"
 
 [[metric]]
 name = "search_index_gzip_bytes"

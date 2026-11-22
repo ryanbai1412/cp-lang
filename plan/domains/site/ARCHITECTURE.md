@@ -6,7 +6,7 @@ The code in `web/` as it stands (read 2026-11-22, main `4b8f504f`). The site lan
 
 A static site plus one Worker. `next build` (Next.js App Router, `output: 'export'`, see `web/next.config.mjs`) writes `web/out/`; the Cloudflare Worker in `web/worker/` serves it and owns the only dynamic paths, `/p/*` and `/api/*` (`web/worker/wrangler.toml`). Every compile, run, trace and stress in the browser goes through the compiler built to WebAssembly, in a Web Worker; there is no server-side compile.
 
-`prebuild` (`web/package.json`) runs, in order: `scripts/wasm.mjs`, `releases.mjs`, `gen-ref.mjs`, `gen-tools.mjs`, `gen-debug.mjs`, `gate.mjs`. A failing gate fails the build, so nothing ships with a program the compiler rejects.
+`prebuild` (`web/package.json`) runs, in order: `scripts/wasm.mjs`, `wasm-size.mjs`, `releases.mjs`, `gen-ref.mjs`, `gen-tools.mjs`, `gen-debug.mjs`, `gate.mjs`. A failing gate fails the build, so nothing ships with a program the compiler rejects.
 
 ## Modules
 
@@ -37,7 +37,9 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 | `web/scripts/wasm.mjs` | Copies `dist/wasm` into `web/public/wasm/`, regenerates `cpl-types.ts` |
 | `web/scripts/links.mjs` | Internal link check over `web/out` |
 | `web/worker/` | Share links: `share.ts` (snapshot format, ids, limits), `index.ts` (routes, OG tags), `share.test.ts` |
-| `web/tests/smoke.mjs`, `learn-smoke.mjs` | Playwright browser smoke against a served `web/out` |
+| `web/tests/run.mjs`, `smoke.mjs`, `learn-smoke.mjs`, `browser.mjs` | Browser smoke: `run.mjs` serves `web/out` on a free port and runs both suites |
+| `web/scripts/wasm-size.mjs` | Fails the build when `cpl.wasm` is over 2,100,000 gzipped bytes |
+| `scripts/site-check.sh` | The site's gate: wasm build, site build (cap, snippet gate), links, browser smoke; cached |
 
 ## The snippet gate
 
@@ -73,11 +75,9 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 
 ## Known debt
 
-- Broken `/docs/guides/` breadcrumb target on 16 generated reference pages (`pnpm --dir web links`); no guides index page.
 - Search index 15.5 MB raw, 2.7 MB gzipped (`web/out/api/search`, from `web/app/api/search/`): the generated reference dominates.
 - Two nav placements: Fumadocs `HomeLayout` on Home, Play, Performance, Tools and the Learn index (`web/app/(home)/layout.tsx`, `web/app/play/layout.tsx`), notebook `DocsLayout` on Docs and Learn chapters (`web/app/docs/layout.tsx`, `web/app/learn/(course)/layout.tsx`).
-- No wasm size cap and no `scripts/site-check.sh` on main; both are on the unlanded `devin/v02-delete-site-followup`.
-- Browser smoke is not in CI (`.github/workflows/site.yml` curls 4 routes only).
+- Browser smoke and `scripts/site-check.sh` are not in CI (`.github/workflows/site.yml` curls 4 routes only).
 - `web/scripts/import-guides.py` is a one-off migration that reads a `site/` directory which no longer exists.
 - The docs-only eval cannot run: `.github/workflows/writable-from-docs.yml` calls `scripts/fetch-statement.py`, deleted in `e4fc2a14`, and `corpus/statements/` is absent.
 - Only 4 unit tests (`web/lib/extract.test.ts`, `web/worker/share.test.ts`); `runner.tsx` and the gate have none.

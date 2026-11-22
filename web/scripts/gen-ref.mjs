@@ -59,7 +59,7 @@ for (const [dir, title, description] of specDirs) {
     const body = rewriteLinks(src.replace(/^# .+\n/m, ''), dir).replace(/^```(\w+)/gm, (_, lang) => '```' + (lang === 'python' ? 'cp' : fenceLangs.has(lang) ? lang : 'text'));
     const note =
       dir === 'core'
-        ? `This is the normative specification ([source](${blob}/spec/${dir}/${f})). For a gentler introduction, start with the [guides](/docs/guides).\n\n`
+        ? `This is the normative specification ([source](${blob}/spec/${dir}/${f})). For a gentler introduction, start with the [tour](/docs/guides/tour).\n\n`
         : `Normative text from [spec/${dir}/${f}](${blob}/spec/${dir}/${f}).\n\n`;
     write(`${dir}/${slugOf(f)}.md`, page(heading, description, note + body));
     specPages++;
