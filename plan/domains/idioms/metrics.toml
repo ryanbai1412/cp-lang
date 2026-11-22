@@ -1,0 +1,74 @@
+# idioms metrics. Every `value` is from running `command` on main at
+# 2026-11-22 (release build of that tip), from the repo root with target/release on PATH.
+# `manual = true`: needs a cold agent, so status runs cannot refresh it; `note` says how.
+
+[[metric]]
+name = "dryrun_v03"
+command = "for n in $(ls research/dryrun/v03/p[0-9][0-9]_*.cp | xargs -n1 basename | sed 's/\\.cp$//' | grep -v '_w$'); do research/dryrun/v03/loop.sh $n 20; done  # p19 (interactive): cpl check + cpl test"
+today = "20/20 pass check, test, stress (20 cases) and the codeforces C++ build"
+target = "20/20 at 200 cases, 0 `_w` workaround variants needed (15 exist today)"
+note = "These solutions were written with the compiler in the loop, not blind; they prove v0.3 can express the set, not that the skill teaches it."
+
+[[metric]]
+name = "blind_skill_eval"
+manual = true
+command = "for n in <the 20 cold-agent solutions>; do research/dryrun/v03/loop.sh $n 200; done"
+today = "unmeasured"
+target = "20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set"
+note = "A cold agent given only skills/cp-lang/ writes the 20 first (phase 2). Last recorded: 20/20 with 4 workarounds, 3 lint warnings, on devin/skill-eval-1 (unlanded). The brief's 10/20 is an earlier v0.3 run."
+
+[[metric]]
+name = "skill_check"
+command = "python3 scripts/skill-gen.py --check  # on main once landed; today run in a worktree of origin/devin/skill-v2"
+today = "skill absent on main; on devin/skill-v2: ok, 48 files, 75 cp blocks verified"
+target = "on main, in the fast gate, 0 drift, every cp block checks"
+
+[[metric]]
+name = "ports_check_v03"
+command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/port.cp; done"
+today = "175/305"
+target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
+
+[[metric]]
+name = "dreams_check_v03"
+command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/dream.cp; done"
+today = "145/305"
+target = "tracked, not a gate: each failing dream is a logged gap in spec/delta/hillclimb.md"
+
+[[metric]]
+name = "ports_judge_proven"
+command = "cargo test --release -p cpl-cli --test judges  # every_passing_corpus_port_compiles_with_every_judges_flags; ids from SPEC_PORTS + scoreboard corpus passes"
+today = "12 passed, 1 ignored (slow, --full); covers 30 hill-climb SPEC_PORTS + 7 scoreboard passes; 0 of the 305 tracked ports"
+target = "305/305 tracked ports compile with every judge's flags and pass their tests under the profile"
+
+[[metric]]
+name = "corpus_suite"
+command = "target/release/cpl-conform corpus"
+today = "12/100 pass (40 error, 1 trap, 46 untested, 1 wrong); committed research/scoreboard.json still says 7"
+target = "100/100 hill-climb spec.cp pass; untested 0 (every problem has tests)"
+
+[[metric]]
+name = "port_lint_warnings"
+command = "for p in $(cat corpus/sets/ecnerwala.txt); do f=corpus/problems/$p/port.cp; cpl check $f >/dev/null 2>&1 && cpl lint $f 2>&1; done | grep -o 'warning\\[L[0-9]*\\]' | sort | uniq -c"
+today = "23 warnings over 175 files (L0208 12, L0414 6, L0101 3, L0209 1, L0204 1), not yet triaged true/false"
+target = "0 false positives on the re-ported corpus (lint-fmt's FP gate)"
+
+[[metric]]
+name = "taste_reviews"
+command = "python3 scripts/review-check.py"
+today = "305/305 scored, median 4, 18 under 4; dreams median 4, 0 sent back"
+target = "median >= 4 and 0 under 3 on v0.3 re-ports (today's scores are for pre-0.3 ports)"
+
+[[metric]]
+name = "token_ratio"
+command = "python3 scripts/ports-page.py"
+today = "unmeasured: fails, ModuleNotFoundError 'scoreboard' (scripts/scoreboard.py deleted in ea2b88ff)"
+target = "contestant tokens median <= 0.6x C++, none > 1.0x (AGENTS.md goal 1)"
+
+[[metric]]
+name = "writable_from_docs"
+manual = true
+command = "python3 -c \"import json; print(json.load(open('research/writable-from-docs.json'))['latest'])\""
+today = "49/55 passed (52 compiled), run of 2026-11-21; read, not re-run"
+target = "55/55; re-run with each skill release"
+note = "Re-running needs a cold model; site shares this eval."

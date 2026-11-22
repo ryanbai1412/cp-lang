@@ -95,4 +95,22 @@ Recommendation: approve all three. (1) removes about 3k duplicated lines and the
 How to reverse it: (1) is reversible until `rules/bounds.rs` is deleted; (2) records can be compiled back into Rust consts; (3) a pretty-printer can replace `layout.rs` behind the same `format` API.
 Meanwhile: M1 (fmt gate) and M2 (records, false-positive ratchet) proceed; they hold under every answer.
 
+### idioms: are the principles and idiom catalog Ryan's normative taste?
+Options: (a) `spec/idioms/principles.md` + `lints.md`, changes go through this queue, lint rules must cite a practice (e.g. practice 5 "absence is an optional": `print(best ?? -1)` over `-1` sentinels); (b) docs only (`docs/`), lint-fmt free to diverge.
+Recommendation: (a); lint and the skill need one source of "idiomatic", and it is Ryan's taste.
+How to reverse it: move the files to `docs/`, drop the cite rule.
+Meanwhile: land them under `spec/idioms/` marked non-normative; lint cites them.
+
+### idioms: the re-port bar for the 305 tracked ports
+Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
+Recommendation: (b) first for all 305, then (a) in review-score order; only (a) counts toward the taste and token targets.
+How to reverse it: stop migrating and go straight to (a); migrated ports stay as baselines.
+Meanwhile: (b) then (a).
+
+### idioms: what gates the skill
+Options: (a) the 20 dry-run problems (known to skill writers, can overfit); (b) a fresh unseen 20 each release, written to the dry-run shape.
+Recommendation: (b) as the gate, (a) as a regression check.
+How to reverse it: gate on (a) only.
+Meanwhile: report both; gate on (a) until the first fresh set exists.
+
 ## Answered
