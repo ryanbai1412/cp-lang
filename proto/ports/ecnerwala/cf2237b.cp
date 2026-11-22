@@ -13,13 +13,15 @@
 let n: 1..=5_000 = read()
 let a_in: [0..n]1..=10 ** 9 = read()
 let b: [0..n]1..=10 ** 9 = read()
-var slots: List<?Int> = [bsearch_first(0..n, j => b[j] >= x) for x in a_in]
+var slots: [0..n]?Int = [0..n] i => bsearch_first(0..n, j => b[j] >= a_in[i])
 
 var ans = 0
 for i in 0..n:
     let j = (i..n).first(j => if let s = slots[j]: s <= i else: false) else:
         print(-1)
         return
-    slots.insert(i, slots.remove(j))
+    let x = slots[j]
+    for k in (i + 1..=j).rev: slots[k] = slots[k - 1]
+    slots[i] = x
     ans += j - i
 print(ans)
