@@ -87,7 +87,7 @@ commits.
 
 ## Open
 
-- **Conformance:** `scripts/conformance.py` runs `spec/conformance`; every
+- **Conformance:** `just conform` (`cargo run -p cpl-conform -- conformance`) runs `spec/conformance`; every
   case the checker does not meet is a checker or interpreter bug against the
   spec (wrong diagnostic code, a lint reported as an error, a missing error).
   `--rules` reports rules with no case once chapters carry `(Rnn.n)` ids.

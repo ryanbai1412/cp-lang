@@ -15,7 +15,7 @@ core traits.
   newest first, each with its C++ original, runtime ratio, and friction report
   (contestant tokens median **0.50x** stripped C++; C++ runtime **p50 0.99x**;
   dream gap across 27 `dream/*.cp` ports: **11,825** port vs **7,639** dream
-  tokens, median **1.33x**, p90 **2.53x**, ratcheted in `scripts/scoreboard.py`).
+  tokens, median **1.33x**, p90 **2.53x**, ratcheted in `crates/cpl-conform` / `just conform`).
 - [Areas](plan/DOMAINS.md): each part of the project, its goal and
   its next steps.
 - [Decisions](decisions.md) and [retros](research/retros/): design calls with

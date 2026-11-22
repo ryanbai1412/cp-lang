@@ -16,13 +16,12 @@ Every dream must be at that level, and every port is scored against it.
    CP Lang: invent syntax and library calls freely, in the exemplars' style.
    Not gated or formatted. If the dream reads like the C++, start over.
 3. **Write the port** as close to the dream as today's language allows,
-   gate it (`proto/ports/<group>/gate.sh NAME 150`), and measure tokens,
+   gate it (`just conform corpus <id>` / `cpl test corpus/problems/<id>/port.cp`), and measure tokens,
    runtime on a max input against the C++, and emitted bytes.
    A rewrite toward the dream may grow emitted C++ only when its review
    names the runtime part that grew and the codegen ticket that removes it;
    accept the growth by rebaselining the port in the same commit
-   (`python3 scripts/scoreboard.py --update GROUP/NAME`), which the
-   scoreboard's `reviewed rewrite` failure names; the 48 KB warn line
+   (`just conform --write`), which updates `research/scoreboard.json`; the 48 KB warn line
    still blocks.
 4. **Report every gap** between port and dream in
    `research/frictions/NAME.md`: the snippet, the dream lines that remove it,
