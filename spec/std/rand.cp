@@ -59,7 +59,7 @@ pub struct Rng(s: U64):
     /// traps: never
     /// example: `var r = Rng(3); r.chance(1.0) == true`
     /// example: `var r = Rng(3); r.chance(0.0) == false`
-    pub fn chance(mut self, p: F64) -> Bool = todo
+    pub fn chance(mut self, p: F64) -> Bool = self.float() < p
     /// A uniformly random element of `xs`: `xs` at position `int(0..xs.len)`.
     ///
     /// The position is zero-based, so any key type works. An empty `xs` returns `None` without
@@ -71,7 +71,9 @@ pub struct Rng(s: U64):
     /// example: `var r = Rng(1); r.pick([7]) == Some(7)`
     /// example: `var r = Rng(1); let x = r.pick([4, 5, 6]).unwrap(); 4 <= x and x <= 6`
     /// example: `let e: List<Int> = []; var r = Rng(1); r.pick(e) == None`
-    pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T = todo
+    pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T:
+        if xs.len == 0: return None
+        Some(xs.nth(self.int(0, xs.len - 1)))
     /// Shuffle `a` in place, uniformly (Fisher-Yates).
     ///
     /// For `i` from `a.len - 1` down to `1`, swap positions `i` and `int(0..=i)`. Positions are
@@ -94,7 +96,10 @@ pub struct Rng(s: U64):
     /// order: keyed by `D`; the value at each key is uniformly random, each element of `D` once
     /// traps: never
     /// example: `domain V = 0..4; var r = Rng(4); let p = r.perm<V>(); p.distinct().len == 4`
-    pub fn perm<D>(mut self) -> [D]D = todo
+    pub fn perm<D>(mut self) -> [D]D:
+        var p: [D]D = [D] d => d
+        self.shuffle(mut p)
+        p
     /// `k` elements of `from` at distinct positions, chosen uniformly, in random order.
     ///
     /// It runs a partial Fisher-Yates over a copy of the positions: for `i` in `0..k`, swap
@@ -108,4 +113,9 @@ pub struct Rng(s: U64):
     /// example: `var r = Rng(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
     /// example: `var r = Rng(9); r.sample(0, from: [5, 6, 7]) == []`
     /// example: `var r = Rng(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
-    pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T> = todo
+    pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>:
+        let n = from.len
+        assert 0 <= k and k <= n
+        var pos = [i for i in 0..n]
+        for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
+        [from.nth(pos[i]) for i in 0..k]

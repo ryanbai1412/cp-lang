@@ -169,7 +169,7 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// empty: `None`
     /// traps: never
     /// example: `MaxSub.join(MaxSub.of(-1), MaxSub.of(-2)).try_best == Some(-1)`
-    @get pub fn try_best(self) -> ?Int = todo
+    @get pub fn try_best(self) -> ?Int = if has: Some(best) else: None
 
     /// `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
     ///
@@ -183,7 +183,7 @@ impl Add for MaxSub:
 
 /// O(1). Scale every underlying value by `k >= 0`.
 impl Mul<Int> for MaxSub:
-    fn mul(self, k: Int) -> MaxSub = todo
+    fn mul(self, k: Int) -> MaxSub = self.scale(k)
 
 impl Reversible for MaxSub:
     fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
@@ -231,7 +231,7 @@ pub struct MinCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `MinCount.of(5).count == 1`
-    pub fn of(v: T) -> MinCount<T> = todo
+    pub fn of(v: T) -> MinCount<T> = MinCount(v, 1)
 
     /// The smaller value with its count; on equal values, the value with both counts summed.
     ///
@@ -240,7 +240,8 @@ pub struct MinCount<T>(val: T, count: Int):
     /// traps: never
     /// example: `MinCount.join(MinCount.of(2), MinCount.of(2)).count == 2`
     /// example: `MinCount.join(MinCount(1, 3), MinCount(2, 5)).val == 1`
-    pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T> = todo
+    pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T>:
+        if a.val < b.val: a elif b.val < a.val: b else: MinCount(a.val, a.count + b.count)
 
     /// `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`)
     /// and count 0, for `SegTree` and `fold`.
@@ -248,7 +249,7 @@ pub struct MinCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `fold(MinCount.monoid(), [MinCount.of(v) for v in [3, 1, 1]]).count == 2`
-    pub fn monoid() -> Monoid<MinCount<T>> = todo
+    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount(Monoid<T>.of(min).id, 0), (a, b) => MinCount.join(a, b))
 
 /// O(1) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
 pub struct MaxCount<T>(val: T, count: Int):
@@ -257,7 +258,7 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `MaxCount.of(5).count == 1`
-    pub fn of(v: T) -> MaxCount<T> = todo
+    pub fn of(v: T) -> MaxCount<T> = MaxCount(v, 1)
 
     /// The larger value with its count; on equal values, the value with both counts summed.
     ///
@@ -265,7 +266,8 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// ties: equal values merge; their counts add
     /// traps: never
     /// example: `MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)).count == 3`
-    pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T> = todo
+    pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>:
+        if b.val < a.val: a elif a.val < b.val: b else: MaxCount(a.val, a.count + b.count)
 
     /// `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`)
     /// and count 0, for `SegTree` and `fold`.
@@ -273,7 +275,7 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
-    pub fn monoid() -> Monoid<MaxCount<T>> = todo
+    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount(Monoid<T>.of(max).id, 0), (a, b) => MaxCount.join(a, b))
 
 /// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
 pub struct Affine<T>(a: T, b: T):
@@ -282,14 +284,14 @@ pub struct Affine<T>(a: T, b: T):
     /// cost: O(1)
     /// traps: never
     /// example: `Affine<Int>.id().eval(7) == 7`
-    pub fn id() -> Affine<T> = todo
+    pub fn id() -> Affine<T> = Affine(Monoid<T>.of(*).id, Monoid<T>.of(+).id)
 
     /// `a * x + b`.
     ///
     /// cost: O(1)
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `Affine(2, 3).eval(5) == 13`
-    pub fn eval(self, x: T) -> T = todo
+    pub fn eval(self, x: T) -> T = a * x + b
 
     /// `f` first, then `g`: the map `x -> g.eval(f.eval(x))`, which is
     /// `Affine(g.a * f.a, g.a * f.b + g.b)`.
@@ -298,7 +300,7 @@ pub struct Affine<T>(a: T, b: T):
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `Affine.then(Affine(2, 0), Affine(1, 1)).eval(5) == 11`
     /// example: `Affine.then(Affine(1, 1), Affine(2, 0)).eval(5) == 12`
-    pub fn then(f: Affine<T>, g: Affine<T>) -> Affine<T> = todo
+    pub fn then(f: Affine<T>, g: Affine<T>) -> Affine<T> = Affine(g.a * f.a, g.a * f.b + g.b)
 
     /// `Monoid(Affine.id(), Affine.then)`: a fold applies the leftmost map first, so a segment tree
     /// over maps answers "push `x` through positions `l..r` in order".
@@ -306,7 +308,7 @@ pub struct Affine<T>(a: T, b: T):
     /// cost: O(1)
     /// traps: never
     /// example: `fold(Affine.monoid(), [Affine(1, 1), Affine(2, 0)]).eval(5) == 12`
-    pub fn monoid() -> Monoid<Affine<T>> = todo
+    pub fn monoid() -> Monoid<Affine<T>> = Monoid(Affine<T>.id(), (f, g) => Affine.then(f, g))
 
 @test
 fn bare_operators_bring_their_identity():

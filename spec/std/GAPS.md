@@ -10,3 +10,4 @@ line when the gap closes and the body lands.
 - mod: `Comb` (all of `new`, `grow`, `ensure`, `fact`, `inv_fact`, `inv`, `choose`, `arrange`, `derange`, `multinomial`): its tables are `@cache` fields grown from read-only methods, and `@cache` fields don't parse (E0107).
 - mod: `Barrett.reduce`, `Barrett.mul`: no 128-bit multiply-high on `U64`, so they reduce with `- mod: `Comb` (all of `new`, `grow`, `ensure`, `fact`, `inv_fact`, `inv`, `choose`, `arrange`, `derange`, `multinomial`): its tables are `@cache` fields grown from read-only methods, and `@cache` fields don't parse (E0107).
 - mod: `Barrett.reduce`, `Barrett.mul`: no 128-bit multiply-high on `U64`, so they reduce with `%` (same O(1) cost, not division-free).
+- rand: `Rng.perm`: explicit type arguments on a method call (`r.perm<V>()`) parse as comparisons (E0309), and `let p: [V]V = r.perm()` infers `D = Int` in `cpl run` (E0302); the body checks but no program can call it for a declared domain.
