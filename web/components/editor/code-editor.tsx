@@ -3,7 +3,7 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { type Diagnostic as CmDiagnostic, linter, lintGutter } from '@codemirror/lint';
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateField, Transaction } from '@codemirror/state';
 import {
   drawSelection,
   EditorView,
@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { useEffect, useRef } from 'react';
-import { cpl, type Diagnostic } from '@/lib/cpl';
+import { cpl, type Diagnostic, started } from '@/lib/cpl';
 import { cn } from '@/lib/utils';
 import { cpLanguage } from './cp-language';
 
@@ -52,8 +52,16 @@ export function toCmDiagnostics(diagnostics: Diagnostic[], length: number): CmDi
   }));
 }
 
-const checkLinter = linter(
+// True once the user has typed: until then an editor only checks if asked to
+// on load or if the compiler is already loaded, so showing code costs no wasm.
+const edited = StateField.define<boolean>({
+  create: () => false,
+  update: (was, tr) => was || (tr.docChanged && tr.annotation(Transaction.userEvent) !== undefined),
+});
+
+const checkLinter = (onLoad: boolean) => linter(
   async (view) => {
+    if (!onLoad && !started() && !view.state.field(edited)) return [];
     const source = view.state.doc.toString();
     try {
       const outcome = await cpl.check(source);
@@ -73,9 +81,11 @@ export interface CodeEditorProps {
   live?: boolean;
   className?: string;
   minHeight?: string;
+  /** Check the initial text at once, loading the compiler; otherwise wait for an edit or a run. */
+  checkOnLoad?: boolean;
 }
 
-export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight, checkOnLoad = false }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onRun });
@@ -102,7 +112,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
           ...defaultKeymap,
           ...historyKeymap,
         ]),
-        ...(live && !readOnly ? [checkLinter, lintGutter()] : []),
+        ...(live && !readOnly ? [edited, checkLinter(checkOnLoad), lintGutter()] : []),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) callbacks.current.onChange?.(u.state.doc.toString());
         }),
@@ -112,7 +122,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
     view.current = new EditorView({ state, parent: host.current! });
     return () => view.current?.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, live]);
+  }, [readOnly, live, checkOnLoad]);
 
   useEffect(() => {
     const v = view.current;

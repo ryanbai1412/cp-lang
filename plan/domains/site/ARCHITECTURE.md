@@ -69,6 +69,7 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 
 - Every program shown on the site passed the gate in the build that shipped it; a Run button appears only for status `runs`.
 - No server compile: user code runs only in the browser's wasm worker (10 s timeout, `web/lib/cpl.ts`).
+- Showing code costs no wasm: an editor checks only after an edit, a Run, or with `checkOnLoad` (the playground and `/s`), so `/` and Learn fetch `cpl.wasm` on first use (`web/components/editor/code-editor.tsx`; the browser smoke asserts it for `/`).
 - Generated content (`content/docs/ref`, `content/docs/releases.mdx`, `content/generated/`) is rebuilt every build; edit the source, not the output.
 - Share snapshots are immutable, versioned, at most 64 KB (`web/worker/share.ts`).
 - One nav list for every layout (`web/lib/layout.shared.tsx`).

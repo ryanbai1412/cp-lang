@@ -64,6 +64,6 @@ target = "8 chapters, 15 problems"
 
 [[metric]]
 name = "page_weight_gzip_bytes"
-command = "CDP=<chrome devtools url> pnpm --dir web page-weight"
-today = "/ 2,560,698 (1,768,985 of it cpl.wasm), LCP 104 ms; /play 2,477,294, LCP 84 ms; /docs/guides/tour 829,584, LCP 128 ms (local static server, no network throttling)"
-target = "/ excluding cpl.wasm <= 800000; /docs/guides/tour <= 900000"
+command = "pnpm --dir web page-weight  # set CDP=<devtools url> to drive a running Chrome"
+today = "/ 783,489 in 64 requests (0 of it cpl.wasm), LCP 152 ms; /play 2,483,166 (1,774,735 of it cpl.wasm), LCP 64 ms; /docs/guides/tour 829,726, LCP 104 ms (local static server, no network throttling; / was 2,560,698 before the wasm loaded lazily)"
+target = "/ <= 800000 with 0 of it cpl.wasm; /docs/guides/tour <= 900000"

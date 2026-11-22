@@ -28,6 +28,7 @@ export interface RunnerProps {
   editorHeight?: string;
   playgroundLink?: boolean;
   shareMenu?: boolean;
+  checkOnLoad?: boolean;
 }
 
 type Result =
@@ -47,7 +48,7 @@ export function formatDiagnostics(diagnostics: Diagnostic[], source: string): st
 }
 
 export function Runner({ source: initial, stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
-  shareMenu = false, }: RunnerProps) {
+  shareMenu = false, checkOnLoad = false }: RunnerProps) {
   const [source, setSource] = useState(initial);
   const [stdin, setStdin] = useState(initialStdin);
   const [result, setResult] = useState<Result>({ kind: 'idle' });
@@ -141,7 +142,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           )}
         </div>
       </div>
-      <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" />
+      <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" checkOnLoad={checkOnLoad} />
       <Tabs value={tab} onValueChange={(v) => (v === 'cpp' ? showCpp() : setTab(v))} className="gap-0">
         <TabsList className="m-2">
           <TabsTrigger value="output">Run</TabsTrigger>

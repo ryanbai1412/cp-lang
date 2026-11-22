@@ -20,6 +20,9 @@ async function spawnWorker(): Promise<Worker> {
   return mod.spawn({ timeoutMs: 10_000 }) as Worker;
 }
 
+/** Whether the compiler has been requested yet; loading it fetches cpl.wasm. */
+export const started = () => worker !== null;
+
 export function compiler(): Promise<Worker> {
   worker ??= spawnWorker();
   return worker;

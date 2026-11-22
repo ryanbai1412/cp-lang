@@ -1,7 +1,14 @@
 import { base, open } from './browser.mjs';
 
 const { page, errors } = await open();
-await page.goto(base + '/');
+let wasm = 0;
+page.on('request', (r) => (wasm += r.url().endsWith('.wasm')));
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+if (wasm) {
+  console.error('home fetched cpl.wasm before anything ran');
+  process.exit(1);
+}
+console.log('home loads without cpl.wasm');
 await page.getByRole('button', { name: 'Run' }).first().click();
 const out = page.getByRole('status').first();
 await out.filter({ hasText: /^115\s*$/ }).waitFor({ timeout: 30000 });
@@ -32,6 +39,12 @@ await viewer.close();
 await page.getByRole('button', { name: 'Stress' }).first().click();
 await page.getByText('Shrunk to the smallest input that still fails').waitFor({ timeout: 60000 });
 console.log('stress finds and shrinks the planted bug');
+await page.goto(base + '/');
+await page.locator('.cm-content').first().click();
+await page.keyboard.press('Control+End');
+await page.keyboard.type('\nprint(nope)');
+await page.locator('.cm-lint-marker-error').first().waitFor({ timeout: 30000 });
+console.log('an edit on home is checked live');
 await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 });

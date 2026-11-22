@@ -52,7 +52,7 @@ export function FromSubmission() {
             )}
           </p>
           {found ? (
-            <Runner key={found.source} source={found.source} editorHeight="260px" />
+            <Runner key={found.source} source={found.source} editorHeight="260px" checkOnLoad />
           ) : (
             <Alert>
               <AlertDescription>

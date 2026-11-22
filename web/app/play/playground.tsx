@@ -71,7 +71,7 @@ export function Playground({ examples }: { examples: Example[] }) {
       </div>
       {notice && <p className="mb-3 text-sm text-muted-foreground">{notice}</p>}
       {initial && (
-        <Runner key={initial.src} source={initial.src} stdin={initial.in} editorHeight="max(320px, calc(100vh - 26rem))" playgroundLink={false} shareMenu />
+        <Runner key={initial.src} source={initial.src} stdin={initial.in} editorHeight="max(320px, calc(100vh - 26rem))" playgroundLink={false} shareMenu checkOnLoad />
       )}
     </main>
   );
