@@ -75,7 +75,7 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 
 ## Known debt
 
-- Search index 15.5 MB raw, 2.7 MB gzipped (`web/out/api/search`, from `web/app/api/search/`): the generated reference dominates.
+- Search index 2.5 MB raw, 438 KB gzipped (`web/out/api/search`, from `web/app/api/search/route.ts`): reference pages index their headings and intro only, so text inside a reference entry is not searchable; the `search` step of `web/tests/smoke.mjs` guards a reference item and a guide heading.
 - Two nav placements: Fumadocs `HomeLayout` on Home, Play, Performance, Tools and the Learn index (`web/app/(home)/layout.tsx`, `web/app/play/layout.tsx`), notebook `DocsLayout` on Docs and Learn chapters (`web/app/docs/layout.tsx`, `web/app/learn/(course)/layout.tsx`).
 - Browser smoke and `scripts/site-check.sh` are not in CI (`.github/workflows/site.yml` curls 4 routes only).
 - `web/scripts/import-guides.py` is a one-off migration that reads a `site/` directory which no longer exists.

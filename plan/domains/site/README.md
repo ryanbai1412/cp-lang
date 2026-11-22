@@ -45,7 +45,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |
 | Broken internal links | `pnpm --dir web links` | 0 (was 1) | 0 | M1 |
 | cpl.wasm gzipped | `node web/scripts/wasm-size.mjs` | 1,768,985 B | ≤ 2,100,000 B, enforced | M1 |
-| Search index gzipped | `gzip -c web/out/api/search \| wc -c` | 2,690,140 B (15.5 MB raw) | ≤ 500,000 B | M1 |
+| Search index gzipped | `gzip -c web/out/api/search \| wc -c` | 438,011 B (2.5 MB raw; was 2,690,140) | ≤ 500,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |
 | Learn content | `ls web/content/learn/read web/content/practice` | 3 chapters, 7 problems | 8, 15 | M3 |
@@ -71,7 +71,7 @@ Probes (cold agent, pass/fail + time):
 
 1. Restore the docs-only eval (needs the statement fetcher and a model key) and point it at the served docs; it is the domain's bar and cannot run today.
 2. Run `scripts/site-check.sh` in CI (infra request filed); it is on main and green locally.
-3. Search index: 2.7 MB gzipped, larger than the compiler; split or trim the generated reference.
+3. Search index: done, 2.7 MB -> 438 KB gzipped (reference pages index headings and intro only).
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
 5. Guide code blocks live (Run) when they run; today they are static.
 6. Learn: 5 more chapters, 8 more problems.
