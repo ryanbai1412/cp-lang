@@ -135,17 +135,6 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3]); s.update(2, x => x * 10); s.all == 33`
     pub fn update(mut self, i: D, f: T -> T) = todo
 
-    /// The fold of the values in `r`, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
-    /// The order is kept, so non-commutative operations work.
-    ///
-    /// cost: O(log |D|)
-    /// empty: the identity
-    /// traps: when a non-empty `r` reaches outside `D`
-    /// example: `SegTree(+, [1, 2, 3]).fold(1..3) == 5`
-    /// example: `SegTree(+, [1, 2, 3]).fold(1..1) == 0`
-    /// example: `SegTree(Monoid("", (a, b) => a + b), ["a", "b", "c"]).fold(0..3) == "abc"`
-    pub fn fold(self, r: Range<D>) -> T = todo
-
     /// The fold of every position, left to right.
     ///
     /// cost: O(1)
