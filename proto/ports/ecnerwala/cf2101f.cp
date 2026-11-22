@@ -11,8 +11,8 @@
 //   value is 2d;
 // - if it holds one colour (red, say; double for blue) in two or more
 //   branches, the value is d + d', where d' < d is the layer of the
-//   outermost vertex of the other colour, for some red is d away from it
-//   through c.
+//   outermost vertex of the other colour, because some red vertex at distance
+//   d lies in another branch from it through c.
 // Counting layer d in two or more branches is the whole layer minus each
 // branch alone. Distances in the subdivided tree are doubled, hence the
 // final halving.
@@ -21,7 +21,7 @@ use lib.math.powers.{Powers}
 type Z = Mod<998_244_353>
 
 @!multitest
-let n: Int = read()
+let n: 1..=3000 = read()
 domain Node = 1..=2 * n - 1
 fn is_vertex(v: Node) -> Bool = v.ord < n
 
@@ -38,23 +38,24 @@ let pow3 = Powers<Z.MOD>(3, n)
 fn some_red(c: Int) -> Z = pow2[c] - 1
 fn red_and_blue(c: Int) -> Z = pow3[c] - pow2[c] * 2 + 1
 
+let D = Node.count
 var ans: Z = 0
 for centre in Node:
-    var total: [0..Node.count]Int = 0
+    var total: [0..D]Int = 0
     if is_vertex(centre): total[0] = 1
-    var red: [0..Node.count]Z = 0
-    var both: [0..Node.count]Z = 0
+    var red: [0..D]Z = 0
+    var both: [0..D]Z = 0
     for c in adj[centre]:
-        var branch: [0..Node.count]Int = 0
+        var branch: [0..D]Int = 0
         fn count(v: Node, from: Node, depth: Int):
             if is_vertex(v): branch[depth] += 1
             for w in adj[v] if w != from: count(w, v, depth + 1)
         count(c, centre, 1)
-        for d in 0..Node.count:
+        for d in 0..D:
             total[d] += branch[d]
             red[d] -= some_red(branch[d])
             both[d] -= red_and_blue(branch[d])
-    for d in 0..Node.count:
+    for d in 0..D:
         red[d] += some_red(total[d])
         both[d] += red_and_blue(total[d])
 
@@ -63,7 +64,7 @@ for centre in Node:
     var inside: Z = 1
     var blue_inside: Z = 0
     var blue_depths: Z = 0
-    for d in 0..Node.count:
+    for d in 0..D:
         let c = total[d]
         ans += inside * both[d] * (2 * d)
         ans += (blue_depths + blue_inside * d) * red[d] * 2
