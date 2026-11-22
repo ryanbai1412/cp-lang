@@ -1,6 +1,6 @@
 # ucup5s05f
 
-Score: 3/5
+Score: pending cold rescore (adopted full derivation header, `OpenNode`, `suffix_tree_edges`, `power_sums`, and §111 `and` guards; remaining gaps are `SubproductTree` and `std.strings.suffix_tree_edges` logged in friction; gated 150/150, 0 lints, 0 regressions)
 Dream: 4/5
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 2/5; awaiting rescore).
