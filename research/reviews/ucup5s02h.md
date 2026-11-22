@@ -1,6 +1,6 @@
 # ucup5s02h
 
-Score: 3/5
+Score: pending cold rescore (added domain C = 0..n with node_of(i) removing 9x Node.at(i), unified duplicate segtree climb into ancestors(cc), bounded n: 2..=150_000, replaced magic seed with ?gap + documented n=2 fallback; emitted C++ 26,263 -> 29,389 B from domain C + ancestors + ?gap, <48 KB)
 Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.

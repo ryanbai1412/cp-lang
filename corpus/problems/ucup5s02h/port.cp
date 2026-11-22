@@ -62,60 +62,69 @@ fn weaker_gap(
 ) -> Bool = a.num * b.den >= a.den * b.num
 
 @!multitest
-let n: Int = read()
+let n: 2..=150_000 = read()
 var charges = List<(x: Int, q: Int, pin: Char)>()
 for _ in 0..n:
     let (q, x, c): (Int, Int, Char) = read()
     charges.push((x, q, c))
 charges.sort()
-let pts = [Pt(c.x, c.q, i) for (i, c) in charges.items]
+
+domain C = 0..n
+let pts = [C] i => Pt(charges[i.ord].x, charges[i.ord].q, i.ord)
 
 domain Node = 0..=n
 let pin = Node.at(n)
+fn node_of(i: C) -> Node = Node.at(i.ord)
 var colour = ParityDsu<Node>()
-let pinned = [i for (i, c) in charges.items if c.pin == 'A' or c.pin == 'B']
-for i in pinned: let _ = colour.unite(Node.at(i), pin, differ: charges[i].pin == 'A')
-if pinned.is_empty: let _ = colour.unite(Node.at(0), pin, differ: false)
+let pinned = [i for i in C if charges[i.ord].pin == 'A' or charges[i.ord].pin == 'B']
+for i in pinned: let _ = colour.unite(node_of(i), pin, differ: charges[i.ord].pin == 'A')
+if pinned.is_empty: let _ = colour.unite(node_of(C.first), pin, differ: false)
 
-fn link(i: Int, j: Int):
-    if not colour.same(Node.at(i), Node.at(j)): let _ = colour.unite(Node.at(i), Node.at(j))
+fn link(i: C, j: C):
+    if not colour.same(node_of(i), node_of(j)): let _ = colour.unite(node_of(i), node_of(j))
 
-while not all(colour.same(Node.at(i), Node.at(0)) for i in 0..n):
+while not all(colour.same(node_of(i), node_of(C.first)) for i in C):
     let roots = [u for u in Node if colour.find(u).root == u]
     var comp: [Node]Int = 0
     for (k, r) in roots.items: comp[r] = k
     let v = roots.len
-    var best: [0..v]?(gap: (num: Int, den: Int), i: Int, j: Int) = none
-    fn sweep(order: List<Int>, sign: Int):
+    var best: [0..v]?(gap: (num: Int, den: Int), i: C, j: C) = none
+    fn sweep(order: List<C>, sign: Int):
         var hulls = [Hull.new() for _ in 0..2 * v]
-        for i in order:
-            let x = sign * pts[i].x
-            let cc = comp[colour.find(Node.at(i)).root]
-            var hit: ?Pt = none
+        fn ancestors(cc: Int) -> List<Int>:
+            var out: List<Int> = []
             var node = cc + v
             while node > 1:
-                hit = weaker(hit, hulls[node ^ 1].query(x), x)
+                out.push(node)
                 node >>= 1
+            out
+        for i in order:
+            let x = sign * pts[i].x
+            let cc = comp[colour.find(node_of(i)).root]
+            let path = ancestors(cc)
+            var hit: ?Pt = none
+            for node in path: hit = weaker(hit, hulls[node ^ 1].query(x), x)
             if let h = hit:
-                let g = gap(pts[h.id], pts[i])
-                let wins = if let cur = best[cc]: weaker_gap(g, cur.gap) else: true
-                if wins: best[cc] = some((g, i, h.id))
-            node = cc + v
-            while node > 1:
-                hulls[node].add(Pt(x, pts[i].q, i))
-                node >>= 1
-    sweep([i for i in 0..n], 1)
-    sweep([i for i in (0..n).rev], -1)
+                let j = C.at(h.id)
+                let cand = gap(pts[j], pts[i])
+                let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
+                if wins: best[cc] = some((cand, i, j))
+            for node in path: hulls[node].add(Pt(x, pts[i].q, i.ord))
+    sweep([i for i in C], 1)
+    sweep([i for i in C.rev], -1)
     for e in best if let edge = e: link(edge.i, edge.j)
 
-var weakest = (num: 1, den: 226_000_000)
+var weakest: ?(num: Int, den: Int) = none
 for side in [false, true]:
     var hull = Hull.new()
-    for p in pts if (colour.diff(Node.at(p.id), pin) == some(false)) == side:
+    for i in C if (colour.diff(node_of(i), pin) == some(false)) == side:
+        let p = pts[i]
         if let prev = hull.query(p.x):
             let g = gap(prev, p)
-            if not weaker_gap(weakest, g): weakest = g
+            if weakest == none or not weaker_gap(weakest!, g): weakest = some(g)
         hull.add(p)
 
-let g = gcd(weakest.den, weakest.num)
-print("{weakest.den / g}/{weakest.num / g}")
+// Fallback only triggers when n = 2 puts one charge on each side (no same-side pair).
+let w = weakest ?? (num: 1, den: 226_000_000)
+let g = gcd(w.den, w.num)
+print("{w.den / g}/{w.num / g}")
