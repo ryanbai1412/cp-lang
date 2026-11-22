@@ -20,7 +20,7 @@ use std.flow.{Arc, FlowGraph}
 use std.geometry.{ByAngle, Pt}
 use std.graph.{Graph, Target, Tree, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4, Dir8, step}
-use std.heap.{MaxHeap, MinHeap}
+use std.heap.{Heap, MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
 use std.lazy.{Flip}
 use std.marks.{Marks}
