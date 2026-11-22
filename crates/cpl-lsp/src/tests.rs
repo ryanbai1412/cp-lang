@@ -1165,6 +1165,8 @@ fn dot_completion_on_records_domains_and_positions() {
     assert!(labels(&items).contains(&"first") && labels(&items).contains(&"rev"));
     let items = completions("domain V = 0..5\nfor v in V:\n    print(v.|)\n");
     assert!(labels(&items).contains(&"ord") && labels(&items).contains(&"r"));
+    let items = completions("domain V = 0..5\nlet xs = read<[V.|drop(1)]Int>()\nprint(xs)\n");
+    assert!(labels(&items).contains(&"first"), "{items:?}");
 }
 
 /// The members offered on every domain and position are ones the checker types.

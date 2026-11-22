@@ -8,7 +8,7 @@
 use crate::json::{obj, Value};
 use crate::outline::{Entry, Kind, Outline, Param};
 use cpl_check::{
-    builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, FsLoader, HoverEntry,
+    builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, DeclKind, FsLoader, HoverEntry,
     Loader, MemberKind, PreludeKind, Receiver, Ty,
 };
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
@@ -559,6 +559,9 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
             type_members(cursor, std, name, args, true)
         }
+        Ty::TypeName(name) if is_domain(cursor.analysis, name) => {
+            builtin(DOMAIN_MEMBERS, format!("domain {name}"))
+        }
         Ty::TypeName(name) => type_members(cursor, std, name, &[], false),
         Ty::Record(fields) => fields
             .iter()
@@ -579,6 +582,15 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
         Ty::Pos(domain) => builtin(POS_MEMBERS, format!("position in {domain}")),
         _ => Vec::new(),
     }
+}
+
+/// A domain named where a type goes, as in `read<[V.drop(1)]Int>()`.
+fn is_domain(analysis: &Analysis, name: &str) -> bool {
+    analysis
+        .items
+        .iter()
+        .flat_map(|item| &item.syntax.decls)
+        .any(|decl| decl.name == name && decl.kind == DeclKind::Domain)
 }
 
 /// The built-in type a value of `ty` is, with what its catalog's `T`, `K`,
