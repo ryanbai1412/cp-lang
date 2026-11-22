@@ -182,11 +182,14 @@ if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
 ```python
 for step in dfs(g, from: [s]):
     match step:
-        Enter(v) => if seen_enough(v): step.prune()
-        Exit(v) => done[v] = true
+        Enter(v, _) => if seen_enough(v): step.prune()
+        Exit(v, _) => done[v] = true
+        Again(_, _) => ()
 ```
 
-`dfs` yields `Enter(v)` / `Exit(v)` and supports `step.prune()`, `break`
+`dfs` yields `Enter(v, via:)`, `Exit(v, via:)` (`via` the discovering arc,
+`None` at a source) and `Again(from, via)`, takes an optional shared
+`seen: mut [V]Bool`, and supports `step.prune()` after `Enter`, `break`
 and `return` (round 2's generators). A DFS tree with edge
 classification is `g.dfs_tree(root)`.
 
@@ -199,7 +202,7 @@ Every grouping returns a fresh domain and the map into it:
 | `components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
 | `complement(g)` | the complement graph of the missing arcs `g`: `bfs`, `dfs`, `reachable` and `components` over it cost O(n + m) | O(1) to make |
 | `scc(g)` | `(domain C, comp: [V]C)`, `C` in topological order | O(n + m) |
-| `condense(g, comp)` | `Graph<C, _>` of the components | O(n + m) |
+| `condense(g, comp)` | `[C]List<(to: C)>`, the arcs between components | O(n + m) |
 | `two_edge_components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
 | `blocks(g)` | `(domain B, block: [E]B)`, biconnected blocks of edges | O(n + m) |
 | `bridges(g)`, `cut_vertices(g)` | `[E]Bool`, `[V]Bool` | O(n + m) |
@@ -271,7 +274,7 @@ for r in t.chains(a, b): ...               // the ranges themselves, when you ne
 | `t.sub(v)`, `t.below(v)` | `Range<t.Pre>`: subtree with / without `v` | O(1) |
 | `t.chains(a, b)` | `yields Range<t.Pre>`, ordered from `a` to `b` | O(log n) ranges |
 | `t.fold_path(a, b, ds, edges:)`, `t.apply_path(...)` | path fold / update over any range structure | O(log n) ranges |
-| `t.tour` | `yields Visit<V>`: `Enter` / `Exit` events | O(1) to make, O(n) to walk |
+| `t.tour` | `yields Visit<V, V>`: `Enter` / `Exit` events, `via` the parent | O(1) to make, O(n) to walk |
 | `t.virtual(keys)` | the virtual (auxiliary) tree of `keys` | O(k log k) |
 | `Centroids(g)` | centroid decomposition: `.parent(c)`, `.ancestors(v)` with distances | O(n log n) |
 
@@ -303,11 +306,11 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 3. **Tuples as edges.** Builds need named records (`read<[E](u: V, v: V)>`);
    several dreams still pass unnamed `(V, V)` tuples and need the one-line
    `map` that names them.
-4. **Names that drift today:** `articulation_points` → `cut_vertices`,
+4. **Names that drifted (fixed in decision 167):** `articulation_points` → `cut_vertices`,
    `biconnected_components` / `edge_blocks` → `blocks`, `Adj` and
-   `*_of_pairs` builders → `Graph` or `[V]List`, `subtree_sizes` →
+   `*_of_triples` gone, `*_of_pairs` builders → `[V]List`, `subtree_sizes` →
    `t.size(v)`, `preorder` → `t.order` (BFS) plus `t.tour`.
-5. **DFS and trees: agreed (decision 147), rewrite queued.** `step.prune()`,
+5. **DFS and trees: agreed (decision 147), stub follows (decision 167).** `step.prune()`,
    events carry the arc, `Again(from, via)`, shared `seen:`, free
    `reachable`, `g.dfs_tree` → `(tree: Rooted, tree_edge: [E]Bool)`.
    Derived tree structures (`LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`)

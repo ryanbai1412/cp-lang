@@ -6,14 +6,14 @@ One bullet per contradiction or silent choice found while bringing
 ## Contradictions
 
 - `Graph.dfs_tree` / `DfsTree` (resolved): `dfs_tree` now returns `(tree: Rooted, tree_edge: [E]Bool)` per decision 147, `DfsTree` is removed, and `Rooted.euler_tour(by:)` orders children (the gold port `ioi25_worldmap` needed it).
-- `dfs` / `Visit`: decisions 146-147 and graphs-trees.md agree on `step.prune()`, `Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)` and a shared `seen:`; the stub has `Visit: Enter(v), Exit(v)` and "`continue` after `Enter` still descends". Documented the stub.
-- `Adj`, `directed_of_pairs`, `undirected_of_pairs`, `*_of_triples`, `adjacency`: graphs-trees.md names `Graph` and `[V]List` as the representations and decision 146 lists per-shape builders as the reverse option; the stub keeps them. Documented them as thin builders.
-- `directed_of_triples` / `undirected_of_triples` -> `Adj<V, (V, W)>`: a positional `(V, W)` is neither a vertex nor a record with `to`/`w`, so it is not `Target`/`Weighted` and `Adj.matrix`, `next`, `transpose` cannot apply. Documented as if the tuple reads as `(to, w)`.
-- `biconnected_components`, `edge_blocks`, `articulation_points`: graphs-trees.md uses `blocks` and `cut_vertices`. Names left.
-- `condense`: graphs-trees.md says it returns `Graph<C, _>`; the stub returns `[C]List<(to: C)>`. Documented the stub.
+- `dfs` / `Visit`: decisions 146-147 and graphs-trees.md agree on `step.prune()`, `Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)` and a shared `seen:`; the stub has `Visit: Enter(v), Exit(v)` and "`continue` after `Enter` still descends". Documented the stub. (resolved: stub follows decisions 146-147: `Visit<V, A>` with `Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`, `seen:` and `step.prune()`; decision 167)
+- `Adj`, `directed_of_pairs`, `undirected_of_pairs`, `*_of_triples`, `adjacency`: graphs-trees.md names `Graph` and `[V]List` as the representations and decision 146 lists per-shape builders as the reverse option; the stub keeps them. Documented them as thin builders. (resolved: `Adj` removed; `*_of_pairs` and `adjacency` return `[V]List<V>`; decision 167)
+- `directed_of_triples` / `undirected_of_triples` -> `Adj<V, (V, W)>`: a positional `(V, W)` is neither a vertex nor a record with `to`/`w`, so it is not `Target`/`Weighted` and `Adj.matrix`, `next`, `transpose` cannot apply. Documented as if the tuple reads as `(to, w)`. (resolved: removed with `Adj`; weighted lists use `Graph`; decision 167)
+- `biconnected_components`, `edge_blocks`, `articulation_points`: graphs-trees.md uses `blocks` and `cut_vertices`. Names left. (resolved: renamed to the chapter's `blocks` and `cut_vertices` (on `EdgedNext`); `biconnected_components` removed; decision 167)
+- `condense`: graphs-trees.md says it returns `Graph<C, _>`; the stub returns `[C]List<(to: C)>`. Documented the stub. (resolved: stub kept, chapter table now says `[C]List<(to: C)>`)
 - `dial` cost: graphs-trees.md says O(n * max_w + m), the stub O(n + m + W). Wrote O(n + m + max_w + d_max) with `d_max <= (n - 1) * max_w`, which both bound.
-- `kruskal` `by:`: typed `E -> K` but defaults to `e => e.w`, reading a field off an edge key. Example uses `by: e => desc(es[e].w)`.
-- `Only<V, G>(g, keep)` stores no `from`, though `only(from:)` needs it. Left.
+- `kruskal` `by:`: typed `E -> K` but defaults to `e => e.w`, reading a field off an edge key. Example uses `by: e => desc(es[e].w)`. (resolved: `by` now reads the edge record (`R -> K`), example `by: e => desc(e.w)`)
+- `Only<V, G>(g, keep)` stores no `from`, though `only(from:)` needs it. Left. (resolved: struct now stores `from`)
 - `Paths.path` had two cost lines (`O(path length)` twice). Kept one.
 
 ## Choices

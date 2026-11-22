@@ -344,75 +344,6 @@ pub fn topo<V>(g: Next<V>) -> ?List<V> = todo
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0]]; let (domain C, comp) = scc(g); C.count == 2 and comp[0] == comp[1] and comp[2] < comp[0]`
 pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
 
-/// O(n + m) memory and build.
-/// Compressed sparse row adjacency table over `V` built from pairs or triples.
-/// O(n + m) time; memory is n + 1 32-bit offsets and one arc per directed edge.
-pub struct Adj<V, A>:
-    start: List<0..=2_000_000_000>
-    arcs: List<A>
-
-    /// The arcs out of `u`, lazily.
-    ///
-    /// cost: O(1) per arc
-    /// order: input order
-    /// traps: never
-    /// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).out(0).collect() == [2, 1]`
-    pub fn out(self, u: V) -> yields A = todo
-
-    /// `g[u]`: the arcs out of `u`, copied into a new list.
-    ///
-    /// cost: O(deg u)
-    /// order: input order; a new `List`, keyed from 0
-    /// traps: never
-    /// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).get(0) == [2, 1]`
-    pub fn get(self, u: V) -> List<A> = todo
-
-    /// The weight matrix, as `Graph.matrix`: `d[u, v]` the least `.w` over arcs `u -> v`,
-    /// `None` without one, the diagonal the least loop weight.
-    ///
-    /// cost: O(n^2 + m) time, O(n^2) memory
-    /// ties: parallel arcs keep the least weight
-    /// traps: never
-    /// example: `domain V = 0..2; let d = directed_of_triples([(V(0), V(1), 4), (V(0), V(1), 2)]).matrix(); d[0, 1] == Some(2) and d[1, 0] == None`
-    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W> = todo
-
-    /// The number of arcs out of `u`.
-    ///
-    /// cost: O(1)
-    /// traps: never
-    /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).deg(1) == 2`
-    pub fn deg(self, u: V) -> Int = todo
-
-    /// Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
-    ///
-    /// cost: O(1) per vertex yielded
-    /// order: input order
-    /// traps: never
-    /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).next(1).collect() == [0, 2]`
-    pub fn next(self, u: V) -> yields V = todo
-
-    /// The induced view on the vertices `keep` accepts, as `Graph.only`.
-    ///
-    /// cost: O(1) to make; `keep` and `from` run per arc walked
-    /// traps: never
-    /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).only(keep: v => v != 0).deg(1) == 1`
-    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> = todo
-
-    /// The table with every arc reversed.
-    ///
-    /// cost: O(n + m)
-    /// order: each vertex's new arcs by original source in vertex order, then input order
-    /// traps: never
-    /// example: `domain V = 0..3; directed_of_pairs([(V(2), V(0)), (V(1), V(0))]).transpose().get(0) == [1, 2]`
-    pub fn transpose(self) -> Adj<V, A> = todo
-
-    /// True when `v` is among `u`'s targets. A scan, not a lookup.
-    ///
-    /// cost: O(deg u)
-    /// traps: never
-    /// example: `domain V = 0..3; let g = directed_of_pairs([(V(0), V(2))]); g.has(0, 2) and not g.has(2, 0)`
-    pub fn has(self, u: V, v: V) -> Bool = todo
-
 /// `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the
 /// target vertex itself.
 ///
@@ -420,8 +351,8 @@ pub struct Adj<V, A>:
 /// empty: `[]` gives every vertex no arcs
 /// order: each vertex's arcs in input order
 /// traps: never
-/// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).get(0) == [2, 1]`
-pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V> = todo
+/// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))])[0] == [2, 1]`
+pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> = todo
 
 /// `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways,
 /// each arc the target vertex itself.
@@ -430,26 +361,8 @@ pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V> = todo
 /// empty: `[]` gives every vertex no arcs
 /// order: each vertex's arcs in the order of their pairs
 /// traps: never
-/// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).get(1) == [0, 2]`
-pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V> = todo
-
-/// `Graph.directed` on a list of `(u, v, w)`: each arc is `(v, w)`.
-///
-/// cost: O(n + m)
-/// empty: `[]` gives every vertex no arcs
-/// order: each vertex's arcs in input order
-/// traps: never
-/// example: `domain V = 0..2; directed_of_triples([(V(0), V(1), 5)]).get(0) == [(V(1), 5)]`
-pub fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> = todo
-
-/// `Graph.undirected` on a list of `(u, v, w)`: arcs `(v, w)` at `u` and `(u, w)` at `v`.
-///
-/// cost: O(n + m)
-/// empty: `[]` gives every vertex no arcs
-/// order: each vertex's arcs in the order of their triples
-/// traps: never
-/// example: `domain V = 0..2; undirected_of_triples([(V(0), V(1), 5)]).get(1) == [(V(0), 5)]`
-pub fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> = todo
+/// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))])[1] == [0, 2]`
+pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> = todo
 
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.
@@ -485,32 +398,16 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)> = todo
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; let (domain C, comp) = two_edge_components(Graph.undirected(es)); comp[1] == comp[2] and comp[0] != comp[1]`
 pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C) = todo
 
-/// Articulation points (cut vertices) of an undirected simple graph.
-
 /// Which vertices are cut vertices: removing one (and its arcs) leaves more components than
 /// before. Works per component, so disconnected graphs are fine; a root is a cut vertex
-/// exactly when it has two or more DFS children. Assumes an undirected simple graph.
+/// exactly when it has two or more DFS children. Skips the arc's own edge, not its source
+/// vertex, so parallel edges are right.
 ///
 /// cost: O(n + m), iterative
 /// order: keyed by `V`
-/// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; articulation_points(g) == [false, true, false]`
-pub fn articulation_points<V>(g: Next<V>) -> [V]Bool = todo
-
-/// Vertex-biconnected components (blocks) of an undirected simple graph.
-/// Each returned list contains the vertices of one maximal 2-vertex-connected
-/// subgraph (or the two endpoints of a bridge). Articulation points appear in
-/// every block that shares them. O(n + m), iterative Tarjan.
-
-/// The vertex-biconnected blocks of an undirected simple graph: each a maximal subgraph with
-/// no cut vertex, or the two ends of a bridge. A cut vertex is in every block that holds
-/// it; an isolated vertex is in none.
-///
-/// cost: O(n + m), iterative Tarjan
-/// order: blocks as the DFS (roots in vertex order, arcs in arc order) closes them, deepest first; in a block, vertices as they leave the DFS stack, the vertex that closes it last
-/// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; biconnected_components(g) == [[2, 1], [1, 0]]`
-pub fn biconnected_components<V>(g: Next<V>) -> List<List<V>> = todo
+/// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
+/// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
+pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool = todo
 
 /// A 2-colouring of an undirected graph (no arc joins two vertices of one side), or `None`
 /// when an odd cycle exists.
@@ -923,20 +820,24 @@ fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
 
 // ---- Spec surface without implementations yet ----------------------------
 
-/// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v)` when `v` is
-/// discovered and `Exit(v)` when it is finished.
+/// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v`
+/// is discovered, `Again(from, via)` for an arc into an already discovered vertex, and
+/// `Exit(v, via:)` when `v` is finished. `via` is the arc that discovered `v`, `None` for a
+/// source; on `[V]List<V>` an arc is the vertex it reaches.
 ///
 /// Arcs are taken in arc order and the walk descends at once (recursive order, run
-/// without recursion). Visited vertices are shared across sources, so a source already
-/// visited is skipped. `continue` after `Enter(v)` still descends; the loop steers with
-/// `break`.
+/// without recursion). Discovered vertices are shared across sources, so a source already
+/// discovered is skipped; pass `seen:` to share them with other walks (it is read and
+/// updated in place). `step.prune()` right after `Enter(v)` skips `v`'s arcs (its `Exit`
+/// still comes); `break` and `return` end the walk. `Again` events give custom low-link.
 ///
 /// cost: O(n + m) total, O(1) per step
 /// empty: an empty `from` yields nothing
-/// order: `Enter` in preorder, `Exit` in postorder, interleaved as the walk goes
+/// order: `Enter` in preorder, `Exit` in postorder, `Again` when its arc is scanned, interleaved as the walk goes
 /// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Enter(V(0)), Enter(V(1)), Exit(V(1)), Enter(V(2)), Exit(V(2)), Exit(V(0))]`
-pub fn dfs<V>(g: Next<V>, from: Seq<V>) -> yields Visit<V> = todo
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Exit(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(0, None)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(1, Some(1)), Again(0, 2), Exit(0, None)]`
+pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc> = todo
 
 /// Every vertex reachable from `from`, each once, sources included. `reachable(g, from:
 /// [s]).count()`, `List(...)` or `.contains(v)` ask the usual questions; to avoid some
@@ -950,8 +851,9 @@ pub fn dfs<V>(g: Next<V>, from: Seq<V>) -> yields Visit<V> = todo
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; reachable(g, from: [V(1), V(2)]).collect() == [1, 0, 2]`
 pub fn reachable<V>(g: Next<V>, from: Seq<V>) -> yields V = todo
 
-/// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields.
-pub enum Visit<V>: Enter(v: V), Exit(v: V)
+/// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that
+/// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
+pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
 
 /// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
 /// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: t` stops
@@ -1077,8 +979,8 @@ pub fn closure<V>(g: Next<V>) -> [V]Bitset<V> = todo
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; scc_times(es) == [None]`
 pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int = todo
 
-/// The block-cut tree of an undirected simple graph: `B` numbers the blocks in the order of
-/// `biconnected_components`, and `links` joins each block to the cut vertices it contains.
+/// The block-cut tree of an undirected simple graph: `B` numbers the blocks as the DFS (roots
+/// in vertex order, arcs in arc order) closes them, deepest first, as `blocks` does, and `links` joins each block to the cut vertices it contains.
 ///
 /// cost: O(n + m)
 /// order: `links` by block, then the block's vertex order
@@ -1094,8 +996,8 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = 
 /// cost: O(n + m)
 /// order: `block` keyed by `E`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
-/// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = edge_blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
-pub fn edge_blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
+/// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
+pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
 /// `missing.out(u)` does not reach. Its own `out(u)` is O(|V|), but `bfs`, `dfs`,
@@ -1190,16 +1092,17 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int = todo
 pub fn de_bruijn(k: Int, n: Int) -> List<Int> = todo
 
 /// A minimum spanning forest by Kruskal, as its total weight and the chosen edges. Edges
-/// are taken in `by:` order with a stable sort, so `by: e => desc(e.w)` gives a maximum
+/// are taken in `by:` order (`by` reads the edge record) with a stable sort, so `by: e => desc(e.w)` gives a maximum
 /// one; loops are never taken.
 ///
 /// cost: O(m log m)
+/// empty: no edges give `(total: W.zero, take: [])`
 /// ties: equal `by` keys go in edge key order
 /// order: `take` keyed by `E`
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es) == (total: 3, take: [true, true, false])`
-/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es, by: e => desc(es[e].w)).take == [false, true, true]`
-pub fn kruskal<V, E, W, K: Ord>(edges: [E](u: V, v: V, w: W, ..), by: E -> K = e => e.w) -> (total: W, take: [E]Bool) = todo
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es, by: e => desc(e.w)).take == [false, true, true]`
+pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool) = todo
 
 /// A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at
 /// `V.first`; `None` if it is disconnected. `w[u, v]` is read with `u` in the tree.
@@ -1357,13 +1260,14 @@ impl<V> IncrementalBridges<V>:
 /// O(1): one edge of a `Graph`: its id and its ends as given.
 pub struct Edge<V, E>(e: E, u: V, v: V)
 
-/// `directed_of_pairs` on named `(u, v)` arcs: an adjacency table indexed by vertex.
+/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 ///
 /// cost: O(n + m)
 /// empty: `[]` gives every vertex no arcs
+/// order: each vertex's arcs in input order
 /// traps: never
-/// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))]).get(0) == [2, 1]`
-pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> Adj<V, V> = todo
+/// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
+pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V> = todo
 
 /// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex
 /// are skipped as `out` walks. `from` drops only the arcs leaving a vertex it rejects, so
@@ -1376,7 +1280,7 @@ pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> Adj<V, V> = todo
 pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G> = todo
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
-pub struct Only<V, G>(g: G, keep: V -> Bool):
+pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
     /// The arcs out of `u` the view keeps: none when `u` is dropped, else those whose `to` is
     /// kept.
     ///
