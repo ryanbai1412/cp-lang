@@ -149,7 +149,7 @@ slice, `a[k]` outside `a.keys` traps in checked builds. Only an owned
 
 ```python
 fn first_drop<K>(a: [K]Int) -> ?K =
-    a.keys.drop(1).first(i => a[i] < a[i.prev!])
+    a.keys.drop(1).find(i => a[i] < a[i.prev!])
 
 fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
     var res = [a.keys]None

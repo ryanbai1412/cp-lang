@@ -93,6 +93,102 @@ pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 /// example: `[1, 1, 2].is_sorted() == true`
 pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool = todo
 
+// --- Adapters, ends, and sorting (R07.2.8, R07.4) ---
+
+/// O(1) to make. A view of the elements satisfying `p`, in order. Keys survive: each element
+/// keeps its source key, so `a.filter(p).items` gives `(i, a[i])` with `a`'s own `i`. `p` runs
+/// as the view is walked, once per element per walk. Bidirectional when `self` is.
+///
+/// cost: O(1) to make; O(n) calls of `p` per walk
+/// empty: an empty view
+/// order: source order
+/// traps: never (beyond what `p` traps on)
+/// example: `[1, 2, 3, 4].filter(x => x % 2 == 0).collect() == [2, 4]`
+/// example: `[5, 6, 7].filter(x => x > 5).items.collect() == [(1, 6), (2, 7)]`
+pub fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S> = todo
+
+/// O(1) to make. A view giving `f(x)` for each element. Indexed when `self` is, with the same
+/// keys: `a.map(f)[i]` is `f(a[i])`, calling `f` on every read (`collect()` once to cache).
+///
+/// cost: O(1) to make; one call of `f` per element read
+/// empty: an empty view
+/// order: source order, source keys
+/// traps: never (beyond what `f` traps on)
+/// example: `[1, 2, 3].map(x => x * x).collect() == [1, 4, 9]`
+/// example: `domain V = 1..=3; let a: [V]Int = [4, 5, 6]; a.map(x => -x)[V(2)] == -5`
+pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
+
+/// O(1). A view walking `self` backwards. Keys survive: `a.rev[i]` is still `a[i]`; only the
+/// walk order changes.
+///
+/// cost: O(1)
+/// empty: an empty view
+/// order: reverse source order, source keys
+/// traps: never
+/// example: `[1, 2, 3].rev.collect() == [3, 2, 1]`
+@get pub fn rev<S: Bidir>(self: S) -> Rev<S> = todo
+
+/// O(1). A view of `(key, element)` pairs with the source's own keys.
+///
+/// cost: O(1)
+/// empty: an empty view
+/// order: source order
+/// traps: never
+/// example: `[5, 6][1..].items.collect() == [(1, 6)]`
+@get pub fn items<S: Keyed, K, T>(self: S) -> Items<S> = todo
+
+/// O(1). The first element, `None` when empty. For the first element satisfying a predicate,
+/// use `find(p)`; for its key, `keys.find(p)`.
+///
+/// cost: O(1)
+/// empty: `None`
+/// ties: not applicable; position decides
+/// traps: never
+/// example: `[4, 5].first == Some(4)`
+@get pub fn first<S: Seq, T>(self: S) -> ?T = todo
+
+/// O(1). The last element, `None` when empty. For the last element satisfying a predicate,
+/// use `rfind(p)`.
+///
+/// cost: O(1)
+/// empty: `None`
+/// ties: not applicable; position decides
+/// traps: never
+/// example: `[4, 5].last == Some(5)`
+@get pub fn last<S: Bidir, T>(self: S) -> ?T = todo
+
+/// The last element satisfying `p`, `None` if none does; walks backwards and stops there.
+///
+/// cost: O(n) calls of `p` at most
+/// empty: `None`
+/// ties: the last in sequence order
+/// traps: never (beyond what `p` traps on)
+/// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
+pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T = todo
+
+/// Sort `self` in place by `by` (descending when `desc`). Stable: equal keys keep their order.
+/// Works on any `IndexedMut`, including slices: `a[l..=r].sort()`.
+///
+/// cost: O(n log n) comparisons, O(n) extra space
+/// empty: does nothing
+/// ties: stable; equal keys keep their relative order
+/// traps: never (beyond what `by` traps on)
+/// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
+/// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: .0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false) = todo
+
+/// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
+/// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
+///
+/// cost: O(n log n) comparisons, O(n) space
+/// empty: `[]`
+/// ties: stable; equal keys keep their relative order
+/// order: increasing `by` (decreasing when `desc`), keyed from 0
+/// traps: never (beyond what `by` traps on)
+/// example: `[3, 1, 2].sorted() == [1, 2, 3]`
+/// example: `[3, 1, 2].sorted(desc: true) == [3, 2, 1]`
+pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T> = todo
+
 /// O(n). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
 ///
@@ -743,6 +839,43 @@ pub fn remove<T>(mut self: List<T>, i: Int) -> T = todo
 // =============================================================================
 
 // --- Lazy views, slicing, and stream / combinator generators (W4, W6) ---
+
+/// O(1) to make. The view `s.filter(p)`: walks `s`, skipping elements that fail `p`, with
+/// `s`'s keys. A lent value (R07.1.5).
+pub struct Filtered<S>():
+    /// O(1). The source sequence this view filters.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.filter(x => x > 1).src == a`
+    @get pub fn src(self) -> S = todo
+
+/// O(1) to make. The view `s.map(f)`: `f` of each element, with `s`'s keys; Indexed when `s` is.
+pub struct Mapped<S, U>():
+    /// O(1). The source sequence this view maps.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.map(x => x * 2).src == a`
+    @get pub fn src(self) -> S = todo
+
+/// O(1) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
+pub struct Rev<S>():
+    /// O(1). The source sequence this view reverses.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.rev.src == a`
+    @get pub fn src(self) -> S = todo
+
+/// O(1) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
+pub struct Items<S>():
+    /// O(1). The source sequence whose items this view walks.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.items.src == a`
+    @get pub fn src(self) -> S = todo
 
 /// O(1) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
 /// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,
@@ -1531,13 +1664,13 @@ fn distinct_with_by_key_keeps_first_seen() = todo
 @test
 fn scan_prod_and_rotate_method_syntax() = todo
 
-/// O(1). The pair the other way round: `(a, b).rev` is `(b, a)`, and labels stay in place,
-/// so an edge `(u: a, v: b).rev` is `(u: b, v: a)`.
+/// O(1). The pair the other way round: `(a, b).swap` is `(b, a)`, and labels stay in place,
+/// so an edge `(u: a, v: b).swap` is `(u: b, v: a)`.
 ///
 /// cost: O(1)
 /// traps: never
-/// example: `(u: 1, v: 2).rev == (u: 2, v: 1)`
-pub @get fn rev<A>(self: (A, A)) -> (A, A) = todo
+/// example: `(u: 1, v: 2).swap == (u: 2, v: 1)`
+pub @get fn swap<A>(self: (A, A)) -> (A, A) = todo
 
 /// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`.
 ///

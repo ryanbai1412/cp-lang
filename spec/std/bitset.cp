@@ -166,16 +166,15 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 2) == Some(D(3))`
     pub fn find(self, pred: D -> Bool) -> ?D = todo
 
-    /// The largest position in the set satisfying `pred` (any, by default), or `None`. Members are
+    /// The largest position in the set satisfying `pred`, or `None`. Members are
     /// visited in decreasing order.
     ///
     /// cost: O(K / 64 + visited)
     /// empty: `None`
     /// ties: none possible; the largest qualifying position wins
     /// traps: never (beyond what `pred` traps on)
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).last() == Some(D(8))`
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).last(d => Int(d) < 8) == Some(D(3))`
-    pub fn last(self, pred: D -> Bool = d => true) -> ?D = todo
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).rfind(d => Int(d) < 8) == Some(D(3))`
+    pub fn rfind(self, pred: D -> Bool) -> ?D = todo
 
     /// Replace `self` with `self | o` in place, with no allocation.
     ///
