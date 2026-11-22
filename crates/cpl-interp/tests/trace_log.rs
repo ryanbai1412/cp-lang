@@ -78,6 +78,37 @@ fn any_step_rebuilt_alone_is_the_step_the_run_took() {
     assert_eq!(inside.frames[0].0, "sum_below");
 }
 
+const MIXED: &str = "\
+fn count(k: Int) -> Int:
+    var s = 0
+    for j in 0..k:
+        s += j * 3000000000000
+    return s
+fn listed(k: Int) -> Int:
+    var t = 0
+    var ys: List<Int> = []
+    for j in 0..k:
+        ys.push(j)
+        t += j
+    return t
+for i in 0..300:
+    print(count(i % 4) + listed(i % 3))
+";
+
+/// Locals that are all `Int`s are kept raw; a step with any other local
+/// keeps their JSON, and either reads back the same from any step.
+#[test]
+fn raw_and_json_locals_read_back_from_any_step() {
+    let rec = record(MIXED, "", TraceConfig::default());
+    let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
+    for k in (0..rec.len()).rev() {
+        assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
+    }
+    let locals: Vec<String> = rec.steps(0..rec.len()).map(|s| s.locals).collect();
+    assert!(locals.iter().any(|l| l == "{\"k\":3,\"s\":9000000000000,\"j\":2}"), "{locals:?}");
+    assert!(locals.iter().any(|l| l.contains("\"ys\":[0,1]")), "{locals:?}");
+}
+
 const CELLS: &str = "\
 var a: [0..8]Int = 0
 for i in 0..2000:

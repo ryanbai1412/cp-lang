@@ -328,7 +328,8 @@ pub fn first_change_in(
             (b != a).then(|| (id.to_string(), b, a))
         });
         let differs = differs.or_else(|| {
-            let (b, a) = (members(before.log.locals_in(&was)), members(after.log.locals_in(&now)));
+            let (was, now) = (before.log.locals_in(&was), after.log.locals_in(&now));
+            let (b, a) = (members(&was), members(&now));
             let (b, a): (BTreeMap<_, _>, BTreeMap<_, _>) = (b.into_iter().collect(), a.into_iter().collect());
             let id = b.keys().chain(a.keys()).find(|id| b.get(*id) != a.get(*id))?;
             Some((id.to_string(), b.get(id).map(|v| v.to_string()), a.get(id).map(|v| v.to_string())))
@@ -408,6 +409,8 @@ pub(crate) struct Tracer {
     stage_of_case: Option<(Option<u64>, u32)>,
     /// What the locals render to, kept between steps.
     locals: String,
+    local_names: String,
+    local_ints: Vec<i64>,
     /// The globals written since the last step, each with the one item
     /// written when only one was, unless `all` may have changed.
     touched: Vec<(usize, Option<usize>)>,
@@ -507,6 +510,8 @@ impl Tracer {
             max_bytes: config.max_steps.map_or(MAX_BYTES, |steps| steps.saturating_mul(64).clamp(MAX_BYTES, u32::MAX as usize / 2)),
             stage_of_case: None,
             locals: String::new(),
+            local_names: String::new(),
+            local_ints: Vec::new(),
             touched: Vec::new(),
             all_touched: true,
             assignments: config.assignments,
@@ -734,7 +739,6 @@ impl Tracer {
                 return;
             }
         }
-        let line = self.line(span).max(1);
         self.rec.log.snapshot_if_due();
         let mut touched = std::mem::take(&mut self.touched);
         if std::mem::replace(&mut self.all_touched, false) {
@@ -746,6 +750,30 @@ impl Tracer {
         }
         touched.clear();
         self.touched = touched;
+        let shown = |value: &Value| {
+            !matches!(value, Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_))
+        };
+        let raw = view.locals.iter().filter(|(_, _, value)| shown(value)).all(|(_, ty, value)| {
+            matches!((ty, value), (Ty::Int, Value::Int(v)) if v.unsigned_abs() <= MAX_EXACT)
+        });
+        if raw {
+            let (mut names, mut ints) = (std::mem::take(&mut self.local_names), std::mem::take(&mut self.local_ints));
+            names.clear();
+            ints.clear();
+            for (name, _, value) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
+                names.push('\n');
+                string(&mut names, name);
+                ints.push(value.int());
+            }
+            self.rec.log.locals_ints(&names, &ints);
+            (self.local_names, self.local_ints) = (names, ints);
+        } else {
+            self.json_locals(view);
+        }
+        self.step_rest(view, span, label, checkpoint, focus);
+    }
+
+    fn json_locals(&mut self, view: &View) {
         let mut locals = std::mem::take(&mut self.locals);
         locals.clear();
         locals.push('{');
@@ -770,6 +798,17 @@ impl Tracer {
         locals.push('}');
         self.rec.log.locals_changed(&locals);
         self.locals = locals;
+    }
+
+    fn step_rest(
+        &mut self,
+        view: &View,
+        span: Span,
+        label: Option<String>,
+        checkpoint: Option<&str>,
+        focus: Option<(usize, Vec<usize>)>,
+    ) {
+        let line = self.line(span).max(1);
         let focus = focus.and_then(|(global, path)| {
             let var = self.of_global[global]?;
             let fits = match self.kinds[var] {

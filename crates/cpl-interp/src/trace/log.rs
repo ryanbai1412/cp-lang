@@ -55,6 +55,8 @@ pub(super) enum Delta {
     /// The tree form of a `[V]?V` variable.
     Tree(Var, Text),
     Locals(Text),
+    /// The locals are `Int`s: see [`Locals::Ints`].
+    IntLocals(u32),
     /// The steps from here are in this stage of [`Log::stages`].
     Stage(u32),
     /// The next line of [`Log::out`] was printed.
@@ -123,12 +125,28 @@ pub(super) struct Note {
     pub focus: Option<(usize, Vec<usize>)>,
 }
 
+/// The locals of a step: their JSON, or when each is an `Int`, kept raw:
+/// [`Log::ints`] at this index holds the [`Text`] of their names, as JSON
+/// strings each after a newline, in its high half and how many there are in
+/// its low half, then their values.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Locals {
+    Text(Text),
+    Ints(u32),
+}
+
+impl Default for Locals {
+    fn default() -> Locals {
+        Locals::Text(Text::default())
+    }
+}
+
 /// The state between two changes.
 #[derive(Clone, Debug, Default)]
 pub(super) struct State {
     values: Vec<Option<Slot>>,
     trees: Vec<Option<Text>>,
-    locals: Text,
+    locals: Locals,
     stage: u32,
     /// The lines of [`Log::out`] this test case printed.
     out: (u32, u32),
@@ -149,8 +167,10 @@ pub(super) struct Log {
     entries: Vec<Entry>,
     changes: Vec<Delta>,
     text: Vec<u8>,
-    /// The raw values of [`Delta::Int`] and [`Delta::IntItem`].
+    /// The raw values of [`Delta::Int`], [`Delta::IntItem`] and [`Locals::Ints`].
     ints: Vec<i64>,
+    /// The names of the last [`Locals::Ints`], and where they are kept.
+    int_names: Option<(String, Text)>,
     snapshots: Vec<Snapshot>,
     /// What the snapshots hold, in bytes.
     snapshot_bytes: usize,
@@ -347,9 +367,61 @@ impl Log {
 
     pub fn locals_changed(&mut self, json: &str) {
         let fresh = self.entries.is_empty() && self.changes.is_empty();
-        if fresh || self.raw(self.piece_of(self.now.locals)) != json.as_bytes() {
+        let same = || match self.now.locals {
+            Locals::Text(text) => self.raw(self.piece_of(text)) == json.as_bytes(),
+            Locals::Ints(_) => self.locals_json(self.now.locals) == json,
+        };
+        if fresh || !same() {
             let text = self.keep(json);
             self.push(Delta::Locals(text));
+        }
+    }
+
+    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their values.
+    pub fn locals_ints(&mut self, names: &str, values: &[i64]) {
+        let named = match &self.int_names {
+            Some((kept, text)) if kept == names => *text,
+            _ => {
+                let text = self.keep(names);
+                self.int_names = Some((names.to_string(), text));
+                text
+            }
+        };
+        if let Locals::Ints(at) = self.now.locals {
+            if self.int_locals(at) == (named, values) {
+                return;
+            }
+        }
+        let at = self.ints.len() as u32;
+        self.ints.push(((named.0 as i64) << 32) | values.len() as i64);
+        self.ints.extend_from_slice(values);
+        self.push(Delta::IntLocals(at));
+    }
+
+    /// The names and the values of [`Locals::Ints`] at `at`.
+    fn int_locals(&self, at: u32) -> (Text, &[i64]) {
+        let at = at as usize;
+        let head = self.ints[at];
+        (Text((head >> 32) as u32), &self.ints[at + 1..at + 1 + (head as u32) as usize])
+    }
+
+    fn locals_json(&self, locals: Locals) -> String {
+        match locals {
+            Locals::Text(text) => self.get(text).to_string(),
+            Locals::Ints(at) => {
+                use std::fmt::Write;
+                let (names, values) = self.int_locals(at);
+                let names = self.get(names);
+                let mut json = String::from("{");
+                for (i, (name, value)) in names.split('\n').skip(1).zip(values).enumerate() {
+                    if i > 0 {
+                        json.push(',');
+                    }
+                    let _ = write!(json, "{name}:{value}");
+                }
+                json.push('}');
+                json
+            }
         }
     }
 
@@ -526,7 +598,18 @@ impl Log {
             ..Log::default()
         };
         let moved = |text: Text, log: &mut Log| log.keep(self.get(text));
-        let mut start = State { locals: moved(state.locals, &mut log), stage: state.stage, ..State::default() };
+        let move_locals = |locals: Locals, log: &mut Log| match locals {
+            Locals::Text(text) => Locals::Text(log.keep(self.get(text))),
+            Locals::Ints(at) => {
+                let (names, values) = self.int_locals(at);
+                let names = log.keep(self.get(names));
+                let to = log.ints.len() as u32;
+                log.ints.push(((names.0 as i64) << 32) | values.len() as i64);
+                log.ints.extend_from_slice(values);
+                Locals::Ints(to)
+            }
+        };
+        let mut start = State { locals: move_locals(state.locals, &mut log), stage: state.stage, ..State::default() };
         for slot in &state.values {
             let slot = slot.as_ref().map(|slot| match slot {
                 Slot::Whole(text) => Slot::Whole(moved(*text, &mut log)),
@@ -576,6 +659,10 @@ impl Log {
                 }
                 Delta::Tree(var, text) => Delta::Tree(var, moved(text, &mut log)),
                 Delta::Locals(text) => Delta::Locals(moved(text, &mut log)),
+                Delta::IntLocals(at) => match move_locals(Locals::Ints(at), &mut log) {
+                    Locals::Ints(at) => Delta::IntLocals(at),
+                    Locals::Text(_) => unreachable!("moved as it was"),
+                },
                 other => other,
             };
             log.changes.push(delta);
@@ -691,8 +778,8 @@ impl Log {
         Some(slot_json(&self.text, state.values.get(var)?.as_ref()?))
     }
 
-    pub fn locals_in(&self, state: &State) -> &str {
-        self.get(state.locals)
+    pub fn locals_in(&self, state: &State) -> String {
+        self.locals_json(state.locals)
     }
 
     /// Step `step`, given the state when it has run.
@@ -734,7 +821,7 @@ impl Log {
             label: note.and_then(|n| n.label.clone()).unwrap_or_else(|| line_text(&self.source, entry.line())),
             stage: self.stages.get(state.stage as usize).cloned().unwrap_or_default(),
             values,
-            locals: self.locals_in(state).to_string(),
+            locals: self.locals_in(state),
             checkpoint: note.and_then(|n| n.checkpoint.clone()),
             focus,
             frames,
@@ -934,7 +1021,8 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             grow(&mut state.trees, var);
             state.trees[var as usize] = Some(text);
         }
-        Delta::Locals(text) => state.locals = text,
+        Delta::Locals(text) => state.locals = Locals::Text(text),
+        Delta::IntLocals(at) => state.locals = Locals::Ints(at),
         // `out.1` is how many lines the run has printed.
         Delta::Print => state.out.1 += 1,
         Delta::Case => state.out.0 = state.out.1,
