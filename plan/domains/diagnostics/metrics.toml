@@ -91,7 +91,7 @@ milestone = "M2"
 [[metric]]
 name = "catalogue rows with no example message"
 command = "awk -F'|' '/^\\| [EWR][0-9]/ && $4 ~ /^ *$/' spec/diagnostics.md | wc -l"
-today = "33 of 93"
+today = "0 (was 33 of 93: 21 errors, 12 traps)"
 target = "0"
 milestone = "M2"
 

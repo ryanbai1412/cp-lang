@@ -76,7 +76,7 @@ fenced cp blocks of `spec/{core,lib,tools}`.
    `crates/cpl-check/src/check/stmt.rs:1623` emits lint `L0609` raw (see 4),
    and `crates/cpl-lsp/src/server.rs:1832` makes `Code("overflow")`, not a
    catalogue code (request in the tools worklog).
-3. 33 of 93 catalogue rows have no example message (`spec/diagnostics.md`).
+3. Every catalogue row has an example message (was 33 empty; `spec/diagnostics.md`).
 4. Lint codes live in two registries (`crates/cpl-lint/src/lib.rs` makes
    `Code("L…")` itself; `codes::` also has L0601-L0608). One registry should
    own every code.
