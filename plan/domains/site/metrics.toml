@@ -1,0 +1,63 @@
+# site metrics. Every command was run on 2026-11-22 against main 4b8f504f.
+# browser_smoke needs web/out served on :3000 (npx serve web/out -l 3000);
+# docs_only_eval_pass needs corpus/statements/ and a model key.
+
+[[metric]]
+name = "snippets_spec"
+command = "node web/scripts/gate.mjs"
+today = "197 snippets: runs 186, checks 4, spec 7"
+target = "spec 0, checks 0"
+
+[[metric]]
+name = "site_build"
+command = "pnpm --filter cp-lang-web build"
+today = "pass, 28.9 s, 239 html pages"
+target = "pass"
+
+[[metric]]
+name = "typecheck_unit"
+command = "pnpm --dir web typecheck && pnpm --dir web test"
+today = "pass, 4/4 tests"
+target = "pass"
+
+[[metric]]
+name = "browser_smoke"
+command = "node web/tests/smoke.mjs && node web/tests/learn-smoke.mjs"
+today = "pass, 0 page errors"
+target = "pass, run in CI"
+
+[[metric]]
+name = "broken_internal_links"
+command = "pnpm --dir web links"
+today = 1
+target = 0
+
+[[metric]]
+name = "wasm_gzip_bytes"
+command = "scripts/build-wasm.sh"
+today = 1761196
+target = "<= 2100000, enforced by a check"
+
+[[metric]]
+name = "search_index_gzip_bytes"
+command = "gzip -c web/out/api/search | wc -c"
+today = 2690140
+target = "<= 500000"
+
+[[metric]]
+name = "docs_only_eval_pass"
+command = "python3 scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json"
+today = "not runnable: corpus/statements/ absent, scripts/fetch-statement.py deleted; last recorded 49/55 (research/writable-from-docs.json)"
+target = ">= 52/55"
+
+[[metric]]
+name = "live_routes_up"
+command = "for p in / /docs/ /learn/ /play/ /corpus/ /tools/ /performance/ /setup/; do curl -so /dev/null -w '%{http_code}\\n' https://cp-lang.org$p; done"
+today = "8/8 200"
+target = "8/8 200"
+
+[[metric]]
+name = "learn_content"
+command = "ls web/content/learn/read/*.mdx | wc -l; ls web/content/practice | wc -l"
+today = "3 chapters, 7 problems"
+target = "8 chapters, 15 problems"

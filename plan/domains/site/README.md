@@ -1,15 +1,98 @@
 # site
 
-Segment: E. Experience. Owns: `web/` (content, playground, UI). Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+Segment: E. Experience. Owns: `web/` (content, Learn, playground, share links, UI) and the snippet gate (`web/scripts/gate.mjs`). Status (2026-11-22): cp-lang.org is live and green: build, gate, typecheck, unit and browser smoke all pass. The follow-up branch and the docs-only eval are the gaps.
 
-## Covers
-Docs, Learn, guides, reference, playground UI, share links, content checks.
+Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md)
 
-## Improve
-Every snippet v0.3 and compiler-checked (`spec: 0`); Run buttons only where they run; UI pass; WASM size cap + browser smoke (site-check branch); the docs-only eval; the `web/pnpm-workspace.yaml` warning.
+## Mission
 
-## Success criteria
-`scripts/site-check.sh` green (wasm, build, snippet gate, size cap, browser smoke); docs-only eval: a model with only the docs solves N/M problems correctly; cp-lang.org up (uptime check).
+A competitive programmer goes from "what is this" to an accepted submission they trust, from cp-lang.org alone. The bar: **a cold reader, person or model, writes correct CP Lang from the docs alone.**
+
+## Covers / not covered
+
+| Covers (site) | Not covered (owner) |
+|---|---|
+| Landing, Learn (read + practice tracks), guides, cheat sheet | Language rules themselves: `spec/` (spec) |
+| Generated reference pages (render only) | `cpl doc --format json`, CLI help text: tools; std `///` docs: stdlib |
+| Playground, in-browser Run / Trace / Stress UI, share links (`web/worker`) | The wasm compiler `crates/cpl-wasm`, stress engine, trace viewer: debugger / tools |
+| Snippet gate: every program on the site is checked by the compiler | The gate's place in `scripts/check.sh`, CI, deploying cp-lang.org: infra |
+| Docs bundle the docs-only eval reads | The eval harness `scripts/writable-from-docs.py` and statements: idioms / infra |
+| Problems gallery, Performance page (render only) | `corpus/` (idioms), `bench/` data (perf) |
+
+## Success criteria for v0.3
+
+1. Every program on the site is v0.3, compiler-checked at build time, and has Run only if it runs: gate `spec: 0, checks: 0`.
+2. `scripts/site-check.sh` green on main and in CI: wasm build, size caps, build, gate, links, browser smoke.
+3. Docs-only eval: a model given only the served docs passes ≥ 95% of the 55 unseen problems.
+4. Zero open layout bugs at 390 / 768 / 1440 px, light and dark, every route.
+5. Learn covers the language a Div 2 A-C needs: 8 read chapters, 15 judged practice problems.
+
+## Milestones
+
+- **M1 Green and honest.** Exit: `scripts/site-check.sh --no-cache` prints `site-check: ok` on main; CI site workflow runs it; `pnpm --dir web links` 0 broken; search index ≤ 500 KB gzipped; one nav layout on every page; a written UI pass (3 widths × 2 themes) with 0 open bugs and screenshots.
+- **M2 Writable from the docs.** Exit: the eval runs on demand again against `/llms-full.txt`; pass ≥ 52/55; every failure in the last run is triaged as a docs gap (fixed here) or a language gap (filed with its owner); guide code blocks with status `runs` have a Run button (smoke runs one).
+- **M3 Learn and launch.** Exit: 8 read chapters, 15 practice problems, each with ref + tests judged in the gate; gate `spec: 0`; `cpl doc` HTML in the site's design (side-by-side screenshots); 0.3 release notes page.
+
+## Metrics
+
+All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.toml)).
+
+| Metric | Command | Today | Target | M |
+|---|---|---|---|---|
+| Snippets by status | `node web/scripts/gate.mjs` | 197: runs 186, checks 4, spec 7 | spec 0, checks 0 | M3 |
+| Site build | `pnpm --filter cp-lang-web build` | pass, 28.9 s, 239 pages | pass | M1 |
+| Typecheck + unit | `pnpm --dir web typecheck && pnpm --dir web test` | pass, 4/4 tests | pass | M1 |
+| Browser smoke | `node web/tests/smoke.mjs && node web/tests/learn-smoke.mjs` (out served on :3000) | pass, 0 page errors | pass, in CI | M1 |
+| Broken internal links | `pnpm --dir web links` | 1 target (`/docs/guides/`, from 16 pages) | 0 | M1 |
+| cpl.wasm gzipped | `scripts/build-wasm.sh` | 1,761,196 B | ≤ 2,100,000 B, enforced | M1 |
+| Search index gzipped | `gzip -c web/out/api/search \| wc -c` | 2,690,140 B (15.5 MB raw) | ≤ 500,000 B | M1 |
+| Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
+| Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |
+| Learn content | `ls web/content/learn/read web/content/practice` | 3 chapters, 7 problems | 8, 15 | M3 |
+
+## Judgment rubric
+
+A cold agent scores fixed samples 1-5 with a reason; Ryan's review overrides it.
+
+1. **Does the page teach the idea**, not just list syntax? (Learn chapters, guides)
+2. **Mid-contest, is the answer under 30 s away?** (search, cheat sheet, reference)
+3. **Is every example honest?** It runs, its output is shown, its status is obvious.
+4. **One product?** Same nav, type and spacing on every page, at phone and desktop width.
+5. **Would a C++ contestant keep reading after 2 minutes?** (landing, quickstart)
+
+Probes (cold agent, pass/fail + time):
+
+- **P1 docs-only solve:** with only cp-lang.org, solve 3 unseen Div 2 A/B problems in the playground. Tests 1, 3.
+- **P2 lookup:** find "what does `bsearch_last` return on an empty range" via the site. Tests 2.
+- **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes.
+- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4.
+
+## Improve (highest impact first)
+
+1. Restore the docs-only eval (needs the statement fetcher and a model key) and point it at the served docs; it is the domain's bar and cannot run today.
+2. Land `devin/v02-delete-site-followup`: wasm cap, `scripts/site-check.sh`, smoke in a cached stage. None of it is on main.
+3. Search index: 2.7 MB gzipped, larger than the compiler; split or trim the generated reference.
+4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
+5. Fix `/docs/guides/` (broken breadcrumb on 16 reference pages); add the link check to the gate.
+6. Guide code blocks live (Run) when they run; today they are static.
+7. Learn: 5 more chapters, 8 more problems.
+8. `cpl doc` HTML in the site's design; trace viewer links back.
 
 ## Ryan's role
-Aligns on structure and mockups, then reviews each round on a preview URL with screenshots.
+
+Review rounds on cp-lang.org (Worker preview per change once infra adds previews) with screenshots in the worklog; answer the three questions below. Current screens: [screenshots/](screenshots/).
+
+| Desktop | Phone |
+|---|---|
+| ![home](screenshots/home.jpg) | ![phone home](screenshots/phone-home.jpg) |
+| ![docs](screenshots/docs-tour.jpg) | ![phone play](screenshots/phone-play.jpg) |
+
+More: [learn](screenshots/learn.jpg), [practice](screenshots/practice.jpg), [playground](screenshots/play-ran.jpg), [problems](screenshots/corpus.jpg).
+
+## Decisions needed from Ryan
+
+Filed in [plan/QUESTIONS.md](../../QUESTIONS.md); the default is what I build meanwhile.
+
+1. **Landing examples that don't run yet.** Default: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge.
+2. **Guide code blocks become live runners.** Default: yes, for blocks whose status is `runs`.
+3. **Learn for v0.3: breadth or depth.** Default: 8 short chapters + 15 original problems, not a full course.
