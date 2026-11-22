@@ -68,7 +68,6 @@ line when the gap closes and the body lands.
 - fenwick, test `xor_matches_a_plain_array`: `Fenwick<D, T>` sums with `+`/`-` on `T` and a struct cannot define `+`/`-`, so there is no xor Fenwick to test; needs operator overloading or an `op:` parameter.
 - pair, `symmetric`: `cpl run` rejects `[Pair<V>]T` as an array type (E0204 "an array is indexed by a domain or a length"), so no program can build the argument.
 - seq, `argmax`/`argmin` on a slice (`a[2..5].argmax()`): the builtin slice's `.items` and `.keys` start at 0 instead of the source keys (R04b.1.2), so the body returns a slice offset; needs slices to keep their keys in cpl-ir.
-- seq, `with_domain`: a library fn cannot mint a fresh `domain I` and return it in `(domain I, [I]T)`; needs a core mechanism for returning a new domain.
 - seq, `subsequences` / `SubseqStep.prune`: the yielded step is a copy, so `prune()` in the consumer cannot reach the generator; item-steered generators (decision 126) need compiler support.
 - io, `read_all`: no stdlib-visible end-of-input test (the interpreter's `at_eof` is only reachable from `@!multitest(until_eof)`), so there is no way to stop reading.
 - seq, `counting_sort`: the body sorts by any domain key; the doc example's `Char` key is not a domain (`[Char]Int` is E0301 "indexed by `Int`, but the index is a `Char`"), so bounded non-domain keys need `Char` (and bounded ranges) usable as array index types.
@@ -86,3 +85,12 @@ line when the gap closes and the body lands.
 - segtree, `MergeSeg.singleton`/`merge`/`first_alive`: `merge` of two trees in O(overlap) needs both trees' nodes in one shared pool; each struct owns its own lists, so a merge copies `other` (O(other size)).
 - lazy, `LazyTreap.split_at`/`append`: each treap owns its `nodes` list, so returning or absorbing another treap copies its nodes (O(n), not O(log n)); needs a shared node pool.
 - lazy, `LazyTreap.reverse`: `apply(v, k, f)` and `split(f, k)` see the left-subtree size `k`, so a pending tag is position-dependent and can't be carried through a reversal flag without a way to reverse a tag.
+- seq, `compress`/`pieces`/`rebase`: a fn can now bind `domain C = 0..k` (as `with_domain` does), but a struct over it (`Compressed<C, T>`) keeps the callee's domain instead of unifying with the caller's `C` (E0302), and `(C:, Compressed(...))` misparses as a record field (E0103).
+- seq, `compress`/`pieces`/`rebase`: each returns or keys by a fresh `domain` (`(domain C, ...)`, `t.Idx`), which a library fn cannot mint (same gap as `with_domain`).
+- seq, `covering`: maps a range of cuts back to piece keys of `pieces`, which is itself blocked on fresh domains; nothing can build its `[P]Range<D>` input today.
+- seq, `rev`, `Filtered.src`/`Mapped.src`/`Rev.src`/`Items.src`: the view structs are declared with no fields (`struct Rev<S>()`), so a body cannot hold or hand back its source; needs the views to carry `src`.
+- seq, `drop`/`drop_last`/`take`/`take_last`/`split`/`maximal`/`minimal`/`Ring.maximal`/`Ring.minimal`: return `Slice<S>` views of a generic `S`, which cannot be built (`Slice<S>()` has no fields and `self[i..j]` on generic `S` indexes one element).
+- seq, `rekey`: building a `[K]T` from a `Range<K>` of a caller's domain needs `[K]` fill from a generic range (`[K] k => ...` over `keys`), and `rekey(10..12)` needs an int range to act as a domain.
+- seq, `keyed`: `Keys<S, I, K>` stores `by: ?K`, but the parameter is `?(T -> K)`, so the struct cannot hold the given key fn.
+- segtree, `SegTree.apply_all`: same as `apply`; its tag type `F` is not a declared parameter.
+- persistent, `PMultiset.*`: an immutable value holding only `root: Int` needs one node pool shared by every multiset (and a hash per node for O(1) `==`); a struct cannot own shared storage.

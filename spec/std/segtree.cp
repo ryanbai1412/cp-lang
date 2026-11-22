@@ -98,7 +98,25 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 3) == (0..2).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..1).r, s => s <= 5) == (0..3).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 100) == (0..4).r`
-    pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
+    pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
+        assert ok(m.id), "`ok` must hold on the identity"
+        let n = D.K
+        if from.ord == n: return from
+        var l = from.ord + size
+        var acc = m.id
+        while true:
+            while l % 2 == 0: l /= 2
+            if not ok(m.op(acc, t[l])):
+                while l < size:
+                    l *= 2
+                    if ok(m.op(acc, t[l])):
+                        acc = m.op(acc, t[l])
+                        l += 1
+                return D.cuts.nth(l - size)
+            acc = m.op(acc, t[l])
+            l += 1
+            if l & -l == l: break
+        D.cuts.nth(n)
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
@@ -109,7 +127,24 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when `ok(identity)` is false
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 7) == (0..2).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 3) == (0..4).r`
-    pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
+    pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
+        assert ok(m.id), "`ok` must hold on the identity"
+        if to.ord == 0: return to
+        var r = to.ord + size
+        var acc = m.id
+        while true:
+            r -= 1
+            while r > 1 and r % 2 == 1: r /= 2
+            if not ok(m.op(t[r], acc)):
+                while r < size:
+                    r = 2 * r + 1
+                    if ok(m.op(t[r], acc)):
+                        acc = m.op(t[r], acc)
+                        r -= 1
+                return D.cuts.nth(r + 1 - size)
+            acc = m.op(t[r], acc)
+            if r & -r == r: break
+        D.cuts.nth(0)
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
