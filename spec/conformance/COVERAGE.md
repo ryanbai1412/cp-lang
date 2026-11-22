@@ -6,20 +6,20 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1689 (995 passing). Rules: 527.
+Cases: 1710 (995 passing). Rules: 527.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 89 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 24 rules, 48 cases; 0 uncovered, 7 happy-path only, 4 negative only
 - R04 (04-indices.md): 60 rules, 80 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 43 rules, 93 cases; 0 uncovered, 3 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 24 rules, 60 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 101 cases; 0 uncovered, 2 happy-path only, 2 negative only
-- R08 (08-traits-generics.md): 29 rules, 67 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R04b (04b-keys.md): 27 rules, 56 cases; 0 uncovered, 0 happy-path only, 3 negative only
+- R05 (05-ownership.md): 43 rules, 96 cases; 0 uncovered, 3 happy-path only, 3 negative only
+- R06 (06-control-functions.md): 24 rules, 61 cases; 0 uncovered, 1 happy-path only, 1 negative only
+- R07 (07-sequences.md): 87 rules, 102 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R08 (08-traits-generics.md): 29 rules, 68 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 61 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 2 happy-path only, 2 negative only
@@ -94,7 +94,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [1+ 1-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
 - R02.3.3 [1+ 0-]: `+` concatenates (allocating; the cost is visible as a new value); `s.push(c)` appends in ...
-- R02.4.1 [2+ 0-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
+- R02.4.1 [2+ 1-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
 - R02.4.2 [1+ 1-]: `T` converts to `?T` implicitly; the other way is explicit: `x ?? d` (lazy fallback), `x!`...
 - R02.4.3 [1+ 0-] *happy-path only*: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
@@ -113,7 +113,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
 - R02.6.6 [1+ 0-] *happy-path only*: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
 - R02.6.7 [1+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
-- R02.7.1 [1+ 0-]: Variants are `PascalCase` names in their enum's scope, like `Some` and `None` of `?T` (dec...
+- R02.7.1 [2+ 0-]: Variants are `PascalCase` names in their enum's scope, like `Some` and `None` of `?T` (dec...
 - R02.7.2 [1+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
@@ -290,7 +290,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key
 - R04b.5.1 [2+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`
 - R04b.5.2 [2+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`
-- R04b.5.3 [5+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
+- R04b.5.3 [6+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
 - R04b.5.6 [1+ 0-]: | `Palindromes.longest_at(i)` | `i: Int` | `i: K`
@@ -339,9 +339,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.8 [1+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
 - R05.10.9 [0+ 1-] *negative only*: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [0+ 1-] *negative only*: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
-- R05.10.11 [0+ 1-] *negative only*: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
+- R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
 - R05.10.12 [0+ 1-] *negative only*: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
-- R05.10.13 [1+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
+- R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-] *happy-path only*: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
 ### R06: 06-control-functions.md
@@ -354,7 +354,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [2+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R06.1.8 [6+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
-- R06.2.1 [4+ 1-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
+- R06.2.1 [4+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
@@ -380,7 +380,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.5 [1+ 1-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
 - R07.1.6 [1+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
 - R07.1.7 [0+ 1-] *negative only*: **Costs show.** O(1) things are getters or views, allocation is named, options are named a...
-- R07.2.1 [1+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
+- R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
 - R07.2.2 [2+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has O(1) `s[k]`, `.keys` a...
 - R07.2.3 [2+ 0-]: | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` of...
 - R07.2.4 [1+ 0-]: | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` ...
@@ -474,7 +474,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
-- R08.2.4 [2+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
+- R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
 - R08.2.5 [1+ 0-]: Type-parameter defaults fill omitted trailing arguments.
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.7 [1+ 0-]: **Associated types** are reached through the implementing type or a value: `S.Item`, `g.Ar...
@@ -627,14 +627,14 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0111 Mixed comparison chain: 2 case(s)
 - E0201 Unresolved name: 2 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 7 case(s)
+- E0203 Unknown field or method: 8 case(s)
 - E0204 Unknown type: 2 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 24 case(s)
+- E0302 Type mismatch: 25 case(s)
 - E0303 Wrong number of arguments: 5 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -664,7 +664,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
-- E0606 Missing trait implementation for operator: 20 case(s)
+- E0606 Missing trait implementation for operator: 21 case(s)
 - E0607 Moved while captured by a closure: 2 case(s)
 - E0608 Use of moved value: 9 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
@@ -755,8 +755,8 @@ Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (36/51 named by a case)
-  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (37/51 named by a case)
+  - uncovered: `Desc`, `Reversible`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
@@ -771,15 +771,14 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (95/124 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **graph** (98/124 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
-- **lazy** (29/30 named by a case)
-  - uncovered: `flip_action`
+- **lazy** (30/30 named by a case)
 - **marks** (46/46 named by a case)
 - **math** (71/83 named by a case)
   - uncovered: `fixed`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
@@ -814,7 +813,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2032 of 2245 std items are named by a case.
+2037 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

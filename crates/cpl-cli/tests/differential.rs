@@ -141,28 +141,6 @@ fn programs() -> Vec<PathBuf> {
     found
 }
 
-/// Programs written for 0.2 that still need porting to 0.3 live in
-/// `tests/pending/`, outside every sweep. Each must still fail `cpl check`;
-/// once one passes, move it back to `tests/programs/`, so the directory only
-/// shrinks.
-#[test]
-fn pending_ports_still_need_porting() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/pending");
-    let mut ported: Vec<String> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|_| panic!("{} exists", dir.display()))
-        .map(|entry| entry.expect("readable entry").path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
-        .filter(|path| check(path, "pending").is_ok())
-        .map(|path| path.display().to_string())
-        .collect();
-    ported.sort();
-    assert!(
-        ported.is_empty(),
-        "these now pass `cpl check`; move them to tests/programs/:\n{}",
-        ported.join("\n")
-    );
-}
-
 fn input_of(program: &Path) -> Vec<u8> {
     std::fs::read(program.with_extension("in")).unwrap_or_default()
 }

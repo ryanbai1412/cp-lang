@@ -129,11 +129,10 @@ $ target/debug/cpl build web/content/landing/hero/optional.cp --checked # also b
 $ target/debug/cpl --help                                   # check, fmt, lint, test, stress, lsp, ...
 ```
 
-Run the standard library and sample library tests, or compile a corpus
+Compile a corpus
 port:
 
 ```text
-$ target/debug/cpl test stdlib examples/local-lib
 $ target/debug/cpl build corpus/problems/aac4p2/port.cp -o - # the C++17 for one port
 ```
 
@@ -188,7 +187,6 @@ The docs site labels every snippet as either runnable or specification.
   clustered, with the next syntax batches.
 - `stdlib/`: the standard library, written in CP Lang, with its tests.
   `stdlib/README.md` is the tour.
-- `examples/local-lib/`: a sample personal contest library built on it.
 - `editors/vscode/`: the VS Code extension.
 - `web/`: the website: landing page, course, guides, reference and
   playground. `web/scripts/gate.mjs` checks every program on it.

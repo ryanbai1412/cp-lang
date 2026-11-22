@@ -10,7 +10,7 @@
     "crates/cpl-ir/src/lower/mono.rs": 4570,
     "crates/cpl-lint/src/rules/taste.rs": 4493,
     "crates/cpl-check/src/check/expr.rs": 4323,
-    "crates/cpl-check/src/tests.rs": 3863,
+    "crates/cpl-check/src/tests.rs": 3865,
     "crates/cpl-check/src/check/stmt.rs": 3343,
     "crates/cpl-stress/src/spec.rs": 2911,
     "crates/cpl-codegen/src/expr.rs": 2900,
@@ -28,5 +28,5 @@
   },
   "stdlib_todo": 294,
   "rust_ignore": 19,
-  "pending_tests": 313
+  "pending_tests": 0
 }

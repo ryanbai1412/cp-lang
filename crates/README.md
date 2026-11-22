@@ -155,7 +155,7 @@ what the libraries are written in:
   the sign of `x`, so it indexes a `0..7` domain.
 
 `crates/cpl-cli/tests/corpus.rs` holds this to the source in the
-repository: `spec/std/`, `examples/local-lib/`, the ports in `proto/ports/`
+repository: `spec/std/`, the ports in `proto/ports/`
 and `proto/ports/hillclimb_dp_graph/`, and the prototype's passing tests
 check with no diagnostics, and each file in `crates/cpl-cli/tests/cases/bad/` is
 rejected for the reason its first line states. The sketches in

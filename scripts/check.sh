@@ -13,8 +13,7 @@
 #            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
 #            a binary built from the same source, flags and g++;
 #            CHECK_NO_CXX_CACHE=1 turns it off)
-#         4. cpl test examples/local-lib, run beside 3
-#            and spec/std/prelude.cp holds at most 80 names
+#         4. spec/std/prelude.cp holds at most 80 names
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
@@ -181,32 +180,12 @@ else
     cache_save clippy
 fi
 
-# The library tests only need the cpl binary, so they run beside the
-# workspace tests, one process per library directory, and their output is
-# printed after them. A .cp file directly in examples/local-lib/ would not be
-# in any subdirectory, so then the whole library runs as one process.
-# Never cached: another tree may have rebuilt the shared binary since.
+# Logs of the steps that run beside the workspace tests.
 cargo build -q -p cpl-cli -p cpl-conform
 lib_logs="$(mktemp -d)"
-lib_dirs=()
-if compgen -G "examples/local-lib/*.cp" >/dev/null; then
-    lib_dirs+=(examples/local-lib)
-else
-    lib_dirs+=(examples/local-lib/*/)
-fi
-lib_pids=()
 script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
-stdlib_cached=0
-if cache_hit stdlib_test; then
-    stdlib_cached=1
-else
-    for d in "${lib_dirs[@]}"; do
-        "$cpl" test "$d" >"$lib_logs/$(tr / _ <<<"$d").log" 2>&1 &
-        lib_pids+=($!)
-    done
-fi
 scoreboard_cached=0
 if cache_hit scoreboard_fast; then
     scoreboard_cached=1
@@ -218,7 +197,7 @@ else
     scoreboard_pid=$!
 fi
 cleanup() {
-    kill "${lib_pids[@]}" ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} 2>/dev/null || true
+    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -271,20 +250,6 @@ if cache_hit recovery; then
 else
     cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
     recovery_pid=$!
-fi
-
-step "cpl test examples/local-lib"
-if [ "$stdlib_cached" -eq 1 ]; then
-    echo "cached (tree unchanged outside its excludes)"
-else
-    lib_status=0
-    for pid in "${lib_pids[@]}"; do
-        wait "$pid" || lib_status=1
-    done
-    cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
-        END { printf "%d passed, %d failed\n", p, f }'
-    [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test examples/local-lib"; }
-    cache_save stdlib_test
 fi
 
 step "spec/std/prelude.cp: at most 80 names"

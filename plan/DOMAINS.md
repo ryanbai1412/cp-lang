@@ -496,8 +496,8 @@ general traits (monoids, actions, orders), every signature documented with
 its cost and checked by a port or test, and every one as fast as the best
 known C++ library implementation (AtCoder Library, KACTL, ecnerwala's
 library) on matched benchmarks.
-The local library (`examples/local-lib/`) is the staging area: a module
-is promoted once it meets the stdlib bar.
+The old local library is archived unported in
+`research/archive/local-lib-v02/` (v0.2 syntax).
 **Where we are** (updated 2026-11-21 at `df99fea2`). 38 modules; the
 docs gate finds all 956 `pub` items documented, each in `plan/STDLIB.md`
 with its cost. All the module families the north star names exist:

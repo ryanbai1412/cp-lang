@@ -147,35 +147,6 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
             failures.push(out.stderr);
         }
     }
-    /// The `examples/local-lib/**/*.cp` files that currently pass `cpl check` (ratchet: only grow).
-    const LOCAL_LIB: &[&str] = &[
-        "dp/dnc_opt.cp",
-        "ds/interner.cp",
-        "ds/li_chao_arena.cp",
-        "ds/potential_dsu.cp",
-        "ds/rollback_array.cp",
-        "ds/rope.cp",
-        "ds/sparse_segtree.cp",
-        "ds/steps.cp",
-        "ds/two_stack_fold.cp",
-        "geom/planar.cp",
-        "graph/shortest.cp",
-        "grid/dir8.cp",
-        "math/floor_sum.cp",
-        "math/frac.cp",
-        "math/primes.cp",
-        "math/sos.cp",
-        "solutions/road_reversal.cp",
-        "str/palindromes.cp",
-    ];
-    for file in LOCAL_LIB {
-        let path = root().join(format!("examples/local-lib/{file}"));
-        checked += 1;
-        let out = check(&path);
-        if out.code != 0 {
-            failures.push(out.stderr);
-        }
-    }
     for (dir, nested) in [
         ("crates/cpl-cli/tests/cases/lend", false),
         ("crates/cpl-cli/tests/cases/ergo", false),
@@ -263,7 +234,7 @@ const REWORDED: &[(&str, &str)] = &[
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
 /// here (`tests/programs/semantics.cp`), and simultaneous tuple assignment
-/// `(a, b) = (b, a + b)` is supported across `spec/std/` and `examples/local-lib/`.
+/// `(a, b) = (b, a + b)` is supported across `spec/std/`.
 const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice", "tuple_assign"];
 
 /// The reason a failing test states on its first line: `// error: <text>`.
