@@ -2083,6 +2083,33 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Records `expr` as in bounds when each index has exactly the domain
+    /// type it stands for: a position of it, or the same type parameter.
+    fn note_typed_index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr], got: &[Ty], want: &[Ty]) {
+        fn space(got: &Ty, want: &Ty) -> bool {
+            match (got, want) {
+                (Ty::Pos(a), Ty::Pos(b)) | (Ty::Param(a), Ty::Param(b)) => a == b,
+                (Ty::Tuple(a), Ty::Tuple(b)) => a.len() == b.len() && a.iter().zip(b).all(|(a, b)| space(a, b)),
+                _ => false,
+            }
+        }
+        if indices.is_empty() || got.len() != indices.len() || want.len() != indices.len() {
+            return;
+        }
+        if !got.iter().zip(want).all(|(got, want)| space(got, want)) {
+            return;
+        }
+        let proofs: Vec<String> =
+            indices.iter().zip(got).map(|(e, ty)| format!("{}: {ty}", self.quote(e.span))).collect();
+        let spaces = if proofs.len() == 1 { "space" } else { "spaces" };
+        self.typed_indexes.push(crate::check::TypedIndex {
+            access: expr.span,
+            seq: base.span,
+            index: Span::new(indices[0].span.start, indices[indices.len() - 1].span.end),
+            proof: format!("{}, the index {spaces} of {}", proofs.join(", "), self.quote(base.span)),
+        });
+    }
+
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         let base_ty = self.infer(base);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
@@ -2154,6 +2181,8 @@ impl<'a> Checker<'a> {
                     unreachable!()
                 };
                 let factors = self.product_factors(dom).unwrap();
+                let wants: Vec<Ty> = factors.iter().map(|(_, want)| want.clone()).collect();
+                self.note_typed_index(expr, base, indices, &index_tys, &wants);
                 for ((got, (_, want)), index_expr) in
                     index_tys.iter().zip(&factors).zip(indices)
                 {
@@ -2177,6 +2206,7 @@ impl<'a> Checker<'a> {
                         || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == index.len())) =>
             {
                 let want = Ty::Tuple(index.clone());
+                self.note_typed_index(expr, base, indices, &index_tys, std::slice::from_ref(&want));
                 self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
                     format!(
                         "`{}` is indexed by {}, but `{}` is {}",
@@ -2211,7 +2241,6 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 let mut slice = false;
-                let mut proofs = Vec::new();
                 // The indices a part keeps: `g[1, ..]` is a row, indexed by
                 // the columns alone.
                 let mut kept = Vec::new();
@@ -2250,13 +2279,6 @@ impl<'a> Checker<'a> {
                         continue;
                     }
                     if self.fits(got, want) {
-                        if let (Ty::Pos(got), Ty::Pos(want)) | (Ty::Param(got), Ty::Param(want)) = (got, want) {
-                            let index = self.quote(index_expr.span);
-                            proofs.push(match got == want {
-                                true => format!("{index}: {got}"),
-                                false => format!("{index}: {got}, inside {want}"),
-                            });
-                        }
                         continue;
                     }
                     let message = format!(
@@ -2305,14 +2327,8 @@ impl<'a> Checker<'a> {
                         });
                     }
                 }
-                if !slice && proofs.len() == indices.len() {
-                    let spaces = if proofs.len() == 1 { "space" } else { "spaces" };
-                    self.typed_indexes.push(crate::check::TypedIndex {
-                        access: expr.span,
-                        seq: base.span,
-                        index: Span::new(indices[0].span.start, indices[indices.len() - 1].span.end),
-                        proof: format!("{}, the index {spaces} of {}", proofs.join(", "), self.quote(base.span)),
-                    });
+                if !slice {
+                    self.note_typed_index(expr, base, indices, &index_tys, index);
                 }
                 if slice {
                     // A slice is its array seen through a range: lent,

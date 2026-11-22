@@ -3270,6 +3270,27 @@ print(xs[V.first..=V.last].sum())
             "ys[e] e: E, the index space of ys",
         ]
     );
+    let pairs = "let n: 1..=10 = read()
+domain V = 1..=n
+domain K = 0..3
+domain State = (V, K)
+domain R = 0..3
+domain C = 0..4
+var dp: [State]Int = 0
+var g: [R, C]Int = 0
+let p: (R, C) = (R.first, C.last)
+for v in V:
+    dp[v, K.first] = g[p]
+print(dp[V.first, K.last])
+";
+    assert_eq!(
+        proofs(pairs),
+        [
+            "dp[v, K.first] v: V, K.first: K, the index spaces of dp",
+            "g[p] p: (R, C), the index space of g",
+            "dp[V.first, K.last] V.first: V, K.last: K, the index spaces of dp",
+        ]
+    );
     let wrong = src.replace("ys[e]", "xs[e]");
     assert!(!codes(&wrong).is_empty());
     assert!(!proofs(&wrong).iter().any(|p| p.starts_with("xs[e]")));

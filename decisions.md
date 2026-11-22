@@ -2386,7 +2386,8 @@ Reverse by restoring `Bounds::stable` from 29.37.
 `[V]T` or `[R, C]T` whose every index is a `V` (a domain position, or the same type parameter in a
 generic fn), and hover shows `xs[v]: in bounds, v: V, the index space of xs`. The type is the
 proof, so no range analysis is involved; an index whose type is unknown (`tree.parent(v)` today)
-or a slice gets nothing. The `[(V, K)]` multi-index and `g[p]` tuple forms are not recorded yet.
+or a slice gets nothing. `dp[v, k]` over `domain State = (V, K)` and `g[p]` with `p: (R, C)`
+count too; a subdomain position does not, since its name alone is not the array's domain.
 Reverse by dropping `TypedIndex` and the fallback in the LSP's `index_hover`.
 
 ## 30. Front-end recovery (2026-11-21)
