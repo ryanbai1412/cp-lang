@@ -34,7 +34,8 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |
 | `src/rules/mod.rs` | 2,144 | `run`: calls each rule module in turn; shared helpers (scopes, names, spans) |
 | `src/rules/bounds.rs` | 1,089 | Value ranges from declared input bounds; a second copy of what the checker proves |
-| `src/rules/taste.rs` | 4,493 | L05xx idiom lints (search loop, folds, push loops, `hand_rolled_*`, ...) each as its own pattern match |
+| `src/rules/taste.rs` | 4,410 | L05xx idiom lints (search loop, folds, push loops, `hand_rolled_*`, ...) each as its own pattern match |
+| `src/rules/literals.rs` | 108 | L0506 repeated big literals, skipping input bounds |
 | `src/rules/mod_div.rs` | 991 | L0415 loop-invariant `Mod` division |
 | `src/rules/types.rs` | 490 | L0204-L0207 spelling lints |
 | `src/rules/scopes.rs` | 291 | L0201, L0203 |
@@ -95,7 +96,7 @@ The `Proven*` API is the checker's job living in the wrong crate; it moves to
   in the spec.
 - **No types in lints.** `floats.rs` guesses "is a float" from the source,
   `fields.rs` matches fields by name; both are noted in their module docs.
-- **One file per family.** `rules/taste.rs` is 4,493 lines of independent
+- **One file per family.** `rules/taste.rs` is 4,410 lines of independent
   matchers; each new idiom adds another.
 - **Two spellings of allow.** `@allow(name)` and `with lint(name: allow)` both
   work (`src/lib.rs`); the spec keeps only `with lint`.

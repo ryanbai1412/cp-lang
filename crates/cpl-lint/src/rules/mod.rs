@@ -6,6 +6,7 @@ mod fields;
 mod floats;
 mod imports;
 mod lists;
+mod literals;
 mod memo;
 mod mod_div;
 mod scopes;
@@ -25,6 +26,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(lists::check(file));
     findings.extend(mod_div::check(file));
     findings.extend(taste::check(file));
+    findings.extend(literals::check(file));
     findings
 }
 

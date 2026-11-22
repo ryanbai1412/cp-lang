@@ -8,8 +8,8 @@ use crate::{
     File, Finding, BY_TWIN, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
     HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
-    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP,
-    SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, SEARCH_LOOP, SORTED_RANGE_METHOD,
+    SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -57,7 +57,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     );
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
-    rule.findings.extend(repeated_literals(file));
     rule.findings.extend(hand_rolled_range_trees(file));
     rule.findings.extend(hand_rolled_string_algos(file));
     rule.findings.extend(hand_rolled_stdlib_algos(file));
@@ -2089,88 +2088,6 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
 
 fn idents(src: &str) -> HashSet<&str> {
     words(src).collect()
-}
-
-/// Big literals: a bound or modulus written more than once is two facts
-/// that must agree.
-fn repeated_literals(file: &File) -> Vec<Finding> {
-    struct Ints {
-        base: u32,
-        seen: HashMap<i128, Vec<Span>>,
-        /// The types of `let x: T = read()`: each is the statement's bound
-        /// for its own input, so equal bounds there are separate facts.
-        input_types: Vec<Span>,
-    }
-    impl Visitor for Ints {
-        fn stmt(&mut self, stmt: &Stmt) {
-            if let StmtKind::Let {
-                ty: Some(ty),
-                init: Some(init),
-                ..
-            } = &stmt.kind
-            {
-                if let ExprKind::Call { callee, .. } = &init.kind {
-                    if matches!(&callee.kind, ExprKind::Name(n) if n == "read") {
-                        self.input_types.push(ty.span.shift(self.base));
-                    }
-                }
-            }
-        }
-        fn expr(&mut self, expr: &Expr) {
-            if let ExprKind::Int(v) = expr.kind {
-                if v >= 1000 {
-                    self.seen
-                        .entry(v)
-                        .or_default()
-                        .push(expr.span.shift(self.base));
-                }
-            }
-        }
-    }
-    let mut ints = Ints {
-        base: 0,
-        seen: HashMap::new(),
-        input_types: Vec::new(),
-    };
-    file.walk(&mut ints, |i, base| i.base = base);
-    let input_types = ints.input_types;
-    for spans in ints.seen.values_mut() {
-        spans.retain(|s| {
-            !input_types
-                .iter()
-                .any(|t| t.start <= s.start && s.end <= t.end)
-        });
-    }
-    let lines = cpl_diag::LineIndex::new(file.src);
-    let mut out = Vec::new();
-    for (value, mut spans) in ints.seen {
-        // `-1e9..=1e9` is one fact: count lines, not occurrences.
-        spans.sort_by_key(|s| s.start);
-        spans.dedup_by_key(|s| lines.line_col(s.start).line);
-        let need = if value >= 1_000_000 { 2 } else { 3 };
-        if spans.len() < need {
-            continue;
-        }
-        let line = lines.line_col(spans[0].start).line + 1;
-        let span = spans[1];
-        let text = span.text(file.src);
-        let diag = Diagnostic::warning(
-            REPEATED_LITERAL.code,
-            span,
-            format!(
-                "`{text}` is written on {} lines; it is first on line {line}",
-                spans.len()
-            ),
-        )
-        .with_help(format!(
-            "name it once (`const P = {text}`, a domain, or a type alias) and use the name"
-        ));
-        out.push(Finding {
-            lint: &REPEATED_LITERAL,
-            diag,
-        });
-    }
-    out
 }
 
 /// A test passed to a fold: a one-parameter lambda or a name.
