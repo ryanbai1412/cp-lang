@@ -376,6 +376,33 @@ impl<'p> Emitter<'p> {
                 let d = ident(&program.domains[*d]);
                 Code::primary(format!("cpl::pos(cpl::read_int() - {d}_lo, {d}_len)"))
             }
+            Spec::Plain(Ty::Range(inner)) if matches!(**inner, Ty::Int | Ty::Pos(_)) => {
+                self.need("read_int");
+                self.need("fail");
+                self.need("range");
+                let ty = self.ty(&spec.ty());
+                let dom_ident = match &**inner {
+                    Ty::Pos(d) => {
+                        self.need("at");
+                        Some(ident(&program.domains[*d]))
+                    }
+                    _ => None,
+                };
+                self.lambda(&ty, |this, out| {
+                    let lead = pad(this.indent);
+                    if let Some(d) = dom_ident {
+                        out.push_str(&format!("{lead}int l = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"));
+                        out.push_str(&format!("{lead}int r = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"));
+                        out.push_str(&format!("{lead}if (l > r) cpl::fail(\"range end is before start\");\n"));
+                        out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
+                    } else {
+                        out.push_str(&format!("{lead}ll l = cpl::read_int();\n"));
+                        out.push_str(&format!("{lead}ll r = cpl::read_int();\n"));
+                        out.push_str(&format!("{lead}if (l > r) cpl::fail(\"range end is before start\");\n"));
+                        out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
+                    }
+                })
+            }
             Spec::Plain(ty) => Code::primary(format!("{}()", self.ty(ty))),
             // `read(none: 0)`: the number, or `none` where the input has 0.
             Spec::Opt(inner, Some(absent)) => {

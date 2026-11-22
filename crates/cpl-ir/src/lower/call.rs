@@ -2937,6 +2937,7 @@ impl<'a> Lowerer<'a> {
                     | Ty::Bool
                     | Ty::Pos(_)
                     | Ty::Error => None,
+                    Ty::Range(inner) if matches!(**inner, Ty::Int | Ty::Pos(_)) => None,
                     other => Some(other.clone()),
                 },
                 Spec::Int { .. } | Spec::Call(_) => None,

@@ -4981,6 +4981,40 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     Value::Int(label - lo)
                 }
+                Ty::Range(inner) => match &**inner {
+                    Ty::Int => {
+                        let (lo, _) = self.input.int().map_err(fail)?;
+                        let (hi, start) = self.input.int().map_err(fail)?;
+                        if lo > hi {
+                            let message = format!("range end {hi} is before start {lo}");
+                            return Err(fail(self.input.fail(start, message)));
+                        }
+                        Value::Range(lo, hi.saturating_add(1))
+                    }
+                    Ty::Pos(d) => {
+                        let (l_label, l_start) = self.input.int().map_err(fail)?;
+                        let (lo, len) = self.domains[*d];
+                        if l_label < lo || l_label - lo >= len {
+                            let name = &self.program.domains[*d];
+                            let message =
+                                format!("{l_label} is not in `{name}`, which is {}", describe(lo, len));
+                            return Err(fail(self.input.fail(l_start, message)));
+                        }
+                        let (r_label, r_start) = self.input.int().map_err(fail)?;
+                        if r_label < lo || r_label - lo >= len {
+                            let name = &self.program.domains[*d];
+                            let message =
+                                format!("{r_label} is not in `{name}`, which is {}", describe(lo, len));
+                            return Err(fail(self.input.fail(r_start, message)));
+                        }
+                        if l_label > r_label {
+                            let message = format!("range end {r_label} is before start {l_label}");
+                            return Err(fail(self.input.fail(r_start, message)));
+                        }
+                        Value::Range(l_label - lo, r_label - lo + 1)
+                    }
+                    _ => Value::Unit,
+                },
                 _ => Value::Unit,
             },
             Spec::Int { lo, hi, text } => {
