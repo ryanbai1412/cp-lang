@@ -4760,8 +4760,6 @@ that change behaviour or a public name. Prose-only fixes are marked in the notes
   (`lib/ops-ranges.md`, Heaps) made it the one heap type with `MinHeap`/`MaxHeap` as aliases, and
   named options are the library-wide rule; reverting would bring back the eight Min/Max types.
   Reverse: restore `MinHeap`/`MaxHeap` and the Min/Max pairs of the other heaps without `by:`.
-- **`PotentialDsu.new()` drops `op:`.** `find`/`unite`/`diff` take `Int` offsets, so another group
-  could not be expressed. Reverse: restore `op: ?G` once offsets are generic (containers.md §5).
 - **`Poly.deg()` and `Poly.is_zero()` are calls**: stored trailing zeros make them more than O(1),
   and `@get` is only for O(1). Reverse: trim trailing zeros on every write and make them `@get`.
 - **Added `DsuOf.groups()`, `Subset.set`/`shifted` and `Dir8.from`**, cited by containers.md §2.4
