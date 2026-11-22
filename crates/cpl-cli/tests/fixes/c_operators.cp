@@ -6,3 +6,5 @@ if !ok || n == 5:
     print(2)
 for i in 0..<n:
     print(i)
+if 0 !in [1, 2, 3]:
+    print(3)

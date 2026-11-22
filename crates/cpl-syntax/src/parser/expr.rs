@@ -347,6 +347,15 @@ impl<'a> Parser<'a> {
             T::Spaceship => CmpOp::Order,
             T::In => CmpOp::In,
             T::Not if self.peek_n(1) == T::In => CmpOp::NotIn,
+            T::Bang
+                if self.peek_n(1) == T::In
+                    && self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.span.start == self.tokens[self.pos].span.end) =>
+            {
+                CmpOp::NotIn
+            }
             _ => return None,
         })
     }
@@ -404,6 +413,14 @@ impl<'a> Parser<'a> {
         }
         let mut rest = Vec::new();
         while let Some(op) = self.cmp_op() {
+            if self.at(T::Bang) {
+                let span = self.span();
+                self.error(
+                    Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
+                        .with_help("write `not in` instead of `!in`")
+                        .with_fix("replace with `not `", span, "not "),
+                );
+            }
             self.bump();
             if op == CmpOp::NotIn {
                 self.bump();
@@ -844,7 +861,14 @@ impl<'a> Parser<'a> {
                     self.bump();
                     ExprKind::Try(Box::new(expr))
                 }
-                T::Bang => {
+                T::Bang
+                    if !(self.peek_n(1) == T::In
+                        && self.span().start > expr.span.end
+                        && self
+                            .tokens
+                            .get(self.pos + 1)
+                            .is_some_and(|t| t.span.start == self.tokens[self.pos].span.end)) =>
+                {
                     self.bump();
                     ExprKind::Unwrap(Box::new(expr))
                 }
