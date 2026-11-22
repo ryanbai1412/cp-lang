@@ -4058,7 +4058,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   (`[Alpha]T` tables, validation on read); `Str(len: lo..=hi)` bounds the
   length, checked on read like an integer range. `var` on a field, named
   `record`, trailing lambdas, `[read(...)]T`, `Mint(mod:)` and lowercase
-  variant patterns are rejected (`spec/SYNTAX.md` lists the replacements).
+  variant patterns are rejected (`spec/delta/parser-gaps.md` lists the replacements).
 - **Why.** Dreams kept reaching for these. Defaults remove constructor
   noise for accumulator records; alphabet and length constraints are
   statement facts that should be written once, like integer ranges.
@@ -4103,7 +4103,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   wrapper fn said in more tokens, and each composes with existing rules.
 - **Reverse.** Drop a form; `cpl fix` expands it (nested loops, explicit
   lambdas, copies of the row).
-- **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.
+- **Status.** Accepted in the spec (`spec/delta/parser-gaps.md`); not parsed yet.
 
 ## 136. Gold-tier syntax: `var` fields, graders, local types (2026-11-21)
 
@@ -4132,11 +4132,11 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   keep helper records next to their one use.
 - **Reverse.** `var` fields: drop the rule and the codemod. Graders: replace
   with a program-shape decision when that is designed (deferred).
-- **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.
+- **Status.** Accepted in the spec (`spec/delta/parser-gaps.md`); not parsed yet.
 
 ## 137. Indices: position and cut words, empty domains (2026-11-21)
 
-- **Context.** Round 1 of the API design (`spec/api/1-indices.md`): domains
+- **Context.** Round 1 of the API design (`spec/core/04-indices.md`): domains
   have positions and cuts (`D.bounds`), and each needs neighbour and
   conversion words; empty domains needed a rule for `first`/`last`.
 - **Decision.**
@@ -4204,8 +4204,8 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 
 ## 138. Sequences, search/DP and graph/tree API rounds (proposed, 2026-11-21)
 
-- **Status.** Proposed in `spec/api/2-sequences.md`, `3-search-dp.md` and
-  `4-graphs-trees.md`; under review with Ryan. Sequence stubs follow round 2:
+- **Status.** Proposed in `spec/core/07-sequences.md`, `search-dp.md` and
+  `graphs-trees.md`; under review with Ryan. Sequence stubs follow round 2:
   `Slice<S>` replaces `View<T>`; `scan` (with `from:`) moved to `std.prefix`
   and returns `Prefix`; suffix folds are `a.rev.scan(op)`; `with_prev` stays
   (path walks need the first step apart); `List.take` became `take_all` so
@@ -4316,16 +4316,16 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   indexed view keeps keys; `List(w)`/`Str(w)` count from 0. Lints flag a
   literal slice index and a 0-based counter used as a slice key.
   `nth_element` is renamed `select` so `nth` means one thing.
-- **Why.** `2a-identity-vs-offset.md`: offset is silently wrong whenever an
+- **Why.** `04a-identity-vs-offset.md`: offset is silently wrong whenever an
   index crosses a slice boundary; identity traps instead. Ryan: "library
   functions should always operate in the domain they were given".
-  `2b-keys.md` shows contest, helper and library code.
+  `04b-keys.md` shows contest, helper and library code.
 - **Reverse.** Restore the hybrid: `List`/`Str` slices count from 0, and the
   string results go back to `List<Int>` offsets.
 
 ## 144. One ownership model, written out with exercises (2026-11-21)
 
-- **Decision.** `spec/api/0-ownership.md` states the whole model as rules
+- **Decision.** `spec/core/05-ownership.md` states the whole model as rules
   R1 to R12 and wins over older text. It settles: `.clone()` is the copy;
   no `mut fn` (5.10); push-only generators (126); plain means "no heap
   part"; a read lend forbids writes, not only resizes; lent values may sit
@@ -4451,7 +4451,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   adapters). So `LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`,
   `t.virtual(keys)` own their tables and leave `t` free; `lends` in a
   signature always reads "O(1), borrows". Sharing a domain (`t.Pre`) is a
-  type, not a lend. Written into 0-ownership.md §5. Why: an earlier reply
+  type, not a lend. Written into 05-ownership.md §5. Why: an earlier reply
   said `LcaTable(t)` "lends `t`", and Ryan asked when that became policy;
   owned results can be returned, stored beside `t`, or outlive it.
   Reverse: let derived structures store `t` and declare `lends(t)`.
@@ -4474,7 +4474,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   `g.dfs_tree(root)` returns `(tree: Rooted, tree_edge: [E]Bool)`, and
   `DfsTree` goes. Reverse: the old `Enter`/`Exit`-only `Visit`.
 - **Queued.** Rewrite `spec/std/tree.cp`, the DFS parts of `graph.cp` and
-  the tree section of 4-graphs-trees.md to this; trim `Rooted` against the
+  the tree section of graphs-trees.md to this; trim `Rooted` against the
   dreams.
 
 ## 148. Release builds run no checks by default (2026-11-21)
@@ -4494,7 +4494,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 
 ## 149. Numbers: storage widths, niches and layout (2026-11-21)
 
-- **Decision.** Adopt `spec/api/6-numbers.md`: locals compute in `Int`;
+- **Decision.** Adopt `spec/core/03-numbers-layout.md`: locals compute in `Int`;
   storage takes the narrowest width its type allows (ranges, domain
   positions, `Mod<P>`, `Char`); narrow arithmetic when proven; the fold op
   decides node width (`Selective` keeps the input range, `+` narrows by
