@@ -16,7 +16,7 @@
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
-struct State(owner: Int, next: ?Int)
+struct State(owner: Pos, next: ?Int)
 
 @!multitest
 let n: 1..=500 = read()
@@ -25,28 +25,26 @@ let given: [0..n]?Int = read(none: -1)
 let a: [Pos]?Int = [Pos] i => if i.ord < n: given[i.ord] else: none
 
 fn solve() -> Z:
-    var tot = 0
+    let ends = prefix([Pos] i => (a[i] ?? 0) + 1)
     for i in Pos:
-        tot += a[i] ?? 0
-        if tot > i.ord: return 0
+        if ends.sum(..=i) - (i.ord + 1) > i.ord: return 0
 
-    var first: [0..=n + 1]Int = 0
-    for i in Pos: first[i.ord + 1] = first[i.ord] + (a[i] ?? 0) + 1
-    let last = [Pos] i => first[i.ord + 1] - 1
+    fn start(i: Pos) -> Int = ends.prefix(i.l)
+    let last = [Pos] i => ends.prefix(i.r) - 1
     fn next(i: Pos, s: Int) -> ?Int:
         guard let c = a[i] else: return some(s)
-        if s < first[i.ord] + c: some(s + 1) else: none
-    let states = [State(i.ord, next(i, s)) for i in Pos for s in first[i.ord]..first[i.ord + 1]]
+        if s < start(i) + c: some(s + 1) else: none
+    let states = [State(i, next(i, s)) for i in Pos for s in start(i)..=last[i]]
 
     let invs: [Pos]Z = [Pos] x => if x == Pos.first: 0 else: comb.inv(x.ord)
     var dp: [Pos, 0..states.len]Z = 0
     for i in Pos.rev:
-        dp[i, first[i.ord]] = 1
+        dp[i, start(i)] = 1
         for j in i..Pos.last if dp[i, last[j]] != 0:
             let v = dp[i, last[j]]
             let nj = j.next!
-            for k in first[nj.ord]..states.len if let nk = states[k].next:
-                dp[i, nk] += v * dp[nj, k] * invs[Pos(states[k].owner - i.ord)]
+            for k in start(nj)..states.len if let nk = states[k].next:
+                dp[i, nk] += v * dp[nj, k] * invs[Pos(states[k].owner - i)]
     dp[Pos.first, last[Pos.last]] * comb.fact(n)
 
 print(solve())
