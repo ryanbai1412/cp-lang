@@ -46,7 +46,7 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l..=r]`, `s[i..]`, `grid[r]` (a row) (R07.2.7) |
 | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, `.take`, `zip` (R07.2.8) |
 | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filter(p).map(f)` (R07.2.9) |
-| **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the body on each walk | no | `divisors(n)`, `dfs(g, s)` (R07.2.10) |
+| **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the body on each walk | no | `divisors(n)`, `dfs(g, from: [s])` (R07.2.10) |
 | **materialize** | copy a sequence into a new collection: the only allocation step | | `.collect()`, `List(s)`, `[f(x) for x in s]` (R07.2.11) |
 | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]` (R07.2.12) |
 
@@ -206,11 +206,11 @@ for d in divisors(n):
   divisors(n)` stores the fn and its arguments and runs nothing; each walk
   runs the body from the top, with fresh locals and the arguments as they
   are now. It is owned or lent by what it captured: `divisors(12)` is
-  owned, `dfs(graph, s)` is lent, `dfs(mut seen)` is `mut`-lent. Walking a
+  owned, `dfs(graph, from: [s])` is lent, `dfs(g, from: [s], seen: mut seen)` is `mut`-lent. Walking a
   `mut`-lent one twice is legal (the second run sees what the first wrote)
   and linted. Keep the results with `List(g)`. (R07.6.2)
 - **Steering.** The yielded item may carry methods the generator reads after
-  `yield` returns: `for step in dfs(g, s): if bad(step.v): step.prune()`.
+  `yield` returns: `for step in dfs(g, from: [s]): if bad(step.v): step.prune()`.
   This is ordinary library code; any user generator can do it. (R07.6.3)
 - **No lockstep.** Two generators can't be walked in step, because each
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
@@ -257,7 +257,7 @@ every read; a `filter` calls `p` on every walk. Lint flags a lazy chain
 walked twice, or built outside a loop and consumed inside it, and a lazy
 `map`/`filter` whose closure mutates anything (`rng.int(..)`, `count += 1`),
 suggesting `.collect()` or a comprehension. Walking a `mut`-lent value twice
-(`let a = dfs(mut seen)`, then two walks of `a`) gets the sharper message,
+(`let a = dfs(g, from: [s], seen: mut seen)`, then two walks of `a`) gets the sharper message,
 since the second walk reruns against what the first wrote.
 
 ## Folds
