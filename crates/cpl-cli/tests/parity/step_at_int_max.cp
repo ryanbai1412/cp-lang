@@ -12,7 +12,7 @@ for i in (0..100) by 7:
 print(hits)
 for i in (big..=Int.MAX) by 5: print(i - big)
 print("reached")
-for i in (Int.MIN..Int.MAX) by Int.MAX: print(i < 0)
+for i in (Int.MIN..Int.MAX) by Int.MAX: print(yes(i < 0))
 let h = Int.MAX
 for i in h - 1..=h: print(h - i)
 for i in (h - 1..=h) by 1: print(h - i)
@@ -24,4 +24,4 @@ for i in (m..m + 2).rev: print(i - m)
 print([h - i for i in h - 2..=h], sum(i for i in 1..=10))
 var k = h
 k -= 2
-print(k + 2 in h - 1..=h, k in h - 1..=h, 3 in 1..=3, 4 in 1..=3, 3 in 1..3)
+print(yes(k + 2 in h - 1..=h), yes(k in h - 1..=h), yes(3 in 1..=3), yes(4 in 1..=3), yes(3 in 1..3))

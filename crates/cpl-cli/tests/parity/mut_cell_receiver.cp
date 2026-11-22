@@ -1,6 +1,6 @@
 struct Reg:
-    ids: Map<Str, Int>
-    p: Int
+    var ids: Map<Str, Int>
+    var p: Int
 
     fn id(mut self, name: Str) -> Int:
         ids.get_or_insert_with(name, () => ids.len)

@@ -31,7 +31,7 @@ print((5..2).step(2).sum())
 domain Pos = 1..=5
 let a: [Pos]Int = [Pos] i => i.ord * 10
 let pref = prefix(a)
-assert pref.sum(Pos(3)..Pos(3)) == 0
-assert pref.sum(Pos(4)..Pos(2)) == 0
-assert pref.sum(Pos(2)..=Pos(4)) == 60
-print(pref.sum(Pos(3)..Pos(3)), pref.sum(Pos(4)..Pos(2)), pref.sum(Pos(2)..=Pos(4)))
+assert pref.fold(Pos(3)..Pos(3)) == 0
+assert pref.fold(Pos(4)..Pos(2)) == 0
+assert pref.fold(Pos(2)..=Pos(4)) == 60
+print(pref.fold(Pos(3)..Pos(3)), pref.fold(Pos(4)..Pos(2)), pref.fold(Pos(2)..=Pos(4)))

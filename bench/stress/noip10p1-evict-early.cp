@@ -27,7 +27,7 @@ fn misses_slow(m: Int, words: List<Int>) -> Int:
     var memory: List<Int> = []
     var count = 0
     for w in words:
-        if any(x == w for x in memory): continue
+        if memory.any(x => x == w): continue
         count += 1
         memory.push(w)
         if memory.len > m: memory = [memory[i] for i in 1..memory.len]

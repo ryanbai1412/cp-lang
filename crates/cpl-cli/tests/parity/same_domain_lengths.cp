@@ -18,14 +18,15 @@ fn sum_arr<D: Index>(a: [D]Int) -> Int:
 let (n, m): (Int, Int) = read()
 let a: [0..n]Int = 1
 let b: [0..m]Int = 2
-let l = [3, 4, 5, 6]
+let l: [0..4]Int = [3, 4, 5, 6]
 let six: [0..6]Int = [1, 2, 3, 4, 5, 6]
 print(sum_arr(six[1..4]), sum_arr(l[1..3]), dot(l[0..2], l[2..4]))
 var c: [1..=n]Int = 5
 var d: [1..=n]Int = 7
-print(both(mut c, mut d), c, d)
+print(both(mut c, mut d) ?? -1, c, d)
 add(mut c, d)
-print(dot(a, a), dot(l, [1, 1, 1, 1]))
+let ones: [0..4]Int = [1, 1, 1, 1]
+print(dot(a, a), dot(l, ones))
 var e: [0..m]Int = 1
 add(mut e, b)
 print(e)

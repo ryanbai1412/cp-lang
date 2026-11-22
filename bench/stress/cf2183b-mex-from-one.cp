@@ -8,7 +8,7 @@ fn missing(k: Int, a: List<Int>) -> Int:
 
 @brute(missing)
 fn missing_slow(k: Int, a: List<Int>) -> Int =
-    first(x for x in 0..k - 1 if x not in a) ?? (k - 1)
+    first(x for x in 0..k - 1 if not a.any(v => v == x)) ?? (k - 1)
 
 @!multitest
 let n: 1..=2e5 = read()

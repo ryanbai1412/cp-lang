@@ -13,6 +13,6 @@ fn first_wins(k: Int, moves: List<Int>) -> Bool:
 
 @brute(first_wins)
 fn first_wins_slow(k: Int, moves: List<Int>) -> Bool =
-    any(a <= k and not first_wins_slow(k - a, moves) for a in moves)
+    moves.any(a => a <= k and not first_wins_slow(k - a, moves))
 
 print(if first_wins(k, moves): "First" else: "Second")
