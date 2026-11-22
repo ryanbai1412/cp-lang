@@ -1141,6 +1141,23 @@ fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
         .any(|p| (p.start as usize) < head_end && (p.end as usize) > start)
 }
 
+/// True if the first line of `stmt` opens a bracket it never closes: the
+/// parser then guessed where the value ends, so its type is a guess too.
+pub(crate) fn head_leaves_open(text: &str, stmt: &ast::Stmt) -> bool {
+    let start = (stmt.span.start as usize).min(text.len());
+    let end = (stmt.span.end as usize).min(text.len()).max(start);
+    let line = text[start..end].split('\n').next().unwrap_or("");
+    let mut depth = 0i32;
+    for b in line.bytes() {
+        match b {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => depth -= 1,
+            _ => {}
+        }
+    }
+    depth > 0
+}
+
 fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
     fn pattern(pat: &ast::Pattern, out: &mut Vec<Decl>) {
         match &pat.kind {
@@ -1342,7 +1359,7 @@ impl FileCtx<'_> {
                             .iter()
                             .any(|p| p.start < ty.span.end && p.end > ty.span.start),
                         _ => false,
-                    };
+                    } || head_leaves_open(&item.text, stmt);
                     defs.extend(
                         found
                             .into_iter()

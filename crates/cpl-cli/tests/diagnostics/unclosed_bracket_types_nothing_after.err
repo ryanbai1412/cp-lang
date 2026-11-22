@@ -1,0 +1,19 @@
+error[E0101]: this `[` is never closed
+  --> unclosed_bracket_types_nothing_after.cp:2:13
+  |
+2 | let start = [1, 2, 3[0]
+  |             ^
+3 | print(twice(start))
+  | - a new statement starts here
+  = help: add `]` at the end of the expression
+
+error[E0101]: this `[` is never closed
+  --> unclosed_bracket_types_nothing_after.cp:5:17
+  |
+5 |     let first = [4, 5, 6[0]
+  |                 ^
+6 |     twice(first)
+  | - a new statement starts here
+  = help: add `]` at the end of the expression
+
+unclosed_bracket_types_nothing_after.cp: 2 errors

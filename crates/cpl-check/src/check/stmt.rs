@@ -697,7 +697,14 @@ impl<'a> Checker<'a> {
                         )
                     });
                 }
-                let ty = declared.or(init_ty.clone()).unwrap_or(Ty::Error);
+                let guessed = declared.is_none()
+                    && self.sink.encloses_poison(stmt.span)
+                    && crate::db::head_leaves_open(self.src, stmt);
+                let ty = if guessed {
+                    Ty::Error
+                } else {
+                    declared.or(init_ty.clone()).unwrap_or(Ty::Error)
+                };
                 // §128: `let b = a` / `var b = a` on a heap local moves `a`.
                 if otherwise.is_none() && !fills {
                     if let Some(Expr {
