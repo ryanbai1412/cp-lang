@@ -1,11 +1,14 @@
 // expect: ok, output "0 YES YES\n7 3 2 1 3 YES 1 3\n1 7 6 6 0 1 6\nYES YES\nYES\nYES NO YES YES 2 7 5 YES"
 use std.bag.{AugSortedBag, AugSortedSet}
+fn show<T>(o: ?T) -> Str = match o:
+    Some(x) => "{x}"
+    None => "none"
 var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
 print(b.all, b.is_empty, b.first == None)
 b.add(3)
 b.add(1)
 b.add(3)
-print(b.all, b.len, b.count(3), b.rank(3), b.nth(2), b.nth(3) == None, b.first, b.last)
+print(b.all, b.len, b.count(3), b.rank(3), show(b.nth(2)), b.nth(3) == None, show(b.first), show(b.last))
 print(b.fold_lt(3), b.fold_le(3), b.fold_ge(2), b.fold_gt(1), b.fold_gt(3), b.fold_between(1, 3), b.fold_between(2, 4))
 print(b.each().collect() == [1, 3, 3], b.remove(3) and b.all == 4 and not b.remove(2))
 var s: AugSortedBag<Int, Str> = AugSortedBag((x, y) => x + y, "", k => Str(k))

@@ -1,13 +1,16 @@
 // expect: ok, output "3 2 none 1 2\n1 4 none 1\nYES"
 use std.sparse.{SparseTable2D, LinearRmq}
 use std.rand.{Rng}
+fn show<T>(o: ?T) -> Str = match o:
+    Some(x) => "{x}"
+    None => "none"
 domain R = 0..2
 domain C = 0..2
 let g: [R, C]Int = [R, C] (r, c) => Int(r) * 2 + Int(c)
-print(SparseTable2D(max, g).fold(R(0)..=R(1), C(0)..=C(1)), SparseTable2D(min, g).fold(R(1)..=R(1), C(0)..=C(1)), SparseTable2D(min, g).try_fold(R(0)..=R(1), C(1)..C(1)), SparseTable2D(min, g).try_fold(R(0)..=R(1), C(1)..=C(1)), SparseTable2D(min, g).get(R(1), C(0)))
+print(SparseTable2D(max, g).fold(R(0)..=R(1), C(0)..=C(1)), SparseTable2D(min, g).fold(R(1)..=R(1), C(0)..=C(1)), show(SparseTable2D(min, g).try_fold(R(0)..=R(1), C(1)..C(1))), show(SparseTable2D(min, g).try_fold(R(0)..=R(1), C(1)..=C(1))), SparseTable2D(min, g).get(R(1), C(0)))
 domain P = 0..4
 let xs: [P]Int = [3, 1, 1, 4]
-print(LinearRmq(xs).argbest(P(0)..=P(3)), LinearRmq(xs, before: (x, y) => x > y).best(P(0)..=P(3)), LinearRmq(xs).try_best(P(1)..P(1)), LinearRmq(xs).try_best(P(0)..P(2)))
+print(LinearRmq(xs).argbest(P(0)..=P(3)), LinearRmq(xs, before: (x, y) => x > y).best(P(0)..=P(3)), show(LinearRmq(xs).try_best(P(1)..P(1))), show(LinearRmq(xs).try_best(P(0)..P(2))))
 var rng = Rng(5)
 domain Q = 0..300
 let a: [Q]Int = [Q] _ => rng.int(0, 50)

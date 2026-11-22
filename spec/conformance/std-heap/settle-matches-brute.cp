@@ -1,19 +1,22 @@
 // expect: ok, output "2 none\nNO a 2 YES\nb 3 none 2\na 5\nYES"
 use std.heap.{Settle}
 use std.rand.{Rng}
+fn show<T>(o: ?T) -> Str = match o:
+    Some(x) => "{x}"
+    None => "none"
 var s: Settle<Char, Int> = Settle()
 s.offer('a', 5)
 s.offer('a', 2)
 s.offer('a', 4)
-print(s.get('a'), s.get('b'))
+print(show(s.get('a')), show(s.get('b')))
 s.offer('b', 3)
-print(s.settled('a'), s.pop(), s.settled('a'))
+print(s.settled('a'), show(s.pop()), s.settled('a'))
 s.offer('a', 1)
-print(s.pop(), s.pop(), s.get('a'))
+print(show(s.pop()), show(s.pop()), show(s.get('a')))
 var t: Settle<Char, Int> = Settle(best: max)
 t.offer('a', 5)
 t.offer('b', 3)
-print(t.pop())
+print(show(t.pop()))
 var rng = Rng(3)
 var u: Settle<Int, Int> = Settle()
 var bestv = List.filled(30, 1000)

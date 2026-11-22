@@ -1,16 +1,19 @@
 // expect: ok, output "0 YES 5\n3 1 3\n0 1 2 3 4 4 3 2 1 0\n4 3 2 1 0 0 4 3 1\n8 3 2 1 9 5\nYES none"
 use std.deque.{LinkedList}
+fn show<T>(o: ?T) -> Str = match o:
+    Some(x) => "{x}"
+    None => "none"
 var e: LinkedList<Int> = LinkedList()
 print(e.len, yes(e.is_empty), LinkedList.of(5).each().collect())
 var l = LinkedList.from_list([1, 2, 3])
-print(l.len, l.first, l.last)
+print(l.len, show(l.first), show(l.last))
 l.push(4)
 l.push_front(0)
 print(l.each().collect(), l.each_rev().collect())
 l.reverse()
-print(l.each().collect(), l.pop(), l.pop_front(), l.first, l.last)
+print(l.each().collect(), show(l.pop()), show(l.pop_front()), show(l.first), show(l.last))
 l.push(9)
 l.push_front(8)
 print(l.each().collect(), l.len)
 l.clear()
-print(yes(l.is_empty), l.pop())
+print(yes(l.is_empty), show(l.pop()))
