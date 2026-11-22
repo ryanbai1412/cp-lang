@@ -1,0 +1,7 @@
+error[E0203]: a `[V]V` has no method `invers` that `cpl run` knows
+  --> unknown_member_types_nothing_after.cp:3:17
+  |
+3 | let pos = order.invers()
+  |                 ^^^^^^
+
+unknown_member_types_nothing_after.cp: 1 error

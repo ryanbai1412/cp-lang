@@ -9315,6 +9315,9 @@ impl<'a> Lowerer<'a> {
             return self.call_gen_struct(gid, Vec::new(), args, None, span);
         }
         let Some(doms) = doms else {
+            if src.ty.mentions_error() {
+                return self.err_expr(span);
+            }
             let message = format!(
                 "`prefix` takes a `[D]T`, `[R, C]T`, or `List<T>` of numbers, found `{}`",
                 self.show(&src.ty)

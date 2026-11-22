@@ -169,6 +169,23 @@ pub enum Dim {
 }
 
 impl Ty {
+    /// True when some part is [`Ty::Error`]: already reported, so a
+    /// mismatch against it is that report's cascade.
+    pub fn mentions_error(&self) -> bool {
+        match self {
+            Ty::Error => true,
+            Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::MutView(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+                t.mentions_error()
+            }
+            Ty::Array { elem, .. } => elem.mentions_error(),
+            Ty::Tuple(ts) => ts.iter().any(Ty::mentions_error),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_error()),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => k.mentions_error() || v.mentions_error(),
+            Ty::Fn(ps, r) => ps.iter().any(Ty::mentions_error) || r.mentions_error(),
+            _ => false,
+        }
+    }
+
     /// True for a collection: with nothing in it, `print` shows nothing,
     /// and puts no space around it (`print(1, [], 2)` is `1 2`).
     pub fn may_show_nothing(&self) -> bool {

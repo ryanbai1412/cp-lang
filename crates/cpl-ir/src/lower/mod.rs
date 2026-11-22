@@ -967,6 +967,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn mismatch(&mut self, span: Span, want: &Ty, found: &Ty) {
+        if want.mentions_error() || found.mentions_error() {
+            return;
+        }
         let message = format!(
             "expected `{}`, found `{}`",
             self.show(want),
