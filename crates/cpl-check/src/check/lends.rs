@@ -652,6 +652,35 @@ impl Visitor for Touched {
     }
 }
 
+pub(crate) fn lambda_effects(params: &[ast::Pattern], body: &Expr) -> Effects {
+    let mut touched = Touched::default();
+    for p in params {
+        let mut names = Names::default();
+        names.pattern(p);
+        touched.declared.extend(names.0);
+    }
+    walk_expr(body, &mut touched);
+    let Touched {
+        declared,
+        written,
+        read,
+        calls,
+    } = touched;
+    let outer = |names: Vec<String>| -> Vec<String> {
+        names
+            .into_iter()
+            .filter(|n| !declared.contains(n))
+            .collect()
+    };
+    let calls = outer(calls);
+    Effects {
+        writes: outer(written.0),
+        reads: outer(read),
+        io: calls.iter().find_map(|name| io_of(name)),
+        calls,
+    }
+}
+
 pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
     let mut touched = Touched::default();
     touched
@@ -2063,13 +2092,15 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return;
         };
-        let (effects, is_local_fn) = if self.local(name).is_some() {
-            let Some(eff) = self.local_effects.get(name).cloned() else {
-                return;
-            };
+        let (effects, is_local_fn) = if let Some(eff) = self.local_effects.get(name).cloned() {
             (std::sync::Arc::new(eff), true)
+        } else if self.local(name).is_some() {
+            return;
         } else {
-            if !matches!(self.global(name).as_deref(), Some(Def::Fn { .. })) {
+            if !matches!(
+                self.global(name).as_deref(),
+                Some(Def::Fn { .. } | Def::Value { .. })
+            ) {
                 return;
             }
             (self.env.effects(name), false)

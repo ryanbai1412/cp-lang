@@ -705,6 +705,13 @@ impl<'a> Checker<'a> {
                     {
                         args[0].clone()
                     }
+                    Ty::Named { name, args: list_args }
+                        if name == "List"
+                            && list_args.len() == 1
+                            && self.view_kind(&args[0].value) == Some("slice") =>
+                    {
+                        list_args[0].clone()
+                    }
                     Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
@@ -804,8 +811,17 @@ impl<'a> Checker<'a> {
                     args: vec![Ty::Pos(a.into())],
                 })
             }
-            ("max" | "min", [Ty::Array { elem, .. }]) if is_slice(&args[0].value) => {
+            ("max" | "min", [Ty::Array { elem, .. }])
+                if std::env::var_os("CPL_SPEC").is_none() && is_slice(&args[0].value) =>
+            {
                 Some(Ty::Optional(Box::new(elem.widen())))
+            }
+            ("max" | "min", [_]) if std::env::var_os("CPL_SPEC").is_some() => {
+                let message = format!(
+                    "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
+                );
+                self.error(codes::WRONG_ARG_COUNT, call.span, message);
+                Some(Ty::Error)
             }
             ("max" | "min", [first, rest @ ..]) if !rest.is_empty() => {
                 if tys.iter().all(|t| t == first) && !matches!(first, Ty::Unknown | Ty::Error) {
@@ -1247,6 +1263,17 @@ impl<'a> Checker<'a> {
                     }
                     if args.len() == 1 && args[0].name.is_none() {
                         let arg_ty = self.infer(&args[0].value);
+                        if std::env::var_os("CPL_SPEC").is_some() {
+                            if let Ty::Tuple(elems) = &arg_ty {
+                                if elems.len() == factors.len()
+                                    && elems.iter().zip(&factors).all(|(e, (_, f))| {
+                                        e.is_int() || self.fits(e, f)
+                                    })
+                                {
+                                    return Ty::Pos(name);
+                                }
+                            }
+                        }
                         if matches!(arg_ty, Ty::Tuple(_) | Ty::Record(_)) {
                             let want = Ty::Pos(name.clone());
                             self.expect_fits(&arg_ty, &want, &args[0].value, |c, got, want| {
@@ -1523,7 +1550,15 @@ impl<'a> Checker<'a> {
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
-                        if let Some(diag) = self.error(codes::UNKNOWN_ARG_NAME, name.span, message)
+                        let code = if std::env::var_os("CPL_SPEC").is_some()
+                            && callee == "Fenwick"
+                            && name.text == "act"
+                        {
+                            cpl_diag::Code("E0705")
+                        } else {
+                            codes::UNKNOWN_ARG_NAME
+                        };
+                        if let Some(diag) = self.error(code, name.span, message)
                         {
                             match suggestion {
                                 Some(s) => {

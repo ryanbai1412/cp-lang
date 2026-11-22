@@ -2075,6 +2075,14 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 if std::env::var_os("CPL_SPEC").is_some()
+                    && type_name == "Gen"
+                    && name.text == "next"
+                {
+                    let message = format!("{base_ty} has no method `next`; walk a generator with `for`");
+                    self.error(codes::UNKNOWN_FIELD, name.span, message);
+                    return Ty::Error;
+                }
+                if std::env::var_os("CPL_SPEC").is_some()
                     && matches!(type_name.as_str(), "List" | "Str" | "Map" | "Set")
                     && name.text == "buf"
                 {

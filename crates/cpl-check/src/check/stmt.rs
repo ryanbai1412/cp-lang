@@ -851,6 +851,17 @@ impl<'a> Checker<'a> {
                 let mut bound = Vec::new();
                 pattern_types(pat, &ty, &mut |name, _| bound.push(name.to_string()));
                 self.drop_facts(&bound);
+                if let (
+                    ast::PatternKind::Name(n),
+                    Some(Expr {
+                        kind: ExprKind::Lambda { params, body, .. },
+                        ..
+                    }),
+                ) = (&pat.kind, init)
+                {
+                    self.local_effects
+                        .insert(n.clone(), super::lends::lambda_effects(params, body));
+                }
                 let is_mut = *mutable
                     || matches!(
                         init,

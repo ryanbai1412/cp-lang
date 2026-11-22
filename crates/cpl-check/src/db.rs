@@ -1655,6 +1655,17 @@ impl FileCtx<'_> {
                 .iter()
                 .find_map(|stmt| match &stmt.kind {
                     StmtKind::Fn(f) if f.name.text == name => Some(own_effects(f)),
+                    StmtKind::Let {
+                        pat: cpl_syntax::ast::Pattern {
+                            kind: cpl_syntax::ast::PatternKind::Name(n),
+                            ..
+                        },
+                        init: Some(cpl_syntax::ast::Expr {
+                            kind: cpl_syntax::ast::ExprKind::Lambda { params, body, .. },
+                            ..
+                        }),
+                        ..
+                    } if n == name => Some(crate::check::lends::lambda_effects(params, body)),
                     _ => None,
                 })
         });
