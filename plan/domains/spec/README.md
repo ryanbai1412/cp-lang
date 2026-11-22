@@ -1,7 +1,7 @@
 # spec
 
 Segment: D (taste and co-design). Owns: `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance`.
-Status (2026-11-22): 527 numbered rules, all cited by a case; 1711 cases, 1617 pass on today's compiler; generators for the matrix and traits not on main yet.
+Status (2026-11-22): 527 numbered rules, all cited by a case; 1711 cases, 1617 pass on today's compiler; matrix and trait generators gated in `scripts/check.sh`.
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md)
 
 ## Mission
@@ -52,7 +52,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Spec code blocks passing | `cpl-conform spec-blocks` | 21/185 | all or spec-only | M2 |
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
-| Trait methods without a case | `conformance-traits.py --check` | 56 of 77 (std claims) | 0 | M2 |
+| Trait methods without a case | `conformance-traits.py --check` | 0 of 76 (std claims; core claimers next) | 0 | M2 |
 | Rebuild holes (cold agent) | probe P1 | 32 (round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | probe P2 | not measured | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
