@@ -32,7 +32,7 @@ in user helpers and in library code.
    indexed by `K` and valid on `r`, so `[s.keys].filled(0)` is a table shaped like
    `s`. A declared domain's array covers the whole domain, as before.
    `[0..=n]Int` is the case we already have, where `K` is `Int`. (R04b.1.5)
-6. **Materializing keeps keys when it can.**
+6. **Materializing counts from 0.**
    - `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a new
      sequence keyed from 0 (decision 186), like any new order.
    - To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.

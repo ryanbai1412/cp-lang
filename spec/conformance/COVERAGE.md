@@ -6,19 +6,19 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1539 (995 passing). Rules: 522.
+Cases: 1551 (995 passing). Rules: 522.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
-- R04 (04-indices.md): 60 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 60 rules, 76 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R04b (04b-keys.md): 27 rules, 45 cases; 0 uncovered, 0 happy-path only, 3 negative only
+- R04b (04b-keys.md): 27 rules, 46 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 80 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 90 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R06 (06-control-functions.md): 23 rules, 53 cases; 0 uncovered, 1 happy-path only, 1 negative only
+- R07 (07-sequences.md): 87 rules, 93 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 65 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 48 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -186,7 +186,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [1+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
-- R04.4.1 [2+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
+- R04.4.1 [3+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.5 [1+ 2-]: Only the literal `a..b` does it. A stored cut range never becomes a piece: `let s = j..i; ...
 - R04.4.6 [1+ 1-]: Only half-open: `j..=i` on cuts names no piece, so it's an error where a `Range<V>` is exp...
@@ -274,7 +274,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.4 [3+ 1-]: `w.keys.nth(k)` is the k-th key, because a range is an indexed sequence too.
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
-- R04b.1.6 [3+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
+- R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [2+ 2-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, O(1...
 - R04b.1.8 [0+ 1-] *negative only*: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
 - R04b.1.9 [0+ 1-] *negative only*: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
@@ -358,7 +358,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.3.1 [3+ 1-]: A generator **value** is a recipe: a call with every argument but the loop body filled in....
 - R06.3.2 [0+ 1-] *negative only*: A generator value built from lent arguments holds those lends until its last use, like a s...
 - R06.3.3 [2+ 0-] *happy-path only*: The loop body may `break`, `continue`, `return`, use labels and loop `else`, even when the...
-- R06.3.4 [1+ 0-]: A body steers its generator through the yielded item, read after `yield` returns: `step.pr...
+- R06.3.4 [2+ 0-]: A body steers its generator through the yielded item, read after `yield` returns: `step.pr...
 - R06.3.5 [1+ 1-]: Generators are push-only; there is no cursor. Lockstep over two generators is `List(g)` fi...
 - R06.4.1 [2+ 2-]: `@memo(array)` / `@memo(map)`: cache a function. The storage is spelled, never picked (rou...
 - R06.4.2 [1+ 1-]: `@get`: an O(1) read-only method called without parentheses.
@@ -401,7 +401,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.1 [1+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
 - R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
-- R07.4.4 [2+ 0-]: **Materializing:** `.collect()` of an indexed view keeps its keys; `List(w)` and `Str(w)` ...
+- R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.5 [1+ 3-]: **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter used as a slice ke...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [1+ 0-]: | `a.rev` | `D` | backwards | O(1)
@@ -425,7 +425,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.5.12 [1+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
 - R07.6.1 [2+ 0-] *happy-path only*: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
-- R07.6.3 [1+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
+- R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
 - R07.6.4 [1+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` |
@@ -436,7 +436,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
 - R07.7.9 [1+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
-- R07.7.10 [1+ 0-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
+- R07.7.10 [2+ 0-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.9.1 [1+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | O(n)
 - R07.9.2 [1+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
@@ -727,7 +727,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
-- R0101 Index out of range: 13 case(s)
+- R0101 Index out of range: 14 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 6 case(s)
 - R0202 Integer overflow: 5 case(s)
@@ -768,7 +768,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **graph** (94/124 named by a case)
   - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
-- **hashmap** (35/35 named by a case)
+- **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
@@ -795,12 +795,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (200/215 named by a case)
-  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Anchor`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (202/216 named by a case)
+  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
-- **strings** (181/195 named by a case)
-  - uncovered: `Palindromes`, `SuffixTreeEdge`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (182/195 named by a case)
+  - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (124/171 named by a case)
@@ -808,7 +808,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2024 of 2237 std items are named by a case.
+2029 of 2240 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

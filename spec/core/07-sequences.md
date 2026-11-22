@@ -111,8 +111,9 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
   `starts_with`, `+`, slice assignment and `zip`. (R07.4.2)
 - **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys
   equal-length cells onto `r` in O(1). (R07.4.3)
-- **Materializing:** `.collect()` of an indexed view keeps its keys;
-  `List(w)` and `Str(w)` count from 0. (R07.4.4)
+- **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)`
+  and `Str(w)` build a new sequence keyed from 0. To keep `w`'s keys, build
+  a table over them: `[w.keys] k => w[k]` (see R04b.1.6). (R07.4.4)
 - **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter
   used as a slice key (`for k in 0..w.len: w[k]`); both suggest `first`,
   `nth`, `items` or `rebase`. An out-of-keys read traps naming the slice's
