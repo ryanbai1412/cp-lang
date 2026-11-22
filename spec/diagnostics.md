@@ -42,7 +42,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0303 | wrong_arg_count | |
 | E0304 | not_callable | |
 | E0305 | not_indexable | |
-| E0306 | position_arithmetic *(reserved)* | `v + 1` on a position; use `v.next` or `V(Int(v) + 1)` |
+| E0306 | position_arithmetic *(retired)* | never emitted: `v + 1` on a position is an `Int` (R04.3.3) |
 | E0307 | condition_not_bool | |
 | E0308 | optional_compare | `?Int < Int` does not lift; use `?? ` or `if let` |
 | E0309 | bad_operands | |
