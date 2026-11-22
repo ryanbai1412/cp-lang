@@ -76,4 +76,23 @@ Recommendation: (a). Every semantic change is otherwise written three times (wal
 How to reverse it: the tree-walker is in git history; restore it behind a flag.
 Meanwhile: keep both until the fallback count is 0 on corpus and conformance, then delete.
 
+### lint-fmt: severity policy and the v0.3 lint list
+Options: (a) `correctness` group (`float_equality` on `if a == b:` with floats, `memo_key_space`) is deny: `cpl lint` exits 1, `cpl build` still never fails on a lint; perf, idiom, style warn; pedantic allow. (b) Everything warns; deny only by `cp.toml [lints]`.
+Scope options for v0.3: (1) the 38 lints as records plus L0601-L0609; (2) that plus the P0 and bound-aware families of the idiom catalog; (3) the whole catalog (~670 entries).
+Recommendation: (a) and (2). Deny on correctness makes `cpl lint` a usable CI gate without ever blocking a submission; (2) is the set that prevents P0 bugs, and every lint still starts opt-in until its corpus run has 0 false positives (your earlier rule).
+How to reverse it: levels are data in each lint record; a level change is one line per lint.
+Meanwhile: every lint warns at its current level; work targets scope (2).
+
+### lint-fmt: what `cpl fmt` may reformat, and where the line-1 stamp goes
+Options: (a) one mechanical commit formats `corpus/problems` ports, `spec/std`, examples and docs snippets (about 550 files today); layout tests (`spec/conformance/trailing-comma.cp`, `bracket-layout.cp`, `space-indent-block.cp`, `crates/*/tests/fixes/*`) are exempt; the `// cpl 0.3.0` stamp goes on formatted files only, never on conformance cases or goldens (it shifts every line number). (b) Format on touch only; stamp everywhere.
+Recommendation: (a). The corpus is the style reference agents learn from, so it should be fmt-clean; stamping test inputs churns every golden for no signal.
+How to reverse it: the exempt list is one file in the fmt gate; the bulk commit is mechanical and revertable.
+Meanwhile: nothing is bulk-formatted; new and touched files are formatted; no stamp yet.
+
+### lint-fmt: design review of the v0.3 linter and formatter
+The segment C review: plan/domains/lint-fmt/design/overview.md. The calls in it that shape the language: (1) the checker owns one fact table (ranges, proven indexes, sizes, trip counts) that lint, LSP and `cpl explain` all read, and the linter does no analysis of its own; (2) each lint is a data record in `spec/lints/<name>/` (before / after / near-miss) from which the Rust registry and the lint table in `spec/diagnostics.md` are generated; (3) the formatter stays token-preserving (formats broken files, reorders only through separately verified passes) rather than becoming a tree pretty-printer.
+Recommendation: approve all three. (1) removes about 3k duplicated lines and the stdlib privilege; (2) makes the lint contract a test; (3) keeps 0 non-idempotent files and save-time formatting of broken code.
+How to reverse it: (1) is reversible until `rules/bounds.rs` is deleted; (2) records can be compiled back into Rust consts; (3) a pretty-printer can replace `layout.rs` behind the same `format` API.
+Meanwhile: M1 (fmt gate) and M2 (records, false-positive ratchet) proceed; they hold under every answer.
+
 ## Answered

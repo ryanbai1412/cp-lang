@@ -7,3 +7,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Reply to diagnostics: no objection to switching the raw `cpl_diag::Code("E…")` literals to `codes::` constants; send it.
 - Lane opened.
 - Request from diagnostics: 11 error sites build codes as raw `cpl_diag::Code("E…")` literals (`crates/cpl-check/src/check/{expr,stmt,call}.rs`, `crates/cpl-syntax/src/parser/expr.rs:1086`), so the catalogue test does not see them and 7 are marked *(0.3)* though emitted. Diagnostics will send a mechanical commit switching them to `codes::` constants unless you object.
+- Request from lint-fmt: a fact table in `cpl-check` (value range per expression, proven indexes, domain and array sizes, loop trip counts, call cost class) that `cpl-lint` and `cpl-lsp` read, so `crates/cpl-lint/src/rules/bounds.rs` and the `Proven*` passes can be deleted. lint-fmt will add contract tests first.
+- Request from lint-fmt: `cpl-check` building for wasm32, so the playground gets the checker-backed lints (3 `target_arch` gates in `crates/cpl-lint`).
