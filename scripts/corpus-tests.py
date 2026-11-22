@@ -2,9 +2,8 @@
 """Make and run the corpus acceptance tests.
 
 `make` writes `corpus/problems/<id>/tests/NN.in` and `NN.ans` for every
-problem with a `spec.cp`: inputs from the generators the ports were
-validated with (`proto/ports/*/check.py`, `bench/*` SPECS), answers from
-the problem's accepted C++ submission.
+problem with a `spec.cp`: inputs from `corpus/problems/<id>/gen.py` or
+`bench/*` SPECS, answers from the problem's accepted C++ submission.
 
 `run` runs every `spec.cp` on its tests with `cpl run` and prints one
 line per problem plus a summary; `--json` writes the per-problem result.
@@ -25,28 +24,13 @@ def problems(ids):
     return [p for p in have if not ids or p in ids]
 
 
-def check_py_gens(wanted):
-    """`gen_<id>` from each check.py, loaded without running its main."""
+def problem_gens(wanted):
+    """Per-problem `corpus/problems/<id>/gen.py` scripts."""
     gens = {}
-    for path in sorted(glob.glob(os.path.join(ROOT, "proto", "ports", "*", "check.py"))):
-        tree = ast.parse(open(path).read())
-        keep = []
-        for node in tree.body:
-            if isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef)):
-                keep.append(node)
-            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
-                text = ast.unparse(node)
-                if "subprocess" not in text and "compile" not in text:
-                    keep.append(node)
-        env = {"__file__": path, "__name__": "corpus_gens"}
-        try:
-            exec(compile(ast.Module(body=keep, type_ignores=[]), path, "exec"), env)
-        except Exception as e:
-            print(f"skip {os.path.relpath(path, ROOT)}: {e!r:.80}", file=sys.stderr)
-            continue
-        for p in wanted:
-            if "gen_" + p in env:
-                gens[p] = ("check", env["gen_" + p])
+    for p in wanted:
+        path = os.path.join(PROBLEMS, p, "gen.py")
+        if os.path.isfile(path):
+            gens[p] = ("script", path)
     return gens
 
 
@@ -67,6 +51,11 @@ def bench_gens(wanted):
 
 
 def generate(kind, f, seed, idx, tmp):
+    if kind == "script":
+        r = subprocess.run([sys.executable, f, str(seed), str(max(4, idx * 4))],
+                           capture_output=True, text=True, timeout=20, check=True)
+        out = r.stdout
+        return out if out.endswith("\n") else out + "\n"
     if kind == "bench":
         path = os.path.join(tmp, "gen.in")
         f(path, False, {"run_orig": None})
@@ -109,7 +98,7 @@ def binary(src):
 
 def make(args):
     ids = problems(args.ids)
-    gens = check_py_gens(ids)
+    gens = problem_gens(ids)
     for p, g in bench_gens(ids).items():
         gens.setdefault(p, g)
     made, missing = 0, []

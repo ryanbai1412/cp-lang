@@ -479,7 +479,7 @@ fn quick_fixes_close_a_bracket_where_it_was_dropped() {
 /// fix, titled `title`, restores the port.
 fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
+        .join(format!("../../corpus/problems/{port}/port.cp"));
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
     for (good, bad, code, title) in breaks {
@@ -979,7 +979,7 @@ fn inlay_hints_skip_names_in_a_typed_tuple() {
 #[test]
 fn inlay_hints_show_the_index_space_of_lambda_parameters() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../proto/ports/ecnerwala/cf2062g.cp");
+        .join("../../corpus/problems/cf2062g/port.cp");
     let text = std::fs::read_to_string(&path).unwrap();
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
@@ -2017,7 +2017,7 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
 #[test]
 fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../proto/ports/ecnerwala/cf2062g.cp");
+        .join("../../corpus/problems/cf2062g/port.cp");
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
     let (good, bad) = ("let q: [I]I = read()", "var q: [I]I = read()");
@@ -2076,7 +2076,7 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
 
 fn open_port(server: &mut Server, port: &str, edit: (&str, &str)) -> (String, String, Vec<Value>) {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
+        .join(format!("../../corpus/problems/{port}/port.cp"));
     let original = std::fs::read_to_string(&path).unwrap();
     assert!(original.contains(edit.0), "{port}: {}", edit.0);
     let text = original.replacen(edit.0, edit.1, 1);
@@ -2142,7 +2142,7 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
 fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
     let mut server = Server::new();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../proto/ports/ecnerwala/cf2066b.cp");
+        .join("../../corpus/problems/cf2066b/port.cp");
     let original = std::fs::read_to_string(&path).unwrap();
     let (uri, text, _) = open_port(
         &mut server,

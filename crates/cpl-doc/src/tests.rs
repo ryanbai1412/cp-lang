@@ -374,39 +374,54 @@ fn json_carries_every_field_and_escapes_strings() {
     assert_eq!(json::render(&[]), "{\"modules\":[]}\n");
 }
 
-/// Every program under `proto/` extracts without panicking, and every
-/// item points at a line of its file that names it.
+/// Every program under `corpus/problems/` and `crates/cpl-cli/tests/cases/`
+/// extracts without panicking, and every item points at a line of its file
+/// that names it.
 #[test]
 fn extracts_the_whole_corpus() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let (mut files, mut items) = (0, 0);
-    for dir in ["ports", "tests/ok", "tests/lend", "tests/fn", "tests/bad"] {
-        let Ok(entries) = std::fs::read_dir(root.join(dir)) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            if entry.path().extension().is_none_or(|e| e != "cp") {
-                continue;
-            }
-            let src = std::fs::read_to_string(entry.path()).unwrap();
-            let module = extract(&src, &entry.path().display().to_string());
-            files += 1;
-            for (_, item) in module.all_items() {
-                items += 1;
-                let line = src.lines().nth(item.line as usize - 1).unwrap_or("");
-                if !matches!(item.kind, Kind::Impl | Kind::Value) {
-                    assert!(
-                        line.contains(&item.name),
-                        "{}:{}: {item:?}",
-                        entry.path().display(),
-                        item.line
-                    );
-                }
-                assert!(!item.signature.contains('\n'));
-            }
-            let site = html::render(std::slice::from_ref(&module), &html::Options::default());
-            assert_eq!(site.len(), 3);
+    let mut paths = Vec::new();
+    let ec_set = std::fs::read_to_string(root.join("corpus/sets/ecnerwala.txt")).unwrap();
+    for id in ec_set.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        let port = root.join("corpus/problems").join(id).join("port.cp");
+        if port.exists() {
+            paths.push(port);
         }
+    }
+    for dir in [
+        "crates/cpl-cli/tests/cases/ok",
+        "crates/cpl-cli/tests/cases/lend",
+        "crates/cpl-cli/tests/cases/fn",
+        "crates/cpl-cli/tests/cases/bad",
+    ] {
+        if let Ok(entries) = std::fs::read_dir(root.join(dir)) {
+            for entry in entries.flatten() {
+                if entry.path().extension().is_some_and(|e| e == "cp") {
+                    paths.push(entry.path());
+                }
+            }
+        }
+    }
+    for path in paths {
+        let src = std::fs::read_to_string(&path).unwrap();
+        let module = extract(&src, &path.display().to_string());
+        files += 1;
+        for (_, item) in module.all_items() {
+            items += 1;
+            let line = src.lines().nth(item.line as usize - 1).unwrap_or("");
+            if !matches!(item.kind, Kind::Impl | Kind::Value) {
+                assert!(
+                    line.contains(&item.name),
+                    "{}:{}: {item:?}",
+                    path.display(),
+                    item.line
+                );
+            }
+            assert!(!item.signature.contains('\n'));
+        }
+        let site = html::render(std::slice::from_ref(&module), &html::Options::default());
+        assert_eq!(site.len(), 3);
     }
     assert!(files >= 40 && items >= 40, "{files} files, {items} items");
 }

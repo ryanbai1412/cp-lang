@@ -380,7 +380,7 @@ fn a_memo_over_bounded_ranges_is_a_flat_table_alone() {
 
 #[test]
 fn a_memo_over_ranges_inferred_from_reads_is_a_flat_table_alone() {
-    let dream = cpp(include_str!("../../../proto/ports/ecnerwala/dream/cf2115c.cp"));
+    let dream = cpp(include_str!("../../../corpus/problems/cf2115c/dream.cp"));
     assert!(!dream.contains("CpHash"), "{dream}");
 }
 

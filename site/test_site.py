@@ -279,8 +279,8 @@ class SiteTests(unittest.TestCase):
             extra_pairs.append(dict(
                 id=f"synth{i:03d}",
                 group="ecnerwala",
-                dream_path=f"proto/ports/ecnerwala/dream/synth{i:03d}.cp",
-                port_path=f"proto/ports/ecnerwala/synth{i:03d}.cp",
+                dream_path=f"corpus/problems/synth{i:03d}/dream.cp",
+                port_path=f"corpus/problems/synth{i:03d}/port.cp",
                 dream_src=src,
                 port_src=src,
                 dream_tokens=160,

@@ -41,7 +41,8 @@ import time
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PORTS_DIR = os.path.join(ROOT, "proto", "ports")
+PORTS_DIR = os.path.join(ROOT, "corpus", "problems")
+SETS_DIR = os.path.join(ROOT, "corpus", "sets")
 FRICTIONS_DIR = os.path.join(ROOT, "research", "frictions")
 REVIEWS_DIR = os.path.join(ROOT, "research", "reviews")
 BUG_REPLAY_DIR = os.path.join(ROOT, "bench", "goal_tests", "bug_replay")
@@ -209,22 +210,84 @@ def count_loc(src, block_comments=True):
     return n
 
 
-_CORPUS_REGISTRY = None
+_LIBRARY_NAMES = re.compile(
+    r"^(dsu|uf|unionfind|union_find|fenwick|bit|fenw|segtree|seg|segmenttree|lazyseg|lazy|sparsetable|sparse|rmq|lca|"
+    r"mint|modint|mod_int|binpow|modpow|mpow|pw|power|modinv|inv|inverse|fact|choose|ncr|nck|binom|comb|sieve|"
+    r"chash|custom_hash|hash|hasher|matrix|mat|cht|linecontainer|line|dinic|flow|maxflow|mcmf|hld|treap|trie|"
+    r"kmp|zfunc|z_function|manacher|suffixarray|compress|dijkstra|scc|tarjan|fdiv|cdiv|floor_div|ceil_div|"
+    r"ckmin|ckmax|chmin|chmax|gcd|lcm|extgcd|exgcd|rng|rnd|rand_int|rev|reversed|bset|ost|min_heap|pq)$",
+    re.I,
+)
+_LIBRARY_WORDS = re.compile(
+    r"seg_?tree|segment_?tree|fenwick|sparse_?table|union_?find|disjoint_?set|mod_?int|montgomery|"
+    r"suffix_?(array|automaton)|aho_?corasick|li_?chao|link_?cut|centroid|heavy_?light|convex_?hull|"
+    r"min_?cost|max_?flow|bipartite_?match|hopcroft|y_?combinator|fast_?(io|input|output|scanner|reader)|"
+    r"^(input)?reader$|^kattio$|^fastio$",
+    re.I,
+)
+_TEMPLATE_TYPE = re.compile(r"^template\s*<[^;{]*>\s*(struct|class)\b", re.S)
+_IO_SETUP = re.compile(r"sync_with_stdio|cin\.tie|cin\.exceptions|freopen|setprecision")
 
 
-def _get_corpus_registry():
-    global _CORPUS_REGISTRY
-    if _CORPUS_REGISTRY is None:
-        bench_dir = os.path.join(ROOT, "bench")
-        if bench_dir not in sys.path:
-            sys.path.insert(0, bench_dir)
-        try:
-            import corpus_registry as cr
+def _top_level_items(lines):
+    """(first, last) 1-based line spans of the top-level items of a C++/Java file."""
+    items, depth, start, cont, ifdef = [], 0, None, False, 0
+    for i, raw in enumerate(lines, 1):
+        s = raw.strip()
+        if start is None:
+            if not s:
+                continue
+            start = i
+        pre = s.startswith("#") or cont
+        cont = pre and s.endswith("\\")
+        if pre:
+            if re.match(r"#\s*if", s):
+                ifdef += 1
+            if re.match(r"#\s*endif", s):
+                ifdef -= 1
+        else:
+            code = re.sub(r'"(\\.|[^"\\])*"|\'(\\.|[^\'\\])*\'|//.*', "", s)
+            depth += code.count("{") - code.count("}")
+        done = (pre and not cont and ifdef <= 0) or (
+            not pre and ifdef <= 0 and depth <= 0 and s.endswith((";", "}"))
+        )
+        if done:
+            items.append((start, i))
+            start, depth = None, 0
+    if start is not None:
+        items.append((start, len(lines)))
+    return items
 
-            _CORPUS_REGISTRY = cr
-        except Exception:
-            _CORPUS_REGISTRY = False
-    return _CORPUS_REGISTRY or None
+
+def _item_name(text):
+    m = re.search(r"\b(?:struct|class|namespace)\s+(\w+)", text.split("{")[0])
+    if m:
+        return m.group(1)
+    m = re.search(r"(\w+)\s*\([^;{]*\)\s*(?:const\s*)?\{", text)
+    return m.group(1) if m else None
+
+
+def auto_strip(lines):
+    """Line numbers a contest library supplies: template, I/O driver, and named library code."""
+    gone = set()
+    for a, b in _top_level_items(lines):
+        text = "\n".join(lines[a - 1 : b])
+        head = text.lstrip()
+        name = _item_name(text)
+        if (
+            head.startswith(("#", "using ", "typedef ", "import ", "package "))
+            or re.search(r"\bdbgh?\b|operator\s*<<|operator\s*>>", text.split("{")[0])
+            or _TEMPLATE_TYPE.match(head)
+            or (name and (_LIBRARY_NAMES.match(name) or _LIBRARY_WORDS.search(name)))
+        ):
+            gone |= set(range(a, b + 1))
+        elif name == "main":
+            body = [k for k in range(a, b + 1) if lines[k - 1].strip() not in ("", "}")]
+            calls_solve = re.search(r"\bsolve\s*\(", text) and len(body) <= 16
+            for k in range(a, b + 1):
+                if calls_solve or _IO_SETUP.search(lines[k - 1]):
+                    gone.add(k)
+    return gone
 
 
 def _read_text(path):
@@ -232,10 +295,20 @@ def _read_text(path):
         return f.read()
 
 
+def _load_set(name):
+    path = os.path.join(SETS_DIR, f"{name}.txt")
+    if not os.path.isfile(path):
+        return []
+    return [l.strip() for l in _read_text(path).splitlines() if l.strip() and not l.strip().startswith("#")]
+
+
 def strip_cpp_library(orig_path):
-    """Return library-stripped C++ source using sibling .strip or bench/corpus_registry.auto_strip."""
+    """Return library-stripped C++ source using sibling orig.strip/.strip or auto_strip."""
     lines = _read_text(orig_path).splitlines()
-    strip_file = re.sub(r"_orig\.cpp$", ".strip", orig_path)
+    if os.path.basename(orig_path) == "orig.cpp":
+        strip_file = os.path.join(os.path.dirname(orig_path), "orig.strip")
+    else:
+        strip_file = re.sub(r"_orig\.cpp$", ".strip", orig_path)
     gone = set()
     if os.path.isfile(strip_file):
         for line in _read_text(strip_file).splitlines():
@@ -247,9 +320,7 @@ def strip_cpp_library(orig_path):
                 except ValueError:
                     pass
     else:
-        cr = _get_corpus_registry()
-        if cr is not None:
-            gone = cr.auto_strip(lines)
+        gone = auto_strip(lines)
     kept = [line for idx, line in enumerate(lines, 1) if idx not in gone]
     return "\n".join(kept)
 
@@ -270,25 +341,52 @@ def find_cpl_binary(override=None):
 
 
 def discover_ports(port_dirs=None, only=None):
-    """Auto-discover Rust-era ports (*.cp with sibling *_orig.cpp) under proto/ports/."""
-    dirs = []
-    if port_dirs:
-        for d in port_dirs:
-            full = d if os.path.isabs(d) else os.path.join(ROOT, d)
-            if os.path.isdir(full):
-                dirs.append(full)
-    else:
-        if os.path.isdir(PORTS_DIR):
-            for entry in sorted(os.listdir(PORTS_DIR)):
-                full = os.path.join(PORTS_DIR, entry)
-                if not os.path.isdir(full):
-                    continue
-                if entry in RETIRED_DIRS or entry.startswith(RETIRED_DIR_PREFIXES):
-                    continue
-                if glob.glob(os.path.join(full, "*_orig.cpp")):
-                    dirs.append(full)
-
+    """Discover gated ports from corpus/sets/ecnerwala.txt under corpus/problems/<id>/ (or custom port_dirs)."""
     ports = []
+    if not port_dirs:
+        ecn = _load_set("ecnerwala")
+        for stem in ecn:
+            pdir = os.path.join(PORTS_DIR, stem)
+            cp_path = os.path.join(pdir, "port.cp")
+            orig_path = os.path.join(pdir, "orig.cpp")
+            if not os.path.isfile(cp_path) or not os.path.isfile(orig_path):
+                continue
+            group = "ecnerwala"
+            port_id = f"{group}/{stem}"
+            if only and port_id not in only and stem not in only:
+                continue
+            gen_path = os.path.join(pdir, "gen.py")
+            eps_path = os.path.join(pdir, "gen.eps")
+            interactor_path = os.path.join(pdir, "interactor.py")
+            checker_path = os.path.join(pdir, "checker.py")
+            dream_path = os.path.join(pdir, "dream.cp")
+            sample_ext = "case" if os.path.isfile(interactor_path) else "in"
+            samples = sorted(glob.glob(os.path.join(pdir, "tests", f"*.{sample_ext}")))
+            ports.append(
+                {
+                    "id": port_id,
+                    "group": group,
+                    "name": stem,
+                    "path": os.path.relpath(cp_path, ROOT),
+                    "orig_path": os.path.relpath(orig_path, ROOT),
+                    "abs_path": cp_path,
+                    "abs_orig": orig_path,
+                    "gen": gen_path if os.path.isfile(gen_path) else None,
+                    "eps": float(_read_text(eps_path).strip()) if os.path.isfile(eps_path) else None,
+                    "interactor": interactor_path if os.path.isfile(interactor_path) else None,
+                    "checker": checker_path if os.path.isfile(checker_path) else None,
+                    "dream": dream_path if os.path.isfile(dream_path) else None,
+                    "samples": samples,
+                }
+            )
+        return ports
+
+    dirs = []
+    for d in port_dirs:
+        full = d if os.path.isabs(d) else os.path.join(ROOT, d)
+        if os.path.isdir(full):
+            dirs.append(full)
+
     for d in dirs:
         group = os.path.relpath(d, PORTS_DIR)
         for cp_path in sorted(glob.glob(os.path.join(d, "*.cp"))):
@@ -834,21 +932,20 @@ def summarize_taste_reviews(port_records, reviews_dir=REVIEWS_DIR, repo_root=ROO
     # Stale: ports whose .cp file changed in a commit newer than the last commit touching its review.
     stale = 0
     if review_rel_by_name:
-        first_seen = _git_last_touch_order(repo_root, ["proto/ports", os.path.relpath(reviews_dir, repo_root)])
+        first_seen = _git_last_touch_order(repo_root, ["corpus/problems", os.path.relpath(reviews_dir, repo_root)])
         if first_seen:
             extra_cp_by_name = {}
-            ports_root = os.path.join(repo_root, "proto", "ports")
+            ports_root = os.path.join(repo_root, "corpus", "problems")
             if os.path.isdir(ports_root):
-                for dirpath, dirnames, filenames in os.walk(ports_root):
-                    dirnames[:] = [d for d in dirnames if d not in ("dream", "today")]
-                    for fn in filenames:
-                        if not fn.endswith(".cp"):
-                            continue
-                        pname = os.path.splitext(fn)[0]
-                        if pname in active_cp_by_name or pname not in review_rel_by_name:
-                            continue
-                        rel = os.path.relpath(os.path.join(dirpath, fn), repo_root)
-                        extra_cp_by_name.setdefault(pname, []).append(rel)
+                for entry in os.listdir(ports_root):
+                    port_cp = os.path.join(ports_root, entry, "port.cp")
+                    if not os.path.isfile(port_cp):
+                        continue
+                    pname = entry
+                    if pname in active_cp_by_name or pname not in review_rel_by_name:
+                        continue
+                    rel = os.path.relpath(port_cp, repo_root)
+                    extra_cp_by_name.setdefault(pname, []).append(rel)
 
             for name, rrel in review_rel_by_name.items():
                 rv_idx = first_seen.get(rrel)
@@ -1701,8 +1798,8 @@ def _is_retired_port_path(rel_path):
     )
 
 
-def measure_spelling_drift(ports_root=os.path.join(ROOT, "proto", "ports")):
-    """Count canonical vs non-canonical spellings across proto/ports/**/*.cp."""
+def measure_spelling_drift(ports_root=os.path.join(ROOT, "corpus", "problems")):
+    """Count canonical vs non-canonical spellings across corpus/problems/**/*.cp."""
     if not os.path.isdir(ports_root):
         return None
     constructs = {}
@@ -1715,6 +1812,8 @@ def measure_spelling_drift(ports_root=os.path.join(ROOT, "proto", "ports")):
             "active_non_canonical": 0,
         }
 
+    is_corpus_layout = os.path.abspath(ports_root) == os.path.abspath(PORTS_DIR)
+    ecn_set = set(_load_set("ecnerwala")) if is_corpus_layout else set()
     files_scanned = 0
     active_files_scanned = 0
     for dirpath, _dirnames, filenames in os.walk(ports_root):
@@ -1723,7 +1822,11 @@ def measure_spelling_drift(ports_root=os.path.join(ROOT, "proto", "ports")):
                 continue
             full = os.path.join(dirpath, fn)
             rel = os.path.relpath(full, ports_root)
-            active = not _is_retired_port_path(rel)
+            if is_corpus_layout:
+                parts = rel.replace("\\", "/").split("/")
+                active = len(parts) == 2 and parts[0] in ecn_set and parts[1] in ("port.cp", "dream.cp")
+            else:
+                active = not _is_retired_port_path(rel)
             files_scanned += 1
             if active:
                 active_files_scanned += 1
@@ -2150,7 +2253,7 @@ def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
                 reviewed_ports.add(norm[len("research/reviews/"):-3])
         if norm.startswith("bench/goal_tests/"):
             touched_goal_tests = True
-        if "/dream/" in norm and norm.startswith("proto/ports/"):
+        if norm.startswith("corpus/problems/") and norm.endswith("/dream.cp"):
             touched_dreams = True
         pid = _port_id_from_relpath(norm)
         if pid:
@@ -2538,32 +2641,15 @@ def merge_baseline_perf(port_records, baseline):
 
 
 def _port_id_from_relpath(relpath):
-    """Extract active port id `group/name` from a repo-relative path under proto/ports/."""
+    """Extract active port id `ecnerwala/<name>` from a repo-relative path under corpus/problems/."""
     norm = relpath.replace("\\", "/").lstrip("./")
-    if not norm.startswith("proto/ports/"):
+    if norm.startswith("corpus/problems/"):
+        parts = norm.split("/")
+        if len(parts) >= 4:
+            pid = parts[2]
+            if pid in set(_load_set("ecnerwala")):
+                return f"ecnerwala/{pid}"
         return None
-    parts = norm.split("/")
-    if len(parts) < 4:
-        return None
-    group = parts[2]
-    if any(group.startswith(pfx) for pfx in RETIRED_DIR_PREFIXES):
-        return None
-    fname = parts[-1]
-    if len(parts) == 4:
-        if fname.endswith(".cp"):
-            return f"{group}/{fname[:-3]}"
-        if fname.endswith("_orig.cpp"):
-            return f"{group}/{fname[:-9]}"
-        if fname.endswith("_orig.cpp.strip"):
-            return f"{group}/{fname[:-15]}"
-        return None
-    sub = parts[3]
-    if sub in ("dream", "gen", "checkers", "interactors", "samples") and len(parts) == 5:
-        stem = os.path.splitext(fname)[0]
-        if sub == "samples":
-            # samples/NAME.in, samples/NAME.1.in, etc.
-            stem = stem.split(".")[0]
-        return f"{group}/{stem}" if stem else None
     return None
 
 

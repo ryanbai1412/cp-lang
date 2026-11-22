@@ -440,36 +440,52 @@ fn overlapping_fixes_wait_for_the_next_round() {
     );
 }
 
-/// Every program under `proto/`: the linter reads it without panicking and
-/// every span it reports lies inside the file, on the text it names.
+/// Every program under `corpus/problems/` and `crates/cpl-cli/tests/cases/`:
+/// the linter reads it without panicking and every span it reports lies inside
+/// the file, on the text it names.
 #[test]
 fn lints_the_whole_corpus() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut seen = 0;
-    for dir in ["ports", "tests/ok", "tests/lend", "tests/fn", "tests/bad"] {
-        let Ok(entries) = std::fs::read_dir(root.join(dir)) else {
-            continue;
-        };
+    let mut files = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(root.join("corpus/problems")) {
         for entry in entries.flatten() {
-            if entry.path().extension().is_none_or(|e| e != "cp") {
-                continue;
+            let port = entry.path().join("port.cp");
+            if port.exists() {
+                files.push(port);
             }
-            let src = std::fs::read_to_string(entry.path()).unwrap();
-            seen += 1;
-            for found in lint(&src, &Config::default()) {
-                assert!(
-                    found.span.end as usize <= src.len(),
-                    "{}",
-                    entry.path().display()
-                );
-                assert!(
-                    !found.span.is_empty(),
-                    "{}: {found:?}",
-                    entry.path().display()
-                );
-                if found.code == VAR_NEVER_REASSIGNED.code {
-                    assert_eq!(found.span.text(&src), "var", "{}", entry.path().display());
+        }
+    }
+    for dir in [
+        "crates/cpl-cli/tests/cases/ok",
+        "crates/cpl-cli/tests/cases/lend",
+        "crates/cpl-cli/tests/cases/fn",
+        "crates/cpl-cli/tests/cases/bad",
+    ] {
+        if let Ok(entries) = std::fs::read_dir(root.join(dir)) {
+            for entry in entries.flatten() {
+                if entry.path().extension().is_some_and(|e| e == "cp") {
+                    files.push(entry.path());
                 }
+            }
+        }
+    }
+    for path in files {
+        let src = std::fs::read_to_string(&path).unwrap();
+        seen += 1;
+        for found in lint(&src, &Config::default()) {
+            assert!(
+                found.span.end as usize <= src.len(),
+                "{}",
+                path.display()
+            );
+            assert!(
+                !found.span.is_empty(),
+                "{}: {found:?}",
+                path.display()
+            );
+            if found.code == VAR_NEVER_REASSIGNED.code {
+                assert_eq!(found.span.text(&src), "var", "{}", path.display());
             }
         }
     }
@@ -1972,8 +1988,7 @@ print(head)
     let cleared = queue.replace("    let u = q[head]\n", "    q.clear()\n    let u = q[head]\n");
     assert_eq!(proofs(&cleared), Vec::<String>::new());
     assert!([&late, &same].iter().all(|src| cpl_syntax::parse_file(src).diagnostics.is_empty()));
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_14/noi19p1.cp");
-    let port = &std::fs::read_to_string(path).unwrap();
+    let port = "var routes: List<Int> = []\nfor _ in 0..3:\n    routes.push(read())\nvar s = 0\nfor i in 0..routes.len:\n    s += routes[i]\n    s += routes[i]\nprint(s)\n";
     let routes: Vec<String> = crate::proven_indexes(port)
         .into_iter()
         .map(|p| format!("{} {}", &port[p.access.0 as usize..p.access.1 as usize], p.proof))
@@ -2005,7 +2020,7 @@ print(f([[1], [2, 3]]))
     assert_eq!(proofs(&other), ["g[u] 0 <= u < g.len"]);
     let cell = walk.replace("s += g[u][j]", "g[u][j] = s");
     assert_eq!(proofs(&cell), rows);
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_33/ioi12p6.cp");
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/problems/ioi12p6/port.cp");
     let port = &std::fs::read_to_string(path).unwrap();
     assert!(proofs(port).contains(&"kids[v][i] 0 <= i < kids[v].len".to_string()), "{:?}", proofs(port));
 }

@@ -344,13 +344,15 @@ def check_cookbook() -> tuple[int, int]:
     if res.returncode != 0:
         sys.exit(f"check_docs: cookbook `cpl check` failed:\n{res.stderr}\n{res.stdout}")
 
-    samples_dir = REPO / "proto/ports/ecnerwala/samples"
     sample_runs = 0
     for _, port_name, _, _ in recipes:
         p = cookbook.port_path(REPO, port_name)
         if "@!interactive" in p.read_text():
             continue
-        for inp in sorted(samples_dir.glob(f"{port_name}.*.in")):
+        tests_dir = p.parent / "tests"
+        if not tests_dir.is_dir():
+            continue
+        for inp in sorted(tests_dir.glob("*.in")):
             out = inp.with_suffix(".out")
             if not out.is_file():
                 continue

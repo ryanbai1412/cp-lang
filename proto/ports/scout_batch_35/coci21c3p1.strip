@@ -1,5 +1,0 @@
-# corpus/submissions/4196130.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by loc.py in this directory.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-61-71        driver          fast I/O setup and the test-case loop

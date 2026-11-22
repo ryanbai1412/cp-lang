@@ -156,7 +156,7 @@ fn requests(src: &str, rng: &mut Rng) -> Vec<(&'static str, Value)> {
 
 #[test]
 fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
-    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports");
+    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
     let mut files = Vec::new();
     for author in std::fs::read_dir(&ports).unwrap().flatten() {
         let Ok(entries) = std::fs::read_dir(author.path()) else { continue };

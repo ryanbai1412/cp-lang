@@ -3,7 +3,7 @@
 //!
 //! Two corpora. The code blocks of `plan/1x-*.md` are mostly valid 0.2.2
 //! with some planned syntax mixed in. The broken ports take every
-//! `proto/ports/ecnerwala` port, which checks clean, and break one line at
+//! `corpus/sets/ecnerwala.txt` port, which checks clean, and break one line at
 //! a time with a small set of edits a contestant makes by accident. Each
 //! broken copy has exactly one root cause, so every error past the first
 //! is a cascade, and the first error should be on the line that was
@@ -141,10 +141,12 @@ struct Broken {
 /// Every port broken by every edit on up to three of its lines, picked
 /// the same way on every run.
 fn broken_ports(edits: &'static [(&'static str, Edit)]) -> Vec<Broken> {
-    let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("proto/ports/ecnerwala"))
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|x| x == "cp"))
+    let set = std::fs::read_to_string(root().join("corpus/sets/ecnerwala.txt")).unwrap();
+    let mut paths: Vec<PathBuf> = set
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|id| root().join(format!("corpus/problems/{id}/port.cp")))
         .collect();
     paths.sort();
     let mut out = Vec::new();

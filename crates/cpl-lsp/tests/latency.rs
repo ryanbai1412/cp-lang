@@ -480,7 +480,7 @@ fn p95_budget() -> Duration {
 /// within the budget at the 95th percentile.
 #[test]
 fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() {
-    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports");
+    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
     let mut files = Vec::new();
     for author in std::fs::read_dir(&ports).unwrap().flatten() {
         let Ok(entries) = std::fs::read_dir(author.path()) else { continue };

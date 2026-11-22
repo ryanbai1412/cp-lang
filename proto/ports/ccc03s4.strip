@@ -1,7 +1,0 @@
-# ccc03s4_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-32-48        modint          modular power and inverse
-50-80        hash            polynomial string hash
-114-125      driver          fast I/O setup and the test-case loop

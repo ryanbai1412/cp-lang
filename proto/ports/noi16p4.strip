@@ -1,7 +1,0 @@
-# noi16p4_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-32-62        segtree         lazy segment tree: range add, global max
-72-82        compress        coordinate compression
-106-111      driver          fast I/O setup and the test-case loop

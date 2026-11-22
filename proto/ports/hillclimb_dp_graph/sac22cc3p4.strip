@@ -1,8 +1,0 @@
-# sac22cc3p4_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-32-58        sparse-table    sparse table and its min operation
-62-89        lca             Euler tour, RMQ lowest common ancestor, distance
-91-109       dsu             disjoint sets
-150-161      driver          fast I/O setup and the test-case loop

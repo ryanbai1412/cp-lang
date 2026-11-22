@@ -44,11 +44,6 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// own pass: a `read() where` guard, `Dsu.count` and `std.steps` are not
 /// in v2.2, and each is reported with what to write instead.
 const PENDING: &[&str] = &[
-    "proto/ports/apio07p1.cp",
-    "proto/ports/ccc21s2.cp",
-    "proto/ports/ccc21s4.cp",
-    "proto/ports/ioi05p6.cp",
-    "proto/ports/noi16p4.cp",
     "crates/cpl-cli/tests/cases/ergo/compound_div.cp",
     "crates/cpl-cli/tests/cases/ergo/library.cp",
 ];
@@ -60,16 +55,6 @@ const PENDING: &[&str] = &[
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.
 const NOT_BUILT: &[&str] = &[
-    "proto/ports/ccc23s4.cp",
-    "proto/ports/cco18p1.cp",
-    "proto/ports/ceoi09p3.cp",
-    "proto/ports/coci20c6p3.cp",
-    "proto/ports/hillclimb_dp_graph/dpp.cp",
-    "proto/ports/hillclimb_dp_graph/noi15p2.cp",
-    "proto/ports/hillclimb_dp_graph/yac6p2.cp",
-    "proto/ports/mccc4j5.cp",
-    "proto/ports/nccc10s2.cp",
-    "proto/ports/noi01p5.cp",
     "crates/cpl-cli/tests/cases/ergo/columns.cp",
     "crates/cpl-cli/tests/cases/ergo/counter.cp",
     "crates/cpl-cli/tests/cases/ergo/moves.cp",
@@ -92,14 +77,42 @@ const NOT_BUILT: &[&str] = &[
 fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut failures = Vec::new();
     let mut checked = 0;
-    // Not here: `proto/ports/scout_batch_*`, which are sketches of code
-    // the language does not accept yet (their `// WISH` lines), and
-    // `hillclimb_dp_graph/before`, the versions its ports replaced.
+    let sketches: std::collections::HashSet<String> =
+        std::fs::read_to_string(root().join("corpus/sets/sketches.txt"))
+            .unwrap()
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .collect();
+    let mut corpus_ports = Vec::new();
+    for entry in std::fs::read_dir(root().join("corpus/problems")).unwrap() {
+        let dir = entry.unwrap().path();
+        if !dir.is_dir() {
+            continue;
+        }
+        let port = dir.join("port.cp");
+        if port.exists() {
+            corpus_ports.push(port);
+        }
+    }
+    corpus_ports.sort();
+    for path in corpus_ports {
+        let id = path.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let is_sketch = sketches.contains(id);
+        checked += 1;
+        let out = check(&path);
+        if is_sketch && out.code == 0 {
+            failures.push(format!(
+                "{} checks clean now: take {id} off `corpus/sets/sketches.txt`",
+                path.display()
+            ));
+        } else if !is_sketch && out.code != 0 {
+            failures.push(out.stderr);
+        }
+    }
     for (dir, nested) in [
         ("stdlib", false),
         ("examples/local-lib", true),
-        ("proto/ports", false),
-        ("proto/ports/hillclimb_dp_graph", false),
         ("crates/cpl-cli/tests/cases/lend", false),
         ("crates/cpl-cli/tests/cases/ergo", false),
         ("crates/cpl-cli/tests/cases/ok", false),

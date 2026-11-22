@@ -1,4 +1,4 @@
-"""Cookbook generator backed directly by validated ports in `proto/ports/ecnerwala/`.
+"""Cookbook generator backed directly by validated ports in `corpus/problems/`.
 
 Every recipe reads its live `.cp` source from disk at build time so cookbook
 code never drifts from the compiler or corpus gate. `site/check_docs.py`
@@ -83,12 +83,12 @@ def all_recipes() -> list[tuple[str, str, str, str]]:
 
 
 def port_path(repo_root: Path, port_name: str) -> Path:
-    return repo_root / "proto/ports/ecnerwala" / f"{port_name}.cp"
+    return repo_root / "corpus/problems" / port_name / "port.cp"
 
 
 def render_cookbook_html(repo_root: Path, highlight_cp) -> str:
     """Render the full body HTML for `cookbook.html`."""
-    total_ports = len(list((repo_root / "proto/ports/ecnerwala").glob("*.cp")))
+    total_ports = len(list((repo_root / "corpus/problems").glob("*/port.cp")))
     recipes = all_recipes()
     parts = [
         f"<p>Every recipe below is a complete, real contest solution pulled directly from the "

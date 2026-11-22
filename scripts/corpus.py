@@ -32,20 +32,19 @@ def source_of(problem):
 
 def artifacts():
     found = defaultdict(lambda: defaultdict(list))
-    for base in ("proto/ports", "corpus/gold"):
-        for d, _, files in os.walk(os.path.join(ROOT, base)):
+    gold_dir = os.path.join(ROOT, "corpus", "gold")
+    if os.path.isdir(gold_dir):
+        for d, _, files in os.walk(gold_dir):
             for f in files:
-                m = re.match(r"([a-z0-9]+?)(_orig|_draft|_judge)?\.(cp|cpp)$", f)
-                if not m:
-                    continue
-                name, suffix, ext = m.groups()
-                kind = ("dream" if "/dream" in d or "gold" in d else
-                        "original" if suffix == "_orig" or ext == "cpp" else
-                        "draft" if suffix == "_draft" else "port")
-                found[name][kind].append(rel(os.path.join(d, f)))
+                m = re.match(r"([a-z0-9_]+?)\.(cp)$", f)
+                if m:
+                    found[m.group(1)]["dream"].append(rel(os.path.join(d, f)))
     for q in os.listdir(PROBLEMS) if os.path.isdir(PROBLEMS) else []:
-        for kind in ("dream", "spec"):
-            f = os.path.join(PROBLEMS, q, kind + ".cp")
+        pdir = os.path.join(PROBLEMS, q)
+        if not os.path.isdir(pdir):
+            continue
+        for kind, fname in (("dream", "dream.cp"), ("spec", "spec.cp"), ("port", "port.cp"), ("original", "orig.cpp")):
+            f = os.path.join(pdir, fname)
             if os.path.exists(f):
                 found[q][kind].insert(0, rel(f))
     return found

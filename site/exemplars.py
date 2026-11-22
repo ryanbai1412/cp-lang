@@ -32,14 +32,14 @@ def _share_href(source: str) -> str:
 
 
 def load_dream_pairs(root: Path = ROOT) -> list[dict]:
-    """Return all (dream, validated port) pairs discovered under proto/ports/."""
-    ports_root = root / "proto" / "ports"
+    """Return all (dream, validated port) pairs discovered under corpus/problems/."""
+    ports_root = root / "corpus" / "problems"
     pairs: list[dict] = []
     if not ports_root.is_dir():
         return pairs
-    for dream_path in sorted(ports_root.glob("**/dream/*.cp")):
-        group_dir = dream_path.parent.parent
-        port_path = group_dir / dream_path.name
+    for dream_path in sorted(ports_root.glob("*/dream.cp")):
+        prob_dir = dream_path.parent
+        port_path = prob_dir / "port.cp"
         if not port_path.is_file():
             continue
         dream_src = dream_path.read_text(encoding="utf-8").rstrip()
@@ -47,7 +47,6 @@ def load_dream_pairs(root: Path = ROOT) -> list[dict]:
         dream_tok = _count_tokens(dream_src)
         port_tok = _count_tokens(port_src)
         ratio = round(port_tok / dream_tok, 2) if dream_tok else 1.0
-        rel_group = str(group_dir.relative_to(ports_root))
         header_lines = []
         for ln in dream_src.splitlines():
             s = ln.strip()
@@ -57,8 +56,8 @@ def load_dream_pairs(root: Path = ROOT) -> list[dict]:
                 break
         pairs.append(
             {
-                "id": dream_path.stem,
-                "group": rel_group,
+                "id": prob_dir.name,
+                "group": "problems",
                 "dream_path": str(dream_path.relative_to(root)),
                 "port_path": str(port_path.relative_to(root)),
                 "dream_src": dream_src,

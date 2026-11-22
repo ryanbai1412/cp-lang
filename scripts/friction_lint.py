@@ -17,7 +17,7 @@ research/friction-hunter-wave-{1,2,3,4}.md (`source` in the JSON says which).
 usage: friction_lint.py [--json | --summary] [--top N] [--list RULE] [--baseline FILE]
                         [--fail-on-wa-trap] [PATH ...]
 
-PATHs default to proto/ports and examples (every *.cp below them, minus
+PATHs default to corpus/problems and examples (every *.cp below them, minus
 before/ snapshots that record code as it had to be written before a fix).
 --baseline takes an earlier --json report and exits 1 if any rule grew;
 --fail-on-wa-trap exits 1 if any wa_trap rule has a hit (scripts/check.sh).
@@ -26,7 +26,7 @@ import argparse, json, os, re, sys
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_PATHS = ["proto/ports", "examples"]
+DEFAULT_PATHS = ["corpus/problems", "examples"]
 SKIP_DIRS = {"before"}
 
 IDENT = r"[A-Za-z_]\w*"

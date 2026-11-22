@@ -66,19 +66,19 @@ def parse_ports_md(repo_root: Path) -> tuple[str, list[dict]]:
         )
         seen.add(name)
 
-    # Include any dream/*.cp whose port is older than the newest 60 in PORTS.md.
-    for dream_p in sorted((repo_root / "proto/ports").glob("*/dream/*.cp")):
-        name = dream_p.stem
+    # Include any dream.cp whose port is older than the newest 60 in PORTS.md.
+    for dream_p in sorted((repo_root / "corpus/problems").glob("*/dream.cp")):
+        prob_dir = dream_p.parent
+        name = prob_dir.name
         if name in seen:
             continue
-        group_dir = dream_p.parent.parent
-        cp_p = group_dir / f"{name}.cp"
+        cp_p = prob_dir / "port.cp"
         if not cp_p.is_file():
             continue
         cpp_rel = ""
         for cand_cpp in [
-            group_dir / f"{name}_orig.cpp",
-            repo_root / "corpus/submissions" / group_dir.name / f"{name}.cpp",
+            prob_dir / "orig.cpp",
+            repo_root / "corpus/submissions/ecnerwala" / f"{name}.cpp",
         ]:
             if cand_cpp.is_file():
                 cpp_rel = str(cand_cpp.relative_to(repo_root))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""What the dreams need: run `cpl check` over proto/ports/*/dream/*.cp and
+"""What the dreams need: run `cpl check` over corpus/problems/*/dream.cp and
 count the errors by the missing feature or library name they report.
 
 A dream (plan/PORTING.md) is written in the syntax and library we wish we
@@ -42,7 +42,7 @@ def find_cpl(override=None):
 
 
 def dreams():
-    return sorted(glob.glob(os.path.join(ROOT, "proto", "ports", "*", "dream", "*.cp")))
+    return sorted(glob.glob(os.path.join(ROOT, "corpus", "problems", "*", "dream.cp")))
 
 
 def errors(cpl, path):

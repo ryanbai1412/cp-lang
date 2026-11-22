@@ -1,5 +1,0 @@
-# ioi11p2_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-86-96        driver          the stand-in for the IOI grader

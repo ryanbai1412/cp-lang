@@ -47,7 +47,7 @@ fn run_cpl(port_rel: &str, input: &str) -> (Duration, String) {
 #[test]
 fn cf2180f1_small_tuple_dp_parity_and_speed() {
     let input = "3\n1 1\n10 10\n80 80\n";
-    let (took, out) = run_cpl("proto/ports/ecnerwala/cf2180f1.cp", input);
+    let (took, out) = run_cpl("corpus/problems/cf2180f1/port.cp", input);
     assert_eq!(out.lines().count(), 3, "unexpected output: {out}");
     assert!(
         took < Duration::from_secs(10),
@@ -62,7 +62,7 @@ fn cf2183f_tree_2d_dp_parity_and_speed() {
     for i in 1..n {
         input.push_str(&format!("{i} {}\n", i + 1));
     }
-    let (took, out) = run_cpl("proto/ports/ecnerwala/cf2183f.cp", &input);
+    let (took, out) = run_cpl("corpus/problems/cf2183f/port.cp", &input);
     assert_eq!(
         out.split_whitespace().count(),
         n,
@@ -77,23 +77,23 @@ fn cf2183f_tree_2d_dp_parity_and_speed() {
 #[test]
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
     let cases = [
-        ("proto/ports/ecnerwala/cf2262e.cp", "proto/ports/ecnerwala/samples/cf2262e.sample1.in"),
-        ("proto/ports/ecnerwala/cf2150d.cp", "proto/ports/ecnerwala/samples/cf2150d.sample1.in"),
-        ("proto/ports/ecnerwala/cf2124f2.cp", "proto/ports/ecnerwala/samples/cf2124f2.1.in"),
-        ("proto/ports/ecnerwala/cf2096f.cp", "proto/ports/ecnerwala/samples/cf2096f.1.in"),
-        ("proto/ports/ecnerwala/cf2089c1.cp", "proto/ports/ecnerwala/samples/cf2089c1.1.in"),
-        ("proto/ports/ecnerwala/cf2084g1.cp", "proto/ports/ecnerwala/samples/cf2084g1.sample1.in"),
-        ("proto/ports/ecnerwala/cf2084h.cp", "proto/ports/ecnerwala/samples/cf2084h.sample1.in"),
-        ("proto/ports/ecnerwala/cf2101c.cp", "proto/ports/ecnerwala/samples/cf2101c.1.in"),
-        ("proto/ports/ecnerwala/cf2237b.cp", "proto/ports/ecnerwala/samples/cf2237b.sample1.in"),
-        ("proto/ports/ecnerwala/ucup5s06g.cp", "proto/ports/ecnerwala/samples/ucup5s06g.s1.in"),
-        ("proto/ports/ecnerwala/cf2180g.cp", "proto/ports/ecnerwala/samples/cf2180g.sample1.in"),
-        ("proto/ports/ecnerwala/cf2207f.cp", "proto/ports/ecnerwala/samples/cf2207f.1.in"),
-        ("proto/ports/ecnerwala/cf2261g.cp", "proto/ports/ecnerwala/samples/cf2261g.sample1.in"),
-        ("proto/ports/ecnerwala/cf2138f.cp", "proto/ports/ecnerwala/samples/cf2138f.1.in"),
-        ("proto/ports/ecnerwala/cf2150c.cp", "proto/ports/ecnerwala/samples/cf2150c.sample1.in"),
-        ("proto/ports/ecnerwala/cf2127h.cp", "proto/ports/ecnerwala/samples/cf2127h.sample1.in"),
-        ("proto/ports/ecnerwala/cf2062f.cp", "proto/ports/ecnerwala/samples/cf2062f.sample1.in"),
+        ("corpus/problems/cf2262e/port.cp", "corpus/problems/cf2262e/tests/sample1.in"),
+        ("corpus/problems/cf2150d/port.cp", "corpus/problems/cf2150d/tests/sample1.in"),
+        ("corpus/problems/cf2124f2/port.cp", "corpus/problems/cf2124f2/tests/1.in"),
+        ("corpus/problems/cf2096f/port.cp", "corpus/problems/cf2096f/tests/1.in"),
+        ("corpus/problems/cf2089c1/port.cp", "corpus/problems/cf2089c1/tests/1.in"),
+        ("corpus/problems/cf2084g1/port.cp", "corpus/problems/cf2084g1/tests/sample1.in"),
+        ("corpus/problems/cf2084h/port.cp", "corpus/problems/cf2084h/tests/sample1.in"),
+        ("corpus/problems/cf2101c/port.cp", "corpus/problems/cf2101c/tests/1.in"),
+        ("corpus/problems/cf2237b/port.cp", "corpus/problems/cf2237b/tests/sample1.in"),
+        ("corpus/problems/ucup5s06g/port.cp", "corpus/problems/ucup5s06g/tests/s1.in"),
+        ("corpus/problems/cf2180g/port.cp", "corpus/problems/cf2180g/tests/sample1.in"),
+        ("corpus/problems/cf2207f/port.cp", "corpus/problems/cf2207f/tests/1.in"),
+        ("corpus/problems/cf2261g/port.cp", "corpus/problems/cf2261g/tests/sample1.in"),
+        ("corpus/problems/cf2138f/port.cp", "corpus/problems/cf2138f/tests/1.in"),
+        ("corpus/problems/cf2150c/port.cp", "corpus/problems/cf2150c/tests/sample1.in"),
+        ("corpus/problems/cf2127h/port.cp", "corpus/problems/cf2127h/tests/sample1.in"),
+        ("corpus/problems/cf2062f/port.cp", "corpus/problems/cf2062f/tests/sample1.in"),
     ];
     for (port_rel, sample_rel) in cases {
         let port = repo_root().join(port_rel);

@@ -1,8 +1,0 @@
-# cco16p2_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-21         template        includes, debug macros, typedefs
-23-27        template        typedefs and macros
-29-39        geometry        point type, pair addition, argument of a point
-41-69        geometry        polar-angle comparator
-124-129      driver          fast I/O setup and the test-case loop

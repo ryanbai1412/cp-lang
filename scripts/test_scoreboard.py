@@ -867,11 +867,11 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertEqual(merged["totals"]["emitted_bytes"]["max"], 16334)
         self.assertEqual(merged["totals"]["gate_fast"]["elapsed_s"], 120.0)
 
-        # Path -> port ID mapping handles ports, dreams, gens, checkers, samples, and skips retired batches.
-        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/cf2124f2.cp"), "ecnerwala/cf2124f2")
-        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/dream/cf2124f2.cp"), "ecnerwala/cf2124f2")
-        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/samples/cf2124f2.1.in"), "ecnerwala/cf2124f2")
-        self.assertIsNone(sb._port_id_from_relpath("proto/ports/scout_batch_1/foo.cp"))
+        # Path -> port ID mapping handles ports, dreams, gens, checkers, samples, and skips non-set problems.
+        self.assertEqual(sb._port_id_from_relpath("corpus/problems/cf2124f2/port.cp"), "ecnerwala/cf2124f2")
+        self.assertEqual(sb._port_id_from_relpath("corpus/problems/cf2124f2/dream.cp"), "ecnerwala/cf2124f2")
+        self.assertEqual(sb._port_id_from_relpath("corpus/problems/cf2124f2/tests/1.in"), "ecnerwala/cf2124f2")
+        self.assertIsNone(sb._port_id_from_relpath("corpus/problems/not_in_set_xyz/port.cp"))
 
     def test_interp_ratio_section_and_max_p50_ratchet(self):
         base = {
@@ -1315,19 +1315,15 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             git("config", "user.email", "test@example.com")
             git("config", "user.name", "Test")
 
-            ec = os.path.join(tmp, "proto", "ports", "ecnerwala")
-            scout = os.path.join(tmp, "proto", "ports", "scout_batch_10")
+            probs = os.path.join(tmp, "corpus", "problems")
             rev = os.path.join(tmp, "research", "reviews")
-            os.makedirs(ec, exist_ok=True)
-            os.makedirs(scout, exist_ok=True)
             os.makedirs(rev, exist_ok=True)
 
             # Commit 1: initial ports + stale port's old review + same-commit port/review + unreviewed port
-            for name in ("fresh", "stale", "same", "unrev"):
-                with open(os.path.join(ec, f"{name}.cp"), "w", encoding="utf-8") as f:
+            for name in ("fresh", "stale", "same", "unrev", "extra"):
+                os.makedirs(os.path.join(probs, name), exist_ok=True)
+                with open(os.path.join(probs, name, "port.cp"), "w", encoding="utf-8") as f:
                     f.write("print(1)\n")
-            with open(os.path.join(scout, "extra.cp"), "w", encoding="utf-8") as f:
-                f.write("print(1)\n")
             with open(os.path.join(rev, "README.md"), "w", encoding="utf-8") as f:
                 f.write("# Reviews\nScore: 1/5\n")
             with open(os.path.join(rev, "stale.md"), "w", encoding="utf-8") as f:
@@ -1339,10 +1335,10 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             git("add", ".")
             git("commit", "-q", "-m", "initial")
 
-            # Commit 2: add review for fresh (newer than .cp -> NOT stale) and edit stale.cp (newer than review -> STALE)
+            # Commit 2: add review for fresh (newer than .cp -> NOT stale) and edit stale/port.cp (newer than review -> STALE)
             with open(os.path.join(rev, "fresh.md"), "w", encoding="utf-8") as f:
                 f.write("# fresh\n\n- **Score:** 4/5\n")
-            with open(os.path.join(ec, "stale.cp"), "w", encoding="utf-8") as f:
+            with open(os.path.join(probs, "stale", "port.cp"), "w", encoding="utf-8") as f:
                 f.write("print(2)\n")
             with open(os.path.join(rev, "pend.md"), "w", encoding="utf-8") as f:
                 f.write("# pend\n\nScore: pending (was 2/5)\n")
@@ -1353,7 +1349,7 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
                 {
                     "id": f"ecnerwala/{n}",
                     "name": n,
-                    "path": f"proto/ports/ecnerwala/{n}.cp",
+                    "path": f"corpus/problems/{n}/port.cp",
                     "gate": "pass",
                     "cp_tokens": 10,
                     "orig_tokens": 20,

@@ -1,4 +1,4 @@
-// Runs the grammar over every `.cp` file in `proto/ports/`, `crates/cpl-cli/tests/cases/`,
+// Runs the grammar over every `.cp` file in `corpus/problems/`, `crates/cpl-cli/tests/cases/`,
 // `stdlib/` and `examples/local-lib/`: real programs, not lines written to
 // suit the grammar.
 
@@ -27,10 +27,10 @@ function has(token: Token, prefix: string): boolean {
 
 const VALID_NUMBER = /^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|[0-9][0-9_]*(?:\.[0-9][0-9_]*)?(?:[eE][+-]?[0-9][0-9_]*)?)$/;
 
-test('the grammar cleanly tokenizes every .cp program in proto/, stdlib/ and examples/', async () => {
+test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases/, stdlib/ and examples/', async () => {
     const files = [
-        ...cpFiles(path.join(REPO_ROOT, 'proto', 'ports')),
-        ...cpFiles(path.join(REPO_ROOT, 'proto', 'tests')),
+        ...cpFiles(path.join(REPO_ROOT, 'corpus', 'problems')),
+        ...cpFiles(path.join(REPO_ROOT, 'crates', 'cpl-cli', 'tests', 'cases')),
         ...cpFiles(path.join(REPO_ROOT, 'stdlib')),
         ...cpFiles(path.join(REPO_ROOT, 'examples', 'local-lib')),
     ];

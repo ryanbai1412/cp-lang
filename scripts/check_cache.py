@@ -36,15 +36,15 @@ ENV_PREFIXES = ("RUSTFLAGS", "RUSTDOCFLAGS", "CARGO_", "CPL_", "CHECK_", "CXX", 
 # not enough (the tests open design/spec/ through cpl-syntax's planned.rs).
 _PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*", "archive/*"]
 _TESTS = _PROSE + [
-    "corpus/*", "plan/*", "!plan/STDLIB.md", "!plan/1*.md", "!plan/stdlib*"
+    "corpus/submissions/*", "corpus/statements/*", "plan/*", "!plan/STDLIB.md", "!plan/1*.md", "!plan/stdlib*"
 ]
 STAGES = {
     # rustc reads only crates/, stdlib/ (cpl-check's build.rs) and the
     # include_str! targets; test_check_cache.py keeps those out of here.
     "clippy": _TESTS + [
         "README.md", "design/*", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",
-        "proto/*", "tools/*",
-        "!proto/ports/ecnerwala/dream/cf2115c.cp", "!proto/ports/ecnerwala/dream/cf2183f.cp",
+        "corpus/*", "tools/*",
+        "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
         "!tools/trace/*",
     ],
     "stdlib_test": _TESTS,

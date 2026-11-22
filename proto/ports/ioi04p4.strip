@@ -1,5 +1,0 @@
-# ioi04p4_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-3          template        includes
-34-37        driver          main

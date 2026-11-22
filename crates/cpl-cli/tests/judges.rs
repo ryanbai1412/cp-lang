@@ -11,10 +11,13 @@ fn root() -> PathBuf {
 }
 
 fn ports() -> Vec<PathBuf> {
-    let mut ports: Vec<PathBuf> = std::fs::read_dir(root().join("proto/ports/ecnerwala"))
-        .expect("the ports")
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
+    let set = std::fs::read_to_string(root().join("corpus/sets/ecnerwala.txt"))
+        .expect("corpus/sets/ecnerwala.txt");
+    let mut ports: Vec<PathBuf> = set
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|id| root().join(format!("corpus/problems/{id}/port.cp")))
         .collect();
     ports.sort();
     ports
@@ -153,7 +156,7 @@ fn every_port_compiles_with_every_judges_flags() {
     for profile in cpl_judge::builtins() {
         let local = profile.local();
         let failed: Vec<String> = parallel(&ports, |port| {
-            let stem = port.file_stem().unwrap().to_str().unwrap();
+            let stem = port.parent().unwrap().file_name().unwrap().to_str().unwrap();
             let cpp = scratch.join(format!("{}-{stem}.cpp", profile.name));
             std::fs::write(&cpp, build(port, &profile.name).unwrap()).unwrap();
             compile(&cpp, &cpp, &local, true).err().map(|e| format!("{} for {}:\n{e}", port.display(), profile.name))

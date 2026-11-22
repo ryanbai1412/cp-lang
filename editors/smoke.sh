@@ -87,12 +87,12 @@ if command -v "$ts" >/dev/null; then
     (cd "$work" && "$ts" generate --abi 14 >/dev/null)
     diff -r "$work/src" "$grammar/src" >/dev/null || { echo "editors: editors/tree-sitter-cp/src is stale; run tree-sitter generate --abi 14 there" >&2; exit 1; }
     echo '{"parser-directories": ["'"$root/editors"'"]}' >"$work/config.json"
-    find "$root/proto/ports" "$root/stdlib" -name '*.cp' >"$work/files"
+    find "$root/corpus/problems" "$root/stdlib" -name '*.cp' >"$work/files"
     stat="$(cd "$grammar" && "$ts" parse --config-path "$work/config.json" --quiet --stat --paths "$work/files" 2>&1)"
     grep -q "failed parses: 0;" <<<"$stat" || { echo "$stat" >&2; echo "editors: the grammar fails on a .cp file" >&2; exit 1; }
     for query in "$grammar/queries/highlights.scm" "$root/editors/helix/runtime/queries/cp/highlights.scm" "$root/editors/zed/languages/cp/highlights.scm"; do
         [ -f "$query" ] || continue
-        (cd "$grammar" && "$ts" query --config-path "$work/config.json" --quiet "$query" "$root/proto/ports/ecnerwala/cf2062g.cp" >/dev/null) || { echo "editors: $query does not compile" >&2; exit 1; }
+        (cd "$grammar" && "$ts" query --config-path "$work/config.json" --quiet "$query" "$root/corpus/problems/cf2062g/port.cp" >/dev/null) || { echo "editors: $query does not compile" >&2; exit 1; }
     done
     python3 - "$root/editors" <<'PY'
 import pathlib, re, sys

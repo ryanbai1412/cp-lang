@@ -10,19 +10,24 @@ use std::process::Command;
 /// runs as the brute.
 const NEEDS_ANSWER: &[&str] = &["cf2062g", "cf2066f", "cf2187b"];
 
-fn dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports/ecnerwala")
+fn root_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn problem_dir(name: &str) -> PathBuf {
+    root_dir().join("corpus/problems").join(name)
 }
 
 /// `(port, "--interactor" or "--checker", judge)` for every judged port.
 fn judged() -> Vec<(String, &'static str, PathBuf)> {
+    let set = std::fs::read_to_string(root_dir().join("corpus/sets/ecnerwala.txt")).unwrap();
     let mut out = Vec::new();
-    for (sub, flag) in [("interactors", "--interactor"), ("checkers", "--checker")] {
-        for entry in std::fs::read_dir(dir().join(sub)).unwrap() {
-            let path = entry.unwrap().path();
-            let name = path.file_stem().unwrap().to_string_lossy().to_string();
-            if path.extension().is_some_and(|ext| ext == "py") && !name.starts_with('_') {
-                out.push((name, flag, path));
+    for name in set.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
+        let dir = problem_dir(name);
+        for (file, flag) in [("interactor.py", "--interactor"), ("checker.py", "--checker")] {
+            let path = dir.join(file);
+            if path.exists() {
+                out.push((name.to_string(), flag, path));
             }
         }
     }
@@ -31,15 +36,15 @@ fn judged() -> Vec<(String, &'static str, PathBuf)> {
 }
 
 fn stress(scratch: &Path, name: &str, flag: &str, judge: &Path, fast: Option<&Path>) -> String {
+    let dir = problem_dir(name);
     let copy = scratch.join(format!("{name}.cp"));
-    std::fs::copy(dir().join(format!("{name}.cp")), &copy).unwrap();
+    std::fs::copy(dir.join("port.cp"), &copy).unwrap();
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
     cmd.arg("stress").arg(&copy).arg(flag).arg(judge);
-    cmd.arg("--gen").arg(dir().join(format!("gen/{name}.py")));
+    cmd.arg("--gen").arg(dir.join("gen.py"));
     cmd.args(["--cases", "20", "--format", "json"]);
     if NEEDS_ANSWER.contains(&name) {
-        cmd.arg("--brute")
-            .arg(dir().join(format!("{name}_orig.cpp")));
+        cmd.arg("--brute").arg(dir.join("orig.cpp"));
     }
     if let Some(fast) = fast {
         cmd.arg("--fast").arg(fast);

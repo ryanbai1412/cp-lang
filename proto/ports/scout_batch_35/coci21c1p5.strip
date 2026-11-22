@@ -1,6 +1,0 @@
-# corpus/submissions/4086660.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by loc.py in this directory.
-# lines      facility        what it is
-1-30         template        includes, debug macros, typedefs
-32-87        segtree         ST: a generic segment tree
-204-217      driver          fast I/O setup and the test-case loop

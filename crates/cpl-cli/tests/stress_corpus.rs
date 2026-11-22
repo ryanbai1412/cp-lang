@@ -47,15 +47,15 @@ fn json_string_field(json: &str, key: &str) -> Option<String> {
 fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let root = repo_root();
     let problems = [
-        ("sac22cc2p5", "proto/ports/scout_batch_46/today/sac22cc2p5.cp"),
-        ("dmopc20c4p4", "proto/ports/scout_batch_32/today/dmopc20c4p4.cp"),
-        ("ccc03s4", "proto/ports/ccc03s4.cp"),
-        ("btoi17p6", "proto/ports/btoi17p6.cp"),
-        ("shoi16p1", "proto/ports/scout_batch_45/today/shoi16p1.cp"),
-        ("ucrpc21h", "proto/ports/scout_batch_45/today/ucrpc21h.cp"),
-        ("yac7p3", "proto/ports/scout_batch_39/today/yac7p3.cp"),
-        ("ccc04s5", "proto/ports/scout_batch_19/today/ccc04s5.cp"),
-        ("aac5p4", "proto/ports/scout_batch_46/today/aac5p4.cp"),
+        ("sac22cc2p5", "corpus/problems/sac22cc2p5/port.cp"),
+        ("dmopc20c4p4", "corpus/problems/dmopc20c4p4/port.cp"),
+        ("ccc03s4", "corpus/problems/ccc03s4/port.cp"),
+        ("btoi17p6", "corpus/problems/btoi17p6/port.cp"),
+        ("shoi16p1", "corpus/problems/shoi16p1/port.cp"),
+        ("ucrpc21h", "corpus/problems/ucrpc21h/port.cp"),
+        ("yac7p3", "corpus/problems/yac7p3/port.cp"),
+        ("ccc04s5", "corpus/problems/ccc04s5/port.cp"),
+        ("aac5p4", "corpus/problems/aac5p4/port.cp"),
     ];
     for (id, rel_port) in problems {
         let port = root.join(rel_port);
@@ -85,7 +85,7 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let tests_copy = scratch.join("tests");
     std::fs::create_dir_all(&tests_copy).unwrap();
     let sol = scratch.join("ccc03s4.cp");
-    std::fs::copy(root.join("proto/ports/ccc03s4.cp"), &sol).unwrap();
+    std::fs::copy(root.join("corpus/problems/ccc03s4/port.cp"), &sol).unwrap();
     for entry in std::fs::read_dir(root.join("corpus/problems/ccc03s4/tests")).unwrap() {
         let path = entry.unwrap().path();
         std::fs::copy(&path, tests_copy.join(path.file_name().unwrap())).unwrap();

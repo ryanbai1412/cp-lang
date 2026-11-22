@@ -61,9 +61,8 @@ def load_docs_bundle(root: Path = ROOT) -> str:
 
 def ported_ids(root: Path = ROOT) -> set[str]:
     return {
-        Path(f).stem
-        for f in glob.glob(str(root / "proto/ports/**/*.cp"), recursive=True)
-        if "/dream/" not in f.replace("\\", "/")
+        Path(f).parent.name
+        for f in glob.glob(str(root / "corpus/problems/*/port.cp"))
     }
 
 
@@ -407,7 +406,7 @@ def format_markdown_report(results: list[dict], model_used: str) -> str:
     lines = [
         "# Writable-from-docs audit",
         "",
-        f"Model: `{model_used}` · Problems: **{total}** unseen statements from `corpus/statements/` (no existing port in `proto/ports/`).",
+        f"Model: `{model_used}` · Problems: **{total}** unseen statements from `corpus/statements/` (no existing port in `corpus/problems/`).",
         "",
         f"- **`cpl check` pass rate:** {compiled}/{total} ({100 * compiled / total:.1f}%)" if total else "- **No problems run**",
         f"- **`cpl build` pass rate:** {built}/{total} ({100 * built / total:.1f}%)" if total else "",

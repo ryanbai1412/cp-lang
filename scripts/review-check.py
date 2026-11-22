@@ -47,7 +47,7 @@ def review_path(name):
 
 
 def dream_path(port):
-    return os.path.join(os.path.dirname(port["abs_path"]), "dream", port["name"] + ".cp")
+    return os.path.join(os.path.dirname(port["abs_path"]), "dream.cp")
 
 
 def load_reviews(ports):
@@ -74,8 +74,8 @@ def touched_port_names(names):
     added = set()
     touched = set()
     for cmd in (
-        ["git", "diff", "--cached", "--name-status", "--diff-filter=AM", "--", "proto/ports"],
-        ["git", "diff", "--name-status", "--diff-filter=AM", "--", "proto/ports"],
+        ["git", "diff", "--cached", "--name-status", "--diff-filter=AM", "--", "corpus/problems"],
+        ["git", "diff", "--name-status", "--diff-filter=AM", "--", "corpus/problems"],
     ):
         out = subprocess.run(cmd, cwd=sb.ROOT, capture_output=True, text=True).stdout
         for line in out.splitlines():
@@ -83,7 +83,7 @@ def touched_port_names(names):
             if len(parts) != 2:
                 continue
             status, path = parts[0].strip(), parts[1].strip()
-            m = re.fullmatch(r"proto/ports/[^/]+/([^/]+)\.cp", path)
+            m = re.fullmatch(r"corpus/problems/([^/]+)/port\.cp", path)
             if m and m[1] in names:
                 touched.add(m[1])
                 if status.startswith("A"):
@@ -111,7 +111,7 @@ def evaluate(ports, baseline, reviews, dreams, added, touched=None):
     check_reviews = set(added) | (set(touched) if touched is not None else set())
     for name in sorted(added):
         if name not in dreams:
-            errors.append(f"{name}: new port without a dream (proto/ports/<group>/dream/{name}.cp)")
+            errors.append(f"{name}: new port without a dream (corpus/problems/{name}/dream.cp)")
     for name in sorted(check_reviews):
         if name not in reviews:
             kind = "new" if name in added else "changed"

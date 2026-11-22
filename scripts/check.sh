@@ -16,7 +16,7 @@
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #            and stdlib/prelude.cp holds at most 80 names
-#            and every port in proto/ports/ecnerwala passes cpl check,
+#            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)

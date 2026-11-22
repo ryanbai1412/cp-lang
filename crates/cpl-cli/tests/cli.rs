@@ -1019,7 +1019,7 @@ fn user_library_sees_prelude_in_check_run_and_build() {
 /// and `cpl explain` says so (decision 178).
 #[test]
 fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
-    let port = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports/ecnerwala/cf2178h.cp");
+    let port = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems/cf2178h/port.cp");
     let explained = cpl(&["explain".as_ref(), port.as_os_str()], b"");
     assert!(explained.status.success(), "{explained:?}");
     let explained = String::from_utf8_lossy(&explained.stdout);

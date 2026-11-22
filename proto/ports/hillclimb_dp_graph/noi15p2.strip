@@ -1,6 +1,0 @@
-# noi15p2_orig.cpp: the lines a perfect C++ contest library would have supplied.
-# Everything else is counted as problem-specific code. Read by proto/loc.py.
-# lines      facility        what it is
-1-37         template        includes, debug macros, typedefs
-39-112       lazy-segtree    range assign, range sum segment tree
-195-208      driver          fast I/O setup and the test-case loop

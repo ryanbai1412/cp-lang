@@ -5,7 +5,7 @@
       "name": "Run the extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/../../proto/ports"],
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/../../corpus/problems"],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "npm: compile"
     }
