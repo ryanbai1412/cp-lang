@@ -23,6 +23,15 @@ REPO = ROOT.parent
 CPL = REPO / "target/debug/cpl"
 
 
+def offline_bundle():
+    """The offline edition. Under scripts/check.sh it is already built, and
+    rebuilding would empty `_build` while check_docs.py reads it in parallel."""
+    if os.environ.get("CPL_SITE_PREBUILT") == "1":
+        return REPO / "dist/cp-lang.html"
+    import bundle
+    return bundle.bundle()
+
+
 def cpl(*arguments):
     result = subprocess.run([str(CPL), *map(str, arguments)], cwd=REPO,
                             capture_output=True, text=True, timeout=60)
@@ -208,7 +217,7 @@ class SiteTests(unittest.TestCase):
 
     def test_offline_bundle_has_all_pages_without_font_blobs(self):
         import bundle
-        path = bundle.bundle()
+        path = offline_bundle()
         source = path.read_text()
         shipped = json.loads(re.search(
             r'<script id="offline-data" type="application/json">(.*?)</script>',
@@ -241,7 +250,7 @@ class SiteTests(unittest.TestCase):
         node = shutil.which("node")
         if not node:
             self.skipTest("node not installed")
-        path = bundle.bundle()
+        path = offline_bundle()
         shipped = json.loads(re.search(
             r'<script id="offline-data" type="application/json">(.*?)</script>',
             path.read_text(), re.S).group(1))
