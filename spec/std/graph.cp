@@ -322,7 +322,6 @@ pub fn peel<V, G: Next<V>>(
     g: G, ready: ?(V -> Bool) = None, on_remove: ?((V, G.Arc) -> ()) = None,
 ) -> List<V> = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A topological order (every arc goes forward in it), or `None` if there is a directed
 /// cycle: a `peel` that removed every vertex. For a vertexless closure graph, pass the
 /// domain: `topo::<V>(u => ...)`.
@@ -334,7 +333,19 @@ pub fn peel<V, G: Next<V>>(
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], [0]]; topo(g) == Some([1, 2, 0])`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [0]]; topo(g) == None`
-pub fn topo<V>(g: Next<V>) -> ?List<V> = todo
+pub fn topo<V>(g: Next<V>) -> ?List<V>:
+    var indeg: [V]Int = 0
+    for u in V:
+        for a in g.out(u): indeg[a.to] += 1
+    var order: List<V> = [v for v in V if indeg[v] == 0]
+    var i = 0
+    while i < order.len:
+        let u = order[i]
+        i += 1
+        for a in g.out(u):
+            indeg[a.to] -= 1
+            if indeg[a.to] == 0: order.push(a.to)
+    if order.len == V.K: order else: None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The strongly connected components, as a fresh domain `C` and each vertex's component.
@@ -428,7 +439,6 @@ pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C) =
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
 pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A 2-colouring of an undirected graph (no arc joins two vertices of one side), or `None`
 /// when an odd cycle exists.
 ///
@@ -440,7 +450,24 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool = todo
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; two_color(g) == Some([false, true, false])`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; two_color(g) == None`
-pub fn two_color<V>(g: Next<V>) -> ?[V]Bool = todo
+pub fn two_color<V>(g: Next<V>) -> ?[V]Bool:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var side: [V]?Bool = None
+    for root in V:
+        if side[root] != None: continue
+        side[root] = false
+        var q = [root]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if side[v] == None:
+                    side[v] = not side[u]!
+                    q.push(v)
+                elif side[v] == side[u]:
+                    return None
+    [V] v => side[v]!
 
 @test
 fn csr_keeps_edge_ids_and_order():
@@ -788,7 +815,6 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
 pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// One directed cycle, as its vertices in walking order (each is followed by the next, and
 /// the last by the first), or `None` if the graph is acyclic.
 ///
@@ -802,7 +828,33 @@ pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [2], [3], [1]]; find_cycle(g) == Some([1, 2, 3])`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; find_cycle(g) == None`
-pub fn find_cycle<V>(g: Next<V>) -> ?List<V> = todo
+pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var state: [V]Int = 0  // 0 unseen, 1 on the dfs path, 2 finished
+    var path: List<(V, Int)> = []
+    for root in V:
+        if state[root] != 0: continue
+        state[root] = 1
+        path.push((root, 0))
+        while path.len > 0:
+            let (u, i) = path[path.len - 1]
+            if i < out[u].len:
+                path[path.len - 1] = (u, i + 1)
+                let v = out[u][i]
+                if state[v] == 0:
+                    state[v] = 1
+                    path.push((v, 0))
+                elif state[v] == 1:
+                    var cyc: List<V> = []
+                    var on = false
+                    for (x, _) in path:
+                        if x == v: on = true
+                        if on: cyc.push(x)
+                    return cyc
+            else:
+                state[u] = 2
+                path.pop()
+    None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Which edges are bridges: removing one disconnects its ends. Arcs carry `e` (a
@@ -1097,7 +1149,6 @@ fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(1, Some(1)), Again(0, 2), Exit(0, None)]`
 pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc> = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Every vertex reachable from `from`, each once, sources included. `reachable(g, from:
 /// [s]).count()`, `List(...)` or `.contains(v)` ask the usual questions; to avoid some
 /// arcs, pass `g` filtered (`v => g.next(v).filter(a => ok(a))`).
@@ -1108,7 +1159,26 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; reachable(g, from: [V(0)]).collect() == [0, 1, 3, 2]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; reachable(g, from: [V(1), V(2)]).collect() == [1, 0, 2]`
-pub fn reachable<V>(g: Next<V>, from: Seq<V>) -> yields V = todo
+pub fn reachable<V, S: Seq>(g: Next<V>, from: S) -> yields V:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var seen: [V]Bool = false
+    var path: List<(V, Int)> = []
+    for s in from:
+        if seen[s]: continue
+        seen[s] = true
+        yield s
+        path.push((s, 0))
+        while path.len > 0:
+            let (u, i) = path[path.len - 1]
+            if i < out[u].len:
+                path[path.len - 1] = (u, i + 1)
+                let v = out[u][i]
+                if not seen[v]:
+                    seen[v] = true
+                    yield v
+                    path.push((v, 0))
+            else:
+                path.pop()
 
 /// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that
 /// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
@@ -1181,7 +1251,6 @@ pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc> = todo
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
 pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int) = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The length of a shortest cycle (the girth), or `None` if there is None. With `directed:
 /// false` the graph is read as undirected (every arc has its reverse) and a cycle counts
 /// only if it uses at least three edges, so loops and an arc's way back are not cycles.
@@ -1190,9 +1259,30 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int) = tod
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [0]]; girth(g, directed: true) == Some(3)`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; girth(g, directed: false) == None`
-pub fn girth<V>(g: Next<V>, directed: Bool) -> ?Int = todo
+pub fn girth<V>(g: Next<V>, directed: Bool) -> ?Int:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var best: ?Int = None
+    for s in V:
+        var dist: [V]?Int = None
+        var par: [V]?V = None
+        dist[s] = 0
+        var q = [s]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if dist[v] == None:
+                    dist[v] = dist[u]! + 1
+                    par[v] = u
+                    q.push(v)
+                elif directed:
+                    if v == s: best = Some(min(best ?? (dist[u]! + 1), dist[u]! + 1))
+                elif v != u and par[u] != Some(v):
+                    let len = dist[u]! + dist[v]! + 1
+                    best = Some(min(best ?? len, len))
+    best
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The lexicographically smallest topological order (vertex order), by a min-heap instead
 /// of `topo`'s queue; `None` if there is a cycle.
 ///
@@ -1201,7 +1291,21 @@ pub fn girth<V>(g: Next<V>, directed: Bool) -> ?Int = todo
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; smallest_topo(g) == Some([1, 0, 2])`
 /// example: `domain V = 0..2; let g: [V]List<V> = [[1], [0]]; smallest_topo(g) == None`
-pub fn smallest_topo<V>(g: Next<V>) -> ?List<V> = todo
+pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
+    var indeg: [V]Int = 0
+    for u in V:
+        for a in g.out(u): indeg[a.to] += 1
+    var ready = MinHeap<V>()
+    for v in V:
+        if indeg[v] == 0: ready.push(v)
+    var order: List<V> = []
+    while not ready.is_empty:
+        let u = ready.pop()!
+        order.push(u)
+        for a in g.out(u):
+            indeg[a.to] -= 1
+            if indeg[a.to] == 0: ready.push(a.to)
+    if order.len == V.K: order else: None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// DP over a DAG in topological order. Each vertex starts at `init(v)`; then, for `u` in
@@ -1282,17 +1386,19 @@ pub struct Complement<V, G>(missing: G):
     /// order: ascending
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [0], [], []]; complement(g).out(0).collect() == [2, 3]`
-    pub fn out(self, u: V) -> yields V = todo
+    pub fn out(self, u: V) -> yields V:
+        var gone: [V]Bool = false
+        for a in missing.out(u): gone[a.to] = true
+        for v in V:
+            if v != u and not gone[v]: yield v
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The `Complement` of `missing`, as a view; see there.
 ///
 /// cost: O(1)
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [0], [], []]; let (domain C, comp) = components(complement(g)); C.count == 1`
-pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = todo
+pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = Complement(missing)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// An odd cycle witnessing that an undirected graph is not bipartite, or `None` when it is
 /// (exactly when `two_color` is `None`).
 ///
@@ -1305,7 +1411,41 @@ pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = todo
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; odd_cycle(g) == Some([0, 1, 2])`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; odd_cycle(g) == None`
-pub fn odd_cycle<V>(g: Next<V>) -> ?List<V> = todo
+pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var side: [V]?Bool = None
+    var par: [V]?V = None
+    for root in V:
+        if side[root] != None: continue
+        side[root] = false
+        var q = [root]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if side[v] == None:
+                    side[v] = not side[u]!
+                    par[v] = u
+                    q.push(v)
+                elif side[v] == side[u]:
+                    if v == u: return [u]
+                    var down = [u]
+                    var up = [v]
+                    var (a, b) = (u, v)
+                    while par[a]! != par[b]!:
+                        a = par[a]!
+                        b = par[b]!
+                        down.push(a)
+                        up.push(b)
+                    var cyc = [par[a]!]
+                    var k = down.len
+                    while k > 0:
+                        k -= 1
+                        cyc.push(down[k])
+                    for x in up: cyc.push(x)
+                    return cyc
+    None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The immediate dominator of every vertex reachable from `root` (Lengauer-Tarjan): the
@@ -1318,7 +1458,6 @@ pub fn odd_cycle<V>(g: Next<V>) -> ?List<V> = todo
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dominators(g, root: V(1)) == [None, None, Some(1)]`
 pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V = todo
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Every triangle of an undirected simple graph once.
 ///
 /// Each edge is oriented from lower to higher rank, rank being `(degree, vertex)`; for `u`
@@ -1331,7 +1470,15 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V = todo
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; triangles(g).collect() == [(0, 1, 2)]`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]; triangles(g).count() == 4`
-pub fn triangles<V>(g: Next<V>) -> yields (V, V, V) = todo
+pub fn triangles<V>(g: Next<V>) -> yields (V, V, V):
+    let deg = [V] v => g.out(v).count()
+    let up = [V] u => [a.to for a in g.out(u) if (deg[u], u) < (deg[a.to], a.to)]
+    var mark: [V]?V = None
+    for u in V:
+        for v in up[u]: mark[v] = u
+        for v in up[u]:
+            for w in up[v]:
+                if mark[w] == Some(u): yield (u, v, w)
 
 fn clique_rec<V>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, mut best: List<V>):
     if p.is_empty and x.is_empty:
