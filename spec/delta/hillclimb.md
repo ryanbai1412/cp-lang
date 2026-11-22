@@ -144,7 +144,7 @@ Open questions raised by dreams:
   `spec.cp` idiom bugs the diff exposed (spec already allowed the dream's form): count-prefixed
   `List` fields in noi09p4, `IntervalMap` and `Lift.climb` in apio09p2, `g.next` in noi05p4,
   `Range` reads in btoi20p3.
-- Second blind batch (19 dreams; 16 `spec.cp` so far, ioi19p3, ioi19p6 and btoi18p4 pending).
+- Second blind batch (19 dreams, 19 `spec.cp` drafts, all checking).
   - Adopted, general:
     - `Seq.majority(eq:)` (ioi15p6): Boyer-Moore with only an equality oracle.
     - `Rooted.roots` (egoi22p3): the roots of a `forest`.
@@ -174,3 +174,12 @@ Open questions raised by dreams:
     - Position arithmetic returns `?H`, so `(h + step).map(...)` (noi06p3).
     - `[edges.keys] e => (u:, v:)` builds keyed edges from grader lists (egoi22p3).
     - `extern fn` + `@grader` for interactive entry points.
+  - ioi19p3: adopted `[D]T.valleys()`, the ranges strictly below both outside neighbours
+    (monotone-stack walls). Rejected `h.row(r)` as a method (a comprehension view is enough).
+  - ioi19p6: rejected `sweep_below` (one problem's shape); the port sweeps buildings with a
+    `SortedBag` of active walks. `RangeInclusive` was a dream bug: `a..=b` is a `Range`.
+  - btoi18p4: rejected `Seg.ring.nesting` and `coverage(...).min_over` (one problem's helpers).
+    Open: the port unrolls the ring onto `1..=2n`, which is what a wrapping range over a domain
+    (`RingRange<D>`, not tied to an array like `RingSlice`) would hide. The draft also rebuilds
+    coverage per candidate pair (O(k·n)) and mishandles the pair that wraps, so it is not
+    accepted yet.
