@@ -148,14 +148,32 @@ pub fn run_with_input<S: AsRef<str>>(args: &[S], input: &[u8]) -> Outcome {
 /// Runs `cpl` with `args`, writing to `stdout` as it goes. `stdin` is
 /// called only by a command that reads standard input: each call gives the
 /// bytes that have arrived, and nothing once the input has ended.
+/// A command's usage, for its `--help` and its usage errors.
+fn command_usage(command: &str) -> Option<&'static str> {
+    Some(match command {
+        "check" => CHECK_USAGE,
+        "fix" => FIX_USAGE,
+        "run" => RUN_USAGE,
+        "build" => BUILD_USAGE,
+        "judge" => JUDGE_USAGE,
+        "submit" => SUBMIT_USAGE,
+        "judges" => JUDGES_USAGE,
+        "explain" => EXPLAIN_USAGE,
+        "lsp" => LSP_USAGE,
+        "dap" => DAP_USAGE,
+        _ => return None,
+    })
+}
+
 pub fn exec<S: AsRef<str>>(
     args: &[S],
     stdin: &mut (dyn FnMut() -> Vec<u8> + Send),
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
+    let usage = args.first().and_then(|c| command_usage(c.as_ref()));
     let mut usage_error = |message: String| {
-        *stderr += &format!("cpl: {message}\n\n{USAGE}");
+        *stderr += &format!("cpl: {message}\n\n{}", usage.unwrap_or(USAGE));
         EXIT_USAGE
     };
     let rest: Vec<&str> = args.iter().skip(1).map(AsRef::as_ref).collect();
@@ -168,22 +186,8 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "{}", version_line());
             0
         }
-        Some(
-            command @ ("check" | "fix" | "build" | "judge" | "submit" | "judges" | "explain"
-            | "lsp" | "dap"),
-        ) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
-            let help = match command {
-                "check" => CHECK_USAGE,
-                "fix" => FIX_USAGE,
-                "build" => BUILD_USAGE,
-                "judge" => JUDGE_USAGE,
-                "submit" => SUBMIT_USAGE,
-                "judges" => JUDGES_USAGE,
-                "explain" => EXPLAIN_USAGE,
-                "dap" => DAP_USAGE,
-                _ => LSP_USAGE,
-            };
-            let _ = stdout.write_all(help.as_bytes());
+        Some(_) if usage.is_some() && rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+            let _ = stdout.write_all(usage.unwrap_or(USAGE).as_bytes());
             0
         }
         Some("replay") => replay::cli(&rest, stdout, stderr),
@@ -198,10 +202,6 @@ pub fn exec<S: AsRef<str>>(
         Some("check") => check(&rest, stdout, stderr),
         Some("fix") if rest.is_empty() => usage_error("`fix` needs a file: `cpl fix a.cp`".into()),
         Some("fix") => fix(&rest, stdout, stderr),
-        Some("run") if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
-            let _ = stdout.write_all(RUN_USAGE.as_bytes());
-            0
-        }
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
             Ok(args) => {
