@@ -90,7 +90,8 @@ keep source positions, as for every sequence (`04b-keys.md`).
   enclosing parenthesized group, call argument, left operand of `??`,
   lambda or `fn ... =` body, or statement right-hand side. A `?` in an
   `if` or `while` condition is an error (write `... ?? false`), and a `?`
-  whose result is dropped is an error.
+  whose result is dropped is an error. `?` is never control flow; an
+  early exit is `let x = e else: return none` (chapter 6).
 - `x!` is the `Unwrap` trait. `?T`, `[D]?T` and `List<?T>` implement it;
   the array forms check every element in one pass and trap naming the
   first gap ("depth[17] is none"). This ends a fill phase:
@@ -132,15 +133,22 @@ struct Tally:
   fields with defaults may be omitted (decision 134). A custom
   constructor is a static fn (`Graph.read()`). There are no constructor
   side effects and no destructors.
-- A constructor is a function: its arguments are lent for the call, and
-  the result is owned unless the signature says `lends` (chapter 5,
-  decision 147).
+- **Two kinds of constructor, one rule each.** A generated constructor
+  (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes
+  them by value: an owned heap argument moves in, a lent one makes the
+  struct lent. A custom constructor is an ordinary static fn
+  (`SegTree(max, a)` is `SegTree.new(max, a)`, `Rooted(g, root: r)`): its
+  parameters are lent for the call and its result is owned unless the
+  signature says `lends` (chapter 5, decision 147). The cost rule tells
+  them apart: a custom constructor that keeps data copies it (O(n),
+  documented) or says `lends`.
 - `struct List<T>` with no body is opaque: its fields are private to its
   module. A struct body may hold methods with `self` or `mut self`.
 - Named structs satisfy traits only through `impl`, including field
   traits (`impl Target<V> for Edge` with no body when the field exists).
-- `@get` on a read-only method with no other parameters lets it be
-  called without parentheses; it must be O(1) (decision 140).
+- `@get` on a read-only method whose other parameters all have defaults
+  lets it be called without parentheses (`v.next` is `v.next(1)`); it
+  must be O(1) (decision 140).
 - Storage may reorder fields to remove padding; source order is what
   constructors, patterns and printing use (chapter 3).
 

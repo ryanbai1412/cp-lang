@@ -15,10 +15,11 @@ the generated C++17: what each form becomes, what it costs, and what
 - Input is one bulk `fread` and a hand-written parser; output is one
   buffer written at exit or flush.
 - Release builds compile with the profile's flags and emit no checks
-  (chapter 9) and no undefined behaviour: signed arithmetic that may
-  overflow is done in unsigned and cast back, shifts are masked, and
-  reads of uninitialized storage cannot occur because every array is
-  filled at construction.
+  (chapter 9). The lowering adds no undefined behaviour to valid
+  programs, and avoids it wherever that is free: signed arithmetic that
+  may overflow is done in unsigned and cast back, shifts are masked, and
+  every array is filled at construction. Unchecked indexes and `x!` on an
+  invalid program are as unsafe as the same C++ (§9.2).
 
 ## 13.2 Values
 

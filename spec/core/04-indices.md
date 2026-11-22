@@ -110,6 +110,11 @@ never has to be named and never has to be non-empty:
 | `i..` | `i..=D.last` | `i` and everything after it |
 | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]` |
 
+A literal end is a **position** of the indexed domain unless the other end
+is a cut (then it is a cut, as in the piece rule above). On `domain V =
+1..=n`, `a[..5]` is positions 1..=4 and `a[..=5]` is 1..=5; `a[..V.cuts(5)]`
+writes the cut. Integer literals never mean a count of positions.
+
 They follow the ends rule like any range: `for j in ..i` with a cut walks
 cuts, and `for j in v.r..` walks cuts too. A half-open open-ended literal
 with a cut end is a piece where a `Range<V>` is expected, so `a[..c]` and

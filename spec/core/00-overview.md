@@ -32,17 +32,17 @@ to the chapter that defines it.
   allocates, copies or traverses looks like it; `cpl explain` shows
   every implicit choice (widths, layouts, specializations, copies).
 - **Two builds, one meaning.** Checked builds trap on every unproven
-  fact; release builds run no checks by default and never contain C++
-  undefined behaviour. Valid programs behave identically in both and in
-  the interpreter. (chapter 9)
+  fact; release builds run no checks by default. Valid programs behave
+  identically in both and in the interpreter; an invalid program in
+  release gets whatever its C++ does, as hand-written C++ would.
+  (chapter 9)
 
 ## A small program
 
 ```
 domain V = 1..=read<1..=2e5>()
-with io(base: 1)
 let m = read<0..=2e5>()
-let g = Graph.undirected(V, read<[m](u: V, v: V, w: 1..=1e9)>())
+let g = Graph.undirected(read<[m](u: V, v: V, w: 1..=1e9)>())
 let p = dijkstra(g, from: [(V.first!, 0)])
 print(p.dist[V.last!] ?? -1)
 ```

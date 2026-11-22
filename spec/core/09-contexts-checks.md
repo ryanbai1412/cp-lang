@@ -51,12 +51,17 @@ read(base: 0)                     // a call argument beats every context
 | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless opted in |
 
 **The rule for every check** (decision 148): on the judge only valid
-programs matter, so release optimizes for them. A program that would
-trap in a checked build gets a wrong answer in release, never C++
-undefined behaviour: the emitted C++ wraps through unsigned casts,
-clamps shifts and avoids every UB that `-O2` could exploit, at no cost
-on the valid path. Valid programs behave identically in both modes and
-in the interpreter.
+programs matter, so release optimizes for them. Valid programs behave
+identically in both modes and in the interpreter, and the lowering
+never adds undefined behaviour to a valid program. A program that would
+trap in a checked build is invalid, and in release it gets whatever its
+C++ does: usually a wrong answer, possibly a crash or C++ undefined
+behaviour (an unchecked index past the end reads out of bounds), the
+same as the hand-written C++ it replaces. Where avoiding UB is free the
+lowering still does it (wrapping arithmetic through unsigned casts,
+masked shifts, no uninitialized reads), so `-O2` cannot miscompile the
+valid code around a bug; it never adds a branch or a clamp to do so.
+To keep a check on the judge, opt in (§9.4).
 
 ## 9.3 What is checked
 
@@ -69,11 +74,17 @@ compiler can prove, and what each build does.
 | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with value and bounds | unchecked |
 | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming value and range | truncates to the width |
 | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wraps |
-| `x!` on `none` | flow proves `some` | trap naming the place | reads the niche as a value (wrong answer) |
+| `x!` on `none` | flow proves `some` | trap naming the place | reads the niche as a value |
 | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 | trap | defined fallback (0) |
 | `assert c` | n/a | trap with the message | skipped |
 | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none |
 | `law` promises | n/a | stress samples them | none |
+
+Each row has one check name, used by `with checks(...)`,
+`release_checks:` and diagnostics: `bounds` (the first two rows),
+`ranges`, `overflow`, `unwrap`, `div`, `asserts`, and `reads` below.
+`@cache` and laws are stress-only and have no name. This is the one list;
+other chapters link here.
 
 Reads (`read<1..=n>()`) are input validation: they are checked in
 checked builds and, like other checks, skipped in release unless

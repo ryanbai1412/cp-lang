@@ -79,6 +79,7 @@ use std.seq.{
 use std.sparse.{SparseTable}
 use std.strings.{
     RollingHash,
+    SuffixArray,
     common_prefix_len,
     common_suffix_len,
     digit,

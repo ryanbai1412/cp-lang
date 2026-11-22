@@ -152,10 +152,18 @@ grow(mut b)                 // error: b is a let; declare it var
 A `mut` parameter is a place: the callee may assign it whole
 (`xs = List()`), which replaces the caller's value.
 
-**Constructors move.** `S(a, b)` and struct literals take their arguments
-by value (R2): an owned argument moves in, a lent argument makes the struct
-lent (R6). That is how a library struct holds a closure or a source:
-`SegTree(V, op: max)`, `Filter(self, keep)`.
+**Generated constructors move.** `S(a, b)` and struct literals take their
+arguments by value (R2): an owned argument moves in, a lent argument makes
+the struct lent (R6). That is how a library struct holds a closure or a
+source: `Filter(self, keep)`. A custom constructor (`SegTree(max, a)`) is a
+static fn and follows R4/R5 below (chapter 2.6 has the one rule).
+
+```python
+struct Holder: xs: List<Int>
+var a = List(1, 2)
+let h = Holder(a)          // a moves into h
+print(a.len)               // error: a was moved into h on line 3; write Holder(a.clone())
+```
 
 ## 5. Returns (R5)
 
@@ -174,7 +182,7 @@ fn same(xs: List<Int>) -> List<Int> = xs
 // error: returns the lent parameter xs; return xs.clone(), or declare `lends List<Int>`
 ```
 
-**Constructors follow R5 too.** A constructor is a fn, so its parameters
+**Custom constructors follow R5 too.** A static-fn constructor is a fn, so its parameters
 are lent for the call and its result is owned unless it says `lends`. An
 owned result never keeps its source busy: the source is free again when
 the call returns.
@@ -211,8 +219,8 @@ fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
 - **Desugaring.** A call passes the rest of the caller's block as a
   callback: `let w = window(a, l); use(w)` is `window(a, l, w => use(w))`.
   That is why no lifetime is needed: the lent value never outlives the
-  caller's block. `return`, `break` and `?` in that rest-of-block act on
-  the caller, because it is the caller's code.
+  caller's block. `return` and `break` in that rest-of-block act on the
+  caller, because it is the caller's code.
 - **`lends mut T`** is a place: the caller can assign through it,
   `a[i] = 5` is `a.at(i) = 5`. Code after the tail expression in the body
   runs when the caller is done (write-back: a `SegTree` repairs ancestors).
@@ -246,8 +254,12 @@ print(w.sum())
 ```
 Swap lines 3 and 4 and it compiles: `w` is dead before the write.
 
-**R8. Where a lent value may be kept.** A lent value may be bound by `let`
-or `var`, put in a field, or pushed into a container, **if that storage dies
+**Binding a lent value.** `let ys = xs` with `xs` lent re-lends it (same
+sources, no copy). `var ys = xs` with a lent heap value is an error
+suggesting `xs.clone()`: a `var` owns what it holds, and taking ownership
+would move out of the caller's value. Plain values copy either way.
+
+**R8. Where a lent value may be kept.** A lent value may be bound by `let`, put in a field, or pushed into a container, **if that storage dies
 no later than every source**: it is declared in the same block as the
 sources or a block nested inside it, and after them. It may never be:
 - returned, except from a fn declared `lends` (§6);
@@ -338,8 +350,9 @@ state of its arguments.
   read-lent source but not write it, and may not touch a `mut`-lent one.
 - The item `x` is the body's parameter: plain items copy, heap items are
   lent for one iteration (R8: keep one with `x.clone()`).
-- `break`, `continue`, `return` and `?` in `B` act on the loop and the
-  enclosing fn, through recursive generators too.
+- `break`, `continue` and `return` in `B` act on the loop and the
+  enclosing fn, through recursive generators too. (`x?` never transfers
+  control: it propagates `none` within its expression, chapter 2.)
 - Walking a `mut`-lent generator value twice is legal and linted: the
   second walk sees what the first changed.
 
@@ -594,7 +607,7 @@ fn twice(xs: List<Int>) -> List<Int>:
     ys.extend(xs)
     ys
 ```
-<details><summary>Answer</summary>No. <code>xs</code> is a lent parameter; <code>var ys = xs</code> would move out of the caller's value (R4). Fix: <code>var ys = xs.clone()</code>.</details>
+<details><summary>Answer</summary>No. <code>xs</code> is a lent parameter; <code>var ys = xs</code> would take ownership of a lent heap value ("Binding a lent value", before R8). Fix: <code>var ys = xs.clone()</code>.</details>
 
 **5.**
 ```python

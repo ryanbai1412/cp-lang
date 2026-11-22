@@ -140,9 +140,12 @@ let rotated = Str(t[t.Idx.wrap(Int(i) + k)] for i in t.keys)
 
 ## User helpers
 
-**Preferred: generic over keys.** A parameter typed `[K]T` accepts an array,
-a `List`, a `Str` or any slice of them, and the helper answers in the
-caller's keys. This is the same code as stdlib code, with no extra power.
+**Preferred: generic over keys.** A parameter typed `[K]T` is a view type:
+it accepts an array, a `List`, a `Str` or any slice of them (any
+`Indexed<K, T>`; with `mut`, any `IndexedMut<K, T>`), and the helper
+answers in the caller's keys. It walks `a.keys`, never all of `K`: on a
+slice, `a[k]` outside `a.keys` traps in checked builds. Only an owned
+`[D]T` promises every key of `D`. This is the same code as stdlib code, with no extra power.
 
 ```python
 fn first_drop<K>(a: [K]Int) -> ?K =
@@ -162,9 +165,10 @@ fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
 Both work unchanged on `a`, on `a[l..=r]` and on `a.rev`. Their results
 index the source.
 
-**A helper written 0-based.** `fn f(xs: List<Int>)` called with `s[3..7]`
-sees keys 3..7, so `xs[0]` traps on the first call and names the fix. The
-lint on `xs[0]` inside `f` fires before that. There are two fixes:
+**A helper that takes a container.** `List<T>` and `Str` parameters accept
+only that container, because the callee may grow it (`push`, `pop`,
+`clear` need the concrete type). `fn f(xs: List<Int>)` called with
+`s[3..7]` is a type error with two fixes:
 - make `f` generic as above, using `first`, `nth` and `items`;
 - call `f(List(w))`, an O(len) copy keyed from 0.
 

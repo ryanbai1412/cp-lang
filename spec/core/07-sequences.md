@@ -177,8 +177,9 @@ a[l..=r].rev.map(f)       // Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
   `var`, field, container, global or escaping closure. Keeping one is
   `List(w)`.
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
-  over `V`; it is a template parameter, so each call site gets its own fused
-  loop.
+  over `V` (a `mut` one, any `IndexedMut`); it is a template parameter, so
+  each call site gets its own fused loop. `List<T>` and `Str` parameters
+  take only that container (chapter 4b, "User helpers").
 - **Walk-only views.** `filter`, `take_while` and generators are `Seq`
   only: the `if` or the generator body is inlined into the `for`.
 

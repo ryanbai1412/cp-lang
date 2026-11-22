@@ -283,7 +283,7 @@ code. Status: partial (`read` is still compiler-special for some types).
 Every public signature's first doc line states its cost: `/// O(log n).`
 `cpl explain` and hover show it. Libraries may declare lints with a code,
 message and codemod (`#lint(L7001, "...")`) and `#on_unimplemented("...")`
-messages on traits. `assert` is debug-only. Status: doc convention only.
+messages on traits. `assert` runs in checked builds and, opted in as `asserts`, in release (chapter 9). Status: doc convention only.
 
 ## W13. Modules, pins and codemods (P13)
 

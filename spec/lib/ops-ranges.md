@@ -162,8 +162,8 @@ pub trait Ord:
     law total(a, b, c) = ...       // antisymmetric, transitive, total
 ```
 
-- Ints, floats (NaN traps in debug), `Str`, `Bool` and `?T` (`none` first)
-  are `Ord`. Tuples and records derive it lexicographically in field order.
+- Ints, floats (NaN traps in debug), `Str` and `Bool` are `Ord`; `?T` is
+  not (chapter 2): sort optionals with a key such as `by: x => (x == none, x ?? 0)`. Tuples and records derive it lexicographically in field order.
 - **`by:` takes a key fn**, and that is the one way to pass an order:
   `sort(mut es, by: .w)`, `argmax(a, by: x => x.score)`, `Heap(by: .d)`.
   Omitted, it is the element's own `Ord`.

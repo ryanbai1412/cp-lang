@@ -277,13 +277,14 @@ pub fn remove<T>(mut self: List<T>, i: Int) -> T = todo
 
 // --- Lazy views, slicing, and stream / combinator generators (W4, W6) ---
 
-/// O(1) to make. `s[r]`: a borrowed view of `s` over the range `r`. A domain-indexed source keeps
-/// its positions (`a[l..=r][i]` is `a[i]`, and `i` must lie in `l..=r`); a `List` or `Str` slice
-/// counts from 0 (`s[2..5][0]` is `s[2]`). Writable through a `var` source; the source's length
-/// can't change while it is alive. See `spec/core/07-sequences.md`.
+/// O(1) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
+/// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,
+/// `s[2..5][3]` is `s[3]` and `s[2..5][0]` traps. `w.first`, `w.nth(k)` and `w.rebase()` give
+/// offsets. Writable through a `var` source; the source's length can't change while it is alive.
+/// See `spec/core/04b-keys.md`.
 pub struct Slice<S>():
-    /// O(1). The slice's indices: a range of the source's positions, or `0..len` for an offset source.
-    @get pub fn keys(self) -> Range<Int> = todo
+    /// O(1). The slice's keys: a sub-range of the source's keys.
+    @get pub fn keys<K>(self) -> Range<K> = todo
     /// O(1).
     @get pub fn len(self) -> Int = todo
     /// O(1).
