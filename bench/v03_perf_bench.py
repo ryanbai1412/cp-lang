@@ -3,11 +3,17 @@
 
 Measures median runtime ratio (emitted C++ / matched C++ original) across:
   1. corpus   -- corpus/problems/*/{port.cp,orig.cpp} (max-N via corpus_generators or tests/*.in)
-  2. dryrun   -- research/dryrun/v03/p*.cp vs matched research/dryrun/p*_ref.cpp at large N
+  2. dryrun   -- research/dryrun/v03/p*.cp at large N vs bench/dryrun-matched/p*.cpp
+                 (the same algorithm as research/dryrun/p*_ref.cpp with the fast
+                 I/O hand-written contest C++ uses), else the _ref.cpp itself
   3. zero-cost -- bench/zero-cost/* via `cpl bench --zero-cost`
 
-Both sides are compiled with `g++ -std=c++17 -O2 -w` and verified for exact
-token-level output agreement (1e-6 float tolerance). Compiled C++ originals and
+The emitted C++ is compiled with `g++ -std=c++17 -O2 -w`, originals with
+`-std=gnu++20` (judge originals use C++20 headers), and outputs are verified for exact
+token-level output agreement (1e-6 float tolerance). Also reported: peak RSS
+of each run (emitted / original) and g++ time on the emitted C++ (taken while
+`--jobs` builds run at once, so compare runs made with the same `--jobs`).
+Every pair that does not reach a ratio is listed with its reason. Compiled C++ originals and
 generated inputs are cached by content hash so reruns after codegen changes
 only recompile CP Lang programs.
 """
@@ -18,6 +24,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import resource
 import signal
 import statistics
@@ -98,13 +105,29 @@ def run_once(binary, inp, outp, timeout):
         )
         killer = threading.Timer(timeout, lambda: os.killpg(pr.pid, signal.SIGKILL))
         killer.start()
-        pr.wait()
+        _, status, usage = os.wait4(pr.pid, 0)
+        pr.returncode = os.waitstatus_to_exitcode(status)
         wall = time.perf_counter() - t0
         timed_out = not killer.is_alive()
         killer.cancel()
     if timed_out:
-        return timeout, "timeout"
-    return wall, "ok" if pr.returncode == 0 else f"exit {pr.returncode}"
+        return timeout, "timeout", 0
+    return wall, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", usage.ru_maxrss
+
+
+def timed_gxx(src, out, std="c++17"):
+    """g++ on `src`; returns (CompletedProcess, ms)."""
+    t0 = time.perf_counter()
+    r = subprocess.run(["g++", f"-std={std}", "-O2", "-w", src, "-o", out], capture_output=True, text=True)
+    ms = (time.perf_counter() - t0) * 1000.0
+    return r, ms
+
+
+def compile_ms(bin_path):
+    try:
+        return float(open(bin_path + ".ms").read())
+    except (OSError, ValueError):
+        return None
 
 
 def compile_cpp_cached(src, cache_dir, tag):
@@ -113,16 +136,14 @@ def compile_cpp_cached(src, cache_dir, tag):
     if os.path.exists(bin_path):
         return bin_path, None
     tmp = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
-    r = subprocess.run(
-        ["g++", "-std=c++17", "-O2", "-w", src, "-o", tmp],
-        capture_output=True,
-        text=True,
-    )
+    r, ms = timed_gxx(src, tmp, "gnu++20")
     if r.returncode != 0:
         if os.path.exists(tmp):
             os.remove(tmp)
-        err = (r.stderr.strip().splitlines() or ["g++ failed"])[0][:160]
+        lines = r.stderr.strip().splitlines() or ["g++ failed"]
+        err = next((l for l in lines if "error" in l), lines[0]).replace(ROOT + "/", "")[:160]
         return None, err
+    open(bin_path + ".ms", "w").write(f"{ms:.1f}")
     os.replace(tmp, bin_path)
     return bin_path, None
 
@@ -147,16 +168,13 @@ def build_cpl_cached(cp_src, cache_dir, cpl_hash):
         return None, None, f"cpl build: {err}"
     os.replace(tmp_cpp, cpp_path)
     tmp_bin = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
-    g = subprocess.run(
-        ["g++", "-std=c++17", "-O2", "-w", cpp_path, "-o", tmp_bin],
-        capture_output=True,
-        text=True,
-    )
+    g, ms = timed_gxx(cpp_path, tmp_bin)
     if g.returncode != 0:
         if os.path.exists(tmp_bin):
             os.remove(tmp_bin)
         err = (g.stderr.strip().splitlines() or ["g++ failed"])[0][:160]
         return None, cpp_path, f"g++ emitted: {err}"
+    open(bin_path + ".ms", "w").write(f"{ms:.1f}")
     os.replace(tmp_bin, bin_path)
     return bin_path, cpp_path, None
 
@@ -248,6 +266,31 @@ def gen_dryrun_input(name, cache_dir):
     return inp
 
 
+def derived_inputs(cp, cache_dir):
+    """The worst cases `cpl bench` derives from `cp`'s `read()` types, captured by
+    passing a program that saves its stdin as `--fast`. `cpl bench` types only
+    top-level reads; a port that reads inside a loop or fn gets none."""
+    if re.search(r"^[ \t]+.*\bread\(", open(cp).read(), re.M):
+        return []
+    cap = os.path.join(cache_dir, f"derived_{sha256_file(cp)}")
+    if not os.path.isdir(cap):
+        tmp = cap + f".tmp.{os.getpid()}.{threading.get_ident()}"
+        os.makedirs(tmp)
+        saver = os.path.join(tmp, "save.sh")
+        with open(saver, "w") as f:
+            f.write('#!/bin/sh\nexec cat > "$CAPDIR/$(date +%s%N).in"\n')
+        os.chmod(saver, 0o755)
+        subprocess.run(
+            [CPL, "bench", cp, "--fast", saver, "--format", "json"],
+            capture_output=True,
+            env={**CLEAN_ENV, "CAPDIR": tmp},
+            timeout=300,
+        )
+        os.remove(saver)
+        os.replace(tmp, cap)
+    return sorted(os.path.join(cap, f) for f in os.listdir(cap) if os.path.getsize(os.path.join(cap, f)) > 0)
+
+
 def collect_items(suites, only, cache_dir):
     items = []
     if "dryrun" in suites:
@@ -255,9 +298,11 @@ def collect_items(suites, only, cache_dir):
             if only and name not in only:
                 continue
             cp = os.path.join(ROOT, "research", "dryrun", "v03", f"{name}.cp")
-            orig = os.path.join(ROOT, "research", "dryrun", f"{name}_ref.cpp")
+            orig = os.path.join(ROOT, "bench", "dryrun-matched", f"{name}.cpp")
+            if not os.path.exists(orig):
+                orig = os.path.join(ROOT, "research", "dryrun", f"{name}_ref.cpp")
             if os.path.exists(cp) and os.path.exists(orig):
-                items.append(("dryrun", name, cp, orig, lambda n=name: gen_dryrun_input(n, cache_dir)))
+                items.append(("dryrun", name, cp, orig, lambda n=name: [gen_dryrun_input(n, cache_dir)]))
 
     if "corpus" in suites:
         cg_by_prob = {}
@@ -287,11 +332,11 @@ def collect_items(suites, only, cache_dir):
                             if os.path.exists(out):
                                 os.remove(out)
                     if os.path.exists(out) and os.path.getsize(out) > 0:
-                        return out
+                        return [out]
                 ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
-                if ins:
-                    return max(ins, key=os.path.getsize)
-                return None
+                return derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir) + (
+                    [max(ins, key=os.path.getsize)] if ins else []
+                )
 
             items.append(("corpus", pid, cp, orig, make_input))
 
@@ -308,7 +353,7 @@ def collect_items(suites, only, cache_dir):
                 orig = cp[:-3] + ".cpp"
                 if not os.path.exists(orig):
                     continue
-                items.append(("bench", name, cp, orig, lambda p=empty_in: p))
+                items.append(("bench", name, cp, orig, lambda p=empty_in: [p]))
     return items
 
 
@@ -335,12 +380,26 @@ def summarize(rows, min_ms):
         "max": round(ratios[-1], 3) if ratios else 0.0,
         "gt_1_1": sum(1 for x in ratios if x > 1.1),
         "gt_1_5": sum(1 for x in ratios if x > 1.5),
+        **resource_summary([r for r in rows if r.get("status") == "ok"]),
+    }
+
+
+def resource_summary(ok):
+    rss = sorted(r["rss_ratio"] for r in ok if r.get("rss_ratio"))
+    rss_kb = sorted(r["port_rss_kb"] for r in ok if r.get("port_rss_kb"))
+    cms = sorted(r["compile_ms"] for r in ok if r.get("compile_ms") is not None)
+    return {
+        "rss_ratio_p50": round(percentile(rss, 0.50), 3),
+        "rss_ratio_max": round(rss[-1], 3) if rss else 0.0,
+        "rss_max_mb": round(rss_kb[-1] / 1024, 1) if rss_kb else 0.0,
+        "compile_ms_p50": round(percentile(cms, 0.50)),
+        "compile_ms_max": round(cms[-1]) if cms else 0,
     }
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--suite", default="dryrun,corpus", help="comma-separated: dryrun,corpus")
+    ap.add_argument("--suite", default="dryrun,corpus,bench", help="comma-separated: dryrun,corpus,bench")
     ap.add_argument("--only", default="", help="comma-separated problem names")
     ap.add_argument("--runs", type=int, default=5)
     ap.add_argument("--timeout", type=float, default=10.0)
@@ -366,7 +425,7 @@ def main():
             return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ orig: {oerr}"}
         inp = input_fn()
         if not inp:
-            return {"suite": suite, "name": name, "status": "skip", "reason": "no input"}
+            return {"suite": suite, "name": name, "status": "skip", "reason": "no input: no generator, no tests, and `cpl bench` derives none"}
         return {
             "suite": suite,
             "name": name,
@@ -389,20 +448,34 @@ def main():
         if b["status"] != "built":
             rows.append(b)
             continue
-        t_o, s_o = run_once(b["obin"], b["inp"], out_o, args.timeout)
-        t_p, s_p = run_once(b["pbin"], b["inp"], out_p, args.timeout)
-        if s_o != "ok" or s_p != "ok":
-            rows.append({**b, "status": "skip", "reason": f"run orig={s_o} port={s_p}"})
+        # Among the candidate inputs both programs agree on, time the one the original is slowest on.
+        agreed, tried = [], []
+        for inp in b["inp"]:
+            t_o, s_o, rss_o = run_once(b["obin"], inp, out_o, args.timeout)
+            if s_o != "ok":
+                tried.append(f"orig {s_o}")
+                continue
+            t_p, s_p, rss_p = run_once(b["pbin"], inp, out_p, args.timeout)
+            if s_p != "ok":
+                tried.append(f"port {s_p}")
+                continue
+            if not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
+                tried.append("outputs differ")
+                continue
+            agreed.append((t_o, t_p, rss_o, rss_p, inp))
+        if not agreed:
+            status = "mismatch" if "outputs differ" in tried else "skip"
+            reason = ", ".join(sorted(set(tried)))
+            rows.append({**b, "status": status, "reason": f"{len(b['inp'])} input(s): {reason}"})
             continue
-        if not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
-            rows.append({**b, "status": "mismatch", "reason": "output mismatch"})
-            continue
+        t_o, t_p, rss_o, rss_p, inp = max(agreed)
+        b["inp"] = inp
         ts_o = [t_o]
         ts_p = [t_p]
         if max(t_o, t_p) * 1000.0 >= args.min_ms:
             for _ in range(args.runs - 1):
-                to, _ = run_once(b["obin"], b["inp"], out_o, args.timeout)
-                tp, _ = run_once(b["pbin"], b["inp"], out_p, args.timeout)
+                to, _, _ = run_once(b["obin"], b["inp"], out_o, args.timeout)
+                tp, _, _ = run_once(b["pbin"], b["inp"], out_p, args.timeout)
                 ts_o.append(to)
                 ts_p.append(tp)
         med_o = statistics.median(ts_o) * 1000.0
@@ -416,6 +489,11 @@ def main():
                 "port_ms": round(med_p, 2),
                 "orig_ms": round(med_o, 2),
                 "ratio": round(ratio, 3),
+                "port_rss_kb": rss_p,
+                "orig_rss_kb": rss_o,
+                "rss_ratio": round(rss_p / rss_o, 3) if rss_o else None,
+                "compile_ms": compile_ms(b["pbin"]),
+                "orig_compile_ms": compile_ms(b["obin"]),
                 "cpp_path": b["cpp_path"],
             }
         )
@@ -429,8 +507,17 @@ def main():
             f"(>1.1x: {st['gt_1_1']}, >1.5x: {st['gt_1_5']})"
         )
         measured = [r for r in sub if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
+        print(
+            f"  peak RSS emitted/orig p50={st['rss_ratio_p50']:.3f}x max={st['rss_ratio_max']:.3f}x "
+            f"(largest {st['rss_max_mb']} MB); g++ on emitted C++ p50={st['compile_ms_p50']} ms max={st['compile_ms_max']} ms"
+        )
         for r in sorted(measured, key=lambda x: -x["ratio"])[:20]:
             print(f"  {r['name']:18s}  port={r['port_ms']:7.2f}ms  orig={r['orig_ms']:7.2f}ms  ratio={r['ratio']:6.3f}x")
+        failed = [r for r in sub if r.get("status") != "ok"]
+        if failed:
+            print(f"  not measured: {len(failed)}")
+            for r in sorted(failed, key=lambda x: x["name"]):
+                print(f"    {r['name']:18s}  {r['status']}: {r.get('reason', '')}")
 
     overall = summarize(rows, args.min_ms)
     print(f"=== OVERALL (n={overall['measured_ge_min_ms']} >= {args.min_ms}ms) ===")
