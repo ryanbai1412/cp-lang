@@ -116,15 +116,15 @@ element, is `xs[i].take()`, which leaves the type's default behind.
 
 ## 3. Bindings and places
 
-- `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
-- `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
+- `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated. (R05.3.1)
+- `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`. (R05.3.2)
 - A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice
-  (`a[r]`) or any projection result (§6). Places are what `mut` lends.
+  (`a[r]`) or any projection result (§6). Places are what `mut` lends. (R05.3.3)
 - `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut`
-  lend of `a` (R7).
+  lend of `a` (R7). (R05.3.4)
 - Reading an element or field binds a lend of it, not a copy, when the
   value is heap (`let row = rows[i]`: §6, `at` is a projection). A plain
-  element copies (`let x = a[i]`).
+  element copies (`let x = a[i]`). (R05.3.5)
 
 **R3. Mutation needs a mutable place.** Writing, pushing, calling a
 `mut self` method, or passing `mut x` requires `x` to be a `var`, a `mut`
@@ -215,36 +215,36 @@ fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
 
 - **Meaning.** The result is a lent value whose sources are every
   non-plain parameter, or the ones named in `lends(...)`. The body is
-  checked against that: lending from `b` in `pick` is an error in `pick`.
+  checked against that: lending from `b` in `pick` is an error in `pick`. (R05.6.1)
 - **Desugaring.** A call passes the rest of the caller's block as a
   callback: `let w = window(a, l); use(w)` is `window(a, l, w => use(w))`.
   That is why no lifetime is needed: the lent value never outlives the
   caller's block. `return` and `break` in that rest-of-block act on the
-  caller, because it is the caller's code.
+  caller, because it is the caller's code. (R05.6.2)
 - **`lends mut T`** is a place: the caller can assign through it,
   `a[i] = 5` is `a.at(i) = 5`. Code after the tail expression in the body
-  runs when the caller is done (write-back: a `SegTree` repairs ancestors).
+  runs when the caller is done (write-back: a `SegTree` repairs ancestors). (R05.6.3)
 - **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So
   `let row = rows[i]` and `let w = a[l..r]` are lent values by this rule,
-  with nothing special about `[]`.
+  with nothing special about `[]`. (R05.6.4)
 
 ## 7. Lent values (R6 to R8)
 
 **R6. What is lent.** A value is lent when any part of it is lent:
-- a parameter (R4), and anything a `lends` fn returns (§6);
-- a struct, tuple or enum with a lent field (`Filter(self, keep)`);
-- a generator value with a lent argument (`dfs(g, s)`, `dfs(mut seen)`);
-- a loop item, for the iteration (§9);
+- a parameter (R4), and anything a `lends` fn returns (§6); (R05.7.1)
+- a struct, tuple or enum with a lent field (`Filter(self, keep)`); (R05.7.2)
+- a generator value with a lent argument (`dfs(g, s)`, `dfs(mut seen)`); (R05.7.3)
+- a loop item, for the iteration (§9); (R05.7.4)
 - a closure or nested fn that captures a local `var`, a local heap value or
-  a parameter (§10).
+  a parameter (§10). (R05.7.5)
 
 It is a `mut` lend when any part is a `mut` lend. Its **sources** are the
 variables its parts borrow, transitively. Everything else is owned.
 
 **R7. While a lent value is alive, its sources are lent.** Alive means from
 where it was made to its last use (not to the end of the block).
-- **Read lend:** the sources can be read, but not written, resized or moved.
-- **`mut` lend:** the sources can't be touched at all except through it.
+- **Read lend:** the sources can be read, but not written, resized or moved. (R05.7.6)
+- **`mut` lend:** the sources can't be touched at all except through it. (R05.7.7)
 
 ```python
 var a: [V]Int = 0
@@ -262,10 +262,10 @@ would move out of the caller's value. Plain values copy either way.
 **R8. Where a lent value may be kept.** A lent value may be bound by `let`, put in a field, or pushed into a container, **if that storage dies
 no later than every source**: it is declared in the same block as the
 sources or a block nested inside it, and after them. It may never be:
-- returned, except from a fn declared `lends` (§6);
+- returned, except from a fn declared `lends` (§6); (R05.7.8)
 - stored into anything reached through a parameter (a `mut` parameter's
-  storage belongs to the caller);
-- stored in a top-level `var`.
+  storage belongs to the caller); (R05.7.9)
+- stored in a top-level `var`. (R05.7.10)
 
 ```python
 let ws = read<[V]Int>()
@@ -285,15 +285,15 @@ fn keep(mut out: List<Str>, s: Str): out.push(s)
 
 **R9. Two live lends of overlapping places, one of them `mut`, are an
 error unless the compiler proves them apart.**
-- Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
+- Different fields never overlap: `f(mut s.left, mut s.right)` is fine. (R05.8.1)
 - Two elements need the projection's `disjoint` law proven from facts at
   that point (`if i != j`, `assert`, `i < j`, value ranges, distinct
   literals). Two slices need the ranges proven apart:
-  `solve(mut a[l..m], mut a[m..r])` is fine.
+  `solve(mut a[l..m], mut a[m..r])` is fine. (R05.8.2)
 - Different projections of one receiver always conflict
-  (`g.row(r)` and `g.col(c)`).
+  (`g.row(r)` and `g.col(c)`). (R05.8.3)
 - A container's length can't change while any place in it is lent:
-  `let x = mut xs[i]` then `xs.push(..)` is an error.
+  `let x = mut xs[i]` then `xs.push(..)` is an error. (R05.8.4)
 
 ```python
 swap(mut a[i], mut a[j])                // error: a[i] and a[j] may be the same element
@@ -347,14 +347,14 @@ holds fields, so `divisors(12)` is owned (it can be stored or returned),
 body; every walk reruns it from the top, with fresh locals and the current
 state of its arguments.
 - The generator's lends are live for the walk, so `B` may read a
-  read-lent source but not write it, and may not touch a `mut`-lent one.
+  read-lent source but not write it, and may not touch a `mut`-lent one. (R05.9.1)
 - The item `x` is the body's parameter: plain items copy, heap items are
-  lent for one iteration (R8: keep one with `x.clone()`).
+  lent for one iteration (R8: keep one with `x.clone()`). (R05.9.2)
 - `break`, `continue` and `return` in `B` act on the loop and the
   enclosing fn, through recursive generators too. (`x?` never transfers
-  control: it propagates `None` within its expression, chapter 2.)
+  control: it propagates `None` within its expression, chapter 2.) (R05.9.3)
 - Walking a `mut`-lent generator value twice is legal and linted: the
-  second walk sees what the first changed.
+  second walk sees what the first changed. (R05.9.4)
 
 ```python
 var seen: [V]Bool = false
@@ -375,27 +375,27 @@ a nested fn declared after a `var` may read and write it.
 - **What is captured.** Plain `let`s are copied in. Local `var`s, local
   heap values and parameters are captured by reference. Top-level names
   are not captures; any fn may use them (a fn that writes a top-level
-  `var` has that effect at every call, R10).
+  `var` has that effect at every call, R10). (R05.10.1)
 - **Mode.** A fn value that captures by reference is lent (R6), with the
   captured variables as sources, so R8 limits where it can be kept: it can
   be bound, passed, stored in a local `var` or struct, but not returned or
   stored past those variables. A captured variable can't be moved while
-  the fn value is alive.
+  the fn value is alive. (R05.10.2)
 - **Calls.** Captures are borrowed per call (R10), and `mut` captures are
   exclusive for that call: passing `mut a[l]` to a fn that also writes the
-  captured `a` is an error.
+  captured `a` is an error. (R05.10.3)
 - **Arguments.** A closure passed to a fn is a parameter there (R4): the
   callee can call it but can't keep it, so every closure argument is
-  inlined and costs nothing. Only constructors keep closures (§4).
-- **Recursion.** Nested fns and `let`-bound lambdas may call themselves.
+  inlined and costs nothing. Only constructors keep closures (§4). (R05.10.4)
+- **Recursion.** Nested fns and `let`-bound lambdas may call themselves. (R05.10.5)
 - **Spelling differences only.** A nested `fn` can take explicit type
   parameters (`fn go<T>(..)`), attributes (`@memo`) and sibling fns in
   the same block, so mutual recursion works. A lambda infers its
   parameter types from where it is used, and its `let` name is visible
-  only from its own body on. Both can be generators (`-> yields T`).
+  only from its own body on. Both can be generators (`-> yields T`). (R05.10.6)
 - **`return`** inside a lambda returns from the lambda. (Non-local exit
-  from closures is deferred, decision 126; use a `for` over a generator.)
-- **`@memo`** fns may not capture a `var` they could see change.
+  from closures is deferred, decision 126; use a `for` over a generator.) (R05.10.7)
+- **`@memo`** fns may not capture a `var` they could see change. (R05.10.8)
 
 ```python
 var cnt = 0
@@ -433,31 +433,31 @@ Checked by the compiler (these make it memory-safe):
 
 - **C1. No lend escapes.** No `lends` result, projection or stored value
   borrows the field, so no outside view can see it change (as with Rust's
-  `Cell`).
+  `Cell`). (R05.10.9)
 - **C2. Only the struct's own methods write it.** Outside code can't, even
-  through `mut`.
+  through `mut`. (R05.10.10)
 - **C3. Inside the struct, a cache write is a `mut` access to the field.**
   A method walking `self.parent` can't call `self.find` partway through.
-  Only callers are relaxed.
+  Only callers are relaxed. (R05.10.11)
 - **C4. No unknown calls while the field is lent.** A method holding a
   lend into the field may not call a closure or fn parameter: it could
-  capture the struct and call `find`, writing under the method's view.
+  capture the struct and call `find`, writing under the method's view. (R05.10.12)
 - **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.**
   Otherwise `d1 == d2` could flip after a `find`; a struct that needs them
-  compared writes the impl by hand.
+  compared writes the impl by hand. (R05.10.13)
 
 Promised by the author (this makes it correct):
 
 - **P1. Cache writes change no answer.** Every sequence of public calls
   gives the same results as if each cache write through a read `self` were
   undone at method exit. Equivalently, the abstract value (the partition,
-  the factorials) never changes.
+  the factorials) never changes. (R05.10.14)
 
 Stress runs check P1 with a cold mode that undoes those writes at method
 exit and compares output with a normal run; P1 is exactly what makes the
 two comparable, so no struct needs its own checker.
 - Shared ownership (two owners of one mutable value) stays out: pass
-  `mut x` to each call, or capture `x`.
+  `mut x` to each call, or capture `x`. (R05.10.15)
 
 ```python
 let d = build_dsu(edges)            // a let

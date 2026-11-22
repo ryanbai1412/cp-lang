@@ -23,24 +23,24 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step |
-| `V.count` | number of positions | O(1) |
-| `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it isn't | O(1) |
-| `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1) |
-| `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) |
-| `x in V` | is integer `x` a position | O(1) |
-| `V(x)` | integer to position, trapping outside `V` | O(1) |
-| `V.at(x)` | integer to position, `?V`: `None` outside `V` | O(1) |
-| `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | O(1) |
-| `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
-| `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) |
-| `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164) | O(1) |
-| `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) |
-| `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
-| `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |
-| `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free |
-| `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1) |
-| `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free |
+| `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step (R04.2.1) |
+| `V.count` | number of positions | O(1) (R04.2.2) |
+| `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it isn't | O(1) (R04.2.3) |
+| `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1) (R04.2.4) |
+| `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) (R04.2.5) |
+| `x in V` | is integer `x` a position | O(1) (R04.2.6) |
+| `V(x)` | integer to position, trapping outside `V` | O(1) (R04.2.7) |
+| `V.at(x)` | integer to position, `?V`: `None` outside `V` | O(1) (R04.2.8) |
+| `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | O(1) (R04.2.9) |
+| `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) (R04.2.10) |
+| `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) (R04.2.11) |
+| `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164) | O(1) (R04.2.12) |
+| `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) (R04.2.13) |
+| `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) (R04.2.14) |
+| `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |
+| `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free (R04.2.16) |
+| `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1) (R04.2.17) |
+| `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free (R04.2.18) |
 
 **Pieces.** Coordinate compression for intervals: `let (domain P, piece) =
 D.pieces(cuts: cs)` splits a range at the given cuts into the pieces between them,
@@ -53,8 +53,8 @@ appear (decision 162).
 
 | | neighbour of the same kind | the other kind, either side |
 |---|---|---|
-| position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
-| cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V` |
+| position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts (R04.3.1) |
+| cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V` (R04.3.2) |
 
 `v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `c.shift(r)` is
 the cuts at distances `r` after cut `c`, clipped to the domain and possibly empty
@@ -83,10 +83,10 @@ below is generic over `D`: it means the same thing on both.
 
 | | `Range<V>`: over positions | `Range<V.cuts>`: over cuts |
 |---|---|---|
-| written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends |
-| elements (`for`, `in`, `len`) | positions | cuts |
-| typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n |
-| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in ..i`, `for k in a..=b` |
+| written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends (R04.4.1) |
+| elements (`for`, `in`, `len`) | positions | cuts (R04.4.2) |
+| typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n (R04.4.3) |
+| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in ..i`, `for k in a..=b` (R04.4.4) |
 
 **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out:
 `for k in a..=b` walks cuts a through b, `for j in ..i` walks the cuts before i.
@@ -107,12 +107,12 @@ This is **not a conversion and there is no implicit `Into`.** It decides what
 the literal builds, exactly like `5` becoming a position where a `V` is
 expected. Consequences:
 - Only the literal `a..b` does it. A stored cut range never becomes a piece:
-  `let s = j..i; cost(s)` is a type error whose fix is to write `cost(j..i)`.
+  `let s = j..i; cost(s)` is a type error whose fix is to write `cost(j..i)`. (R04.4.5)
 - Only half-open: `j..=i` on cuts names no piece, so it's an error where a
-  `Range<V>` is expected.
+  `Range<V>` is expected. (R04.4.6)
 - It's safe because the two readings are the same set: cut `c` in `j..i`
   stands for the position `c.r`, and the cuts j..i-1 are exactly the left
-  edges of the positions between `j` and `i`.
+  edges of the positions between `j` and `i`. (R04.4.7)
 
 ### Open-ended ranges
 
@@ -121,10 +121,10 @@ never has to be named and never has to be non-empty:
 
 | written | means | elements |
 |---|---|---|
-| `..i` | `D.first..i`, where `i: D` | everything before `i` |
-| `..=i` | `D.first..=i` | everything up to and including `i` |
-| `i..` | `i..=D.last` | `i` and everything after it |
-| `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]` |
+| `..i` | `D.first..i`, where `i: D` | everything before `i` (R04.4.8) |
+| `..=i` | `D.first..=i` | everything up to and including `i` (R04.4.9) |
+| `i..` | `i..=D.last` | `i` and everything after it (R04.4.10) |
+| `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]` (R04.4.11) |
 
 A literal end is a **position** of the indexed domain unless the other end
 is a cut (then it is a cut, as in the piece rule above). On `domain V =
@@ -158,16 +158,16 @@ the generic meaning comes to for each kind.
 
 | Form | On `Range<V>` (positions) | On `Range<V.cuts>` (cuts) | Cost |
 |---|---|---|---|
-| `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count of cuts; membership of a cut | O(1) |
-| `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step |
-| `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) |
-| `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) |
-| `r.clip(s)` | intersection | intersection | O(1) |
-| `r.halve()` | `?(r.l..r.mid, r.mid..r.r)`, two non-empty halves; `None` when `len <= 1` | same, over cuts | O(1) |
-| `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one level up | O(1) |
-| `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls |
-| `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls |
-| `a[r]`, `pre.fold(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
+| `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count of cuts; membership of a cut | O(1) (R04.4.12) |
+| `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step (R04.4.13) |
+| `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) (R04.4.14) |
+| `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) (R04.4.15) |
+| `r.clip(s)` | intersection | intersection | O(1) (R04.4.16) |
+| `r.halve()` | `?(r.l..r.mid, r.mid..r.r)`, two non-empty halves; `None` when `len <= 1` | same, over cuts | O(1) (R04.4.17) |
+| `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one level up | O(1) (R04.4.18) |
+| `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls (R04.4.19) |
+| `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls (R04.4.20) |
+| `a[r]`, `pre.fold(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says (R04.4.21) |
 
 **Binary search: which element, or where it flips.** `first_true` and
 `last_true` return the element, so the predicate reads like the statement
@@ -249,9 +249,9 @@ on a half-open range), always present. `r.halve()` is
 
 | n | `r.halve()` | `r.mid` | `r.mid.r` |
 |---|---|---|---|
-| 0 | `None` | `r.l` | outside `r` (guard first) |
-| 1 | `None` | `r.l` | the element |
-| ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first` |
+| 0 | `None` | `r.l` | outside `r` (guard first) (R04.7.1) |
+| 1 | `None` | `r.l` | the element (R04.7.2) |
+| ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first` (R04.7.3) |
 
 `halve` is for the merge-sort shape (stop at one element). The element shape
 (handle the middle, recurse around it, stop at empty) is
@@ -261,20 +261,20 @@ but the cut is what both shapes share, and `halve` reads as its definition).
 
 ## Decided (decision 137)
 
-- `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k.
-- Position arithmetic gives an `Int`; back into the domain is explicit.
+- `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k. (R04.8.1)
+- Position arithmetic gives an `Int`; back into the domain is explicit. (R04.8.2)
 - `r.first_true(ok)`/`r.last_true(ok)` return `?` the element; `r.bsearch(ok)`
-  returns the flip cut, always present; `last: true` for true→false. They replace `bsearch_first`/`bsearch_last`.
-- Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
+  returns the flip cut, always present; `last: true` for true→false. They replace `bsearch_first`/`bsearch_last`. (R04.8.3)
+- Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound). (R04.8.4)
 - One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts
   is cuts. The half-open literal `j..i` with cut ends builds the piece where a
   `Range<V>` is expected (124): literal typing, not a conversion; no implicit
   `Into`. A position-only reading was rejected: it broke
-  `for j in ..i: dp[j] + cost(j..i)`.
-- `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...]`.
-- `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `None` at length <= 1.
-- Integer literals convert to positions and cuts of integer domains.
-- `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
+  `for j in ..i: dp[j] + cost(j..i)`. (R04.8.5)
+- `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...]`. (R04.8.6)
+- `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `None` at length <= 1. (R04.8.7)
+- Integer literals convert to positions and cuts of integer domains. (R04.8.8)
+- `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes. (R04.8.9)
 
 Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 `.n`/`.p` (`n` reads as a count, `p` as parent); `V.first` always trapping

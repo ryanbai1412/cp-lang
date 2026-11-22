@@ -9,34 +9,34 @@ in user helpers and in library code.
 1. **An index names the same element everywhere it is valid.** A slice
    narrows which keys are valid and never renames them. This holds for every
    source: domain arrays, `List` and `Str`. `s[2..5][3]` is `s[3]`, and
-   `s[2..5][0]` traps.
+   `s[2..5][0]` traps. (R04b.1.1)
 2. **Keys in, keys out.** A function given an indexed sequence answers in
    that sequence's keys:
    - a position it finds is one of the input's keys (`?K`), valid on the
      source;
    - a per-element table is keyed like the input (`[s.keys]T`);
-   - a prefix table is indexed by the input's cuts.
+   - a prefix table is indexed by the input's cuts. (R04b.1.2)
 
    Lengths, counts and periods stay `Int`.
 3. **Combining two sequences pairs them by walk order, never by key.** This
    covers `==`, `<`, `starts_with`, `+`, slice assignment and `zip`.
    `zip(a, b)` is keyed by `a`'s keys. Zipping two different domain types
-   (`[V]T` with `[E]T`) stays a type error.
+   (`[V]T` with `[E]T`) stays a type error. (R04b.1.3)
 4. **Ends and relative reads are named.**
    - `w.first` and `w.last` are the first and last elements (`?T`).
    - `w.nth(k)` is the element `k` steps from the start. It is 0-based,
      O(1), and traps past the end.
    - `w.keys.nth(k)` is the k-th key, because a range is an indexed
-     sequence too.
+     sequence too. (R04b.1.4)
 5. **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is
    indexed by `K` and valid on `r`, so `[s.keys]0` is a table shaped like
    `s`. A declared domain's array covers the whole domain, as before.
-   `[0..=n]Int` is the case we already have, where `K` is `Int`.
+   `[0..=n]Int` is the case we already have, where `K` is `Int`. (R04b.1.5)
 6. **Materializing keeps keys when it can.**
    - `.collect()` of an indexed view gives `[w.keys]T`.
    - `.collect()` of a walk-only sequence gives a `List` keyed from 0.
    - `List(w)` and `Str(w)` always count from 0. They are the explicit way
-     to renumber.
+     to renumber. (R04b.1.6)
 7. **A sequence can get a domain of its own.**
    - `w.rebase` is an O(1) view keyed by a fresh domain `0..w.len` that
      belongs to `w` alone (the `[domain]T` package of 2.14). Binding it with
@@ -46,17 +46,17 @@ in user helpers and in library code.
      another rebase's.
    - `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r`
      of equal length, O(1), trapping on a length mismatch. Library code uses
-     it to hand results back in the caller's keys.
+     it to hand results back in the caller's keys. (R04b.1.7)
 
 Diagnostics:
 - **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first`
-  or `w.nth(1)`.
+  or `w.nth(1)`. (R04b.1.8)
 - **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`).
-  Suggests `w.items`, `w.nth(k)` or `w.rebase`.
+  Suggests `w.items`, `w.nth(k)` or `w.rebase`. (R04b.1.9)
 - **Trap: an out-of-keys read.** The message names the key range, e.g.
   "`w` has keys 3..7 (it is `s[3..7]`); use `w.nth(0)` for its first
-  element".
-- **Compile error: a raw `Int` used to index a domain slice**, as before.
+  element". (R04b.1.10)
+- **Compile error: a raw `Int` used to index a domain slice**, as before. (R04b.1.11)
 
 ## Contest code
 
@@ -169,8 +169,8 @@ index the source.
 only that container, because the callee may grow it (`push`, `pop`,
 `clear` need the concrete type). `fn f(xs: List<Int>)` called with
 `s[3..7]` is a type error with two fixes:
-- make `f` generic as above, using `first`, `nth` and `items`;
-- call `f(List(w))`, an O(len) copy keyed from 0.
+- make `f` generic as above, using `first`, `nth` and `items`; (R04b.3.1)
+- call `f(List(w))`, an O(len) copy keyed from 0. (R04b.3.2)
 
 ## Library code
 
@@ -215,26 +215,26 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = none) -> Prefix<K, T> =
 
 | Need | Write | Gives |
 |---|---|---|
-| Work in the caller's keys | take `[K]T` | `K` itself; nothing to build |
-| A table over exactly `s`'s keys | `[s.keys]x` | `[K]T` valid on `s.keys` |
-| A private 0-based index space for `s` | `let t = s.rebase` | view over fresh `t.Idx` |
-| An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that owns its cells |
-| Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key |
+| Work in the caller's keys | take `[K]T` | `K` itself; nothing to build (R04b.4.1) |
+| A table over exactly `s`'s keys | `[s.keys]x` | `[K]T` valid on `s.keys` (R04b.4.2) |
+| A private 0-based index space for `s` | `let t = s.rebase` | view over fresh `t.Idx` (R04b.4.3) |
+| An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that owns its cells (R04b.4.4) |
+| Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key (R04b.4.5) |
 
 ## Spec changes this implies
 
 | Stub | Today | Becomes |
 |---|---|---|
-| `find`, `rfind` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` |
-| `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K` |
-| `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed by `s.keys` |
-| `min_rotation`, `max_rotation` | `-> Int` | `-> K`, the start |
-| `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts |
-| `Palindromes.longest_at(i)` | `i: Int` | `i: K` |
-| `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged |
-| `seq.cp` | `nth_element` | renamed `select(k)`, so `nth` means one thing |
-| `seq.cp` | none | `nth`, `rebase`, `rekey` added |
-| sequences doc §"Slices" | the hybrid | rule 1; the pending note goes |
+| `find`, `rfind` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` (R04b.5.1) |
+| `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K` (R04b.5.2) |
+| `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed by `s.keys` (R04b.5.3) |
+| `min_rotation`, `max_rotation` | `-> Int` | `-> K`, the start (R04b.5.4) |
+| `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts (R04b.5.5) |
+| `Palindromes.longest_at(i)` | `i: Int` | `i: K` (R04b.5.6) |
+| `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged (R04b.5.7) |
+| `seq.cp` | `nth_element` | renamed `select(k)`, so `nth` means one thing (R04b.5.8) |
+| `seq.cp` | none | `nth`, `rebase`, `rekey` added (R04b.5.9) |
+| sequences doc §"Slices" | the hybrid | rule 1; the pending note goes (R04b.5.10) |
 
 ## Open
 
