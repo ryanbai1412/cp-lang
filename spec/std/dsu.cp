@@ -12,7 +12,7 @@ pub struct Mark(at: 0..=2_000_000_000)
 /// `mark` on, paths are no longer shortened (a shortened path cannot be restored), so every
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
-    @cache p: List<-2_147_483_648..=2_147_483_647>
+    p: List<-2_147_483_648..=2_147_483_647>
     parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
     joined: List<Int>
@@ -24,9 +24,23 @@ pub struct Dsu<V>:
     /// cost: O(n) for n = `V.count`; one `[V]` array
     /// traps: never
     /// example: `let d = Dsu<0..3>(); d.components == 3`
-    pub fn new(rollback: Bool = false) -> Dsu<V> = todo
+    pub fn new(rollback: Bool = false) -> Dsu<V> = Dsu(List.filled(V.count, -1), V.count, [], rollback)
 
-    fn find_ord(self, start: Int) -> Int = todo
+    fn find_ord(self, start: Int) -> Int:
+        var x = start
+        unchecked:
+            while p[x] >= 0: x = p[x]
+        x
+
+    fn find_halving(mut self, start: Int) -> Int:
+        var x = start
+        unchecked:
+            while p[x] >= 0:
+                let par = p[x]
+                if not marked and p[par] >= 0:
+                    p[x] = p[par]
+                x = par
+        x
 
     /// The representative of `v`'s set: the root that union by size kept. Two positions are in one
     /// set exactly when they have the same representative.
@@ -57,7 +71,18 @@ pub struct Dsu<V>:
     /// cost: O(1) per undone `unite`
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); let m = d.mark(); d.unite(1, 2); d.undo_to(m); d.same(0, 1) and not d.same(0, 2)`
-    pub fn undo_to(mut self, snap: Mark) = todo
+    pub fn undo_to(mut self, snap: Mark):
+        var i = joined.len
+        unchecked:
+            while i > snap.at:
+                i -= 2
+                let y = joined[i]
+                let neg_sy = joined[i + 1]
+                let r = p[y]
+                p[r] -= neg_sy
+                p[y] = neg_sy
+                parts += 1
+        joined.truncate(snap.at)
 
     /// Merges the sets of `a` and `b`; `false` if they were already one set (nothing changes then).
     ///
@@ -66,7 +91,7 @@ pub struct Dsu<V>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`, plus one log entry
     /// traps: never
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1) and not d.unite(1, 0)`
-    pub fn unite(mut self, a: V, b: V) -> Bool = todo
+    pub fn unite(mut self, a: V, b: V) -> Bool = self.merge(a, b) != None
 
     /// As [`unite`](Dsu.unite), but says which root stayed and which went under it, so data kept
     /// per set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
@@ -77,7 +102,20 @@ pub struct Dsu<V>:
     /// example: `var d = Dsu<0..3>(); d.merge(1, 0) == Some((kept: 1, merged: 0))`
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); d.merge(2, 1) == Some((kept: 0, merged: 2))`
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); d.merge(1, 0) == None`
-    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V) = todo
+    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
+        var x = self.find_halving(a.ord)
+        var y = self.find_halving(b.ord)
+        if x == y: return None
+        unchecked:
+            if p[x] > p[y]: swap(mut x, mut y)
+            let neg_sy = p[y]
+            p[x] += neg_sy
+            p[y] = x
+            parts -= 1
+            if marked:
+                joined.push(y)
+                joined.push(neg_sy)
+        Some((kept: V.at(x), merged: V.at(y)))
 
     /// Whether `a` and `b` are in the same set.
     ///
@@ -91,14 +129,17 @@ pub struct Dsu<V>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
     /// example: `var d = Dsu<0..3>(); d.unite(0, 2); d.size(2) == 2 and d.size(1) == 1`
-    pub fn size(mut self, v: V) -> Int = todo
+    pub fn size(mut self, v: V) -> Int:
+        let r = self.find_halving(v.ord)
+        unchecked:
+            return -p[r]
 
     /// The number of sets: `V.count` minus the successful `unite`s still in effect.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(0, 1); d.unite(1, 0); d.components == 3`
-    @get pub fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = parts
 
     /// The representative of each set, once each, lazily.
     ///
@@ -107,7 +148,10 @@ pub struct Dsu<V>:
     /// order: increasing positions of `V`
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(3, 1); d.roots().collect() == [0, 2, 3]`
-    pub fn roots(self) -> yields V = todo
+    pub fn roots(self) -> yields V:
+        for v in V:
+            unchecked:
+                if p[v.ord] < 0: yield v
 
     /// Every set as a list of its positions, each position in exactly one list.
     ///
@@ -116,7 +160,16 @@ pub struct Dsu<V>:
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(3, 1); d.groups() == [[0], [1, 3], [2]]`
-    pub fn groups(mut self) -> List<List<V>> = todo
+    pub fn groups(mut self) -> List<List<V>>:
+        var gid: [V]Int = -1
+        var out: List<List<V>> = []
+        for v in V:
+            let r = self.find(v)
+            if gid[r] < 0:
+                gid[r] = out.len
+                out.push([])
+            out[gid[r]].push(v)
+        out
 
 /// Union-find where every set carries a value of type `T`. When two sets merge, the
 /// merged set gets `join(value of a's set, value of b's set)` for `unite(a, b)`, whichever
@@ -126,7 +179,7 @@ pub struct Dsu<V>:
 /// `mark` and `undo_to` step back in time like `Dsu`'s, and restore the values too: every
 /// merge and every `set` since the mark is undone, O(1) each.
 pub struct DsuOf<V, T>:
-    @cache up: [V]V
+    up: [V]V
     sz: [V]1..=V.count
     val: [V]T
     join: (T, T) -> T
@@ -142,7 +195,8 @@ pub struct DsuOf<V, T>:
     /// cost: O(n) calls of `init`; three `[V]` arrays
     /// traps: never
     /// example: `let d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.get(2) == 3`
-    pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> = todo
+    pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> =
+        DsuOf([V] v => v, [V] _ => 1, [V] v => init(v), join, V.count, [], false)
 
     /// The representative of `v`'s set, as for [`Dsu.find`](Dsu.find). Halves paths through
     /// `@cache` until the first `mark`.
@@ -151,7 +205,10 @@ pub struct DsuOf<V, T>:
     /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
-    pub fn find(self, v: V) -> V = todo
+    pub fn find(self, v: V) -> V:
+        var x = v
+        while up[x] != x: x = up[x]
+        x
 
     /// The value of `v`'s set.
     ///
@@ -182,7 +239,18 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (_, y) => y); d.unite(2, 0); d.get(2) == 0`
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 1); not d.unite(1, 0) and d.get(0) == 1`
-    pub fn unite(mut self, a: V, b: V) -> Bool = todo
+    pub fn unite(mut self, a: V, b: V) -> Bool:
+        let ra = self.find(a)
+        let rb = self.find(b)
+        if ra == rb: return false
+        let joined = join(val[ra], val[rb])
+        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
+        if marked: log.push((y, x, val[x]))
+        up[y] = x
+        sz[x] += sz[y]
+        val[x] = joined
+        parts -= 1
+        true
 
     /// As [`unite`](DsuOf.unite), but says which root stayed and which went under it. `None` if
     /// `a` and `b` were already one set.
@@ -219,7 +287,7 @@ pub struct DsuOf<V, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.components == 2`
-    @get pub fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = parts
 
     /// The representative of each set, once each, lazily.
     ///
@@ -228,7 +296,9 @@ pub struct DsuOf<V, T>:
     /// order: increasing positions of `V`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(2, 0); d.roots().collect() == [1, 2]`
-    pub fn roots(self) -> yields V = todo
+    pub fn roots(self) -> yields V:
+        for v in V:
+            if up[v] == v: yield v
 
     /// The value of each set, once each, lazily: one per root, in the order of
     /// [`roots`](DsuOf.roots). O(1) to make.
@@ -238,7 +308,9 @@ pub struct DsuOf<V, T>:
     /// order: by representative, increasing positions of `V`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(2, 0); d.values.collect() == [2, 4]`
-    @get pub fn values(self) -> yields T = todo
+    @get pub fn values(self) -> yields T:
+        for v in V:
+            if up[v] == v: yield val[v]
 
     /// The present, to return to with [`undo_to`](DsuOf.undo_to). The first call switches path
     /// shortening off for good.
@@ -256,7 +328,14 @@ pub struct DsuOf<V, T>:
     /// cost: O(1) per undone change
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = DsuOf<0..2, Int>(init: v => v, join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.set(0, 9); d.undo_to(m); d.get(0) == 0 and d.get(1) == 1`
-    pub fn undo_to(mut self, snap: Mark) = todo
+    pub fn undo_to(mut self, snap: Mark):
+        while log.len > snap.at:
+            let (y, x, old) = log.pop()!
+            if y != x:
+                sz[x] -= sz[y]
+                up[y] = y
+                parts += 1
+            val[x] = old
 
     /// Every set as a list of its positions, as `Dsu.groups`; values are read with `get`.
     ///
@@ -265,7 +344,16 @@ pub struct DsuOf<V, T>:
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(2, 0); d.groups() == [[0, 2], [1]]`
-    pub fn groups(mut self) -> List<List<V>> = todo
+    pub fn groups(mut self) -> List<List<V>>:
+        var gid: [V]Int = -1
+        var out: List<List<V>> = []
+        for v in V:
+            let r = self.find(v)
+            if gid[r] < 0:
+                gid[r] = out.len
+                out.push([])
+            out[gid[r]].push(v)
+        out
 
 /// Union-find that knows, for two positions of one set, whether they are on the same side
 /// or on opposite sides: two-colouring, parity constraints, `x[a] xor x[b] == d`.
@@ -361,7 +449,7 @@ pub struct ParityDsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = ParityDsu<0..3>(); d.unite(0, 1); d.unite(1, 2); d.unite(2, 0); not d.consistent`
-    @get pub fn consistent(self) -> Bool = todo
+    @get pub fn consistent(self) -> Bool = conflicts == 0
 
     /// The present, to return to with [`undo_to`](ParityDsu.undo_to). Paths are never shortened,
     /// so marking changes nothing else.
@@ -403,7 +491,9 @@ pub struct PotentialDsu<V>:
     /// cost: O(n); three `[V]` arrays
     /// traps: never
     /// example: `let d = PotentialDsu<0..3>(); d.components == 3 and d.consistent`
-    pub fn new<G>(op: ?G = None) -> PotentialDsu<V> = todo
+    pub fn new<G>(op: ?G = None) -> PotentialDsu<V>:
+        if let Some(_) = op: todo
+        PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.count, 0, [])
 
     /// The representative of `v`'s set and `val[v] - val[root]`.
     ///
@@ -482,14 +572,14 @@ pub struct PotentialDsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.components == 2`
-    @get pub fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = parts
 
     /// Whether no contradiction is in effect.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = PotentialDsu<0..2>(); d.unite(0, 1, 5); not d.unite(1, 0, 5) and not d.consistent`
-    @get pub fn consistent(self) -> Bool = todo
+    @get pub fn consistent(self) -> Bool = conflicts == 0
 
     /// The present, to return to with [`undo_to`](PotentialDsu.undo_to).
     ///
