@@ -196,6 +196,8 @@ pub mod codes {
     pub const WITH_NOT_FIRST: Code = Code("E0802");
     /// `x?` in an `if` or `while` condition.
     pub const QUESTION_IN_CONDITION: Code = Code("E0803");
+    /// A statement that is just `x?`: its result goes nowhere. (R02.4.7)
+    pub const DROPPED_QUESTION: Code = Code("E0804");
     /// `var x = None` or `let x = read()`: nothing local says the type.
     pub const INFERENCE_NEEDS_ANNOTATION: Code = Code("E0806");
     pub const RUNTIME: Code = Code("R0001");

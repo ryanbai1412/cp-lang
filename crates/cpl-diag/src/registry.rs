@@ -607,6 +607,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0804"),
+        title: "`?` whose result is dropped",
+        summary: "A statement that is only `x?` propagates `None` into nothing.",
+        explanation: "`?` is never control flow: it only makes the enclosing expression `None`. To leave early on `None`, bind with `let v = x else: return None`.",
+        trigger: "fn f(x: ?Int) -> ?Int:\n    x?\n    return x\nprint(f(Some(1)) ?? 0)\n",
+        fix: "fn f(x: ?Int) -> ?Int:\n    let v = x else: return None\n    return Some(v)\nprint(f(Some(1)) ?? 0)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0806"),
         title: "Type annotation required for inference",
         summary: "An expression like `None` or bare `read()` needs a type annotation.",

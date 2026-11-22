@@ -862,6 +862,23 @@ impl<'a> Checker<'a> {
                 self.dropped_result(expr);
             }
         }
+        if let StmtKind::Expr(expr) = &stmt.kind {
+            if let (ExprKind::Try(inner), true) =
+                (&expr.kind, std::env::var_os("CPL_SPEC").is_some())
+            {
+                let message = format!(
+                    "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
+                    self.quote(expr.span)
+                );
+                let help = format!(
+                    "to leave on `None`, bind it: `let v = {} else: return None` (R02.4.7)",
+                    self.quote(inner.span)
+                );
+                if let Some(diag) = self.error(codes::DROPPED_QUESTION, expr.span, message) {
+                    diag.help = Some(help);
+                }
+            }
+        }
         // A statement is straight-line code again, whatever it is inside;
         // an `if` or `match` standing as a statement is one too.
         let branch = match &stmt.kind {
