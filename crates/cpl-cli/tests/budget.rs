@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 fn programs() -> Vec<PathBuf> {
@@ -17,6 +18,26 @@ fn programs() -> Vec<PathBuf> {
     found
 }
 
+/// The release `cpl`, built (or brought up to date) on first use: `cargo
+/// test` builds only the dev profile, and timing that measures the build
+/// profile instead of what a user runs.
+fn cpl() -> &'static Path {
+    static CPL: OnceLock<PathBuf> = OnceLock::new();
+    CPL.get_or_init(|| {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = std::env::var_os("CARGO_TARGET_DIR")
+            .map_or_else(|| root.join("target"), |dir| root.join(dir));
+        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+        let status = Command::new(cargo)
+            .args(["build", "--release", "-p", "cpl-cli", "--bin", "cpl"])
+            .current_dir(&root)
+            .status()
+            .expect("cargo runs");
+        assert!(status.success(), "`cargo build --release -p cpl-cli` failed");
+        target.join("release").join(format!("cpl{}", std::env::consts::EXE_SUFFIX))
+    })
+}
+
 /// Runs `cpl` with `args`, feeding it the program's `.in` file, and gives
 /// back how long it took and what it printed.
 fn timed(args: &[&str], program: &Path) -> (Duration, Vec<u8>) {
@@ -26,7 +47,7 @@ fn timed(args: &[&str], program: &Path) -> (Duration, Vec<u8>) {
         Err(_) => Stdio::null(),
     };
     let start = Instant::now();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+    let out = Command::new(cpl())
         .args(args)
         .arg(program)
         .stdin(stdin)
