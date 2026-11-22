@@ -15,6 +15,8 @@ and its notes in that record's `notes`.
   gets a stub (`std.io`) and returns the answer `Str`.
 - ccc03s4: `SuffixArray.new(s)` stub, `SuffixArray` joins the prelude.
 - ccc18s4: `floor_quotients` joins the prelude.
+- cco18p4: `Wire` gets a stub; the ternary searches join the prelude and
+  document golden-section probe reuse (interactive query budgets).
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

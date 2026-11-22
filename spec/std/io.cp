@@ -5,3 +5,8 @@
 /// `("YES", "NO")`; a judge profile or `with io(answers: ("Yes", "No"))` changes it). `Bool`
 /// is not `Print`, so `print(ok)` is an error that suggests `print(yes(ok))`.
 pub fn yes(ok: Bool, answers: ?(Str, Str) = none) -> Str = todo
+
+/// Interactive mode. Constructing one (`let wire = Wire()`) makes every read and the program's
+/// exit flush stdout first; a program that never builds one never flushes early. O(1).
+pub struct Wire():
+    pub fn new() -> Wire = todo

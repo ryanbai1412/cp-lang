@@ -14,12 +14,16 @@ pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 
 /// O(log n) calls of `f`.
 /// Position maximizing a discrete unimodal function `f` over `r`, or `none` if `r` is empty.
-/// `f` must be strictly rising then falling (plateaus only at the optimum). O(log |r|) calls of `f`.
+/// `f` must be strictly rising then falling (plateaus only at the optimum). Golden-section: each probe
+/// is reused, so about log_phi |r| + 3 distinct calls of `f` (29 for 1e6), which is what
+/// interactive query budgets assume.
 pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
 
 /// O(log n) calls of `f`.
 /// Position minimizing a discrete unimodal function `f` over `r`, or `none` if `r` is empty.
-/// `f` must be strictly falling then rising (plateaus only at the optimum). O(log |r|) calls of `f`.
+/// `f` must be strictly falling then rising (plateaus only at the optimum). Golden-section: each probe
+/// is reused, so about log_phi |r| + 3 distinct calls of `f` (29 for 1e6), which is what
+/// interactive query budgets assume.
 pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
 
 /// `steps + 2` calls of `f`.
