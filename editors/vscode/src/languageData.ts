@@ -77,7 +77,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'bit_ceil', 'bit_width', 'bsearch_real', 'buckets', 'ceil', 'ceil_div', 'chain', 'choose2', 'chunks',
     'cmp', 'common_prefix_len', 'common_suffix_len', 'compress', 'condense', 'convolve', 'copy', 'count',
     'counts', 'ctz', 'cyclic_pairs', 'debug', 'dedup', 'deduped', 'desc', 'dfs', 'digit', 'digits',
-    'dijkstra', 'distinct', 'divmod', 'drop_while', 'each', 'ends_with', 'equal_range', 'eval', 'find',
+    'dijkstra', 'distinct', 'divmod', 'drop_while', 'skip_while', 'each', 'ends_with', 'equal_range', 'eval', 'find',
     'find_all', 'first', 'first_gt', 'fixed', 'flat_map', 'flatten', 'floor', 'floor_quotients',
     'floyd_warshall', 'flush', 'fold', 'gcd', 'get_or_insert', 'group', 'insert', 'inverse', 'inversions',
     'is_none_or', 'is_some_and', 'is_sorted', 'is_subsequence', 'isqrt', 'iterate', 'kruskal', 'kruskal_tree',
