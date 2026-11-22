@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1378 (995 passing). Rules: 521.
+Cases: 1383 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 37 case(s)
+- R0401 Assertion failed: 38 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -750,8 +750,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - **algebra** (34/46 named by a case)
   - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
-- **bag** (142/161 named by a case)
-  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
+- **bag** (147/161 named by a case)
+  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.drain_range`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
   - uncovered: `BeatsSegTree.min_val`
 - **bitset** (89/92 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1903 of 2222 std items are named by a case.
+1908 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
