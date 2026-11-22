@@ -186,18 +186,28 @@ lib_logs="$(mktemp -d)"
 script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
+fmt_pid=""
+# fmt(fmt(x)) == fmt(x) on every tracked .cp file, and formatting changes
+# no file's check result or interpreter output.
+fmt_cached=0
+if cache_hit fmt_corpus; then
+    fmt_cached=1
+else
+    scripts/fmt_check.py --cpl "$cpl" >"$lib_logs/fmt_corpus.log" 2>&1 &
+    fmt_pid=$!
+fi
 scoreboard_cached=0
 if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
 fi
 cleanup() {
-    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} 2>/dev/null || true
+    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${fmt_pid:+"$fmt_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -257,6 +267,17 @@ prelude=$(sed 's://.*::' spec/std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | 
 echo "prelude: $prelude names"
 [ "$prelude" -le 80 ] || echo "check: WARNING: spec/std/prelude.cp has $prelude names, over the target of 80" >&2
 
+step "cpl fmt is idempotent and keeps meaning on every .cp file"
+if [ "$fmt_cached" -eq 1 ]; then
+    echo "cached (tree unchanged outside its excludes)"
+else
+    fmt_status=0
+    wait "$fmt_pid" || fmt_status=1
+    cat "$lib_logs/fmt_corpus.log"
+    fmt_pid=""
+    [ "$fmt_status" -eq 0 ] || fail "cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py"
+    cache_save fmt_corpus
+fi
 
 # Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
 step "tech-debt ratchet (scripts/debt-ratchet.py --check)"

@@ -53,6 +53,10 @@ STAGES = {
     # The public-history scan reads every tracked file.
     "scoreboard_fast": [],
     "site_gate": ["archive/*"],
+    # scripts/fmt_check.py reads tracked .cp files, cp.toml, sample inputs
+    # and the cpl binary; it opened none of these prose paths.
+    "fmt_corpus": ["AGENTS.md", "REPO.md", "decisions.md", "plan/*",
+                   "corpus/statements/*", "corpus/submissions/*"],
 }
 
 
