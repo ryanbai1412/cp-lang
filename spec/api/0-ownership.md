@@ -228,12 +228,13 @@ print(part.sum())
 The effect is computed through any depth of calls (`outer` calling
 `clobber` is the same error), in one linear pass over the call graph.
 
-**R11. Evaluation order.** Operands run left to right. In an assignment
-or compound assignment, the right side and the target's index expressions
-are evaluated before the target is lent, so `a.push(a.len)`,
-`a[i] = a[j] + 1` and `cnt[a[i]] += 1` are fine. A right side that changes
-the target's own place is an error: `a[l] += inc(mut a[l])`,
-`xs[0] = xs.pop()!`. Bind it with `let` first.
+**R11. Evaluation order.** Operands run left to right. An assignment or
+compound assignment runs its right side first, then the target's index
+expressions, then lends the target for the write. So `a.push(a.len)`,
+`a[i] = a[j] + 1`, `cnt[a[i]] += 1` and `xs[0] = xs.pop()!` are fine: each
+lend ends before the next starts. `a[l] += inc(mut a[l])` also compiles
+(`inc` runs, then the new `a[l]` gets its result added), with a lint,
+because a reader may expect the old `a[l]` to be read first.
 
 ## 9. Generators and views (R12)
 
@@ -330,7 +331,8 @@ call to it. Nothing lent may be stored in a top-level `var` (R8).
    parameter or globally, or stored somewhere that outlives a source (R8)?
 6. **Overlap:** does any call or statement hold two overlapping places with
    one `mut`, without a proof they differ (R9)?
-7. **Order:** does an assignment's right side change its own target (R11)?
+7. **Order:** evaluate right side, then target indices, then the write
+   (R11); only lends alive at the same moment can conflict.
 
 If every step passes, it compiles.
 
@@ -480,7 +482,7 @@ fn inc(mut x: Int) -> Int:
     x
 a[l] += inc(mut a[l])
 ```
-<details><summary>Answer</summary>No. The right side changes the target's own place (R11). Fix: <code>let d = inc(mut a[l])</code> on its own line first.</details>
+<details><summary>Answer</summary>Yes, with a lint. The right side runs first, so <code>a[l]</code> is incremented, then <code>inc</code>'s result is added to the new value (R11).</details>
 
 **17.**
 ```python
