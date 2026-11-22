@@ -9,5 +9,5 @@
 - `gallop_first`: pinned the probe schedule `from`, `from + 1`, `from + 3`, `from + 7`, ... then bisection; only call counts depend on it.
 - `dinkelbach`: pinned the stopping rule (`num - l * den <= eps` returns `l`) and chose to trap when `solve` reports `den <= 0`, the stated precondition.
 - `split_best`: "best first" pinned as decreasing `T`; equal values come out in group order, then left piece before right piece; empty pieces are never queued and `best` is never called on an empty range.
-- `split_best` (contradiction): the signature has no `T: Ord` bound but the ordering needs one; left unchanged.
-- `split_best` (contradiction): the old prose said the k best cost "O(k log(n + k)) `best` calls"; it is O(n + k) `best` calls (one per group, two per taken value) and O((n + k) log(n + k)) queue work. Documented the latter.
+- `split_best` (contradiction): the signature has no `T: Ord` bound but the ordering needs one; left unchanged. (resolved: stub now bounds `T: Ord`)
+- `split_best` (contradiction): the old prose said the k best cost "O(k log(n + k)) `best` calls"; it is O(n + k) `best` calls (one per group, two per taken value) and O((n + k) log(n + k)) queue work. Documented the latter. (resolved: doc kept (O(n + k) `best` calls, O((n + k) log(n + k)) queue work))

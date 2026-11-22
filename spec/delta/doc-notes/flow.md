@@ -22,5 +22,5 @@
 - `stable_matching`: chose mutual acceptability (a pair matches only when each lists the other) and to trap on a repeated entry in a preference list.
 - `edge_coloring`: pinned the alternating-path colouring order (edges in `E` order, least free colours).
 - `matroid_intersection`: pinned BFS from sources in increasing element order so ties take the least element. The old doc's "O(E^2 V) is not reached" was dropped as noise.
-- `max_weight_matching` / `min_weight_matching` (contradiction): the old doc said `L.K <= R.K`; `K` is not a domain member elsewhere. Documented `L.count <= R.count`. `gomory_hu`'s `V.K` likewise read as `V.count`.
+- `max_weight_matching` / `min_weight_matching` (contradiction): the old doc said `L.K <= R.K`; `K` is not a domain member elsewhere. Documented `L.count <= R.count`. `gomory_hu`'s `V.K` likewise read as `V.count`. (resolved: stub kept; `count` is the library's size accessor)
 - `ColorMatroid.new`: chose to trap on a negative limit.
