@@ -1,4 +1,4 @@
-# Two gate tiers (2026-11-22, proposed)
+# Two gate tiers (2026-11-22, built)
 
 `spec/` does not describe the gate; this note does, until it is built.
 
@@ -32,6 +32,16 @@ one line in `cpl-fmt` (measured, see `metrics.toml`). Ryan's target is about
 - *Only move slow tests to `--full`*: 52 s of fast tests remain and nobody
   runs `--full`; the land tier keeps them on every landing instead.
 - *sccache / mold*: compile is not the bottleneck on a warm tree (clippy 5 s).
+
+## As built
+`scripts/check.sh --commit` (the pre-commit hook, `just check-commit`) runs
+the staged-secrets guard, `cargo fmt --all --check`, clippy of the touched
+crates, and `cargo nextest --profile commit -E 'rdeps(<touched>)'`; the
+`commit` profile in `.config/nextest.toml` leaves out the integration tests
+of `cpl-cli`, `cpl-lsp` and `cpl-conform`. `scripts/affected.py` maps paths
+(tested in `scripts/test_affected.py`). Measured: 6 s after a `cpl-fmt`
+edit, 11 s after a `cpl-check` edit (every crate), 2 s with nothing staged.
+`just check` stays the land tier, so an agent can run what `land.sh` will.
 
 ## Reverse
 Point `.githooks/pre-commit` back at `check.sh --fast`.

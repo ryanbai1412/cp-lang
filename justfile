@@ -4,9 +4,13 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-# Fast local commit gate (wraps scripts/check.sh --fast).
+# The land tier: what scripts/land.sh and CI run on every tip.
 check:
     scripts/check.sh --fast
+
+# The commit tier (the pre-commit hook): only what the staged paths reach.
+check-commit:
+    scripts/check.sh --commit
 
 # Full pre-push / release gate (adds prover fuzz, budgets, wasm smoke, VS Code tests).
 check-full:

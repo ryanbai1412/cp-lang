@@ -5724,3 +5724,15 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Delete the two lines from `.gitattributes`; or, if duplicated
   lines start to bite, split `QUESTIONS.md` into one file per question.
 
+## 218. The commit hook runs the commit tier; land.sh and CI run the fast gate (2026-11-22)
+
+- **Decision.** `.githooks/pre-commit` runs `scripts/check.sh --commit`:
+  the tests of the crates the staged paths can reach (`scripts/affected.py`
+  maps paths to crates, nextest's `rdeps()` adds their dependents), without
+  the end-to-end suites (profile `commit` in `.config/nextest.toml`). Any
+  path it does not know runs `--fast`. Every landing still runs `--fast` on
+  the rebased tip, so no test runs less often on main. Measured 6 s after a
+  one-line `cpl-fmt` edit, down from 77 s. Design:
+  `plan/domains/infra/design/gate-tiers.md`.
+- **Reverse.** Point `.githooks/pre-commit` back at `check.sh --fast`.
+

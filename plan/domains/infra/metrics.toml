@@ -10,8 +10,8 @@ milestone = "M2"
 
 [[metric]]
 name = "commit_gate_edit_s"
-command = "echo '// probe' >> crates/cpl-fmt/src/lib.rs; scripts/check.sh --fast | grep -o 'passed in [0-9]*s'; git checkout crates/cpl-fmt/src/lib.rs"
-today = "77"
+command = "echo '// probe' >> crates/cpl-fmt/src/lib.rs; git add crates/cpl-fmt/src/lib.rs; scripts/check.sh --commit | grep -o 'passed in [0-9]*s'; git restore --staged crates/cpl-fmt/src/lib.rs; git checkout crates/cpl-fmt/src/lib.rs"
+today = "6 (cpl-fmt edit; a cpl-check edit, which reaches every crate, 11; land tier unchanged)"
 target = "<= 10"
 milestone = "M2"
 
