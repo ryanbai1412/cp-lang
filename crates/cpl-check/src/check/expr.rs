@@ -1127,11 +1127,15 @@ impl<'a> Checker<'a> {
                 }
             }
             // A step can leave the domain, so `i + k` and `i - k` are a
-            // `?I`: `none` past either end.
+            // `?I`: `none` past either end (in v0.3, `Int` per R04.8.2).
             BinOp::Add | BinOp::Sub
                 if right.is_int() && matches!(&left, Ty::Pos(d) if !d.contains('.')) =>
             {
-                Ty::Optional(Box::new(left))
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    Ty::Int
+                } else {
+                    Ty::Optional(Box::new(left))
+                }
             }
             // `i - j` is how far apart two positions of one domain are.
             BinOp::Sub if matches!((&left, &right), (Ty::Pos(a), Ty::Pos(b)) if a == b) => Ty::Int,
@@ -1592,6 +1596,18 @@ impl<'a> Checker<'a> {
             }
         }
         let base_ty = self.infer(base);
+        if std::env::var_os("CPL_SPEC").is_some() {
+            if name.text == "bounds" && matches!(&base_ty, Ty::Domain(_)) {
+                let message = "`D.bounds` was renamed to `D.cuts`".to_string();
+                self.error(codes::REMOVED_SYNTAX, name.span, message);
+                return Ty::Error;
+            }
+            if name.text == "bsearch_first" {
+                let message = "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`".to_string();
+                self.error(codes::REMOVED_SYNTAX, name.span, message);
+                return Ty::Error;
+            }
+        }
         let ty = self.member_ty(expr, name, base_ty.clone());
         let built_in = matches!(&base_ty, Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. })
             || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
@@ -2487,6 +2503,39 @@ impl<'a> Checker<'a> {
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
+        if std::env::var_os("CPL_SPEC").is_some() {
+            if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
+                let idx_owner = match &idx_expr.kind {
+                    ExprKind::Call { callee, .. } => match &callee.kind {
+                        ExprKind::Field { base: owner, name: f } if f.text == "Idx" => {
+                            match &owner.kind {
+                                ExprKind::Name(n) => Some(n.as_str()),
+                                _ => None,
+                            }
+                        }
+                        ExprKind::Field { base: inner, .. } => match &inner.kind {
+                            ExprKind::Field { base: owner, name: f } if f.text == "Idx" => {
+                                match &owner.kind {
+                                    ExprKind::Name(n) => Some(n.as_str()),
+                                    _ => None,
+                                }
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if let Some(other) = idx_owner {
+                    if other != base_name {
+                        let message = format!(
+                            "`{base_name}` is indexed by `{base_name}.Idx`, not `{other}.Idx`"
+                        );
+                        self.error(codes::WRONG_DOMAIN, idx_expr.span, message);
+                    }
+                }
+            }
+        }
         match &base_ty {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
@@ -2680,10 +2729,32 @@ impl<'a> Checker<'a> {
                             continue;
                         }
                     }
-                    if self.fits(got, want)
-                        || (std::env::var_os("CPL_SPEC").is_none()
-                            && self.literal_position(index_expr, want))
-                    {
+                    if self.fits(got, want) {
+                        continue;
+                    }
+                    if self.literal_position(index_expr, want) {
+                        if std::env::var_os("CPL_SPEC").is_some() {
+                            if let (ExprKind::Int(v), Ty::Pos(d)) = (&index_expr.kind, want) {
+                                let is_cuts = d.ends_with(".cuts");
+                                let base_dom = d.strip_suffix(".cuts").unwrap_or(d);
+                                let out_of_bounds = match self.type_def(base_dom).as_deref() {
+                                    Some(Def::Domain(info)) if is_cuts => {
+                                        *v < 0 || info.max_size.is_some_and(|m| *v > m)
+                                    }
+                                    Some(Def::Domain(info)) => {
+                                        info.min_pos.is_some_and(|lo| *v < lo)
+                                            || info.max_pos.is_some_and(|hi| *v > hi)
+                                    }
+                                    _ => false,
+                                };
+                                if out_of_bounds {
+                                    let message = format!(
+                                        "literal `{v}` is outside domain `{d}`"
+                                    );
+                                    self.error(cpl_diag::Code("E0902"), index_expr.span, message);
+                                }
+                            }
+                        }
                         continue;
                     }
                     let message = format!(
@@ -2764,6 +2835,9 @@ impl<'a> Checker<'a> {
             {
                 self.note_view(expr, "slice");
                 ty.clone()
+            }
+            Ty::Named { name, args } if name == "Rebased" && args.len() == 1 => {
+                self.element_ty(&args[0])
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
             Ty::Named { name, .. } if name == "Filter" => {
@@ -2960,6 +3034,21 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if std::env::var_os("CPL_SPEC").is_some() {
+            if let Ty::Range { lo: want_lo, hi: want_hi, .. } = want {
+                let (vlo, vhi) = self.bounds(at);
+                let out_low = matches!((vhi, want_lo), (Some(vh), Some(wl)) if vh < *wl);
+                let out_high = matches!((vlo, want_hi), (Some(vl), Some(wh)) if vl > *wh);
+                if out_low || out_high {
+                    let msg = format!(
+                        "`{}` is out of range for `{want}`",
+                        self.quote(at.span)
+                    );
+                    self.error(cpl_diag::Code("E0902"), at.span, msg);
+                    return false;
+                }
+            }
+        }
         if self.fits(got, want)
             || matches!(at.kind, ExprKind::None)
             || got.has_error()
@@ -3017,7 +3106,12 @@ impl<'a> Checker<'a> {
                 self.quote(at.span)
             );
             let help = self.step_help(at);
-            if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, text) {
+            let code = if std::env::var_os("CPL_SPEC").is_some() {
+                codes::TYPE_MISMATCH
+            } else {
+                codes::WRONG_DOMAIN
+            };
+            if let Some(diag) = self.error(code, at.span, text) {
                 diag.help = Some(help);
             }
             return false;
@@ -3027,7 +3121,21 @@ impl<'a> Checker<'a> {
             return false;
         }
         let text = message(self, got, want);
-        let code = if matches!((got, want), (Ty::Pos(_), _) | (_, Ty::Pos(_))) {
+        let is_empty_fold = std::env::var_os("CPL_SPEC").is_some()
+            && matches!(got, Ty::Optional(_))
+            && !matches!(want, Ty::Optional(_))
+            && matches!(
+                &at.kind,
+                ExprKind::Call { callee, args }
+                    if args.len() == 1
+                        && matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "fold")
+            );
+        let code = if is_empty_fold {
+            cpl_diag::Code("E0706")
+        } else if matches!((got, want), (Ty::Pos(_), Ty::Pos(_)))
+            || (std::env::var_os("CPL_SPEC").is_none()
+                && matches!((got, want), (Ty::Pos(_), _) | (_, Ty::Pos(_))))
+        {
             codes::WRONG_DOMAIN
         } else {
             codes::TYPE_MISMATCH

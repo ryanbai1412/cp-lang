@@ -126,6 +126,10 @@ pub struct DomainInfo {
     pub text: String,
     /// The most positions the domain can have, when the bounds are known.
     pub max_size: Option<i128>,
+    /// Lowest possible integer position of an integer domain, when known.
+    pub min_pos: Option<i128>,
+    /// Highest possible integer position of an integer domain, when known.
+    pub max_pos: Option<i128>,
     /// Where the size comes from: `n <= 2e5`.
     pub bound: Option<String>,
     /// Factor types for product domains (`domain State = (V, K)` or `(r: R, s: K)`).

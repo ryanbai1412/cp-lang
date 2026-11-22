@@ -761,7 +761,23 @@ impl<'a> Checker<'a> {
                 let keyword = if *mutable { "var" } else { "let" };
                 let value_ty = match (ty, init) {
                     (Some(ty), _) => self.resolve_type(ty),
-                    (None, Some(init)) => self.infer(init),
+                    (None, Some(init)) => {
+                        let inferred = self.infer(init);
+                        if !*mutable && inferred == Ty::Int && std::env::var_os("CPL_SPEC").is_some() {
+                            let (lo, hi) = self.bounds(init);
+                            if let (Some(l), Some(h)) = (lo, hi) {
+                                Ty::Range {
+                                    lo: Some(l),
+                                    hi: Some(h),
+                                    text: format!("{l}..={h}"),
+                                }
+                            } else {
+                                inferred
+                            }
+                        } else {
+                            inferred
+                        }
+                    }
                     (None, None) => Ty::Error,
                 };
                 let mut out = Vec::new();
@@ -797,6 +813,8 @@ impl<'a> Checker<'a> {
                             Def::Domain(DomainInfo {
                                 text: format!("the positions of `{}`", self.text(pat.span)),
                                 max_size: None,
+                                min_pos: None,
+                                max_pos: None,
                                 bound: None,
                                 factors: Vec::new(),
                             }),
@@ -1147,6 +1165,8 @@ impl<'a> Checker<'a> {
     pub(crate) fn domain_info(&mut self, def: &ast::Expr) -> DomainInfo {
         let text = self.text(def.span).to_string();
         let mut factors = Vec::new();
+        let mut min_pos = None;
+        let mut max_pos = None;
         let (max_size, bound) = match &def.kind {
             ExprKind::Range {
                 lo: Some(lo),
@@ -1156,6 +1176,8 @@ impl<'a> Checker<'a> {
             } => {
                 let lo_min = self.bounds(lo).0;
                 let hi_max = self.bounds(hi).1;
+                min_pos = lo_min;
+                max_pos = hi_max.map(|h| if *inclusive { h } else { h - 1 });
                 let size = match (lo_min, hi_max) {
                     (Some(lo), Some(hi)) => Some((hi - lo + i128::from(*inclusive)).max(0)),
                     _ => None,
@@ -1232,6 +1254,8 @@ impl<'a> Checker<'a> {
         DomainInfo {
             text,
             max_size,
+            min_pos,
+            max_pos,
             bound,
             factors,
         }

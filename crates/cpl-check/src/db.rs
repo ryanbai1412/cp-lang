@@ -767,8 +767,16 @@ impl Database {
                 .decls
                 .iter()
                 .find(|d| d.name == decl.name);
+            let is_fn_overload = std::env::var_os("CPL_SPEC").is_some()
+                && decl.kind == DeclKind::Fn
+                && first.is_some_and(|f| f.kind == DeclKind::Fn);
+            let code = if is_fn_overload {
+                cpl_diag::Code("E0702")
+            } else {
+                codes::DUPLICATE_DEFINITION
+            };
             let mut diag = Diagnostic::error(
-                codes::DUPLICATE_DEFINITION,
+                code,
                 decl.span.shift(offset),
                 format!("`{}` is already defined in this file", decl.name),
             )

@@ -768,6 +768,25 @@ impl<'a> Checker<'a> {
                 }
                 let ty = if guessed {
                     Ty::Error
+                } else if declared.is_none()
+                    && !*mutable
+                    && init_ty.as_ref() == Some(&Ty::Int)
+                    && std::env::var_os("CPL_SPEC").is_some()
+                {
+                    if let Some(init_expr) = init {
+                        let (lo, hi) = self.bounds(init_expr);
+                        if let (Some(l), Some(h)) = (lo, hi) {
+                            Ty::Range {
+                                lo: Some(l),
+                                hi: Some(h),
+                                text: format!("{l}..={h}"),
+                            }
+                        } else {
+                            Ty::Int
+                        }
+                    } else {
+                        Ty::Int
+                    }
                 } else {
                     declared.or(init_ty.clone()).unwrap_or(Ty::Error)
                 };

@@ -683,11 +683,21 @@ impl<'a> Checker<'a> {
                     Ty::Named { name, args }
                         if matches!(
                             name.as_str(),
-                            "Gen" | "Iter" | "Filter" | "Zip" | "Range"
+                            "Gen"
+                                | "Iter"
+                                | "Filter"
+                                | "Zip"
+                                | "Range"
+                                | "List"
+                                | "Slice"
+                                | "Rev"
+                                | "Map"
+                                | "Rebased"
                         ) && args.len() == 1 =>
                     {
                         args[0].clone()
                     }
+                    Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
                 Some(Ty::Named {
@@ -1009,6 +1019,21 @@ impl<'a> Checker<'a> {
                     return Some(Ty::list(elem));
                 }
                 _ => {}
+            }
+        }
+        if std::env::var_os("CPL_SPEC").is_some() && name.text == "fold" {
+            if let ExprKind::Call { args, .. } = &call.kind {
+                if args.len() == 1
+                    && args[0].name.is_none()
+                    && matches!(&args[0].value.kind, ExprKind::Lambda { params, .. } if params.len() == 2)
+                    && self.text(args[0].value.span).contains("=>")
+                {
+                    let elem = self.element_ty(&base_ty);
+                    if !matches!(elem, Ty::Unknown | Ty::Error) {
+                        self.infer(&args[0].value);
+                        return Some(Ty::Optional(Box::new(elem)));
+                    }
+                }
             }
         }
         match base_ty {
@@ -1562,7 +1587,7 @@ impl<'a> Checker<'a> {
             if std::env::var_os("CPL_SPEC").is_some()
                 && callee != "List"
                 && callee != "zip"
-                && matches!(&want, Ty::Named { name, .. } if name == "List")
+                && matches!(slot, Ty::Named { name, .. } if name == "List")
                 && self.view_kind(&arg.value) == Some("slice")
             {
                 let arg_text = self.quote(arg.value.span);
