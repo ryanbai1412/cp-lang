@@ -1,0 +1,9 @@
+# Tool versions for CP Lang. Run `mise install` once per machine.
+# Commands live in `justfile`, not here, so dropping mise never breaks a command.
+[tools]
+rust = "1.100.0"
+python = "3.12"
+node = "24.22.3"
+uv = "0.11.8"
+pnpm = "12.21.0"
+just = "1.59.0"

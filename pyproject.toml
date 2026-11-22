@@ -1,0 +1,18 @@
+[project]
+name = "cp-lang-scripts"
+version = "0.2.2"
+description = "CP Lang site generator, scoreboard, conformance, and corpus scripts"
+requires-python = ">=3.10"
+dependencies = [
+    "mistune>=3.1,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.9",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"

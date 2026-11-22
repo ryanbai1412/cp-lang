@@ -1,0 +1,12 @@
+{
+  "name": "cp-lang-workspace",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "web:dev": "pnpm --filter cp-lang-web dev",
+    "web:build": "pnpm --filter cp-lang-web build",
+    "web:test": "pnpm --filter cp-lang-web test",
+    "vscode:compile": "pnpm --filter cp-lang compile",
+    "vscode:test": "pnpm --filter cp-lang test:unit"
+  }
+}
