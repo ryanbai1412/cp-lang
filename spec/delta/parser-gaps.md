@@ -43,6 +43,7 @@ front end (parse and type check) first.
 | Record update | `(..a, to: u)` | 146 | E0102 |
 | Trait aliases | `trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>` | 146 | E0103 |
 | Inline bounds | `fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>)` | 146 | E0204 |
+| Trait laws naming the trait's methods | `law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))` | 145 | E0201 |
 
 ## Rejected (a dream using one is fixed instead)
 
