@@ -174,7 +174,65 @@ fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>
 /// example: `type Z = Mod<17>; var a = [Z(1), Z(0), Z(0), Z(0)]; ntt(mut a); a == [Z(1), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<17>; var a = [Z(1), Z(2), Z(3), Z(4)]; ntt(mut a); ntt(mut a, inverse: true); a == [Z(1), Z(2), Z(3), Z(4)]`
 /// example: `type Z = Mod<17>; var a = [Z(5), Z(6)]; ntt(mut a, bit_reversed: true); ntt(mut a, inverse: true, bit_reversed: true); a == [Z(5), Z(6)]`
-pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false) = todo
+pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false):
+    let n = a.len
+    assert n.is_pow2, "ntt requires a power-of-two length"
+    if n <= 1: return
+    assert (P - 1) % n == 0, "modulus p - 1 must be divisible by n"
+    let h = ctz(n)
+    let rank2 = ctz(P - 1)
+    var g = 0
+    if const P == 998_244_353 or P == 469_762_049 or P == 167_772_161:
+        g = 3
+    elif const P == 754_974_721:
+        g = 11
+    else:
+        g = primitive_root(P)
+    let r0 = Mod<P>(pow_mod(g, (P - 1) >> rank2, P))
+    let ir0 = r0.inv()
+    var root = List.filled(rank2 + 1, Mod<P>(1))
+    var iroot = List.filled(rank2 + 1, Mod<P>(1))
+    var rate = List.filled(max(1, rank2), Mod<P>(1))
+    unchecked:
+        root[rank2] = if inverse: ir0 else: r0
+        iroot[rank2] = if inverse: r0 else: ir0
+        for i in (0..rank2).rev:
+            root[i] = root[i + 1] * root[i + 1]
+            iroot[i] = iroot[i + 1] * iroot[i + 1]
+        var prod = Mod<P>(1)
+        for i in 0..rank2 - 1:
+            rate[i] = root[i + 2] * prod
+            prod = prod * iroot[i + 2]
+        if inverse:
+            if not bit_reversed: bit_reverse(mut a)
+            for step in 0..h:
+                let p = 1 << step
+                var rot = Mod<P>(1)
+                let blocks = 1 << (h - step - 1)
+                for s in 0..blocks:
+                    let offset = s << (step + 1)
+                    for i in 0..p:
+                        let l = a[i + offset]
+                        let r = a[i + offset + p]
+                        a[i + offset] = l + r
+                        a[i + offset + p] = (l - r) * rot
+                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
+            let inv_n = Mod<P>(n).inv()
+            for i in 0..n: a[i] = a[i] * inv_n
+        else:
+            for step in 0..h:
+                let p = 1 << (h - step - 1)
+                var rot = Mod<P>(1)
+                let blocks = 1 << step
+                for s in 0..blocks:
+                    let offset = s << (h - step)
+                    for i in 0..p:
+                        let l = a[i + offset]
+                        let r = a[i + offset + p] * rot
+                        a[i + offset] = l + r
+                        a[i + offset + p] = l - r
+                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
+            if not bit_reversed: bit_reverse(mut a)
 
 /// Which arguments of a convolution over a semiring other than `(+, *)` have the shape that makes
 /// it fast: convex for `min`, concave for `max`. `Neither` asks for the O(n m) loop by name.
