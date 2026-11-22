@@ -1,0 +1,46 @@
+0 1 1 0
+30 10 20 10 30 30 10 20 10 30 10 20 10
+3 1 2 1 3 1 2 1
+3 2 3 3 2 3 2
+cbc b
+2 1 1 cbc aa b aa
+3 1 1 3
+2 cbc
+aa aa
+b
+2 2 2 b b
+2 2 2 2 2
+3 3 1
+YES YES YES
+YES YES YES
+YES YES YES YES
+2 2 1 2 1
+1 1 0 1 0
+2 2 1 2 1
+10 10 4 10
+31213 31213 121
+c b a c a b
+1 1 2 3 3 1 1 2 3 3 1 1 2 aabcc aab
+ccbaa baa
+abd bd
+a 1
+b 2
+d 1 b 2
+d 1 YES YES
+cab
+aba
+bac ab
+ba ab
+a
+a b
+b a 0 a
+1 b
+2 a
+aabcc
+ccbaa
+aabcc
+cabca
+a cabc
+cab
+cabzz
+qqqqq
