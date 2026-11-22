@@ -1,6 +1,6 @@
 # agc079c
 
-Score: 3/5
+Score: pending cold rescore (adopted `std.dsu.ParityDsu<Val>`, full run-stack invariant header, `pop_top_front`/`pop_value`, and §111 `and` guards — 1.047x vs 4/5 dream, gated 150/150, 0 lints; emitted C++ grew 22,223 -> 26,331 B (+4,108 B, < 48 KB) from `std.dsu.ParityDsu<Val>` emitting unused rollback/query methods; dead-method stripping on stdlib structs will trim it)
 Dream: 4/5
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
