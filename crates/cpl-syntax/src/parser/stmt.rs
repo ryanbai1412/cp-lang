@@ -1562,14 +1562,23 @@ impl<'a> Parser<'a> {
         }
         if self.at_stmt_end() {
             let at = self.block_expected_at(header_end);
-            self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_BLOCK,
-                    at,
-                    format!("expected an indented block after {after}"),
-                )
-                .with_help("indent the next line by 4 spaces"),
-            );
+            let mut diag = Diagnostic::error(
+                codes::EXPECTED_BLOCK,
+                at,
+                format!("expected an indented block after {after}"),
+            )
+            .with_help("indent the next line by 4 spaces");
+            // A next line no deeper than the header becomes its body.
+            let abs = |p: u32| (p as i64 - self.delta) as usize;
+            let line = |p: usize| self.src[..p].rfind('\n').map_or(0, |i| i + 1);
+            let header = &self.src[line(abs(header_end))..];
+            let indent = header.len() - header.trim_start_matches(' ').len();
+            let lead = abs(at.start) - line(abs(at.start));
+            if at.start != at.end && lead <= indent {
+                let span = Span::new(at.start - lead as u32, at.start);
+                diag = diag.with_fix("indent the next line", span, " ".repeat(indent + 4));
+            }
+            self.error(diag);
             return Block {
                 stmts: Vec::new(),
                 span: Span::point(header_end),
