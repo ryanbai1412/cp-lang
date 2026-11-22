@@ -593,7 +593,7 @@ impl<'a> Checker<'a> {
             return;
         }
         let message = format!("this `match` has no arm for {}", missing.join(", "));
-        if let Some(diag) = self.error(codes::BAD_OPERANDS, span, message) {
+        if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
     }
