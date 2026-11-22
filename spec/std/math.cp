@@ -381,3 +381,7 @@ fn sieve_tables_and_multiplicative_agree() = todo
 
 @test
 fn mod_log_and_mod_sqrt_match_brute_force() = todo
+
+/// `Int.MAX`, for `Int` tables that start "unreached" when `?Int` with `none` is not wanted.
+/// `min` treats it as its identity; adding to it overflows (a trap in checked builds).
+pub const inf: Int = 9_223_372_036_854_775_807

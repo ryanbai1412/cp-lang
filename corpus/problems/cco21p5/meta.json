@@ -8,13 +8,20 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco21p5/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_30/cco21p5.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "dp",
+  "segtree",
+  "lazy"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "SegTree(min, act: add) over 0..=n; inf joins math/prelude (promised by search-dp, never stubbed); low.rev.scan(min) suffix mins rely on the range type's top as min's identity."
 }

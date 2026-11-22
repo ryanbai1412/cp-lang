@@ -26,7 +26,7 @@ use std.io.{Wire, yes}
 use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}
-use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotients, gcd, lcm, sign}
+use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotients, gcd, inf, lcm, sign}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix, scan}
 use std.search.{bsearch_real, ternary_max, ternary_max_real, ternary_min, ternary_min_real}

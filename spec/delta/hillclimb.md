@@ -22,6 +22,8 @@ and its notes in that record's `notes`.
   and `reachable` join the prelude.
 - cco21p2: `bfs`, `bfs01` and `dijkstra` take `hashed: true` for state spaces
   that are not bounded types; `Paths` documents both storages.
+- cco21p5: `inf` (the `Int.MAX` that search-dp promised) gets a stub and
+  joins the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 
