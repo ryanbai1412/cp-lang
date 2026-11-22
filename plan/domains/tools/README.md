@@ -35,7 +35,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 |---|---|---|---|---|
 | spec/CLI command mismatches | `measure.py spec-sync` | 14 (7 spec-only, 7 CLI-only) | 0 | M1 |
 | commands with `--help` | `measure.py help` | 23/23 | 23/23 | M1 |
-| end-to-end tests per command | `measure.py golden` | 23/23 have one; 1-3: 15 (golden.rs covers help, success and usage error for doc, fix, judge, judges, new) | each >= 4 | M1 |
+| end-to-end tests per command | `measure.py golden` | 23/23 have one; help and an unknown-option usage error for all 23; 1-3: 15 (success still missing for those) | each >= 4 | M1 |
 | commands offering `--json` | `measure.py json` | 9/23 | all that print results (~19) | M2 |
 | `cpl check` wall time, corpus p95 | `measure.py corpus` | 78.5 ms (p50 26.7, max 125.9; 877 ports, 450 check clean) | < 500 ms (spec); hold < 100 ms | - |
 | largest corpus C++ | `measure.py corpus` | 48,375 B (cf2255f); 1 of 449 over 32 KB | 0 over 32 KB | M2 |

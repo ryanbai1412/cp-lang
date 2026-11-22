@@ -66,6 +66,7 @@ def golden():
     cmds = commands()
     arg = re.compile(r'(?:&\[|\.arg\(|\.args\(\[|(?<![.\w])\w+\(&?\[?)\s*(?:&?OsStr::new\()?"([a-z]+)"')
     counts = {c: 0 for c in cmds}
+    every = []  # tests that walk every command `cpl --help` lists
     for path in sorted(glob.glob(os.path.join(ROOT, "crates/*/tests/*.rs"))):
         text = open(path).read()
         if "CARGO_BIN_EXE_cpl" not in text and "target/release/cpl" not in text:
@@ -79,11 +80,14 @@ def golden():
         for test, body, direct in uses.values():
             if not test:
                 continue
+            if '"commands:"' in body and '"--help"' in body:
+                every.append(test)
             called = {c for h, (t, _, cs) in uses.items() if not t and re.search(rf"\b{h}\(", body) for c in cs}
             for c in direct | called:
                 counts[c] += 1
     print("  ".join(f"{c} {n}" for c, n in counts.items()))
     print(f"commands {len(cmds)}  with a test {sum(n > 0 for n in counts.values())}  without {sorted(c for c, n in counts.items() if n == 0)}")
+    print(f"tests over every command (help and an unknown option): {len(every)}")
 
 
 if __name__ == "__main__":
