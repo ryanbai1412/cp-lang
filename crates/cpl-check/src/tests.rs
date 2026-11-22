@@ -3529,3 +3529,22 @@ fn union_find_methods_cost_log_of_the_receivers_domain() {
     assert_eq!(cost(&mut db, "same").as_deref(), Some("O(log |V|)"));
     assert_eq!(cost(&mut db, "diff").as_deref(), Some("O(log |V|)"));
 }
+
+#[test]
+fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
+    let src = "domain Pos = 1..=10\nenum Axis = X | Y\nenum Shape = Dot | Box(Int)\n\
+               fn ask(lo: Pos, hi: Pos) -> Int:\n    print(\"?\", lo, hi)\n    read()\n\
+               fn f() -> Axis:\n    let a: Axis = read()\n    print(a)\n    a\n\
+               fn g() -> Shape:\n    read()\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).and_then(|h| h.text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string))
+    };
+    assert_eq!(cost(&mut db, 0, "print").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, 0, "read").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, 1, "read").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, 1, "print").as_deref(), Some("O(1)"));
+    assert_eq!(cost(&mut db, 2, "read"), None);
+}

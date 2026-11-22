@@ -5395,3 +5395,19 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   Fns in `corpus/problems` and the examples with an estimate: 24 to 25
   of 1,613; `unite` and `size` no longer block any.
 - **Reverse.** Restore the old doc lines in `stdlib/dsu.cp`.
+
+## 194. Integer domain positions and plain enums are read and written in `O(1)` (2026-11-22)
+
+- **Decision.** For a fn's estimated cost, a position in a domain written
+  as an integer range (`domain Pos = 1..=n`), a product of such domains,
+  or a variant of an enum with no fields is read and printed in `O(1)`,
+  like a number. A fn whose value is `read()` or `ask(..)` reads its
+  declared return type, the same as `let x: T = read()`. This narrows
+  29.49, which left out every domain position since a label may be a
+  string; an integer range's labels are integers.
+- **Why.** Interactive ports write `fn ask(lo: Pos, hi: Pos) -> Int:` with
+  `print("?", lo, hi)` then `read()`, and none of them got an estimate.
+  Fns in `corpus/problems` and the examples with an estimate: 25 to 26 of
+  1,613; `print` blocks 14 fns instead of 18, `read` and `ask` none.
+- **Reverse.** Make `io_fixed` in `cpl-check` return `ty.is_fixed_size()`
+  and drop `fixed_read`.

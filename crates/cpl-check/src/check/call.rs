@@ -23,7 +23,31 @@ impl<'a> Checker<'a> {
             });
         }
         let ty = self.quietly(|c| c.infer(e));
-        ty.is_fixed_size()
+        self.io_fixed(&ty)
+    }
+
+    /// Whether a value of `ty` is read or written in a bounded number of
+    /// characters: a fixed-size value, a position in a domain of integers,
+    /// a variant of an enum without fields, or a tuple of them.
+    pub(crate) fn io_fixed(&mut self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Tuple(items) => items.iter().all(|t| self.io_fixed(t)),
+            Ty::Pos(d) => match self.global(d).as_deref() {
+                Some(Def::Domain(info)) if info.factors.is_empty() => {
+                    info.text.contains("..") && !info.text.contains(['[', '"', '\''])
+                }
+                Some(Def::Domain(info)) => {
+                    let factors: Vec<Ty> = info.factors.iter().map(|(_, t)| t.clone()).collect();
+                    factors.iter().all(|t| self.io_fixed(t))
+                }
+                _ => false,
+            },
+            Ty::Named { name, args } if args.is_empty() => matches!(
+                self.type_def(name).as_deref(),
+                Some(Def::Enum { variants, .. }) if variants.iter().all(|(_, fields)| fields.is_empty())
+            ),
+            _ => ty.is_fixed_size(),
+        }
     }
 
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
@@ -93,7 +117,8 @@ impl<'a> Checker<'a> {
         if let ExprKind::Generic { base, args: tys } = &callee.kind {
             if matches!(&base.kind, ExprKind::Name(n) if n == "read") && args.is_empty() {
                 if let [t] = tys.as_slice() {
-                    if self.resolve_type(t).is_fixed_size() {
+                    let t = self.resolve_type(t);
+                    if self.io_fixed(&t) {
                         self.fixed_io.push(base.span);
                     }
                 }

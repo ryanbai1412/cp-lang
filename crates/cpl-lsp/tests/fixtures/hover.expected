@@ -180,13 +180,13 @@ domain Col = 0..4
 == hover @ 71:6
 ```cp
 fn scan()
-  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+  estimated cost: O(n + n * k), about 3000000 (3e6) steps at max input
 ```
 
 == hover @ 75:4
 ```cp
 fn scan()
-  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+  estimated cost: O(n + n * k), about 3000000 (3e6) steps at max input
 ```
 
 == hover @ 76:6

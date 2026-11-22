@@ -562,7 +562,7 @@ impl<'a> Checker<'a> {
                         ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
                         _ => false,
                     };
-                    if reads && declared.is_fixed_size() {
+                    if reads && self.io_fixed(declared) {
                         self.fixed_io.push(callee.span);
                     }
                 }
@@ -1228,6 +1228,21 @@ impl<'a> Checker<'a> {
     }
 
     /// Checks a returned value against the enclosing fn's declared type.
+    /// A fn's value `read()`, or `ask(..)` of fixed-size arguments, reads a
+    /// value of its declared return type.
+    fn fixed_read(&mut self, value: &Expr, ret: &Ty) {
+        if let ExprKind::Call { callee, args } = &value.kind {
+            let reads = match &callee.kind {
+                ExprKind::Name(n) if n == "read" => args.is_empty(),
+                ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
+                _ => false,
+            };
+            if reads && self.io_fixed(ret) {
+                self.fixed_io.push(callee.span);
+            }
+        }
+    }
+
     fn returns(&mut self, value: &Expr, value_ty: &Ty) {
         let Some((name, mut ret, declared, fn_depth)) = self.fns.last().cloned() else {
             return;
@@ -1815,6 +1830,7 @@ impl<'a> Checker<'a> {
                         let statement_like = ty == Ty::Unit
                             && matches!(last.kind, ExprKind::If { .. } | ExprKind::Match { .. });
                         if !statement_like {
+                            c.fixed_read(last, ret);
                             c.returns(last, &ty);
                             c.no_escape(last, "returning it");
                             c.no_escape_return(last, "returning it");
@@ -1828,6 +1844,7 @@ impl<'a> Checker<'a> {
                         c.plain_if = Some(expr.span);
                     }
                     let ty = c.infer(expr);
+                    c.fixed_read(expr, ret);
                     c.returns(expr, &ty);
                     c.no_escape(expr, "returning it");
                     c.no_escape_return(expr, "returning it");
