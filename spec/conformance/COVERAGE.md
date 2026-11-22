@@ -6,20 +6,20 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1516 (995 passing). Rules: 521.
+Cases: 1539 (995 passing). Rules: 522.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 86 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 87 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
-- R04 (04-indices.md): 59 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 60 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
+- R04b (04b-keys.md): 27 rules, 45 cases; 0 uncovered, 0 happy-path only, 3 negative only
+- R05 (05-ownership.md): 41 rules, 80 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 89 cases; 0 uncovered, 2 happy-path only, 2 negative only
-- R08 (08-traits-generics.md): 29 rules, 57 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R07 (07-sequences.md): 87 rules, 90 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R08 (08-traits-generics.md): 29 rules, 65 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 48 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
@@ -85,7 +85,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R02: 02-values-types.md
 
-- R02.1.1 [1+ 0-] *happy-path only*: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
+- R02.1.1 [2+ 0-] *happy-path only*: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
 - R02.1.2 [1+ 2-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [1+ 0-] *happy-path only*: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 0-] *happy-path only*: Whether a value is owned or lent is not part of its type (chapter 5).
@@ -182,7 +182,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [3+ 0-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
-- R04.2.18 [1+ 2-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
+- R04.2.18 [2+ 3-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [1+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
@@ -223,6 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
 - R04.8.8 [1+ 1-]: Integer literals convert to positions and cuts of integer domains.
 - R04.8.9 [2+ 1-]: `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
+- R04.8.10 [1+ 1-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
 
 ### R04a: 04a-identity-vs-offset.md
 
@@ -272,7 +273,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.2 [3+ 0-]: a prefix table is indexed by the input's cuts.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.4 [3+ 1-]: `w.keys.nth(k)` is the k-th key, because a range is an indexed sequence too.
-- R04b.1.5 [1+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
+- R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [3+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [2+ 2-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, O(1...
 - R04b.1.8 [0+ 1-] *negative only*: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
@@ -312,7 +313,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.3 [1+ 1-]: a generator value with a lent argument (`dfs(g, s)`, `dfs(mut seen)`);
 - R05.7.4 [1+ 1-]: a loop item, for the iteration (§9);
 - R05.7.5 [1+ 1-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
-- R05.7.6 [2+ 6-]: **Read lend:** the sources can be read, but not written, resized or moved.
+- R05.7.6 [3+ 6-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 2-]: **`mut` lend:** the sources can't be touched at all except through it.
 - R05.7.8 [1+ 2-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
@@ -384,7 +385,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
 - R07.2.9 [1+ 1-]: | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filte...
-- R07.2.10 [1+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
+- R07.2.10 [2+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
 - R07.2.11 [1+ 2-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
 - R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in O(1): slices...
@@ -458,7 +459,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R08: 08-traits-generics.md
 
-- R08.1.1 [4+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
+- R08.1.1 [11+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [2+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 1-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.4 [2+ 1-]: Method lookup: inherent first, then traits in scope that the type implements; two candidat...
@@ -466,7 +467,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
 - R08.1.7 [1+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`). Records satisfy f...
 - R08.1.8 [0+ 1-] *negative only*: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
-- R08.2.1 [1+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
+- R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.4 [2+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
@@ -628,7 +629,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
-- E0302 Type mismatch: 22 case(s)
+- E0302 Type mismatch: 23 case(s)
 - E0303 Wrong number of arguments: 5 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -673,7 +674,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
-- E0902 Range store not provable: 7 case(s)
+- E0902 Range store not provable: 8 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
 - E0904 memory_over_profile *(0.3)*: **no case**
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)

@@ -6584,15 +6584,15 @@
         "lib/graphs-trees.md#cf57974923": "error",
         "lib/graphs-trees.md#f02339fe6e": "error",
         "lib/graphs-trees.md#fc629e94da": "error",
-        "lib/math.md#180d8a8270": "pass",
-        "lib/math.md#1e52a17b57": "pass",
+        "lib/math.md#180d8a8270": "error",
+        "lib/math.md#1e52a17b57": "error",
         "lib/math.md#26e4424f7e": "error",
         "lib/math.md#5c4e85526a": "error",
         "lib/math.md#a1696ee554": "error",
         "lib/math.md#a6f103be9c": "error",
         "lib/math.md#ae2b5e9cce": "error",
         "lib/math.md#c7c235de52": "error",
-        "lib/math.md#da98446b99": "pass",
+        "lib/math.md#da98446b99": "error",
         "lib/math.md#e58cbe631b": "pass",
         "lib/ops-ranges.md#14aa3594be": "error",
         "lib/ops-ranges.md#23bf47f192": "error",
@@ -6641,7 +6641,7 @@
       "causes": [
         {
           "cause": "E0201: no `<id>` in scope",
-          "count": 53,
+          "count": 51,
           "examples": [
             "core/04-indices.md#51c226cfe7",
             "core/04-indices.md#8a212a8759",
@@ -6652,13 +6652,13 @@
         },
         {
           "cause": "E0103: expected `<id>` or `<id>` to start the body of `<id>`, found the end of the line",
-          "count": 19,
+          "count": 20,
           "examples": [
+            "core/05-ownership.md#12b4a386c2",
             "lib/geometry.md#463599c1d0",
             "lib/geometry.md#53ef902b4a",
             "lib/geometry.md#5909504c0b",
-            "lib/geometry.md#68463fdaf5",
-            "lib/geometry.md#8f222a7586"
+            "lib/geometry.md#68463fdaf5"
           ]
         },
         {
@@ -6674,7 +6674,7 @@
         },
         {
           "cause": "E0201: no `<id>` in scope, and not in the stdlib (yet)",
-          "count": 14,
+          "count": 13,
           "examples": [
             "core/05-ownership.md#1c299f387d",
             "core/05-ownership.md#2b1595a178",
@@ -6715,21 +6715,21 @@
           ]
         },
         {
-          "cause": "E0105: expected a type after `<id>`, found `<id>`",
-          "count": 3,
-          "examples": [
-            "core/05-ownership.md#12b4a386c2",
-            "core/05-ownership.md#677883b04a",
-            "core/05-ownership.md#a1c9f2db67"
-          ]
-        },
-        {
           "cause": "E0107: expected the end of the statement, found `<id>`",
           "count": 3,
           "examples": [
             "core/04b-keys.md#6758c9905d",
             "lib/ops-ranges.md#89b8d06b0d",
             "lib/ops-ranges.md#e0148950eb"
+          ]
+        },
+        {
+          "cause": "E0204: no type or domain named `<id>`, and not in the stdlib (yet)",
+          "count": 3,
+          "examples": [
+            "core/04-indices.md#9319f00719",
+            "core/05-ownership.md#677883b04a",
+            "lib/search-dp.md#e862c37a7c"
           ]
         },
         {
@@ -6758,11 +6758,11 @@
           ]
         },
         {
-          "cause": "E0204: no type or domain named `<id>`, and not in the stdlib (yet)",
+          "cause": "E0302: expected `<id>`, found `<id>`",
           "count": 2,
           "examples": [
-            "core/04-indices.md#9319f00719",
-            "lib/search-dp.md#e862c37a7c"
+            "lib/math.md#180d8a8270",
+            "lib/math.md#da98446b99"
           ]
         },
         {
@@ -6852,7 +6852,7 @@
           ]
         },
         {
-          "cause": "E0208: value `<id>` starts with an uppercase letter; values are lowercase (`<id>` reads as a type)",
+          "cause": "E0208: `<id>`: values are lowercase; `<id>` would read as a type",
           "count": 1,
           "examples": [
             "lib/containers.md#6756e63c2a"
@@ -6863,6 +6863,13 @@
           "count": 1,
           "examples": [
             "lib/geometry.md#f67a88e34f"
+          ]
+        },
+        {
+          "cause": "E0302: `<id>` is a type, and a value is needed here",
+          "count": 1,
+          "examples": [
+            "lib/math.md#1e52a17b57"
           ]
         },
         {
@@ -6884,6 +6891,13 @@
           "count": 1,
           "examples": [
             "lib/flows.md#a63d933413"
+          ]
+        },
+        {
+          "cause": "E0303: `<id>` takes 2 arguments, but 1 was given; use `<id>` on a sequence",
+          "count": 1,
+          "examples": [
+            "lib/ops-ranges.md#8b03892712"
           ]
         },
         {
@@ -6929,6 +6943,13 @@
           ]
         },
         {
+          "cause": "E0603: lent value must come from `<id>`",
+          "count": 1,
+          "examples": [
+            "core/05-ownership.md#a1c9f2db67"
+          ]
+        },
+        {
           "cause": "E0603: returning it would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
           "count": 1,
           "examples": [
@@ -6948,14 +6969,28 @@
           "examples": [
             "core/05-ownership.md#509c7974b3"
           ]
+        },
+        {
+          "cause": "W0101: `<id>` returns a List<T>, and it is dropped",
+          "count": 1,
+          "examples": [
+            "lib/ops-ranges.md#85778d198f"
+          ]
+        },
+        {
+          "cause": "W0101: `<id>` returns a Paths<V, W, _>, and it is dropped",
+          "count": 1,
+          "examples": [
+            "lib/ops-ranges.md#c327e6ed3d"
+          ]
         }
       ],
       "counts": {
-        "error": 166,
-        "pass": 19
+        "error": 169,
+        "pass": 16
       },
-      "passed": 19,
-      "strict_passed": 15,
+      "passed": 16,
+      "strict_passed": 16,
       "total": 185
     }
   }

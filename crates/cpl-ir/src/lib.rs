@@ -59,22 +59,40 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     diagnostics
 }
 
-/// What `cpl check` and the editor report: [`check`], or under `CPL_SPEC`
-/// the checker's types alone against the spec (spec/README.md), without
-/// designed-but-unbuilt syntax that cites its spec section.
+/// What `cpl check` and the editor report: [`check`], so they reject what
+/// `cpl run` and `cpl build` reject, without designed-but-unbuilt syntax
+/// that cites its spec section (spec/README.md).
 pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
-    if std::env::var_os("CPL_SPEC").is_none() {
-        return check(analysis);
-    }
     let cites_spec = |d: &cpl_diag::Diagnostic| {
         d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
     };
-    analysis
-        .diagnostics
-        .iter()
-        .filter(|d| !cites_spec(d))
-        .cloned()
-        .collect()
+    // A library module is lowered only through the programs that use it,
+    // where its generic code has its types.
+    let runs = analysis.items.iter().flat_map(|item| &item.syntax.parsed.stmts).any(|stmt| {
+        !matches!(
+            stmt.kind,
+            cpl_syntax::ast::StmtKind::Fn(_)
+                | cpl_syntax::ast::StmtKind::Struct { .. }
+                | cpl_syntax::ast::StmtKind::Enum { .. }
+                | cpl_syntax::ast::StmtKind::Domain { .. }
+                | cpl_syntax::ast::StmtKind::TypeAlias { .. }
+                | cpl_syntax::ast::StmtKind::Trait { .. }
+                | cpl_syntax::ast::StmtKind::Impl { .. }
+                | cpl_syntax::ast::StmtKind::Law { .. }
+                | cpl_syntax::ast::StmtKind::Use { .. }
+                | cpl_syntax::ast::StmtKind::Const { .. }
+                | cpl_syntax::ast::StmtKind::Context { .. }
+        )
+    });
+    let mut out = if runs || std::env::var_os("CPL_SPEC").is_none() {
+        check(analysis)
+    } else {
+        analysis.diagnostics.clone()
+    };
+    if std::env::var_os("CPL_SPEC").is_some() {
+        out.retain(|d| !cites_spec(d));
+    }
+    out
 }
 
 pub use lower::{

@@ -22,14 +22,7 @@ pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
     db.remove_file(path);
-    let diagnostics: Vec<Diagnostic> = analysis
-        .diagnostics
-        .iter()
-        .filter(|d| {
-            !(d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/"))
-        })
-        .cloned()
-        .collect();
+    let diagnostics: Vec<Diagnostic> = cpl_ir::reported(&analysis);
     let failed = diagnostics.iter().any(|d| d.severity == Severity::Error);
     let rendered = if diagnostics.is_empty() {
         String::new()

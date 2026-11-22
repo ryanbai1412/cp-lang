@@ -78,7 +78,7 @@ fn lsp_reports_what_check_reports_against_the_spec() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-spec-lsp-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("a.cp");
-    let text = "domain V = 1..=3\nlet par: [V]V = [V] v => v\nlet f = Functional.new(par)\nprint(yes(f.on_cycle(V.first)))\n";
+    let text = "domain V = 1..=3\nlet par: [V]V = [V] v => v\nlet f = Functional<V>.new(par)\nprint(yes(f.on_cycle(V(1))))\n";
     std::fs::write(&file, text).unwrap();
     let check = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("check")
