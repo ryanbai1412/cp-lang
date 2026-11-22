@@ -16,13 +16,13 @@ let xs = [3, 9, 2, 9, 2]
 let none_here: List<Int> = []
 print(xs.argmax ?? -1, xs.argmin ?? -1, none_here.argmax ?? -1, none_here.argmin ?? -1)
 let w: [V]Int = [V] v => (v.ord * 5) % 7
-print(w, w.argmax, w.argmin, w[w.argmax!])
+print(w, w.argmax!.ord, w.argmin!.ord, w[w.argmax!])
 print("banana".rfind('a') ?? -1, "banana".rfind('b') ?? -1, "banana".rfind('x') ?? -1)
-print([k for k in -2..=17 if k.is_pow2], (1 << 40).is_pow2, n.is_pow2)
+print([k for k in -2..=17 if k.is_pow2], yes((1 << 40).is_pow2), yes(n.is_pow2))
 let a: [0..n]Int = [0..n] i => i * i
 let p = prefix(a)
-print(p.prefix(0), p.prefix(2), p.prefix(n), p.sum(1..3), p.sum(1..=3), p.sum(2..2))
+print(p.prefix(0), p.prefix(2), p.prefix(n), p.fold(1..3), p.fold(1..=3), p.fold(2..2))
 let k = 3
-print(p.prefix(k), p.sum(k - 1..k + 2))
+print(p.prefix(k), p.fold(k - 1..k + 2))
 let q = prefix(w)
-print(q.prefix(V(2).l), q.sum(V(1)..V(3)), q.sum(V(1)..=V(3)))
+print(q.prefix(V(2).l), q.fold(V(1)..V(3)), q.fold(V(1)..=V(3)))

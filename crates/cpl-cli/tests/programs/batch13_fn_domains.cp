@@ -5,24 +5,24 @@ fn count(k: Int) -> Int:
     for i in Local: a[i] = i.ord * 2
     sum(a[i] for i in Local)
 fn ranks(xs: List<Int>) -> Int:
-    let ys = compress(xs)
-    var cnt: [ys.D]Int = 0
+    let (domain C, ys) = compress(xs)
+    var cnt: [C]Int = 0
     for x in xs: cnt[ys.at(x)] += 1
-    let twice = [ys.D] y => cnt[y] * 2
-    domain Local = 0..ys.len
+    let twice = [C] y => cnt[y] * 2
+    domain Local = 0..C.len
     let loc = [Local] i => i.ord
-    sum(twice[y] for y in ys.D) + sum(loc)
+    sum(twice[y] for y in C) + sum(loc)
 fn valid(n: Int, seq: [0..n]Int) -> Bool:
-    all(seq[i] <= seq[i + 1] for i in 0..n - 1)
+    (0..n - 1).all(i => seq[i] <= seq[i + 1])
 fn columns(h: Int, w: Int, g: [0..h, 0..w]Int) -> [0..w]Int:
     [0..w] c => sum(g[r, c] for r in 0..h)
 fn bump(k: Int, mut a: [0..=k]Int):
     for i in 0..=k: a[i] += i
 let n: Int = read()
 let a: [0..n]Int = read()
-print(count(n), ranks([5, 1, 5, 9]), valid(n, a))
-let zs = compress([a[i] for i in 0..n])
-let top = [zs.D] y => zs[y] * 10
+print(count(n), ranks([5, 1, 5, 9]), yes(valid(n, a)))
+let (domain Z, zs) = compress([a[i] for i in 0..n])
+let top = [Z] y => zs[y] * 10
 print(top)
 var g: [0..2, 0..n]Int = 1
 print(columns(2, n, g))

@@ -9,7 +9,7 @@ fn zeros(k: Int) -> List<Z>:
 print(zeros(2))
 var g: List<List<Z>> = List.filled(2, List.filled(2, 7))
 print(g)
-let f: List<F64> = List.filled(2, 1)
+let f: List<F64> = List.filled(2, 1.0)
 print(f)
 struct S:
     xs: List<Z>

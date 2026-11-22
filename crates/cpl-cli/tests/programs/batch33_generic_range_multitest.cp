@@ -11,7 +11,7 @@ fn solve(k: Int) -> Int:
     let a: [0..k]Int = [0..k] i => (i * 7) % 5
     let p = prefix(a)
     let at = best(a) ?? -1
-    p.sum(0..k) * 100 + at + p.prefix(k / 2)
+    p.fold(0..k) * 100 + at + p.prefix(k / 2)
 
 @!multitest
 let n: Int = read()
@@ -21,4 +21,4 @@ let st = SparseTable(min, xs)
 print(st.fold(0..n), st.fold(1..2))
 var f = Fenwick(xs)
 f.add(0, 5)
-print(f.sum(0..n), f.prefix(1))
+print(f.fold(0..n), f.prefix(1))

@@ -15,7 +15,7 @@ fn total(table: List<List<Int>>, r: Int) -> Int:
 
 // The fn changes `rows`, so `row` must be a copy that stays as it was.
 fn grow(r: Int) -> Int:
-    let row = rows[r]
+    let row = rows[r].copy()
     rows[r].push(100)
     rows.push([1, 2, 3])
     row.len
@@ -23,8 +23,9 @@ fn grow(r: Int) -> Int:
 print(last_of(2), total(rows, 3))
 print(grow(1), rows[1].len, rows.len)
 
-let vals = compress([30, 10, 20, 10])
-print(vals.at(20), vals.first_ge(15), vals.first_ge(31))
+fn fmt_i(x: ?Int) -> Str = if let v = x: "{v}" else: "none"
+let (domain Vc, vals) = compress([30, 10, 20, 10])
+print(vals.at(20).ord, if let v = vals.first_ge(15): "{v.ord}" else: "none", if let v = vals.first_ge(31): "{v.ord}" else: "none")
 
 struct Bag:
     items: List<Int>
@@ -32,4 +33,4 @@ struct Bag:
     fn from(self, x: Int) -> ?Int = items.first_ge(x)
 
 let bag = Bag(items: [2, 4, 6])
-print(bag.where_is(4), bag.where_is(5), bag.from(5))
+print(fmt_i(bag.where_is(4)), fmt_i(bag.where_is(5)), fmt_i(bag.from(5)))

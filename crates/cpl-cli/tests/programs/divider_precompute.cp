@@ -1,5 +1,5 @@
 // What is above `@!multitest` runs once: the sieve is built before the test count is read, then shared.
-let LIM = 100
+const LIM = 100
 domain N = 0..=LIM
 var composite: [N]Bool
 var built = 0
