@@ -1213,7 +1213,7 @@ pub struct Lit<X>(x: X, value: Bool):
     /// cost: O(1)
     /// traps: never
     /// example: `domain X = 0..2; Lit(X(1), true).flip == Lit(X(1), false)`
-    @get pub fn flip(self) -> Lit<X> = todo
+    @get pub fn flip(self) -> Lit<X> = Lit(self.x, not self.value)
 
 /// A conjunction of two-literal clauses over the variables `X`. Every clause is O(1)
 /// to add; `solve` is O(|X| + clauses).
