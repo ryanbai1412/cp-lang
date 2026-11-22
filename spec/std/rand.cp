@@ -10,8 +10,8 @@ pub struct Rng(s: U64):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var r = Rng.new(0); r.next() == 0xE220A8397B1DCDAF`
-    /// example: `var a = Rng.new(7); var b = Rng.new(7); a.next() == b.next()`
+    /// example: `var r = Rng(0); r.next() == 0xE220A8397B1DCDAF`
+    /// example: `var a = Rng(7); var b = Rng(7); a.next() == b.next()`
     pub fn new(seed: Int) -> Rng = todo
     /// The next 64 random bits: one splitmix64 step.
     ///
@@ -21,8 +21,8 @@ pub struct Rng(s: U64):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var r = Rng.new(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
-    /// example: `var r = Rng.new(1); r.next() == 10451216379200822465`
+    /// example: `var r = Rng(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
+    /// example: `var r = Rng(1); r.next() == 10451216379200822465`
     pub fn next(mut self) -> U64 = todo
     /// A uniformly random integer in `r`, from one `next()`.
     ///
@@ -33,14 +33,14 @@ pub struct Rng(s: U64):
     /// cost: O(1)
     /// empty: traps
     /// traps: when `r` is empty
-    /// example: `var r = Rng.new(1); let x = r.int(1..=6); 1 <= x and x <= 6`
-    /// example: `var r = Rng.new(5); r.int(4..5) == 4`
+    /// example: `var r = Rng(1); let x = r.int(1..=6); 1 <= x and x <= 6`
+    /// example: `var r = Rng(5); r.int(4..5) == 4`
     pub fn int(mut self, r: Range<Int>) -> Int = todo
     /// A uniformly random `F64` in `[0, 1)`: the top 53 bits of `next()` times `2^-53`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var r = Rng.new(5); let x = r.float(); 0.0 <= x and x < 1.0`
+    /// example: `var r = Rng(5); let x = r.float(); 0.0 <= x and x < 1.0`
     pub fn float(mut self) -> F64 = todo
     /// True with probability `p`: `float() < p`.
     ///
@@ -49,8 +49,8 @@ pub struct Rng(s: U64):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var r = Rng.new(3); r.chance(1.0) == true`
-    /// example: `var r = Rng.new(3); r.chance(0.0) == false`
+    /// example: `var r = Rng(3); r.chance(1.0) == true`
+    /// example: `var r = Rng(3); r.chance(0.0) == false`
     pub fn chance(mut self, p: F64) -> Bool = todo
     /// A uniformly random element of `xs`: `xs` at position `int(0..xs.len)`.
     ///
@@ -60,9 +60,9 @@ pub struct Rng(s: U64):
     /// cost: O(1)
     /// empty: `None`, and no draw
     /// traps: never
-    /// example: `var r = Rng.new(1); r.pick([7]) == Some(7)`
-    /// example: `var r = Rng.new(1); let x = r.pick([4, 5, 6]).unwrap(); 4 <= x and x <= 6`
-    /// example: `let e: List<Int> = []; var r = Rng.new(1); r.pick(e) == None`
+    /// example: `var r = Rng(1); r.pick([7]) == Some(7)`
+    /// example: `var r = Rng(1); let x = r.pick([4, 5, 6]).unwrap(); 4 <= x and x <= 6`
+    /// example: `let e: List<Int> = []; var r = Rng(1); r.pick(e) == None`
     pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T = todo
     /// Shuffle `a` in place, uniformly (Fisher-Yates).
     ///
@@ -73,8 +73,8 @@ pub struct Rng(s: U64):
     /// cost: O(n)
     /// empty: no change, and no draw
     /// traps: never
-    /// example: `var r = Rng.new(2); var a = [3, 1, 2]; r.shuffle(mut a); a.sorted() == [1, 2, 3]`
-    /// example: `var r = Rng.new(2); var a = [9]; r.shuffle(mut a); a == [9]`
+    /// example: `var r = Rng(2); var a = [3, 1, 2]; r.shuffle(mut a); a.sorted() == [1, 2, 3]`
+    /// example: `var r = Rng(2); var a = [9]; r.shuffle(mut a); a == [9]`
     pub fn shuffle<S: IndexedMut>(mut self, mut a: S) = todo
     /// A uniformly random permutation of the domain `D`, as a `[D]D`.
     ///
@@ -84,7 +84,7 @@ pub struct Rng(s: U64):
     /// cost: O(n)
     /// order: keyed by `D`; the value at each key is uniformly random, each element of `D` once
     /// traps: never
-    /// example: `domain V = 0..4; var r = Rng.new(4); let p = r.perm<V>(); p.distinct().len == 4`
+    /// example: `domain V = 0..4; var r = Rng(4); let p = r.perm<V>(); p.distinct().len == 4`
     pub fn perm<D>(mut self) -> [D]D = todo
     /// `k` elements of `from` at distinct positions, chosen uniformly, in random order.
     ///
@@ -96,7 +96,7 @@ pub struct Rng(s: U64):
     /// empty: `[]` when `k == 0`
     /// order: the order drawn (random); a new `List`, keyed from 0
     /// traps: when `k` is not in `0..=from.len`
-    /// example: `var r = Rng.new(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
-    /// example: `var r = Rng.new(9); r.sample(0, from: [5, 6, 7]) == []`
-    /// example: `var r = Rng.new(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
+    /// example: `var r = Rng(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
+    /// example: `var r = Rng(9); r.sample(0, from: [5, 6, 7]) == []`
+    /// example: `var r = Rng(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T> = todo

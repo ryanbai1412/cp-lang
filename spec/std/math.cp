@@ -155,17 +155,17 @@ pub struct Sieve:
     ///
     /// cost: O(n) time and memory
     /// traps: when `n < 0` or `n > 2_000_000_000`
-    /// example: `Sieve.new(10).is_prime(7) == true`
-    /// example: `Sieve.new(0).is_prime(0) == false`
+    /// example: `Sieve(10).is_prime(7) == true`
+    /// example: `Sieve(0).is_prime(0) == false`
     pub fn new(n: Int) -> Sieve = todo
 
     /// Whether `x` is prime, for `0 <= x <= n`: `spf[x] == x` and `x >= 2`.
     ///
     /// cost: O(1)
     /// traps: when `x` is outside `0..=n`
-    /// example: `Sieve.new(10).is_prime(7) == true`
-    /// example: `Sieve.new(10).is_prime(9) == false`
-    /// example: `Sieve.new(10).is_prime(1) == false`
+    /// example: `Sieve(10).is_prime(7) == true`
+    /// example: `Sieve(10).is_prime(9) == false`
+    /// example: `Sieve(10).is_prime(1) == false`
     pub fn is_prime(self, x: Int) -> Bool = todo
 
     /// The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.
@@ -173,17 +173,17 @@ pub struct Sieve:
     /// cost: O(log x)
     /// order: smallest prime first; a new `List`, keyed from 0
     /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve.new(100).factor(60) == [(2, 2), (3, 1), (5, 1)]`
-    /// example: `Sieve.new(100).factor(97) == [(97, 1)]`
-    /// example: `Sieve.new(100).factor(1) == []`
+    /// example: `Sieve(100).factor(60) == [(2, 2), (3, 1), (5, 1)]`
+    /// example: `Sieve(100).factor(97) == [(97, 1)]`
+    /// example: `Sieve(100).factor(1) == []`
     pub fn factor(self, x: Int) -> List<(Int, Int)> = todo
 
     /// Euler's totient of `x` in `1..=n`: how many of `1..=x` are coprime to `x`.
     ///
     /// cost: O(log x)
     /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve.new(100).phi(36) == 12`
-    /// example: `Sieve.new(100).phi(1) == 1`
+    /// example: `Sieve(100).phi(36) == 12`
+    /// example: `Sieve(100).phi(1) == 1`
     pub fn phi(self, x: Int) -> Int = todo
 
     /// The Mobius function of `x` in `1..=n`: 0 if a square above 1 divides `x`, else -1 to the
@@ -191,10 +191,10 @@ pub struct Sieve:
     ///
     /// cost: O(log x)
     /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve.new(100).mobius(30) == -1`
-    /// example: `Sieve.new(100).mobius(12) == 0`
-    /// example: `Sieve.new(100).mobius(6) == 1`
-    /// example: `Sieve.new(100).mobius(1) == 1`
+    /// example: `Sieve(100).mobius(30) == -1`
+    /// example: `Sieve(100).mobius(12) == 0`
+    /// example: `Sieve(100).mobius(6) == 1`
+    /// example: `Sieve(100).mobius(1) == 1`
     pub fn mobius(self, x: Int) -> Int = todo
 
     /// Euler's totient of every `0..=n`, with `phi[0] == 0`.
@@ -202,7 +202,7 @@ pub struct Sieve:
     /// cost: O(n)
     /// order: `phi[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
-    /// example: `Sieve.new(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
+    /// example: `Sieve(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
     pub fn phi_table(self) -> List<Int> = todo
 
     /// The Mobius function of every `0..=n`, with `mu[0] == 0` and `mu[1] == 1`.
@@ -210,7 +210,7 @@ pub struct Sieve:
     /// cost: O(n)
     /// order: `mu[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
-    /// example: `Sieve.new(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
+    /// example: `Sieve(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
     pub fn mobius_table(self) -> List<Int> = todo
 
     /// The number of positive divisors of every `0..=n`, with `d[0] == 0`.
@@ -218,7 +218,7 @@ pub struct Sieve:
     /// cost: O(n)
     /// order: `d[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
-    /// example: `Sieve.new(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
+    /// example: `Sieve(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
     pub fn div_count_table(self) -> List<Int> = todo
 
     /// The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.
@@ -226,7 +226,7 @@ pub struct Sieve:
     /// cost: O(n)
     /// order: `sigma[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: when a sum overflows `Int`
-    /// example: `Sieve.new(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
+    /// example: `Sieve(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
     pub fn div_sum_table(self) -> List<Int> = todo
 
     /// The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.
@@ -237,8 +237,8 @@ pub struct Sieve:
     /// cost: O(log x) to start, O(1) per divisor
     /// order: mixed-radix over the exponents, smallest prime fastest (12 gives 1, 2, 4, 3, 6, 12)
     /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve.new(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
-    /// example: `Sieve.new(12).divisors(1).collect() == [1]`
+    /// example: `Sieve(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
+    /// example: `Sieve(12).divisors(1).collect() == [1]`
     pub fn divisors(self, x: Int) -> yields Int = todo
 
     /// The positive divisors of `x` in `1..=n`: the same generator, and the same order, as
@@ -247,7 +247,7 @@ pub struct Sieve:
     /// cost: O(d(x) + log x)
     /// order: mixed-radix over the exponents, smallest prime fastest
     /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve.new(20).each_divisor(18).collect() == [1, 2, 3, 6, 9, 18]`
+    /// example: `Sieve(20).each_divisor(18).collect() == [1, 2, 3, 6, 9, 18]`
     pub fn each_divisor(self, x: Int) -> yields Int = todo
 
 /// Tabulate a multiplicative function `f` on `0..=n` in O(n) with a linear sieve.
@@ -616,7 +616,7 @@ pub struct DirichletSum<T>:
     /// cost: O(f_small.len) to build; queries as `sum`
     /// empty: an empty `f_small` makes every query use the recursion
     /// traps: when `n < 0`
-    /// example: `var ds = DirichletSum<Int>.new(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
+    /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     pub fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T> = todo
 
     /// The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.
@@ -626,8 +626,8 @@ pub struct DirichletSum<T>:
     ///
     /// cost: O(1) cached; O(n^(2/3)) total across all `n / i` queries
     /// traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
-    /// example: `var ds = DirichletSum<Int>.new(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
-    /// example: `var ds = DirichletSum<Int>.new(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
+    /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
+    /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
     pub fn sum(mut self, m: Int) -> T = todo
 
 /// The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.
@@ -764,9 +764,9 @@ pub fn continued_fraction(p: Int, q: Int) -> List<Int> = todo
 /// cost: O(log max_den)
 /// ties: the smaller denominator, then the smaller value
 /// traps: when `den == 0` or `max_den < 1`
-/// example: `best_rational(31_416, 10_000, 10) == Ratio.new(22, 7)`
-/// example: `best_rational(1, 2, 10) == Ratio.new(1, 2)`
-/// example: `best_rational(1, 2, 1) == Ratio.new(0, 1)`
+/// example: `best_rational(31_416, 10_000, 10) == Ratio(22, 7)`
+/// example: `best_rational(1, 2, 10) == Ratio(1, 2)`
+/// example: `best_rational(1, 2, 1) == Ratio(0, 1)`
 pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio = todo
 
 /// O(1) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
@@ -775,47 +775,47 @@ pub struct Ratio(p: Int, q: Int):
     ///
     /// cost: O(log min(|p|, |q|))
     /// traps: when `q == 0`
-    /// example: `Ratio.new(2, 4) == Ratio.new(1, 2)`
-    /// example: `Ratio.new(3, -6).floor == -1`
-    /// example: `Ratio.new(5) == Ratio.from_int(5)`
+    /// example: `Ratio(2, 4) == Ratio(1, 2)`
+    /// example: `Ratio(3, -6).floor == -1`
+    /// example: `Ratio(5) == Ratio.from_int(5)`
     pub fn new(p: Int, q: Int = 1) -> Ratio = todo
 
     /// `n` as the fraction `n / 1`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Ratio.from_int(3) == Ratio.new(3, 1)`
+    /// example: `Ratio.from_int(3) == Ratio(3, 1)`
     pub fn from_int(n: Int) -> Ratio = todo
 
     /// The multiplicative inverse `q / p`, sign moved to the numerator.
     ///
     /// cost: O(1)
     /// traps: when `p == 0`
-    /// example: `Ratio.new(-2, 3).inv == Ratio.new(-3, 2)`
-    /// example: `Ratio.new(1, 4).inv == Ratio.from_int(4)`
+    /// example: `Ratio(-2, 3).inv == Ratio(-3, 2)`
+    /// example: `Ratio(1, 4).inv == Ratio.from_int(4)`
     pub @get fn inv(self) -> Ratio = todo
 
     /// The floor of `p / q` (Euclidean division).
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Ratio.new(7, 2).floor == 3`
-    /// example: `Ratio.new(-7, 2).floor == -4`
+    /// example: `Ratio(7, 2).floor == 3`
+    /// example: `Ratio(-7, 2).floor == -4`
     pub @get fn floor(self) -> Int = todo
 
     /// The ceiling of `p / q`: `ceil_div(p, q)`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Ratio.new(7, 2).ceil == 4`
-    /// example: `Ratio.new(-7, 2).ceil == -3`
+    /// example: `Ratio(7, 2).ceil == 4`
+    /// example: `Ratio(-7, 2).ceil == -3`
     pub @get fn ceil(self) -> Int = todo
 
     /// The absolute value `|p| / q`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Ratio.new(-1, 2).abs == Ratio.new(1, 2)`
+    /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
     pub @get fn abs(self) -> Ratio = todo
 
 impl Add for Ratio:

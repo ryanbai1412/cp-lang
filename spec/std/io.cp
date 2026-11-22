@@ -26,7 +26,7 @@ pub struct Wire():
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `let wire = Wire.new(); print(1); true`
+    /// example: `let wire = Wire(); print(1); true`
     pub fn new() -> Wire = todo
 
     /// Print `query` and a newline, flush, then read one answer as the `T` the call site expects.
@@ -36,7 +36,7 @@ pub struct Wire():
     ///
     /// cost: O(|query|) plus the read of one `T`
     /// traps: when input ends before an answer, or the answer is not a valid `T`
-    /// example: `let wire = Wire.new(); let x: Int = wire.ask("? 1 2"); x == 7` (stdin `7`)
+    /// example: `let wire = Wire(); let x: Int = wire.ask("? 1 2"); x == 7` (stdin `7`)
     pub fn ask<T>(self, query: Str) -> T = todo
 
 /// Every remaining `T` on stdin, for statements that give no count.

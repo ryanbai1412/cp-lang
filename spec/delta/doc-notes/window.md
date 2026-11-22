@@ -28,3 +28,9 @@
   never undoes past (its own `mark` is taken at creation).
 - `Window.all`, `Tracked.state` examples use an `Int` state; `track` closures
   are written `(mut s, x) => s += x`, as `(mut d, e) => ...` in core.
+- (resolved) `Track` said `Counter<K>` and `Bag<T>` implement it, but neither had
+  `push`/`pop`, and `Window.pop()` takes no argument while `Track.pop(x)` takes
+  one. Outcome: `impl Track<K> for Counter<K, Int>` (count up and down, so `len`
+  is the distinct count) and `impl Track<T> for Window<T, M>` (`pop(x)` ignores
+  `x`); `Bag<T>` dropped from the list. The `seq.cp` two-pointer examples that
+  used undefined `Distinct()` and `Sum()` now use these.
