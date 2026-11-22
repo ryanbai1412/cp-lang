@@ -250,6 +250,12 @@ impl Ty {
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
             (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
+            (Ty::Named { name, args }, b) if name == "Slice" && args.len() == 1 => {
+                args[0].fits_in(b, number)
+            }
+            (a, Ty::Named { name, args }) if name == "Slice" && args.len() == 1 => {
+                a.fits_in(&args[0], number)
+            }
             (
                 Ty::Array {
                     index: ai,

@@ -11,6 +11,8 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 
+use std.window.{Track}
+
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
@@ -2898,7 +2900,16 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// order: left to right; each run keeps the keys of `self`
 /// traps: never
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs_linked((x, y) => y == x + 1)] == [2, 3]`
-pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S> = todo
+@allow(unproven_list_index)
+pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S>:
+    let n = self.len
+    if n == 0: return
+    var start = 0
+    for i in 1..n:
+        if not link(self[i - 1], self[i]):
+            yield self[start..i]
+            start = i
+    yield self[start..n]
 
 /// Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
 ///
@@ -2921,7 +2932,32 @@ pub enum Anchor = Start | End
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
-pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T> = todo
+@allow(unproven_list_index)
+pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>:
+    let n = self.len
+    var st = state
+    var out: List<Slice<[D]T>> = []
+    match anchor:
+        Anchor.End:
+            var l = 0
+            for r in 0..n:
+                st.push(self[r])
+                while l <= r and not ok(st):
+                    st.pop(self[l])
+                    l += 1
+                out.push(self[l..r + 1])
+        Anchor.Start:
+            var l = 0
+            for r in 0..n:
+                st.push(self[r])
+                while l <= r and not ok(st):
+                    out.push(self[l..r])
+                    st.pop(self[l])
+                    l += 1
+            while l < n:
+                out.push(self[l..n])
+                l += 1
+    out
 
 /// For each right end, the shortest piece ending there that is `ok`, or None, keyed by that
 /// end like the ring forms; `anchor: Anchor.Start` keys by left end. O(n) amortized.
@@ -2932,7 +2968,32 @@ pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
 /// example: `[1, 2, 3].minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
-pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T> = todo
+@allow(unproven_list_index)
+pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T>:
+    let n = self.len
+    var st = state
+    var out: List<?Slice<[D]T>> = []
+    for _ in 0..n: out.push(None)
+    match anchor:
+        Anchor.End:
+            var l = 0
+            var best_l = -1
+            for r in 0..n:
+                st.push(self[r])
+                while l <= r and ok(st):
+                    best_l = l
+                    st.pop(self[l])
+                    l += 1
+                if best_l >= 0: out[r] = Some(self[best_l..r + 1])
+        Anchor.Start:
+            var l = 0
+            for r in 0..n:
+                st.push(self[r])
+                while l <= r and ok(st):
+                    out[l] = Some(self[l..r + 1])
+                    st.pop(self[l])
+                    l += 1
+    out
 
 /// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
 /// element is still a position of `a`. Replaces doubling the array.

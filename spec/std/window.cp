@@ -6,6 +6,7 @@
 //! and divide-and-conquer DP all accept a `Track`.
 use std.algebra.{Op}
 use std.dsu.{Mark}
+use std.hashmap.{Counter}
 
 /// A sliding fold queue over `op`. `push` and `pop` are O(1) amortized; `all` is O(1).
 pub struct Window<T, M>(op: M):
