@@ -1891,9 +1891,24 @@ print(f(2))
     lo
 print(f(2))
 ";
-    assert_eq!(proofs(again), Vec::<String>::new());
-    let before = again.replace("        ys.pop()\n", "").replace("    var lo = 0\n", "    ys.pop()\n    var lo = 0\n");
-    assert_eq!(proofs(&before), ["0 <= lo <= mid < hi <= ys.len"]);
+    assert_eq!(proofs(again), ["0 <= lo <= mid < hi <= ys.len"]);
+    let stale = again.replace("        var hi = ys.len\n", "").replace("    var lo = 0\n", "    var lo = 0\n    var hi = ys.len\n");
+    assert_eq!(proofs(&stale), Vec::<String>::new());
+    // A breadth-first queue: each read comes before the pushes after it.
+    let queue = "var q: List<Int> = [0]
+var head = 0
+while head < q.len:
+    let u = q[head]
+    head += 1
+    if u < 9: q.push(u + 1)
+print(head)
+";
+    assert_eq!(proofs(queue), ["0 <= head < q.len"]);
+    let late = queue.replace("    let u = q[head]\n    head += 1\n", "    q.push(1)\n    let u = q[head]\n    head += 1\n");
+    assert_eq!(proofs(&late), Vec::<String>::new());
+    let same = queue.replace("    let u = q[head]\n", "    let u = q.pop()! + q[head]\n");
+    assert_eq!(proofs(&same), Vec::<String>::new());
+    assert!([&late, &same].iter().all(|src| cpl_syntax::parse_file(src).diagnostics.is_empty()));
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_14/noi19p1.cp");
     let port = &std::fs::read_to_string(path).unwrap();
     let routes: Vec<String> = crate::proven_indexes(port)

@@ -2372,6 +2372,16 @@ wherever `u` is assigned or bound again. `for j in 0..g[u].len: g[u][j]` gets `0
 ports and examples with an index proof: 121 to 137. Reverse by dropping the `Index` arm of
 `Bounds::atom` and `row_of`.
 
+29.39. **A length is a name that statements change, like a `var`.** Supersedes the offsets of
+29.37: `xs.len` of a tracked sequence (bound once, changed only by statements of its own scope) is
+in the relations everywhere, and a statement that assigns, lends, passes `mut` or calls a method on
+`xs` (`g` or `g[e]` for `g[u].len`) drops what was known about it, the way an assignment drops a
+`var`'s. A length changed inside a statement is dropped before anything in that statement reads it,
+so `q.pop()! + q[head]` gets no proof. This proves the breadth-first queue, `while head < q.len:
+let u = q[head]` followed by pushes, and a search re-run after each pop. Every method call counts as
+a change, `contains` included. Ports and examples with an index proof: 137 to 177, none lost.
+Reverse by restoring `Bounds::stable` from 29.37.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

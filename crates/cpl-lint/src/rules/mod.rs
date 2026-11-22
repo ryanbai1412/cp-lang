@@ -212,7 +212,6 @@ fn ranges_in(
     proven: &mut Proven,
 ) {
     use cpl_syntax::ast::{ExprKind, StmtKind};
-    bounds.base = base;
     for (i, stmt) in stmts.iter().enumerate() {
         let compound = match &stmt.kind {
             StmtKind::While { .. } => true,
@@ -221,10 +220,15 @@ fn ranges_in(
         };
         let entry = compound.then(|| bounds.clone());
         let carry = carried(stmt, bounds);
+        // A length may change before an index in the same statement reads it.
+        let changes = |name: &str| assigned_in(name, std::slice::from_ref(stmt));
+        for name in bounds.related().into_iter().filter(|n| n.ends_with(".len") && changes(n)) {
+            bounds.unrelate(&name);
+        }
         heads(base, stmt, bounds, proven);
         // Before the statement, so what a loop's exit proves survives it.
         for name in bounds.related() {
-            if assigned_in(&name, std::slice::from_ref(stmt)) {
+            if changes(&name) {
                 bounds.unrelate(&name);
             }
         }
@@ -1233,8 +1237,11 @@ fn breaks(stmts: &[cpl_syntax::ast::Stmt]) -> bool {
 }
 
 fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
-    if let Some((_, row)) = bounds::row_of(name) {
-        return assigned_in(row, stmts);
+    if let Some((rows, row)) = bounds::row_of(name) {
+        return assigned_in(row, stmts) || resized_in(rows, bounds::row_root, stmts);
+    }
+    if let Some(seq) = name.strip_suffix(".len") {
+        return resized_in(seq, bounds::root, stmts);
     }
     use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_stmt, Visitor};
@@ -1266,6 +1273,36 @@ fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
     let mut writes = Writes(name, false);
     stmts.iter().for_each(|s| walk_stmt(s, &mut writes));
     writes.1
+}
+
+/// Whether `stmts` assign, lend, pass `mut` or call a method on a place
+/// `root` traces to `seq`.
+fn resized_in(
+    seq: &str,
+    root: fn(&cpl_syntax::ast::Expr) -> Option<&str>,
+    stmts: &[cpl_syntax::ast::Stmt],
+) -> bool {
+    use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Resized<'a>(&'a str, fn(&Expr) -> Option<&str>, bool);
+    impl Visitor for Resized<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Assign { target: place, .. } | StmtKind::Lend { place, .. } = &stmt.kind {
+                self.2 |= (self.1)(place) == Some(self.0);
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Call { callee, args } = &expr.kind {
+                if let ExprKind::Field { base, .. } = &callee.kind {
+                    self.2 |= (self.1)(base) == Some(self.0);
+                }
+                self.2 |= args.iter().any(|a| a.mutable && (self.1)(&a.value) == Some(self.0));
+            }
+        }
+    }
+    let mut resized = Resized(seq, root, false);
+    stmts.iter().for_each(|s| walk_stmt(s, &mut resized));
+    resized.2
 }
 
 /// Every name `pat` binds stops being bounded.

@@ -55,16 +55,12 @@ pub(crate) struct Bounds {
     /// The value a `var` holds where nothing has assigned it since it was
     /// declared or last set, which its hull over the whole scope cannot say.
     now: HashMap<String, Interval>,
-    /// Sequences whose `.len` names one value for as long as they live:
-    /// bound once, never assigned, passed `mut` or a method's receiver.
-    fixed: HashSet<String>,
-    /// Sequences whose length stops changing at an offset: past every change
-    /// to them, and past the loops around a change that their declaration is
-    /// outside of. A change in a fn or lambda body the sequence is declared
-    /// outside of could come from any call, so it gets no entry.
-    stable: HashMap<String, u32>,
-    /// The offset of the item being walked, which `stable` is compared in.
-    pub(crate) base: u32,
+    /// Sequences bound once whose length only statements of their own scope
+    /// change, and `g[]` for the rows of such a `g`: their `.len` is a name
+    /// the relations know until `assigned_in` finds a change. A change in a
+    /// fn or lambda body declared outside the sequence could come from any
+    /// call, so it gets no entry.
+    tracked: HashSet<String>,
     /// Names some binding or assignment of reads a `.len`: their intervals
     /// reach `LEN_MAX`, which says nothing worth showing.
     long: HashSet<String>,
@@ -289,39 +285,19 @@ impl Bounds {
             base: u32,
             changed: HashSet<String>,
             changes: Vec<(String, u32, u32)>,
-            loops: Vec<(u32, u32)>,
             bodies: Vec<(u32, u32)>,
             decls: HashMap<String, u32>,
             sources: Vec<(String, Expr)>,
             seqs: HashSet<String>,
         }
-        fn root(e: &Expr) -> Option<&str> {
-            match &e.kind {
-                ExprKind::Name(n) => Some(n),
-                ExprKind::Paren(inner) => root(inner),
-                _ => None,
-            }
-        }
-        /// `g` for `g` or `g[u]`: a change there can change a `g[u].len`.
-        fn row_root(e: &Expr) -> Option<&str> {
-            match &e.kind {
-                ExprKind::Paren(inner) => row_root(inner),
-                ExprKind::Index { base, indices } if indices.len() == 1 => root(base),
-                _ => root(e),
-            }
-        }
         impl Visitor for Scan {
             fn stmt(&mut self, stmt: &Stmt) {
                 let at = (self.base + stmt.span.start, self.base + stmt.span.end);
-                match &stmt.kind {
-                    StmtKind::While { .. } | StmtKind::For { .. } => self.loops.push(at),
-                    StmtKind::Fn(decl) => {
-                        self.bodies.push(at);
-                        for p in &decl.params {
-                            self.decls.insert(p.name.text.clone(), at.0);
-                        }
+                if let StmtKind::Fn(decl) = &stmt.kind {
+                    self.bodies.push(at);
+                    for p in &decl.params {
+                        self.decls.insert(p.name.text.clone(), at.0);
                     }
-                    _ => {}
                 }
                 match &stmt.kind {
                     StmtKind::Assign { target, value, .. } => {
@@ -408,19 +384,17 @@ impl Bounds {
                     self.change(&format!("{n}[]"), at);
                 }
             }
-            /// Where `name`'s length has changed for the last time.
-            fn stable(&self, name: &str) -> Option<u32> {
-                let decl = *self.decls.get(name.strip_suffix("[]").unwrap_or(name))?;
-                let outside = |&&(s, e): &&(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
-                let mut from = 0;
-                for (_, start, end) in self.changes.iter().filter(|(n, ..)| n == name) {
-                    if self.bodies.iter().any(|b| outside(&b, *start)) {
-                        return None;
-                    }
-                    let around = self.loops.iter().filter(|l| outside(l, *start)).map(|l| l.1);
-                    from = from.max(around.max().unwrap_or(*end));
+            /// Whether only statements of `name`'s own scope change its length.
+            fn local(&self, name: &str) -> bool {
+                let mut starts = self.changes.iter().filter(|(n, ..)| n == name).map(|c| c.1).peekable();
+                if starts.peek().is_none() {
+                    return true;
                 }
-                Some(from)
+                let Some(&decl) = self.decls.get(name.strip_suffix("[]").unwrap_or(name)) else {
+                    return false;
+                };
+                let outside = |&(s, e): &(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
+                !starts.any(|at| self.bodies.iter().any(|b| outside(b, at)))
             }
         }
         let mut scan = Scan::default();
@@ -428,16 +402,14 @@ impl Bounds {
             scan.base = base;
             walk_stmt(stmt, &mut scan);
         }
-        let seqs: Vec<&String> =
-            scan.seqs.iter().filter(|n| {
-                let n = n.strip_suffix("[]").unwrap_or(n);
-                self.bound_once(n) && !self.fn_writes.contains(n)
-            }).collect();
-        self.fixed = seqs.iter().filter(|n| !scan.changed.contains(**n)).map(|n| n.to_string()).collect();
-        self.stable = seqs
+        self.tracked = scan
+            .seqs
             .iter()
-            .filter(|n| scan.changed.contains(**n))
-            .filter_map(|n| Some((n.to_string(), scan.stable(n)?)))
+            .filter(|n| {
+                let seq = n.strip_suffix("[]").unwrap_or(n);
+                self.bound_once(seq) && !self.fn_writes.contains(seq) && scan.local(n)
+            })
+            .cloned()
             .collect();
         loop {
             let more: Vec<String> = scan
@@ -459,15 +431,15 @@ impl Bounds {
             ExprKind::Name(n) => Some(n.clone()),
             ExprKind::Paren(inner) => self.atom(inner),
             ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
-                ExprKind::Name(n) if self.fixed.contains(n) || self.stable_at(n, e.span.start) => {
+                ExprKind::Name(n) if self.tracked.contains(n) => {
                     Some(format!("{n}.len"))
                 }
                 ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
                     (ExprKind::Name(g), [row]) => {
-                        let rows = format!("{g}[]");
-                        let fixed = self.fixed.contains(&rows) || self.stable_at(&rows, e.span.start);
                         match &row.kind {
-                            ExprKind::Name(u) if fixed => Some(format!("{g}[{u}].len")),
+                            ExprKind::Name(u) if self.tracked.contains(&format!("{g}[]")) => {
+                                Some(format!("{g}[{u}].len"))
+                            }
                             _ => None,
                         }
                     }
@@ -495,10 +467,6 @@ impl Bounds {
         let mut reads = Reads(self, false);
         walk_expr(e, &mut reads);
         reads.1
-    }
-
-    fn stable_at(&self, seq: &str, at: u32) -> bool {
-        self.stable.get(seq).is_some_and(|&from| from <= self.base + at)
     }
 
     pub(crate) fn is_long(&self, name: &str) -> bool {
@@ -679,11 +647,10 @@ impl Bounds {
     /// The interval a bounded name is in.
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         match name.strip_suffix(".len") {
-            Some(seq) if self.fixed.contains(seq) || self.stable.contains_key(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
-            Some(_) if row_of(name).is_some_and(|(g, _)| {
-                let rows = format!("{g}[]");
-                self.fixed.contains(&rows) || self.stable.contains_key(&rows)
-            }) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            Some(seq) if self.tracked.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            Some(_) if row_of(name).is_some_and(|(g, _)| self.tracked.contains(&format!("{g}[]"))) => {
+                Some(Interval { lo: 0, hi: LEN_MAX })
+            }
             _ => self.values.get(name).copied(),
         }
     }
@@ -884,4 +851,22 @@ impl Bounds {
 /// `("g", "u")` for the atom `g[u].len`.
 pub(crate) fn row_of(atom: &str) -> Option<(&str, &str)> {
     atom.strip_suffix("].len")?.split_once('[')
+}
+
+/// `xs` for `xs`: a change there can change `xs.len`.
+pub(crate) fn root(e: &Expr) -> Option<&str> {
+    match &e.kind {
+        ExprKind::Name(n) => Some(n),
+        ExprKind::Paren(inner) => root(inner),
+        _ => None,
+    }
+}
+
+/// `g` for `g` or `g[u]`: a change there can change a `g[u].len`.
+pub(crate) fn row_root(e: &Expr) -> Option<&str> {
+    match &e.kind {
+        ExprKind::Paren(inner) => row_root(inner),
+        ExprKind::Index { base, indices } if indices.len() == 1 => root(base),
+        _ => root(e),
+    }
 }
