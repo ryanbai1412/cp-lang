@@ -35,7 +35,7 @@ fn count_rectangles(a: List<List<Int>>) -> Int:
             while taken < xs.len and xs[taken].deep >= y.tall:
                 widths.add(Width(xs[taken].wide), 1)
                 taken += 1
-            count += widths.sum(..=Width(min(y.broad, C.len)))
+            count += widths.fold(..=Width(min(y.broad, C.len)))
         for x in xs.take(taken):
             widths.add(Width(x.wide), -1)
         count

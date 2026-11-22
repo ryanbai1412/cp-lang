@@ -11,4 +11,4 @@ enum Ask:
 for ask in read<[q]Ask>():
     match ask:
         Set(i, x) => half[odd(i)].set(i, x)
-        Sum(l, r) => print(half[odd(l)].sum(l..=r))
+        Sum(l, r) => print(half[odd(l)].fold(l..=r))
