@@ -321,7 +321,9 @@ pub fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool:
 pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     var h: List<Pt> = []
     for p in sorted_pts:
-        if h.len > 0 and h[h.len - 1] == p: continue
+        if h.len > 0:
+            assert h[h.len - 1] <= p, "`lower_hull` needs `sorted_pts` sorted by `(x, y)`"
+            if h[h.len - 1] == p: continue
         while h.len >= 2:
             let t = turn(h[h.len - 2], h[h.len - 1], p)
             if t < 0 or (not collinear and t == 0): h.pop()
@@ -341,7 +343,9 @@ pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     var h: List<Pt> = []
     for p in sorted_pts:
-        if h.len > 0 and h[h.len - 1] == p: continue
+        if h.len > 0:
+            assert h[h.len - 1] <= p, "`upper_hull` needs `sorted_pts` sorted by `(x, y)`"
+            if h[h.len - 1] == p: continue
         while h.len >= 2:
             let t = turn(h[h.len - 2], h[h.len - 1], p)
             if t > 0 or (not collinear and t == 0): h.pop()
@@ -996,6 +1000,7 @@ fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int:
 /// example: `hull_tangents([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(4, 1)) == (1, 2)`
 pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int):
     assert hull.len >= 3, "hull_tangents requires at least 3 hull vertices"
+    assert locate_convex(hull, p) == Location.Outside, "hull_tangents needs `p` strictly outside"
     (left: find_tangent(hull, p, 1), right: find_tangent(hull, p, -1))
 
 // ---- closest pair
@@ -1524,6 +1529,7 @@ pub fn angle_between(a: Vec, b: Vec) -> F64 = atan2(a.cross(b), a.dot(b))
 /// traps: when `a == b`
 /// example: `project(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == Vec(1.0, 0.0)`
 pub fn project(p: Vec, a: Vec, b: Vec) -> Vec:
+    assert a != b, "a line needs two distinct points"
     let ab = b - a
     a + ab * (vdot(p - a, ab) / ab.norm2)
 
@@ -2094,8 +2100,8 @@ pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec
 /// example: `min_enclosing_circle([Vec(2.0, 3.0)]) == Circle(Vec(2.0, 3.0), 0.0)`
 pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle:
     let n = pts.len
-    if n == 0: return (center: Vec(0.0, 0.0), radius: 0.0)
-    if n == 1: return (center: pts[0], radius: 0.0)
+    if n == 0: return Circle(Vec(0.0, 0.0), 0.0)
+    if n == 1: return Circle(pts[0], 0.0)
     var ps = copy(pts)
     var rng = 123456789
     for i in (1..n).rev:
@@ -2119,7 +2125,7 @@ pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle:
                             if let o = circumcenter(ps[i], ps[j], ps[k], eps:):
                                 c = o
                                 r = vdist(c, ps[i])
-    (center: c, radius: r)
+    Circle(c, r)
 
 fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
     let r2 = r * r
