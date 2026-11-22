@@ -941,16 +941,22 @@ impl<'a> Checker<'a> {
     /// when it is `None` (R02.4.7).
     fn question_in_condition(&mut self, expr: &Expr) -> bool {
         struct Find {
-            lambdas: Vec<Span>,
+            bounds: Vec<Span>,
             found: Option<Span>,
         }
         impl cpl_syntax::visit::Visitor for Find {
             fn expr(&mut self, e: &Expr) {
                 match &e.kind {
-                    ExprKind::Lambda { .. } => self.lambdas.push(e.span),
+                    ExprKind::Lambda { .. } => self.bounds.push(e.span),
+                    // R02.4.7: the left operand of `??` bounds a `?`.
+                    ExprKind::Binary {
+                        op: ast::BinOp::Coalesce,
+                        lhs,
+                        ..
+                    } => self.bounds.push(lhs.span),
                     ExprKind::Try(_) if self.found.is_none() => {
                         let inside = self
-                            .lambdas
+                            .bounds
                             .iter()
                             .any(|l| l.start <= e.span.start && e.span.end <= l.end);
                         if !inside {
@@ -962,7 +968,7 @@ impl<'a> Checker<'a> {
             }
         }
         let mut find = Find {
-            lambdas: Vec::new(),
+            bounds: Vec::new(),
             found: None,
         };
         cpl_syntax::visit::walk_expr(expr, &mut find);
@@ -974,11 +980,16 @@ impl<'a> Checker<'a> {
             self.quote(at)
         );
         let help = format!(
-            "say what `None` means: `{} ?? false`",
+            "say what `None` means: `({}) ?? false`",
             self.quote(expr.span)
         );
+        let replacement = format!("({}) ?? false", self.quote(expr.span));
         if let Some(diag) = self.error(codes::QUESTION_IN_CONDITION, at, message) {
             diag.help = Some(help);
+            diag.fixes.push(cpl_diag::Fix {
+                title: "treat `None` as false".to_string(),
+                edits: vec![(expr.span, replacement)],
+            });
         }
         true
     }
@@ -999,7 +1010,15 @@ impl<'a> Checker<'a> {
                         let message =
                             "`?` cannot be used directly in a condition; write `(... ?? false)`"
                                 .to_string();
-                        self.error(codes::QUESTION_IN_CONDITION, try_span, message);
+                        let replacement = format!("({}) ?? false", self.quote(expr.span));
+                        if let Some(diag) =
+                            self.error(codes::QUESTION_IN_CONDITION, try_span, message)
+                        {
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: "treat `None` as false".to_string(),
+                                edits: vec![(expr.span, replacement)],
+                            });
+                        }
                     }
                 }
                 let ty = self.infer(expr);
@@ -1016,7 +1035,15 @@ impl<'a> Checker<'a> {
                         let message =
                             "`?` cannot be used directly in a condition; write `(... ?? false)`"
                                 .to_string();
-                        self.error(codes::QUESTION_IN_CONDITION, try_span, message);
+                        let replacement = format!("({}) ?? false", self.quote(test.span));
+                        if let Some(diag) =
+                            self.error(codes::QUESTION_IN_CONDITION, try_span, message)
+                        {
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: "treat `None` as false".to_string(),
+                                edits: vec![(test.span, replacement)],
+                            });
+                        }
                     }
                 }
                 let ty = self.infer(test);
