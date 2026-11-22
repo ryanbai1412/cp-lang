@@ -1,0 +1,6 @@
+domain V = 0..4
+let xs = List.filled(4, 2)
+let u = xs.distinct()
+let f = V.first(v => v.ord > 0)
+let ok = u.len.is_pow2
+print(f, ok)

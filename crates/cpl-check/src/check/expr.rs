@@ -2870,10 +2870,12 @@ impl<'a> Checker<'a> {
                     }
                 }
                 None => {
+                    let has_range = methods.iter().any(|(m, _)| m == "range_first");
                     let known = field_names
                         .iter()
                         .chain(methods.iter().map(|(m, _)| m))
-                        .map(String::as_str);
+                        .map(String::as_str)
+                        .chain(has_range.then_some("range"));
                     let suggestion = closest(&name.text, known);
                     let message = format!("{} has no field or method `{}`", base_ty, name.text);
                     if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
