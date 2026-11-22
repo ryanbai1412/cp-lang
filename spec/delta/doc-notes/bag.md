@@ -54,18 +54,18 @@ bringing `spec/std/bag.cp` to the doc standard (`spec/std/README.md`).
   and `OrderedSet` in 44.1; decisions.md 103 removed the first five and
   117 renamed `first_where` to `bsearch_first`/`bsearch_last`. The stubs
   use `first_true`/`last_true`, matching `core/04-indices.md`; 117's
-  `bsearch_*` names are stale.
+  `bsearch_*` names are stale. (resolved: decisions 103 and 137 win; containers.md 2.2 marked superseded)
 - `SortedBag` has two methods named `drain`: `drain(r) -> yields K` and
   `drain(; after:, before:, while:) -> List<K>`. Overloading on labels
   with different result shapes goes against one spelling per job; one of
-  them should be renamed.
+  them should be renamed. (resolved: renamed `drain(r)` to `drain_range(r)`, decision 166)
 - `SortedSet.sum(keys)` promises O(log n) "subtree sums are kept", but
   `SortedSet` wraps a `SortedBag` whose nodes keep no sums, and
   `lib/containers.md` 5 defers a summed `SortedBag` until a second user.
-  Kept as stated; the implementation must add the sum.
+  Kept as stated; the implementation must add the sum. (resolved: kept stub; the implementation keeps subtree sums)
 - `SortedBag.sum()` returns `Int` whatever `K` is, while
-  `SortedSet.sum` returns `K`.
+  `SortedSet.sum` returns `K`. (resolved: returns `K`, decision 166)
 - `BucketCount.kth(k)` is 1-based; every other order statistic in the
-  library (`nth`) is 0-based.
+  library (`nth`) is 0-based. (resolved: 0-based, decision 166)
 - `SortedBag`/`SortedSet` mutating generator `drain(r)`: see the
-  `mut self` generator note in `heap.md`.
+  `mut self` generator note in `heap.md`. (resolved: kept, as in heap.md)

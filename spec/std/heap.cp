@@ -26,14 +26,15 @@ pub struct Heap<T>:
 
     /// Build a `Heap<T>` from `xs` via Floyd heapify.
     ///
-    /// The heap orders the elements themselves (there is no `by:`); pops come out in the order
-    /// of `xs.sorted()`.
+    /// `by:` means what it means in `new`; without it pops come out in the order of
+    /// `xs.sorted()`, and `Heap.of(xs, by: desc)` is the O(n) max-heap (`MaxHeap.of`).
     ///
     /// cost: O(n)
     /// empty: an empty heap
     /// traps: never
     /// example: `var h = Heap.of([3, 1, 2]); h.pop() == Some(1) and h.len == 2`
-    pub fn of(xs: List<T>) -> Heap<T> = todo
+    /// example: `var h = Heap.of([3, 1, 2], by: desc); h.pop() == Some(3)`
+    pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T> = todo
 
     /// Number of elements currently in the heap.
     ///

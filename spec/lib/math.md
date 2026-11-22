@@ -254,6 +254,10 @@ argument that can go out of sync with `a.len`.
 
 ### 2.4 `std.matrix`: dense matrices, Gaussian elimination and `XorBasis`
 
+> The names of record are `std/matrix.cp`'s: `Mat.zeros(n, m)`, `Mat.from_rows(rows)`,
+> `rows`/`cols`/`data`, `impl Pow`, and `A.mul_vec(x)` for `A.apply(x)`; there is no
+> `impl Neg`. `XorBasis` holds 63-bit non-negative values; `new` and `add` are O(W).
+
 `Mat<T>` stores entries in a single flat row-major `List<T>` of length
 `n * m` so multiplication and elimination stay cache-friendly.
 
@@ -287,9 +291,9 @@ fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>
 fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>
                                                     // O(n^3)
 
-// GF(2) linear basis over 62-bit non-negative integers
+// GF(2) linear basis over 63-bit non-negative integers (x >= 0)
 struct XorBasis:
-    fn new() -> XorBasis                            // O(1)
+    fn new() -> XorBasis                            // O(W)
     @get fn rank(self) -> Int                       // O(1); dimension of span
     fn add(mut self, x: Int) -> Bool                // O(log x); true if independent
     fn reduce(self, x: Int) -> Int                  // O(62); min x ^ s over s in span
@@ -401,7 +405,7 @@ Every module enforces its mathematical laws in `@test`:
   odd leading zero count or quadratic non-residue leading term; `deriv(integral(a)) == a`.
 - `std.matrix`: `Mat<T>.product(n)` satisfies `laws_hold`; `(A * B).det() ==
   A.det() * B.det()`; `A * A.inverse()! == Mat.identity(n)`; for every `x0`
-  and `v` in `solve_space(b)!.basis`, `A.apply(x0 + c * v) == b`; `XorBasis`
+  and `v` in `solve_space(b)!.basis`, `A.mul_vec(x0 + c * v) == b`; `XorBasis`
   satisfies `laws_hold(XorBasis.monoid(), xs)`, `contains(x)` iff `x` is a
   subset XOR of inserted elements, and `kth(0..2^rank)` is strictly
   increasing and exhausts the span.
@@ -419,10 +423,10 @@ What stays in `examples/local-lib/math/` or user code (until wider corpus
 demand justifies promotion):
 
 - Advanced polynomial algorithms (multipoint evaluation, interpolation,
-  Taylor shift, Berlekamp-Massey, Bostan-Mori, polynomial GCD, composition)
-  stay in `examples/local-lib/math/poly.cp`.
-- Exact fractions (`Frac`), homomorphisms, and simplex/LP stay in
-  `examples/local-lib/math/`.
+  Taylor shift, Bostan-Mori, polynomial GCD, composition) are in `std.poly`
+  (see its stub); the rest stays in `examples/local-lib/math/poly.cp`.
+- Exact fractions (`Frac`) and homomorphisms stay in `examples/local-lib/math/`;
+  `simplex` is in `std.matrix`.
 - Custom-payload XOR bases (like `cf2115d`, where each basis bit also owns a
   player `Bool` deciding whether to maximize or minimize that bit) stay user
   code because the payload semantics are problem-specific.

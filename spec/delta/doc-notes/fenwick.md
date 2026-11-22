@@ -1,6 +1,6 @@
 # fenwick doc notes
 
-- Contradiction: `spec/lib/ops-ranges.md` (sections 8 and 10) spells the structure `Fenwick(op, a)` over any `Commutative` op with `fold(r)` (and a `Group` for range folds), while the stub is `Fenwick<D, T>(a)` over `+`/`-` with `sum(r)`. Documented the stub as written; one of the two needs to change.
+- Contradiction: `spec/lib/ops-ranges.md` (sections 8 and 10) spells the structure `Fenwick(op, a)` over any `Commutative` op with `fold(r)` (and a `Group` for range folds), while the stub is `Fenwick<D, T>(a)` over `+`/`-` with `sum(r)`. Documented the stub as written; one of the two needs to change. (resolved: kept stub (`Fenwick(a)`, `sum`, `+` only); ops-ranges §8, §10, §17 fixed)
 - `Fenwick.new`, `DualFenwick.new`: chose that an empty `D` is allowed (all sums zero), as for every other domain-keyed container.
 - `Fenwick.first_ge`, `first_gt`, `kth`: negative values are documented as unspecified results, not traps, since checking costs O(n); `target <= 0` gives the start cut (follows from "smallest `b` with `prefix(b) >= target`").
 - `Fenwick.kth`: the spec is silent on `k < 1`; chose a trap, since `k` counts from 1 and `kth(0)` has no meaning (matches `windows` trapping on `k < 1`).

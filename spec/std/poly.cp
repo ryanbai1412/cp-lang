@@ -211,21 +211,21 @@ pub struct Poly<T>(c: List<T>):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Poly<Int>.zero.deg == -1 and Poly<Int>.zero.len == 0`
+    /// example: `Poly<Int>.zero.deg() == -1 and Poly<Int>.zero.len == 0`
     pub @get fn zero() -> Poly<T> = todo
 
     /// The constant polynomial `1`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg == 0`
+    /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == 0`
     pub @get fn one() -> Poly<T> = todo
 
     /// The indeterminate `x`: coefficients `[0, 1]`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Poly<Int>.x.deg == 1 and Poly<Int>.x.at(1) == 1`
+    /// example: `Poly<Int>.x.deg() == 1 and Poly<Int>.x.at(1) == 1`
     pub @get fn x() -> Poly<T> = todo
 
     /// The number of stored coefficients, trailing zeros included.
@@ -240,16 +240,16 @@ pub struct Poly<T>(c: List<T>):
     ///
     /// cost: O(1) plus the number of stored trailing zeros
     /// traps: never
-    /// example: `Poly<Int>([1, 2, 0]).deg == 1`
-    /// example: `Poly<Int>([0, 0]).deg == -1`
-    pub @get fn deg(self) -> Int = todo
+    /// example: `Poly<Int>([1, 2, 0]).deg() == 1`
+    /// example: `Poly<Int>([0, 0]).deg() == -1`
+    pub fn deg(self) -> Int = todo
 
     /// Whether all coefficients are zero (including when there are none).
     ///
     /// cost: O(1) plus the number of stored trailing zeros
     /// traps: never
-    /// example: `Poly<Int>([0, 0]).is_zero and not Poly<Int>.one.is_zero`
-    pub @get fn is_zero(self) -> Bool = todo
+    /// example: `Poly<Int>([0, 0]).is_zero() and not Poly<Int>.one.is_zero()`
+    pub fn is_zero(self) -> Bool = todo
 
     /// Read coefficient `i` (0 when `i >= self.len`).
     ///

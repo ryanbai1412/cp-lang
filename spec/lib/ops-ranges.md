@@ -27,8 +27,8 @@ var lz = SegTree(+, a, act: add)            // range add, range sum (lazy)
 var mx = SegTree(max, a, act: add)          // range add, range max: no push-down
 var du = SegTree(act: assign, a)            // range assign, point read (dual)
 let sp = SparseTable(min, a)                // O(1) fold: overlapping halves
-let fw = Fenwick(+, a)                      // prefix and range sums
-let ps = Prefix(+, a)                       // static: O(1) range sums
+let fw = Fenwick(a)                         // prefix and range sums
+let ps = Prefix(a)                          // static: O(1) range sums
 ```
 
 ## 1. Operations
@@ -106,7 +106,7 @@ let lo = Monoid(id: Low.empty, op: join).commutative()
 ```
 
 A record type can also be its own operation by implementing `Add`.
-`SegTree(+, a)` over `[D]MaxSub` then uses `MaxSub.zero` and `+`. Nothing
+`SegTree(+, a)` over `[D]MaxSub` then uses `MaxSub.empty()` as the identity and `+`. Nothing
 special is needed, because `+` is generic over `T: Add`.
 
 ## 2. Combining operations
@@ -341,7 +341,7 @@ operations support it:
 | `s.apply(r, f)`, `s.apply_all(f)` | apply tag `f` to every position in `r` | `act:` |
 | `s.right_while(from: c, ok)` | the last cut `d` with `ok(s.fold(c..d))`, `ok` monotone | `Monoid` |
 | `s.left_while(to: c, ok)` | the first cut `d` with `ok(s.fold(d..c))` | `Monoid` |
-| `s.clear()` | back to the build state, O(n) | |
+| `s.clear()` | every leaf back to `fill` (or the identity), pending tags dropped, O(n) | |
 | `for (i, x) in s.items` | every position and value, O(n) | |
 
 - `right_while` and `left_while` return cuts, like `bsearch` in round 1.
@@ -358,18 +358,18 @@ operations support it:
 | point write, range fold | `SegTree(op, a)` | O(n) | O(log n) | |
 | range apply, range fold | `SegTree(op, a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
 | range apply, point read | `SegTree(act:, a)` | O(n) | O(log n) | tags `Commutative`: no push-down |
-| static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else disjoint |
-| static prefix / range fold | `Prefix(op, a)` | O(n) | O(1) | `Group`: `fold(r)` by difference; else `prefix` only |
-| dynamic prefix / range fold | `Fenwick(op, a)` | O(n) | O(log n) | needs `Commutative`; `Group`: `fold(r)` |
+| static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
+| static prefix / range sum | `Prefix(a)` | O(n) | O(1) | `+` only: `prefix(c)`, `sum(r)`; other ops scan with `a.scan(op)` |
+| dynamic prefix / range sum | `Fenwick(a)` | O(n) | O(log n) | `+`/`-` only: `sum(r)`; other ops use `SegTree` |
 | sliding window fold | `Window(op)` | | O(1) amortized | `Selective`: monotone deque; else two stacks |
-| offline range apply | `Diff(op)` | | O(1) per add, O(n) finish | needs `Group` |
-| old versions | `PersistentSegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
+| offline range add | `Diff` | | O(1) per `add(r, x)`, O(n) finish | `+`/`-` only |
+| old versions | `PersistentSegTree(op, a)`, `PersistentLazySegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
 | huge index range | `SegTree(op, over: lo..hi)` | O(1) | O(log range) | nodes made on first touch |
 | chmin/chmax with sums | `BeatsSegTree(a)` | O(n) | O(log² n) amortized | its own structure |
 
 **What merges:**
 - `LazySegTree` and `DualSegTree` become `SegTree` with `act:`.
-- `DisjointSparseTable` becomes `SparseTable`.
+- `DisjointSparseTable` stays its own type: `SparseTable` needs `Idempotent`.
 - `GroupFenwick`, `PrefixFenwick` and `XorFenwick` become `Fenwick`.
 - `RangeFenwick` goes: range add with range sum is `SegTree(+, a, act: add)`,
   iterative and without push-down since `add` tags commute. `Fenwick` takes
@@ -441,7 +441,7 @@ duplicate structures with one body.
 4. **Missing laws are errors, not silent wrongness.** `t.fold_path` with a
    non-`Commutative` op whose `T` doesn't implement `Reversible` is a
    compile error. Today it silently assumes "its own reverse".
-   `Fenwick(op)` without `Commutative` is an error that suggests `SegTree`.
+   `Fenwick` is `+`-only; any other op is an error that suggests `SegTree`.
 
 ## 10. Groups: subtract instead of store
 
@@ -451,10 +451,10 @@ method exists when the op is a `Group`.
 
 | Structure | With a `Group` |
 |---|---|
-| `Prefix(op, a)` | `fold(r)` in O(1) |
-| `Fenwick(op, a)` | `fold(r)` in O(log n); `s[i] = x` (read, then add the difference) |
-| `Window(op)` | `drop` subtracts: O(1) worst case, no second stack |
-| `Diff(op)` | `apply(r, f)` offline in O(1), then `finish()` in O(n) |
+| `Prefix(a)` (`+` only) | `sum(r)` in O(1) |
+| `Fenwick(a)` (`+` only) | `sum(r)` in O(log n); `s[i] = x` (read, then add the difference) |
+| `Window(op)` | `pop()` subtracts: O(1) worst case, no second stack |
+| `Diff` (`+` only) | `add(r, x)` offline in O(1), then `finish()` in O(n) |
 | `Potentials(op)` | union-find with relative values (below) |
 
 **Union-find with potentials.** "Value of `b` is value of `a` plus `w`"
@@ -584,9 +584,9 @@ out[v] = if below: st.fold(..=v) else: st.fold(v..)
 // window minimum
 var w = Window(min)
 for i in I:
-    w.push(i, a[i])
-    w.drop_before(i - k)
-    ans[i] = w.fold
+    w.push(a[i])
+    if w.len > k: w.pop()
+    ans[i] = w.all!
 ```
 
 ## 17. What this needs from core

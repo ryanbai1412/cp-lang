@@ -248,29 +248,6 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
     pub fn monoid() -> Monoid<MaxCount<T>> = todo
 
-/// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmin folds.
-pub struct MinIdx<D, T>(val: T, at: D):
-    /// The entry with the smaller `val`; on equal values, the left operand `a`, so a left-to-right
-    /// fold returns the first minimum.
-    ///
-    /// cost: O(1)
-    /// ties: the left operand
-    /// traps: never
-    /// example: `MinIdx.join(MinIdx(4, 0), MinIdx(4, 1)).at == 0`
-    /// example: `MinIdx.join(MinIdx(5, 0), MinIdx(4, 1)).at == 1`
-    pub fn join(a: MinIdx<D, T>, b: MinIdx<D, T>) -> MinIdx<D, T> = todo
-
-/// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmax folds.
-pub struct MaxIdx<D, T>(val: T, at: D):
-    /// The entry with the larger `val`; on equal values, the left operand `a`, so a left-to-right
-    /// fold returns the first maximum.
-    ///
-    /// cost: O(1)
-    /// ties: the left operand
-    /// traps: never
-    /// example: `MaxIdx.join(MaxIdx(4, 2), MaxIdx(4, 1)).at == 2`
-    pub fn join(a: MaxIdx<D, T>, b: MaxIdx<D, T>) -> MaxIdx<D, T> = todo
-
 /// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
 pub struct Affine<T>(a: T, b: T):
     /// The identity map `x -> 1 * x + 0`.

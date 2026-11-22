@@ -33,11 +33,11 @@
   values, zero for rows below `k`.
 - Contradiction: `Poly.deg` and `Poly.is_zero` say O(1), but `Poly.new`, `set`
   and `truncated` keep trailing zeros, so the degree needs a scan of them.
-  Documented "O(1) plus the number of stored trailing zeros".
+  Documented "O(1) plus the number of stored trailing zeros". (resolved: `deg()`/`is_zero()` are calls, decision 166)
 - Contradiction: `Poly.zero`, `one` and `x` are `@get` with no `self`; every
-  other static constructor in the library is a plain `fn` (`Subset.empty()`).
+  other static constructor in the library is a plain `fn` (`Subset.empty()`). (resolved: kept `@get`: decision 62 does the same for `Subset.empty`/`full`)
 - Contradiction: lib/math.md §4 says multipoint evaluation, interpolation,
   Taylor shift, Bostan-Mori, polynomial GCD and composition stay in
-  `examples/local-lib`; the stub declares them all in `std.poly`.
+  `examples/local-lib`; the stub declares them all in `std.poly`. (resolved: kept stub; math.md §4 fixed)
 - Contradiction: lib/math.md §2.4 makes `Mod.inv` an `@get`; mod.cp has
   `pub fn inv(self)`. Not this module's, noted because poly examples divide.

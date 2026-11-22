@@ -241,6 +241,15 @@ pub struct DsuOf<V, T>:
     /// example: `var d = DsuOf<0..2, Int>(init: v => v, join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.set(0, 9); d.undo_to(m); d.get(0) == 0 and d.get(1) == 1`
     pub fn undo_to(mut self, snap: Mark) = todo
 
+    /// Every set as a list of its positions, as `Dsu.groups`; values are read with `get`.
+    ///
+    /// cost: O(n alpha(n)); allocates the lists
+    /// empty: `[]` when `V` is empty
+    /// order: lists by their least position, positions increasing within each
+    /// traps: never
+    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(2, 0); d.groups() == [[0, 2], [1]]`
+    pub fn groups(mut self) -> List<List<V>> = todo
+
 /// Union-find that knows, for two positions of one set, whether they are on the same side
 /// or on opposite sides: two-colouring, parity constraints, `x[a] xor x[b] == d`.
 /// `unite` and `diff` are O(log n) (union by size; paths are never shortened, so `mark` and

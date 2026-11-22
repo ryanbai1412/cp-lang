@@ -100,7 +100,7 @@ print(dp[V.range])
 ### Mask DP: `B.subsets`
 
 `B.subsets` (written `Subset<B>`) is the domain of subsets of a small
-domain `B` (at most 30 members): set algebra `s | t`, `s & t`, `s - t`,
+domain `B` (at most 64 members, one `U64`): set algebra `s | t`, `s & t`, `s - t`,
 `b in s`, `s.len`, and generators `s.subsets` (submasks, `s` first, empty
 last) and `s.supersets`.
 
@@ -149,7 +149,7 @@ brute in `cpl stress`.
 |---|---|---|
 | `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `[R]?(val, at)` | O((n + m) log n) calls |
 | `smawk(rows, cols, f)` | same, `f` totally monotone (Monge) | O(n + m) calls |
-| `knuth(V, w)` | `dp[r] = min over splits + w(r)` with Knuth's condition → `[V.ranges]Int` | O(n²) |
+| `knuth(n, cost)` | `dp[i][j] = min over splits + cost(i, j)` with Knuth's condition → `(n + 1)²` table | O(n²) |
 | `split_best(groups, range:, best:)` | values of a family of ranges, best first: each pop re-queues the two pieces around the chosen position (k largest subarray sums) | O(k log(n + k)) `best` calls |
 | `aliens(k, solve)` | "exactly k items" when the value is convex in k: `solve(λ)` returns `(val, count)` | O(log range) solves |
 | `monge_path(n, cost)` | shortest 0 → n path with Monge `cost(j..i)` (LARSCH) | O(n log n) |
@@ -157,7 +157,7 @@ brute in `cpl stress`.
 | `LineContainer(max)` | max of lines, any order | O(log n) |
 | `MonotoneHull(max)` | lines and queries both monotone | O(1) amortized |
 | `convolve(a, b, over: Semiring(min, +), shape:)` | `c[k] = min a[i] + b[k - i]` | O(n + m) or O(n m) by shape |
-| `SlopeTrick` (std.slope) | piecewise-linear convex DP | O(log n) per op |
+| `Concave`, `Convex` (std.slope, decision 81) | piecewise-linear concave / convex DP | O(log n) per op |
 
 D&C optimisation as a library call, the same layer cf868f writes by hand:
 

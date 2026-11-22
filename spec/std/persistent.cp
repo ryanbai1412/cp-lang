@@ -114,16 +114,16 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     pub fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference
-    /// `hi - lo`, walking both versions at once; `None` when the difference holds fewer than `k` items.
+    /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.
     /// A position with count `c` holds `c` items.
     ///
     /// Law: `hi` was derived from `lo` by adding counts, so no position of `hi - lo` is negative.
     ///
     /// cost: O(log n)
     /// ties: items at one position are interchangeable; the position is returned
-    /// traps: when `k < 1`, or a version did not come from this tree
-    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, t.base, 2) == Some(3) and t.diff_kth(v2, t.base, 4) == None`
-    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 1) == Some(3)`
+    /// traps: when `k < 0`, or a version did not come from this tree
+    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, t.base, 1) == Some(3) and t.diff_kth(v2, t.base, 3) == None`
+    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 0) == Some(3)`
     pub fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D = todo
 
 /// Static range k-th smallest and range rank queries over `[D]T`.

@@ -7,7 +7,7 @@ bringing `spec/std/hashmap.cp` to the doc standard (`spec/std/README.md`).
 
 - `FlatMap.new(default_val, cap)`: `default_val` only fills empty value
   slots; no public method returns it. Contradiction: `lib/containers.md`
-  2.8 has `new(cap: Int = 16)` with no default value. The stub is kept.
+  2.8 has `new(cap: Int = 16)` with no default value. The stub is kept. (resolved: kept stub; containers.md §2.8 fixed)
 - `FlatMap.new` / `reserve`: the table is a power of two at least twice
   `cap` (the load factor <= 0.5 of `lib/containers.md` 1.7), so `cap`
   entries fit without a rehash; `cap < 1` gives the smallest table.
@@ -23,10 +23,10 @@ bringing `spec/std/hashmap.cp` to the doc standard (`spec/std/README.md`).
 - Contradiction: `lib/containers.md` 2.8 and decisions.md 44.5 say
   backward-shift deletion ("tombstones never degrade performance"), but
   the stub's fields and comment use a tombstone state (`2 = tombstone`).
-  Not observable through the API; left alone.
+  Not observable through the API; left alone. (resolved: decision 44.5 wins; stub comment says backward-shift deletion)
 - Contradiction: `lib/containers.md` 2.8 lists `each(self) -> yields (key:
   Int, val: V)`; the stub has `items` / `keys` / `values` getters and no
-  `each`, and it mentions `FlatSet`, which no stub declares.
+  `each`, and it mentions `FlatSet`, which no stub declares. (resolved: kept stub getters; containers.md §2.8 lists `items`, drops `FlatSet`)
 
 ## Counter
 

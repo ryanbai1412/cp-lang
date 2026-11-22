@@ -25,13 +25,13 @@
 - Contradiction: lib/math.md §2.4 lists `Mat(n, m, a)`, `zero(n, m)`, `of(rows)`,
   `pow`, `apply`, `rows()` and an `impl Neg`; the stub has `rows`/`cols`/`data`,
   `zeros`, `from_rows`, `impl Pow`, `mul_vec`, and no `apply`, `rows()` or `Neg`.
-  math.md §3's laws are written with `A.apply(...)`.
+  math.md §3's laws are written with `A.apply(...)`. (resolved: kept stub; math.md §2.4 note maps the names)
 - Contradiction: `XorBasis` says 63-bit values (`0 <= x < 2^63`, `W <= 63`);
-  lib/math.md and `basis_vecs` / `intersect` costs say 62. Documented "x >= 0".
+  lib/math.md and `basis_vecs` / `intersect` costs say 62. Documented "x >= 0". (resolved: kept 63-bit; `basis_vecs`/`intersect` costs O(W); math.md fixed)
 - Contradiction: lib/math.md gives `XorBasis.new()` O(1) and `add` O(log x);
-  the stub says O(W) for both. Documented the stub.
+  the stub says O(W) for both. Documented the stub. (resolved: kept stub; math.md fixed)
 - Contradiction: lib/math.md §4 says simplex/LP stays in `examples/local-lib`;
-  the stub declares `simplex` in `std.matrix`.
+  the stub declares `simplex` in `std.matrix`. (resolved: kept stub; math.md §4 fixed)
 - `XorBasis`: chose to keep the basis fully reduced (O(W) per `add`), so
   `basis_vecs` is unique for a span; returned in decreasing order.
 - `XorBasis.add(0)` is `false`; negative inputs to `add`/`reduce`/`contains`/

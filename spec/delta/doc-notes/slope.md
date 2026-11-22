@@ -1,6 +1,6 @@
 # slope doc notes
 
-- `Concave`, `Convex`: contradiction. `spec/lib/search-dp.md` §5 lists `SlopeTrick` (std.slope) as "piecewise-linear convex DP"; the stub and decision 81 have `Concave` and `Convex` over finite integer domains. Followed the stub.
+- `Concave`, `Convex`: contradiction. `spec/lib/search-dp.md` §5 lists `SlopeTrick` (std.slope) as "piecewise-linear convex DP"; the stub and decision 81 have `Concave` and `Convex` over finite integer domains. Followed the stub. (resolved: decision 81 wins; search-dp.md §5 names `Concave`/`Convex`)
 - `Concave.flat`, `Convex.flat`: chose a trap on an empty `r` (a function needs at least one point) and documented that `r` may be written half-open or with `..=`.
 - `Concave.at`, `max`, `Convex.at`, `min`: the stub states two costs ("with subtree sums" and "today"). Kept both, marking the second as the current implementation's; the spec should state one.
 - `Concave.add_quadratic`, `Convex.add_quadratic`: which points `q` is read at is unstated; documented only "at most four calls" and a trap when the readings are not quadratic or the leading coefficient has the wrong sign (decision 81).

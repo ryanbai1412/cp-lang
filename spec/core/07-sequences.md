@@ -288,7 +288,7 @@ let pre = a.scan(+)        // pre[c]: fold of everything left of cut c
 let suf = a.rev.scan(+)    // suf[c]: fold of everything right of cut c
 pre[r.r] - pre[r.l]        // any range r
 pre[v]                     // a position: the fold through v, same as pre[v.r]
-pre.fold(r)                // same, for any op with an inverse; matches seg.fold(r)
+prefix(a).sum(r)           // same, as the `Prefix` struct (`+` only)
 pre[v.l] + a[v] + suf[v.r] // the whole array, split at position v
 ```
 

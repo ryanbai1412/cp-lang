@@ -14,7 +14,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>().len == 0`
     pub fn new() -> Bitset<D> = todo
 
-    /// The empty set, matching `Subset<D>.empty`; the same as `new()`.
+    /// The empty set, matching `Subset<D>.empty` (a call here: it is O(K / 64)); the same as `new()`.
     ///
     /// cost: O(K / 64) time and space
     /// traps: never
@@ -147,16 +147,24 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>().is_empty and not Bitset<D>.full().is_empty`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest position in the set satisfying `pred` (any, by default), or `None`. Members are
+    /// The smallest position in the set, or `None`.
+    ///
+    /// cost: O(K / 64)
+    /// empty: `None`
+    /// ties: none possible; positions are distinct
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).first() == Some(D(1))`
+    pub fn first(self) -> ?D = todo
+
+    /// The smallest position in the set satisfying `pred`, or `None`, as `seq.find`. Members are
     /// visited in increasing order, so `pred` is called only up to the answer.
     ///
     /// cost: O(K / 64 + visited)
     /// empty: `None`
     /// ties: none possible; the smallest qualifying position wins
     /// traps: never (beyond what `pred` traps on)
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).first() == Some(D(1))`
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).first(d => Int(d) > 2) == Some(D(3))`
-    pub fn first(self, pred: D -> Bool = d => true) -> ?D = todo
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 2) == Some(D(3))`
+    pub fn find(self, pred: D -> Bool) -> ?D = todo
 
     /// The largest position in the set satisfying `pred` (any, by default), or `None`. Members are
     /// visited in decreasing order.
@@ -270,13 +278,14 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(9)) == None`
     pub fn next(self, i: D) -> ?D = todo
 
-    /// The last position in the set strictly before `i`, or `None`.
+    /// The last position in the set at or before `i`, or `None` (the mirror of `next`).
     ///
     /// cost: O(K / 64)
     /// empty: `None`
     /// traps: never
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(3)) == Some(D(1))`
-    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(1)) == None`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(3)) == Some(D(3))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(2)) == Some(D(1))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(0)) == None`
     pub fn prev(self, i: D) -> ?D = todo
 
     /// The number of positions in the set strictly before `i`.
@@ -469,7 +478,7 @@ pub struct DynBitset:
     /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
     pub fn next(self, i: Int) -> ?Int = todo
 
-    /// The largest set bit `<= i`, or `None`. Unlike `Bitset.prev`, `i` itself counts.
+    /// The largest set bit `<= i`, or `None`; `i` itself counts, as in `Bitset.prev`.
     ///
     /// cost: O(cap / 64)
     /// empty: `None`
