@@ -1902,3 +1902,33 @@ print(f(2))
         .collect();
     assert_eq!(routes[..2], ["routes[i] 0 <= i < routes.len", "routes[i] 0 <= i < routes.len"]);
 }
+
+#[test]
+fn a_row_is_indexed_safely_below_its_own_length() {
+    let proofs = |src: &str| -> Vec<String> {
+        crate::proven_indexes(src)
+            .into_iter()
+            .map(|p| format!("{} {}", &src[p.access.0 as usize..p.access.1 as usize], p.proof))
+            .collect()
+    };
+    let walk = "fn f(g: List<List<Int>>) -> Int:
+    var s = 0
+    for u in 0..g.len:
+        for j in 0..g[u].len:
+            s += g[u][j]
+    s
+print(f([[1], [2, 3]]))
+";
+    let rows = ["g[u] 0 <= u < g.len", "g[u] 0 <= u < g.len", "g[u][j] 0 <= j < g[u].len"];
+    assert_eq!(proofs(walk), rows);
+    let grown = walk.replace("            s += g[u][j]", "            s += g[u][j]\n            g[u].push(1)");
+    assert_eq!(proofs(&grown), ["g[u] 0 <= u < g.len"; 3]);
+    let other = walk.replace("s += g[u][j]", "s += g[u][j]\n            u = 0");
+    assert_eq!(proofs(&other), ["g[u] 0 <= u < g.len"]);
+    let cell = walk.replace("s += g[u][j]", "g[u][j] = s");
+    assert_eq!(proofs(&cell), rows);
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_33/ioi12p6.cp");
+    let port = &std::fs::read_to_string(path).unwrap();
+    assert!(proofs(port).contains(&"kids[v][i] 0 <= i < kids[v].len".to_string()), "{:?}", proofs(port));
+}
+

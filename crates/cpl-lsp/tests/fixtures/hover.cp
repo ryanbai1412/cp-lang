@@ -54,3 +54,10 @@ fn count(zs: List<Int>, p: Int) -> Int:
         else: right = at
     zs.len - left
 print(count([1, 2], 2))
+fn sum_rows(g: List<List<Int>>) -> Int:
+    var s = 0
+    for u in 0..g.len:
+        for j in 0..g[u].len:
+            s += g[u]$0[j]
+    s
+print(sum_rows([[1], [2, 3]]))

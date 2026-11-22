@@ -7,6 +7,8 @@ help: write `max(min(n, 50) * 2 for v in V)`
 help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone along the range
 51:5-55:5 L0520 a hand-rolled binary search: this is `bsearch_first`
 help: `let left = bsearch_first(.., at => ..)`: the predicate must be monotone along the range
+59:9-59:22 L0505 `u` is only used as `g[u]`
+help: iterate the values: `for x in g:`
 11:12-11:23 overflow `area * area` overflows Int when n = 55109
 11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
 
@@ -150,4 +152,9 @@ zs[at]: in bounds, 0 <= left <= at < right <= zs.len
 ```cp
 at: Int
   in bounds of zs[at]: 0 <= left <= at < right <= zs.len
+```
+
+== hover @ 61:22
+```cp
+g[u][j]: in bounds, 0 <= j < g[u].len
 ```

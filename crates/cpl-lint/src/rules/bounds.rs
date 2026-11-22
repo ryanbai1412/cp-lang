@@ -302,6 +302,14 @@ impl Bounds {
                 _ => None,
             }
         }
+        /// `g` for `g` or `g[u]`: a change there can change a `g[u].len`.
+        fn row_root(e: &Expr) -> Option<&str> {
+            match &e.kind {
+                ExprKind::Paren(inner) => row_root(inner),
+                ExprKind::Index { base, indices } if indices.len() == 1 => root(base),
+                _ => root(e),
+            }
+        }
         impl Visitor for Scan {
             fn stmt(&mut self, stmt: &Stmt) {
                 let at = (self.base + stmt.span.start, self.base + stmt.span.end);
@@ -321,11 +329,13 @@ impl Bounds {
                             self.change(n, at);
                             self.sources.push((n.to_string(), value.clone()));
                         }
+                        self.change_row(target, at);
                     }
                     StmtKind::Lend { place, .. } => {
                         if let Some(n) = root(place) {
                             self.change(n, at);
                         }
+                        self.change_row(place, at);
                     }
                     _ => {}
                 }
@@ -363,16 +373,23 @@ impl Bounds {
                             if let Some(n) = root(base) {
                                 self.change(n, at);
                             }
+                            self.change_row(base, at);
                         }
                         for a in args.iter().filter(|a| a.mutable) {
                             if let Some(n) = root(&a.value) {
                                 self.change(n, at);
                             }
+                            self.change_row(&a.value, at);
                         }
                     }
                     ExprKind::Field { base, name } if name.text == "len" => {
                         if let Some(n) = root(base) {
                             self.seqs.insert(n.to_string());
+                        }
+                        if let ExprKind::Index { base, indices } = &base.kind {
+                            if let (Some(n), 1) = (root(base), indices.len()) {
+                                self.seqs.insert(format!("{n}[]"));
+                            }
                         }
                     }
                     _ => {}
@@ -385,9 +402,15 @@ impl Bounds {
                 self.changed.insert(name.to_string());
                 self.changes.push((name.to_string(), at.0, at.1));
             }
+            /// `g[]` stands for the length of every row of `g`.
+            fn change_row(&mut self, place: &Expr, at: (u32, u32)) {
+                if let Some(n) = row_root(place) {
+                    self.change(&format!("{n}[]"), at);
+                }
+            }
             /// Where `name`'s length has changed for the last time.
             fn stable(&self, name: &str) -> Option<u32> {
-                let decl = *self.decls.get(name)?;
+                let decl = *self.decls.get(name.strip_suffix("[]").unwrap_or(name))?;
                 let outside = |&&(s, e): &&(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
                 let mut from = 0;
                 for (_, start, end) in self.changes.iter().filter(|(n, ..)| n == name) {
@@ -406,7 +429,10 @@ impl Bounds {
             walk_stmt(stmt, &mut scan);
         }
         let seqs: Vec<&String> =
-            scan.seqs.iter().filter(|n| self.bound_once(n) && !self.fn_writes.contains(*n)).collect();
+            scan.seqs.iter().filter(|n| {
+                let n = n.strip_suffix("[]").unwrap_or(n);
+                self.bound_once(n) && !self.fn_writes.contains(n)
+            }).collect();
         self.fixed = seqs.iter().filter(|n| !scan.changed.contains(**n)).map(|n| n.to_string()).collect();
         self.stable = seqs
             .iter()
@@ -436,6 +462,17 @@ impl Bounds {
                 ExprKind::Name(n) if self.fixed.contains(n) || self.stable_at(n, e.span.start) => {
                     Some(format!("{n}.len"))
                 }
+                ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
+                    (ExprKind::Name(g), [row]) => {
+                        let rows = format!("{g}[]");
+                        let fixed = self.fixed.contains(&rows) || self.stable_at(&rows, e.span.start);
+                        match &row.kind {
+                            ExprKind::Name(u) if fixed => Some(format!("{g}[{u}].len")),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                },
                 _ => None,
             },
             _ => None,
@@ -471,7 +508,11 @@ impl Bounds {
     /// Whether one place in the file binds `name`, so every use of it
     /// that resolves at all reads that binding.
     pub(crate) fn written_by_fn(&self, name: &str) -> bool {
-        self.fn_writes.contains(name.strip_suffix(".len").unwrap_or(name))
+        let seq = name.strip_suffix(".len").unwrap_or(name);
+        match row_of(name) {
+            Some((g, u)) => self.fn_writes.contains(g) || self.fn_writes.contains(u),
+            None => self.fn_writes.contains(seq),
+        }
     }
 
     pub(crate) fn bound_once(&self, name: &str) -> bool {
@@ -583,7 +624,8 @@ impl Bounds {
 
     /// `name` was assigned: what a condition proved about it may not hold.
     pub(crate) fn unrelate(&mut self, name: &str) {
-        self.diffs.retain(|(a, b), _| a != name && b != name);
+        let gone = |n: &str| n == name || row_of(n).is_some_and(|(_, u)| u == name);
+        self.diffs.retain(|(a, b), _| !gone(a) && !gone(b));
         self.now.remove(name);
     }
 
@@ -638,6 +680,10 @@ impl Bounds {
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         match name.strip_suffix(".len") {
             Some(seq) if self.fixed.contains(seq) || self.stable.contains_key(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            Some(_) if row_of(name).is_some_and(|(g, _)| {
+                let rows = format!("{g}[]");
+                self.fixed.contains(&rows) || self.stable.contains_key(&rows)
+            }) => Some(Interval { lo: 0, hi: LEN_MAX }),
             _ => self.values.get(name).copied(),
         }
     }
@@ -833,4 +879,9 @@ impl Bounds {
             _ => None,
         }
     }
+}
+
+/// `("g", "u")` for the atom `g[u].len`.
+pub(crate) fn row_of(atom: &str) -> Option<(&str, &str)> {
+    atom.strip_suffix("].len")?.split_once('[')
 }

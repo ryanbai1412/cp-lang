@@ -2363,6 +2363,15 @@ so no fact about it is made where it could still move: `xs[i]` followed by `xs.p
 even though the push comes after the use. Ports and examples with an index proof: 64 to 121, none
 lost. Reverse by dropping `Bounds::stable` (back to sequences no statement ever changes).
 
+29.38. **A row's length is a name too.** `g[u].len` joins the relations when `g` is bound once,
+`u` is a plain name, and nothing changes the length of any row of `g` from that point on: a change
+to `g` itself or to some `g[e]` (assignment, `mut` argument, method call such as `g[e].push`) counts,
+a change to an element `g[e][f]` does not. The rows are tracked as one sequence, so pushing to any
+row stops every `g[_].len` proof, even for a different row. A fact about `g[u].len` is dropped
+wherever `u` is assigned or bound again. `for j in 0..g[u].len: g[u][j]` gets `0 <= j < g[u].len`;
+ports and examples with an index proof: 121 to 137. Reverse by dropping the `Index` arm of
+`Bounds::atom` and `row_of`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

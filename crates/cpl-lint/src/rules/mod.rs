@@ -1233,6 +1233,9 @@ fn breaks(stmts: &[cpl_syntax::ast::Stmt]) -> bool {
 }
 
 fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
+    if let Some((_, row)) = bounds::row_of(name) {
+        return assigned_in(row, stmts);
+    }
     use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_stmt, Visitor};
     struct Writes<'a>(&'a str, bool);
