@@ -19,7 +19,7 @@ use std.dsu.{Dsu}
 use std.seq.{reverse, count}
 use std.deque.{Deque}
 use std.bitset.{Bitset}
-use std.algebra.{Semiring}
+use std.algebra.{Monoid, Semiring}
 use std.math.{gcd}
 
 /// O(deg u) per walk of `out(u)`.
