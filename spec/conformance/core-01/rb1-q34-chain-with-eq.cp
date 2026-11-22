@@ -1,0 +1,3 @@
+// expect: E0111 at 1
+// rule: 01.5.3
+if 0 <= 3 < 5 == true: print(1)
