@@ -714,7 +714,9 @@ pub fn convex_polygon_intersect(
     a: List<Vec>,
     b: List<Vec>,
     eps: F64 = 1e-9,
-) -> List<Vec> = todo
+) -> List<Vec>:
+    if a.is_empty or b.is_empty: return []
+    half_plane_intersect(edge_planes(a) + edge_planes(b), eps: eps)
 
 // ---- polygons and rotating calipers
 
@@ -1303,7 +1305,15 @@ pub fn polygon_centroid(poly: List<Vec>) -> Vec:
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
 /// traps: never
 /// example: `polygon_kernel([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
-pub fn polygon_kernel(poly: List<Vec>, eps: F64 = 1e-9) -> List<Vec> = todo
+pub fn polygon_kernel(poly: List<Vec>, eps: F64 = 1e-9) -> List<Vec>:
+    half_plane_intersect(edge_planes(poly), eps: eps)
+
+fn edge_planes(poly: List<Vec>) -> List<HalfPlane>:
+    var hs: List<HalfPlane> = []
+    for i in 0..poly.len:
+        let q = poly[(i + 1) % poly.len]
+        if poly[i] != q: hs.push(HalfPlane.through(poly[i], q))
+    hs
 
 /// A triangulation of the counter-clockwise simple polygon `poly` into `n - 2` triangles of
 /// vertex indices, each listed counter-clockwise.
@@ -1967,7 +1977,56 @@ pub fn half_plane_intersect(
     planes: List<HalfPlane>,
     bound: ?F64 = None,
     eps: F64 = 1e-9,
-) -> List<Vec> = todo
+) -> List<Vec>:
+    var all = copy(planes)
+    if bound != None:
+        let b = bound!
+        all.push(HalfPlane.through(Vec(-b, -b), Vec(b, -b)))
+        all.push(HalfPlane.through(Vec(b, -b), Vec(b, b)))
+        all.push(HalfPlane.through(Vec(b, b), Vec(-b, b)))
+        all.push(HalfPlane.through(Vec(-b, b), Vec(-b, -b)))
+    if all.is_empty: return []
+    var hs: List<(p: Vec, dir: Vec, ang: F64)> = []
+    for h in all:
+        assert h.dir.x != 0.0 or h.dir.y != 0.0, "`half_plane_intersect` needs non-zero directions"
+        hs.push((p: h.p, dir: h.dir, ang: atan2(h.dir.y, h.dir.x)))
+    sort(mut hs, by: h => h.ang)
+    let tau = 2.0 * pi()
+    for i in 0..hs.len:
+        let gap = if i + 1 < hs.len: hs[i + 1].ang - hs[i].ang else: hs[0].ang + tau - hs[i].ang
+        if gap >= pi() - 1e-12: return []
+    var uniq: List<(p: Vec, dir: Vec, ang: F64)> = []
+    for h in hs:
+        if not uniq.is_empty:
+            let last = uniq[uniq.len - 1]
+            if abs(vcross(last.dir, h.dir)) <= eps and last.dir.dot(h.dir) > 0.0:
+                if vcross(last.dir, h.p - last.p) > 0.0: uniq[uniq.len - 1] = h
+                continue
+        uniq.push(h)
+    var dq: List<(p: Vec, dir: Vec, ang: F64)> = []
+    var head = 0
+    for h in uniq:
+        while dq.len - head >= 2 and hp_out(h, hp_cross(dq[dq.len - 1], dq[dq.len - 2]), eps): dq.pop()
+        while dq.len - head >= 2 and hp_out(h, hp_cross(dq[head], dq[head + 1]), eps): head += 1
+        if dq.len - head >= 1 and vcross(dq[dq.len - 1].dir, h.dir) <= eps: return []
+        dq.push(h)
+    while dq.len - head >= 3 and hp_out(dq[head], hp_cross(dq[dq.len - 1], dq[dq.len - 2]), eps): dq.pop()
+    while dq.len - head >= 3 and hp_out(dq[dq.len - 1], hp_cross(dq[head], dq[head + 1]), eps): head += 1
+    let m = dq.len - head
+    if m < 3: return []
+    var pts: List<Vec> = []
+    for i in 0..m:
+        let v = hp_cross(dq[head + i], dq[head + (i + 1) % m])
+        if pts.is_empty or pts[pts.len - 1].dist(v) > eps: pts.push(v)
+    while pts.len >= 2 and pts[0].dist(pts[pts.len - 1]) <= eps: pts.pop()
+    if pts.len < 3: return []
+    var a2 = 0.0
+    for i in 0..pts.len: a2 += pts[i].cross(pts[(i + 1) % pts.len])
+    if a2 / 2.0 <= eps: return []
+    var s = 0
+    for i in 1..pts.len:
+        if pts[i].y < pts[s].y or (pts[i].y == pts[s].y and pts[i].x < pts[s].x): s = i
+    [pts[(s + i) % pts.len] for i in 0..pts.len]
 
 /// The signed area of the polygon `poly` (half the shoelace sum): positive counter-clockwise,
 /// negative clockwise; 0.0 for fewer than 3 vertices.
