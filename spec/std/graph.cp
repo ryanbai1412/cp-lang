@@ -2901,5 +2901,5 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
                     let v = a.to
                     let pos = cur[v]
                     cur[v] = pos + 1
-                    tarcs[pos] = u
+                    tarcs[pos] = (..a, to: u)
         Graph<V, G.Arc>(start: tstart, arcs: tarcs)
