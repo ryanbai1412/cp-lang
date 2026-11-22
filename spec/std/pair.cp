@@ -13,7 +13,9 @@ pub struct Pair<V>(lo: V, hi: V):
     /// traps: when `u == v`
     /// example: `Pair<0..4>(3, 1).lo == 1`
     /// example: `Pair<0..4>(3, 1) == Pair<0..4>(1, 3)`
-    pub fn new(u: V, v: V) -> Pair<V> = todo
+    pub fn new(u: V, v: V) -> Pair<V>:
+        assert u != v, "`Pair` needs two distinct positions"
+        if u < v: Pair(u, v) else: Pair(v, u)
 
     /// The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping
     /// [`new`](Pair.new).
@@ -22,15 +24,18 @@ pub struct Pair<V>(lo: V, hi: V):
     /// traps: never
     /// example: `Pair<0..4>.at(2, 2) == None`
     /// example: `Pair<0..4>.at(2, 0) == Some(Pair<0..4>(0, 2))`
-    pub fn at(u: V, v: V) -> ?Pair<V> = todo
+    pub fn at(u: V, v: V) -> ?Pair<V> = if u == v: None else: Some(Pair.new(u, v))
 
     /// The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.
     ///
     /// cost: O(1)
     /// traps: when `v` is neither `self.lo` nor `self.hi`
     /// example: `Pair<0..4>(1, 3).other(3) == 1`
-    pub fn other(self, v: V) -> V = todo
+    pub fn other(self, v: V) -> V:
+        assert v == lo or v == hi, "`Pair.other` needs one of the pair's ends"
+        if v == lo: hi else: lo
 
+// blocked: `[Pair<V>]T` is rejected as an array key (GAPS.md pair)
 /// The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for
 /// `u != v`, and `diag` at every `m[v, v]`. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)`
 /// is a distance matrix for `floyd_warshall`.
