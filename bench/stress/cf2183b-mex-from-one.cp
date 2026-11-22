@@ -6,7 +6,7 @@ fn missing(k: Int, a: List<Int>) -> Int:
     for x in a if x <= a.len: has[x] = true
     first(x for x in 1..k - 1 if not has[x]) ?? (k - 1)
 
-@brute(missing)
+@alt(missing)
 fn missing_slow(k: Int, a: List<Int>) -> Int =
     first(x for x in 0..k - 1 if x not in a) ?? (k - 1)
 

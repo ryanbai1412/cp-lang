@@ -91,7 +91,7 @@ let ans = delta.scan((a, b) => a + b)
 
 print(ans, sep: "\n")
 
-@brute(main)
+@alt(program)
 fn slow():
     var tot: [I]Z = Z(0)
     for mask in 0..(1 << n):

@@ -7,7 +7,7 @@ fn smallest(b: List<Int>) -> Int:
         res = lcm(res, x / gcd(x, y))
     res
 
-@brute(smallest)
+@alt(smallest)
 fn smallest_slow(b: List<Int>) -> Int:
     var need = 1
     for (x, y) in b.adjacent if y % x != 0:

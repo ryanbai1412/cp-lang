@@ -1,5 +1,5 @@
 // ABC479 E — Cut and Add
-// Tree problem: Graph.undirected + Rooted + subtree diff propagation + @brute(main)
+// Tree problem: Graph.undirected + Rooted + subtree diff propagation + @alt(program)
 
 let n: 3..=2e5 = read()
 domain V = 1..=n
@@ -31,7 +31,7 @@ for u in t.at:
 
 print(ans)
 
-@brute(main)
+@alt(program)
 fn slow():
     var adj: [V]List<(V, Int)> = []
     for e in E:

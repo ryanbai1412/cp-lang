@@ -13,7 +13,7 @@ fn cheapest(heights: List<Int>) -> Int:
         taller_sum += h
     best
 
-@brute(cheapest)
+@alt(cheapest)
 fn cheapest_slow(heights: List<Int>) -> Int:
     min(a * l + b * sum(max(0, h - l) for h in heights) for l in [0] + heights)!
 

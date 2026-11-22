@@ -9,7 +9,7 @@ fn prefix_min_sum(a: List<Int>) -> Int:
         total += lo
     total
 
-@brute(prefix_min_sum)
+@alt(prefix_min_sum)
 fn prefix_min_sum_slow(a: List<Int>) -> Int = scan(a, min).sum()
 
 @!multitest

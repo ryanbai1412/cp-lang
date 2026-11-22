@@ -19,7 +19,7 @@ fn most_watched() -> Int:
 
 print(most_watched())
 
-@brute(main)
+@alt(program)
 fn every_subset():
     var best = 0
     for mask in 0..(1 << n):

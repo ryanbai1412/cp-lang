@@ -1,5 +1,5 @@
 // ABC476 G — Good Integer Sequence (Popcount Antichain)
-// Precomputation above @!multitest + bitwise dyadic DP + @brute(main)
+// Precomputation above @!multitest + bitwise dyadic DP + @alt(program)
 
 // F[k][a][b] = max weakly-decreasing-popcount subsequence in [0, 2^k)
 // starting with popcount allowance <= a and ending with allowance >= b (0 <= b <= a <= k).
@@ -50,7 +50,7 @@ for (o, k) in left_blocks:
 
 print(dp[0])
 
-@brute(main)
+@alt(program)
 fn slow():
     var best: [0..=MAXB]Int = 0
     for x in l..=r:

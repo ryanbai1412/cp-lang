@@ -1,5 +1,5 @@
 // ABC480 F — Cake Cutting
-// Bitmask DP (N <= 20): Subset<I> + submask @brute(main)
+// Bitmask DP (N <= 20): Subset<I> + submask @alt(program)
 
 let (n, m): (1..=20, 1..=100) = read()
 domain I = 0..n
@@ -22,7 +22,7 @@ for s in Subset<I>:
 
 print(m - dp[Subset<I>.full])
 
-@brute(main)
+@alt(program)
 fn slow():
     let tgt = sum(a[i] for i in I) / m
     var ssum: [Subset<I>]Int = 0

@@ -6,7 +6,7 @@ fn gloves(k: Int, l: List<Int>, r: List<Int>) -> Int:
     let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)
     sum(max(l[i], r[i]) for i in 0..n) + mins[1..k].sum() + 1
 
-@brute(gloves)
+@alt(gloves)
 fn gloves_slow(k: Int, l: List<Int>, r: List<Int>) -> Int:
     let n = l.len
     let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)

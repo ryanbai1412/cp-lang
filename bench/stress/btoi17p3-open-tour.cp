@@ -26,7 +26,7 @@ fn wanted(k: Int, plans: List<List<City>>) -> List<Int>:
         if let p = tree.parent(c): marks[p] += marks[c]
     [i for i in 0..tracks.len if marks[lower(tracks[i].u, tracks[i].v)] >= k]
 
-@brute(wanted)
+@alt(wanted)
 fn wanted_slow(k: Int, plans: List<List<City>>) -> List<Int>:
     var count: [City]Int = 0
     for plan in plans:

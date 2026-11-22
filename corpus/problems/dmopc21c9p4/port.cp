@@ -32,7 +32,7 @@ fn peel<D>(start: [D]Bool) -> List<D>:
                     if up[v]: ready.insert(v) else: ready.remove(v)
     order
 
-@brute(peel)
+@alt(peel)
 fn peel_slow<D>(start: [D]Bool) -> List<D>:
     var up = start
     var gone: [D]Bool = false

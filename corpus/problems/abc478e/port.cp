@@ -1,5 +1,5 @@
 // ABC478 E — Inequality Sequence Construction
-// Directed graph + std.graph.scc (fresh domain C in topological order) + DAG DP + @checker
+// Directed graph + std.graph.scc (fresh domain C in topological order) + DAG DP + @check
 
 
 let (n, q): (1..=2e5, 1..=2e5) = read()
@@ -31,7 +31,7 @@ for c in C:
 print("Yes")
 print([dp[comp[v]] for v in V])
 
-@brute(main)
+@alt(program)
 fn slow():
     var d: [V]Int = 1
     for step in 0..=n:
@@ -51,7 +51,7 @@ fn slow():
     print("Yes")
     print(d)
 
-@checker
+@check
 fn check():
     // Exact Bellman-Ford oracle for feasibility (longest path with weights 0/1)
     var d: [V]Int = 1

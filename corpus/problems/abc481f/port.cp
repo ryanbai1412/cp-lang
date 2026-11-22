@@ -1,5 +1,5 @@
 // ABC481 F — Evil Shortest Path
-// Directed weighted graph + O(N+M) layered lexicographic BFS + Mod<998244353> + @brute(main)
+// Directed weighted graph + O(N+M) layered lexicographic BFS + Mod<998244353> + @alt(program)
 
 type Z = Mod<998_244_353>
 
@@ -40,7 +40,7 @@ while not groups.is_empty:
 let out = [ans[v] for v in V if v != V.first]
 print(out, sep: "\n")
 
-@brute(main)
+@alt(program)
 fn slow():
     var best_len: [V]?Int = none
     var best_str: [V]Str = ""

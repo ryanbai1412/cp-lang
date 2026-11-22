@@ -43,7 +43,7 @@ fn most(score: [Spot]1..=1e9) -> Int:
     best[Cut.last]
 
 // Direct DP on (days, total): fewest days first, then the largest total.
-@brute(most)
+@alt(most)
 fn most_quadratic(score: [Spot]1..=1e9) -> Int:
     var days: [Cut]Int = 0
     var total: [Cut]Int = 0

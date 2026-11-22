@@ -29,7 +29,7 @@ fn joint() -> (Int, Z):
         total += Z(around) * Z(around) - sum(Z(w[u] * w[u]) for u in adj[mid])
     (best, total)
 
-@brute(joint)
+@alt(joint)
 fn joint_slow() -> (Int, Z):
     var best = 0
     var total: Z = 0

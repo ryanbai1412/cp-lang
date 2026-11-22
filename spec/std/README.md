@@ -615,6 +615,11 @@ A seeded SplitMix64 stream: deterministic, so a failing stress case
 replays. Hashing of values is the language's (`Hash` on every key
 type); string hashing is `std.strings.RollingHash`.
 
+Stress-test generator backing helpers (`gen(...)` / `gen<T>(...)` wire
+through `rand` so the choice recorder can shrink): `Perm<V>`,
+`GenGraph<V>`, `GenWeightedGraph<V>`, `gen_str`, `gen_perm`,
+`gen_parents`, `gen_graph`, `gen_weighted_graph`, and `std.tree.gen_rooted`.
+
 ```cp
 struct Rng(s: U64) // O(1)
     fn new(seed: Int) -> Rng
