@@ -1103,7 +1103,34 @@ impl<'a> Checker<'a> {
                     }
                     _ => false,
                 };
-                if let (Some(declared), Some(init_ty), Some(init), false) =
+                let view = match (&declared, init) {
+                    (Some(Ty::Named { name, .. }), Some(init))
+                        if name == "List" && std::env::var_os("CPL_SPEC").is_some() =>
+                    {
+                        self.view_kind(init)
+                    }
+                    _ => None,
+                };
+                if let (Some(declared), Some(init), Some(kind)) = (&declared, init, view) {
+                    let kind = if kind == "slice" { "slice view" } else { kind };
+                    let init_text = self.quote(init.span);
+                    let message = format!(
+                        "`{}` is declared {}, but `{init_text}` is a {kind}, not a `List`",
+                        self.quote(pat.span),
+                        declared.with_article(),
+                    );
+                    if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
+                        diag.help = Some(format!(
+                            "a view borrows its source; copy it with `List({init_text})` (R07.2.11)"
+                        ));
+                        if kind == "slice view" {
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: "copy the view into a list".to_string(),
+                                edits: vec![(init.span, format!("List({init_text})"))],
+                            });
+                        }
+                    }
+                } else if let (Some(declared), Some(init_ty), Some(init), false) =
                     (&declared, &init_ty, init, fills)
                 {
                     let name = self.quote(pat.span);
