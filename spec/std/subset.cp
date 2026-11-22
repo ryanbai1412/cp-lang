@@ -9,42 +9,44 @@ pub struct Subset<B>(bits: U64):
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.empty.len == 0`
-    @get pub fn empty() -> Subset<B> = todo
+    @get pub fn empty() -> Subset<B> = Subset(U64(0))
 
     /// Every member of `B`: the word with its low `|B|` bits set.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.full.len == 4`
-    @get pub fn full() -> Subset<B> = todo
+    @get pub fn full() -> Subset<B>:
+        if B.count >= 64: return Subset(U64(0) - U64(1))
+        Subset((U64(1) << B.count) - U64(1))
 
     /// `{b}`: the subset whose only member is `b`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(2)).items.collect() == [B(2)]`
-    pub fn single(b: B) -> Subset<B> = todo
+    pub fn single(b: B) -> Subset<B> = Subset(U64(1) << b.ord)
 
     /// Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; let s = Subset<B>.single(B(1)); B(1) in s and B(2) not in s`
-    pub fn contains(self, b: B) -> Bool = todo
+    pub fn contains(self, b: B) -> Bool = (bits >> b.ord) & U64(1) == U64(1)
 
     /// The number of members (a popcount).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(0)).with(B(3)).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = popcount(bits)
 
     /// `self` with `b` added. Adding a member already present returns `self` unchanged.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.empty.with(B(1)).with(B(1)) == Subset<B>.single(B(1))`
-    pub fn with(self, b: B) -> Subset<B> = todo
+    pub fn with(self, b: B) -> Subset<B> = Subset(bits | (U64(1) << b.ord))
 
     /// `self` with `b` removed. Removing a non-member returns `self` unchanged.
     ///
@@ -52,14 +54,15 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.full.without(B(0)).len == 3`
     /// example: `domain B = 0..4; Subset<B>.empty.without(B(2)) == Subset<B>.empty`
-    pub fn without(self, b: B) -> Subset<B> = todo
+    pub fn without(self, b: B) -> Subset<B> = Subset(bits & ((U64(1) << b.ord) ^ (U64(0) - U64(1))))
 
     /// Add `b` when `on`, remove it otherwise, in place (as `Bitset.set`).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; var s = Subset<B>.empty; s.set(B(2), true); s.set(B(0), false); s == Subset<B>.single(B(2))`
-    pub fn set(mut self, b: B, on: Bool) = todo
+    pub fn set(mut self, b: B, on: Bool):
+        bits = if on: self.with(b).bits else: self.without(b).bits
 
     /// A new set with every member `k` places up (down for a negative `k`); members that leave `B`
     /// are dropped (as `Bitset.shifted`).
@@ -68,7 +71,10 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(1)).with(B(3)).shifted(1) == Subset<B>.single(B(2))`
     /// example: `domain B = 0..4; Subset<B>.single(B(1)).shifted(-2) == Subset<B>.empty`
-    pub fn shifted(self, k: Int) -> Subset<B> = todo
+    pub fn shifted(self, k: Int) -> Subset<B>:
+        if k >= 64 or k <= -64: return Subset(U64(0))
+        if k >= 0: return Subset((bits << k) & Subset<B>.full.bits)
+        Subset(bits >> -k)
 
     /// The members of `B` not in `self`; no bit at or above `|B|` is ever set.
     ///
@@ -76,7 +82,7 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(0)).complement().len == 3`
     /// example: `domain B = 0..4; Subset<B>.empty.complement() == Subset<B>.full`
-    pub fn complement(self) -> Subset<B> = todo
+    pub fn complement(self) -> Subset<B> = Subset(bits ^ Subset<B>.full.bits)
 
     /// The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None`
     /// for `{}`. Peels one member per step in a mask DP: `s.first()` then `s.without(b)`.
@@ -87,7 +93,9 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).first() == Some(B(1))`
     /// example: `domain B = 0..4; Subset<B>.empty.first() == None`
-    pub fn first(self) -> ?B = todo
+    pub fn first(self) -> ?B:
+        if bits == U64(0): return None
+        Some(B.at(ctz(bits)))
 
     /// The members in `B`'s order; `for b in s` walks the same sequence.
     ///
@@ -96,7 +104,11 @@ pub struct Subset<B>(bits: U64):
     /// order: increasing in `B`'s order (increasing bit index)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).items.collect() == [B(1), B(3)]`
-    @get pub fn items(self) -> yields B = todo
+    @get pub fn items(self) -> yields B:
+        var m = bits
+        while m != U64(0):
+            yield B.at(ctz(m))
+            m &= m - U64(1)
 
     /// Every subset of `self`, `self` first and `{}` last: the submask walk
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
@@ -106,7 +118,12 @@ pub struct Subset<B>(bits: U64):
     /// order: decreasing as words: `self` first, `{}` last
     /// traps: never
     /// example: `domain B = 0..3; let s = Subset<B>.single(B(0)).with(B(1)); s.subsets.map(g => g.first()).collect() == [Some(B(0)), Some(B(1)), Some(B(0)), None]`
-    @get pub fn subsets(self) -> yields Subset<B> = todo
+    @get pub fn subsets(self) -> yields Subset<B>:
+        var g = bits
+        while true:
+            yield Subset(g)
+            if g == U64(0): break
+            g = (g - U64(1)) & bits
 
     /// Every superset of `self` within `B`, `self` first and `B` last: the walk
     /// `g = (g + 1) | self`, so the masks come in increasing order as words. `2^(|B| - s.len)`
@@ -117,16 +134,22 @@ pub struct Subset<B>(bits: U64):
     /// order: increasing as words: `self` first, `Subset<B>.full` last
     /// traps: never
     /// example: `domain B = 0..3; Subset<B>.single(B(1)).supersets.map(g => g.len).collect() == [1, 2, 2, 3]`
-    @get pub fn supersets(self) -> yields Subset<B> = todo
+    @get pub fn supersets(self) -> yields Subset<B>:
+        let all = Subset<B>.full.bits
+        var g = bits
+        while true:
+            yield Subset(g)
+            if g == all: break
+            g = (g + U64(1)) | bits
 
 impl BitOr for Subset<B>:
-    fn bitor(a, b) = todo
+    fn bitor(a, b) = Subset(a.bits | b.bits)
 
 impl BitAnd for Subset<B>:
-    fn bitand(a, b) = todo
+    fn bitand(a, b) = Subset(a.bits & b.bits)
 
 impl BitXor for Subset<B>:
-    fn bitxor(a, b) = todo
+    fn bitxor(a, b) = Subset(a.bits ^ b.bits)
 
 impl Sub for Subset<B>:
-    fn sub(a, b) = todo
+    fn sub(a, b) = Subset(a.bits & (b.bits ^ (U64(0) - U64(1))))

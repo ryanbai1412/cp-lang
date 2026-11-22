@@ -6,3 +6,4 @@ line when the gap closes and the body lands.
 
 - dsu: `Dsu.find`, `Dsu.same`, `DsuOf.find` and everything built on it: `@cache` fields don't parse (E0107), so read-only finds can't halve paths; they run in O(log n) (union by size) instead of O(alpha(n)) amortized. Mutating calls (`unite`, `merge`, `size`) on `Dsu` still halve paths.
 - dsu: `PotentialDsu.new(op:)` with a non-`None` `op`: a struct field can't be typed by a fn's own generic `G`, so only the default `+` on `Int` is implemented; `op: Some(_)` reaches `todo`.
+- subset: every `Subset` method: `Subset` is built into the compiler, so `cpl run` ignores these bodies, lacks `shifted`, `complement`, `supersets` and `for` over `items`, and a program's `Subset<D>` doesn't unify with the stub's (E0302 "expected `Subset<D>`, found `Subset<D>`"). The bodies check but can't be exercised by conformance cases yet.
