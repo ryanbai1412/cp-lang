@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1105 (296 passing). Rules: 521.
+Cases: 1113 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -756,8 +756,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `BeatsSegTree.chmax`, `BeatsSegTree.min_val`, `BeatsSegTree.max_val`, `HistoricBeatsSegTree`, `HistoricBeatsSegTree.new`, `HistoricBeatsSegTree.chmax`, `HistoricBeatsSegTree.max_val`, `HistoricBeatsSegTree.hist_max`, `HistoricBeatsSegTree.hist_sum`
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
-- **deque** (40/42 named by a case)
-  - uncovered: `LinkedList.splice_back`, `LinkedList.splice_front`
+- **deque** (42/42 named by a case)
 - **dp** (34/39 named by a case)
   - uncovered: `monotone_minima`, `dnc_layer`, `knuth`, `subset_sums`, `Step`
 - **dsu** (58/63 named by a case)
@@ -769,15 +768,14 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter`, `circles_union_area`, `polygon_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
 - **graph** (52/123 named by a case)
   - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `two_edge_components`, `Paths.iter`, `Paths.tight`, `bfs01`, `fixed_cost_paths`, `closure`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit`, `Lit.flip`, `TwoSat`, `TwoSat.new`, `TwoSat.add_or`, `TwoSat.must`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `negative_cycle`, `min_mean_cycle`, `girth`, `smallest_topo`, `dag_fold`, `count_paths`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `complement`, `odd_cycle`, `dominators`, `triangles`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
-- **grid** (17/23 named by a case)
-  - uncovered: `Dir4.up`, `Dir4.down`, `ray`, `adj4`, `adj8`, `transposed`
+- **grid** (19/23 named by a case)
+  - uncovered: `ray`, `adj4`, `adj8`, `transposed`
 - **hashmap** (35/35 named by a case)
 - **heap** (70/74 named by a case)
   - uncovered: `MeldHeap`, `MeldHeap.new`, `MeldHeap.meld`, `MeldHeap.add_all`
 - **interval** (43/44 named by a case)
   - uncovered: `IntervalMap.assign_point`
-- **io** (2/5 named by a case)
-  - uncovered: `Wire`, `Wire.new`, `Wire.ask`
+- **io** (5/5 named by a case)
 - **lazy** (23/30 named by a case)
   - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`
 - **marks** (46/46 named by a case)
@@ -818,12 +816,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Subset`, `Subset.subsets`, `Subset.supersets`
 - **timetree** (8/11 named by a case)
   - uncovered: `TimeTree.event`, `TimeTree.run`, `offline_over`
-- **tree** (62/171 named by a case)
-  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **tree** (65/171 named by a case)
+  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1596 of 2222 std items are named by a case.
+1606 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
