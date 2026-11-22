@@ -77,8 +77,9 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str = todo
 /// O(|self| + |out|). Replace every non-overlapping occurrence of `from` with `to`.
 pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
 
-/// O(|self|). Parse a base-10 signed integer, or `none` if malformed or out of `Int` range.
-pub fn parse_int(self: Str) -> ?Int = todo
+/// O(|self|). Parse a signed integer in `base` (2..=36; digits past 9 are letters in either
+/// case), or `none` if malformed or out of `Int` range. `"ff".parse_int(base: 16) == some(255)`.
+pub fn parse_int(self: Str, base: Int = 10) -> ?Int = todo
 
 /// O(n). `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`.
 /// Keyed by `s.keys`, so `z_function(s[l..])[i]` takes `i` from the slice (2b).

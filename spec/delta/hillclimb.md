@@ -37,6 +37,7 @@ and its notes in that record's `notes`.
   too. Two stale ports lost their `.last()`/`.values()` drift.
 - ioi96p1: a `Range<V>` passes where `V.ranges` is expected, with non-emptiness as a checked
   contract like a range-typed slot.
+- sac22cc3jp4: `Str.parse_int(base:)` and `Int.to_str(base:)` convert between bases.
 - noip99p1: one `lis` (the `std.seq` method, now with `by:`); the duplicate free `lis` in
   `std.dp` is gone and `lis_ends` is a method. `read_all<T>()` reads until end of input.
 - noip18p3: `Rooted.children(v)` yields from the stored child layout instead of returning a

@@ -5,10 +5,16 @@
   {"id": "4416065", "language": "CPP17", "result": "AC", "time": 0.368942096, "memory_kb": 3904.0, "file": "corpus/submissions/4416065.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "artifacts": {
+  "dream": [
+   "corpus/problems/sac22cc4jp2/dream.cp"
+  ]
+ },
+ "tags": [
+  "implementation"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "tagged enum read (parser gap); [D]?Shape compared to Shape."
 }

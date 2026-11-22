@@ -5,10 +5,16 @@
   {"id": "4331722", "language": "CPP17", "result": "AC", "time": 0.077952757, "memory_kb": 3288.0, "file": "corpus/submissions/4331722.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "artifacts": {
+  "dream": [
+   "corpus/problems/sac22cc3jp2/dream.cp"
+  ]
+ },
+ "tags": [
+  "implementation"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "inline if/elif expression."
 }

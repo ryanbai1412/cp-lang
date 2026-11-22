@@ -94,6 +94,10 @@ pub fn bit_len(x: Int) -> Int = todo
 /// The digits of `x >= 0` in `base`, lowest first: `1203.digits()` is `[3, 0, 2, 1]`, and `0` has the one digit `0`.
 pub fn digits(self: Int, base: Int = 10) -> List<Int> = todo
 
+/// O(log x). `x` written in `base` (2..=36), highest digit first, lowercase letters past 9, a
+/// leading `-` when negative: `255.to_str(base: 16) == "ff"`. The inverse of `Str.parse_int`.
+pub fn to_str(self: Int, base: Int = 10) -> Str = todo
+
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
 /// `-s` flips it and `max(s, .zero)` clamps it.
 pub enum Sign: neg = -1, zero = 0, pos = 1
