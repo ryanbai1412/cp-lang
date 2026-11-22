@@ -248,7 +248,7 @@ def g_ioi19p5(p, big, _):
     W(p, ["200 200 199" if big else "12 9 7"])
 
 
-# (port under proto/ports, original, topic, limits, generator, compare mode)
+# (port under corpus/problems, original, topic, limits, generator, compare mode)
 def O(n): return os.path.join(CORPUS, f"{n}.cpp")
 def P(rel): return os.path.join(PORTS, rel)
 SPECS = [

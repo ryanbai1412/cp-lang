@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unified validation scoreboard for CP Lang ports and friction reports.
 
-Measures every auto-discovered port under proto/ports/ (ecnerwala and any
+Measures every auto-discovered port under corpus/problems/*/port.cp and
 concurrently pushed Rust-era port directories with sibling *_orig.cpp files):
 
   - Gate status (cpl check, fmt, lint, build <= 64 KB; in full mode also

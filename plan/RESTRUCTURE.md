@@ -50,21 +50,22 @@ the repository. Delete this file once every step is done.
   where its content went, so lossiness can be checked.
 - Nothing is summarised away. Content goes to the home that matches what it is:
 
-| Old | Goes to |
-|---|---|
-| `design/GOALS` | `AGENTS.md`; any line missing there is added verbatim |
-| `design/ACCEPT`, `00-grounding`, `EXEMPLARS*` | `corpus/problems/<id>/` dreams plus `notes.md` |
-| `design/COST` | cost table in `spec/core/13-lowering.md` |
-| `design/IDIOMS` | `site/content/cpp-guide.md` |
-| `design/ALIGN`, `CORE-ALIGN` | resolved answers become `decisions.md` entries; debate text moves verbatim to `research/design-history/` |
-| `design/spec`, `DELTA.md`, `plan/1x` | superseded by `spec/`; unique rules added there first |
-| `plan/30`–`70` | rules with IDs in `spec/tools/` |
-| `plan/80-validation.md` | `corpus/VALIDATION.md` |
-| `plan/90-docs-and-playground.md` | `site/README.md` |
-| `plan/STDLIB.md` | `spec/std/README.md` |
-| `proto/ports/*` | `corpus/problems/<id>/port.cp` |
-| `proto/` | deleted, except the random program generator, which moves into `crates/` for interpreter-vs-C++ parity |
-| `subs/` | deleted (done) |
+| Old | Goes to | Status |
+|---|---|---|
+| `design/GOALS` | `AGENTS.md`; preserved verbatim in `research/design-history/GOALS.md` | Done |
+| `design/ACCEPT`, `00-grounding`, `EXEMPLARS*`, `design/sketches/ioi2025/*.cp` | `corpus/problems/ioi25_*/dream.cp` + `research/design-history/` | Done |
+| `design/COST` | cost table in `spec/core/13-lowering.md` (§13.8) | Done |
+| `design/IDIOMS` | `site/content/cpp-guide.md` + `research/design-history/IDIOMS.md` | Done |
+| `design/ALIGN`, `CORE-ALIGN` | `research/design-history/` | Done |
+| `design/spec`, `DELTA.md`, `plan/1x` | superseded by `spec/` (`DELTA.md` preserved in `research/design-history/DELTA.md`) | Done |
+| `plan/30`–`70` | preserved in `research/design-history/plan-v0.2/`; normative rules live in `spec/tools/` | Done |
+| `plan/80-validation.md` | `corpus/VALIDATION.md` | Done |
+| `plan/90-docs-and-playground.md` | `site/README.md` + `research/design-history/plan-v0.2/90-docs-and-playground.md` | Done |
+| `plan/STDLIB.md` | `spec/std/README.md` | Done |
+| `proto/ports/*` | `corpus/problems/<id>/port.cp` (`dp*` renamed to `atcoder_dp_<letter>`) | Done |
+| `proto/` | deleted; all paths recorded in `research/MIGRATION.md` | Done |
+| `subs/` | deleted | Done |
+| `archive/` | moved to `research/design-history/`; `archive/` deleted | Done |
 
 - Before deleting, repoint live references: `crates/cpl-check/src/tests.rs`
   and `scripts/scoreboard.py` (`plan/STDLIB.md`), `site/exemplars.py`
@@ -75,15 +76,15 @@ the repository. Delete this file once every step is done.
 
 ## Toolchain (during cleanup)
 
-| Area | Tool |
-|---|---|
-| Versions | `mise.toml` pins Rust, Python, Node, uv, pnpm, just |
-| Rust | Cargo workspace, `rust-toolchain.toml`, nextest, clippy, rustfmt |
-| Python | root `pyproject.toml`, uv workspace and `uv.lock`, Python 3.12, ruff, pytest |
-| JS/TS | root pnpm workspace, biome, vitest; replaces `package-lock.json` |
-| Tasks | `justfile`: `just check`, `just test`, `just site`, `just conformance` |
-| Hooks | lefthook, replacing `scripts/install-hooks.sh` |
-| CI | none for now (no GitHub Actions); the local hook is the gate. Add later |
+| Area | Tool | Status |
+|---|---|---|
+| Versions | `mise.toml` pins Rust, Python, Node, uv, pnpm, just | Done |
+| Rust | Cargo workspace, `rust-toolchain.toml`, nextest, clippy, rustfmt | Done |
+| Python | root `pyproject.toml`, `uv.lock`, Python 3.12, ruff, pytest | Done |
+| JS/TS | root `package.json`, `pnpm-workspace.yaml` (`web/`, `editors/vscode/`) | Done |
+| Tasks | `justfile`: `just check`, `just check-full`, `just test`, `just fmt`, `just bench`, `just docs`, `just site`, `just conformance`, `just worktree` | Done |
+| Hooks | lefthook (optional; `scripts/install-hooks.sh` still active) | Open |
+| CI | none for now (no GitHub Actions); the local hook is the gate. Add later | Done |
 
 The site generator stays in Python.
 
@@ -147,12 +148,8 @@ Language tools on our own code:
 - Done: `crates/cpl-verify` and the Python prototype are deleted. Its
   generator was not kept: it generated the prototype's subset, and the
   type-directed generator in `plan/ARCHITECTURE.md` replaces it.
-- Left in `proto/`: `ports/` and `tests/` (`.cp` fixtures read by
-  `crates/cpl-cli/tests`, `scripts/check.sh` and `site/`). They move into
-  `corpus/` and `spec/conformance/`, then `proto/` goes.
-- `bench/corpus_registry.py` scores `proto/ports/`; replace it with a
-  scoreboard over `corpus/problems/` when the ports move.
-- Rename `stdlib/spec.cp` to `stdlib/brute.cp`.
-- Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
-- Deferred until after the merge: interpreter consolidation, removing stdlib
-  privilege, splitting monolith files.
+- Done: `proto/` deleted (`ports/` moved into `corpus/problems/<id>/`, `tests/` moved to `crates/cpl-cli/tests/cases/`).
+- Done: `bench/corpus_registry.py` deleted; `auto_strip` folded into `scripts/scoreboard.py` over `corpus/problems/`.
+- Open: Rename `stdlib/spec.cp` to `stdlib/brute.cp` (owned by stdlib session).
+- Open: Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
+- Deferred (other sessions): `crates/cpl-conform` (session 71e45566), interpreter consolidation, removing stdlib privilege, splitting monolith files (`plan/ARCHITECTURE.md`).

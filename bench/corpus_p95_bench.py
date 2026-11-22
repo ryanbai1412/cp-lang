@@ -135,7 +135,7 @@ def prepare(port, work, timeout, hand, hand_by_prob, audit2):
     """Build both sides and find the inputs they agree on. Returns the candidate's record."""
     rel = port["path"]
     r = {"problem": port["problem"], "port": rel, "original": port["original"], "form": port["form"]}
-    d = os.path.join(work, rel[len("proto/ports/"):-3].replace("/", "__")); os.makedirs(d)
+    d = os.path.join(work, rel.removeprefix("corpus/problems/").removeprefix("proto/ports/").removesuffix(".cp").replace("/", "__")); os.makedirs(d)
     r["dir"] = d
     name = os.path.basename(rel)[:-3]
     src = os.path.join(d, name + ".cp"); shutil.copy(os.path.join(ROOT, rel), src)
@@ -146,7 +146,7 @@ def prepare(port, work, timeout, hand, hand_by_prob, audit2):
     r["emitted_bytes"] = os.path.getsize(cpp)
 
     orig = os.path.join(ROOT, port["original"])
-    spec = hand.get(rel[len("proto/ports/"):-3]) or hand_by_prob.get(port["problem"])
+    spec = hand.get(rel.removeprefix("corpus/problems/").removeprefix("proto/ports/").removesuffix(".cp")) or hand_by_prob.get(port["problem"])
     osrc = orig
     if spec and audit2 and name in audit2.bc5.DRIVERS:      # grader-style originals need a stdin driver
         if name == "noiwc22p3":
@@ -255,7 +255,7 @@ def line(st):
 
 
 def offender(i, r):
-    return (f"{i}. `{r['port'][len('proto/ports/'):]}`: **{r['time_ratio']:.2f}x** ({r['orig_s'] * 1e3:.0f} ms -> {r['port_s'] * 1e3:.0f} ms), "
+    return (f"{i}. `{r['port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`: **{r['time_ratio']:.2f}x** ({r['orig_s'] * 1e3:.0f} ms -> {r['port_s'] * 1e3:.0f} ms), "
             f"RSS {r['rss_ratio']:.2f}x ({r['orig_rss_kb'] / 1024:.0f} -> {r['port_rss_kb'] / 1024:.0f} MB), "
             f"{r['emitted_bytes'] / 1024:.1f} KB emitted, input: {r['input']}")
 
@@ -276,14 +276,14 @@ def report(meta, s, rows):
                 f"- **Runtime ratio over the {s['above_floor']} ports where either side runs {s['floor_ms']:.0f} ms or more:** {line(s['time_above_floor'])}." if heavy else "- No port ran long enough to time.",
                 f"- Runtime ratio over all {s['measured']}: {line(s['time_all'])}. Below {s['floor_ms']:.0f} ms a ratio is mostly process start-up, so the line above is the one to quote.",
                 f"- **Peak RSS ratio** over all {s['measured']}: {line(s['rss_all'])}." + (f" Over the {s['above_floor']} timed ones: {line(s['rss_above_floor'])}." if heavy else ""),
-                f"- **Largest emitted C++17 file: {s['max_emitted_bytes'] / 1024:.1f} KB** (`{s['largest_emitted_port'][len('proto/ports/'):]}`), over all {s['emitted_files']} port files `cpl build` accepts; "
+                f"- **Largest emitted C++17 file: {s['max_emitted_bytes'] / 1024:.1f} KB** (`{s['largest_emitted_port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`), over all {s['emitted_files']} port files `cpl build` accepts; "
                 + (f"{len(s['emitted_over_64kb'])} at or over 64 KB." if s["emitted_over_64kb"] else "none reaches 64 KB."), ""]
         over = [r for r in heavy if r["time_ratio"] >= TARGET_P95]
         out += [f"{len(over)} of the {len(heavy)} timed ports are at or over {TARGET_P95}x; for p95 to pass, at most {len(heavy) - math.ceil(0.95 * len(heavy))} may be.", "",
                 "## Top 20 runtime offenders", "", "Ranked by ratio among ports where either side runs at least " + f"{s['floor_ms']:.0f} ms.", ""]
         out += [offender(i, r) for i, r in enumerate(heavy[:20], 1)]
         out += ["", "## Top 10 peak-RSS offenders", ""]
-        out += [f"{i}. `{r['port'][len('proto/ports/'):]}`: **{r['rss_ratio']:.2f}x** ({r['orig_rss_kb'] / 1024:.1f} -> {r['port_rss_kb'] / 1024:.1f} MB), runtime {r['time_ratio']:.2f}x"
+        out += [f"{i}. `{r['port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`: **{r['rss_ratio']:.2f}x** ({r['orig_rss_kb'] / 1024:.1f} -> {r['port_rss_kb'] / 1024:.1f} MB), runtime {r['time_ratio']:.2f}x"
                 for i, r in enumerate(sorted(done, key=lambda r: -r["rss_ratio"])[:10], 1)]
         hand = sum(r["input"].startswith("judge limits") for r in done)
         out += ["", "## What was measured", "",

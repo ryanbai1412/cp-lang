@@ -1,4 +1,4 @@
-"""Minimal interactive judge harness for proto/ports/ecnerwala/gate.sh."""
+"""Minimal interactive judge harness for corpus/problems/<id>/interactor.py."""
 import subprocess
 import sys
 

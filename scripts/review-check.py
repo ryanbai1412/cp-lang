@@ -7,7 +7,7 @@
 
 A port is new when its name is not in research/reviews/baseline.json, the
 ports that existed when the review gate started. A new port fails --check
-when it has no proto/ports/<group>/dream/NAME.cp or no
+when it has no corpus/problems/<id>/dream.cp or no
 research/reviews/NAME.md. A review starts with a `Score: N/5` line, or
 `Score: pending` until the reviewer scores it (plan/PORTING.md).
 

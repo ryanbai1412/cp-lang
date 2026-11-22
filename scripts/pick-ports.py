@@ -4,7 +4,7 @@
 SOURCE_REPO is a clone of https://github.com/ecnerwala/contest-programming.
 A candidate must have an accepted submission by the author on Codeforces
 (the repo also holds unfinished drafts), a non-trivial original that prints
-output, and no port yet in proto/ports/ecnerwala/. The Codeforces API is
+output, and no port yet in corpus/problems/. The Codeforces API is
 read through a running Chrome (CDP on localhost:29229), as in
 fetch-statement.py. Prints the newest N candidates, one per line.
 """
