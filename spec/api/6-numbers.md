@@ -238,6 +238,14 @@ struct Item: w: 1..=1e9; v: 1..=1e9; id: V    # 12 B, ?Item 12 B
 - Tools: `cpl explain` layouts and peak memory, the `wide_array` lint,
   the build-time memory warning.
 
+## Later
+
+- **Vectorization by judge profile.** A profile names the instruction set
+  (`isa: avx2`); codegen emits the matching `#pragma GCC target` and, for
+  loops whose shape it can prove (narrow-width element loops, `Group` and
+  `Selective` folds, prefix scans), vectorizes them itself. `cpl explain`
+  says which loops vectorized and why the others didn't. Not designed yet.
+
 ## Open
 
 1. **Automatic field reordering.** It only removes padding, but C++
