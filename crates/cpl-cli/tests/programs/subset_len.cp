@@ -6,7 +6,7 @@ var ans = 0
 var empties = 0
 for mask in Subset<V>:
     if mask.is_empty: empties += 1
-    if all(not (u in mask and V(u.ord + 1) in mask) for u in V if u.ord + 1 < n):
+    if [u for u in V if u.ord + 1 < n].all(u => not (u in mask and V(u.ord + 1) in mask)):
         ans max= mask.len
 print(ans, empties)
 print(Subset<V>.empty.len, Subset<V>.full.len)

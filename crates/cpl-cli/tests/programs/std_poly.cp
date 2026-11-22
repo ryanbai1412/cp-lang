@@ -58,19 +58,19 @@ print(sh)
 print(yes(eval(sh, Z(5)) == eval(a, Z(8))))
 let xs = [Z(i * 3 + 1) for i in 0..40]
 let ev = eval_all(a, xs)
-print(all(ev[i] == eval(a, xs[i]) for i in 0..xs.len))
+print(yes((0..xs.len).all(i => ev[i] == eval(a, xs[i]))))
 let pn = pow(a, -3, 8)
 let pp = pow(a, 3, 8)
 let pid = convolve(pp, pn)
-print(pid[0].v == 1 and all(pid[i].v == 0 for i in 1..8))
+print(yes(pid[0].v == 1 and (1..8).all(i => pid[i].v == 0)))
 print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(0), Z(2), Z(3)], 6))
 print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(4), Z(2), Z(3)], 6))
 let ys_l = [eval(a, Z(i)) for i in 0..a.len]
-print(lagrange_at(ys_l, Z(100)) == eval(a, Z(100)))
+print(yes(lagrange_at(ys_l, Z(100)) == eval(a, Z(100))))
 print(yes(lagrange_at(ys_l, Z(3)) == ys_l[3]))
 let xs_i = [Z(i * 2 + 1) for i in 0..a.len]
 let ys_i = [eval(a, x) for x in xs_i]
 print(yes(interpolate(xs_i, ys_i) == a))
 let big_p = [Z((i * 7 + 1) % 31) for i in 0..68]
 let big_x = [Z(i * 3 + 2) for i in 0..68]
-print(interpolate(big_x, eval_all(big_p, big_x)) == big_p)
+print(yes(interpolate(big_x, eval_all(big_p, big_x)) == big_p))

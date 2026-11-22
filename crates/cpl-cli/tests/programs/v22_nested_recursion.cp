@@ -26,7 +26,7 @@ fn solve():
     print(order)
 
     // A nested fn that calls another nested fn, which calls itself.
-    fn depth(u: Int, p: Int) -> Int = max(0, max(depth(v, u) + 1 for v in g[u] if v != p) ?? 0)
+    fn depth(u: Int, p: Int) -> Int = max(0, [depth(v, u) + 1 for v in g[u] if v != p].max() ?? 0)
     fn deepest() -> Int = depth(0, -1)
     print(deepest())
 
@@ -39,4 +39,4 @@ fn mark(u: Int):
 
 solve()
 mark(1)
-print(count(seen[i] for i in 0..16))
+print(count(i for i in 0..16 if seen[i]))
