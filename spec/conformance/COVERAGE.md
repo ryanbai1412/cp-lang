@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1416 (995 passing). Rules: 521.
+Cases: 1419 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 45 case(s)
+- R0401 Assertion failed: 46 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -776,8 +776,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (29/30 named by a case)
   - uncovered: `flip_action`
 - **marks** (46/46 named by a case)
-- **math** (69/83 named by a case)
-  - uncovered: `fixed`, `sieve_multiplicative`, `splitmix64`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
+- **math** (71/83 named by a case)
+  - uncovered: `fixed`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (59/63 named by a case)
   - uncovered: `Mat.new`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (5/6 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1934 of 2222 std items are named by a case.
+1936 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
