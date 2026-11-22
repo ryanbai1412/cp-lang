@@ -1366,7 +1366,8 @@ fn a_range_or_span_stays_in_one_domain() {
 #[test]
 #[ignore = "spec/conformance/diagnostics/max-of-a-slice-is-optional.cp"]
 fn the_max_of_a_slice_is_optional() {
-    let head = "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first!\n";
+    let head =
+        "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first!\n";
     let empty = one(&format!("{head}let k: Int = a[f..f].max()\n"));
     assert_eq!(
         empty.message,
@@ -2682,8 +2683,14 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
         ["E0401"]
     );
     assert_eq!(codes("var xs = [1, 2, 3, 4]\nxs.rev.sort()\n"), ["E0401"]);
-    assert_eq!(codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"), ["E0401", "L0605"]);
-    assert_eq!(codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"), ["E0401", "L0605"]);
+    assert_eq!(
+        codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
+        ["E0401", "L0605"]
+    );
+    assert_eq!(
+        codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"),
+        ["E0401", "L0605"]
+    );
 
     // Returning a view escapes its lending block (E0603); copying explicitly succeeds.
     assert_eq!(codes("fn bad(s: Str) -> Str:\n    s[1..3]\n"), ["E0603"]);
@@ -2795,7 +2802,6 @@ print(total, outer())
 ";
     assert_eq!(check(ok), vec![]);
 }
-
 
 #[test]
 fn generic_struct_ctor_unifies_caller_type_params_in_nested_fields() {
@@ -3195,7 +3201,6 @@ print(b)
         "expected E0302 when assigning `[A]Int` map result to `[B]Int`, got: {errs:?}"
     );
 }
-
 
 #[test]
 fn enum_array_literal_coercion_checks_variant_count() {
@@ -3645,8 +3650,7 @@ fn ask_conversions_and_rand_cost_o1_for_values_of_a_fixed_size() {
 
 #[test]
 fn a_method_cost_names_the_receivers_domain_for_the_structs() {
-    let src =
-        "domain V = 0..10\nfn f(bit: Fenwick<V, Int>, v: V) -> Int:\n    \
+    let src = "domain V = 0..10\nfn f(bit: Fenwick<V, Int>, v: V) -> Int:\n    \
                bit.prefix(v.l)\n";
     let mut db = Database::new();
     db.set_file("a.cp", src);
@@ -3683,7 +3687,6 @@ fn read_with_a_fixed_type_argument_and_a_choice_of_fixed_text_cost_o1() {
     assert_eq!(hover(&mut db, 2, "read"), None);
 }
 
-
 #[test]
 fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
     let src = "domain Pos = 1..=10\nenum Axis = X | Y\nenum Shape = Dot | Box(Int)\n\
@@ -3707,7 +3710,6 @@ fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
     assert_eq!(cost(&mut db, 1, "print").as_deref(), Some("O(1)"));
     assert_eq!(cost(&mut db, 2, "read"), None);
 }
-
 
 #[test]
 fn a_number_made_into_a_position_or_a_modular_number_costs_o1() {
