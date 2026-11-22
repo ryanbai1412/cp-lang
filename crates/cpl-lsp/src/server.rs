@@ -1513,6 +1513,40 @@ fn fn_call_costs(
 ) -> (Vec<String>, Option<(f64, Option<String>)>) {
     const MOST: usize = 4;
     const LONGEST: usize = 100;
+    let (mut out, evaluated, documented) = fn_documented(db, uri, f, facts);
+    if out.len() > MOST {
+        let more = out.len() - MOST;
+        out.truncate(MOST);
+        out.push(format!("and {more} more"));
+    }
+    let extra = fn_extra(db, uri, f, &evaluated, facts, 0);
+    let total = extra.and_then(|(steps, terms)| {
+        let loops = f.steps?;
+        let shown = loops > 0 || documented || terms.as_ref().is_some_and(|t| !t.is_empty());
+        let terms = terms.map(|t| match (loops, &f.count) {
+            (0, _) => Some(t),
+            (_, Some(c)) => Some(std::iter::once(c.clone()).chain(t).collect()),
+            (_, None) => None,
+        });
+        shown.then_some((loops as f64 + steps, terms.flatten()))
+    });
+    let total = total.map(|(steps, terms)| {
+        let cost = terms.map(|t: Vec<String>| format!("O({})", t.join(" + "))).filter(|c| c.len() <= LONGEST);
+        (steps, cost)
+    });
+    (out, total)
+}
+
+/// The calls in `f`'s body with a documented cost, each described with how
+/// often it runs; the steps of those that can be evaluated, by span, with
+/// their `O(..)` terms; and whether any call has a documented cost.
+#[allow(clippy::type_complexity)]
+fn fn_documented(
+    db: &mut cpl_check::Database,
+    uri: &str,
+    f: &cpl_lint::ProvenFn,
+    facts: &Proven,
+) -> (Vec<String>, Vec<(Span, f64, Option<String>)>, bool) {
     let mut out = Vec::new();
     let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
@@ -1571,38 +1605,28 @@ fn fn_call_costs(
         };
         out.push(format!("{name} {cost} {times}"));
     }
-    if out.len() > MOST {
-        let more = out.len() - MOST;
-        out.truncate(MOST);
-        out.push(format!("and {more} more"));
-    }
-    let total = fn_total(db, uri, f, &evaluated).filter(|_| f.steps.is_some_and(|s| s > 0) || !costs.is_empty());
-    let total = total.map(|(steps, terms)| {
-        let cost = terms.map(|t| format!("O({})", t.join(" + "))).filter(|c| c.len() <= LONGEST);
-        (steps, cost)
-    });
-    (out, total)
+    (out, evaluated, !costs.is_empty())
 }
 
-/// One call of `f` at max input: its loop iterations, plus each call's
-/// steps times how often it runs, a documented `O(1)` call counting one
-/// step; `None` if a loop or call is uncounted. With it, the `O(..)` terms.
-fn fn_total(
+/// The steps one call of `f` takes at max input beyond the loop iterations
+/// `f.steps` counts: each call's steps times how often it runs, a
+/// documented `O(1)` call counting one step, and the same for each fn in
+/// the file it calls; `None` if a loop or call is uncounted. With it, the
+/// `O(..)` terms of the calls with a stated cost.
+fn fn_extra(
     db: &mut cpl_check::Database,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     evaluated: &[(Span, f64, Option<String>)],
+    facts: &Proven,
+    depth: usize,
 ) -> Option<(f64, Option<Vec<String>>)> {
-    let loops = f.steps?;
-    if f.runs.iter().any(|r| r.times.is_none()) {
+    f.steps?;
+    if depth > 16 || f.runs.iter().any(|r| r.times.is_none()) {
         return None;
     }
-    let mut steps = loops as f64;
-    let mut terms = match (loops, &f.count) {
-        (0, _) => Some(Vec::new()),
-        (_, Some(c)) => Some(vec![c.clone()]),
-        (_, None) => None,
-    };
+    let mut steps = 0.0;
+    let mut terms = Some(Vec::new());
     for &(start, end) in &f.callees {
         if let Some((_, s, term)) = evaluated.iter().find(|(span, ..)| span.start == start && span.end == end) {
             steps += s;
@@ -1625,6 +1649,26 @@ fn fn_total(
         let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;
         let run = f.runs.iter().filter(inside).min_by_key(|r| r.span.1 - r.span.0);
         steps += run.map_or(Some(1), |r| r.times)? as f64;
+    }
+    for helper in &f.helpers {
+        let callee = facts.fns().iter().find(|g| g.name == helper.callee)?.clone();
+        let (_, evaluated, _) = fn_documented(db, uri, &callee, facts);
+        let (each, each_terms) = fn_extra(db, uri, &callee, &evaluated, facts, depth + 1)?;
+        steps += each * helper.times? as f64;
+        let each_terms = each_terms.filter(|t| !t.is_empty()).map(|t| t.join(" + "));
+        terms = match (terms, each_terms, &helper.count) {
+            (terms, None, _) => terms,
+            (Some(mut t), Some(each), None) => {
+                t.push(each);
+                Some(t)
+            }
+            (Some(mut t), Some(each), Some(c)) => {
+                let c = if c.contains(' ') { format!("({c})") } else { c.clone() };
+                t.push(format!("{c} * ({each})"));
+                Some(t)
+            }
+            _ => None,
+        };
     }
     Some((steps, terms))
 }

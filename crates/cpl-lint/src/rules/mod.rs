@@ -135,6 +135,18 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
                     .filter(|(name, _)| name.as_ref().is_some_and(|n| structs.0.contains(n)))
                     .map(|(_, at)| *at)
                     .collect(),
+                helpers: f
+                    .calls
+                    .iter()
+                    .filter_map(|call| {
+                        Some(crate::Helper {
+                            at: call.at,
+                            callee: fns[*by_name.get(call.callee.as_str())?].at,
+                            times: call.times,
+                            count: call.chain.as_ref().filter(|c| !c.is_empty()).map(|c| render_count(file, c)),
+                        })
+                    })
+                    .collect(),
             }
         })
         .collect()
@@ -170,6 +182,7 @@ type RunCost = ((u32, u32), Option<u128>, Option<Vec<Factor>>);
 /// around it (`None` in a lambda, table or comprehension).
 struct Call {
     callee: String,
+    at: u32,
     times: Option<u128>,
     chain: Option<Vec<Factor>>,
 }
@@ -1062,7 +1075,7 @@ fn ranges_of_stmt(
                         .map(|(name, at)| {
                             let at = base + at;
                             if hidden.iter().any(|&(s, e)| inside(at, (base + s, base + e))) {
-                                return Call { callee: name, times: None, chain: None };
+                                return Call { callee: name, at, times: None, chain: None };
                             }
                             let stmts = &proven.loop_stmts[first..];
                             let innermost = (0..loops.len())
@@ -1070,6 +1083,7 @@ fn ranges_of_stmt(
                                 .min_by_key(|&i| stmts[i].1 - stmts[i].0);
                             Call {
                                 callee: name,
+                                at,
                                 times: innermost.map_or(Some(1), |i| loops[i].total),
                                 chain: Some(innermost.map_or(Vec::new(), |i| proven.loop_factors[first + i].clone())),
                             }

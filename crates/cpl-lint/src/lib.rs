@@ -600,6 +600,20 @@ pub struct ProvenFn {
     /// Where it builds a struct declared in the file, one step each: the
     /// fields only move in.
     pub builds: Vec<(u32, u32)>,
+    /// Each call of a fn in the file, whose loops `steps` counts but whose
+    /// other costs it leaves to the caller.
+    pub helpers: Vec<Helper>,
+}
+
+/// A call by name of a fn in the file: where, the name of the fn called,
+/// and how often the call runs per call of the caller.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Helper {
+    pub at: u32,
+    pub callee: (u32, u32),
+    pub times: Option<u128>,
+    /// `times` in the source's terms; `None` when it runs once.
+    pub count: Option<String>,
 }
 
 /// A part of a fn's body and how often it runs per call of the fn: `None`

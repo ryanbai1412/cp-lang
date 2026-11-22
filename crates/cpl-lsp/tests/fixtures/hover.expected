@@ -9,9 +9,9 @@ help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone al
 help: `let left = bsearch_first(.., at => ..)`: the predicate must be monotone along the range
 59:9-59:22 L0505 `u` is only used as `g[u]`
 help: iterate the values: `for x in g:`
-96:5-99:5 L0504 a loop that only accumulates `best` is one `max`
+99:5-102:5 L0504 a loop that only accumulates `best` is one `max`
 help: write `max(cells[v] for v in V)`
-96:9-96:13 L0203 this local hides the top-level `best`
+99:9-99:13 L0203 this local hides the top-level `best`
 help: from here on `best` means the local; give it another name if the top-level one is meant below
 11:12-11:23 overflow `area * area` overflows Int when n = 55109
 11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
@@ -192,7 +192,7 @@ fn scan()
 == hover @ 76:6
 ```cp
 fn rescan()
-  estimated cost: O(3 + 3 * n + 3 * n * k), about 4800003 (4.8e6) steps at max input
+  estimated cost: O(3 + 3 * n + 3 * n * k), about 9000003 (9e6) steps at max input
 ```
 
 == hover @ 79:6
@@ -235,12 +235,18 @@ The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like 
 
 == hover @ 89:8
 ```cp
+fn reorder(cells: [V]Int)
+  estimated cost: O(k + k * k + k * (k * (k log k) + k * (n log n))), about 172575545 (1.7e8) steps at max input
+```
+
+== hover @ 92:8
+```cp
 fn collect() -> Int
   documented costs: seen.sorted O((n * k) log (n * k)), about 28583794 (2.9e7) steps, once
   estimated cost: O(n + n * k + (n * k) log (n * k)), about 31583794 (3.2e7) steps at max input
 ```
 
-== hover @ 94:12
+== hover @ 97:12
 ```cp
 sorted() -> List<T>
 cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
@@ -248,39 +254,39 @@ cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000
 
 A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 
-== hover @ 95:7
+== hover @ 98:7
 ```cp
 fn tally(cells: [V]Int) -> Int
   documented costs: cells.sorted O(n log n), about 3521929 (3.5e6) steps, once
   estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max input
 ```
 
-== hover @ 101:6
+== hover @ 104:6
 ```cp
 fn spread(cells: [V]Int) -> Int
   estimated cost: O(n), about 600001 (6e5) steps at max input
 ```
 
-== hover @ 111:6
+== hover @ 114:6
 ```cp
 fn widest(cells: [V]Int) -> Span
   estimated cost: O(n), about 800001 (8e5) steps at max input
 ```
 
-== hover @ 117:6
+== hover @ 120:6
 ```cp
 fn echo()
   estimated cost: O(n), about 600000 (6e5) steps at max input
 ```
 
-== hover @ 121:7
+== hover @ 124:7
 ```cp
 fn prefixes(bit: Fenwick<V, Int>)
   documented costs: bit.sum O(log |V|), about 18 steps each, n = 200000 (2e5) times
   estimated cost: O(n + n * (log |V|)), about 3921929 (3.9e6) steps at max input
 ```
 
-== hover @ 123:20
+== hover @ 126:20
 ```cp
 sum: fn(r: Range<V>) -> Int
 cost: O(log |V|)
@@ -288,14 +294,14 @@ cost: O(log |V|)
 
 The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
 
-== hover @ 124:6
+== hover @ 127:6
 ```cp
 fn show(cells: [V]Int)
   documented costs: print O(|V|), about 200000 (2e5) steps each, k = 7 times
   estimated cost: O(k + k * (|V|)), about 1400007 (1.4e6) steps at max input
 ```
 
-== hover @ 126:10
+== hover @ 129:10
 ```cp
 print: built-in
 cost: O(|V|)
@@ -303,14 +309,14 @@ cost: O(|V|)
 
 Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.
 
-== hover @ 127:6
+== hover @ 130:6
 ```cp
 fn gather()
   documented costs: print O(k), about 7 steps, once
   estimated cost: O(k + k), about 28 steps at max input
 ```
 
-== hover @ 132:6
+== hover @ 135:6
 ```cp
 print: built-in
 cost: O(got.len)
@@ -318,7 +324,7 @@ cost: O(got.len)
 
 Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.
 
-== hover @ 133:10
+== hover @ 136:10
 ```cp
 struct Edge
   to: V  // at 0, 4 bytes
@@ -329,35 +335,35 @@ struct Edge
   storage: 24 bytes, aligned to 8
 ```
 
-== hover @ 137:6
+== hover @ 140:6
 ```cp
 es: [V]Edge
   domain V = 1..=n, n <= 2e5
   storage: 24 bytes per element, 4.8 MB max (fields at 0, 8, 16; 11 bytes padding)
 ```
 
-== hover @ 138:7
+== hover @ 141:7
 ```cp
 flag: [V]?Bool
   domain V = 1..=n, n <= 2e5
   storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for none)
 ```
 
-== hover @ 139:7
+== hover @ 142:7
 ```cp
 pairs: [V](V, Int)
   domain V = 1..=n, n <= 2e5
   storage: 16 bytes per element, 3.2 MB max (fields at 0, 8; 4 bytes padding)
 ```
 
-== hover @ 140:7
+== hover @ 143:7
 ```cp
 adj: [V]List<V>
   domain V = 1..=n, n <= 2e5
   storage: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 141:10
+== hover @ 144:10
 ```cp
 struct Runs
   first: [V]Int
@@ -365,14 +371,14 @@ struct Runs
   storage: first: 8 bytes per element, seen: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 144:7
+== hover @ 147:7
 ```cp
 names: [V](name: Str, t: 1..=1000)
   domain V = 1..=n, n <= 2e5
   storage: per element, name: grows on the heap, t: 2 bytes
 ```
 
-== hover @ 145:7
+== hover @ 148:7
 ```cp
 dists: [V][V]?Int
   domain V = 1..=n, n <= 2e5

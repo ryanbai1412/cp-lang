@@ -86,6 +86,9 @@ fn ord$0er(cells: [V]Int):
     for j in 0..k:
         print(pts.sorted().len, cells.so$0rted().len)
 print(pts.so$0rted().len)
+fn reor$0der(cells: [V]Int):
+    for j in 0..k:
+        order(cells)
 fn coll$0ect() -> Int:
     var seen: List<Int> = []
     for v in V:

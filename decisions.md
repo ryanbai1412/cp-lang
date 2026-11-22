@@ -5555,3 +5555,20 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   come out over the limit.
 - **Reverse.** Drop the `cpl_lint::list_sizes` lookup in `memory_lens` in
   `cpl-lsp`'s `server.rs`.
+
+## 206. A fn's estimated cost includes what the fns it calls cost (2026-11-22)
+
+- **Decision.** A fn's estimated cost now adds, for each call of a fn in
+  the same file, that fn's documented and fixed-cost calls times how often
+  the call runs. Before, only the called fn's loop iterations were added,
+  so `for j in 0..k: order(cells)` with `order` sorting `cells` hovered
+  `O(k)`, about 7 steps. Now it hovers `O(k + k * (n log n))`. If the
+  called fn has a call with no stated cost, the caller gets no estimate.
+  The `O(..)` terms leave out fixed-cost calls, as a fn's own do.
+- **Why.** The old total was an undercount whenever a helper did work other
+  than loops, which breaks the rule that an estimate is never an
+  undercount. On the 1,332 fns in `corpus/problems` ports, 2 lose an
+  estimate that was too low (`cf2157f`'s `best_plan` calls `choose`, which
+  states no cost) and none gain one, leaving 37.
+- **Reverse.** Drop the `helpers` loop in `fn_extra` in `cpl-lsp`'s
+  `server.rs` and `ProvenFn::helpers` in `cpl-lint`.
