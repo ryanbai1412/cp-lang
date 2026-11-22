@@ -28,3 +28,6 @@ hill-climb:
 
 The dream and the spec-compliant solution for a problem live beside its
 record as `problems/<problem>/dream.cp` and `problems/<problem>/spec.cp`.
+
+`hillclimb.json` is the reproducible 100-problem set for the spec
+hill-climb; progress is the `dream` and `spec` fields of those records.
