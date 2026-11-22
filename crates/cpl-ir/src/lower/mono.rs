@@ -1503,6 +1503,21 @@ impl<'a> Lowerer<'a> {
                             _ => None,
                         }
                     });
+                    // `flatten<S: Seq, U: Seq, T>(self: S)`: a `Seq` generic no parameter
+                    // names is the element of `S`, and `T` is the element of that.
+                    let inner = decl.bounds.iter().find(|b| {
+                        !inferred.contains_key(&b.name.text)
+                            && b.traits.iter().any(|tr| matches!(&tr.kind, ast::TypeKind::Named { name, .. } if name.text == "Seq"))
+                            && !ast_params.iter().any(|p| p.ty.as_ref().is_some_and(|t| ty_mentions(t, &b.name.text)))
+                    });
+                    let elem_ty = match (inner, elem_ty) {
+                        (Some(u), Some(ety)) => {
+                            let inner_elem = ety.seq_elem();
+                            inferred.insert(u.name.text.clone(), GenArg::Ty(ety));
+                            inner_elem
+                        }
+                        (_, ety) => ety,
+                    };
                     if let Some(ety) = elem_ty {
                         inferred.insert("T".to_string(), GenArg::Ty(ety));
                     }
@@ -3242,5 +3257,19 @@ fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
             Some((*ends.iter().min()?, *ends.iter().max()?))
         }
         _ => None,
+    }
+}
+
+fn ty_mentions(t: &ast::Type, name: &str) -> bool {
+    match &t.kind {
+        ast::TypeKind::Named { name: n, args } => n.text == name || args.iter().any(|a| ty_mentions(a, name)),
+        ast::TypeKind::Array { index, elem } => index.iter().any(|i| ty_mentions(i, name)) || ty_mentions(elem, name),
+        ast::TypeKind::OwnDomain { elem, .. } | ast::TypeKind::Optional(elem) | ast::TypeKind::Yields(elem) => {
+            ty_mentions(elem, name)
+        }
+        ast::TypeKind::Tuple(items) => items.iter().any(|i| ty_mentions(i, name)),
+        ast::TypeKind::Record(fields) => fields.iter().any(|(_, f)| ty_mentions(f, name)),
+        ast::TypeKind::Fn { params, ret } => params.iter().any(|p| ty_mentions(p, name)) || ty_mentions(ret, name),
+        _ => false,
     }
 }
