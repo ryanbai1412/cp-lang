@@ -1613,6 +1613,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn memo_fits(
         &mut self,
         f: &ast::FnDecl,

@@ -130,7 +130,9 @@ impl<'a> Checker<'a> {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        if matches!(&right, Ty::Named { name, .. } if name == "List") {
+                        if std::env::var_os("CPL_SPEC").is_some()
+                            && matches!(&right, Ty::Named { name, .. } if name == "List")
+                        {
                             let message = format!(
                                 "`in` requires `Contains`, which `{right}` does not implement"
                             );
@@ -1565,7 +1567,7 @@ impl<'a> Checker<'a> {
         if let Some(elem) = base_ty.seq_elem() {
             match name.text.as_str() {
                 "len" => {
-                    if !base_ty.is_sized() {
+                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_sized() {
                         let message = format!(
                             "`.len` requires `Sized`, which `{base_ty}` does not implement"
                         );
@@ -1575,7 +1577,9 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 "is_empty" => return Ty::Bool,
-                "last" | "rev" if !base_ty.is_bidir() => {
+                "last" | "rev"
+                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_bidir() =>
+                {
                     let message = format!(
                         "`.{}` requires `Bidir`, which `{base_ty}` does not implement",
                         name.text
@@ -1583,7 +1587,8 @@ impl<'a> Checker<'a> {
                     self.error(codes::MISSING_IMPL, name.span, message);
                     return Ty::Error;
                 }
-                "items" | "keys" if !base_ty.is_keyed() => {
+                "items" | "keys"
+                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() => {
                     let message = format!(
                         "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
                         name.text

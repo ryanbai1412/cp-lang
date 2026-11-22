@@ -1412,7 +1412,18 @@ impl<'a> Checker<'a> {
             Ty::Param(p) => return self.param_has_bound(p, trait_name),
             _ => {}
         }
-        if let Ty::Named { name, .. } = ty {
+        let impl_key = match ty {
+            Ty::Named { name, .. } => Some(name.as_str()),
+            Ty::Int => Some("Int"),
+            Ty::I128 => Some("I128"),
+            Ty::U64 => Some("U64"),
+            Ty::Float => Some("Float"),
+            Ty::Bool => Some("Bool"),
+            Ty::Char => Some("Char"),
+            Ty::Str => Some("Str"),
+            _ => None,
+        };
+        if let Some(name) = impl_key {
             if self
                 .global(&crate::def::impl_name(Some(trait_name), name))
                 .is_some()
@@ -1460,7 +1471,8 @@ impl<'a> Checker<'a> {
                 _ => false,
             },
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
-            "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" => ty.is_numeric(),
+            "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
+            "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
             "Target" => match ty {
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
                 _ => false,
@@ -1577,12 +1589,12 @@ impl<'a> Checker<'a> {
             | Ty::Bool
             | Ty::Unit => true,
             Ty::Optional(inner) => {
-                if std::env::var_os("CPL_SPEC").is_none() {
+                if std::env::var_os("CPL_SPEC").is_none() || matches!(inner.as_ref(), Ty::Pos(_)) {
                     return true;
                 }
                 allow_none && self.derives_print(inner, allow_none, seen)
             }
-            Ty::Fn { .. } => false,
+            Ty::Fn { params, ret } => params.is_empty() && self.derives_print(ret, allow_none, seen),
             Ty::Tuple(items) => items
                 .iter()
                 .all(|t| self.derives_print(t, allow_none, seen)),

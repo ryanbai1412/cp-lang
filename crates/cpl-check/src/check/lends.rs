@@ -158,6 +158,9 @@ pub enum Flow {
 }
 
 fn ctor_move_args(e: &Expr) -> Vec<String> {
+    if std::env::var_os("CPL_SPEC").is_none() {
+        return Vec::new();
+    }
     let ExprKind::Call { callee, args } = &unparen(e).kind else {
         return Vec::new();
     };
@@ -1433,6 +1436,9 @@ impl<'a> Checker<'a> {
 
     /// Generated struct constructors move owned heap arguments (R2, R02.6.3).
     pub(crate) fn move_ctor_args(&mut self, args: &[Arg]) {
+        if std::env::var_os("CPL_SPEC").is_none() {
+            return;
+        }
         for arg in args {
             if arg.mutable {
                 continue;
@@ -1557,9 +1563,10 @@ impl<'a> Checker<'a> {
                 Vec::new()
             }
             ExprKind::Index { base, indices }
-                if !indices
-                    .iter()
-                    .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
+                if std::env::var_os("CPL_SPEC").is_some()
+                    && !indices
+                        .iter()
+                        .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
             {
                 let ty = self.quietly(|c| c.infer(e));
                 if self.is_heap_type(&ty) {

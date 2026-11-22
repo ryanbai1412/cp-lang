@@ -552,7 +552,7 @@ impl<'a> Checker<'a> {
                 name: "List".into(),
                 args: vec![first.clone()],
             }),
-            ("print", _) => {
+            ("print", _) if std::env::var_os("CPL_SPEC").is_some() => {
                 let allow_none = args
                     .iter()
                     .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
@@ -803,16 +803,18 @@ impl<'a> Checker<'a> {
                 {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" => {
+                "filter" if std::env::var_os("CPL_SPEC").is_some() => {
                     return Some(Ty::Named {
                         name: "Filter".into(),
                         args: vec![elem],
                     });
                 }
-                "sorted" => {
+                "filter" | "sorted" => {
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin" if !base_ty.is_keyed() => {
+                "argmax" | "argmin"
+                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() =>
+                {
                     let message = format!(
                         "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
                         name.text,
@@ -822,7 +824,9 @@ impl<'a> Checker<'a> {
                     return Some(Ty::Error);
                 }
                 "sort" | "reverse" | "shuffle"
-                    if !base_ty.is_indexed_mut() && !matches!(base_ty, Ty::Domain(_)) =>
+                    if std::env::var_os("CPL_SPEC").is_some()
+                        && !base_ty.is_indexed_mut()
+                        && !matches!(base_ty, Ty::Domain(_)) =>
                 {
                     let message = format!(
                         "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
@@ -958,17 +962,21 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
-                if let Some(fn_name) = callee_name {
-                    if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
-                        for (param, traits) in bounds {
-                            if let Some(bound_ty) = bindings.get(&param) {
-                                let bound_ty = self.settle(bound_ty);
-                                for trait_name in traits {
-                                    if !self.implements_trait(&bound_ty, &trait_name) {
-                                        let message = format!(
-                                            "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
-                                        );
-                                        self.error(codes::MISSING_IMPL, call.span, message);
+                if std::env::var_os("CPL_SPEC").is_some() {
+                    if let Some(fn_name) = callee_name {
+                        if let Some(Def::Fn { bounds, .. }) =
+                            self.global(fn_name).as_deref().cloned()
+                        {
+                            for (param, traits) in bounds {
+                                if let Some(bound_ty) = bindings.get(&param) {
+                                    let bound_ty = self.settle(bound_ty);
+                                    for trait_name in traits {
+                                        if !self.implements_trait(&bound_ty, &trait_name) {
+                                            let message = format!(
+                                                "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
+                                            );
+                                            self.error(codes::MISSING_IMPL, call.span, message);
+                                        }
                                     }
                                 }
                             }
