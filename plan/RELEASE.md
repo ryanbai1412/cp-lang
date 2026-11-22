@@ -171,7 +171,7 @@ lock refs can be deleted: that is the queue they emulate.
 2. **Corpus:** problem statements plus Ryan's and Andrew's code stay public
    (decided).
 3. **History:** nothing sensitive anywhere in history: secrets, internal
-   hosts, session links, home paths, and anything about Cognition or its
+   hosts, session links, home paths, and anything about the employer or its
    environments, including commit author names and emails. Scan everything
    (gitleaks plus a pattern scan of every blob and commit message), then
    either publish a fresh repo with one clean commit (recommended) or
