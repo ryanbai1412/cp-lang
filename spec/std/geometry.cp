@@ -2154,7 +2154,11 @@ fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
 /// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]) == 1.0`
 /// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0`
 /// example: `close(circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), [Vec(-2.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(-2.0, 2.0)]), PI)`
-pub fn circle_polygon_area(circle: Circle, poly: List<Vec>, eps: F64 = 1e-9) -> F64 = todo
+pub fn circle_polygon_area(circle: Circle, poly: List<Vec>, eps: F64 = 1e-9) -> F64:
+    var acc = 0.0
+    for i in 0..poly.len:
+        acc += tri_circle_area(poly[i] - circle.c, poly[(i + 1) % poly.len] - circle.c, circle.r, eps)
+    acc
 
 // ---- Shamos-Hoey segment intersection detection
 
@@ -2348,14 +2352,14 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
         if ev.kind == 1:
             if not strict:
                 if last_vert_id != -1 and last_vert_x == cur_x and last_vert_hi >= lo[id].y:
-                    return Some((last_vert_id, id))
+                    return Some((min(last_vert_id, id), max(last_vert_id, id)))
                 if last_vert_id == -1 or last_vert_x != cur_x or hi[id].y > last_vert_hi:
                     last_vert_x = cur_x
                     last_vert_hi = hi[id].y
                     last_vert_id = id
             let cand = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
             if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
-                return Some((id, cand))
+                return Some((min(id, cand), max(id, cand)))
         elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
             let lo_id = lo[id]
             let hi_id = hi[id]
@@ -2374,9 +2378,9 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
             let pred = sh_rightmost(l, right_ch)
             let succ = sh_leftmost(r, left_ch)
             if pred != -1 and segments_meet(lo_id, hi_id, lo[pred], hi[pred], strict:):
-                return Some((id, pred))
+                return Some((min(id, pred), max(id, pred)))
             if succ != -1 and segments_meet(lo_id, hi_id, lo[succ], hi[succ], strict:):
-                return Some((id, succ))
+                return Some((min(id, succ), max(id, succ)))
             let lm = sh_merge(l, id, mut left_ch, mut right_ch, prio)
             root = sh_merge(lm, r, mut left_ch, mut right_ch, prio)
         else:
@@ -2404,7 +2408,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
                 hi[succ],
                 strict:,
             ):
-                return Some((pred, succ))
+                return Some((min(pred, succ), max(pred, succ)))
             root = sh_merge(l, r, mut left_ch, mut right_ch, prio)
     None
 
@@ -2416,7 +2420,11 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
 /// ties: the first meeting pair found by the sweep, `a` before `b` in key order
 /// traps: never
 /// example: `any_segments_meet_idx([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))]) == Some((0, 1))`
-pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D) = todo
+pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D):
+    let keys = [k for k in D]
+    if let (i, j) = any_segments_meet([segs[k] for k in keys], strict:):
+        return Some((keys[i], keys[j]))
+    None
 
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
 
@@ -2704,7 +2712,140 @@ fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool:
 /// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
 /// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(4, 0, 0), Pt3(0, 4, 0), Pt3(0, 0, 4), Pt3(1, 1, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
 /// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0)]) == []`
-pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> = todo
+pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
+    let n = pts.len
+    var order = [i for i in 0..n]
+    sort(mut order, by: i => (pts[i].x, pts[i].y, pts[i].z, i))
+    var ids: List<Int> = []
+    for t in 0..n:
+        if t == 0 or pts[order[t]] != pts[order[t - 1]]: ids.push(order[t])
+    sort(mut ids)
+    if ids.len < 4: return []
+    let i0 = ids[0]
+    let i1 = ids[1]
+    var i2 = -1
+    for i in ids:
+        if i != i0 and i != i1 and not col3(pts[i0], pts[i1], pts[i]):
+            i2 = i
+            break
+    if i2 == -1: return []
+    var i3 = -1
+    for i in ids:
+        if face_side128(pts[i0], pts[i1], pts[i2], pts[i]) != I128(0):
+            i3 = i
+            break
+    if i3 == -1: return []
+    var faces: List<(Int, Int, Int)> = if face_side128(pts[i0], pts[i1], pts[i2], pts[i3]) > I128(0):
+        [(i0, i2, i1), (i0, i1, i3), (i1, i2, i3), (i2, i0, i3)]
+    else:
+        [(i0, i1, i2), (i0, i3, i1), (i1, i3, i2), (i2, i3, i0)]
+    var bucket: List<List<Int>> = [[] for _ in 0..n]
+    for i in ids:
+        if i == i0 or i == i1 or i == i2 or i == i3: continue
+        var vis = [face_side128(pts[f.0], pts[f.1], pts[f.2], pts[i]) > I128(0) for f in faces]
+        if not vis.any(v => v): continue
+        var touched: List<Int> = []
+        for k in 0..faces.len:
+            if vis[k]:
+                let (a, b, c) = faces[k]
+                for (u, v) in [(a, b), (b, c), (c, a)]:
+                    bucket[u].push(v)
+                    touched.push(u)
+        var kept: List<(Int, Int, Int)> = []
+        for k in 0..faces.len:
+            if not vis[k]: kept.push(faces[k])
+        for k in 0..faces.len:
+            if vis[k]:
+                let (a, b, c) = faces[k]
+                for (u, v) in [(a, b), (b, c), (c, a)]:
+                    if not bucket[v].any(w => w == u): kept.push((u, v, i))
+        for u in touched: bucket[u].clear()
+        faces = kept
+    hull3_facets(pts, faces)
+
+fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int, Int)>:
+    let n = pts.len
+    let m = faces.len
+    var by_edge: List<List<(v: Int, f: Int)>> = [[] for _ in 0..n]
+    for k in 0..m:
+        let (a, b, c) = faces[k]
+        for (u, v) in [(a, b), (b, c), (c, a)]: by_edge[u].push((v: v, f: k))
+    var up = [k for k in 0..m]
+    fn find(mut up: List<Int>, x: Int) -> Int:
+        var r = x
+        while up[r] != r: r = up[r]
+        var y = x
+        while up[y] != r:
+            let nx = up[y]
+            up[y] = r
+            y = nx
+        r
+    for k in 0..m:
+        let (a, b, c) = faces[k]
+        for (u, v) in [(a, b), (b, c), (c, a)]:
+            for e in by_edge[v]:
+                if e.v == u:
+                    let g = faces[e.f]
+                    if face_side128(pts[a], pts[b], pts[c], pts[g.0]) == I128(0) and face_side128(pts[a], pts[b], pts[c], pts[g.1]) == I128(0) and face_side128(pts[a], pts[b], pts[c], pts[g.2]) == I128(0):
+                        let ra = find(mut up, k)
+                        let rb = find(mut up, e.f)
+                        if ra != rb: up[ra] = rb
+    var members: List<List<Int>> = [[] for _ in 0..m]
+    for k in 0..m:
+        let (a, b, c) = faces[k]
+        let r = find(mut up, k)
+        members[r].push(a)
+        members[r].push(b)
+        members[r].push(c)
+    var out: List<(Int, Int, Int)> = []
+    for k in 0..m:
+        if members[k].is_empty: continue
+        let (a, b, c) = faces[k]
+        let pa = pts[a]
+        let pb = pts[b]
+        let pc = pts[c]
+        let ux = I128(pb.x - pa.x)
+        let uy = I128(pb.y - pa.y)
+        let uz = I128(pb.z - pa.z)
+        let vx = I128(pc.x - pa.x)
+        let vy = I128(pc.y - pa.y)
+        let vz = I128(pc.z - pa.z)
+        let nx = uy * vz - uz * vy
+        let ny = uz * vx - ux * vz
+        let nz = ux * vy - uy * vx
+        let ax = abs(nx)
+        let ay = abs(ny)
+        let az = abs(nz)
+        let axis = if az >= ax and az >= ay: 2 else: if ax >= ay: 0 else: 1
+        let pos = if axis == 0: nx > I128(0) else: if axis == 1: ny > I128(0) else: nz > I128(0)
+        var vs = copy(members[k])
+        sort(mut vs)
+        var uniq: List<Int> = []
+        for v in vs:
+            if uniq.is_empty or uniq[uniq.len - 1] != v: uniq.push(v)
+        let proj = (v: Int) => if axis == 0: Pt(pts[v].y, pts[v].z) else: if axis == 1: Pt(pts[v].z, pts[v].x) else: Pt(pts[v].x, pts[v].y)
+        var hull = hull2_strict(uniq, proj)
+        if not pos: hull = [hull[hull.len - 1 - i] for i in 0..hull.len]
+        var s = 0
+        for i in 1..hull.len:
+            if hull[i] < hull[s]: s = i
+        let ring = [hull[(s + i) % hull.len] for i in 0..hull.len]
+        for i in 1..ring.len - 1: out.push((ring[0], ring[i], ring[i + 1]))
+    sort(mut out)
+    out
+
+fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
+    var order = copy(vs)
+    sort(mut order, by: v => (proj(v).x, proj(v).y))
+    var h: List<Int> = []
+    for pass in 0..2:
+        let start = h.len
+        for t in 0..order.len:
+            let v = if pass == 0: order[t] else: order[order.len - 1 - t]
+            while h.len >= start + 2 and cross128(proj(h[h.len - 1]) - proj(h[h.len - 2]), proj(v) - proj(h[h.len - 2])) <= I128(0): h.pop()
+            h.push(v)
+        h.pop()
+    h
 
 /// `convex_hull_3d` over a domain-indexed array, with faces of handles; the same orientation,
 /// order and tie rules, in key order.
@@ -2714,7 +2855,9 @@ pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> = todo
 /// order: each face rotated to start at its least handle; faces sorted; a new `List`
 /// traps: never
 /// example: `convex_hull_3d_idx([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
-pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)> = todo
+pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)>:
+    let keys = [k for k in D]
+    [(keys[a], keys[b], keys[c]) for (a, b, c) in convex_hull_3d([pts[k] for k in keys])]
 
 /// Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of
 /// `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`. Positive when faces are
