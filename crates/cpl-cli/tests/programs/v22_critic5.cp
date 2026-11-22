@@ -20,18 +20,17 @@ for mask in Subset<Row>:
     cnt[mask] += 1
 print(sum(cnt[m] for m in Subset<Row>))
 for p in ?Col:
-    if let c = p: print("some", c)
+    if let c = p: print("some", c.ord)
     else: print("none")
-print([p ?? Col.first for p in ?Col])
+print([(p ?? Col.first!).ord for p in ?Col])
 
-// `type Val = xs.D` names the domain `compress` made.
+// `let (domain W, ys) = compress(...)` names the domain `compress` made.
 fn tally():
-    let ys = compress([5, 5, 2])
-    type W = ys.D
+    let (domain W, ys) = compress([5, 5, 2])
     var c: [W]Int = 0
     let w: W = ys.at(5)
     c[w] += 2
-    print([c[i] for i in ys.D])
+    print([c[i] for i in W])
 tally()
 
 // `(o ??= []).push(x)` fills a plain optional and goes on with what it holds.

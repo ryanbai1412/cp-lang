@@ -1,4 +1,4 @@
-use std.geometry.{ByAngle, Pt, cross}
+use std.geometry.{ByAngle, Pt}
 use std.math.choose
 
 // Linear reach on List, [D]T, Str, ListView, StrView, Range.
@@ -33,6 +33,6 @@ let pts = [Pt(0, 0), Pt(4, 0), Pt(5, 4), Pt(1, 5), Pt(2, 2)]
 var enclosed = 0
 for c in 0..pts.len:
     let rays = [pts[v] - pts[c] for v in 0..pts.len if v != c].sorted(by: ByAngle)
-    let ahead = rays.reach(while: (r, s) => cross(r, s) > 0, cyclic: true)
+    let ahead = rays.reach(while: (r, s) => r.cross(s) > 0, cyclic: true)
     enclosed += choose(pts.len - 1, 4) - sum(choose(k, 3) for k in ahead)
 print(enclosed)
