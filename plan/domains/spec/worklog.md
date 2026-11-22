@@ -9,8 +9,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   2. Two pass counts: `research/scoreboard.json` (1222 entries, 995 pass) vs 1711 cases / 1617 pass. Make `cpl-conform all --check` write the scoreboard it gates on, and have `COVERAGE.md` read that, so there is one count.
   3. Put `conformance-coverage.py --check` in `scripts/check.sh` through `uv run`. It also regex-reads `crates/cpl-diag/src/registry.rs` (see the diagnostics worklog); a machine-readable registry export would remove that parse.
   4. The 83 `python`-fenced CP Lang blocks in `spec/core`: retag them `cp` in one commit, so `spec_blocks.rs` and the site highlight them as CP Lang.
-- Landed `devin/wip-conformance-matrix` (6 commits, rebased; its decisions 214-215 renumbered 216-217 after a clash on main) and took ownership of `crates/cpl-conform` and `scripts/conformance-*.py` (coordinator). Evidence: `conformance-matrix.py --check` exit 0; `cpl-conform conformance` 1845/2030; `cpl-conform all --check` 0 regressions; `conformance-coverage.py --check` exit 0, now in the fast gate.
-- The branch edits doc comments in `spec/std/prefix.cp` and `spec/std/subset.cp` (decisions 217-218); noted in the stdlib worklog.
+- Landed `devin/wip-conformance-matrix` (6 commits, rebased; its decisions 214-215 renumbered 218-219 after a clash on main) and took ownership of `crates/cpl-conform` and `scripts/conformance-*.py` (coordinator). Evidence: `conformance-matrix.py --check` exit 0; `cpl-conform conformance` 1845/2030; `cpl-conform all --check` 0 regressions; `conformance-coverage.py --check` exit 0, now in the fast gate.
+- The branch edits doc comments in `spec/std/prefix.cp` and `spec/std/subset.cp` (decisions 219-220); noted in the stdlib worklog.
 - Next: `scripts/conformance-traits.py`.
 - Review packet: README, PLAN, metrics.toml, ARCHITECTURE. Evidence: every number in metrics.toml rerun at 4b8f504f (`cpl-conform conformance spec-blocks`, `--rules`, `conformance-coverage.py`).
 - Next: phase 2 starts with landing `devin/wip-conformance-matrix`.

@@ -29,7 +29,7 @@ The work is done when:
 - Trait generator (3): not started. The design is below.
 
 ## Landed (origin/main)
-efca1ba4, c99edd21, ade499ee, d02c3d34, f0740f24 and later trains: about 650 cases, the tool header, and the rulings in decisions 211, 213, 216 and 217.
+efca1ba4, c99edd21, ade499ee, d02c3d34, f0740f24 and later trains: about 650 cases, the tool header, and the rulings in decisions 211, 213, 218 and 219.
 Last in flight at wind-down: 32a81dd9 (empty subsets, compose order, grid Prefix) and 406a52f8 (let-else, domains as Seq, static type args). Check `git log origin/main`.
 
 ## In flight: branch `devin/wip-conformance-matrix`
@@ -55,7 +55,7 @@ Last in flight at wind-down: 32a81dd9 (empty subsets, compose order, grid Prefix
 ## Gotchas
 - `// expect: E#### at N` counts N from the first line after the `// expect:`/`// rule:` headers, not from the top of the file.
 - R10.3.3 bars printing a Bool, so use `print(yes(b))`.
-- `{}` is an empty block, not an empty Subset; use `Subset<P>.empty` (decision 217).
+- `{}` is an empty block, not an empty Subset; use `Subset<P>.empty` (decision 219).
 - `V.count` is a property, while `V.count(f)` is the Seq method (R04.2.20).
 - A position's integer form is `Int(d)`; no `.ord` exists, and `core-04/enum-position-has-no-ord.cp` pins that.
 - `.at(k)` takes a key and `.nth(k)` is a walk offset (decision 213). `.collect()` and `List(w)` count from 0.
