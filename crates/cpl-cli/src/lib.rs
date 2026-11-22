@@ -1138,29 +1138,24 @@ fn build_file(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
     };
-    let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, &compiled.text, limit, &target) {
+    let aim = profile.aim();
+    let cpp = match cpl_codegen::emit_aiming(&compiled.program, name, &compiled.text, (aim, limit), &target) {
         Ok(fitted) => {
-            *stderr += &fitted.note(path, limit, &profile.name).unwrap_or_default();
+            *stderr += &fitted.note(path, &format!("{aim}-byte target"), &profile.name).unwrap_or_default();
             if size {
                 let source = fitted.header.then_some(compiled.text.as_str());
-                let sizes = cpl_codegen::sizes(
-                    &compiled.program,
-                    name,
-                    source,
-                    &target,
-                    (fitted.comments, fitted.narrow),
-                    fitted.cpp.len(),
-                );
+                let sizes = cpl_codegen::sizes(&compiled.program, name, source, &target, &fitted);
                 *stderr += &size_report(&sizes, limit, &profile.name);
             }
             fitted.cpp
         }
-        Err(bytes) => {
+        Err(shortest) => {
             *stderr += &format!(
-                "cpl: the C++ for `{path}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
+                "cpl: the C++ for `{path}` is {} bytes, over the {limit}-byte limit of judge `{}`\n",
+                shortest.cpp.len(),
                 profile.name
             );
-            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, (false, true), bytes);
+            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, &shortest);
             *stderr += &size_report(&sizes, limit, &profile.name);
             return EXIT_ERRORS;
         }
@@ -1173,11 +1168,14 @@ fn build_file(
         *stderr += &format!("cpl: warning: {warning}\n");
     }
     if cpp.len() > profile.warn_at() {
+        let over = match cpp.len() > aim {
+            true => format!("over the {aim}-byte target"),
+            false => format!("over {} bytes, near the {aim}-byte target", profile.warn_at()),
+        };
         *stderr += &format!(
-            "cpl: warning: the C++ for `{path}` is {} bytes, over the {}-byte target and {}% of the {limit}-byte \
-             limit of judge `{}`; `--size` says where the bytes go\n",
+            "cpl: warning: the C++ for `{path}` is {} bytes, {over} and {}% of the {limit}-byte limit of judge `{}`; \
+             `--size` says where the bytes go\n",
             cpp.len(),
-            profile.warn_at(),
             cpp.len() * 100 / limit,
             profile.name
         );

@@ -308,14 +308,16 @@ impl Playground {
             thread_stack: profile.thread_stack,
             windows: profile.os == cpl_judge::Os::Windows,
         };
-        let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, source, limit, &target) {
+        let aim = profile.aim();
+        let cpp = match cpl_codegen::emit_aiming(&compiled.program, name, source, (aim, limit), &target) {
             Ok(fitted) => {
-                stderr += &fitted.note(name, limit, &profile.name).unwrap_or_default();
+                stderr += &fitted.note(name, &format!("{aim}-byte target"), &profile.name).unwrap_or_default();
                 fitted.cpp
             }
-            Err(bytes) => {
+            Err(shortest) => {
                 stderr += &format!(
-                    "cpl: the C++ for `{name}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
+                    "cpl: the C++ for `{name}` is {} bytes, over the {limit}-byte limit of judge `{}`\n",
+                    shortest.cpp.len(),
                     profile.name
                 );
                 code = EXIT_ERRORS;

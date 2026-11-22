@@ -24,17 +24,17 @@ fn every_builtin_has_a_distinct_name_a_compiler_and_a_limit() {
         assert!(!p.compiler.is_empty() && p.source_limit >= 64 * 1024, "{}", p.name);
         assert!(p.warn_at() < p.source_limit);
     }
-    assert_eq!(builtin("generic").unwrap().warn_at(), 32 * 1024);
+    assert_eq!(builtin("generic").unwrap().warn_at(), 24 * 1024);
 }
 
 #[test]
-fn every_builtin_warns_past_32_kb_and_stops_past_64_kb() {
+fn every_builtin_aims_under_32_kb_warns_past_24_kb_and_stops_past_64_kb() {
     for p in builtins() {
-        assert_eq!((p.warn_at(), p.limit()), (32 * 1024, 64 * 1024), "{}", p.name);
+        assert_eq!((p.warn_at(), p.aim(), p.limit()), (24 * 1024, 32 * 1024, 64 * 1024), "{}", p.name);
     }
     let toml = "[judge.tiny]\nextends = \"generic\"\nsource_kb = 40\n";
     let tiny = resolve(&dir("tiny-limit", Some(toml)).join("a.cp"), "// judge: tiny\n", None).unwrap();
-    assert_eq!((tiny.warn_at(), tiny.limit()), (20 * 1024, 40 * 1024));
+    assert_eq!((tiny.warn_at(), tiny.aim(), tiny.limit()), (24 * 1024, 32 * 1024, 40 * 1024));
 }
 
 #[test]
