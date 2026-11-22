@@ -43,6 +43,56 @@ fn string_field(json: &str, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// The bug classes a seeded bug may name on its `// class:` line: the P0
+/// classes of `AGENTS.md` goal 2, then `logic` for a wrong algorithm.
+const CLASSES: [&str; 12] = [
+    "off-by-one",
+    "index-space",
+    "overflow",
+    "boundaries",
+    "multitest-leak",
+    "io-flush",
+    "sentinel",
+    "complexity",
+    "mutation",
+    "modulus",
+    "floating-point",
+    "logic",
+];
+
+/// What `bug`'s `// class:` line names.
+fn class_of(bug: &Path) -> Option<String> {
+    let source = std::fs::read_to_string(bug).ok()?;
+    let line = source
+        .lines()
+        .find_map(|line| line.strip_prefix("// class: "))?;
+    Some(line.trim().to_string())
+}
+
+#[test]
+fn every_seeded_bug_names_its_bug_class() {
+    let mut count = [0usize; CLASSES.len()];
+    for bug in bugs() {
+        let class = class_of(&bug);
+        let at = class
+            .as_deref()
+            .and_then(|c| CLASSES.iter().position(|&k| k == c));
+        let Some(at) = at else {
+            panic!(
+                "{}: no `// class:` line naming one of {CLASSES:?}",
+                bug.display()
+            );
+        };
+        count[at] += 1;
+    }
+    for (class, n) in CLASSES.iter().zip(count) {
+        println!("{class:<16} {n}");
+    }
+    let p0 = CLASSES.len() - 1;
+    let covered = count[..p0].iter().filter(|&&n| n > 0).count();
+    println!("{covered} of {p0} P0 classes seeded");
+}
+
 #[test]
 fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
     let bugs = bugs();
@@ -105,7 +155,16 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         } else {
             "minimal"
         };
-        println!("{name:<32} {:>6.2} s  {verdict}", took.as_secs_f64());
+        let class = class_of(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../bench/stress")
+                .join(format!("{name}.cp")),
+        )
+        .unwrap_or_default();
+        println!(
+            "{name:<32} {class:<16} {:>6.2} s  {verdict}",
+            took.as_secs_f64()
+        );
         times.push(took);
         wrong.extend(failure);
     }

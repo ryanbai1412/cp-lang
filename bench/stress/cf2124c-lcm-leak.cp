@@ -1,6 +1,7 @@
 // Codeforces 2124 C (proto/ports/ecnerwala/cf2124c.cp), with a planted
 // multitest leak: the answer starts above the `@!multitest` divider, so it
 // keeps every factor an earlier test needed.
+// class: multitest-leak
 var res = 1
 fn smallest(b: List<Int>) -> Int:
     for (x, y) in b.adjacent if y % x != 0:

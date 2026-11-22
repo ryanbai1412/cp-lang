@@ -1,5 +1,6 @@
 // Codeforces 2237 C (proto/ports/ecnerwala/cf2237c.cp), with a planted
 // off-by-one at the end of the array: the loop stops one value early.
+// class: off-by-one
 fn total(a: List<Int>) -> Int:
     var cur = a[0]
     for x in a[1..a.len - 1]: cur = if x >= cur: x else: cur + x

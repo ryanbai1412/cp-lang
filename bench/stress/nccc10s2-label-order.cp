@@ -2,6 +2,7 @@
 // the chains are built in label order, not in the order of the first list.
 // The letters are numbered 1..=k here: `cpl run` reads a letter domain as
 // numbers today.
+// class: logic
 use std.seq.{Perm}
 
 let n: 1..=1000 = read()

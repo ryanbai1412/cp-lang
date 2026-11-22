@@ -1,6 +1,7 @@
 // NOIP 2018 Currency System (proto/ports/noip18p2.cp), with a planted
 // multitest leak: the table of payable amounts lives above the
 // `@!multitest` divider, so coins from an earlier test still pay.
+// class: multitest-leak
 const TOP = 25000
 domain Amount = 0..=TOP
 var payable: [Amount]Bool = false

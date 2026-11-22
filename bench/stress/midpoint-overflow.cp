@@ -1,5 +1,6 @@
 // The midpoint of a binary search, with a planted overflow at the top of
 // the range: `(lo + hi) / 2` passes `Int.MAX` when both ends are large.
+// class: overflow
 let (lo, hi): (0..=9e18, 0..=9e18) = read()
 
 fn mid(lo: Int, hi: Int) -> Int = (lo + hi) / 2

@@ -2,6 +2,7 @@
 // the walk checks only the vertex it leaves, so it may step onto a vertex
 // whose out-neighbours cannot all reach t. The arcs are read as a
 // `Digraph`, which stress makes and shrinks as one.
+// class: logic
 use std.graph.{Digraph}
 
 let n: 1..=10000 = read()

@@ -1,6 +1,7 @@
 // BOI 2017 Railway (proto/ports/btoi17p3.cp), with a planted bug: the walk over a plan's cities
 // in preorder never returns from the last city to the first, so the tracks up from the last
 // city go unmarked. Each plan is read in a loop pass as its size, then that many cities.
+// class: boundaries
 
 let (n, m, k): (2..=1e5, 1..=5e4, 1..=5e4) = read()
 domain City = 1..=n

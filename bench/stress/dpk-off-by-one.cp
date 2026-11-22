@@ -1,5 +1,6 @@
 // AtCoder DP K Stones (proto/ports/dpk.cp), with a planted off-by-one: a move needs strictly more
 // stones than it takes, so taking the whole pile is never tried.
+// class: off-by-one
 let n: 1..=100 = read()
 let k: 1..=1e5 = read()
 let moves: [0..n]1..=1e5 = read()

@@ -1,6 +1,7 @@
 // NOIP 2010 P1 machine translation (proto/ports/scout_batch_32/noip10p1.cp), with a planted
 // off-by-one: a word is evicted once the memory holds `m` words, not more than `m`, so the
 // memory holds one word too few. The words are read one per pass of a loop.
+// class: off-by-one
 let (m, n): (1..=100, 1..=1000) = read()
 var words: List<Int> = []
 for _ in 0..n:

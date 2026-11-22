@@ -1,5 +1,6 @@
 // AtCoder DP E Knapsack 2 (proto/ports/dpe.cp), with a planted bug: the totals run upwards, so an
 // item can be taken twice.
+// class: mutation
 let (n, cap): (1..=100, 1..=1e9) = read()
 let items: [0..n](w: 1..=1e9, v: 1..=1000) = read()
 

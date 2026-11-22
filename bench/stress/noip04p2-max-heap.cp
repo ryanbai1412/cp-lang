@@ -1,5 +1,6 @@
 // NOIP 2004 Merging Fruit (proto/ports/noip04p2.cp), with a planted wrong
 // greedy: the heap pops the largest piles instead of the smallest.
+// class: logic
 let n: 1..=10000 = read()
 let piles: [0..n]1..=20000 = read()
 

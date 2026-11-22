@@ -1,6 +1,7 @@
 // Codeforces 2096 B (proto/ports/ecnerwala/cf2096b.cp), with a planted
 // off-by-one at the start of a slice: the largest of the smaller gloves is
 // skipped, so one pair too few is taken from the top.
+// class: off-by-one
 fn gloves(k: Int, l: List<Int>, r: List<Int>) -> Int:
     let n = l.len
     let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)

@@ -1,6 +1,7 @@
 // Codeforces 2183 B (proto/ports/ecnerwala/cf2183b.cp), with a planted
 // off-by-one at the start of the range: the search for the smallest missing
 // value starts at 1, so a missing 0 is never found.
+// class: off-by-one
 fn missing(k: Int, a: List<Int>) -> Int:
     var has = List.filled(a.len + 1, false)
     for x in a if x <= a.len: has[x] = true

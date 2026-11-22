@@ -25,5 +25,11 @@ problems of different shapes (`@alt(program)`, `@gen` + part `@alt`, and
 
     cargo test -p cpl-cli --test seeded_bugs -- --nocapture
 
+Each bug names its class on a `// class:` line: one of the P0 classes of
+`AGENTS.md` goal 2 (`off-by-one`, `index-space`, `overflow`, `boundaries`,
+`multitest-leak`, `io-flush`, `sentinel`, `complexity`, `mutation`,
+`modulus`, `floating-point`) or `logic` for a wrong algorithm.
+`every_seeded_bug_names_its_bug_class` prints the count per class.
+
 A new bug is a new pair of files. A stress change that finds a smaller
 counterexample updates the `.min`, with the reason in the commit.

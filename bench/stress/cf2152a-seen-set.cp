@@ -1,6 +1,7 @@
 // Codeforces 2152 A (proto/ports/ecnerwala/cf2152a.cp), with a planted
 // multitest leak: the set of values seen lives above the `@!multitest`
 // divider, so a value an earlier test had is not counted again.
+// class: multitest-leak
 var seen: Set<Int> = Set()
 fn operations(a: List<Int>) -> Int:
     var distinct = 0

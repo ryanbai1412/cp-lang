@@ -1,6 +1,7 @@
 // NOIP 2009 Hankson (proto/ports/noip09p2.cp), with a planted multitest
 // leak: the count lives above the `@!multitest` divider, so it is never
 // reset between tests.
+// class: multitest-leak
 use std.math.{divisors}
 
 var found = 0

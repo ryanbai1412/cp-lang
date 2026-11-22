@@ -1,5 +1,6 @@
 // NOIP 2001 Splitting a Number (proto/ports/noip01p2.cp), with a planted bug: a part of size 1 is
 // never dropped once total equals parts, so n = k counts zero ways.
+// class: boundaries
 let n: 1..=200 = read()
 let k: 1..=6 = read()
 

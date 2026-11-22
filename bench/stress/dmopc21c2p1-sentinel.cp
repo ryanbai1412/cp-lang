@@ -1,5 +1,6 @@
 // DMOPC '21 Contest 2 P1 (proto/ports/dmopc21c2p1.cp), with a planted bug: the best cost starts at 0, a
 // sentinel below every real cost, instead of at the cost of level 0.
+// class: sentinel
 let (n, a, b): (1..=1e6, 1..=1e6, 1..=1e6) = read()
 let heights: [0..n]0..=1e6 = read()
 

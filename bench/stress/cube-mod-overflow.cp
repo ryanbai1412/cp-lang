@@ -1,5 +1,6 @@
 // A sum of cubes modulo a prime, with a planted overflow at the top of the
 // range: `x * x * x` passes `Int.MAX` before the modulus is taken.
+// class: overflow
 const MOD = 1e9 + 7
 
 fn cubes(a: List<Int>) -> Int:

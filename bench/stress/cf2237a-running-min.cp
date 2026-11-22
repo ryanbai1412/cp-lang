@@ -1,6 +1,7 @@
 // Codeforces 2237 A (proto/ports/ecnerwala/cf2237a.cp), with a planted
 // multitest leak: the running minimum lives above the `@!multitest`
 // divider, so a later test starts from an earlier test's minimum.
+// class: multitest-leak
 var lo = 1e9
 fn prefix_min_sum(a: List<Int>) -> Int:
     var total = 0
