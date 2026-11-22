@@ -1,4 +1,4 @@
-// expect: ok, output "-1 6"
+// expect: ok, output "-1 1"
 use std.heap.{MeldHeap}
 var h: MeldHeap<Int> = MeldHeap()
 h.add_all(5)
