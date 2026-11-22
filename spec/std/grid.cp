@@ -35,9 +35,9 @@ pub struct Dir4(k: Int):
     /// traps: never
     /// example: `[d.delta for d in Dir4.all()] == [(-1, 0), (0, 1), (1, 0), (0, -1)]`
     pub fn all() -> List<Dir4> = todo
-    /// The direction a letter stands for, given the letters for up, right, down and left in that
-    /// order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `None` for another letter; a
-/// repeated letter means the first direction it stands for.
+    /// The direction a letter stands for, given the letters for up, right, down and left in
+    /// that order, as in `Dir4.from("URDL", ch)` or `Dir4.from("NESW", ch)`. `None` for another
+    /// letter; a repeated letter means the first direction it stands for.
     ///
     /// cost: O(1)
     /// traps: when `letters` is not four characters long
