@@ -111,6 +111,7 @@ impl<'a> Checker<'a> {
     fn stmts(&mut self, stmts: &[Stmt], top_level: bool) -> Ty {
         let mut last = Ty::Unit;
         let present = self.present.len();
+        let memo_captured = self.memo_captured.len();
         if !top_level {
             self.declare_local_types(stmts);
         }
@@ -137,6 +138,7 @@ impl<'a> Checker<'a> {
             self.end_holds(stmt);
         }
         self.present.truncate(present);
+        self.memo_captured.truncate(memo_captured);
         last
     }
 
@@ -800,7 +802,14 @@ impl<'a> Checker<'a> {
                         self.declare(table, at, ty, true, "var");
                     }
                 }
-                self.fn_decl(f, None, !top_level, memo_of(stmt))
+                let memo_info = memo_of(stmt);
+                if let (false, Some((memo_span, _))) = (top_level, memo_info) {
+                    let captured = self.memo_captured_vars(f);
+                    for var_name in captured {
+                        self.memo_captured.push((var_name, f.name.text.clone(), memo_span));
+                    }
+                }
+                self.fn_decl(f, None, !top_level, memo_info)
             }
             StmtKind::Struct(s) => {
                 let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
@@ -1011,6 +1020,7 @@ impl<'a> Checker<'a> {
                 self.require_mutable(target, "assigned");
                 self.check_access(target, true);
                 if let Some((root, _)) = Self::root_name(target) {
+                    self.check_memo_capture_write(root, target.span);
                     let target_depth = self.var_depth(root);
                     let how = format!("assigned to `{root}` from an outer scope");
                     self.check_expr_domain_escape(value, &value_ty, target_depth, &how, &[], false);
@@ -1518,9 +1528,100 @@ impl<'a> Checker<'a> {
     /// arguments, and run the fn as written when they can't: the program
     /// would be right and, without a word, as slow as if `@memo` were not
     /// there.
-    fn memo_fits(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, generator: bool, unit: bool, memo: Span) {
+    fn is_bounded_memo_type(&mut self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Pos(_) | Ty::Bool | Ty::Range { .. } | Ty::Error | Ty::Unknown => true,
+            Ty::Named { name, .. } => {
+                name == "Cut"
+                    || matches!(self.type_def(name).as_deref(), Some(Def::Enum { .. }))
+            }
+            Ty::Tuple(ts) => ts.iter().all(|t| self.is_bounded_memo_type(t)),
+            Ty::Optional(inner) => self.is_bounded_memo_type(inner),
+            _ => false,
+        }
+    }
+
+    /// Outer `var`s referenced inside a `@memo` fn body.
+    fn memo_captured_vars(&self, f: &ast::FnDecl) -> Vec<String> {
+        let mut param_names = std::collections::HashSet::new();
+        for p in &f.params {
+            param_names.insert(p.name.text.clone());
+        }
+        let mut names = Vec::new();
+        match &f.body {
+            FnBody::Expr(e) => names.extend(super::lends::names_in(e)),
+            FnBody::Block(b) => {
+                for s in &b.stmts {
+                    let (ns, _) = super::lends::item_names(std::slice::from_ref(s));
+                    names.extend(ns);
+                }
+            }
+            FnBody::None => {}
+        }
+        let mut out = Vec::new();
+        for n in names {
+            if param_names.contains(&n) || out.contains(&n) {
+                continue;
+            }
+            if self.local(&n).is_some_and(|l| l.mutable) {
+                out.push(n);
+            }
+        }
+        out
+    }
+
+    pub(crate) fn check_memo_capture_write(&mut self, root: &str, span: Span) {
+        if let Some((_, fn_name, memo_span)) = self
+            .memo_captured
+            .iter()
+            .rev()
+            .find(|(v, _, _)| v == root)
+            .cloned()
+        {
+            let message = format!(
+                "`{root}` can't be modified while `@memo` fn `{fn_name}` captures it"
+            );
+            if let Some(diag) = self.error(codes::BAD_MEMO, span, message) {
+                diag.labels.push(cpl_diag::Label {
+                    span: memo_span,
+                    message: format!("`{fn_name}` is memoized here and reads `{root}`"),
+                });
+                diag.help = Some(format!(
+                    "pass `{root}` as a parameter to `{fn_name}`, or finish updating `{root}` before declaring `{fn_name}`"
+                ));
+            }
+        }
+    }
+
+    fn memo_fits(
+        &mut self,
+        f: &ast::FnDecl,
+        params: &[crate::Param],
+        self_ty: Option<&Ty>,
+        generator: bool,
+        unit: bool,
+        memo: Span,
+        is_array: bool,
+    ) {
         let name = &f.name.text;
         let changed = f.params.iter().find(|p| p.mutable && p.name.text != "self");
+        if is_array {
+            for (ast_p, ty_p) in f.params.iter().zip(params.iter()) {
+                if !self.is_bounded_memo_type(&ty_p.ty) {
+                    let pname = &ast_p.name.text;
+                    let pty = &ty_p.ty;
+                    let message = format!(
+                        "`@memo(array)` on `{name}` requires bounded parameter types, but `{pname}: {pty}` is unbounded"
+                    );
+                    if let Some(diag) = self.error(codes::BAD_MEMO, ast_p.name.span, message) {
+                        diag.help = Some(
+                            "give the parameter a bounded type (a domain, range, `Bool`, or enum), or use `@memo(map)`".into(),
+                        );
+                    }
+                    return;
+                }
+            }
+        }
         let (message, help) = if let Some(owner) = self_ty {
             let owner = owner.to_string();
             (
@@ -1556,8 +1657,14 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `memo` is where the fn's `@memo` is written, when it has one.
-    fn fn_decl(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, local: bool, memo: Option<Span>) {
+    /// `memo` is where the fn's `@memo` is written, when it has one, and whether it is `@memo(array)`.
+    fn fn_decl(
+        &mut self,
+        f: &ast::FnDecl,
+        self_ty: Option<&Ty>,
+        local: bool,
+        memo: Option<(Span, bool)>,
+    ) {
         let sig = self.fn_sig(f, self_ty);
         let Ty::Fn { params, ret } = &sig else { return };
         if local {
@@ -1699,13 +1806,13 @@ impl<'a> Checker<'a> {
         });
         self.fns.pop();
         let gives = self.gives.pop().unwrap_or(false);
-        if let Some(memo) = memo {
+        if let Some((memo, is_array)) = memo {
             // Written `-> T`, or read off what the body gives.
             let unit = match &f.ret {
                 Some(_) => **ret == Ty::Unit,
                 None => !gives && !matches!(f.body, FnBody::None),
             };
-            self.memo_fits(f, self_ty, generator, unit, memo);
+            self.memo_fits(f, params, self_ty, generator, unit, memo, is_array);
         }
         self.pop_scope();
         if receiver.is_some() && matches!(self_ty, Some(Ty::Named { .. })) {
@@ -1716,10 +1823,13 @@ impl<'a> Checker<'a> {
     }
 }
 
-/// Where a fn's `@memo` is written.
-fn memo_of(stmt: &Stmt) -> Option<Span> {
+/// Where a fn's `@memo` is written, and whether it specifies `@memo(array)`.
+fn memo_of(stmt: &Stmt) -> Option<(Span, bool)> {
     let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
-    Some(memo.span)
+    let is_array = memo.args.iter().any(|a| {
+        a.name.is_none() && matches!(&a.value.kind, ExprKind::Name(n) if n == "array")
+    });
+    Some((memo.span, is_array))
 }
 
 /// The span of each name a pattern binds, in the order `pattern_types`

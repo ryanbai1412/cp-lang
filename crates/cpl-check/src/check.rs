@@ -150,6 +150,9 @@ pub(crate) struct Checker<'a> {
     /// Span of the bare name on the LHS of a plain assignment `x = ...`,
     /// which overwrites `x` rather than reading it.
     pub(crate) assigning_name: Option<Span>,
+    /// Outer `var`s captured by a `@memo` fn in the current block:
+    /// `(var_name, memo_fn_name, memo_span)`. Writing one while the cache lives is E0311.
+    pub(crate) memo_captured: Vec<(String, String, Span)>,
 }
 
 pub(crate) struct Checked {
@@ -193,6 +196,7 @@ impl<'a> Checker<'a> {
             lambda_params: Vec::new(),
             moved: HashMap::new(),
             assigning_name: None,
+            memo_captured: Vec::new(),
         }
     }
 
