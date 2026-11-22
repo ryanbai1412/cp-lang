@@ -39,7 +39,7 @@ print(pref[Cut(3)])
 
 Prefer `any`, `all`, `sum`, `count`, `min`, and `max` over manual boolean flags and accumulator loops (enforced by lints `L0501`, `L0504`, `L0505`):
 
-```cp status=checks
+```cp
 let xs: List<Int> = [3, 8, 2, 9, 5]
 let has_big = xs.any(x => x > 7)
 let all_pos = xs.all(x => x > 0)
@@ -92,7 +92,7 @@ print(deg)
 
 Use key functions with `desc(...)` for multi-key sorting, `MinHeap` / `MaxHeap` for priority queues, `SortedBag` for multisets (`remove_one`), and `HashMap` where `m[k]` returns `V` directly (auto-inserting the default on miss — never apply `??` or `!` to `m[k]`) while `m.get(k)` returns `?V`:
 
-```cp status=checks
+```cp
 var pts: List<(Int, Int)> = [(2, 5), (1, 3), (2, 1)]
 pts.sort(by: p => (p.0, desc(p.1)))
 
@@ -139,7 +139,7 @@ let _ = dsu.unite(V(2), V(3))
 var bit = Fenwick<V>()
 bit.add(V(1), 5)
 bit.add(V(3), 7)
-print(yes(dsu.same(V(1), V(3))), yes(dsu.same(V(1), V(4))), bit.prefix(V(3).after))
+print(yes(dsu.same(V(1), V(3))), yes(dsu.same(V(1), V(4))), bit.prefix(V(3).r))
 ```
 
 ## 8. Quick idiom reference

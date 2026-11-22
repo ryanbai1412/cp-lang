@@ -14,7 +14,7 @@ domain V = 0..20
 @memo
 fn dp(u: V, used: Bool) -> Int:
     if u == V(0): return if used: 1 else: 0
-    let prev = (u - 1)!
+    let prev = u.prev!
     dp(prev, false) + dp(prev, true)
 print(dp(V(19), true))
 ```
