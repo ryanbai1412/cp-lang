@@ -2208,6 +2208,21 @@ impl<'a> Checker<'a> {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
+                    "mask" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "vs".into(),
+                            ty: Ty::Unknown,
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::Array {
+                            index: vec![Ty::Pos(domain.clone())],
+                            elem: Box::new(Ty::Bool),
+                        }),
+                    },
                     "wrap" | "nth" => Ty::Fn {
                         params: vec![crate::ty::Param {
                             name: "x".into(),

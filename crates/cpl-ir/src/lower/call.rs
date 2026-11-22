@@ -8745,6 +8745,60 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::UNSUPPORTED, name.span, message);
                 self.err_expr(span)
             }
+            (Ty::DomainVal, "mask") if args.len() == 1 && args[0].name.is_none() => {
+                if let ExprKind::DomainVal(d) = value.kind {
+                    let arr_ty = Ty::Array {
+                        dims: vec![Dim::Pos(d)],
+                        elem: Box::new(Ty::Bool),
+                    };
+                    let list = self.collect_iter_to_list(&args[0].value, span);
+                    let elem_ty = match &list.ty {
+                        Ty::List(e) => (**e).clone(),
+                        _ => Ty::Pos(d),
+                    };
+                    self.do_expr(Some(&arr_ty), span, |lw, out| {
+                        let m_slot = lw.temp(arr_ty.clone());
+                        let false_val = lw.mk(ExprKind::Bool(false), Ty::Bool, span);
+                        let fill = lw.mk(
+                            ExprKind::Fill(vec![DimSpec::Pos(d)], Some(Box::new(false_val))),
+                            arr_ty.clone(),
+                            span,
+                        );
+                        out.push(Stmt::Let(m_slot, Some(fill)));
+                        let x_slot = lw.temp(elem_ty.clone());
+                        let x_val = lw.coerce(lw.local(x_slot, span), &Ty::Pos(d), span);
+                        let place = Place {
+                            kind: PlaceKind::Index(
+                                Box::new(Place {
+                                    kind: PlaceKind::Local(m_slot),
+                                    ty: arr_ty.clone(),
+                                    span,
+                                }),
+                                vec![x_val],
+                            ),
+                            ty: Ty::Bool,
+                            span,
+                        };
+                        let lid = lw.next_loop;
+                        lw.next_loop += 1;
+                        out.push(Stmt::For(
+                            lid,
+                            x_slot,
+                            Iter::Seq(list, false),
+                            Block {
+                                stmts: vec![Stmt::Assign(
+                                    place,
+                                    AssignOp::Set,
+                                    lw.mk(ExprKind::Bool(true), Ty::Bool, span),
+                                )],
+                            },
+                        ));
+                        out.push(Stmt::Give(lw.local(m_slot, span)));
+                    })
+                } else {
+                    self.err_expr(span)
+                }
+            }
             // `Reversible.rev`: a value that is not a sequence and has no
             // `rev` of its own is its own reverse.
             (_, "rev") if args.is_empty() => value,
