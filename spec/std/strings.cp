@@ -1948,6 +1948,16 @@ pub struct RollingHash61:
 /// Supports `h[i] = x` via W8 `IndexSet`.
 pub struct DynamicHash<D>:
     bases: (Int, Int)
+    tok1: List<Int>
+    tok2: List<Int>
+    fwd1: List<Int>
+    fwd2: List<Int>
+    bwd1: List<Int>
+    bwd2: List<Int>
+    pow1: List<Int>
+    pow2: List<Int>
+    inv1: List<Int>
+    inv2: List<Int>
 
     /// A double-modulus rolling hash of `seq` that supports point updates, kept forwards and
     /// backwards in a segment tree; call it as `DynamicHash(seq)`. Positions are `seq`'s keys
@@ -1957,35 +1967,59 @@ pub struct DynamicHash<D>:
     /// empty: an empty hash
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
-    pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D> = todo
+    @allow(unproven_list_index)
+    pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>:
+        let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
+        assert 2 <= b1 and b1 < RH_M1 and 2 <= b2 and b2 < RH_M2, "`DynamicHash` bases must be in `2..M`"
+        let n = seq.len
+        var pow1 = List.filled(n + 1, 1)
+        var pow2 = List.filled(n + 1, 1)
+        var inv1 = List.filled(n + 1, 1)
+        var inv2 = List.filled(n + 1, 1)
+        let ib1 = dh_pow(b1, RH_M1 - 2, RH_M1)
+        let ib2 = dh_pow(b2, RH_M2 - 2, RH_M2)
+        for i in 1..=n:
+            pow1[i] = pow1[i - 1] * b1 % RH_M1
+            pow2[i] = pow2[i - 1] * b2 % RH_M2
+            inv1[i] = inv1[i - 1] * ib1 % RH_M1
+            inv2[i] = inv2[i - 1] * ib2 % RH_M2
+        var h = DynamicHash<D>(
+            (b1, b2), List.filled(n, 0), List.filled(n, 0), List.filled(n + 1, 0), List.filled(n + 1, 0),
+            List.filled(n + 1, 0), List.filled(n + 1, 0), pow1, pow2, inv1, inv2
+        )
+        var i = 0
+        for x in seq:
+            h.put(i, x.hash_token)
+            i += 1
+        h
 
     /// The number of hashed positions, `D.K`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicHash("abc").len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = tok1.len
 
     /// True when there are no positions.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicHash("").is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = tok1.is_empty
 
     /// The hash of the whole sequence, `self.get(..)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `let h = DynamicHash("abab"); h.all == h.get(0..4)`
-    @get pub fn all(self) -> HashVal = todo
+    @get pub fn all(self) -> HashVal = self.span(0, tok1.len)
 
     /// Replaces the element at position `i` with `x`; `h[i] = x` means the same.
     ///
     /// cost: O(log n)
     /// traps: never (`i` is a `D`)
     /// example: `var h = DynamicHash("abxb"); h.set(2, 'a'); h.get(0..2) == h.get(2..4)`
-    pub fn set<T: Hashable>(mut self, i: D, x: T) = todo
+    pub fn set<T: Hashable>(mut self, i: D, x: T) = self.put(i.ord, x.hash_token)
 
     /// The hash of the elements over `r` in order (a cut range `j..i` works too, decision 124).
     ///
@@ -1993,7 +2027,9 @@ pub struct DynamicHash<D>:
     /// empty: an empty `r` gives `HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("xyxy"); h.get(0..2) == h.get(2..4)`
-    pub fn get(self, r: Range<D>) -> HashVal = todo
+    pub fn get(self, r: Range<D>) -> HashVal:
+        if r.is_empty: return HashVal(0, 0)
+        self.span(r.start.ord, r.end.ord)
 
     /// The hash of the elements over `r` read backwards, comparable with `get`.
     ///
@@ -2001,7 +2037,13 @@ pub struct DynamicHash<D>:
     /// empty: an empty `r` gives `HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abba"); h.rev_get(0..2) == h.get(2..4)`
-    pub fn rev_get(self, r: Range<D>) -> HashVal = todo
+    @allow(unproven_list_index)
+    pub fn rev_get(self, r: Range<D>) -> HashVal:
+        if r.is_empty: return HashVal(0, 0)
+        let (l, e) = (r.start.ord, r.end.ord)
+        let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1) + RH_M1) % RH_M1
+        let s2 = (dh_sum(fwd2, e, RH_M2) - dh_sum(fwd2, l, RH_M2) + RH_M2) % RH_M2
+        HashVal(s1 * inv1[l] % RH_M1, s2 * inv2[l] % RH_M2)
 
     /// True when the elements over `r` read the same both ways: `get(r) == rev_get(r)`.
     ///
@@ -2009,7 +2051,51 @@ pub struct DynamicHash<D>:
     /// empty: `true` for an empty `r`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abca"); h.is_palindrome(1..2) and not h.is_palindrome(0..4)`
-    pub fn is_palindrome(self, r: Range<D>) -> Bool = todo
+    pub fn is_palindrome(self, r: Range<D>) -> Bool = self.get(r) == self.rev_get(r)
+
+    @allow(unproven_list_index)
+    fn span(self, l: Int, e: Int) -> HashVal:
+        let n = tok1.len
+        let s1 = (dh_sum(bwd1, e, RH_M1) - dh_sum(bwd1, l, RH_M1) + RH_M1) % RH_M1
+        let s2 = (dh_sum(bwd2, e, RH_M2) - dh_sum(bwd2, l, RH_M2) + RH_M2) % RH_M2
+        HashVal(s1 * inv1[n - e] % RH_M1, s2 * inv2[n - e] % RH_M2)
+
+    @allow(unproven_list_index)
+    fn put(mut self, i: Int, t: Int):
+        let n = tok1.len
+        let x1 = if 0 <= t and t < RH_M1 - 1: t + 1 else: t % (RH_M1 - 1) + 1
+        let x2 = if 0 <= t and t < RH_M2 - 1: t + 1 else: t % (RH_M2 - 1) + 1
+        let d1 = (x1 - tok1[i] + RH_M1) % RH_M1
+        let d2 = (x2 - tok2[i] + RH_M2) % RH_M2
+        tok1[i] = x1
+        tok2[i] = x2
+        dh_add(mut fwd1, i, d1 * pow1[i] % RH_M1, RH_M1)
+        dh_add(mut fwd2, i, d2 * pow2[i] % RH_M2, RH_M2)
+        dh_add(mut bwd1, i, d1 * pow1[n - 1 - i] % RH_M1, RH_M1)
+        dh_add(mut bwd2, i, d2 * pow2[n - 1 - i] % RH_M2, RH_M2)
+
+fn dh_pow(b: Int, e: Int, m: Int) -> Int:
+    var (r, x, k) = (1, b % m, e)
+    while k > 0:
+        if k % 2 == 1: r = r * x % m
+        x = x * x % m
+        k /= 2
+    r
+
+@allow(unproven_list_index)
+fn dh_add(mut tree: List<Int>, i: Int, d: Int, m: Int):
+    var j = i + 1
+    while j < tree.len:
+        tree[j] = (tree[j] + d) % m
+        j += j & -j
+
+@allow(unproven_list_index)
+fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
+    var (s, j) = (0, e)
+    while j > 0:
+        s = (s + tree[j]) % m
+        j -= j & -j
+    s
 
 // ---- alphabet-domain automata
 
@@ -3759,3 +3845,28 @@ fn sequence_generality_parity_across_list_array_and_views():
     assert ac.counts(sview) == [2]
     assert [m.at for m in ac.find_all(sarr)] == [0, 4]
     assert [m.at for m in ac.find_all(sview)] == [0, 4]
+
+@test
+fn dynamic_hash_matches_rolling_hash_after_updates():
+    for _ in 0..20:
+        let n = rand(0, 12)
+        var s: List<Int> = [rand(0, 2) for _ in 0..n]
+        var h = DynamicHash(s, bases: (131, 137))
+        for _ in 0..20:
+            if n > 0 and rand(0, 1) == 0:
+                let i = rand(0, n - 1)
+                let x = rand(0, 2)
+                h.set(i, x)
+                s[i] = x
+            let rh = RollingHash(s, bases: (131, 137))
+            assert h.len == n and h.is_empty == (n == 0) and h.all == rh.all
+            let l = rand(0, n)
+            let r = rand(l, n)
+            let back: List<Int> = [s[r - 1 - k] for k in 0..r - l]
+            assert h.get(l..r) == rh.get(l..r)
+            assert h.rev_get(l..r) == rh.hash_of(back)
+            assert h.is_palindrome(l..r) == (back == [s[k] for k in l..r])
+    domain P = 0..6
+    let g = DynamicHash<P>([P] p => p.to_idx % 2)
+    assert g.len == 6 and g.get(P(0)..P(2)) == g.get(P(2)..P(4))
+    assert g.is_palindrome(P(1)..P(4)) and not g.is_palindrome(P(0)..P(2))
