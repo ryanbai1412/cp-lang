@@ -3785,8 +3785,10 @@ impl<'a> Lowerer<'a> {
 }
 
 pub(super) fn split_projection_body(decl: &ast::FnDecl) -> (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) {
-    let ast::FnBody::Block(block) = &decl.body else {
-        return (&[], None, &[]);
+    let block = match &decl.body {
+        ast::FnBody::Block(block) => block,
+        ast::FnBody::Expr(e) => return (&[], Some(e), &[]),
+        _ => return (&[], None, &[]),
     };
     for (i, stmt) in block.stmts.iter().enumerate() {
         if let ast::StmtKind::Lend { place, .. } = &stmt.kind {

@@ -4862,10 +4862,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
         out: &mut Vec<Stmt>,
     ) {
-        let (pre, lent, post): (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) = match &decl.body {
-            ast::FnBody::Expr(e) => (&[], Some(e), &[]),
-            _ => super::mono::split_projection_body(decl),
-        };
+        let (pre, lent, post) = super::mono::split_projection_body(decl);
         let Some(lent) = lent else {
             self.error(codes::UNSUPPORTED, span, "projection has no `lend` statement");
             return;
