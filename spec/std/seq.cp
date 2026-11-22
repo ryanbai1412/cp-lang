@@ -489,7 +489,14 @@ pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// order: left to right; each chunk keeps the keys of `self`, the last may be shorter
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks(2).map(c => c.len).collect() == [2, 1]`
-pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
+pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
+    assert k >= 1, "a chunk holds at least one element"
+    var i = 0
+    while i < self.len:
+        var c: List<T> = []
+        for j in i..min(i + k, self.len): c.push(self.at(j))
+        yield c
+        i += k
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(1) per step.
