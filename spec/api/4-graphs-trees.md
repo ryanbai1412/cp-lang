@@ -290,8 +290,8 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
    `biconnected_components` / `edge_blocks` → `blocks`, `Adj` and
    `*_of_pairs` builders → `Graph` or `[V]List`, `subtree_sizes` →
    `t.size(v)`, `preorder` → `t.order` (BFS) plus `t.tour`.
-5. **DFS.** Proposed (decision 146): `step.prune()` after `Enter`, events
-   carry the arc (`Enter(v, via: ?Arc)`), an `Again(from, via)` event for
-   arcs into visited vertices, an optional shared `seen: mut [V]Bool`, a free
-   `reachable(g, from:)` with no `skip:`, and `g.dfs_tree` folded into
-   `Rooted`.
+5. **DFS and trees: agreed (decision 147), rewrite queued.** `step.prune()`,
+   events carry the arc, `Again(from, via)`, shared `seen:`, free
+   `reachable`, `g.dfs_tree` → `(tree: Rooted, tree_edge: [E]Bool)`.
+   Derived tree structures (`LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`)
+   own their data; `t` stays free (0-ownership.md §5).

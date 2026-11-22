@@ -4425,7 +4425,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Floyd-Warshall (agreed).** `floyd_warshall(mut d: [V, V]?W) -> Bool`,
   in place, `false` on a negative cycle; `g.matrix()` builds `d` in
   O(n^2 + m). Saves an n^2 copy and works for any `W: Ord + Add`.
-- **Proposed, not agreed: DFS.** `step.prune()` after `Enter` (the stub
+- **DFS (agreed in §147; was proposed here).** `step.prune()` after `Enter` (the stub
   said steer only with `break`); events carry the arc, `Enter(v, via:
   ?Arc)`; an `Again(from, via)` event for arcs into visited vertices, so
   custom low-link fits; optional shared `seen: mut [V]Bool`; free
@@ -4441,3 +4441,38 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   reason (multi-edge bridges, `[E]` results) was shown.
 - **Reverse.** Back to `Neighbours` with `w: A -> W` on each algorithm.
 
+
+## 147. Constructor ownership; trees on one `Rooted`; DFS (2026-11-21)
+
+- **Constructors (agreed).** R5 applies: parameters lend for the call,
+  the result is owned unless the signature says `lends`. Stdlib rule: a
+  result owns its data when copying it fits the documented cost; it lends
+  only when copying would cost more than building (O(1) views and
+  adapters). So `LcaTable(t)`, `Lift(t, ...)`, `Centroids(t)`,
+  `t.virtual(keys)` own their tables and leave `t` free; `lends` in a
+  signature always reads "O(1), borrows". Sharing a domain (`t.Pre`) is a
+  type, not a lend. Written into 0-ownership.md §5. Why: an earlier reply
+  said `LcaTable(t)` "lends `t`", and Ryan asked when that became policy;
+  owned results can be returned, stored beside `t`, or outlive it.
+  Reverse: let derived structures store `t` and declare `lends(t)`.
+- **Trees (agreed).** `Rooted` is the one static tree. Everything on it
+  uses only its O(n) build (parent, depth, size, children, heavy-light,
+  `t.Pre`), so many methods are fine; anything costing more time or memory
+  is its own owned structure built explicitly: `LcaTable(t)` (O(1) LCA),
+  `Lift(t, val, op:)` (path fold for any op, `climb_while`), `Centroids(t)`,
+  `t.virtual(keys)`, and range structures over `t.Pre`. LCA on `Rooted` is
+  heavy-light, O(log n), O(n) memory (speed not benchmarked yet).
+  `JumpTree` stays for trees growing by leaves; `LinkCut`, `EulerTourTree`
+  for changing trees. `Rooted(g: Next<V>, root:)` replaces `new(next, root,
+  w:)`; weighted depth comes from `.weighted(f)`. Ryan: "for the most part
+  i'm pretty aligned with what you've described ... i trust you to go on
+  and figure that out" (the exact surface is delegated).
+- **DFS (agreed, same message).** `step.prune()` after `Enter`; events
+  carry the arc, `Enter(v, via: ?Arc)`, `Exit(v, via: ?Arc)`; an
+  `Again(from, via)` event for arcs into visited vertices; optional shared
+  `seen: mut [V]Bool`; free `reachable(g, from:)` with no `skip:`;
+  `g.dfs_tree(root)` returns `(tree: Rooted, tree_edge: [E]Bool)`, and
+  `DfsTree` goes. Reverse: the old `Enter`/`Exit`-only `Visit`.
+- **Queued.** Rewrite `spec/std/tree.cp`, the DFS parts of `graph.cp` and
+  the tree section of 4-graphs-trees.md to this; trim `Rooted` against the
+  dreams.

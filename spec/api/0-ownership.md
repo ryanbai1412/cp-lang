@@ -174,6 +174,27 @@ fn same(xs: List<Int>) -> List<Int> = xs
 # error: returns the lent parameter xs; return xs.clone(), or declare `lends List<Int>`
 ```
 
+**Constructors follow R5 too.** A constructor is a fn, so its parameters
+are lent for the call and its result is owned unless it says `lends`. An
+owned result never keeps its source busy: the source is free again when
+the call returns.
+
+```python
+let t = Rooted(g, root: r)        # reads g, owns its arrays: g is free
+let fast = LcaTable(t)            # reads t, owns its table: t is free
+let ev = xs.filter(p)             # filter is `lends`: xs is lent while ev lives
+```
+
+The stdlib picks with one rule: **a result owns its data when copying
+what it needs fits within the cost the fn already documents; it lends only
+when copying would cost more than building**, which is the case for O(1)
+views and adapters (`a[l..r]`, `.filter`, `g.weighted(f)`). So every
+O(n)-or-more build (`Graph.directed`, `Rooted`, `LcaTable`, `Lift`,
+`Centroids`, `t.virtual`, `SegTree`) returns an owned value, and `lends`
+in a signature always means "O(1), and borrows". Sharing a domain (`V`,
+`t.Pre`) is not a lend: domains are types, so a table indexed by `t.Pre`
+holds nothing of `t`.
+
 ## 6. `lends` fns and projections
 
 A fn whose result borrows from its arguments declares it:
