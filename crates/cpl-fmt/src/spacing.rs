@@ -24,12 +24,17 @@ pub(crate) enum Role {
     ImportOpen,
     /// The `}` that closes it.
     ImportClose,
+    /// The second half of a C spelling the parser explains only when its
+    /// halves touch (`&&`, `||`, `..<`): kept tight to the first half.
+    Glued,
+    /// `without` between a row and the fields it drops: `..R without (u)`.
+    WordOperator,
 }
 
 fn ends_value(kind: K, role: Role) -> bool {
     match kind {
-        K::Ident
-        | K::Int
+        K::Ident => role != Role::WordOperator,
+        K::Int
         | K::Float
         | K::Str
         | K::RawStr
@@ -40,8 +45,8 @@ fn ends_value(kind: K, role: Role) -> bool {
         | K::SelfKw
         | K::True
         | K::False
-        | K::None
-        | K::Bang => true,
+        | K::None => true,
+        K::Bang => role != Role::Prefix,
         K::Gt | K::Shr => role == Role::GenericClose,
         K::Question => role == Role::Postfix,
         _ => false,
@@ -124,15 +129,25 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             {
                 Role::Plain
             }
+            K::Amp | K::Pipe
+                if !tok.space_before && prev.is_some_and(|(kind, _)| kind == tok.kind) =>
+            {
+                Role::Glued
+            }
+            K::Lt if !tok.space_before && prev.is_some_and(|(kind, _)| kind == K::DotDot) => {
+                Role::Glued
+            }
+            K::Ident if tok.text == "without" && after_value => Role::WordOperator,
             K::Minus | K::Plus | K::Amp if !after_value => Role::Prefix,
             K::Tilde => Role::Prefix,
-            // `@!multitest`: the `!` belongs to the attribute it opens.
-            K::Bang if prev.is_some_and(|(kind, _)| kind == K::At) => Role::Prefix,
+            // `@!multitest`, and C's `!x`, which the parser explains.
+            K::Bang if !after_value => Role::Prefix,
             K::Question if !after_value || tok.space_before => Role::Prefix,
             K::Question => Role::Postfix,
             K::Lt => {
                 let tight_after = toks.get(i + 1).is_some_and(|next| !next.space_before);
-                let declares = i >= 2 && toks[i - 1].kind == K::Ident && toks[i - 2].kind == K::Fn;
+                let declares = i >= 2 && toks[i - 1].kind == K::Ident && toks[i - 2].kind == K::Fn
+                    || i >= 1 && toks[i - 1].kind == K::Impl;
                 let generic_call = i > 0
                     && toks[i - 1].kind == K::Ident
                     && !tok.space_before
@@ -174,6 +189,12 @@ pub(crate) fn space_between(prev: &Tok, prev_role: Role, next: &Tok, next_role: 
 
 fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> bool {
     let after_value = ends_value(prev.kind, prev_role);
+    if next_role == Role::Glued {
+        return false;
+    }
+    if prev_role == Role::Glued {
+        return prev.kind != K::Lt || next.space_before;
+    }
     if prev_role == Role::ImportOpen || next_role == Role::ImportClose {
         return false;
     }
@@ -207,13 +228,15 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         // `[Spare]?Int` and `x ?? y` aside, a `?` after a value is written
         // the way the source had it.
         K::Question if after_value => return next.space_before,
-        K::Bang => return false,
+        K::Bang if next_role != Role::Prefix => return false,
         // `-> yields (v: V, d: Int)` names a type; `yields(x)` would read as a call.
         K::LParen if prev.kind == K::Ident && prev.text == "yields" => return true,
         K::LParen | K::LBracket if after_value => {
             // `[I] (i, j) => ..` is a table, `fs[i](x)` a call.
             return prev.kind == K::RBracket && next.kind == K::LParen && next.space_before;
         }
+        // `-> lends(a) T` names the parameters it borrows from.
+        K::LParen if prev.kind == K::Lends => return false,
         // `fn(Int) -> Int` as a type keeps the shape it was written in.
         K::LParen if prev.kind == K::Fn => return next.space_before,
         // `best max= x`.
@@ -238,7 +261,7 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         Role::Prefix | Role::GenericOpen => return false,
         Role::Postfix => return next.space_before,
         Role::GenericClose => return true,
-        Role::Plain | Role::ImportOpen | Role::ImportClose => {}
+        Role::Plain | Role::ImportOpen | Role::ImportClose | Role::Glued | Role::WordOperator => {}
     }
     if is_binary(prev.kind) {
         return true;

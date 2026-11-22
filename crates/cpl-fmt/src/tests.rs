@@ -539,3 +539,39 @@ fn formats_context_with_and_fn_uses() {
     assert_eq!(fmt(src), want);
     assert_eq!(fmt(want), want);
 }
+
+#[test]
+fn keeps_the_c_spellings_the_parser_explains_tight() {
+    // The parser explains `&&`, `||` and `..<` only when their halves
+    // touch, and `!x` only before a value; spacing them apart would change
+    // the error (crates/cpl-cli/tests/fixes/c_operators.cp).
+    for src in [
+        "if n > 1 && ok:\n    x\n",
+        "if !ok || n == 5:\n    x\n",
+        "for i in 0..<n:\n    x\n",
+    ] {
+        assert_eq!(fmt(src), src);
+    }
+    assert_eq!(fmt("if n>1&&ok:\n    x\n"), "if n > 1 && ok:\n    x\n");
+    assert_eq!(
+        fmt("let a = f(!x, y!)\nlet b = a! + 1\n"),
+        "let a = f(!x, y!)\nlet b = a! + 1\n"
+    );
+}
+
+#[test]
+fn spaces_impl_generics_lends_and_without_like_the_spec() {
+    assert_eq!(
+        fmt("impl<T: Total> Total for ?T:\n    x\n"),
+        "impl<T: Total> Total for ?T:\n    x\n"
+    );
+    assert_eq!(
+        fmt("fn f(a: X, b: X) -> lends (a) X = b\n"),
+        "fn f(a: X, b: X) -> lends(a) X = b\n"
+    );
+    assert_eq!(
+        fmt("fn s<R: (u: Int, ..)>(r: R) -> (..R without(u)) = (..r without(u))\n"),
+        "fn s<R: (u: Int, ..)>(r: R) -> (..R without (u)) = (..r without (u))\n"
+    );
+    assert_eq!(fmt("let k = without(3)\n"), "let k = without(3)\n");
+}
