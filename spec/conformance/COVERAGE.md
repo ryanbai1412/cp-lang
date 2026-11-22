@@ -6,11 +6,11 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1346 (995 passing). Rules: 521.
+Cases: 1349 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 83 cases; 0 uncovered, 6 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 84 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
 - R04 (04-indices.md): 59 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -18,7 +18,7 @@ Cases: 1346 (995 passing). Rules: 521.
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 82 cases; 0 uncovered, 7 happy-path only, 3 negative only
+- R07 (07-sequences.md): 87 rules, 84 cases; 0 uncovered, 5 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 34 cases; 4 uncovered, 5 happy-path only, 3 negative only
 - R10 (10-io.md): 16 rules, 44 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -55,7 +55,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
 - R01.4.6 [1+ 1-]: `++` is a lex error ("CP Lang concatenates with `+`").
 - R01.5.1 [3+ 0-] *happy-path only*: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
-- R01.5.2 [2+ 0-] *happy-path only*: `/` is floor division and `%` is never negative (decision 24).
+- R01.5.2 [2+ 1-]: `/` is floor division and `%` is never negative (decision 24).
 - R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
@@ -381,7 +381,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.4 [1+ 0-]: | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` ...
 - R07.2.5 [2+ 0-] *happy-path only*: | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behi...
 - R07.2.6 [0+ 1-] *negative only*: | **view** | a sequence made from a source without copying it: O(1) to make, borrows the s...
-- R07.2.7 [1+ 0-] *happy-path only*: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
+- R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
 - R07.2.9 [1+ 1-]: | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filte...
 - R07.2.10 [1+ 0-] *happy-path only*: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
@@ -389,7 +389,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
 - R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in O(1): slices...
 - R07.2.14 [1+ 0-]: **Slices are the views that narrow keys.** Every other indexed view keeps its source's key...
-- R07.2.15 [1+ 0-] *happy-path only*: **Ranges are indexed sequences but not views:** they have no source. Slicing *with* a rang...
+- R07.2.15 [1+ 1-]: **Ranges are indexed sequences but not views:** they have no source. Slicing *with* a rang...
 - R07.2.16 [1+ 0-] *happy-path only*: **Lazy means a view or generator.** Its work happens at each walk or read, never up front....
 - R07.3.1 [2+ 0-]: | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generator...
 - R07.3.2 [2+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
@@ -621,7 +621,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0111 Mixed comparison chain: 2 case(s)
 - E0201 Unresolved name: 2 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 6 case(s)
+- E0203 Unknown field or method: 7 case(s)
 - E0204 Unknown type: 2 case(s)
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
@@ -726,11 +726,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 parens_on_o1 / missing_parens: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
-- R0101 Index out of range: 11 case(s)
+- R0101 Index out of range: 12 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 6 case(s)
 - R0202 Integer overflow: 5 case(s)
-- R0203 Division by zero: 2 case(s)
+- R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
 - R0401 Assertion failed: 35 case(s)
 - R0402 todo reached: 1 case(s)
@@ -800,8 +800,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `split_best`
 - **segtree** (51/54 named by a case)
   - uncovered: `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (189/215 named by a case)
-  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
+- **seq** (193/215 named by a case)
+  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
@@ -814,7 +814,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1881 of 2222 std items are named by a case.
+1885 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
