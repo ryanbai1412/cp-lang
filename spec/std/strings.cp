@@ -390,7 +390,21 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `z_function("aabxaab") == [7, 1, 0, 0, 3, 1, 0]`
-pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
+pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
+    let n = s.len
+    var z = List.filled(n, 0)
+    if n > 0:
+        z[0] = n
+        var (l, r) = (0, 0)
+        unchecked:
+            for i in 1..n:
+                var k = if i < r: min(r - i, z[i - l]) else: 0
+                while i + k < n and s.at(k) == s.at(i + k): k += 1
+                z[i] = k
+                if i + k > r:
+                    l = i
+                    r = i + k
+    [n] i => z[i]
 
 @allow(unproven_list_index)
 /// The prefix function (failure function) of `s`: `p[i]` is the length of the longest
@@ -403,7 +417,9 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
-pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
+pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
+    let p = failure_lengths(s)
+    [s.len] i => p[i]
 
 fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
@@ -525,7 +541,19 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
 /// order: keyed by the keys of `self`
 /// traps: never
 /// example: `"abab".prefix_matches("ab") == [1, 2, 1, 2]`
-pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int = todo
+pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int:
+    let n = self.len
+    let m = pat.len
+    var res = List.filled(n, 0)
+    if n > 0 and m > 0:
+        let pi = failure_lengths(pat)
+        var k = 0
+        unchecked:
+            for i in 0..n:
+                while k > 0 and (k == m or self.at(i) != pat.at(k)): k = pi[k - 1]
+                if self.at(i) == pat.at(k): k += 1
+                res[i] = k
+    [n] i => res[i]
 
 @allow(unproven_list_index)
 /// The length of the longest suffix of `a` that is also a prefix of `b`, at most
@@ -608,7 +636,26 @@ pub fn min_rotation<S: Indexed, K>(s: S) -> ?K:
 /// traps: never
 /// example: `max_rotation("baca") == Some(2)`
 /// example: `max_rotation("abab") == Some(1)`
-pub fn max_rotation<S: Indexed, K>(s: S) -> ?K = todo
+@allow(unproven_list_index)
+pub fn max_rotation<S: Indexed, K>(s: S) -> ?K:
+    let n = s.len
+    if n == 0: return None
+    if n == 1: return Some(0)
+    var (a, b) = (0, 1)
+    var k = 0
+    unchecked:
+        while a < n and b < n and k < n:
+            let ai = a + k
+            let bi = b + k
+            let x = s.at(if ai < n: ai else: ai - n)
+            let y = s.at(if bi < n: bi else: bi - n)
+            if x == y:
+                k += 1
+            else:
+                if x < y: a += k + 1 else: b += k + 1
+                if a == b: b += 1
+                k = 0
+    Some(min(a, b))
 
 /// O(|pat| * |A|). Prefix (KMP) automaton over alphabet domain `A`, for O(1) transitions in DP.
 pub struct KmpAutomaton<A>:
