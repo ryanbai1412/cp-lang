@@ -1,0 +1,155 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: stable releases v<workspace version>; edge replaces the rolling edge prerelease and makes today's edge-YYYY-MM-DD if missing
+        type: choice
+        options:
+          - edge
+          - stable
+        default: edge
+      publish:
+        description: Publish the GitHub releases; off builds and uploads the assets as workflow artifacts only
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.channel }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.plan.outputs.channel }}
+      version: ${{ steps.plan.outputs.version }}
+      commit: ${{ steps.plan.outputs.commit }}
+      date: ${{ steps.plan.outputs.date }}
+      toolchain: ${{ steps.plan.outputs.toolchain }}
+      tags: ${{ steps.plan.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ inputs.channel }}
+        run: scripts/release/plan.sh "$CHANNEL"
+
+  build:
+    needs: plan
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install cargo-zigbuild
+        if: contains(matrix.target, 'linux-musl')
+        run: python3 -m pip install cargo-zigbuild==0.24.1
+      - name: Build and pack
+        env:
+          CPL_CHANNEL: ${{ needs.plan.outputs.channel }}
+          CPL_COMMIT: ${{ needs.plan.outputs.commit }}
+        run: scripts/release/build.sh "${{ matrix.target }}" dist
+      - name: Smoke test
+        if: matrix.target != 'aarch64-unknown-linux-musl' && matrix.target != 'x86_64-apple-darwin'
+        run: |
+          mkdir smoke
+          case "${{ matrix.target }}" in
+            *windows*) unzip -q "dist/cpl-${{ matrix.target }}.zip" -d smoke ;;
+            *) tar -xzf "dist/cpl-${{ matrix.target }}.tar.gz" -C smoke ;;
+          esac
+          smoke/bin/cpl --version | tee version.txt
+          grep -F "(${{ needs.plan.outputs.channel }}, $(cut -c1-8 <<<"${{ needs.plan.outputs.commit }}"))" version.txt
+          printf 'print("ok")\n' >smoke/hello.cp
+          test "$(smoke/bin/cpl run smoke/hello.cp)" = ok
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpl-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  editors:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - name: VS Code extension
+        working-directory: editors/vscode
+        run: |
+          npm ci --no-audit --no-fund
+          npm run package
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: JetBrains plugin
+        working-directory: editors/jetbrains
+        run: ./gradlew --no-daemon buildPlugin
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp editors/vscode/cp-lang.vsix dist/cp-lang.vsix
+          zips=(editors/jetbrains/build/distributions/*.zip)
+          test "${#zips[@]}" -eq 1
+          cp "${zips[0]}" dist/cp-lang-jetbrains.zip
+          python3 scripts/release/editors.py dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editors
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [plan, build, editors]
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          COMMIT: ${{ needs.plan.outputs.commit }}
+          DATE: ${{ needs.plan.outputs.date }}
+          TOOLCHAIN: ${{ needs.plan.outputs.toolchain }}
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: scripts/release/publish.sh dist "$CHANNEL" "$VERSION" "$COMMIT" "$DATE" "$TOOLCHAIN" "$TAGS"

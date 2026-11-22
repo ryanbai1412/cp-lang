@@ -5481,3 +5481,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `cpl self`, the `~/.cpl/bin/cpl` launcher and the installers download with `curl`, unpack with `tar`, and check SHA-256 with the dependency-free `crates/cpl-cli/src/sha256.rs` (tested on the FIPS 180-4 vectors).
 - **Why.** Both tools ship with macOS, the Linux distributions we target and Windows 10+, so the compiler gains no TLS stack, dependency tree or binary size; `ureq` with rustls adds about twenty crates for three HTTPS GETs.
 - **Reverse.** Swap `fetch` in `crates/cpl-cli/src/toolchain.rs` for `ureq::get`, keeping the `file://` support the tests use.
+
+## 201. Edge releases: one rolling, one immutable per day (2026-11-22)
+
+- **Decision.** Every edge build recreates the `edge` prerelease at its commit; the first edge build of a UTC day also makes `edge-YYYY-MM-DD`, which later builds never touch. Archives are reproducible, and each `latest.json` names its toolchain id (`0.3.0`, `edge-2026-11-22-1a2b3c4d`), the folder under `~/.cpl/toolchains/`.
+- **Why.** A dated pin always gets the same bytes, and the rolling tag is always the newest main.
+- **Reverse.** `scripts/release/publish.sh` and `plan.sh`.

@@ -309,7 +309,7 @@ step "cpl fmt --check stdlib"
 
 # Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
 if [ "$scoreboard_cached" -eq 0 ]; then
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
