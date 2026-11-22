@@ -90,7 +90,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'A'.lower == 'a'`
 /// example: `'7'.lower == '7'`
-@get pub fn lower(self: Char) -> Char = todo
+@get pub fn lower(self: Char) -> Char = if self.is_upper: Char(Int(self) + 32) else: self
 
 /// The capital of an ASCII lowercase letter; any other character is returned as it is.
 ///
@@ -99,7 +99,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'a'.upper == 'A'`
 /// example: `'?'.upper == '?'`
-@get pub fn upper(self: Char) -> Char = todo
+@get pub fn upper(self: Char) -> Char = if self.is_lower: Char(Int(self) - 32) else: self
 
 /// The value `0..=9` of an ASCII decimal digit: `'7'.digit` is `7`.
 ///
@@ -107,7 +107,9 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: when `self` is not in `'0'..='9'` (test with `is_digit` first)
 /// example: `'7'.digit == 7`
 /// example: `'0'.digit == 0`
-@get pub fn digit(self: Char) -> Int = todo
+@get pub fn digit(self: Char) -> Int:
+    assert self.is_digit, "`digit` needs a char in '0'..='9'"
+    Int(self) - Int('0')
 
 /// True when `self` is an ASCII decimal digit, `'0'..='9'`.
 ///
@@ -115,7 +117,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'5'.is_digit == true`
 /// example: `'x'.is_digit == false`
-@get pub fn is_digit(self: Char) -> Bool = todo
+@get pub fn is_digit(self: Char) -> Bool = self >= '0' and self <= '9'
 
 /// True when `self` is an ASCII lowercase letter, `'a'..='z'`.
 ///
@@ -123,7 +125,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'q'.is_lower == true`
 /// example: `'Q'.is_lower == false`
-@get pub fn is_lower(self: Char) -> Bool = todo
+@get pub fn is_lower(self: Char) -> Bool = self >= 'a' and self <= 'z'
 
 /// True when `self` is an ASCII capital letter, `'A'..='Z'`.
 ///
@@ -131,7 +133,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'Q'.is_upper == true`
 /// example: `'q'.is_upper == false`
-@get pub fn is_upper(self: Char) -> Bool = todo
+@get pub fn is_upper(self: Char) -> Bool = self >= 'A' and self <= 'Z'
 
 /// True when `self` is an ASCII letter, `'a'..='z'` or `'A'..='Z'`.
 ///
@@ -139,7 +141,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'Z'.is_alpha == true`
 /// example: `'_'.is_alpha == false`
-@get pub fn is_alpha(self: Char) -> Bool = todo
+@get pub fn is_alpha(self: Char) -> Bool = self.is_lower or self.is_upper
 
 /// True when `self` is an ASCII letter or decimal digit.
 ///
@@ -147,7 +149,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'9'.is_alnum == true`
 /// example: `' '.is_alnum == false`
-@get pub fn is_alnum(self: Char) -> Bool = todo
+@get pub fn is_alnum(self: Char) -> Bool = self.is_alpha or self.is_digit
 
 /// True when `self` is one of the four ASCII whitespace characters `' '`, `'\t'`, `'\n'`, `'\r'`.
 ///
@@ -155,7 +157,9 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'\t'.is_space == true`
 /// example: `'x'.is_space == false`
-@get pub fn is_space(self: Char) -> Bool = todo
+@get pub fn is_space(self: Char) -> Bool:
+    let c = Int(self)
+    c == 32 or (c >= 9 and c <= 13)
 
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///
@@ -163,7 +167,7 @@ pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 /// empty: `""`
 /// traps: never
 /// example: `"AbC1".to_lower() == "abc1"`
-pub fn to_lower(self: Str) -> Str = todo
+pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 
 /// A copy of `self` with every ASCII lowercase letter replaced by its capital (`Char.upper`).
 ///
@@ -171,7 +175,7 @@ pub fn to_lower(self: Str) -> Str = todo
 /// empty: `""`
 /// traps: never
 /// example: `"AbC1".to_upper() == "ABC1"`
-pub fn to_upper(self: Str) -> Str = todo
+pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
 
 /// A copy of `self` with leading and trailing whitespace (`Char.is_space`) removed; inner
 /// whitespace is kept.
@@ -181,7 +185,7 @@ pub fn to_upper(self: Str) -> Str = todo
 /// traps: never
 /// example: `"  a b \n".trim() == "a b"`
 /// example: `" \t ".trim() == ""`
-pub fn trim(self: Str) -> Str = todo
+pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 
 /// A copy of `self` with leading whitespace (`Char.is_space`) removed.
 ///
@@ -189,7 +193,10 @@ pub fn trim(self: Str) -> Str = todo
 /// empty: `""`; so is a string of only whitespace
 /// traps: never
 /// example: `"  a b \n".trim_start() == "a b \n"`
-pub fn trim_start(self: Str) -> Str = todo
+pub fn trim_start(self: Str) -> Str:
+    var i = 0
+    while i < self.len and self[i].is_space: i += 1
+    Str([self[j] for j in i..self.len])
 
 /// A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 ///
@@ -197,7 +204,10 @@ pub fn trim_start(self: Str) -> Str = todo
 /// empty: `""`; so is a string of only whitespace
 /// traps: never
 /// example: `"  a b \n".trim_end() == "  a b"`
-pub fn trim_end(self: Str) -> Str = todo
+pub fn trim_end(self: Str) -> Str:
+    var n = self.len
+    while n > 0 and self[n - 1].is_space: n -= 1
+    Str([self[j] for j in 0..n])
 
 /// The pieces of `self` between occurrences of `sep`, as new strings.
 ///
@@ -211,7 +221,17 @@ pub fn trim_end(self: Str) -> Str = todo
 /// example: `"a,b,,c".split(',') == ["a", "b", "", "c"]`
 /// example: `"a,".split(',') == ["a", ""]`
 /// example: `"".split(',') == [""]`
-pub fn split(self: Str, sep: Char) -> List<Str> = todo
+pub fn split(self: Str, sep: Char) -> List<Str>:
+    var out: List<Str> = []
+    var cur: List<Char> = []
+    for c in self:
+        if c == sep:
+            out.push(Str(cur))
+            cur = []
+        else:
+            cur.push(c)
+    out.push(Str(cur))
+    out
 
 /// `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None`
 /// when `sep` does not occur. Later separators stay in `after`.
@@ -221,7 +241,11 @@ pub fn split(self: Str, sep: Char) -> List<Str> = todo
 /// traps: never
 /// example: `"key=val=x".split_once('=') == Some(("key", "val=x"))`
 /// example: `"abc".split_once('=') == None`
-pub fn split_once(self: Str, sep: Char) -> ?(Str, Str) = todo
+pub fn split_once(self: Str, sep: Char) -> ?(Str, Str):
+    for i in 0..self.len:
+        if self[i] == sep:
+            return Some((Str([self[j] for j in 0..i]), Str([self[j] for j in i + 1..self.len])))
+    None
 
 /// The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as
 /// new strings. No piece is empty.
@@ -232,7 +256,18 @@ pub fn split_once(self: Str, sep: Char) -> ?(Str, Str) = todo
 /// traps: never
 /// example: `" a  b\tc ".split_whitespace() == ["a", "b", "c"]`
 /// example: `"   ".split_whitespace() == []`
-pub fn split_whitespace(self: Str) -> List<Str> = todo
+pub fn split_whitespace(self: Str) -> List<Str>:
+    var out: List<Str> = []
+    var cur: List<Char> = []
+    for c in self:
+        if c.is_space:
+            if cur.len > 0:
+                out.push(Str(cur))
+                cur = []
+        else:
+            cur.push(c)
+    if cur.len > 0: out.push(Str(cur))
+    out
 
 /// The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
 ///
@@ -245,7 +280,14 @@ pub fn split_whitespace(self: Str) -> List<Str> = todo
 /// example: `", ".join(["a", "b", "c"]) == "a, b, c"`
 /// example: `" ".join([1, 2, 3]) == "1 2 3"`
 /// example: `"-".join(["x"]) == "x"`
-pub fn join<S: Seq>(self: Str, parts: S) -> Str = todo
+pub fn join<S: Seq>(self: Str, parts: S) -> Str:
+    var out = ""
+    var first = true
+    for x in parts:
+        if not first: out += self
+        out += "{x}"
+        first = false
+    out
 
 /// A copy of `self` with every occurrence of `from` replaced by `to`.
 ///
@@ -258,7 +300,26 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str = todo
 /// example: `"aaaa".replace("aa", "b") == "bb"`
 /// example: `"aaa".replace("aa", "b") == "ba"`
 /// example: `"banana".replace("an", "") == "ba"`
-pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
+pub fn replace(self: Str, from: Str, to: Str) -> Str:
+    let m = from.len
+    assert m > 0, "`replace` needs a non-empty `from`"
+    var pi = List.filled(m, 0)
+    for i in 1..m:
+        var k = pi[i - 1]
+        while k > 0 and from[i] != from[k]: k = pi[k - 1]
+        if from[i] == from[k]: k += 1
+        pi[i] = k
+    var out: List<Char> = []
+    var k = 0
+    for c in self:
+        out.push(c)
+        while k > 0 and c != from[k]: k = pi[k - 1]
+        if c == from[k]: k += 1
+        if k == m:
+            out.truncate(out.len - m)
+            for t in to: out.push(t)
+            k = 0
+    Str(out)
 
 /// `self` read as a signed integer in `base`, or `None` if malformed or out of `Int` range.
 ///
@@ -272,7 +333,20 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
 /// example: `"ff".parse_int(base: 16) == Some(255)`
 /// example: `"-12".parse_int() == Some(-12)`
 /// example: `"12a".parse_int() == None`
-pub fn parse_int(self: Str, base: Int = 10) -> ?Int = todo
+pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
+    assert base >= 2 and base <= 36
+    var i = 0
+    let neg = self.len > 0 and self[0] == '-'
+    if self.len > 0 and (self[0] == '-' or self[0] == '+'): i = 1
+    if i == self.len: return None
+    var x = 0
+    while i < self.len:
+        let c = self[i].lower
+        let d = if c.is_digit: c.digit elif c.is_lower: Int(c) - Int('a') + 10 else: base
+        if d >= base: return None
+        x = x * base + (if neg: -d else: d)
+        i += 1
+    Some(x)
 
 /// `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a token is
 /// malformed, out of `T`'s range, missing, or left over.
