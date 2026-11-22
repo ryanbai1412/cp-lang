@@ -2360,3 +2360,12 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
 pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>> = todo
+
+/// O(1). A list's keys: `0..xs.len`, in increasing order.
+///
+/// cost: O(1)
+/// empty: `0..0`
+/// order: increasing
+/// traps: never
+/// example: `[5, 6, 7].keys == 0..3`
+@get pub fn keys<T>(self: List<T>) -> Range<Int> = 0..self.len

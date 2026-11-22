@@ -1436,6 +1436,7 @@ impl<'a> Checker<'a> {
             && std::env::var_os("CPL_SPEC").is_some()
             && !crate::prelude::spec_member_names().contains(&name.text)
             && !crate::builtins::BUILTIN_MEMBERS.iter().any(|m| m.name == name.text)
+            && self.global(&name.text).is_none()
         {
             let message = format!("{base_ty} has no `{}` in the spec: no std module declares it", name.text);
             self.error(codes::UNKNOWN_FIELD, name.span, message);
