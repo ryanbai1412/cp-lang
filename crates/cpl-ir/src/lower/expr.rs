@@ -4923,6 +4923,25 @@ impl<'a> Lowerer<'a> {
                 (iter, ty)
             }
             ast::ExprKind::Field { base, name } if name.text == "subsets" => {
+                if let ast::ExprKind::Name(n) = &base.kind {
+                    if self.lookup(n).is_none() {
+                        if let Some(d) = self.resolve_domain_name(n) {
+                            let sub = self.subset_domain(d);
+                            let lo = self.int_lit(0, span);
+                            let hi = self.mk(ExprKind::DomainLen(sub), Ty::Int, span);
+                            return (
+                                Iter::Range {
+                                    lo,
+                                    hi,
+                                    step: None,
+                                    rev: false,
+                                    closed: false,
+                                },
+                                Ty::Pos(sub),
+                            );
+                        }
+                    }
+                }
                 let value = self.expr(base, None);
                 if let Ty::Pos(subset) = value.ty {
                     if self.subset_base(subset).is_some() {

@@ -2865,6 +2865,14 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::Bound(d));
                 }
             }
+            if rest == "subsets" {
+                if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
+                    return Spec::Plain(Ty::Pos(self.subset_domain(d)));
+                }
+                if let Some(Sym::Domain(d)) = self.get_sym(prefix) {
+                    return Spec::Plain(Ty::Pos(self.subset_domain(d)));
+                }
+            }
             if let Some(GenArg::Ty(t)) = self.gen_env.get(prefix).cloned() {
                 if let Some(ty) = self.assoc_type(&t, rest) {
                     return Spec::Plain(ty);
@@ -3263,6 +3271,14 @@ impl<'a> Lowerer<'a> {
                     }
                     if let Some(Sym::Domain(id)) = self.get_sym(domain) {
                         return Some(DimSpec::Bound(id));
+                    }
+                }
+                if let Some(domain) = name.text.strip_suffix(".subsets") {
+                    if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
+                        return Some(DimSpec::Pos(self.subset_domain(id)));
+                    }
+                    if let Some(Sym::Domain(id)) = self.get_sym(domain) {
+                        return Some(DimSpec::Pos(self.subset_domain(id)));
                     }
                 }
             } else if name.text == "Subset" && args.len() == 1 {

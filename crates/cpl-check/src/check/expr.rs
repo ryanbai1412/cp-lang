@@ -3444,6 +3444,20 @@ impl<'a> Checker<'a> {
             return true;
         }
         match (got, want) {
+            (Ty::Named { name, args }, Ty::Pos(dom))
+                if name == "Subset"
+                    && args.len() == 1
+                    && matches!(&args[0], Ty::Pos(d) | Ty::Domain(d) if dom.strip_suffix(".subsets") == Some(d.as_str())) =>
+            {
+                return true;
+            }
+            (Ty::Pos(dom), Ty::Named { name, args })
+                if name == "Subset"
+                    && args.len() == 1
+                    && matches!(&args[0], Ty::Pos(d) | Ty::Domain(d) if dom.strip_suffix(".subsets") == Some(d.as_str())) =>
+            {
+                return true;
+            }
             // §124: integer literals and checked arithmetic fit `D.bounds`.
             (a, Ty::Pos(dom)) if a.is_int() && self.bounds_base_domain(dom).is_some() => {
                 return true;

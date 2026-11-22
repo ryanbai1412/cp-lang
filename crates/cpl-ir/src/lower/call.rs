@@ -4956,6 +4956,19 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `Subset<D>.full` / `Subset<D>.empty` / `Subset<D>.len`, etc.
+        if let ast::ExprKind::Generic {
+            base: gb,
+            args: gargs,
+        } = &base.kind
+        {
+            if matches!(&gb.kind, ast::ExprKind::Name(n) if n == "Subset") && gargs.len() == 1 {
+                if let Ty::Pos(d) = self.resolve_ty(&gargs[0]) {
+                    let sub = self.subset_domain(d);
+                    return self.domain_field(sub, name, hint, span);
+                }
+            }
+        }
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic {
             base: gbase,
@@ -4981,19 +4994,6 @@ impl<'a> Lowerer<'a> {
                             return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                         }
                     }
-                }
-            }
-        }
-        // `Subset<D>.full` / `Subset<D>.empty` / `Subset<D>.len`, etc.
-        if let ast::ExprKind::Generic {
-            base: gb,
-            args: gargs,
-        } = &base.kind
-        {
-            if matches!(&gb.kind, ast::ExprKind::Name(n) if n == "Subset") && gargs.len() == 1 {
-                if let Ty::Pos(d) = self.resolve_ty(&gargs[0]) {
-                    let sub = self.subset_domain(d);
-                    return self.domain_field(sub, name, hint, span);
                 }
             }
         }
@@ -7979,6 +7979,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     Arg::Value(value)
                 };
+                self.call_hint = hint.cloned();
                 return self.call_gen_fn(gfid, Vec::new(), Some(recv), args, span);
             }
         }
