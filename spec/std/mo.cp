@@ -19,14 +19,16 @@ use std.seq.{ends}
 pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
     let q = queries.len
     if q == 0: return []
-    let b = max(1, D.K / max(1, isqrt(q)))
+    var hi = queries[0].ends.1
+    for i in 1..q: hi = max(hi, queries[i].ends.1)
+    let b = max(1, hi / max(1, isqrt(q)))
     var pairs: List<(Int, Int)> = []
     unchecked:
-        let span = D.K + 1
+        let span = hi + 1
         for i in 0..q:
             let (l, r) = queries[i].ends
             let blk = l / b
-            let k = blk * span + (if blk % 2 == 0: r else: D.K - r)
+            let k = blk * span + (if blk % 2 == 0: r else: hi - r)
             pairs.push((k, i))
         pairs.sort()
         return [p.1 for p in pairs]

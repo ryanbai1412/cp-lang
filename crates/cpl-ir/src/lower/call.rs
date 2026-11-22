@@ -5338,6 +5338,7 @@ impl<'a> Lowerer<'a> {
                 self.len_of(map_expr, span)
             }
             (Ty::Char, "ord") => self.cast(Cast::CharToInt, value, Ty::Int),
+            (Ty::Int, "ord") => value,
             (Ty::Char, "is_digit") => {
                 let ord = self.cast(Cast::CharToInt, value, Ty::Int);
                 let lo = self.int_lit(b'0' as i64, span);
