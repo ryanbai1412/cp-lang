@@ -54,7 +54,7 @@ for c in Color:
     let (lo, hi) = run[c]!
     close_run(lo, hi, none)
 
-var seg = LazySegTree<Rank.cuts, Int>(AddMax, fill: 0)
+var seg = SegTree<Rank.cuts, Int>(max, fill: 0, act: add)
 for r in Rank:
     let v = seg.all + Int(not must_rank[r])
     seg.set(r.r, v)

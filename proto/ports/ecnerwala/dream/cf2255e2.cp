@@ -35,7 +35,7 @@ fn assign(v: Int) -> Tag = tag(set: Cell(v, .empty))
 let (n, q): (1..=5e5, 1..=5e5) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-var st = DualSegTree<I>([I] i => Cell(a[i], MaxSub.of(a[i])), id: tag(), compose: then, apply: run)
+var st = SegTree<I>(a: [I] i => Cell(a[i], MaxSub.of(a[i])), act: Action(id: tag(), compose: then, apply: (f, c, _) => run(f, c)))
 var last: U64 = 0
 fn at(y: U64) -> I = I.at((y ^ last) % n)
 repeat q:

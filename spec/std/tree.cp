@@ -6,7 +6,7 @@
 //! indexing a per-position structure with a vertex or another tree's position does not type-check.
 //!
 //! `Rooted` is the one tree abstraction. A value per vertex lives in any
-//! structure indexed by `t.Pre` (a `SegTree`, a `LazySegTree`, a `Fenwick`), and
+//! structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
@@ -14,7 +14,7 @@ use std.graph.{Neighbours, Target, Graph, Visit}
 use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
-use std.lazy.{LazySegTree, AddMax, AddSum}
+use std.algebra.{add}
 use std.seq.{dedup}
 use std.rand.{Rng}
 
@@ -206,7 +206,7 @@ pub struct Rooted<V, Pre>:
     ) -> yields (range: Range<Pre>, rising: Bool) = todo
 
     /// O(log^2 n). The fold of the values on the path from `a` to `b`, in that order, read from
-    /// `ds`: any structure over `Pre` with `fold(range)` and a `monoid` (`SegTree`, `LazySegTree`).
+    /// `ds`: any structure over `Pre` with `fold(range)` and a `monoid` (`SegTree`).
     /// A stretch of the path that climbs is folded top-down by `ds` and then turned round
     /// with `rev()`: a value that is not its own reverse implements `Reversible`. One
     /// structure, O(log^2 n).
@@ -543,8 +543,8 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// `none` past `b` or across trees.
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
-/// `LinkCut` with updates along a path: `LazyLinkCut.new(AddSum, a)` adds to every value on
-/// a path and folds paths, under the same `Action` as `LazySegTree`. Reversing a path must not
+/// `LinkCut` with updates along a path: `LazyLinkCut.new(+, add, a)` adds to every value on
+/// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
 /// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
 /// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.
 pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):

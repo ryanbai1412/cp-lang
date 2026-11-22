@@ -9,7 +9,7 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
-use std.algebra.{Action, Desc, Monoid, Ordering, cmp, desc, fold}
+use std.algebra.{Action, Commutative, Desc, Group, Idempotent, Monoid, Op, Ordering, Selective, add, affine, assign, cmp, desc, each, flip, fold}
 use std.bag.{BucketCount, SortedBag, SortedMap, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
@@ -22,7 +22,7 @@ use std.graph.{Graph, Target, Tree, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4, Dir8, step}
 use std.heap.{MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
-use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, DualSegTree, LazySegTree}
+use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
 use std.mod.{Comb, Mod}
@@ -53,15 +53,11 @@ use std.seq.{
     iterate,
     last_lt,
     lis,
-    next_greater,
-    next_less,
     next_permutation,
     select,
     pairs,
     partition,
     partition_point,
-    prev_greater,
-    prev_less,
     prev_permutation,
     prod,
     reduce,
@@ -73,8 +69,6 @@ use std.seq.{
     rotated_left,
     rotated_right,
     runs,
-    sliding_max,
-    sliding_min,
     take_while,
     tally,
     windows,

@@ -48,24 +48,6 @@ pub struct Fenwick<D, T>:
     /// O(|D|). Reset all entries to zero without reallocating.
     pub fn clear(mut self) = todo
 
-/// Point xor and range xor over anything with `^` (`Int`, `U64`): the Fenwick tree whose
-/// `+` is `^`, for Zobrist hashes and nim sums. `XorFenwick<D, U64>()` starts at zero and
-/// `XorFenwick<D, U64>(a)` from an array, in O(n). `flip`, `prefix` and `xor` are O(log n).
-pub struct XorFenwick<D, T>:
-    t: List<T>
-
-    /// Create a bitwise-XOR Fenwick tree over `D`, optionally initialized from `a`. O(|D|).
-    pub fn new(a: ?[D]T = none) -> XorFenwick<D, T> = todo
-
-    /// `a[i] ^= x`.
-    pub fn flip(mut self, i: D, x: T) = todo
-
-    /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
-    pub fn prefix(self, b: Cut<D>) -> T = todo
-
-    /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero.
-    pub fn xor(self, r: Range<D>) -> T = todo
-
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
 /// memory is (R + 1) * (C + 1) values.
 pub struct Fenwick2D<R, C, T>:
@@ -109,73 +91,6 @@ pub struct DualFenwick<D, T>:
     pub fn get(self, i: D) -> T = todo
 
     /// O(|D|). Reset all entries to zero without reallocating.
-    pub fn clear(mut self) = todo
-
-/// Range add and range sum over `Int` using two Fenwick arrays.
-/// `RangeFenwick<D>()` starts at zero and `RangeFenwick<D>(a)` from an array, in O(n).
-/// `add`, `prefix` and `sum` are O(log n); memory is 2 * (n + 1) ints.
-pub struct RangeFenwick<D>:
-    b1: List<Int>
-    b2: List<Int>
-
-    /// Create a range-add / range-sum Fenwick tree over `D`. O(|D|).
-    pub fn new(a: ?[D]Int = none) -> RangeFenwick<D> = todo
-
-    fn add_at(mut self, p0: Int, v1: Int, v2: Int) = todo
-
-    /// Add `x` to every position in `r`. O(log n).
-    pub fn add(mut self, r: Range<D>, x: Int) = todo
-
-    /// The sum of everything left of boundary `b`. O(log n).
-    pub fn prefix(self, b: Cut<D>) -> Int = todo
-
-    /// The sum of a range `r`. O(log n).
-    pub fn sum(self, r: Range<D>) -> Int = todo
-
-    /// O(log |D|). Single-position value `a[i]`.
-    pub fn get(self, i: D) -> Int = todo
-
-    /// O(1), kept current by every update. Total sum of the entire domain.
-    pub @get fn all(self) -> Int = todo
-
-    /// O(|D|). Reset all entries to zero without reallocating.
-    pub fn clear(mut self) = todo
-
-/// O(|D|) space. Fenwick tree parameterized by any abelian `Group<T>` (point update and range fold
-/// in O(log |D|); generalizes `Fenwick` and `XorFenwick`).
-pub struct GroupFenwick<D, T>(g: Group<T>):
-    t: List<T>
-
-    /// O(|D|). Create a group Fenwick tree over `D`, optionally initialized from `a`.
-    pub fn new<G>(op: G, a: ?[D]T = none) -> GroupFenwick<D, T> = todo
-
-    /// O(log |D|). Combine `x` into position `i`: `a[i] = g.op(a[i], x)`.
-    pub fn update(mut self, i: D, x: T) = todo
-
-    /// O(log |D|). Fold of everything left of boundary `b`.
-    pub fn prefix(self, b: Cut<D>) -> T = todo
-
-    /// O(log |D|). Fold of range `r`, using `g.inv` on the left prefix.
-    pub fn fold(self, r: Range<D>) -> T = todo
-
-    /// O(|D|). Reset all entries to `g.id`.
-    pub fn clear(mut self) = todo
-
-/// O(|D|) space. Prefix-only monotone Fenwick tree (e.g. prefix `max`/`min` for 1D DP / LIS):
-/// O(log |D|) point combine and prefix fold with half the memory of `SegTree`.
-pub struct PrefixFenwick<D, T>(op: (T, T) -> T, id: T):
-    t: List<T>
-
-    /// O(|D|). Create a prefix-only Fenwick tree initialized to `id` (or `a`).
-    pub fn new(op: (T, T) -> T, id: T, a: ?[D]T = none) -> PrefixFenwick<D, T> = todo
-
-    /// O(log |D|). Monotone update `a[i] = op(a[i], x)`.
-    pub fn update(mut self, i: D, x: T) = todo
-
-    /// O(log |D|). Fold of everything left of boundary `b`.
-    pub fn prefix(self, b: Cut<D>) -> T = todo
-
-    /// O(|D|). Reset all entries to `id`.
     pub fn clear(mut self) = todo
 
 /// O(n log n) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):

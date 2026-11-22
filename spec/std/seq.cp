@@ -170,10 +170,6 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// one compression cannot be used in another. Works on any `Seq`. O(n log n).
 pub fn compress<S: Seq, T>(all: S) = todo
 
-/// Kadane: the largest sum of a non-empty contiguous piece, and where it is (the
-/// shortest such piece, or the widest with `widest: true`); `none` when empty. O(n).
-pub fn max_subarray<D, T>(self: [D]T, widest: Bool = false) -> ?(sum: T, at: Range<D>) = todo
-
 /// The first `f(x)` that is not `none`, stopping there; `none` if every one is.
 /// O(1) per element walked.
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
@@ -247,24 +243,6 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V = todo
 
 /// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`. O(n log n).
 pub fn inversions<S: Seq, T>(a: S) -> Int = todo
-
-/// Nearest earlier index `j < i` with `self[j] < self[i]` (or `<=` when `strict: false`), or `none`. O(n).
-pub fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D = todo
-
-/// Nearest later index `j > i` with `self[j] < self[i]` (or `<=` when `strict: false`), or `none`. O(n).
-pub fn next_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D = todo
-
-/// Nearest earlier index `j < i` with `self[j] > self[i]` (or `>=` when `strict: false`), or `none`. O(n).
-pub fn prev_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D = todo
-
-/// Nearest later index `j > i` with `self[j] > self[i]` (or `>=` when `strict: false`), or `none`. O(n).
-pub fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D = todo
-
-/// Minimum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). Works on any `Seq`. O(n).
-pub fn sliding_min<S: Seq, T>(self: S, k: Int) -> List<T> = todo
-
-/// Maximum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). Works on any `Seq`. O(n).
-pub fn sliding_max<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 
 /// Swap two positions of a domain array in place; safely a no-op when `i == j`.
 pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D) = todo
@@ -428,9 +406,6 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// O(n), O(n) memory. `[a[0], a[1] - a[0], ...]` (inverse of `scan(+)`).
 pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T> = todo
 
-/// O(n), O(n) memory. Consecutive differences `[a[1] - a[0], a[2] - a[1], ...]` (length `max(0, n - 1)`).
-pub fn diffs<S: Seq, T>(self: S) -> List<T> = todo
-
 /// O(1). Explicit piece `Range<D>` between cuts `lo` and `hi` (explicit twin of `lo..hi` in decision 124; traps if `lo > hi`).
 pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D> = todo
 
@@ -511,9 +486,6 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)> = todo
 
 /// O(n), O(n) memory. Min-heap (or max-heap when `min_root: false`) Cartesian tree in one monotone-stack pass.
 pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D) = todo
-
-/// O(n), O(n) memory. Largest axis-aligned rectangle under `heights` and its achieving `Range<D>`.
-pub fn max_histogram<D>(heights: [D]Int) -> (area: Int, range: Range<D>) = todo
 
 // --- Incremental / online sequence structures (with mark/undo_to rollback for tree DFS) ---
 
@@ -647,3 +619,32 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// O(1). The pair the other way round: `(a, b).rev` is `(b, a)`, and labels stay in place,
 /// so an edge `(u: a, v: b).rev` is `(u: b, v: a)`.
 pub @get fn rev<A>(self: (A, A)) -> (A, A) = todo
+
+/// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`. O(n).
+pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S> = todo
+
+/// Pieces between elements where `sep` holds; separators excluded, empty pieces kept. O(n).
+pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
+
+/// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
+/// `state: Track`. `ok` must be monotone under shrinking. O(n) amortized.
+pub fn maximal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields Slice<S> = todo
+
+/// For each right end, the shortest piece ending there that is `ok`, or none. O(n) amortized.
+pub fn minimal<S: Indexed, St>(self: S, state: St, ok: St -> Bool) -> yields ?Slice<S> = todo
+
+/// For each position, the widest piece where it is the minimum of `by` (ties: the left one
+/// extends). O(n).
+pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
+
+/// Nearest earlier position with a smaller key (`strict: false`: smaller or equal). O(n).
+pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
+
+/// Nearest later position with a smaller key. O(n).
+pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
+
+/// Nearest earlier position with an equal key. O(n) expected.
+pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
+
+/// Nearest later position with an equal key. O(n) expected.
+pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo

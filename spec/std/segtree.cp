@@ -6,7 +6,7 @@ use std.seq.{ends}
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
 /// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
-/// `set` and `fold` are O(log n), and so are `max_right` and `min_left`; memory is
+/// `set` and `fold` are O(log n), and so are `right_while` and `left_while`; memory is
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
 /// non-commutative operations work.
 pub struct SegTree<D, T>(m: Monoid<T>):
@@ -16,7 +16,25 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     source: ?(D -> T)
 
     /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
-    pub fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T> = todo
+    /// With `act:` the tree also applies tags to ranges (`apply`, `apply_all`); with `over:`
+    /// it covers a huge integer range and makes nodes on first touch. With `act:` and no op it
+    /// applies tags and reads points. Push-down is skipped when the tags commute.
+    pub fn new<M, A>(op: ?M = none, a: ?[D]T = none, fill: ?T = none, act: ?A = none, over: ?Range<Int> = none) -> SegTree<D, T> = todo
+
+    /// Apply tag `f` to every position in `r`. O(log n).
+    pub fn apply(mut self, r: Range<D>, f: F) = todo
+
+    /// Apply tag `f` everywhere. O(1) amortized for commuting tags, else O(n).
+    pub fn apply_all(mut self, f: F) = todo
+
+    /// Fold of `r`, left to right. O(log n).
+    pub fn fold(self, r: Range<D>) -> T = todo
+
+    /// The last cut `d` with `ok(fold(from..d))`, `ok` monotone. O(log n).
+    pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
+
+    /// The first cut `d` with `ok(fold(d..to))`, `ok` monotone. O(log n).
+    pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// A tree whose position `i` holds `f(i)`. When something `f` reads changes, `refresh(i)`
     /// brings position `i` up to date, so the formula is written once, not at every update. O(n).
@@ -39,7 +57,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     fn pull(mut self, i: D) = todo
 
-    /// Replace the value at `i` with `f` of it, as `LazySegTree.update` does. O(log n).
+    /// Replace the value at `i` with `f` of it, as `apply` does on a point. O(log n).
     pub fn update(mut self, i: D, f: T -> T) = todo
 
     /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
@@ -52,12 +70,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// The operation the tree folds with, as its `(id, op)` pair.
     pub @get fn monoid(self) -> Monoid<T> = todo
 
-    /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
-    /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
-    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(log |D|). Fold of `r`, or `none` when `r` is empty (avoids sentinel identities for semigroups).
     pub fn try_fold(self, r: Range<D>) -> ?T = todo
@@ -84,7 +97,7 @@ fn of_and_refresh_follow_the_formula() = todo
 fn keeps_the_order_for_non_commutative_monoids() = todo
 
 @test
-fn max_right_and_min_left_binary_search() = todo
+fn right_while_and_left_while_binary_search() = todo
 
 @test
 fn update_changes_one_value_in_place() = todo
@@ -127,57 +140,6 @@ pub struct MergeSortTree<D, T>:
 
     /// O(log^2 |D|). Largest element in `r` that is `<= x`, or `none`.
     pub fn last_le(self, r: Range<D>, x: T) -> ?T = todo
-
-/// Dynamic (coordinate-sparse) segment tree over integer coordinates `[lo, hi)`.
-/// Allocates nodes on demand in an arena. Point update and range fold run in O(log(hi - lo)).
-pub struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int):
-    left: List<-1..=2_000_000_000>
-    right: List<-1..=2_000_000_000>
-    val: List<T>
-    root: 0..=2_000_000_000
-
-    /// Empty sparse segment tree over half-open coordinates `[lo, hi)` (every cell starts at `m.id`). O(1).
-    pub fn new<M>(op: M, lo: Int, hi: Int) -> SparseSegTree<T> = todo
-
-    fn new_node(mut self) -> Int = todo
-
-    fn node_val(self, u: Int) -> T = todo
-
-    fn set_rec(mut self, u: Int, nl: Int, nr: Int, x: Int, v: T) = todo
-
-    /// Set coordinate `x` (in `[lo, hi)`) to `v`. O(log(hi - lo)).
-    pub fn set(mut self, x: Int, v: T) = todo
-
-    fn update_rec(mut self, u: Int, nl: Int, nr: Int, x: Int, f: T -> T) = todo
-
-    /// Replace coordinate `x` with `f(current)`. O(log(hi - lo)).
-    pub fn update(mut self, x: Int, f: T -> T) = todo
-
-    /// Value stored at coordinate `x`. O(log(hi - lo)).
-    pub fn get(self, x: Int) -> T = todo
-
-    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> T = todo
-
-    /// Fold over half-open coordinate range `[ql, qr)`. O(log(hi - lo)).
-    pub fn fold(self, ql: Int, qr: Int) -> T = todo
-
-    /// Fold over the entire `[lo, hi)` coordinate range. O(1).
-    pub @get fn all(self) -> T = todo
-
-    /// O(log(hi - lo)). Fold over coordinate range `r`.
-    pub fn fold_range(self, r: Range<Int>) -> T = todo
-
-    /// O(log(hi - lo)). Furthest coordinate `x >= from` such that `ok(fold(from, x))`.
-    pub fn max_right(self, from: Int, ok: T -> Bool) -> Int = todo
-
-    /// O(log(hi - lo)). Furthest coordinate `x <= to` such that `ok(fold(x, to))`.
-    pub fn min_left(self, to: Int, ok: T -> Bool) -> Int = todo
-
-    /// O(log(hi - lo)) amortized per absorbed node. Merge `other` into `self` pointwise using `combine`.
-    pub fn merge(mut self, mut other: SparseSegTree<T>, combine: (T, T) -> T) = todo
-
-    /// O(log(hi - lo)). Split off coordinates `>= at` into a new `SparseSegTree<T>`.
-    pub fn split(mut self, at: Int) -> SparseSegTree<T> = todo
 
 /// O(|R| * |C|) space. Iterative 2D segment tree: point update and rectangle fold in O(log |R| * log |C|).
 pub struct SegTree2D<R, C, T>(m: Monoid<T>):

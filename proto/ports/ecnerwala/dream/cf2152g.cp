@@ -5,6 +5,7 @@
 // for both the active monster set and its complement, swapping on subtree flip.
 
 use std.lazy.{Flip}
+use std.algebra.{flip}
 
 @!multitest
 domain V = read(1..=250_000)
@@ -18,9 +19,10 @@ struct Side(ends: 0..=V.count, first: ?V, last: ?V):
         if let u = x.last, let w = y.first, t.is_anc(u, w): ends -= 1
         Side(ends, x.first ?? y.first, y.last ?? x.last)
 
-var st = LazySegTree<t.Pre, Flip<Side>>(
-    Flip(Side),
+var st = SegTree<t.Pre, Flip<Side>>(
+    Flip.op(Side),
     t.reorder([V] v => if monster[v]: Side(1, v, v) else: Side.empty),
+    act: flip,
 )
 print(st.all.now.ends)
 repeat read():

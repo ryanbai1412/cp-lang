@@ -4,7 +4,7 @@
 //! needs. Binary search over a range is a method on it (`std.seq`):
 //! `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)`. Sorted lookup in a container is the four-name family
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
-//! structure is its `max_right`/`min_left`.
+//! structure is its `right_while`/`left_while`.
 
 /// `steps + 1` calls of `ok`.
 /// Fixed-iteration binary search on `[lo, hi]` for monotone `ok` (false then true).

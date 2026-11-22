@@ -11,37 +11,37 @@
 // is uncovered). The live "some impostor" intervals starting at v are a sliding
 // window over the statements, so `ends[v]` keeps their shortest right end, and
 // `shortest` is a min tree over those.
-use std.window.{MonoDeque}
+use std.window.{Window}
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n
 domain S = 1..=m
 let st: [S](some: Bool, a: V, b: V) = read()
 
-var cover = LazySegTree<V, Int>(AddMin, fill: 0)
-var ends: [V]MonoDeque<V.cuts> = MonoDeque()
+var cover = SegTree<V, Int>(min, fill: 0, act: add)
+var ends: [V]Window<V.cuts> = Window(min)   // pieces leave in the order they came
 var shortest = SegTree<V, ?V.cuts>(min, fill: none)
 
 fn fits(i: S) -> Bool:
     let s = st[i]
     if s.some: return cover.fold(s.a..=s.b) == 0
-    let lo = cover.min_left(to: s.a.l, ok: c => c > 0)
-    let hi = cover.max_right(from: s.b.r, ok: c => c > 0)
+    let lo = cover.left_while(to: s.a.l, ok: c => c > 0)
+    let hi = cover.right_while(from: s.b.r, ok: c => c > 0)
     shortest.fold(lo..hi).is_none_or(e => e > hi)
 
 fn take(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].push(at: i, val: s.b.r)
-        shortest[s.a] = ends[s.a].best
+        ends[s.a].push(s.b.r)
+        shortest[s.a] = ends[s.a].all
     else:
         cover.apply(s.a..=s.b, 1)
 
 fn drop(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].drop(at: i)
-        shortest[s.a] = ends[s.a].best
+        ends[s.a].pop()
+        shortest[s.a] = ends[s.a].all
     else:
         cover.apply(s.a..=s.b, -1)
 

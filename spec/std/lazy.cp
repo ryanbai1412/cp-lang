@@ -1,204 +1,20 @@
-//! Segment tree with range updates.
+//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 use std.algebra.{Action, MaxCount, MinCount, Monoid}
 use std.rand.Rng
 use std.seq.{ends}
 
-/// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)` (the tag type `F` is inferred
-/// from the `Action`). The stock actions are `AddSum`, `AddMin`, `AddMax`, `AssignSum`,
-/// `AssignMin`, and `AssignMax`; a custom action is
-/// `Action(id: ..., compose: (new_f, old_f) => ..., apply: (f, val, span) => ..., over: op)`
-/// where `compose` applies `old_f` first then `new_f` and `apply` updates a node fold
-/// covering `span` leaves.
-/// `apply`, `set`, `update`, `get`, `fold`, `max_right`, and `min_left` are O(log n); `all` is O(1).
-/// Memory is 2 * bit_ceil(n) values and spans plus bit_ceil(n) pending tags.
-pub struct LazySegTree<D, T, F>(act: Action<T, F>):
-    t: List<T>
-    lz: List<F>
-    has_lz: List<Bool>
-    /// How many positions each node covers; the padding past the domain covers none.
-    span: List<0..=2_000_000_000>
-    size: 0..=2_000_000_000
-    log: 0..=64
 
-    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
-    pub fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F> = todo
-
-    fn pull(mut self, p: Int) = todo
-
-    fn put(mut self, p: Int, f: F) = todo
-
-    fn push(mut self, p: Int) = todo
-
-    fn open(mut self, l: Int, h: Int) = todo
-
-    /// Assign position `i` to `x`, pushing pending tags on its path. O(log |D|).
-    pub fn set(mut self, i: D, x: T) = todo
-
-    /// Push down to leaf `i`, replace its value with `f(cur)`, and pull back up in one O(log n) traversal.
-    pub fn update(mut self, i: D, f: T -> T) = todo
-
-    /// Read the current value at position `i`, pushing pending tags on its path. O(log |D|).
-    pub fn get(mut self, i: D) -> T = todo
-
-    /// Position `i` as a writable place: `st.at(i) += x`. Pending tags on its path are
-    /// pushed first and the ancestors pulled when the write ends. O(log |D|).
-    pub fn at(mut self, i: D) lends mut T:
-        let p = i.to_idx + size
-        for k in (1..=log).rev: self.push(p >> k)
-        lend mut t[p]
-        for k in 1..=log: self.pull((i.to_idx + size) >> k)
-
-    /// The fold of every position. O(1).
-    pub @get fn all(self) -> T = todo
-
-    /// The operation the tree folds with, as its `(id, op)` pair.
-    pub @get fn monoid(self) -> Monoid<T> = todo
-
-    /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
-    /// An empty range gives the identity.
-    pub fn fold(mut self, r: Range<D>) -> T = todo
-
-    /// Every position in the range takes the update `f`.
-    pub fn apply(mut self, r: Range<D>, f: F) = todo
-
-    /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
-    /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
-
-    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
-
-    /// O(1). Apply tag `f` to every position in the tree.
-    pub fn apply_all(mut self, f: F) = todo
-
-    /// O(|D|). Reset all leaves to `fill` (or `act.over.id`) and clear pending tags without reallocating.
-    pub fn clear(mut self, fill: ?T = none) = todo
-
-    /// O(|D|). Push all pending tags once and materialize every leaf as `[D]T`.
-    pub fn to_array(mut self) -> [D]T = todo
-
-/// Add to every position, fold with `+`.
-pub const AddSum = Action<Int, Int>(0, +, (f, x, len) => x + f * len, over: +)
-/// Add to every position, fold with `min`.
-pub const AddMin = Action<Int, Int>(0, +, (f, x, len) => x + f, over: min)
-/// Add to every position, fold with `max`.
-pub const AddMax = Action<Int, Int>(0, +, (f, x, len) => x + f, over: max)
-/// Overwrite every position, fold with `+`. The pending update is a `?Int`: `none` is "nothing pending".
-pub const AssignSum = Action<Int, ?Int>(
-    none,
-    (f, g) => f ?? g,
-    (f, x, len) => if f == none: x else: f! * len,
-    over: +,
-)
-/// Overwrite every position, fold with `min`.
-pub const AssignMin = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => f ?? x, over: min)
-/// Overwrite every position, fold with `max`.
-pub const AssignMax = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => f ?? x, over: max)
-/// Affine update `(mul, add)` over `+` for `Int`: `x -> mul * x + add`.
-pub const AffineSum = Action<Int, (Int, Int)>(
-    (1, 0),
-    (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
-    (f, val, span) => f.0 * val + f.1 * span,
-    over: +,
-)
-
-/// Generic affine update `(mul, add)` over `+` for any ring `T` (`Int`, `Mod<P>`). O(1).
-pub fn affine_sum<T>() -> Action<T, (T, T)> = todo
-
-/// O(1). Range add over `(min, count of min)` for counting zero/minimum-covered cells.
-pub fn add_min_count<T>() -> Action<MinCount<T>, T> = todo
-
-/// O(1). Range add over `(max, count of max)`.
-pub fn add_max_count<T>() -> Action<MaxCount<T>, T> = todo
-
-/// O(1). Range bit-flip (`Bool` tag) over `(ones, len)` popcount sum.
-pub fn xor_sum() -> Action<(ones: Int, len: Int), Bool> = todo
-
-/// Paired aggregate `(now, flipped)` for range-toggle / complement updates on a `LazySegTree`.
+/// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
 pub struct Flip<T>(now: T, flipped: T):
     /// Leaf value for an element that is currently `on`: `(x, id)` if `on`, else `(id, x)`. O(1).
     pub fn of(on: Bool, x: T, id: T) -> Flip<T> = todo
 
+    /// The pairwise `Monoid<Flip<T>>` of a monoid on `T`, for `SegTree(Flip.op(m), a, act: flip)`. O(1).
+    pub fn op<M>(m: M) -> Monoid<Flip<T>> = todo
+
 /// Range-toggle `Action<Flip<T>, Bool>` over monoid `m`: `true` swaps `now` and `flipped`. O(1).
 pub fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool> = todo
-
-/// Range update, point query: no fold monoid, no pulls, no span array.
-/// `compose(new_f, old_f)` applies `old_f` first then `new_f`; `apply(f, x)` updates a single leaf.
-/// `apply`, `get`, `set`, `at` and `update` are O(log n); memory is n leaves plus bit_ceil(n) tags.
-pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) -> T):
-    val: List<T>
-    lz: List<F>
-    size: Int
-    log: Int
-
-    /// A dual tree over `a` or filled with `fill`. O(n).
-    pub fn new(
-        a: ?[D]T = none,
-        fill: ?T = none,
-        id: F = F.zero,
-        compose: (F, F) -> F = (+),
-        apply: (F, T) -> T,
-    ) -> DualSegTree<D, T, F> = todo
-
-    fn put(mut self, p: Int, f: F) = todo
-
-    fn push(mut self, p: Int) = todo
-
-    fn open(mut self, l: Int, h: Int) = todo
-
-    /// Apply tag `f` to every position in `r`. O(log n).
-    pub fn apply(mut self, r: Range<D>, f: F) = todo
-
-    /// Current value at position `i`. O(log n).
-    pub fn get(mut self, i: D) -> T = todo
-
-    /// Overwrite position `i` with `x`. O(log n).
-    pub fn set(mut self, i: D, x: T) = todo
-
-    /// Position `i` as a writable place: `st.at(i) += x`, after pushing the tags above it. O(log n).
-    pub fn at(mut self, i: D) lends mut T:
-        let p = i.to_idx + size
-        for k in (1..=log).rev: self.push(p >> k)
-        lend mut val[i.to_idx]
-
-    /// Replace position `i` with `f(cur)` in one O(log n) pass.
-    pub fn update(mut self, i: D, f: T -> T) = todo
-
-    /// O(1). Apply tag `f` to every position in the tree.
-    pub fn apply_all(mut self, f: F) = todo
-
-    /// O(|D|). Push all pending tags once and materialize every leaf as `[D]T`.
-    pub fn to_array(mut self) -> [D]T = todo
-
-/// O(q log(hi - lo)) space. Dynamic (coordinate-sparse) lazy segment tree over `[lo, hi)`
-/// for huge coordinate ranges (e.g. `0..1e9`) without coordinate compression.
-pub struct SparseLazySegTree<T, F>(act: Action<T, F>, lo: Int, hi: Int):
-    root: Int
-
-    /// O(1). Create an empty sparse lazy segment tree over half-open `[lo, hi)` filled with `fill` or `act.over.id`.
-    pub fn new(act: Action<T, F>, lo: Int, hi: Int, fill: ?T = none) -> SparseLazySegTree<T, F> = todo
-
-    /// O(log(hi - lo)). Apply tag `f` to every coordinate in `[ql, qr)`.
-    pub fn apply(mut self, ql: Int, qr: Int, f: F) = todo
-
-    /// O(log(hi - lo)). Fold coordinates in `[ql, qr)`.
-    pub fn fold(mut self, ql: Int, qr: Int) -> T = todo
-
-    /// O(log(hi - lo)). Read the value at coordinate `x`.
-    pub fn get(mut self, x: Int) -> T = todo
-
-    /// O(log(hi - lo)). Set coordinate `x` to `v`.
-    pub fn set(mut self, x: Int, v: T) = todo
-
-    /// O(1). Fold over the entire `[lo, hi)` coordinate range.
-    pub @get fn all(self) -> T = todo
-
-    /// O(log(hi - lo)). Furthest coordinate `x >= from` with `ok(fold(from, x))`.
-    pub fn max_right(mut self, from: Int, ok: T -> Bool) -> Int = todo
-
-    /// O(log(hi - lo)). Furthest coordinate `x <= to` with `ok(fold(x, to))`.
-    pub fn min_left(mut self, to: Int, ok: T -> Bool) -> Int = todo
 
 fn brute<D>(a: [D]Int, r: Range<D>, pick: Int) -> Int = todo
 
@@ -221,7 +37,7 @@ fn padding_never_takes_an_update() = todo
 fn an_action_of_your_own() = todo
 
 @test
-fn max_right_and_min_left_see_pending_updates() = todo
+fn right_while_and_left_while_see_pending_updates() = todo
 
 fn ccc_compose(f: (?Int, ?Int, Int), g: (?Int, ?Int, Int)) -> (?Int, ?Int, Int) = todo
 

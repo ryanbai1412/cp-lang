@@ -1,7 +1,7 @@
 // Cut a into k pieces, minimising pairs of equal elements inside a piece.
 // The best last cut moves right as the end moves right, so each layer is divide and conquer
 // over ends. cost(c..i) comes from one window whose ends slide: O(n log n) slides per layer.
-use std.window.{Window}
+use std.window.{Sweep, track}
 
 let n: 2..=100_000 = read()
 let k: 2..=20 = read()
@@ -18,7 +18,7 @@ fn enter(x: Pos):
 fn leave(x: Pos):
     inside[a[x]] -= 1
     pairs -= inside[a[x]]
-var window = Window<Pos>(enter, leave)
+var window = Sweep<Pos>(track(add: enter, remove: leave))
 
 fn cost(piece: Range<Pos>) -> Int:   // equal pairs inside the piece
     window.move(to: piece)

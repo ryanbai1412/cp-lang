@@ -137,10 +137,10 @@ pub struct MinCount<T>(val: T, count: Int):
     /// O(1). Combine two summaries, summing counts when minima tie.
     pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T> = todo
 
-    /// O(1). The `Monoid<MinCount<T>>` value for `SegTree` and `LazySegTree`.
+    /// O(1). The `Monoid<MinCount<T>>` value for `SegTree`.
     pub fn monoid() -> Monoid<MinCount<T>> = todo
 
-/// O(1) per merge. Maximum value together with its multiplicity (`AddMaxCount`).
+/// O(1) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
 pub struct MaxCount<T>(val: T, count: Int):
     /// O(1). Single-element summary for `v`.
     pub fn of(v: T) -> MaxCount<T> = todo
@@ -148,7 +148,7 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// O(1). Combine two summaries, summing counts when maxima tie.
     pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T> = todo
 
-    /// O(1). The `Monoid<MaxCount<T>>` value for `SegTree` and `LazySegTree`.
+    /// O(1). The `Monoid<MaxCount<T>>` value for `SegTree`.
     pub fn monoid() -> Monoid<MaxCount<T>> = todo
 
 /// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmin folds.
@@ -221,3 +221,43 @@ pub struct Semiring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T):
     /// O(1). Boolean `(or, and)` semiring.
     pub fn bool_ring() -> Semiring<Bool> = todo
 
+/// An associative operation, possibly without an identity (round 5). Bare operators
+/// (`+ * ^ | & min max gcd and or`) implement it. Folds over an `Op` of an empty range
+/// return `none`. Law (promised, sampled by stress): `op(op(a, b), c) == op(a, op(b, c))`.
+pub trait Op<T>:
+    fn op(self, a: T, b: T) -> T
+
+/// The identity of an operation. Law: `op(id, a) == a == op(a, id)`.
+pub trait HasId<T>:
+    @get fn id(self) -> T
+
+/// The inverse of an operation. Law: `op(a, inv(a)) == id`.
+pub trait HasInv<T>:
+    fn inv(self, a: T) -> T
+
+/// Law: `op(a, b) == op(b, a)`. Lets folds reorder and tags skip push-down.
+pub trait Commutative<T>: Op<T>
+
+/// Law: `op(a, a) == a`. Lets `SparseTable` overlap halves.
+pub trait Idempotent<T>: Op<T>
+
+/// Law: `op(a, b)` is `a` or `b`. Lets sliding folds use a monotone deque.
+pub trait Selective<T>: Idempotent<T>
+
+/// One operation per component of a tuple or record: `each(+, max)`,
+/// `each(sum: +, hi: max)`. Keeps the laws every component shares. O(1).
+pub fn each<Ms>(..ms: Ms) -> Ms = todo
+
+/// Stock action: add a tag to every element. On `+` a span of `n` changes by `f * n`; on
+/// `min`/`max` by `f`. Tags commute, so a `SegTree` with it never pushes down. O(1).
+pub const add = todo
+
+/// Stock action: assign a tag to every element (`?T` tags, `none` is no-op). O(1) on `+`,
+/// `min`, `max`; O(log n) folding `f` `n` times for other ops.
+pub const assign = todo
+
+/// Stock action: `x -> a * x + b` on `+` folds (span `n`: `a * s + b * n`). Not commutative.
+pub const affine = todo
+
+/// Stock action: swap the two halves of a `Flip<T>` value.
+pub const flip = todo
