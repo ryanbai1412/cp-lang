@@ -37,18 +37,18 @@ Binary search lives on ranges (round 1). This round adds the rest.
 The answer-search idiom is just the range method, read as the statement:
 
 ```python
-let t = (0..=1e18).first_true(t => can_finish(by: t))!   # smallest feasible time
-let k = (1..=n).last_true(k => fits(k)) ?? 0             # largest k that fits, 0 if none
+let t = (0..=1e18).first_true(t => can_finish(by: t))!   // smallest feasible time
+let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if none
 ```
 
 ## Tables
 
 ```python
 domain Pos = 0..n
-var dp: [Pos.cuts]Int = inf          # prefix DP: dp[c] is the best for a[..c]
+var dp: [Pos.cuts]Int = inf          // prefix DP: dp[c] is the best for a[..c]
 dp[0] = 0
 for i in Pos.cuts:
-    for j in ..i:                    # every earlier cut; j..i is the piece a[j..i]
+    for j in ..i:                    // every earlier cut; j..i is the piece a[j..i]
         dp[i] min= dp[j] + cost(j..i)
 ```
 
@@ -82,7 +82,7 @@ pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
 O(1) to make, nothing allocated; the cut itself is `left.r`.
 
 ```python
-var dp: [V.ranges]Int = 0                       # merging stones, matrix chain, ...
+var dp: [V.ranges]Int = 0                       // merging stones, matrix chain, ...
 for r in V.ranges if r.len >= 2:
     dp[r] = r.splits.map((x, y) => dp[x] + dp[y]).min()! + w(r)
 print(dp[V.range])

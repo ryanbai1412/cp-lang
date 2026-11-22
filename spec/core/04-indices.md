@@ -11,11 +11,11 @@ ends are cuts. Arrays are `[D]T`, indexed only by `D`, so a vertex never
 indexes an edge array and a cut never indexes a position array.
 
 ```python
-domain V = 1..=n                       # positions 1..n
-domain Pos = 0..n                      # positions 0..n-1; Pos.cuts is cuts 0..=n
-let (domain C, comp) = compress(xs)    # fresh domain from a computation
-domain Cell = (Row, Col)               # product: [Row, Col]T is a 2-D array
-enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]Int
+domain V = 1..=n                       // positions 1..n
+domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..=n
+let (domain C, comp) = compress(xs)    // fresh domain from a computation
+domain Cell = (Row, Col)               // product: [Row, Col]T is a 2-D array
+enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir]Int
 ```
 
 ## Domains
@@ -82,9 +82,9 @@ a half-open range literal with cut ends, written where a `Range<V>` is
 expected, builds that `Range<V>` directly:
 
 ```python
-for j in ..i:                        # ..i: no Range<V> expected, so cuts
-    dp[i] min= dp[j] + cost(j..i)    # cost takes Range<V>: j..i is the piece
-pre.fold(j..i)   a[j..i]   seg.fold(j..i)       # same: these take Range<V>
+for j in ..i:                        // ..i: no Range<V> expected, so cuts
+    dp[i] min= dp[j] + cost(j..i)    // cost takes Range<V>: j..i is the piece
+pre.fold(j..i)   a[j..i]   seg.fold(j..i)       // same: these take Range<V>
 ```
 
 This is **not a conversion and there is no implicit `Into`.** It decides what
@@ -119,9 +119,9 @@ when `v.next` exists, or `for j in a[v.r..].keys`; see Open. `..i` needs no
 any range.
 
 ```python
-for j in ..i:                        # every cut before i
+for j in ..i:                        // every cut before i
     dp[i] min= dp[j] + cost(j..i)
-let best = a[..c].max()              # the prefix left of cut c
+let best = a[..c].max()              // the prefix left of cut c
 ```
 
 The language's implicit conversions stay a closed list, none user-extensible:
@@ -157,10 +157,10 @@ counts, prefix lengths. They agree: `r.first_true(ok)` is `r.bsearch(ok).r`
 and `r.last_true(ok)` is `r.bsearch(ok, last: true).l`.
 
 ```python
-let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      # largest k that fits
-let k = (0..=n).first_true(k => cost(k) >= x)!               # smallest k that reaches x
-let c = V.cuts.range.last_true(c => pre[c] <= s)!              # longest prefix with sum <= s: a cut
-let below = Int(a.keys.bsearch(i => a[i] >= t))               # how many of sorted a are < t
+let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      // largest k that fits
+let k = (0..=n).first_true(k => cost(k) >= x)!               // smallest k that reaches x
+let c = V.cuts.range.last_true(c => pre[c] <= s)!              // longest prefix with sum <= s: a cut
+let below = Int(a.keys.bsearch(i => a[i] >= t))               // how many of sorted a are < t
 ```
 
 `ok` must be monotone in the direction the name says: false→true for
@@ -172,11 +172,11 @@ anonymous domain whose positions and cuts are both `Int`:
 `(0..=1e18).first_true(t => fits(t))`.
 
 ```python
-fn inversions(r: Range<Pos>) -> Int:          # merge-sort shape
+fn inversions(r: Range<Pos>) -> Int:          // merge-sort shape
     let (left, right) = r.halve() else: return 0
     inversions(left) + inversions(right) + cross(left, right)
 
-fn solve(rows: Range<Pos>, opts: Range<Pos>): # D&C DP optimisation
+fn solve(rows: Range<Pos>, opts: Range<Pos>): // D&C DP optimisation
     if rows.is_empty: return
     let m = rows.mid.r!
     let best = opts.clip(..m.r).min_by(k => cost(k, m))!
@@ -195,13 +195,13 @@ sentinel end when nothing qualifies (looks like a real answer).
 ## Arrays over domains
 
 ```python
-var dist: [V]?Int = none                 # fill
-let deg = [V] v => g.deg(v)              # build from a fn
-let a: [Pos]Int = read()                 # read n values
-pre[i] - pre[j]       pre.fold(j..i)      # prefix sums are indexed by cuts
-a[l..=r]                                 # a slice view, O(1), lent
-a.keys  a.items  a.map(f)                # V, (V, T), [V]U
-grid[r]                                  # a row view of [Row, Col]T
+var dist: [V]?Int = none                 // fill
+let deg = [V] v => g.deg(v)              // build from a fn
+let a: [Pos]Int = read()                 // read n values
+pre[i] - pre[j]       pre.fold(j..i)      // prefix sums are indexed by cuts
+a[l..=r]                                 // a slice view, O(1), lent
+a.keys  a.items  a.map(f)                // V, (V, T), [V]U
+grid[r]                                  // a row view of [Row, Col]T
 ```
 
 ## Empty domains
@@ -213,8 +213,8 @@ ask for an end:
 ```python
 let m = read<0..=2e5>()
 domain E = 0..m
-let e = E.first!             # traps naming `E` when m == 0
-let e = E.first ?? return    # or handle it
+let e = E.first!             // traps naming `E` when m == 0
+let e = E.first ?? return    // or handle it
 ```
 
 No `NonEmpty` bound: the checker does not track emptiness. Tried and dropped

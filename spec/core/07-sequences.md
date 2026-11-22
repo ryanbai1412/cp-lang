@@ -63,12 +63,12 @@ How they relate:
   once and keeps the result.
 
 ```python
-a[l..=r]          # view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
-s[2..5]           # keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
-a[l..=r].keys     # l..=r
-a.rev             # walks a backwards; a.rev[i] is still a[i]
-a.map(f)          # Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
-a.items           # (i, a[i]) pairs with a's own indices
+a[l..=r]          // view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
+s[2..5]           // keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
+a[l..=r].keys     // l..=r
+a.rev             // walks a backwards; a.rev[i] is still a[i]
+a.map(f)          // Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
+a.items           // (i, a[i]) pairs with a's own indices
 ```
 
 ## The capabilities
@@ -96,11 +96,11 @@ alike, so an index taken from a view is valid on the source.
 
 ```python
 let w = a[l..=r]
-let best = w.argmax()!                   # a position of a, usable anywhere
-for (i, x) in w.items: ...               # i runs l..=r, not 0..
-s[2..5][3]                               # s[3]; s[2..5][0] traps
-w.first!, w.nth(k)                       # first element; k steps from the start
-let t = w.rebase                         # O(1) view keyed by a fresh 0..w.len domain t.Idx
+let best = w.argmax()!                   // a position of a, usable anywhere
+for (i, x) in w.items: ...               // i runs l..=r, not 0..
+s[2..5][3]                               // s[3]; s[2..5][0] traps
+w.first!, w.nth(k)                       // first element; k steps from the start
+let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len domain t.Idx
 ```
 
 - **Keys in, keys out.** Library functions answer in the keys they were
@@ -146,8 +146,8 @@ end cuts as Ints. Direction and adapters are in the type, so nothing is
 decided at run time and nothing allocates.
 
 ```python
-a[l..=r]                  # Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
-a[l..=r].rev.map(f)       # Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
+a[l..=r]                  // Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
+a[l..=r].rev.map(f)       // Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
 ```
 
 | Written | Lowers to |
@@ -192,7 +192,7 @@ fn divisors(n: Int) -> yields Int:
             if d * d != n: yield n / d
 
 for d in divisors(n):
-    if d > lim: break           # break, continue, return, break 'outer, loop else
+    if d > lim: break           // break, continue, return, break 'outer, loop else
 ```
 
 - **Push, not pull.** The generator runs and the `for` body runs at each
@@ -239,10 +239,10 @@ cost isn't O(1) to make.
 ## Making containers
 
 ```python
-[f(x) for x in s if p(x)]      # List<U>; reserves exactly when there's no filter
-[V] v => f(v)                  # [V]U, filled by f
-s.filter(p).map(f).collect()   # end of a chain: the type the context expects, else List
-List(s)   Set(s)   Str(s)      # conversions of anything that isn't a chain: List(0..n)
+[f(x) for x in s if p(x)]      // List<U>; reserves exactly when there's no filter
+[V] v => f(v)                  // [V]U, filled by f
+s.filter(p).map(f).collect()   // end of a chain: the type the context expects, else List
+List(s)   Set(s)   Str(s)      // conversions of anything that isn't a chain: List(0..n)
 ```
 
 `.collect()` and the constructors are one operation, O(n) and allocating;
@@ -270,10 +270,10 @@ Position queries are folds over `a.keys`, because the keys are a range of
 positions. No `argmin`, `first_at` or `order` twins:
 
 ```python
-a.keys.min(by: i => a[i])!         # argmin, first on ties
-a.keys.first(i => a[i] > x)        # first position with a[i] > x, ?D
-a.keys.sorted(by: i => a[i])       # argsort: List<D>
-a[l..r].keys.max(by: i => a[i])!   # argmax inside a piece, still a position of a
+a.keys.min(by: i => a[i])!         // argmin, first on ties
+a.keys.first(i => a[i] > x)        // first position with a[i] > x, ?D
+a.keys.sorted(by: i => a[i])       // argsort: List<D>
+a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of a
 ```
 
 ## Scans are prefix sums over cuts
@@ -282,12 +282,12 @@ a[l..r].keys.max(by: i => a[i])!   # argmax inside a piece, still a position of 
 cuts. Walking backwards gives suffix folds, indexed by the same cuts:
 
 ```python
-let pre = a.scan(+)        # pre[c]: fold of everything left of cut c
-let suf = a.rev.scan(+)    # suf[c]: fold of everything right of cut c
-pre[r.r] - pre[r.l]        # any range r
-pre[v]                     # a position: the fold through v, same as pre[v.r]
-pre.fold(r)                # same, for any op with an inverse; matches seg.fold(r)
-pre[v.l] + a[v] + suf[v.r] # the whole array, split at position v
+let pre = a.scan(+)        // pre[c]: fold of everything left of cut c
+let suf = a.rev.scan(+)    // suf[c]: fold of everything right of cut c
+pre[r.r] - pre[r.l]        // any range r
+pre[v]                     // a position: the fold through v, same as pre[v.r]
+pre.fold(r)                // same, for any op with an inverse; matches seg.fold(r)
+pre[v.l] + a[v] + suf[v.r] // the whole array, split at position v
 ```
 
 A `Prefix` takes both kinds of index and the types keep them apart: a cut

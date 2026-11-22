@@ -66,7 +66,7 @@ slice is a position of `a`, so it indexes `b` and splits the range directly.
 ```python
 fn solve(r: Range<V>) -> Int =
     if r.len == 0: return 0
-    let m = a[r].argmax()!               # m: V, valid on a and b
+    let m = a[r].argmax()!               // m: V, valid on a and b
     solve(r.l..m.l) + solve(m.r..r.r) + b[m] * r.len
 ```
 
@@ -76,7 +76,7 @@ fn solve(r: Range<V>) -> Int =
 ```python
 var l = 0
 while l < s.len:
-    let j = s[l..].find(',') ?? s.len    # a key of s
+    let j = s[l..].find(',') ?? s.len    // a key of s
     words.push(s[l..j])
     l = j + 1
 ```
@@ -85,14 +85,14 @@ while l < s.len:
 piece, so `i` from `s[l..]` reads it directly.
 
 ```python
-let z = z_function(s[l..])               # [l..s.len]Int
-let hits = s[l..].keys.count(i => z[i] >= k)   # suffixes starting with s[l..l + k]
+let z = z_function(s[l..])               // [l..s.len]Int
+let hits = s[l..].keys.count(i => z[i] >= k)   // suffixes starting with s[l..l + k]
 ```
 
 **Parallel arrays over a range (B3).**
 
 ```python
-for (i, x) in a[l..=r].items:            # i runs over l..=r
+for (i, x) in a[l..=r].items:            // i runs over l..=r
     best[i] = x * w[i]
 ```
 
@@ -118,23 +118,23 @@ let lcp = zip(s[i..], s[j..]).take_while((x, y) => x == y).count()
 **Relative reads.**
 
 ```python
-s[l..].nth(k)        # the k-th character from l; same as s[l + k]
-w.first!, w.last!    # the ends of a non-empty piece
+s[l..].nth(k)        // the k-th character from l; same as s[l + k]
+w.first!, w.last!    // the ends of a non-empty piece
 ```
 
 **Grids (F1).** A row keeps the column domain and a column keeps the row
 domain.
 
 ```python
-for (c, x) in grid[r].items: ...         # c: Col
-let col = grid[.., c]                    # [Row]T view
+for (c, x) in grid[r].items: ...         // c: Col
+let col = grid[.., c]                    // [Row]T view
 ```
 
 **A 0-based algorithm on a piece (rule 7).** `rebase` gives a domain for
 the piece, and the domain's own tools (`wrap`) do the arithmetic.
 
 ```python
-let t = s[l..r].rebase                   # t: [t.Idx]Char, keys 0..r - l
+let t = s[l..r].rebase                   // t: [t.Idx]Char, keys 0..r - l
 let rotated = Str(t[t.Idx.wrap(Int(i) + k)] for i in t.keys)
 ```
 
@@ -148,7 +148,7 @@ caller's keys. This is the same code as stdlib code, with no extra power.
 fn first_drop<K>(a: [K]Int) -> ?K =
     a.keys.drop(1).first(i => a[i] < a[i.prev!])
 
-fn next_greater<K>(a: [K]Int) -> [K]?K =  # keyed like a
+fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
     var res = [a.keys]none
     var stack = List<K>()
     for i in a.keys:

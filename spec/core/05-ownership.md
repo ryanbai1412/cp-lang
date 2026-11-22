@@ -76,12 +76,12 @@ may never outlive the variable (R8). That is the whole checker.
   can't outlive it.
 
 ```python
-let walk = dfs(g, s, mut seen)   # seen lent `mut` from here...
-print(seen[x])                   # error: seen is lent to walk
-let n = walk.count()             # ...to here
+let walk = dfs(g, s, mut seen)   // seen lent `mut` from here...
+print(seen[x])                   // error: seen is lent to walk
+let n = walk.count()             // ...to here
 
-fn walk2() -> yields V: ...      # same DFS, using seen as a capture
-print(seen[x])                   # fine: walk2 touches seen only while it runs
+fn walk2() -> yields V: ...      // same DFS, using seen as a capture
+print(seen[x])                   // fine: walk2 touches seen only while it runs
 let n2 = walk2().count()
 ```
 
@@ -100,14 +100,14 @@ A move is O(1) (a few words), never a deep copy.
 
 ```python
 var xs = List(1, 2)
-let ys = xs                 # xs moves into ys
-print(xs.len)               # error: xs moved on the line above; write xs.clone() there
+let ys = xs                 // xs moves into ys
+print(xs.len)               // error: xs moved on the line above; write xs.clone() there
 ```
 
 ```python
 let k = 5
-let j = k                   # plain: a copy
-print(k + j)                # fine
+let j = k                   // plain: a copy
+print(k + j)                // fine
 ```
 
 `let b = a` where `a` is used again is the error above, never a silent
@@ -143,10 +143,10 @@ at the call: `fn add(mut self, x: Int)` is called as `st.add(x)` and needs
 ```python
 fn grow(mut xs: List<Int>): xs.push(1)
 var a = List<Int>()
-grow(mut a)                 # fine
-grow(a)                     # error: grow takes `mut xs`; write grow(mut a)
+grow(mut a)                 // fine
+grow(a)                     // error: grow takes `mut xs`; write grow(mut a)
 let b = List<Int>()
-grow(mut b)                 # error: b is a let; declare it var
+grow(mut b)                 // error: b is a let; declare it var
 ```
 
 A `mut` parameter is a place: the callee may assign it whole
@@ -168,10 +168,10 @@ the signature (§6), or `.clone()`.
 fn make(n: Int) -> List<Int>:
     var xs = List<Int>()
     for i in 0..n: xs.push(i)
-    xs                                  # moves out: O(1)
+    xs                                  // moves out: O(1)
 
 fn same(xs: List<Int>) -> List<Int> = xs
-# error: returns the lent parameter xs; return xs.clone(), or declare `lends List<Int>`
+// error: returns the lent parameter xs; return xs.clone(), or declare `lends List<Int>`
 ```
 
 **Constructors follow R5 too.** A constructor is a fn, so its parameters
@@ -180,9 +180,9 @@ owned result never keeps its source busy: the source is free again when
 the call returns.
 
 ```python
-let t = Rooted(g, root: r)        # reads g, owns its arrays: g is free
-let fast = LcaTable(t)            # reads t, owns its table: t is free
-let ev = xs.filter(p)             # filter is `lends`: xs is lent while ev lives
+let t = Rooted(g, root: r)        // reads g, owns its arrays: g is free
+let fast = LcaTable(t)            // reads t, owns its table: t is free
+let ev = xs.filter(p)             // filter is `lends`: xs is lent while ev lives
 ```
 
 The stdlib picks with one rule: **a result owns its data when copying
@@ -200,9 +200,9 @@ holds nothing of `t`.
 A fn whose result borrows from its arguments declares it:
 
 ```python
-fn window(xs: [V]Int, l: V) lends [V]Int = xs[l..]       # read lend
-pub fn at(mut self, i: D) lends mut T                    # a writable place
-fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   # borrows only a
+fn window(xs: [V]Int, l: V) lends [V]Int = xs[l..]       // read lend
+pub fn at(mut self, i: D) lends mut T                    // a writable place
+fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
 ```
 
 - **Meaning.** The result is a lent value whose sources are every
@@ -241,7 +241,7 @@ where it was made to its last use (not to the end of the block).
 ```python
 var a: [V]Int = 0
 let w = a[l..r]
-a[l] = 5                    # error: a is lent to w until line 4
+a[l] = 5                    // error: a is lent to w until line 4
 print(w.sum())
 ```
 Swap lines 3 and 4 and it compiles: `w` is dead before the write.
@@ -257,16 +257,16 @@ sources or a block nested inside it, and after them. It may never be:
 
 ```python
 let ws = read<[V]Int>()
-var st = SegTree(V, op: (i, j) => if ws[i] <= ws[j]: i else: j)   # fine: st dies before ws
+var st = SegTree(V, op: (i, j) => if ws[i] <= ws[j]: i else: j)   // fine: st dies before ws
 ```
 ```python
 var best = List<Int>()
 for r in rows:
-    if r.len > best.len: best = r      # error: r is lent for one iteration; write r.clone()
+    if r.len > best.len: best = r      // error: r is lent for one iteration; write r.clone()
 ```
 ```python
 fn keep(mut out: List<Str>, s: Str): out.push(s)
-# error: out belongs to the caller; push s.clone()
+// error: out belongs to the caller; push s.clone()
 ```
 
 ## 8. Overlap and order (R9 to R11)
@@ -284,8 +284,8 @@ error unless the compiler proves them apart.**
   `let x = mut xs[i]` then `xs.push(..)` is an error.
 
 ```python
-swap(mut a[i], mut a[j])                # error: a[i] and a[j] may be the same element
-if i != j: swap(mut a[i], mut a[j])     # fine
+swap(mut a[i], mut a[j])                // error: a[i] and a[j] may be the same element
+if i != j: swap(mut a[i], mut a[j])     // fine
 ```
 
 **R10. A call is one access to everything it touches:** its arguments, the
@@ -297,13 +297,13 @@ at each call, not for the closure's whole life, so a closure that writes
 
 ```python
 xs.sort(by: x => xs.len - x)
-# error: sort holds xs `mut` for the call, and the closure reads xs
+// error: sort holds xs `mut` for the call, and the closure reads xs
 ```
 ```python
 var a: [V]Int = 0
 fn clobber(): a[V.first!] = 0
 let part = a[l..r]
-clobber()                   # error: clobber writes a, and a is lent to part until line 5
+clobber()                   // error: clobber writes a, and a is lent to part until line 5
 print(part.sum())
 ```
 The effect is computed through any depth of calls (`outer` calling
@@ -346,11 +346,11 @@ state of its arguments.
 ```python
 var seen: [V]Bool = false
 for v in dfs(g, s, mut seen):
-    seen[v] = true          # error: seen is lent `mut` to the dfs for the whole loop
+    seen[v] = true          // error: seen is lent `mut` to the dfs for the whole loop
 ```
 ```python
-for x in xs: xs.push(x)          # error: xs is read-lent to the loop
-for i in xs.keys: xs.push(xs[i]) # fine: xs.keys is a plain range, fixed before the loop
+for x in xs: xs.push(x)          // error: xs is read-lent to the loop
+for i in xs.keys: xs.push(xs[i]) // fine: xs.keys is a plain range, fixed before the loop
 ```
 
 ## 10. Closures and nested fns
@@ -388,13 +388,13 @@ a nested fn declared after a `var` may read and write it.
 var cnt = 0
 let inc = () => cnt += 1
 inc()
-print(cnt)                  # fine: inc borrows cnt only during each call
+print(cnt)                  // fine: inc borrows cnt only during each call
 inc()
 ```
 ```python
 fn counter() -> (() -> Int):
     var c = 0
-    () => c                 # error: the lambda captures local c, so it can't be returned
+    () => c                 // error: the lambda captures local c, so it can't be returned
 ```
 
 ## 10a. Caches: `@cache` fields
@@ -447,8 +447,8 @@ two comparable, so no struct needs its own checker.
   `mut x` to each call, or capture `x`.
 
 ```python
-let d = build_dsu(edges)            # a let
-for v in V: print(d.find(v))        # fine: find takes read self
+let d = build_dsu(edges)            // a let
+for v in V: print(d.find(v))        // fine: find takes read self
 ```
 
 ## 11. Top-level state

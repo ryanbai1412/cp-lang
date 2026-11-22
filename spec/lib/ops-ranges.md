@@ -22,13 +22,13 @@ same). `cpl explain` shows which strategy it picked. **You name
 the structure; the laws pick its strategy.**
 
 ```python
-var st = SegTree(max, a)                    # point set, range max
-var lz = SegTree(+, a, act: add)            # range add, range sum (lazy)
-var mx = SegTree(max, a, act: add)          # range add, range max: no push-down
-var du = SegTree(act: assign, a)            # range assign, point read (dual)
-let sp = SparseTable(min, a)                # O(1) fold: overlapping halves
-let fw = Fenwick(+, a)                      # prefix and range sums
-let ps = Prefix(+, a)                       # static: O(1) range sums
+var st = SegTree(max, a)                    // point set, range max
+var lz = SegTree(+, a, act: add)            // range add, range sum (lazy)
+var mx = SegTree(max, a, act: add)          // range add, range max: no push-down
+var du = SegTree(act: assign, a)            // range assign, point read (dual)
+let sp = SparseTable(min, a)                // O(1) fold: overlapping halves
+let fw = Fenwick(+, a)                      // prefix and range sums
+let ps = Prefix(+, a)                       // static: O(1) range sums
 ```
 
 ## 1. Operations
@@ -50,9 +50,9 @@ pub trait HasInv<T>:
     fn inv(self, a: T) -> T
     law inverse(a: T) = op(a, inv(a)) == id
 
-pub trait Commutative<T>: Op<T>        # op(a, b) == op(b, a)
-pub trait Idempotent<T>: Op<T>         # op(a, a) == a
-pub trait Selective<T>: Idempotent<T>  # op(a, b) is a or b
+pub trait Commutative<T>: Op<T>        // op(a, b) == op(b, a)
+pub trait Idempotent<T>: Op<T>         // op(a, a) == a
+pub trait Selective<T>: Idempotent<T>  // op(a, b) is a or b
 ```
 
 `op(a, b)` puts `a` on the left. Every fold runs left to right in domain
@@ -82,7 +82,7 @@ Inline, for the common case with no extra laws:
 
 ```python
 let lo = Monoid(id: Low.empty, op: (a, b) => a.join(b))
-let cat = Op((a: Str, b: Str) => a + b)     # no identity: a semigroup
+let cat = Op((a: Str, b: Str) => a + b)     // no identity: a semigroup
 ```
 
 With laws, as a named type. The `impl` with no body states a law. It is a
@@ -123,7 +123,7 @@ summary needs a hand-written struct unless it carries real logic.
 | `.commutative()`, `.idempotent()` | state a law on an inline value | adds it |
 
 ```python
-var st = SegTree(each(+, max, min), a.map(x => (x, x, x)))   # sum, max, min at once
+var st = SegTree(each(+, max, min), a.map(x => (x, x, x)))   // sum, max, min at once
 let (s, hi, lo) = st.fold(l..r)
 
 var nm = SegTree(each(sum: +, hi: max), a.map(x => (sum: x, hi: x)))
@@ -159,7 +159,7 @@ data and Dijkstra all take one. One trait and one argument cover them all.
 ```python
 pub trait Ord:
     fn cmp(self, b: Self) -> Ordering
-    law total(a, b, c) = ...       # antisymmetric, transitive, total
+    law total(a, b, c) = ...       // antisymmetric, transitive, total
 ```
 
 - Ints, floats (NaN traps in debug), `Str`, `Bool` and `?T` (`none` first)
@@ -184,8 +184,8 @@ A total order is exactly what makes `min` and `max` `Selective` (section
 order serves both sorting and folding:
 
 ```python
-let lightest = min(by: .w)                 # an Op on edges: keeps the lighter
-var seg = SegTree(lightest, es)            # range "lightest edge"
+let lightest = min(by: .w)                 // an Op on edges: keeps the lighter
+var seg = SegTree(lightest, es)            // range "lightest edge"
 let best = es.fold(max(by: e => (e.w, desc(e.id))))
 ```
 
@@ -216,9 +216,9 @@ pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
 ```
 
 ```python
-dijkstra(g, from: [(s, 0)])                          # sum of weights
-dijkstra(g, from: [(s, 0)], step: max)               # bottleneck path
-dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   # cost, then hops
+dijkstra(g, from: [(s, 0)])                          // sum of weights
+dijkstra(g, from: [(s, 0)], step: max)               // bottleneck path
+dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   // cost, then hops
 ```
 
 - Correctness needs one law: extending a path never makes it better,
@@ -238,7 +238,7 @@ to a folded value of `n` leaves. Tags compose **in time order**,
 separate `compose(new, old)` convention to get backwards.
 
 ```python
-pub trait Action<M, F>:              # M is the fold op's type, e.g. type of `+`
+pub trait Action<M, F>:              // M is the fold op's type, e.g. type of `+`
     type Tags: Monoid<F>
     @get fn tags(self) -> Self.Tags
     fn apply(self, f: F, x: M.T, n: Int) -> M.T
@@ -282,11 +282,11 @@ pub trait Semiring<T>:
     law distrib(a, b, c) = mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
     law absorb(a) = mul(add.id, a) == add.id
 
-Semiring(+, *)            # counting; the default for numbers
-Semiring(min, +)          # shortest paths (tropical)
-Semiring(max, +)          # longest paths, best scores
-Semiring(or, and)         # reachability
-Semiring(max, min)        # bottleneck
+Semiring(+, *)            // counting; the default for numbers
+Semiring(min, +)          // shortest paths (tropical)
+Semiring(max, +)          // longest paths, best scores
+Semiring(or, and)         // reachability
+Semiring(max, min)        // bottleneck
 ```
 
 The pair is written with the ops themselves, so the names
@@ -294,9 +294,9 @@ The pair is written with the ops themselves, so the names
 `Semiring(+, *)` by default, so `over:` is only ever written for the others.
 
 ```python
-let m = Mat(over: Semiring(min, +), d)          # d: [V, V]?Int
-let k_steps = pow(m, k)                         # shortest walk of exactly k arcs
-let ways = pow(Mat(adj), k)                     # number of walks: (+, *)
+let m = Mat(over: Semiring(min, +), d)          // d: [V, V]?Int
+let k_steps = pow(m, k)                         // shortest walk of exactly k arcs
+let ways = pow(Mat(adj), k)                     // number of walks: (+, *)
 ```
 
 - `Mat<T>(over: S)` multiplies under `S`; `m * m2` is `S.mul`-of-`S.add`.
@@ -321,8 +321,8 @@ semiring, permutations (`op: compose`), `Affine` maps, and any user monoid.
 `k = 0` needs a `Monoid`; an `Op` traps on it.
 
 ```python
-let f = pow(Affine(a, b), k, op: then)     # apply x -> a x + b, k times
-let p = pow(perm, 1e18, op: compose)       # a permutation applied 10^18 times
+let f = pow(Affine(a, b), k, op: then)     // apply x -> a x + b, k times
+let p = pow(perm, 1e18, op: compose)       // a permutation applied 10^18 times
 ```
 ## 7. One vocabulary for range structures
 
@@ -410,7 +410,7 @@ is decided when the fn is instantiated:
 ```python
 pub fn apply(mut self, r: Range<D>, f: F):
     if A.Tags: Commutative<F>:
-        self.mark(r, f)          # no push
+        self.mark(r, f)          // no push
     else:
         self.push_path(r)
         self.mark(r, f)
@@ -458,8 +458,8 @@ constraints, checked online, are a `Group` on a DSU:
 
 ```python
 var p = Potentials<V>(+)
-if not p.relate(a, b, w): print("CONTRADICTION")   # val[b] = val[a] + w
-p.diff(a, b)                                       # ?Int: val[b] - val[a], none if unrelated
+if not p.relate(a, b, w): print("CONTRADICTION")   // val[b] = val[a] + w
+p.diff(a, b)                                       // ?Int: val[b] - val[a], none if unrelated
 ```
 
 It works for any group: `^` for parity constraints, `Affine` for
@@ -506,13 +506,13 @@ Every tree and DP facility takes the same values:
 One fn, two choices: how indices combine, and which semiring values live in.
 
 ```python
-convolve(a, b)                       # c[i + j] += a[i] * b[j]
-convolve(a, b, on: ^)                # c[i ^ j]  (Walsh–Hadamard)
-convolve(a, b, on: |)                # c[i | j]  (subset-sum transform)
-convolve(a, b, on: &)                # c[i & j]
-convolve(a, b, on: subset)           # i | j with i & j == 0
-convolve(a, b, on: gcd)              # c[gcd(i, j)]  (Dirichlet-style)
-convolve(a, b, over: Semiring(max, +), concave: .b)   # max-plus, b concave
+convolve(a, b)                       // c[i + j] += a[i] * b[j]
+convolve(a, b, on: ^)                // c[i ^ j]  (Walsh–Hadamard)
+convolve(a, b, on: |)                // c[i | j]  (subset-sum transform)
+convolve(a, b, on: &)                // c[i & j]
+convolve(a, b, on: subset)           // i | j with i & j == 0
+convolve(a, b, on: gcd)              // c[gcd(i, j)]  (Dirichlet-style)
+convolve(a, b, over: Semiring(max, +), concave: .b)   // max-plus, b concave
 ```
 
 - The index op is an operation value (`on:`), so the eight
@@ -563,21 +563,21 @@ A law is a promise; the tools make it cheap to check:
 ## 16. Examples from the dreams
 
 ```python
-# cf2096f: range add, range min, test for zero
+// cf2096f: range add, range min, test for zero
 var cover = SegTree<V, Int>(min, fill: 0, act: add)
 cover.apply(s.a..=s.b, 1)
 if cover.fold(s.a..=s.b) == 0: ...
 
-# cf2152g: flip a subtree, read the root
+// cf2152g: flip a subtree, read the root
 var st = SegTree(Side.join, t.reorder(init), act: flip)
 st.apply(t.sub(v), true)
 print(st.all.now.ends)
 
-# cf2084f: a custom monoid, prefix and suffix folds
+// cf2084f: a custom monoid, prefix and suffix folds
 var st = SegTree<Val, Pos>(Monoid(id: edge, op: op))
 out[v] = if below: st.fold(..=v) else: st.fold(v..)
 
-# window minimum
+// window minimum
 var w = Window(min)
 for i in I:
     w.push(i, a[i])

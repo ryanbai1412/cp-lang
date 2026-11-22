@@ -24,10 +24,10 @@ directly. Decision 146 records the design and its reasons.
 domain V = 1..=n
 domain E = 0..m
 let edges = read<[E](u: V, v: V, w: 1..=1e9)>()
-let g = Graph.undirected(edges)       # or .directed; immutable CSR, O(n + m)
+let g = Graph.undirected(edges)       // or .directed; immutable CSR, O(n + m)
 
-for a in g[u]: relax(a.to, a.w)       # arcs out of u, input order; a is (to, e, w)
-g.deg(u)                              # O(1)
+for a in g[u]: relax(a.to, a.w)       // arcs out of u, input order; a is (to, e, w)
+g.deg(u)                              // O(1)
 ```
 
 | Form | Meaning | Cost |
@@ -55,9 +55,9 @@ v))`, so `a.w` reads the arc you are already on (the `adj[u].push_back({v,
 w})` layout). `keep:` narrows or computes:
 
 ```python
-Graph.undirected(edges)                                 # (to, e, w): 12 bytes at these widths
-Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  # no e: not Edged, 8 bytes
-Graph.directed(edges, keep: a => (to: a.to))            # bare targets
+Graph.undirected(edges)                                 // (to, e, w): 12 bytes at these widths
+Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  // no e: not Edged, 8 bytes
+Graph.directed(edges, keep: a => (to: a.to))            // bare targets
 Graph.undirected(edges, keep: a => (to: a.to, e: a.e, fwd: a.to == edges[a.e].v))
 ```
 
@@ -93,7 +93,7 @@ pub trait Next<V>:
     type Arc: Target<V>
     fn out(self, u: V) -> yields Self.Arc
 
-pub trait Target<V>:   @get fn to(self) -> V    # a plain vertex is its own target
+pub trait Target<V>:   @get fn to(self) -> V    // a plain vertex is its own target
 pub trait Weighted<W>: @get fn w(self) -> W
 pub trait Edged<E>:    @get fn e(self) -> E
 
@@ -124,11 +124,11 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 ### Customizing: a lambda over `g.out(u)`
 
 ```python
-dijkstra(u => g.out(u).filter(a => !banned[a.e]), from: [(s, 0)])  # arcs keep .w, .e
-bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              # binary search on the answer
-bfs(c => c.adj4().filter(c => grid[c] != '#'), from: [start])      # implicit grid
-dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 # reweight; keeps .to, .e
-dijkstra((v, k) => chain(                                          # state space (vertex, coupons)
+dijkstra(u => g.out(u).filter(a => !banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
+bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
+bfs(c => c.adj4().filter(c => grid[c] != '#'), from: [start])      // implicit grid
+dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 // reweight; keeps .to, .e
+dijkstra((v, k) => chain(                                          // state space (vertex, coupons)
     g.out(v).map(a => (to: (a.to, k), w: a.w)),
     g.out(v).filter(_ => k < K).map(a => (to: (a.to, k + 1), w: a.w / 2)),
 ), from: [((s, 0), 0)])
@@ -170,7 +170,7 @@ a longer one. `p.tight(g)` is the shortest-path DAG.
 All-pairs on a dense graph starts from the weight matrix:
 
 ```python
-var d = g.matrix()                          # [V, V]?W, O(n² + m)
+var d = g.matrix()                          // [V, V]?W, O(n² + m)
 if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
 ```
 
@@ -213,7 +213,7 @@ Flows and matchings are their own module (`std.flow`), on the same
 ## Trees
 
 ```python
-let t = Rooted(g, root: V.first!)          # or Rooted.from_parents(par), Rooted.forest(g, from:)
+let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Rooted.forest(g, from:)
 ```
 
 | Form | Meaning | Cost |
@@ -252,11 +252,11 @@ every heavy chain is contiguous. `t.pos(v): t.Pre`; another tree's `Pre`
 doesn't mix.
 
 ```python
-var seg = SegTree(max, t.reorder(val))     # [t.Pre]T
-seg.fold(t.sub(v))                         # subtree query: one range
-t.fold_path(a, b, seg)                     # path query: O(log n) ranges (HLD)
+var seg = SegTree(max, t.reorder(val))     // [t.Pre]T
+seg.fold(t.sub(v))                         // subtree query: one range
+t.fold_path(a, b, seg)                     // path query: O(log n) ranges (HLD)
 t.apply_path(a, b, lazy, add(x))
-for r in t.chains(a, b): ...               # the ranges themselves, when you need them
+for r in t.chains(a, b): ...               // the ranges themselves, when you need them
 ```
 
 | Form | Meaning | Cost |

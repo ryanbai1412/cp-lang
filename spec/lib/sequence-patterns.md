@@ -53,10 +53,10 @@ positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 | `a.spans(by: key)` | for each position, the widest piece where it is the minimum | O(n) |
 
 ```python
-s.runs()                              # "aabccc" -> "aa", "b", "ccc"
-a.runs(link: (x, y) => x < y)         # strictly increasing runs
-a.runs(link: (x, y) => y - x <= d)    # gaps of at most d
-line.split(sep: c => c == ' ')        # words, as pieces of line
+s.runs()                              // "aabccc" -> "aa", "b", "ccc"
+a.runs(link: (x, y) => x < y)         // strictly increasing runs
+a.runs(link: (x, y) => y - x <= d)    // gaps of at most d
+line.split(sep: c => c == ' ')        // words, as pieces of line
 ```
 
 `runs(by:)` is `runs(link: (x, y) => key(x) == key(y))`; it stays as its
@@ -75,8 +75,8 @@ the strategy chosen by the op's laws exactly as `Window(op)` chooses it:
 | any `Op` (`gcd`, matrix product, `MaxSub`) | two stacks | O(1) amortized |
 
 ```python
-a.windows(k).fold(+).max()!           # best sum of k consecutive
-a.windows(k).fold(min)                # sliding minimum, one per window
+a.windows(k).fold(+).max()!           // best sum of k consecutive
+a.windows(k).fold(min)                // sliding minimum, one per window
 a.windows(k).fold(gcd).count(g => g > 1)
 ```
 
@@ -104,8 +104,8 @@ step by calling `state.push(a[r])` and `state.pop(a[l])`. They yield one
 
 ```python
 pub trait Track<T>:
-    fn push(mut self, x: T)       # x joins at the right end
-    fn pop(mut self, x: T)        # x leaves at the left end (the oldest)
+    fn push(mut self, x: T)       // x joins at the right end
+    fn pop(mut self, x: T)        // x leaves at the left end (the oldest)
 
 pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool)
     -> yields Range<D>
@@ -123,7 +123,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool)
 ```python
 let longest = a.maximal(Window(+), ok: w => w.all <= K).max(by: .len)!
 let atmost_k = a.maximal(Counter<C>(), ok: c => c.distinct <= k)
-let count = atmost_k.map(.len).sum()           # subarrays with <= k distinct
+let count = atmost_k.map(.len).sum()           // subarrays with <= k distinct
 let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
 ```
 
@@ -152,7 +152,7 @@ on the left, non-strict on the right). Maximum is `by: desc`.
 ```python
 let sp = a.spans()
 let total = a.keys.map(i => a[i] * (sp[i].l..i.r).len * (i.l..sp[i].r).len).sum()
-let rect = a.keys.map(i => a[i] * sp[i].len).max()!     # histogram
+let rect = a.keys.map(i => a[i] * sp[i].len).max()!     // histogram
 ```
 
 This replaces `max_histogram` and covers the contribution technique with

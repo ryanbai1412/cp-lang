@@ -146,9 +146,9 @@ value.** It writes `none` into that field and leaves the others
 undefined. So a struct of `Int`s has a niche because `Int` has one:
 
 ```python
-struct Edge: to: V; w: Int          # 4 + 8 -> 16 B (padded)
-let best: [V]?Edge = none           # 16 B per slot, not 24
-record (lo: Int, hi: Int)           # ?(lo, hi) is 16 B
+struct Edge: to: V; w: Int          // 4 + 8 -> 16 B (padded)
+let best: [V]?Edge = none           // 16 B per slot, not 24
+record (lo: Int, hi: Int)           // ?(lo, hi) is 16 B
 ```
 
 - Records and tuples follow the same rule, since they are structs without
@@ -280,12 +280,12 @@ from the constant form.
 ```python
 let n = read<1..=2e5>()
 domain V = 0..n
-let a = read<[V]1..=1e9>()           # 4 B per element
-var par: [V]?V = none                # 4 B, none = all ones
-var dist: [V]?Int = none             # 8 B, none = INT64_MIN
-var mx = SegTree(max, a)             # 4 B nodes: max is Selective
-var sm = SegTree(+, a)               # 8 B nodes: sums are Int
-struct Item: w: 1..=1e9; v: 1..=1e9; id: V    # 12 B, ?Item 12 B
+let a = read<[V]1..=1e9>()           // 4 B per element
+var par: [V]?V = none                // 4 B, none = all ones
+var dist: [V]?Int = none             // 8 B, none = INT64_MIN
+var mx = SegTree(max, a)             // 4 B nodes: max is Selective
+var sm = SegTree(+, a)               // 8 B nodes: sums are Int
+struct Item: w: 1..=1e9; v: 1..=1e9; id: V    // 12 B, ?Item 12 B
 ```
 
 `cpl explain` on this prints, per line, the storage and the reason
