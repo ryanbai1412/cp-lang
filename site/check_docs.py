@@ -294,13 +294,14 @@ def check_error_index():
                         f"check_docs: error-index lint fix for {code} still emits [{code}]:\n{rf.stderr}"
                     )
             elif mode == "run":
+                # R0601 has to fill the interpreter's whole stack first.
                 r = subprocess.run(
                     [str(CPL), "run", str(trig)],
                     cwd=REPO,
                     capture_output=True,
                     input=entry.get("input", ""),
                     text=True,
-                    timeout=15,
+                    timeout=60,
                 )
                 if r.returncode == 0:
                     sys.exit(f"check_docs: error-index runtime trigger for {code} did not trap")
