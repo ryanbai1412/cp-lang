@@ -68,9 +68,12 @@ impl<'a> Checker<'a> {
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
         }
-        if matches!(&callee.kind, ExprKind::Name(n) if n == "print")
-            && args.iter().all(|a| self.fixed_size(&a.value))
-        {
+        let fixed_args = match &callee.kind {
+            ExprKind::Name(n) if n == "print" => true,
+            ExprKind::Name(n) if ["Int", "I128", "U64", "F64", "Char", "Bool"].contains(&n.as_str()) => args.len() == 1,
+            _ => false,
+        };
+        if fixed_args && args.iter().all(|a| self.fixed_size(&a.value)) {
             self.fixed_io.push(callee.span);
         }
         self.lambda_params.truncate(given);

@@ -2489,6 +2489,14 @@ still leaves the fn without an estimate. Fns in the ports and examples with an e
 the calls that most often block one. Assumption: a position counts as not fixed, since its label
 may be a string. Reverse by dropping `fixed_io`.
 
+29.50. **`ask`, scalar conversions and `rand` cost `O(1)` too.** `ask` bound by a `let` of a
+declared fixed type, with fixed-size arguments (`let r: 0..=1 = ask("?", c)`), joins `read` in
+`fixed_io`, and so do `Int(..)`, `I128`, `U64`, `F64`, `Char` and `Bool` of one fixed-size
+value; `rand()` and `rand(lo, hi)` are always `O(1)`. Fns in the ports and examples with an
+estimate went from 28 to 35 of 2,158. Assumption: `ask`'s cost leaves out the judge's own time,
+which the contestant does not pay for in steps; an `ask` whose reply is not bound with a declared
+type still blocks the estimate. Reverse by dropping the `ask`, conversion and `rand` cases.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

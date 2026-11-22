@@ -523,10 +523,12 @@ impl<'a> Checker<'a> {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 if let (Some(declared), Some(Expr { kind: ExprKind::Call { callee, args }, .. })) = (&declared, init) {
-                    if args.is_empty()
-                        && matches!(&callee.kind, ExprKind::Name(n) if n == "read")
-                        && declared.is_fixed_size()
-                    {
+                    let reads = match &callee.kind {
+                        ExprKind::Name(n) if n == "read" => args.is_empty(),
+                        ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
+                        _ => false,
+                    };
+                    if reads && declared.is_fixed_size() {
                         self.fixed_io.push(callee.span);
                     }
                 }

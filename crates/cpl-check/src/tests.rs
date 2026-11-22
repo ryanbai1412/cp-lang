@@ -3330,3 +3330,22 @@ fn print_and_read_cost_o1_only_for_values_of_a_fixed_size() {
     assert_eq!(hover(&mut db, 2, "print"), "print: built-in");
     assert_eq!(hover(&mut db, 1, "read"), "read: built-in");
 }
+
+#[test]
+fn ask_conversions_and_rand_cost_o1_for_values_of_a_fixed_size() {
+    let src = "fn f(c: Char, s: Str):\n    let r: 0..=1 = ask(\"?\", c)\n    \
+               let t: Int = ask(s)\n    print(Int(c) + Int(r == 1) + rand(1, 6) + Int(s))\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let hover = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).map(|h| h.text)
+    };
+    let o1 = |name: &str| Some(format!("{name}: built-in\ncost: O(1)"));
+    assert_eq!(hover(&mut db, 0, "ask"), o1("ask"));
+    assert_eq!(hover(&mut db, 1, "ask").as_deref(), Some("ask: built-in"));
+    assert_eq!(hover(&mut db, 0, "Int("), o1("Int"));
+    assert_eq!(hover(&mut db, 1, "Int("), o1("Int"));
+    assert_eq!(hover(&mut db, 0, "rand"), o1("rand"));
+    assert_eq!(hover(&mut db, 2, "Int("), None);
+}
