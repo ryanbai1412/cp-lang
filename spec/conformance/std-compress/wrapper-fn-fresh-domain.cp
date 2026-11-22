@@ -1,4 +1,4 @@
-// expect: 3 1 200 7
+// expect: ok, output "3 1 200 7"
 // rule: separate calls to a wrapper returning compress() get distinct fresh domains
 fn wrap(a: List<Int>):
     compress(a)
