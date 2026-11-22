@@ -12,6 +12,7 @@ use std.algebra.{Desc, desc}
 /// smallest distance first and, among equals, the largest vertex.
 pub struct Heap<T>:
     xs: List<T>
+    lt: ?((T, T) -> Bool)
 
     /// Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
     ///
@@ -22,7 +23,9 @@ pub struct Heap<T>:
     /// traps: never
     /// example: `var h: Heap<Int> = Heap(); h.push(3); h.push(1); h.pop() == Some(1)`
     /// example: `var h: Heap<Int> = Heap(by: desc); h.push(1); h.push(3); h.pop() == Some(3)`
-    pub fn new<K>(by: ?(T -> K) = None) -> Heap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> Heap<T>:
+        if let f = by: return Heap(xs: [], lt: Some((a, b) => f(a) < f(b)))
+        Heap(xs: [], lt: None)
 
     /// Build a `Heap<T>` from `xs` via Floyd heapify.
     ///
@@ -34,20 +37,29 @@ pub struct Heap<T>:
     /// traps: never
     /// example: `var h = Heap.of([3, 1, 2]); h.pop() == Some(1) and h.len == 2`
     /// example: `var h = Heap.of([3, 1, 2], by: desc); h.pop() == Some(3)`
-    pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T> = todo
+    pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
+        var h: Heap<T> = Heap.new(by: by)
+        h.xs = xs
+        var i = h.xs.len / 2
+        while i > 0:
+            i -= 1
+            h.sift_down(i)
+        h
 
     /// Number of elements currently in the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Heap.of([3, 1]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        self.xs.len
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Heap.of([3]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        self.xs.len == 0
 
     /// The smallest element, or `None` if the heap is empty.
     ///
@@ -57,7 +69,9 @@ pub struct Heap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `Heap.of([3, 1, 2]).peek == Some(1)`
-    @get pub fn peek(self) -> ?T = todo
+    @get pub fn peek(self) -> ?T:
+        if self.xs.len == 0: return None
+        Some(self.xs[0])
 
     /// Remove all elements from the heap.
     ///
@@ -66,7 +80,8 @@ pub struct Heap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h = Heap.of([1, 2]); h.clear(); h.pop() == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        self.xs = []
 
     /// Move the heap's contents out in O(1), leaving `self` empty.
     ///
@@ -75,17 +90,42 @@ pub struct Heap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h = Heap.of([2, 1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
-    pub fn take(mut self) -> Heap<T> = todo
+    pub fn take(mut self) -> Heap<T>:
+        var out: List<T> = []
+        swap(mut out, mut self.xs)
+        Heap(xs: out, lt: self.lt)
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = self.lt: return f(a, b)
+        a < b
 
     // Moves a hole down instead of swapping: one write per level, as std::priority_queue.
-    fn sift_down(mut self, start: Int) = todo
+    fn sift_down(mut self, start: Int):
+        let n = self.xs.len
+        let x = self.xs[start]
+        var i = start
+        while 2 * i + 1 < n:
+            var c = 2 * i + 1
+            if c + 1 < n and self.less(self.xs[c + 1], self.xs[c]): c += 1
+            if not self.less(self.xs[c], x): break
+            self.xs[i] = self.xs[c]
+            i = c
+        self.xs[i] = x
 
     /// Push `x` into the heap.
     ///
     /// cost: O(log n), amortized over list growth
     /// traps: never
     /// example: `var h = Heap.of([5]); h.push(2); h.peek == Some(2)`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        var i = self.xs.len
+        self.xs.push(x)
+        while i > 0:
+            let p = (i - 1) / 2
+            if not self.less(x, self.xs[p]): break
+            self.xs[i] = self.xs[p]
+            i = p
+        self.xs[i] = x
 
     /// Remove and return the smallest element, or `None` if the heap is empty.
     ///
@@ -93,14 +133,22 @@ pub struct Heap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = Heap.of([2, 1]); h.pop() == Some(1) and h.pop() == Some(2) and h.pop() == None`
-    pub fn pop(mut self) -> ?T = todo
+    pub fn pop(mut self) -> ?T:
+        if self.xs.len == 0: return None
+        let top = self.xs[0]
+        let last = self.xs.pop()!
+        if self.xs.len > 0:
+            self.xs[0] = last
+            self.sift_down(0)
+        Some(top)
 
     /// Reserve backing storage for at least `cap` elements.
     ///
     /// cost: O(cap) when the storage grows, O(1) otherwise
     /// traps: never
     /// example: `var h = Heap.of([2]); h.reserve(100); h.peek == Some(2)`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        self.xs.reserve(cap)
 
     /// Push `x` and pop the minimum in one sift.
     ///
@@ -112,7 +160,12 @@ pub struct Heap<T>:
     /// traps: never
     /// example: `var h = Heap.of([2, 5]); h.push_pop(3) == 2 and h.peek == Some(3)`
     /// example: `var h = Heap.of([2]); h.push_pop(1) == 1 and h.peek == Some(2)`
-    pub fn push_pop(mut self, x: T) -> T = todo
+    pub fn push_pop(mut self, x: T) -> T:
+        if self.xs.len == 0 or not self.less(self.xs[0], x): return x
+        let top = self.xs[0]
+        self.xs[0] = x
+        self.sift_down(0)
+        top
 
     /// Replace the minimum with `x` and return the old minimum (or `None` if empty).
     ///
@@ -124,7 +177,14 @@ pub struct Heap<T>:
     /// traps: never
     /// example: `var h = Heap.of([2, 5]); h.replace_top(9) == Some(2) and h.peek == Some(5)`
     /// example: `var h: Heap<Int> = Heap(); h.replace_top(4) == None and h.peek == Some(4)`
-    pub fn replace_top(mut self, x: T) -> ?T = todo
+    pub fn replace_top(mut self, x: T) -> ?T:
+        if self.xs.len == 0:
+            self.xs.push(x)
+            return None
+        let top = self.xs[0]
+        self.xs[0] = x
+        self.sift_down(0)
+        Some(top)
 
     /// Push all elements of `items`.
     ///
@@ -132,7 +192,8 @@ pub struct Heap<T>:
     /// empty: an empty `items` does nothing
     /// traps: never
     /// example: `var h = Heap.of([4]); h.push_all([3, 1]); h.peek == Some(1) and h.len == 3`
-    pub fn push_all(mut self, items: List<T>) = todo
+    pub fn push_all(mut self, items: List<T>):
+        for x in items: self.push(x)
 
     /// Pop and yield all elements in ascending order, leaving the heap empty.
     ///
@@ -144,7 +205,8 @@ pub struct Heap<T>:
     /// order: ascending key order, the order `pop` would return them
     /// traps: never
     /// example: `var h = Heap.of([3, 1, 2]); h.drain().collect() == [1, 2, 3] and h.is_empty`
-    pub fn drain(mut self) -> yields T = todo
+    pub fn drain(mut self) -> yields T:
+        while let x = self.pop(): yield x
 
 /// Min-heap supporting O(log n) arbitrary-value `remove(x)` via a lazy deletion heap.
 /// `push` and `remove` are O(log n); `peek` and `pop` are O(log n) amortized; `len`, `is_empty`,
