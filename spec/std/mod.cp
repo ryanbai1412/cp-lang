@@ -167,8 +167,8 @@ impl Read for Mod<P>:
 pub struct Comb<M>:
     @cache f: List<M>
     @cache g: List<M>
+    @cache d: List<M>
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.
     ///
     /// The tables hold `min(limit, P - 1) + 1` entries and grow on demand later (doubling, capped at
@@ -177,15 +177,30 @@ pub struct Comb<M>:
     /// cost: O(min(limit, P))
     /// traps: when `limit < 0`, or `P` is not prime
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
-    pub fn new(limit: Int = 0) -> Comb<M> = todo
+    pub fn new(limit: Int = 0) -> Comb<M>:
+        assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
+        let p = M.MOD
+        var q = 2
+        while q * q <= p:
+            assert p % q != 0, "`Comb` needs a prime modulus"
+            q += 1
+        let c = Comb<M>([M(1)], [M(1)], [M(1), M(0)])
+        c.grow(limit)
+        c
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
-    fn grow(self, want: Int) = todo
+    fn grow(self, want: Int):
+        let have = f.len
+        let n = min(max(want + 1, 2 * have), M.MOD)
+        if n <= have: return
+        for i in have..n:
+            f.push(f[i - 1] * M(i))
+            g.push(M(1))
+        g[n - 1] = f[n - 1].inv
+        for i in (have..n - 1).rev: g[i] = g[i + 1] * M(i + 1)
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
-    fn ensure(self, n: Int) = todo
+    fn ensure(self, n: Int):
+        if n >= f.len: self.grow(n)
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).
     ///
     /// cost: O(1) amortized
@@ -193,30 +208,37 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().fact(5) == Z(120)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(6) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
-    pub fn fact(self, n: Int) -> M = todo
+    pub fn fact(self, n: Int) -> M:
+        assert n >= 0, "`fact(n)` needs `n >= 0`"
+        if n >= M.MOD: return M(0)
+        self.ensure(n)
+        f[n]
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `1 / n!`, for `0 <= n < M.MOD`.
     ///
     /// cost: O(1) amortized
     /// traps: when `n` is outside `0..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(3) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
-    pub fn inv_fact(self, n: Int) -> M = todo
+    pub fn inv_fact(self, n: Int) -> M:
+        assert 0 <= n and n < M.MOD, "`inv_fact(n)` needs `n` in `0..M.MOD`"
+        self.ensure(n)
+        g[n]
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// `1 / i`, for `1 <= i < M.MOD`, from the factorials: `(i - 1)! / i!`.
     ///
     /// cost: O(1) amortized
     /// traps: when `i` is outside `1..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
-    pub fn inv(self, i: Int) -> M = todo
+    pub fn inv(self, i: Int) -> M:
+        assert 1 <= i and i < M.MOD, "`inv(i)` needs `i` in `1..M.MOD`"
+        self.ensure(i)
+        g[i] * f[i - 1]
 
     fn choose_lucas(self, n: Int, k: Int) -> M:
         let p = M.MOD
         self.choose(n / p, k / p) * self.choose(n % p, k % p)
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of `k`-subsets of `n` things, `n! / (k! (n - k)!)`; 0 when `k` is outside `0..=n`.
     ///
     /// For `n < M.MOD` it reads the tables. For `n >= M.MOD` it uses Lucas's theorem on the base-`P`
@@ -228,9 +250,12 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 6) == Z(0)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(10, 3) == Z(1)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(7, 1) == Z(0)`
-    pub fn choose(self, n: Int, k: Int) -> M = todo
+    pub fn choose(self, n: Int, k: Int) -> M:
+        if n < 0 or k < 0 or k > n: return M(0)
+        if n >= M.MOD: return self.choose_lucas(n, k)
+        self.ensure(n)
+        f[n] * g[k] * g[n - k]
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of ordered selections of `k` out of `n` things, `n! / (n - k)!`; 0 when `k` is
     /// outside `0..=n`.
     ///
@@ -243,7 +268,11 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().arrange(5, 2) == Z(20)`
     /// example: `type Z = Mod<7>; Comb<Z>().arrange(9, 2) == Z(2)`
     /// example: `type Z = Mod<7>; Comb<Z>().arrange(8, 2) == Z(0)`
-    pub fn arrange(self, n: Int, k: Int) -> M = todo
+    pub fn arrange(self, n: Int, k: Int) -> M:
+        if n < 0 or k < 0 or k > n: return M(0)
+        let p = M.MOD
+        if n / p != (n - k) / p: return M(0)
+        self.fact(n % p) * self.inv_fact((n - k) % p)
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars): `choose(n + k - 1, n)`.
     ///
@@ -270,9 +299,10 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
     /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
-    pub fn catalan(self, n: Int) -> M = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
+    pub fn catalan(self, n: Int) -> M:
+        assert n >= 0, "`catalan(n)` needs `n >= 0`"
+        self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The number of derangements `!n`: permutations of `n` things with no fixed point.
     ///
     /// `!0 = 1`, `!1 = 0`, and `!n = (n - 1)(!(n - 1) + !(n - 2))`; the values are tabled like the
@@ -283,9 +313,13 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(4) == Z(9)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(5) == Z(44)`
-    pub fn derange(self, n: Int) -> M = todo
+    pub fn derange(self, n: Int) -> M:
+        assert n >= 0, "`derange(n)` needs `n >= 0`"
+        while d.len <= n:
+            let i = d.len
+            d.push(M(i - 1) * (d[i - 1] + d[i - 2]))
+        d[n]
 
-    // blocked: `@cache` fields don't parse (GAPS.md mod `Comb`)
     /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`.
     ///
     /// It is computed as the product of `choose(k_1 + ... + k_i, k_i)`, so Lucas applies and the
@@ -298,7 +332,14 @@ pub struct Comb<M>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([1, 1, 1]) == Z(6)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, -1]) == Z(0)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
-    pub fn multinomial(self, ks: List<Int>) -> M = todo
+    pub fn multinomial(self, ks: List<Int>) -> M:
+        var acc = M(1)
+        var total = 0
+        for k in ks:
+            if k < 0: return M(0)
+            total += k
+            acc = acc * self.choose(total, k)
+        acc
 
 /// O(1) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
 pub struct Barrett(m: Int, im: U64):
