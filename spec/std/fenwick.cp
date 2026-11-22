@@ -492,7 +492,29 @@ fn two_dimensions_match_a_plain_grid():
         assert f.get(R(r), C(c)) == g[r * 9 + c]
 
 @test
-fn xor_matches_a_plain_array() = todo
+fn xor_matches_a_plain_array():
+    domain I = 0..12
+    var f = Fenwick<I, XorTag>()
+    var a: [I]Int = 0
+    for _ in 0..300:
+        let i = I(rand(0, 11))
+        let x = rand(0, 1023)
+        f.add(i, XorTag(x))
+        a[i] ^= x
+        let l = rand(0, 12)
+        let r = rand(l, 12)
+        var want = 0
+        for k in l..r: want ^= a[I(k)]
+        assert f.fold(I.cuts.nth(l)..I.cuts.nth(r)).v == want
+
+struct XorTag(v: Int):
+    const zero = XorTag(0)
+
+impl Add for XorTag:
+    fn add(a, b) = XorTag(a.v ^ b.v)
+
+impl Sub for XorTag:
+    fn sub(a, b) = XorTag(a.v ^ b.v)
 
 @test
 fn dual_and_range_fenwick_match_brute():

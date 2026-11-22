@@ -8,6 +8,7 @@
 use std.algebra.{Monoid, Semiring}
 use std.mod.{Mod}
 use std.math.{mul_mod}
+use std.rand.{Rng}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
@@ -26,7 +27,12 @@ pub struct Mat<T>:
     /// empty: a matrix with zero rows or columns
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
-    pub fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T> = todo
+    pub fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>:
+        assert over == None, "Mat over a non-default semiring is not supported yet"
+        var d = List<T>()
+        for r in R:
+            for c in C: d.push(a[r, c])
+        Mat(R.count, C.count, d)
 
     /// A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default
     /// `Semiring(+, *)`).
@@ -34,7 +40,10 @@ pub struct Mat<T>:
     /// cost: O(rows * cols) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `Mat<Int>.filled(2, 3, 7).get(1, 2) == 7`
-    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T> = todo
+    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>:
+        assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
+        assert over == None, "Mat over a non-default semiring is not supported yet"
+        Mat(rows, cols, List.filled(rows * cols, fill))
 
     /// A `rows x cols` matrix of `T.zero`.
     ///
@@ -1158,7 +1167,92 @@ pub struct PrefixXorBasis:
 /// traps: when `n < 0` or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_det(2, e) == Mod<998244353>(6)`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1)), (0, 1, Mod(1))]; sparse_det(2, e) == Mod<998244353>(0)`
-pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P> = todo
+pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
+    assert n >= 0, "sparse_det requires n >= 0"
+    for (r, c, _) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
+    if n == 0: return Mod<P>(1)
+    var rng = Rng(998_244_353)
+    loop:
+        let w = wiedemann(n, entries, mut rng)
+        if w.singular: return Mod<P>(0)
+        if w.f.len == n + 1:
+            var det = w.f[0]
+            if n % 2 == 1: det *= Mod<P>(-1)
+            for d in w.diag: det /= d
+            return det
+
+pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+    assert n >= 0, "sparse_solve requires n >= 0"
+    assert b.len == n, "sparse_solve requires b.len == n"
+    for (r, c, _) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
+    if n == 0: return Some([])
+    var rng = Rng(998_244_353)
+    loop:
+        let w = wiedemann(n, entries, mut rng)
+        if w.singular: return None
+        if w.f.len == n + 1:
+            var y = List.filled(n, Mod<P>(0))
+            var t = b
+            for i in 1..=n:
+                for k in 0..n: y[k] += w.f[i] * t[k]
+                if i < n: t = sparse_apply(n, entries, w.diag, t)
+            let scale = Mod<P>(-1) / w.f[0]
+            let x = [y[k] * scale * w.diag[k] for k in 0..n]
+            let ax = sparse_apply(n, entries, [Mod<P>(1) for _ in 0..n], x)
+            var ok = true
+            for k in 0..n:
+                if ax[k] != b[k]: ok = false
+            if ok: return Some(x)
+
+fn sparse_apply<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, diag: List<Mod<P>>, v: List<Mod<P>>) -> List<Mod<P>>:
+    var out = List.filled(n, Mod<P>(0))
+    for (r, c, a) in entries: out[r] += a * diag[c] * v[c]
+    out
+
+fn wiedemann<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, mut rng: Rng) -> (f: List<Mod<P>>, diag: List<Mod<P>>, singular: Bool):
+    var diag = [Mod<P>(rng.int(1, 2_000_000_000)) for _ in 0..n]
+    for k in 0..n:
+        if diag[k] == Mod<P>(0): diag[k] = Mod<P>(1)
+    let u = [Mod<P>(rng.int(0, 2_000_000_000)) for _ in 0..n]
+    var v = [Mod<P>(rng.int(0, 2_000_000_000)) for _ in 0..n]
+    var seq: List<Mod<P>> = []
+    for _ in 0..2 * n:
+        var dot = Mod<P>(0)
+        for k in 0..n: dot += u[k] * v[k]
+        seq.push(dot)
+        v = sparse_apply(n, entries, diag, v)
+    let c = berlekamp_massey(seq)
+    let deg = c.len - 1
+    var f = List.filled(deg + 1, Mod<P>(0))
+    for i in 0..=deg: f[deg - i] = c[i]
+    (f: f, diag: diag, singular: deg >= 1 and f[0] == Mod<P>(0))
+
+fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
+    var cur: List<Mod<P>> = [Mod<P>(1)]
+    var prev: List<Mod<P>> = [Mod<P>(1)]
+    var len = 0
+    var shift = 1
+    var last = Mod<P>(1)
+    for i in 0..s.len:
+        var d = s[i]
+        for j in 1..=min(len, cur.len - 1): d += cur[j] * s[i - j]
+        if d == Mod<P>(0):
+            shift += 1
+            continue
+        let coef = d / last
+        var next = cur.copy()
+        while next.len < prev.len + shift: next.push(Mod<P>(0))
+        for j in 0..prev.len: next[j + shift] -= coef * prev[j]
+        if 2 * len <= i:
+            len = i + 1 - len
+            prev = cur
+            last = d
+            shift = 1
+        else:
+            shift += 1
+        cur = next
+    while cur.len < len + 1: cur.push(Mod<P>(0))
+    [cur[i] for i in 0..=len]
 
 /// Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in
 /// `sparse_det`. Returns the unique solution, or `None` when `A` is singular (even if `b` happens
@@ -1170,7 +1264,6 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P> = todo
 /// traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_solve(2, e, [Mod(4), Mod(9)]) == Some([Mod<998244353>(2), Mod<998244353>(3)])`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1))]; sparse_solve(2, e, [Mod(1), Mod(0)]) == None`
-pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>> = todo
 
 /// Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `None` if infeasible or unbounded.
 ///
@@ -1184,7 +1277,75 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
 /// example: `let r = simplex(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1.0]]), [1.0, 2.0], [1.0, 1.0])!; abs(r.val - 3.0) < 1e-9 and abs(r.x[1] - 2.0) < 1e-9`
 /// example: `simplex(Mat<F64>.from_rows([[1.0]]), [-1.0], [1.0]) == None`
 /// example: `simplex(Mat<F64>.from_rows([[-1.0]]), [0.0], [1.0]) == None`
-pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>) = todo
+pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>):
+    assert b.len == a.rows, "simplex requires b.len == a.rows"
+    assert c.len == a.cols, "simplex requires c.len == a.cols"
+    let (m, n) = (a.rows, a.cols)
+    if n == 0:
+        for bi in b:
+            if bi < -eps: return None
+        return Some((val: 0.0, x: []))
+    let w = n + 2
+    var d = List.filled((m + 2) * w, 0.0)
+    var nn = [j for j in 0..n]
+    nn.push(-1)
+    var bb = [n + i for i in 0..m]
+    for i in 0..m:
+        for j in 0..n: d[i * w + j] = a.get(i, j)
+        d[i * w + n] = -1.0
+        d[i * w + n + 1] = b[i]
+    for j in 0..n: d[m * w + j] = -c[j]
+    d[(m + 1) * w + n] = 1.0
+    fn pivot(r: Int, s: Int):
+        let inv = 1.0 / d[r * w + s]
+        for i in 0..m + 2:
+            if i != r and abs(d[i * w + s]) > eps:
+                let f = d[i * w + s] * inv
+                for j in 0..w: d[i * w + j] -= d[r * w + j] * f
+                d[i * w + s] = d[r * w + s] * f
+        for j in 0..w:
+            if j != s: d[r * w + j] *= inv
+        for i in 0..m + 2:
+            if i != r: d[i * w + s] *= -inv
+        d[r * w + s] = inv
+        (bb[r], nn[s]) = (nn[s], bb[r])
+    fn run(phase: Int) -> Bool:
+        let x = m + phase - 1
+        loop:
+            var s = -1
+            for j in 0..=n:
+                if nn[j] != -phase:
+                    if s == -1 or d[x * w + j] < d[x * w + s] or (d[x * w + j] == d[x * w + s] and nn[j] < nn[s]): s = j
+            if d[x * w + s] >= -eps: return true
+            var r = -1
+            for i in 0..m:
+                if d[i * w + s] > eps:
+                    if r == -1:
+                        r = i
+                    else:
+                        let qi = d[i * w + n + 1] / d[i * w + s]
+                        let qr = d[r * w + n + 1] / d[r * w + s]
+                        if qi < qr or (qi == qr and bb[i] < bb[r]): r = i
+            if r == -1: return false
+            pivot(r, s)
+    if m > 0:
+        var r = 0
+        for i in 1..m:
+            if d[i * w + n + 1] < d[r * w + n + 1]: r = i
+        if d[r * w + n + 1] < -eps:
+            pivot(r, n)
+            if not run(2) or d[(m + 1) * w + n + 1] < -eps: return None
+            for i in 0..m:
+                if bb[i] == -1:
+                    var s = 0
+                    for j in 1..=n:
+                        if d[i * w + j] < d[i * w + s] or (d[i * w + j] == d[i * w + s] and nn[j] < nn[s]): s = j
+                    pivot(i, s)
+    if not run(1): return None
+    var x = List.filled(n, 0.0)
+    for i in 0..m:
+        if bb[i] >= 0 and bb[i] < n: x[bb[i]] = d[i * w + n + 1]
+    Some((val: d[m * w + n + 1], x: x))
 
 @test
 fn matrix_arithmetic_and_pow():

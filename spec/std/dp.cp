@@ -989,10 +989,38 @@ fn knuth_matches_the_cubic_interval_dp():
         assert dp == slow
 
 @test
-fn aliens_finds_the_exact_count_optimum() = todo
+fn aliens_finds_the_exact_count_optimum():
+    let (lo, hi) = (-21, 21)
+    for _ in 0..50:
+        let vals = [rand(-10, 10) for _ in 0..rand(1, 8)].sorted()
+        let k = rand(0, vals.len)
+        fn solve(lam: Int) -> (val: Int, count: Int):
+            var (v, c) = (0, 0)
+            for x in vals:
+                if x + lam < 0:
+                    v += x + lam
+                    c += 1
+            (val: v, count: c)
+        var want = 0
+        for i in 0..k: want += vals[i]
+        assert aliens(k, solve, lambdas: lo..=hi) == want
 
 @test
-fn aliens_searches_a_wide_i128_slope_range() = todo
+fn aliens_searches_a_wide_i128_slope_range():
+    let big = I128(1_000_000_000_000) * I128(1_000_000_000_000)
+    for _ in 0..20:
+        let vals = [big * I128(rand(-10, 10)) for _ in 0..rand(1, 8)].sorted()
+        let k = rand(0, vals.len)
+        fn solve2(lam: I128) -> (val: I128, count: Int):
+            var (v, c) = (I128(0), 0)
+            for x in vals:
+                if x + lam < I128(0):
+                    v += x + lam
+                    c += 1
+            (val: v, count: c)
+        var want = I128(0)
+        for i in 0..k: want += vals[i]
+        assert aliens(k, solve2, lambdas: -big * I128(21)..=big * I128(21)) == want
 
 @test
 fn subset_sums_are_every_sum_sorted():
@@ -1004,4 +1032,18 @@ fn subset_sums_are_every_sum_sorted():
         assert subset_sums(xs) == sorted(want)
 
 @test
-fn monge_paths_match_the_quadratic_dp() = todo
+fn monge_paths_match_the_quadratic_dp():
+    for _ in 0..200:
+        let n = rand(1, 30)
+        var p = [0]
+        for _ in 1..n: p.push(p.last! + rand(0, 9))
+        let c = rand(-20, 20)
+        fn w(j: Int, i: Int) -> Int = (p[i] - p[j]) * (i - j) + c
+        let got = monge_paths([i for i in 0..n], w)
+        var best = [0]
+        for i in 1..n:
+            var b = best[0] + w(0, i)
+            for j in 1..i: b = min(b, best[j] + w(j, i))
+            best.push(b)
+        assert got.val == best
+        for i in 1..n: assert best[got.prev[i]] + w(got.prev[i], i) == best[i]

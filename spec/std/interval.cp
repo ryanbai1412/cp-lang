@@ -478,10 +478,39 @@ pub struct SparseIntervalSet:
         for (l, h) in segs.items: yield l..h
 
 @test
-fn interval_map_basic_and_coalescing() = todo
+fn interval_map_basic_and_coalescing():
+    domain P = 1..=10
+    var m = IntervalMap<P, Int>.new(0)
+    assert m.runs == 1
+    assert m.get(P(1)) == 0 and m.get(P(10)) == 0
+    var over1 = List<(range: Range<P>, val: Int)>()
+    m.assign(P(3)..=P(7), 5, on_old: (r, v) => over1.push((range: r, val: v)))
+    assert over1.len == 1
+    assert over1[0].range.len == 5 and over1[0].val == 0
+    assert m.runs == 3
+    var over2 = List<(range: Range<P>, val: Int)>()
+    m.assign(P(1)..=P(2), 5, on_old: (r, v) => over2.push((range: r, val: v)))
+    assert over2.len == 1 and over2[0].val == 0
+    assert m.runs == 2
+    assert m.run_at(P(4)).range.len == 7
+    assert m.assign_point(P(4), 9) == 5
+    assert m.runs == 4
+    assert m.assign_point(P(4), 5) == 9
+    assert m.runs == 2
 
 @test
-fn interval_map_from_and_empty_domain() = todo
+fn interval_map_from_and_empty_domain():
+    domain E = 0..0
+    var em = IntervalMap<E, Int>.new(7)
+    assert em.runs == 0
+    var seen = 0
+    for _ in em.each(): seen += 1
+    assert seen == 0
+    domain P = 0..6
+    let a: [P]Int = [P] i => [1, 1, 2, 2, 2, 1][i.to_idx]
+    let m = IntervalMap<P, Int>.from(a)
+    assert m.runs == 3
+    for i in P: assert m.get(i) == a[i]
 
 @test
 fn interval_map_matches_dense_array():

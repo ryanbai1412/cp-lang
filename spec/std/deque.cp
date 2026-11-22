@@ -588,7 +588,22 @@ fn a_deque_as_a_bfs_queue():
     assert dist == [2, 1, 0, 0, 0]
 
 @test
-fn a_deque_of_a_list_is_a_bfs_queue() = todo
+fn a_deque_of_a_list_is_a_bfs_queue():
+    domain V = 0..5
+    var dist: [V]?Int = [V] _ => None
+    let ends: List<V> = [V(0), V(4)]
+    for v in ends: dist[v] = Some(0)
+    var q = Deque.of(ends)
+    assert q.len == 2 and q.first == Some(V(0)) and q.last == Some(V(4))
+    while let u = q.pop_front():
+        for d in [-1, 1]:
+            let wi = u.to_idx + d
+            if 0 <= wi and wi < 5 and dist[V(wi)] == None:
+                dist[V(wi)] = Some(dist[u]! + 1)
+                q.push(V(wi))
+    assert [dist[v]! for v in V] == [0, 1, 2, 1, 0]
+    let none_yet: List<Int> = []
+    assert Deque.of(none_yet).is_empty
 
 @test
 fn a_deque_reserve_preserves_order():

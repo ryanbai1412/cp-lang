@@ -631,4 +631,44 @@ pub struct PMultiset<D>:
     pub fn cmp(self, other: PMultiset<D>, desc: Bool = false) -> Int = todo
 
 @test
-fn persistent_segtree_and_range_kth_match_brute() = todo
+fn persistent_segtree_and_range_kth_match_brute():
+    domain I = 1..=10
+    let a = [I] _ => rand(-15, 15)
+    var pst = PersistentSegTree<I, Int>(+, a)
+    var versions: List<Version> = [pst.base]
+    var snaps: List<[I]Int> = [a]
+    fn total(arr: [I]Int, r: Range<I>) -> Int:
+        var s = 0
+        for i in r: s += arr[i]
+        s
+    for _ in 0..30:
+        let base_id = rand(0, versions.len - 1)
+        let i = I(rand(1, 10))
+        let x = rand(-20, 20)
+        var next_arr = snaps[base_id]
+        if rand(0, 1) == 0:
+            versions.push(pst.set(versions[base_id], i, x))
+            next_arr[i] = x
+        else:
+            versions.push(pst.update(versions[base_id], i, cur => cur + x))
+            next_arr[i] += x
+        snaps.push(next_arr)
+    for vid in 0..versions.len:
+        let v = versions[vid]
+        let arr = snaps[vid]
+        for l in 1..=10:
+            for r in l..=10:
+                assert pst.fold(v, I(l)..=I(r)) == total(arr, I(l)..=I(r))
+        assert pst.get(v, I(3)) == arr[I(3)]
+        assert pst.all(v) == total(arr, I(1)..=I(10))
+    let rk = RangeKth<I, Int>(a)
+    for l in 1..=10:
+        for r in l..=10:
+            let rng = I(l)..=I(r)
+            let s = [a[i] for i in rng].sorted()
+            for k in 0..s.len: assert rk.kth(rng, k) == s[k]
+            for x in [-20, -5, 0, 5, 20]:
+                var c = 0
+                for y in s:
+                    if y <= x: c += 1
+                assert rk.count_le(rng, x) == c

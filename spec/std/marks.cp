@@ -513,4 +513,15 @@ fn marks_wraps_cleanly_at_32bit_ceiling():
     assert m.add(V(2)) and V(2) in m and V(5) not in m and m.len == 1
 
 @test
-fn interval_map_cross_module_assign() = todo
+fn interval_map_cross_module_assign():
+    domain P = 1..=8
+    var im = IntervalMap<P, Int>.new(0)
+    im.assign(P(2)..=P(5), 3)
+    assert im.runs == 3 and im.get(P(2)) == 3 and im.get(P(6)) == 0
+    var total_len = 0
+    var sum_old = 0
+    im.assign(P(4)..=P(7), 3, on_old: (r, old) =>
+        total_len += r.len
+        sum_old += r.len * old)
+    assert total_len == 4 and sum_old == 6
+    assert im.runs == 3 and im.run_at(P(5)).range.len == 6
