@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1091 (296 passing). Rules: 521.
+Cases: 1105 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -647,7 +647,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
 - E0405 assign_fixed_field *(0.3)*: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
-- E0407 duplicate_variant_tag *(0.3)*: 1 case(s)
+- E0407 Duplicate enum variant tag: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 3 case(s)
@@ -660,7 +660,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0606 Missing trait implementation for operator: 18 case(s)
 - E0607 Moved while captured by a closure: 1 case(s)
 - E0608 Use of moved value: 7 case(s)
-- E0701 ambiguous_method *(0.3)*: 1 case(s)
+- E0701 Ambiguous trait method: 1 case(s)
 - E0702 overload_by_type *(0.3)*: 2 case(s)
 - E0703 bare_op_tuple *(0.3)*: 1 case(s)
 - E0704 row_missing_field *(0.3)*: 2 case(s)
@@ -668,10 +668,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0706 empty_fold_no_identity *(0.3)*: 1 case(s)
 - E0801 context_not_constant *(0.3)*: 1 case(s)
 - E0802 with_not_first *(0.3)*: 2 case(s)
-- E0803 question_in_condition *(0.3)*: 2 case(s)
+- E0803 `?` used directly in a condition: 2 case(s)
 - E0804 dropped_question *(0.3)*: **no case**
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
-- E0806 inference_needs_annotation *(0.3)*: 3 case(s)
+- E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 range_store_unprovable_const *(0.3)*: 6 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 4 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 3 case(s)
+- R0401 Assertion failed: 4 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 7 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -763,8 +763,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **dsu** (58/63 named by a case)
   - uncovered: `Mark`, `RollbackArray`, `RollbackArray.new`, `PersistentDsu`, `PersistentDsu.new`
 - **fenwick** (31/31 named by a case)
-- **flow** (37/65 named by a case)
-  - uncovered: `FlowGraph.add_both`, `FlowGraph.target`, `FlowGraph.min_cut`, `FlowGraph.push_relabel`, `CostFlow.cost`, `CostFlow.target`, `CostFlow.cancel_cycles`, `CostFlow.min_cost_flow`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
+- **flow** (44/65 named by a case)
+  - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (120/158 named by a case)
   - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter`, `circles_union_area`, `polygon_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
 - **graph** (52/123 named by a case)
@@ -772,14 +772,14 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **grid** (17/23 named by a case)
   - uncovered: `Dir4.up`, `Dir4.down`, `ray`, `adj4`, `adj8`, `transposed`
 - **hashmap** (35/35 named by a case)
-- **heap** (68/74 named by a case)
-  - uncovered: `MeldHeap`, `MeldHeap.new`, `MeldHeap.meld`, `MeldHeap.add_all`, `MinHeap`, `MaxHeap`
-- **interval** (42/44 named by a case)
-  - uncovered: `IntervalMap.new`, `IntervalMap.assign_point`
+- **heap** (70/74 named by a case)
+  - uncovered: `MeldHeap`, `MeldHeap.new`, `MeldHeap.meld`, `MeldHeap.add_all`
+- **interval** (43/44 named by a case)
+  - uncovered: `IntervalMap.assign_point`
 - **io** (2/5 named by a case)
   - uncovered: `Wire`, `Wire.new`, `Wire.ask`
-- **lazy** (20/30 named by a case)
-  - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`, `Rope`, `Rope.new`, `Rope.to_array`
+- **lazy** (23/30 named by a case)
+  - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`
 - **marks** (46/46 named by a case)
 - **math** (51/83 named by a case)
   - uncovered: `fixed`, `choose2`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
@@ -820,10 +820,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `TimeTree.event`, `TimeTree.run`, `offline_over`
 - **tree** (62/171 named by a case)
   - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
-- **window** (15/22 named by a case)
-  - uncovered: `Window.new`, `Track`, `track`, `Tracked`, `Undo`, `Undoing`, `undoing`
+- **window** (16/22 named by a case)
+  - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1582 of 2222 std items are named by a case.
+1596 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
