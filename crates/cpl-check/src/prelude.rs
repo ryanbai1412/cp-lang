@@ -155,7 +155,7 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
             text: text.to_string(),
             span: cpl_diag::Span::new(0, 0),
         };
-        let mut found: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
+        let mut found: Vec<(Vec<ast::Name>, ast::Name, bool)> = Vec::new();
         for (module, text) in crate::modules::active_std_modules() {
             if *module == "prelude" || !text.contains("self:") {
                 continue;
@@ -164,23 +164,29 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
                 .chain(module.split('/'))
                 .map(bare)
                 .collect();
-            for name in scan_top_level_methods(text) {
-                found.push((path.clone(), bare(name)));
+            for (name, is_todo) in scan_top_level_methods(text) {
+                found.push((path.clone(), bare(name), is_todo));
             }
         }
-        let twice = |name: &str| found.iter().filter(|(_, other)| other.text == name).count() > 1;
-        let unique: Vec<_> = found
-            .iter()
-            .filter(|(_, name)| !twice(&name.text))
-            .cloned()
-            .collect();
+        let mut unique: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
+        for (path, name, is_todo) in &found {
+            let matching: Vec<_> = found
+                .iter()
+                .filter(|(_, other, _)| other.text == name.text)
+                .collect();
+            if matching.len() == 1
+                || (!is_todo && matching.iter().filter(|(_, _, t)| !t).count() == 1)
+            {
+                unique.push((path.clone(), name.clone()));
+            }
+        }
         unique
     })
 }
 
 /// Scans top-level `[@dec ...] pub [@dec ...] fn <name>[<...>]([mut] self: ...)`
-/// headers without parsing function bodies.
-fn scan_top_level_methods(text: &str) -> Vec<&str> {
+/// headers without parsing function bodies. Returns `(name, is_todo)`.
+fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
     let mut out = Vec::new();
     let bytes = text.as_bytes();
     let mut offset = 0;
@@ -250,7 +256,10 @@ fn scan_top_level_methods(text: &str) -> Vec<&str> {
                             }
                             if let Some(after_self) = params.strip_prefix("self") {
                                 if after_self.trim_start().starts_with(':') {
-                                    out.push(name);
+                                    let line_end = rest.find('\n').unwrap_or(rest.len());
+                                    let line = rest[..line_end].trim_end();
+                                    let is_todo = line.ends_with("= todo");
+                                    out.push((name, is_todo));
                                 }
                             }
                         }

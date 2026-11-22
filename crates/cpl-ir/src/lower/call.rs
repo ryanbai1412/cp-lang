@@ -5230,6 +5230,81 @@ impl<'a> Lowerer<'a> {
             // `xs.items` kept as a value: the list of `(index, element)`.
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
+            (
+                Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView,
+                "keys",
+            ) => {
+                let lo = match &value.kind {
+                    ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
+                        args.get(1).cloned().unwrap_or_else(|| self.int_lit(0, span))
+                    }
+                    ExprKind::Local(slot) => self
+                        .cx
+                        .view_lo
+                        .get(slot)
+                        .copied()
+                        .map(|v| self.int_lit(v, span))
+                        .unwrap_or_else(|| self.int_lit(0, span)),
+                    ExprKind::Global(gid) => self
+                        .global_view_lo
+                        .get(gid)
+                        .copied()
+                        .map(|v| self.int_lit(v, span))
+                        .unwrap_or_else(|| self.int_lit(0, span)),
+                    _ => self.int_lit(0, span),
+                };
+                let len = self.len_of(value, span);
+                let hi = self.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
+                    Ty::Int,
+                    span,
+                );
+                self.mk(
+                    ExprKind::Range {
+                        lo: Box::new(lo),
+                        hi: Box::new(hi),
+                    },
+                    Ty::Range(Box::new(Ty::Int)),
+                    span,
+                )
+            }
+            (Ty::Array { dims, .. }, "keys") if dims.len() == 1 => match dims[0] {
+                Dim::Pos(d) => {
+                    let lo = self.mk(
+                        ExprKind::Cast(Cast::FromOrd(d), Box::new(self.int_lit(0, span))),
+                        Ty::Pos(d),
+                        span,
+                    );
+                    let hi = self.mk(
+                        ExprKind::Cast(
+                            Cast::FromOrd(d),
+                            Box::new(self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
+                        ),
+                        Ty::Pos(d),
+                        span,
+                    );
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                _ => {
+                    let lo = self.int_lit(0, span);
+                    let hi = self.len_of(value, span);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::Int)),
+                        span,
+                    )
+                }
+            },
             (Ty::Map(..) | Ty::HashMap(..), "values") => self.proj_of_map(value, 1, span),
             (Ty::Array { dims, .. }, "items")
                 if dims.len() > 1 && dims.iter().all(|d| !matches!(d, Dim::Bound(_))) =>
@@ -8941,9 +9016,9 @@ impl<'a> Lowerer<'a> {
             // `r.find(i => ..)`: the first of the range the test holds
             // for, `none` when there is none. `(0..).find(..)` has no end
             // and stops there.
-            (Ty::Range(elem), "find") if args.len() == 1 => {
+            (Ty::Range(elem), "find" | "rfind") if args.len() == 1 => {
                 let elem = (**elem).clone();
-                self.find_first(value, elem, &args[0].value, false, span)
+                self.find_first(value, elem, &args[0].value, method == "rfind", span)
             }
             (Ty::Array { dims, elem }, "rev") if dims.len() == 1 && args.is_empty() => {
                 let elem = (**elem).clone();
