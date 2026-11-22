@@ -399,7 +399,7 @@ impl<'a> Parser<'a> {
                 // One-sided upper-bounded range type: `..n`, `..=8`.
                 let inclusive = self.at(T::DotDotEq);
                 self.range_op();
-                let hi = self.additive();
+                let hi = self.range_bound();
                 TypeKind::Range {
                     lo: None,
                     hi: Some(Box::new(hi)),
@@ -408,7 +408,7 @@ impl<'a> Parser<'a> {
             }
             T::Ident | T::Int | T::Minus | T::Float => {
                 // A range type: `0..=1e9`, `1..=n`, or one-sided `0..`, `2..`.
-                let lo = self.additive();
+                let lo = self.range_bound();
                 let inclusive = self.at(T::DotDotEq);
                 if !inclusive && !self.at(T::DotDot) {
                     let span = lo.span;
@@ -425,7 +425,7 @@ impl<'a> Parser<'a> {
                             self.peek(),
                             T::Ident | T::Int | T::Minus | T::Float | T::LParen | T::SelfKw
                         ) {
-                        Some(Box::new(self.additive()))
+                        Some(Box::new(self.range_bound()))
                     } else {
                         None
                     };
@@ -458,12 +458,22 @@ impl<'a> Parser<'a> {
             .take_while(|t| !matches!(t.kind, T::RBracket | T::Comma | T::Newline | T::Eof))
             .map(|t| t.kind)
             .collect();
-        let has_range_or_group = entry
-            .iter()
-            .any(|t| matches!(t, T::DotDot | T::DotDotEq | T::LParen | T::LBracket));
-        let has_arith = entry
-            .iter()
-            .any(|t| matches!(t, T::Plus | T::Minus | T::Star | T::Slash));
+        let mut depth = 0i32;
+        let mut has_group = false;
+        let mut has_arith = false;
+        for t in &entry {
+            match t {
+                T::LParen | T::LBracket => {
+                    has_group = true;
+                    depth += 1;
+                }
+                T::RParen => depth -= 1,
+                T::Plus | T::Minus | T::Star | T::Slash | T::Shl if depth == 0 => has_arith = true,
+                _ => {}
+            }
+        }
+        let has_range = entry.iter().any(|t| matches!(t, T::DotDot | T::DotDotEq));
+        let has_range_or_group = has_range || (has_group && !has_arith);
         let counted = !has_range_or_group
             && (has_arith
                 || (matches!(self.peek(), T::Ident | T::Int)
@@ -488,7 +498,18 @@ impl<'a> Parser<'a> {
     }
 
     fn primary_for_count(&mut self) -> Expr {
-        self.additive()
+        self.range_bound()
+    }
+
+    /// A range bound in a type: arithmetic and `<<`, but not `>>`, which
+    /// closes nested type arguments.
+    fn range_bound(&mut self) -> Expr {
+        let mut lhs = self.additive();
+        while self.at(T::Shl) {
+            let start = lhs.span.start;
+            lhs = self.binary(start, BinOp::Shl, lhs, Self::additive);
+        }
+        lhs
     }
 
     /// True when a capitalized name (possibly with `.member` access, such as
