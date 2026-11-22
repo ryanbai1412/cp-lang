@@ -43,6 +43,10 @@ ticket="$queue/$name"
 cd "$(git rev-parse --show-toplevel)"
 [ -z "$(git status --porcelain --untracked-files=no)" ] ||
     { echo "land: commit or stash your changes first" >&2; exit 1; }
+if [ -z "${CPL_LAND_GATE:-}" ] && [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+    cargo fmt --all --check >/dev/null ||
+        { echo "land: Rust files are not formatted; run: cargo fmt --all" >&2; exit 1; }
+fi
 empty=$(git hash-object -t tree -w /dev/null)
 start=$(git rev-parse HEAD)
 

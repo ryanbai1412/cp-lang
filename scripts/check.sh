@@ -176,6 +176,9 @@ fi
 need cargo "see https://rustup.rs"
 cpl="$target/debug/cpl"
 
+step "cargo fmt --all --check"
+cargo fmt --all --check || fail "Rust files are not formatted; run: cargo fmt --all"
+
 step "cargo clippy --workspace --all-targets -- -D warnings"
 if cache_hit clippy; then
     echo "cached (tree unchanged outside its excludes)"
@@ -198,11 +201,10 @@ else
     lib_dirs+=(examples/local-lib/*/)
 fi
 lib_pids=()
-bundle_pid=""
+site_pipeline_pid=""
 script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
-site_test_pid=""
 stdlib_cached=0
 if cache_hit stdlib_test; then
     stdlib_cached=1
@@ -221,16 +223,53 @@ else
     need python3 "site/bundle.py runs on it"
     python3 -c 'import mistune' 2>/dev/null \
         || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
-    # Separate CARGO_TARGET_DIR so the wasm build runs alongside nextest without Cargo lock contention.
-    CARGO_TARGET_DIR="$target/wasm-cargo" python3 site/bundle.py >"$lib_logs/site_bundle.log" 2>&1 &
-    bundle_pid=$!
+fi
+docs_site_cached=0
+if cache_hit docs_site; then
+    docs_site_cached=1
+fi
+# Run site bundle -> docs gate -> site tests in one background pipeline so all
+# three overlap with cargo nextest (separate CARGO_TARGET_DIR avoids Cargo lock).
+if [ "$bundle_cached" -eq 0 ] || [ "$docs_site_cached" -eq 0 ]; then
+    (
+        if [ "$bundle_cached" -eq 0 ]; then
+            if CARGO_TARGET_DIR="$target/wasm-cargo" python3 site/bundle.py >"$lib_logs/site_bundle.log" 2>&1; then
+                echo 0 >"$lib_logs/site_bundle.rc"
+            else
+                echo 1 >"$lib_logs/site_bundle.rc"
+                exit 1
+            fi
+        fi
+        if [ "$docs_site_cached" -eq 0 ]; then
+            # test_site rebuilds site/_build (bundle.bundle()), which check_docs reads, so it starts after.
+            if python3 site/check_docs.py >"$lib_logs/check_docs.log" 2>&1; then
+                echo 0 >"$lib_logs/check_docs.rc"
+            else
+                echo 1 >"$lib_logs/check_docs.rc"
+                exit 1
+            fi
+            if CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1; then
+                echo 0 >"$lib_logs/site_tests.rc"
+            else
+                echo 1 >"$lib_logs/site_tests.rc"
+                exit 1
+            fi
+        fi
+    ) &
+    site_pipeline_pid=$!
 fi
 scoreboard_cached=0
 if cache_hit scoreboard_fast; then
     scoreboard_cached=1
+else
+    # cpl-conform is already built above; overlap it and script unit tests with nextest.
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py >"$lib_logs/script_tests.log" 2>&1 &
+    script_test_pid=$!
+    "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
+    scoreboard_pid=$!
 fi
 cleanup() {
-    kill "${lib_pids[@]}" ${bundle_pid:+"$bundle_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${site_pipeline_pid:+"$site_pipeline_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -307,14 +346,6 @@ echo "prelude: $prelude names"
 step "cpl fmt --check stdlib"
 "$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
-# Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
-if [ "$scoreboard_cached" -eq 0 ]; then
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py >"$lib_logs/script_tests.log" 2>&1 &
-    script_test_pid=$!
-    "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
-    scoreboard_pid=$!
-fi
-
 # Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
 step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
 python3 scripts/debt-ratchet.py --check \
@@ -333,15 +364,17 @@ check_bundle_parts() {
         printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
 }
 step "site bundle: compiler under 2,100,000 bytes, docs under 500,000, gallery under 150,000"
+if [ -n "${site_pipeline_pid:-}" ]; then
+    wait "$site_pipeline_pid" || true
+    site_pipeline_pid=""
+fi
 if [ "$bundle_cached" -eq 1 ]; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
     check_bundle_parts
 else
-    bundle_status=0
-    wait "$bundle_pid" || bundle_status=1
-    bundle_pid=""
-    [ "$bundle_status" -eq 0 ] || { cat "$lib_logs/site_bundle.log"; fail "site/bundle.py failed; rerun: python3 site/bundle.py"; }
+    [ "$(cat "$lib_logs/site_bundle.rc" 2>/dev/null || echo 1)" = "0" ] \
+        || { cat "$lib_logs/site_bundle.log" 2>/dev/null; fail "site/bundle.py failed; rerun: python3 site/bundle.py"; }
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes"
     check_bundle_parts
@@ -349,17 +382,14 @@ else
 fi
 
 step "docs gate, then site tests"
-if cache_hit docs_site; then
+if [ "$docs_site_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 else
-    # test_site rebuilds site/_build (bundle.bundle()), which check_docs reads, so it starts after.
-    python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
-    CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
-    site_test_pid=$!
-    site_test_status=0
-    wait "$site_test_pid" || site_test_status=1
-    site_test_pid=""
-    [ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
+    cat "$lib_logs/check_docs.log" 2>/dev/null || true
+    [ "$(cat "$lib_logs/check_docs.rc" 2>/dev/null || echo 1)" = "0" ] \
+        || fail "docs gate failed; rerun: python3 site/check_docs.py"
+    [ "$(cat "$lib_logs/site_tests.rc" 2>/dev/null || echo 1)" = "0" ] \
+        || { cat "$lib_logs/site_tests.log" 2>/dev/null; fail "site tests failed; rerun: python3 site/test_site.py"; }
     cache_save docs_site
 fi
 

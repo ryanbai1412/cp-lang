@@ -388,5 +388,28 @@ class CheckCacheTest(unittest.TestCase):
                 order = [line.strip() for line in f if line.strip()]
             self.assertEqual(order, ["docs: first", "docs: second"])
 
+    def test_land_rejects_unformatted_rust_before_queuing(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            work = os.path.join(tmp, "work")
+            os.makedirs(os.path.join(work, "src"))
+            def git(*a):
+                return subprocess.run(["git", *a], cwd=work, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "-b", "main")
+            git("config", "user.name", "t")
+            git("config", "user.email", "t@example.com")
+            with open(os.path.join(work, "Cargo.toml"), "w", encoding="utf-8") as f:
+                f.write('[package]\nname = "t"\nversion = "0.1.0"\nedition = "2021"\n')
+            with open(os.path.join(work, "src", "lib.rs"), "w", encoding="utf-8") as f:
+                f.write("pub fn   f(x:i32)->i32{x+1}\n")
+            git("add", ".")
+            git("commit", "-qm", "fmt: bad")
+            land = os.path.join(root, "scripts", "land.sh")
+            r = subprocess.run([land, "origin"], cwd=work, capture_output=True, text=True, env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("Rust files are not formatted", r.stderr)
+
 if __name__ == "__main__":
     unittest.main()
