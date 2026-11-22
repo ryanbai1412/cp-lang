@@ -1,84 +1,33 @@
 #!/usr/bin/env python3
-"""Measure how many ```cp blocks in design/spec/*.md pass `cpl check`.
+"""Check every code block in spec/core and spec/lib against today's compiler.
 
-Usage:
-    scripts/spec-blocks.py [--cpl PATH] [--verbose]
+Prints, per chapter, how many blocks check with the spec stubs as the
+standard library, then the most common first errors. The count is a floor
+for the 0.2 -> 0.3 delta (spec/delta/0.2.md): many blocks are fragments.
 """
-from __future__ import annotations
+import collections, glob, os, re, subprocess, sys, tempfile
 
-import argparse
-import glob
-import os
-import re
-import subprocess
-import sys
-import tempfile
-import textwrap
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-FENCE_RE = re.compile(r"```cp\n(.*?)```", re.S)
-
-
-def default_cpl() -> str:
-    for rel in ("target/release/cpl", "target/debug/cpl"):
-        p = ROOT / rel
-        if p.is_file() and os.access(p, os.X_OK):
-            return str(p)
-    return "cpl"
-
-
-def extract_blocks(spec_dir: Path) -> list[tuple[str, int, int, str]]:
-    out: list[tuple[str, int, int, str]] = []
-    for path in sorted(glob.glob(str(spec_dir / "*.md"))):
-        name = os.path.basename(path)
-        text = Path(path).read_text(encoding="utf-8")
-        for idx, m in enumerate(FENCE_RE.finditer(text)):
-            line = text.count("\n", 0, m.start()) + 1
-            out.append((name, idx, line, textwrap.dedent(m.group(1))))
-    return out
-
-
-def first_error_line(output: str) -> str:
-    for ln in output.splitlines():
-        s = ln.strip()
-        if s.startswith("error"):
-            return s
-    for ln in output.splitlines():
-        s = ln.strip()
-        if s:
-            return s
-    return "(no output)"
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--cpl", default=default_cpl(), help="path to cpl binary")
-    ap.add_argument("--spec-dir", default=str(ROOT / "design" / "spec"))
-    ap.add_argument("--verbose", "-v", action="store_true", help="print every block's status")
-    args = ap.parse_args()
-
-    blocks = extract_blocks(Path(args.spec_dir))
-    passed = 0
-    for name, idx, line, code in blocks:
-        with tempfile.NamedTemporaryFile("w", suffix=".cp", delete=False, encoding="utf-8") as tf:
-            tf.write(code)
-            tmp = tf.name
-        try:
-            res = subprocess.run([args.cpl, "check", tmp], capture_output=True, text=True)
-        finally:
-            os.unlink(tmp)
-        if res.returncode == 0:
-            passed += 1
-            if args.verbose:
-                print(f"PASS {name}#{idx} (line {line})")
-        elif args.verbose:
-            err = first_error_line(res.stderr + "\n" + res.stdout)
-            print(f"FAIL {name}#{idx} (line {line}): {err}")
-
-    print(f"spec blocks: {passed}/{len(blocks)} pass `cpl check`")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CPL = os.path.join(ROOT, "target", "release", "cpl")
+env = {**os.environ, "CPL_SPEC": "1", "CPL_STD": os.path.join(ROOT, "spec", "std")}
+per, errs, first = collections.defaultdict(lambda: [0, 0]), collections.Counter(), {}
+with tempfile.TemporaryDirectory() as tmp:
+    for f in sorted(glob.glob(os.path.join(ROOT, "spec/core/*.md")) + glob.glob(os.path.join(ROOT, "spec/lib/*.md"))):
+        name = os.path.relpath(f, ROOT)
+        for i, block in enumerate(re.findall(r"```(?:cp|python)\n(.*?)```", open(f).read(), re.S)):
+            p = os.path.join(tmp, f"b{i}.cp")
+            open(p, "w").write(block)
+            r = subprocess.run([CPL, "check", p], capture_output=True, text=True, env=env)
+            m = re.search(r"error\[(E\d+)\]: ([^\n]*)", r.stdout + r.stderr)
+            per[name][1] += 1
+            if m:
+                errs[m.group(1)] += 1
+                first.setdefault(m.group(1), f"{name} block {i}: {m.group(2)[:70]}")
+            else:
+                per[name][0] += 1
+ok, total = sum(v[0] for v in per.values()), sum(v[1] for v in per.values())
+print(f"spec blocks: {ok}/{total} check")
+for k, (a, b) in sorted(per.items()):
+    print(f"  {a:3}/{b:<3} {k}")
+for e, n in errs.most_common(int(sys.argv[1]) if len(sys.argv) > 1 else 10):
+    print(f"  {e} x{n}  e.g. {first[e]}")

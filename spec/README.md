@@ -68,5 +68,7 @@ compile: `conformance/`. What 0.2.x does not do yet: `delta/`.
   the port dreams to the stubs. A failing dream is either a spec gap (add
   the signature or the power) or a dream that ignores a decision (fix the
   dream). Never weaken a dream to make it pass.
+- `delta/0.2.md` measures this branch against the tree (gold dreams, all
+  dreams, stubs, code blocks) and points to the per-area gaps.
 - `delta/parser-gaps.md` lists decided syntax the front end does not
   accept yet.
