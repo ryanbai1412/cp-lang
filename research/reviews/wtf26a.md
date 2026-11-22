@@ -1,6 +1,6 @@
 # wtf26a
 
-Score: pending cold rescore (adopted full Kruskal + overflow-clamp header, single `domain Node = 0..2 * n - 1`, `struct Cut(w, size, parent)`, `[Node]?Cut` eliminating `cut_ng[i] < m` sentinel, and `DsuOf<Node, Int>` toward the 4/5 dream; remaining gap is `KruskalTree`)
+Score: 4/5
 Dream: 4/5
 
 The header (lines 1-3) states the plan. The Kruskal reconstruction tree is hand-built from three parallel `cut_*` arrays over raw `Int` node ids with `n + e` offsets, and the overflow clamp (line 40) is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -29,3 +29,8 @@ Dream 4/5 (new), port → 3/5, rescored on current main. The header derives the 
 - Minor: `[v => ... for v in tree.non_root]` (line 21) mixes a table builder and a comprehension; neither spelling is accepted with both. `cost.edges(to: tree.parent)` (line 23) is unexplained.
 
 Port 3/5: a hand Kruskal with `Dsu`, a `top` array and `Node(n + e)` ids (lines 17-27); these are the reported gap.
+
+## Cold review (HEAD)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. One `domain Node`, `struct Cut` with `[Node]?Cut` and `DsuOf` (line 46) make both Kruskal passes read as the header, and the overflow cap (line 40) is stated there.
+- Minor: `Node(u.ord)`/`Node(n + e)` (lines 25, 29) place nodes by raw arithmetic. `n: Int` (line 17) and `w: Int` have no bounds, so the `max_w` overflow proof rests on the comment.

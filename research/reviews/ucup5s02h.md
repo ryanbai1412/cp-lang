@@ -1,6 +1,6 @@
 # ucup5s02h
 
-Score: pending cold rescore (adopted full Boruvka + `Hull` invariant header, named `struct Pt(x, q, id)` eliminating `.0`/`.1`, `ParityDsu<Node>()` eliminating `2 * i + 1` encoding, and named `gap`/`weaker_gap` toward the 4/5 dream)
+Score: 3/5
 Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -53,3 +53,10 @@ Dream 3/5, rescored cold on current main; sent back. `never_weakest` is now deri
 Dream 3/5 → 4/5, rescored cold on current main. `Hull<Id>` stores `(ch, id)`, so the edge's `j: C` is typed; `gap` is computed once per candidate (line 83); line 46 explains the `idx + 1 < pts.len` guard.
 - The only errors are reported gaps: `Frac`, the `C | Pin` sum domain (and the two E0301s it causes on `colour.unite`), `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree`, `min_by` and `pop_while`.
 - Minor: `hull_pairs` makes a `Hull<Int>` only to throw the ids away (line 58). Line 83 is 114 characters. "It is enough to two-colour the spanning tree of weakest pulls" (line 6) is asserted, not argued.
+
+## Cold review (HEAD)
+
+Port 3/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header now derives Boruvka and the `Hull` invariant. `Pt` and `ParityDsu<Node>` remove the `.0`/`.1` tuples and the `2 * i + 1` encoding. Owed today:
+- Charges are raw `Int`s, so `Node.at(i)` appears 9 times (lines 77-114) and `Pt.id: Int` (line 19). A `domain C = 0..n` for charges, with `pin` as the extra node, says it once.
+- The segment-tree climb `node = cc + v; while node > 1: …; node >>= 1` is written twice (lines 95-98, 103-106) on raw heap indices. Name it once.
+- `(num: 1, den: 226_000_000)` (line 111) is an unexplained seed, and `n: Int` (line 65) has no bound to justify it.

@@ -1,6 +1,6 @@
 # ucup5s05e
 
-Score: pending cold rescore (adopted the 4/5 dream's local-window invariant header, `const WINDOW = 5`, `hull_edges`, and `repeat q:`; gated 150/150, 0 lints)
+Score: 4/5
 Dream: 4/5
 
 Active port emitted size moved `24,877 -> 26,831 B` (+1,954 B, <48 KB) from updated checked-geometry/slice runtime helpers on current `main`, to be trimmed by dead-helper pruning.
@@ -29,3 +29,8 @@ Dream 3/5 → 4/5, rescored cold on current main. The header now derives the qua
 - Minor: `near` (lines 47-50) clamps a window with `max(0, min(at - 1, hi - WINDOW))`; a clamped `window(around:, len:)` would say it.
 
 Port 3/5: still hard-codes `at + 4`/`hi - 5` (lines 35-36), lists `quad_edges` by hand (lines 27-30), and uses `for _ in 0..q` (line 54), all of which the dream now fixes; the triple loop (lines 43-47) is the reported `combinations` gap.
+
+## Cold review (HEAD)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header now derives the local window, and `WINDOW = 5` replaces the `+4`/`-5` magic numbers.
+- Minor: the triple loop (lines 59-63) is the reported `combinations(3)`. `hull_edges` (lines 43-46) is built only for the 4-vertex case it's used in; inline it into line 64.

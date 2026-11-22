@@ -1,6 +1,6 @@
 # wtf26c
 
-Score: pending cold rescore (adopted full 2D DP + binomial-inversion header, `convolve_2d` helper with stride invariant, and `Z(g - 1) ** i * Z(g) ** j` eliminating hand power tables; matches the 4/5 dream except `std.ntt.convolve_2d` & `binomial_inverse`)
+Score: 4/5
 Dream: 4/5
 
 The header names the method (2D DP, NTT per step over flattened coordinates, two inclusion-exclusion passes) but not the recurrence; the flattening `i + stride * j` is hand bookkeeping, and the closing passes are unexplained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -29,3 +29,8 @@ Dream 4/5 (new), port → 3/5, rescored on current main. The header gives the DP
 - Minor: the first inversion is `binomial_inverse()` (line 38), but the second is a hand loop (line 40); give both the same spelling or say why the second isn't a binomial inverse. `n: Int` (line 17) has no bound, so the O(n³) `power_sum` cost isn't checked.
 
 Port 3/5: a hand-flattened 2D convolution (lines 9-14) and both inversions as loops (the reported gap).
+
+## Cold review (HEAD)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header derives the DP and both binomial inversions. `Z(g - 1) ** i * Z(g) ** j` (line 32) replaces the power tables, and `convolve_2d` (lines 22-27) states its stride invariant. It is a small stand-in for the reported `convolve_2d`.
+- Minor: `n: Int` (line 17) has no bound, so the `n` convolutions of `O(n^2)` terms per `g` (line 39) have no visible cost bound.

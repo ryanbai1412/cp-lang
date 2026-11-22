@@ -1,6 +1,6 @@
 # ucup5s01a
 
-Score: pending cold rescore (adopted full derivation header including `/ i` and `/ prod(n + z)`, `deg.count(d => d == 0)`, exact `0..=n + m` bounds removing `+ 2` slack, and clean DP toward the 4/5 dream; remaining gap is `std.poly.Poly` product)
+Score: 4/5
 
 Dream: 4/5
 
@@ -44,3 +44,8 @@ Port 3/5 unchanged: a hand polynomial multiply and a push DP into a scratch tabl
 
 Dream 3/5 → 4/5, rescored cold on current main. Line 25-26 now seed `dp[init_leaves, Count(j)]`, and `numer` is named. The only error is `Poly` (lines 13, 21), which is reported, as is `dp.get` reading out-of-range cells as zero (lines 32-36).
 - Minor: the transition comments (lines 31-35) state each case but not why `others - (i - 1)` counts "below an unmarked vertex without marking, or below a marked one".
+
+## Cold review (HEAD)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header now derives the `/ i` and the `/ prod(n + z)` factors, and `0..=n + m` (line 29) drops the `+ 2` slack.
+- Minor: the polynomial step (lines 23-27) multiplies by `(d + x)` coefficient by coefficient (`Poly` is reported). `(0..m).map(z => Z(n + z)).prod()` (line 47) is the generator `prod(Z(n + z) for z in 0..m)`.

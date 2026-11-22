@@ -1,6 +1,6 @@
 # ucup5s03a
 
-Score: pending cold rescore (adopted full `S(x)/A(x) + (n mod 2)` derivation header, `ways`, `binomial_transform`, `spread`, and `t00`/`t01`/`t10`/`t11` toward the 4/5 dream; remaining gap is `std.poly.Fps` + `X`)
+Score: 4/5
 Dream: 4/5
 
 The header says only that the answer is a quotient of two series; the series are assembled by hand-placed coefficients at unexplained offsets. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -28,3 +28,8 @@ Dream 4/5 (new), port → 3/5, rescored on current main. Once `Fps` exists, line
 - Owed (minor): `S` and `A` (header lines 7-9) are stated, not derived. `(n, k): (Int, Int)` (line 13) has no bounds, so `Comb<Z>()` has no stated size.
 
 Port 3/5: hand `spread` substitution and an EGF `convolve` with index arithmetic (the reported series gap).
+
+## Cold review (HEAD)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. `std.poly.inv` and `convolve` replace the hand series code. `binomial_transform` and `spread` (lines 20-30) are the header's `T[ds, dw]` and `x^shift f(x^2)`.
+- Minor: `s` and `a` (lines 34-39) are built coefficient by coefficient where the dream writes `Fps` sums (reported). `(n, k): (Int, Int)` (line 14) has no bound.
