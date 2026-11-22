@@ -2861,11 +2861,11 @@ fn repeat_writes_a_string_over():
     assert "ab".repeat(0) == "" and "".repeat(5) == ""
 
 @test
-fn starts_ends_and_find_on_text():
+fn starts_ends_and_search_on_text():
     let s = "Banana"
     assert s.starts_with("Ban") and not s.starts_with("an") and s.starts_with("")
     assert s.ends_with("ana") and not s.ends_with("Bananas") and s.ends_with("")
-    assert s.find("nan") == 2 and s.find("x") == None and s.find("") == 0
+    assert s.search("nan") == Some(2) and s.search("x") == None and s.search("") == Some(0)
 
 @test
 fn lower_and_upper_change_only_letters():
@@ -2881,11 +2881,11 @@ fn count_counts_one_character():
     assert "banana".count('a') == 3 and "banana".count('z') == 0 and "".count('a') == 0
 
 @test
-fn rfind_gives_the_last_place():
-    assert "banana".rfind('a') == Some(5)
-    assert "banana".rfind('b') == Some(0)
-    assert "banana".rfind('x') == None
-    assert "".rfind('a') == None
+fn rsearch_gives_the_last_place():
+    assert "banana".rsearch('a') == Some(5)
+    assert "banana".rsearch('b') == Some(0)
+    assert "banana".rsearch('x') == None
+    assert "".rsearch('a') == None
 
 @test
 fn borders_prefix_matches_and_overlap_match_brute():

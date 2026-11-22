@@ -105,7 +105,7 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 ```
 
 - **Keys in, keys out.** Library functions answer in the keys they were
-  given: `s[l..].find(c)` is a key of `s`, `z_function(s[l..])` is keyed by
+  given: `s[l..].search(c)` is a key of `s`, `z_function(s[l..])` is keyed by
   `l..`, `a[l..r].scan(+)` by `a`'s cuts. Lengths and counts stay `Int`. (R07.4.1)
 - **Combining two sequences pairs them by walk order**: `==`, `<`,
   `starts_with`, `+`, slice assignment and `zip`. (R07.4.2)

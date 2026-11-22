@@ -139,8 +139,8 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 fn repeat(self: Str, n: Int) -> Str                 // O(n * self.len)
 fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool  // O(p.len)
 fn ends_with(self: Str, p: Str) -> Bool             // O(p.len)
-fn find<P>(self: Str, p: P) -> ?Int                 // O(self.len + p.len)
-fn rfind<P>(self: Str, p: P) -> ?Int                // O(self.len + p.len)
+fn search<P>(self: Str, p: P) -> ?Int               // O(self.len + p.len)
+fn rsearch<P>(self: Str, p: P) -> ?Int              // O(self.len + p.len)
 fn count(self: Str, c: Char) -> Int                 // O(self.len)
 @get fn lower(self: Char) -> Char                   // O(1)
 @get fn upper(self: Char) -> Char                   // O(1)
@@ -152,7 +152,7 @@ fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min
 
 Laws:
 - `s.repeat(0) == ""` and `s.repeat(a + b) == s.repeat(a) + s.repeat(b)`.
-- `s.find(p) == Some(i)` implies `i` is the minimum index with `s[i..i + p.len] == p`.
+- `s.search(p) == Some(i)` implies `i` is the minimum index with `s[i..i + p.len] == p`.
 - `is_palindrome(s)` iff `s[i] == s[n - 1 - i]` for all `0 <= i < n`.
 
 ### 3.2 Pattern matching, borders, periods, and Lyndon words

@@ -70,7 +70,7 @@ fn solve(r: Range<V>) -> Int:
     solve(r.l..m.l) + solve(m.r..r.r) + b[m] * r.len
 ```
 
-**Search in a suffix (B2).** `find` answers in `s`'s keys, so the token is
+**Search in a suffix (B2).** `search` answers in `s`'s keys, so the token is
 `s[l..j]` with no `+ l`.
 
 ```python
@@ -184,7 +184,7 @@ costs a library author nothing.
 pub fn argmax<K, T: Ord>(self: [K]T) -> ?K = self.keys.max(by: k => self[k])
 
 /// O(n·|p|). The first key where `p` starts, valid on the source of a slice.
-pub fn find<S: Indexed<K, Char>, K, P>(self: S, p: P) -> ?K = todo
+pub fn search<S: Indexed<K, Char>, K, P>(self: S, p: P) -> ?K = todo
 ```
 
 **Per-element tables are keyed like the input.** The algorithm runs on
@@ -225,7 +225,7 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 
 | Stub | Today | Becomes |
 |---|---|---|
-| `find`, `rfind` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` (R04b.5.1) |
+| `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` (R04b.5.1) |
 | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K` (R04b.5.2) |
 | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed by `s.keys` (R04b.5.3) |
 | `min_rotation`, `max_rotation` | `-> Int` | `-> K`, the start (R04b.5.4) |

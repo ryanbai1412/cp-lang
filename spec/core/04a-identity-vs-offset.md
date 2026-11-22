@@ -49,7 +49,7 @@ round 2 should state it.
 | Case | Example | I | O | H (domain) | H (List/Str) |
 |---|---|---|---|---|---|
 | B1 arg-extreme in a range | D&C: `let m = a[l..=r].argmax()`, then `b[m]`, recurse on `l..m` | ✓ | + / S | ✓ | + / S (R04a.3.1) |
-| B2 search in a range | `a[l..r].bsearch(x)`, `s[l..].find(c)` | ✓ | + / S | ✓ | + / S (R04a.3.2) |
+| B2 search in a range | `a[l..r].bsearch(x)`, `s[l..].search(c)` | ✓ | + / S | ✓ | + / S (R04a.3.2) |
 | B3 update parallel arrays | `for (i, x) in a[l..=r].items: dp[i] = …` | ✓ | + / S | ✓ | + / S (R04a.3.3) |
 | B4 prefix of a range | `a[l..=r].scan(+)[c]` with a source cut `c` | ✓ | + / S | ✓ | + / S (R04a.3.4) |
 
