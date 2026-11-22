@@ -4357,6 +4357,17 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let ast::PatternKind::Variant { path, args } = &pat.kind {
+            if path.len() == 1 && path[0].text == "some" && args.len() == 1 && refutable(&args[0]) {
+                let value_expr = self.expr(value, None);
+                if value_expr.ty == Ty::Error {
+                    return None;
+                }
+                let tmp = self.temp(value_expr.ty.clone());
+                before.push(Stmt::Let(tmp, Some(value_expr)));
+                let local = self.local(tmp, value.span);
+                let test = self.pattern(pat, &local, binds);
+                return Some(test.unwrap_or_else(|| self.mk(ExprKind::Bool(true), Ty::Bool, value.span)));
+            }
             if path.len() == 1 && path[0].text == "some" && args.len() == 1 {
                 let (present, inner) = self.optional(value, what, before)?;
                 self.bind(&args[0], inner, binds);
