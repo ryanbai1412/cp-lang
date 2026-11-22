@@ -30,7 +30,7 @@ let (n, x, y): (1..=100_000, 1..=1_000_000, 1..=1_000_000) = read()
 let s: Str of "01?" = read()
 fn step(c: Int, ch: Char) -> Int = if ch == '0': x + c else: y - c
 
-let (head, rest) = s.split_first('?') ?? return print(Z(s.scan(step, from: 0).sum()))
+let (head, rest) = s.split_once('?') ?? return print(Z(s.scan(step, from: 0).sum()))
 let head_walk = head.scan(step, from: 0)
 let c0 = match head_walk.last:
     some(v) => v
