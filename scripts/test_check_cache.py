@@ -196,6 +196,8 @@ class CheckCacheTest(unittest.TestCase):
                 capture_output=True, text=True,
                 env={**env, "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}).stdout.strip()
             git("push", "-q", remote, f"{dead}:refs/locks/queue/0000000000000000000-1-gone")
+            orphan = git("commit-tree", empty, "-m", "solo: 1-1-left")
+            git("push", "-q", remote, f"{orphan}:refs/locks/solo/1-1-left")
             git("config", "core.hooksPath", os.path.join(root, ".githooks"))
             land = os.path.join(root, "scripts", "land.sh")
             r = subprocess.run([land, remote], cwd=work, capture_output=True, text=True,
@@ -339,6 +341,45 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("lock hold limit (2s) reached", r.stderr)
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
+
+    def test_land_never_pushes_main_after_losing_the_lock(self):
+        # The gate stalls long enough to look dead and another lander takes
+        # the lock: the stale holder's push must fail and it must retry.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote = os.path.join(tmp, "remote.git")
+            def git(*a, cwd=tmp):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote)
+            work = os.path.join(tmp, "work")
+            git("init", "-q", "-b", "main", work)
+            git("config", "user.name", "holder", cwd=work)
+            git("config", "user.email", "t@example.com", cwd=work)
+            git("commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=work)
+            git("push", "-q", remote, "HEAD:main", cwd=work)
+            git("commit", "-q", "--allow-empty", "-m", "docs: a", cwd=work)
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\n"
+                        f'if [ ! -e "{tmp}/stolen" ]; then touch "{tmp}/stolen"\n'
+                        f'  t=$(git commit-tree $(git hash-object -t tree /dev/null) -m "land lock: thief")\n'
+                        f'  git push -q --force "{remote}" "$t:refs/locks/land"; fi\n'
+                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
+            r = subprocess.run(
+                [os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
+                capture_output=True, text=True, timeout=120,
+                env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": "holder", "CPL_LAND_TTL": "2",
+                     "CPL_LAND_POLL": "1", "CPL_LAND_LOCK_BEAT": "0", "CPL_LAND_TRAIN": "0"})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("lost the land lock during the gate", r.stderr)
+            self.assertIn("waiting for land lock: thief", r.stderr)
+            self.assertIn("taking over stale lock from land lock: thief", r.stderr)
+            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD", cwd=work))
+            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
 
     def test_land_queues_fairly_in_arrival_order(self):
         # With CPL_LAND_TRAIN=0, two queued lanes must land in strict FIFO order.

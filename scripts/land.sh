@@ -57,6 +57,8 @@ start=$(git rev-parse HEAD)
 held_file=$(mktemp)
 lock_hb_pid=""
 lock_t0=0
+hold_t0=0
+phase="taking the lock"
 queued=""
 back=""
 t0=$(date +%s)
@@ -89,6 +91,7 @@ for attempt in 1 2 3 4 5; do
     prefix=("$own")
     [ "$train_max" -gt 0 ] && board
     git checkout -q --detach "$tip"
+    phase="gating ${#riders[@]} rider(s)"
     relock
     start_lock_heartbeat
     gate_t0=$(date +%s)
@@ -100,11 +103,22 @@ for attempt in 1 2 3 4 5; do
     fi
     gate_s=$(( $(date +%s) - gate_t0 ))
     stop_lock_heartbeat
+    # The lock rides in the atomic push under a lease: a holder whose lock
+    # was taken over (it looked dead) cannot push main under the new holder.
+    held=$(held_get)
+    phase="pushing"
+    lease=()
     refs=("$tip:refs/heads/main")
+    if [ -n "$held" ]; then
+        token=$(lock_token)
+        lease=(--force-with-lease="$lock:$held")
+        refs+=("$token:$lock")
+    fi
     for r in "${riders[@]}"; do
         refs+=("$(git commit-tree "$empty" -p "$tip" -m "landed: $r"):refs/locks/done/$r")
     done
-    if git push -q --atomic "$remote" "${refs[@]}"; then
+    if git push -q --atomic "${lease[@]}" "$remote" "${refs[@]}"; then
+        [ -n "$held" ] && held_set "$token"
         for r in "${riders[@]}"; do
             git push -q "$remote" ":$queue/$r" 2>/dev/null || true
         done
@@ -118,8 +132,13 @@ for attempt in 1 2 3 4 5; do
     fi
     git checkout -q -f "$back"
     back=""
-    release
-    echo "land: main moved during the gate (someone pushed without land.sh), retrying ($attempt/5)" >&2
+    if [ -n "$held" ] && [ "$(git ls-remote "$remote" "$lock" | cut -f1)" != "$held" ]; then
+        held_set ""
+        echo "land: lost the land lock during the gate (held $(( $(date +%s) - hold_t0 ))s; another lander took it over), retrying ($attempt/5)" >&2
+    else
+        release
+        echo "land: main moved during the gate (someone pushed without land.sh), retrying ($attempt/5)" >&2
+    fi
 done
 echo "land: gave up after 5 attempts" >&2
 exit 1
@@ -148,9 +167,15 @@ stop_lock_heartbeat() {
     fi
 }
 
+# The lock's subject says who holds it, what they are doing and for how
+# long, so a waiter can print why it waits.
+lock_token() {
+    git commit-tree "$empty" -m "land lock: $me ($phase, held $(( $(date +%s) - hold_t0 ))s)"
+}
+
 # Refresh refs/locks/land periodically while gating so a live holder stays
-# locked past $ttl, while a dead holder auto-expires in $ttl and a hung gate
-# stops refreshing after $max_hold.
+# locked past $ttl, while a dead holder auto-expires in $ttl and a gate that
+# hangs stops refreshing $max_hold after it started.
 start_lock_heartbeat() {
     stop_lock_heartbeat
     [ "$lock_beat" -gt 0 ] || return 0
@@ -166,7 +191,7 @@ start_lock_heartbeat() {
             fi
             cur=$(held_get)
             [ -n "$cur" ] || exit 0
-            token=$(git commit-tree "$empty" -m "land lock: $me")
+            token=$(lock_token)
             if git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
                 held_set "$token"
             else
@@ -259,15 +284,16 @@ acquire() {
         fi
         holder=$(live_tickets | head -n1)
         if [ -n "$holder" ] && [ "$holder" != "$ticket" ]; then
-            echo "land: waiting in line behind ${holder##*/}" >&2
+            echo "land: waiting in line behind ${holder##*/} ($(live_tickets | grep -c .) queued)" >&2
             sleep "$poll"
             continue
         fi
         [ -n "$stale_holder" ] && echo "land: taking over stale lock from $stale_holder" >&2
-        token=$(git commit-tree "$empty" -m "land lock: $me")
+        hold_t0=$(date +%s)
+        token=$(lock_token)
         if git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
             held_set "$token"
-            lock_t0=$(date +%s)
+            lock_t0=$hold_t0
             if carried; then
                 release
                 return 1
@@ -290,13 +316,18 @@ rode() {
     fi
 }
 
-# Delete tickets silent past the TTL and done/solo markers nobody collected.
+# Delete tickets silent past the TTL, solo markers whose lane left the
+# queue (it gave up or landed), and done markers nobody collected.
 sweep() {
-    local sha ref limit
-    retry git ls-remote "$remote" 'refs/locks/*/*' | while read -r sha ref; do
+    local sha ref limit refs
+    refs=$(retry git ls-remote "$remote" 'refs/locks/*/*' | cut -f2)
+    for ref in $refs; do
         case "$ref" in
             "$queue"/*) limit=$ttl ;;
-            refs/locks/done/*|refs/locks/solo/*) limit=$markers_ttl ;;
+            refs/locks/solo/*)
+                limit=$markers_ttl
+                grep -qx "$queue/${ref#refs/locks/solo/}" <<<"$refs" || limit=$ttl ;;
+            refs/locks/done/*) limit=$markers_ttl ;;
             *) continue ;;
         esac
         [ "$ref" = "$ticket" ] && continue
@@ -341,19 +372,18 @@ mark() {
     done
 }
 
-# Keep the lock fresh across the several gates a split train can take.
+# Refresh the lock before each gate a split train takes; $max_hold bounds
+# each gate, not the whole train, so a live holder bisecting a long train
+# keeps the lock instead of being taken over mid-split.
 relock() {
     stop_lock_heartbeat
-    if [ "$max_hold" -gt 0 ] && [ $(( $(date +%s) - lock_t0 )) -ge "$max_hold" ]; then
-        echo "land: lock hold limit (${max_hold}s) reached; gating without refreshing lock" >&2
-        return 0
-    fi
     local cur token
     cur=$(held_get)
     [ -n "$cur" ] || return 0
-    token=$(git commit-tree "$empty" -m "land lock: $me")
+    token=$(lock_token)
     if retry git push -q --force-with-lease="$lock:$cur" "$remote" "$token:$lock" 2>/dev/null; then
         held_set "$token"
+        lock_t0=$(date +%s)
     else
         echo "land: could not refresh the lock; gating anyway" >&2
     fi
@@ -368,6 +398,7 @@ bisect() {
     while [ $((hi - lo)) -gt 1 ]; do
         mid=$(( (lo + hi) / 2 ))
         git checkout -q -f --detach "${prefix[$mid]}"
+        phase="splitting a failed train of ${#riders[@]}: gating ${mid} rider(s)"
         relock
         start_lock_heartbeat
         echo "land: gating the holder with ${mid} rider(s)" >&2
