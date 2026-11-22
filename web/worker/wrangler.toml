@@ -1,6 +1,7 @@
 name = "cplang-site"
 main = "index.ts"
 compatibility_date = "2026-11-01"
+routes = [{ pattern = "cp-lang.org/p/*", zone_name = "cp-lang.org" }]
 
 [assets]
 directory = "../out"

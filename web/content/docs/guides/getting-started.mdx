@@ -5,14 +5,19 @@ description: "Install the cpl toolchain, run programs locally, and compile submi
 
 You can try CP Lang immediately with zero setup in the [browser playground](/docs/guides/playground), or install the local `cpl` CLI to run programs natively, emit standalone C++17 for online judges, and enable editor support (`cpl lsp`).
 
-## Install from source
+## Install
 
-The `cpl` compiler is written in Rust and compiles CP Lang programs to standard C++17 (compatible with any `g++` or `clang++` supporting `-std=c++17`).
+From the first release, one line installs a prebuilt binary. That release is not out yet, so this command does not work today:
 
 ```sh
-git clone https://github.com/ryanbai1412/cp-lang.git
-cd cp-lang
-cargo install --path crates/cpl-cli
+curl -fsSL https://cp-lang.org/install.sh | sh              # latest stable release
+curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge  # newest build of main that passed every check
+```
+
+Until then, build `cpl` with Rust. It compiles CP Lang programs to standard C++17 (any `g++` or `clang++` that supports `-std=c++17`).
+
+```sh
+cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli
 ```
 
 Verify the installation:

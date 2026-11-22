@@ -28,7 +28,8 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          Marketplace and Open VSX (Cursor, Windsurf, VSCodium) installs <Soon />. Until then, package it from the
+          A <code>.vsix</code> on the releases page, and Marketplace and Open VSX (Cursor, Windsurf, VSCodium) installs,{' '}
+          <Soon />. Until then, package it from the
           repository:
         </p>
         <Code>{'cd editors/vscode\nnpm install\nnpm run package\ncode --install-extension cp-lang.vsix'}</Code>
@@ -101,9 +102,16 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          Prebuilt binaries and an install script <Soon />. Today, build from source with Rust:
+          One line installs a prebuilt binary. It is available from the first release <Soon />:
         </p>
-        <Code>{'git clone https://github.com/ryanbai1412/cp-lang\ncd cp-lang\ncargo install --path crates/cpl-cli\ncpl --version'}</Code>
+        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh'}</Code>
+        <p className="mt-3">
+          That installs the latest stable release. Add <code>--edge</code> for the newest build of <code>main</code> that
+          passed every check:
+        </p>
+        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge'}</Code>
+        <p className="mt-3">Until then, or on a platform without a binary, build it with Rust:</p>
+        <Code>{'cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli\ncpl --version'}</Code>
       </>
     ),
   },
