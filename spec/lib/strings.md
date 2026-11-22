@@ -523,16 +523,11 @@ print(dp[n])
 
 ## 6. Open questions and core dependencies
 
-1. **Sequence trait for `[D]T` (`T3`).** Today `z_function`, `prefix_function`,
-   `manacher`, and `SuffixArray` take `List<T>` (which `Str` satisfies), so a
-   domain-indexed `[D]Int` still copies via `[a[i] for i in D]`. Once the core
-   provides `Seq<T>` / `Indexed<I>`, these functions widen to accept `[D]T`
-   directly with zero call-site breakage.
-2. **Nominal `Rank` domain on `SuffixArray`.** Today `SuffixArray.sa` and
+1. **Nominal `Rank` domain on `SuffixArray`.** Today `SuffixArray.sa` and
    `rank` use `Int` because structs cannot yet hold a fresh existential domain
    field (`domain Rank`). Keeping `sa`, `rank`, and `lcp` as `List<Int>` works
    today and composes cleanly with `domain Rank = 0..n` in user code.
-3. **Single-mod `2^61 - 1` hashing (`T2`).** Once `Mod<P>` uses `mul_mod` for
+2. **Single-mod `2^61 - 1` hashing (`T2`).** Once `Mod<P>` uses `mul_mod` for
    `P > 3 * 10^9`, `HashVal` could optionally narrow from two 31-bit halves to
    one 61-bit residue, halving register pressure while keeping the same API.
 
