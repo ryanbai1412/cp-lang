@@ -57,26 +57,27 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 
 `M` = `python3 scripts/debt-ratchet.py --show`; `--list NAME` prints the offenders
 
-| Metric | Command | Today | v0.3 target |
+| Metric | Command | Today (2026-11-22, after phase 2 lands) | v0.3 target |
 |---|---|---|---|
-| Rust files over 2,000 lines | `M rs_over_cap` | 24 | <= 8, none new |
+| Rust files over 2,000 lines | `M rs_over_cap` | 23 | <= 8, none new |
 | Largest Rust file (lines) | `find crates -path '*/src/*' -name '*.rs' \| xargs wc -l \| sort -n \| tail -2 \| head -1` | 15,367 (`cpl-interp/src/vm.rs`) | <= 4,000 |
-| Dead edition references | `M edition_refs` | 92 | 0 |
-| `#[ignore]` Rust tests | `M rust_ignore` | 19 | <= 3 |
+| Dead edition references | `M edition_refs` | 0 (was 92) | 0 |
+| `#[ignore]` Rust tests | `M rust_ignore` | 17 | <= 3 |
 | Builtin names string-matched in lowering | `M ir_builtin_names` | 89 | <= floor (Q1, proposed 30) |
 | Std type names in IR/interp/codegen | `M backend_std_names` | 17 | 0 |
-| Duplicated fn bodies across files | `M dup_fn_bodies` | 5 | 0 |
+| Duplicated fn bodies across files | `M dup_fn_bodies` | 4 | 0 |
 | Shipped crate edges | `M crate_edges` | 75 | no unreviewed new edge |
 | Layer violations (shipped) | `M layer_violations` | 1 (`cpl-lint -> cpl-prover`) | 0 |
 | Second interpreter engine | `M tree_walker` | 1 | 0 |
 | v0.2 `port.cp` files | `M v02_port_files` | 877 | 0 |
-| `spec/std` references | `M spec_std_refs` | 149 | 0 |
+| `spec/std` references | `M spec_std_refs` | 300 (counts docs too; was 149 on the narrower pattern) | 0 |
 | Direct `python3` in gate/just | `M direct_python` | 13 | 0 |
-| Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 10 (`--list stale_arch_paths`) | 0 |
-| Std TODO bodies (ratchet; stdlib drives) | `python3 scripts/debt-ratchet.py --check` | 294 | never up |
-| `devin/*` branches with unlanded commits | see metrics.toml | 57 of 68 | 0 |
-| Cold-review rubric median | review log in worklog.md | unmeasured | >= 4 |
-| Change-cost probes, files touched | probe log in worklog.md | unmeasured | <= 3 each |
+| Script tests the gate never runs | `M unrun_script_tests` | 3 | 0 |
+| Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 9 (`--list stale_arch_paths`) | 0 |
+| Std TODO bodies (ratchet; stdlib drives) | `python3 scripts/debt-ratchet.py --check` | 162 | never up |
+| `devin/*` branches with unlanded commits | `git branch -r \| grep -c origin/devin/` | 47 remote, triage in worklog.md | 0 |
+| Cold-review rubric median | review log in worklog.md | 3 (round 1, 11 lanes x 5 questions) | >= 4 |
+| Change-cost probes, files touched | probe log in worklog.md | P1 2, P2 5-6, P3 ~8, P4 2-3 | <= 3 each |
 
 ## Judgment rubric (cold review of every lane's landed diffs)
 
