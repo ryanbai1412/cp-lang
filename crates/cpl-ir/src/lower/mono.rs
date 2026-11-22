@@ -2087,7 +2087,12 @@ impl<'a> Lowerer<'a> {
             let ast::TypeKind::Named { name, .. } = &pty.kind else {
                 continue;
             };
-            if !matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) {
+            let is_trait = matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_)))
+                || matches!(
+                    name.text.as_str(),
+                    "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut"
+                );
+            if !is_trait {
                 continue;
             }
             let pos = if decl.params.first().is_some_and(|p| p.name.text == "self") {

@@ -1060,3 +1060,20 @@ print(a[3], pre[0], v + 1)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "6 0 3\n");
 }
+
+#[test]
+fn builtin_seq_trait_param_monomorphizes() {
+    let src = "\
+fn total<T>(xs: Seq<T>) -> Int:
+  var s = 0
+  for x in xs:
+    s += x
+  s
+
+let a = [2, 3, 5]
+print(total(a))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "10\n");
+}
