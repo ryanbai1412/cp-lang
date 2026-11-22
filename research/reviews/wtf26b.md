@@ -1,7 +1,7 @@
 # wtf26b
 
-Score: 3/5
-Dream: 3/5 (same file; sent back)
+Score: pending cold rescore (restructured to O(n^4) via suffix sums suf[y, k, cut] = sum_{y'>=y} dp[y', k, cut] dropping ~1e11 O(n^5) to ~1.3e8 O(n^4) at n=200, explained dp[x, x, 0] = 1 base seed; emitted C++ 10,713 -> 12,479 B from suffix-sum pass, <48 KB)
+Dream: pending cold rescore (O(n^4) suffix-sum DP + base-seed derivation)
 
 Baseline review, cold, on main 4cf4b2b1. Port and dream are the same file and check with zero errors. The header (lines 3-11) states every transition.
 
