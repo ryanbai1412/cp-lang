@@ -24,12 +24,12 @@ print(empty.fold(gcd))
 
 // Binary-fn fold (same empty-sequence rule as min/max: T or ?T with ! / ?? / if let)
 let digits = [1, 2, 3, 4]
-print(digits.fold((a, b) => a * 10 + b))
-print(digits.fold(combine))
-print(digits[1..].fold(combine))
+print(digits.fold((a, b) => a * 10 + b)!)
+print(digits.fold(combine)!)
+print(digits[1..].fold(combine)!)
 let darr: [0..3]Int = [7, 8, 9]
-print(darr.fold((a, b) => a * 10 + b))
-print((1..=4).fold((a, b) => a * 10 + b))
+print(darr.fold((a, b) => a * 10 + b)!)
+print((1..=4).fold((a, b) => a * 10 + b)!)
 print(digits.fold((a, b) => a + b)!)
 print(empty.fold((a, b) => a + b) ?? -1)
 print(empty.fold(combine) ?? -2)

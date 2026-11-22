@@ -20,7 +20,7 @@ for round in 0..n:
     var marks = 0
     for i in 0..=n: marks += Int(seen[i])
     total += sum(xs) + sum(cnt) + marks
-    print(round, xs, cnt, marks, best)
+    print(round, xs, cnt, marks, [if let v = x: "{v}" else: "none" for x in best])
     if round == 4: break
 print(total, kept)
 

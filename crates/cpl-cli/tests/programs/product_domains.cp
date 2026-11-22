@@ -28,7 +28,7 @@ domain Named = (v: V, d: Dir, ok: Bool)
 var seen: [Named]Int = 0
 seen[(V(1), Dir.R, true)] = 42
 let ns = Named(v: V(1), d: Dir.R, ok: true)
-print(seen[ns], ns.v.ord, ns.d == Dir.R, ns.ok, Named.len)
+print(seen[ns], ns.v.ord, yes(ns.d == Dir.R), yes(ns.ok), Named.len)
 
 var st = SegTree<State, Int>(+, fill: 0)
 st.set((V(0), K(1)), 5)

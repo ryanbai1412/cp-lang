@@ -22,7 +22,7 @@ print(vals[Node.Src], vals[Node.Snk], vals[Node.Cell(Row(1), Col(2))])
 var dsu = Dsu<Node>()
 dsu.unite(Node.Src, Node.Cell(Row(0), Col(0)))
 dsu.unite(Node.Cell(Row(0), Col(0)), Node.Cell(Row(1), Col(2)))
-print(dsu.same(Node.Src, Node.Cell(Row(1), Col(2))), yes(dsu.same(Node.Src, Node.Snk)))
+print(yes(dsu.same(Node.Src, Node.Cell(Row(1), Col(2)))), yes(dsu.same(Node.Src, Node.Snk)))
 
 var fg = FlowGraph<Node>()
 fg.add(Node.Src, Node.Cell(Row(0), Col(0)), 4)

@@ -18,10 +18,10 @@ print((arr + ys)[3])
 print((xs[1..] + brr)[2])
 
 let bits: [0..2]Bool = [true, false]
-print(bits + [true])
+print([yes(x) for x in bits + [true]])
 
 let n = 4
 domain V = 0..n
 let pool: [V]V = [v for v in V]
-let u = V.at(3)
-print(pool[0..=1] + [u])
+let u = V.at(3)!
+print([x.ord for x in pool[0..=1] + [u]])

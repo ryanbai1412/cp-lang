@@ -69,7 +69,8 @@ fn clears() -> Int:
         if i + 1 < 8: marks[i + 1] = 0
     seen
 
-print(first_over(10, 30), first_over(3, 30))
+fn fmt_opt(x: ?Int) -> Str = if let v = x: "{v}" else: "none"
+print(fmt_opt(first_over(10, 30)), fmt_opt(first_over(3, 30)))
 print(names(2), names(5))
 print(nested(6), nested(9))
 skip(2)
