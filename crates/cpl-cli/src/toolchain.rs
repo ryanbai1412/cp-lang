@@ -632,7 +632,8 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
             Ok(())
         }
         _ => {
-            *stderr += &format!("cpl: unknown `cpl self` command\n\n{SELF_USAGE}");
+            let command = args.join(" ");
+            *stderr += &format!("cpl: unknown `cpl self` command `{command}`\n\n{SELF_USAGE}");
             return EXIT_USAGE;
         }
     };

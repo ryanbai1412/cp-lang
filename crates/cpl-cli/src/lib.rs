@@ -2,7 +2,7 @@
 //! (`cp` clashes with Unix `cp`); source files end in `.cp`.
 
 mod commands;
-use commands::{command_usage, USAGE};
+use commands::{command_usage, unknown_option, USAGE};
 
 mod dap;
 mod interact;
@@ -122,6 +122,10 @@ pub fn exec<S: AsRef<str>>(
             let _ = stdout.write_all(usage.unwrap_or(USAGE).as_bytes());
             0
         }
+        Some(c) if unknown_option(c, &rest).is_some() => usage_error(format!(
+            "unknown option `{}` for `{c}`",
+            unknown_option(c, &rest).unwrap()
+        )),
         Some("replay") => replay::cli(&rest, stdout, stderr),
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),

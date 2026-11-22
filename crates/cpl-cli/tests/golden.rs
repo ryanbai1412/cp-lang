@@ -28,12 +28,22 @@ fn text(bytes: &[u8]) -> String {
 }
 
 /// `--help` prints the command's own usage on stdout and exits 0.
+/// Whether `text` holds `command`'s usage line, `usage: cpl <command>` alone
+/// or with arguments.
+fn shows_usage(text: &str, command: &str) -> bool {
+    text.lines().any(|line| {
+        line.split_whitespace()
+            .take(3)
+            .eq(["usage:", "cpl", command])
+    })
+}
+
 fn helps(command: &str) {
     let out = cpl(Path::new("."), &[command, "--help"]);
     assert_eq!(out.status.code(), Some(0), "{command} --help");
     let usage = text(&out.stdout);
     assert!(
-        usage.starts_with(&format!("usage: cpl {command} ")),
+        shows_usage(usage.lines().next().unwrap_or(""), command),
         "{usage}"
     );
     assert!(out.stderr.is_empty());
@@ -46,10 +56,7 @@ fn misused(command: &str, args: &[&str], message: &str) {
     assert_eq!(out.status.code(), Some(EXIT_USAGE.into()), "{args:?}");
     let stderr = text(&out.stderr);
     assert!(stderr.contains(message), "{stderr}");
-    assert!(
-        stderr.contains(&format!("usage: cpl {command} ")),
-        "{stderr}"
-    );
+    assert!(shows_usage(&stderr, command), "{stderr}");
     assert!(!stderr.contains("commands:"), "{stderr}");
 }
 
@@ -159,4 +166,33 @@ fn fix_applies_every_fix_and_reports_what_is_left() {
         "fix is idempotent"
     );
     assert_eq!(clean.status.code(), out.status.code());
+}
+
+/// Every command `cpl --help` lists: its own `--help`, and an option it does
+/// not have is a usage error that shows its usage, not a missing file.
+#[test]
+fn every_command_has_help_and_rejects_an_unknown_option() {
+    let help = text(&cpl(Path::new("."), &["--help"]).stdout);
+    let commands: Vec<&str> = help
+        .lines()
+        .skip_while(|line| *line != "commands:")
+        .skip(1)
+        .take_while(|line| line.starts_with("  "))
+        .filter(|line| !line.starts_with("   "))
+        .filter_map(|line| line.split_whitespace().next())
+        .collect();
+    assert_eq!(commands.len(), 23, "{help}");
+    for command in commands {
+        helps(command);
+        let out = cpl(Path::new("."), &[command, "--no-such-option"]);
+        let stderr = text(&out.stderr);
+        assert_eq!(
+            out.status.code(),
+            Some(EXIT_USAGE.into()),
+            "{command}: {stderr}"
+        );
+        assert!(stderr.contains("--no-such-option"), "{command}: {stderr}");
+        assert!(shows_usage(&stderr, command), "{command}: {stderr}");
+        assert!(!stderr.contains("can't read"), "{command}: {stderr}");
+    }
 }

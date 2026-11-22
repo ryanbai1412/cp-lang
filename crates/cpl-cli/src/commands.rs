@@ -68,6 +68,8 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
         "explain" => EXPLAIN_USAGE,
         "lsp" => LSP_USAGE,
         "dap" => DAP_USAGE,
+        "profile" => crate::profile::PROFILE_USAGE,
+        "cover" => crate::profile::COVER_USAGE,
         _ => return None,
     })
 }
@@ -203,3 +205,21 @@ options:
                     stack, and kept until the file changes.
                     Fast, and without the interpreter's checks
 ";
+
+/// The first argument that looks like an option (`-x`, `--x`; a lone `-` is
+/// a path) but is none of the command's, for the commands parsed here.
+pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
+    let options: &[&str] = match command {
+        "check" | "fix" | "judge" | "judges" => &[],
+        "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
+        "submit" => &["--copy"],
+        "explain" => &["--json"],
+        "profile" | "cover" => &["--native", "--format"],
+        "lsp" | "dap" => &["--stdio"],
+        _ => return None,
+    };
+    args.iter()
+        .copied()
+        .filter(|arg| !matches!(*arg, "-h" | "--help"))
+        .find(|arg| arg.len() > 1 && arg.starts_with('-') && !options.contains(arg))
+}
