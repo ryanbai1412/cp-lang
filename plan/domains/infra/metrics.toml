@@ -94,7 +94,28 @@ milestone = "M3"
 
 [[metric]]
 name = "land_queue_wait_p50_s"
-command = "git fetch -q origin +refs/notes/land:refs/notes/land && git log --notes=land --format=%N origin/main | python3 -c 'import sys,json,statistics as s; w=[json.loads(l)[\"wait_s\"] for l in sys.stdin if l.startswith(\"{\")]; print(s.median([x for x in w if x is not None]) if w else \"no landings logged\")'"
-today = "not measurable (log added 2026-11-22; no landings logged yet)"
+command = "git fetch -q origin +refs/notes/land:refs/notes/land && scripts/land_stats.py --hours 24 --metric queue_wait_p50_s"
+today = "96 (2 landings logged in 24 h; lanes log once they run the land.sh of 2026-11-22)"
 target = "<= 300"
+milestone = "M1"
+
+[[metric]]
+name = "land_queue_wait_max_s"
+command = "git fetch -q origin +refs/notes/land:refs/notes/land && scripts/land_stats.py --hours 24 --metric queue_wait_max_s"
+today = "96 (same 2 landings)"
+target = "<= 900"
+milestone = "M1"
+
+[[metric]]
+name = "land_train_gate_p50_s"
+command = "git fetch -q origin +refs/notes/land:refs/notes/land && scripts/land_stats.py --hours 24 --metric train_gate_p50_s"
+today = "102 (same 2 landings, each a train of 0 riders on --fast)"
+target = "<= 120"
+milestone = "M1"
+
+[[metric]]
+name = "landings_per_hour_by_domain"
+command = "git fetch -q origin +refs/notes/land:refs/notes/land && scripts/land_stats.py --hours 24 --metric landings_per_hour_by_lane"
+today = '{"infra": 0.08} (24 h window, 2 logged landings)'
+target = "every active domain >= 1"
 milestone = "M1"

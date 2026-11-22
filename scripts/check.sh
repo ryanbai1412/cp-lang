@@ -277,7 +277,7 @@ if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
