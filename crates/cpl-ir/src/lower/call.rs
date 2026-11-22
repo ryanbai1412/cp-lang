@@ -6289,7 +6289,17 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Option<Expr> {
         let theirs = self.get_sym(&cpl_check::std_method(name));
-        let mut sym = self.get_sym(name).or(theirs)?;
+        let mut sym = match self.get_sym(name).or(theirs) {
+            Some(s) => s,
+            None => {
+                // Fall back to a UFCS free function declared in the receiver struct's defining module.
+                let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) else {
+                    return None;
+                };
+                let mod_id = self.structs[sid].mod_id;
+                *self.mod_syms[mod_id].get(name)?
+            }
+        };
         // The program's own `find(self: List<Int>, ..)` is not what
         // `s.find(..)` on a `Str` means: that is the library's.
         if let Some(theirs) = theirs {
