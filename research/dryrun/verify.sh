@@ -19,7 +19,8 @@ for s in $(seq 1 "$cases"); do
   python3 "${name}_gen.py" "$s" "$size" > "$w/in"
   "$w/ref" < "$w/in" > "$w/exp"
   timeout 10 "$w/sol" < "$w/in" > "$w/got"; rc=$?
-  if [ $rc -ne 0 ] || ! diff -bq "$w/exp" "$w/got" >/dev/null; then
+  if [ -e "${name}_check.py" ]; then python3 "${name}_check.py" "$w/in" "$w/got" "$w/exp"; ok=$?; else diff -bq "$w/exp" "$w/got" >/dev/null; ok=$?; fi
+  if [ $rc -ne 0 ] || [ $ok -ne 0 ]; then
     echo "MISMATCH seed=$s rc=$rc"; head -c 600 "$w/in"; echo "--- exp"; head -c 300 "$w/exp"; echo "--- got"; head -c 300 "$w/got"; fail=1; break
   fi
 done
