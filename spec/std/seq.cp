@@ -33,7 +33,10 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// empty: `U.zero`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
-pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
+pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
+    var out = U.zero
+    for x in self: out += of(x)
+    out
 
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
@@ -41,7 +44,13 @@ pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
 /// empty: `None`
 /// traps: never
 /// example: `[1, 2].mean() == Some(1.5)`
-pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
+pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
+    var total = 0.0
+    var n = 0
+    for x in self:
+        total += of(x)
+        n += 1
+    if n == 0: None else: Some(total / F64(n))
 
 /// The least element by `by`, the first on ties; `None` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
@@ -53,7 +62,14 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
-pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+    var best: ?T = None
+    for x in self:
+        if let b = best:
+            if by(x) < by(b): best = Some(x)
+        else:
+            best = Some(x)
+    best
 
 /// The greatest element by `by`, the first on ties; `None` when empty.
 ///
@@ -62,7 +78,14 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
-pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+    var best: ?T = None
+    for x in self:
+        if let b = best:
+            if by(x) > by(b): best = Some(x)
+        else:
+            best = Some(x)
+    best
 
 /// How many elements satisfy `p`.
 ///
@@ -70,7 +93,11 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// empty: `0`
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
-pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
+pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int:
+    var n = 0
+    for x in self:
+        if p(x): n += 1
+    n
 
 /// Whether some element satisfies `p`; stops at the first.
 ///
@@ -78,7 +105,10 @@ pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
 /// empty: `false`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
-pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+    for x in self:
+        if p(x): return true
+    false
 
 /// Whether every element satisfies `p`; stops at the first that doesn't.
 ///
@@ -86,7 +116,10 @@ pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 /// empty: `true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
-pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+    for x in self:
+        if not p(x): return false
+    true
 
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`.
 ///
@@ -717,7 +750,10 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
-pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
+pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
+    for x in self:
+        if let y = f(x): return Some(y)
+    None
 
 /// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the
 /// least `ok` integer. O(position found).
@@ -727,7 +763,10 @@ pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `(1..=10).find(x => x * x > 20) == Some(5)`
-pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T = todo
+pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
+    for x in self:
+        if p(x): return Some(x)
+    None
 
 /// Gives the items of a list a fresh domain, so arrays over them are index-safe:
 /// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, O(1).
@@ -1167,7 +1206,10 @@ pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T = todo
 /// order: input order; the container the context expects, else a `List`
 /// traps: never
 /// example: `(1..4).map(x => x * x).collect() == [1, 4, 9]`
-pub fn collect<S: Seq, T>(self: S) -> List<T> = todo
+pub fn collect<S: Seq, T>(self: S) -> List<T>:
+    var out: List<T> = []
+    for x in self: out.push(x)
+    out
 
 /// `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items`
 /// gives `(key, x)`, and `argmax`/`find` answer with keys. By default the k-th element gets
@@ -1310,7 +1352,11 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T> =
 /// empty: `None`
 /// traps: never
 /// example: `[3, 4].reduce((a, b) => a * b) == Some(12)`
-pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T = todo
+pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
+    var acc: ?T = None
+    for x in self:
+        if let a = acc: acc = Some(f(a, x)) else: acc = Some(x)
+    acc
 
 /// O(n). Seeded left fold into an arbitrary accumulator `Acc`.
 ///
@@ -1318,7 +1364,10 @@ pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T = todo
 /// empty: `init`
 /// traps: never
 /// example: `[1, 2, 3].fold((s, x) => s * 10 + x, 0) == 123`
-pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc = todo
+pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
+    var acc = init
+    for x in self: acc = f(acc, x)
+    acc
 
 /// O(n). Maximum element (under `by:`) together with its multiplicity, or `None` when empty.
 ///
