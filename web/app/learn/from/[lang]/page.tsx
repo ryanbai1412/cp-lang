@@ -92,6 +92,9 @@ export default async function Page({ params }: Props) {
           <Button variant="outline" asChild>
             <Link href="/docs/guides/tour">Read the tour</Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/setup">Set up your editor</Link>
+          </Button>
         </div>
       </section>
     </main>
