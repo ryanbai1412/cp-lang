@@ -1426,6 +1426,7 @@ pub struct SortedRange<K>:
     ///
     /// cost: O(log n) expected
     /// empty: `None`
+    /// ties: copies of a key are equal, so any is the answer
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(2..).first() == Some(3)`
     pub fn first(self) -> ?K = todo
@@ -1434,6 +1435,7 @@ pub struct SortedRange<K>:
     ///
     /// cost: O(log n) expected
     /// empty: `None`
+    /// ties: copies of a key are equal, so any is the answer
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..=6).last() == Some(3)`
     pub fn last(self) -> ?K = todo
