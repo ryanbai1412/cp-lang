@@ -725,10 +725,24 @@ pub fn polygon_kernel(poly: List<Vec>, eps: F64 = 1e-9) -> List<Vec> = todo
 /// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
 pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)> = todo
 
-/// O(n log max_coord). Number of strictly interior lattice points of a simple lattice polygon (Pick's theorem).
+/// The number of lattice points strictly inside the simple lattice polygon `poly`, either
+/// orientation, by Pick's theorem: `I = (|area2| - B) / 2 + 1` with `B = pick_boundary(poly)`.
+///
+/// cost: O(n log max_coord)
+/// empty: traps
+/// traps: when `poly` has fewer than 3 vertices, or the area overflows `Int`
+/// example: `pick_interior([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 1`
+/// example: `pick_interior([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 3`
 pub fn pick_interior(poly: List<Pt>) -> Int = todo
 
-/// O(n log max_coord). Number of boundary lattice points of a simple lattice polygon.
+/// The number of lattice points on the boundary of the lattice polygon `poly`: the sum of
+/// `gcd(|dx|, |dy|)` over its edges, including the closing edge.
+///
+/// cost: O(n log max_coord)
+/// empty: 0
+/// traps: when the sum overflows `Int`
+/// example: `pick_boundary([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 8`
+/// example: `pick_boundary([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 12`
 pub fn pick_boundary(poly: List<Pt>) -> Int = todo
 
 // ---- careful floating-point geometry
@@ -736,49 +750,115 @@ pub fn pick_boundary(poly: List<Pt>) -> Int = todo
 /// O(1). Circle constant pi (canonical home: `std.math.PI`; re-exported here).
 pub const PI: F64 = 3.14159265358979323846
 
-/// O(1). True when `|a - b| <= eps`.
+/// Whether `|a - b| <= eps`: an absolute tolerance, the same test every `eps` in this module uses.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `close(0.1 + 0.2, 0.3) == true`
+/// example: `close(1.0, 1.1) == false`
+/// example: `close(1.0, 1.25, eps: 0.25) == true`
 pub fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool = todo
 
-/// O(1). Tolerance-aware sign: 1 if `x > eps`, -1 if `x < -eps`, else 0.
+/// The sign of `x` with tolerance: 1 if `x > eps`, -1 if `x < -eps`, else 0.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `sign_eps(2.0) == 1`
+/// example: `sign_eps(-0.5) == -1`
+/// example: `sign_eps(1e-12) == 0`
 pub fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int = todo
 
 /// O(1) value type. A 2D floating-point point or vector. Kept distinct from `Pt` so exact
 /// integer predicates never silently mix with approximate arithmetic.
 pub struct Vec(x: F64, y: F64):
-    /// O(1). Squared Euclidean length.
+    /// The squared length `x*x + y*y`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(3.0, 4.0).norm2 == 25.0`
     pub @get fn norm2(self) -> F64 = todo
 
-    /// O(1). Euclidean length.
+    /// The Euclidean length (`hypot(x, y)`, so no intermediate overflow).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(3.0, 4.0).len == 5.0`
     pub @get fn len(self) -> F64 = todo
 
-    /// O(1). Rotated 90 degrees counter-clockwise.
+    /// `self` rotated 90 degrees counter-clockwise: `Vec(-y, x)`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 2.0).perp == Vec(-2.0, 1.0)`
     pub @get fn perp(self) -> Vec = todo
 
-    /// O(1). Rotated 90 degrees clockwise.
+    /// `self` rotated 90 degrees clockwise: `Vec(y, -x)`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 2.0).perp_cw == Vec(2.0, -1.0)`
     pub @get fn perp_cw(self) -> Vec = todo
 
-    /// O(1). Polar angle in `(-pi, pi]`.
+    /// The polar angle `atan2(y, x)` in `(-pi, pi]`; a `-0.0` `y` counts as `0.0`, so the negative x
+    /// axis gives `PI`, and the zero vector gives 0.0.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 0.0).angle == 0.0`
+    /// example: `Vec(-1.0, 0.0).angle == PI`
+    /// example: `Vec(0.0, 1.0).angle == PI / 2.0`
     pub @get fn angle(self) -> F64 = todo
 
-    /// O(1). Unit vector `(cos(rad), sin(rad))`.
+    /// The unit vector `Vec(cos(rad), sin(rad))`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec.from_angle(0.0) == Vec(1.0, 0.0)`
+    /// example: `close(Vec.from_angle(PI / 2.0).y, 1.0)`
     pub fn from_angle(rad: F64) -> Vec = todo
 
-    /// O(1). Unit vector in the same direction. Asserts nonzero length.
+    /// The unit vector in the direction of `self`: each coordinate divided by `self.len`.
+    ///
+    /// cost: O(1)
+    /// traps: when `self.len == 0.0`
+    /// example: `Vec(3.0, 4.0).unit == Vec(0.6, 0.8)`
     pub @get fn unit(self) -> Vec = todo
 
-    /// O(1). Rotate by unit direction vector `by` (complex multiply `self * by`).
+    /// `self` rotated by the direction `by`, as the complex product `self * by`:
+    /// `Vec(x * by.x - y * by.y, x * by.y + y * by.x)`. A unit `by` rotates without scaling; get
+    /// one from `Vec.from_angle`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 2.0).rot(Vec(0.0, 1.0)) == Vec(-2.0, 1.0)`
     pub fn rot(self, by: Vec) -> Vec = todo
 
-    /// O(1). Dot product of `self` and `o`.
+    /// The dot product `x * o.x + y * o.y`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 2.0).dot(Vec(3.0, 4.0)) == 11.0`
     pub fn dot(self, o: Vec) -> F64 = todo
 
-    /// O(1). 2D cross product of `self` and `o`.
+    /// The 2D cross product `x * o.y - y * o.x`: positive when `o` is counter-clockwise from `self`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(1.0, 2.0).cross(Vec(3.0, 4.0)) == -2.0`
     pub fn cross(self, o: Vec) -> F64 = todo
 
-    /// O(1). Squared Euclidean distance from `self` to `o`.
+    /// The squared Euclidean distance from `self` to `o`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(0.0, 0.0).dist2(Vec(3.0, 4.0)) == 25.0`
     pub fn dist2(self, o: Vec) -> F64 = todo
 
-    /// O(1). Euclidean distance from `self` to `o`.
+    /// The Euclidean distance from `self` to `o`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec(0.0, 0.0).dist(Vec(3.0, 4.0)) == 5.0`
     pub fn dist(self, o: Vec) -> F64 = todo
 
 impl Add for Vec:
@@ -796,7 +876,16 @@ impl Mul<F64> for Vec:
 impl Div<F64> for Vec:
     fn div(a, k) = todo
 
-/// O(1). Tolerance-aware orientation of `a -> b -> c`: 1 left, -1 right, 0 straight.
+/// Which way the path `a -> b -> c` turns, with tolerance: `sign_eps((b - a).cross(c - a), eps)`,
+/// so 1 left, -1 right, 0 straight within `eps`.
+///
+/// `eps` bounds the raw cross product (twice the triangle's area), not an angle.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `turn_eps(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0)) == 1`
+/// example: `turn_eps(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, -1.0)) == -1`
+/// example: `turn_eps(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(2.0, 1e-12)) == 0`
 pub fn turn_eps(
     a: Vec,
     b: Vec,
@@ -804,46 +893,129 @@ pub fn turn_eps(
     eps: F64 = 1e-9,
 ) -> Int = todo
 
-/// O(1). Signed angle from `a` to `b` in `(-pi, pi]`.
+/// The signed angle from `a` to `b`, `atan2(a.cross(b), a.dot(b))`, in `(-pi, pi]`: positive when
+/// `b` is counter-clockwise from `a`. 0.0 when either is the zero vector.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `angle_between(Vec(1.0, 0.0), Vec(0.0, 1.0)) == PI / 2.0`
+/// example: `angle_between(Vec(1.0, 0.0), Vec(0.0, -1.0)) == -PI / 2.0`
+/// example: `angle_between(Vec(1.0, 0.0), Vec(-1.0, 0.0)) == PI`
 pub fn angle_between(a: Vec, b: Vec) -> F64 = todo
 
-/// O(1). Orthogonal projection of `p` onto the line through `a` and `b`.
+/// The orthogonal projection of `p` onto the line through `a` and `b`:
+/// `a + (b - a) * ((p - a).dot(b - a) / (b - a).norm2)`.
+///
+/// cost: O(1)
+/// traps: when `a == b`
+/// example: `project(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == Vec(1.0, 0.0)`
 pub fn project(p: Vec, a: Vec, b: Vec) -> Vec = todo
 
-/// O(1). Reflection of `p` across the line through `a` and `b`.
+/// The mirror image of `p` across the line through `a` and `b`: `project(p, a, b) * 2.0 - p`.
+///
+/// cost: O(1)
+/// traps: when `a == b`
+/// example: `reflect(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == Vec(1.0, -1.0)`
 pub fn reflect(p: Vec, a: Vec, b: Vec) -> Vec = todo
 
-/// O(1). Perpendicular distance from `p` to the infinite line through `a` and `b`.
+/// The perpendicular distance from `p` to the infinite line through `a` and `b`:
+/// `|(b - a).cross(p - a)| / (b - a).len`.
+///
+/// cost: O(1)
+/// traps: when `a == b`
+/// example: `line_dist(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 1.0`
+/// example: `line_dist(Vec(5.0, 3.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 3.0`
 pub fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 = todo
 
-/// O(1). Shortest distance from `p` to the closed segment `a b`.
+/// The shortest distance from `p` to the closed segment `a b`: to the projection when it falls
+/// inside the segment, else to the nearer endpoint. A segment shorter than `eps` counts as the
+/// point `a`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `seg_dist(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 1.0`
+/// example: `seg_dist(Vec(-3.0, 4.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 5.0`
+/// example: `seg_dist(Vec(3.0, 4.0), Vec(0.0, 0.0), Vec(0.0, 0.0)) == 5.0`
 pub fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64 = todo
 
-/// O(1). Intersection of the infinite lines `a b` and `c d`, or `None` when parallel.
+/// The intersection of the infinite lines `a b` and `c d`, or `None` when
+/// `|(b - a).cross(d - c)| <= eps` (parallel or coincident).
+///
+/// The point is `a + (b - a) * t` with `t = (c - a).cross(d - c) / (b - a).cross(d - c)`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `line_intersect(Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0)) == Some(Vec(1.0, 1.0))`
+/// example: `line_intersect(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0)) == None`
 pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
-/// O(1). Intersection of closed segments `a b` and `c d`: 0 disjoint, 1 crossing/touching,
-/// 2 collinear overlap endpoints.
+/// The common points of the closed segments `a b` and `c d`: `[]` when disjoint, one point when
+/// they cross or touch, and the two ends of the shared piece when they overlap collinearly.
+///
+/// cost: O(1)
+/// empty: `[]` when disjoint
+/// order: by `(x, y)` ascending; a new `List`, keyed from 0
+/// traps: never
+/// example: `segment_intersect(Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0)) == [Vec(1.0, 1.0)]`
+/// example: `segment_intersect(Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(3.0, 0.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0), Vec(2.0, 0.0)]`
+/// example: `segment_intersect(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0)) == []`
 pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(1). First intersection of ray `(o, dir)` with closed segment `a b`, or `None`.
+/// The first point where the ray from `o` in direction `dir` meets the closed segment `a b`, or
+/// `None`.
+///
+/// When the ray runs along the segment, the hit is the segment point nearest `o` (`o` itself if
+/// it lies on the segment).
+///
+/// cost: O(1)
+/// traps: when `dir` is the zero vector
+/// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(2.0, -1.0), Vec(2.0, 1.0)) == Some(Vec(2.0, 0.0))`
+/// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(-1.0, 0.0), Vec(2.0, -1.0), Vec(2.0, 1.0)) == None`
+/// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(3.0, 0.0), Vec(5.0, 0.0)) == Some(Vec(3.0, 0.0))`
 pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
-/// O(1). Circumcenter of triangle `(a, b, c)`, or `None` when collinear.
+/// The centre of the circle through `a`, `b` and `c`, or `None` when
+/// `|(b - a).cross(c - a)| <= eps` (collinear).
+///
+/// cost: O(1)
+/// traps: never
+/// example: `circumcenter(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Vec(3.0, 4.0))`
+/// example: `circumcenter(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
 pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
 /// O(1) value type. A 2D circle with center `c` and non-negative radius `r`.
 pub struct Circle(c: Vec, r: F64):
-    /// O(1). Unique circumcircle through `a`, `b`, `c`, or `None` if collinear.
+    /// The circle through `a`, `b` and `c`: centre `circumcenter(a, b, c, eps)`, radius its distance
+    /// to `a`; `None` when collinear.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Circle.through(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Circle(Vec(3.0, 4.0), 5.0))`
+    /// example: `Circle.through(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
     pub fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
 
-    /// O(1). Disk area `pi * r^2`.
+    /// The disk area, computed as `PI * r * r`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Circle(Vec(0.0, 0.0), 1.0).area == PI`
     pub @get fn area(self) -> F64 = todo
 
-    /// O(1). Circumference `2 * pi * r`.
+    /// The circumference, computed as `2.0 * PI * r`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Circle(Vec(0.0, 0.0), 0.5).circumference == PI`
     pub @get fn circumference(self) -> F64 = todo
 
-    /// O(1). Point location relative to the disk.
+    /// Where `p` is relative to the disk, with `d = c.dist(p)`: `Boundary` when `|d - r| <= eps`,
+    /// else `Inside` when `d < r`, else `Outside`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(3.0, 4.0)) == Location.Boundary`
+    /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(1.0, 1.0)) == Location.Inside`
+    /// example: `Circle(Vec(0.0, 0.0), 5.0).locate(Vec(6.0, 0.0)) == Location.Outside`
     pub fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location = todo
 
 /// O(1). Inscribed circle of triangle `a b c`, or `None` if collinear.

@@ -25,3 +25,14 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `polygon_centroid`: either orientation; traps on zero area.
 - `polygon_kernel`: area at most `eps` is `[]`; starts at the least `(y, x)` corner.
 - `polygon_triangulate`: open — the stated O(n log n) cost rules out the simple "lowest-index ear" rule that would pin the triangles, so the docs promise only `n - 2` counter-clockwise triples in a deterministic order. Needs a decision on the algorithm.
+- `pick_interior`: traps on fewer than 3 vertices (Pick's formula is meaningless there); `pick_boundary` counts the closing edge, 0 for empty.
+- `close`, `sign_eps`, `turn_eps`, `line_intersect`, `circumcenter`: every `eps` is an absolute tolerance on the quantity named (difference, raw cross product), not relative or angular.
+- `Vec.angle`: a `-0.0` `y` is treated as `0.0` so the range really is `(-pi, pi]`; zero vector gives 0.0.
+- `Vec.unit`: pinned to dividing each coordinate by `len` (exact `Vec(0.6, 0.8)` for `(3, 4)`); traps on zero length ("asserts").
+- `Vec.rot`: `by` need not be unit; it scales by `|by|`.
+- `angle_between`: 0.0 when either vector is zero (`atan2(0, 0)`).
+- `project`, `reflect`, `line_dist`: trap when `a == b` (no line). `seg_dist`: a segment shorter than `eps` is the point `a`.
+- `segment_intersect`: points sorted by `(x, y)`; one point for touching, two for collinear overlap.
+- `ray_hits_segment`: collinear overlap gives the segment point nearest `o`; traps on a zero `dir`.
+- `Circle.area`, `Circle.circumference`: pinned evaluation order (`PI * r * r`, `2.0 * PI * r`) so results are bit-identical.
+- `Circle.locate`: `Boundary` when `|d - r| <= eps`, tested before inside/outside.
