@@ -12,7 +12,7 @@
     "crates/cpl-check/src/tests.rs": 3865,
     "crates/cpl-check/src/check/stmt.rs": 3312,
     "crates/cpl-stress/src/spec.rs": 2911,
-    "crates/cpl-codegen/src/expr.rs": 2883,
+    "crates/cpl-codegen/src/expr.rs": 2874,
     "crates/cpl-lsp/src/tests.rs": 2868,
     "crates/cpl-check/src/check/lends.rs": 2860,
     "crates/cpl-cli/src/lib.rs": 2552,

@@ -1244,6 +1244,14 @@ fn global_stored_once_with_a_literal_is_constexpr() {
 }
 
 #[test]
+fn a_char_pushed_from_a_conditional_is_cast_as_a_whole() {
+    let body = body(
+        "let s: Str = read()\nvar t = \"\"\nfor c in s: t += if c < 'm': 'a' else: 'z'\nprint(t)\n",
+    );
+    assert!(body.contains("t.push_back((char)("), "{body}");
+}
+
+#[test]
 fn a_str_grows_in_place_when_appended_to() {
     let body =
         body("let s: Str = read()\nvar t = \"\"\nfor c in s: t += c\nprint(t, s[1..], s[..=1])\n");

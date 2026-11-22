@@ -336,3 +336,27 @@ pub(crate) fn judge_ty(ty: &Ty) -> String {
         _ => unreachable!("lowering lets only these types cross to the judge"),
     }
 }
+
+/// `(ty)` applied to all of `text`, C++ of unknown precedence.
+pub(crate) fn cast(ty: &str, text: &str) -> String {
+    if text
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | ':' | '.'))
+    {
+        format!("({ty}){text}")
+    } else {
+        format!("({ty})({text})")
+    }
+}
+
+/// True for the stdlib `Bitset`, a single `w: List<U64>` of words.
+pub(crate) fn is_bitset_ty(ty: &Ty, program: &Program) -> bool {
+    let Ty::Struct(sid) = ty else {
+        return false;
+    };
+    let s = &program.structs[*sid];
+    s.name.starts_with("Bitset")
+        && s.fields.len() == 1
+        && s.fields[0].0 == "w"
+        && matches!(&s.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
+}

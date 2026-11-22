@@ -3,7 +3,7 @@
 use crate::emit::{
     pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
 };
-use crate::names::{elem_ty, fn_name, ident, is_plain_enum};
+use crate::names::{cast, elem_ty, fn_name, ident, is_bitset_ty, is_plain_enum};
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -1208,7 +1208,7 @@ impl<'p> Emitter<'p> {
                 let emit_mutate = |this: &mut Self, p: String, arg: String, arg2: String| -> Code {
                     match op {
                         Mutation::Push if place.ty == Ty::Str => {
-                            Code::primary(format!("{p}.push_back((char){arg})"))
+                            Code::primary(format!("{p}.push_back({})", cast("char", &arg)))
                         }
                         Mutation::Push => match &narrow_elem {
                             Some(cpl_ir::NarrowLayout::Seq(inner)) => {
@@ -1269,9 +1269,10 @@ impl<'p> Emitter<'p> {
                             let seq = if is_grid { format!("{p}.d") } else { p };
                             Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
                         }
-                        Mutation::Resize if place.ty == Ty::Str => {
-                            Code::primary(format!("{p}.resize((size_t)({arg}), (char){arg2})"))
-                        }
+                        Mutation::Resize if place.ty == Ty::Str => Code::primary(format!(
+                            "{p}.resize((size_t)({arg}), {})",
+                            cast("char", &arg2)
+                        )),
                         Mutation::Resize => match &narrow_elem {
                             Some(cpl_ir::NarrowLayout::Seq(inner)) => {
                                 let v = this.expr_with_elem_layout(&args[1], Some(inner)).text;
@@ -1305,9 +1306,10 @@ impl<'p> Emitter<'p> {
                             this.need("rng");
                             Code::primary(format!("cpl::shuffle({p})"))
                         }
-                        Mutation::Fill if place.ty == Ty::Str => {
-                            Code::primary(format!("std::fill({p}.begin(), {p}.end(), (char){arg})"))
-                        }
+                        Mutation::Fill if place.ty == Ty::Str => Code::primary(format!(
+                            "std::fill({p}.begin(), {p}.end(), {})",
+                            cast("char", &arg)
+                        )),
                         Mutation::Fill => {
                             let is_grid =
                                 matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
@@ -2753,17 +2755,6 @@ impl<'p> Emitter<'p> {
             }
         }))
     }
-}
-
-fn is_bitset_ty(ty: &Ty, program: &cpl_ir::Program) -> bool {
-    let Ty::Struct(sid) = ty else {
-        return false;
-    };
-    let s = &program.structs[*sid];
-    s.name.starts_with("Bitset")
-        && s.fields.len() == 1
-        && s.fields[0].0 == "w"
-        && matches!(&s.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
 }
 
 /// True when no index is a bare `Int`: each is a position of the
