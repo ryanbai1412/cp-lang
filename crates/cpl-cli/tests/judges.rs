@@ -178,6 +178,70 @@ fn every_port_compiles_with_every_judges_flags() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// The corpus problems whose `spec.cp` passes its tests under `cpl-conform
+/// corpus`, as the scoreboard records them; the set grows as ports pass.
+fn passing_corpus_ports() -> Vec<PathBuf> {
+    let board = std::fs::read_to_string(root().join("research/scoreboard.json")).unwrap();
+    let corpus = &board[board.find("\"corpus\": {").expect("a corpus suite")..];
+    let cases = &corpus[corpus.find("\"cases\": {").unwrap()..];
+    cases[..cases.find('}').unwrap()]
+        .lines()
+        .filter_map(|line| line.trim().trim_end_matches(',').split_once(": "))
+        .filter(|(_, status)| *status == "\"pass\"")
+        .map(|(id, _)| root().join(format!("corpus/problems/{}/spec.cp", id.trim_matches('"'))))
+        .collect()
+}
+
+/// `cpl build` the way `cpl-conform corpus` checks the file: against the
+/// 0.3 library in `spec/std`. A child process, since the setting is global.
+fn build_spec(file: &Path, judge: &str) -> Result<String, String> {
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["build", file.to_str().unwrap(), "--judge", judge, "-o", "-"])
+        .env("CPL_SPEC", "1")
+        .env("CPL_STD", root().join("spec/std"))
+        .output()
+        .unwrap();
+    match out.status.success() {
+        true => Ok(String::from_utf8(out.stdout).unwrap()),
+        false => Err(String::from_utf8_lossy(&out.stderr).into_owned()),
+    }
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags() {
+    let ports = passing_corpus_ports();
+    assert!(!ports.is_empty(), "no corpus port passes in research/scoreboard.json");
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-corpus");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let mut failures = Vec::new();
+    for profile in cpl_judge::builtins() {
+        let local = profile.local();
+        if !has(&local.compiler) {
+            eprintln!("{}: skipped, no {}", profile.name, local.compiler);
+            continue;
+        }
+        let failed: Vec<String> = parallel(&ports, |port| {
+            let id = port.parent().unwrap().file_name().unwrap().to_str().unwrap();
+            let cpp = build_spec(port, &profile.name).map_err(|e| format!("{id} for {}: does not build:\n{e}", profile.name))?;
+            if build_spec(port, &profile.name).as_ref() != Ok(&cpp) {
+                return Err(format!("{id} for {}: not deterministic", profile.name));
+            }
+            if cpp.len() > profile.limit() {
+                return Err(format!("{id} for {}: {} bytes", profile.name, cpp.len()));
+            }
+            let path = scratch.join(format!("{}-{id}.cpp", profile.name));
+            std::fs::write(&path, &cpp).unwrap();
+            compile(&path, &path, &local, true).map_err(|e| format!("{id} for {}:\n{e}", profile.name))
+        })
+        .into_iter()
+        .filter_map(Result::err)
+        .collect();
+        eprintln!("{:<11} {} corpus ports, {} fail: {} {}", profile.name, ports.len(), failed.len(), local.compiler, local.flags.join(" "));
+        failures.extend(failed);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 #[test]
 fn a_release_run_builds_with_the_judges_flags_on_the_judges_stack() {
     if !has("g++") {
