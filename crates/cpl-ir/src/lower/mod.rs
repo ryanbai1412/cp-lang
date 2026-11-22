@@ -308,6 +308,8 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
     }
     // Ensure any unlowered non-generic fns from imported modules (unused) don't panic:
     // keep only lowered fns or fill unused bodies with empty blocks, and deduplicate names.
+    let said: Vec<String> = (0..lw.domains.len()).map(|d| lw.domain_said(d)).collect();
+    let struct_shown = lw.shown_structs(&said).into_iter().map(|s| s.name).collect();
     let mut used_fn_names: HashSet<String> = HashSet::new();
     let library_fns: Vec<bool> = lw.sigs.iter().take(lw.bodies.len()).map(|sig| sig.mod_id != 0).collect();
     let fns = lw
@@ -340,6 +342,7 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
     }
     Ok(Program {
         warnings: lw.warnings,
+        struct_shown,
         unordered_maps: Vec::new(),
         unordered_sets: Vec::new(),
         structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
@@ -986,8 +989,13 @@ impl<'a> Lowerer<'a> {
         let domains: Vec<String> = (0..self.domains.len())
             .map(|d| self.domain_said(d))
             .collect();
-        // A struct made from a generic one is shown as it is written,
-        // `Mod<998244353>`, not by the name its copy has in the C++.
+        let structs = self.shown_structs(&domains);
+        crate::show::ty_name(ty, &domains, &structs, &self.enums)
+    }
+
+    /// The structs, each named as it is written: a struct made from a
+    /// generic one is `Mod<998244353>`, not the name its copy has in the C++.
+    fn shown_structs(&self, domains: &[String]) -> Vec<StructDef> {
         let mut structs: Vec<StructDef> = self.structs.iter().map(|s| s.def.clone()).collect();
         for sid in 0..structs.len() {
             let (Some(decl), Some((_, args))) = (self.structs[sid].decl, &self.structs[sid].origin_gen) else {
@@ -998,14 +1006,14 @@ impl<'a> Lowerer<'a> {
                 .map(|arg| match arg {
                     GenArg::Int(v) => v.to_string(),
                     GenArg::Domain(d) => domains[*d].clone(),
-                    GenArg::Ty(ty) => crate::show::ty_name(ty, &domains, &structs, &self.enums),
+                    GenArg::Ty(ty) => crate::show::ty_name(ty, domains, &structs, &self.enums),
                     GenArg::RuntimeInt(_) => "_".to_string(),
                     GenArg::Op(op) => format!("{op:?}"),
                 })
                 .collect();
             structs[sid].name = format!("{}<{}>", decl.name.text, args.join(", "));
         }
-        crate::show::ty_name(ty, &domains, &structs, &self.enums)
+        structs
     }
 
     fn err_expr(&self, span: Span) -> Expr {

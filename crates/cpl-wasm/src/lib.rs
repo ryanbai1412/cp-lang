@@ -145,6 +145,7 @@ impl Playground {
             Ok(mut compiled) => {
                 let config = || TraceConfig {
                     source: source.to_string(),
+                    record_frames: true,
                     ..TraceConfig::default()
                 };
                 let observed = observe(&compiled.program, input, &mut stdout, stack, config());

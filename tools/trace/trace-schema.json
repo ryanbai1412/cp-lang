@@ -60,6 +60,11 @@
         "stage": {"type": "string"},
         "values": {"type": "object", "description": "Full snapshot keyed by declared variable id. Omission means out of scope, null means source-level none. Matrices are rectangular arrays; graph/tree values follow the graph definition. Integers outside JS safe range must be decimal strings."},
         "locals": {"type": "object", "description": "Display-only local bindings; not compared across implementations"},
+        "frames": {
+          "type": "array", "description": "Display-only call stack, innermost call first: the fn and the line it is at",
+          "items": {"type": "object", "required": ["fn", "line"], "additionalProperties": false,
+            "properties": {"fn": {"type": "string"}, "line": {"type": "integer", "minimum": 1}}}
+        },
         "checkpoint": {"type": "string", "minLength": 1, "description": "Unique semantic state name in this run. Shared names align the two runs and must appear in the same order."},
         "focus": {
           "type": "object", "required": ["variable", "path"], "additionalProperties": false,

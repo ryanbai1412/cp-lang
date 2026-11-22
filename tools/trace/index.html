@@ -212,6 +212,8 @@ td.cell { display: table-cell; }
 :root[data-theme="dark"] .tk-k { color: #c4b5fd; } :root[data-theme="dark"] .tk-n { color: #7dd3fc; } :root[data-theme="dark"] .tk-s { color: #fcd34d; } :root[data-theme="dark"] .tk-a { color: #f9a8d4; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px; margin: 0; padding: 10px 12px; font: 12px var(--mono); }
 .kv dt { color: var(--ink-3); }
+.frames { list-style: none; margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); font: 12px var(--mono); color: var(--ink-3); }
+.frames li.on { color: var(--accent); font-weight: 600; }
 .kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* Log */
@@ -380,7 +382,7 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
       </div>
       <div class="split" style="margin-top:12px">
         <section class="panel" aria-label="Source"><div class="panel-head"><span class="panel-title">Source</span><span class="panel-meta" id="src-meta"></span></div><pre class="code" id="source"></pre></section>
-        <section class="panel" aria-label="Locals"><div class="panel-head"><span class="panel-title">In scope</span><span class="panel-meta" id="locals-meta"></span></div><dl class="kv" id="locals"></dl></section>
+        <section class="panel" aria-label="Locals"><div class="panel-head"><span class="panel-title">In scope</span><span class="panel-meta" id="locals-meta"></span></div><ol class="frames" id="frames" aria-label="Call stack, innermost first" hidden></ol><dl class="kv" id="locals"></dl></section>
       </div>
     </div>
     <div id="view-log" role="tabpanel" aria-labelledby="tab-log" hidden>
@@ -736,7 +738,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const svg = (tag, props = {}, ...kids) => el(tag, {...props, svg:true}, ...kids);
   const pad = (n, width) => String(n).padStart(width, "0");
   const key = path => JSON.stringify(path);
-  const display = v => v === null ? "·" : Array.isArray(v) ? `(${v.map(display).join(", ")})` : typeof v === "object" ? JSON.stringify(v) : String(v);
+  const display = v => v === null ? "None" : Array.isArray(v) ? `(${v.map(display).join(", ")})` : typeof v === "object" ? `(${Object.entries(v).map(([k, x]) => `${k}: ${display(x)}`).join(", ")})` : String(v);
   const hashParam = name => new URLSearchParams(location.hash.slice(1)).get(name);
   const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
   const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
@@ -975,6 +977,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     if ((d.kind === "dp" || d.kind === "grid") && Array.isArray(value)) return matrix(value, d, marks);
     if (d.kind === "array" && Array.isArray(value)) return array(value, d, marks);
     if ((d.kind === "graph" || d.kind === "tree") && value && Array.isArray(value.nodes)) return graph(value, d, marks, lane);
+    if (d.kind === "json" && rows(value)) return records(value, d, marks);
     if (d.kind === "scalar" || value === null || typeof value !== "object") {
       const cls = classify([], marks);
       return el("div", {class:`scalar cell ${cls.join(" ")}`, "data-path":"[]", "data-tip":tip([], value, marks, cls), "aria-pressed":String(cls.includes("selected")), tabindex:"0", role:"button", text:display(value)});
@@ -999,6 +1002,17 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     const table = el("table", {class:"matrix", "aria-label":`${d.name}: ${value.length} × ${value[0]?.length ?? 0}`}, el("thead", {}, head), el("tbody", {}, body));
     const clipped = value.length > LIMIT.matrix || value.some(r => r.length > LIMIT.matrix);
     return clipped ? el("div", {}, table, el("p", {class:"lane-note", text:`Showing the first ${LIMIT.matrix} × ${LIMIT.matrix} cells`})) : table;
+  }
+
+  const flat = x => x === null || typeof x !== "object";
+  const rows = value => Array.isArray(value) && value.length > 0 && value.every(r => r !== null && typeof r === "object" && !Array.isArray(r) && Object.values(r).every(flat));
+  function records(value, d, marks) {
+    const items = value.slice(0, LIMIT.array), fields = Object.keys(items[0]), focus = marks.focus ?? [];
+    const head = el("tr", {}, el("th"), fields.map(f => el("th", {scope:"col", text:f})));
+    const body = items.map((row, r) => el("tr", {}, el("th", {scope:"row", class:`rh${focus[0] === r ? " on" : ""}`, text:d.labels?.[r] ?? r}),
+      fields.map(f => cell("td", [r, f], row[f], display(row[f]), marks, row[f] === null ? ["zero"] : []))));
+    const table = el("table", {class:"matrix records", "aria-label":`${d.name}: ${value.length} rows`}, el("thead", {}, head), el("tbody", {}, body));
+    return value.length > LIMIT.array ? el("div", {}, table, el("p", {class:"lane-note", text:`Showing ${LIMIT.array} of ${value.length} rows`})) : table;
   }
 
   function array(value, d, marks) {
@@ -1109,6 +1123,9 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   function renderLocals(v) {
     const entries = Object.entries(v.step.locals ?? {});
     $("locals-meta").textContent = v.step.stage ?? "";
+    const frames = v.step.frames ?? [];
+    $("frames").hidden = frames.length < 2;
+    $("frames").replaceChildren(...frames.map((f, i) => el("li", {class:i ? null : "on", text:`${f.fn} · line ${f.line}`})));
     $("locals").replaceChildren(...(entries.length ? entries.flatMap(([k, x]) => [el("dt", {text:k}), el("dd", {text:display(x)})]) : [el("dt", {text:"—"}), el("dd", {text:"no locals captured"})]));
   }
 

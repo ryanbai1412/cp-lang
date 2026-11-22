@@ -35,6 +35,7 @@ pub fn config(source: &str, only_fn: Option<&str>) -> TraceConfig {
     TraceConfig {
         source: source.to_string(),
         only_fn: only_fn.map(str::to_string),
+        record_frames: true,
         ..TraceConfig::default()
     }
 }

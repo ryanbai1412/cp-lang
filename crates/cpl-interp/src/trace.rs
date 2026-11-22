@@ -842,6 +842,13 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
             match &**elem {
                 Ty::Opt(inner) if matches!(dim, Dim::Pos(d) if **inner == Ty::Pos(d)) => (Kind::Parents, extra),
                 elem if is_cell(elem, program) => (Kind::Array, extra),
+                // A row of named cells per index: the viewer draws a table
+                // with the index's labels down the side.
+                elem if field_names(elem, program).is_some()
+                    && field_tys(elem, program).iter().all(|ty| is_cell(ty, program)) =>
+                {
+                    (Kind::Json, extra)
+                }
                 _ => (Kind::Json, String::new()),
             }
         }
@@ -1413,6 +1420,18 @@ fn run_json(label: &str, rec: &Recording, ids: &[String], dropped: &dyn Fn(&str)
         if let Some(checkpoint) = step.checkpoint.as_deref().filter(|name| !dropped(name)) {
             out.push_str(",\"checkpoint\":");
             string(&mut out, checkpoint);
+        }
+        if !step.frames.is_empty() {
+            out.push_str(",\"frames\":[");
+            for (i, (name, line)) in step.frames.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str("{\"fn\":");
+                string(&mut out, name);
+                out += &format!(",\"line\":{line}}}");
+            }
+            out.push(']');
         }
         if let Some((var, path)) = &step.focus {
             out.push_str(",\"focus\":{\"variable\":");

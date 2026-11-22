@@ -1042,6 +1042,8 @@ pub struct Program {
     pub unordered_maps: Vec<Ty>,
     pub unordered_sets: Vec<Ty>,
     pub structs: Vec<StructDef>,
+    /// Each struct's name as the file writes it, `MinHeap<(Int, V)>`.
+    pub struct_shown: Vec<String>,
     pub enums: Vec<EnumDef>,
     /// Domain names. Sizes are set as the program runs.
     pub domains: Vec<String>,
@@ -1087,7 +1089,14 @@ pub struct Program {
 impl Program {
     /// A type as the user would write it.
     pub fn show_ty(&self, ty: &Ty) -> String {
-        show::ty_name(ty, &self.domains, &self.structs, &self.enums)
+        if self.struct_shown.len() != self.structs.len() {
+            return show::ty_name(ty, &self.domains, &self.structs, &self.enums);
+        }
+        let mut structs = self.structs.clone();
+        for (def, shown) in structs.iter_mut().zip(&self.struct_shown) {
+            def.name.clone_from(shown);
+        }
+        show::ty_name(ty, &self.domains, &structs, &self.enums)
     }
 
     /// Collects all `DomainId`s referenced by `ty`, traversing through struct
