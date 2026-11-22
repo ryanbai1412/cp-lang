@@ -9,7 +9,7 @@
 //!     bfs(g, from: [s])
 //!     dijkstra(g, from: [(s, 0)])                          # arcs carry w
 //!     dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn
-//!     bfs(p => p.adj4().filter(q => grid[q] != '#'), from: [start])
+//!     bfs(p => p.adj4.filter(q => grid[q] != '#'), from: [start])
 //!     bridges(g)                                           # arcs carry e
 //!
 //! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.

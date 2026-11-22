@@ -203,7 +203,7 @@ if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -285,6 +285,10 @@ fi
 step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
 python3 scripts/debt-ratchet.py --check \
     || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
+
+step "bundled skill (scripts/skill-gen.py --check)"
+uv run python scripts/skill-gen.py --check --cpl "$cpl" \
+    || fail "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
 
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
