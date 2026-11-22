@@ -12,7 +12,7 @@ domain State = (comps: 0..=n, used: 0..l, ends: 0..=2)
 fn ways(i: 0..=n, st: State) -> Z:
     let (c, u, e) = st
     if i == n:
-        return Z((c == 1 and u == l - 1 and e == 0).int)
+        return Z(Int(c == 1 and u == l - 1 and e == 0))
     fn go(dc: Int, du: Int, de: Int) -> Z =
         State.at((c + dc, u + du, e + de)).map(t => ways(i + 1, t)) ?? 0
     let s = r[i]

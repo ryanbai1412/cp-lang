@@ -6,7 +6,7 @@ fn most(n: Int, x: Int) -> Int:
     if n % 2 == 0:
         return n / 2
     let r = (n - 3) / 2 % 4
-    n / 2 + ((x % 2 == 1) != (r == 0 or r == 3)).int
+    n / 2 + Int((x % 2 == 1) != (r == 0 or r == 3))
 let k = most(n, x)
 print(k)
 print(1..=k, sep: "\n")

@@ -30,6 +30,7 @@ use std.marks.{Marks}
 use std.matrix.{Mat}
 use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotients, gcd, inf, lcm, phi, pow_mod, sign, to_str}
 use std.mod.{Comb, Mod}
+use std.opt.{is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
 use std.search.{bsearch_real, split_best, ternary_max, ternary_max_real, ternary_min, ternary_min_real}
 use std.segtree.{SegTree}
