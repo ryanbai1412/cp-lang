@@ -1,5 +1,6 @@
 //! Lowering of a checked program to a single C++17 file.
 
+mod compact;
 mod devirt;
 mod emit;
 mod expr;
@@ -92,30 +93,29 @@ pub struct Size {
 
 /// Where the bytes of a file of [`emit_within_for`] go: every piece of it,
 /// with what is not in any piece as [`Part::Glue`], so that the lengths add
-/// up to `total`. `source` is the header's, if it kept it, and `narrowed`
-/// whether its lines are indented half as far.
+/// up to its length. `source` is the header's, if it kept it.
 pub fn sizes(
     program: &cpl_ir::Program,
     name: &str,
     source: Option<&str>,
     target: &Target,
-    fitted: (bool, bool),
-    total: usize,
+    fitted: &Fitted,
 ) -> Vec<Size> {
-    let (comments, narrowed) = fitted;
+    let total = fitted.cpp.len();
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     let (_, chunks) = emitter.file_with_chunks(name, source);
     let fit = |part: Part, text: &str| {
-        let text = match comments || part == Part::Header {
+        let text = match fitted.comments || part == Part::Header {
             true => text.to_string(),
             false => uncommented(text, false),
         };
-        match narrowed {
-            true => narrow(&narrow(&text)).len(),
-            false => narrow(&text).len(),
+        match (fitted.compact, fitted.narrow) {
+            (true, _) => compact::compact(&text, part == Part::Header, &fitted.names).len(),
+            (false, true) => narrow(&narrow(&text)).len(),
+            (false, false) => narrow(&text).len(),
         }
     };
     let mut sizes: Vec<Size> = chunks
@@ -252,15 +252,20 @@ pub struct Fitted {
     /// Whether the comments on the C++ are kept: they are the first thing
     /// left out, as the source in the header says more to its reader.
     pub comments: bool,
-    /// Whether the source is in the header: the second.
+    /// Whether the source is in the header: the last thing left out.
     pub header: bool,
-    /// Whether each line is indented half as far: the third.
+    /// Whether each line is indented half as far: the second.
     pub narrow: bool,
+    /// Whether each line is without indentation or a space the compiler
+    /// does not need: the third.
+    pub compact: bool,
+    /// The shorter names given to the names codegen numbered: the fourth.
+    pub names: std::collections::BTreeMap<String, String>,
 }
 
 impl Fitted {
     /// What was left out to fit, said to the contestant; `None` when nothing was.
-    pub fn note(&self, file: &str, limit: usize, judge: &str) -> Option<String> {
+    pub fn note(&self, file: &str, bar: &str, judge: &str) -> Option<String> {
         let mut left = Vec::new();
         if !self.comments {
             left.push("the comments on the C++ are left out");
@@ -268,13 +273,19 @@ impl Fitted {
         if !self.header {
             left.push("the source in the header is left out");
         }
-        if self.narrow {
+        if self.narrow && !self.compact {
             left.push("the lines are indented half as far");
+        }
+        if self.compact {
+            left.push("the lines are without indentation or a space the compiler does not need");
+        }
+        if !self.names.is_empty() {
+            left.push("the numbered names are shortened");
         }
         (!left.is_empty()).then(|| {
             format!(
-                "cpl: as written, the C++ for `{file}` would be {} bytes, over the {limit}-byte limit of judge \
-                 `{judge}`; {}\n",
+                "cpl: as written, the C++ for `{file}` would be {} bytes, over the {bar} of judge `{judge}`; \
+                 {}\n",
                 self.full,
                 left.join(", ")
             )
@@ -284,8 +295,11 @@ impl Fitted {
 
 /// The C++17 file for `program` in at most `limit` bytes. What is for the
 /// reader gives way to what the judge accepts: first the comments on the
-/// C++, then the source in the header, then half of what indentation is left. `Err` is the length of
-/// the shortest file when even that is over.
+/// C++, then half of its indentation, then the rest of it with every space
+/// the compiler does not need, then the length of the names codegen
+/// numbered, and last the source in the header, unless the file is over
+/// `aim` without it too. `Err` is the length of the shortest file when even
+/// that is over.
 pub fn emit_within(
     program: &cpl_ir::Program,
     name: &str,
@@ -303,48 +317,69 @@ pub fn emit_within_for(
     limit: usize,
     target: &Target,
 ) -> Result<Fitted, usize> {
+    emit_aiming(program, name, source, (limit, limit), target)
+        .map_err(|shortest| shortest.cpp.len())
+}
+
+/// [`emit_within_for`] that gives way until the file is at most `aim`
+/// bytes, or as short as it gets, and is `Err` with the shortest file only
+/// when that is over `limit`.
+pub fn emit_aiming(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: &str,
+    (aim, limit): (usize, usize),
+    target: &Target,
+) -> Result<Fitted, Fitted> {
     let emit = |program, name, source| emit_for(program, name, source, target);
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
-    if full <= limit {
-        return Ok(Fitted {
-            cpp,
-            full,
-            comments: true,
-            header: true,
-            narrow: false,
-        });
+    let fitted = |cpp, comments, header, narrow, compact, names| Fitted {
+        cpp,
+        full,
+        comments,
+        header,
+        narrow,
+        compact,
+        names,
+    };
+    let none = std::collections::BTreeMap::new;
+    if full <= aim {
+        return Ok(fitted(cpp, true, true, false, false, none()));
     }
     let cpp = uncommented(&cpp, true);
-    if cpp.len() <= limit {
-        return Ok(Fitted {
-            cpp,
-            full,
-            comments: false,
-            header: true,
-            narrow: false,
-        });
-    }
-    let cpp = uncommented(&emit(program, name, None), true);
-    if cpp.len() <= limit {
-        return Ok(Fitted {
-            cpp,
-            full,
-            comments: false,
-            header: false,
-            narrow: false,
-        });
+    if cpp.len() <= aim {
+        return Ok(fitted(cpp, false, true, false, false, none()));
     }
     let narrowed = narrow(&cpp);
-    match narrowed.len() <= limit {
-        true => Ok(Fitted {
-            cpp: narrowed,
-            full,
-            comments: false,
-            header: false,
-            narrow: true,
-        }),
-        false => Err(narrowed.len()),
+    if narrowed.len() <= aim {
+        return Ok(fitted(narrowed, false, true, true, false, none()));
+    }
+    let compacted = compact::compact(&cpp, true, &none());
+    if compacted.len() <= aim {
+        return Ok(fitted(compacted, false, true, true, true, none()));
+    }
+    let headed = compact::short_names(&compacted);
+    let renamed = compact::compact(&cpp, true, &headed);
+    if renamed.len() <= aim {
+        return Ok(fitted(renamed, false, true, true, true, headed));
+    }
+    let bare = uncommented(&emit(program, name, None), true);
+    let names = compact::short_names(&compact::compact(&bare, true, &none()));
+    let shortest = fitted(
+        compact::compact(&bare, true, &names),
+        false,
+        false,
+        true,
+        true,
+        names,
+    );
+    if shortest.cpp.len() > aim && renamed.len() <= limit {
+        return Ok(fitted(renamed, false, true, true, true, headed));
+    }
+    match shortest.cpp.len() <= limit {
+        true => Ok(shortest),
+        false => Err(shortest),
     }
 }
 

@@ -1,0 +1,3 @@
+# Programs whose C++ for judge `codeforces` is over the 32 KB bar, until it fits.
+# scripts/sizes.py --check fails on one over the bar that is not listed, or one listed that fits.
+corpus/problems/ucup5s05f/port.cp

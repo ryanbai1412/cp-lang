@@ -424,10 +424,11 @@ fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     );
 }
 
-/// Ryan's budget, on every judge: over 32 KB warns, over 64 KB fails,
+/// Ryan's budget, on every judge: over 24 KB warns, over 32 KB warns that
+/// it is over the target, over 64 KB fails,
 /// even where the judge itself takes more.
 #[test]
-fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
+fn every_judge_warns_over_24_kb_and_refuses_over_64_kb() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-budget");
     std::fs::create_dir_all(&scratch).unwrap();
     let file = scratch.join("a.cp");
@@ -460,9 +461,72 @@ fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
         );
         assert!(out.stdout.is_empty(), "{}", profile.name);
     }
+    std::fs::write(&file, format!("print(\"{}\")\n", "x".repeat(12 * 1024))).unwrap();
+    let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(
+        out.stdout.len() > 24 * 1024 && out.stdout.len() <= 32 * 1024,
+        "{}",
+        out.stdout.len()
+    );
+    assert!(
+        out.stderr
+            .contains("over 24576 bytes, near the 32768-byte target"),
+        "{}",
+        out.stderr
+    );
     std::fs::write(&file, "print(1)\n").unwrap();
     let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
     assert!(!out.stderr.contains("warning"), "{}", out.stderr);
+}
+
+/// A port whose C++ is over 32 KB as written is shrunk under it, and the
+/// shrunk C++ prints what the interpreter does on its samples.
+#[test]
+fn a_port_over_the_target_as_written_is_shrunk_under_it_and_agrees_with_the_interpreter() {
+    let port = root().join("corpus/problems/cf2089e/port.cp");
+    let path = port.to_str().unwrap();
+    let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let cpp = String::from_utf8(out.stdout).unwrap();
+    assert!(cpp.len() <= cpl_judge::TARGET_BYTES, "{} bytes", cpp.len());
+    assert!(
+        out.stderr.contains("the numbered names are shortened"),
+        "{}",
+        out.stderr
+    );
+    if !has("g++") {
+        return;
+    }
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-shrunk");
+    std::fs::create_dir_all(&scratch).unwrap();
+    std::fs::write(scratch.join("a.cpp"), &cpp).unwrap();
+    let profile = cpl_judge::builtin("codeforces").unwrap();
+    compile(
+        &scratch.join("a.cpp"),
+        &scratch.join("a"),
+        &profile.local(),
+        false,
+    )
+    .unwrap();
+    let mut samples = 0;
+    for case in std::fs::read_dir(port.with_file_name("tests")).unwrap() {
+        let case = case.unwrap().path();
+        if case.extension().is_none_or(|ext| ext != "in") {
+            continue;
+        }
+        let input = std::fs::read_to_string(&case).unwrap();
+        let interpreted = cpl_cli::run_with_input(&["run", path], input.as_bytes());
+        let compiled = run_on_stack(&scratch.join("a"), &input, &profile);
+        assert_eq!(
+            String::from_utf8_lossy(&compiled.stdout),
+            String::from_utf8_lossy(&interpreted.stdout),
+            "{}",
+            case.display()
+        );
+        samples += 1;
+    }
+    assert!(samples > 0);
 }
 
 fn comment_lines(cpp: &str) -> usize {

@@ -5661,3 +5661,22 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   read would make `w.at(k)` and `w[k]` disagree on every view.
 - **Reverse.** Define `at` as the walk offset, rename the trait method
   (`get`), and rewrite R05.6.3 and R12.4.13.
+
+## 214. `cpl build` shrinks the C++ to 32 KB before it drops the source (2026-11-22)
+
+- **Decision.** A build aims under `Profile::aim()` (32 KB, or a smaller
+  judge limit) and warns past three quarters of it (24 KB). To fit it
+  leaves out, in order: the comments on the C++, half the indentation,
+  the rest of it and every space the compiler does not need, the length
+  of the names codegen numbers (`Mod_998244353_9_mul` becomes `Q3`), and
+  last the source in the header, which goes only when that brings the
+  file under the aim or under the judge's limit. `scripts/sizes.py
+  --check` holds every corpus and dry-run program under 32 KB but those
+  in `corpus/sets/oversize.txt`.
+- **Why.** Ryan's bar is 32 KB. The C++ is for the judge; the source in
+  the header is for the person reading the submission, so it outlasts
+  the C++'s layout. Compaction is a line-at-a-time token pass that leaves
+  a line it cannot read (a raw string, a block comment) alone, and a name
+  reached as `std::` or on a preprocessor line keeps its name.
+- **Reverse.** Call `emit_within_for` with the judge's limit in
+  `build_file` and drop `compact.rs`.

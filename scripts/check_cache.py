@@ -53,6 +53,8 @@ STAGES = {
     "recovery": _TESTS,
     # The public-history scan reads every tracked file.
     "scoreboard_fast": [],
+    # scripts/sizes.py builds the corpus and dry-run programs with cpl.
+    "sizes": _PROSE + ["!research/dryrun/*", "corpus/submissions/*", "corpus/statements/*", "plan/*"],
     "site_bundle": ["archive/*"],
     "docs_site": ["archive/*"],
 }
