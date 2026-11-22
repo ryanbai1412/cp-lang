@@ -3,6 +3,17 @@
 Status: decided (Ryan: copy something beautiful and proven; don't build
 our own).
 
+Ryan, 2026-11-21: "all the pages should look unified". Every page,
+including the playground, Learn, the corpus and the generated
+reference, uses the same header, layout, type scale and components. A
+page that needs its own chrome is a bug.
+
+The site's library pages and the HTML that `cpl doc` writes should look
+more or less the same. The site sets the bar: `cpl doc` is raised to
+it, the site is never simplified to match. Until then the site renders
+`cpl doc --format json` itself; what each item shows (signature, cost,
+traps, examples, source link) is the target for `cpl doc`'s own HTML.
+
 ## What we use
 
 - **shadcn/ui** components copied in with its CLI, default **neutral**
