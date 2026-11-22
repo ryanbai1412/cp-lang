@@ -1,0 +1,131 @@
+# diagnostics metrics. Every `today` was measured by running `command` on
+# main at 4b8f504f (2026-11-22); never hand-typed. The scoreboard numbers
+# come from one run of the recovery test:
+#   cargo test -p cpl-cli --test recovery -- --ignored --nocapture
+# (both scoreboards are #[ignore]d on main today; see README).
+
+[[metric]]
+name = "broken ports: first error on the broken line"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "98.6% (476/483)"
+target = ">= 99.5%"
+milestone = "M1"
+
+[[metric]]
+name = "broken ports: cascaded errors"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "43 per 483 files (8.9%)"
+target = "<= 2% (M1: <= 5%)"
+milestone = "M1"
+
+[[metric]]
+name = "broken ports: silent (a broken copy checks clean)"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "0"
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "broken ports: errors carrying a fix-it"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "72.4%"
+target = ">= 80% (cut-the-value rows have no right fix and stay 0%)"
+milestone = "M2"
+
+[[metric]]
+name = "common mistakes: errors carrying a fix-it"
+command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "59.2% (84/142)"
+target = ">= 95%"
+milestone = "M1 (>= 88%), M2 (>= 95%)"
+
+[[metric]]
+name = "common mistakes: fixes restore the program"
+command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "63.8%"
+target = ">= 95%"
+milestone = "M1"
+
+[[metric]]
+name = "common mistakes: cascaded errors"
+command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
+today = "14 per 130 files"
+target = "<= 3"
+milestone = "M2"
+
+[[metric]]
+name = "spec code blocks: first error a generic `expected ...`"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep 'spec/{core,lib}'"
+today = "75 of 137 failing blocks (1969 errors, 96 cascaded)"
+target = "<= 20"
+milestone = "M2"
+
+[[metric]]
+name = "scoreboards gated (not #[ignore]d)"
+command = "grep -c '^#\\[ignore' crates/cpl-cli/tests/recovery.rs"
+today = "0 of 2 gated (2 ignored)"
+target = "2 of 2"
+milestone = "M1"
+
+[[metric]]
+name = "benchmark size: spec.cp ports that check clean (the broken-ports base)"
+command = "for f in corpus/problems/*/spec.cp; do (cd $(dirname $f) && ../../../target/release/cpl check spec.cp >/dev/null 2>&1) && echo ok; done | wc -l"
+today = "37 of 100"
+target = "every clean spec.cp is in the benchmark automatically"
+milestone = "M1"
+
+[[metric]]
+name = "catalogue: emitted codes with an exact trigger and a clean fix"
+command = "cargo test -p cpl-cli --test catalogue -- --nocapture | grep '^catalogue:'"
+today = "74 of 75"
+target = "all"
+milestone = "M1"
+
+[[metric]]
+name = "catalogue: compile-time codes whose trigger carries a fix-it"
+command = "cargo test -p cpl-cli --test catalogue -- --nocapture | grep '^catalogue:'"
+today = "17 of 75 emitted (44 compile-time codes listed without one)"
+target = ">= 45"
+milestone = "M2"
+
+[[metric]]
+name = "catalogue rows with no example message"
+command = "awk -F'|' '/^\\| [EWR][0-9]/ && $4 ~ /^ *$/' spec/diagnostics.md | wc -l"
+today = "33 of 93"
+target = "0"
+milestone = "M2"
+
+[[metric]]
+name = "codes emitted through raw cpl_diag::Code literals (bypassing codes::)"
+command = "grep -rn 'cpl_diag::Code(\"' crates --include=*.rs | grep -v '^crates/cpl-diag/' | wc -l"
+today = "12 sites: 11 in cpl-check/cpl-syntax for 8 codes (7 marked *(0.3)*, i.e. not emitted, in the catalogue) and 1 non-code `Code(\"overflow\")` in cpl-lsp"
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "catalogued codes with no conformance case"
+command = "awk '/^## Diagnostics/,/^## Core cases/' spec/conformance/COVERAGE.md | grep -c 'no case'"
+today = "2 (E0504, E0903)"
+target = "0 emitted codes"
+milestone = "M2"
+
+[[metric]]
+name = "golden errors with a help line"
+command = "echo $(grep -h '= help:' crates/cpl-cli/tests/diagnostics/*.err | wc -l) help / $(grep -h '^error\\[' crates/cpl-cli/tests/diagnostics/*.err | wc -l) errors"
+today = "40 help lines / 58 errors (38 of 58 errors, 66%)"
+target = ">= 90%"
+milestone = "M2"
+
+[[metric]]
+name = "front end: cold check of a 5002-line file (release)"
+command = "cargo test --release -p cpl-lsp --test latency front_end_check_is_under_50_ms -- --nocapture"
+today = "34 ms median, 48 ms max (5002 lines); keystroke 4 ms"
+target = "< 50 ms (the test's budget)"
+milestone = "guard"
+
+[[metric]]
+name = "budget: cpl run answers < 200 ms, cpl build < 1 s and fits 64 KB (release)"
+command = "cargo test -p cpl-cli --test budget -- --nocapture"
+today = "2 of 2 pass"
+target = "2 of 2"
+milestone = "guard"
