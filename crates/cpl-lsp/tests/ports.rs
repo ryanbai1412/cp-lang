@@ -3,7 +3,7 @@
 //! use of every name and completion after every `name.`, without an internal
 //! error. Hover on a declared array, optional or struct says what it stores.
 
-use cpl_lsp::json::{obj, Value};
+use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::collections::HashSet;
 use std::path::Path;
@@ -16,7 +16,7 @@ fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     }
     members.push(("method".to_string(), method.into()));
     members.push(("params".to_string(), params));
-    Value::Object(members)
+    Value::Object(members.into_iter().collect())
 }
 
 fn position(src: &str, offset: usize) -> Value {
@@ -84,16 +84,16 @@ fn walk(server: &mut Server, id: &mut u32, name: &str, src: &str, failures: &mut
     ));
     let published: Vec<&Value> = open
         .iter()
-        .filter(|m| m.get("method").as_str() == Some("textDocument/publishDiagnostics"))
+        .filter(|m| m.at(&["method"]).as_str() == Some("textDocument/publishDiagnostics"))
         .collect();
     if published.is_empty() {
         failures.push(format!("{name}: no diagnostics published on open"));
     }
     let lines: Vec<&str> = src.split('\n').collect();
-    for diagnostic in published.iter().flat_map(|m| m.get("params").get("diagnostics").as_array()) {
+    for diagnostic in published.iter().flat_map(|m| m.at(&["params", "diagnostics"]).as_array().unwrap_or(&[])) {
         for end in ["start", "end"] {
-            let at = diagnostic.get("range").get(end);
-            let (line, col) = (at.get("line").as_u32(), at.get("character").as_u32());
+            let at = diagnostic.at(&["range", end]);
+            let (line, col) = (at.at(&["line"]).as_u32(), at.at(&["character"]).as_u32());
             let fits = match (line, col) {
                 (Some(line), Some(col)) => lines
                     .get(line as usize)
@@ -140,8 +140,8 @@ fn server() -> Server {
 fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let list = std::fs::read_to_string(root.join("corpus/hillclimb.json")).unwrap();
-    let list = cpl_lsp::json::parse(&list).unwrap();
-    let ids: Vec<&str> = list.get("problems").as_array().iter().filter_map(|p| p.as_str()).collect();
+    let list = cpl_json::parse(&list).unwrap();
+    let ids: Vec<&str> = list.at(&["problems"]).as_array().unwrap_or(&[]).iter().filter_map(|p| p.as_str()).collect();
     assert_eq!(ids.len(), 100);
 
     let mut server = server();
