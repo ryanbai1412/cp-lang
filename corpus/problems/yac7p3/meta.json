@@ -7,14 +7,20 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/yac7p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_39/today/yac7p3.cp",
    "proto/ports/scout_batch_39/yac7p3.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "graph",
+  "functional-graph"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Functional.new(par): on_cycle, root_of, depth, cycles"
 }

@@ -12,6 +12,8 @@ front end (parse and type check) first.
 | Loop `else` | `for d in ds: ... else: print(-1)` | 125 | E0107 |
 | `{}` empty subset | `var s: Subset<D> = {}`, `best[{}] = 0` | search-dp (mask DP) | E0302 (`{}` reads as `()`); write `Subset.empty()` |
 | `P.at((x, y))` on a product domain | `Split.at((a - w, b, c))` | core 04 | E0302 (`at` takes one Int); write `A.at(x)` per factor |
+| `E.at(i)` on a fieldless enum | `Letter.at(Int(ch) - Int('A'))` | core 04 (an enum is a domain) | E0203 (enums have no domain members yet) |
+| `D.subsets` domain | `var best: [Letter.subsets]Int`, `for s in Letter.subsets` | lib/search-dp | E0204; `std.subset` declares the value type only |
 | Operators as fns | `fn (a: P) + (b: P) -> P` | 133 | E0504 |
 | Recursive `let` lambdas | `let f = (n: Int) -> Int => ... f(n - 1)` | 127 | E0107 on `->` |
 | Cut literals and arithmetic | `var mex: V.cuts = 0` | 124 | E0301 |

@@ -43,6 +43,10 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- yac7p3: `Functional` (cycles, `root_of`, `depth`, `cycle_len`) joins the prelude; it replaces a
+  hand-written cycle-finding DFS.
+- dmpg16g2: inclusion-exclusion over `Letter.subsets`; needs the enum-as-domain `E.at(i)` and the
+  `D.subsets` domain, both decided and logged as checker gaps.
 - ucrpc21h: product domains convert from tuples (`P.at((x, y))`, core 04), so a 3-D knapsack
   step is one `if let p = Split.at(from)`; `for (a, b, c) in Split.rev` is its reverse sweep.
 - yac6p4: `Seq.find(p)` was missing from `std.seq` though chapter 7 uses it; added.

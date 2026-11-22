@@ -20,7 +20,7 @@ use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate}
-use std.graph.{Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, peel, reachable, scc, topo}
+use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, peel, reachable, scc, topo}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
