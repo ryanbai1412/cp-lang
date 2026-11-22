@@ -1162,7 +1162,27 @@ pub fn hull_width(hull: List<Pt>) -> F64:
 /// traps: when `a == b`
 /// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3))`
 /// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None`
-pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int) = todo
+pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int):
+    assert a != b, "hull_line_intersect needs two distinct points"
+    let n = hull.len
+    if n < 3: return None
+    let nd = (b - a).perp
+    let hi = hull_extreme(hull, nd)
+    let lo = hull_extreme(hull, -nd)
+    let side = k => (hull[k % n] - a).dot128(nd)
+    if side(hi) <= I128(0) or side(lo) >= I128(0): return None
+    let down = last_where(hi, (lo - hi + n) % n, k => side(k) > I128(0)) % n
+    let up = last_where(lo, (hi - lo + n) % n, k => side(k) < I128(0)) % n
+    Some(if down < up: (down, up) else: (up, down))
+
+fn last_where(from: Int, span: Int, ok: Int -> Bool) -> Int:
+    var lo = 0
+    var hi = span
+    while lo < hi:
+        let mid = (lo + hi + 1) / 2
+        if ok(from + mid): lo = mid
+        else: hi = mid - 1
+    from + lo
 
 /// The farthest pair of distinct positions `a` before `b` in key order, with their squared
 /// distance (convex hull, then rotating calipers).
@@ -1172,7 +1192,31 @@ pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int) = todo
 /// ties: the pair `(a, b)` that comes first in key order, `a` then `b`
 /// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
 /// example: `farthest_pair([Pt(0, 0), Pt(1, 1), Pt(3, 0)]) == (0, 2, 9)`
-pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) = todo
+pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
+    let keys = [i for i in D]
+    assert keys.len >= 2, "farthest_pair requires at least 2 points"
+    let h = convex_hull_idx(pts)
+    if h.len == 1: return (keys[0], keys[1], 0)
+    var best = (d: -1, a: h[0], b: h[0])
+    let consider = (i: D, j: D) =>
+        let (x, y) = if i.to_idx < j.to_idx: (i, j) else: (j, i)
+        let d = pts[x].dist2(pts[y])
+        if d > best.d or (d == best.d and (x.to_idx < best.a.to_idx or (x == best.a and y.to_idx < best.b.to_idx))):
+            best = (d: d, a: x, b: y)
+    let n = h.len
+    if n == 2:
+        consider(h[0], h[1])
+        return (best.a, best.b, best.d)
+    let area = (i: Int, k: Int) => cross128(pts[h[(i + 1) % n]] - pts[h[i]], pts[h[k % n]] - pts[h[i]])
+    var j = 1
+    for i in 0..n:
+        while area(i, j + 1) > area(i, j): j = (j + 1) % n
+        consider(h[i], h[j])
+        consider(h[(i + 1) % n], h[j])
+        if area(i, j + 1) == area(i, j):
+            consider(h[i], h[(j + 1) % n])
+            consider(h[(i + 1) % n], h[(j + 1) % n])
+    (best.a, best.b, best.d)
 
 /// At most `4n` candidate edges `(u, v, w)` that contain a minimum spanning tree of `pts` under
 /// the Manhattan distance `w = pts[u].manhattan(pts[v])`.
@@ -1187,7 +1231,44 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) = todo
 /// traps: when a distance overflows `Int`
 /// example: `manhattan_mst([Pt(0, 0), Pt(1, 1), Pt(5, 5)]).any(e => e.u == 0 and e.v == 1 and e.w == 2)`
 /// example: `manhattan_mst([Pt(0, 0), Pt(2, 0)]) == [(0, 1, 2)]`
-pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)> = todo
+pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)>:
+    let keys = [i for i in D]
+    let n = keys.len
+    var xs = [pts[k].x for k in keys]
+    var ys = [pts[k].y for k in keys]
+    var found: List<(w: Int, u: Int, v: Int)> = []
+    for dir in 0..4:
+        if dir == 1 or dir == 3:
+            let t = xs
+            xs = ys
+            ys = t
+        if dir == 2: xs = [-x for x in xs]
+        var order = [i for i in 0..n]
+        sort(mut order, by: i => (xs[i], ys[i]))
+        var vals = [ys[i] - xs[i] for i in 0..n]
+        sort(mut vals)
+        var best = List.filled(n + 1, (w: Int.MAX, id: -1))
+        for t in (0..n).rev:
+            let i = order[t]
+            let pos = n - lower_idx(vals, ys[i] - xs[i])
+            var q = pos
+            var got = (w: Int.MAX, id: -1)
+            while q > 0:
+                if best[q].w < got.w: got = best[q]
+                q -= q & -q
+            if got.id >= 0:
+                let w = pts[keys[i]].manhattan(pts[keys[got.id]])
+                found.push(if i < got.id: (w: w, u: i, v: got.id) else: (w: w, u: got.id, v: i))
+            q = pos
+            while q <= n:
+                if xs[i] + ys[i] < best[q].w: best[q] = (w: xs[i] + ys[i], id: i)
+                q += q & -q
+    sort(mut found)
+    var out: List<(u: D, v: D, w: Int)> = []
+    for k in 0..found.len:
+        if k > 0 and found[k] == found[k - 1]: continue
+        out.push((u: keys[found[k].u], v: keys[found[k].v], w: found[k].w))
+    out
 
 /// The centroid (centre of mass) of the region inside the simple polygon `poly`, either
 /// orientation.

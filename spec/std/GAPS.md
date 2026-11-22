@@ -25,3 +25,4 @@ line when the gap closes and the body lands.
 - strings: `SuffixAutomaton.kth_substring`, `Trie.kth`: the answer is a `List<A>` rebuilt from transition indices, but a generic domain `A` has `to_idx` and no inverse (`A.from_idx(i)`), so no element can be produced from an index.
 - poly: `Poly.from_int`, `Poly.deriv` over `Int`: the bodies call `T.from_int`, and `Int.from_int` is unknown at run time (E0201 "doesn't know the name `Int`"), so `Poly<Int>` instances of these trap; `Poly<Mod<P>>` runs.
 - geometry: `Vec.from_angle`: `cos` and `sin` are not in scope in `cpl run` (E0201 "no `cos` in scope"), and the prelude declares neither.
+- geometry: `closest_pair`, `farthest_pair`, `manhattan_mst` called on a `List<Pt>`: the result keeps the generic `D` (E0302 "can't compare a `(a: D, b: D, dist2: Int)` with a `(Int, Int, Int)`"), so the doc examples over list literals fail; a `[D]Pt` over a declared domain runs.
