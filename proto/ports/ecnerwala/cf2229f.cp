@@ -1,10 +1,19 @@
-// Codeforces 2229 F: remove the maximum element, then binary search over all
-// subset sums with a bitmask DP verifying K disjoint blocks of sum >= thresh.
+// Codeforces 2229 F — Maximum Minimum Block Sum
+//
+// Remove the largest element `fin = a_in[best_i]` (which is always optimal to
+// place as the final standalone gain), leaving `m = n - 1` elements `a`.
+//
+// The optimal threshold `thresh` for partitioning `a` into `>= k` disjoint
+// blocks each of sum `>= thresh` must equal one of the `2^m` subset sums of
+// `a`. Precompute all subset sums in sorted order and binary search for the
+// largest feasible `thresh`, verified by bitmask DP `dp[mask] = (cnt, rem)`
+// maximizing completed blocks `cnt` and then current partial-block sum `rem`.
+
 use std.seq.{argmax}
 
 @!multitest
-let (n, k): (Int, Int) = read()
-let a_in: [0..n]Int = read()
+let (n, k): (1..=21, 1..=21) = read()
+let a_in: [0..n]1..=10 ** 9 = read()
 let best_i = a_in.argmax()!
 let fin = a_in[best_i]
 let a = [a_in[i] for i in 0..n if i != best_i]
