@@ -30,7 +30,7 @@ fn transposed_mul(a: List<Z>, b: List<Z>) -> List<Z>:
 fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 
 @!multitest
-let n: Int = read()
+let n: 1..=250_000 = read()
 domain V = 1..=n
 var parent: [V]?V = none
 repeat n - 1:
@@ -53,21 +53,22 @@ var dp: [V]List<Z> = []
 var ans: List<Z> = [1]
 for t in V.rev if t != V.first:
     let next = t.next
-    let moving: List<Z> = if let s = next: dp[s] else: [0, 1]
-    let stop = if let s = next: parent[s]! else: V.first
+    let (moving, stop): (List<Z>, V) = match next:
+        some(s) => (dp[s], parent[s]!)
+        none => ([0, 1], V.first)
     dp[t] = add(dp[t], moving)
     let chain = tree.path(t, stop)
     var ways: List<Z> = [1]
-    for (i, p) in chain[..chain.len - 1].items:
-        if i > 0: ways = convolve(ways, before[chain[i - 1]])
+    for (prev, p) in chain[..chain.len - 1].with_prev:
+        if let prev = prev: ways = convolve(ways, before[prev])
         dp[p] = add(dp[p], transposed_mul(moving, integral(ways)))
         ways = plus_integral(ways)
     if let s = next: dp[s] = []
 
     let up = tree.path(t, V.first)
     var carry: List<Z> = []
-    for (i, p) in up.items:
-        if i > 0: carry = transposed_mul(carry, before[up[i - 1]])
+    for (prev, p) in up.with_prev:
+        if let prev = prev: carry = transposed_mul(carry, before[prev])
         let lifted: List<Z> = [0] + [x * (k + 1) for (k, x) in dp[p].items]
         (dp[p], carry) = (add(lifted, carry), add(carry, dp[p]))
     ans.push(dp[V.first].first ?? 0)
