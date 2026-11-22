@@ -68,6 +68,8 @@ struct Session {
     input: Vec<u8>,
     /// Where the latest restart first changed a value, against the run before it.
     change: Option<Change>,
+    /// The file as `recording` ran it.
+    source: String,
 }
 
 impl Session {
@@ -86,6 +88,7 @@ impl Session {
             brute: false,
             input: Vec::new(),
             change: None,
+            source: String::new(),
         }
     }
 
@@ -525,6 +528,51 @@ impl Session {
                 };
                 self.send_stopped(writer, "goto", Some(&kept))?;
             }
+            // Runs one recorded call again with the fn as the file has it
+            // now: the frame's call at the current step, or with `fn`, the
+            // call of that fn open there or else its latest before it.
+            "replayCall" => {
+                let frame = args.and_then(|a| a.get("frameId")).and_then(Json::as_i64).map_or(0, |id| id.max(1) as usize - 1);
+                let name = args.and_then(|a| a.get("fn")).and_then(Json::as_str).map(str::to_string);
+                let step = self.cursor;
+                let pick = |recorded: &Recording| match &name {
+                    None => crate::replay::call_at(recorded, step, frame),
+                    Some(name) => {
+                        let named = |c: &&cpl_interp::trace::Call| &c.name == name;
+                        let open = recorded.calls.iter().filter(named).filter(|c| c.entry <= step && step < c.exit).max_by_key(|c| c.depth);
+                        let done = || recorded.calls.iter().filter(named).filter(|c| c.exit <= step).last();
+                        let first = || recorded.calls.iter().find(named);
+                        open.or_else(done).or_else(first).cloned().ok_or(format!("the run never calls `{name}`"))
+                    }
+                };
+                let replayed = match self.brute {
+                    true => Err("replay runs the solution: this session debugs the @brute".to_string()),
+                    false => crate::replay::replay_call(&self.program_path, &self.source, &self.input, &pick),
+                };
+                match replayed {
+                    Ok(replay) => {
+                        let report = crate::replay::report(&replay);
+                        self.send_output(writer, "console", &report)?;
+                        let mut body = String::from("{\"report\":");
+                        json_str(&mut body, &report);
+                        body.push_str(",\"call\":");
+                        json_str(&mut body, &crate::replay::call_text(&replay.recorded.name, &replay.recorded.args));
+                        body += &format!(",\"ordinal\":{},\"entry\":{}", replay.recorded.ordinal, replay.recorded.entry + 1);
+                        for (key, value) in [("returned", &replay.after.returned), ("before", &replay.before.returned), ("fallback", &replay.fallback)] {
+                            if let Some(value) = value {
+                                body += &format!(",\"{key}\":");
+                                json_str(&mut body, value);
+                            }
+                        }
+                        if let Some(change) = &replay.change {
+                            body += &format!(",\"changeLine\":{}", change.line);
+                        }
+                        body.push('}');
+                        self.send_response(writer, req_seq, command, true, None, Some(&body))?;
+                    }
+                    Err(msg) => self.send_response(writer, req_seq, command, false, Some(&msg), None)?,
+                }
+            }
             "disconnect" | "terminate" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 return Ok(true);
@@ -566,6 +614,7 @@ impl Session {
             Some(config),
         );
         self.recording = observed.recording.unwrap_or_default();
+        self.source = compiled.text.clone();
         self.trap_message = observed.trap.as_ref().map(|t| render_trap(&program, &compiled.text, t));
         self.trap_step = observed
             .trap

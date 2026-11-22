@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use cpl_interp::replay::Replay;
-use cpl_interp::trace::Recording;
+use cpl_interp::trace::{Call, Recording};
 
 use crate::dap::{shown, Json};
 use crate::{compile_side, compile_text, trace, Side, EXIT_ERRORS, EXIT_USAGE};
@@ -25,15 +25,22 @@ or the call reads past the input, the whole file runs again and the report
 says so.
 ";
 
-/// The call open at `step` (0-based), `frame` callers out, of the run of
-/// `original` on `input`, replayed with the fns of the file at `path`.
+/// The call at `step` (0-based) of a run: open there, `frame` callers out
+/// of the innermost, or else the one that returned into `step`.
+pub(crate) fn call_at(recorded: &Recording, step: usize, frame: usize) -> Result<Call, String> {
+    // A call that changed no top-level variable has no steps of its own.
+    let returned_into = || recorded.calls.iter().filter(|c| c.exit == step).min_by_key(|c| c.depth);
+    recorded.call_at(step, frame).or_else(returned_into).cloned().ok_or(format!("no fn call is running at step {}", step + 1))
+}
+
+/// The call `pick` chooses of the run of `original` on `input`, replayed
+/// with the fns of the file at `path`.
 pub(crate) fn replay_call(
     path: &str,
     original: &str,
     input: &[u8],
-    step: usize,
-    frame: usize,
-) -> Result<(Replay, Recording), String> {
+    pick: &dyn Fn(&Recording) -> Result<Call, String>,
+) -> Result<Replay, String> {
     let mut errors = String::new();
     let before = compile_text(path, original.to_string(), Side::Solution, &mut errors)
         .map_err(|_| format!("the recorded source does not build:\n{errors}"))?;
@@ -41,12 +48,7 @@ pub(crate) fn replay_call(
     let observed =
         cpl_interp::run_observed(&before.program, cpl_interp::Io::fixed(input), &mut Vec::new(), Some(config));
     let recorded = observed.recording.unwrap_or_default();
-    // A call that changed no top-level variable has no steps of its own:
-    // it is the one that returned into `step`.
-    let returned_into = || recorded.calls.iter().filter(|c| c.exit == step).min_by_key(|c| c.depth);
-    let Some(call) = recorded.call_at(step, frame).or_else(returned_into).cloned() else {
-        return Err(format!("no fn call is running at step {}", step + 1));
-    };
+    let call = pick(&recorded)?;
     let mut errors = String::new();
     let after = compile_side(path, Side::Solution, &mut errors)
         .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
@@ -58,7 +60,7 @@ pub(crate) fn replay_call(
         &call,
         trace::config(&after.text, None),
     );
-    Ok((replay, recorded))
+    Ok(replay)
 }
 
 fn value(json: &str) -> String {
@@ -183,8 +185,8 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
             }
         },
     };
-    match replay_call(file, &original, &input, step, frame) {
-        Ok((replay, _)) => {
+    match replay_call(file, &original, &input, &|recorded| call_at(recorded, step, frame)) {
+        Ok(replay) => {
             let _ = stdout.write_all(report(&replay).as_bytes());
             0
         }

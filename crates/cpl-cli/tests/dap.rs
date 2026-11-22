@@ -380,3 +380,47 @@ print(best[cap])
     assert!(unknown.contains("`nope` is not in scope here"), "names the unknown variable: {unknown}");
     dap.finish();
 }
+
+#[test]
+fn dap_replays_one_call_with_the_edited_fn() {
+    let demo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/debugging/shows.cp");
+    let source = std::fs::read_to_string(demo).unwrap();
+    let path = write_temp("replay_dap", &source);
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    let input = "2\\n1\\n0 1\\n3\\n0 2\\n0 1\\n1 1\\n";
+    dap.send("launch", Some(&format!("{{\"program\":\"{p}\",\"inputText\":\"{input}\",\"stopOnEntry\":false}}")));
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    let line = source.lines().position(|l| l.starts_with("print(most_watched())")).unwrap() + 1;
+    dap.send(
+        "setBreakpoints",
+        Some(&format!("{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{{\"line\":{line}}}]}}")),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+
+    std::fs::write(&path, source.replace("by: i => shows[i].start)", "by: i => shows[i].start + shows[i].len)")).unwrap();
+    for args in ["{\"fn\":\"most_watched\"}", "{\"frameId\":1}"] {
+        dap.send("replayCall", Some(args));
+        let replay = dap.recv_until("\"command\":\"replayCall\"");
+        assert!(replay.contains("\"success\":true"), "{replay}");
+        assert!(replay.contains("\"ordinal\":2") && replay.contains("\"call\":\"most_watched()\""), "the call at the cursor: {replay}");
+        assert!(replay.contains("\"returned\":\"2\"") && replay.contains("\"before\":\"1\""), "{replay}");
+        assert!(replay.contains(&format!("\"changeLine\":{line}")) && !replay.contains("fallback"), "{replay}");
+    }
+
+    let wider = source.replace("fn most_watched() -> Int:", "fn most_watched(from: Int) -> Int:");
+    std::fs::write(&path, wider.replace("print(most_watched())", "print(most_watched(0))")).unwrap();
+    dap.send("replayCall", Some("{\"fn\":\"most_watched\"}"));
+    let replay = dap.recv_until("\"command\":\"replayCall\"");
+    assert!(replay.contains("\"success\":true") && replay.contains("\"fallback\":\"the edit changes what"), "{replay}");
+    dap.send("replayCall", Some("{\"fn\":\"nope\"}"));
+    let replay = dap.recv_until("\"command\":\"replayCall\"");
+    assert!(replay.contains("\"success\":false") && replay.contains("never calls `nope`"), "{replay}");
+    dap.finish();
+}
