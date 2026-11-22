@@ -11,7 +11,8 @@ Usage: scripts/spec-stub.py [--check] [FILE...]   (default spec/std/*.cp)
 `@get` member is documented as costing more than O(1) to make: anything
 that does work up front takes parentheses (decision 140), or if a fn that
 mutates nothing declares no return type: the checker cannot type its result,
-so every method called on it would go unchecked.
+so every method called on it would go unchecked, or if a prelude name
+appears in no core or lib chapter (core 11.3).
 """
 import glob, os, re, sys
 
@@ -163,6 +164,19 @@ def untyped(lines):
     return out
 
 
+def undocumented_prelude(root):
+    """Prelude names no core or lib chapter shows in code: the prelude is the chapters'
+    vocabulary (core 11.3), so each name needs a chapter row before it is imported."""
+    spec = os.path.join(root, "spec")
+    text = open(os.path.join(spec, "std", "prelude.cp")).read()
+    names = [n.strip() for group in re.findall(r"use [\w.]+\.\{([^}]*)\}", text)
+             for n in group.split(",") if n.strip()]
+    docs = "".join(open(f).read() for d in ("core", "lib")
+                   for f in glob.glob(os.path.join(spec, d, "*.md")))
+    return [n for n in names
+            if not re.search(r"`[^`\n]*\b" + re.escape(n) + r"\b[^`\n]*`", docs)]
+
+
 def main(argv):
     check = "--check" in argv
     files = [a for a in argv if a != "--check"] or sorted(glob.glob(
@@ -185,6 +199,10 @@ def main(argv):
                 print(f"{os.path.relpath(f)}:{line}: `{name}` mutates nothing but declares "
                       "no return type")
                 total += 1
+    if check and len(files) > 1:
+        for name in undocumented_prelude(os.path.join(os.path.dirname(__file__), "..")):
+            print(f"spec/std/prelude.cp: `{name}` is in no core or lib chapter (core 11.3)")
+            total += 1
     print(f"spec-stub: {total} fn body(ies) {'with bodies' if check else 'stubbed'}")
     return 1 if check and total else 0
 

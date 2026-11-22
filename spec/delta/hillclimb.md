@@ -43,6 +43,12 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- egoi23p4: `floyd_warshall(mut d, over:)` takes any path semiring (`Semiring(max, min)` is
+  widest paths); `kruskal(es, by:)`; `[P]T` is `[A, B]T` for a product domain (checker gap).
+- etsr23r3p3: orders flip with `desc` (decision 151): `kruskal_tree(es, w: e => desc(e.alt))`
+  and `reach(v, limit: desc(p + 1))` replace negated altitudes.
+- prelude: membership is now a rule, the lib chapters' tables (decision 150); `spec-stub.py
+  --check` fails a prelude name no chapter shows. Six helpers left the prelude.
 - etsr23r4p2: `phi` and `pow_mod` join the prelude; a fixed-length `[Slot]Z` node with a
   commuting shift action is plain `SegTree(op, a, act: Action.new(apply:))`, no new mechanism.
 - yac7p3: `Functional` (cycles, `root_of`, `depth`, `cycle_len`) joins the prelude; it replaces a

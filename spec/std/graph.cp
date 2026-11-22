@@ -380,13 +380,15 @@ pub fn fixed_cost_paths<S, M, W>(
 /// after its parent. O(n * m).
 pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc> = todo
 
-/// O(n^3).
 /// O(n^3) time, no extra memory.
 /// All-pairs shortest distances, in place: `d[u, v]` starts as the direct
 /// weight (`none`: no edge, usually from `g.matrix()`) and ends as the
 /// distance. `false` if there is a negative cycle, and `d` is then unspecified.
 /// A vertex is at distance 0 from itself unless a cheaper cycle exists.
-pub fn floyd_warshall<V, W: Ord + Add>(mut d: [V, V]?W) -> Bool = todo
+/// `over:` swaps the path algebra: `Semiring(max, min)` gives widest (bottleneck) paths,
+/// `Semiring(min, max)` minimax paths, `Semiring(|, &)` transitive closure; `none` is the
+/// semiring's zero (no path) and the diagonal starts at its one.
+pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool = todo
 
 /// O(n + m).
 /// One directed cycle, as its vertices in walking order (each is followed by the next,
@@ -589,8 +591,8 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int = todo
 pub fn de_bruijn(k: Int, n: Int) -> List<Int> = todo
 
 /// O(m log m): a minimum spanning forest by Kruskal, as the chosen edges and
-/// their total. A negated `w` gives a maximum one.
-pub fn kruskal<V, E, W>(edges: [E](u: V, v: V, w: W, ..)) -> (total: W, take: [E]Bool) = todo
+/// their total weight. Edges are taken in `by:` order: `by: e => desc(e.w)` gives a maximum one.
+pub fn kruskal<V, E, W, K: Ord>(edges: [E](u: V, v: V, w: W, ..), by: E -> K = e => e.w) -> (total: W, take: [E]Bool) = todo
 
 /// O(n^2): a minimum spanning tree of the dense graph `w` (Prim without a
 /// heap); `none` if disconnected.

@@ -389,6 +389,10 @@ determined by what you hand it: an op, an action, or both. The cost is
 still visible. `act:` in the constructor is where tag memory appears, and
 `cpl explain` shows the layout.
 
+`Fenwick2D<R, C, T>` is point add and rectangle sum over a grid
+(O(log R log C)); `Line(k, m)` is the `k x + m` that `LiChao` and
+`MonotoneHull` store.
+
 ## 9. Specialization
 
 Ryan's example is that lazy propagation is unnecessary when tags commute.

@@ -13,7 +13,7 @@ fn first_from(a: Int) -> ?I:
     soonest[k]
 let t = Rooted.from_parents(I.map(i => first_from(iv[i].r + 1)).collect())
 fn fit(a: Int, b: Int) -> Int:
-    let u = first_from(a)?? return 0
+    let u = first_from(a) ?? return 0
     if iv[u].r > b:
         return 0
     t.depth(u) - t.depth(t.jump_while(u, v => iv[v].r <= b)!) + 1

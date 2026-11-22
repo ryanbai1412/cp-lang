@@ -14,7 +14,7 @@ indexes an edge array and a cut never indexes a position array.
 domain V = 1..=n                       // positions 1..n
 domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..=n
 let (domain C, comp) = compress(xs)    // fresh domain from a computation
-domain Cell = (Row, Col)               // product: [Row, Col]T is a 2-D array
+domain Cell = (Row, Col)               // product: [Cell]T and [Row, Col]T are one 2-D array type
 enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir]Int
 ```
 
@@ -31,6 +31,7 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 | `V(x)` | integer to position, trapping outside `V` | O(1) |
 | `V.at(x)` | integer to position, `?V`: `none` outside `V` | O(1) |
 | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `none` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
+| `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) |
 | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |

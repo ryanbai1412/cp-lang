@@ -162,7 +162,7 @@ All return `Paths<V, W, A>`:
 | `dial(g, from:, max_w:, until:)` | small ints | O(n · max_w + m) |
 | `dijkstra(g, from: [(s, d0)], until:)` | non-negative | O(m log n) |
 | `bellman_ford(g, from:)` | any; `none` on a negative cycle | O(n m) |
-| `floyd_warshall(mut d) -> Bool` | dense, in place; `false` on a negative cycle | O(n³) |
+| `floyd_warshall(mut d, over: Semiring(min, +)) -> Bool` | dense, in place; `false` on a negative cycle; `over: Semiring(max, min)` gives widest paths | O(n³) |
 
 `until: t` stops once `t` is settled. `from:` is any `Seq`; multi-source is
 a longer one. `p.tight(g)` is the shortest-path DAG.
@@ -274,6 +274,14 @@ for r in t.chains(a, b): ...               // the ranges themselves, when you ne
 binary lifting as leaves are added). Same vertex domain, same method names
 as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 `fold_path`).
+
+### Also in the prelude
+
+| Form | Meaning | Cost |
+|---|---|---|
+| `Lit(x, value)` | a 2-SAT literal, "x is `value`", for `TwoSat` | O(1) |
+| `p.adj4`, `p.adj8`, `p.ray(d)`, `Dir4`, `Dir8` | grid neighbours of a `(Row, Col)` cell inside the grid; the cells from `p` to the edge in direction `d` | O(1) per cell |
+| `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree; flip the order with `w: e => desc(e.w)` | O(m log m), O(log n) per `reach` |
 
 ## Open
 

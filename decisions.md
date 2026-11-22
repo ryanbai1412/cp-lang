@@ -4509,3 +4509,25 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   memory and SIMD lanes do.
 - **Reverse.** Per item; each section of the doc names its alternative.
 
+## 150. The prelude is the lib chapters' vocabulary, by rule (2026-11-21)
+
+- **Decision.** A stdlib name is in the prelude exactly when a `lib/`
+  chapter's main tables list it, minus names contestants use as locals.
+  The 80-name budget of decision 94 is dropped.
+- **Why.** The hill-climb added about one prelude name per three dreams
+  (`Functional`, `max_closure`, `phi`), each by request; at 176 names the
+  budget was fiction and the membership test was "did a dream hit it". A
+  rule makes membership guessable from the docs, and a collision, not a
+  count, is what costs a contestant.
+- **Reverse.** Restore a budget and per-name review in core 11.3.
+
+## 151. Orders flip with `desc`, never by negating (2026-11-21)
+
+- **Decision.** Anything that picks by an order takes any `Ord` key, so
+  "largest first" is `desc(x)`: `kruskal(es, by: e => desc(e.w))`,
+  `kruskal_tree(es, w: e => desc(e.alt))` with `reach(v, limit: desc(p +
+  1))`, as `sort(by: desc(..))` and heaps already do.
+- **Why.** `etsr23r3p3` negated altitudes twice (`w: -r.alt`,
+  `limit: -p - 1`), an off-by-one trap and an overflow trap at `Int.MIN`.
+- **Reverse.** Reintroduce the negation idiom in the two docs.
+

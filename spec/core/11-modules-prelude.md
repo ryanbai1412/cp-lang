@@ -43,15 +43,23 @@ built-in list. Rules:
 
 - Only programs get the prelude; library modules `use` what they need,
   so a library never depends on what a program happened to import.
-- A name is in the prelude when ordinary contest code uses it often
-  enough that importing it is noise, it has one obvious meaning, and it
-  collides with nothing a contestant commonly names (`n`, `a`, `g`,
-  `dp`, `ans`, `cnt` never become prelude names).
-- The prelude stays under about 80 names plus the core types
-  (decision 94). The 0.3 contents are grouped as: core types and
-  traits; sequence vocabulary (`07-sequences.md`, `lib/sequence-
-  patterns.md`); search and DP; graphs and trees; operations and range
-  structures; containers; math and `Mod`; strings; I/O.
+- The prelude is the vocabulary of the `lib/` chapters, by rule rather
+  than by request (decision 150): every pub type and free function in a
+  chapter's main tables is in it, and nothing else is. Adding an API to a
+  chapter's table adds it to the prelude; a helper the tables don't list
+  needs a `use`. There is no name budget: the cost of a prelude name is a
+  collision, not a count.
+- Two exclusions keep that safe. A name a contestant commonly gives a
+  local (`n`, `a`, `g`, `dp`, `ans`, `cnt`, `left`, `best`) is never a
+  prelude name; the library spells it otherwise. And a name with two
+  plausible meanings across chapters gets one chapter's meaning and the
+  others are qualified (`min` and `max` stay the binary builtins; the
+  folds are methods).
+- `scripts/spec-stub.py --check` keeps `std/prelude.cp` and the chapter
+  tables in step. The groups are: core types and traits; sequence
+  vocabulary (`07-sequences.md`, `lib/sequence-patterns.md`); search and
+  DP; graphs and trees; operations and range structures; containers;
+  math and `Mod`; strings; I/O.
 - The LSP offers an import quick fix for any non-prelude stdlib name,
   and `cpl fmt` sorts `use` lines.
 

@@ -47,6 +47,9 @@ impl Ord for Frac:
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write.
 
+`cmp(a, b)` is the three-way comparison of two `Ord` values, an
+`Ordering` (`Less`, `Equal`, `Greater`); `desc(x)` flips an order.
+
 ## 8.2 Generics
 
 ```

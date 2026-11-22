@@ -313,6 +313,19 @@ Every in-place verb that has a result-named twin follows the same pattern
 (`sort`/`sorted`, `dedup`/`deduped`); `.rev` (view) and `reverse()` (in
 place) are different jobs, not twins.
 
+## More vocabulary
+
+| Form | Meaning | Cost |
+|---|---|---|
+| `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | O(1) per step |
+| `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | O(1) per element |
+| `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `none` | O(1) per step |
+| `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | O(n) |
+| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true; the range equal to `x` | O(log n) |
+| `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized O(1) |
+| `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | O(n) |
+| `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | O(log n) |
+
 ## Answers to round 2's questions
 
 1. **In-place vs copy:** both, by rule: a verb mutates, its result-named

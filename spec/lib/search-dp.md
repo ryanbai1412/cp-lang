@@ -41,6 +41,12 @@ let t = (0..=1e18).first_true(t => can_finish(by: t))!   // smallest feasible ti
 let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if none
 ```
 
+Over reals the searches take a step count instead of an integer range:
+`bsearch_real(lo, hi, ok, steps:)` is the least `x` with `ok(x)` to within
+`(hi - lo) / 2^steps`, and `ternary_min_real(lo, hi, f, steps:)` and
+`ternary_max_real` find the optimum of a unimodal `f` by golden section. Each
+costs `steps` calls.
+
 ## Tables
 
 ```python

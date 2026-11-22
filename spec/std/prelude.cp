@@ -11,16 +11,16 @@
 
 use std.algebra.{Action, Commutative, Desc, Group, Idempotent, Monoid, Op, Ordering, Selective, Semiring, add, affine, assign, cmp, desc, each, flip, fold}
 use std.beats.{BeatsSegTree}
-use std.bag.{BucketCount, SortedBag, SortedMap, SortedSet}
+use std.bag.{SortedBag, SortedMap, SortedSet}
 use std.bitset.{Bitset}
-use std.deque.{Deque, LinkedList}
+use std.deque.{Deque}
 use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.ntt.{Curved, convolve}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate}
-use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, peel, reachable, scc, topo}
+use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, floyd_warshall, kruskal, peel, reachable, scc, topo}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
@@ -37,7 +37,6 @@ use std.seq.{
     buckets,
     chain,
     chunks,
-    chunks_padded,
     compress,
     cyclic_pairs,
     dedup,
@@ -71,7 +70,6 @@ use std.seq.{
     sum,
     reduce,
     remove,
-    resized,
     reverse,
     rotate_left,
     rotate_right,

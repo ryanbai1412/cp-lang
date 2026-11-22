@@ -362,6 +362,18 @@ Cost summary (NTTs of length `N = bit_ceil(n)`):
 - `pow`: `O(n)` normalization + 1 `log` + 1 `exp` + `O(n)` rescaling (no `log k` factor).
 - `sqrt`: 1 `mod_sqrt` (`O(log^2 P)`) + Newton doubling calling `inv` + 1 `convolve` at each doubling.
 
+### 2.6 Everyday integer helpers (all in the prelude)
+
+| Form | Meaning | Cost |
+|---|---|---|
+| `ceil_div(a, b)`, `x.divmod(d)` | ceiling division; Euclidean `(q, r)` with `0 <= r < abs(d)` | O(1) |
+| `x.digits(base:)`, `x.to_str(base:)` | digits lowest first; the written form, highest first | O(log x) |
+| `x.sign` | the side of zero, a `Sign` | O(1) |
+| `floor_quotients(n)` | each distinct `n / i` with its run of `i`, `(q, lo, hi)` | O(sqrt n) |
+| `Ratio(p, q)` | an exact reduced rational | O(log) per op |
+| `coef.eval(x)` | a polynomial at `x` over any ring, by Horner | O(len) |
+| `Curved` | the `shape:` of a non-`(+, *)` `convolve` (`Both`, `Right`, `Neither`) | — |
+
 ## 3. Laws and invariants
 
 Every module enforces its mathematical laws in `@test`:
