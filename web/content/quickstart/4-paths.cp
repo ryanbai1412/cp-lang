@@ -7,11 +7,11 @@ for _ in 0..m:
 
 @memo
 fn paths(v: V) -> Mod<1_000_000_007>:
-    if v == V.last:
+    if v == V(n):
         return 1
     var total: Mod<1_000_000_007> = 0
     for w in out[v]:
         total += paths(w)
     total
 
-print(paths(V.first))
+print(paths(V(1)))

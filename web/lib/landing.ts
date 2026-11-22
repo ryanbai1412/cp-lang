@@ -92,10 +92,16 @@ export interface Live {
 
 const hero = [
   {
+    id: 'input',
+    title: 'Typed input',
+    caption:
+      'The limits from the statement are the types. Change 90 to 900 in the input and run: the run stops and names the value.',
+  },
+  {
     id: 'prefix',
     title: 'Prefix sums',
     caption:
-      'The array is 1-based because the statement is. Prefix sums live on the cuts between positions, so there is no l - 1 to get wrong.',
+      'The array is 1-based because the statement is. Prefix takes the range the way the statement writes it, so there is no l - 1 to get wrong.',
   },
   {
     id: 'optional',
@@ -106,12 +112,6 @@ const hero = [
     id: 'grid',
     title: 'Grids',
     caption: 'The type reads the grid. Rows and columns are different index spaces, so g[c, r] does not compile.',
-  },
-  {
-    id: 'input',
-    title: 'Typed input',
-    caption:
-      'The limits from the statement are the types. Change 90 to 900 in the input and run: the run stops and names the value.',
   },
 ];
 

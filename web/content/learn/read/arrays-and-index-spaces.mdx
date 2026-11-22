@@ -98,6 +98,9 @@ It is `g[r, c]`, never `g[r][c]`. Because rows and columns are different
 domains, `g[c, r]` does not compile. A `[Row, Col]Char` reads a grid of
 characters, one line per row.
 
+Once you know how it works, the library does it for you: `let pre = Prefix(a)`,
+then `pre.sum(l..=r)`.
+
 ## Problem: Range sums
 
 You are given n integers (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). Each query is two positions l ≤ r, 1-based and inclusive; print the sum of the values from l to r. The starter reads the input and prints 0 for every query.
