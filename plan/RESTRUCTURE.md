@@ -141,13 +141,17 @@ Language tools on our own code:
 ## Other cleanup items
 
 - Conformance gate: the number of met cases never drops.
-- One perf harness: keep `bench/rust_latency_audit.py` and
-  `bench/rust_max_n_audit.py`. Delete `bench/max_n_audit.py`,
-  `tools/bench/` and `proto/bench.py`, which build ports with the
-  prototype, and `cpl-verify bench`, which overlaps the latency audit.
-- `crates/cpl-verify` tests only the prototype (`proto_fuzz`,
-  `proto_tools`): keep its program generator and reference evaluator as
-  the generator above, delete the rest with `proto/`.
+- Done: one perf harness. `bench/rust_latency_audit.py` and
+  `bench/rust_max_n_audit.py` stay; `bench/max_n_audit.py`, `tools/bench/`
+  and `proto/bench.py` are deleted.
+- Done: `crates/cpl-verify` and the Python prototype are deleted. Its
+  generator was not kept: it generated the prototype's subset, and the
+  type-directed generator in `plan/ARCHITECTURE.md` replaces it.
+- Left in `proto/`: `ports/` and `tests/` (`.cp` fixtures read by
+  `crates/cpl-cli/tests`, `scripts/check.sh` and `site/`). They move into
+  `corpus/` and `spec/conformance/`, then `proto/` goes.
+- `bench/corpus_registry.py` scores `proto/ports/`; replace it with a
+  scoreboard over `corpus/problems/` when the ports move.
 - Rename `stdlib/spec.cp` to `stdlib/brute.cp`.
 - Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
 - Deferred until after the merge: interpreter consolidation, removing stdlib
