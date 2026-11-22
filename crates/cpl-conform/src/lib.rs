@@ -79,9 +79,8 @@ pub fn default_scoreboard_path(root: &Path) -> PathBuf {
     root.join("research").join("scoreboard.json")
 }
 
-/// Runs the requested suites in spec mode (`CPL_SPEC=1`, `CPL_STD=<root>/spec/std`).
+/// Runs the requested suites.
 pub fn run_suites(root: &Path, suites: &[Suite], filter: Option<&str>) -> Scoreboard {
-    runner::configure_spec_env(root);
     let mut sb = Scoreboard::default();
     for &suite in suites {
         let report = match suite {

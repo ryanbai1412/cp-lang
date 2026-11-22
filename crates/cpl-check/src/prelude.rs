@@ -17,20 +17,13 @@ use cpl_syntax::ast;
 
 use crate::ty::{Param, Ty};
 
-/// What `stdlib/prelude.cp` lists: each name, and the module its `use`
+/// What `spec/std/prelude.cp` lists: each name, and the module its `use`
 /// takes it from (`std.mod`, `Mod`). The compiler has no list of its own.
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        // `CPL_STD` may hold a spec prelude (spec/README.md); it wins like any module.
-        let spec = std::env::var_os("CPL_STD")
-            .and_then(|dir| {
-                std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok()
-            })
-            .map(|text| &*Box::leak(text.into_boxed_str()));
-        let text = spec
-            .or_else(|| crate::modules::bundled_std(&["prelude".to_string()]))
-            .expect("stdlib/prelude.cp is built into the compiler");
+        let text = crate::modules::bundled_std(&["prelude".to_string()])
+            .expect("spec/std/prelude.cp is built into the compiler");
         let mut found = Vec::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
             for stmt in item.stmts {
@@ -73,7 +66,7 @@ pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
                 .collect()
         };
         let mut names = std::collections::HashSet::new();
-        for (_, text) in crate::modules::active_std_modules() {
+        for (_, text) in crate::modules::std_modules() {
             for line in text.lines() {
                 let code = line.split('#').next().unwrap_or("").trim_start();
                 if code.starts_with("///") {
@@ -101,7 +94,7 @@ pub fn spec_struct_only_member_names() -> &'static std::collections::HashSet<Str
         };
         let mut in_struct = std::collections::HashSet::new();
         let mut elsewhere = std::collections::HashSet::new();
-        for (_, text) in crate::modules::active_std_modules() {
+        for (_, text) in crate::modules::std_modules() {
             let mut struct_body = false;
             for line in text.lines() {
                 let code = line.split('#').next().unwrap_or("");
@@ -134,7 +127,7 @@ pub fn spec_struct_only_member_names() -> &'static std::collections::HashSet<Str
 pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        crate::modules::active_std_modules()
+        crate::modules::std_modules()
             .iter()
             .flat_map(|(_, text)| scan_top_level_methods(text))
             .map(|(n, _)| n.to_string())
@@ -156,7 +149,7 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
             span: cpl_diag::Span::new(0, 0),
         };
         let mut found: Vec<(Vec<ast::Name>, ast::Name, bool)> = Vec::new();
-        for (module, text) in crate::modules::active_std_modules() {
+        for (module, text) in crate::modules::std_modules() {
             if *module == "prelude" || !text.contains("self:") {
                 continue;
             }
@@ -575,15 +568,10 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
     }
 }
 
-/// Every public name of the active edition's standard library and its
-/// module, sorted by name. `build.rs` reads it off the files.
+/// Every public name of the standard library and its module, sorted by
+/// name. `build.rs` reads it off the files.
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
-    const V02: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
-    const V03: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/spec_std_names.rs"));
-    match crate::edition::edition() {
-        crate::edition::Edition::V02 => V02,
-        crate::edition::Edition::V03 => V03,
-    }
+    include!(concat!(env!("OUT_DIR"), "/std_names.rs"))
 }
 
 #[cfg(test)]
@@ -592,7 +580,7 @@ mod tests {
 
     #[test]
     fn fast_method_scan_matches_full_parse_on_bundled_stdlib() {
-        for (module, text) in crate::modules::bundled_std_modules() {
+        for (module, text) in crate::modules::std_modules() {
             if *module == "prelude" || !text.contains("self:") {
                 continue;
             }

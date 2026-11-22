@@ -8,7 +8,6 @@ use cpl_conform::runner;
 #[test]
 fn a_case_compiles_the_same_after_any_other_case() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    runner::configure_spec_env(&root);
     let read = |rel: &str| {
         let path = root.join(rel);
         let text = std::fs::read_to_string(&path).unwrap();

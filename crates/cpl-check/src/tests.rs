@@ -1776,7 +1776,7 @@ fn the_std_name_table_is_read_off_the_standard_library() {
 #[test]
 fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
-    let modules = crate::modules::bundled_std_modules();
+    let modules = crate::modules::std_modules();
     assert!(modules.iter().any(|(name, _)| *name == "seq"));
     for (name, bundled) in modules {
         let file = std::fs::read_to_string(root.join(format!("{name}.cp"))).expect("a module file");
