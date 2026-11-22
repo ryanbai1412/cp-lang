@@ -111,35 +111,60 @@ pub fn tests_dir(source: &Path) -> PathBuf {
     source.with_extension("tests")
 }
 
-/// The cases of a problem: numbered samples first, in order, then the
-/// rest by name.
-pub fn cases(source: &Path) -> Vec<TestCase> {
-    let Ok(entries) = std::fs::read_dir(tests_dir(source)) else {
+/// The existing folder of cases for `source`: `<problem>.tests/` if it
+/// exists, else a sibling `tests/` folder (as in `corpus/problems/<id>/tests/`),
+/// else `<problem>.tests/`.
+pub fn find_tests_dir(source: &Path) -> PathBuf {
+    let own = tests_dir(source);
+    if own.is_dir() {
+        return own;
+    }
+    if let Some(parent) = source.parent() {
+        let sibling = parent.join("tests");
+        if sibling.is_dir() {
+            return sibling;
+        }
+    }
+    own
+}
+
+/// The cases in `dir`: every `*.in` paired with `.out` or `.ans` if present,
+/// numbered samples first in order, then the rest by name.
+pub fn cases_in(dir: &Path) -> Vec<TestCase> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
     let mut cases: Vec<TestCase> = entries
         .filter_map(|entry| entry.ok().map(|e| e.path()))
         .filter(|path| path.extension().is_some_and(|e| e == "in"))
         .map(|input| {
-            let expected = input.with_extension("out");
+            let expected = [input.with_extension("out"), input.with_extension("ans")]
+                .into_iter()
+                .find(|p| p.is_file());
             TestCase {
                 name: input
                     .file_stem()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .into_owned(),
-                expected: expected.is_file().then_some(expected),
+                expected,
                 input,
             }
         })
         .collect();
     cases.sort_by(
         |a, b| match (a.name.parse::<u64>(), b.name.parse::<u64>()) {
-            (Ok(x), Ok(y)) => x.cmp(&y),
+            (Ok(x), Ok(y)) => x.cmp(&y).then_with(|| a.name.cmp(&b.name)),
             (Ok(_), Err(_)) => std::cmp::Ordering::Less,
             (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
             (Err(_), Err(_)) => a.name.cmp(&b.name),
         },
     );
     cases
+}
+
+/// The cases of a problem: numbered samples first, in order, then the
+/// rest by name.
+pub fn cases(source: &Path) -> Vec<TestCase> {
+    cases_in(&find_tests_dir(source))
 }

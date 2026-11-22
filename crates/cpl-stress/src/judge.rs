@@ -78,7 +78,7 @@ pub fn declared(src: &str) -> Vec<Declared> {
             };
             for decorator in &stmt.decorators {
                 let kind = match decorator.name.text.as_str() {
-                    "checker" => "checker",
+                    "checker" | "check" => "checker",
                     "interactor" => "interactor",
                     _ => continue,
                 };

@@ -95,26 +95,26 @@ fn decorated(analysis: &Analysis, wanted: fn(&ast::Decorator) -> bool) -> Option
     })
 }
 
-/// `@brute(main)`, or a bare `@brute`: a slow program to compare the
-/// whole file with. `@brute(part)` pairs one fn with another and is not
-/// one of these.
+/// `@brute(main)`, `@alt(program)`, or a bare `@brute` / `@alt`: a slow
+/// program to compare the whole file with. `@brute(part)` / `@alt(part)`
+/// pairs one fn with another and is not one of these.
 fn is_whole_brute(decorator: &ast::Decorator) -> bool {
-    decorator.name.text == "brute"
-        && match decorator.args.as_slice() {
-            [] => true,
-            [arg] => matches!(&arg.value.kind, ast::ExprKind::Name(name) if name == "main"),
-            _ => false,
+    matches!(decorator.name.text.as_str(), "brute" | "alt")
+        && match decorator.args.first() {
+            None => true,
+            Some(arg) if arg.name.is_some() => true,
+            Some(arg) => matches!(&arg.value.kind, ast::ExprKind::Name(name) if name == "main" || name == "program"),
         }
 }
 
-/// The `@brute(main)` fn a file declares, and the line it is on.
+/// The `@brute(main)` / `@alt(program)` fn a file declares, and the line it is on.
 pub fn brute(analysis: &Analysis) -> Option<(String, u32)> {
     decorated(analysis, is_whole_brute)
 }
 
-/// The `@checker` fn a file declares, and the line it is on.
+/// The `@checker` / `@check` fn a file declares, and the line it is on.
 pub fn checker(analysis: &Analysis) -> Option<(String, u32)> {
-    decorated(analysis, |d| d.name.text == "checker")
+    decorated(analysis, |d| matches!(d.name.text.as_str(), "checker" | "check"))
 }
 
 /// A fn that runs in place of the solution, after the file's input
@@ -1033,8 +1033,8 @@ impl<'a> Lowerer<'a> {
                             "multitest" => {}
                             // Read once, before lowering: see `directed`.
                             "interactive" if decorator.directive => {}
-                            "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
-                            | "interactor" | "grader" | "on_unimplemented" | "" => {}
+                            "get" | "brute" | "alt" | "test" | "solution" | "tags" | "memo" | "law" | "gen"
+                            | "checker" | "check" | "interactor" | "grader" | "on_unimplemented" | "" => {}
                             // For `cpl lint` alone: it changes nothing a run does.
                             "allow" => {}
                             other => self.unsupported(

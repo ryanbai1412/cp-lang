@@ -18,9 +18,10 @@ Runs the solution and a brute on random inputs made from the file's
 `read()` types, stops at the first case they disagree on, shrinks it, and
 saves it to <file>.tests/ as a regression test.
 
-The brute, the checker and the interactor are the file's own `@brute(main)`,
-`@checker` and `@interactor` fns unless an option names a program: a .cpp
-file (built with g++), a .py file, or an executable.
+The brute, the checker and the interactor are the file's own `@brute(main)`
+(or `@alt(program)`), `@checker` (or `@check`) and `@interactor` fns unless
+an option names a program: a .cpp file (built with g++), a .py file, or an
+executable.
 
 options:
   --brute PROG       the slow, obviously right solution to compare with
@@ -115,10 +116,10 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--checker" => parsed.checker = Some(PathBuf::from(value()?)),
             "--interactor" => parsed.interactor = Some(PathBuf::from(value()?)),
             "--cases" => parsed.options.cases = number(value()?)? as usize,
-            "--size" => parsed.options.size = i128::from(number(value()?)?.max(1)),
+            "--size" | "--max-size" => parsed.options.size = i128::from(number(value()?)?.max(1)),
             "--seed" => parsed.options.seed = number(value()?)?,
             "--time-limit" => parsed.options.limit = Duration::from_millis(number(value()?)?),
-            "--jobs" => parsed.options.jobs = number(value()?)?.max(1) as usize,
+            "--jobs" | "--threads" => parsed.options.jobs = number(value()?)?.max(1) as usize,
             "--trace" => parsed.trace = true,
             "--explain" => parsed.explain = true,
             "--format" => match value()?.as_str() {
@@ -212,11 +213,11 @@ pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
             for decorator in stmt
                 .decorators
                 .iter()
-                .filter(|d| !d.directive && d.name.text == "brute")
+                .filter(|d| !d.directive && matches!(d.name.text.as_str(), "brute" | "alt"))
             {
-                if let [arg] = decorator.args.as_slice() {
+                if let Some(arg) = decorator.args.first().filter(|a| a.name.is_none()) {
                     if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
-                        if part != "main" {
+                        if part != "main" && part != "program" {
                             pairs.push((
                                 decorator.span.shift(*base),
                                 decl.name.span.shift(*base),
@@ -762,6 +763,7 @@ pub fn run_with(
 #[cfg(test)]
 mod tests {
     use super::swap_in_part_brutes;
+    use crate::judge::declared;
 
     #[test]
     fn a_recursive_brute_calls_itself_by_the_name_it_takes() {
@@ -771,5 +773,22 @@ mod tests {
             swapped,
             "fn ways_cpl_fast(n: Int) -> Int = n\n            \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
         );
+    }
+
+    #[test]
+    fn alt_and_check_decorators_work_like_brute_and_checker() {
+        let part = "fn ways(n: Int) -> Int = n\n@alt(ways, n: ..=8)\nfn slow(n: Int) -> Int = n + 1\nprint(ways(read()))\n";
+        let swapped = swap_in_part_brutes(part).expect("an alt pair");
+        assert!(swapped.contains("fn ways_cpl_fast("), "{swapped}");
+        assert!(swapped.contains("fn ways(n: Int) -> Int = n + 1"), "{swapped}");
+
+        let whole = "@alt(program, n: ..=10)\nfn brute():\n    print(0)\n";
+        assert!(swap_in_part_brutes(whole).is_none());
+
+        let checked = "@check\nfn ok():\n    0\n";
+        let judges = declared(checked);
+        assert_eq!(judges.len(), 1);
+        assert_eq!(judges[0].kind, "checker");
+        assert_eq!(judges[0].name, "ok");
     }
 }

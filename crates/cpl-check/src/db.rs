@@ -491,7 +491,7 @@ impl Database {
                             !d.directive
                                 && matches!(
                                     d.name.text.as_str(),
-                                    "test" | "checker" | "interactor" | "brute"
+                                    "test" | "checker" | "check" | "interactor" | "brute" | "alt"
                                 )
                         })
                     })
