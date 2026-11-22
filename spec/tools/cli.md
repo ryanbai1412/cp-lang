@@ -21,8 +21,8 @@ most recently edited `.cp` file in the folder.
 | `cpl bench d` | release runtime against the profile's limits and against a matched C++ file if given |
 | `cpl fmt [files]` | canonical formatting (`tools/fmt-lint.md`) |
 | `cpl lint [files]` | lints with autofixes |
-| `cpl build d` | the C++ for the file's judge; `--checked`, `--size`, `--judge` |
-| `cpl submit d` | `build` plus size report, copies the file to the clipboard |
+| `cpl build d` | the C++ for the file's judge; `--checked`, `--size`, `--judge`, `--copy` |
+| `cpl submit d` | `build`, then the cases on that build with the judge's flags; `--copy` puts the file on the clipboard |
 | `cpl migrate` | runs codemods to a new stdlib version and updates pins |
 | `cpl judges` | lists judge profiles |
 | `cpl doc` | renders library docs from doc comments |

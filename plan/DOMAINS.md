@@ -147,11 +147,14 @@ and the time limit.
 **Goal.** What passed here passes on the judge, and the contestant never
 thinks about it.
 
-**Now.** Seven judge profiles (compiler, flags, stack, source limit);
-every port fits every profile.
+**Now.** Eight judge profiles (compiler, flags, stack, source limit,
+usual time and memory), USACO among them; every port fits and compiles
+under every profile; a warning over 32 KB, an error over 64 KB;
+`cpl submit --copy` builds, runs the samples on the judge's build and
+copies the file.
 
-**Next.** Line markers that map judge errors back to source; USACO and
-IOI grader profiles.
+**Next.** Line markers that map judge errors back to source; IOI grader
+profiles.
 
 ## 11. Editor and LSP
 

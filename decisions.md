@@ -5343,3 +5343,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `bsearch_first`/`bsearch_last` search the `r.len + 1` outcomes (each position, or `none`) directly, so they call `ok` at most ceil(log2(r.len + 1)) times: 30 on `1..=1e9`. They no longer probe the ends first or assert that `ok` is monotone at the ends.
 - **Why.** A contest dry run found 33/31 calls on `1..=1e9`, so the documented interactive example broke its own `ask(limit: 30)` budget. Every call may be a query, so a debug-only check would make debug and release disagree on an interactor.
 - **Reverse.** Restore the end probes in `stdlib/seq.cp`; interactive budgets then need a hand-written loop.
+
+## 188. One size budget for every judge, and copying is asked for (2026-11-22)
+
+- **Decision.** Every build warns above 32 KB (or half of a smaller judge limit) and fails above 64 KB, or the judge's own limit when smaller, whatever larger limit the judge accepts (AtCoder's 512 KiB, ICPC's 256 KB). Profiles carry `time_ms` and `memory_mb`, used when a problem's `cp.toml` has no `[limits]`. A `usaco` profile joins (C++17, `-O2 -Wall`, unlimited stack, 2 s, 256 MB). `cpl build --copy` and `cpl submit --copy` put the C++ on the clipboard (pbcopy, wl-copy, xclip, xsel or clip, else `CPL_CLIPBOARD`); a build does not copy by default.
+- **Why.** Goal 5 sets the 32 KB target and the 64 KB limit as Ryan's, not each judge's: a file that only fits AtCoder's limit is a sign of library bloat, and a solution may be resubmitted to a stricter judge. The old 75% warning fired at 384 KB on AtCoder, which never caught anything. Copying by default would overwrite the clipboard on every `cpl build` a script or editor runs; one flag at the moment of sending costs nothing.
+- **Reverse.** Drop the `HARD_BYTES` cap in `cpl_judge::Profile::limit` (and `TARGET_BYTES` in `warn_at`); make `copy` default to true in `build_file`.

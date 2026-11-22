@@ -10,7 +10,7 @@ and `precision` defaults for `io`, instruction set, and which checks
 stay in release.
 
 - Built in: `generic` (default), `codeforces`, `atcoder`, `cses`,
-  `icpc`, `kattis`, `dmoj`, `ioi` (grader-style).
+  `icpc`, `kattis`, `dmoj`, `usaco`; `ioi` (grader-style) is proposed.
 - Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`.
   `[judge.<name>]` tables override fields or `extends` a profile.
 
@@ -30,8 +30,11 @@ answers = ["YES", "NO"]
 ```
 
 - `I128` on a profile without `__int128` is an error naming the judge.
-- Size: warning above 75 % of `source_kb`, error above; `--size` breaks
-  the file down by part.
+- Size: a warning above 32 KB (or half of a smaller `source_kb`), an
+  error above 64 KB or `source_kb`, whichever is smaller; `--size`
+  breaks the file down by part.
+- `time_ms` and `memory_mb` are a problem's limits when its `cp.toml`
+  has no `[limits]`.
 - `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's
   code lens; `time_ms` feeds `cpl bench`.
 - Local release runs build with the profile's flags and run under its
