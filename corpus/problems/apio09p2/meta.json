@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/apio09p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_38/apio09p2.cp",
    "proto/ports/scout_batch_38/today/apio09p2.cp"
@@ -22,7 +25,7 @@
   "sorted-map"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Greedy-next links as a forest: Rooted.from_parents + jump_while counts picks. Suffix argmin via rev.scan(min(by:))."
 }

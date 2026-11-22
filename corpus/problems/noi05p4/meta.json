@@ -19,6 +19,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi05p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_14/noi05p4.cp"
   ],
@@ -32,7 +35,7 @@
   "bfs"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "@memo(array) F64 DP; table of bfs dists; min(by:) over g.out."
 }

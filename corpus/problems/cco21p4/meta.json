@@ -17,6 +17,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco21p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_18/cco21p4.cp",
    "proto/ports/scout_batch_18/today/cco21p4.cp"
@@ -32,7 +35,7 @@
   "peel"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "peel on the reversed Graph finds doomed cities; MaxHeap(by:) of records; buckets for in-edges; [edges.keys]Bool for a list-keyed table."
 }

@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/btoi20p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_15/btoi20p3.cp",
    "proto/ports/scout_batch_18/btoi20p3.cp",
@@ -22,7 +25,7 @@
   "bipartite"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "ParityDsu mark/undo_to + recursion; ParityDsu and yes() were missing from the prelude/stubs."
 }
