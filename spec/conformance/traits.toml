@@ -204,3 +204,136 @@ evict(mut w, 2)
 print(w.all!, w.len)
 """
 out = "3 1"
+
+[case."Add/Ratio/add"]
+code = """
+use std.math.{Ratio}
+print(Ratio(1, 2) + Ratio(1, 3))
+"""
+out = "5/6"
+
+[case."Sub/Ratio/sub"]
+code = """
+use std.math.{Ratio}
+print(Ratio(1, 2) - Ratio(1, 3))
+"""
+out = "1/6"
+
+[case."Neg/Ratio/neg"]
+code = """
+use std.math.{Ratio}
+print(-Ratio(1, 2))
+"""
+out = "-1/2"
+
+[case."Mul/Ratio/mul"]
+code = """
+use std.math.{Ratio}
+print(Ratio(2, 3) * Ratio(3, 4))
+"""
+out = "1/2"
+
+[case."Div/Ratio/div"]
+code = """
+use std.math.{Ratio}
+print(Ratio(1, 2) / Ratio(1, 4))
+"""
+out = "2/1"
+
+[case."Ord/Ratio/lt"]
+code = """
+use std.math.{Ratio}
+print(yes(Ratio(1, 3) < Ratio(1, 2)), yes(Ratio(2, 4) < Ratio(1, 2)))
+"""
+out = "YES NO"
+
+[case."Show/Ratio/show"]
+code = """
+use std.math.{Ratio}
+print(Ratio(2, 4))
+"""
+out = "1/2"
+
+[case."Add/Pt3/add"]
+code = """
+use std.geometry.{Pt3}
+print(Pt3(1, 2, 3) + Pt3(4, 5, 6))
+"""
+out = "5 7 9"
+
+[case."Sub/Pt3/sub"]
+code = """
+use std.geometry.{Pt3}
+print(Pt3(4, 5, 6) - Pt3(1, 2, 3))
+"""
+out = "3 3 3"
+
+[case."Neg/Pt3/neg"]
+code = """
+use std.geometry.{Pt3}
+print(-Pt3(1, -2, 3))
+"""
+out = "-1 2 -3"
+
+[case."Mul/Pt3/mul"]
+code = """
+use std.geometry.{Pt3}
+print(Pt3(1, -2, 3) * 2)
+"""
+out = "2 -4 6"
+
+[case."Show/Pt3/show"]
+code = """
+use std.geometry.{Pt3}
+print(Pt3(7, 8, 9))
+"""
+out = "7 8 9"
+
+[case."Add/BigInt/add"]
+code = """
+use std.math.{BigInt}
+print(BigInt.from_str("99999999999999999999") + BigInt.from_int(1))
+"""
+out = "100000000000000000000"
+
+[case."Sub/BigInt/sub"]
+code = """
+use std.math.{BigInt}
+print(BigInt.from_int(5) - BigInt.from_int(7))
+"""
+out = "-2"
+
+[case."Neg/BigInt/neg"]
+code = """
+use std.math.{BigInt}
+print(-BigInt.from_int(7))
+"""
+out = "-7"
+
+[case."Mul/BigInt/mul"]
+code = """
+use std.math.{BigInt}
+print(BigInt.from_str("100000000000") * BigInt.from_str("100000000000"))
+"""
+out = "10000000000000000000000"
+
+[case."Div/BigInt/div"]
+code = """
+use std.math.{BigInt}
+print(BigInt.from_int(-7) / BigInt.from_int(3))
+"""
+out = "-3"
+
+[case."Ord/BigInt/lt"]
+code = """
+use std.math.{BigInt}
+print(yes(BigInt.from_int(-5) < BigInt.from_int(3)), yes(BigInt.from_str("100000000000000000000") < BigInt.from_int(3)))
+"""
+out = "YES NO"
+
+[case."Show/BigInt/show"]
+code = """
+use std.math.{BigInt}
+print(BigInt.from_str("-000123"))
+"""
+out = "-123"
