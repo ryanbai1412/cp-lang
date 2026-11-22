@@ -1,9 +1,20 @@
-// AtCoder WTF 2026 B: 3D suffix DP tracking (value x, suffix length k, cut).
-const MOD = 998244353
+// AtCoder WTF 2026 B — Suffix Value/Length/Cut DP
+//
+// Process positions from `n - 1` down to `0`, tracking `dp[x, k, cut]`: the
+// number of valid suffixes starting with value `x in 0..a[i]`, active
+// decreasing-run length `k` (0 once resolved), and maximum cut threshold `cut`.
+//
+// From `(y, k, cut)` to `x in 0..a[i]` with `y >= max(0, x - 1)`:
+// - If `k == 0`: stay resolved at `(x, 0, 0)`.
+// - If `x == y + 1`: extend the run at `(x, k, cut)` while `k <= i`.
+// - Otherwise: shrink the run by 1 with `ncut = max(cut, k - x - 1)`; if
+//   `ncut >= k - 1`, the run resolves to `(x, 0, 0)`, else `(x, k - 1, ncut)`.
+
+const MOD = 998_244_353
 type Z = Mod<MOD>
 
-let n: Int = read()
-let a: [0..n]Int = read()
+let n: 1..=200 = read()
+let a: [0..n]1..=n = read()
 
 var dp: [0..n, 0..n, 0..n]Z = 0
 for x in 0..a[n - 1]: dp[x, x, 0] = 1
