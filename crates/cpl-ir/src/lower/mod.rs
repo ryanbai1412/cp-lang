@@ -174,7 +174,7 @@ fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program,
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();
-    lw.collect_all(Some(name));
+    lw.collect_all();
     lw.signatures();
     lw.main_for_aside(name);
     lw.finish(analysis, false)
@@ -207,7 +207,7 @@ fn lower_entry(
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();
-    lw.collect_all(test_name);
+    lw.collect_all();
     lw.signatures();
     if let Some(tname) = test_name {
         lw.main_for_test(tname);
@@ -1036,7 +1036,7 @@ impl<'a> Lowerer<'a> {
 
     // ----- declarations across all modules -----
 
-    fn collect_all(&mut self, active_test: Option<&str>) {
+    fn collect_all(&mut self) {
         let num_mods = self.mods.len();
         // Pass 1: collect declarations in every module.
         for m in 0..num_mods {
@@ -1287,9 +1287,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     ast::StmtKind::Fn(decl) => {
-                        if stmt.decorators.iter().any(|d| d.name.text == "test")
-                            && (m != 0 || active_test != Some(decl.name.text.as_str()))
-                        {
+                        if stmt.decorators.iter().any(|d| d.name.text == "test") && m != 0 {
                             continue;
                         }
                         if !decl.generics.is_empty() {
