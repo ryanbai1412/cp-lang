@@ -4476,3 +4476,19 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Queued.** Rewrite `spec/std/tree.cp`, the DFS parts of `graph.cp` and
   the tree section of 4-graphs-trees.md to this; trim `Rooted` against the
   dreams.
+
+## 148. Release builds run no checks by default (2026-11-21)
+
+- **Decision.** Range stores, `Int`/`I128` overflow, bounds and asserts
+  trap in checked builds (`cpl run`, stress, `-DLOCAL`) and are unchecked
+  in release. A program that would trap gives a wrong answer on the judge,
+  never C++ undefined behaviour. Opt in per block or file with
+  `with checks(ranges: on, overflow: on, bounds: on)` or per profile with
+  `release_checks:`. `with checks(...: off)` still removes a check from
+  checked builds.
+- **Why.** Ryan: on the judge you only care about performance; if the
+  program is wrong it doesn't matter whether it is WA or a crash. Matches
+  decision 100 for range stores. Supersedes the older 11-types.md wording
+  where `checks(ranges: off)` was needed to drop release range checks.
+- **Reverse.** Default `release_checks` to the checked-build set.
+

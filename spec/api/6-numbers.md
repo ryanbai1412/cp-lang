@@ -196,6 +196,16 @@ removes padding. `cpl explain` shows the storage order.
 
 Ranges carry the proofs; the build decides what an unproven step does.
 
+**The rule for every check.** On the judge only valid programs matter, so
+release optimizes for them: no runtime check is on by default, and a wrong
+program gets a wrong answer. Checked builds (`cpl run`, stress, `-DLOCAL`)
+trap on every violation, so bugs show up before submission. The emitted
+C++ still has no undefined behaviour (wrapping goes through unsigned
+casts, which compile to the same instructions), so `-O2` never
+miscompiles the valid paths around a bug. To keep a check on the judge,
+opt in: `with checks(ranges: on, overflow: on)` on a block or file, or
+`release_checks:` in the judge profile.
+
 | Situation | Debug and `cpl run` | Release on the judge |
 |---|---|---|
 | `Int` arithmetic proven in range | no check | no check |

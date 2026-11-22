@@ -12,8 +12,8 @@ input to interval arithmetic, which is what lets `x % d` index a `[0..d]T` with 
 validate input for free. That needs the type checker; a library type couldn't propagate bounds.
 
 **Cost.** A range type is stored in the narrowest integer holding it. Interval arithmetic is compile-time
-only. Contract checks on unproven assignments remain in submissions [you] unless
-`with checks(ranges: off)`.
+only. Contract checks on unproven assignments run in checked builds; release skips
+them unless `with checks(ranges: on)` (decision 148).
 
 **Rejected.** Refinement types with an SMT solver (slow, unpredictable diagnostics); plain `int`/`long long`
 (the bug class); unbounded integers by default (cost).
@@ -47,7 +47,7 @@ only. Contract checks on unproven assignments remain in submissions [you] unless
 - **The niche:** producing `Int`'s niche value (`INT64_MIN`) traps in debug like overflow; in release it is
   part of the wrap contract, so a wrapped value stored in `?Int` may read as `none` [r11 N20].
 - When an interval result doesn't fit in i64 (`1..=1e9` cubed), the result is plain `Int` [r11 N23].
-- `with checks(ranges: off)` removes range-contract checks in release; debug keeps them.
+- Release builds don't check range contracts (decision 148); `with checks(ranges: on)` keeps them on the judge.
 - Struct fields may use only static bounds, so layout never depends on input.
 - Literals: an `e` literal (`1e6`, `1.5e5`) is an `Int` when its value is integral and fits, an error when it
   is integral and doesn't (`1e19`), and `F64` otherwise; `1_000_000` also works [r11 N28].
