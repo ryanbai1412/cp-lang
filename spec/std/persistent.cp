@@ -151,7 +151,11 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// cost: O(nodes)
     /// traps: when `nodes < 0`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.reserve(100); t.all(t.base) == 6`
-    pub fn reserve(mut self, nodes: Int) = todo
+    pub fn reserve(mut self, nodes: Int):
+        assert nodes >= 0, "reserve requires nodes >= 0"
+        left.reserve(nodes)
+        right.reserve(nodes)
+        val.reserve(nodes)
 
     /// The rightmost cut `b` at or after `from` such that `ok(fold(v, from..b))` holds, reading
     /// version `v`.
