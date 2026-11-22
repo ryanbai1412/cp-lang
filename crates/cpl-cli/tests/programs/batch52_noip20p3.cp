@@ -23,7 +23,7 @@ fn solve_range(cols: List<P>, ql: Int, qr: Int):
     if ql == qr: return
     let mid = (ql + qr) / 2
     fn hi(x: Int) -> Bool = x > mid
-    fn cnt_lo(p: P) -> Int = count(not hi(x) for x in stks[p])
+    fn cnt_lo(p: P) -> Int = count(x for x in stks[p] if not hi(x))
     fn pure(p: P) -> Bool:
         let c0 = cnt_lo(p)
         c0 == 0 or c0 == m
@@ -31,7 +31,7 @@ fn solve_range(cols: List<P>, ql: Int, qr: Int):
     for a in cols:
         let c0 = cnt_lo(a)
         let c1 = m - c0
-        let helper = first(p for p in P if p != a and p != empty)!
+        let helper = P.first(p => p != a and p != empty)!
         transfer(helper, empty, c0)
         for x in stks[a].copy().rev:
             transfer(a, if hi(x): empty else: helper)
