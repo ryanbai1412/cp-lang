@@ -531,7 +531,58 @@ pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, t
 /// ties: the maximum matching Hopcroft-Karp finds in the scan order above
 /// traps: never
 /// example: `let adj: [0..2]List<0..2> = [[0, 1], [0]]; max_matching(adj) == (size: 2, mate: [Some(1), Some(0)], back: [Some(1), Some(0)])`
-pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L) = todo
+pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L):
+    var mate: [L]?R = None
+    var back: [R]?L = None
+    var size = 0
+    for u in L:
+        for v in adj[u]:
+            if back[v] == None:
+                mate[u] = Some(v)
+                back[v] = Some(u)
+                size += 1
+                break
+    size += grow_matching(adj, mut mate, mut back)
+    (size:, mate:, back:)
+
+fn grow_matching<L, R>(adj: [L]List<R>, mut mate: [L]?R, mut back: [R]?L) -> Int:
+    var added = 0
+    while true:
+        var level = alternating_layers(adj, mate, back)
+        var open = false
+        for u in L:
+            if level[u] != None:
+                for v in adj[u]:
+                    if back[v] == None: open = true
+        if not open: break
+        var next: [L]Int = 0
+        for root in L:
+            if mate[root] != None: continue
+            var path = [root]
+            while not path.is_empty:
+                let u = path.last!
+                if next[u] == adj[u].len:
+                    level[u] = None
+                    let _ = path.pop()
+                    continue
+                let v = adj[u][next[u]]
+                next[u] += 1
+                if let w = back[v]:
+                    if level[w] != None and level[w]! == level[u]! + 1: path.push(w)
+                else:
+                    flip_path(path, v, mut mate, mut back)
+                    added += 1
+                    path = []
+    added
+
+fn flip_path<L, R>(path: List<L>, end: R, mut mate: [L]?R, mut back: [R]?L):
+    var free = end
+    for i in (0..path.len).rev:
+        let x = path[i]
+        let old = mate[x]
+        mate[x] = Some(free)
+        back[free] = Some(x)
+        if let o = old: free = o
 
 /// A minimum vertex cover of the bipartite graph `adj`: every edge has a marked end, and exactly
 /// `max_matching(adj).size` vertices are marked (König). The unmarked vertices are a maximum
@@ -552,7 +603,7 @@ pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool
     let level = alternating_layers(adj, m.mate, m.back)
     var right: [R]Bool = false
     for u in L:
-        if level[u] != none:
+        if level[u] != None:
             for v in adj[u]: right[v] = true
     (left: [L] u => level[u] == None, right:)
 
@@ -569,8 +620,8 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0
             at += 1
             for v in adj[u]:
                 if let w = back[v]:
-                    if level[w] == none:
-                        level[w] = level[u]! + 1
+                    if level[w] == None:
+                        level[w] = Some(level[u]! + 1)
                         queue.push(w)
     level
 
@@ -1405,14 +1456,18 @@ pub struct Matching<L, R>:
     /// cost: O(L + R)
     /// traps: never
     /// example: `let m = Matching<0..2, 0..2>(); m.len == 0 and m.mate(0) == None`
-    pub fn new() -> Matching<L, R> = todo
+    pub fn new() -> Matching<L, R>:
+        var adj: [L]List<R> = []
+        var mate: [L]?R = None
+        var back: [R]?L = None
+        Matching(adj, mate, back, 0)
 
     /// Allows `l` to match `r`. Does not augment; a repeated edge is harmless.
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 1); m.len == 0 and m.augment(0) and m.mate(0) == Some(1)`
-    pub fn add(mut self, l: L, r: R) = todo
+    pub fn add(mut self, l: L, r: R) = adj[l].push(r)
 
     /// Looks for one augmenting path from the unmatched `from` (Kuhn's DFS, trying edges in `add`
     /// order); `true` when it grew the matching. `false` also when `from` is already matched.
@@ -1420,7 +1475,28 @@ pub struct Matching<L, R>:
     /// cost: O(V + E)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(0, 1); m.add(1, 0); m.augment(0); m.augment(1) and m.mate(0) == Some(1) and m.mate(1) == Some(0)`
-    pub fn augment(mut self, from: L) -> Bool = todo
+    pub fn augment(mut self, from: L) -> Bool:
+        if mate[from] != None: return false
+        var seen: [L]Bool = false
+        var next: [L]Int = 0
+        seen[from] = true
+        var path = [from]
+        while not path.is_empty:
+            let u = path.last!
+            if next[u] == adj[u].len:
+                let _ = path.pop()
+                continue
+            let v = adj[u][next[u]]
+            next[u] += 1
+            if let w = back[v]:
+                if not seen[w]:
+                    seen[w] = true
+                    path.push(w)
+            else:
+                flip_path(path, v, mut mate, mut back)
+                size += 1
+                return true
+        false
 
     /// Grows the current matching to a maximum one by Hopcroft-Karp and returns the number of pairs
     /// added.
@@ -1428,7 +1504,10 @@ pub struct Matching<L, R>:
     /// cost: O(E sqrt V)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(1, 0); m.add(1, 1); m.augment_all() == 2 and m.len == 2`
-    pub fn augment_all(mut self) -> Int = todo
+    pub fn augment_all(mut self) -> Int:
+        let added = grow_matching(adj, mut mate, mut back)
+        size += added
+        added
 
     /// Unmatches `l` and its mate `r`, then tries to rematch both: `augment(l)` first, then one
     /// augmenting path ending at `r` if it is still free. Returns the new size; the matching stays
@@ -1437,26 +1516,63 @@ pub struct Matching<L, R>:
     /// cost: O(V + E)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(1, 0); m.augment(0); m.remove(0) == 1 and m.mate(0) == Some(0)`
-    pub fn remove(mut self, l: L) -> Int = todo
+    pub fn remove(mut self, l: L) -> Int:
+        let Some(r) = mate[l] else:
+            let _ = self.augment(l)
+            return size
+        mate[l] = None
+        back[r] = None
+        size -= 1
+        let _ = self.augment(l)
+        if back[r] != None: return size
+        var radj: [R]List<L> = []
+        for u in L:
+            for v in adj[u]: radj[v].push(u)
+        var seen: [R]Bool = false
+        var next: [R]Int = 0
+        seen[r] = true
+        var path = [r]
+        while not path.is_empty:
+            let v = path.last!
+            if next[v] == radj[v].len:
+                let _ = path.pop()
+                continue
+            let u = radj[v][next[v]]
+            next[v] += 1
+            if let w = mate[u]:
+                if not seen[w]:
+                    seen[w] = true
+                    path.push(w)
+            else:
+                var free = u
+                for i in (0..path.len).rev:
+                    let y = path[i]
+                    let old = back[y]
+                    back[y] = Some(free)
+                    mate[free] = Some(y)
+                    if let o = old: free = o
+                size += 1
+                break
+        size
 
     /// `l`'s partner, `None` when unmatched.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.mate(1) == Some(0) and m.mate(0) == None`
-    pub fn mate(self, l: L) -> ?R = todo
+    pub fn mate(self, l: L) -> ?R = mate[l]
     /// `r`'s partner, `None` when unmatched.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.back(0) == Some(1) and m.back(1) == None`
-    pub fn back(self, r: R) -> ?L = todo
+    pub fn back(self, r: R) -> ?L = back[r]
     /// The number of matched pairs.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = size
     /// The König vertex cover of the current matching, built as in
     /// [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
     ///
@@ -1464,7 +1580,13 @@ pub struct Matching<L, R>:
     /// order: `left` keyed by `L`, `right` keyed by `R`
     /// traps: never
     /// example: `var m = Matching<0..2, 0..1>(); m.add(0, 0); m.add(1, 0); m.augment_all(); m.cover() == (left: [false, false], right: [true])`
-    pub fn cover(self) -> (left: [L]Bool, right: [R]Bool) = todo
+    pub fn cover(self) -> (left: [L]Bool, right: [R]Bool):
+        let level = alternating_layers(adj, mate, back)
+        var right: [R]Bool = false
+        for u in L:
+            if level[u] != None:
+                for v in adj[u]: right[v] = true
+        (left: [L] u => level[u] == None, right:)
 
 /// The maximum (or, with `min: true`, minimum) total-weight matching among the listed edges, not
 /// necessarily perfect: sparse weights through min-cost flow, where `max_weight_matching` needs
