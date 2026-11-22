@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `containers/monodeque` ported to `Window(min)` (std.window has no `MonoDeque`; `Window` keeps a monotone deque for a selective op). Output matches the C++ and `cpl run`; best of 7: 0.01 s vs 0.02 s C++. Bench pairs building: 40 of 54.
 - `p10_matching` phases (stop the emitted C++ after each, best of 7): read < 10 ms, `Rooted` build 50 ms, `up` 10 ms; reference 20 ms. Devirtualizing the monoid's `std::function` op in `up` changed nothing measurable, so the gap is std layout (asked of stdlib), not codegen.
 - `bench/dryrun-matched/p10_matching.cpp` now runs the port's tree DP on a CSR adjacency (the old reference was the greedy leaf matching); it agrees with `p10_matching_ref.cpp` on 300 random trees. The honest ratio is worse: 2.29x (64 ms vs 28 ms, `v03_perf_bench.py --suite dryrun --only p10_matching --runs 5`), so `Rooted.up` is the next codegen target. `palindromic_tree` (2.38x) and `bitset` (1.79x) are std layout costs, asked of stdlib.
 - Note from infra: trivial unblock in `crates/cpl-codegen/src/emit.rs`: the fixed include list now has `#include <utility>`, since `std::exchange` (`Mutation::Take`) failed to compile on GitHub runners' libstdc++ (CI run 45067797421: 6 of 1116 tests). Guarded by `seq_take_is_o1_move_without_copy`. Revert that commit if you prefer emitting it only when used.
