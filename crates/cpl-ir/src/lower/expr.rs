@@ -1164,7 +1164,7 @@ impl<'a> Lowerer<'a> {
                 let message = format!("the variant `{name}` holds values: write `{name}(...)`");
                 self.error(codes::WRONG_ARG_COUNT, span, message);
             }
-            Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
+            Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
             Some(Sym::Domain(d)) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
             Some(Sym::Struct(id)) if self.structs[id].def.fields.is_empty() => {
                 return self.mk(ExprKind::Tuple(Vec::new()), Ty::Struct(id), span);

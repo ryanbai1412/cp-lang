@@ -5039,7 +5039,7 @@ impl<'a> Lowerer<'a> {
                     Some(Sym::Global(id)) => {
                         return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span);
                     }
-                    Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
+                    Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
                     _ => {
                         self.error(
                             codes::UNKNOWN_FIELD,
