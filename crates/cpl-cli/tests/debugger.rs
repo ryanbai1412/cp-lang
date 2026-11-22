@@ -179,6 +179,14 @@ fn run_trace_writes_the_schema_as_json_and_as_one_page() {
         trace.trim_end()
     );
     assert!(page.contains(&data), "the page holds the same trace");
+    let version = format!(
+        "<script id=\"trace-version\" type=\"application/json\">\"{}\"</script>",
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        page.contains(&version),
+        "the page names the cpl that wrote it"
+    );
     // Self-contained: nothing is fetched.
     assert!(!page.contains("src=\"http") && !page.contains("href=\"http"));
 }

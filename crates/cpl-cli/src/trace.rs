@@ -32,14 +32,13 @@ pub fn data(page: &str) -> &str {
         .map_or(page, |end| &page[start..start + end])
 }
 
-/// The viewer with one trace in it and no samples: a self-contained
-/// page. Trace JSON never holds a `<`, so it cannot end the element.
+/// The viewer with one trace in it, no samples and this build's version:
+/// a self-contained page. Trace JSON never holds a `<`, so it cannot end
+/// the element.
 pub fn html(trace_json: &str) -> String {
-    fill(
-        &fill(VIEWER, "trace-samples", "[]"),
-        "trace-data",
-        trace_json,
-    )
+    let page = fill(VIEWER, "trace-samples", "[]");
+    let page = fill(&page, "trace-version", &format!("\"{}\"", crate::VERSION));
+    fill(&page, "trace-data", trace_json)
 }
 
 fn file_name(path: &str) -> &str {
@@ -92,7 +91,7 @@ pub fn versus(
 ) -> String {
     let name = file_name(path);
     let title = format!("{name} against its brute `{brute_fn}`");
-    let note = "The same input through the solution and through its @brute(main), lined up at each print and each debug(...) both ran.";
+    let note = "The same input through the solution and through its brute, lined up at each print and each debug(...) both ran.";
     document(
         &title,
         note,

@@ -63,8 +63,12 @@ with the arrow keys or the scrubber. With one item of weight 1 and value 1,
 
 ![knapsack trace at the first wrong state](screenshots/knapsack-trace.png)
 
-- `shortest_path.trace.html`: `dist` and `adj` render as a graph. When the
+- `shortest_path.trace.html`: `adj` renders as a graph and `dist` as an
+  array. At step 17, line 22, the first road sets `dist[2] = 2`; when the
   second road (1, 2, w = 1) is scanned, `dist[2]` stays 2.
+
+![shortest_path trace where dist[2] is set once](screenshots/shortest_path-trace.png)
+
 - `shows.trace.html`: the locals of `most_watched()` show `order = [1, 2, 3]`
   after the sort; show 1 (0 to 2) is taken first and blocks both others.
 

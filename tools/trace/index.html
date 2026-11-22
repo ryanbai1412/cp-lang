@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Trace debugger · CP Lang 0.2.2</title>
+<title>Trace debugger · CP Lang</title>
 <script>try{const t=localStorage.getItem("cp-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}catch{}</script>
 <!-- Canonical authored viewer. CLI embeds this source; web/scripts/gen-debug.mjs serves it with the browser compiler. -->
 <style id="trace-style">
@@ -334,7 +334,7 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
 <body>
 <a class="skip" href="#main">Skip to trace</a>
 <header class="top">
-  <a class="brand" href="#main"><span class="brand-mark" aria-hidden="true">cp</span>CP Lang <span class="brand-sep">/</span> <span class="brand-page">Trace debugger</span><span class="version">0.2.2</span></a>
+  <a class="brand" href="#main"><span class="brand-mark" aria-hidden="true">cp</span>CP Lang <span class="brand-sep">/</span> <span class="brand-page">Trace debugger</span><span class="version" id="cpl-version" hidden></span></a>
   <nav hidden data-site-nav class="nav" aria-label="Site">
     <a href="course.html">Course</a><a href="index.html">Docs</a><a href="cheat-sheet.html">Cheat sheet</a><a href="playground.html">Playground</a><a href="trace.html" aria-current="page">Trace</a>
   </nav>
@@ -423,6 +423,7 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
 <div class="sr-only" id="announce" aria-live="polite"></div>
 <script id="trace-data" type="application/json">null</script>
 <script id="trace-samples" type="application/json">[]</script>
+<script id="trace-version" type="application/json">""</script>
 <script id="trace-core">
 // CP Lang trace core: validation, checkpoint alignment and state diffing.
 // No DOM access; the page and test_trace.cjs load this same file.
@@ -786,7 +787,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
   const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
 
-  let rerun = null, samples = [], sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
+  let rerun = null, samples = [], cplVersion = "", sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
   const player = T.createPlayer({count:1, onChange:(state, reason) => {
     if (reason === "step" || reason === "seek") selected = null;
     render();
@@ -852,7 +853,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     $("desc").textContent = trace.description ?? "";
     $("sample-section").hidden = !samples.length;
     $("capture-note").textContent = sampleIndex >= 0 ? "Illustrative capture, not a live browser run." : "Recorded execution · immutable snapshots. No data leaves this viewer.";
-    document.title = `${trace.title} · Trace debugger · CP Lang 0.2.2`;
+    document.title = `${trace.title} · Trace debugger · CP Lang${cplVersion ? ` ${cplVersion}` : ""}`;
     const slow = trace.runs.slow;
     $("stats").replaceChildren(...[
       ["Fast steps", trace.runs.fast.steps.length],
@@ -1462,6 +1463,9 @@ if (typeof module !== "undefined") module.exports = TraceCore;
 
   function boot() {
     bind(); bindTip();
+    try { cplVersion = JSON.parse($("trace-version").textContent || '""'); } catch { cplVersion = ""; }
+    $("cpl-version").textContent = cplVersion;
+    $("cpl-version").hidden = !cplVersion;
     try { samples = JSON.parse($("trace-samples").textContent || "[]"); } catch { samples = []; }
     let data = null;
     try { data = JSON.parse($("trace-data").textContent || "null"); } catch (error) { toast(`Embedded trace is not valid JSON: ${error.message}`, true); }
