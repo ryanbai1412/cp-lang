@@ -17,7 +17,7 @@ var weight = [V] v => v.idx + 1
 for (a, b) in [(0, 1), (1, 2), (0, 2)]:
     if let (kept, merged) = d.merge(V(a), V(b)):
         weight[kept] += weight[merged]
-        print(kept == d.find(V(a)), weight[kept])
+        print(yes(kept == d.find(V(a))), weight[kept])
     else: print("one set")
 let c = Comb<Mod<998244353>>()
 print(c.inv(1), c.inv(2), c.inv(n) * Mod<998244353>(n))

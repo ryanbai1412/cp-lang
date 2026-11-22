@@ -11,7 +11,7 @@ print(sqrt(2.0), digits: 10)
 print(xs)
 print(floor(2.7), ceil(2.1), round(2.5), round(-2.5), floor(-2.7), abs(-1.5))
 print(1.0 / 3.0, 2.0 ** 0.5, 1e3, 1.5e-3, 10.0 / 4.0)
-print(3.0 < 4.0, max(1.5, 2.5), min(1.5, 2.5))
+print(yes(3.0 < 4.0), max(1.5, 2.5), min(1.5, 2.5))
 let half = 7 / 2
 let fhalf = 7.0 / 2.0
 print(half, fhalf, "{fhalf} and {total}")

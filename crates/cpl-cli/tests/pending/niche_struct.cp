@@ -6,7 +6,7 @@ domain V = 0..n
 struct Hop(at: V, cost: Int)
 
 var best: ?Edge = none
-print(best == none)
+print(yes(best == none))
 for i in 0..3:
     let e = Edge(i, 10 - i)
     if best == none or (best ?? e).w > e.w:
@@ -14,7 +14,7 @@ for i in 0..3:
 if let e = best:
     print(e.to, e.w)
 let ids: List<?Id> = [Id(1), none, Id(3)]
-print(ids[0] == ids[2], ids[1] == none)
+print(yes(ids[0] == ids[2]), yes(ids[1] == none))
 var far: ?Hop = none
 far = Hop(V.first, 7)
 if let h = far:

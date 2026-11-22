@@ -60,7 +60,7 @@ let grid_lam: [R, C]Int = grid.map(x => x * 2)
 let grid_fn: [R, C]Int = grid.map(inc)
 let grid_bool: [R, C]Bool = grid.map(x => x >= 10)
 print(sum_rc(grid_lam), sum_rc(grid_fn))
-print(grid_bool[R(0), C(2)], grid_bool[R(1), C(0)])
+print(yes(grid_bool[R(0), C(2)]), yes(grid_bool[R(1), C(0)]))
 
 // 6. Nested `[Side][C]Int` -> `[Side][C]Int`.
 let nested: [Side][C]Int = [Side] s => [C] c => if s == X: c.ord else: c.ord + 10

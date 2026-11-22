@@ -12,7 +12,8 @@ static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
 fn run_stderr(source: &str, input: &str) -> (i32, String) {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("runtime_errors_{}_{id}", std::process::id()));
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("runtime_errors_{}_{id}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     let file = dir.join("a.cp");
@@ -25,7 +26,12 @@ fn run_stderr(source: &str, input: &str) -> (i32, String) {
         .stderr(Stdio::piped())
         .spawn()
         .expect("cpl starts");
-    child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
     let out = child.wait_with_output().expect("cpl exits");
     let code = out.status.code().unwrap_or(-1);
     let err = String::from_utf8_lossy(&out.stderr).into_owned();
@@ -156,11 +162,7 @@ fn golden_math_assert_and_input_errors() {
             "-1.0\n",
             "sqrt(-1) of a negative number",
         ),
-        (
-            "assert 1 > 2\n",
-            "",
-            "assertion failed: 1 > 2",
-        ),
+        ("assert 1 > 2\n", "", "assertion failed: 1 > 2"),
         (
             "let a: Int = read()\nprint(a)\n",
             "hello\n",
@@ -216,10 +218,7 @@ print(divide(a, b))
         err.contains("error[R0203]: division by zero: `7 / 0`"),
         "got:\n{err}"
     );
-    assert!(
-        err.contains("note: in test case 2"),
-        "got:\n{err}"
-    );
+    assert!(err.contains("note: in test case 2"), "got:\n{err}");
     assert!(
         err.contains("note: call stack: divide (a.cp:4) <- top level (a.cp:8)"),
         "got:\n{err}"
@@ -255,18 +254,12 @@ print(spin(0))
 ";
     let (code, err) = run_stderr(source, "");
     assert_eq!(code, 3);
-    assert!(
-        err.contains("never stops calling itself?"),
-        "got:\n{err}"
-    );
+    assert!(err.contains("never stops calling itself?"), "got:\n{err}");
     assert!(
         err.contains("frames omitted"),
         "expected deep call stack to be summarized, got:\n{err}"
     );
-    assert!(
-        err.contains("<- top level (a.cp:4)"),
-        "got:\n{err}"
-    );
+    assert!(err.contains("<- top level (a.cp:4)"), "got:\n{err}");
 }
 
 fn build_and_run_cpp(source: &str) -> (i32, String) {
@@ -289,7 +282,13 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
         String::from_utf8_lossy(&build.stderr)
     );
     let compile = Command::new("g++")
-        .args(["-std=c++17", "-O2", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+        .args([
+            "-std=c++17",
+            "-O2",
+            cpp.to_str().unwrap(),
+            "-o",
+            exe.to_str().unwrap(),
+        ])
         .output()
         .expect("g++");
     assert!(
@@ -326,12 +325,21 @@ fn wide_range_overflow_traps_in_interp_and_cpp() {
     for (src, interp_msg, cpp_msg) in cases {
         let (code, err) = run_stderr(src, "");
         assert_eq!(code, 3, "interp should trap:\n{err}");
-        assert!(err.contains(interp_msg), "interp expected `{interp_msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(interp_msg),
+            "interp expected `{interp_msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
         let (cpp_code, cpp_err) = build_and_run_cpp(src);
         assert_eq!(cpp_code, 3, "cpp should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(cpp_msg), "cpp expected `{cpp_msg}`, got:\n{cpp_err}");
+        assert!(
+            cpp_err.contains(cpp_msg),
+            "cpp expected `{cpp_msg}`, got:\n{cpp_err}"
+        );
     }
 }
 
@@ -354,11 +362,19 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
     for (idx, (src, msg)) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, "");
         assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
-        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(msg),
+            "interp case {idx} expected `{msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
-        let dir = std::env::temp_dir()
-            .join(format!("runtime_errors_sort_cmp_{}_{idx}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "runtime_errors_sort_cmp_{}_{idx}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
@@ -369,17 +385,39 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
             .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
             .output()
             .expect("cpl build");
-        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        assert!(
+            build.status.success(),
+            "cpl build failed:\n{}",
+            String::from_utf8_lossy(&build.stderr)
+        );
         let compile = Command::new("g++")
-            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .args([
+                "-std=c++17",
+                "-O1",
+                "-DLOCAL",
+                cpp.to_str().unwrap(),
+                "-o",
+                exe.to_str().unwrap(),
+            ])
             .output()
             .expect("g++");
-        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "g++ failed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
-        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+        assert_eq!(
+            out.status.code(),
+            Some(3),
+            "checked cpp case {idx} should trap:\n{cpp_err}"
+        );
+        assert!(
+            cpp_err.contains(msg),
+            "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}"
+        );
     }
 }
 
@@ -395,11 +433,17 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
     for (idx, src) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, "");
         assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
-        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(msg),
+            "interp case {idx} expected `{msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
-        let dir = std::env::temp_dir()
-            .join(format!("runtime_errors_reach_{}_{idx}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("runtime_errors_reach_{}_{idx}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
@@ -410,17 +454,39 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
             .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
             .output()
             .expect("cpl build");
-        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        assert!(
+            build.status.success(),
+            "cpl build failed:\n{}",
+            String::from_utf8_lossy(&build.stderr)
+        );
         let compile = Command::new("g++")
-            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .args([
+                "-std=c++17",
+                "-O1",
+                "-DLOCAL",
+                cpp.to_str().unwrap(),
+                "-o",
+                exe.to_str().unwrap(),
+            ])
             .output()
             .expect("g++");
-        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "g++ failed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
-        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+        assert_eq!(
+            out.status.code(),
+            Some(3),
+            "checked cpp case {idx} should trap:\n{cpp_err}"
+        );
+        assert!(
+            cpp_err.contains(msg),
+            "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}"
+        );
     }
 }
 
@@ -501,11 +567,19 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
     for (idx, (src, input, msg)) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, input);
         assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
-        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(msg),
+            "interp case {idx} expected `{msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
-        let dir = std::env::temp_dir()
-            .join(format!("runtime_errors_range_store_{}_{idx}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "runtime_errors_range_store_{}_{idx}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
@@ -516,24 +590,51 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
             .output()
             .expect("cpl build");
-        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        assert!(
+            build.status.success(),
+            "cpl build failed:\n{}",
+            String::from_utf8_lossy(&build.stderr)
+        );
         let compile = Command::new("g++")
-            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .args([
+                "-std=c++17",
+                "-O1",
+                "-DLOCAL",
+                cpp.to_str().unwrap(),
+                "-o",
+                exe.to_str().unwrap(),
+            ])
             .output()
             .expect("g++");
-        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "g++ failed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let mut child = Command::new(&exe)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("run binary");
-        child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
         let out = child.wait_with_output().expect("wait binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
-        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+        assert_eq!(
+            out.status.code(),
+            Some(3),
+            "checked cpp case {idx} should trap:\n{cpp_err}"
+        );
+        assert!(
+            cpp_err.contains(msg),
+            "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}"
+        );
     }
 }
 
@@ -547,11 +648,19 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
     for (idx, src) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, "");
         assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
-        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(msg),
+            "interp case {idx} expected `{msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
-        let dir = std::env::temp_dir()
-            .join(format!("runtime_errors_dom_lit_{}_{idx}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "runtime_errors_dom_lit_{}_{idx}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
@@ -562,17 +671,39 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
             .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
             .output()
             .expect("cpl build");
-        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        assert!(
+            build.status.success(),
+            "cpl build failed:\n{}",
+            String::from_utf8_lossy(&build.stderr)
+        );
         let compile = Command::new("g++")
-            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .args([
+                "-std=c++17",
+                "-O1",
+                "-DLOCAL",
+                cpp.to_str().unwrap(),
+                "-o",
+                exe.to_str().unwrap(),
+            ])
             .output()
             .expect("g++");
-        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "g++ failed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
-        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+        assert_eq!(
+            out.status.code(),
+            Some(3),
+            "checked cpp case {idx} should trap:\n{cpp_err}"
+        );
+        assert!(
+            cpp_err.contains(msg),
+            "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}"
+        );
     }
 }
 
@@ -615,11 +746,23 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
     for (idx, (src, msg)) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, "");
         assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
-        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
-        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+        assert!(
+            err.contains(msg),
+            "interp case {idx} expected `{msg}`, got:\n{err}"
+        );
+        assert!(
+            !err.contains("the interpreter itself failed"),
+            "got panic:\n{err}"
+        );
 
         let (cpp_code, cpp_err) = build_and_run_cpp(src);
-        assert_eq!(cpp_code, 3, "checked cpp case {idx} should trap:\n{cpp_err}");
-        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+        assert_eq!(
+            cpp_code, 3,
+            "checked cpp case {idx} should trap:\n{cpp_err}"
+        );
+        assert!(
+            cpp_err.contains(msg),
+            "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}"
+        );
     }
 }

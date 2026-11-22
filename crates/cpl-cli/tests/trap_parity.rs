@@ -21,7 +21,12 @@ fn run(mut command: Command, input: &str) -> std::process::Output {
         .stderr(Stdio::piped())
         .spawn()
         .expect("starts");
-    child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
     child.wait_with_output().unwrap()
 }
 
@@ -38,7 +43,11 @@ fn judge_build(source: &Path) -> PathBuf {
         .arg(&cpp)
         .output()
         .unwrap();
-    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     std::fs::read(&cpp).unwrap().hash(&mut hasher);
     let bin = dir.join(format!("judge-{:016x}", hasher.finish()));
@@ -49,7 +58,11 @@ fn judge_build(source: &Path) -> PathBuf {
             .arg(&cpp)
             .output()
             .unwrap();
-        assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
     }
     bin
 }
@@ -59,7 +72,8 @@ fn every_runtime_error_of_cpl_run_stops_the_judge_build_too() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/trap_parity.cp");
     let text = std::fs::read_to_string(&source).unwrap();
     assert!(
-        text.contains(&format!("if which == {SITES}:")) && !text.contains(&format!("if which == {}:", SITES + 1)),
+        text.contains(&format!("if which == {SITES}:"))
+            && !text.contains(&format!("if which == {}:", SITES + 1)),
         "`SITES` must be the last `which` in trap_parity.cp"
     );
     let bin = judge_build(&source);
@@ -96,7 +110,10 @@ fn every_runtime_error_of_cpl_run_stops_the_judge_build_too() {
 fn every_known_trap_is_still_open() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/known_traps.cp");
     let text = std::fs::read_to_string(&source).unwrap();
-    let sites = text.lines().filter(|line| line.starts_with("if which == ")).count();
+    let sites = text
+        .lines()
+        .filter(|line| line.starts_with("if which == "))
+        .count();
     let bin = judge_build(&source);
     let mut closed = Vec::new();
     for which in 1..=sites {
@@ -106,7 +123,9 @@ fn every_known_trap_is_still_open() {
         let ran = run(interp, &input).status.code();
         let built = run(Command::new(&bin), &input).status.code();
         if ran == Some(3) && built == Some(3) {
-            closed.push(format!("site {which} is stopped by both now: move it to trap_parity.cp"));
+            closed.push(format!(
+                "site {which} is stopped by both now: move it to trap_parity.cp"
+            ));
         }
     }
     assert!(closed.is_empty(), "{}", closed.join("\n"));
@@ -123,7 +142,11 @@ fn input_longer_than_one_piece_reads_the_same_in_the_judge_build() {
         // Lengths vary, so the cuts fall inside numbers and inside words.
         let x = (i * 2_654_435_761) % 1_000_000_007;
         let word = "ab".repeat((i % 7 + 1) as usize);
-        input.push_str(&format!("{} {word} {}.5\n", x as i64 - 500_000_000, i % 100));
+        input.push_str(&format!(
+            "{} {word} {}.5\n",
+            x as i64 - 500_000_000,
+            i % 100
+        ));
     }
     assert!(input.len() > 4 * (1 << 16), "several pieces");
     let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
@@ -131,7 +154,10 @@ fn input_longer_than_one_piece_reads_the_same_in_the_judge_build() {
     let interp = run(interp, &input);
     let judge = run(Command::new(judge_build(&source)), &input);
     assert!(interp.status.success() && judge.status.success());
-    assert_eq!(String::from_utf8_lossy(&interp.stdout), String::from_utf8_lossy(&judge.stdout));
+    assert_eq!(
+        String::from_utf8_lossy(&interp.stdout),
+        String::from_utf8_lossy(&judge.stdout)
+    );
 }
 
 /// A program that asks and then reads has its question out before it

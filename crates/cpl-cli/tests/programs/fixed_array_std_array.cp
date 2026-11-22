@@ -37,4 +37,4 @@ var copy: [0..3]Int = scratch.copy()
 assert copy == scratch
 assert sum3([dp[0], dp[1], dp[2]]) == dp[0] + dp[1] + dp[2]
 
-print(dp[0], dp[1], dp[2], fwd, rev, flags[1], flags[2], side_cnt[Side.Mid], scratch[0], scratch[2])
+print(dp[0], dp[1], dp[2], fwd, rev, yes(flags[1]), yes(flags[2]), side_cnt[Side.Mid], scratch[0], scratch[2])

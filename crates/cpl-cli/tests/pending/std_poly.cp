@@ -44,8 +44,8 @@ let s_in: List<Z> = [Z(0), Z(0), Z(4), Z(12), Z(9), Z(5), Z(7)]
 let g = sqrt(s_in, 7)!
 let gg = convolve(g, g)
 print([gg[i] for i in 0..7])
-print(sqrt([Z(0), Z(4), Z(1)], 3) == none)
-print(sqrt([Z(3), Z(1)], 2) == none)
+print(yes(sqrt([Z(0), Z(4), Z(1)], 3) == none))
+print(yes(sqrt([Z(3), Z(1)], 2) == none))
 print(sqrt(List.filled(4, Z(0)), 4)!)
 
 let (dq, dr) = div_mod(a, [Z(3), Z(1), Z(2)])
@@ -55,7 +55,7 @@ print(eval(a, Z(5)))
 print(prod_linear([Z(1), Z(2), Z(4), Z(7)]))
 let sh = taylor_shift(a, Z(3))
 print(sh)
-print(eval(sh, Z(5)) == eval(a, Z(8)))
+print(yes(eval(sh, Z(5)) == eval(a, Z(8))))
 let xs = [Z(i * 3 + 1) for i in 0..40]
 let ev = eval_all(a, xs)
 print(all(ev[i] == eval(a, xs[i]) for i in 0..xs.len))
@@ -67,10 +67,10 @@ print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(0), Z(2), Z(3)], 6))
 print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(4), Z(2), Z(3)], 6))
 let ys_l = [eval(a, Z(i)) for i in 0..a.len]
 print(lagrange_at(ys_l, Z(100)) == eval(a, Z(100)))
-print(lagrange_at(ys_l, Z(3)) == ys_l[3])
+print(yes(lagrange_at(ys_l, Z(3)) == ys_l[3]))
 let xs_i = [Z(i * 2 + 1) for i in 0..a.len]
 let ys_i = [eval(a, x) for x in xs_i]
-print(interpolate(xs_i, ys_i) == a)
+print(yes(interpolate(xs_i, ys_i) == a))
 let big_p = [Z((i * 7 + 1) % 31) for i in 0..68]
 let big_x = [Z(i * 3 + 2) for i in 0..68]
 print(interpolate(big_x, eval_all(big_p, big_x)) == big_p)

@@ -94,14 +94,17 @@ const MISTAKES: &[(&str, Edit)] = &[
     ("`!x` for `not x`", |l| word_swap(l, "not ", "!")),
     ("`..<` for `..`", |l| {
         let at = l.match_indices("..").map(|(i, _)| i).find(|&i| {
-            !l[i + 2..].starts_with(['=', '.', '<']) && !l[..i].ends_with('.') && !l[..i].ends_with('"')
+            !l[i + 2..].starts_with(['=', '.', '<'])
+                && !l[..i].ends_with('.')
+                && !l[..i].ends_with('"')
         })?;
         Some(format!("{}..<{}", &l[..at], &l[at + 2..]))
     }),
     ("`let` for a `var`", |l| {
         let t = l.trim_start();
         let at = l.len() - t.len();
-        t.starts_with("var ").then(|| format!("{}let {}", &l[..at], &t[4..]))
+        t.starts_with("var ")
+            .then(|| format!("{}let {}", &l[..at], &t[4..]))
     }),
     ("misspell a field or method", |l| {
         let t = l.trim_start();
@@ -109,10 +112,20 @@ const MISTAKES: &[(&str, Edit)] = &[
             return None;
         }
         let (at, _) = l.match_indices('.').find(|&(i, _)| {
-            let name: String = l[i + 1..].chars().take_while(|c| c.is_ascii_lowercase() || *c == '_').collect();
-            name.len() >= 4 && !l[..i].ends_with(['.', ' ', '(', '[']) && !l[..i].ends_with(char::is_numeric)
+            let name: String = l[i + 1..]
+                .chars()
+                .take_while(|c| c.is_ascii_lowercase() || *c == '_')
+                .collect();
+            name.len() >= 4
+                && !l[..i].ends_with(['.', ' ', '(', '['])
+                && !l[..i].ends_with(char::is_numeric)
         })?;
-        let end = at + 1 + l[at + 1..].chars().take_while(|c| c.is_ascii_lowercase() || *c == '_').count();
+        let end = at
+            + 1
+            + l[at + 1..]
+                .chars()
+                .take_while(|c| c.is_ascii_lowercase() || *c == '_')
+                .count();
         Some(format!("{}{}", &l[..end - 1], &l[end..]))
     }),
 ];
@@ -141,12 +154,43 @@ struct Broken {
 /// Every port broken by every edit on up to three of its lines, picked
 /// the same way on every run.
 const SPEC_PORTS: &[&str] = &[
-    "aac4p6", "aac5p4", "ccc03s4", "ccc18s4", "ccc19s2", "cco18p4", "cco19p5",
-    "cco21p4", "cco24p1", "ceoi19pp1", "dmopc20c4p4", "dmopc21c2p1", "dmopc21c4p1",
-    "dmopc21c4p2", "dmopc21c5p2", "dmopc21c9p1", "egoi22p3", "etsr23r1p4", "ioi01p1",
-    "ioi15p5", "ioi15p6", "ioi16p6", "ioi16p6io", "ioi18p1", "ioi19p5", "ioi19p6",
-    "ioi22p5", "mccc4j1", "nccc10s4", "nccc8s3", "noip14p6", "sac22cc3jp2",
-    "sac22cc3jp4", "sac22cc4jp2", "shoi16p3", "ucrpc21c", "yac6p3",
+    "aac4p6",
+    "aac5p4",
+    "ccc03s4",
+    "ccc18s4",
+    "ccc19s2",
+    "cco18p4",
+    "cco19p5",
+    "cco21p4",
+    "cco24p1",
+    "ceoi19pp1",
+    "dmopc20c4p4",
+    "dmopc21c2p1",
+    "dmopc21c4p1",
+    "dmopc21c4p2",
+    "dmopc21c5p2",
+    "dmopc21c9p1",
+    "egoi22p3",
+    "etsr23r1p4",
+    "ioi01p1",
+    "ioi15p5",
+    "ioi15p6",
+    "ioi16p6",
+    "ioi16p6io",
+    "ioi18p1",
+    "ioi19p5",
+    "ioi19p6",
+    "ioi22p5",
+    "mccc4j1",
+    "nccc10s4",
+    "nccc8s3",
+    "noip14p6",
+    "sac22cc3jp2",
+    "sac22cc3jp4",
+    "sac22cc4jp2",
+    "shoi16p3",
+    "ucrpc21c",
+    "yac6p3",
 ];
 
 fn broken_ports(edits: &'static [(&'static str, Edit)]) -> Vec<Broken> {
@@ -317,14 +361,24 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unrestored") && t.restored == 0 {
         let at = |s: &str| s.lines().nth(b.line as usize).unwrap_or("").to_string();
         let got = fixed.as_deref().map_or("no fix".to_string(), at);
-        println!("--- {} {}: {}\n    {}\n    got {got}", b.path, b.edit, at(&b.original), errs[0].message);
+        println!(
+            "--- {} {}: {}\n    {}\n    got {got}",
+            b.path,
+            b.edit,
+            at(&b.original),
+            errs[0].message
+        );
     }
     (t, Some((errs[0].code.0.to_string(), first)))
 }
 
 /// With `restore`, also applies every fix as `cpl fix` would and counts
 /// the copies that turn back into the port.
-fn scoreboard_broken_ports(title: &str, edits: &'static [(&'static str, Edit)], restore: bool) -> Tally {
+fn scoreboard_broken_ports(
+    title: &str,
+    edits: &'static [(&'static str, Edit)],
+    restore: bool,
+) -> Tally {
     let broken = broken_ports(edits);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let ports: Vec<&[Broken]> = broken.chunk_by(|a, b| a.path == b.path).collect();
@@ -384,7 +438,14 @@ fn scoreboard_broken_ports(title: &str, edits: &'static [(&'static str, Edit)], 
 /// The fenced cp blocks of `spec/core/*.md` and `spec/lib/*.md`.
 fn plan_blocks() -> Vec<(String, String)> {
     let mut docs: Vec<PathBuf> = Vec::new();
-    for dir in ["spec/core", "spec/lib", "spec/lib/rationale", "spec/tools", "docs", "site/content"] {
+    for dir in [
+        "spec/core",
+        "spec/lib",
+        "spec/lib/rationale",
+        "spec/tools",
+        "docs",
+        "site/content",
+    ] {
         if let Ok(entries) = std::fs::read_dir(root().join(dir)) {
             for e in entries.flatten() {
                 let p = e.path();
@@ -414,7 +475,9 @@ fn plan_blocks() -> Vec<(String, String)> {
                             out.push((format!("{name}:{}", start + 1), body));
                         }
                     }
-                    None if matches!(line.trim(), "```" | "```cp") => block = Some((i, String::new())),
+                    None if matches!(line.trim(), "```" | "```cp") => {
+                        block = Some((i, String::new()))
+                    }
                     None => {}
                 }
             } else if let Some((_, body)) = &mut block {
@@ -508,7 +571,11 @@ fn recovery_scoreboard() {
     let plan = scoreboard_plan();
     let ports = scoreboard_broken_ports("broken ports", EDITS, false);
     assert!(plan.blocks > 100, "the plan code blocks went missing");
-    assert!(ports.files >= 200, "the broken ports went missing ({})", ports.files);
+    assert!(
+        ports.files >= 200,
+        "the broken ports went missing ({})",
+        ports.files
+    );
     assert_eq!(ports.silent, 0, "a broken port checked clean");
     let reported = (ports.files - ports.silent) as f64;
     assert!(
@@ -529,7 +596,11 @@ fn recovery_scoreboard() {
 #[ignore = "v0.3 cpl-check regression on spec.cp: E0203 'no std module declares it' omits fix-its, dropping fixable rate to 59.2% (<88%)"]
 fn fix_it_scoreboard() {
     let ports = scoreboard_broken_ports("common mistakes", MISTAKES, true);
-    assert!(ports.files >= 50, "the mistake copies went missing ({})", ports.files);
+    assert!(
+        ports.files >= 50,
+        "the mistake copies went missing ({})",
+        ports.files
+    );
     let reported = (ports.files - ports.silent) as f64;
     assert!(
         ports.fixable as f64 >= 0.88 * ports.errors as f64,

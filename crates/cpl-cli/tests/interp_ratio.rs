@@ -20,9 +20,18 @@ fn repo_root() -> PathBuf {
 #[test]
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
     let cases = [
-        ("corpus/problems/dmopc20c4p4/spec.cp", "corpus/problems/dmopc20c4p4/tests/01.in"),
-        ("corpus/problems/ccc03s4/spec.cp", "corpus/problems/ccc03s4/tests/01.in"),
-        ("corpus/problems/aac5p4/spec.cp", "corpus/problems/aac5p4/tests/01.in"),
+        (
+            "corpus/problems/dmopc20c4p4/spec.cp",
+            "corpus/problems/dmopc20c4p4/tests/01.in",
+        ),
+        (
+            "corpus/problems/ccc03s4/spec.cp",
+            "corpus/problems/ccc03s4/tests/01.in",
+        ),
+        (
+            "corpus/problems/aac5p4/spec.cp",
+            "corpus/problems/aac5p4/tests/01.in",
+        ),
     ];
     for (port_rel, sample_rel) in cases {
         let port = repo_root().join(port_rel);

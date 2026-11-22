@@ -1,6 +1,6 @@
 // `match` on `?T` with `some(pat)` / `none`, and `?` inside expression-bodied
 // `fn ... = if ...:` branches.
-enum Parity: Even, Odd
+enum Parity = Even | Odd
 
 fn classify(o: ?Parity) -> Int = match o:
     some(Odd) => 1

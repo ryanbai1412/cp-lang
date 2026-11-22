@@ -34,7 +34,9 @@ fn program(test: &str, name: &str) -> PathBuf {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join(name);
-    let from = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/debugger").join(name);
+    let from = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/debugger")
+        .join(name);
     std::fs::copy(from, &path).unwrap();
     path
 }
@@ -68,7 +70,15 @@ fn debug_shows_on_a_run_and_is_not_in_the_cpp() {
         text(&out.stderr),
         "[line 6] i = 0, best = 1\n[line 6] i = 1, best = 5\n[line 6] i = 2, best = 5\n"
     );
-    let out = cpl(&["build".as_ref(), path.as_os_str(), "-o".as_ref(), "-".as_ref()], b"");
+    let out = cpl(
+        &[
+            "build".as_ref(),
+            path.as_os_str(),
+            "-o".as_ref(),
+            "-".as_ref(),
+        ],
+        b"",
+    );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     // Below the header that quotes the source, nothing of it is left.
     let cpp = text(&out.stdout);
@@ -79,7 +89,15 @@ fn debug_shows_on_a_run_and_is_not_in_the_cpp() {
 #[test]
 fn run_format_json_is_what_the_editor_overlays() {
     let path = scratch("run-json", "max.cp", MAX);
-    let out = cpl(&["run".as_ref(), path.as_os_str(), "--format".as_ref(), "json".as_ref()], b"3\n1 5 2\n");
+    let out = cpl(
+        &[
+            "run".as_ref(),
+            path.as_os_str(),
+            "--format".as_ref(),
+            "json".as_ref(),
+        ],
+        b"3\n1 5 2\n",
+    );
     assert_eq!(out.status.code(), Some(0));
     let report = text(&out.stdout);
     assert!(
@@ -89,33 +107,77 @@ fn run_format_json_is_what_the_editor_overlays() {
         "{report}"
     );
     // A failed run says where, in the same report.
-    let out = cpl(&["run".as_ref(), path.as_os_str(), "--format".as_ref(), "json".as_ref()], b"3\n1 500 2\n");
+    let out = cpl(
+        &[
+            "run".as_ref(),
+            path.as_os_str(),
+            "--format".as_ref(),
+            "json".as_ref(),
+        ],
+        b"3\n1 500 2\n",
+    );
     assert_eq!(out.status.code(), Some(3));
-    assert!(text(&out.stdout).contains("\"error\":{\"line\":2,\"message\":\""), "{}", text(&out.stdout));
+    assert!(
+        text(&out.stdout).contains("\"error\":{\"line\":2,\"message\":\""),
+        "{}",
+        text(&out.stdout)
+    );
 }
 
 #[test]
 fn run_trace_writes_the_schema_as_json_and_as_one_page() {
     let path = scratch("run-trace", "max.cp", MAX);
     let json = cpl(
-        &["run".as_ref(), path.as_os_str(), "--trace".as_ref(), "--format".as_ref(), "json".as_ref()],
+        &[
+            "run".as_ref(),
+            path.as_os_str(),
+            "--trace".as_ref(),
+            "--format".as_ref(),
+            "json".as_ref(),
+        ],
         b"3\n1 5 2\n",
     );
     assert_eq!(json.status.code(), Some(0));
     let trace = text(&json.stdout);
-    assert!(trace.starts_with("{\"schemaVersion\":1,\"title\":\"max.cp\","), "{trace}");
-    assert!(trace.contains("\"a\":{\"name\":\"a\",\"type\":\"[Int]Int\",\"kind\":\"array\"}"), "{trace}");
-    assert!(trace.contains("\"best\":{\"name\":\"best\",\"type\":\"Int\",\"kind\":\"scalar\"}"), "{trace}");
-    assert!(trace.contains("\"runs\":{\"fast\":{\"label\":\"cpl run\",\"steps\":[{\"id\":0,\"line\":1,"), "{trace}");
+    assert!(
+        trace.starts_with("{\"schemaVersion\":1,\"title\":\"max.cp\","),
+        "{trace}"
+    );
+    assert!(
+        trace.contains("\"a\":{\"name\":\"a\",\"type\":\"[Int]Int\",\"kind\":\"array\"}"),
+        "{trace}"
+    );
+    assert!(
+        trace.contains("\"best\":{\"name\":\"best\",\"type\":\"Int\",\"kind\":\"scalar\"}"),
+        "{trace}"
+    );
+    assert!(
+        trace
+            .contains("\"runs\":{\"fast\":{\"label\":\"cpl run\",\"steps\":[{\"id\":0,\"line\":1,"),
+        "{trace}"
+    );
     // Safe inside a <script>: no `<` anywhere.
     assert!(!trace.contains('<'));
     let html = cpl(
-        &["run".as_ref(), path.as_os_str(), "--trace".as_ref(), "--format".as_ref(), "html".as_ref()],
+        &[
+            "run".as_ref(),
+            path.as_os_str(),
+            "--trace".as_ref(),
+            "--format".as_ref(),
+            "html".as_ref(),
+        ],
         b"3\n1 5 2\n",
     );
     let page = text(&html.stdout);
-    assert!(page.starts_with("<!doctype html>") || page.starts_with("<!DOCTYPE html>"), "{}", &page[..60]);
-    let data = format!("<script id=\"trace-data\" type=\"application/json\">{}</script>", trace.trim_end());
+    assert!(
+        page.starts_with("<!doctype html>") || page.starts_with("<!DOCTYPE html>"),
+        "{}",
+        &page[..60]
+    );
+    let data = format!(
+        "<script id=\"trace-data\" type=\"application/json\">{}</script>",
+        trace.trim_end()
+    );
     assert!(page.contains(&data), "the page holds the same trace");
     // Self-contained: nothing is fetched.
     assert!(!page.contains("src=\"http") && !page.contains("href=\"http"));
@@ -141,16 +203,29 @@ fn stress_finds_the_planted_bug_with_the_files_own_brute_and_traces_both() {
     assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
     assert!(report.starts_with("{\"status\":\"fail\""), "{report}");
     // One test case under the `@!multitest` header, shrunk.
-    assert!(report.contains("\"raw_input\":\"1\\n3\\n0 0 1\\n\""), "{report}");
-    assert!(report.contains("\"expected\":\"4\\n\",\"got\":\"3\\n\""), "{report}");
+    assert!(
+        report.contains("\"raw_input\":\"1\\n3\\n0 0 1\\n\""),
+        "{report}"
+    );
+    assert!(
+        report.contains("\"expected\":\"4\\n\",\"got\":\"3\\n\""),
+        "{report}"
+    );
     // The `debug(\"piles\", ...)` both sides ran, with what each showed.
     assert!(
         report.contains("\"stages\":[{\"name\":\"case 1 · debug piles\",\"line\":17,\"fast\":\"3, 1\",\"brute\":\"4, 4\"}]"),
         "{report}"
     );
-    let page = std::fs::read_to_string(path.with_extension("tests").join("stress-1.trace.html")).unwrap();
-    assert!(page.contains("\"runs\":{\"fast\":{\"label\":\"solution\""), "the solution's run");
-    assert!(page.contains("\"slow\":{\"label\":\"slow\""), "the brute's run");
+    let page =
+        std::fs::read_to_string(path.with_extension("tests").join("stress-1.trace.html")).unwrap();
+    assert!(
+        page.contains("\"runs\":{\"fast\":{\"label\":\"solution\""),
+        "the solution's run"
+    );
+    assert!(
+        page.contains("\"slow\":{\"label\":\"slow\""),
+        "the brute's run"
+    );
     assert!(page.contains("\"checkpoint\":\"case 1 · debug piles\""));
 }
 
@@ -168,7 +243,10 @@ fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently(
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
     assert!(report.contains("that is: n = 1  a = [2]"), "{report}");
-    assert!(report.contains("first differing value: `s`, its 2nd value"), "{report}");
+    assert!(
+        report.contains("first differing value: `s`, its 2nd value"),
+        "{report}"
+    );
     assert!(report.contains("solution s = 4 at line 6"), "{report}");
     assert!(report.contains("brute    s = 2 at line 12"), "{report}");
     let out = cpl(&args(true), b"");
@@ -180,23 +258,60 @@ fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently(
         "{report}"
     );
     // Without the flag, nothing is traced and the report has no `explain`.
-    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--format".as_ref(), "json".as_ref()], b"");
-    assert!(!text(&out.stdout).contains("\"explain\""), "{}", text(&out.stdout));
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--format".as_ref(),
+            "json".as_ref(),
+        ],
+        b"",
+    );
+    assert!(
+        !text(&out.stdout).contains("\"explain\""),
+        "{}",
+        text(&out.stdout)
+    );
 }
 
 #[test]
 fn stress_judges_a_constructive_multitest_with_the_files_own_checker() {
     // CF 2284 B: any valid arrangement is accepted.
     let good = program("stress-checker-ok", "cf2284b.cp");
-    let out = cpl(&["stress".as_ref(), good.as_os_str(), "--cases".as_ref(), "150".as_ref()], b"");
-    assert_eq!(out.status.code(), Some(0), "{}{}", text(&out.stdout), text(&out.stderr));
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            good.as_os_str(),
+            "--cases".as_ref(),
+            "150".as_ref(),
+        ],
+        b"",
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
     assert!(text(&out.stdout).contains("150 cases agree"));
     // One donation dropped from the answer: `read_output()` runs out.
     let bad = program("stress-checker-bad", "cf2284b_planted.cp");
-    let out = cpl(&["stress".as_ref(), bad.as_os_str(), "--cases".as_ref(), "150".as_ref()], b"");
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            bad.as_os_str(),
+            "--cases".as_ref(),
+            "150".as_ref(),
+        ],
+        b"",
+    );
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}");
-    assert!(report.contains("that is: n = 2  k = 2  a = [1, 2]"), "{report}");
+    assert!(
+        report.contains("that is: n = 2  k = 2  a = [1, 2]"),
+        "{report}"
+    );
     assert!(report.contains("checker: "), "{report}");
 }
 
@@ -205,22 +320,64 @@ fn an_interactive_multitest_counts_queries_per_test_case() {
     let path = program("interactive", "guess_multitest.cp");
     // Four test cases of up to 7 queries each: 25 lines in all, well
     // over the limit of one.
-    let out = cpl(&["run".as_ref(), path.as_os_str()], b"4\n100 37\n100 100\n64 1\n5 3\n");
+    let out = cpl(
+        &["run".as_ref(), path.as_os_str()],
+        b"4\n100 37\n100 100\n64 1\n5 3\n",
+    );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
-    assert!(text(&out.stderr).contains("accepted the run (25 lines from the solution)"), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stderr).contains("accepted the run (25 lines from the solution)"),
+        "{}",
+        text(&out.stderr)
+    );
     // The C++ for the judge starts each test case at zero too.
-    let out = cpl(&["build".as_ref(), path.as_os_str(), "-o".as_ref(), "-".as_ref()], b"");
+    let out = cpl(
+        &[
+            "build".as_ref(),
+            path.as_os_str(),
+            "-o".as_ref(),
+            "-".as_ref(),
+        ],
+        b"",
+    );
     assert!(text(&out.stdout).contains("{ cpl::asked = 0; prog::solve(); }"));
     // `cpl stress` makes the hidden tests from what the interactor reads.
-    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "40".as_ref()], b"");
-    assert_eq!(out.status.code(), Some(0), "{}{}", text(&out.stdout), text(&out.stderr));
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--cases".as_ref(),
+            "40".as_ref(),
+        ],
+        b"",
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
     // A binary search that skips the answer is caught and shrunk.
-    let source = std::fs::read_to_string(&path).unwrap().replace("hi = mid\n", "hi = mid - 1\n");
+    let source = std::fs::read_to_string(&path)
+        .unwrap()
+        .replace("hi = mid\n", "hi = mid - 1\n");
     let bad = scratch("interactive-bad", "guess.cp", &source);
-    let out = cpl(&["stress".as_ref(), bad.as_os_str(), "--cases".as_ref(), "60".as_ref()], b"");
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            bad.as_os_str(),
+            "--cases".as_ref(),
+            "60".as_ref(),
+        ],
+        b"",
+    );
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}");
-    assert!(report.contains("interactor: assertion failed: v == x: wrong answer"), "{report}");
+    assert!(
+        report.contains("interactor: assertion failed: v == x: wrong answer"),
+        "{report}"
+    );
 }
 
 #[test]
@@ -232,7 +389,12 @@ fn check_says_what_run_and_build_would() {
         "const P = 998244353\ntype Z = Mod<P>\nlet z: Z = Z(3)\nprint(1 - z, 2 * z, z - 1, 10 + z)\n",
     );
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"");
-    assert_eq!(text(&out.stdout), "998244351 6 2 13\n", "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "998244351 6 2 13\n",
+        "{}",
+        text(&out.stderr)
+    );
     // What only lowering knew is now an error in `cpl check` as well.
     for (source, message) in [
         ("let n: 1..=9 = read()\ndomain V = 1..=n\nprint(V.from(2))\n", "has no method `from`"),

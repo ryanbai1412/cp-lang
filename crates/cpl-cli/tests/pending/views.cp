@@ -8,11 +8,11 @@ let srv = s.rev[1..6]
 let svr = s[1..6].rev
 let srr = s.rev.rev
 
-print(sv, sv.len, sv.is_empty, sv[0], sv[4], sv.first, sv.last, sv.get(2), sv.get(99))
+print(sv, sv.len, yes(sv.is_empty), sv[0], sv[4], sv.first, sv.last, sv.get(2), sv.get(99))
 print(sr, sr[0], sr[sr.len - 1], sr.first, sr.last)
-print(srv, svr, srr == s, sv == "braca", sr == "arbadacarba", sv < "bracb", "braca" == sv)
-print(s[0..0].is_empty, s[0..0].first, s[0..0].last, s[1..4] == s[8..11])
-print(s[1..6].count('a'), s[1..6].contains('c'), "rac" in s[1..6], "xyz" in s[1..6])
+print(srv, svr, yes(srr == s), yes(sv == "braca"), yes(sr == "arbadacarba"), yes(sv < "bracb"), yes("braca" == sv))
+print(yes(s[0..0].is_empty), s[0..0].first, s[0..0].last, yes(s[1..4] == s[8..11]))
+print(s[1..6].count('a'), yes(s[1..6].contains('c')), yes("rac" in s[1..6]), yes("xyz" in s[1..6]))
 
 var acc = ""
 for c in s[1..5].rev:
@@ -23,7 +23,7 @@ print(acc)
 var seen_s = HashMap<Str, Int>()
 seen_s["braca"] = 42
 seen_s["arbadacarba"] = 99
-print(seen_s.get(s[1..6]), seen_s.get(s.rev), s[1..6] in seen_s)
+print(seen_s.get(s[1..6]), seen_s.get(s.rev), yes(s[1..6] in seen_s))
 
 var seen_l = HashMap<List<Int>, Int>()
 seen_l[[20, 30, 40, 50]] = 7
@@ -41,11 +41,11 @@ let lrv = xs.rev[1..4]
 let lvr = xs[1..5].rev
 let lrr = xs.rev.rev
 
-print(lv, lv.len, lv.is_empty, lv[0], lv[3], lv.first, lv.last, lv.get(1), lv.get(10))
+print(lv, lv.len, yes(lv.is_empty), lv[0], lv[3], lv.first, lv.last, lv.get(1), lv.get(10))
 print(lr, lr[0], lr[5], lrv, lvr)
-print(lrr == xs, lv == [20, 30, 40, 50], lvr == [50, 40, 30, 20], lv < [20, 30, 40, 51])
-print(xs[2..2].is_empty, xs[2..2].first, xs[2..2].last)
-print(xs[1..5].contains(30), xs[1..5].contains(99))
+print(yes(lrr == xs), yes(lv == [20, 30, 40, 50]), yes(lvr == [50, 40, 30, 20]), yes(lv < [20, 30, 40, 51]))
+print(yes(xs[2..2].is_empty), xs[2..2].first, xs[2..2].last)
+print(yes(xs[1..5].contains(30)), yes(xs[1..5].contains(99)))
 
 var tot = 0
 for (i, x) in xs[1..4].rev.items:
@@ -61,7 +61,7 @@ print(sum(xs[1..5]), min(xs.rev), max(xs[0..4]))
 print(runs("aabbbcc"[1..6]))
 print(prefix_function("ababa"[0..5]))
 print(z_function("ababa".rev))
-print(is_palindrome("xracecary"[1..8]), is_palindrome("abcdef"[1..5]))
+print(yes(is_palindrome("xracecary"[1..8])), yes(is_palindrome("abcdef"[1..5])))
 
 // Fused concat indexing and view-concat printing, plus clear-reuse
 var left: List<Int> = [1, 2, 3]

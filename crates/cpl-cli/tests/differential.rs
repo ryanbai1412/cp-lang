@@ -141,6 +141,28 @@ fn programs() -> Vec<PathBuf> {
     found
 }
 
+/// Programs written for 0.2 that still need porting to 0.3 live in
+/// `tests/pending/`, outside every sweep. Each must still fail `cpl check`;
+/// once one passes, move it back to `tests/programs/`, so the directory only
+/// shrinks.
+#[test]
+fn pending_ports_still_need_porting() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/pending");
+    let mut ported: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|_| panic!("{} exists", dir.display()))
+        .map(|entry| entry.expect("readable entry").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
+        .filter(|path| check(path, "pending").is_ok())
+        .map(|path| path.display().to_string())
+        .collect();
+    ported.sort();
+    assert!(
+        ported.is_empty(),
+        "these now pass `cpl check`; move them to tests/programs/:\n{}",
+        ported.join("\n")
+    );
+}
+
 fn input_of(program: &Path) -> Vec<u8> {
     std::fs::read(program.with_extension("in")).unwrap_or_default()
 }
@@ -428,12 +450,12 @@ fn lowering_gaps_agree_between_interp_and_sanitized_cpp() {
             "\
 domain I = 1..=3
 let a: [I, I]Int = [I, I] (r, c) => r.ord * 3 + c.ord + 1
-let pre = prefix(a)
+let pre = Prefix<I, I, Int>(a)
 let row = [I] i => a[I(2), i]
-let p1 = prefix(row)
+let p1 = Prefix(row)
 let cnt = counts([1, 2, 1, 3, 1])
-print(pre.sum(span(I(1).l, I(2)), span(I(2).l, I(3))))
-print(p1.sum(span(I(1), I(3))))
+print(pre.fold(I(1)..=I(2), I(2)..=I(3)))
+print(p1.fold(I(1)..=I(3)))
 print(cnt[1], cnt[2], cnt[99])
 ",
             "16\n15\n3 1 0\n",
@@ -478,7 +500,7 @@ var total = 0
 for i in Bug:
     total += bs[i.to_idx].ord
 let pairs = [10, 20, 35, 35]
-print(total, count(a != b for (a, b) in pairs.adjacent))
+print(total, pairs.adjacent.count((a, b) => a != b))
 var known: [Bool]List<Int> = []
 known[true].push(5)
 known[false].push(9)
@@ -497,8 +519,7 @@ print(known[if flag: true else: false][0])
         let path = cp.to_string_lossy().into_owned();
         let interpreted = cpl_cli::run(&["run", &path]);
         assert_eq!(
-            interpreted.code,
-            0,
+            interpreted.code, 0,
             "{name}: cpl run failed:\n{}",
             interpreted.stderr
         );
@@ -508,12 +529,7 @@ print(known[if flag: true else: false][0])
             "{name}: interpreter output mismatch"
         );
         let built = cpl_cli::run(&["build", &path, "-o", "-"]);
-        assert_eq!(
-            built.code,
-            0,
-            "{name}: cpl build failed:\n{}",
-            built.stderr
-        );
+        assert_eq!(built.code, 0, "{name}: cpl build failed:\n{}", built.stderr);
         let (stdout, code) = compile_and_run(
             &format!("gap_{name}"),
             "lowering-gaps",
@@ -538,7 +554,11 @@ print(known[if flag: true else: false][0])
 /// never gets one: the test fails after ten seconds instead of hanging.
 fn asked_live(mut command: Command) -> Vec<String> {
     use std::io::{BufRead, BufReader};
-    let mut child = command.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().expect("the program starts");
+    let mut child = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("the program starts");
     let mut to_program = child.stdin.take().unwrap();
     let from_program = BufReader::new(child.stdout.take().unwrap());
     let (send, lines) = std::sync::mpsc::channel();
@@ -553,7 +573,13 @@ fn asked_live(mut command: Command) -> Vec<String> {
     while let Ok(line) = lines.recv_timeout(std::time::Duration::from_secs(10)) {
         if let Some(asked) = line.strip_prefix("? ") {
             // Both questions are out before the first answer goes in.
-            if said.iter().filter(|l: &&String| l.starts_with("? ")).count() % 2 == 1 {
+            if said
+                .iter()
+                .filter(|l: &&String| l.starts_with("? "))
+                .count()
+                % 2
+                == 1
+            {
                 let first: i64 = said.last().unwrap()[2..].parse().unwrap();
                 let second: i64 = asked.parse().unwrap();
                 writeln!(to_program, "{}\n{}", first * 10, second * 10).unwrap();
@@ -602,7 +628,13 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     // Nothing is flushed line by line: a program that reads and then
     // prints stays as fast as it was.
     let cpp = String::from_utf8_lossy(&built.stdout);
-    let solve = cpp.split("void solve()").last().unwrap().split("}  // namespace prog").next().unwrap();
+    let solve = cpp
+        .split("void solve()")
+        .last()
+        .unwrap()
+        .split("}  // namespace prog")
+        .next()
+        .unwrap();
     assert!(!solve.contains("flush"), "{solve}");
     let binary = sanitized_binary(&built.stdout).unwrap();
     assert_eq!(asked_live(Command::new(binary)), expected, "the C++");
@@ -633,17 +665,33 @@ fn interactive_writes_each_print_out_at_once() {
     assert_eq!(asked_live(Command::new(binary)), ["! ready"], "the C++");
 
     let rounds = "let n: Int = read()\nprint(\"?\", n)\nlet x: Int = read()\nprint(\"!\", x + n)\n";
-    for head in ["@!interactive\n@!multitest\n", "@!multitest\n@!interactive\n"] {
+    for head in [
+        "@!interactive\n@!multitest\n",
+        "@!multitest\n@!interactive\n",
+    ] {
         let path = write("rounds.cp", &format!("{head}{rounds}"));
         let ran = cpl_cli::run_with_input(&["run", &path], b"2\n5\n7\n3\n1\n");
-        assert_eq!((ran.code, String::from_utf8_lossy(&ran.stdout).as_ref()), (0, "? 5\n! 12\n? 3\n! 4\n"), "{head}");
+        assert_eq!(
+            (ran.code, String::from_utf8_lossy(&ran.stdout).as_ref()),
+            (0, "? 5\n! 12\n? 3\n! 4\n"),
+            "{head}"
+        );
         let formatted = cpl_cli::run(&["fmt", "--check", &path]);
         assert_eq!(formatted.code, 0, "{}", formatted.stderr);
     }
     for (source, said) in [
-        ("@!interactive\nprint(1)\n@!interactive\nprint(2)\n", "a second `@!interactive`"),
-        ("fn f():\n    @!interactive\n    print(1)\nf()\n", "`@!interactive` stands at the top level of the file"),
-        ("@!interactive(fast)\nprint(1)\n", "`@!interactive` takes nothing"),
+        (
+            "@!interactive\nprint(1)\n@!interactive\nprint(2)\n",
+            "a second `@!interactive`",
+        ),
+        (
+            "fn f():\n    @!interactive\n    print(1)\nf()\n",
+            "`@!interactive` stands at the top level of the file",
+        ),
+        (
+            "@!interactive(fast)\nprint(1)\n",
+            "`@!interactive` takes nothing",
+        ),
     ] {
         let checked = cpl_cli::run(&["check", &write("refused.cp", source)]);
         assert_ne!(checked.code, 0, "{source}");
@@ -693,7 +741,12 @@ print(inv[V(2)]!.label)
     std::fs::write(&path, source).unwrap();
     let path_str = path.to_string_lossy().into_owned();
     let ran = cpl_cli::run(&["run", &path_str]);
-    assert_ne!(ran.code, 0, "expected interpreter trap, got stdout: {}", String::from_utf8_lossy(&ran.stdout));
+    assert_ne!(
+        ran.code,
+        0,
+        "expected interpreter trap, got stdout: {}",
+        String::from_utf8_lossy(&ran.stdout)
+    );
     assert!(
         ran.stderr.contains("duplicate image"),
         "expected duplicate image message, got: {}",
@@ -703,7 +756,10 @@ print(inv[V(2)]!.label)
     assert_eq!(built.code, 0, "{}", built.stderr);
     let binary = sanitized_binary(&built.stdout).unwrap();
     let cpp = Command::new(&binary).output().unwrap();
-    assert!(!cpp.status.success(), "expected sanitized C++ trap on duplicate image");
+    assert!(
+        !cpp.status.success(),
+        "expected sanitized C++ trap on duplicate image"
+    );
     assert!(
         String::from_utf8_lossy(&cpp.stderr).contains("duplicate image"),
         "expected duplicate image message in C++, got: {}",
@@ -722,32 +778,25 @@ fn compress_call_sites_get_fresh_domains_in_interp_checked_and_release() {
     // 1. Top-level, inside a fn called twice, and a wrapper fn called twice.
     let main_cp = dir.join("main.cp");
     let main_src = "\
-let xs = compress([40, -7, 40, 1_000_000_000, 3])
-let ys = compress([5, 6])
+let (domain X, xs) = compress([40, -7, 40, 1_000_000_000, 3])
+let (domain Y, ys) = compress([5, 6])
 let ix = xs.at(40)
 let iy = ys.at(6)
 print(xs.len, ys.len, xs[ix], ys[iy])
 
 fn work(a: List<Int>, b: List<Int>):
-    let u = compress(a)
-    let v = compress(b)
+    let (domain U, u) = compress(a)
+    let (domain W, v) = compress(b)
     let iu = u.at(a[0])
     let iv = v.at(b[0])
     print(u.len, v.len, u[iu], v[iv])
 
 work([10, 20, 30, 10], [99])
 work([5, 5], [1, 2, 3, 4, 5])
-
-fn wrap(a: List<Int>):
-    compress(a)
-
-let wa = wrap([100, 200, 300])
-let wb = wrap([7])
-print(wa.len, wb.len, wa[wa.at(200)], wb[wb.at(7)])
 ";
     std::fs::write(&main_cp, main_src).unwrap();
     let main_str = main_cp.to_string_lossy().into_owned();
-    let expected_main = "4 2 40 6\n3 1 10 99\n1 5 5 1\n3 1 200 7\n";
+    let expected_main = "4 2 40 6\n3 1 10 99\n1 5 5 1\n";
 
     let interp = cpl_cli::run(&["run", &main_str]);
     assert_eq!(interp.code, 0, "interp stderr: {}", interp.stderr);
@@ -756,9 +805,17 @@ print(wa.len, wb.len, wa[wa.at(200)], wb[wb.at(7)])
     let main_cpp = dir.join("main.cpp");
     let main_cpp_str = main_cpp.to_string_lossy().into_owned();
     let built_chk = cpl_cli::run(&["build", &main_str, "-o", &main_cpp_str, "--checked"]);
-    assert_eq!(built_chk.code, 0, "--checked build stderr: {}", built_chk.stderr);
+    assert_eq!(
+        built_chk.code, 0,
+        "--checked build stderr: {}",
+        built_chk.stderr
+    );
     let chk_out = Command::new(dir.join("main.checked")).output().unwrap();
-    assert!(chk_out.status.success(), "--checked stderr: {}", String::from_utf8_lossy(&chk_out.stderr));
+    assert!(
+        chk_out.status.success(),
+        "--checked stderr: {}",
+        String::from_utf8_lossy(&chk_out.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&chk_out.stdout), expected_main);
 
     let rel = cpl_cli::run(&["run", "--release", &main_str]);
@@ -773,8 +830,8 @@ let n: Int = read()
 let m: Int = read()
 let a: List<Int> = [read() for _ in 0..n]
 let b: List<Int> = [read() for _ in 0..m]
-let xs = compress(a)
-let ys = compress(b)
+let (domain X, xs) = compress(a)
+let (domain Y, ys) = compress(b)
 let ix = xs.at(a[0])
 let iy = ys.at(b[0])
 print(xs.len, ys.len, xs[ix], ys[iy])
@@ -794,11 +851,19 @@ print(xs.len, ys.len, xs[ix], ys[iy])
     let multi_cpp = dir.join("multi.cpp");
     let multi_cpp_str = multi_cpp.to_string_lossy().into_owned();
     let m_built_chk = cpl_cli::run(&["build", &multi_str, "-o", &multi_cpp_str, "--checked"]);
-    assert_eq!(m_built_chk.code, 0, "multi --checked stderr: {}", m_built_chk.stderr);
+    assert_eq!(
+        m_built_chk.code, 0,
+        "multi --checked stderr: {}",
+        m_built_chk.stderr
+    );
     let mut m_chk_cmd = Command::new(dir.join("multi.checked"));
     m_chk_cmd.stdin(std::fs::File::open(&multi_in).unwrap());
     let m_chk_out = m_chk_cmd.output().unwrap();
-    assert!(m_chk_out.status.success(), "multi --checked run stderr: {}", String::from_utf8_lossy(&m_chk_out.stderr));
+    assert!(
+        m_chk_out.status.success(),
+        "multi --checked run stderr: {}",
+        String::from_utf8_lossy(&m_chk_out.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&m_chk_out.stdout), expected_multi);
 
     let m_rel = cpl_cli::run(&["run", "--release", &multi_str, &multi_in_str]);
@@ -809,12 +874,15 @@ print(xs.len, ys.len, xs[ix], ys[iy])
     let err_cp = dir.join("err.cp");
     std::fs::write(
         &err_cp,
-        "let xs = compress([1, 2, 3, 4])\nlet ys = compress([10, 20])\nlet i: xs.D = ys.at(10)\nprint(i)\n",
+        "let (domain X, xs) = compress([1, 2, 3, 4])\nlet (domain Y, ys) = compress([10, 20])\nlet i: X = ys.at(10)\nprint(i)\n",
     )
     .unwrap();
     let err_str = err_cp.to_string_lossy().into_owned();
     let checked = cpl_cli::run(&["check", &err_str]);
-    assert_ne!(checked.code, 0, "expected domain mismatch between separate compress calls");
+    assert_ne!(
+        checked.code, 0,
+        "expected domain mismatch between separate compress calls"
+    );
 }
 
 #[test]
@@ -823,7 +891,6 @@ fn nth_element_introselect_handles_median_of_3_killer_in_budget() {
     std::fs::create_dir_all(&dir).unwrap();
     let cp_path = dir.join("killer.cp");
     let src = "\
-use std.seq.{nth_element}
 
 let n = 200_000
 var a: List<Int> = [i for i in 0..n]
@@ -834,11 +901,11 @@ while lo >= 0:
     lo -= 2
 
 var b = a.copy()
-a.nth_element(n - 1)
+a.select(n - 1)
 assert a[n - 1] == n - 1
 for i in 0..n - 1: assert a[i] <= n - 1
 
-b[0..n].nth_element(n / 2)
+b.select(n / 2)
 assert b[n / 2] == n / 2
 for i in 0..n / 2: assert b[i] <= n / 2
 for i in n / 2 + 1..n: assert b[i] >= n / 2
@@ -858,12 +925,20 @@ print(a[n - 1], b[n / 2])
         .arg(&bin_path)
         .output()
         .expect("run g++");
-    assert!(gxx.status.success(), "g++ stderr: {}", String::from_utf8_lossy(&gxx.stderr));
+    assert!(
+        gxx.status.success(),
+        "g++ stderr: {}",
+        String::from_utf8_lossy(&gxx.stderr)
+    );
 
     let t0 = std::time::Instant::now();
     let run = Command::new(&bin_path).output().expect("run killer binary");
     let elapsed = t0.elapsed();
-    assert!(run.status.success(), "killer stderr: {}", String::from_utf8_lossy(&run.stderr));
+    assert!(
+        run.status.success(),
+        "killer stderr: {}",
+        String::from_utf8_lossy(&run.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&run.stdout), "199999 100000\n");
     assert!(
         elapsed < std::time::Duration::from_millis(1000),

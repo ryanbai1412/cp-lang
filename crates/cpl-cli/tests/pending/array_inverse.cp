@@ -1,7 +1,7 @@
 // Partial-injection and total-bijection `a.inverse()`.
 domain Pos = 1..=5
 domain Val = 0..4
-enum Dir: N, E, S, W
+enum Dir = N | E | S | W
 
 // Partial injection into a named domain: `[Pos]?Val -> [Val]?Pos`
 var a: [Pos]?Val = none

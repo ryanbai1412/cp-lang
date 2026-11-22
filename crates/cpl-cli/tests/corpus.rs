@@ -78,12 +78,43 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut checked = 0;
     /// The `spec.cp` corpus problems that currently pass `cpl check` (ratchet: only grow).
     const SPEC_PORTS: &[&str] = &[
-        "aac4p6", "aac5p4", "ccc03s4", "ccc18s4", "ccc19s2", "cco18p4", "cco19p5",
-        "cco21p4", "cco24p1", "ceoi19pp1", "dmopc20c4p4", "dmopc21c2p1", "dmopc21c4p1",
-        "dmopc21c4p2", "dmopc21c5p2", "dmopc21c9p1", "egoi22p3", "etsr23r1p4", "ioi01p1",
-        "ioi15p5", "ioi15p6", "ioi16p6", "ioi16p6io", "ioi18p1", "ioi19p5", "ioi19p6",
-        "ioi22p5", "mccc4j1", "nccc10s4", "nccc8s3", "noip14p6", "sac22cc3jp2",
-        "sac22cc3jp4", "sac22cc4jp2", "shoi16p3", "ucrpc21c", "yac6p3",
+        "aac4p6",
+        "aac5p4",
+        "ccc03s4",
+        "ccc18s4",
+        "ccc19s2",
+        "cco18p4",
+        "cco19p5",
+        "cco21p4",
+        "cco24p1",
+        "ceoi19pp1",
+        "dmopc20c4p4",
+        "dmopc21c2p1",
+        "dmopc21c4p1",
+        "dmopc21c4p2",
+        "dmopc21c5p2",
+        "dmopc21c9p1",
+        "egoi22p3",
+        "etsr23r1p4",
+        "ioi01p1",
+        "ioi15p5",
+        "ioi15p6",
+        "ioi16p6",
+        "ioi16p6io",
+        "ioi18p1",
+        "ioi19p5",
+        "ioi19p6",
+        "ioi22p5",
+        "mccc4j1",
+        "nccc10s4",
+        "nccc8s3",
+        "noip14p6",
+        "sac22cc3jp2",
+        "sac22cc3jp4",
+        "sac22cc4jp2",
+        "shoi16p3",
+        "ucrpc21c",
+        "yac6p3",
     ];
     for id in SPEC_PORTS {
         let path = root().join(format!("corpus/problems/{id}/spec.cp"));
@@ -95,8 +126,18 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
     }
     /// The `spec/std/*.cp` modules that currently pass standalone `cpl check` (ratchet: only grow).
     const SPEC_STD: &[&str] = &[
-        "deque.cp", "dsu.cp", "interval.cp", "io.cp", "mo.cp", "opt.cp",
-        "pair.cp", "rand.cp", "slope.cp", "timetree.cp", "tree.cp", "window.cp",
+        "deque.cp",
+        "dsu.cp",
+        "interval.cp",
+        "io.cp",
+        "mo.cp",
+        "opt.cp",
+        "pair.cp",
+        "rand.cp",
+        "slope.cp",
+        "timetree.cp",
+        "tree.cp",
+        "window.cp",
     ];
     for file in SPEC_STD {
         let path = root().join(format!("spec/std/{file}"));
@@ -185,14 +226,38 @@ const NOT_YET: &[&str] = &[
 /// of its own: the prototype says `expected Int, got ?Int`, this checker
 /// names the variable. Each is held to the wording given here.
 const REWORDED: &[(&str, &str)] = &[
-    ("s3_inv1_bool_alias", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv2_array_place", "`y` is declared an Int, but `a[i]` is an ?Int"),
-    ("s3_inv2_struct_field", "`y` is declared an Int, but `b.x` is an ?Int"),
-    ("s3_inv3_after_join", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_after_mut_arg", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_after_reassign", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv3_closure_mutation", "`y` is declared an Int, but `x` is an ?Int"),
-    ("s3_inv4_bang_non_opt", "`!` takes the value out of an optional, but this is a `Int`"),
+    (
+        "s3_inv1_bool_alias",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv2_array_place",
+        "`y` is declared an Int, but `a[i]` is an ?Int",
+    ),
+    (
+        "s3_inv2_struct_field",
+        "`y` is declared an Int, but `b.x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_join",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_mut_arg",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_after_reassign",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv3_closure_mutation",
+        "`y` is declared an Int, but `x` is an ?Int",
+    ),
+    (
+        "s3_inv4_bang_non_opt",
+        "`!` takes the value out of an optional, but this is a `Int`",
+    ),
 ];
 
 /// Failing tests that state a limit of the prototype's code generator,

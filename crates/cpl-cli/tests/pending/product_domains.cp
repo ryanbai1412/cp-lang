@@ -23,7 +23,7 @@ fn advance(s: State) -> ?State:
 let s1 = advance(State(V(0), K(2)))!
 print(s1.0.ord, s1.1.label)
 
-enum Dir: L, R
+enum Dir = L | R
 domain Named = (v: V, d: Dir, ok: Bool)
 var seen: [Named]Int = 0
 seen[(V(1), Dir.R, true)] = 42

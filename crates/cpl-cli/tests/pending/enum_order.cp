@@ -1,5 +1,5 @@
 // Enums order by variant in declaration order, then by payload (decision 28.2).
-enum Dir: N, E, S, W
+enum Dir = N | E | S | W
 
 enum Event:
     Open(x: Int)

@@ -1115,7 +1115,6 @@ fn the_users_own_error_hides_the_ones_it_causes_in_library_code() {
     assert!(!stderr.contains("has no member"), "{stderr}");
 }
 
-
 #[test]
 fn a_parameter_type_sees_only_the_parameters_before_it() {
     let stderr = check_errors(
@@ -1180,10 +1179,7 @@ fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
         "list_indices",
         "let xs = [5, 6]\nfor i in xs.indices: print(i)\n",
     );
-    assert!(
-        indices.contains("List<Int> has no `indices`"),
-        "{indices}"
-    );
+    assert!(indices.contains("List<Int> has no `indices`"), "{indices}");
 
     let sort = check_errors(
         "sort_a_range",

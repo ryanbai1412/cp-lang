@@ -1,10 +1,10 @@
 fn cmp_check(a: Int, b: Int, by: fn(Int, Int) -> Bool) -> Bool = by(a, b)
 
-print(cmp_check(2, 5, by: <), cmp_check(5, 2, by: <), cmp_check(5, 2, by: >))
+print(yes(cmp_check(2, 5, by: <)), yes(cmp_check(5, 2, by: <)), yes(cmp_check(5, 2, by: >)))
 
 let x: ?Int = some(10)
 let y: ?Int = none
-print(x is v and v > 5, y is v and v > 5)
+print(yes(x is v and v > 5), yes(y is v and v > 5))
 
 if x is v and v == 10:
     print(v + 1)

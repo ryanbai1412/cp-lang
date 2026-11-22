@@ -19,4 +19,4 @@ g[1][3] = 5
 print(g[1][3], g[0][3], g[0][0])
 var f: [0..n][0..2]Bool = true
 f[0][1] = false
-print(f[0][1], f[1][1])
+print(yes(f[0][1]), yes(f[1][1]))

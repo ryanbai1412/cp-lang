@@ -11,4 +11,4 @@ for _ in 0..t:
         for l in S:
             if let r = l + (len - 1): hashes.push(hash.get(l..=r))
         total += deduped(sorted(hashes)).len
-    print(total, hash.get(S.first..) == hash.all)
+    print(total, yes(hash.get(S.first..) == hash.all))

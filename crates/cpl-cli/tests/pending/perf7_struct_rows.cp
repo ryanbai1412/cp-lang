@@ -25,7 +25,7 @@ print(c.kid[1] ?? -1, c.kid[0] ?? -1, c.cnt, c.cnt.len, c.kid.len)
 print(nodes[1].kid[n % 2]!, sum3(nodes[2].cnt))
 var copy = nodes[2]
 copy.cnt[1] = 100
-print(copy.cnt, nodes[2].cnt, copy.cnt == nodes[2].cnt, nodes[1].cnt == nodes[1].cnt)
+print(copy.cnt, nodes[2].cnt, yes(copy.cnt == nodes[2].cnt), yes(nodes[1].cnt == nodes[1].cnt))
 let whole = nodes[2].cnt
 nodes[2].cnt = copy.cnt
 print(whole, nodes[2].cnt)
@@ -38,7 +38,7 @@ let lit: [0..3]Int = [1, 2, 3]
 var a = Pt(lit)
 var b = Pt(lit)
 b.at[2] = 0
-print(a == b, b.at, a)
+print(yes(a == b), b.at, a)
 var pts = [a, b]
 pts.sort(by: p => p.at[2])
 print(pts)

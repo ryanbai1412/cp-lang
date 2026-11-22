@@ -12,12 +12,36 @@ fn root() -> PathBuf {
 
 /// The `spec.cp` corpus problems that currently pass `cpl build` as standalone programs (ratchet: only grow).
 const SPEC_PORTS: &[&str] = &[
-    "aac4p6", "aac5p4", "ccc03s4", "ccc18s4", "ccc19s2", "cco18p4", "cco19p5",
-    "cco21p4", "cco24p1", "ceoi19pp1", "dmopc20c4p4", "dmopc21c2p1", "dmopc21c4p1",
-    "dmopc21c4p2", "dmopc21c5p2", "dmopc21c9p1", "etsr23r1p4", "ioi01p1",
-    "ioi16p6", "ioi16p6io",
-    "mccc4j1", "nccc10s4", "nccc8s3", "noip14p6", "sac22cc3jp2",
-    "sac22cc3jp4", "sac22cc4jp2", "shoi16p3", "ucrpc21c", "yac6p3",
+    "aac4p6",
+    "aac5p4",
+    "ccc03s4",
+    "ccc18s4",
+    "ccc19s2",
+    "cco18p4",
+    "cco19p5",
+    "cco21p4",
+    "cco24p1",
+    "ceoi19pp1",
+    "dmopc20c4p4",
+    "dmopc21c2p1",
+    "dmopc21c4p1",
+    "dmopc21c4p2",
+    "dmopc21c5p2",
+    "dmopc21c9p1",
+    "etsr23r1p4",
+    "ioi01p1",
+    "ioi16p6",
+    "ioi16p6io",
+    "mccc4j1",
+    "nccc10s4",
+    "nccc8s3",
+    "noip14p6",
+    "sac22cc3jp2",
+    "sac22cc3jp4",
+    "sac22cc4jp2",
+    "shoi16p3",
+    "ucrpc21c",
+    "yac6p3",
 ];
 
 fn ports() -> Vec<PathBuf> {
@@ -34,8 +58,14 @@ fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R>
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunk = items.len().div_ceil(threads).max(1);
     std::thread::scope(|scope| {
-        let handles: Vec<_> = items.chunks(chunk).map(|part| scope.spawn(|| part.iter().map(&f).collect::<Vec<R>>())).collect();
-        handles.into_iter().flat_map(|h| h.join().unwrap()).collect()
+        let handles: Vec<_> = items
+            .chunks(chunk)
+            .map(|part| scope.spawn(|| part.iter().map(&f).collect::<Vec<R>>()))
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
     })
 }
 
@@ -54,13 +84,28 @@ fn every_port_is_written_for_every_judge_within_its_limit() {
     for profile in cpl_judge::builtins() {
         let indexed: Vec<(usize, &PathBuf)> = ports.iter().enumerate().collect();
         let sizes = parallel(&indexed, |&(i, port)| {
-            let cpp = build(port, &profile.name).unwrap_or_else(|e| panic!("{}: {e}", port.display()));
+            let cpp =
+                build(port, &profile.name).unwrap_or_else(|e| panic!("{}: {e}", port.display()));
             if i % 10 == 0 {
-                assert_eq!(build(port, &profile.name).unwrap(), cpp, "{} is not deterministic", port.display());
+                assert_eq!(
+                    build(port, &profile.name).unwrap(),
+                    cpp,
+                    "{} is not deterministic",
+                    port.display()
+                );
             }
             let stamp = format!("// For {}.\n", profile.stamp());
-            assert!(cpp.lines().take(3).any(|line| format!("{line}\n") == stamp), "{}", port.display());
-            assert!(cpp.len() <= profile.limit(), "{}: {} bytes", port.display(), cpp.len());
+            assert!(
+                cpp.lines().take(3).any(|line| format!("{line}\n") == stamp),
+                "{}",
+                port.display()
+            );
+            assert!(
+                cpp.len() <= profile.limit(),
+                "{}: {} bytes",
+                port.display(),
+                cpp.len()
+            );
             assert!(cpp.contains("static void cpl_main()"), "{}", port.display());
             cpp.len()
         });
@@ -76,14 +121,21 @@ fn every_port_is_written_for_every_judge_within_its_limit() {
     }
 }
 
-fn compile(cpp: &Path, binary: &Path, local: &cpl_judge::Local, only_syntax: bool) -> Result<(), String> {
+fn compile(
+    cpp: &Path,
+    binary: &Path,
+    local: &cpl_judge::Local,
+    only_syntax: bool,
+) -> Result<(), String> {
     let mut command = Command::new(&local.compiler);
     command.args(&local.flags).arg(cpp);
     match only_syntax {
         true => command.arg("-fsyntax-only"),
         false => command.arg("-o").arg(binary),
     };
-    let out = command.output().map_err(|e| format!("{}: {e}", local.compiler))?;
+    let out = command
+        .output()
+        .map_err(|e| format!("{}: {e}", local.compiler))?;
     match out.status.success() {
         true => Ok(()),
         false => Err(String::from_utf8_lossy(&out.stderr).into_owned()),
@@ -106,12 +158,20 @@ fn run_on_stack(binary: &Path, input: &str, profile: &cpl_judge::Profile) -> std
         .spawn()
         .expect("sh runs");
     use std::io::Write;
-    child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
     child.wait_with_output().unwrap()
 }
 
 fn has(compiler: &str) -> bool {
-    Command::new(compiler).arg("--version").output().is_ok_and(|out| out.status.success())
+    Command::new(compiler)
+        .arg("--version")
+        .output()
+        .is_ok_and(|out| out.status.success())
 }
 
 /// Every judge's C++ runs the program on a thread with the profile's
@@ -135,12 +195,22 @@ fn deep_recursion_runs_on_the_stack_each_judge_gives() {
         let local = profile.local();
         let windows = profile.os == cpl_judge::Os::Windows;
         if windows && local.compiler == profile.compiler {
-            eprintln!("{}: no cross compiler for Windows here; checked the syntax only", profile.name);
-            compile(&cpp, &binary, &local, true).unwrap_or_else(|e| panic!("{}: {e}", profile.name));
+            eprintln!(
+                "{}: no cross compiler for Windows here; checked the syntax only",
+                profile.name
+            );
+            compile(&cpp, &binary, &local, true)
+                .unwrap_or_else(|e| panic!("{}: {e}", profile.name));
             continue;
         }
         compile(&cpp, &binary, &local, false).unwrap_or_else(|e| panic!("{}: {e}", profile.name));
-        eprintln!("{}: {} {}; dropped {:?}", profile.name, local.compiler, local.flags.join(" "), local.dropped);
+        eprintln!(
+            "{}: {} {}; dropped {:?}",
+            profile.name,
+            local.compiler,
+            local.flags.join(" "),
+            local.dropped
+        );
         if windows {
             continue;
         }
@@ -162,10 +232,18 @@ fn every_port_compiles_with_every_judges_flags() {
     for profile in cpl_judge::builtins() {
         let local = profile.local();
         let failed: Vec<String> = parallel(&ports, |port| {
-            let stem = port.parent().unwrap().file_name().unwrap().to_str().unwrap();
+            let stem = port
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
             let cpp = scratch.join(format!("{}-{stem}.cpp", profile.name));
             std::fs::write(&cpp, build(port, &profile.name).unwrap()).unwrap();
-            compile(&cpp, &cpp, &local, true).err().map(|e| format!("{} for {}:\n{e}", port.display(), profile.name))
+            compile(&cpp, &cpp, &local, true)
+                .err()
+                .map(|e| format!("{} for {}:\n{e}", port.display(), profile.name))
         })
         .into_iter()
         .flatten()
@@ -213,7 +291,10 @@ fn build_spec(file: &Path, judge: &str) -> Result<String, String> {
 #[test]
 fn every_passing_corpus_port_compiles_with_every_judges_flags() {
     let ports = passing_corpus_ports();
-    assert!(!ports.is_empty(), "no corpus port passes in research/scoreboard.json");
+    assert!(
+        !ports.is_empty(),
+        "no corpus port passes in research/scoreboard.json"
+    );
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-corpus");
     std::fs::create_dir_all(&scratch).unwrap();
     let mut failures = Vec::new();
@@ -224,8 +305,15 @@ fn every_passing_corpus_port_compiles_with_every_judges_flags() {
             continue;
         }
         let failed: Vec<String> = parallel(&ports, |port| {
-            let id = port.parent().unwrap().file_name().unwrap().to_str().unwrap();
-            let cpp = build_spec(port, &profile.name).map_err(|e| format!("{id} for {}: does not build:\n{e}", profile.name))?;
+            let id = port
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let cpp = build_spec(port, &profile.name)
+                .map_err(|e| format!("{id} for {}: does not build:\n{e}", profile.name))?;
             if build_spec(port, &profile.name).as_ref() != Ok(&cpp) {
                 return Err(format!("{id} for {}: not deterministic", profile.name));
             }
@@ -234,12 +322,20 @@ fn every_passing_corpus_port_compiles_with_every_judges_flags() {
             }
             let path = scratch.join(format!("{}-{id}.cpp", profile.name));
             std::fs::write(&path, &cpp).unwrap();
-            compile(&path, &path, &local, true).map_err(|e| format!("{id} for {}:\n{e}", profile.name))
+            compile(&path, &path, &local, true)
+                .map_err(|e| format!("{id} for {}:\n{e}", profile.name))
         })
         .into_iter()
         .filter_map(Result::err)
         .collect();
-        eprintln!("{:<11} {} corpus ports, {} fail: {} {}", profile.name, ports.len(), failed.len(), local.compiler, local.flags.join(" "));
+        eprintln!(
+            "{:<11} {} corpus ports, {} fail: {} {}",
+            profile.name,
+            ports.len(),
+            failed.len(),
+            local.compiler,
+            local.flags.join(" ")
+        );
         failures.extend(failed);
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -267,15 +363,26 @@ fn a_release_run_builds_with_the_judges_flags_on_the_judges_stack() {
 
 /// The parts of `cpl build --size`, and the total it gives.
 fn size_parts(report: &str) -> (usize, Vec<(String, usize)>) {
-    let mut lines = report.lines().skip_while(|line| !line.starts_with("size of the C++ by part"));
+    let mut lines = report
+        .lines()
+        .skip_while(|line| !line.starts_with("size of the C++ by part"));
     let head = lines.next().expect("a size report");
-    let total = head.split(": ").nth(1).and_then(|rest| rest.split(' ').next()).unwrap().parse().unwrap();
+    let total = head
+        .split(": ")
+        .nth(1)
+        .and_then(|rest| rest.split(' ').next())
+        .unwrap()
+        .parse()
+        .unwrap();
     let parts = lines
         .take_while(|line| line.starts_with("  "))
         .map(|line| {
             let line = line.trim_start();
             let (name, rest) = line.split_at(12);
-            (name.trim().to_string(), rest.split_whitespace().next().unwrap().parse().unwrap())
+            (
+                name.trim().to_string(),
+                rest.split_whitespace().next().unwrap().parse().unwrap(),
+            )
         })
         .collect();
     (total, parts)
@@ -289,30 +396,59 @@ fn the_size_report_of_every_port_adds_up_to_its_file() {
         assert_eq!(out.code, 0, "{}: {}", port.display(), out.stderr);
         let (total, parts) = size_parts(&out.stderr);
         assert_eq!(total, out.stdout.len(), "{}", port.display());
-        assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total, "{}", port.display());
-        let glue = parts.iter().find(|(name, _)| name == "glue").map_or(0, |(_, bytes)| *bytes);
-        assert!(glue * 10 <= total, "{}: {glue} of {total} bytes are not in any piece", port.display());
+        assert_eq!(
+            parts.iter().map(|(_, bytes)| bytes).sum::<usize>(),
+            total,
+            "{}",
+            port.display()
+        );
+        let glue = parts
+            .iter()
+            .find(|(name, _)| name == "glue")
+            .map_or(0, |(_, bytes)| *bytes);
+        assert!(
+            glue * 10 <= total,
+            "{}: {glue} of {total} bytes are not in any piece",
+            port.display()
+        );
         glue * 1000 / total
     });
     let mut glue = glue;
     glue.sort();
-    eprintln!("glue per mille: p50 {}, max {}", glue[glue.len() / 2], glue[glue.len() - 1]);
+    eprintln!(
+        "glue per mille: p50 {}, max {}",
+        glue[glue.len() / 2],
+        glue[glue.len() - 1]
+    );
 }
 
 #[test]
 fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-size");
     std::fs::create_dir_all(&scratch).unwrap();
-    std::fs::write(scratch.join("cp.toml"), "[judge]\njudge = \"tiny\"\n\n[judge.tiny]\nextends = \"generic\"\nsource_kb = 1\n").unwrap();
+    std::fs::write(
+        scratch.join("cp.toml"),
+        "[judge]\njudge = \"tiny\"\n\n[judge.tiny]\nextends = \"generic\"\nsource_kb = 1\n",
+    )
+    .unwrap();
     let file = scratch.join("a.cp");
     std::fs::write(&file, "let n: Int = read()\nvar xs: List<Int> = []\nrepeat n: xs.push(read())\nxs.sort()\nfor x in xs: print(x)\n").unwrap();
     let out = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);
     assert_eq!(out.code, 1, "{}", out.stderr);
-    assert!(out.stderr.contains("over the 1024-byte limit of judge `tiny`"), "{}", out.stderr);
+    assert!(
+        out.stderr
+            .contains("over the 1024-byte limit of judge `tiny`"),
+        "{}",
+        out.stderr
+    );
     let (total, parts) = size_parts(&out.stderr);
     assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total);
     let names: Vec<&str> = parts.iter().map(|(name, _)| name.as_str()).collect();
-    assert!(names.contains(&"runtime") && names.contains(&"your code"), "{}", out.stderr);
+    assert!(
+        names.contains(&"runtime") && names.contains(&"your code"),
+        "{}",
+        out.stderr
+    );
 }
 
 /// Ryan's budget, on every judge: over 32 KB warns, over 64 KB fails,
@@ -327,13 +463,28 @@ fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
         std::fs::write(&file, format!("print(\"{}\")\n", "x".repeat(40 * 1024))).unwrap();
         let out = cpl_cli::run(&["build", path, "--judge", &profile.name, "-o", "-"]);
         assert_eq!(out.code, 0, "{}: {}", profile.name, out.stderr);
-        assert!(out.stderr.contains("over the 32768-byte target and"), "{}: {}", profile.name, out.stderr);
-        assert!(out.stderr.contains("of the 65536-byte limit"), "{}: {}", profile.name, out.stderr);
+        assert!(
+            out.stderr.contains("over the 32768-byte target and"),
+            "{}: {}",
+            profile.name,
+            out.stderr
+        );
+        assert!(
+            out.stderr.contains("of the 65536-byte limit"),
+            "{}: {}",
+            profile.name,
+            out.stderr
+        );
 
         std::fs::write(&file, format!("print(\"{}\")\n", "x".repeat(70 * 1024))).unwrap();
         let out = cpl_cli::run(&["build", path, "--judge", &profile.name, "-o", "-"]);
         assert_eq!(out.code, 1, "{}: {}", profile.name, out.stderr);
-        assert!(out.stderr.contains("over the 65536-byte limit"), "{}: {}", profile.name, out.stderr);
+        assert!(
+            out.stderr.contains("over the 65536-byte limit"),
+            "{}: {}",
+            profile.name,
+            out.stderr
+        );
         assert!(out.stdout.is_empty(), "{}", profile.name);
     }
     std::fs::write(&file, "print(1)\n").unwrap();
@@ -342,7 +493,10 @@ fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
 }
 
 fn comment_lines(cpp: &str) -> usize {
-    cpp.lines().skip_while(|line| line.starts_with("//")).filter(|line| line.trim_start().starts_with("//")).count()
+    cpp.lines()
+        .skip_while(|line| line.starts_with("//"))
+        .filter(|line| line.trim_start().starts_with("//"))
+        .count()
 }
 
 /// The length of `cpp` without its comment lines, but for the header.
@@ -383,17 +537,31 @@ fn the_comments_on_the_cpp_give_way_before_the_source_in_the_header() {
     std::fs::write(&file, padded(pad)).unwrap();
     std::fs::write(
         scratch.join("cp.toml"),
-        format!("[judge]\njudge = \"tight\"\n\n[judge.tight]\nextends = \"generic\"\nsource_kb = {}\n", limit / 1024),
+        format!(
+            "[judge]\njudge = \"tight\"\n\n[judge.tight]\nextends = \"generic\"\nsource_kb = {}\n",
+            limit / 1024
+        ),
     )
     .unwrap();
     let out = cpl_cli::run(&["build", file.to_str().unwrap(), "--size", "-o", "-"]);
     assert_eq!(out.code, 0, "{}", out.stderr);
     let cpp = String::from_utf8(out.stdout).unwrap();
     assert!(cpp.len() <= limit);
-    assert!(cpp.contains("//     xs.sort()"), "the source stays in the header:\n{cpp}");
+    assert!(
+        cpp.contains("//     xs.sort()"),
+        "the source stays in the header:\n{cpp}"
+    );
     assert_eq!(comment_lines(&cpp), 0, "{cpp}");
-    assert!(out.stderr.contains("the comments on the C++ are left out"), "{}", out.stderr);
-    assert!(!out.stderr.contains("the source in the header is left out"), "{}", out.stderr);
+    assert!(
+        out.stderr.contains("the comments on the C++ are left out"),
+        "{}",
+        out.stderr
+    );
+    assert!(
+        !out.stderr.contains("the source in the header is left out"),
+        "{}",
+        out.stderr
+    );
     let (total, parts) = size_parts(&out.stderr);
     assert_eq!(total, cpp.len());
     assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total);
@@ -412,7 +580,14 @@ fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
     std::fs::write(&file, format!("// judge: icpc\n{deep}")).unwrap();
     let input = scratch.join("deep.in");
     std::fs::write(&input, "1000000\n").unwrap();
-    let out = cpl_cli::run(&["profile", file.to_str().unwrap(), input.to_str().unwrap(), "--native", "--format", "json"]);
+    let out = cpl_cli::run(&[
+        "profile",
+        file.to_str().unwrap(),
+        input.to_str().unwrap(),
+        "--native",
+        "--format",
+        "json",
+    ]);
     assert_eq!(out.code, 0, "{}", out.stderr);
     let json = String::from_utf8_lossy(&out.stdout);
     assert!(json.contains("\"hits\":1000001"), "{json}");
@@ -424,11 +599,20 @@ fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
     let _ = std::fs::remove_dir_all(&scratch);
     std::fs::create_dir_all(scratch.join("a.tests")).unwrap();
     let file = scratch.join("a.cp");
-    std::fs::write(&file, "// judge: atcoder\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n").unwrap();
+    std::fs::write(
+        &file,
+        "// judge: atcoder\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n",
+    )
+    .unwrap();
     let path = file.to_str().unwrap();
     let out = cpl_cli::run(&["submit", path]);
     assert_eq!(out.code, 0, "{}", out.stderr);
-    assert!(out.stderr.contains("has no cases, so only the build was checked"), "{}", out.stderr);
+    assert!(
+        out.stderr
+            .contains("has no cases, so only the build was checked"),
+        "{}",
+        out.stderr
+    );
     let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
     assert!(cpp.contains("For judge `atcoder`"), "{cpp}");
 
@@ -438,20 +622,38 @@ fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
     let stdout = String::from_utf8(out.stdout).unwrap();
     assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
     assert!(stdout.contains("1/1 passed"), "{stdout}");
-    assert!(stdout.ends_with(&format!("ready to send: {}\n", scratch.join("a.cpp").display())), "{stdout}");
+    assert!(
+        stdout.ends_with(&format!(
+            "ready to send: {}\n",
+            scratch.join("a.cpp").display()
+        )),
+        "{stdout}"
+    );
 
     std::fs::write(scratch.join("a.tests/2.in"), "2 2\n").unwrap();
     std::fs::write(scratch.join("a.tests/2.out"), "5\n").unwrap();
     let out = cpl_cli::run(&["submit", path]);
     let stdout = String::from_utf8(out.stdout).unwrap();
     assert_eq!(out.code, 1, "{stdout}");
-    assert!(stdout.contains("WA") && !stdout.contains("ready to send"), "{stdout}");
-    assert!(out.stderr.contains("is not ready to send: a case in"), "{}", out.stderr);
+    assert!(
+        stdout.contains("WA") && !stdout.contains("ready to send"),
+        "{stdout}"
+    );
+    assert!(
+        out.stderr.contains("is not ready to send: a case in"),
+        "{}",
+        out.stderr
+    );
 
     std::fs::write(scratch.join("cp.toml"), "[judge.atcoder]\nsource_kb = 1\n").unwrap();
     let out = cpl_cli::run(&["submit", path]);
     assert_eq!(out.code, 1);
-    assert!(out.stderr.contains("is not ready to send: it does not build"), "{}", out.stderr);
+    assert!(
+        out.stderr
+            .contains("is not ready to send: it does not build"),
+        "{}",
+        out.stderr
+    );
     assert!(String::from_utf8(out.stdout).unwrap().is_empty());
 
     let out = cpl_cli::run(&["submit", path, "--judge", "cses"]);
@@ -467,7 +669,11 @@ fn submit_and_build_copy_the_cpp_to_the_clipboard() {
     std::fs::create_dir_all(scratch.join("a.tests")).unwrap();
     let file = scratch.join("a.cp");
     let path = file.to_str().unwrap();
-    std::fs::write(&file, "// judge: dmoj\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n").unwrap();
+    std::fs::write(
+        &file,
+        "// judge: dmoj\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n",
+    )
+    .unwrap();
     std::fs::write(scratch.join("a.tests/1.in"), "1 2\n").unwrap();
     std::fs::write(scratch.join("a.tests/1.out"), "3\n").unwrap();
     let clipboard = scratch.join("clipboard");
@@ -476,7 +682,10 @@ fn submit_and_build_copy_the_cpp_to_the_clipboard() {
     let out = cpl_cli::run(&["submit", path, "--copy"]);
     let stdout = String::from_utf8(out.stdout).unwrap();
     assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
-    assert!(stdout.contains("1/1 passed") && stdout.contains("ready to send"), "{stdout}");
+    assert!(
+        stdout.contains("1/1 passed") && stdout.contains("ready to send"),
+        "{stdout}"
+    );
     assert!(out.stderr.contains("to the clipboard"), "{}", out.stderr);
     let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
     assert!(cpp.contains("For judge `dmoj`"), "{cpp}");
@@ -492,7 +701,12 @@ fn submit_and_build_copy_the_cpp_to_the_clipboard() {
     std::env::set_var("CPL_CLIPBOARD", "exit 1");
     let out = cpl_cli::run(&["build", path, "--copy"]);
     assert_eq!(out.code, 0, "{}", out.stderr);
-    assert!(out.stderr.contains("warning: `CPL_CLIPBOARD` (`exit 1`) failed"), "{}", out.stderr);
+    assert!(
+        out.stderr
+            .contains("warning: `CPL_CLIPBOARD` (`exit 1`) failed"),
+        "{}",
+        out.stderr
+    );
     std::env::remove_var("CPL_CLIPBOARD");
 }
 
@@ -514,11 +728,25 @@ fn a_statement_whose_value_is_dropped_writes_no_unused_value() {
     let source = scratch.join("a.cpp");
     std::fs::write(&source, &cpp).unwrap();
     let compiled = std::process::Command::new("g++")
-        .args(["-std=c++17", "-fsyntax-only", "-Wall", "-Werror=unused-value"])
+        .args([
+            "-std=c++17",
+            "-fsyntax-only",
+            "-Wall",
+            "-Werror=unused-value",
+        ])
         .arg(&source)
         .output()
         .unwrap();
-    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
     let run = cpl_cli::run(&["run", file.to_str().unwrap()]);
-    assert_eq!(String::from_utf8(run.stdout).unwrap(), "2\n", "{}", run.stderr);
+    assert_eq!(
+        String::from_utf8(run.stdout).unwrap(),
+        "2\n",
+        "{}",
+        run.stderr
+    );
 }

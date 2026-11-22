@@ -8,7 +8,7 @@ var b: List<Int> = [9]
 if b.len < a.len: swap(mut a, mut b)
 print(a, "|", b)
 let moved = b.take()
-print(moved, b.len, b.is_empty)
+print(moved, b.len, yes(b.is_empty))
 var rows: List<List<Int>> = [[1], [2, 3]]
 swap(mut rows[0], mut rows[1])
 print(rows[0], "|", rows[1])
@@ -20,7 +20,7 @@ var p: List<Int> = [3, 2, 1]
 var seen = 1
 while prev_permutation(mut p): seen += 1
 print(seen, p)
-print(next_permutation(mut p), p)
+print(yes(next_permutation(mut p)), p)
 
 struct Node:
     ends: Bool = false
@@ -34,7 +34,7 @@ fn grow() -> Int:
 trie[grow()].ends = true
 trie[0].next ??= trie.push_id(Node())
 trie[0].next ??= trie.push_id(Node())
-print(trie.len, trie[1].ends, trie[0].next ?? -1)
+print(trie.len, yes(trie[1].ends), trie[0].next ?? -1)
 
 var v: List<Int> = [1]
 fn bump() -> Int:

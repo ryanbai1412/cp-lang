@@ -6,5 +6,5 @@ print(order)
 domain I = 0..n
 let by_dom = sorted(I, by: i => -w[i.to_idx])
 print(by_dom)
-for b in Bool: print(b)
+for b in Bool: print(yes(b))
 print(count(b for b in Bool), [x * 2 for x in 0..3], sum(0..4), max(1..=3))
