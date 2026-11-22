@@ -54,7 +54,7 @@ pub fn replay(
         None => format!("the edit removes `{}`, so the whole file ran again", call.name),
         Some(_) => format!("the edit changes what `{}` takes or returns, so the whole file ran again", call.name),
     });
-    let stop = Some((call.name.clone(), call.ordinal)).filter(|_| fallback.is_none());
+    let stop = fallback.is_none().then_some((call.name.clone(), call.ordinal));
     let mut run = run(edited, input, TraceConfig { stop_after_call: stop.clone(), ..config.clone() });
     let mut fallback = fallback;
     let mut replayed = find(&run.0, call);

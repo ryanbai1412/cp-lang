@@ -540,7 +540,7 @@ impl Session {
                     Some(name) => {
                         let named = |c: &&cpl_interp::trace::Call| &c.name == name;
                         let open = recorded.calls.iter().filter(named).filter(|c| c.entry <= step && step < c.exit).max_by_key(|c| c.depth);
-                        let done = || recorded.calls.iter().filter(named).filter(|c| c.exit <= step).last();
+                        let done = || recorded.calls.iter().filter(named).rfind(|c| c.exit <= step);
                         let first = || recorded.calls.iter().find(named);
                         open.or_else(done).or_else(first).cloned().ok_or(format!("the run never calls `{name}`"))
                     }
