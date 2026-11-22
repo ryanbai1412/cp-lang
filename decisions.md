@@ -5632,3 +5632,13 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Declare `checks` and `lint` in `spec/std` once literal/enum
   context field types and lint-catalog reflection exist, and remove the
   special cases in `cpl-check`'s `check_with` and `cpl-lint`'s `Allows`.
+
+## 211. Graph reachability rows are `reach_sets`, not a second `closure` (2026-11-22)
+
+- **Decision.** `std.graph` had two `closure` fns: the semiring closure
+  of a `[V, V]?W` matrix and the bitset reachability of a `Next<V>`
+  graph. R08.5.2 rules out overloading by type, so the graph form is
+  `reach_sets(g)`; `d.closure(over:)` keeps the name it shares with the
+  semiring literature.
+- **Reverse.** Rename `reach_sets` back and drop the matrix `closure`
+  or rename it instead.

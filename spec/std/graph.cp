@@ -1388,8 +1388,8 @@ pub fn count_paths<T, V>(g: Next<V>, from: Seq<V>) -> ?[V]T = todo
 /// cost: O(n m / 64) time, O(n^2 / 64) memory
 /// order: keyed by `V`
 /// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; let r = closure(g); r[0].contains(2) and not r[2].contains(0) and r[1].contains(1)`
-pub fn closure<V>(g: Next<V>) -> [V]Bitset<V> = todo
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; let r = reach_sets(g); r[0].contains(2) and not r[2].contains(0) and r[1].contains(1)`
+pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V> = todo
 
 /// Offline incremental SCC: the arcs of `arcs` are added in order, and `t[e]` is the first
 /// index `i >= e` such that after adding arcs `0..=i` the ends of `e` share a strongly

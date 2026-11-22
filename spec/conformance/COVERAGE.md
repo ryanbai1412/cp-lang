@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1419 (995 passing). Rules: 521.
+Cases: 1424 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -20,8 +20,8 @@ Cases: 1419 (995 passing). Rules: 521.
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 89 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
-- R09 (09-contexts-checks.md): 25 rules, 38 cases; 4 uncovered, 5 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 44 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 45 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
@@ -490,9 +490,9 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R09: 09-contexts-checks.md
 
-- R09.1.1 [1+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
+- R09.1.1 [3+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
-- R09.1.3 [3+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
+- R09.1.3 [4+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
 - R09.1.4 [0+ 0-] **uncovered**: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [1+ 1-]: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
@@ -522,7 +522,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.2 [2+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [3+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
-- R10.2.2 [4+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
+- R10.2.2 [5+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [5+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [2+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
@@ -626,7 +626,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0205 Used before initialization: 1 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
-- E0208 value_name_case *(0.3)*: 1 case(s)
+- E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 10 case(s)
 - E0302 Type mismatch: 22 case(s)
 - E0303 Wrong number of arguments: 5 case(s)
@@ -645,7 +645,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0402 Missing `mut` at call site: 1 case(s)
 - E0403 `mut` of an immutable binding: 2 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
-- E0405 assign_fixed_field *(0.3)*: 1 case(s)
+- E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
@@ -661,11 +661,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0607 Moved while captured by a closure: 2 case(s)
 - E0608 Use of moved value: 7 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
-- E0702 overload_by_type *(0.3)*: 2 case(s)
+- E0702 Overload by type: 2 case(s)
 - E0703 bare_op_tuple *(0.3)*: 1 case(s)
 - E0704 row_missing_field *(0.3)*: 2 case(s)
 - E0705 law_unsupported_specialization *(0.3)*: 1 case(s)
-- E0706 empty_fold_no_identity *(0.3)*: 1 case(s)
+- E0706 Fold without an identity: 1 case(s)
 - E0801 Context value is not a constant: 1 case(s)
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
@@ -673,7 +673,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
-- E0902 range_store_unprovable_const *(0.3)*: 7 case(s)
+- E0902 Range store not provable: 7 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
 - E0904 memory_over_profile *(0.3)*: **no case**
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
@@ -717,13 +717,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0521 Hand-rolled prefix sum: 1 case(s)
 - L0522 Copy-mutate-writeback on a slice: 1 case(s)
 - L0601 Right side changes the place it assigns: 1 case(s)
-- L0602 chain_walked_twice: 1 case(s)
+- L0602 Lazy chain walked twice: 1 case(s)
 - L0603 map_recomputed: **no case**
-- L0604 mut_generator_rewalked: 1 case(s)
-- L0605 literal_slice_index: 3 case(s)
-- L0606 wide_array: 1 case(s)
+- L0604 Generator holding a `mut` lend walked twice: 1 case(s)
+- L0605 Literal index into a slice that keeps source keys: 3 case(s)
+- L0606 Wide array of `Int`: 1 case(s)
 - L0607 padding: **no case**
-- L0608 parens_on_o1 / missing_parens: 1 case(s)
+- L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
 - R0101 Index out of range: 12 case(s)
@@ -766,8 +766,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (144/158 named by a case)
   - uncovered: `ByAngle`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_upper`, `PI`, `Vec.from_angle`, `circles_union_area`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (78/123 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **graph** (78/124 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `reach_sets`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1936 of 2222 std items are named by a case.
+1936 of 2223 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

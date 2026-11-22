@@ -83,7 +83,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'is_none_or', 'is_some_and', 'is_sorted', 'is_subsequence', 'isqrt', 'iterate', 'kruskal', 'kruskal_tree',
     'last_lt', 'laws_hold', 'lcm', 'len', 'lis', 'locate', 'lower', 'max', 'max_closure', 'min', 'minmax',
     'next_permutation', 'pairs', 'partition', 'partition_point', 'peel', 'phi', 'popcount', 'pow_mod',
-    'prefix', 'prev_permutation', 'print', 'prod', 'rand', 'ray', 'reachable', 'read', 'read_all',
+    'prefix', 'prev_permutation', 'print', 'prod', 'rand', 'ray', 'reach_sets', 'reachable', 'read', 'read_all',
     'read_output', 'reduce', 'remove', 'repeat', 'reverse', 'rotate_left', 'rotate_right', 'rotated_left',
     'rotated_right', 'round', 'runs', 'scan', 'scc', 'select', 'shuffle', 'sign', 'some', 'sort', 'sorted',
     'span', 'split_best', 'sqrt', 'starts_with', 'step', 'sum', 'swap', 'take_while', 'tally', 'ternary_max',
