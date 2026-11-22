@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1574 (995 passing). Rules: 523.
+Cases: 1576 (995 passing). Rules: 523.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 1574 (995 passing). Rules: 523.
 - R04a (04a-identity-vs-offset.md): 39 rules, 40 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 55 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 80 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 24 rules, 54 cases; 0 uncovered, 2 happy-path only, 1 negative only
+- R06 (06-control-functions.md): 24 rules, 55 cases; 0 uncovered, 2 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 99 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 65 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
@@ -350,7 +350,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.5 [1+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [2+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
-- R06.1.8 [1+ 0-] *happy-path only*: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
+- R06.1.8 [2+ 0-] *happy-path only*: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
 - R06.2.1 [4+ 1-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
