@@ -34,7 +34,7 @@ Not covered (owner instead):
 2. Every doc example passes `cpl-conform docs`; every std conformance case passes, in the interpreter and in C++ (`cpl-conform diff`).
 3. Every public fn has the required doc labels; `spec-stub.py --check` is clean.
 4. No stdlib privilege: no public std name is special-cased in the compiler, and a std module copied into a user library runs the same.
-5. Prelude at the agreed budget (80 today, see Q1); std modules acyclic.
+5. Prelude matches the chapter tables (decision 150, see Q1); std modules acyclic.
 6. Probes: a cold agent writes unseen problems from the docs alone with std calls that compile first time.
 
 ## Milestones
@@ -56,7 +56,7 @@ All measured 2026-11-22 on main `4b8f504f` with fresh release binaries (`cargo b
 | Interp vs C++ on std cases | `cpl-conform diff std-` | 735/757 (22 skip) | 0 skip, 0 fail | M2 |
 | Pub fns missing a required doc label | `spec-stub.py --audit` | 32 of 2003 | 0 | M2 |
 | `spec-stub.py --check` problems | `spec-stub.py --check` | 13 | 0 | M2 |
-| Prelude names | `check.sh` prelude count | 192 | 80 (Q1) | M3 |
+| Prelude names | `check.sh` prelude count | 192 | chapter tables (decision 150, Q1) | M3 |
 | Std names special-cased in the compiler | `measure.py privilege` | 27 in `prelude.rs`; 111 literals in `call.rs` (upper bound) | 0 | M3 |
 | Modules that pass standalone `cpl check` | loop in metrics.toml | 12/40 | 40 | M3 |
 | `GAPS.md` entries | `grep -c '^- ' spec/std/GAPS.md` | 88 | falling; 0 at M3 | M3 |
@@ -102,6 +102,6 @@ Co-designer, through `plan/QUESTIONS.md` only: API shape, naming, what belongs i
 
 Each is in [plan/QUESTIONS.md](../../QUESTIONS.md) with options and a reversible default.
 
-- **Q1 Prelude: what earns a name.** Recommend: a name is in the prelude if >= 5% of the gold/hill-climb solutions use it; that rule sets the number (80 is a guess). Default: keep 192, draft the cut list.
+- **Q1 Prelude: what earns a name.** Decision 150 already dropped the 80 budget for "the chapter tables, minus common locals". Usage ([prelude-usage.md](prelude-usage.md)): 5 of 192 names are used by >= 5% of 405 ports and hill-climb solutions, 77 by none. Recommend: keep decision 150 and retire the 80 warning. Default: keep 192.
 - **Q2 A range where a domain is named.** `Dsu<0..3>()`, `BeatsSegTree<0..3>(fill: 2)`: accept an int range as an anonymous domain argument? Recommend yes (decision 159 already makes `(V, V)` an inline domain). Default: leave the 174 examples as written.
 - **Q3 The compiler/std boundary.** Recommend: only storage, I/O, bit ops and numeric primitives stay intrinsics; `sort`, `min`, `sum`, `first`, ... become std bodies, guarded by a perf gate. Default: move nothing that costs speed; std bodies become the reference the builtins are tested against.

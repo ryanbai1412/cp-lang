@@ -67,10 +67,17 @@ target = 0
 milestone = "M2"
 
 [[metric]]
+name = "prelude_names_used_5pct"
+command = "python3 plan/domains/stdlib/measure.py prelude-usage"
+value = 5
+target = "informational (data for plan/QUESTIONS.md stdlib Q1); 77 names used by no port or hill-climb solution"
+milestone = "M3"
+
+[[metric]]
 name = "prelude_names"
 command = "scripts/check.sh --fast  # prints 'prelude: N names'"
 value = 192
-target = "80 (pending plan/QUESTIONS.md stdlib Q1)"
+target = "the lib/ chapter tables (decision 150; plan/QUESTIONS.md stdlib Q1)"
 milestone = "M3"
 
 [[metric]]

@@ -8,7 +8,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 - **Examples that don't compile.** Of 687 non-passing doc examples, two causes cover 263 (`--causes`): 174 E0204 "takes a domain by name, and `0..5` is a range" (an int range where a type argument names a domain), 89 R0001 "an array literal needs one value per position" (a list literal for `[D]T`, which spec R04.8.10 allows).
 - **Whole modules.** `flow` 0/72 and `dsu` 0/64 examples pass; `tree` 123/239, `graph` 87/141 (`cpl-conform docs <m>.cp`). Only 12 of 40 files pass standalone `cpl check` (the `SPEC_STD` ratchet in `crates/cpl-cli/tests/corpus.rs` lists the same 12).
 - **Compiler gaps.** 88 entries in `spec/std/GAPS.md`: bodies the compiler can't run yet.
-- **Surface.** Prelude 192 names (`check.sh`, target 80); 32 public fns lack a doc label; 13 `spec-stub --check` problems (e.g. `ternary_max` is in no chapter).
+- **Surface.** Prelude 192 names (`check.sh` still warns above 80, a budget decision 150 dropped; usage in `prelude-usage.md`); 32 public fns lack a doc label; 13 `spec-stub --check` problems (e.g. `ternary_max` is in no chapter).
 - **Privilege.** 27 public std names are also in `cpl-check/src/prelude.rs` tables; up to 111 std names appear as string literals in `cpl-ir/src/lower/call.rs` (an upper bound: common words like `len` count). The tech-debt README's 77 is a third count; M3 fixes one definition with tech-debt.
 
 ## Workstreams, in order

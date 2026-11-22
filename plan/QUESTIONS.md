@@ -114,13 +114,13 @@ How to reverse it: gate on (a) only.
 Meanwhile: report both; gate on (a) until the first fresh set exists.
 
 ### stdlib: Q1 what earns a prelude name
-Today 192 names are in every program (`spec/std/prelude.cp`); `scripts/check.sh` warns above 80.
-- (a) A fixed budget of 80, cut by judgment.
-- (b) A usage rule: a name stays if at least 5% of gold ports and hill-climb solutions use it; the rule sets the count (per-name usage not measured yet). A name like `ternary_max` (no spec chapter, `spec-stub.py --check`) is a candidate to go: `use std.search.{ternary_max}`.
-- (c) No budget: everything a contest uses often is in.
-Recommendation: (b). It ties the prelude to real code, keeps one way to get each name, and `cpl fix` (lint L0208) adds the `use` for anything cut.
+Today 192 names are in every program (`spec/std/prelude.cp`). Decision 150 (core R11.3.2) already dropped the 80-name budget: a name is in exactly when a `lib/` chapter's main tables list it, and the cost is a collision, not a count; `scripts/check.sh` still warns above 80. Usage (`python3 plan/domains/stdlib/measure.py prelude-usage`, table in `plan/domains/stdlib/prelude-usage.md`): of 305 reviewed ports and 100 hill-climb solutions, 5 names are used by at least 5% (`Mod`, `sum`, `Graph`, `Rooted`, `Comb`), 115 by at least one, 77 by none. The ports are v0.2 `port.cp` files, so they undercount v0.3-only names.
+- (a) Keep decision 150: membership by the chapter tables; retire the 80 warning; use the usage table to review what a chapter's main table lists.
+- (b) Decision 150 plus a usage floor: a table name used by no port or hill-climb solution needs a `use` (77 names today).
+- (c) Restore a fixed budget of 80 (decision 94), cut by judgment.
+Recommendation: (a). A rule a contestant can guess from the docs beats a usage cut that moves with the corpus; 5% would leave 5 names, which says usage alone is the wrong test. `cpl fix` (lint L0208) adds the `use` for any name that later leaves.
 How to reverse it: a name moved out goes back with one line in `spec/std/prelude.cp`.
-Meanwhile: keep 192, measure usage per name, draft the cut list; nothing removed until answered.
+Meanwhile: keep 192; nothing removed until answered.
 
 ### stdlib: Q2 an int range where a type argument names a domain
 174 doc examples fail with E0204 "takes a domain by name, and `0..3` is a range", e.g. `spec/std/dsu.cp`: `let d = Dsu<0..3>(); d.components == 3`, `spec/std/beats.cp`: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`.
