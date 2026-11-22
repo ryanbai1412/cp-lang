@@ -5,14 +5,14 @@ domain D2 = 0..2
 domain K = 0..8
 let p3 = [Pt(0, 0), Pt(1, 1), Pt(3, 0)]
 let fp = farthest_pair([D3] i => p3[i.to_idx])
-print(fp.a == D3(0) and fp.b == D3(2) and fp.dist2 == 9)
-print(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3)))
-print(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None)
+print(yes(fp.a == D3(0) and fp.b == D3(2) and fp.dist2 == 9))
+print(yes(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3))))
+print(yes(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None))
 let p5 = [Pt(0, 0), Pt(1, 1), Pt(5, 5)]
-print(manhattan_mst([D3] i => p5[i.to_idx]).any(e => e.u == D3(0) and e.v == D3(1) and e.w == 2))
+print(yes(manhattan_mst([D3] i => p5[i.to_idx]).any(e => e.u == D3(0) and e.v == D3(1) and e.w == 2)))
 let p2 = [Pt(0, 0), Pt(2, 0)]
 let m2 = manhattan_mst([D2] i => p2[i.to_idx])
-print(m2.len == 1 and m2[0].u == D2(0) and m2[0].v == D2(1) and m2[0].w == 2)
+print(yes(m2.len == 1 and m2[0].u == D2(0) and m2[0].v == D2(1) and m2[0].w == 2))
 var seed = 7
 fn rnd(mut seed: Int, n: Int) -> Int:
     seed = (seed * 1103515245 + 12345) % 2147483648
@@ -81,4 +81,4 @@ for _ in 0..80:
                 if r == None or cuts != [r!.0, r!.1]: okl = false
             else:
                 if r != None: okl = false
-print(okf, okm, okl)
+print(yes(okf), yes(okm), yes(okl))

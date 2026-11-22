@@ -2,4 +2,4 @@
 use std.heap.{MinMaxHeap}
 var h = MinMaxHeap.of([2])
 h.clear()
-print(h.first == None)
+print(yes(h.first == None))

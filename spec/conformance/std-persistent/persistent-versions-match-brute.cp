@@ -57,4 +57,4 @@ for _ in 0..300:
     if t.fold(vs[j], N(ql)..=N(qr)) != s or u.fold(us[j], N(ql)..=N(qr)) != s: ok = false
     if t.get(vs[j], N(ql)) != brute[j][ql] or p.get(ps[j], N(qr)) != brute[j][qr]: ok = false
     if t.all(vs[j]) != brute[j].sum() or u.all(us[j]) != brute[j].sum(): ok = false
-print(ok)
+print(yes(ok))

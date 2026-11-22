@@ -3,4 +3,4 @@ use std.marks.{Arena}
 var a = Arena<Int>()
 a.alloc(5)
 a.clear()
-print(a.is_empty)
+print(yes(a.is_empty))

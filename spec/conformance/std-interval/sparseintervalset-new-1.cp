@@ -1,3 +1,3 @@
 // expect: ok, output "YES"
 use std.interval.{SparseIntervalSet}
-print(SparseIntervalSet().covered == 0)
+print(yes(SparseIntervalSet().covered == 0))

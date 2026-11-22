@@ -7,7 +7,7 @@ let z: [N]Int = [0, 0, 0, 0]
 var t = PersistentSegTree<N, Int>(+, a: z)
 let v1 = t.set(t.base, N(1), 1)
 let v2 = t.set(v1, N(3), 2)
-print(t.diff_kth(v2, t.base, 1) == Some(N(3)), t.diff_kth(v2, t.base, 3) == None, t.diff_kth(v2, v1, 0) == Some(N(3)), t.diff_kth(v2, t.base, 0) == Some(N(1)))
+print(yes(t.diff_kth(v2, t.base, 1) == Some(N(3))), yes(t.diff_kth(v2, t.base, 3) == None), yes(t.diff_kth(v2, v1, 0) == Some(N(3))), yes(t.diff_kth(v2, t.base, 0) == Some(N(1))))
 let a3: [M]Int = [1, 2, 3]
 var p = PersistentArray<M, Int>(a: a3)
 let w = p.set(p.base, M(0), 9)

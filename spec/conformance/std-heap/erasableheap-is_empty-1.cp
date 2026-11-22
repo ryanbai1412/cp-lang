@@ -3,4 +3,4 @@ use std.heap.{ErasableHeap}
 var h: ErasableHeap<Int> = ErasableHeap()
 h.push(1)
 h.remove(1)
-print(h.is_empty)
+print(yes(h.is_empty))

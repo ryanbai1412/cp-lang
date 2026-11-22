@@ -1,4 +1,4 @@
 // expect: ok, output "YES"
 use std.bag.{SortedBag}
 var b = SortedBag.of([3, 3, 1])
-print(b.pop_last() == Some(3) and b.to_list() == [1, 3])
+print(yes(b.pop_last() == Some(3) and b.to_list() == [1, 3]))

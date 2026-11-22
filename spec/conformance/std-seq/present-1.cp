@@ -1,2 +1,2 @@
 // expect: ok, output "YES"
-print([Some(1), None, Some(3)].present().collect() == [1, 3])
+print(yes([Some(1), None, Some(3)].present().collect() == [1, 3]))

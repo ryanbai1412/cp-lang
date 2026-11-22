@@ -2,4 +2,4 @@
 use std.marks.{Arena, Id}
 var a = Arena<Str>()
 a.alloc("p")
-print(a.alloc("q") == Id<Str>(1))
+print(yes(a.alloc("q") == Id<Str>(1)))

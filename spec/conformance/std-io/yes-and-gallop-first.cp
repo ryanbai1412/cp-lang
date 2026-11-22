@@ -7,4 +7,4 @@ var ok = true
 for t in 0..200:
     for f in -3..3:
         if gallop_first(f, i => i >= t) != Some(max(f, t)): ok = false
-print(ok)
+print(yes(ok))

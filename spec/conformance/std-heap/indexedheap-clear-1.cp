@@ -4,4 +4,4 @@ domain V = 0..4
 var h: IndexedHeap<V, Int> = IndexedHeap()
 h.set(V(1), 5)
 h.clear()
-print(h.get(V(1)) == None)
+print(yes(h.get(V(1)) == None))

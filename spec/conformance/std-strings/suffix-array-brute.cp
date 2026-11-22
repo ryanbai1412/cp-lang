@@ -19,4 +19,4 @@ for i in 0..40:
         var k = 0
         while i + k < w.len and j + k < w.len and w[i + k] == w[j + k]: k += 1
         if sa.lcp_between(i, j) != k: ok = false
-print(ok)
+print(yes(ok))

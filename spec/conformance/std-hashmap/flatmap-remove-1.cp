@@ -2,4 +2,4 @@
 use std.hashmap.{FlatMap}
 var m = FlatMap(0)
 m.set(2, 9)
-print(m.remove(2) == Some(9) and m.remove(2) == None)
+print(yes(m.remove(2) == Some(9) and m.remove(2) == None))

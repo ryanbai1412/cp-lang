@@ -5,17 +5,17 @@ var rc = RelaxedConvolve<17>()
 var rd = RelaxedConvolve<17>()
 rd.push(Z(1), Z(3))
 var re = RelaxedConvolve<17>()
-print(rc.push(Z(0), Z(0)) == Z(0), rd.push(Z(2), Z(4)) == Z(10), re.push(Z(1), Z(3)) == Z(3))
+print(yes(rc.push(Z(0), Z(0)) == Z(0)), yes(rd.push(Z(2), Z(4)) == Z(10)), yes(re.push(Z(1), Z(3)) == Z(3)))
 var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)])
 let e: List<Z> = []
 var sd = SemiRelaxedConvolve<17>(e)
 var se = SemiRelaxedConvolve<17>([Z(1), Z(2)])
 se.push(Z(1))
 se.push(Z(2))
-print(sc.push(Z(1)) == Z(1), sd.push(Z(5)) == Z(0), se.push(Z(5)) == Z(9))
+print(yes(sc.push(Z(1)) == Z(1)), yes(sd.push(Z(5)) == Z(0)), yes(se.push(Z(5)) == Z(9)))
 let ee: List<List<Z>> = []
-print(convolve_all([[Z(1), Z(1)], [Z(1), Z(1)]]) == [Z(1), Z(2), Z(1)], convolve_all(ee) == [Z(1)], convolve_all([[Z(1), Z(1)], e]) == [], subset_exp([Z(0), Z(1), Z(1), Z(1)]) == [Z(1), Z(1), Z(1), Z(2)])
-print(subset_log([Z(1), Z(1), Z(1), Z(2)]) == [Z(0), Z(1), Z(1), Z(1)], subset_log([Z(1), Z(0)]) == [Z(0), Z(0)])
+print(yes(convolve_all([[Z(1), Z(1)], [Z(1), Z(1)]]) == [Z(1), Z(2), Z(1)]), yes(convolve_all(ee) == [Z(1)]), yes(convolve_all([[Z(1), Z(1)], e]) == []), yes(subset_exp([Z(0), Z(1), Z(1), Z(1)]) == [Z(1), Z(1), Z(1), Z(2)]))
+print(yes(subset_log([Z(1), Z(1), Z(1), Z(2)]) == [Z(0), Z(1), Z(1), Z(1)]), yes(subset_log([Z(1), Z(0)]) == [Z(0), Z(0)]))
 type W = Mod<998244353>
 var seed = 7
 fn nxt(s: Int) -> Int = (s * 1103515245 + 12345) % 2147483648
@@ -57,4 +57,4 @@ var sub = List<W>()
 for m in 0..32:
     seed = nxt(seed)
     sub.push(if m == 0: W(0) else: W(seed))
-print(ok and convolve_all(parts) == prod and subset_log(subset_exp(sub)) == sub)
+print(yes(ok and convolve_all(parts) == prod and subset_log(subset_exp(sub)) == sub))

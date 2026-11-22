@@ -1,3 +1,3 @@
 // expect: ok, output "YES"
 use std.deque.{Deque}
-print(Deque.of([4, 5]).first == Some(4))
+print(yes(Deque.of([4, 5]).first == Some(4)))

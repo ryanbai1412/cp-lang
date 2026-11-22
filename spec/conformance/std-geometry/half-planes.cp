@@ -1,18 +1,18 @@
 // expect: ok, output "YES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES"
 use std.geometry.{Vec, HalfPlane, half_plane_intersect, polygon_kernel, convex_polygon_intersect}
-print(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(1.0, 0.0), Vec(1.0, 1.0)), HalfPlane.through(Vec(1.0, 1.0), Vec(0.0, 1.0)), HalfPlane.through(Vec(0.0, 1.0), Vec(0.0, 0.0))]) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)])
-print(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))]) == [])
-print(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))], bound: Some(1.0)) == [Vec(-1.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)])
-print(polygon_kernel([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)])
-print(convex_polygon_intersect([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], [Vec(1.0, 1.0), Vec(3.0, 1.0), Vec(3.0, 3.0), Vec(1.0, 3.0)]) == [Vec(1.0, 1.0), Vec(2.0, 1.0), Vec(2.0, 2.0), Vec(1.0, 2.0)])
-print(convex_polygon_intersect([Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)], [Vec(5.0, 5.0), Vec(6.0, 5.0), Vec(5.0, 6.0)]) == [])
+print(yes(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(1.0, 0.0), Vec(1.0, 1.0)), HalfPlane.through(Vec(1.0, 1.0), Vec(0.0, 1.0)), HalfPlane.through(Vec(0.0, 1.0), Vec(0.0, 0.0))]) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]))
+print(yes(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))]) == []))
+print(yes(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))], bound: Some(1.0)) == [Vec(-1.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]))
+print(yes(polygon_kernel([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]))
+print(yes(convex_polygon_intersect([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], [Vec(1.0, 1.0), Vec(3.0, 1.0), Vec(3.0, 3.0), Vec(1.0, 3.0)]) == [Vec(1.0, 1.0), Vec(2.0, 1.0), Vec(2.0, 2.0), Vec(1.0, 2.0)]))
+print(yes(convex_polygon_intersect([Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)], [Vec(5.0, 5.0), Vec(6.0, 5.0), Vec(5.0, 6.0)]) == []))
 let sq = [Vec(0.0, 0.0), Vec(4.0, 0.0), Vec(4.0, 4.0), Vec(0.0, 4.0)]
 let notch = [Vec(0.0, 0.0), Vec(4.0, 0.0), Vec(4.0, 4.0), Vec(2.0, 1.0), Vec(0.0, 4.0)]
 let k = polygon_kernel(notch)
-print(k.len == 3 and abs(k[0].x - 4.0 / 3.0) < 1e-9 and abs(k[1].x - 8.0 / 3.0) < 1e-9 and k[2] == Vec(2.0, 1.0))
-print(polygon_kernel(sq) == sq)
-print(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(0.0, -1.0), Vec(-1.0, -1.0))], bound: Some(5.0)) == [])
-print(convex_polygon_intersect(sq, [Vec(4.0, 0.0), Vec(6.0, 0.0), Vec(6.0, 4.0), Vec(4.0, 4.0)]) == [])
+print(yes(k.len == 3 and abs(k[0].x - 4.0 / 3.0) < 1e-9 and abs(k[1].x - 8.0 / 3.0) < 1e-9 and k[2] == Vec(2.0, 1.0)))
+print(yes(polygon_kernel(sq) == sq))
+print(yes(half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(0.0, -1.0), Vec(-1.0, -1.0))], bound: Some(5.0)) == []))
+print(yes(convex_polygon_intersect(sq, [Vec(4.0, 0.0), Vec(6.0, 0.0), Vec(6.0, 4.0), Vec(4.0, 4.0)]) == []))
 fn rnd(mut s: Int, m: Int) -> Int:
     s = (s * 1103515245 + 12345) % 2147483648
     s % m
@@ -44,4 +44,4 @@ for _ in 0..150:
         let c = inside(r, z)
         if a == 1 and b == 1 and c != 1: ok = false
         if (a == -1 or b == -1) and c == 1: ok = false
-print(ok)
+print(yes(ok))

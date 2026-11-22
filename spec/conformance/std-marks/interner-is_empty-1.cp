@@ -3,4 +3,4 @@ use std.marks.{Interner}
 var t = Interner<Str>()
 t.id("a")
 t.clear()
-print(t.is_empty)
+print(yes(t.is_empty))

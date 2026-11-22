@@ -40,4 +40,4 @@ for _ in 0..400:
         mx = max(mx, a[i])
     if t.all_sum != sm or t.all_min != Some(mn) or t.all_max != Some(mx): ok = false
     if t.sum(N(l)..=N(r)) != [a[i] for i in N(l)..=N(r)].sum(): ok = false
-print(ok)
+print(yes(ok))

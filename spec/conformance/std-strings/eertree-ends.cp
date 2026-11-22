@@ -7,7 +7,7 @@ var u = PalindromicTree<L>.of(w("ab"))
 u.pop()
 var v = PalindromicTree<L>()
 v.push(L('a'))
-print(t.push_front(L('a')) == 4, u.distinct == 1 and u.last_state == 2, v.push(L('a')) == 3)
+print(yes(t.push_front(L('a')) == 4), yes(u.distinct == 1 and u.last_state == 2), yes(v.push(L('a')) == 3))
 fn brute(s: List<L>) -> (Int, Int):
     var seen = List<List<L>>()
     var occ = 0
@@ -37,7 +37,7 @@ for round in 0..60:
         var total = 0
         for k in 2..counts.len: total += counts[k]
         if p.distinct != d or total != o: ok = false
-print(ok)
+print(yes(ok))
 var q = PalindromicTree<L>()
 var r = List<L>()
 var good = true
@@ -52,4 +52,4 @@ for step in 0..200:
         r.push(ch)
     let (d, _) = brute(r)
     if q.distinct != d: good = false
-print(good)
+print(yes(good))

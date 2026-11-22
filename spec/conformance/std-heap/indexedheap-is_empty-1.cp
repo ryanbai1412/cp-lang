@@ -2,4 +2,4 @@
 use std.heap.{IndexedHeap}
 domain V = 0..4
 var h: IndexedHeap<V, Int> = IndexedHeap()
-print(h.is_empty)
+print(yes(h.is_empty))

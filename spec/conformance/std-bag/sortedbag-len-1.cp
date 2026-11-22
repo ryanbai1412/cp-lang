@@ -1,3 +1,3 @@
 // expect: ok, output "YES"
 use std.bag.{SortedBag}
-print(SortedBag.of([3, 1, 3]).len == 3)
+print(yes(SortedBag.of([3, 1, 3]).len == 3))

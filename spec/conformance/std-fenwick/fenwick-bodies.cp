@@ -4,7 +4,7 @@ domain D = 0..3
 let a: [D]Int = [D] v => 1 + Int(v)
 var f = Fenwick<D, Int>(a: Some(a))
 print(f.all, f.fold(D(1)..), f.get(D(1)), f.suffix(D.cuts.nth(1)), f.suffix(D.cuts.nth(3)))
-print(Int(f.first_gt(3)!), f.first_gt(6) == None, Int(f.first_gt(-1)!))
+print(Int(f.first_gt(3)!), yes(f.first_gt(6) == None), Int(f.first_gt(-1)!))
 f.set(D(1), 5)
 print(f.all)
 f.clear()
