@@ -1,30 +1,26 @@
-// noi07p1 Social Network: betweenness of every vertex: over pairs s != t avoiding v, the share
-// of shortest s-t paths through v. Floyd-Warshall that also counts shortest paths.
-let (n, m) = read<(1..=100, 0..=4_500)>()
+// NOI 2007 "Social Network": importance of v = sum over pairs s != t (both
+// not v) of the fraction of shortest s-t paths through v. Floyd-Warshall that
+// also counts shortest paths.
+let (n, m) = read<(1..=100, 1..=4500)>()
 domain V = 1..=n
-var dist: [V, V]?Int = none
-var ways: [V, V]Int = 0
+var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => (s == t).then((d: 0, ways: 1))
+for (a, b, c) in read<[m](a: V, b: V, c: 1..=1000)>():
+    best[a, b] = some((d: c, ways: 1))
+    best[b, a] = some((d: c, ways: 1))
 for v in V:
-    dist[v, v] = 0
-    ways[v, v] = 1
-for e in read<[m](u: V, v: V, w: 1..=1_000)>():
-    for (x, y) in [(e.u, e.v), (e.v, e.u)]:
-        dist[x, y] = e.w
-        ways[x, y] = 1
-for k in V:
-    for i in V:
-        for j in V:
-            if let a = dist[i, k], let b = dist[k, j], i != k and j != k:
-                let via = a + b
-                if dist[i, j] == none or via < dist[i, j]!:
-                    dist[i, j] = via
-                    ways[i, j] = ways[i, k] * ways[k, j]
-                elif via == dist[i, j]!:
-                    ways[i, j] += ways[i, k] * ways[k, j]
+    for s in V if s != v:
+        for t in V if t != v and t != s:
+            let some(sv) = best[s, v] else: continue
+            let some(vt) = best[v, t] else: continue
+            let via = (d: sv.d + vt.d, ways: sv.ways * vt.ways)
+            best[s, t] = match best[s, t]:
+                some(st) if st.d < via.d => some(st)
+                some(st) if st.d == via.d => some((d: st.d, ways: st.ways + via.ways))
+                _ => some(via)
+fn share(s: V, v: V, t: V) -> F64:
+    let some(sv) = best[s, v] else: return 0.0
+    let some(vt) = best[v, t] else: return 0.0
+    let st = best[s, t]!
+    if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0
 for v in V:
-    var share = 0.0
-    for s in V:
-        for u in V:
-            if s != v and u != v and s != u and dist[s, v]! + dist[v, u]! == dist[s, u]!:
-                share += F64(ways[s, v] * ways[v, u]) / F64(ways[s, u])
-    print(share, precision: 3)
+    print([(s, t) for s in V for t in V if s != t and s != v and t != v].sum(of: p => share(p.0, v, p.1)), digits: 3)

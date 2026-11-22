@@ -40,6 +40,7 @@ g.deg(u)                              // O(1)
 | `g.weighted(f)` | the same graph with `.w` read as `f(a)` | O(1); `f` per read |
 | `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
 | `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | O(1) to make |
+| `g.only(from: f)` | arcs leaving a vertex `f` rejects are skipped (a stop vertex: arrive, never leave) | O(1) to make |
 | `g.matrix()` | `[V, V]?W`, least weight per pair | O(n² + m) |
 | `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | O(n + m) |
 
@@ -128,7 +129,7 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 ```python
 dijkstra(u => g.out(u).filter(a => !banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
 bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
-bfs(c => c.adj4().filter(c => grid[c] != '#'), from: [start])      // implicit grid
+bfs(c => c.adj4.filter(c => grid[c] != '#'), from: [start])      // implicit grid
 dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 // reweight; keeps .to, .e
 dijkstra((v, k) => chain(                                          // state space (vertex, coupons)
     g.out(v).map(a => (to: (a.to, k), w: a.w)),

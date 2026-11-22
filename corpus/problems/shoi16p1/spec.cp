@@ -1,25 +1,22 @@
-// shoi16p1: cheapest guards so every marked vertex is within k of one. need(u, d): the cheapest
-// way to settle u's subtree where d >= 0 means a guard inside reaches d levels above u, and d < 0
-// means the top -d levels are already covered from outside. Raising d only gets harder.
-let (n, k) = read<(1..=500_000, 0..=20)>()
+// SHOI 2016 "Reconnaissance Guards": a guard at v (cost c[v]) watches every
+// node within k; watch all required nodes as cheaply as possible. Tree DP with
+// a signed reach r: r >= 0, the subtree is watched and a guard's view reaches r
+// more steps above v; r < 0, unwatched required nodes sit at most -r-1 below v.
+let (n, k) = read<(1..=5e5, 1..=20)>()
 domain V = 1..=n
-let cost = read<[V]Int>()
-var marked: [V]Bool = false
-let m = read<0..=n>()
-for v in read<[m]V>():
-    marked[v] = true
-let t = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), root: V.first!)
-@memo(array)
-fn need(u: V, d: -k..=k) -> Int:
-    let kids = t.children(u)
-    var best = if d < k: need(u, d + 1) else: inf
-    if d == k:
-        best min= cost[u] + kids.map(v => need(v, -k)).sum()
-    elif d >= 0:
-        best min= kids.map(v => need(v, -d)).sum() + (kids.map(v => need(v, d + 1) - need(v, -d)).min() ?? inf)
-    else:
-        best min= kids.map(v => need(v, d + 1)).sum()
-    if d == 0 and not marked[u]:
-        best min= kids.map(v => need(v, 0)).sum()
-    best
-print(need(t.root, 0))
+let cost = read<[V]1..=1000>()
+let must = V.mask(read<List<V>>())
+let t = Rooted(Graph<V>.undirected(read<[n - 1](u: V, v: V)>()), root: V(1))
+domain Reach = -k..=k
+
+var best: [V][Reach]Int = []
+for v in List(t.subtree(t.root)).rev:
+    let kids = t.children(v).map(c => best[c]).collect()
+    var b = [Reach] r =>
+        if r == k: cost[v] + kids.sum(of: c => c[-k])
+        elif r >= 0: kids.sum(of: c => c[-r]) + (kids.min(of: c => c[r + 1] - c[-r]) ?? inf)
+        else: kids.sum(of: c => c[r + 1])
+    if not must[v]:
+        b[Reach(0)] = min(b[Reach(0)], kids.sum(of: c => c[Reach(0)]))
+    best[v] = b.suffix_min()
+print(best[t.root][0])

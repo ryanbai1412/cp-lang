@@ -183,3 +183,22 @@ Open questions raised by dreams:
     (`RingRange<D>`, not tied to an array like `RingSlice`) would hide. The draft also rebuilds
     coverage per candidate pair (O(k·n)) and mishandles the pair that wraps, so it is not
     accepted yet.
+- Third blind batch (10 dreams for problems that only had `spec.cp`: btoi17p2, cco21p5, ceoi18p1,
+  noi15p4, apio23p1, noi07p1, shoi16p1, ioi09p6, noi02p1, noi15p1). Seven `spec.cp` files were
+  rewritten from the dream. cco21p5 and noi15p1 dreams check as written. ioi09p6 keeps its old
+  `spec.cp` because the dream's `@tag` cells are a logged parser gap.
+  - Adopted:
+    - `g.only(from: f)` (apio23p1): a stop vertex you can reach but not leave.
+    - `?T.and_then` and `is_none_or` are written into core 2.4. The checker already had them.
+  - Rejected:
+    - Domain-typed `Mat<R, C>` (btoi17p2): `Mat` stays runtime-sized. A `[R, C]T` with a
+      semiring product would be the general form, so it stays open.
+    - `Heap.extend` (noi15p4): use `Heap.of(list)`.
+    - `t.up((v, kids) => ...)` with the children's values as a list (shoi16p1): use a reverse
+      preorder loop over `t.children`. `up` stays a monoid fold.
+    - `grid4(P)` (ioi09p6): use `p.adj4`, which is a getter (the graphs chapter wrote `adj4()`;
+      fixed).
+    - Character-literal variant tags (`'T' Tree`): use `@tag("T")`.
+  - Dream bugs:
+    - `Some(..)` patterns (noi07p1): the pattern is `some`.
+    - `PotentialDsu<V, W>` (noi02p1): the stub takes one parameter and `unite(a, b, w)`.

@@ -65,7 +65,9 @@ keep source positions, as for every sequence (`04b-keys.md`).
 
 `?T` is `T` or `none`.
 
-- `x.is_some_and(p)` tests a value and a predicate at once (`false` on `none`).
+- `x.is_some_and(p)` tests a value and a predicate at once (`false` on `none`);
+  `x.is_none_or(p)` is its dual (`true` on `none`). `x.map(f)` and `x.and_then(f)`
+  (for `f: T -> ?U`) transform the value and keep `none`.
 - `T` converts to `?T` implicitly; the other way is explicit: `x ?? d`
   (lazy fallback), `x!` (unwrap or trap, naming the place), `if let`,
   `while let`, `let ... else`, `match`.

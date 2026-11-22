@@ -125,7 +125,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     pub fn next(self, u: V) -> yields V = todo
 
     /// O(1). Induced view skipping arcs that touch a vertex `keep` rejects.
-    pub fn only(self, keep: V -> Bool) -> Only<V, Self> = todo
+    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> = todo
 
     /// O(1) to make: the same graph with `.w` read as `f(a)`. Works on any
     /// `Next`; on a weighted graph it reweights. `f` runs on every arc read.
@@ -208,7 +208,7 @@ pub struct Adj<V, A>:
     pub fn next(self, u: V) -> yields V = todo
 
     /// O(1). Induced view skipping arcs that touch a vertex `keep` rejects.
-    pub fn only(self, keep: V -> Bool) -> Only<V, Self> = todo
+    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> = todo
 
     /// O(n + m): the table with every arc reversed.
     pub fn transpose(self) -> Adj<V, A> = todo
@@ -717,8 +717,9 @@ impl<V, E> DfsTree<V, E>:
 pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> Adj<V, V> = todo
 
 /// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex are
-/// skipped as `next` walks. A view: O(1) to make, `keep` called per arc walked.
-pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool) -> Only<V, G> = todo
+/// skipped as `next` walks. `from` drops only the arcs leaving a vertex it rejects, so the
+/// vertex can be reached but not left. A view: O(1) to make, `keep` called per arc walked.
+pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G> = todo
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
 pub struct Only<V, G>(g: G, keep: V -> Bool):

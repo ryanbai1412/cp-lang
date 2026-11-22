@@ -1,17 +1,17 @@
-// btoi17p2 Toll: vertex v is in block v / k, and every road goes from one block to the next.
-// The cheapest a -> b cost is the min-plus product of the block-to-block matrices in between,
-// so a segment tree of those matrices answers each query in O(k^3 log n).
-let (k, n, m, q) = read<(1..=5, 1..=50_000, 0..=10_000, 1..=10_000)>()
-domain V = 0..n
-domain B = 0..=(n - 1) / k
-var hop: [B]Mat<?Int> = Mat.filled(k, k, none, over: Semiring(min, +))
-for (u, v, w) in read<[m](V, V, 1..=10_000)>():
-    hop[B(u / k)].at(u % k, v % k) = some(w)
-let st = SegTree(*, hop)
-for (a, b) in read<[q](V, V)>():
-    if a == b:
-        print(0)
-    elif a / k >= b / k:
-        print(-1)
-    else:
-        print(st.fold(B(a / k)..B(b / k))!.get(a % k, b % k) ?? -1)
+// BOI 2017 "Toll": roads only join layer i to layer i+1 (layers of k nodes);
+// cheapest path a -> b is the min-plus product of the hop matrices between.
+let (k, n, m, q) = read<(1..=5, 1..=5e4, 0..=1e4, 1..=1e4)>()
+domain Node = [n]
+domain Layer = [n.ceil_div(k)]
+domain Slot = [k]
+let place = (v: Node) => (layer: Layer(Int(v) / k), slot: Slot(Int(v) % k))
+
+var hop = [Layer] _ => Mat<?Int>.filled(k, k, fill: none, over: Semiring(min, +))
+for (u, v, w) in read<[m](u: Node, v: Node, w: 1..=1e4)>():
+    hop[place(u).layer].at(Int(place(u).slot), Int(place(v).slot)) = some(w)
+let path = SegTree(*, hop)
+
+for (a, b) in read<[q](a: Node, b: Node)>():
+    let (pa, pb) = (place(a), place(b))
+    print(if pa.layer < pb.layer: path.fold(pa.layer..pb.layer).get(Int(pa.slot), Int(pb.slot))
+          else: (a == b).then(0), none: -1)
