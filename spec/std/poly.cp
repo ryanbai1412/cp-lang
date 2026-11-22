@@ -967,6 +967,18 @@ pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; power_sums(xs, 2) == [Z(2), Z(3), Z(5)]`
 pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>> = todo
 
+@allow(unproven_list_index)
+fn fact_tables<P>(n: Int) -> (List<Mod<P>>, List<Mod<P>>):
+    var fact = List.filled(n + 1, Mod<P>(1))
+    for i in 1..=n: fact[i] = fact[i - 1] * Mod<P>(i)
+    var inv_fact = List.filled(n + 1, Mod<P>(1))
+    inv_fact[n] = fact[n].inv()
+    var i = n
+    while i > 0:
+        inv_fact[i - 1] = inv_fact[i] * Mod<P>(i)
+        i -= 1
+    (fact, inv_fact)
+
 /// The unsigned Stirling numbers of the first kind `s(n, 0..=n)`: the coefficients of
 /// `x (x + 1) ... (x + n - 1)`.
 ///
@@ -975,7 +987,10 @@ pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>> = todo
 /// order: by `k`, increasing
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling1_row(3); s == [Z(0), Z(2), Z(3), Z(1)]`
-pub fn stirling1_row<P>(n: Int) -> List<Mod<P>> = todo
+pub fn stirling1_row<P>(n: Int) -> List<Mod<P>>:
+    assert n >= 0, "stirling1_row requires n >= 0"
+    if n == 0: return [Mod<P>(1)]
+    prod_linear([Mod<P>(-i) for i in 0..n])
 
 /// The Stirling numbers of the second kind `S(n, 0..=n)`.
 ///
@@ -984,7 +999,20 @@ pub fn stirling1_row<P>(n: Int) -> List<Mod<P>> = todo
 /// order: by `k`, increasing
 /// traps: when `n < 0`, or `n >= P` (it divides by factorials up to `n`)
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_row(3); s == [Z(0), Z(1), Z(3), Z(1)]`
-pub fn stirling2_row<P>(n: Int) -> List<Mod<P>> = todo
+@allow(unproven_list_index)
+pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
+    assert n >= 0 and n < P, "stirling2_row requires 0 <= n < P"
+    if n == 0: return [Mod<P>(1)]
+    let (_, inv_fact) = fact_tables<P>(n)
+    var a = List.filled(n + 1, Mod<P>(0))
+    var b = List.filled(n + 1, Mod<P>(0))
+    for i in 0..=n:
+        a[i] = Mod<P>(pow_mod(i, n, P)) * inv_fact[i]
+        b[i] = if i % 2 == 0: inv_fact[i] else: -inv_fact[i]
+    var prod = times(a, b)
+    if prod.len > n + 1: prod.truncate(n + 1)
+    while prod.len < n + 1: prod.push(Mod<P>(0))
+    prod
 
 /// The unsigned Stirling numbers of the first kind column `s(0..=n, k)`, `n + 1` values (zero for
 /// rows below `k`).
@@ -1013,7 +1041,15 @@ pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>> = todo
 /// order: by index, increasing
 /// traps: when `n < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bell_table(4); b == [Z(1), Z(1), Z(2), Z(5), Z(15)]`
-pub fn bell_table<P>(n: Int) -> List<Mod<P>> = todo
+@allow(unproven_list_index)
+pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
+    assert n >= 0 and n < P, "bell_table requires 0 <= n < P"
+    if n == 0: return [Mod<P>(1)]
+    let (fact, inv_fact) = fact_tables<P>(n)
+    var f = List.filled(n + 1, Mod<P>(0))
+    for i in 1..=n: f[i] = inv_fact[i]
+    let g = exp(f, n + 1)
+    [g[i] * fact[i] for i in 0..=n]
 
 /// The Bernoulli numbers `B_0..=B_n` (`B_1 = -1/2`), `n + 1` values.
 ///
@@ -1022,7 +1058,14 @@ pub fn bell_table<P>(n: Int) -> List<Mod<P>> = todo
 /// order: by index, increasing
 /// traps: when `n < 0`, or `n + 1 >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bernoulli_table(2); b == [Z(1), Z(-1) / Z(2), Z(1) / Z(6)]`
-pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>> = todo
+@allow(unproven_list_index)
+pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>>:
+    assert n >= 0 and n + 1 < P, "bernoulli_table requires 0 <= n and n + 1 < P"
+    if n == 0: return [Mod<P>(1)]
+    let (fact, inv_fact) = fact_tables<P>(n + 1)
+    let f = [inv_fact[i + 1] for i in 0..=n]
+    let g = inv(f, n + 1)
+    [g[i] * fact[i] for i in 0..=n]
 
 /// The partition numbers `p(0..=n)` via Euler's pentagonal theorem, `n + 1` values.
 ///
@@ -1031,7 +1074,22 @@ pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>> = todo
 /// order: by index, increasing
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; let p: List<Z> = partition_table(5); p == [Z(1), Z(1), Z(2), Z(3), Z(5), Z(7)]`
-pub fn partition_table<P>(n: Int) -> List<Mod<P>> = todo
+@allow(unproven_list_index)
+pub fn partition_table<P>(n: Int) -> List<Mod<P>>:
+    assert n >= 0, "partition_table requires n >= 0"
+    if n == 0: return [Mod<P>(1)]
+    var f = List.filled(n + 1, Mod<P>(0))
+    f[0] = Mod<P>(1)
+    var k = 1
+    while true:
+        let p1 = k * (3 * k - 1) / 2
+        if p1 > n: break
+        let sgn = if k % 2 == 1: Mod<P>(-1) else: Mod<P>(1)
+        f[p1] = f[p1] + sgn
+        let p2 = k * (3 * k + 1) / 2
+        if p2 <= n: f[p2] = f[p2] + sgn
+        k += 1
+    inv(f, n + 1)
 
 @test
 fn eval_div_shift_mpe_laws():
