@@ -703,3 +703,11 @@ impl<V, E> DfsTree<V, E>:
 /// O(n + m): `Graph.directed` on a plain list of `(u, v)` arcs, as an
 /// adjacency table indexed by vertex.
 pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> Adj<V, V> = todo
+
+/// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex are
+/// skipped as `next` walks. A view: O(1) to make, `keep` called per arc walked.
+pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool) -> Only<V, G> = todo
+
+/// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
+pub struct Only<V, G>(g: G, keep: V -> Bool):
+    pub fn next(self, u: V) -> yields G.Arc = todo

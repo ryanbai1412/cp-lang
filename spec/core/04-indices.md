@@ -15,6 +15,7 @@ domain V = 1..=n                       // positions 1..n
 domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..=n
 let (domain C, comp) = compress(xs)    // fresh domain from a computation
 domain Cell = (Row, Col)               // product: [Cell]T and [Row, Col]T are one 2-D array type
+domain State = (comps: 0..=n, used: 0..l)  // named factors: s.comps, State.at((c, u)) -> ?State
 enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir]Int
 ```
 
@@ -46,7 +47,11 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
 | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V` |
 
-`v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `.next` is
+`v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `c.shift(r)` is
+the cuts at distances `r` after cut `c`, clipped to the domain and possibly empty
+(chords of length `lo..=hi` from `c` end in `c.shift(lo..=hi)`). `D.mask(xs)` is the
+`[D]Bool` marking the positions a sequence yields. `D.ring.step(x, d)` steps `d`
+positions with wraparound. `.next` is
 `.next(k = 1)`: only methods marked `@get` (which promises O(1)) read without
 parentheses, and an `@get` method may take defaulted parameters. A plain
 method always needs `()`, so nothing costly hides behind a bare name.

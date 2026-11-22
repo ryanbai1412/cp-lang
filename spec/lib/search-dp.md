@@ -150,6 +150,7 @@ brute in `cpl stress`.
 | `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `[R]?(val, at)` | O((n + m) log n) calls |
 | `smawk(rows, cols, f)` | same, `f` totally monotone (Monge) | O(n + m) calls |
 | `knuth(V, w)` | `dp[r] = min over splits + w(r)` with Knuth's condition → `[V.ranges]Int` | O(n²) |
+| `split_best(groups, range:, best:)` | values of a family of ranges, best first: each pop re-queues the two pieces around the chosen position (k largest subarray sums) | O(k log(n + k)) `best` calls |
 | `aliens(k, solve)` | "exactly k items" when the value is convex in k: `solve(λ)` returns `(val, count)` | O(log range) solves |
 | `monge_path(n, cost)` | shortest 0 → n path with Monge `cost(j..i)` (LARSCH) | O(n log n) |
 | `LiChao(max, over: r)`, `.add(line, on:)`, `.at(x)` | max of lines / segments at x | O(log \|r\|) |

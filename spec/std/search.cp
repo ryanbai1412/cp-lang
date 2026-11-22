@@ -62,3 +62,13 @@ pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I = todo
 /// the choice maximizing `num - l * den`; `den > 0` for every choice and
 /// `lo` at most the answer (Dinkelbach).
 pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64 = todo
+
+/// The values of a family of ranges, best first, lazily. Each group `g` owns `range(g)`;
+/// `best(g, r)` is the top value over `r` and the position that gives it. After a value is taken
+/// the two pieces of `r` on either side of that position are queued again, so the k best cost
+/// O(k log(n + k)) `best` calls: the k largest subarray sums, Super Piano, k smallest pair sums.
+pub fn split_best<G, D, T>(
+    groups: Seq<G>,
+    range: G -> Range<D>,
+    best: (G, Range<D>) -> (T, D),
+) -> yields T = todo

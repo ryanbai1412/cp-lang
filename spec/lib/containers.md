@@ -112,6 +112,10 @@ greedy scheduling. Three gaps appear across contests:
   `set(d, val)`, `remove(d)`, `pop() -> ?(D, T)`, and O(1) `get(d) -> ?T` /
   `contains(d)`. Avoids stale-entry memory blowup in dense Dijkstra/Prim and
   dynamic scheduling.
+- **One pop per key (`Settle<K, P>(best: min)`).** `offer(k, p)` keeps the
+  best priority for a key not yet popped and ignores keys already popped;
+  `pop() -> ?(K, P)` settles the best key. Dijkstra's frontier, Prim's, and
+  "settle answers from the largest down" without a done-flag side array.
 
 ### 1.5 Deques and sliding-window queues
 

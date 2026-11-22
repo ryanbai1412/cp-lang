@@ -161,11 +161,12 @@ pub struct CostFlow<V>:
     /// when no residual arc is negative, else Bellman-Ford from every vertex at once.
     fn potentials(self) -> [V]Int = todo
 
-/// A maximum-weight closure: the set `take` of vertices with the largest total `profit`
-/// such that taking `needs[e].u` forces taking `needs[e].v`. Profits may be negative; the
-/// empty set is a closure, so `value >= 0`. One `max_flow` on V + 2 vertices and
-/// V + E arcs (project selection).
-pub fn max_closure<V, E>(profit: [V]Int, needs: [E](u: V, v: V)) -> (value: Int, take: [V]Bool) = todo
+/// A maximum-weight closure: the set `take` of vertices with the largest total `profit` such
+/// that an arc `u -> v` of `before` means taking `v` forces taking `u` (prerequisites point at
+/// what they unlock, the direction `peel` and `topo` read). Profits may be negative; the empty
+/// set is a closure, so `value >= 0`. One `max_flow` on V + 2 vertices and V + E arcs (project
+/// selection).
+pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool) = todo
 
 /// A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take:
 /// its `size`, and the partner of each vertex on either side (`none` when unmatched).

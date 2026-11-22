@@ -18,8 +18,12 @@ pub type Perm<V> = [V]V
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(self: S) -> T = todo
 
-/// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`. O(n).
-pub fn sum<S: Seq, T>(self: S) -> T = todo
+/// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
+/// element first (`xs.sum(of: x => x * x)`). O(n).
+pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
+
+/// The average of `of` over the elements as `F64`; `none` when empty. O(n).
+pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 
 /// The least element by `by`, the first on ties; `none` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
@@ -671,6 +675,10 @@ pub @get fn ring<D, T>(self: [D]T) -> Ring<D, T> = todo
 
 /// `a.ring`; see `ring`.
 pub struct Ring<D, T>(src: [D]T):
+    /// The position `d` steps after `i` (before it when `d < 0`), wrapping: a forced-online
+    /// decode `(v + last - 1) % n + 1` is `V.ring.step(v, last)`. O(1).
+    pub fn step(self, i: D, d: Int) -> D = todo
+
     /// The position after `i`, wrapping. O(1).
     pub fn next(self, i: D) -> D = todo
 
@@ -721,3 +729,7 @@ pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
 
 /// Nearest later position with an equal key. O(n) expected.
 pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
+
+/// The ranges no other range contains, sorted by left end (ties: the first kept). Equal ranges
+/// keep one. The usual first step of interval DP over covers. O(n log n).
+pub fn outermost<S: Seq, D>(self: S) -> List<Range<D>> where S: Seq<Range<D>> = todo

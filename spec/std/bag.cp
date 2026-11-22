@@ -81,6 +81,13 @@ pub struct SortedBag<K>:
     /// Remove and return one copy of the smallest element, or `none` when empty. O(log n) expected.
     pub fn pop_first(mut self) -> ?K = todo
 
+    /// O(log n). Removes and returns the least element satisfying monotone `ok` (false then
+    /// true): "the shortest partner that completes this chain".
+    pub fn take_first(mut self, ok: K -> Bool) -> ?K = todo
+
+    /// O(log n + k). Removes the elements whose value lies in `r`, yielding them in order.
+    pub fn drain(mut self, r: Range<K>) -> yields K = todo
+
     /// Remove and return one copy of the largest element, or `none` when empty. O(log n) expected.
     pub fn pop_last(mut self) -> ?K = todo
 

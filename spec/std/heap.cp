@@ -248,3 +248,13 @@ pub type MinHeap<T> = Heap<T>
 
 /// `Heap<T>(by: desc)`: pops the largest first.
 pub type MaxHeap<T> = Heap<T>
+
+/// A keyed frontier where each key pops exactly once. `offer(k, p)` keeps the best priority seen
+/// for a key that has not popped yet and is ignored after it has; `pop` returns the best key
+/// and settles it. The shape of Dijkstra, Prim and "settle answers from the largest down",
+/// without a side array of done flags or a lazy-deletion `continue`. O(log n) per offer and pop.
+pub struct Settle<K, P>(best: (P, P) -> P = min):
+    pub fn offer(mut self, k: K, p: P) = todo
+    pub fn pop(mut self) -> ?(K, P) = todo
+    pub fn settled(self, k: K) -> Bool = todo
+    pub fn get(self, k: K) -> ?P = todo

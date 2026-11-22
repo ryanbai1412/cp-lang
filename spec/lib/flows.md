@@ -92,7 +92,7 @@ struct CostFlow<V>                                    // successive shortest pat
     fn slope(mut self, s: V, t: V, limit: ?Int = none)
         -> List<(flow: Int, cost: Int)>               // same cost
 
-fn max_closure<V, E>(profit: [V]Int, needs: [E](u: V, v: V))
+fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int)
     -> (value: Int, take: [V]Bool)                    // one max flow on V + 2
 
 fn max_matching<L, R>(adj: [L]List<R>)
@@ -181,9 +181,9 @@ force on random small inputs.
 - **Unbounded arcs.** `cap: none` is 2^60: no finite cut chooses it, and a
   sum of 2^3 of them cannot overflow 63 bits. Finite capacities and their
   total stay below 2^60; the library asserts each `cap >= 0`.
-- **Closure.** `max_closure(profit, needs)` returns `take` closed under
-  `needs` (`take[u]` implies `take[v]`) and maximizing `sum(profit[v] for v
-  if take[v])`, which equals `value`; the empty set is always feasible, so
+- **Closure.** `max_closure(before, profit)` returns `take` closed under
+  `before` (an arc `u -> v` means `take[v]` implies `take[u]`, the direction
+  `peel` reads) and maximizing `sum(profit(v) for v if take[v])`, which equals `value`; the empty set is always feasible, so
   `value >= 0`.
 - **König.** `max_matching(adj).size` equals the number of `true`s in
   `min_vertex_cover(adj)`, and every edge has a covered endpoint. `mate`
@@ -302,11 +302,10 @@ let cost: [Item]0..=1e9 = read()
 let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 
 domain Node = Item + Pair
-var profit: [Node]Int = 0
-for i in Item: profit[Node(i)] = -cost[i]
-for e in Pair: profit[Node(e)] = pairs[e].w
-let needs = [(u: Node(e), v: Node(x)) for e in Pair for x in [pairs[e].u, pairs[e].v]]
-print(max_closure(profit, needs).value)
+fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
+let items = [Pair] e => [Node(pairs[e].u), Node(pairs[e].v)]
+fn before(v: Node) = match v: Item(i) => [], Pair(e) => items[e]
+print(max_closure(before: before, profit: profit).value)
 ```
 
 The port flattened `Item + Pair + Src + Snk` into `0..n + m + 2`, wrote the

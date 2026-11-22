@@ -95,6 +95,10 @@ pub struct Rooted<V, Pre>:
     /// children of `v`, in the order `next` listed them.
     pub fn children(self, v: V) -> yields V = todo
 
+    /// O(1) per child. The arcs from `v` down to its children, with every field `next` gave
+    /// them (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
+    pub fn child_arcs<A>(self, v: V) -> yields A = todo
+
     /// O(children) calls of `f`. For each child `c` of `v`, in child order, the fold with `m` of
     /// `f` over `v`'s other children: the step of a rerooting DP, with no division or inverse
     /// needed. The fold keeps child order (earlier siblings, then later ones), so `m` need not
@@ -467,6 +471,11 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// O(n log n). `par[v]` is `v`'s parent with the value on the edge to it, `none` at a root.
     /// `op` must be associative; it need not commute, since folds run from the lower end up.
     pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T> = todo
+
+    /// O(n log n). Lifting over any partial successor function, such as "the next interval a
+    /// greedy picks": `Lift.of(i => first_from(iv[i].r))`. `none` ends a chain; the links must
+    /// form a forest. Edge values are `()`, so `climb` and `jump` are what it is for.
+    pub fn of(next: V -> ?V) -> Lift<V, ()> = todo
 
     /// O(log n). Climb from `v` while the next vertex up satisfies `ok`, which must hold on a
     /// prefix of every root path: how many edges were climbed and where it stopped. Greedy
@@ -857,6 +866,15 @@ pub struct KruskalTree<V, N, W>:
     /// O(log n). The highest node above `leaf[v]` whose weight is at most `limit`; its
     /// leaves are what `v` reaches by edges of weight at most `limit`.
     pub fn reach(self, v: V, limit: W) -> N = todo
+
+    /// O(log n). The highest node above `leaf[v]` whose merging edge, and every one below it,
+    /// satisfies `ok`, which gets the edge's key in the list given to `kruskal_tree`
+    /// (`kt.top(v, ok: e => roads[e].alt > p)`). `ok` must hold on a prefix of the merge order.
+    pub fn top<E>(self, v: V, ok: E -> Bool) -> N = todo
+
+    /// O(n) calls. For every node, `op` folded over the `leaf` values of the leaves under it:
+    /// the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
+    pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T = todo
 
     /// O(log n). The least possible largest edge weight on a path from `a` to `b`; `none`
     /// when they are not connected, and at `a == b`.

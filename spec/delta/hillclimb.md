@@ -134,4 +134,13 @@ Open questions raised by dreams:
   `Range<X>`, the free gaps are cut ranges keyed by their left cut, and splitting a gap is
   `g.gap.l..span[i].l` / `span[i].r..g.gap.r` instead of `l - 1` / `r + 1` and `±inf` keys.
   No spec change.
-
+- Blind dreams (decision 153): `dream.cp` is now the unconstrained ideal and `spec.cp` the
+  checked solution; the 81 earlier files moved to `spec.cp`. First ten blind dreams (btoi20p3,
+  cco21p4, ioi16p6, noi09p4, etsr23r3p3, coci21c2p4, noip18p3, apio09p2, noi10p2, noi05p4)
+  forced: lambda parameter patterns, named product factors, `is_some_and`, `sum(of:)`, `mean`,
+  `print(none:)`, `c.shift(r)`, `D.mask`, `Ring.step`, `outermost`, `g.only`, graph-shaped
+  `max_closure`, `child_arcs`, `Lift.of`, `KruskalTree.top/up`, `Settle`, `SortedBag.take_first/
+  drain`, `split_best`. Rejected: `ok` on the wrapped state, bare Dijkstra sources, `Mod(Bool)`.
+  `spec.cp` idiom bugs the diff exposed (spec already allowed the dream's form): count-prefixed
+  `List` fields in noi09p4, `IntervalMap` and `Lift.climb` in apio09p2, `g.next` in noi05p4,
+  `Range` reads in btoi20p3.

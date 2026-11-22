@@ -22,7 +22,7 @@ use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate}
 use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, floyd_warshall, kruskal, peel, reachable, scc, topo}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
-use std.heap.{Heap, MaxHeap, MinHeap}
+use std.heap.{Heap, MaxHeap, MinHeap, Settle}
 use std.interval.{IntervalMap}
 use std.io.{Wire, read_all, yes}
 use std.lazy.{Flip}
@@ -31,7 +31,7 @@ use std.matrix.{Mat}
 use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotients, gcd, inf, lcm, phi, pow_mod, sign, to_str}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix, scan}
-use std.search.{bsearch_real, ternary_max, ternary_max_real, ternary_min, ternary_min_real}
+use std.search.{bsearch_real, split_best, ternary_max, ternary_max_real, ternary_min, ternary_min_real}
 use std.segtree.{SegTree}
 use std.window.{Sweep, Track, Undo, Undoing, Window, track, undoing}
 use std.seq.{

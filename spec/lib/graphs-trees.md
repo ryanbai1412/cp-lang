@@ -38,6 +38,7 @@ g.deg(u)                              // O(1)
 | `g.deg(u)` | arcs out of `u` | O(1) |
 | `g.weighted(f)` | the same graph with `.w` read as `f(a)` | O(1); `f` per read |
 | `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
+| `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | O(1) to make |
 | `g.matrix()` | `[V, V]?W`, least weight per pair | O(n² + m) |
 | `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | O(n + m) |
 
@@ -220,6 +221,8 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 | Form | Meaning | Cost |
 |---|---|---|
 | `t.parent(v)` | `?V` | O(1) |
+| `t.child_arcs(v)` | the arcs from `v` to its children, with their fields | O(1) per child |
+| `Lift.of(next)` | binary lifting over any partial successor `V -> ?V` (a greedy "next pick") | O(n log n) build |
 | `t.up_arc(v)` | `?A`: the arc `v` was entered by, with its fields (`t.up_arc(v)!.cost`) | O(1) |
 | `t.children(v)` | `Indexed` view of `v`'s children (stored contiguously) | O(1) |
 | `t.depth(v)`, `t.size(v)` | edges from the root; vertices in the subtree | O(1) |
@@ -283,7 +286,7 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 |---|---|---|
 | `Lit(x, value)` | a 2-SAT literal, "x is `value`", for `TwoSat` | O(1) |
 | `p.adj4`, `p.adj8`, `p.ray(d)`, `Dir4`, `Dir8` | grid neighbours of a `(Row, Col)` cell inside the grid; the cells from `p` to the edge in direction `d` | O(1) per cell |
-| `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree; flip the order with `w: e => desc(e.w)` | O(m log m), O(log n) per `reach` |
+| `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree, `top(v, ok:)` tests the merging edges themselves, `up(op, leaf:)` folds leaf values per node; flip the order with `w: e => desc(e.w)` | O(m log m), O(log n) per `reach` |
 
 ## Open
 

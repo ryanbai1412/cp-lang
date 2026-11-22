@@ -4541,3 +4541,22 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   adjustments. "Everything except `l..=r`" is a ring window, and a rollback DSU in a
   two-pointer pass is a known trick that had no name; with both, Joker is a two-pointer pass.
 - **Reverse.** Drop `Ring.maximal/minimal` and `undoing`; Joker returns to divide and conquer.
+
+## 153. Dreams are written blind; the first blind batch adds graph-shaped and one-shot vocabulary (2026-11-21)
+
+- **Decision.** Each hill-climb problem has `dream.cp` (the ideal, written without consulting
+  the spec or checker) and `spec.cp` (written after the diff, checked). From the first ten blind
+  dreams the spec adopts: patterns in `fn`/lambda parameters; named product-domain factors;
+  `?T.is_some_and`; `Seq.sum(of:)` and `Seq.mean(of:)`; `print(xs, none: s)`; `c.shift(r)`,
+  `D.mask(xs)`, `Ring.step(i, d)`; `outermost()` over ranges; `g.only(keep)`; graph-shaped
+  `max_closure(before:, profit:)`; `Rooted.child_arcs(v)`; `Lift.of(next)`;
+  `KruskalTree.top(v, ok:)` and `KruskalTree.up(op, leaf:)`; `Settle<K, P>`;
+  `SortedBag.take_first(ok)` and `drain(r)`; `split_best`.
+- **Rejected.** `ok` seeing a `Track`'s wrapped structure directly (`Window(op)` reads `w.all`,
+  so every window keeps one rule: `ok` gets the `Track`); bare `from: [s]` for `dijkstra` (the
+  start distance stays explicit, one spelling for weighted multi-source); `Mod(Bool)` (`b.int`).
+- **Why.** Dreams checked against the stubs bent to the spec and stopped pushing back. Written
+  blind, ten dreams surfaced side arrays the spec could not avoid (`retired`, `walk`, parent
+  costs), threshold tricks (`limit: desc(p + 1)`), hand bounds checks on DP states and a
+  12-line heap-splitting idiom.
+- **Reverse.** Drop any one addition; its `spec.cp` returns to the previous spelling.

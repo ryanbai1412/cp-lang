@@ -18,6 +18,8 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
 - Parameters are lent for the call; `mut` parameters may be mutated (or
   drained) and are marked `mut` at the call: `solve(n, mut seen)`. The
   method receiver needs no marker at the call.
+- A parameter of a `fn` or a lambda may be a pattern, as in `for`:
+  `(mut d, (u, v)) => d.unite(u, v)`. `mut` marks the whole parameter.
 - Named and positional arguments, defaults, named-only parameters after
   `;`, and a variadic `..xs: Ts` tuple parameter. Options are always
   named (`by:`, `desc`), never `_by` twins (decision 60).
