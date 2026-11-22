@@ -708,7 +708,40 @@ const TraceCore = (() => {
       reveal(line) { post({type:"reveal", line}); },
     };
   }
-  return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference,
+  // A step in source terms, the same as the DAP's: its line and which visit
+  // to that line it is. A run recorded again after an edit finds the same
+  // visit, else the line's last visit, else the step nearest `fallback`.
+  function place(run, i) {
+    const line = run.steps[i].line;
+    return {line, visit:run.steps.slice(0, i + 1).filter(s => s.line === line).length};
+  }
+  function findPlace(run, at, fallback) {
+    let last = -1, seen = 0;
+    for (let i = 0; i < run.steps.length; i++) {
+      if (run.steps[i].line !== at.line) continue;
+      last = i;
+      if (++seen === at.visit) return i;
+    }
+    return last >= 0 ? last : Math.min(fallback, run.steps.length - 1);
+  }
+  // Where `after`, recorded again after an edit, first parts from `before`:
+  // the n-th step of one against the n-th of the other, stdout included.
+  function firstChange(before, after) {
+    const n = Math.max(before.steps.length, after.steps.length);
+    for (let i = 0; i < n; i++) {
+      const a = before.steps[i], b = after.steps[i];
+      if (!a || !b) {
+        const index = Math.min(i, after.steps.length - 1);
+        return {index, line:after.steps[index].line, variable:null, before:a?.label ?? null, after:b?.label ?? null};
+      }
+      const ids = new Set([...Object.keys(a.values), ...Object.keys(b.values)]);
+      for (const id of ids) {
+        if (JSON.stringify(a.values[id]) !== JSON.stringify(b.values[id])) return {index:i, line:b.line, variable:id, before:a.label, after:b.label};
+      }
+    }
+    return null;
+  }
+  return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference, place, findPlace, firstChange,
     SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;
@@ -743,7 +776,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
   const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
 
-  let samples = [], sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
+  let rerun = null, samples = [], sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
   const player = T.createPlayer({count:1, onChange:(state, reason) => {
     if (reason === "step" || reason === "seek") selected = null;
     render();
@@ -753,7 +786,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   // ---------- Loading ----------
   function load(next, index = -1) {
     T.validate(next);
-    trace = next; sampleIndex = index; analysis = T.analyze(trace); search = null; selected = null;
+    trace = next; sampleIndex = index; analysis = T.analyze(trace); search = null; selected = null; rerun = null;
     tab = "state";
     isolate = false; $("renderer").value = "auto";
     for (const id of ["save-json", "save-html", "scrub", "step-number"]) $(id).disabled = false;
@@ -825,6 +858,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   }
 
   function renderStatus() {
+    if (rerun) return renderRerun();
     const s = T.summary(trace, analysis), box = $("status");
     box.dataset.state = s.state;
     const actions = [];
@@ -838,6 +872,39 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     box.replaceChildren(el("span", {class:"status-icon", "aria-hidden":"true"}),
       el("div", {class:"status-text"}, el("div", {class:"status-title", text:s.title}), el("div", {class:"status-detail", text:s.detail})),
       el("div", {class:"status-actions"}, actions));
+  }
+  function renderRerun() {
+    const box = $("status"), c = rerun.change, name = id => trace.variables[id]?.name ?? id;
+    box.dataset.state = c ? "diverge" : "agree";
+    const title = c ? `Re-ran after your edit: first change at step ${c.index + 1}, line ${c.line}` : "Re-ran after your edit: every value and print is the same";
+    const detail = !c ? `Kept your place: line ${rerun.place.line}, visit ${rerun.place.visit}`
+      : `${c.variable ? `${name(c.variable)}: ` : ""}${c.after ?? "the run has ended"} · before the edit: ${c.before ?? "the run had ended"}`;
+    box.replaceChildren(el("span", {class:"status-icon", "aria-hidden":"true"}),
+      el("div", {class:"status-text"}, el("div", {class:"status-title", text:title}), el("div", {class:"status-detail", text:detail})),
+      el("div", {class:"status-actions"}, c ? [el("button", {class:"btn primary", type:"button", id:"go-change", onclick:() => player.go(c.index), text:"Go to first change"})] : []));
+  }
+  // Served by `cpl run --trace --live`: poll for a new recording, then load
+  // it where the old one stood and say where the two runs first differ.
+  function watchLive(version) {
+    let error = null;
+    setInterval(async () => {
+      try {
+        const now = await (await fetch("live", {cache:"no-store"})).json();
+        if (now.error !== error && (error = now.error)) toast(`The edit does not build; kept the last good run. ${error}`, true);
+        if (now.version === version) return;
+        version = now.version;
+        relive(await (await fetch("trace.json", {cache:"no-store"})).json());
+      } catch { /* the server is gone: keep the last trace */ }
+    }, 300);
+  }
+  function relive(next) {
+    const before = trace.runs.fast, at = player.state().index, where = T.place(before, at), shown = variable;
+    if (!tryLoad(next)) return;
+    rerun = {change:T.firstChange(before, trace.runs.fast), place:where};
+    if (T.own(trace.variables, shown)) variable = shown;
+    renderStatic();
+    player.go(T.findPlace(trace.runs.fast, where, at));
+    toast("Re-ran after your edit");
   }
   const chevron = d => svg("svg", {viewBox:"0 0 16 16", fill:"none", stroke:"currentColor", "stroke-width":"1.6", "aria-hidden":"true"}, svg("path", {d}));
 
@@ -1319,6 +1386,8 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     }
     const step = Number(hashParam("step"));
     if (Number.isInteger(step) && step > 0) player.go(step - 1);
+    const served = document.querySelector('meta[name="cpl-live"]');
+    if (served) watchLive(Number(served.content));
   }
   boot();
 })();

@@ -408,6 +408,47 @@ def offline_and_cli(browser, binary, folder):
         print(theme, "offline file:// WASM and parent.cpLiveTrace passed")
 
 
+LIVE = """let n: 1..=10 = read()
+var total = 0
+for i in 1..=n:
+    total += i
+print(total)
+"""
+
+
+def live_rerun(browser, binary, folder):
+    source = folder / "live.cp"
+    source.write_text(LIVE)
+    (folder / "live.tests").mkdir()
+    (folder / "live.tests/stress-1.in").write_text("4\n")
+    server = subprocess.Popen([binary, "run", source, "--trace", "--live"],
+                              stderr=subprocess.PIPE, text=True)
+    try:
+        url = re.search(r"http://\S+", server.stderr.readline()).group(0)
+        assert "stress-1.in" in server.stderr.readline()
+        with checked_page(browser, "light", origin=url.rstrip("/")) as page:
+            page.goto(url)
+            data = json.loads(page.locator("#trace-data").text_content())
+            lines = [s["line"] for s in data["runs"]["fast"]["steps"]]
+            third = [i for i, line in enumerate(lines) if line == 4][2] + 1
+            jump(page, third)
+            source.write_text(LIVE.replace("total += i", "total += 2 * i"))
+            expect(page.locator("#toast")).to_have_text("Re-ran after your edit")
+            expect(page.locator(".status-title")).to_contain_text("first change at step")
+            expect(page.locator("#step-number")).to_have_value(str(third))
+            expect(page.locator("#source")).to_contain_text("total += 2 * i")
+            page.locator("#go-change").click()
+            changed = [i for i, line in enumerate(lines) if line == 4][0] + 1
+            expect(page.locator("#step-number")).to_have_value(str(changed))
+            source.write_text(LIVE + "fn (\n")
+            expect(page.locator("#toast")).to_contain_text("kept the last good run")
+            expect(page.locator("#source")).to_contain_text("total += 2 * i")
+    finally:
+        server.kill()
+        server.wait()
+    print("live re-run on the pinned input keeps the place and shows the first change")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chrome", required=True, help="path to installed Google Chrome")
@@ -423,6 +464,7 @@ def main():
             site_live(browser, base, theme, Path(tmp), args.screenshots)
             samples_and_mobile(browser, base, theme, args.screenshots)
         offline_and_cli(browser, args.cpl.resolve(), Path(tmp))
+        live_rerun(browser, args.cpl.resolve(), Path(tmp))
         browser.close()
 
 

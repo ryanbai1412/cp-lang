@@ -4,6 +4,7 @@
 mod dap;
 mod interact;
 mod laws;
+mod live;
 mod profile;
 mod report;
 mod trace;
@@ -170,6 +171,7 @@ pub fn exec<S: AsRef<str>>(
             0
         }
         Some("run") => match RunArgs::parse(&rest) {
+            Ok(args) if args.live => run_live(&args, stdin),
             Ok(args) => {
                 let input = match args.input {
                     None => Input::Live(stdin),
@@ -357,6 +359,10 @@ options:
                     with --trace: the trace as JSON on standard output
   --format html     with --trace: the trace viewer with the trace in it,
                     one self-contained page on standard output
+  --live            with --trace: serve the viewer on localhost and record
+                    again each time the file is saved, on the same input;
+                    with no input named, the case `cpl stress` saved last.
+                    The page keeps its place and shows the first change
   --brute           run the file's `@brute(main)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's
@@ -382,6 +388,7 @@ struct RunArgs<'a> {
     format: Option<&'a str>,
     brute: bool,
     release: bool,
+    live: bool,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -431,6 +438,7 @@ impl<'a> RunArgs<'a> {
             format: None,
             brute: false,
             release: false,
+            live: false,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -498,6 +506,7 @@ impl<'a> RunArgs<'a> {
                 }
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
+                "--live" => args.live = true,
                 "--format" => match iter.next() {
                     Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
                     Some(other) => return Err(format!("`--format` is text, json or html, not `{other}`")),
@@ -527,6 +536,9 @@ impl<'a> RunArgs<'a> {
         }
         if args.release && (args.trace || args.format.is_some()) {
             return Err("`--release` runs the built C++, which records no trace: drop `--trace` and `--format`".into());
+        }
+        if args.live && (!args.trace || args.format.is_some()) {
+            return Err("`--live` serves the trace viewer: use it with `--trace` and without `--format`".into());
         }
         if args.format == Some("html") && !args.trace {
             return Err("`--format html` is the trace viewer: add `--trace`".into());
@@ -926,6 +938,44 @@ fn run_file(args: &RunArgs, input: Input, stdout: &mut (dyn Write + Send), stder
     }
 }
 
+/// `cpl run --trace --live`: the input is read once and pinned; with no
+/// input named, it is the case `cpl stress` last saved for the file.
+fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
+    let pinned = args.input.map(std::path::PathBuf::from).or_else(|| trace::pinned_input(std::path::Path::new(args.file)));
+    let (input, note) = match &pinned {
+        Some(path) => match std::fs::read(path) {
+            Ok(input) => (input, path.display().to_string()),
+            Err(error) => {
+                eprintln!("cpl: can't read `{}`: {error}", path.display());
+                return EXIT_USAGE;
+            }
+        },
+        None => (Input::Live(stdin).whole(), "standard input".to_string()),
+    };
+    let side = if args.brute { Side::Brute } else { Side::Solution };
+    let record = || {
+        let mut stderr = String::new();
+        let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
+        let observed = cpl_interp::run_observed(
+            &compiled.program,
+            cpl_interp::Io::fixed(&input),
+            &mut Vec::new(),
+            Some(trace_config(args, &compiled.text)),
+        );
+        Ok(trace::single(args.file, &compiled.text, &observed.recording.unwrap_or_default()))
+    };
+    live::serve(args.file, &note, &record)
+}
+
+fn trace_config(args: &RunArgs, text: &str) -> cpl_interp::trace::TraceConfig {
+    let mut config = trace::config(text, args.only_fn);
+    config.test_cases = args.test_cases.clone();
+    config.watch = args.watch.clone();
+    config.last_steps = args.last_steps;
+    config.max_depth = args.max_depth;
+    config
+}
+
 /// `cpl run --trace` and `cpl run --format json`: the run, recorded.
 /// An interactive file is recorded on the solution's side, against its
 /// `@interactor`.
@@ -938,11 +988,7 @@ fn observe_file(
 ) -> u8 {
     let path = args.file;
     let started = std::time::Instant::now();
-    let mut config = trace::config(&compiled.text, args.only_fn);
-    config.test_cases = args.test_cases.clone();
-    config.watch = args.watch.clone();
-    config.last_steps = args.last_steps;
-    config.max_depth = args.max_depth;
+    let config = trace_config(args, &compiled.text);
     // The program's output is kept: with `--format` the report or the
     // trace is what goes to standard output.
     let mut printed = Vec::new();

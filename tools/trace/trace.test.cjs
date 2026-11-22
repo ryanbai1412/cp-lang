@@ -165,3 +165,16 @@ test('an editor hears each new step line once and every clicked line',()=>{
   link.step(3);link.step(3);link.step(5);link.reveal(5);link.reveal(5);
   assert.deepEqual(posted,[{type:'step',line:3},{type:'step',line:5},{type:'reveal',line:5},{type:'reveal',line:5}]);
 });
+
+test('a re-run keeps the place by line visit and names the first change', () => {
+  const run = values => ({steps: values.map((v, i) => ({line: [1, 2, 2, 2, 3][i], label: `s${i}`, values: {total: v}}))});
+  const before = run([0, 1, 3, 6, 6]), after = run([0, 2, 6, 12, 12]);
+  assert.deepEqual(plain(T.place(before, 2)), {line: 2, visit: 2});
+  assert.equal(T.findPlace(after, {line: 2, visit: 2}, 0), 2);
+  assert.equal(T.findPlace(after, {line: 2, visit: 9}, 0), 3);
+  assert.equal(T.findPlace(after, {line: 7, visit: 1}, 9), 4);
+  assert.deepEqual(plain(T.firstChange(before, after)), {index: 1, line: 2, variable: 'total', before: 's1', after: 's1'});
+  assert.equal(T.firstChange(before, before), null);
+  const shorter = {steps: before.steps.slice(0, 3)};
+  assert.equal(T.firstChange(before, shorter).index, 2);
+});
