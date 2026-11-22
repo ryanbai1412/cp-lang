@@ -3582,3 +3582,21 @@ fn a_number_made_into_a_position_or_a_modular_number_costs_o1() {
     assert_eq!(cost(&mut db, "Z(s.len)").as_deref(), Some("O(1)"));
     assert_eq!(cost(&mut db, "domain Node").as_deref(), None);
 }
+
+#[test]
+fn a_domains_nth_at_and_wrap_and_a_positions_offset_cost_o1() {
+    let src = "domain V = 0..10\nfn f(i: Int, v: V) -> Int:\n    let a = V.nth(i)\n    let b = V.at(i)\n    \
+               let c = V.wrap(i)\n    let d = v.offset(2)\n    a.ord + b.ord + c.ord + d!.ord\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    assert!(db.diagnostics("a.cp").iter().all(|d| d.severity != cpl_diag::Severity::Error));
+    let hover = |db: &mut Database, name: &str| {
+        let at = src.find(name).unwrap() as u32;
+        db.hover("a.cp", at).map(|h| h.text)
+    };
+    assert_eq!(hover(&mut db, "nth").as_deref(), Some("nth: fn(x: Int) -> V\ncost: O(1)"));
+    for name in ["at(", "wrap", "offset"] {
+        let text = hover(&mut db, name).unwrap();
+        assert!(text.ends_with("\ncost: O(1)"), "{name}: {text}");
+    }
+}

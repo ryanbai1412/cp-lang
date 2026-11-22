@@ -1548,6 +1548,14 @@ impl<'a> Checker<'a> {
                 owner,
             });
         }
+        let positional = match &base_ty {
+            Ty::Domain(_) => ["nth", "at", "wrap"].contains(&name.text.as_str()),
+            Ty::Pos(_) => ["offset", "ahead", "back"].contains(&name.text.as_str()),
+            _ => false,
+        };
+        if positional && matches!(ty, Ty::Fn { .. }) {
+            self.fixed_io.push(name.span);
+        }
         ty
     }
 
@@ -1993,7 +2001,7 @@ impl<'a> Checker<'a> {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
-                    "wrap" => Ty::Fn {
+                    "wrap" | "nth" => Ty::Fn {
                         params: vec![crate::ty::Param {
                             name: "x".into(),
                             ty: Ty::Int,

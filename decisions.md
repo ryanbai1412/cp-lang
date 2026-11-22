@@ -5438,3 +5438,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   `corpus/problems` and the examples with an estimate: 27 to 37 of 1,613.
 - **Reverse.** Drop the `converts` case in `cpl-check`'s `call.rs` and the
   `fixed_io` case in `hover.rs`.
+
+## 197. A domain's `nth`, `at` and `wrap` and a position's `offset` cost `O(1)` (2026-11-22)
+
+- **Decision.** `V.nth(k)` is typed `fn(x: Int) -> V`, like `V.wrap`, and
+  in a fn's estimated cost `V.nth`, `V.at`, `V.wrap` and `v.offset`
+  (`ahead`, `back`) count as one step each: they are arithmetic on the
+  position's rank.
+- **Why.** `V.nth(k)` hovered nothing, so any fn calling it got no
+  estimate. No fn in the ports gains an estimate from this alone: each
+  one using these is also blocked by another call.
+- **Reverse.** Drop `"nth"` from the domain members in `cpl-check`'s
+  `member_ty` and the `positional` spans pushed to `fixed_io` after it.
+
