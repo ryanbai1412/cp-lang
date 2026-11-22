@@ -28,7 +28,12 @@ use std.seq.{ends, RingRange}
 /// example: `[3, 1, 4].scan(+).prefix(2) == 4`
 /// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
-pub fn scan<D, T>(self: [D]T, f: (T, T) -> T, from: ?T = None) -> Prefix<D, T> = todo
+pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
+    let m = Monoid<T>.of(f)
+    var p: [D.cuts]T = from ?? m.id
+    for i in D:
+        p[i.r] = m.op(p[i.l], self[i])
+    Prefix<D, T>.of_cuts(p)
 
 /// Fill direction for an append-only `Prefix.filling(...)` table.
 pub enum FillOrder = Forward | Reverse
@@ -125,6 +130,8 @@ pub struct Prefix<D, T>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
+
+    fn of_cuts(p: [D.cuts]T) -> Prefix<D, T> = Prefix(p)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
