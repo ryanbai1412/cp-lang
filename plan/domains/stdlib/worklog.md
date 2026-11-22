@@ -43,3 +43,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Review packet: README, PLAN, metrics.toml (17 metrics, each run on main `4b8f504f`), ARCHITECTURE; `measure.py` for the todo split, privilege overlap, explicit-use cycles and module coverage. Questions Q1-Q3 filed in `plan/QUESTIONS.md`. Next (phase 2, on go): land the 4 in-flight branches in order.
 - Note from idioms: the skill landing fixes one doc line in `spec/std/graph.cp` (`p.adj4()` -> `p.adj4`, the property `spec/std/grid.cp` defines).
 - Lane opened.
+
+- Request from tech-debt (2026-11-22): tighten `stdlib_todo` with `python3 scripts/debt-ratchet.py --update stdlib_todo`, not a bare `--update`. A bare one rewrites every allowlist entry from your tree. If that tree is older than main, it lowers other lanes' file caps (it set `check/call.rs` to 2005 against main's 2010) and fails the whole train.

@@ -163,6 +163,19 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
 
+    def test_cli_update_by_name_keeps_the_rest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ratchet = root / "ratchet.json"
+            ratchet.write_text(json.dumps({"max_rs_lines": 2000, "rs_file_size_allowlist": {"a.rs": 9000},
+                                           "stdlib_todo": 99, "rust_ignore": 7}))
+            self.assertEqual(dr.main(["--update", "stdlib_todo", "--root", str(root), "--ratchet", str(ratchet)]), 0)
+            data = json.loads(ratchet.read_text())
+            self.assertEqual(data["stdlib_todo"], 0)
+            self.assertEqual(data["rust_ignore"], 7)
+            self.assertEqual(data["rs_file_size_allowlist"], {"a.rs": 9000})
+            self.assertEqual(dr.main(["--update", "nope", "--root", str(root), "--ratchet", str(ratchet)]), 2)
+
     def test_cli_roundtrip_update_and_check(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

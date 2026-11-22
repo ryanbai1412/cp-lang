@@ -16,6 +16,7 @@ saying why. Lower counts pass and print a hint to tighten the baseline.
 Usage:
   python3 scripts/debt-ratchet.py --check          # the gate
   python3 scripts/debt-ratchet.py --update         # rewrite the baseline
+  python3 scripts/debt-ratchet.py --update NAME... # tighten only these (rs_over_cap, crate_edges, a counter)
   python3 scripts/debt-ratchet.py --show [NAME..]  # `name count` per counter
   python3 scripts/debt-ratchet.py --list NAME      # the offenders behind one count
 """
@@ -324,6 +325,17 @@ def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict
     return data
 
 
+def improved(actual: dict, baseline: dict) -> list[str]:
+    """Names to pass to `--update NAME...` to tighten exactly what shrank, and nothing a stale tree measured."""
+    names = []
+    if actual.get("rs_file_size_allowlist") != baseline.get("rs_file_size_allowlist", actual.get("rs_file_size_allowlist")):
+        names.append("rs_over_cap")
+    names += [n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and int(actual.get(n, 0)) < int(baseline[n])]
+    if set(baseline.get("crate_edges", [])) - set(actual.get("crate_edges", [])):
+        names.append("crate_edges")
+    return names
+
+
 def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[str]]:
     """Return (errors, warnings, notes) comparing `actual` against `baseline`.
 
@@ -375,7 +387,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check or update the tech-debt ratchet.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--check", action="store_true", help="Verify against the ratchet file.")
-    group.add_argument("--update", action="store_true", help="Write current measurements to the ratchet file.")
+    group.add_argument("--update", nargs="*", metavar="NAME",
+                       help="Write current measurements to the ratchet file; with NAMEs, only those entries.")
     group.add_argument("--show", nargs="*", metavar="NAME", help="Print `name count` for counters.")
     group.add_argument("--list", metavar="NAME", help="Print the offenders behind one counter.")
     parser.add_argument("--ratchet", type=Path, default=DEFAULT_RATCHET, help="Path to debt-ratchet.json.")
@@ -402,10 +415,20 @@ def main(argv: list[str] | None = None) -> int:
                 print("\n".join(f"  {x}" for x in items))
         return 0
 
-    if args.update:
+    if args.update is not None:
         data = measure(args.root, max_lines)
+        if args.update:
+            keys = {"rs_over_cap": "rs_file_size_allowlist"}
+            unknown = [n for n in args.update if keys.get(n, n) not in data]
+            if unknown or not args.ratchet.is_file():
+                print(f"debt-ratchet: cannot update {', '.join(unknown) or 'a missing ratchet file'}", file=sys.stderr)
+                return 2
+            base = json.loads(args.ratchet.read_text(encoding="utf-8"))
+            for n in args.update:
+                base[keys.get(n, n)] = data[keys.get(n, n)]
+            data = base
         args.ratchet.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        counts = ", ".join(f"{k}={data[k]}" for k, (_, _, g) in COUNTERS.items() if g)
+        counts = ", ".join(f"{k}={data[k]}" for k, (_, _, g) in COUNTERS.items() if g and k in data)
         print(f"debt-ratchet: wrote {args.ratchet} (rs>{max_lines}={len(data['rs_file_size_allowlist'])}, {counts})")
         return 0
 
@@ -432,7 +455,9 @@ def main(argv: list[str] | None = None) -> int:
         print("debt-ratchet: a deliberate increase needs `--update` in the same commit and a decisions.md line",
               file=sys.stderr)
     if notes:
-        print(f"debt-ratchet: {len(notes)} item(s) improved; run `python3 scripts/debt-ratchet.py --update` to tighten")
+        names = " ".join(improved(actual, baseline))
+        print(f"debt-ratchet: {len(notes)} item(s) improved; tighten with "
+              f"`python3 scripts/debt-ratchet.py --update {names}`")
     return 1 if errors else 0
 
 
