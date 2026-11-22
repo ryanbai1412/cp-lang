@@ -41,7 +41,7 @@ Not covered (owner instead):
 
 - **M1 Land and settle** (phase 2, first hours). Exit: the 4 in-flight branches are on main or noted superseded (`git cherry`); `std_acyclic` runs in the gate; `stdlib_todo` <= 200 (the branches cut 30, 82 and 8 on their own bases; re-measured after rebase); std conformance >= 815/832.
 - **M2 Every body runs.** Exit: library-body `todo` = GAPS.md lines only, `@test` `todo` 0; doc labels missing 0; `spec-stub.py --check` 0 problems; docs >= 2430/2699 (90%); std conformance and `diff std-` 0 fail outside GAPS.md.
-- **M3 The v0.3 surface.** Exit: prelude <= budget; privileged std names in `prelude.rs` 0; no-privilege test green; docs 100%; every module has conformance cases; probes P1-P3 pass.
+- **M3 The v0.3 surface.** Exit: prelude <= budget; builtins that are public std names 0; no-privilege test green; docs 100%; every module has conformance cases; probes P1-P3 pass.
 
 ## Metrics
 
@@ -57,7 +57,7 @@ All measured 2026-11-22 on main `4b8f504f` with fresh release binaries (`cargo b
 | Pub fns missing a required doc label | `spec-stub.py --audit` | 32 of 2003 | 0 | M2 |
 | `spec-stub.py --check` problems | `spec-stub.py --check` | 13 | 0 | M2 |
 | Prelude names | `check.sh` prelude count | 192 | chapter tables (decision 150, Q1) | M3 |
-| Std names special-cased in the compiler | `measure.py privilege` | 27 in `prelude.rs`; 111 literals in `call.rs` (upper bound) | 0 | M3 |
+| Std names special-cased in the compiler | `measure.py privilege` (builtin count `ir_builtin_names`, agreed with tech-debt) | 89 builtins, 40 of them public std names | 0 std names | M3 |
 | Modules that pass standalone `cpl check` | loop in metrics.toml | 12/40 | 40 | M3 |
 | `GAPS.md` entries | `grep -c '^- ' spec/std/GAPS.md` | 88 | falling; 0 at M3 | M3 |
 | Import cycles (explicit `use`) | `measure.py cycles` | 0 | 0 | M1 |
@@ -86,7 +86,7 @@ Probes (cold agent, docs only; pass/fail, time, files touched):
 ## Improve (highest impact first)
 
 1. Land the 4 in-flight branches: about 120 bodies, delaunay/voronoi/planar, the import-cycle guard.
-2. Make std bodies the ones that run: 27 public std names (`sort`, `sorted`, `first`, `Counter`, `Subset`, ...) are also in compiler prelude tables and up to 111 are special-cased in `lower/call.rs`, so a builtin can shadow the body. tree, flow, dsu, graph hold 306 of the 687 non-passing examples; flow and dsu pass 0. Classify, then contract tests + compiler requests.
+2. Make std bodies the ones that run: 40 of the 89 builtin names in `lower/call.rs` are public std names (`sort`, `sorted`, `first`, `sum`, `prefix`, ...), so a builtin can shadow the body. tree, flow, dsu, graph hold 306 of the 687 non-passing examples; flow and dsu pass 0. Classify, then contract tests + compiler requests.
 3. Unblock the 263 examples failing on two causes: a range where a domain is named (`Dsu<0..3>()`, 174, see Q2) and a list literal for `[D]T` (89, spec R04.8.10 already allows it: compiler gap).
 4. Write the 105 `@test` bodies and the 189 library bodies not blocked by GAPS.md.
 5. Cut the prelude from 192 toward the budget with a usage-driven rule (Q1).

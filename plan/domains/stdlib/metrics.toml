@@ -81,17 +81,17 @@ target = "the lib/ chapter tables (decision 150; plan/QUESTIONS.md stdlib Q1)"
 milestone = "M3"
 
 [[metric]]
-name = "std_names_in_compiler_prelude_tables"
-command = "python3 plan/domains/stdlib/measure.py privilege"
-value = 27
-target = 0
+name = "ir_builtin_names"
+command = "python3 scripts/debt-ratchet.py --list ir_builtin_names"
+value = 89
+target = "the intrinsics floor (plan/QUESTIONS.md stdlib Q3, tech-debt Q1; proposed about 30)"
 milestone = "M3"
 
 [[metric]]
-name = "std_names_as_literals_in_lower_call_rs"
+name = "ir_builtin_names_that_are_std_names"
 command = "python3 plan/domains/stdlib/measure.py privilege"
-value = 111
-target = "agreed intrinsics floor (plan/QUESTIONS.md stdlib Q3); upper bound, includes common words"
+value = 40
+target = 0
 milestone = "M3"
 
 [[metric]]

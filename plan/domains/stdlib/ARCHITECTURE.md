@@ -83,7 +83,7 @@ Lines and public items per file, purpose from each file's `//!` header.
 
 ## Known debt
 
-- **Builtin shadowing / privilege.** `crates/cpl-check/src/prelude.rs` tables name 27 public std names (`sort`, `sorted`, `first`, `last`, `sum`, `Counter`, `Subset`, ...); `crates/cpl-ir/src/lower/call.rs` (13.4k lines) special-cases up to 111 std names by string. Where both exist the std body may not be what runs (`measure.py privilege`).
+- **Builtin shadowing / privilege.** `crates/cpl-ir/src/lower/call.rs` (13.4k lines) string-matches 89 names in match arms (`ir_builtin_names`, the builtin count agreed with tech-debt); 40 are public std names (`sort`, `sorted`, `first`, `sum`, `prefix`, `runs`, ...), so the std body may not be what runs (`measure.py privilege`). `crates/cpl-check/src/prelude.rs` tables also list some std names (`Counter`, `Subset`, ...).
 - **Stubs.** 189 library-body and 105 `@test` `todo` (`measure.py todo-split`); largest in `tree`, `graph`, `geometry`, `strings` (`cpl-conform docs --causes`, R0402: 146 examples reach one).
 - **Examples ahead of the compiler.** 174 examples pass an int range where a domain is named (E0204), 89 fill `[D]T` from a list literal (R0001), e.g. in `spec/std/dsu.cp`, `spec/std/beats.cp`. `flow` and `dsu` pass 0 examples.
 - **Standalone check.** 28 of 40 files fail `cpl check spec/std/<m>.cp` (418 errors), including generic code the checker can't yet type (`spec/std/GAPS.md`, 88 entries).

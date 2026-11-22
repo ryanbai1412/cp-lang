@@ -2,9 +2,10 @@
 """Stdlib metrics that no other script prints. Usage: measure.py <metric>.
 
   todo-split   `todo` stubs in library bodies vs in `@test` fns (spec/std)
-  privilege    public spec/std names the compiler also special-cases: names
-               in cpl-check's prelude.rs tables, and string literals in
-               cpl-ir's lower/call.rs
+  privilege    the builtin count agreed with tech-debt: `ir_builtin_names` in
+               scripts/debt-ratchet.py (distinct names string-matched in match
+               arms of cpl-ir's lower/call.rs), split into public spec/std
+               names (std privilege) and the rest
   cycles       import cycles among spec/std modules via explicit `use`
   uncovered    spec/std modules with no spec/conformance/std-<m>/ cases
   prelude-usage  share of solutions that use each prelude name, written to
@@ -12,7 +13,7 @@
                stdlib Q1): the reviewed ports (corpus/sets/ecnerwala.txt), the
                hill-climb spec.cp (corpus/hillclimb.json), and corpus/gold
 """
-import glob, json, os, re, sys
+import glob, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 STD = os.path.join(ROOT, "spec", "std")
@@ -51,17 +52,13 @@ def todo_split():
 
 
 def privilege():
-    pub = pub_names()
-    src = open(f"{ROOT}/crates/cpl-check/src/prelude.rs").read()
-    tables = set()
-    for t in ("TYPE_NAMES", "VALUE_NAMES", "TRAIT_NAMES"):
-        tables |= set(re.findall(r'"(\w+)"', re.search(t + r": &\[&str\] = &\[(.*?)\];", src, re.S).group(1)))
-    call = set(re.findall(r'"(\w+)"', open(f"{ROOT}/crates/cpl-ir/src/lower/call.rs").read()))
-    a, b = sorted(tables & pub), sorted(call & pub)
-    print(f"privilege: {len(set(a) | set(b))} std names special-cased "
-          f"({len(a)} in cpl-check prelude.rs tables, {len(b)} literals in cpl-ir lower/call.rs)")
-    print("  prelude.rs:", " ".join(a))
-    print("  call.rs:", " ".join(b))
+    out = subprocess.run([sys.executable, f"{ROOT}/scripts/debt-ratchet.py", "--list", "ir_builtin_names"],
+                         capture_output=True, text=True, check=True).stdout.split("\n")
+    names = {n.strip() for n in out[1:] if n.strip()}
+    std = sorted(names & pub_names())
+    print(f"privilege: {len(names)} builtin names (ir_builtin_names); {len(std)} are public std names")
+    print("  std:", " ".join(std))
+    print("  other:", " ".join(sorted(names - set(std))))
 
 
 def cycles():

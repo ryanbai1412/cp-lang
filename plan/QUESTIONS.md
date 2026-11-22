@@ -131,7 +131,7 @@ How to reverse it: make E0204 fire again; `cpl fix` can name the domain.
 Meanwhile: examples stay as written and count as blocked; a compiler request is filed only after the answer.
 
 ### stdlib: Q3 where the compiler/std line is
-27 public std names are also in `crates/cpl-check/src/prelude.rs` tables and up to 111 are special-cased by string in `crates/cpl-ir/src/lower/call.rs` (`plan/domains/stdlib/measure.py privilege`), e.g. `sort`, `sorted`, `first`, `sum`, `Counter`. A user library can't do what these do.
+`crates/cpl-ir/src/lower/call.rs` string-matches 89 builtin names (`ir_builtin_names`, the count agreed with tech-debt); 40 are public std names (`plan/domains/stdlib/measure.py privilege`), e.g. `sort`, `sorted`, `first`, `sum`, `prefix`. Same call as tech-debt Q1 (the builtin floor). A user library can't do what these do.
 - (a) Intrinsics only for storage, I/O, bit operations and numeric primitives; everything else (`sort`, `min`, `sum`, `first`, ...) is a std body, moved only once its C++ matches the builtin (perf gate).
 - (b) Keep a small blessed core vocabulary in the compiler, listed and frozen.
 Recommendation: (a), the "no privileged stdlib" rule in AGENTS.md; the perf gate keeps it zero-cost.

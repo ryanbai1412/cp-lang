@@ -9,7 +9,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 - **Whole modules.** `flow` 0/72 and `dsu` 0/64 examples pass; `tree` 123/239, `graph` 87/141 (`cpl-conform docs <m>.cp`). Only 12 of 40 files pass standalone `cpl check` (the `SPEC_STD` ratchet in `crates/cpl-cli/tests/corpus.rs` lists the same 12).
 - **Compiler gaps.** 88 entries in `spec/std/GAPS.md`: bodies the compiler can't run yet.
 - **Surface.** Prelude 192 names (`check.sh` still warns above 80, a budget decision 150 dropped; usage in `prelude-usage.md`); 32 public fns lack a doc label; 13 `spec-stub --check` problems (e.g. `ternary_max` is in no chapter).
-- **Privilege.** 27 public std names are also in `cpl-check/src/prelude.rs` tables; up to 111 std names appear as string literals in `cpl-ir/src/lower/call.rs` (an upper bound: common words like `len` count). The tech-debt README's 77 is a third count; M3 fixes one definition with tech-debt.
+- **Privilege.** The builtin count, agreed with tech-debt, is `ir_builtin_names` (`scripts/debt-ratchet.py`): 89 distinct names string-matched in match arms of `cpl-ir/src/lower/call.rs`; 40 of them are public std names (`measure.py privilege`).
 
 ## Workstreams, in order
 
