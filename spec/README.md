@@ -67,7 +67,7 @@ compile: `conformance/`. What 0.2.x does not do yet: `delta/`.
   `todo` with a doc comment and a cost; `scripts/spec-stub.py --check`
   keeps it so. A file here shadows `stdlib/` (`CPL_STD` is searched
   first).
-- `scripts/spec-check.sh` holds the gold dreams (`GOLD.txt`, `gold/`) and
+- `scripts/spec-check.sh` holds the gold dreams (`corpus/gold/`) and
   the port dreams to the stubs. A failing dream is either a spec gap (add
   the signature or the power) or a dream that ignores a decision (fix the
   dream). Never weaken a dream to make it pass.
