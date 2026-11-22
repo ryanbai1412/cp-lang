@@ -156,8 +156,11 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 /// `r[r.keys.first!]` its key. O(1) to make, O(n) to walk.
 pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
 
-/// Group indices of `D` by their key in `K`, preserving order within each bucket. O(|D| + |K|).
-pub fn buckets<D, K>(key: [D]K) -> [K]List<D> = todo
+/// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
+/// The result is keyed by the value domain, so group by any domain-valued key with
+/// `a.map(key).buckets()`; an optional table gives a `None` bucket (`b[Some(k)]`).
+/// O(|D| + |K|) time and memory.
+pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D> = todo
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
@@ -428,7 +431,7 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// O(n) expected, O(distinct) memory. Frequency map of keys `by(x)` across `self`.
 pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = todo
 
-/// O(n) expected, O(n) memory. Group elements by arbitrary hashable key (companion to domain-indexed `buckets`).
+/// O(n) expected, O(n) memory. Group elements by an arbitrary hashable key. When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
 pub fn group<S: Seq, T, K>(self: S, by: T -> K) -> HashMap<K, List<T>> = todo
 
 /// O(n) expected, O(k) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
@@ -500,8 +503,6 @@ pub fn perm_order<V>(p: [V]V) -> Int = todo
 /// O(|I| + |V|), O(|I| + |V|) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`None` images).
 pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I = todo
 
-/// O(|I| + |V|), O(|I| + |V|) memory. Preimage buckets: for each `v in V`, all `i in I` with `self[i] == Some(v)` in `I` order.
-pub fn preimages<I, V>(self: [I]?V) -> [V]List<I> = todo
 
 /// O(k) per combination. All `k`-element combinations in lexicographic index order (`k = 2` is unordered pairs).
 pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T> = todo

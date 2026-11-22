@@ -220,7 +220,10 @@ type Z = Mod(read<Prime>())         // runtime modulus
 - `V.count` is typed by the declared range, which is where storage
   widths and overflow proofs come from.
 - Product domains `domain State = (V, K)` and disjoint unions
-  `domain Node = In + Out` are domains too (decisions 2.x, 88).
+  `domain Node = In + Out` are domains too (decisions 2.x, 88). Written
+  inline, `(V, K)` is the anonymous product domain, the same one that
+  `[V, K]T` is indexed by: `(V, V).all((u, v) => d[u, v] == d[v, u])`
+  (decision 159).
 
 ## 2.10 Type inference
 

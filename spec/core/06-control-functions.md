@@ -20,6 +20,12 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
   method receiver needs no marker at the call.
 - A parameter of a `fn` or a lambda may be a pattern, as in `for`:
   `(mut d, (u, v)) => d.unite(u, v)`. `mut` marks the whole parameter.
+- A lambda with k parameters, passed where the callee expects a function
+  of one k-tuple, unpacks it: `(V, V).all((u, v) => ...)` and
+  `a.items.filter((i, x) => ...)` mean `((u, v)) =>` and `((i, x)) =>`.
+  The callee's function type decides; a lambda that wants the whole tuple
+  takes one parameter (`p => p.0`). This is not overloading: the
+  signature is fixed and only the lambda's spelling adapts (decision 159).
 - Named and positional arguments, defaults, named-only parameters after
   `;`, and a variadic `..xs: Ts` tuple parameter. Options are always
   named (`by:`, `desc`), never `_by` twins (decision 60).

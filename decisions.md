@@ -4606,3 +4606,42 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   over `spec/` and `corpus/problems/`, and drop the `Some`/`None` spellings from the lexer
   and parser.
 
+## 158. `a.buckets()` is the one domain-keyed grouping (2026-11-21)
+
+- **Decision.** `buckets` is a method on any keyed table: `a.buckets()` maps each value `k`
+  to the keys `i` with `a[i] == k`, keyed by the value domain (`[D]K -> [K]List<D>`). Group by
+  any domain-valued key with `a.map(key).buckets()`; an optional table gives a `None` bucket,
+  read as `b[Some(k)]`. `preimages` (the `[I]?V` form) is folded in and removed, and the free
+  `buckets(key)` becomes the method. `a.group(by:)` stays the hash-keyed form for keys that
+  are not domains.
+- **Why.** The blind dmpg16g2 dream wanted `R.group(pairs) -> [R]List`, and its port spent a
+  five-line push loop because `group(by:)` returns a `HashMap`. Library results stay in the
+  keys they were given, so a domain-valued key should give a domain-keyed result. Overloading
+  `group` by whether `K` is a domain is out (decision 127: no overloading by type), and
+  `buckets`/`preimages` were two names for one job.
+- **Reverse.** Restore free `buckets(key)` and `preimages(self: [I]?V)` in `spec/std/seq.cp`
+  and the callers in `corpus/problems/{egoi23p7,dmpg16g2}`.
+
+## 159. `(V, V)` is an inline product domain; k-parameter lambdas unpack k-tuples (2026-11-21)
+
+- **Decision.** Written as a value, `(V, K)` is the anonymous product domain that `[V, K]T`
+  is indexed by. A lambda with k parameters, passed where a function of one k-tuple is
+  expected, unpacks the tuple: `(V, V).all((u, v) => ...)`.
+- **Why.** Ryan asked for `(V, V).all((u, v) => ...)` while reading the egoi23p4 port, which
+  nested `V.all(u => V.all(v => ...))`. The checker already accepted both forms, and ports
+  already relied on unpacking (`dist.items.filter_map((v, d) => ...)`); the spec only showed
+  the declared `domain P = (V, V)` and the doubled `((u, v)) =>`. The callee's signature is
+  fixed, so this is spelling, not overloading.
+- **Reverse.** Require `domain P = (V, V)` and `((u, v)) =>`, and remove the bullets in
+  chapters 02 and 06.
+
+## 160. `d.closure(over:)` is the value form of `floyd_warshall` (2026-11-21)
+
+- **Decision.** `d.closure(over: r) -> ?[V, V]?W` returns a new closed matrix (`None` on a
+  negative cycle), as `sorted` is to `sort`; `floyd_warshall(mut d, over:)` stays the in-place
+  form.
+- **Why.** The egoi23p4 dream wrote `g.closure(semiring)`. The hill-climb rejected it as a
+  duplicate of `floyd_warshall`, and the port then needed a four-line clone-run-compare
+  helper. The value counterpart of an in-place algorithm is the existing `sort`/`sorted`
+  convention, not a second algorithm.
+- **Reverse.** Delete `closure` from `spec/std/graph.cp` and restore the helper in the port.

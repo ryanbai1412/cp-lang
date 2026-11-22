@@ -335,3 +335,18 @@ Open questions raised by dreams:
   and shifts the pair's end by n when the pair wraps past the last top. Both the old port and
   the dream (`dist(b, t)` parity with c flipped) alternated from the wrong top; the shared pair
   now alternates from c, as in the C++. Checked with `cpl check` only: spec-only stubs don't run.
+- Second look at the ten-more-dreams sample (Ryan asked why dmpg16g2 and egoi23p4 run about
+  twice their dreams' length). Two earlier rejections were wrong: each removed a one-problem
+  name but left the port paying for a missing general piece.
+  - Spec change (decision 158): `a.buckets()` groups keys by a domain-valued value, so
+    dmpg16g2's `R.group(pairs)` is `last.buckets()` and the five-line push loop goes.
+    `preimages` folds in; `group(by:)` stays hash-keyed.
+  - Spec change (decision 160): `d.closure(over:)`, the value form of `floyd_warshall`
+    (`sorted` to `sort`). egoi23p4's clone-run-compare helper shrinks to two lines.
+  - Spec change (decision 159): inline `(V, V)` product domains and tuple-unpacking lambdas,
+    `(V, V).all((u, v) => ...)`.
+  - Port fixes: dmpg16g2 sums with `sum(of:)`, filters subsets instead of `if` in a loop, and
+    builds `FreeSpans` from defaults. egoi23p4 builds candidates with a comprehension over
+    `V.pairs()`.
+  - Still open: ragged reads (`read<[i in V][..i]Int>()`) for the triangle inputs of
+    egoi23p4 and cco20p4, and reading `?Letter` straight from a `.`/letter grid.

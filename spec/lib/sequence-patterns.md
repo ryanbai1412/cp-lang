@@ -200,7 +200,7 @@ No helper is added for these; each is one or two lines.
 | first position where a prefix fold passes `x` | `pre.keys.first_true(c => pre[c] >= x)` (monotone) or `.first(...)` |
 | polygon edges | `poly.cyclic_pairs` |
 | circular windows | `a.ring.windows(k)` (below) |
-| group equal keys anywhere | `a.group(by: k)`, `a.tally(by: k)`, `buckets(key)` |
+| group equal keys anywhere | `a.group(by: k)`, `a.tally(by: k)`, `a.map(k).buckets()` (domain-keyed) |
 | value held by more than half, from equality alone | `a.majority(eq: same)` |
 | ranges strictly below both neighbours outside them | `a.valleys()` |
 | dedup | `a.dedup()` (adjacent), `a.distinct(by:)` (anywhere) |

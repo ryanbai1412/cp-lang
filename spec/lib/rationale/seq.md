@@ -216,9 +216,10 @@ pub fn runs<D, T>(self: [D]T) -> List<(val: T, len: Int)>
 // [deprecated alias, kept for existing ports] Materialized keyed runs.
 pub fn runs_by<T, K>(a: List<T>, by: T -> K) -> List<(key: K, items: List<T>)>
 
-// Group every index `i` of domain `D` into bucket `key[i]` of domain `K`,
-// preserving domain order within each bucket. O(D.count + K.count) time/space.
-pub fn buckets<D, K>(key: [D]K) -> [K]List<D>
+// Bucket every key `i` of `self` under its value `self[i]` in domain `K`,
+// preserving key order within each bucket. O(D.count + K.count) time/space.
+// Decision 158: this is the one domain-keyed grouping (`preimages` folded in).
+pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>
 
 // Contiguous length-`k` windows; O(k) per yielded window.
 pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>
@@ -247,7 +248,7 @@ Laws:
 - `a.run_ranges(by: f)` is identical to `a.chunk_by((x, y) => f(x) == f(y))`.
 - `sum(r.len for r in a.runs()) == a.len` and no two adjacent entries share
   `.val`.
-- For `b = buckets(key)`, every `i in D` appears in `b[key[i]]` exactly once,
+- For `b = key.buckets()`, every `i in D` appears in `b[key[i]]` exactly once,
   in increasing `D` order.
 
 ### 3.4 Prefix, suffix, and exclusive scans
@@ -569,7 +570,7 @@ print(prev_dp * M(blocks.last!))
 
 `prefix_fold` and `suffix_fold` return `[t.Pre.cuts]MaxInfo<t.Pre>`, so the
 maximum outside subtree `r = t.sub(v)` is `combine(pref[r.start], suff[r.end])`
-with zero `.ord` arithmetic, and `buckets(w)` groups `V` by weight `W` in one
+with zero `.ord` arithmetic, and `w.buckets()` groups `V` by weight `W` in one
 expression:
 
 ```cp
@@ -582,7 +583,7 @@ let mon = Monoid<MaxInfo<t.Pre>>(empty_max, combine)
 let leaf = [t.Pre] p => MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
 let pref = prefix_fold(leaf, mon)
 let suff = suffix_fold(leaf, mon)
-let by_w = buckets(w)
+let by_w = w.buckets()
 
 for weight in W.rev:
     let w_val = weight.ord + 1

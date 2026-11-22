@@ -402,6 +402,11 @@ pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Pa
 /// semiring's zero (no path) and the diagonal starts at its one.
 pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool = todo
 
+/// O(n^3) time, O(n^2) memory. The value form of `floyd_warshall`, as `sorted` is to `sort`:
+/// a new matrix closed under `over:`, or `None` on a negative cycle. A matrix is already
+/// closed when `d.closure(over: r) == Some(d)`.
+pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W = todo
+
 /// O(n + m).
 /// One directed cycle, as its vertices in walking order (each is followed by the next,
 /// and the last by the first), or `None` if the graph is acyclic. O(n + m), no recursion.

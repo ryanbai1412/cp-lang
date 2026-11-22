@@ -22,7 +22,7 @@ fn solve() -> ?List<(child: V, parent: V)>:
         top[block[v]] = Some(v)
     if B.any(b => top[b] == None):
         return None
-    let members = buckets(block)
+    let members = block.buckets()
     var bans = Counter<(B, B)>()
     var forbidden: [V]HashSet<V> = HashSet()
     for e in banned:
