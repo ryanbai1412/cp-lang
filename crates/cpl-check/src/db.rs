@@ -901,6 +901,20 @@ impl Database {
         }
         if crate::ty::spec_edition() {
             for (index, range) in ranges.iter().enumerate().take(items.len()) {
+                if let Some((span, data, size, bytes)) = padded_array(&items, index) {
+                    sink.push(
+                        Diagnostic::warning(
+                            codes::PADDING,
+                            span.shift(range.span.start),
+                            format!(
+                                "each element holds {data} bytes of data in {size}, so {} of this {:.1} MB array is padding",
+                                size - data,
+                                bytes / 1e6
+                            ),
+                        )
+                        .with_help("store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field)"),
+                    );
+                }
                 if let Some((name, at, reads)) = map_recomputed(&items, index) {
                     let at = at.shift(range.span.start);
                     sink.push(
@@ -2128,6 +2142,44 @@ fn declare_with_var(
             edits: vec![(at, "var".into())],
         });
     }
+}
+
+/// A top-level array over 1 MB whose record element is more than 20%
+/// padding. Gives the element type's span, its data and padded sizes, and
+/// the array's bytes.
+fn padded_array(items: &[Arc<ItemSyntax>], index: usize) -> Option<(Span, u64, u64, f64)> {
+    use ast::TypeKind;
+    let item = &items[index];
+    let StmtKind::Let { ty: Some(ty), .. } = &item.parsed.stmts.first()?.kind else {
+        return None;
+    };
+    let TypeKind::Array { index: dims, elem } = &ty.kind else {
+        return None;
+    };
+    let TypeKind::Record(fields) = &elem.kind else {
+        return None;
+    };
+    let widths = fields
+        .iter()
+        .map(|(_, t)| match &t.kind {
+            TypeKind::Named { name, args } if args.is_empty() => match name.text.as_str() {
+                "Int" | "Float" | "U64" => Some(8),
+                "Char" => Some(4),
+                "Bool" => Some(1),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect::<Option<Vec<u64>>>()?;
+    let data: u64 = widths.iter().sum();
+    let align = widths.iter().copied().max()?;
+    let size = data.div_ceil(align) * align;
+    let count = dims.iter().try_fold(1f64, |acc, d| {
+        let text = item.text.get(d.span.start as usize..d.span.end as usize)?;
+        Some(acc * text.replace('_', "").parse::<f64>().ok()?)
+    })?;
+    let bytes = count * size as f64;
+    (bytes > 1e6 && (size - data) * 5 > size).then_some((elem.span, data, size, bytes))
 }
 
 /// R07.2.11: a top-level `let m = xs.map(f)` that later items index more

@@ -179,6 +179,7 @@ pub mod codes {
     pub const MUT_GENERATOR_REWALKED: Code = Code("L0604");
     pub const LITERAL_SLICE_INDEX: Code = Code("L0605");
     pub const WIDE_ARRAY: Code = Code("L0606");
+    pub const PADDING: Code = Code("L0607");
     pub const PARENS_MEAN_WORK: Code = Code("L0608");
 
     /// A fixed-width integer type name; widths come from ranges.

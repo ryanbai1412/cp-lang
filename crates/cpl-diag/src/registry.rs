@@ -717,6 +717,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("L0607"),
+        title: "Large array of padded elements",
+        summary: "An array over 1 MB whose record element is more than 20% padding.",
+        explanation: "A record such as `(w: Int, b: Bool)` holds 9 bytes of data in 16. Store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field).",
+        trigger: "var a: [200000](w: Int, b: Bool) = [200000].filled((w: 0, b: false))\nprint(a[0].w)\n",
+        fix: "var w: [200000]Int = [200000].filled(0)\nvar b: [200000]Bool = [200000].filled(false)\nprint(w[0])\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0608"),
         title: "Parentheses do not match the cost",
         summary: "An O(n) method is written without parentheses, or an O(1) property with them (`a.sorted`, `xs.len()`).",
