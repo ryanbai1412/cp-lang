@@ -1107,7 +1107,7 @@ impl<'a> Parser<'a> {
                     self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
                     let span = self.span_from(start);
                     self.error(Diagnostic::error(
-                        cpl_diag::Code("E0703"),
+                        codes::BARE_OP_TUPLE,
                         span,
                         format!(
                             "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"

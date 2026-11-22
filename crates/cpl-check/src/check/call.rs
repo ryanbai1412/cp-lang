@@ -1201,7 +1201,7 @@ impl<'a> Checker<'a> {
                                             Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
                                             _ => {
                                                 self.error(
-                                                    cpl_diag::Code("E0704"),
+                                                    codes::ROW_MISSING_FIELD,
                                                     call.span,
                                                     format!(
                                                         "record `{actual}` does not satisfy row bound for `{param}`: missing or incompatible field `{req_name}: {req_ty}`"
@@ -1214,7 +1214,7 @@ impl<'a> Checker<'a> {
                                 Ty::Error | Ty::Unknown | Ty::Param(_) => {}
                                 other => {
                                     self.error(
-                                        cpl_diag::Code("E0704"),
+                                        codes::ROW_MISSING_FIELD,
                                         call.span,
                                         format!(
                                             "row bound on `{param}` requires a record, found `{other}`"
@@ -1599,7 +1599,7 @@ impl<'a> Checker<'a> {
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
                         let code = if callee == "Fenwick" && name.text == "act" {
-                            cpl_diag::Code("E0705")
+                            codes::LAW_UNSUPPORTED_SPECIALIZATION
                         } else {
                             codes::UNKNOWN_ARG_NAME
                         };

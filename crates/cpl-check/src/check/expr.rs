@@ -3208,7 +3208,7 @@ impl<'a> Checker<'a> {
                             };
                             if out_of_bounds {
                                 let message = format!("literal `{v}` is outside domain `{d}`");
-                                self.error(cpl_diag::Code("E0902"), index_expr.span, message);
+                                self.error(codes::RANGE_STORE_CONST, index_expr.span, message);
                             }
                         }
 
@@ -3581,7 +3581,7 @@ impl<'a> Checker<'a> {
             let out_high = matches!((vlo, want_hi), (Some(vl), Some(wh)) if vl > *wh);
             if out_low || out_high {
                 let msg = format!("`{}` is out of range for `{want}`", self.quote(at.span));
-                self.error(cpl_diag::Code("E0902"), at.span, msg);
+                self.error(codes::RANGE_STORE_CONST, at.span, msg);
                 return false;
             }
         }
@@ -3660,7 +3660,7 @@ impl<'a> Checker<'a> {
                         && matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "fold")
             );
         let code = if is_empty_fold {
-            cpl_diag::Code("E0706")
+            codes::EMPTY_FOLD_NO_IDENTITY
         } else if matches!((got, want), (Ty::Pos(_), Ty::Pos(_))) {
             codes::WRONG_DOMAIN
         } else {

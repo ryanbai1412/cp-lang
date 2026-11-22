@@ -36,7 +36,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0205 | used_before_set | a capture used before it is initialized |
 | E0206 | unresolved_module | |
 | E0207 | private_name | |
-| E0208 | value_name_case *(0.3)* | `let N = 5`: values are lowercase; `N` would read as a type |
+| E0208 | value_name_case | `let N = 5`: values are lowercase; `N` would read as a type |
 | E0301 | wrong_domain | `deg` is indexed by `V`, but `e` is an `E` |
 | E0302 | type_mismatch | |
 | E0303 | wrong_arg_count | |
@@ -56,7 +56,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | |
 | E0404 | top_level_var_in_fn *(retired)* | never emitted: a `fn` may read and write a top-level `var` |
-| E0405 | assign_fixed_field *(0.3)* | `e.w` is not `var`; declare `var w` or rebuild with `e with w: x` |
+| E0405 | assign_fixed_field | `e.w` is not `var`; declare `var w` or rebuild with `e with w: x` |
 | E0406 | var_lambda_recursion | a `var`-bound lambda cannot call itself |
 | E0407 | duplicate_variant_tag | two variants of one enum read as the same token; give one a different `@tag` |
 | E0501 | unsupported | |
@@ -72,19 +72,19 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0607 | moved_while_captured | `xs` is captured by `f` (line N) and cannot move |
 | E0608 | heap_copy | `let b = a` moved `a`; use `a.clone()` to copy |
 | E0701 | ambiguous_method | names both candidates; write `Trait.m(x)` |
-| E0702 | overload_by_type *(0.3)* | two `f` with the same labels |
-| E0703 | bare_op_tuple *(0.3)* | `(+, max)` is not an operation; write `each(+, max)` or `Semiring(max, +)` |
-| E0704 | row_missing_field *(0.3)* | the record lacks field `w` required by `(w: W, ..)` |
-| E0705 | law_unsupported_specialization *(0.3)* | `Fenwick` takes no `act:`; use `SegTree(op, a, act:)` |
-| E0706 | empty_fold_no_identity *(0.3)* | folding with `Op` gives `?T`; unwrap or pass a `Monoid` |
+| E0702 | overload_by_type | two `f` with the same labels |
+| E0703 | bare_op_tuple | `(+, max)` is not an operation; write `each(+, max)` or `Semiring(max, +)` |
+| E0704 | row_missing_field | the record lacks field `w` required by `(w: W, ..)` |
+| E0705 | law_unsupported_specialization | `Fenwick` takes no `act:`; use `SegTree(op, a, act:)` |
+| E0706 | empty_fold_no_identity | folding with `Op` gives `?T`; unwrap or pass a `Monoid` |
 | E0801 | context_not_constant | `with` needs a compile-time value; for a runtime modulus use `type Z = Mod(p)` |
 | E0802 | with_not_first | a bare `with` line must come first in its block |
 | E0803 | question_in_condition | `x?` in a condition; write `... ?? false` |
-| E0804 | dropped_question *(0.3)* | a `?` whose result is dropped |
+| E0804 | dropped_question | a `?` whose result is dropped |
 | E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |
 | E0806 | inference_needs_annotation | `var x = None`; annotate `?Int` |
 | E0901 | no_u8 | `U8` is not a type; use `0..=255` |
-| E0902 | range_store_unprovable_const *(0.3)* | a constant out of the range type |
+| E0902 | range_store_unprovable_const | a constant out of the range type |
 | E0903 | int128_unavailable *(0.3)* | `I128` on a judge without `__int128` |
 | E0904 | memory_over_profile *(0.3)* | peak memory at the input bounds exceeds the judge's limit (with the largest arrays) |
 | E9998 | internal_unsupported *(retired)* | never emitted; unsupported constructs are E0501 |

@@ -164,6 +164,12 @@ pub mod codes {
     pub const NOT_IMPLEMENTED: Code = Code("E0504");
 
     pub const AMBIGUOUS_METHOD: Code = Code("E0701");
+    /// `(+, max)`: a tuple of operators is not an operation.
+    pub const BARE_OP_TUPLE: Code = Code("E0703");
+    /// A record missing a field a row bound `(w: W, ..)` requires.
+    pub const ROW_MISSING_FIELD: Code = Code("E0704");
+    /// An argument a law-specialized structure does not take (`Fenwick(act:)`).
+    pub const LAW_UNSUPPORTED_SPECIALIZATION: Code = Code("E0705");
     pub const EMPTY_FOLD_NO_IDENTITY: Code = Code("E0706");
 
     pub const LENT_TWICE: Code = Code("E0601");

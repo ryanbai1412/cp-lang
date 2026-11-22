@@ -898,7 +898,7 @@ impl<'a> Checker<'a> {
                                     if let Some(bad) = text.chars().find(|c| !alphabet.contains(*c))
                                     {
                                         self.error(
-                                            cpl_diag::Code("E0902"),
+                                            codes::RANGE_STORE_CONST,
                                             init_expr.span,
                                             format!("`{bad}` is not in `Str of \"{alphabet}\"`"),
                                         );
@@ -1261,7 +1261,7 @@ impl<'a> Checker<'a> {
                         let message = format!(
                             "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
                         );
-                        self.error(cpl_diag::Code("E0208"), pat.span, message);
+                        self.error(codes::VALUE_NAME_CASE, pat.span, message);
 
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
                     }
@@ -1661,7 +1661,7 @@ impl<'a> Checker<'a> {
                                 name.text
                             );
                             if let Some(diag) =
-                                self.error(cpl_diag::Code("E0405"), target.span, message)
+                                self.error(codes::ASSIGN_FIXED_FIELD, target.span, message)
                             {
                                 diag.help = Some(format!(
                                     "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",

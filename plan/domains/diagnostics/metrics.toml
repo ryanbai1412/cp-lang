@@ -98,7 +98,7 @@ milestone = "M2"
 [[metric]]
 name = "codes emitted through raw cpl_diag::Code literals (bypassing codes::)"
 command = "grep -rn 'cpl_diag::Code(\"' crates --include=*.rs | grep -v '^crates/cpl-diag/' | wc -l"
-today = "12 sites: 11 in cpl-check/cpl-syntax for 8 codes (7 marked *(0.3)*, i.e. not emitted, in the catalogue) and 1 non-code `Code(\"overflow\")` in cpl-lsp"
+today = "2 sites: lint L0609 in cpl-check/src/check/stmt.rs and the non-code `Code(\"overflow\")` in cpl-lsp (was 12; the 10 E-code sites use codes::)"
 target = "0"
 milestone = "M1"
 

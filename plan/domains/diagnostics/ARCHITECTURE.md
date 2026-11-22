@@ -56,8 +56,8 @@ fenced cp blocks of `spec/{core,lib,tools}`.
   (`spec/diagnostics.md`).
 - Every code an error site emits is in the catalogue; every emitted code has
   a registry trigger that produces exactly it and a fix that is clean
-  (`catalogue.rs`). *Hole:* raw `cpl_diag::Code("E0...")` literals bypass
-  `codes::` and are not seen (below).
+  (`catalogue.rs`). Error sites use `codes::` constants; the one raw lint
+  literal left is listed below.
 - One per root cause, mechanically: `Sink::push` drops anything inside a
   span the parser poisoned and a second diagnostic at the same span;
   `Sink::finish` keeps only the first use of each unimplemented feature.
@@ -71,11 +71,11 @@ fenced cp blocks of `spec/{core,lib,tools}`.
 1. Both recovery scoreboards are `#[ignore]`d since 954d6842 (edition 0.2
    deleted): `crates/cpl-cli/tests/recovery.rs:562`, `:589`. Nothing gates
    recovery today.
-2. Raw code literals outside `codes::`: 11 sites for E0208, E0405, E0703,
-   E0704, E0705, E0706, E0902, L0609 in `cpl-check/src/check/{expr,stmt,call}.rs`
-   and `cpl-syntax/src/parser/expr.rs:1086`; 7 of those codes are marked
-   *(0.3)* (not emitted) in `spec/diagnostics.md`, so the catalogue lies.
-   `crates/cpl-lsp/src/server.rs:1832` makes `Code("overflow")`, not a code.
+2. Raw code literals outside `codes::`: the E-code sites now use `codes::`
+   (E0703, E0704, E0705 gained constants and registry triggers). Left:
+   `crates/cpl-check/src/check/stmt.rs:1623` emits lint `L0609` raw (see 4),
+   and `crates/cpl-lsp/src/server.rs:1832` makes `Code("overflow")`, not a
+   catalogue code (request in the tools worklog).
 3. 33 of 93 catalogue rows have no example message (`spec/diagnostics.md`).
 4. Lint codes live in two registries (`crates/cpl-lint/src/lib.rs` makes
    `Code("L…")` itself; `codes::` also has L0601-L0608). One registry should
