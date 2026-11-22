@@ -345,6 +345,7 @@ impl<'a> Checker<'a> {
             ExprKind::Lambda {
                 params,
                 param_tys,
+                param_mut,
                 body,
             } => {
                 let given = match self.lambda_params.iter().position(|(at, _)| *at == expr.span) {
@@ -360,11 +361,12 @@ impl<'a> Checker<'a> {
                         .and_then(|t| t.as_ref())
                         .map(|t| self.resolve_type(t))
                         .unwrap_or_else(|| given.get(i).cloned().unwrap_or(Ty::Unknown));
-                    self.bind(param, &ty, false, "param");
+                    let mutable = param_mut.get(i).copied().unwrap_or(false);
+                    self.bind(param, &ty, mutable, "param");
                     sig_params.push(crate::ty::Param {
                         name: String::new(),
                         ty,
-                        mutable: false,
+                        mutable,
                         has_default: false,
                         named_only: false,
                         variadic: false,

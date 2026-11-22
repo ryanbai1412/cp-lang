@@ -420,6 +420,7 @@ impl<'a> Lowerer<'a> {
                 params,
                 param_tys,
                 body,
+                ..
             } => self.lower_lambda(params, param_tys, body, inner_hint, span),
             ast::ExprKind::Keep { target, max, value } => self.keep(target, *max, value, span),
             ast::ExprKind::Block(block) => self.do_expr(hint, span, |lw, out| {

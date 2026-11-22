@@ -40,17 +40,30 @@ impl<'a> Parser<'a> {
             _ => false,
         };
         if lambda {
-            let (params, param_tys) = if self.eat(T::LParen) {
+            let (params, param_tys, param_mut) = if self.eat(T::LParen) {
                 let items = self.comma_list(T::RParen, "the lambda's parameters", |p| {
+                    let mutable = p.eat(T::Mut);
                     let pat = p.pattern();
                     let ty = p.eat(T::Colon).then(|| p.ty());
-                    (pat, ty)
+                    (pat, ty, mutable)
                 });
-                let has_any = items.iter().any(|(_, t)| t.is_some());
-                let (ps, ts): (Vec<_>, Vec<_>) = items.into_iter().unzip();
-                (ps, if has_any { ts } else { Vec::new() })
+                let has_ty = items.iter().any(|(_, t, _)| t.is_some());
+                let has_mut = items.iter().any(|(_, _, m)| *m);
+                let mut ps = Vec::new();
+                let mut ts = Vec::new();
+                let mut ms = Vec::new();
+                for (p, t, m) in items {
+                    ps.push(p);
+                    ts.push(t);
+                    ms.push(m);
+                }
+                (
+                    ps,
+                    if has_ty { ts } else { Vec::new() },
+                    if has_mut { ms } else { Vec::new() },
+                )
             } else {
-                (vec![self.pattern()], Vec::new())
+                (vec![self.pattern()], Vec::new(), Vec::new())
             };
             self.bump();
             let body = Box::new(self.lambda_body());
@@ -58,6 +71,7 @@ impl<'a> Parser<'a> {
                 kind: ExprKind::Lambda {
                     params,
                     param_tys,
+                    param_mut,
                     body,
                 },
                 span: self.span_from(start),
@@ -574,6 +588,7 @@ impl<'a> Parser<'a> {
             kind: ExprKind::Lambda {
                 params,
                 param_tys: Vec::new(),
+                param_mut: Vec::new(),
                 body,
             },
             span,
@@ -651,6 +666,7 @@ impl<'a> Parser<'a> {
             kind: ExprKind::Lambda {
                 params,
                 param_tys: Vec::new(),
+                param_mut: Vec::new(),
                 body,
             },
             span,

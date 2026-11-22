@@ -140,6 +140,17 @@ impl<'a> Checker<'a> {
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
+            PatternKind::Tuple(items) if refutable(pat) => {
+                for (i, item) in items.iter().enumerate() {
+                    let item_ty = match ty {
+                        Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
+                        Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
+                        Ty::Error => Ty::Error,
+                        _ => Ty::Unknown,
+                    };
+                    self.bind(item, &item_ty, mutable, keyword);
+                }
+            }
             PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
                 let effective_ty;
                 let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
@@ -253,7 +264,12 @@ impl<'a> Checker<'a> {
 
     /// What `let pat = init else: ...` binds: the value in each optional.
     /// A tuple of values is taken apart, `let (x, y) = (a, b) else: ...`.
+    /// A refutable pattern, `let (gap, Some(best)) = e else: ...`, is matched
+    /// against `e` itself.
     fn let_else(&mut self, pat: &ast::Pattern, init: &ast::Expr, ty: Ty) -> Ty {
+        if refutable(pat) {
+            return ty;
+        }
         let inside = |ty: Ty| match ty {
             Ty::Optional(inner) => Ok(*inner),
             Ty::Error => Ok(Ty::Error),
@@ -1700,4 +1716,13 @@ fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
             .find_map(|b| loop_exit(&b.stmts)),
         _ => None,
     })
+}
+
+fn refutable(pat: &ast::Pattern) -> bool {
+    match &pat.kind {
+        ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
+        ast::PatternKind::Tuple(items) => items.iter().any(refutable),
+        ast::PatternKind::Or(alts) => alts.iter().all(refutable),
+        _ => false,
+    }
 }

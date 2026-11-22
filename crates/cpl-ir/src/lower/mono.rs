@@ -3142,6 +3142,7 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
                     kind: ast::ExprKind::Lambda {
                         params: Vec::new(),
                         param_tys: Vec::new(),
+                        param_mut: Vec::new(),
                         body: Box::new(arg.value),
                     },
                     span,

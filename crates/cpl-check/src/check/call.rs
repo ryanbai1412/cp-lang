@@ -602,7 +602,7 @@ impl<'a> Checker<'a> {
             if let Ty::Array { ref index, ref elem } = base_ty {
                 let out = if let [arg] = args {
                     match &arg.value.kind {
-                        ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                        ExprKind::Lambda { params, param_tys, body, .. } if params.len() == 1 => {
                             self.quietly(|c| {
                                 c.push_scope();
                                 let pty = param_tys
@@ -645,7 +645,7 @@ impl<'a> Checker<'a> {
                 "map" => {
                     let out = if let [arg] = args {
                         match &arg.value.kind {
-                            ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                            ExprKind::Lambda { params, param_tys, body, .. } if params.len() == 1 => {
                                 self.quietly(|c| {
                                     c.push_scope();
                                     let pty = param_tys
@@ -697,6 +697,7 @@ impl<'a> Checker<'a> {
                                 params,
                                 param_tys,
                                 body,
+                                ..
                             } if params.len() == 1 => {
                                 self.push_scope();
                                 let pty = param_tys

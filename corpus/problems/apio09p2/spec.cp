@@ -23,8 +23,7 @@ var gaps = IntervalMap<X, ?Int>(init: None)
 gaps.assign(X.range, fit(X.range))
 var picked = List<I>()
 for i in I:
-    let (gap, best) = gaps.run_at(iv[i].first!)
-    let best = best ?? continue
+    let (gap, Some(best)) = gaps.run_at(iv[i].first!) else: continue
     if not gap.contains(iv[i]):
         continue
     let (left, right) = (gap.l..iv[i].l, iv[i].r..gap.r)

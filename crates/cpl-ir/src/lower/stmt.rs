@@ -492,6 +492,33 @@ impl<'a> Lowerer<'a> {
                 init: Some(init),
                 otherwise: Some(els_block),
                 ..
+            } if !*mutable && refutable(pat) => {
+                let value = self.expr(init, None);
+                if value.ty == Ty::Error {
+                    return;
+                }
+                let tmp = self.temp(value.ty.clone());
+                out.push(Stmt::Let(tmp, Some(value)));
+                let local = self.local(tmp, init.span);
+                let mut binds = Vec::new();
+                if let Some(test) = self.pattern(pat, &local, &mut binds) {
+                    let fails = Expr {
+                        kind: ExprKind::Unary(UnOp::Not, Box::new(test)),
+                        ty: Ty::Bool,
+                        span: self.span(stmt.span),
+                    };
+                    let els = self.block(els_block, Tail::Discard);
+                    out.push(Stmt::If(fails, els, Block::default()));
+                }
+                out.extend(binds);
+            }
+            ast::StmtKind::Let {
+                mutable,
+                pat,
+                ty: None,
+                init: Some(init),
+                otherwise: Some(els_block),
+                ..
             } => {
                 let Some((present, inner)) = self.optional(init, "let ... else", out) else {
                     return;
@@ -1945,6 +1972,7 @@ impl<'a> Lowerer<'a> {
                     kind: ast::ExprKind::Lambda {
                         params,
                         param_tys: ann_tys,
+                        param_mut: _,
                         body,
                     },
                     span: lspan,
@@ -4877,5 +4905,16 @@ fn written(e: &Expr) -> Option<i64> {
     match e.kind {
         ExprKind::Int(v) => Some(v),
         _ => None,
+    }
+}
+
+/// `let (gap, Some(best)) = e else: ..` tests `e` against the pattern;
+/// an irrefutable one, `let (a, b) = e else: ..`, unwraps an optional `e`.
+fn refutable(pat: &ast::Pattern) -> bool {
+    match &pat.kind {
+        ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
+        ast::PatternKind::Tuple(items) => items.iter().any(refutable),
+        ast::PatternKind::Or(alts) => alts.iter().all(refutable),
+        _ => false,
     }
 }

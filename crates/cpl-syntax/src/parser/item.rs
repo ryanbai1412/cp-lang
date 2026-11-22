@@ -355,10 +355,18 @@ impl<'a> Parser<'a> {
         let was_recovering = std::mem::replace(&mut self.recovering, false);
         while !matches!(self.peek(), T::Dedent | T::Eof) {
             let before = self.pos;
-            let declaration = matches!(
-                self.peek(),
-                T::Fn | T::At | T::Pub | T::Const | T::Domain | T::Type | T::Let
-            ) || self.at_ident("law") && self.peek_n(1) == T::Ident;
+            let tagged_variant = self.at(T::At) && self.peek_n(1) == T::Ident && {
+                let at = self.pos;
+                self.pos += 1;
+                let tag = self.text() == "tag";
+                self.pos = at;
+                tag
+            };
+            let declaration = !tagged_variant
+                && (matches!(
+                    self.peek(),
+                    T::Fn | T::At | T::Pub | T::Const | T::Domain | T::Type | T::Let
+                ) || self.at_ident("law") && self.peek_n(1) == T::Ident);
             if declaration {
                 self.stmt_into(&mut methods);
             } else if matches!(self.peek(), T::Indent | T::Newline) {
@@ -507,6 +515,17 @@ impl<'a> Parser<'a> {
     }
 
     fn variant(&mut self) -> Variant {
+        // `@tag("Q") Ask(h: Int)`: the token the variant reads and prints as.
+        let tag = if self.at(T::At) && self.peek_n(1) == T::Ident {
+            self.bump();
+            self.bump();
+            self.expect(T::LParen, "`(` after `@tag`");
+            let tag = self.expr();
+            self.expect(T::RParen, "`)` after the tag");
+            Some(tag)
+        } else {
+            None
+        };
         let name = self.expect_name("a variant name");
         let fields = if self.eat(T::LParen) {
             self.comma_list(T::RParen, "the variant's fields", |p| {
@@ -544,6 +563,7 @@ impl<'a> Parser<'a> {
             name,
             fields,
             value,
+            tag,
         }
     }
 

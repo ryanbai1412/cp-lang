@@ -257,6 +257,7 @@ pub struct Variant {
     pub name: Name,
     pub fields: Vec<(Option<Name>, Type)>,
     pub value: Option<Expr>,
+    pub tag: Option<Expr>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -379,6 +380,8 @@ pub enum ExprKind {
     Lambda {
         params: Vec<Pattern>,
         param_tys: Vec<Option<Type>>,
+        /// `(mut d, e) => ..`: empty unless some parameter is `mut`.
+        param_mut: Vec<bool>,
         body: Box<Expr>,
     },
     /// `{ let k = key(a); (k.x, -k.y) }`.

@@ -1426,3 +1426,9 @@ fn pascal_case_some_and_none_read_as_the_optional_variants() {
     assert!(codes(&format!("enum Side: Left | None\n{src}")).is_empty());
     assert_eq!(show(&expr("Some(3)")), show(&expr("some(3)")));
 }
+
+#[test]
+fn tagged_variants_and_mut_lambda_parameters_parse() {
+    let src = "enum Cmd:\n    @tag(\"1\") Add(x: Int)\n    @tag(\"3\") Stop\nlet f = (mut d, e) => d.push(e)\n";
+    assert!(codes(src).is_empty(), "{:?}", codes(src));
+}

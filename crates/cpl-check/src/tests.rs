@@ -1324,6 +1324,8 @@ fn let_else_takes_an_optional() {
     assert_eq!(plain.message, "let-else needs a ?T, and `a` is an Int");
     let ok = "fn f(a: ?Int, b: ?Int) -> Int:\n    let (x, y) = (a, b) else: return 0\n    let z = a else: return 1\n    x + y + z\n";
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
+    let refutable = "fn f(t: (Int, ?Int)) -> Int:\n    let (a, Some(b)) = t else: return 0\n    a + b\n";
+    assert!(codes(refutable).is_empty(), "{:?}", check(refutable));
 }
 
 #[test]
