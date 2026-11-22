@@ -1,5 +1,6 @@
 //! `cpl run --trace --live` over HTTP: the pinned input, a save that records
-//! again, and a broken save that keeps the last good trace.
+//! again, and a broken save that keeps the last good trace. Also `cpl run
+//! --trace` typed at a terminal, which records the pinned case.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
@@ -64,4 +65,31 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
     server.kill().unwrap();
     server.wait().unwrap();
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn trace_at_a_terminal_records_the_pinned_case() {
+    if Command::new("script").arg("--version").output().is_err() {
+        return;
+    }
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("trace_tty_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("live.tests")).unwrap();
+    std::fs::write(dir.join("live.cp"), SOURCE).unwrap();
+    std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
+    let command = format!("{} run live.cp --trace", env!("CARGO_BIN_EXE_cpl"));
+    let out = Command::new("script").args(["-qec", &command, "/dev/null"]).current_dir(&dir).output().unwrap();
+    let shown = String::from_utf8_lossy(&out.stdout);
+    assert!(shown.contains("10"), "ran on the pinned 4: {shown}");
+    assert!(shown.contains("input live.tests/stress-1.in"), "says which case: {shown}");
+    let piped = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["run", "live.cp", "--trace"])
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    piped.stdin.as_ref().unwrap().write_all(b"3\n").unwrap();
+    let piped = piped.wait_with_output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&piped.stdout).trim(), "6", "piped input wins over the pinned case");
 }

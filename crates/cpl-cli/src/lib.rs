@@ -173,7 +173,15 @@ pub fn exec<S: AsRef<str>>(
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
             Ok(args) => {
-                let input = match args.input {
+                let typed = || std::io::IsTerminal::is_terminal(&std::io::stdin());
+                let pinned = (args.trace && args.input.is_none() && typed())
+                    .then(|| trace::pinned_input(std::path::Path::new(args.file)))
+                    .flatten();
+                if let Some(path) = &pinned {
+                    *stderr += &format!("cpl: input {} (the case saved last for this file)\n", path.display());
+                }
+                let named = pinned.as_ref().and_then(|p| p.to_str()).or(args.input);
+                let input = match named {
                     None => Input::Live(stdin),
                     Some(input) => match std::fs::read(input) {
                         Ok(input) => Input::Whole(input),
@@ -347,7 +355,9 @@ options:
                     every print and every debug(...); with SPEC, comma-
                     separated fn names or globs (`*`, `?`) with `!pat`
                     exclusions (e.g. `solve,!helper`). Writes
-                    <file>.trace.html unless --format says where it goes
+                    <file>.trace.html unless --format says where it goes.
+                    With no input named and none piped in, it records the
+                    case `cpl stress` saved last for the file
   --test SPEC       with --trace: record only these 1-based multitest cases
                     (e.g. `3`, `1,3`, `2..=4`)
   --watch VAR       with --trace: record steps only when VAR changes (repeatable
