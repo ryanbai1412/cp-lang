@@ -1,9 +1,19 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use cpl_check::Database;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
+
+fn example_hash(text: &str) -> String {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in text.as_bytes() {
+        h ^= u64::from(*b);
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:012x}")[..10].to_string()
+}
 
 #[derive(Clone, Debug)]
 pub struct DocExample {
@@ -31,7 +41,8 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
             .and_then(|s| s.to_str())
             .unwrap_or("")
             .to_string();
-        for (idx, line) in text.lines().enumerate() {
+        let mut seen: HashMap<String, usize> = HashMap::new();
+        for line in text.lines() {
             let trimmed = line.trim_start();
             let Some(after_doc) = trimmed.strip_prefix("///") else {
                 continue;
@@ -39,13 +50,21 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
             let Some(rest) = after_doc.trim_start().strip_prefix("example:") else {
                 continue;
             };
-            let id = format!("{rel}:{}", idx + 1);
+            let body = rest.trim();
+            let base = format!("{rel}#{}", example_hash(body));
+            let occ = seen.entry(base.clone()).or_insert(0);
+            *occ += 1;
+            let id = if *occ == 1 {
+                base
+            } else {
+                format!("{base}~{occ}")
+            };
             if let Some(f) = filter {
-                if !id.contains(f) {
+                if !id.contains(f) && !body.contains(f) {
                     continue;
                 }
             }
-            let (snippet, stdin) = parse_example_body(rest.trim());
+            let (snippet, stdin) = parse_example_body(body);
             out.push(DocExample {
                 id,
                 module: module.clone(),

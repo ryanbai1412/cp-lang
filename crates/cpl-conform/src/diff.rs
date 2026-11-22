@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
 
 use cpl_check::Database;
 
@@ -77,8 +79,63 @@ fn fnv1a_hex(data: &[u8]) -> String {
     format!("{h1:016x}{h2:016x}")
 }
 
-fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, String> {
-    std::fs::create_dir_all(cache_dir).map_err(|e| format!("cannot create cache dir: {e}"))?;
+enum CppCompileError {
+    Cxx(String),
+    Infra(String),
+}
+
+struct GxxGate {
+    active: Mutex<usize>,
+    cv: Condvar,
+    max: usize,
+}
+
+impl GxxGate {
+    const fn new(max: usize) -> Self {
+        Self {
+            active: Mutex::new(0),
+            cv: Condvar::new(),
+            max,
+        }
+    }
+
+    fn acquire(&self) -> GxxPermit<'_> {
+        let mut active = self.active.lock().unwrap();
+        while *active >= self.max {
+            active = self.cv.wait(active).unwrap();
+        }
+        *active += 1;
+        GxxPermit(self)
+    }
+}
+
+struct GxxPermit<'a>(&'a GxxGate);
+
+impl Drop for GxxPermit<'_> {
+    fn drop(&mut self) {
+        let mut active = self.0.active.lock().unwrap();
+        *active = active.saturating_sub(1);
+        self.0.cv.notify_one();
+    }
+}
+
+static GXX_GATE: GxxGate = GxxGate::new(6);
+
+fn is_transient_gxx_failure(code: Option<i32>, stderr: &str) -> bool {
+    if code.is_none() {
+        return true;
+    }
+    let lower = stderr.to_ascii_lowercase();
+    lower.contains("cannot allocate memory")
+        || lower.contains("resource temporarily unavailable")
+        || lower.contains("killed")
+        || lower.contains("fork:")
+        || lower.contains("virtual memory exhausted")
+}
+
+fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> {
+    std::fs::create_dir_all(cache_dir)
+        .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     let key = fnv1a_hex(cpp.as_bytes());
     let bin = cache_dir.join(&key);
     if bin.is_file() {
@@ -97,21 +154,56 @@ fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, String> {
         .collect::<String>();
     let src = cache_dir.join(format!("{unique}.cpp"));
     let tmp_bin = cache_dir.join(format!("{unique}.bin"));
-    std::fs::write(&src, cpp).map_err(|e| format!("cannot write cpp: {e}"))?;
-    let out = Command::new("g++")
-        .args(["-O2", "-std=c++17", "-o"])
-        .arg(&tmp_bin)
-        .arg(&src)
-        .output()
-        .map_err(|e| format!("cannot run g++: {e}"))?;
-    let _ = std::fs::remove_file(&src);
-    if !out.status.success() {
+    std::fs::write(&src, cpp)
+        .map_err(|e| CppCompileError::Infra(format!("cannot write cpp: {e}")))?;
+
+    let mut last_infra: Option<String> = None;
+    for attempt in 0..3 {
+        if attempt > 0 {
+            std::thread::sleep(Duration::from_millis(150 * attempt as u64));
+            if bin.is_file() {
+                let _ = std::fs::remove_file(&src);
+                return Ok(bin);
+            }
+        }
+        let _permit = GXX_GATE.acquire();
+        let out = match Command::new("g++")
+            .args(["-O2", "-std=c++17", "-o"])
+            .arg(&tmp_bin)
+            .arg(&src)
+            .output()
+        {
+            Ok(o) => o,
+            Err(e) => {
+                last_infra = Some(format!("cannot run g++: {e}"));
+                continue;
+            }
+        };
+        if out.status.success() {
+            let _ = std::fs::remove_file(&src);
+            let _ = std::fs::rename(&tmp_bin, &bin);
+            return if bin.is_file() { Ok(bin) } else { Ok(tmp_bin) };
+        }
         let _ = std::fs::remove_file(&tmp_bin);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        return Err(runner::first_line_trimmed(&stderr, 160));
+        if is_transient_gxx_failure(out.status.code(), &stderr) {
+            last_infra = Some(format!(
+                "g++ transient failure ({:?}): {}",
+                out.status.code(),
+                runner::first_line_trimmed(&stderr, 160)
+            ));
+            continue;
+        }
+        let _ = std::fs::remove_file(&src);
+        return Err(CppCompileError::Cxx(runner::first_line_trimmed(
+            &stderr, 160,
+        )));
     }
-    let _ = std::fs::rename(&tmp_bin, &bin);
-    if bin.is_file() { Ok(bin) } else { Ok(tmp_bin) }
+    let _ = std::fs::remove_file(&src);
+    let _ = std::fs::remove_file(&tmp_bin);
+    Err(CppCompileError::Infra(
+        last_infra.unwrap_or_else(|| "g++ failed after retries".into()),
+    ))
 }
 
 fn run_binary(bin: &Path, input: &[u8]) -> Result<Vec<u8>, String> {
@@ -191,13 +283,24 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
     let compiled = match runner::compile_program(db, &path_str, &text) {
         Ok(c) => c,
         Err(CompileError::Diagnostics(_)) => {
-            return (
-                id,
-                CaseOutcome {
-                    status: "skip".into(),
-                    detail: "does not compile yet".into(),
-                },
-            );
+            // Guard against cross-case Database state contamination under parallel reuse:
+            // retry once on a fresh Database before classifying as skip.
+            let mut fresh = Database::new();
+            match runner::compile_program(&mut fresh, &path_str, &text) {
+                Ok(c) => c,
+                Err(CompileError::Diagnostics(diag)) => {
+                    return (
+                        id,
+                        CaseOutcome {
+                            status: "skip".into(),
+                            detail: format!(
+                                "does not compile yet: {}",
+                                runner::first_line_trimmed(&diag, 140)
+                            ),
+                        },
+                    );
+                }
+            }
         }
     };
 
@@ -223,11 +326,20 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
     let cpp = cpl_codegen::emit(&compiled.program, name, Some(&text));
     let bin = match compile_cpp(&cpp, cache_dir) {
         Ok(b) => b,
-        Err(err) => {
+        Err(CppCompileError::Cxx(err)) => {
             return (
                 id,
                 CaseOutcome {
                     status: "cxx_err".into(),
+                    detail: err,
+                },
+            );
+        }
+        Err(CppCompileError::Infra(err)) => {
+            return (
+                id,
+                CaseOutcome {
+                    status: "infra".into(),
                     detail: err,
                 },
             );

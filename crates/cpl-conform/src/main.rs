@@ -177,8 +177,11 @@ fn main() -> ExitCode {
         }
         let bad = report.counts.get("bad").copied().unwrap_or(0);
         let panic = report.counts.get("panic").copied().unwrap_or(0);
-        if bad > 0 || panic > 0 {
-            eprintln!("cpl-conform: {name} has {bad} malformed and {panic} panicking cases");
+        let infra = report.counts.get("infra").copied().unwrap_or(0);
+        if bad > 0 || panic > 0 || infra > 0 {
+            eprintln!(
+                "cpl-conform: {name} has {bad} malformed, {panic} panicking, and {infra} infra-error cases"
+            );
             exit_fail = true;
         }
         if strict && report.passed < report.total {
