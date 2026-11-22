@@ -5,16 +5,8 @@
 // maximum spanning forest of the candidates.
 let (n, k) = read<(1..=500, 1..=1_000_000_000)>()
 domain V = [n]
-fn read_triangle(flip: Bool) -> [V, V]?Int:
-    var m: [V, V]?Int = None
-    for i in V:
-        for j in ..i:
-            let x = read<0..=1_000_000_000>()
-            let w = if flip: k - x else: x
-            (m[i, j], m[j, i]) = (Some(w), Some(w))
-    m
-let narrow = read_triangle(true)
-let wide = read_triangle(false)
+let narrow = read<[Pair<V>]0..=1_000_000_000>().map(x => Some(k - x)).symmetric(diag: None)
+let wide = read<[Pair<V>]0..=1_000_000_000>().map(Some).symmetric(diag: None)
 let widest = Semiring(max, min)
 let narrowest = Semiring(min, max)
 fn fits(u: V, v: V) -> Bool = (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf)

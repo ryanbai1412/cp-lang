@@ -71,14 +71,17 @@ commits.
 | 161 | `read_all(until:)` for sentinel-ended input; `group(by:, of:)` projects the grouped values |
 | 162 | `D.pieces(cuts:)` and `piece.covering(r)`: coordinate compression for intervals |
 | 163 | `Rooted.try_from_parents`: `?Rooted` for parent input that may have a cycle |
+| 164 | `Pair<V>`: the unordered-pair domain, packed, read as a lower triangle, `d[u, v] == d[v, u]` |
 
 ## Open
 
-- **Triangle inputs** (egoi23p4, cco20p4). The proposal is an unordered-pair
-  domain `Pair<V>`, stored packed and read in lower-triangle order, with
-  `d[Pair(u, v)]` working in either order. The alternative is ragged reads
-  `read<[i in V][..i]Int>()`. Waiting on Ryan; upper-triangle order is the
-  unresolved case.
+- **Other triangle shapes.** `Pair<V>` (164) covers the lower triangle
+  without its diagonal, which is both corpus cases. An upper triangle (row
+  `i` lists every later `j`) walks the pairs in a different order, and a
+  triangle with its diagonal is not `Pair<V>`. Neither shape is in the
+  corpus yet; decide when one appears.
+- **The checker is loose on `[Pair<V>]T`.** It accepts the ports, but it also
+  accepts a misspelt method on such an array, and `Pair<V>.count` fails.
 - **`D.subsets`** is decided but not in the checker (dmpg16g2).
 - **The checker is laxer than the spec.** It accepted `(V, V)` and unpacking
   lambdas before the spec defined them, so passing `cpl check` does not show

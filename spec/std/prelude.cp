@@ -86,6 +86,7 @@ use std.seq.{
 }
 use std.poly.{eval}
 use std.sparse.{SparseTable}
+use std.pair.{Pair}
 use std.subset.{Subset}
 use std.strings.{
     RollingHash,

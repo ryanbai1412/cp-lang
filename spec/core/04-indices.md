@@ -34,6 +34,7 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | O(1) |
 | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
 | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) |
+| `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164) | O(1) |
 | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |

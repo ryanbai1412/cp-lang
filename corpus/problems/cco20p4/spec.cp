@@ -2,8 +2,8 @@
 // towns; tour a spanning tree of it, a closed walk, and print it rotated to start at each town.
 let n = read<2..=2_000>()
 domain V = 0..n
-let rows = read<[V.drop(1)]Str>()
-fn red(u: V, v: V) -> Bool = rows[max(u, v)][Int(min(u, v))] == 'R'
+let road = read<[Pair<V>]Char>()
+fn red(u: V, v: V) -> Bool = road[u, v] == 'R'
 fn in_colour(c: Bool) = (u: V) => V.filter(v => v != u and red(u, v) == c)
 let c = reachable(in_colour(true), from: [V.first!]).count() == n
 var walk = List(Rooted(root: V.first!, next: in_colour(c)).euler_tour())

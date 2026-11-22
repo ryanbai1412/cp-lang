@@ -387,9 +387,8 @@ Open questions raised by dreams:
     forms named here.
   - Edge weights: an edge with one weight names it `w`, the implicit weight; with several, use
     meaningful names and `.weighted(.len)`, so the reader sees which one an algorithm uses.
-  - Triangle inputs (egoi23p4, cco20p4): proposed an unordered-pair domain `Pair<V>`, which walks
-    in lower-triangle order, stores n(n-1)/2 values and indexes `d[Pair(u, v)]` in either order.
-    The alternative is ragged reads `read<[i in V][..i]Int>()`. Awaiting Ryan; upper-triangle
-    input order is the open point.
 - `spec/delta/dream-comparisons.md`: ten blind dreams side by side with their `spec.cp`, with a
   per-line "vs spec" verdict for each.
+- egoi23p4, cco20p4: `Pair<V>`, the unordered-pair domain (decision 164). egoi23p4's 9-line
+  `read_triangle` becomes `read<[Pair<V>]...>().map(Some).symmetric(diag: None)`, and cco20p4
+  reads `read<[Pair<V>]Char>()` and indexes `road[u, v]` instead of using `max`/`min` into rows.

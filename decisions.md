@@ -4686,3 +4686,23 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   "parent of each vertex" and allows invalid input needs this. Ryan approved the shape.
 - **Reverse.** Delete `try_from_parents` from `spec/std/tree.cp`, restore the one-root wording of
   `from_parents`, and restore the `components` version of `corpus/problems/egoi23p7/spec.cp`.
+
+## 164. `Pair<V>` is the domain of unordered pairs (2026-11-21)
+
+- **Decision.** `Pair<V>` (`spec/std/pair.cp`, in the prelude) is a domain of the unordered pairs
+  `{lo, hi}` of distinct positions of `V`. `[Pair<V>]T` stores one value per pair, packed, with
+  `V.count * (V.count - 1) / 2` slots. It walks by `hi`, then by `lo`, so `read<[Pair<V>]T>()`
+  reads a lower triangle without its diagonal. An array over it takes two positions in either
+  order (`d[u, v] == d[v, u]`, trapping when `u == v`), and `d.symmetric(diag: x)` expands it
+  into a `[V, V]T`.
+- **Why.** egoi23p4 (a distance matrix) and cco20p4 (the colour of each road of a complete graph)
+  give data once per unordered pair, as a lower triangle. Both ports had hand-written readers
+  that mirrored values into a square matrix or indexed by `max`/`min`. A `read lower_triangle`
+  mode was rejected as a one-problem helper. Ragged reads (`[i in V][..i]T`) describe how the
+  input is written, not what the data is, and still need a mirroring step. `Pair<V>` names the
+  data, halves the memory, and needs no new read grammar, because reads already follow a
+  domain's walk order. Ryan agreed.
+- **Open.** An upper triangle (row `i` lists every later `j`) walks the pairs in lexicographic
+  order, and a triangle that includes its diagonal is not `Pair<V>`. Neither is in the corpus.
+- **Reverse.** Delete `spec/std/pair.cp` and its prelude line, the row in chapter 04 and the line
+  in chapter 10, and restore the hand-written readers in the egoi23p4 and cco20p4 ports.

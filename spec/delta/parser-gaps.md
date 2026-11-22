@@ -9,6 +9,7 @@ front end (parse and type check) first.
 
 | Form | Example | Decision | Today |
 |---|---|---|---|
+| `Pair<V>` as a domain | `Pair<V>.count`; a misspelt method on `[Pair<V>]T` | 164 | E0203 on `.count`; method typos on the array are accepted |
 | `{}` empty subset | `var s: Subset<D> = {}`, `best[{}] = 0` | search-dp (mask DP) | E0302 (`{}` reads as `()`); write `Subset.empty()` |
 | `[P]T` is `[A, B]T` for `P = (A, B)` | `c[p]` with `c: [V, V]?Int`, `p: Pair`; `[Pair] p => ...` as a `[V, V]T` | core 04 | E0305 / E0302; index with `p.0, p.1` |
 | `D.subsets` domain | `var best: [Letter.subsets]Int`, `for s in Letter.subsets` | lib/search-dp | E0204; `std.subset` declares the value type only |
