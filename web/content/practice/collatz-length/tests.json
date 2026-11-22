@@ -1,0 +1,31 @@
+[
+ {
+  "input": "7\n",
+  "expected": "16 52\n",
+  "sample": true
+ },
+ {
+  "input": "1\n",
+  "expected": "0 1\n"
+ },
+ {
+  "input": "2\n",
+  "expected": "1 2\n"
+ },
+ {
+  "input": "27\n",
+  "expected": "111 9232\n"
+ },
+ {
+  "input": "999999\n",
+  "expected": "258 22781248\n"
+ },
+ {
+  "input": "837799\n",
+  "expected": "524 2974984576\n"
+ },
+ {
+  "input": "1000000\n",
+  "expected": "152 1000000\n"
+ }
+]

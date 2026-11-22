@@ -11,8 +11,8 @@
     "postinstall": "fumadocs-mdx",
     "gate": "node scripts/gate.mjs",
     "wasm": "node scripts/wasm.mjs",
-    "smoke": "node tests/smoke.mjs && node tests/course-smoke.mjs",
-    "prebuild": "node scripts/wasm.mjs && node scripts/releases.mjs && node scripts/gen-ref.mjs && node scripts/gen-debug.mjs"
+    "smoke": "node tests/smoke.mjs && node tests/learn-smoke.mjs",
+    "prebuild": "node scripts/wasm.mjs && node scripts/releases.mjs && node scripts/gen-ref.mjs && node scripts/gen-debug.mjs && node scripts/gate.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",

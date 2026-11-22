@@ -1,0 +1,21 @@
+---
+title: Halving game
+description: "Level A. Teaches var, floor division, % and ranges wider than 32 bits."
+---
+
+You are given an integer n (1 ≤ n ≤ 10¹⁸). While n is even, halve it. Print how many times you halved it, then the odd number that is left.
+
+**Input:** one integer n. **Output:** two integers on one line.
+
+| Input | Output |
+|---|---|
+| `40` | `3 5` |
+
+<Judge id="halving-game">
+
+- `1..=1e18` is the constraint from the statement. `1e18` is an exact integer, and the value is stored in 64 bits because the range needs them. There is no `long long` to remember.
+- `n` is declared with `var` because it changes. With `let`, the assignment is a compile error that says to use `var`.
+- `/` on integers rounds down and `%` is never negative.
+- `print(a, b)` separates its arguments with a space.
+
+</Judge>

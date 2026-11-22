@@ -1,0 +1,21 @@
+---
+title: Longest corridor
+description: "Level A. Teaches grids, [Row, Col]Char and per-row state."
+---
+
+A floor plan is a grid of h rows and w columns (1 ≤ h, w ≤ 50). Each cell is `.` (floor) or `#` (wall). A corridor is a run of consecutive floor cells in one row. Print the length of the longest corridor, or 0 if there is no floor.
+
+**Input:** h and w, then h lines of w characters. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `3 4`<br/>`..#.`<br/>`.##.`<br/>`....` | `4` |
+
+<Judge id="longest-corridor">
+
+- `[Row, Col]Char` reads the whole grid. There is no line-by-line loop.
+- `g[r, c]` takes a row, then a column. Swap them and it does not compile, because `Row` and `Col` are different domains.
+- `best max= run` is `best = max(best, run)`.
+- `var run = 0` sits inside the row loop, so every row starts fresh. Declaring a variable where it is used, instead of resetting it, is the habit that prevents "forgot to reset" bugs.
+
+</Judge>

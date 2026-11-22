@@ -47,6 +47,7 @@ export function corpus(): Entry[] {
   if (cache) return cache;
   const dir = join(repo, 'corpus/problems');
   cache = readdirSync(dir)
+    .filter((p) => existsSync(join(dir, p, 'meta.json')))
     .map((p) => JSON.parse(readFileSync(join(dir, p, 'meta.json'), 'utf8')) as Meta)
     .filter((m) => m.spec && m.spec !== 'none' && m.artifacts.spec?.length)
     .flatMap((m) => {

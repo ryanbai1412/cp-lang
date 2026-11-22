@@ -1,0 +1,21 @@
+---
+title: Leaderboard
+description: "Level B. Teaches records, reading a list of records and sort(by:)."
+---
+
+There are n players (1 ≤ n ≤ 1000). Each has a name (lowercase letters, at most 10) and a score from 0 to 100. Print the leaderboard: highest score first, and players with the same score in alphabetical order of name. Each line is the place (1, 2, 3, …; tied players still get consecutive places), a dot, the name and the score.
+
+**Input:** n, then n lines `name score`. **Output:** n lines.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`ana 30`<br/>`bo 50`<br/>`cy 30`<br/>`dee 10` | `1. bo 50`<br/>`2. ana 30`<br/>`3. cy 30`<br/>`4. dee 10` |
+
+<Judge id="leaderboard">
+
+- `(name: Str, score: 0..=100)` is a record. An array of records reads itself, fields in order, so the input format is the type.
+- `sort(by:)` takes a key, not a comparator. A tuple key compares its parts in order, and negating a number sorts it descending.
+- `rows.items` gives `(index, value)` pairs.
+- Every string interpolates: `"{i + 1}. {r.name} {r.score}"`.
+
+</Judge>

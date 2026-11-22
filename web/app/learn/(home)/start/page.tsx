@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Runner } from '@/components/runner';
@@ -5,15 +7,13 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 
 export const metadata: Metadata = { title: 'Getting started', description: 'Your first CP Lang program, in the browser.' };
 
-const first = `let n: 1..=2e5 = read()
-domain V = 1..=n
-let a: [V]Int = read()
-print(a.sum())
-`;
+const start = join(process.cwd(), 'content/landing/start');
+const first = readFileSync(`${start}.cp`, 'utf8');
+const stdin = readFileSync(`${start}.in`, 'utf8');
 
 const next = [
   { href: '/learn/from/cpp', title: 'Quickstart for your language', text: 'C++, Python, Java or Rust: six problems side by side.' },
-  { href: '/learn', title: 'The course', text: 'Problems with verdicts, from first program to contest fluency.' },
+  { href: '/learn', title: 'Learn', text: 'Chapters to read, and practice problems judged in your browser.' },
   { href: '/docs/guides/tour', title: 'The tour', text: 'The whole language in one sitting.' },
 ];
 
@@ -31,7 +31,7 @@ export default function Page() {
         The program reads n, then n numbers, and prints their sum. Press Run, then open the C++17 tab to see the file you
         would submit, with your source quoted at the top.
       </p>
-      <Runner className="mt-4" source={first} stdin={'5\n3 1 4 1 5\n'} status="runs" />
+      <Runner className="mt-4" source={first} stdin={stdin} status="runs" />
       <h2 className="mt-10 text-xl font-semibold">2. Break it on purpose</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
         <li>

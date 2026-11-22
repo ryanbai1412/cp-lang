@@ -1,0 +1,20 @@
+---
+title: Collatz length
+description: "Level A. Teaches while, if as an expression and max=."
+---
+
+Start from n (1 ≤ n ≤ 10⁶). If the number is even, halve it; otherwise replace it with 3 times itself plus 1. Stop at 1. Print the number of steps, then the largest value seen on the way, including n itself.
+
+**Input:** one integer n. **Output:** two integers on one line.
+
+| Input | Output |
+|---|---|
+| `7` | `16 52` |
+
+<Judge id="collatz-length">
+
+- `x = if x % 2 == 0: x / 2 else: 3 * x + 1` is the rule, written once.
+- `peak max= x` is `peak = max(peak, x)`.
+- The values go far above 10⁶ (for 837799 the peak is 2974984576, which does not fit in 32 bits). Local variables are 64-bit, so nothing overflows here; if something did, the run would stop on that line and say so instead of wrapping.
+
+</Judge>

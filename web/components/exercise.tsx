@@ -1,13 +1,13 @@
 'use client';
 
-import { CheckCircle2, Lightbulb, Loader2, Play, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCircle2, Loader2, Play, XCircle } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { formatDiagnostics } from '@/components/runner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { cpl } from '@/lib/cpl';
-import type { Exercise as Ex, Test } from '@/lib/course';
+import type { Test } from '@/lib/practice';
 import { cn } from '@/lib/utils';
 
 type Verdict = { test: number; ok: boolean; got: string; expected: string; input: string; error?: string };
@@ -25,48 +25,60 @@ async function judge(source: string, tests: Test[]): Promise<Verdict[]> {
   return out;
 }
 
-export function Exercise({ exercise }: { exercise: Ex }) {
-  const [hint, setHint] = useState(false);
+export interface SolveProps {
+  id: string;
+  starter: string;
+  reference: string;
+  tests: Test[];
+  children?: ReactNode;
+}
+
+const key = (id: string) => `cp-solved:${id}`;
+
+export function Solve({ id, starter, reference, tests, children }: SolveProps) {
   const [solved, setSolved] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => setSolved(localStorage.getItem(key(id)) === '1'), [id]);
+  const accept = () => {
+    localStorage.setItem(key(id), '1');
+    setSolved(true);
+  };
   return (
-    <div className="space-y-4">
-      <p className="text-base leading-7">{exercise.prompt}</p>
-      {exercise.kind === 'code' && <CodeTask exercise={exercise} onSolved={() => setSolved(true)} />}
-      {exercise.kind === 'output' && <OutputTask exercise={exercise} onSolved={() => setSolved(true)} />}
-      {exercise.kind === 'choice' && <ChoiceTask exercise={exercise} onSolved={() => setSolved(true)} />}
-      <div className="flex gap-2">
-        <Button variant="ghost" size="sm" onClick={() => setHint((h) => !h)}>
-          <Lightbulb /> {hint ? 'Hide hint' : 'Hint'}
-        </Button>
-      </div>
-      {hint && (
-        <Alert>
-          <Lightbulb />
-          <AlertTitle>Hint</AlertTitle>
-          <AlertDescription>{exercise.hint}</AlertDescription>
-        </Alert>
-      )}
-      {solved && (
+    <div className="not-prose space-y-4">
+      <CodeTask starter={starter} tests={tests} onSolved={accept} />
+      {solved ? (
         <Alert>
           <CheckCircle2 />
           <AlertTitle>Accepted</AlertTitle>
-          <AlertDescription>{exercise.solution}</AlertDescription>
+          <AlertDescription>
+            <div className="prose prose-sm max-w-none dark:prose-invert">{children}</div>
+          </AlertDescription>
         </Alert>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => setShown((s) => !s)}>
+          {shown ? 'Hide the reference solution' : 'Show the reference solution'}
+        </Button>
+      )}
+      {(solved || shown) && (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <p className="border-b px-3 py-2 text-xs text-muted-foreground">Reference solution</p>
+          <CodeEditor value={reference} readOnly />
+        </div>
       )}
     </div>
   );
 }
 
-function CodeTask({ exercise, onSolved }: { exercise: Extract<Ex, { kind: 'code' }>; onSolved: () => void }) {
-  const [source, setSource] = useState(exercise.starter);
+function CodeTask({ starter, tests, onSolved }: { starter: string; tests: Test[]; onSolved: () => void }) {
+  const [source, setSource] = useState(starter);
   const [busy, setBusy] = useState(false);
   const [verdicts, setVerdicts] = useState<Verdict[] | null>(null);
   const submit = async () => {
     setBusy(true);
     try {
-      const v = await judge(source, exercise.tests);
+      const v = await judge(source, tests);
       setVerdicts(v);
-      if (v.length === exercise.tests.length && v.every((x) => x.ok)) onSolved();
+      if (v.length === tests.length && v.every((x) => x.ok)) onSolved();
     } finally {
       setBusy(false);
     }
@@ -78,76 +90,9 @@ function CodeTask({ exercise, onSolved }: { exercise: Extract<Ex, { kind: 'code'
         <Button size="sm" onClick={submit} disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <Play />} Submit
         </Button>
-        <span className="text-sm text-muted-foreground">{exercise.tests.length} tests · Ctrl+Enter</span>
+        <span className="text-sm text-muted-foreground">{tests.length} tests · Ctrl+Enter</span>
       </div>
-      {verdicts && <Verdicts verdicts={verdicts} total={exercise.tests.length} />}
-    </div>
-  );
-}
-
-function OutputTask({ exercise, onSolved }: { exercise: Extract<Ex, { kind: 'output' }>; onSolved: () => void }) {
-  const [answers, setAnswers] = useState(exercise.tests.map(() => ''));
-  const [checked, setChecked] = useState<boolean[] | null>(null);
-  const check = () => {
-    const c = exercise.tests.map((t, i) => norm(answers[i]) === norm(t.expected));
-    setChecked(c);
-    if (c.every(Boolean)) onSolved();
-  };
-  return (
-    <div className="space-y-3">
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <CodeEditor value={exercise.code} readOnly />
-      </div>
-      {exercise.tests.map((t, i) => (
-        <div key={i} className="grid gap-2 sm:grid-cols-2">
-          <pre className="rounded-md bg-muted p-3 font-mono text-xs">{t.input}</pre>
-          <textarea
-            aria-label={`Predicted output ${i + 1}`}
-            className={cn(
-              'min-h-16 rounded-md border bg-background p-3 font-mono text-xs',
-              checked && (checked[i] ? 'border-green-600' : 'border-destructive'),
-            )}
-            placeholder="Predicted output"
-            value={answers[i]}
-            onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
-          />
-        </div>
-      ))}
-      <Button size="sm" onClick={check}>Check</Button>
-    </div>
-  );
-}
-
-function ChoiceTask({ exercise, onSolved }: { exercise: Extract<Ex, { kind: 'choice' }>; onSolved: () => void }) {
-  const [picked, setPicked] = useState<number | null>(null);
-  return (
-    <div className="space-y-3">
-      {exercise.code && (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <CodeEditor value={exercise.code} readOnly />
-        </div>
-      )}
-      <div className="grid gap-2">
-        {exercise.options.map((o, i) => (
-          <Button
-            key={i}
-            variant="outline"
-            className={cn(
-              'h-auto justify-start whitespace-normal py-3 text-left',
-              picked === i && (i === exercise.answer ? 'border-green-600' : 'border-destructive'),
-            )}
-            onClick={() => {
-              setPicked(i);
-              if (i === exercise.answer) onSolved();
-            }}
-          >
-            {o}
-          </Button>
-        ))}
-      </div>
-      {picked !== null && picked !== exercise.answer && (
-        <p className="text-sm text-destructive">Not quite. Try another option.</p>
-      )}
+      {verdicts && <Verdicts verdicts={verdicts} total={tests.length} />}
     </div>
   );
 }

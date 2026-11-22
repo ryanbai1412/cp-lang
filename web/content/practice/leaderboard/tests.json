@@ -1,0 +1,23 @@
+[
+ {
+  "input": "4\nana 30\nbo 50\ncy 30\ndee 10\n",
+  "expected": "1. bo 50\n2. ana 30\n3. cy 30\n4. dee 10\n",
+  "sample": true
+ },
+ {
+  "input": "1\nzed 0\n",
+  "expected": "1. zed 0\n"
+ },
+ {
+  "input": "3\ncy 5\nbo 5\nana 5\n",
+  "expected": "1. ana 5\n2. bo 5\n3. cy 5\n"
+ },
+ {
+  "input": "3\nala 10\nal 10\na 100\n",
+  "expected": "1. a 100\n2. al 10\n3. ala 10\n"
+ },
+ {
+  "input": "4\na 0\nb 100\nc 50\nd 100\n",
+  "expected": "1. b 100\n2. d 100\n3. c 50\n4. a 0\n"
+ }
+]

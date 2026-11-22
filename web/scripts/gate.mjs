@@ -2,7 +2,9 @@
 // compiler, never by hand. `runs`: `cpl run` succeeds (and matches `.out`
 // when given) and `cpl build` emits C++. `checks`: the 0.3 spec checker
 // accepts it. `spec`: neither, allowed only when the snippet says so.
-// Writes .gate/status.json and fails when a snippet is below its declared
+// A practice problem's ref.cp must also pass every test in its tests.json.
+// Pages take their programs from content/, never from literals in TSX, so
+// everything a visitor can run is covered. Writes .gate/status.json and fails when a snippet is below its declared
 // status. Fragments without input only need to build; with input they must run.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -37,6 +39,17 @@ walk(join(web, 'content'), (p) => {
       expected: p.endsWith('.spec.cp') ? null : read('out'),
       declared: p.endsWith('.spec.cp') ? 'checks' : 'runs',
     });
+    const tests = join(dirname(p), 'tests.json');
+    if (p.endsWith('/ref.cp') && existsSync(tests))
+      JSON.parse(readFileSync(tests, 'utf8')).forEach((t, i) =>
+        snippets.push({
+          id: `${relative(web, p)}@test${i + 1}`,
+          source: readFileSync(p, 'utf8'),
+          stdin: t.input,
+          expected: t.expected,
+          declared: 'runs',
+        }),
+      );
   } else if (p.endsWith('.mdx')) {
     const text = readFileSync(p, 'utf8');
     const fence = /^```cp((?:[ \t][^\n]*)?)\n([\s\S]*?)^```/gm;
@@ -67,9 +80,9 @@ for (const s of snippets) {
   let note = '';
   const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
   const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], {}, s.stdin) : build;
-  if (build.status === 0 && run.status === 0 && (s.expected == null || run.stdout === s.expected)) status = 'runs';
+  if (build.status === 0 && run.status === 0 && (s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd())) status = 'runs';
   else {
-    if (run.status === 0 && s.expected != null && run.stdout !== s.expected) note = `output ${JSON.stringify(run.stdout)} != expected`;
+    if (run.status === 0 && s.expected != null && run.stdout.trimEnd() !== s.expected.trimEnd()) note = `output ${JSON.stringify(run.stdout)} != expected`;
     const check = sh(['check', file], { CPL_SPEC: '1', CPL_STD: join(repo, 'spec/std') });
     if (check.status === 0) status = 'checks';
     else note ||= (check.stderr || check.stdout).split('\n').slice(0, 3).join(' ');

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Test } from './course';
+import type { Test } from './practice';
 
 export const languages = {
   cpp: { name: 'C++', shiki: 'cpp' },

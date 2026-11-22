@@ -1,0 +1,20 @@
+---
+title: Odd one out
+description: "Level A. Teaches count with a lambda, if as an expression and .items."
+---
+
+You are given n integers (3 ≤ n ≤ 100, each from 1 to 100). All of them have the same parity except exactly one. Print the 1-based position of the one that differs.
+
+**Input:** n, then n integers. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`2 4 7 8 10` | `3` |
+
+<Judge id="odd-one-out">
+
+- `a.count(x => x % 2 == 1)` counts with a lambda. No loop, no counter variable.
+- `if c: a else: b` is an expression, so `want` can be a `let`.
+- `a.items` gives `(index, value)` pairs. The array is `[0..n]`, so the index starts at 0 and the answer is `i + 1`. Chapter 2 shows how to make the array 1-based instead.
+
+</Judge>

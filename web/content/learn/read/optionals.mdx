@@ -1,0 +1,104 @@
+---
+title: "Optionals instead of sentinels"
+description: "?Int, None, ??, max= and min=, and a BFS without INF."
+---
+
+"No answer" is usually encoded as `-1`, `INF` or `1e18`, and then the
+sentinel leaks: `INF + w` overflows, `-1` wins a `max`, `1e18` gets
+printed. In CP Lang "no value" is part of the type.
+
+`?Int` is an `Int` or nothing. Nothing is written `None`; a value is
+`Some(x)`.
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+var best: ?Int = None
+for x in a:
+    if x % 2 == 0: best max= x
+print(best ?? -1)
+```
+
+This prints the largest even number, or -1 if there is none. Two
+operators did the work.
+
+`best max= x` means `best = max(best, x)`, and `None` loses to
+everything, so the first even number simply replaces it. `min=` works
+the same way. There is no "is this the first one?" branch and no
+`-INF` to pick.
+
+`best ?? -1` is "the value, or -1 if there is none". The `-1` appears
+once, at the output, which is the only place the statement mentions it.
+
+## Getting the value out
+
+You cannot use a `?Int` as an `Int` by accident; `best + 1` on a
+`?Int` stays a `?Int`. To get the number out you say what happens when
+it is missing:
+
+```cp run input="3\n1 2 3\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+var first: ?Int = None
+for x in a:
+    if x > 10 and first == None: first = Some(x)
+if let x = first:
+    print("found {x}")
+else:
+    print("none")
+```
+
+- `x ?? d`: the value, or `d`.
+- `if let x = e:` runs the block only when there is a value, and
+  names it.
+- `e!`: "I know it's there". If it isn't, the run traps and says so:
+  `` `!` on `none`: there is no value here ``.
+
+## Arrays of optionals
+
+`var dist: [V]?Int = None` is the usual "distance, if reached" array.
+`dist[v] == None` is "not visited", so there is no separate `visited`
+array and no `INF`. Shortest paths in the library return exactly this
+shape. An optional costs no extra memory in the common cases: the
+compiler stores `None` in a value the range can't take.
+
+`dist[v] min= d` is the relaxation step, and it is also a condition
+that is true when the value improved. That is the whole of a BFS:
+
+```cp run input="5 4 1\n1 2\n2 3\n3 4\n1 3\n"
+let (n, m, s): (1..=2e5, 0..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+var adj: [V]List<V> = []
+for _ in 0..m:
+    let (u, v): (V, V) = read()
+    adj[u].push(v)
+    adj[v].push(u)
+var dist: [V]?Int = None
+var queue: List<V> = [V(s)]
+dist[V(s)] = Some(0)
+var head = 0
+while head < queue.len:
+    let u = queue[head]
+    head += 1
+    for v in adj[u]:
+        if dist[v] min= dist[u]! + 1:
+            queue.push(v)
+for v in V:
+    print(dist[v] ?? -1)
+```
+
+Vertex 5 is not connected to anything, so its distance stays `None`
+and prints as -1. `dist[u]!` is safe here because every vertex in the
+queue has a distance.
+
+## Problem: Second place
+
+You are given n scores (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹). Print the largest score strictly below the maximum, or -1 if every score is the same. For `3 1 4 1 5` the answer is `4`.
+
+<Judge id="second-place">
+
+`None` loses to every value under `max=`, and `?? -1` appears once, at the output.
+
+</Judge>
+
+More like this: [Leaderboard](/learn/practice/leaderboard). The next chapters are being written; until then, continue with the [tour](/docs/guides/tour).

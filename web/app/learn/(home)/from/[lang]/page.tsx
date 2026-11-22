@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Exercise } from '@/components/exercise';
+import { Solve } from '@/components/exercise';
 import { Button } from '@/components/ui/button';
 import { highlight } from '@/lib/highlight';
 import { type Lang, languages, quickstart } from '@/lib/quickstart';
@@ -57,19 +57,8 @@ export default async function Page({ params }: Props) {
               />
             </details>
             <div className="mt-4">
-              <Exercise
-                exercise={{
-                  kind: 'code',
-                  id: p.id,
-                  title: p.title,
-                  prompt: p.statement,
-                  hint: p.notes[l][0],
-                  solution: 'Accepted on every test.',
-                  starter: p.source,
-                  reference: p.source,
-                  tests: p.tests,
-                }}
-              />
+              <p className="mb-4 text-base leading-7">{p.statement}</p>
+              <Solve id={`quickstart-${p.id}`} starter={p.source} reference={p.source} tests={p.tests} />
             </div>
             <div className="mt-4 rounded-xl border p-4">
               <p className="text-sm font-medium">What&apos;s different from {languages[l].name}</p>

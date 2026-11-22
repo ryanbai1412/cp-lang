@@ -1,0 +1,21 @@
+---
+title: Range sums
+description: "Level A. Teaches domains, cuts and prefix sums."
+---
+
+You are given n integers a₁ … aₙ (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). Each query is two positions l ≤ r, 1-based and inclusive. For each query print aₗ + … + aᵣ.
+
+**Input:** n, the n integers, q, then q lines `l r`. **Output:** one line per query.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`3 1 4 1 5`<br/>`2`<br/>`1 3`<br/>`2 5` | `8`<br/>`11` |
+
+<Judge id="range-sums">
+
+- `domain V = 1..=n` makes the array 1-based, like the statement. `l` and `r` are read as `V`, so they are checked against `1..=n` as they are read.
+- Prefix sums are indexed by cuts, the gaps between positions: `[V.cuts]Int` has n + 1 entries. `v.l` and `v.r` are the cuts on either side of position `v`.
+- The query is `pre[r.r] - pre[l.l]`: up to the right edge of r, minus up to the left edge of l. There is no `- 1` to get wrong, and `pre[l]` with a position does not compile.
+- The sums reach 2·10¹⁴. `pre` holds `Int`, which is 64-bit.
+
+</Judge>

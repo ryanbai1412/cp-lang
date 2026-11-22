@@ -1,0 +1,20 @@
+---
+title: Second place
+description: "Level A. Teaches ?Int, max= and ??."
+---
+
+You are given n scores (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹). Print the largest score that is strictly below the maximum, or -1 if every score is the same.
+
+**Input:** n, then n integers. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`3 1 4 1 5` | `4` |
+
+<Judge id="second-place">
+
+- `var second: ?Int = None` says "no second place yet" without picking a fake number for it.
+- `second max= x` treats `None` as smaller than everything, so the first candidate just replaces it.
+- `second ?? -1` puts the `-1` in one place: the output, where the statement asks for it.
+
+</Judge>

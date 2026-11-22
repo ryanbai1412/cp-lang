@@ -1,0 +1,111 @@
+---
+title: "Arrays and index spaces"
+description: "Domains, 1-based input, positions and cuts, prefix sums, grids."
+---
+
+Half of contest bugs are index bugs: 1-based input in a 0-based array,
+`n` versus `n + 1`, a vertex number used where an edge number belongs.
+CP Lang's answer is one idea: an array says what it is indexed **by**.
+
+## A domain is a named index space
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+var best = V(1)
+for v in V:
+    if a[v] > a[best]: best = v
+print(best, a[best])
+print(a[V(3)])
+```
+
+`domain V = 1..=n` declares a new type whose values are the positions
+1 to n. `[V]T` is an array with one `T` per position. The statement is
+1-based, so the domain is 1-based, and that is the last time you think
+about it: no `n + 1` sizes, no `- 1` on every read.
+
+`a` can only be indexed by a `V`. A plain number is not one:
+
+```text
+error[E0301]: `a` is indexed by V, but `i` is an Int
+  = help: convert it with `V(i)`, or write `a.raw[i]` to index by number
+```
+
+`V(3)` converts and checks: `V(9)` with n = 5 traps. Values you read as
+`V`, or get from `for v in V`, need no conversion, so in practice you
+write `V(...)` rarely. `Int(v)` goes the other way.
+
+Declare a second domain, say `domain E = 1..=m` for edges, and the
+compiler will not let an `E` index a `[V]` array. If two things are
+different in your head, give them different domains.
+
+When you don't care, `[0..n]T` from chapter 1 is still there and takes
+plain integers.
+
+## Positions and cuts
+
+An array of n elements has n positions and n + 1 gaps between and around
+them. Prefix sums live on the gaps. Every off-by-one in
+`pre[r] - pre[l - 1]` comes from pretending gaps are positions.
+
+In CP Lang the gaps are their own index space, `V.cuts`. For a position
+`v`, `v.l` is the cut on its left and `v.r` the cut on its right:
+
+```text
+cuts:        |  3  |  1  |  4  |  1  |  5  |
+positions:      1     2     3     4     5
+             ^ 1.l   ^ 1.r = 2.l          ^ 5.r
+```
+
+```cp run input="5\n3 1 4 1 5\n2\n1 3\n2 5\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+var pre: [V.cuts]Int = 0
+for v in V:
+    pre[v.r] = pre[v.l] + a[v]
+let q: 1..=2e5 = read()
+for _ in 0..q:
+    let (l, r): (V, V) = read()
+    print(pre[r.r] - pre[l.l])
+```
+
+"Sum of positions l to r" is "the prefix up to the right edge of r,
+minus the prefix up to the left edge of l". There is nothing to get
+wrong by one, and `pre[l]` with a position is a compile error because
+`pre` is indexed by cuts.
+
+`var pre: [V.cuts]Int = 0` fills the array with 0.
+
+
+## Grids
+
+A grid is an array over two domains. Index it with both at once:
+
+```cp run input="2 3\n1 2 3\n4 5 6\n"
+let (h, w): (1..=1000, 1..=1000) = read()
+domain Row = 1..=h
+domain Col = 1..=w
+let g: [Row, Col]Int = read()
+for c in Col:
+    var s = 0
+    for r in Row: s += g[r, c]
+    print(s)
+```
+
+It is `g[r, c]`, never `g[r][c]`. Because rows and columns are different
+domains, `g[c, r]` does not compile. A `[Row, Col]Char` reads a grid of
+characters, one line per row.
+
+## Problem: Range sums
+
+You are given n integers (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). Each query is two positions l ≤ r, 1-based and inclusive; print the sum of the values from l to r. The starter reads the input and prints 0 for every query.
+
+<Judge id="range-sums">
+
+`pre[r.r] - pre[l.l]`: up to the right edge of r, minus up to the left edge of l.
+
+</Judge>
+
+More like this: [Longest corridor](/learn/practice/longest-corridor). Next: [Optionals instead of sentinels](/learn/read/optionals).

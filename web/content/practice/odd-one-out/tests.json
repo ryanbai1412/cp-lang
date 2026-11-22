@@ -1,0 +1,27 @@
+[
+ {
+  "input": "5\n2 4 7 8 10\n",
+  "expected": "3\n",
+  "sample": true
+ },
+ {
+  "input": "3\n1 2 1\n",
+  "expected": "2\n"
+ },
+ {
+  "input": "3\n2 1 1\n",
+  "expected": "1\n"
+ },
+ {
+  "input": "4\n100 99 98 96\n",
+  "expected": "2\n"
+ },
+ {
+  "input": "3\n1 1 2\n",
+  "expected": "3\n"
+ },
+ {
+  "input": "6\n3 5 7 9 11 4\n",
+  "expected": "6\n"
+ }
+]
