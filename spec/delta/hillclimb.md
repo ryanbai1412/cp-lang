@@ -27,6 +27,7 @@ and its notes in that record's `notes`.
 - cmt21r2ztr: `TwoSat` and `Lit` join the prelude.
 - coci21c2p5: `Lift.climb(v, ok)` for greedy binary-lifting jump counts; `Lift`,
   `LcaTable` and `JumpTree` join the prelude.
+- dmopc21c4p1: `locate` and `Location` join the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

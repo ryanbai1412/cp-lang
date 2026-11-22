@@ -6,14 +6,21 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/coci21c4p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_13/coci21c4p4.cp",
    "proto/ports/scout_batch_13/today/coci21c4p4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "tree",
+  "binary-search",
+  "greedy"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Binary search with first_true over a huge Int range; recursive nested visit over Rooted.children and t.w(c); ?Int near with min=; '??' needs parentheses next to arithmetic."
 }
