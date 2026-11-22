@@ -471,7 +471,48 @@ pub struct CostFlow<V>:
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), -2); g.add(1, 0, Some(1), 1); g.cancel_cycles() == -1`
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), 2); g.cancel_cycles() == 0`
-    pub fn cancel_cycles(mut self) -> Int = todo
+    @allow(unproven_list_index)
+    pub fn cancel_cycles(mut self) -> Int:
+        let n = head.len
+        if n == 0: return 0
+        var total = 0
+        loop:
+            var dist: [V]Int = [V] _ => 0
+            var par_v: [V]?V = [V] _ => None
+            var par_a: [V]Int = [V] _ => -1
+            var hit: ?V = None
+            for _ in 0..n:
+                hit = None
+                for u in V:
+                    for a in head[u]:
+                        if left[a.id] > 0:
+                            let v = to[a.id]
+                            let nd = dist[u] + price[a.id]
+                            if nd < dist[v]:
+                                dist[v] = nd
+                                par_v[v] = Some(u)
+                                par_a[v] = a.id
+                                hit = Some(v)
+                if hit == None: break
+            if hit == None: break
+            var cur = hit!
+            for _ in 0..n: cur = par_v[cur]!
+            let start = cur
+            var cyc: List<Int> = []
+            var f = 1 << 60
+            var c = 0
+            loop:
+                let aid = par_a[cur]
+                cyc.push(aid)
+                if left[aid] < f: f = left[aid]
+                c += price[aid]
+                cur = par_v[cur]!
+                if cur == start: break
+            for aid in cyc:
+                left[aid] -= f
+                left[aid ^ 1] += f
+            total += f * c
+        total
 
     /// Sends the most flow from `s` to `t`, up to `limit` in this call, at the least cost among
     /// flows of that amount, on top of the flow already there. Returns the amount and cost added.
