@@ -8,3 +8,4 @@ public/wasm/
 .gate/
 generated/
 worker/.wrangler/
+content/docs/ref/
