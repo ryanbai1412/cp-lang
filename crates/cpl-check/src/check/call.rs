@@ -685,7 +685,7 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
-        let mut bindings = Bindings::new();
+        let mut bindings = Bindings::default();
         for (generic, arg) in struct_generics.iter().zip(type_args) {
             if generics.contains(generic) {
                 let arg = self.type_arg(arg);
@@ -1085,7 +1085,7 @@ impl<'a> Checker<'a> {
         let callee_text = self.quote(callee.span);
         match callee_ty {
             Ty::Fn { params, ret } => {
-                let mut bindings = Bindings::new();
+                let mut bindings = Bindings::default();
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 let callee_name = match &callee.kind {
                     ExprKind::Name(n) => Some(n.as_str()),
@@ -1457,7 +1457,7 @@ impl<'a> Checker<'a> {
                             args: type_args,
                         };
                     }
-                    let mut bindings = Bindings::new();
+                    let mut bindings = Bindings::default();
                     if !type_args.is_empty() && type_args.len() <= generics.len() {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
                     }

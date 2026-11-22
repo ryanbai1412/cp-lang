@@ -21,11 +21,11 @@ pub(crate) use pattern::domain_binding;
 pub(crate) use types::{memo_table, own_domains, trait_impl_key, type_head};
 
 use crate::def::Def;
+use crate::fx::HashMap;
 use crate::prelude;
 use crate::ty::Ty;
 use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
 use cpl_syntax::narrow;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 /// How the checker sees the rest of the file. Every answer is recorded as
@@ -207,7 +207,7 @@ impl<'a> Checker<'a> {
             env,
             src,
             sink: Sink::with_poisoned(poisoned),
-            scopes: vec![HashMap::new()],
+            scopes: vec![HashMap::default()],
             generics: Vec::new(),
             param_bounds: Vec::new(),
             hovers: Vec::new(),
@@ -231,20 +231,20 @@ impl<'a> Checker<'a> {
             expected_piece: false,
             in_call_callee: false,
             iterating_range: false,
-            local_product_domains: HashMap::new(),
-            let_ranges: HashMap::new(),
+            local_product_domains: HashMap::default(),
+            let_ranges: HashMap::default(),
             walk_only: Default::default(),
-            local_defs: HashMap::new(),
+            local_defs: HashMap::default(),
             lambda_params: Vec::new(),
-            moved: HashMap::new(),
+            moved: HashMap::default(),
             assigning_name: None,
             memo_captured: Vec::new(),
-            local_effects: HashMap::new(),
+            local_effects: HashMap::default(),
             fn_lends: Vec::new(),
             local_fn_captures: Vec::new(),
             cached_fields: Vec::new(),
-            lit_unions: HashMap::new(),
-            row_bounds: HashMap::new(),
+            lit_unions: HashMap::default(),
+            row_bounds: HashMap::default(),
         }
     }
 
@@ -422,7 +422,7 @@ impl<'a> Checker<'a> {
     }
 
     fn push_scope(&mut self) {
-        self.scopes.push(HashMap::new());
+        self.scopes.push(HashMap::default());
     }
 
     fn pop_scope(&mut self) {

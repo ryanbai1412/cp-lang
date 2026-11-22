@@ -18,9 +18,9 @@
 //! which condition to state.
 
 use super::*;
+use crate::fx::HashSet;
 use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_block, walk_expr, walk_stmt, Visitor};
-use std::collections::HashSet;
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
@@ -1526,7 +1526,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Lambda { params, body, .. } = &unparen(expr).kind else {
             return Vec::new();
         };
-        let mut bound = HashSet::new();
+        let mut bound = HashSet::default();
         for p in params {
             super::pattern::pattern_types(p, &Ty::Unknown, &mut |n, _| {
                 bound.insert(n.to_string());

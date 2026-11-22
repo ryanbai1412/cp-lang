@@ -1688,7 +1688,7 @@ impl<'a> Checker<'a> {
             return got.clone();
         }
         let got_bindings = got_members.bindings(got_args);
-        let mut bindings = crate::ty::Bindings::new();
+        let mut bindings = crate::ty::Bindings::default();
         for want_field in &want_members.fields {
             let Some(got_field) = got_members
                 .fields
@@ -3856,7 +3856,7 @@ impl Members {
     /// What each type parameter is for a value of the type with `args`.
     pub(crate) fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
         if args.len() != self.generics.len() {
-            return crate::ty::Bindings::new();
+            return crate::ty::Bindings::default();
         }
         self.generics
             .iter()

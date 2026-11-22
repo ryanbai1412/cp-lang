@@ -1334,7 +1334,7 @@ impl<'a> Checker<'a> {
             seen.remove(name);
             Some(total)
         }
-        go(self.env, name, &mut std::collections::HashSet::new())
+        go(self.env, name, &mut std::collections::HashSet::default())
     }
 
     fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
@@ -1754,7 +1754,7 @@ impl<'a> Checker<'a> {
                         generics, fields, ..
                     }) => {
                         seen.push(name.clone());
-                        let mut bindings = crate::ty::Bindings::new();
+                        let mut bindings = crate::ty::Bindings::default();
                         for (g, a) in generics.iter().zip(args) {
                             bindings.insert(g.clone(), a.clone());
                         }
@@ -1833,7 +1833,7 @@ impl<'a> Checker<'a> {
                         generics, fields, ..
                     }) => {
                         seen.push(name.clone());
-                        let mut bindings = crate::ty::Bindings::new();
+                        let mut bindings = crate::ty::Bindings::default();
                         for (g, a) in generics.iter().zip(args) {
                             bindings.insert(g.clone(), a.clone());
                         }

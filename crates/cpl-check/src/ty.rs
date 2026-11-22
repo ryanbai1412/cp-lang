@@ -58,7 +58,7 @@ pub enum Ty {
 }
 
 /// What each type parameter stands for at one use.
-pub type Bindings = std::collections::HashMap<String, Ty>;
+pub type Bindings = crate::fx::HashMap<String, Ty>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {
@@ -1120,7 +1120,7 @@ mod tests {
                     .map(|(k, v)| ((*k).to_string(), v.clone()))
                     .collect();
                 let got = template.subst(&want_map);
-                let mut inferred = Bindings::new();
+                let mut inferred = Bindings::default();
                 template.unify(&got, &mut inferred);
                 assert_eq!(
                     template.subst(&inferred),

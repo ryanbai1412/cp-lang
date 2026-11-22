@@ -25,13 +25,16 @@
 use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
 use crate::check::{Checker, Env, GlobalRef, HoverEntry, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
+use crate::fx::HashMap;
 use crate::modules::{FsLoader, Loader};
 use crate::ty::Ty;
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::ParsedItem;
-use std::collections::HashMap;
 use std::sync::Arc;
+
+mod impls;
+use impls::impls_by_target;
 
 /// Counters for how much work the database did, so tests can prove what
 /// was reused.
@@ -290,12 +293,12 @@ impl Database {
     /// A database that asks `loader` for the modules its files import.
     pub fn with_loader(loader: Box<dyn Loader>) -> Database {
         Database {
-            files: HashMap::new(),
+            files: HashMap::default(),
             next_file: 0,
             revision: 0,
-            syntax: HashMap::new(),
-            defs: HashMap::new(),
-            checks: HashMap::new(),
+            syntax: HashMap::default(),
+            defs: HashMap::default(),
+            checks: HashMap::default(),
             stats: Stats::default(),
             loader,
             analyzing: Vec::new(),
@@ -810,10 +813,11 @@ impl Database {
                 current: None,
                 offsets: ranges.iter().map(|r| r.span.start).collect(),
                 names: None,
-                effects: HashMap::new(),
-                own_effects: HashMap::new(),
+                effects: HashMap::default(),
+                own_effects: HashMap::default(),
                 effects_of: Vec::new(),
                 vars: None,
+                impl_names: None,
             };
             (0..items.len()).map(|i| ctx.check_item(i)).collect()
         };
@@ -1380,10 +1384,11 @@ impl Database {
             current: None,
             offsets: Vec::new(),
             names: None,
-            effects: HashMap::new(),
-            own_effects: HashMap::new(),
+            effects: HashMap::default(),
+            own_effects: HashMap::default(),
             effects_of: Vec::new(),
             vars: None,
+            impl_names: None,
         };
         ctx.def(name).0
     }
@@ -1667,6 +1672,8 @@ struct FileCtx<'d> {
     effects_of: Vec<String>,
     /// The top-level `var`s.
     vars: Option<std::collections::HashSet<String>>,
+    /// Every impl in reach, by the type it is for, once a lookup needs it.
+    impl_names: Option<HashMap<String, Vec<(String, Option<String>)>>>,
 }
 
 impl FileCtx<'_> {
@@ -2155,23 +2162,10 @@ impl Env for FileCtx<'_> {
         self.record(DEP_NAMES, self.scope.names_fp);
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         let scope = self.scope.clone();
-        let reached = scope
-            .modules
-            .iter()
-            .flat_map(|module| module.analysis.scope.names.keys());
-        let mut names: Vec<(String, Option<String>)> = scope
-            .names
-            .keys()
-            .chain(reached)
-            .filter_map(|name| match impl_parts(name) {
-                Some((trait_name, of)) if of == target => {
-                    Some((name.clone(), trait_name.map(str::to_string)))
-                }
-                _ => None,
-            })
-            .collect();
-        names.sort();
-        names.dedup();
+        let by_target = self
+            .impl_names
+            .get_or_insert_with(|| impls_by_target(&scope));
+        let names = by_target.get(target).cloned().unwrap_or_default();
         names
             .into_iter()
             .filter_map(|(name, trait_name)| Some((trait_name, self.global(&name)?)))
