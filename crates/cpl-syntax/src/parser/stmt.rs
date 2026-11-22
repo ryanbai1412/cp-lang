@@ -341,21 +341,20 @@ impl<'a> Parser<'a> {
                 self.in_grader = was_in_grader;
                 kind
             }
-            // `mod name:` with an indented body: its items join the enclosing scope.
+            // `mod name:` with an indented body: inline module.
             T::Ident
                 if self.text() == "mod"
                     && self.peek_n(1) == T::Ident
                     && self.peek_n(2) == T::Colon =>
             {
-                let start = self.start();
                 self.bump();
+                let name = Name {
+                    text: self.text().to_string(),
+                    span: self.span(),
+                };
                 self.bump();
-                let block = self.colon_block("the module name");
-                self.extra_stmts.extend(block.stmts);
-                StmtKind::Expr(Expr {
-                    kind: ExprKind::Tuple(Vec::new()),
-                    span: self.span_from(start),
-                })
+                let body = self.colon_block("the module name");
+                StmtKind::Mod { name, body }
             }
             T::Ident if self.text() == "macro" && self.peek_n(1) == T::Ident => {
                 let start = self.start();

@@ -1869,6 +1869,12 @@ impl<'a> Checker<'a> {
                 return match self.global(&format!("{alias}.{}", name.text)) {
                     Some(def) => def.value_ty(&name.text),
                     None if name.text.is_empty() => Ty::Error,
+                    None if self.env.is_private_member(alias, &name.text) => {
+                        let message =
+                            format!("`{}` is private to module `{alias}`", name.text);
+                        self.error(codes::PRIVATE_NAME, name.span, message);
+                        Ty::Error
+                    }
                     None => {
                         let message =
                             format!("module `{alias}` has no public name `{}`", name.text);

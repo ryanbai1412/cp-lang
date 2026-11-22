@@ -90,7 +90,9 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
         }
         StmtKind::Domain { def, .. } => walk_expr(v, def),
         StmtKind::TypeAlias { ty, .. } => walk_ty(v, ty),
-        StmtKind::Trait { body, .. } => walk_scoped(v, Scope::Block, &body.stmts),
+        StmtKind::Trait { body, .. } | StmtKind::Mod { body, .. } => {
+            walk_scoped(v, Scope::Block, &body.stmts)
+        }
         StmtKind::Impl {
             trait_name,
             target,

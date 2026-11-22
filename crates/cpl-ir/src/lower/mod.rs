@@ -1518,6 +1518,38 @@ impl<'a> Lowerer<'a> {
                         });
                         self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));
                     }
+                    ast::StmtKind::Mod { name, body } => {
+                        let sub_mod = self.mod_syms.len();
+                        self.mod_syms.push(HashMap::new());
+                        self.mod_syms[m].insert(name.text.clone(), Sym::Mod(sub_mod));
+                        for s in &body.stmts {
+                            if let ast::StmtKind::Fn(decl) = &s.kind {
+                                let decl = self.with_implicit_generics(decl, sub_mod);
+                                if !decl.generics.is_empty() {
+                                    let gfid = self.gen_fns.len();
+                                    self.gen_fns.push(GenFnTemplate {
+                                        mod_id: sub_mod,
+                                        offset,
+                                        owner: None,
+                                        owner_env: HashMap::new(),
+                                        decl,
+                                    });
+                                    self.mod_syms[sub_mod]
+                                        .insert(decl.name.text.clone(), Sym::GenFn(gfid));
+                                } else {
+                                    let id = self.declare_fn_in(
+                                        decl,
+                                        sub_mod,
+                                        offset,
+                                        None,
+                                        HashMap::new(),
+                                    );
+                                    self.mod_syms[sub_mod]
+                                        .insert(decl.name.text.clone(), Sym::Fn(id));
+                                }
+                            }
+                        }
+                    }
                     ast::StmtKind::Impl {
                         trait_name,
                         target,

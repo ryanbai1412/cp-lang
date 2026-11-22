@@ -656,6 +656,46 @@ impl Database {
                 }
             }
         }
+        let mut inline_mod_diags: Vec<Diagnostic> = Vec::new();
+        for (range, item) in ranges.iter().zip(items.iter()) {
+            for stmt in &item.parsed.stmts {
+                if let StmtKind::Mod { name, .. } = &stmt.kind {
+                    if let Some((head, body_raw)) = item.text.split_once('\n') {
+                        let indent = body_raw
+                            .lines()
+                            .filter(|l| !l.trim().is_empty())
+                            .map(|l| l.len() - l.trim_start().len())
+                            .min()
+                            .unwrap_or(0);
+                        let dedented: String = body_raw
+                            .lines()
+                            .map(|l| {
+                                if l.len() >= indent {
+                                    &l[indent..]
+                                } else {
+                                    l.trim_start()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        let sub_path = format!("{path}::mod::{}", name.text);
+                        self.store(&sub_path, dedented.into(), true);
+                        if let Some(sub_analysis) = self.analyze(&sub_path) {
+                            let body_base = range.span.start + (head.len() as u32) + 1;
+                            for d in &sub_analysis.diagnostics {
+                                inline_mod_diags.push(d.clone().shift(body_base));
+                            }
+                            let idx = scope.add_module(Module {
+                                name: name.text.clone(),
+                                path: sub_path,
+                                analysis: sub_analysis,
+                            });
+                            scope.aliases.insert(name.text.clone(), idx);
+                        }
+                    }
+                }
+            }
+        }
         self.analyzing.pop();
         // Loading the modules analyzed them, which moved the revision on.
         scope.imports_fp = scope.fingerprint_imports();
@@ -714,6 +754,9 @@ impl Database {
         let mut sink = Sink::new();
         for diag in &lexed.diagnostics {
             sink.push(diag.clone());
+        }
+        for diag in inline_mod_diags {
+            sink.push(diag);
         }
         for &span in &lexed.poisoned {
             sink.poison(span);
@@ -1065,6 +1108,7 @@ impl Database {
                         | StmtKind::TypeAlias { .. }
                         | StmtKind::Domain { .. }
                         | StmtKind::Trait { .. }
+                        | StmtKind::Mod { .. }
                         | StmtKind::Impl { .. }
                         | StmtKind::Use { .. }
                         | StmtKind::Const { .. }
@@ -2035,6 +2079,16 @@ impl Env for FileCtx<'_> {
     fn is_module(&mut self, alias: &str) -> bool {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.aliases.contains_key(alias)
+    }
+
+    fn is_private_member(&mut self, alias: &str, member: &str) -> bool {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let Some(&idx) = self.scope.aliases.get(alias) else {
+            return false;
+        };
+        let module = &self.scope.modules[idx];
+        module.analysis.scope.names.contains_key(member)
+            && !module.analysis.public_names().iter().any(|n| n == member)
     }
 
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)> {

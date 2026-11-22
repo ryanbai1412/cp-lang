@@ -1240,6 +1240,7 @@ impl<'a> Lowerer<'a> {
             ast::StmtKind::Struct(_)
             | ast::StmtKind::TypeAlias { .. }
             | ast::StmtKind::Trait { .. }
+            | ast::StmtKind::Mod { .. }
             | ast::StmtKind::Impl { .. }
             | ast::StmtKind::Use { .. }
             | ast::StmtKind::Law { .. }

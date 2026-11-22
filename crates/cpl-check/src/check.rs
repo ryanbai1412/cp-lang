@@ -32,6 +32,9 @@ pub(crate) trait Env {
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
     /// True if `alias` names a module imported whole: `use lib.treap`.
     fn is_module(&mut self, alias: &str) -> bool;
+    fn is_private_member(&mut self, _alias: &str, _member: &str) -> bool {
+        false
+    }
     /// What calling the top-level fn `name` touches outside itself,
     /// counting the fns it calls.
     fn effects(&mut self, name: &str) -> Arc<lends::Effects>;

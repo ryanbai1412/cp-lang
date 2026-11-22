@@ -1982,6 +1982,7 @@ impl<'a> Checker<'a> {
                 self.infer(place);
                 self.lend_in_place(stmt);
             }
+            StmtKind::Mod { .. } => {}
         }
         Ty::Unit
     }

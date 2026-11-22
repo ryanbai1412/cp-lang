@@ -109,6 +109,11 @@ pub enum StmtKind {
         /// `trait Both = Sh + Nm`: a name for its bounds, never implemented.
         alias: bool,
     },
+    /// `mod name:` — an inline module whose `pub` items are accessed as `name.item`.
+    Mod {
+        name: Name,
+        body: Block,
+    },
     Impl {
         trait_name: Option<Type>,
         target: Type,
