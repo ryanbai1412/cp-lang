@@ -1,4 +1,9 @@
-// expect: E0601 at 2
+// expect: E0601 at 6
 // rule: 05.10.3
-var xs = [3, 1]
-xs.sort(by: x => xs.len - x)
+fn go():
+    var a = [1, 2]
+    fn bump(mut x: Int):
+        a[0] += 1
+        x += 1
+    bump(mut a[0])
+go()
