@@ -238,18 +238,37 @@ impl<'a> Checker<'a> {
         // The struct or enum whose body this is, by its own name: its
         // definition is still being computed, so it is not looked up.
         if matches!(&self.self_ty, Some(Ty::Named { name: own, .. }) if own == name) {
+            self.hovers.push(HoverEntry {
+                span,
+                name: name.to_string(),
+                ty: Ty::TypeName(name.to_string()),
+                keyword: "type",
+                decl: None,
+                owner: None,
+            });
             return Ty::Named {
                 name: name.to_string(),
                 args,
             };
         }
         if let Some(local) = self.local(name) {
-            // `type Len = S.cuts` inside a fn.
-            if local.keyword == "type" {
-                return local.ty.clone();
-            }
-            if let Ty::Domain(domain) = &local.ty {
-                return Ty::Pos(domain.clone());
+            let resolved = match &local.ty {
+                // `type Len = S.cuts` inside a fn.
+                ty if local.keyword == "type" => Some(ty.clone()),
+                Ty::Domain(domain) => Some(Ty::Pos(domain.clone())),
+                _ => None,
+            };
+            if let Some(resolved) = resolved {
+                let entry = HoverEntry {
+                    span,
+                    name: name.to_string(),
+                    ty: local.ty.clone(),
+                    keyword: local.keyword,
+                    decl: Some(local.span),
+                    owner: None,
+                };
+                self.hovers.push(entry);
+                return resolved;
             }
         }
         let lookup_name = prefix_shape_struct(name, args.len()).unwrap_or(name);

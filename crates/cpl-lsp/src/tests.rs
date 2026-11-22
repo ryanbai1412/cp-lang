@@ -1456,7 +1456,7 @@ fn references_find_locals_params_fns_structs_domains_and_fields() {
     // The declaration and the access through a value.
     assert_eq!(references_at(&src), [(2, 4), (12, 8)]);
     let src = format!("{ROAD}let r = Ro|ad(1, 2)\n");
-    assert_eq!(references_at(&src), [(0, 7), (10, 31), (11, 8)]);
+    assert_eq!(references_at(&src), [(0, 7), (10, 24), (10, 31), (11, 8)]);
     // A domain.
     let src = "domain V = 0..5\nvar a: [V]Int = 0\nfor v in V|:\n    a[v] = 1\n";
     assert_eq!(references_at(src), [(0, 7), (1, 8), (2, 9)]);
