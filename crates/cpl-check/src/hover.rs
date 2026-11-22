@@ -450,6 +450,11 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
                 if let Some(total) = size(&whole, lookup) {
                     let align = sizes.as_deref().map_or(1, |s| struct_layout(s).align);
                     out += &format!("\n  storage: {}, aligned to {align}", human_bytes(total.into()));
+                } else {
+                    let named: Vec<(String, &Ty)> = fields.iter().map(|f| (f.name.to_string(), &f.ty)).collect();
+                    if let Some(note) = fields_note(&named, lookup) {
+                        out += &format!("\n  storage: {note}");
+                    }
                 }
             }
             out
@@ -744,7 +749,7 @@ fn unsized_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
         }
         Ty::Optional(inner) => unsized_note(inner, lookup),
         Ty::Array { elem, .. } => match size(elem, lookup) {
-            Some(per) => Some(format!("{} per inner element", human_bytes(per.into()))),
+            Some(per) => Some(format!("{} per element", human_bytes(per.into()))),
             None => element_note(elem, lookup),
         },
         Ty::Tuple(items) => {
@@ -761,7 +766,11 @@ fn unsized_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
 
 fn element_note(elem: &Ty, lookup: &mut Lookup) -> Option<String> {
     let note = unsized_note(elem, lookup)?;
-    Some(if matches!(elem, Ty::Named { .. }) { note } else { format!("per element, {note}") })
+    Some(match elem {
+        Ty::Named { .. } => note,
+        Ty::Array { .. } => format!("each row {note}"),
+        _ => format!("per element, {note}"),
+    })
 }
 
 fn fields_note(fields: &[(String, &Ty)], lookup: &mut Lookup) -> Option<String> {

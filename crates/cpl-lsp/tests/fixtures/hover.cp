@@ -129,6 +129,9 @@ let e$0s: [V]Edge = [V] v => Edge(v, 0, false)
 let fl$0ag: [V]?Bool = none
 let pa$0irs: [V](V, Int) = [V] v => (v, 0)
 let ad$0j: [V]List<V> = [V] v => []
+struct Ru$0ns:
+    first: [V]Int
+    seen: List<V>
 let na$0mes: [V](name: Str, t: 1..=1000) = [V] v => (name: "", t: 1)
 let di$0sts: [V][V]?Int = [V] u => [V] v => none
-print(es[V.first].to, es[V.first].w, es[V.first].used, flag, pairs, adj, names, dists)
+print(es[V.first].to, es[V.first].w, es[V.first].used, flag, pairs, adj, names, dists, Runs([V] v => 0, []).seen)
