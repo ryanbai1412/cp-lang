@@ -1889,7 +1889,7 @@ impl<'a> Checker<'a> {
         let built_in = matches!(
             &base_ty,
             Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. }
-        ) || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+        ) || matches!(&base_ty, Ty::Named { name, .. } if name == "List" || name == "Range");
         // A generator only has what std declares on sequences: no `next` (R07.1.1).
         let generator = matches!(&base_ty, Ty::Named { name, .. } if name == "Gen");
         if ty == Ty::Unknown
@@ -1898,7 +1898,9 @@ impl<'a> Checker<'a> {
             && !(if generator {
                 crate::prelude::spec_receiver_method_names().contains(&name.text)
             } else {
-                crate::prelude::spec_member_names().contains(&name.text)
+                (crate::prelude::spec_member_names().contains(&name.text)
+                    && !(matches!(&base_ty, Ty::Named { name, .. } if name == "Range")
+                        && crate::prelude::spec_struct_only_member_names().contains(&name.text)))
                     || crate::builtins::BUILTIN_MEMBERS
                         .iter()
                         .any(|m| m.name == name.text)

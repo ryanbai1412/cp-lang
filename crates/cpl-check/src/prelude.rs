@@ -88,6 +88,47 @@ pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
     })
 }
 
+/// The member names std declares only inside `struct` bodies: a view's
+/// `src`, a stack's `push`. A built-in type such as `Range` gets none of
+/// them, though the name is on `spec_member_names`.
+pub fn spec_struct_only_member_names() -> &'static std::collections::HashSet<String> {
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        let ident = |s: &str| -> String {
+            s.chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect()
+        };
+        let mut in_struct = std::collections::HashSet::new();
+        let mut elsewhere = std::collections::HashSet::new();
+        for (_, text) in crate::modules::active_std_modules() {
+            let mut struct_body = false;
+            for line in text.lines() {
+                let code = line.split('#').next().unwrap_or("");
+                let trimmed = code.trim_start();
+                if trimmed.is_empty() || trimmed.starts_with("//") {
+                    continue;
+                }
+                let top = trimmed.len() == code.len();
+                if top {
+                    let item = trimmed.strip_prefix("pub ").unwrap_or(trimmed);
+                    struct_body = item.starts_with("struct ");
+                }
+                if let Some(at) = trimmed.find("fn ") {
+                    let name = ident(&trimmed[at + 3..]);
+                    if struct_body && !top {
+                        in_struct.insert(name);
+                    } else {
+                        elsewhere.insert(name);
+                    }
+                }
+            }
+        }
+        in_struct.retain(|n| !elsewhere.contains(n));
+        in_struct
+    })
+}
+
 /// The names of the top-level `fn name(self: S, ..)` methods: all a value
 /// of no declared struct, such as a generator, can be given.
 pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String> {
