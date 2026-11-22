@@ -5,5 +5,5 @@ let n = read<1..=1_000_000_000>()
 fn trees(w: Int) -> Int:
     if w == 1:
         return 1
-    floor_quotients(w).filter(b => b.q < w).map(b => (b.hi - max(b.lo, 2)) * trees(b.q)).sum()
+    floor_quotients(w, from: 2).map(b => (b.hi - b.lo) * trees(b.q)).sum()
 print(trees(n))

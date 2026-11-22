@@ -369,7 +369,7 @@ Cost summary (NTTs of length `N = bit_ceil(n)`):
 | `ceil_div(a, b)`, `x.divmod(d)` | ceiling division; Euclidean `(q, r)` with `0 <= r < abs(d)` | O(1) |
 | `x.digits(base:)`, `x.to_str(base:)` | digits lowest first; the written form, highest first | O(log x) |
 | `x.sign` | the side of zero, a `Sign` | O(1) |
-| `floor_quotients(n)` | each distinct `n / i` with its run of `i`, `(q, lo, hi)` | O(sqrt n) |
+| `floor_quotients(n, from: 1)` | each distinct `n / i` for `i >= from`, with its run of `i`, `(q, lo, hi)` | O(sqrt n) |
 | `Ratio(p, q)` | an exact reduced rational | O(log) per op |
 | `coef.eval(x)` | a polynomial at `x` over any ring, by Horner | O(len) |
 | `Curved` | the `shape:` of a non-`(+, *)` `convolve` (`Both`, `Right`, `Neither`) | — |

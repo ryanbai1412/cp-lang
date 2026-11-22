@@ -693,6 +693,9 @@ pub struct Ring<D, T>(src: [D]T):
     /// All n positions, starting at `i` and wrapping. O(n) to walk.
     pub fn from(self, i: D) -> yields D = todo
 
+    /// The `len` positions from `start` on, wrapping (`len <= n`). O(1).
+    pub fn span(self, start: D, len: Int) -> RingRange<D> = todo
+
     /// The n windows of `k` elements, one starting at each position, wrapping. O(n) to walk.
     pub fn windows(self, k: Int) -> yields RingSlice<D, T> = todo
 
@@ -705,8 +708,29 @@ pub struct Ring<D, T>(src: [D]T):
     /// `ok`, or none. O(n) pushes and pops (two laps).
     pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T> = todo
 
+/// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
+/// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
+pub struct RingRange<D>():
+    /// O(1).
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). The first position.
+    pub @get fn start(self) -> D = todo
+
+    /// O(1). The last position.
+    pub @get fn end(self) -> D = todo
+
+    /// O(1) to make. Its positions in ring order.
+    pub @get fn keys(self) -> yields D = todo
+
+    /// O(1).
+    pub fn contains(self, i: D) -> Bool = todo
+
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
 pub struct RingSlice<D, T>():
+    /// O(1). Its positions, without the array.
+    pub @get fn range(self) -> RingRange<D> = todo
+
     /// O(1).
     pub @get fn len(self) -> Int = todo
 

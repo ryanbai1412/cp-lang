@@ -202,3 +202,30 @@ Open questions raised by dreams:
   - Dream bugs:
     - `Some(..)` patterns (noi07p1): the pattern is `some`.
     - `PotentialDsu<V, W>` (noi02p1): the stub takes one parameter and `unite(a, b, w)`.
+- Fourth blind batch (apio09p3, ccc02s4, ccc03s4, ccc04s5, ccc18s4, ccc19s2, ccc20s4, cco04p4,
+  cco18p4, cco19p5). Two `spec.cp` files were rewritten. For the other eight, the existing port
+  matched or beat the dream.
+  - Adopted:
+    - `RingRange<D>` (ccc20s4; also answers the open btoi18p4 question). It is the keys-only half
+      of `RingSlice`, made with `a.ring.span(i, k)` or taken from `slice.range`.
+      `Prefix.cyclic_sum` now takes one instead of a `Range<D>` that cannot wrap. The ccc20s4 port
+      moved from `"ABC"[k]` indexes and an `s + s` prefix to `enum Who` and ring spans.
+    - `floor_quotients(n, from:)` (ccc18s4): sums over `k >= 2` no longer clip the first block
+      by hand.
+  - Rejected:
+    - `dag.up(order:, ...)` (apio09p3): `@memo` recursion on the DAG is the general form.
+    - `people[c..].prefixes(max_len:)` (ccc02s4): use `(c.next..).take(m)`.
+    - `argmin_convex` (cco18p4): `ternary_min` already exists.
+    - `wire.ask`: a read on `Wire` flushes first.
+    - Direct `out[f].absorb(mut out[i])` (cco19p5): two `mut` lends into one array are not
+      proven disjoint. `take()` first.
+  - Dream bugs:
+    - `#` comments: the language uses `//`.
+    - `@memo(hash)` was renamed to `@memo(map)`.
+    - ccc20s4 counted each block in O(n) per rotation, O(n²) overall. It needs prefix counts.
+    - cco04p4 guessed the input format.
+    - ccc04s5 used a nonexistent `R.span` and is cubic per column, where the port's walk-outward
+      generators are linear.
+  - Open: a row of single-letter enum tokens with no separators (ccc20s4) reads as a `Str`, then
+    `parse<Who>()` per character. An enum whose tags are all one character could read like
+    `Char`.

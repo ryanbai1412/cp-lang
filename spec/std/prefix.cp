@@ -5,7 +5,7 @@
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for O(1) offline range/rectangle adds and O(n) /
 //! O(r * c) `finish()`.
 use std.algebra.{Monoid}
-use std.seq.{ends}
+use std.seq.{ends, RingRange}
 
 /// O(n) calls of `f`. The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds
 /// everything left of cut `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a
@@ -54,8 +54,8 @@ pub struct Prefix<D, T>:
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T = todo
 
-    /// O(1). Sum of a wrapping range `r` on a cyclic domain `D`.
-    pub fn cyclic_sum(self, r: Range<D>) -> T = todo
+    /// O(1). The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`.
+    pub fn cyclic_sum(self, r: RingRange<D>) -> T = todo
 
     /// O(1). Recover the original element `a[i]`.
     pub fn get(self, i: D) -> T = todo

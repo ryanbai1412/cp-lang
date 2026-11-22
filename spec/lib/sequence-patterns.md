@@ -209,7 +209,9 @@ of `a`. It replaces the "double the array" trick, which costs O(n) memory
 and loses the positions. A wrapping window isn't one range of `a`, so its
 `.keys` is a sequence of positions, not a `Range<D>`: wrapping pieces are
 `RingSlice`s with `start`, `end`, `len` and `keys`. `a.ring.next(i)` and
-`a.ring.prev(i)` step with wrap-around.
+`a.ring.prev(i)` step with wrap-around. The positions alone, with no array, are a
+`RingRange<D>`: `a.ring.span(i, k)` is the `k` positions from `i` on, `slice.range` takes them
+from a `RingSlice`, and `pre.cyclic_sum(r)` sums a `Prefix` over one in O(1).
 
 Two pointers wrap too. `a.ring.maximal(state, ok:)` and
 `a.ring.minimal(state, ok:)` return `[D]RingSlice` and `[D]?RingSlice`:

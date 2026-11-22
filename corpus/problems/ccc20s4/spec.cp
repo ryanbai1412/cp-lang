@@ -1,22 +1,23 @@
 // ccc20s4 Swapping Seats: fewest swaps to seat A, B and C people in three blocks around a round
-// table. Try every rotation and both orders of B and C; for each, count how many of letter x sit
-// in letter y's block. A two-cycle costs one swap and a three-cycle two.
+// table. Try every start for the A block and both orders of B and C; for each, c[x, y] counts
+// people of letter x sitting in letter y's block. A two-cycle costs one swap and each leftover
+// three-cycle two.
+enum Who = A | B | C
 let s = read<Str>()
-let n = s.len
-let size = [3] k => s.count(c => c == "ABC"[k])
-let pre = [3] k => (s + s).map(c => Int(c == "ABC"[k])).scan(+)
-fn swaps(start: Int, order: [3]Int) -> Int:
-    var m: [3, 3]Int = 0
+domain Seat = [s.len]
+let who = [Seat] i => s[Int(i)].to_str().parse<Who>()!
+let pre = [Who] x => ([Seat] i => Int(who[i] == x)).scan(+)
+let size = [Who] x => pre[x].all
+
+fn swaps(start: Seat, order: List<Who>) -> Int:
+    var block = [Who] _ => who.ring.span(start, 0)
     var at = start
     for y in order:
-        for x in 0..3:
-            m[x, y] = pre[x][at + size[y]] - pre[x][at]
-        at += size[y]
-    var total = 0
-    for (x, y) in [(0, 1), (0, 2), (1, 2)]:
-        let two = min(m[x, y], m[y, x])
-        total += two
-        m[x, y] -= two
-        m[y, x] -= two
-    total + 2 * (m[0, 1] + m[0, 2])
-print((0..n).map(i => min(swaps(i, [0, 1, 2]), swaps(i, [0, 2, 1]))).min()!)
+        block[y] = who.ring.span(at, size[y])
+        at = who.ring.step(at, size[y])
+    let c = [Who, Who] (x, y) => pre[x].cyclic_sum(block[y])
+    let two = [(A, B), (A, C), (B, C)].sum(of: p => min(c[p.0, p.1], c[p.1, p.0]))
+    let left = [(A, B), (A, C), (B, C)].sum(of: p => abs(c[p.0, p.1] - c[p.1, p.0]))
+    two + 2 * (left / 3)
+
+print([swaps(start, order) for start in Seat for order in [[A, B, C], [A, C, B]]].min()!)

@@ -183,8 +183,9 @@ pub fn primes_in(lo: Int, hi: Int) -> List<Int> = todo
 /// O(n^(3/4) / log n), O(sqrt n) memory. Number of primes `<= n` (Meissel-Lehmer / Lucy_Hedgehog).
 pub fn prime_count(n: Int) -> Int = todo
 
-/// O(sqrt n). Generator yielding each distinct floor quotient `q = n / i` and its half-open range `lo..hi`.
-pub fn floor_quotients(n: Int) -> yields (q: Int, lo: Int, hi: Int) = todo
+/// O(sqrt n). Generator yielding each distinct floor quotient `q = n / i` for `i` in `from..=n`
+/// and its half-open range `lo..hi` of `i`; the first range is clipped to start at `from`.
+pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int) = todo
 
 /// O(x^(1/4) + d(x)) expected. Generator yielding each positive divisor of `x >= 1`.
 pub fn each_divisor(x: Int) -> yields Int = todo
