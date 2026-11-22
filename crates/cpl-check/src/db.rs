@@ -206,6 +206,9 @@ struct FileState {
     id: u32,
     text: Arc<str>,
     analysis: Option<Arc<Analysis>>,
+    /// True when `analysis` has run `check_item` on every item (false when
+    /// it was only analyzed on demand as an imported module).
+    analysis_checked: bool,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
@@ -299,12 +302,14 @@ impl Database {
                 file.text = text;
                 file.loaded = loaded;
                 file.analysis = None;
+                file.analysis_checked = false;
                 // Only the files that import this one, directly or not, see
                 // the change; keeping the rest spares relexing the stdlib on
                 // every keystroke.
                 for file in self.files.values_mut() {
                     if file.analysis.as_ref().is_some_and(|a| a.depends_on(path)) {
                         file.analysis = None;
+                        file.analysis_checked = false;
                     }
                 }
             }
@@ -317,6 +322,7 @@ impl Database {
                         id,
                         text,
                         analysis: None,
+                        analysis_checked: false,
                         loaded,
                     },
                 );
@@ -355,9 +361,12 @@ impl Database {
     /// Lexes, parses and checks a file, reusing everything an edit did not
     /// affect. Asking again without an edit returns the same `Analysis`.
     pub fn analyze(&mut self, path: &str) -> Option<Arc<Analysis>> {
+        let imported_module = !self.analyzing.is_empty();
         let file = self.files.get(path)?;
         if let Some(analysis) = &file.analysis {
-            return Some(analysis.clone());
+            if imported_module || file.analysis_checked {
+                return Some(analysis.clone());
+            }
         }
         let (id, text) = (file.id, file.text.clone());
         self.revision += 1;
@@ -495,11 +504,10 @@ impl Database {
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
-            let imported_module = self.analyzing.len() > 1;
             let mut ident_tokens: std::collections::HashSet<&str> = std::collections::HashSet::new();
             let mut dot_ident_tokens: std::collections::HashSet<&str> =
                 std::collections::HashSet::new();
-            for item in &items {
+            for (range, item) in ranges.iter().zip(&items) {
                 if imported_module
                     && item.parsed.stmts.iter().any(|s| {
                         s.decorators.iter().any(|d| {
@@ -513,11 +521,10 @@ impl Database {
                 {
                     continue;
                 }
-                let lexed = cpl_syntax::lex(&item.text);
                 let mut prev_dot = false;
-                for tok in &lexed.tokens {
+                for tok in &lexed.tokens[range.tokens.0..range.tokens.1] {
                     if tok.kind == cpl_syntax::TokenKind::Ident {
-                        let s = &item.text[tok.span.start as usize..tok.span.end as usize];
+                        let s = &text[tok.span.start as usize..tok.span.end as usize];
                         ident_tokens.insert(s);
                         if prev_dot {
                             dot_ident_tokens.insert(s);
@@ -654,21 +661,26 @@ impl Database {
         let scope = Arc::new(scope);
         let items = Arc::new(items);
 
-        let mut ctx = FileCtx {
-            db: self,
-            file: id,
-            items: items.clone(),
-            scope: scope.clone(),
-            frames: Vec::new(),
-            in_progress: Vec::new(),
-            current: None,
-            names: None,
-            effects: HashMap::new(),
-            own_effects: HashMap::new(),
-            effects_of: Vec::new(),
-            vars: None,
+        let checks: Vec<Arc<ItemCheck>> = if imported_module {
+            let empty = Arc::new(ItemCheck::default());
+            vec![empty; items.len()]
+        } else {
+            let mut ctx = FileCtx {
+                db: self,
+                file: id,
+                items: items.clone(),
+                scope: scope.clone(),
+                frames: Vec::new(),
+                in_progress: Vec::new(),
+                current: None,
+                names: None,
+                effects: HashMap::new(),
+                own_effects: HashMap::new(),
+                effects_of: Vec::new(),
+                vars: None,
+            };
+            (0..items.len()).map(|i| ctx.check_item(i)).collect()
         };
-        let checks: Vec<Arc<ItemCheck>> = (0..items.len()).map(|i| ctx.check_item(i)).collect();
 
         // Diagnostics, one per root cause: the lexer's first, then each
         // item's syntax errors, then what the checker found outside them.
@@ -825,6 +837,7 @@ impl Database {
         if imports_ok {
             if let Some(file) = self.files.get_mut(path) {
                 file.analysis = Some(analysis.clone());
+                file.analysis_checked = !imported_module;
             }
         }
         Some(analysis)
@@ -1827,5 +1840,36 @@ fn declare_with_var(
             title: format!("declare `{name}` with `var`"),
             edits: vec![(at, "var".into())],
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MapLoader(Vec<(String, String, String)>);
+
+    impl Loader for MapLoader {
+        fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
+            let key = module.join(".");
+            self.0
+                .iter()
+                .find(|(k, _, _)| k == &key)
+                .map(|(_, path, text)| (path.clone(), text.clone()))
+        }
+    }
+
+    #[test]
+    fn imported_module_still_checks_when_analyzed_directly() {
+        let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+            "lib.bad".into(),
+            "lib/bad.cp".into(),
+            "pub fn f() -> Int:\n    let x: Int = \"oops\"\n    x\n".into(),
+        )])));
+        db.set_file("main.cp", "use lib.bad.{f}\nprint(f())\n");
+        let main = db.analyze("main.cp").unwrap();
+        assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
+        let direct = db.analyze("lib/bad.cp").unwrap();
+        assert!(!direct.diagnostics.is_empty());
     }
 }

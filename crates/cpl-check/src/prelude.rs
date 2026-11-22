@@ -102,27 +102,106 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
         };
         let mut found: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
         for (module, text) in crate::modules::active_std_modules() {
-            // Only where the text may hold one: parsing every module costs.
             if *module == "prelude" || !text.contains("self:") {
                 continue;
             }
             let path: Vec<ast::Name> = std::iter::once("std").chain(module.split('/')).map(bare).collect();
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in item.stmts {
-                    let ast::StmtKind::Fn(decl) = &stmt.kind else {
-                        continue;
-                    };
-                    let on_a_type = decl.params.first().is_some_and(|p| p.name.text == "self" && p.ty.is_some());
-                    if stmt.public && on_a_type {
-                        found.push((path.clone(), bare(&decl.name.text)));
-                    }
-                }
+            for name in scan_top_level_methods(text) {
+                found.push((path.clone(), bare(name)));
             }
         }
         let twice = |name: &str| found.iter().filter(|(_, other)| other.text == name).count() > 1;
         let unique: Vec<_> = found.iter().filter(|(_, name)| !twice(&name.text)).cloned().collect();
         unique
     })
+}
+
+/// Scans top-level `[@dec ...] pub [@dec ...] fn <name>[<...>]([mut] self: ...)`
+/// headers without parsing function bodies.
+fn scan_top_level_methods(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let bytes = text.as_bytes();
+    let mut offset = 0;
+    while offset < bytes.len() {
+        let rest = &text[offset..];
+        // Top-level declarations start at column 0 with `pub` or `@decorator`.
+        if rest.starts_with("pub ") || rest.starts_with('@') {
+            let mut cur = rest;
+            let mut is_pub = false;
+            loop {
+                cur = cur.trim_start_matches([' ', '\t']);
+                if let Some(after_pub) = cur.strip_prefix("pub ") {
+                    is_pub = true;
+                    cur = after_pub;
+                    continue;
+                }
+                if let Some(dec) = cur.strip_prefix('@') {
+                    let dec_len = dec
+                        .bytes()
+                        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+                        .count();
+                    cur = &dec[dec_len..];
+                    if cur.starts_with('(') {
+                        if let Some(close) = cur.find(')') {
+                            cur = &cur[close + 1..];
+                        }
+                    }
+                    continue;
+                }
+                break;
+            }
+            if is_pub {
+                if let Some(after_pub_fn) = cur.strip_prefix("fn ") {
+                    let name_len = after_pub_fn
+                        .bytes()
+                        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+                        .count();
+                    if name_len > 0 {
+                        let name = &after_pub_fn[..name_len];
+                        let mut tail = after_pub_fn[name_len..].trim_start();
+                        if tail.starts_with('<') {
+                            let mut depth = 0usize;
+                            let mut end = 0;
+                            for (idx, b) in tail.bytes().enumerate() {
+                                match b {
+                                    b'<' => depth += 1,
+                                    b'>' => {
+                                        depth -= 1;
+                                        if depth == 0 {
+                                            end = idx + 1;
+                                            break;
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            if end > 0 {
+                                tail = tail[end..].trim_start();
+                            }
+                        }
+                        if let Some(mut params) = tail.strip_prefix('(') {
+                            params = params.trim_start();
+                            if let Some(after_mut) = params.strip_prefix("mut") {
+                                if after_mut.starts_with(|c: char| c.is_whitespace()) {
+                                    params = after_mut.trim_start();
+                                }
+                            }
+                            if let Some(after_self) = params.strip_prefix("self") {
+                                if after_self.trim_start().starts_with(':') {
+                                    out.push(name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        match bytes[offset..].iter().position(|&b| b == b'\n') {
+            Some(nl) => offset += nl + 1,
+            None => break,
+        }
+    }
+    out
 }
 
 /// The words of the language that are written with a library fn: a
@@ -399,3 +478,36 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 /// Every public name of `stdlib/` and its module, sorted by name.
 /// `build.rs` reads it off the files.
 pub const STD_NAMES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fast_method_scan_matches_full_parse_on_bundled_stdlib() {
+        for (module, text) in crate::modules::bundled_std_modules() {
+            if *module == "prelude" || !text.contains("self:") {
+                continue;
+            }
+            let mut parsed = Vec::new();
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in item.stmts {
+                    if let ast::StmtKind::Fn(decl) = &stmt.kind {
+                        let on_a_type = decl
+                            .params
+                            .first()
+                            .is_some_and(|p| p.name.text == "self" && p.ty.is_some());
+                        if stmt.public && on_a_type {
+                            parsed.push(decl.name.text.clone());
+                        }
+                    }
+                }
+            }
+            let scanned: Vec<String> = scan_top_level_methods(text)
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            assert_eq!(scanned, parsed, "method scan mismatch in std.{module}");
+        }
+    }
+}
