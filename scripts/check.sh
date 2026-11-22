@@ -19,6 +19,9 @@
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
+#            and scripts/sizes.py --check: every corpus and dry-run program's
+#            C++ under 32 KB but those in corpus/sets/oversize.txt (a
+#            report per program, warnings over 24 KB)
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) builds; parts
 #            over their caps (compiler 2,100,000 bytes, docs 500,000,
@@ -229,8 +232,16 @@ scoreboard_cached=0
 if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 fi
+sizes_pid=""
+sizes_cached=0
+if cache_hit sizes; then
+    sizes_cached=1
+else
+    python3 scripts/sizes.py --cpl "$cpl" --report "$target/sizes.tsv" --check >"$lib_logs/sizes.log" 2>&1 &
+    sizes_pid=$!
+fi
 cleanup() {
-    kill "${lib_pids[@]}" ${bundle_pid:+"$bundle_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${bundle_pid:+"$bundle_pid"} ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} ${sizes_pid:+"$sizes_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -309,7 +320,7 @@ step "cpl fmt --check stdlib"
 
 # Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
 if [ "$scoreboard_cached" -eq 0 ]; then
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py >"$lib_logs/script_tests.log" 2>&1 &
+    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_sizes.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -388,6 +399,18 @@ elif [ -n "${recovery_pid:-}" ]; then
     recovery_pid=""
     cache_save recovery
 fi
+step "generated C++ sizes (scripts/sizes.py --check; report in $target/sizes.tsv)"
+if [ "$sizes_cached" -eq 1 ]; then
+    echo "cached (tree unchanged outside its excludes)"
+else
+    sizes_status=0
+    wait "$sizes_pid" || sizes_status=1
+    sizes_pid=""
+    cat "$lib_logs/sizes.log"
+    [ "$sizes_status" -eq 0 ] || fail "a program's C++ is over the 32 KB bar; rerun: python3 scripts/sizes.py --check"
+    cache_save sizes
+fi
+
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
     need npm "the VS Code tests run on it"

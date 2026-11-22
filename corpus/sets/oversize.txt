@@ -1,0 +1,18 @@
+# Programs whose C++ for judge `codeforces` is over the 32 KB bar, until it fits.
+# scripts/sizes.py --check fails on one over the bar that is not listed, or one listed that fits.
+corpus/problems/abc481g/port.cp
+corpus/problems/cf2062e2/port.cp
+corpus/problems/cf2066e/port.cp
+corpus/problems/cf2066f/port.cp
+corpus/problems/cf2089e/port.cp
+corpus/problems/cf2150f/port.cp
+corpus/problems/cf2201e/port.cp
+corpus/problems/cf2222g/port.cp
+corpus/problems/cf2237h/port.cp
+corpus/problems/cf2255f/port.cp
+corpus/problems/cf2262b/port.cp
+corpus/problems/cf2262e/port.cp
+corpus/problems/etsr23r3p1/port.cp
+corpus/problems/ioi18p3/port.cp
+corpus/problems/noi21p3/port.cp
+corpus/problems/ucup5s05f/port.cp
