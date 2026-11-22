@@ -15,11 +15,14 @@
   ],
   "port": [
    "proto/ports/scout_batch_26/sdoi17r1p2.cp"
+  ],
+  "spec": [
+   "corpus/problems/sdoi17r1p2/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

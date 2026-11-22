@@ -75,6 +75,9 @@ pub struct Rooted<V, Pre>:
         k1: [V]0..=V.count,
     ) = todo
 
+    /// O(1) to make. The roots in the order given: one for `new`, one per tree for `forest`.
+    pub @get fn roots(self) -> yields V = todo
+
     /// O(1). The position of `v` in this tree's value-owned preorder domain `t.Pre`. Inverse of
     /// `at`.
     pub fn pos(self, v: V) -> Pre = todo
@@ -575,6 +578,18 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
 /// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
 /// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
 /// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.
+/// The preferred-path half of a link-cut tree over a fixed rooted tree: every node starts as its
+/// own path. Counting "how many paths lie between v and the root" (colours painted along root
+/// paths, access counts) reads off the switches each `access` makes.
+pub struct PreferredPaths<V>:
+    /// O(n).
+    pub fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V> = todo
+
+    /// Make the path from the root to `v` one preferred path. Yields each switch bottom-up:
+    /// `gained` is the top node of the path just joined to its parent, `lost` the top node of
+    /// the path that parent stopped preferring, if any. O(log n) amortized switches.
+    pub fn access(mut self, v: V) -> yields (lost: ?V, gained: V) = todo
+
 pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     lc: [V]?V
     rc: [V]?V

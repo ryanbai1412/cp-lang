@@ -31,11 +31,14 @@
   ],
   "port": [
    "proto/ports/scout_batch_9/sdoi17r2p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/sdoi17r2p4/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

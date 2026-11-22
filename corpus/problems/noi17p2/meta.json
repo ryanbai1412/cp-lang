@@ -11,11 +11,14 @@
   ],
   "port": [
    "proto/ports/scout_batch_10/noi17p2.cp"
+  ],
+  "spec": [
+   "corpus/problems/noi17p2/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

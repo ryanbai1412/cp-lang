@@ -22,11 +22,14 @@
   ],
   "port": [
    "proto/ports/scout_batch_30/noi06p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/noi06p3/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

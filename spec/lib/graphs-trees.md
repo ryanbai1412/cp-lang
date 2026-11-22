@@ -277,7 +277,9 @@ for r in t.chains(a, b): ...               // the ranges themselves, when you ne
 ### Changing trees
 
 `LinkCut<V, T>(op)`, `LazyLinkCut`, `EulerTourTree`, `JumpTree` (online
-binary lifting as leaves are added). Same vertex domain, same method names
+binary lifting as leaves are added), `PreferredPaths(t)` (the access half of a
+link-cut tree over a fixed `Rooted`; `access(v)` yields each path switch, the
+shape of "colours painted along root paths" problems). Same vertex domain, same method names
 as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 `fold_path`).
 

@@ -15,11 +15,14 @@
   ],
   "port": [
    "proto/ports/scout_batch_11/shoi16p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/shoi16p3/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

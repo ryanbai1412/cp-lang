@@ -194,6 +194,7 @@ No helper is added for these; each is one or two lines.
 | polygon edges | `poly.cyclic_pairs` |
 | circular windows | `a.ring.windows(k)` (below) |
 | group equal keys anywhere | `a.group(by: k)`, `a.tally(by: k)`, `buckets(key)` |
+| value held by more than half, from equality alone | `a.majority(eq: same)` |
 | dedup | `a.dedup()` (adjacent), `a.distinct(by:)` (anywhere) |
 | merge sorted sequences | `merge(a, b, by:)` yields in order; `kway_merge(lists, by:)` |
 | inversions, LIS | `a.inversions()`, `a.lis(strict:)` |

@@ -416,6 +416,11 @@ pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// O(n). Minimum element (under `by:`) together with its multiplicity, or `none` when empty.
 pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int) = todo
 
+/// The value held by more than half the elements, with its count, or `none`. Only `eq` is
+/// asked, never order or hashing, so it works with an equality oracle (Boyer-Moore: one
+/// pass to find the candidate, one to count it). O(n) `eq` calls, O(1) memory.
+pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int) = todo
+
 /// O(n) expected, O(distinct) memory. Frequency map of keys `by(x)` across `self`.
 pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = todo
 

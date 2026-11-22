@@ -13,11 +13,14 @@
   "port": [
    "proto/ports/scout_batch_49/ioi15p5.cp",
    "proto/ports/scout_batch_49/today/ioi15p5.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi15p5/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

@@ -15,11 +15,14 @@
   "port": [
    "proto/ports/scout_batch_52/noip20p3.cp",
    "proto/ports/scout_batch_52/today/noip20p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/noip20p3/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

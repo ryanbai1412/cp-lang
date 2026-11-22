@@ -8,11 +8,14 @@
  "artifacts": {
   "dream": [
    "corpus/problems/ioi14p5io/dream.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi14p5io/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

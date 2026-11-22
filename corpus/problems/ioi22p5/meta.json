@@ -25,11 +25,14 @@
   "port": [
    "proto/ports/scout_batch_52/ioi22p5.cp",
    "proto/ports/scout_batch_52/today/ioi22p5.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi22p5/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }

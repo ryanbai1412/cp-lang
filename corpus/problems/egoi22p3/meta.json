@@ -17,11 +17,14 @@
   "port": [
    "proto/ports/scout_batch_51/egoi22p3.cp",
    "proto/ports/scout_batch_51/today/egoi22p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/egoi22p3/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "draft",
- "spec": "none",
+ "spec": "draft",
  "notes": ""
 }
