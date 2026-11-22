@@ -3579,9 +3579,8 @@ impl<'a> Lowerer<'a> {
         matches!(end, Ty::Bound(_))
     }
 
-    /// Whether an open-ended range with a cut end of `d` walks cuts: always in
-    /// v0.3 unless a piece (`Range<V>`) is expected (R04.4.10); in v0.2 only
-    /// where cuts are expected.
+    /// Whether an open-ended range with a cut end of `d` walks cuts: always,
+    /// unless a piece (`Range<V>`) is expected (R04.4.10).
     fn cut_range_wanted(expected: Option<&Ty>, d: DomainId) -> bool {
         let wants = |want: fn(&Ty, DomainId) -> bool| matches!(expected, Some(Ty::Range(inner)) if want(inner, d));
         !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
