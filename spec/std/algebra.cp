@@ -440,7 +440,8 @@ pub enum Ordering:
 /// example: `cmp(1, 2) == Ordering.Less`
 /// example: `cmp("b", "a") == Ordering.Greater`
 /// example: `cmp(3, 3) == Ordering.Equal`
-pub fn cmp<T: Ord>(a: T, b: T) -> Ordering = todo
+pub fn cmp<T: Ord>(a: T, b: T) -> Ordering =
+    if a < b: Ordering.Less elif b < a: Ordering.Greater else: Ordering.Equal
 
 /// O(1). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.
 /// `add` is a commutative monoid, `mul` a monoid that distributes over it; zero and one are
