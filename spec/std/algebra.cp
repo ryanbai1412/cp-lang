@@ -16,9 +16,16 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
-    /// What a structure was handed, as a monoid: a `Monoid` is itself, and a bare operator
-    /// brings its identity (`+ ^ | gcd`: zero, `*`: one, `&`: all bits, `min` / `max`: the far
-    /// end of `T`, which is `None` for a `?T`). Any other fn needs `Monoid(id, op)`.
+    /// The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its
+    /// identity: zero for `+`, `^`, `|` and `gcd`, one for `*`, all bits for `&`, and for `min` /
+    /// `max` the far end of `T` (`None` on a `?T`). Any other fn has no known identity and needs
+    /// `Monoid(id, op)`.
+    ///
+    /// cost: O(1)
+    /// traps: never (an operator without a known identity is a compile-time error)
+    /// example: `Monoid<Int>.of(+).id == 0`
+    /// example: `Monoid<Int>.of(*).op(3, 4) == 12`
+    /// example: `Monoid<?Int>.of(min).id == None`
     pub fn of<M>(m: M) -> Monoid<T> = todo
 
 fn same<A, B>(a: A, b: B) -> Bool = todo
@@ -45,9 +52,15 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
-    /// Construct a lazy `Action<T, F>` from `id`, `compose`, `apply`, and monoid `over`. O(1).
-    /// `id`, `compose` and `over` default to `F`'s zero, `F`'s `+` and `T`'s `+`, so an additive
-    /// tag on a summable value needs only `Action(apply: (d, x, span) => ...)`.
+    /// A lazy action of tags `F` on values `T` folded with `over`. `id` is the no-op tag,
+    /// `compose(new_f, old_f)` applies `old_f` first and then `new_f`, and `apply(f, val, span)`
+    /// is the folded value of `span` leaves, `val`, after `f`. `id`, `compose` and `over` default
+    /// to `F.zero`, `F`'s `+` and `T`'s `+`, so an additive tag on sums needs only `apply`.
+    ///
+    /// cost: O(1)
+    /// traps: never (laws are not checked here; use `laws_hold`)
+    /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).apply(2, 10, 3) == 16`
+    /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).compose(2, 5) == 7`
     pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F> = todo
 
 /// `x` with its order reversed. Build it with `desc(x)`.
@@ -59,8 +72,13 @@ impl Ord for Desc<T>:
 impl Show for Desc<T>:
     fn show(a) = todo
 
-/// `x` ordered the other way round, for one part of a sort key or a heap entry:
-/// `sort(mut es, by: e => (e.w, desc(e.name)))`, `MinHeap<(Int, Desc<V>)>()`.
+/// `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when
+/// `b < a`. For one component of a sort key or a heap entry; shows as `x` does.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `[3, 1, 2].max(by: x => desc(x)) == Some(1)`
+/// example: `(desc(3) < desc(5)) == false`
 pub fn desc<T>(x: T) -> Desc<T> = todo
 
 /// A folded value that can be read from the other end. A fold along a tree path walks some
@@ -69,7 +87,15 @@ pub fn desc<T>(x: T) -> Desc<T> = todo
 pub trait Reversible:
     fn rev(self) -> Self = todo
 
-/// `xs` folded left to right with `m`. Works on any `Seq`. O(n).
+/// `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m`
+/// sees elements in sequence order. `m` is anything `Monoid.of` accepts.
+///
+/// cost: O(n) calls of `op`
+/// empty: the identity of `m`
+/// traps: never (an `m` without a known identity is a compile-time error)
+/// example: `fold(+, [1, 2, 3]) == 6`
+/// example: `fold(+, 0..0) == 0`
+/// example: `fold(Affine.monoid(), [Affine(2, 0), Affine(1, 1)]).eval(5) == 11`
 pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T = todo
 
 /// Maximum non-empty subarray summary (Kadane monoid).
@@ -77,22 +103,52 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T = todo
 /// `s.scale(k)` scales every element by non-negative `k` in O(1).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
 pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
-    /// Identity element representing an empty subarray. O(1).
+    /// The summary of no elements: the identity of `join`. It has no best subarray.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxSub.empty().try_best == None`
     pub fn empty() -> MaxSub = todo
 
-    /// Single-element summary for `v`. O(1).
+    /// The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxSub.of(-3).try_best == Some(-3)`
     pub fn of(v: Int) -> MaxSub = todo
 
-    /// Concatenate two adjacent summaries left to right. O(1).
+    /// The summary of `a`'s elements followed by `b`'s (the same as `a + b`). Associative, with
+    /// `MaxSub.empty()` as identity; the best subarray may cross the seam (`a.suf + b.pre`).
+    ///
+    /// cost: O(1)
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `MaxSub.join(MaxSub.of(2), MaxSub.of(-1)).try_best == Some(2)`
+    /// example: `fold(MaxSub.monoid(), [MaxSub.of(v) for v in [2, -5, 3, 1]]).try_best == Some(4)`
     pub fn join(a: MaxSub, b: MaxSub) -> MaxSub = todo
 
-    /// Scale every underlying value by `k >= 0`. O(1).
+    /// The summary of the same elements each multiplied by `k` (the same as `self * k`). Exact
+    /// because every maximum scales by a non-negative factor; the empty summary stays empty.
+    ///
+    /// cost: O(1)
+    /// traps: when `k < 0`
+    /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
+    /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
     pub fn scale(self, k: Int) -> MaxSub = todo
 
-    /// Best non-empty subarray sum, or `None` when empty. O(1).
+    /// The largest sum of a non-empty contiguous run of the summarized elements, or `None` for
+    /// the empty summary.
+    ///
+    /// cost: O(1)
+    /// empty: `None`
+    /// traps: never
+    /// example: `MaxSub.join(MaxSub.of(-1), MaxSub.of(-2)).try_best == Some(-1)`
     pub @get fn try_best(self) -> ?Int = todo
 
-    /// The `Monoid<MaxSub>` value for `SegTree` and `fold`. O(1).
+    /// `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxSub.monoid().id.try_best == None`
     pub fn monoid() -> Monoid<MaxSub> = todo
 
 impl Add for MaxSub:
@@ -117,10 +173,22 @@ pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
     law ident(a: T) = op(id, a) == a and op(a, id) == a
     law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
 
-    /// O(1). Lift a `Group` or bare operator (`+`, `^`) to a `Group<T>`.
+    /// The group a structure was handed: a `Group` is itself, `+` brings zero and negation, `^`
+    /// brings zero and itself as inverse. Any other fn needs `Group(id, op, inv)`.
+    ///
+    /// cost: O(1)
+    /// traps: never (an operator without a known inverse is a compile-time error)
+    /// example: `Group<Int>.of(+).inv(5) == -5`
+    /// example: `Group<Int>.of(^).inv(5) == 5`
     pub fn of<G>(g: G) -> Group<T> = todo
 
-/// O(1). Build an `Action<T, F>` whose `apply(f, val)` does not depend on node span.
+/// An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`. Right
+/// for tags on idempotent folds such as `min`, `max`, `gcd`, where `n` changed leaves fold to
+/// one changed value.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `point_action(id: 0, compose: (a, b) => a + b, apply: (f, x) => x + f, over: max).apply(3, 10, 4) == 13`
 pub fn point_action<T, F, M>(
     id: F,
     compose: (F, F) -> F,
@@ -131,48 +199,109 @@ pub fn point_action<T, F, M>(
 /// O(1) per merge. Minimum value together with its multiplicity, for counting zeros or
 /// minimum-covered cells under range add (`AddMinCount`).
 pub struct MinCount<T>(val: T, count: Int):
-    /// O(1). Single-element summary for `v`.
+    /// The summary of the single element `v`: value `v`, count 1.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MinCount.of(5).count == 1`
     pub fn of(v: T) -> MinCount<T> = todo
 
-    /// O(1). Combine two summaries, summing counts when minima tie.
+    /// The smaller value with its count; on equal values, the value with both counts summed.
+    ///
+    /// cost: O(1)
+    /// ties: equal values merge; their counts add
+    /// traps: never
+    /// example: `MinCount.join(MinCount.of(2), MinCount.of(2)).count == 2`
+    /// example: `MinCount.join(MinCount(1, 3), MinCount(2, 5)).val == 1`
     pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T> = todo
 
-    /// O(1). The `Monoid<MinCount<T>>` value for `SegTree`.
+    /// `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`)
+    /// and count 0, for `SegTree` and `fold`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `fold(MinCount.monoid(), [MinCount.of(v) for v in [3, 1, 1]]).count == 2`
     pub fn monoid() -> Monoid<MinCount<T>> = todo
 
 /// O(1) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
 pub struct MaxCount<T>(val: T, count: Int):
-    /// O(1). Single-element summary for `v`.
+    /// The summary of the single element `v`: value `v`, count 1.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxCount.of(5).count == 1`
     pub fn of(v: T) -> MaxCount<T> = todo
 
-    /// O(1). Combine two summaries, summing counts when maxima tie.
+    /// The larger value with its count; on equal values, the value with both counts summed.
+    ///
+    /// cost: O(1)
+    /// ties: equal values merge; their counts add
+    /// traps: never
+    /// example: `MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)).count == 3`
     pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T> = todo
 
-    /// O(1). The `Monoid<MaxCount<T>>` value for `SegTree`.
+    /// `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`)
+    /// and count 0, for `SegTree` and `fold`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
     pub fn monoid() -> Monoid<MaxCount<T>> = todo
 
 /// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmin folds.
 pub struct MinIdx<D, T>(val: T, at: D):
-    /// O(1). Combine two `(val, at)` entries, keeping the smaller value (leftmost on tie).
+    /// The entry with the smaller `val`; on equal values, the left operand `a`, so a left-to-right
+    /// fold returns the first minimum.
+    ///
+    /// cost: O(1)
+    /// ties: the left operand
+    /// traps: never
+    /// example: `MinIdx.join(MinIdx(4, 0), MinIdx(4, 1)).at == 0`
+    /// example: `MinIdx.join(MinIdx(5, 0), MinIdx(4, 1)).at == 1`
     pub fn join(a: MinIdx<D, T>, b: MinIdx<D, T>) -> MinIdx<D, T> = todo
 
 /// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmax folds.
 pub struct MaxIdx<D, T>(val: T, at: D):
-    /// O(1). Combine two `(val, at)` entries, keeping the larger value (leftmost on tie).
+    /// The entry with the larger `val`; on equal values, the left operand `a`, so a left-to-right
+    /// fold returns the first maximum.
+    ///
+    /// cost: O(1)
+    /// ties: the left operand
+    /// traps: never
+    /// example: `MaxIdx.join(MaxIdx(4, 2), MaxIdx(4, 1)).at == 2`
     pub fn join(a: MaxIdx<D, T>, b: MaxIdx<D, T>) -> MaxIdx<D, T> = todo
 
 /// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
 pub struct Affine<T>(a: T, b: T):
-    /// O(1). Identity map `x -> x`.
+    /// The identity map `x -> 1 * x + 0`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Affine<Int>.id().eval(7) == 7`
     pub fn id() -> Affine<T> = todo
 
-    /// O(1). Evaluate `a * x + b`.
+    /// `a * x + b`.
+    ///
+    /// cost: O(1)
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `Affine(2, 3).eval(5) == 13`
     pub fn eval(self, x: T) -> T = todo
 
-    /// O(1). Compose `g` after `f`: `x -> g.eval(f.eval(x))`.
+    /// `f` first, then `g`: the map `x -> g.eval(f.eval(x))`, which is
+    /// `Affine(g.a * f.a, g.a * f.b + g.b)`.
+    ///
+    /// cost: O(1)
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `Affine.then(Affine(2, 0), Affine(1, 1)).eval(5) == 11`
+    /// example: `Affine.then(Affine(1, 1), Affine(2, 0)).eval(5) == 12`
     pub fn then(f: Affine<T>, g: Affine<T>) -> Affine<T> = todo
 
-    /// O(1). The left-to-right composition `Monoid<Affine<T>>` (`SegTree` point-set + range-composite).
+    /// `Monoid(Affine.id(), Affine.then)`: a fold applies the leftmost map first, so a segment tree
+    /// over maps answers "push `x` through positions `l..r` in order".
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `fold(Affine.monoid(), [Affine(1, 1), Affine(2, 0)]).eval(5) == 12`
     pub fn monoid() -> Monoid<Affine<T>> = todo
 
 @test
@@ -207,7 +336,13 @@ pub enum Ordering:
     Equal
     Greater
 
-/// O(1). Three-way comparison of `a` and `b`.
+/// The three-way comparison of `a` and `b` under `Ord`.
+///
+/// cost: O(1) plus one or two comparisons of `T`
+/// traps: never
+/// example: `cmp(1, 2) == Ordering.Less`
+/// example: `cmp("b", "a") == Ordering.Greater`
+/// example: `cmp(3, 3) == Ordering.Equal`
 pub fn cmp<T: Ord>(a: T, b: T) -> Ordering = todo
 
 /// O(1). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.
@@ -239,8 +374,13 @@ pub trait Idempotent<T>: Op<T>
 /// Law: `op(a, b)` is `a` or `b`. Lets sliding folds use a monotone deque.
 pub trait Selective<T>: Idempotent<T>
 
-/// One operation per component of a tuple or record: `each(+, max)`,
-/// `each(sum: +, hi: max)`. Keeps the laws every component shares. O(1).
+/// One operation per component of a tuple (positional) or record (named): `op((a0, a1),
+/// (b0, b1)) == (m0(a0, b0), m1(a1, b1))`. The identity is the tuple of identities, and the
+/// result keeps only the laws every component has.
+///
+/// cost: O(1) to build; each call costs the sum of its components
+/// traps: never
+/// example: `fold(each(+, max), [(1, 5), (2, 3)]) == (3, 5)`
 pub fn each<Ms>(..ms: Ms) -> Ms = todo
 
 /// Stock action: add a tag to every element. On `+` a span of `n` changes by `f * n`; on
