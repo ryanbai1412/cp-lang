@@ -116,16 +116,23 @@ summary needs a hand-written struct unless it carries real logic.
 
 | Form | Meaning | Laws kept |
 |---|---|---|
-| `(+, max)` | a tuple of ops is one op on tuples, field by field | those all parts share |
+| `each(+, max)`, `each(s: +, hi: max)` | one op per component, on tuples or records | those all parts share |
 | `op.rev()` | `(a, b) => op(b, a)` | all |
 | `op.opt()` | the op on `?T`, `none` as identity: any `Op` becomes a `Monoid` | all |
 | `Monoid(id:, op:)`, `Group(id:, op:, inv:)` | from lambdas | none until stated |
 | `.commutative()`, `.idempotent()` | state a law on an inline value | adds it |
 
 ```python
-var st = SegTree((+, max, min), a.map(x => (x, x, x)))   # sum, max, min at once
+var st = SegTree(each(+, max, min), a.map(x => (x, x, x)))   # sum, max, min at once
 let (s, hi, lo) = st.fold(l..r)
+
+var nm = SegTree(each(sum: +, hi: max), a.map(x => (sum: x, hi: x)))
+nm.fold(l..r).hi
 ```
+
+`each` is named, not a bare tuple `(+, max)`, because `(max, +)` already
+reads as a semiring in CP writing. A tuple of ops is a compile error that
+suggests `each(...)` or `Semiring(...)`, so neither meaning is implied.
 
 **Summaries with real logic stay named library types**, each one an `Add`
 (or `Op`) impl plus a constructor from one element: `MaxSub` (best
@@ -192,7 +199,9 @@ with no index trick (this replaces `MinIdx`/`MaxIdx`).
 `Heap<T>(by:)` pops the smallest key; `Heap(by: desc)` pops the largest.
 This replaces the `MinHeap`/`MaxHeap` pairs (and the erasable, indexed and
 meldable pairs) with one type each: `Heap`, `ErasableHeap`, `IndexedHeap`,
-`MeldHeap`. `MinMaxHeap` stays, since it pops both ends.
+`MeldHeap`. `MinMaxHeap` stays, since it pops both ends. `MinHeap<T>` and
+`MaxHeap<T>` remain as type aliases for `Heap<T>()` and `Heap<T>(by: desc)`,
+since they are what everyone searches for; `cpl fmt` leaves them alone.
 
 ### Dijkstra: a monoid and an order
 
@@ -352,6 +361,7 @@ operations support it:
 | static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else disjoint |
 | static prefix / range fold | `Prefix(op, a)` | O(n) | O(1) | `Group`: `fold(r)` by difference; else `prefix` only |
 | dynamic prefix / range fold | `Fenwick(op, a)` | O(n) | O(log n) | needs `Commutative`; `Group`: `fold(r)` |
+| range add, range sum | `Fenwick(+, a, act: add)` | O(n) | O(log n) | needs a commutative `Group` and a span-linear action; two arrays |
 | sliding window fold | `Window(op)` | | O(1) amortized | `Selective`: monotone deque; else two stacks |
 | offline range apply | `Diff(op)` | | O(1) per add, O(n) finish | needs `Group` |
 | old versions | `PersistentSegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
@@ -362,6 +372,8 @@ operations support it:
 - `LazySegTree` and `DualSegTree` become `SegTree` with `act:`.
 - `DisjointSparseTable` becomes `SparseTable`.
 - `GroupFenwick`, `PrefixFenwick` and `XorFenwick` become `Fenwick`.
+- `RangeFenwick` becomes `Fenwick(+, a, act: add)`. Any other `act:` on a
+  `Fenwick` is an error that names the requirement and suggests `SegTree`.
 - `MonoDeque`, `WindowFold` and `sliding_fold` become `Window`.
 - `SparseSegTree` and `SparseLazySegTree` become `SegTree(over:)`.
 - `AddMax` and the other combined action names become `act: add` and the
@@ -584,14 +596,9 @@ for i in I:
 
 ## Open
 
-1. **Range add, range sum on a `Fenwick`.** Two Fenwicks implement it today
-   (`RangeFenwick`). It could be `Fenwick(+, act: add)`, which is the same
-   pattern as `SegTree`, or it could stay a named variant.
-2. **Heap names.** `Heap(by: desc)` reads well, but `MaxHeap` is what
-   everyone searches for. A doc alias (search and hover find it) costs
-   nothing; a real second name would break "one way".
-3. **`convolve(on:)` for `subset`.** `subset` is not an operator, so it is
+1. **`convolve(on:)` for `subset`.** `subset` is not an operator, so it is
    a named index op the library defines. That is fine as long as user
    libraries can define more (they can: it's a value with a transform impl).
-4. **Tuple-of-ops syntax.** `(+, max)` as one op reads naturally but makes
-   a tuple of fn values mean two things. The alternative is `both(+, max)`.
+
+Settled in review: `Fenwick(+, a, act: add)` for range add/sum, `MaxHeap`
+as an alias, `each(...)` for products of ops.
