@@ -427,6 +427,65 @@ impl<'a> Lowerer<'a> {
                 params,
                 body,
             } => self.table(domains, params, body, inner_hint, span),
+            ast::ExprKind::TableFill { domain, value } => {
+                let fill = self.expr(value, None);
+                let dim = match &domain.kind {
+                    ast::ExprKind::Field { base, name } if name.text == "keys" => {
+                        let b = self.expr(base, None);
+                        let lo = match &b.kind {
+                            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
+                                args.get(1).and_then(|e| match &e.kind {
+                                    ExprKind::Int(v) => Some(*v),
+                                    _ => None,
+                                }).unwrap_or(0)
+                            }
+                            ExprKind::Local(slot) => self.cx.view_lo.get(slot).copied().unwrap_or(0),
+                            ExprKind::Global(gid) => self.global_view_lo.get(gid).copied().unwrap_or(0),
+                            _ => 0,
+                        };
+                        let len = self.len_of(b, span);
+                        if lo == 0 {
+                            DimSpec::Int(Box::new(len))
+                        } else {
+                            DimSpec::IntFrom(lo, Box::new(len))
+                        }
+                    }
+                    ast::ExprKind::Range { lo, hi, inclusive, .. } => {
+                        let lo_e = lo
+                            .as_ref()
+                            .map(|l| self.expr(l, None))
+                            .unwrap_or_else(|| self.int_lit(0, span));
+                        let hi_e = hi
+                            .as_ref()
+                            .map(|h| self.expr(h, None))
+                            .unwrap_or_else(|| self.int_lit(0, span));
+                        let lo_const = match &lo_e.kind {
+                            ExprKind::Int(v) => *v,
+                            _ => 0,
+                        };
+                        let diff = self.mk(
+                            ExprKind::Binary(BinOp::Sub, Box::new(hi_e), Box::new(lo_e)),
+                            Ty::Int,
+                            span,
+                        );
+                        let len = if *inclusive { self.int_add(diff, 1) } else { diff };
+                        if lo_const == 0 {
+                            DimSpec::Int(Box::new(len))
+                        } else {
+                            DimSpec::IntFrom(lo_const, Box::new(len))
+                        }
+                    }
+                    _ => {
+                        let d = self.expr(domain, None);
+                        DimSpec::Int(Box::new(d))
+                    }
+                };
+                let ty = Ty::Array {
+                    dims: vec![dim.dim()],
+                    elem: Box::new(fill.ty.clone()),
+                };
+                self.mk(ExprKind::Fill(vec![dim], Some(Box::new(fill))), ty, span)
+            }
             ast::ExprKind::Lambda {
                 params,
                 param_tys,

@@ -254,6 +254,10 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
             }
             walk_expr(body, v);
         }
+        ExprKind::TableFill { domain, value } => {
+            walk_expr(domain, v);
+            walk_expr(value, v);
+        }
         ExprKind::Block(block) => walk_block(block, v),
         ExprKind::If {
             branches,

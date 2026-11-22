@@ -1290,7 +1290,8 @@ impl<'a> Parser<'a> {
             return ExprKind::Map(entries);
         }
         let mut items = vec![first];
-        if self.eat(T::Comma) {
+        let had_comma = self.eat(T::Comma);
+        if had_comma {
             items.extend(self.comma_list(T::RBracket, "the list", Self::expr));
         } else {
             self.expect(T::RBracket, "`,` or `]` in the list");
@@ -1298,6 +1299,27 @@ impl<'a> Parser<'a> {
                 self.skip_to(T::RBracket);
                 self.eat(T::RBracket);
             }
+        }
+        if !had_comma
+            && items.len() == 1
+            && (matches!(
+                self.peek(),
+                T::Int
+                    | T::Float
+                    | T::Str
+                    | T::Char
+                    | T::True
+                    | T::False
+                    | T::None
+                    | T::Minus
+                    | T::LParen
+            ) || (self.at(T::Ident) && !self.at_ident("where")))
+        {
+            let value = self.expr();
+            return ExprKind::TableFill {
+                domain: Box::new(items.into_iter().next().unwrap()),
+                value: Box::new(value),
+            };
         }
         ExprKind::List(items)
     }

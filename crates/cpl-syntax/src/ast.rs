@@ -396,6 +396,11 @@ pub enum ExprKind {
         params: Vec<Pattern>,
         body: Box<Expr>,
     },
+    /// `[w.keys]0` or `[0..n]0`: table over a key space filled with a constant value.
+    TableFill {
+        domain: Box<Expr>,
+        value: Box<Expr>,
+    },
     Lambda {
         params: Vec<Pattern>,
         param_tys: Vec<Option<Type>>,

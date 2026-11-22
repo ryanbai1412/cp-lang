@@ -420,6 +420,21 @@ impl<'a> Checker<'a> {
                     elem: Box::new(elem),
                 }
             }
+            ExprKind::TableFill { domain, value } => {
+                let dom_ty = self.infer(domain);
+                let idx_ty = match dom_ty {
+                    Ty::Named { ref name, ref args } if name == "Range" && args.len() == 1 => {
+                        args[0].clone()
+                    }
+                    Ty::Unknown | Ty::Error => Ty::Int,
+                    other => other,
+                };
+                let elem = self.infer(value).widen();
+                Ty::Array {
+                    index: vec![idx_ty],
+                    elem: Box::new(elem),
+                }
+            }
             ExprKind::Lambda {
                 params,
                 param_tys,
@@ -2137,6 +2152,16 @@ impl<'a> Checker<'a> {
                         args[1].clone()
                     };
                     return Ty::Named { name: "List".into(), args: vec![elem] };
+                }
+                if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str") {
+                    return Ty::Named { name: "Range".into(), args: vec![Ty::Int] };
+                }
+            }
+            if name.text == "keys" {
+                if let Ty::Array { index, .. } = &base_ty {
+                    if let Some(first) = index.first() {
+                        return Ty::Named { name: "Range".into(), args: vec![first.clone()] };
+                    }
                 }
             }
             if let Ty::Array { index, elem } = &base_ty {

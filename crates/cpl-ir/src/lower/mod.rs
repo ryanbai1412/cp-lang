@@ -533,6 +533,7 @@ struct FnCx {
     local_specs: HashMap<Slot, ast::Type>,
     /// Declared integer range bounds for local variables, parameters, and range-typed arrays/lists.
     local_ranges: HashMap<Slot, RangeInfo>,
+    view_lo: HashMap<Slot, i64>,
     ret: Option<Ty>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
@@ -669,6 +670,7 @@ struct Lowerer<'a> {
 
     globals: Vec<Global>,
     mut_globals: HashSet<GlobalId>,
+    global_view_lo: HashMap<GlobalId, i64>,
     mut_slice_inits: HashSet<Span>,
     /// Annotated array `Spec`s for top-level globals (for `a.inverse()` on bounded-range elements).
     global_specs: HashMap<GlobalId, ast::Type>,
@@ -798,6 +800,7 @@ impl<'a> Lowerer<'a> {
             gen_aliases: Vec::new(),
             globals: Vec::new(),
             mut_globals: HashSet::new(),
+            global_view_lo: HashMap::new(),
             mut_slice_inits: HashSet::new(),
             global_specs: HashMap::new(),
             global_bounds: HashMap::new(),
@@ -3192,6 +3195,15 @@ impl<'a> Lowerer<'a> {
     /// Declares `name` with the value `init`: a global at the top level of
     /// the file, a local anywhere else.
     fn declare(&mut self, name: &str, init: Expr, mutable: bool, out: &mut Vec<Stmt>) {
+        let slice_lo = match &init.kind {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
+                args.get(1).and_then(|e| match &e.kind {
+                    ExprKind::Int(v) => Some(*v),
+                    _ => None,
+                })
+            }
+            _ => None,
+        };
         if self.cx.is_main && self.cx.scopes.len() == 1 {
             self.cx.recipes.remove(name);
             let id = self.globals.len();
@@ -3204,6 +3216,9 @@ impl<'a> Lowerer<'a> {
             if mutable {
                 self.mut_globals.insert(id);
             }
+            if let Some(lo) = slice_lo {
+                self.global_view_lo.insert(id, lo);
+            }
             let place = Place {
                 kind: PlaceKind::Global(id),
                 ty: init.ty.clone(),
@@ -3214,6 +3229,9 @@ impl<'a> Lowerer<'a> {
             let slot = self.new_slot(name, init.ty.clone());
             if mutable {
                 self.cx.mut_slots.insert(slot);
+            }
+            if let Some(lo) = slice_lo {
+                self.cx.view_lo.insert(slot, lo);
             }
             self.cx
                 .scopes
