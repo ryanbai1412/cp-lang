@@ -163,6 +163,8 @@ def hover_text(reply):
 def needs_storage(first_line):
     _, _, ty = first_line.partition(": ")
     ty = ty.strip()
+    if first_line.startswith("fn "):
+        return False
     return ty.startswith("[") or ty.startswith("?") or first_line.startswith("struct ")
 
 
