@@ -3915,7 +3915,9 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // If this fn is a generator (`-> yields T`), allocate the output `List<T>` accumulator.
+        // If this fn is a block-bodied generator (`-> yields T`), allocate the output `List<T>` accumulator.
+        // Expression-bodied `-> yields T = expr` returns the sequence expression directly.
+        let is_gen = is_gen && matches!(decl.body, ast::FnBody::Block(_));
         if is_gen {
             let list_ty = self.cx.ret.clone().unwrap_or_else(|| Ty::list(Ty::Error));
             let elem_ty = match &list_ty {

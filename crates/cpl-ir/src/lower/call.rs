@@ -225,6 +225,18 @@ impl<'a> Lowerer<'a> {
                 }
                 match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
+                    Some(Sym::GenFn(gfid))
+                        if matches!(name.as_str(), "min" | "max")
+                            && args.len() >= 2
+                            && args.iter().all(|a| a.name.is_none())
+                            && self.gen_fns[gfid]
+                                .decl
+                                .params
+                                .first()
+                                .is_some_and(|p| p.name.text == "self") =>
+                    {
+                        self.min_max(name == "max", args, span)
+                    }
                     Some(Sym::GenFn(gfid)) => {
                         self.call_hint = hint.cloned();
                         self.call_gen_fn(gfid, Vec::new(), None, args, span)
