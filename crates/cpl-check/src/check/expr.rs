@@ -675,6 +675,7 @@ impl<'a> Checker<'a> {
                 }
                 ty
             }
+            ExprKind::HasBound { .. } => Ty::Bool,
             ExprKind::Without { base, removed } => {
                 let base_ty = self.infer(base);
                 let rem_names: Vec<String> = removed.iter().map(|n| n.text.clone()).collect();

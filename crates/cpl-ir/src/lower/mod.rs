@@ -1450,11 +1450,28 @@ impl<'a> Lowerer<'a> {
                                     .get(abs.start as usize..abs.end as usize)?;
                                 Some(raw.trim_matches('"').to_string())
                             });
+                        let fields: Vec<String> = body
+                            .stmts
+                            .iter()
+                            .filter_map(|s| match &s.kind {
+                                ast::StmtKind::Let {
+                                    pat: ast::Pattern {
+                                        kind: ast::PatternKind::Name(fname),
+                                        ..
+                                    },
+                                    ty: Some(_),
+                                    init: None,
+                                    ..
+                                } => Some(fname.clone()),
+                                _ => None,
+                            })
+                            .collect();
                         self.traits.push(TraitInfo {
                             mod_id: m,
                             offset,
                             name: name.text.clone(),
                             methods,
+                            fields,
                             unimplemented,
                         });
                         self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));

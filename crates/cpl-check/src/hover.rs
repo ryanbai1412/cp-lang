@@ -542,7 +542,9 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             out += &cost_lines(ty, lookup);
             out
         }
-        Def::Trait { supers, methods } => {
+        Def::Trait {
+            supers, methods, ..
+        } => {
             let mut out = if supers.is_empty() {
                 format!("trait {name}")
             } else {

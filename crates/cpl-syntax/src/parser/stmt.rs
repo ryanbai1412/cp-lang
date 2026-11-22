@@ -1270,6 +1270,21 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn cond(&mut self) -> Cond {
+        if self.at(T::Ident)
+            && self.peek_n(1) == T::Colon
+            && self.peek_n(2) == T::Ident
+            && self.peek_n(3) == T::Colon
+        {
+            let start = self.start();
+            let param = self.name();
+            self.bump();
+            let trait_name = self.name();
+            let span = self.span_from(start);
+            return Cond::Expr(Expr {
+                kind: ExprKind::HasBound { param, trait_name },
+                span,
+            });
+        }
         if self.at(T::Let) {
             self.bump();
             return self.let_cond();

@@ -28,6 +28,7 @@ pub enum Def {
         bounds: Vec<(String, Vec<String>)>,
         lends: bool,
         row_bounds: Vec<(String, Vec<(String, Ty)>)>,
+        trait_bounds: Vec<(String, String)>,
     },
     Struct {
         generics: Vec<String>,
@@ -68,6 +69,7 @@ pub enum Def {
         /// `trait Seq: Index + Ord` lists `Index` and `Ord`.
         supers: Vec<String>,
         methods: Vec<TraitMethod>,
+        fields: Vec<(String, Ty)>,
     },
     /// `impl Add for Pt` or `impl Pt`, under the name [`impl_name`] gives it.
     Impl {
@@ -209,12 +211,25 @@ impl Def {
     /// (`let a: [V1..=n = read()`), which nothing downstream can trust.
     pub fn recovered(self, annotation_broken: bool) -> Def {
         match self {
+<<<<<<< HEAD
             Def::Fn { generics, bounds, lends, row_bounds, .. } => Def::Fn {
+||||||| parent of e5e4bba (syntax: support field traits and if T: Trait conditional bounds)
+            Def::Fn { generics, bounds, row_bounds, .. } => Def::Fn {
+=======
+            Def::Fn {
+                generics,
+                bounds,
+                row_bounds,
+                trait_bounds,
+                ..
+            } => Def::Fn {
+>>>>>>> e5e4bba (syntax: support field traits and if T: Trait conditional bounds)
                 ty: Ty::Error,
                 generics,
                 bounds,
                 lends,
                 row_bounds,
+                trait_bounds,
             },
             Def::Value { mutable, keyword, generics, settled, .. } if annotation_broken => Def::Value {
                 ty: Ty::Error,

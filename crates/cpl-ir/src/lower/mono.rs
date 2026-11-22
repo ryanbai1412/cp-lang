@@ -87,6 +87,7 @@ pub(super) struct TraitInfo<'a> {
     pub offset: u32,
     pub name: String,
     pub methods: Vec<&'a ast::FnDecl>,
+    pub fields: Vec<String>,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
     /// type with no `impl` of it.
     pub unimplemented: Option<String>,
@@ -1986,7 +1987,20 @@ impl<'a> Lowerer<'a> {
                     "Seq" | "Keyed" | "Sized" => ty.is_seq(),
                     "Indexed" | "Bidir" => ty.is_indexed(),
                     "IndexedMut" => ty.is_indexed_mut(),
-                    name => self.implements(ty, name),
+                    name => {
+                        self.implements(ty, name)
+                            || match (ty, self.get_sym(name)) {
+                                (Ty::Record(rfields), Some(Sym::Trait(tid)))
+                                    if !self.traits[tid].fields.is_empty() =>
+                                {
+                                    self.traits[tid]
+                                        .fields
+                                        .iter()
+                                        .all(|req| rfields.iter().any(|(rn, _)| rn == req))
+                                }
+                                _ => false,
+                            }
+                    }
                 };
                 if !ok {
                     self.error(

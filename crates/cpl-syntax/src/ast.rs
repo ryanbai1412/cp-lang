@@ -423,6 +423,11 @@ pub enum ExprKind {
         base: Box<Expr>,
         removed: Vec<Name>,
     },
+    /// `if T: Trait:` compile-time trait bound test.
+    HasBound {
+        param: Name,
+        trait_name: Name,
+    },
     /// Postfix `?`.
     Try(Box<Expr>),
     /// Postfix `!`: the value of an optional that is known to be there.

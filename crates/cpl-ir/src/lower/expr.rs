@@ -456,6 +456,22 @@ impl<'a> Lowerer<'a> {
                 }
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
+            ast::ExprKind::HasBound { param, trait_name } => {
+                let has = match self.gen_env.get(&param.text) {
+                    Some(GenArg::Ty(Ty::Struct(sid))) => {
+                        let sname = self.structs[*sid].def.name.as_str();
+                        self.impls.iter().any(|imp| {
+                            imp.trait_name.as_deref() == Some(trait_name.text.as_str())
+                                && matches!(
+                                    &imp.target.kind,
+                                    ast::TypeKind::Named { name, .. } if name.text == sname
+                                )
+                        })
+                    }
+                    _ => false,
+                };
+                self.mk(ExprKind::Bool(has), Ty::Bool, span)
+            }
             ast::ExprKind::Without { base, removed } => {
                 let b = self.expr(base, None);
                 match b.ty.clone() {

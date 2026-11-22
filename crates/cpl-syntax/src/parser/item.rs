@@ -792,7 +792,7 @@ impl<'a> Parser<'a> {
         let mut supers = Vec::new();
         if self.eat(T::LParen) {
             supers = self.comma_list(T::RParen, "the supertraits", Self::ty);
-        } else if self.at(T::Colon) && self.peek_n(1) == T::Ident {
+        } else if self.at(T::Colon) && self.peek_n(1) == T::Ident && self.peek_n(2) != T::Colon {
             self.bump();
             supers.push(self.ty());
             while self.eat(T::Plus) {
@@ -800,7 +800,46 @@ impl<'a> Parser<'a> {
             }
         }
         let was_in_trait = std::mem::replace(&mut self.in_trait, true);
-        let body = self.optional_body(&format!("`trait {}`", name.text));
+        let body = if self.at(T::Colon)
+            && self.peek_n(1) == T::Ident
+            && self.peek_n(2) == T::Colon
+        {
+            let bstart = self.start();
+            self.bump();
+            let mut stmts = Vec::new();
+            loop {
+                let fstart = self.start();
+                let fname = self.expect_name("a trait field name");
+                self.expect(T::Colon, "`:` and the field's type");
+                let fty = self.ty();
+                let fspan = self.span_from(fstart);
+                stmts.push(Stmt {
+                    kind: StmtKind::Let {
+                        mutable: false,
+                        guard: None,
+                        pat: Pattern {
+                            kind: PatternKind::Name(fname.text),
+                            span: fname.span,
+                        },
+                        ty: Some(fty),
+                        init: None,
+                        otherwise: None,
+                    },
+                    span: fspan,
+                    decorators: Vec::new(),
+                    public: false,
+                });
+                if !self.eat(T::Comma) || self.at_line_end() {
+                    break;
+                }
+            }
+            Block {
+                stmts,
+                span: self.span_from(bstart),
+            }
+        } else {
+            self.optional_body(&format!("`trait {}`", name.text))
+        };
         self.in_trait = was_in_trait;
         StmtKind::Trait {
             name,

@@ -1218,7 +1218,57 @@ impl<'a> Checker<'a> {
                     }
                 }
                 if let ExprKind::Name(fname) = &callee.kind {
-                    if let Some(Def::Fn { row_bounds, .. }) = self.global(fname).as_deref().cloned() {
+                    if let Some(Def::Fn {
+                        row_bounds,
+                        trait_bounds,
+                        ..
+                    }) = self.global(fname).as_deref().cloned()
+                    {
+                        for (param, tname) in trait_bounds {
+                            let Some(actual) = bindings.get(&param) else {
+                                continue;
+                            };
+                            let Some(Def::Trait { fields, .. }) =
+                                self.global(&tname).as_deref().cloned()
+                            else {
+                                continue;
+                            };
+                            if fields.is_empty() {
+                                continue;
+                            }
+                            match actual {
+                                Ty::Record(actual_fs) => {
+                                    for (req_name, req_ty) in &fields {
+                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                                        if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty)) {
+                                            self.error(
+                                                codes::MISSING_IMPL,
+                                                call.span,
+                                                format!(
+                                                    "record `{actual}` does not satisfy field trait `{tname}` (missing `{req_name}: {req_ty}`)"
+                                                ),
+                                            );
+                                        }
+                                    }
+                                }
+                                Ty::Named { name: sname, .. } => {
+                                    let has_impl = self.env.impls(sname).iter().any(|(tn, _)| {
+                                        tn.as_deref().and_then(|t| t.split('<').next())
+                                            == Some(tname.as_str())
+                                    });
+                                    if !has_impl {
+                                        self.error(
+                                            codes::MISSING_IMPL,
+                                            call.span,
+                                            format!(
+                                                "`{sname}` does not implement `{tname}`; structs must opt in with `impl {tname} for {sname}`"
+                                            ),
+                                        );
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
                         for (param, req_fields) in row_bounds {
                             let Some(actual) = bindings.get(&param) else {
                                 continue;

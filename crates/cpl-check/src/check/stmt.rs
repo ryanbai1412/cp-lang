@@ -2031,12 +2031,27 @@ impl<'a> Checker<'a> {
             .extend(f.generics.iter().map(|g| g.text.clone()));
         for b in &f.bounds {
             for t in &b.traits {
-                if let ast::TypeKind::Row(fields) = &t.kind {
-                    let resolved = fields
-                        .iter()
-                        .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
-                        .collect();
-                    self.row_bounds.insert(b.name.text.clone(), resolved);
+                match &t.kind {
+                    ast::TypeKind::Row(fields) => {
+                        let resolved = fields
+                            .iter()
+                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                            .collect();
+                        self.row_bounds.insert(b.name.text.clone(), resolved);
+                    }
+                    ast::TypeKind::Named { name: tname, .. } => {
+                        if let Some(Def::Trait { fields, .. }) =
+                            self.global(&tname.text).as_deref().cloned()
+                        {
+                            if !fields.is_empty() {
+                                self.row_bounds
+                                    .entry(b.name.text.clone())
+                                    .or_default()
+                                    .extend(fields);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

@@ -930,14 +930,21 @@ impl<'a> Checker<'a> {
                     ));
                 }
                 let mut row_bounds = Vec::new();
+                let mut trait_bounds = Vec::new();
                 for b in &f.bounds {
                     for t in &b.traits {
-                        if let TypeKind::Row(fields) = &t.kind {
-                            let resolved = fields
-                                .iter()
-                                .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
-                                .collect();
-                            row_bounds.push((b.name.text.clone(), resolved));
+                        match &t.kind {
+                            TypeKind::Row(fields) => {
+                                let resolved = fields
+                                    .iter()
+                                    .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                                    .collect();
+                                row_bounds.push((b.name.text.clone(), resolved));
+                            }
+                            TypeKind::Named { name: tname, .. } => {
+                                trait_bounds.push((b.name.text.clone(), tname.text.clone()));
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -949,6 +956,7 @@ impl<'a> Checker<'a> {
                         bounds: extract_bounds(&f.bounds),
                         lends: f.lends.is_some(),
                         row_bounds,
+                        trait_bounds,
                     },
                 ));
                 out
@@ -1090,12 +1098,29 @@ impl<'a> Checker<'a> {
                         _ => None,
                     })
                     .collect();
+                let fields: Vec<(String, Ty)> = body
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        S::Let {
+                            pat: ast::Pattern {
+                                kind: ast::PatternKind::Name(fname),
+                                ..
+                            },
+                            ty: Some(fty),
+                            init: None,
+                            ..
+                        } => Some((fname.clone(), self.resolve_type(fty))),
+                        _ => None,
+                    })
+                    .collect();
                 self.leave_body(scope);
                 vec![(
                     name.text.clone(),
                     Def::Trait {
                         supers: supers.iter().filter_map(type_head).collect(),
                         methods,
+                        fields,
                     },
                 )]
             }
