@@ -2626,7 +2626,65 @@ fn cover(mut cnt: List<Int>, mut len: List<Int>, ys: List<Int>, v: Int, l: Int, 
 /// traps: when an edge joins a vertex to itself, or an edge repeats
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0), Pt(0, 1)], [(0, 1), (1, 2), (2, 0)]) == [[0, 1, 2], [0, 2, 1]]`
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0)], [(0, 1)]) == [[0, 1]]`
-pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>> = todo
+@allow(unproven_list_index)
+pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
+    let keys = [k for k in pts.keys]
+    let faces = planar_face_cycles([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges])
+    [[keys[i] for i in f] for f in faces]
+
+@allow(unproven_list_index)
+fn planar_face_cycles(ps: List<Pt>, edges: List<(Int, Int)>) -> List<List<Int>>:
+    let n = ps.len
+    var adj: List<List<Int>> = [[] for _ in 0..n]
+    var norm: List<(Int, Int)> = []
+    for (u, v) in edges:
+        assert u != v, "`planar_faces` needs no edge from a vertex to itself"
+        norm.push((min(u, v), max(u, v)))
+        adj[u].push(v)
+        adj[v].push(u)
+    norm.sort()
+    for i in 1..norm.len: assert norm[i] != norm[i - 1], "`planar_faces` needs no repeated edge"
+    var off = List.filled(n + 1, 0)
+    for u in 0..n:
+        let o = ps[u]
+        adj[u].sort(by: v => ByAngle(ps[v] - o))
+        off[u + 1] = off[u] + adj[u].len
+    var half: List<(Int, Int, Int)> = []
+    for u in 0..n:
+        for j in 0..adj[u].len: half.push((u, adj[u][j], j))
+    half.sort()
+    var done = List.filled(off[n], false)
+    var faces: List<List<Int>> = []
+    for u in 0..n:
+        for j in 0..adj[u].len:
+            if done[off[u] + j]: continue
+            var cyc: List<Int> = []
+            var (a, k) = (u, j)
+            while not done[off[a] + k]:
+                done[off[a] + k] = true
+                cyc.push(a)
+                let b = adj[a][k]
+                var lo = 0
+                var hi = half.len
+                while lo < hi:
+                    let mid = (lo + hi) / 2
+                    if (half[mid].0, half[mid].1) < (b, a): lo = mid + 1 else: hi = mid
+                let back = half[lo].2
+                let deg = adj[b].len
+                a = b
+                k = (back + deg - 1) % deg
+            faces.push(least_rotation(cyc))
+    faces.sort()
+    faces
+
+@allow(unproven_list_index)
+fn least_rotation(cyc: List<Int>) -> List<Int>:
+    let m = cyc.len
+    var best: List<Int> = copy(cyc)
+    for s in 1..m:
+        let rot = [cyc[(s + i) % m] for i in 0..m]
+        if rot < best: best = rot
+    best
 
 /// For each query point, the index into `planar_faces(pts, edges)` of the bounded face that
 /// contains it, or `None` when it lies on an edge or vertex or in the unbounded region (offline
@@ -3750,3 +3808,38 @@ fn test_circles_union_area_against_analytic_and_grid():
             if inside: hits += 1
     let grid_area = F64(hits) * step * step
     assert close(exact, grid_area, eps: 0.05)
+
+@test
+fn planar_faces_cover_each_side_once_and_satisfy_euler():
+    for _ in 0..20:
+        let k = rand(1, 4)
+        let n = k * k
+        domain G = 0..n
+        let pts = [G] g => Pt(g.to_idx % k, g.to_idx / k)
+        var edges: List<(Int, Int)> = []
+        for i in 0..n:
+            if i % k + 1 < k and rand(0, 2) > 0: edges.push((i, i + 1))
+            if i + k < n and rand(0, 2) > 0: edges.push((i + k, i))
+        let faces = [[g.to_idx for g in f] for f in planar_faces(pts, [(G(u), G(v)) for (u, v) in edges])]
+        assert faces.map(f => f.len).sum() == 2 * edges.len
+        var sides: List<(Int, Int)> = []
+        for f in faces:
+            assert f[0] == f.min()
+            for i in 0..f.len: sides.push((f[i], f[(i + 1) % f.len]))
+        sides.sort()
+        var want: List<(Int, Int)> = []
+        for (u, v) in edges:
+            want.push((u, v))
+            want.push((v, u))
+        want.sort()
+        assert sides == want
+        var parent = [i for i in 0..k * k]
+        fn root(p: List<Int>, x: Int) -> Int = if p[x] == x: x else: root(p, p[x])
+        for (u, v) in edges: parent[root(parent, u)] = root(parent, v)
+        var used = List.filled(k * k, false)
+        for (u, v) in edges:
+            used[u] = true
+            used[v] = true
+        let verts = used.count(true)
+        let comps = [i for i in 0..k * k if used[i] and root(parent, i) == i].len
+        assert faces.len == edges.len - verts + 2 * comps
