@@ -7714,3 +7714,10 @@ main without a baseline entry, so the debt ratchet failed every main run.
 The edge fits A4 (`cpl-json` exists to be shared by every tool that speaks
 JSON) and adds no cycle, so the baseline takes it. Reverse: give `cpl-diag`
 its own printer and drop the edge with `--update crate_edges`.
+
+## 364. `cpl-diag` depends on `cpl-json` for the one diagnostic JSON shape (tools, 2026-11-23)
+`cpl check`, `fix` and `lint` (in cpl-cli) and `cpl watch` (in cpl-contest)
+print diagnostics in one JSON shape, so its serializer moved from
+cpl-cli's `json_out.rs` to `cpl_diag::json::diagnostic`. Both crates are
+leaves, with no dependencies of their own, so the edge adds no cycle and no
+weight. Reverse: move `json.rs` back into cpl-cli and give cpl-contest a copy.
