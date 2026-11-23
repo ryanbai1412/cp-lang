@@ -171,6 +171,25 @@ within that limit too, on the largest inputs the corpus has.
   the problem's limit. `KNOWN_OVER_MEMORY` lists the runs over it today,
   with causes, and only shrinks.
 
+### compiler-changes/R15: an edit re-checks only what depends on it
+
+After an edit, the `Database` re-parses only the items whose text changed
+and re-checks only those and the items whose facts changed under them.
+
+- Reason: the editor re-checks on every keystroke. A change that makes an
+  edit re-check the whole file, or std, makes diagnostics and hover lag
+  in a large solution, and the contestant stops trusting them (J4).
+- Example: changing a fn body re-checks that fn alone; adding a parameter
+  re-checks the fn and its callers; adding a comment above everything
+  re-checks nothing.
+- Enforced by: the `items_checked` counts in `crates/cpl-check/src/tests.rs`
+  (`editing_a_fn_body_rechecks_only_that_fn`,
+  `editing_a_signature_rechecks_exactly_its_users`,
+  `moving_items_reuses_everything_and_moves_their_diagnostics`,
+  `changing_a_bound_rechecks_what_depends_on_it`) and in
+  `crates/cpl-lsp/tests/latency.rs`, where a keystroke in a large program
+  re-checks one item.
+
 ## Before you land
 
 - [ ] R1: no std name, one-shape path or edition branch added.

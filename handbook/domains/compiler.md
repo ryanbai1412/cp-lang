@@ -58,8 +58,8 @@ The weakest areas today: the program generator covers only `Int` and list
 code, so checked and unchecked builds are compared on those only;
 std-bound violations are not measured; interpreted recursion takes about
 6 KB a call, so a deep DFS runs out of the judge's memory in `cpl run`;
-and incremental re-checking is not counted. The quality register below
-lists every quality with its check.
+and re-checking is counted only for edits within one file. The quality
+register below lists every quality with its check.
 
 ## Where to start
 
@@ -143,7 +143,7 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Runs are deterministic | output differences across repeated runs | `crates/cpl-interp/tests/checkpoint.rs`, trace goldens (`crates/cpl-cli/tests/trace_goldens.rs`) | partial |
 | Traps show source values | traps without values or span | `crates/cpl-cli/tests/runtime_errors.rs` | enforced |
 | Editor and CLI agree | files where LSP and `cpl check` differ | `crates/cpl-cli/tests/lsp_parity.rs` | enforced |
-| Incremental: an edit re-checks only what depends on it | items re-checked per edit | none | missing |
+| Incremental: an edit re-checks only what depends on it | items re-checked per edit | `items_checked` counts in `crates/cpl-check/src/tests.rs`; [compiler-changes/R15](../guidelines/compiler-changes-checklist.md#compiler-changesr15) | partial: edits within one file; no test counts an edit to an imported module |
 | Fast front end | `cpl check` time on the largest corpus program; cold start | `crates/cpl-cli/tests/cold_start.rs`; the latency metric in `metrics.toml` | partial: no gate under 500 ms |
 | Proofs are sound | wrong verdicts against brute force | `crates/cpl-prover/tests/fuzz.rs`, `laws.rs` | enforced |
 | Std module graph is acyclic | cycles | `crates/cpl-check/tests/std_acyclic.rs` | enforced |
