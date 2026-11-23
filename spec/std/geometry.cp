@@ -3394,6 +3394,7 @@ pub struct Vec3(x: F64, y: F64, z: F64):
     /// example: `Vec3(0.0, 0.0, 0.0).dist(Vec3(1.0, 2.0, 2.0)) == 3.0`
     pub fn dist(self, o: Vec3) -> F64 = (o - self).len
 
+    // blocked: no `cos`/`sin` in scope (GAPS.md geometry `Vec.from_angle`, `Vec3.rot`)
     /// `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with
     /// `axis` pointing at the viewer), by Rodrigues' formula
     /// `v cos t + axis.cross(v) sin t + axis * axis.dot(v) * (1 - cos t)`.
