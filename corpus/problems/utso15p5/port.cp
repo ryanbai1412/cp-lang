@@ -31,6 +31,9 @@ fn both(a: Top, b: Top) -> Top:
     let hi = max(a.hi, b.hi)
     (hi, [x for x in [a.hi, a.lo, b.hi, b.lo] if x < hi].max() ?? 0)
 
+domain Link = 0..kept.len
+let links: [Link](u: Town, v: Town, cost: Int) = [Link] i => kept[i.idx]
+
 if kept.len < n - 1:
     print(-1)
 else:
@@ -38,20 +41,17 @@ else:
     // runner-up: add a road, and drop the dearest kept road on the path
     // between its ends that is strictly cheaper. Each kept road is stored
     // at its lower town, laid out so that a path is a few ranges.
-    let tree = Rooted(kept, Town.first!)
-    var above = SegTree<tree.Pre, Top>((0, 0), (a, b) => both(a, b))
+    let tree = Rooted(Graph.undirected(links), Town.first!)
+    var above = SegTree(Monoid<Top>((hi: 0, lo: 0), both), [tree.Pre] _ => (hi: 0, lo: 0))
     for (u, v, cost) in kept:
-        above.set(tree.sub(if tree.parent(u) == v: u else: v).l, (cost, 0))
+        above.set(tree.sub(if tree.parent(u) == Some(v): u else: v).first!, (hi: cost, lo: 0))
     let base = sum(r.cost for r in kept)
     var best: ?Int = None
     for (u, v, cost) in roads:
         // the roads on the path: every town on it stands for the road above
         // it, except the highest town
-        let peak = tree.sub(tree.lca(u, v)).l
         var path: Top = (0, 0)
-        for (l, r) in tree.chains(u, v):
-            if l != peak: path = both(path, above.fold(l..=r))
-            elif let below = l + 1 and l != r: path = both(path, above.fold(below..=r))
+        for chain in tree.chains(u, v, edges: true): path = both(path, above.fold(chain.range))
         let out = if path.hi < cost: path.hi else: path.lo
         if out != 0: best min= base + cost - out
     print(best ?? -1)

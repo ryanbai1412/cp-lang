@@ -8,13 +8,11 @@
 // increasing, and the latest j under s[i] only moves right.
 //
 // n reaches 4e7, so the large tests give a generator instead of the
-// array, and the answer reaches 1.6e33.
+// array, and the answer reaches 1.6e33, past `Int`: it is summed in `I128`.
 // input: `n 0` and the array, or `n 1`, `x y z b1 b2 m` and m lines
 // `p l r`: b[i] = (x b[i-1] + y b[i-2] + z) mod 2^30, and a[i] =
 // b[i] mod (r - l + 1) + l for the first line with i <= p.
 // original: corpus/submissions/5148191.cpp
-use scout.wide.{Wide}
-
 let (n, kind): (Int, Int) = read()
 domain Pos = 1..=n
 var a: [Pos]Int = [Pos] i => 0
@@ -54,9 +52,9 @@ for i in Pos:
     while queue.len > head and threshold(queue[queue.len - 1]) >= threshold(c): queue.pop()
     queue.push(c)
 
-var total = Wide.of(0)
-var c = Pos.cuts.last
-while c != Pos.cuts.first:
-    total = total.plus(Wide.square(s[c] - s[from[c]]))
+var total: I128 = 0
+var c = Pos.cuts.last!
+while c != Pos.cuts.first!:
+    total += I128(s[c] - s[from[c]]) ** 2
     c = from[c]
-print(total.show())
+print(total)
