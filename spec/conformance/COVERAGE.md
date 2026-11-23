@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3093 (1092 passing). Rules: 583.
+Cases: 3095 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 183 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 185 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -289,7 +289,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
 - R04.8.8 [2+ 1-]: Integer literals convert to positions and cuts of integer domains.
 - R04.8.9 [2+ 1-]: `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
-- R04.8.10 [2+ 3-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
+- R04.8.10 [2+ 5-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
 
 ### R04a: 04a-identity-vs-offset.md
 
@@ -756,7 +756,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 46 case(s)
+- E0302 Type mismatch: 48 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
