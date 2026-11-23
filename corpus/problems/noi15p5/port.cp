@@ -9,7 +9,6 @@
 // group keeps its size and its lowest and highest score: the best product of
 // a pair across two groups is at one of the four corners.
 // original: corpus/submissions/3927929.cpp
-use std.strings.{suffix_array, lcp_array}
 
 let n: Int = read()
 let s: Str = read()
@@ -17,8 +16,8 @@ domain Glass = 0..n
 let score: [Glass]Int = read()
 
 let letters = s
-let sa = suffix_array(letters)
-let lcp = lcp_array(letters, sa)
+let suffixes = SuffixArray(letters)
+let (sa, lcp) = (suffixes.sa, suffixes.lcp)
 
 // Glass is reused for places in sorted order; group data lives at the root.
 var groups = Dsu<Glass>.new()
