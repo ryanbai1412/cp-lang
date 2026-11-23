@@ -217,6 +217,10 @@
                 "type": "string",
                 "description": "Optional inline stdin text to feed to the program."
               },
+              "recordSteps": {
+                "type": "integer",
+                "description": "Optional: how many steps one recording keeps (default 10000000). A longer run is stepped through in windows of a tenth of this."
+              },
               "stopOnEntry": {
                 "type": "boolean",
                 "description": "Stop at the first recorded step on entry.",

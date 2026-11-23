@@ -61,6 +61,8 @@ struct Session {
     trap_message: Option<String>,
     /// 0-based index in `recording` of the step it stands at.
     cursor: usize,
+    /// The steps a recording keeps: a launch's `recordSteps`, or `MAX_STEPS`.
+    max_steps: usize,
     /// The run's step that `recording` starts at: past 0 on a long run.
     base: usize,
     /// A run longer than one recording holds traces its other steps again from
@@ -92,6 +94,7 @@ impl Session {
             recording: Recording::default(),
             trap_message: None,
             cursor: 0,
+            max_steps: MAX_STEPS,
             base: 0,
             pager: None,
             stopped: false,
@@ -240,6 +243,10 @@ impl Session {
                     .and_then(|a| a.get("stopOnEntry"))
                     .and_then(Json::as_bool)
                     .unwrap_or(true);
+                self.max_steps = args
+                    .and_then(|a| a.get("recordSteps"))
+                    .and_then(Json::as_u64)
+                    .map_or(MAX_STEPS, |steps| steps.max(10) as usize);
                 self.brute = args
                     .and_then(|a| a.get("brute"))
                     .and_then(Json::as_bool)
@@ -579,7 +586,7 @@ impl Session {
                     Some(pager) if base > 0 => {
                         let first = TraceConfig {
                             from_step: Some(0),
-                            max_steps: Some(PAGE),
+                            max_steps: Some(self.page()),
                             ..config
                         };
                         pager.window(first).recording.unwrap_or_default()
@@ -756,7 +763,7 @@ impl Session {
         let config = TraceConfig {
             source: compiled.text.clone(),
             record_frames: true,
-            max_steps: Some(MAX_STEPS),
+            max_steps: Some(self.max_steps),
             ..TraceConfig::default()
         };
         self.config = config.clone();
@@ -859,6 +866,11 @@ impl Session {
         self.trap_message.is_some() && self.is_last(i)
     }
 
+    /// The steps of a longer run traced again at a time, from its checkpoints.
+    fn page(&self) -> usize {
+        self.max_steps / 10
+    }
+
     /// Traces the run's steps `from..from + steps` again, as `recording`.
     fn load(&mut self, from: usize, steps: usize) -> bool {
         let Some(pager) = &self.pager else {
@@ -881,7 +893,7 @@ impl Session {
     /// Moves on to the steps after `recording`, standing at the first.
     fn page_forward(&mut self) -> bool {
         let from = self.base + self.recording.len();
-        let turned = self.recording.truncated && self.load(from, PAGE);
+        let turned = self.recording.truncated && self.load(from, self.page());
         if turned {
             self.cursor = 0;
         }
@@ -890,7 +902,7 @@ impl Session {
 
     /// Moves back to the steps before `recording`, standing at the last.
     fn page_back(&mut self) -> bool {
-        let from = self.base.saturating_sub(PAGE);
+        let from = self.base.saturating_sub(self.page());
         let turned = self.base > 0 && self.load(from, self.base - from);
         if turned {
             self.cursor = self.recording.len() - 1;
@@ -910,7 +922,7 @@ impl Session {
         let Some(steps) = counted.recording.map(|rec| rec.skipped) else {
             return false;
         };
-        let turned = self.load(steps.saturating_sub(PAGE), PAGE);
+        let turned = self.load(steps.saturating_sub(self.page()), self.page());
         if turned {
             self.cursor = self.recording.len() - 1;
         }
@@ -919,7 +931,7 @@ impl Session {
 
     /// Moves to the run's step `at`, in a window that starts at it.
     fn goto(&mut self, at: usize) -> bool {
-        let turned = self.load(at, PAGE);
+        let turned = self.load(at, self.page());
         if turned {
             self.cursor = 0;
         }
@@ -1286,9 +1298,6 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
 
 /// What a debug session records: a run of 10^7 steps fits in a few hundred MB.
 const MAX_STEPS: usize = 10_000_000;
-
-/// The steps of a longer run traced again at a time, from its checkpoints.
-const PAGE: usize = 1_000_000;
 
 fn describe_change(change: &Change) -> String {
     let source = |json: &Option<String>, ended: &str| match json.as_deref().map(cpl_json::parse) {

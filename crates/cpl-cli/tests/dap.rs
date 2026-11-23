@@ -567,7 +567,9 @@ fn dap_replays_one_call_with_the_edited_fn() {
 
 #[test]
 fn dap_reaches_every_step_of_a_run_longer_than_a_recording() {
-    // About 1.5*10^7 steps, more than one recording keeps: the trap is past it.
+    // A recording that keeps 10^5 steps, so a run of 2*10^5 iterations is
+    // longer than one recording, and still far below the run's 10 s limit
+    // when the machine is loaded.
     let path = write_temp(
         "long_dap",
         "\
@@ -586,7 +588,7 @@ print(i / d)
     dap.send(
         "launch",
         Some(&format!(
-            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"inputText\":\"15000000\\n\"}}"
+            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"recordSteps\":100000,\"inputText\":\"200000\\n\"}}"
         )),
     );
     let _ = dap.recv_until("\"command\":\"launch\"");
@@ -596,7 +598,7 @@ print(i / d)
     dap.send("evaluate", Some("{\"expression\":\"i\"}"));
     let i = dap.recv_until("\"command\":\"evaluate\"");
     assert!(
-        i.contains("\"result\":\"15000000\""),
+        i.contains("\"result\":\"200000\""),
         "stopped at the trap: {i}"
     );
     dap.send("stackTrace", Some("{\"threadId\":1}"));
@@ -606,14 +608,14 @@ print(i / d)
     dap.send("restart", Some("{\"arguments\":{}}"));
     let note = dap.recv_until("re-ran");
     assert!(
-        note.contains("of the first 1000000 steps is the same"),
+        note.contains("of the first 10000 steps is the same"),
         "{note}"
     );
     let kept = dap.recv_until("\"event\":\"stopped\"");
     assert!(kept.contains("kept your place: line 6"), "{kept}");
     dap.send("evaluate", Some("{\"expression\":\"i\"}"));
     let i = dap.recv_until("\"command\":\"evaluate\"");
-    assert!(i.contains("\"result\":\"15000000\""), "{i}");
+    assert!(i.contains("\"result\":\"200000\""), "{i}");
     // Back through every window to the first step.
     dap.send("reverseContinue", Some("{\"threadId\":1}"));
     let _ = dap.recv_until("\"event\":\"stopped\"");
@@ -624,7 +626,7 @@ print(i / d)
     let _ = dap.recv_until("\"event\":\"stopped\"");
     dap.send("evaluate", Some("{\"expression\":\"n\"}"));
     let n = dap.recv_until("\"command\":\"evaluate\"");
-    assert!(n.contains("\"result\":\"15000000\""), "{n}");
+    assert!(n.contains("\"result\":\"200000\""), "{n}");
     dap.finish();
 }
 
