@@ -199,30 +199,6 @@ jobs:
           cargo test -p cpl-cli --lib --test golden --test cli
           cargo test -p cpl-contest
 
-  # The editor's latency budgets on each OS, in the optimized build people
-  # run. Its own job, so its release build doesn't lengthen the cli job.
-  # Not blocking until a few runs show the hosted runners meet them.
-  lsp-latency:
-    name: lsp latency (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: lsp-latency
-      - name: LSP latency (release)
-        run: cargo test --release -p cpl-lsp --test latency -- --nocapture
-      - name: Cold start of every command (release)
-        run: cargo test --release -p cpl-cli --test cold_start -- --nocapture
-
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
   # Milestone 1 requires JetBrains, so it blocks main. It lives in its own
@@ -346,35 +322,6 @@ jobs:
           curl -fsSL --retry 3 "$base/SHA256SUMS" -o SHA256SUMS
           for a in $(awk '{print $2}' SHA256SUMS); do curl -fsIL --retry 3 -o /dev/null "$base/$a" || { echo "::error::edge is missing $a"; exit 1; }; done
           echo "edge: $(jq -r .toolchain latest.json), $(wc -l <SHA256SUMS) archives"
-
-  # Timing budgets report here and never turn main red (decision 225).
-  timing:
-    name: wall-clock budgets (not blocking)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-targets: "false"
-      - name: Restore target/ (dev)
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-dev-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest
-      - name: Wall-clock budgets
-        run: scripts/check.sh --timing
 
   # Milestone 1 acceptance: rejudge every committed acceptance-run solution
   # (research/acceptance/solutions/) with the release cpl and the

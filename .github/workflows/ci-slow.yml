@@ -1,0 +1,74 @@
+name: ci-slow
+
+# Reports that never block main, kept out of ci.yml so a run there isn't held
+# open (and main's one-waiting-run queue blocked) by jobs that decide nothing.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  # Restores the dev target/ that ci.yml saves.
+  TARGET_KEY: target-ci-v1
+
+concurrency:
+  group: ci-slow-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Timing budgets report here and never turn main red (decision 225).
+  timing:
+    name: wall-clock budgets (not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: "false"
+      - name: Restore target/ (dev)
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ env.TARGET_KEY }}-dev-
+      - name: Reuse unchanged build outputs
+        run: scripts/ci-mtime.sh
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Wall-clock budgets
+        run: scripts/check.sh --timing
+
+  # The editor's latency budgets on each OS, in the optimized build people
+  # run. Its own job, so its release build doesn't lengthen the cli job.
+  # Not blocking until a few runs show the hosted runners meet them.
+  lsp-latency:
+    name: lsp latency (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: lsp-latency
+      - name: LSP latency (release)
+        run: cargo test --release -p cpl-lsp --test latency -- --nocapture
+      - name: Cold start of every command (release)
+        run: cargo test --release -p cpl-cli --test cold_start -- --nocapture
