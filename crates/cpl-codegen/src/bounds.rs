@@ -214,10 +214,10 @@ impl<'p> Emitter<'p> {
             ..
         } = iter
         else {
-            return None;
+            return none;
         };
         if self.closure_id.is_some() || self.locals()[slot].ty != Ty::Int {
-            return None;
+            return none;
         }
         let mut scan = Scan {
             emitter: self,
@@ -235,7 +235,7 @@ impl<'p> Emitter<'p> {
             floored: Vec::new(),
         };
         if !scan.block(body, true) {
-            return None;
+            return none;
         }
         let Scan {
             stored,
@@ -257,7 +257,7 @@ impl<'p> Emitter<'p> {
             || !end(hi, &stored)
             || !shifts.iter().all(|e| bound(e, &moving))
         {
-            return None;
+            return none;
         }
         // An index under `if i > e` is checked from `e + 1` when `e` stays put.
         let mut any = any;
