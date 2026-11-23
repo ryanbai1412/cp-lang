@@ -23,8 +23,10 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+/// What `cpl` printed, with Windows' CRLF line ends as LF, so one expected
+/// text holds on every OS.
 fn text(bytes: &[u8]) -> String {
-    String::from_utf8_lossy(bytes).into_owned()
+    String::from_utf8_lossy(bytes).replace("\r\n", "\n")
 }
 
 /// `--help` prints the command's own usage on stdout and exits 0.

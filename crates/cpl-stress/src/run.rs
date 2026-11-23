@@ -218,9 +218,18 @@ pub fn stress_with(
                         .run("", Duration::from_secs(10))
                         .map_err(|e| StressError(format!("can't run {}: {e}", generator.name)))?;
                     if !outcome.ok() {
+                        let said = outcome.stderr.trim_end();
+                        let said = said.rsplit('\n').take(5).collect::<Vec<_>>();
+                        let said: Vec<&str> = said.into_iter().rev().collect();
                         return Err(StressError(format!(
-                            "the generator {} failed on seed {seed} ({:?})",
-                            generator.name, outcome.exit
+                            "the generator {} failed on seed {seed} ({:?}){}",
+                            generator.name,
+                            outcome.exit,
+                            if said.is_empty() || said == [""] {
+                                String::new()
+                            } else {
+                                format!(":\n{}", said.join("\n"))
+                            }
                         )));
                     }
                     Ok(Some((Made::Opaque, outcome.stdout)))

@@ -479,11 +479,10 @@ impl Program {
             "cp" => build_judged(path, None, Part::Solution, TRAPS)?,
             _ => {
                 // Relative paths need `./` to be found.
-                let full = path
+                let canonical = path
                     .canonicalize()
-                    .map_err(|e| BuildError(format!("can't find {name}: {e}")))?
-                    .display()
-                    .to_string();
+                    .map_err(|e| BuildError(format!("can't find {name}: {e}")))?;
+                let full = canonical.display().to_string();
                 // A script runs through the interpreter its `#!` line names on
                 // every OS, so Windows (which ignores `#!`) and a script that
                 // isn't executable behave as Linux does.
@@ -504,7 +503,8 @@ impl Program {
                                 }
                             ))
                         })?;
-                        argv.push(full);
+                        // `D:/a/gen.sh`: Git for Windows' `sh` can't open `\\?\D:\a\gen.sh`.
+                        argv.push(cpl_diag::shown_path(&canonical));
                         argv
                     }
                     None => vec![full],

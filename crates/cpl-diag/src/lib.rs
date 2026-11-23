@@ -656,6 +656,34 @@ mod tests {
     }
 }
 
+/// A path as `cpl` prints it and hands it to other programs: `/` between
+/// folders on every OS (as git spells them), and without the `\\?\` prefix
+/// Windows' canonical paths carry, which a shell or a person can't use.
+pub fn shown_path(path: &std::path::Path) -> String {
+    let text = path.display().to_string();
+    if cfg!(windows) {
+        text.strip_prefix(r"\\?\")
+            .unwrap_or(&text)
+            .replace('\\', "/")
+    } else {
+        text
+    }
+}
+
+#[cfg(test)]
+mod shown_path_tests {
+    #[test]
+    fn a_path_is_shown_with_slashes() {
+        let shown = super::shown_path(std::path::Path::new("a.tests/c.cp"));
+        assert_eq!(shown, "a.tests/c.cp");
+        #[cfg(windows)]
+        assert_eq!(
+            super::shown_path(std::path::Path::new(r"\\?\D:\a\gen.sh")),
+            "D:/a/gen.sh"
+        );
+    }
+}
+
 /// Edits to turn `a` into `b`, counting a swap of two neighbours as one:
 /// `raods` is one edit from `roads`.
 pub fn edit_distance(a: &str, b: &str) -> usize {
