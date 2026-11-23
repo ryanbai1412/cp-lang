@@ -951,8 +951,8 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | float_equality | `==`/`!=` on floats | `approx(a, b, abs:)` | warn | #3 | ty | ✓float_equality |
 | repeated_literal | a bound or modulus literal in several places | name it once (`type Z`, `domain`) | fix | #6 | syn | ✓repeated_literal |
-| parity_of_negative | `x % 2 == 1` where `x` may be negative | `x % 2 != 0` | fix | #3 | bound | |
-| trunc_div_negative | `/` on values that may be negative where floor is meant | `div_floor` / `divmod` | warn | #3 | bound | |
+| parity_of_negative | `x % 2 == 1` where `x` may be negative | `x % 2 != 0` | fix | #3 | bound |✗ not a bug here: `/` and `%` floor for a positive divisor (R01.5.2), so the C++ trap does not exist |
+| trunc_div_negative | `/` on values that may be negative where floor is meant | `div_floor` / `divmod` | warn | #3 | bound |✗ not a bug here: `/` and `%` floor for a positive divisor (R01.5.2), so the C++ trap does not exist |
 | overflow_before_mod | `a * b % m` on `Int` that can exceed 64 bits | `Mod` / `mul_mod` | warn | #3 | bound | |
 | float_for_integer | `Float` arithmetic on integer data (`pow`, `log2`) | integer ops (`**`, `bit_len`) | fix? | #3 | ty | |
 | wide_shift | `1 << k` where `k` can reach 63 | `bit(k)` on a wider type | warn | #3 | bound | |
@@ -969,7 +969,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | int_abs_min_overflow | `abs(x)` when `x`'s range includes `Int.MIN` | tighten range or widen before `abs` | warn | #6 | bound | |
 | int_div_possible_zero | `a / b` or `a % b` where `0` is inside `b`'s proven range | guard `b != 0` or tighten `b: 1..=N` | warn | #6 | bound | |
 | mod_literal_mismatch | two different prime-like moduli (e.g. `998244353` and `1000000007`, or typo `100000007`) in one file | declare one `type Z = Mod<P>` | warn | #6 | ty | |
-| mod_subtract_without_mod | `(a - b) % P` where `a - b` can be negative (remainder is negative in CP Lang) | `Mod<P>` (`std.mod`) | warn | #1 | bound | |
+| mod_subtract_without_mod | `(a - b) % P` where `a - b` can be negative (remainder is negative in CP Lang) | `Mod<P>` (`std.mod`) | warn | #1 | bound |✗ not a bug here: `/` and `%` floor for a positive divisor (R01.5.2), so the C++ trap does not exist |
 | mod_pow_exponent_mod_p | reducing exponent of `pow_mod(a, e, P)` modulo `P` instead of `P - 1` (Fermat's little theorem bug) | reduce exponent mod `P - 1` (for prime `P`, `a != 0`) | warn | #6 | flow | |
 | mod_div_non_prime | `a / b` on `Mod<M>` where `M` is statically known composite | use `b.try_inv()` (`std.mod`) or `ext_gcd` (`std.math`) | warn | #6 | ty | |
 | float_cmp_without_eps_in_geo | `<` / `>` / `==` on `Float` cross products or distances in geometry | use integer `Pt` (`cross128`, `dist2_128`) (`std.geometry`) or `close(a, b)` | warn | #1 | ty | |

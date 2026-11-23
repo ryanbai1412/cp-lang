@@ -483,3 +483,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   rules/proven/hazards.rs (mod.rs was at the 2000-line cap). Both lints
   skip `@alt`/`@check`/`@gen` fns, which run on small inputs
   (abc481g's brute `1 << n`). 0 hits on corpus, newcomer and std.
+- lints.md rows `parity_of_negative`, `trunc_div_negative` and
+  `mod_subtract_without_mod` marked ✗: they assume C++ truncation, but `/`
+  and `%` floor for a positive divisor (R01.5.2, decisions 24 and 347);
+  `cpl run` on `a = -7` prints `a / 2, a % 2` as `-4 1`. No lint to write.
