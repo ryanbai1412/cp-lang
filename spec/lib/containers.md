@@ -264,7 +264,7 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     fn find(self, pred: D -> Bool) -> ?D        // O(K / 64 + visited)
 
     fn subset_sums(weights: List<Int>) -> Bitset<D>  // static: Bitset<D>.subset_sums(ws)
-    // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.K
+    // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.count
 ```
 
 Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals
@@ -355,14 +355,14 @@ length to peak distinct keys.
 `IntervalMap<D, T>` maintains a total partition of domain `D` into maximal
 half-open runs `[l, r)` mapped to values of `T` (where `T: Eq`). Internally it
 stores a `Map<Int, (hi: Int, val: T)>` keyed by `lo.ord` — every position in
-`0..D.K` belongs to exactly one entry, and adjacent entries have distinct
+`0..D.count` belongs to exactly one entry, and adjacent entries have distinct
 values.
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct IntervalMap<D, T>                                // O(runs) memory; amortized O(log runs)
     fn new(init: T) -> IntervalMap<D, T>                // O(1); whole domain has value init
-    fn from(a: [D]T) -> IntervalMap<D, T>               // O(D.K); compresses maximal runs
+    fn from(a: [D]T) -> IntervalMap<D, T>               // O(D.count); compresses maximal runs
     fn at(self, i: D) -> T                              // O(log runs)
     fn run_at(self, i: D) -> (range: Range<D>, val: T)  // O(log runs)
     fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())
@@ -449,7 +449,7 @@ struct ErasableMinHeap<T>                    // O(log n) amortized; two heaps
 struct ErasableMaxHeap<T>  // same surface, largest first
 
 struct IndexedMinHeap<D, T>                  // O(log n) push/set/remove/pop
-    fn new() -> IndexedMinHeap<D, T>         // O(D.K)
+    fn new() -> IndexedMinHeap<D, T>         // O(D.count)
     @get fn len(self) -> Int                 // O(1)
     @get fn is_empty(self) -> Bool           // O(1)
     fn clear(mut self)                       // O(len)
@@ -504,7 +504,7 @@ struct TwoStackFold<T>                   // O(1) amortized queue monoid fold
 // Existing in std.marks: Marks<D>
 // New in std.marks:
 struct MarkMap<D, T>                     // O(1) get/set/remove/clear
-    fn new(default: T) -> MarkMap<D, T>  // O(D.K) once
+    fn new(default: T) -> MarkMap<D, T>  // O(D.count) once
     fn get(self, v: D) -> ?T             // O(1); None when unset
     fn set(mut self, v: D, x: T)         // O(1)
     fn contains(self, v: D) -> Bool      // O(1)

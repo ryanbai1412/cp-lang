@@ -432,7 +432,7 @@ let sa = SuffixArray(s)
 
 domain Rank = 0..n
 var groups = DsuOf<Rank, Span>(
-    r => Span(score[sa.sa[r.to_idx]], score[sa.sa[r.to_idx]]),
+    r => Span(score[sa.sa[r.ord]], score[sa.sa[r.ord]]),
     (a, b) => Span(min(a.lo, b.lo), max(a.hi, b.hi)),
 )
 

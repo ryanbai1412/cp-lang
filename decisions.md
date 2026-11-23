@@ -8095,3 +8095,16 @@ tag move fatal again.
 - **Why.** Adding a helper per search shape is what the design rules forbid
   when two existing names already compose to it.
 - **Reverse.** Add `position` to std.seq if three more rounds reach for it.
+
+## 392. Retire the std doc-notes; std docs and decisions carry their content
+
+**Context.** `plan/domains/spec/delta/doc-notes/` held 37 files, 1,010 lines: one per std module, written while bringing `std/` to the doc standard. Each bullet was a *choice* (the spec was silent, so the std doc pins a behaviour) or a *contradiction* (stub vs spec). Tech-debt flagged them as debt.
+
+**Decision.** Delete them. Every choice is already stated in the item's own doc lines in `std/` (`ties:`, `order:`, `empty:`, `traps:`), which is where a reader and `cpl doc` look. Of the 23 contradictions, 22 carry a resolution with its decision (147, 166, 167, 168 and others). A scan for open wording found 15 bullets, and each needs nothing more:
+- **Already in core:** `BeatsSegTree.chmod` floors `%`, which R01 already makes Euclidean.
+- **Consistent:** `fold` takes an identity, while an identity-free `Op` returns `None`.
+- **Named only:** `IntervalSet`, `MergeSortTree` and similar are named in spec/lib, and their stub docs give the details.
+- **Routed:** `arborescence` leaves open which minimum `parent` it returns. That goes to stdlib, so the reference implementation's choice gets pinned (goal 4: everything is deterministic).
+- **Choices with reasons:** the other 11.
+
+**Reverse.** The notes are in git history before this commit.

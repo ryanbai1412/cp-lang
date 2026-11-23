@@ -318,7 +318,7 @@ struct Functional<V>  // O(n log n) build (jump table)
     fn jump(self, v: V, k: Int) -> V     // O(log n), any k >= 0
     fn dist(self, a: V, b: V) -> ?Int    // O(log n) steps from a to b
     fn orbit(self, v: V) -> Int          // O(1) distinct vertices from v
-    fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K) -> ?(V, Int)
+    fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.count) -> ?(V, Int)
 ```
 
 Laws: `jump(v, a + b) == jump(jump(v, a), b)`; `jump(v, steps_to_ring(v))

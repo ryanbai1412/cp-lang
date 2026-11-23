@@ -201,8 +201,8 @@ force on random small inputs.
   `min_vertex_cover(adj)`, and every edge has a covered endpoint. `mate`
   and `back` are inverse partial maps; every matched pair is an edge.
 - **Assignment.** `mate` is injective and total on `L`; `total` is the sum
-  of `weight(l, mate[l])`, optimal among all injections `L -> R`; `L.K <=
-  R.K` is asserted. `min_weight_matching(w).total ==
+  of `weight(l, mate[l])`, optimal among all injections `L -> R`; `L.count <=
+  R.count` is asserted. `min_weight_matching(w).total ==
   -max_weight_matching((l, r) => -w(l, r)).total`.
 - **Min-cost flow.** `min_cost_flow` returns the largest flow up to
   `limit` and, among flows of that value, the cheapest, provided the
@@ -214,7 +214,7 @@ force on random small inputs.
   conserves at every vertex (for `circulation`) or every vertex but `s`
   and `t` (bounded flows), and `value` is the net flow out of `s`. `None`
   means no feasible flow exists.
-- **Gomory–Hu.** The result is a tree on `V` (`V.K - 1` edges, connected;
+- **Gomory–Hu.** The result is a tree on `V` (`V.count - 1` edges, connected;
   components of the input are joined by `w = 0` edges), and for every
   `s != t` the minimum `s-t` cut of the input equals the minimum `w` on the
   tree path from `s` to `t`.
@@ -241,7 +241,7 @@ force on random small inputs.
   forever, meaningless across networks.
 - **Node spaces made of several domains.** The modelled network is usually
   `Item + Pair + {S, T}` or `Left + Right + {S, T}`. Today a port flattens
-  it into `domain Node = 0..n + m + 2` and writes `Node(n + e.to_idx)`
+  it into `domain Node = 0..n + m + 2` and writes `Node(n + e.ord)`
   (`noi06p4` calls this friction K11; `dmopc20c7p5`, `noi09p4` repeat it).
   The fix is the sum domain of spec §21.11, `domain Node = Item + Pair +
   labels("S", "T")` with `Node(i)` injecting and `Node.S` naming the extra
@@ -259,7 +259,7 @@ force on random small inputs.
   write (typed nodes, handles, unbounded arcs) and does not guess it.
 - **Corollaries that are one line from a result:** maximum independent set
   (complement of `min_vertex_cover`), minimum DAG path cover
-  (`V.K - max_matching(...).size`), the cut arcs
+  (`V.count - max_matching(...).size`), the cut arcs
   (`arcs.filter(a => side[g.source(a)] and not side[g.target(a)])`), the
   min cut between `s` and `t` from a Gomory–Hu tree (a path minimum).
 - **Fractional programming around a solver** (`sdoi17r1p4`): a binary

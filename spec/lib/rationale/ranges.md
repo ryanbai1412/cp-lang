@@ -657,7 +657,7 @@ fn merge(a: ?Low, b: ?Low) -> ?Low:
     let b = b ?? return a
     if a.cover < b.cover: return a
     if b.cover < a.cover: return b
-    let d = b.first.to_idx - a.last.to_idx
+    let d = b.first.ord - a.last.ord
     Low(a.cover, a.first, b.last, a.gaps + b.gaps + d * (d - 1) / 2)
 
 let act = Action<?Low, Int>(
@@ -792,8 +792,8 @@ domain Pos = 0..=n
 var seg = LazySegTree<Pos, Int>(AddMax, fill: 0)
 for r in Rank:
     let best = seg.all + Int(not must_rank[r])
-    seg.set(Pos(r.to_idx + 1), best)
-    for lo in by_right[r]: seg.apply(..=Pos(lo.to_idx), 1)
+    seg.set(Pos(r.ord + 1), best)
+    for lo in by_right[r]: seg.apply(..=Pos(lo.ord), 1)
 print(seg.all)
 ```
 

@@ -205,7 +205,7 @@ trees at their centroids (at most two candidates each).
 
 ```cp
     // O(k log k + k log n): marked vertices plus pairwise LCAs over a fresh
-    // domain vt.K in preorder; vt.at[x] the vertex, vt.up[x] the nearest kept
+    // domain vt.count in preorder; vt.at[x] the vertex, vt.up[x] the nearest kept
     // ancestor, vt.len[x] = t.dist(vt.at[up], vt.at[x]), vt.key[x] a key?
     fn virtual(self, keys: List<V>) -> VirtualTree<V, K>
 

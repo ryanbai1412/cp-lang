@@ -194,7 +194,7 @@ devirtualization inlines `min` / `max`; and the hot loops are `unchecked`.
   caller never converts between an index and an offset.
 - `MonoDeque` and `parallel_bsearch` number positions and queries with
   `Int`: a queue's positions are the loop variable of the DP that feeds it,
-  usually `Int`; a domain loop passes `v.to_idx`. *Open question:* make
+  usually `Int`; a domain loop passes `v.ord`. *Open question:* make
   them generic over an ordered position type once the core can infer `I`
   from the first `push`.
 - `LiChao` is over coordinates (`x` values), which are not an index space:
