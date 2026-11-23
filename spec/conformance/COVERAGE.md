@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2281 (995 passing). Rules: 535.
+Cases: 2282 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 110 cases; 0 uncovered, 3 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 111 cases; 0 uncovered, 4 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 112 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R04 (04-indices.md): 62 rules, 94 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -36,7 +36,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 52 | 52 (100%) | 30 | 27 (90%) | 49 (94%) |
-| R02 | 51 | 51 (100%) | 29 | 25 (86%) | 47 (92%) |
+| R02 | 51 | 51 (100%) | 29 | 26 (89%) | 48 (94%) |
 | R03 | 24 | 24 (100%) | 17 | 12 (70%) | 19 (79%) |
 | R04 | 62 | 62 (100%) | 15 | 13 (86%) | 60 (96%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 535 | 534 (99%) | 229 | 198 (86%) | 503 (94%) |
+| all | 535 | 534 (99%) | 229 | 199 (86%) | 504 (94%) |
 
 ## Rules
 
@@ -139,7 +139,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.6.3 [1+ 1-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
 - R02.6.4 [1+ 1-]: `struct List<T>` with no body is opaque: its fields are private to its module. A struct bo...
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
-- R02.6.6 [1+ 0-] *happy-path only*: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
+- R02.6.6 [1+ 1-]: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
 - R02.6.7 [2+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
 - R02.7.1 [4+ 0-]: Variants are `PascalCase` names in their enum's scope, like `Some` and `None` of `?T` (dec...
 - R02.7.2 [2+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
@@ -670,7 +670,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
 - E0302 Type mismatch: 36 case(s)
-- E0303 Wrong number of arguments: 6 case(s)
+- E0303 Wrong number of arguments: 7 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
