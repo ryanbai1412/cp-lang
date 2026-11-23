@@ -5,7 +5,7 @@
 //! Taken when every argument is a variable or a constant, so evaluating it
 //! once per element is the same as once.
 
-use crate::emit::Emitter;
+use crate::emit::{pad, Emitter};
 use cpl_ir::{Arg, Expr, ExprKind, Stmt, Ty};
 
 impl<'p> Emitter<'p> {
@@ -30,6 +30,19 @@ impl<'p> Emitter<'p> {
             .collect::<Option<Vec<_>>>()?;
         (args.len() == func.params.len()).then_some(())?;
         put_in(body, &args)
+    }
+    /// The declaration of `src` holding what `extend` appends: a list
+    /// literal goes in a stack array, where a `std::vector` would allocate.
+    pub(crate) fn extend_source(item: &Expr, src: &str, arg: &str, indent: usize) -> String {
+        let literal = matches!((&item.kind, &item.ty), (ExprKind::Tuple(_), Ty::List(_)));
+        let split = arg
+            .strip_prefix("std::vector<")
+            .filter(|rest| literal && rest.ends_with('}'))
+            .and_then(|rest| rest.find(">{").map(|k| (&rest[..k], &rest[k + 1..])));
+        match split {
+            Some((cell, items)) => format!("{}const {cell} {src}[] = {items};\n", pad(indent)),
+            _ => format!("{}auto {src} = {arg};\n", pad(indent)),
+        }
     }
 }
 
@@ -110,5 +123,14 @@ mod tests {
         let code = cpp(&ROLES.replace("roles(k, n)", "roles(k + 1, n)"));
         let main = &code[code.find("for (ll k").unwrap()..];
         assert!(main.contains("roles("), "{code}");
+    }
+
+    #[test]
+    fn extending_by_a_literal_keeps_it_on_the_stack() {
+        let code = cpp("let n: Int = read()\nvar out: List<Int> = []\nfor v in 0..n: out.extend([v, v + 1])\nprint(out)\n");
+        assert!(
+            code.contains("const ll t") && !code.contains("std::vector<ll>{v"),
+            "{code}"
+        );
     }
 }

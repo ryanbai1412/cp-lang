@@ -1295,10 +1295,10 @@ impl<'p> Emitter<'p> {
                         Mutation::Extend => this.lambda("void", |this, out| {
                             let src = this.temp();
                             let r = this.temp();
-                            out.push_str(&format!("{}auto {src} = {arg};\n", pad(this.indent)));
+                            out.push_str(&Self::extend_source(&args[0], &src, &arg, this.indent));
                             out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
                             out.push_str(&format!(
-                                "{}{r}.insert({r}.end(), {src}.begin(), {src}.end());\n",
+                                "{}{r}.insert({r}.end(), std::begin({src}), std::end({src}));\n",
                                 pad(this.indent)
                             ));
                         }),
