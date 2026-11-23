@@ -14,6 +14,10 @@ build over the 32 KB every solution should fit (goal 5), and
 `removed-spelling <file> -`, a port, dream or spec that `cpl migrate --check`
 would rewrite (idiomatic-code/R8).
 
+`cpl test` reads the same package (problem-packages/R8): `cpl-test-no-cases`
+when it finds no cases there, `cpl-test-fails <id> <case>` when it rejects a
+case, `cpl-test-unjudged` when an interactive package's cases go unjudged.
+
 Known findings live in corpus/differential-known.txt, which only shrinks.
 
   python3 corpus/differential.py [ids...]   print findings
@@ -120,8 +124,10 @@ def ratchet(name, path, found, a, what):
 def check(pid, cpl):
     port = os.path.join(ROOT, "corpus", "problems", pid, "port.cp")
     ins = tests(pid)
-    if not ins or not os.path.exists(port):
+    if not os.path.exists(port):
         return []
+    if not ins:
+        return cpl_test(pid, port, cpl)
     exe = native(pid, port, cpl)
     if not exe:
         return [f"no-build {pid} -"]
@@ -135,6 +141,25 @@ def check(pid, cpl):
         COMPARED.append(pid)
         if cxx != interp:
             found.append(f"differ {pid} {os.path.relpath(inp, ROOT)}")
+    return found + cpl_test(pid, port, cpl)
+
+
+def cpl_test(pid, port, cpl):
+    """What `cpl test` makes of the package the corpus tools read (problem-packages/R8)."""
+    try:
+        r = subprocess.run([cpl, "test", port, "--format", "json"], cwd=ROOT, capture_output=True, text=True, timeout=10 * TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return [f"cpl-test-timeout {pid} -"]
+    if "has no cases" in r.stderr:
+        return [f"cpl-test-no-cases {pid} -"]
+    try:
+        cases = json.loads(r.stdout)["cases"]
+    except (ValueError, KeyError):
+        return [f"cpl-test-error {pid} -"]
+    found = [f"cpl-test-fails {pid} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
+    judges = os.path.join(os.path.dirname(port), "interactor.py")
+    if os.path.exists(judges) and all(c["verdict"] is None for c in cases):
+        found.append(f"cpl-test-unjudged {pid} -")
     return found
 
 

@@ -239,10 +239,11 @@ GCC and LLVM's differential testing against a reference.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `scripts/port-check.sh`; byte-for-byte rebuild across releases: `missing` |
+| Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `crates/cpl-cli/tests/judges.rs` (`every_port_is_written_for_every_judge_within_its_limit`: every port builds, deterministically); `corpus/differential.py` (`no-build`, `removed-spelling`) |
+| Old ports rebuild byte for byte across releases | a port pinned to an old release builds the same C++ | `cp.toml` pins (`spec/tools/cli.md`, not built yet) | `missing` |
 | Adding a port is cheap and the bar is clear | porting checklist; time per port | process | `handbook/process/porting.md` |
 | Concurrent corpus work can't turn main red | staged ports checked and linted before landing | gate | commit tier (`scripts/check.sh`) |
-| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages-checklist.md#r8`; `missing` (architecture: shared with `cpl test` and `cpl stress`) | `missing` |
+| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages-checklist.md#r8` | `corpus/differential.py` (`cpl-test-*`: what `cpl test` can't find or judge in a package) |
 | Generated reports are current | stale `research/PORTS.md`, `plan/STATUS.md`, `BLOCKERS.md` | generated, checked in the gate | `scripts/gen.py` |
 | Nothing private enters the corpus | home paths, session links, unknown hosts | gate | `scripts/check.sh` (staged-files scan: hosts outside `scripts/public-hosts.txt`, home paths, local sensitive words) |
 

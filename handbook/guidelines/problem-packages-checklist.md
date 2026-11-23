@@ -66,7 +66,7 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** the corpus, acceptance judges, `cpl test` and `cpl stress` read one layout: `N.in` with `N.out` or `N.ans`, `checker.py`, `interactor.py`, `gen.py`.
 **Why:** one format means one set of tools and no conversions that drift.
 **Example:** `corpus/problems/cf2147f/`.
-**Enforced by:** `missing` (a shared reader).
+**Enforced by:** `corpus/differential.py` runs `cpl test` on every v03 package and reports the cases it can't find or judge (`cpl-test-*`).
 
 ### problem-packages/R9
 
