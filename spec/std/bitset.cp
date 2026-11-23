@@ -480,7 +480,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_range(1..8) == 2`
     pub fn count_range(self, r: Range<D>) -> Int:
         var c = 0
-        let (lo, hi) = (r.start.to_idx, r.end.to_idx)
+        let (lo, hi) = r.ends
         if lo >= hi: return 0
         for k in lo / 64..=(hi - 1) / 64: c += popcount(w[k] & span(k, lo, hi))
         c
@@ -493,7 +493,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(2..5); b.len == 5`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(0..4, on: false); b.each().collect() == [D(8)]`
     pub fn set_range(mut self, r: Range<D>, on: Bool = true):
-        let (lo, hi) = (r.start.to_idx, r.end.to_idx)
+        let (lo, hi) = r.ends
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
@@ -508,7 +508,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.flip_range(0..4); b.each().collect() == [D(0), D(2), D(8)]`
     pub fn flip_range(mut self, r: Range<D>):
-        let (lo, hi) = (r.start.to_idx, r.end.to_idx)
+        let (lo, hi) = r.ends
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
@@ -1307,6 +1307,7 @@ fn nav_helpers_and_in_place_shifts():
     assert b.prev(P(193)) == Some(P(128)) and b.prev(P(194)) == Some(P(194))
     b.remove(P(0))
     assert b.prev(P(0)) == None and b.prev(P(62)) == None
+    b.add(P(0))
     assert b.count_below(P(0)) == 0
     assert b.count_below(P(64)) == 2
     assert b.count_below(P(128)) == 4
