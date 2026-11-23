@@ -383,9 +383,15 @@ const failingNow = new Set(ctx.failing);
 const newlyFailing = ctx.failing.filter((f) => !knownStatic.has(f));
 const nowRunning = [...knownStatic].filter((f) => !failingNow.has(f));
 if (newlyFailing.length) console.error(`gen-ref: ${newlyFailing.length} std doc examples don't run (fix them, or the std docs):\n${newlyFailing.join('\n')}`);
-if (nowRunning.length) console.error(`gen-ref: ${nowRunning.length} std doc examples in ${knownFile.slice(repo.length + 1)} run now; delete their lines:\n${nowRunning.join('\n')}`);
+// An example that runs now tightens the list in place instead of failing the
+// build (ci/R30): the change that fixed it commits the shorter list.
+if (nowRunning.length) {
+  const keep = readFileSync(knownFile, 'utf8').split('\n').filter((l) => !nowRunning.includes(l));
+  writeFileSync(knownFile, keep.join('\n'));
+  console.error(`gen-ref: ${nowRunning.length} std doc examples run now; dropped from ${knownFile.slice(repo.length + 1)}, commit it:\n${nowRunning.join('\n')}`);
+}
 if (ctx.unstructured.length) console.error(`gen-ref: ${ctx.unstructured.length} std entries don't render as structure (site/R4):\n${ctx.unstructured.slice(0, 20).join('\n')}`);
-if (newlyFailing.length || nowRunning.length || ctx.unstructured.length) process.exit(1);
+if (newlyFailing.length || ctx.unstructured.length) process.exit(1);
 if (mathErrors.length) {
   console.error(`gen-ref: ${mathErrors.length} math spans KaTeX can't render:\n${mathErrors.slice(0, 20).join('\n')}`);
   process.exit(1);

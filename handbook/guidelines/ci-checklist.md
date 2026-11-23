@@ -237,3 +237,16 @@ on one OS ships silently when only Linux blocks. *Example:* dropping
 `windows-latest` from `cli`, or making it informational, fails
 `test_blocking_jobs_cover_every_os`.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R30
+
+A shrink-only list never fails main because an entry got fixed: the check
+drops the entry itself and says to commit the shorter list.
+*Why:* a fix in std made a listed doc example run, `gen-ref` failed the site
+build on it, and cp-lang.org went 4 h without a deploy; failing on a
+regression is the list's job, failing on an improvement only stalls
+shipping. *Example:* `seq.Rev.src` starts running; the site build passes,
+prints the line it dropped from `web/scripts/doc-examples-failing.txt`, and
+the next commit there carries the shorter file.
+*Enforced by:* `web/scripts/gen-ref.mjs`, `crates/cpl-conform` (newly
+passing cases print, never fail).
