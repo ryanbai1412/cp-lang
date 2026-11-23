@@ -30,14 +30,14 @@ An ordered multiset (bag) of `K` backed by a randomized treap over a single flat
 - `@get fn first(self) -> ?K` — \(O(1)\); The smallest element, or `None` when empty.
 - `@get fn last(self) -> ?K` — \(O(1)\); The largest element, or `None` when empty.
 - `fn pop_first(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the smallest element, or `None` when empty.
-- `fn take_first(mut self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected; \(O(\log n)\).; traps: never in release; debug traps when `ok` is not false-then-true at the answer
+- `fn take_first(mut self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn drain_range(mut self, r: Range<K>) -> yields K` — \(O(\log n + k)\) expected for `k` removed; \(O(\log n + k)\).
 - `fn pop_last(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the largest element, or `None` when empty.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of elements strictly less than `k` (counting duplicates).
 - `fn range(self, r: Range<K>) -> SortedRange<K>` — \(O(1)\) to make; see `SortedRange` for each query; The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`, `last_lt` and `count_range` (decision 103).
 - `fn nth(self, i: Int) -> ?K` — \(O(\log n)\) expected; 0-indexed `i`-th smallest element (counting duplicates), or `None` if out of bounds.
-- `fn first_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.; traps: never in release; debug traps when `ok` is not false-then-true at the answer
-- `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never in release; debug traps when `ok` is not true-then-false at the answer
+- `fn first_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
+- `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K>` — \(O(k \log n)\) expected for `k` removed elements; Remove and return the maximal run of elements strictly after `after` (ascending), strictly before `before` (descending), or from the smallest element (ascending) while `ok(k)` holds.; traps: when both `after` and `before` are given
 - `fn cursor_first(self) -> ?BagCursor` — \(O(\log n)\) expected; Cursor to the smallest key, or `None` when empty.
 - `fn cursor_last(self) -> ?BagCursor` — \(O(\log n)\) expected; Cursor to the largest key, or `None` when empty.
@@ -82,8 +82,8 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of keys strictly less than `k`.
 - `fn nth(self, i: Int) -> ?K` — \(O(\log n)\) expected; 0-indexed `i`-th smallest key, or `None` if out of range.
 - `fn sum(self, keys: Range<K> = ..) -> K` — \(O(\log n)\) expected; The sum of the elements in `keys` (all of them by default), for additive `K`: `set.sum(..b)` adds everything below `b`.; traps: never (overflow wraps in release, traps in debug)
-- `fn first_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`.; traps: never in release; debug traps when `ok` is not false-then-true at the answer
-- `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never in release; debug traps when `ok` is not true-then-false at the answer
+- `fn first_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
+- `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K>` — \(O(k \log n)\) expected for `k` removed keys; Remove and return the maximal run of keys strictly after `after` (ascending), strictly before `before` (descending), or from the smallest key (ascending) while `ok(k)` holds.; traps: when both `after` and `before` are given
 - `fn range(self, r: Range<K>) -> SortedRange<K>` — \(O(1)\) to make; see `SortedRange` for each query; The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`, `last_lt` and `count_range` (decision 103).
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in ascending order.
@@ -120,8 +120,8 @@ Fields: `ks: SortedBag<K>`, `vals: HashMap<K, V>`.
 - `fn last_lt(self, k: K) -> ?(K, V)` — \(O(\log n)\) expected; Largest entry with key `< k`, or `None`.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of entries with key strictly less than `k`.
 - `fn nth(self, i: Int) -> ?(K, V)` — \(O(\log n)\) expected; The `i`-th entry in key order (0-based), or `None`.
-- `fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V)` — \(O(\log n)\) expected calls of `ok`; Smallest entry where monotone `ok(k, v)` becomes true, or `None`.; traps: never in release; debug traps when `ok` is not false-then-true at the answer
-- `fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V)` — \(O(\log n)\) expected calls of `ok`; Largest entry where monotone `ok(k, v)` still holds, or `None`.; traps: never in release; debug traps when `ok` is not true-then-false at the answer
+- `fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V)` — \(O(\log n)\) expected calls of `ok`; Smallest entry where monotone `ok(k, v)` becomes true, or `None`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
+- `fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V)` — \(O(\log n)\) expected calls of `ok`; Largest entry where monotone `ok(k, v)` still holds, or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>` — \(O(k \log n)\) expected for `k` removed entries; Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds.; traps: when both `after` and `before` are given
 - `fn split_at(mut self, k: K) -> SortedMap<K, V>` — \(O(\log n + s \log n)\) expected for the keys, plus \(O(m)\) expected to move the `m` values split off; Split off and return all entries with key `>= k`.
 - `fn join(mut self, other: SortedMap<K, V>)` — as `SortedBag.join` for the keys, plus \(O(m)\) expected to move the `m` values of `other`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`

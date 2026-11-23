@@ -201,16 +201,16 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one pair per cut strictly inside, so `len - 1` of them.
 - `@get fn mid<D>(self: Range<D>) -> Cut<D>` — \(O(1)\)
 - `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — \(O(1)\)
-- `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never in release; debug traps when `ok` is not false-then-true at the answer
-- `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never in release; debug traps when `ok` is not true-then-false at the answer
+- `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
+- `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards
 - `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: never; unsorted input gives an unspecified key
 - `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: never; unsorted input gives an unspecified key
 - `fn inverse<I, V>(self: [I]V) -> [V]I` — \(O(\lvert I \rvert)\); Inverse of bijection `self: [I]V`: `inv[self[i]] == i` for all `i in I`.; traps: when `self` is not a bijection
 - `fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C` — \(O(\lvert A \rvert)\); Function composition: `compose(f, g)[a] == g[f[a]]`.
-- `fn perm_cycles<V>(p: [V]V) -> List<List<V>>` — \(O(\lvert V \rvert)\); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: never in release; debug traps when `p` is not a permutation
-- `fn perm_pow<V>(p: [V]V, k: Int) -> [V]V` — \(O(\lvert V \rvert)\); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0`
+- `fn perm_cycles<V>(p: [V]V) -> List<List<V>>` — \(O(\lvert V \rvert)\); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: when `p` is not a permutation
+- `fn perm_pow<V>(p: [V]V, k: Int) -> [V]V` — \(O(\lvert V \rvert)\); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0` or `p` is not a permutation
 - `fn inversions<S: Seq, T>(self: S) -> Int` — \(O(n \log n)\); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
 - `fn swap_at<D, T>(mut self: [D]T, i: D, j: D)` — \(O(1)\); Swap two positions of a domain array in place; safely a no-op when `i == j`.
 - `fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0`
@@ -256,7 +256,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
 - `fn adjacent_diff<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
-- `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\).; traps: never in release; debug traps when `ok` is not false-then-true at the answer
+- `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
 - `fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 - `fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
@@ -266,9 +266,9 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
 - `fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
-- `fn perm_rank<V>(p: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20`; debug traps when `p` is not a permutation
+- `fn perm_rank<V>(p: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20` or `p` is not a permutation
 - `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(n)\) memory; traps: when `rank` is not in `0..|V|!`
-- `fn perm_sign<V>(p: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never in release; debug traps when `p` is not a permutation
+- `fn perm_sign<V>(p: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
 - `fn perm_order<V>(p: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
 - `fn partial_inverse<I, V>(self: [I]?V) -> [V]?I` — \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory; traps: when two keys map to the same value
 - `fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0`
