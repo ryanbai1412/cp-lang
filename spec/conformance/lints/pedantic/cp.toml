@@ -1,0 +1,3 @@
+# Pedantic lints are off by default; these cases turn them on.
+[lints]
+unproven_list_index = "warn"
