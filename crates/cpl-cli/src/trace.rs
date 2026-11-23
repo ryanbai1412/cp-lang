@@ -95,7 +95,9 @@ pub fn config(source: &str, only_fn: Option<&str>) -> TraceConfig {
 /// The trace document of one run of the file at `path`.
 pub fn single(path: &str, source: &str, recording: &Recording) -> String {
     let name = file_name(path);
-    let note = if recording.truncated {
+    let note = if recording.skipped > 0 {
+        "A window of the run from a later step: under `--live`, Earlier steps and Later steps load the rest."
+    } else if recording.truncated {
         "The run was longer than a trace holds: the first steps are kept."
     } else {
         "Every change to a top-level variable, every print and every debug(...)."

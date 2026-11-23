@@ -56,6 +56,8 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     let page = get(&base, "/");
     assert!(page.contains(r#"<meta name="cpl-live" content="1">"#));
     assert!(get(&base, "/trace.json").contains("total += i"));
+    let window = get(&base, "/trace.json?from=3");
+    assert!(window.contains(r#""firstStep":3,"steps""#), "{window}");
 
     std::fs::write(&file, SOURCE.replace("total += i", "total += 2 * i")).unwrap();
     assert_eq!(

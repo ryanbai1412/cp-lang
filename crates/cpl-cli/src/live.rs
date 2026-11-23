@@ -3,6 +3,8 @@
 //! page polls for the new recording, keeps its place and says where the two
 //! runs first differ. `POST /replay` replays one call of the shown run with
 //! the fn as the page or the file has it now, as `cpl replay` does.
+//! `GET /trace.json?from=N` records the file again from step N on, so the
+//! page can load any window of a run longer than a trace holds.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -23,15 +25,13 @@ struct Run {
     input: Vec<u8>,
 }
 
-/// Serves until interrupted. `record` turns the file as it is now into a
-/// trace document, or says why it can't.
-pub fn serve(
-    path: &str,
-    input: &[u8],
-    input_note: &str,
-    record: &dyn Fn() -> Result<String, String>,
-) -> u8 {
-    let first = match record() {
+/// Turns the file as it is now into a trace document, from a step on, or
+/// says why it can't.
+pub type Record<'a> = &'a (dyn Fn(Option<usize>) -> Result<String, String> + Sync);
+
+/// Serves until interrupted.
+pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
+    let first = match record(None) {
         Ok(document) => document,
         Err(error) => {
             eprint!("{error}");
@@ -60,12 +60,18 @@ pub fn serve(
         path: path.to_string(),
         input: input.to_vec(),
     });
-    std::thread::spawn(move || {
-        for stream in listener.incoming().flatten() {
-            let (shown, run) = (Arc::clone(&served), Arc::clone(&run));
-            std::thread::spawn(move || answer(stream, &shown, &run));
-        }
-    });
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            for stream in listener.incoming().flatten() {
+                let (shown, run) = (&served, &run);
+                scope.spawn(move || answer(stream, shown, run, record));
+            }
+        });
+        watch(path, &shown, record)
+    })
+}
+
+fn watch(path: &str, shown: &Mutex<Shown>, record: Record) -> ! {
     let mut last = std::fs::read(path).ok();
     loop {
         std::thread::sleep(Duration::from_millis(200));
@@ -74,7 +80,7 @@ pub fn serve(
             continue;
         }
         last = now;
-        let result = record();
+        let result = record(None);
         let mut shown = shown.lock().unwrap();
         match result {
             Ok(document) => {
@@ -91,7 +97,7 @@ pub fn serve(
     }
 }
 
-fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
+fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run, record: Record) {
     let mut reader = BufReader::new(&stream);
     let mut request = String::new();
     if reader.read_line(&mut request).is_err() {
@@ -107,9 +113,21 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run) {
         header.clear();
     }
     let target = request.split_whitespace().nth(1).unwrap_or("/");
-    let target = target.split('?').next().unwrap_or("/");
+    let (target, query) = target.split_once('?').unwrap_or((target, ""));
+    let from = query
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("from="))
+        .and_then(|n| n.parse().ok());
     let posted = request.starts_with("POST ");
-    let (kind, body) = if posted && target == "/replay" {
+    let (kind, body) = if let (Some(from), "/trace.json") = (from, target) {
+        let document = record(Some(from)).unwrap_or_else(|error| {
+            format!(
+                "{{\"error\":{}}}",
+                cpl_json::escape_script_safe_string(error.trim_end())
+            )
+        });
+        ("application/json", document)
+    } else if posted && target == "/replay" {
         let mut body = vec![0; length.min(1 << 24)];
         let body = reader
             .read_exact(&mut body)

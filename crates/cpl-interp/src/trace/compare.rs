@@ -127,6 +127,9 @@ pub(super) fn run_json(
     if rec.skipped > 0 {
         out += &format!(",\"firstStep\":{}", rec.skipped);
     }
+    if rec.truncated {
+        out.push_str(",\"truncated\":true");
+    }
     out.push_str(",\"steps\":[");
     for (index, step) in rec.steps(0..rec.len()).enumerate() {
         if index > 0 {

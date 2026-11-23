@@ -48,7 +48,8 @@
       "type": "object", "required": ["label", "steps"], "additionalProperties": false,
       "properties": {
         "label": {"type": "string"},
-        "firstStep": {"type": "integer", "minimum": 1, "description": "with `--from`: the run's step number of the first step kept"},
+        "firstStep": {"type": "integer", "minimum": 1, "description": "with `--from`: the steps of the run before the first one kept"},
+        "truncated": {"const": true, "description": "the run went on past the last step kept"},
         "steps": {"type": "array", "minItems": 1, "maxItems": 100000, "items": {"$ref": "#/$defs/step"}}
       }
     },

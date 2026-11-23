@@ -1179,14 +1179,17 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
     } else {
         Side::Solution
     };
-    let record = || {
+    let record = |from: Option<usize>| {
         let mut stderr = String::new();
         let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
         let observed = cpl_interp::run_observed(
             &compiled.program,
             cpl_interp::Io::fixed(&input),
             &mut Vec::new(),
-            Some(trace_config(args, &compiled.text)),
+            Some(cpl_interp::trace::TraceConfig {
+                from_step: from.or(args.from_step),
+                ..trace_config(args, &compiled.text)
+            }),
         );
         Ok(trace::single(
             args.file,

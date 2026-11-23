@@ -30,6 +30,12 @@ test("a --from window numbers its steps as the whole run does", () => {
   T.validate(window);
   assert.equal(T.stepNumber(window.runs.fast, 0), 1001);
   assert.match(T.summary(window, T.analyze(window)).detail, /steps from step 1001 ·/);
+  assert.equal(T.windowFrom(window.runs.fast, false), Math.max(0, 1000 - window.runs.fast.steps.length));
+  assert.equal(T.windowFrom(window.runs.fast, true), null, "a run that ended has no later window");
+  window.runs.fast.truncated = true;
+  assert.equal(T.windowFrom(window.runs.fast, true), 1000 + window.runs.fast.steps.length);
+  delete window.runs.fast.firstStep;
+  assert.equal(T.windowFrom(window.runs.fast, false), null, "the run's start has no earlier window");
   window.runs.fast.firstStep = 0;
   assert.throws(() => T.validate(window), /firstStep must be a positive integer/);
 });

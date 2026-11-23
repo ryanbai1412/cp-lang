@@ -258,6 +258,26 @@ fn trace_from_keeps_the_run_from_that_step_on() {
         all[10..],
         "the window is the whole run's steps from step 10"
     );
+    let long = write_temp(
+        "from_long",
+        "var x = 0\nfor i in 1..=100000:\n    x = i\nprint(x)\n",
+    );
+    let long = long.to_str().unwrap();
+    let (_, head, _) = run_cpl(&["run", long, "--trace", "--format", "json"], "");
+    assert!(
+        head.contains("\"truncated\":true"),
+        "the run goes on past what a trace keeps"
+    );
+    let (_, tail, _) = run_cpl(
+        &[
+            "run", long, "--trace", "--from", "199000", "--format", "json",
+        ],
+        "",
+    );
+    assert!(
+        !tail.contains("\"truncated\""),
+        "the last window reaches the run's end"
+    );
     let (code, _, stderr) = run_cpl(&["run", p, "--trace", "--from", "x"], "");
     assert_eq!(code, 2, "{stderr}");
 }

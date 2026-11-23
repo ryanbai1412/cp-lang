@@ -404,7 +404,7 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
   </main>
 </div>
 <section class="timeline" aria-label="Timeline">
-  <div class="tl-top"><span class="badge" id="tl-kind">STEP</span><span class="tl-label" id="tl-label"></span><label class="step-jump">Step <input class="input" id="step-number" type="number" min="1" value="1" aria-label="Go to step"></label><span class="tl-pos" id="tl-pos"></span></div>
+  <div class="tl-top"><span class="badge" id="tl-kind">STEP</span><span class="tl-label" id="tl-label"></span><label class="step-jump">Step <input class="input" id="step-number" type="number" min="1" value="1" aria-label="Go to step"></label><span class="tl-pos" id="tl-pos"></span><button class="btn" type="button" id="win-earlier" hidden>Earlier steps</button><button class="btn" type="button" id="win-later" hidden>Later steps</button></div>
   <div class="track"><input id="scrub" type="range" min="0" max="0" value="0" aria-label="Step"><div class="marks" id="marks" aria-hidden="true"></div></div>
   <div class="transport">
     <button class="tbtn" id="first" type="button" aria-label="First step" title="First step (Home)" aria-keyshortcuts="Home"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 3h1.5v10H3zM13 3v10L6 8z"/></svg></button>
@@ -457,6 +457,7 @@ const TraceCore = (() => {
       if (!record(run) || typeof run.label !== "string" || !Array.isArray(run.steps) || !run.steps.length) fail(`${name} needs a label and at least one step`);
       if (run.steps.length > 100000) fail("Viewer supports at most 100,000 steps per run");
       if (own(run, "firstStep") && !(Number.isInteger(run.firstStep) && run.firstStep >= 1)) fail(`${name} firstStep must be a positive integer`);
+      if (own(run, "truncated") && run.truncated !== true) fail(`${name} truncated must be true when present`);
       const ids = new Set(), checkpoints = new Set();
       for (const [index, s] of run.steps.entries()) {
         const where = `${name} step ${index + 1}`;
@@ -611,6 +612,12 @@ const TraceCore = (() => {
   }
   // The run's own step number, 1-based: a `--from` window starts past step 1.
   function stepNumber(run, i) { return (run.firstStep ?? 0) + i + 1; }
+  // Where the window before or after this one starts (`--from`), or null at the run's start or end.
+  function windowFrom(run, later) {
+    const first = run.firstStep ?? 0, n = run.steps.length;
+    if (later) return run.truncated ? first + n : null;
+    return first > 0 ? Math.max(0, first - n) : null;
+  }
   function summary(trace, analysis) {
     const first = analysis.divergences[0];
     const steps = trace.runs.fast.steps, last = steps[steps.length - 1];
@@ -766,7 +773,7 @@ const TraceCore = (() => {
     return null;
   }
   return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference, place, findPlace, firstChange,
-    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, stepNumber, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
+    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, stepNumber, windowFrom, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;
 
@@ -865,6 +872,8 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     $("title").textContent = trace.title;
     $("desc").textContent = trace.description ?? "";
     $("sample-section").hidden = !samples.length;
+    const served = document.querySelector('meta[name="cpl-live"]');
+    for (const later of [false, true]) $(later ? "win-later" : "win-earlier").hidden = !served || T.windowFrom(trace.runs.fast, later) === null;
     $("capture-note").textContent = sampleIndex >= 0 ? "Illustrative capture, not a live browser run." : "Recorded execution · immutable snapshots. No data leaves this viewer.";
     document.title = `${trace.title} · Trace debugger · CP Lang${cplVersion ? ` ${cplVersion}` : ""}`;
     const slow = trace.runs.slow;
@@ -1417,6 +1426,18 @@ if (typeof module !== "undefined") module.exports = TraceCore;
       const value = Number(e.target.value);
       if (!Number.isInteger(value) || value < 1) e.target.value = player.state().index + 1;
       else { player.go(value - 1); e.target.value = player.state().index + 1; }
+    });
+    // `cpl run --trace --live` records the window before or after this one on request.
+    for (const later of [false, true]) $(later ? "win-later" : "win-earlier").addEventListener("click", async () => {
+      const from = T.windowFrom(trace.runs.fast, later);
+      if (from === null) return;
+      try {
+        const next = await (await fetch(`trace.json?from=${from}`, {cache:"no-store"})).json();
+        if (next.error) { toast(next.error, true); return; }
+        if (!tryLoad(next)) return;
+        renderStatic();
+        player.go(later ? 0 : trace.runs.fast.steps.length - 1);
+      } catch { toast("The trace server is gone", true); }
     });
     $("step-number").addEventListener("keydown", e => { if (e.key === "Enter") { e.target.dispatchEvent(new Event("change")); e.target.blur(); } });
     for (const [id, direction] of [["checkpoint-prev", -1], ["checkpoint-next", 1]]) $(id).onclick = () => {
