@@ -1,0 +1,15 @@
+error[E0503]: a list type is `List<Int>`, not `[Int]`
+  --> list_type_brackets.cp:1:14
+  |
+1 | fn total(xs: [Int]) -> Int = xs.sum
+  |              ^^^^^
+  = help: `[D]T` is an array over a domain or range `D`, e.g. `[0..n]Int`
+
+error[E0503]: a list type is `List<Int>`, not `[Int]`
+  --> list_type_brackets.cp:2:9
+  |
+2 | var xs: [Int] = []
+  |         ^^^^^
+  = help: `[D]T` is an array over a domain or range `D`, e.g. `[0..n]Int`
+
+list_type_brackets.cp: 2 errors

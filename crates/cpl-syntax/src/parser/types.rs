@@ -132,6 +132,43 @@ impl<'a> Parser<'a> {
                         index,
                         elem: Box::new(self.ty()),
                     }
+                } else if self.at(T::Ident)
+                    && self.text().starts_with(|c: char| c.is_ascii_uppercase())
+                    && self.peek_n(1) == T::RBracket
+                    && matches!(
+                        self.peek_n(2),
+                        T::Eq | T::RParen | T::Comma | T::Newline | T::Gt | T::Eof
+                    )
+                {
+                    // `[Int]` (Swift, Python hints): a list type is `List<Int>`.
+                    let open = self.rel(self.tokens[self.pos - 1].span);
+                    let text = self.tokens[self.pos].span.text(self.src).to_string();
+                    let elem = self.ty();
+                    let close = self.span();
+                    self.bump();
+                    let span = Span::new(open.start, close.end);
+                    self.error(
+                        Diagnostic::error(
+                            codes::REMOVED_SYNTAX,
+                            span,
+                            format!("a list type is `List<{text}>`, not `[{text}]`"),
+                        )
+                        .with_help(
+                            "`[D]T` is an array over a domain or range `D`, e.g. `[0..n]Int`",
+                        )
+                        .with_fix(
+                            format!("write `List<{text}>`"),
+                            span,
+                            format!("List<{text}>"),
+                        ),
+                    );
+                    TypeKind::Named {
+                        name: Name {
+                            text: "List".into(),
+                            span,
+                        },
+                        args: vec![elem],
+                    }
                 } else {
                     let index = self.comma_list(T::RBracket, "the index list", Self::index_ty);
                     TypeKind::Array {

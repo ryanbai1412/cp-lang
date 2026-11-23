@@ -171,3 +171,14 @@ fn the_brace_fix_drops_a_crlf_line_whole() {
     let edits = &parse_file(src).diagnostics[0].fixes[0].edits;
     assert_eq!((edits[1].0.start, edits[1].0.end), (35, 38), "{edits:?}");
 }
+
+#[test]
+fn a_bracketed_element_type_is_a_list_type() {
+    let d = parse_file("var xs: [Int] = []\nxs.push(1)\nprint(xs)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    let (span, text) = &d[0].fixes[0].edits[0];
+    assert_eq!((span.start, span.end, text.as_str()), (8, 13, "List<Int>"));
+    assert!(parse_file("let n = 3\nvar a: [0..n]Int = 0\nprint(a)\n")
+        .diagnostics
+        .is_empty());
+}
