@@ -51,7 +51,7 @@ Today = measured on main `4b8f504fc`, 8-core VM, g++ 11.4 `-O2`, release `cpl`; 
 | Codegen shape tests | `cargo nextest run -p cpl-codegen` | 91 | grows | all |
 | Codegen files over 2000 lines | `scripts/debt-ratchet.json` | 2 | 0 | M2 |
 
-Not measured: peak RSS and C++ compile time on the perf set; sizes for judge profiles other than `codeforces`; `bench/rust_latency_audit.py` (fails: `No module named max_n_audit`). Caveats: 20/54 `bench/` and 187/307 corpus pairs did not build or run, so the set is partial; several dry-run "matched" references are slower algorithms (`p20_point` 0.055x), which drags p50 down. Fixing the set is M1.
+Not measured: sizes for judge profiles other than `codeforces`. Peak RSS, g++ time on the emitted C++ and the `bench/rust_latency_audit.py` toolchain budgets are in `metrics.toml` (measured after the packet). Caveats: 20/54 `bench/` and 187/307 corpus pairs did not build or run, so the set is partial; several dry-run "matched" references are slower algorithms (`p20_point` 0.055x), which drags p50 down. Fixing the set is M1.
 
 ## Judgment rubric
 

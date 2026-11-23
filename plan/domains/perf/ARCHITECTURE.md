@@ -36,7 +36,7 @@ The code as it is on main (read 2026-11-22). Updated in the same commit as any s
 | `crates/cpl-contest/src/zero_cost.rs` | `cpl bench --zero-cost`: `bench/zero-cost/<pair>/{abstract,direct}.cp` + `hand.cpp`, 1.05x bar, kernel asm comparison. |
 | `crates/cpl-contest/src/corpus_bench.rs` | `cpl bench --corpus`: `corpus/problems/*` vs `orig.cpp`, writes `bench/corpus-p95-results.json`. |
 
-Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last report `bench/corpus-p95-report.md`), `rust_max_n_audit.py`, `rust_latency_audit.py` (broken on main: imports a missing `max_n_audit`), per-area suites (`bench/trees/`, `bench/ranges/`, ...).
+Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last report `bench/corpus-p95-report.md`), `rust_max_n_audit.py`, `rust_latency_audit.py` (toolchain latency against the P0 budgets: check, run, build, LSP, stress), per-area suites (`bench/trees/`, `bench/ranges/`, ...).
 
 ## Interfaces other domains use
 

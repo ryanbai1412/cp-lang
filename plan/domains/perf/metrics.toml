@@ -99,3 +99,10 @@ command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 
 target = "p50 <= 1000 ms, max <= 3000 ms (judge compile limits are ~10 s)"
 today = "p50 516 ms, max 1126 ms (n=164 ok rows, 2026-11-22 on a083b364)"
 milestone = "M1"
+
+[[metric]]
+name = "toolchain latency: cpl check on v0.3 dry runs (median, max)"
+command = "python3 bench/rust_latency_audit.py --reps 1  # `check` row; the other rows are run, build, lsp, stress"
+target = "every file under 50 ms (P0 budget); front end < 500 ms"
+today = "median 24 ms, p90 50 ms, max 55 ms (p11_distances), 5 of 35 over 50 ms, loaded box (2026-11-22 on 9918895f5); run/build/lsp all PASS, stress first case 1 over (p10_matching)"
+milestone = "M3"
