@@ -2,19 +2,25 @@
 // Problem: a simple directed graph, n <= 2e5 vertices and m <= 2e5 edges with no pair joined
 //   both ways, and 2 <= K <= n - 2. An operation picks K vertices and reverses every edge
 //   inside them. Can some sequence make the graph acyclic? Multitest, sum n, m <= 2e5.
-// Solution: the answer is always Yes for even K. For odd K, complete the graph to a
-//   tournament (missing pairs oriented low -> high); an operation then keeps every out-degree
-//   parity, so we need a completion with floor(n/2) odd out-degrees, as in the transitive
-//   tournament. Orienting a missing pair the other way toggles both ends, so a component of
-//   the complement graph with sz vertices, odd of them odd, can reach any count of odd's
-//   parity in [odd % 2, sz - (sz - odd) % 2]; sum the intervals and test floor(n/2). The
-//   complement components come from a DFS over a sorted set of unvisited vertices,
-//   O((n + m) log n).
+// Solution: complete the graph to a tournament, orienting each missing pair as we like.
+//   An operation on S turns the out-degree o of v inside S into K - 1 - o, so it flips the
+//   parity of every chosen vertex when K is even (parity is then no obstacle, and the editorial
+//   shows the answer is always Yes) and keeps every
+//   parity when K is odd. Then we need a completion with exactly floor(n/2) odd out-degrees,
+//   as in the transitive one; start from low -> high on every pair, where vertex v has parity
+//   (n - v) % 2, and toggle both ends of each given edge u > v. Reorienting a missing pair
+//   toggles both ends, so a component of the missing-pair graph with sz vertices, odd of
+//   them odd, reaches any count of odd's parity in [odd % 2, sz - (sz - odd) % 2]. The odd
+//   count always has the parity of n(n-1)/2, which is that of floor(n/2), so summing the
+//   intervals into [lo, hi] and testing floor(n/2) in it decides. The complement components
+//   come from a BFS that keeps the unvisited vertices in a list and, at each vertex u,
+//   splits off those not joined to u: each scan of a kept vertex is paid by an edge, O(n + m).
 
+with io(answers: ("Yes", "No"))
 @!multitest
-let n: 1..=200_000 = read()
+let n: 4..=200_000 = read()
 let m: 0..=200_000 = read()
-let k: 1..=1_000_000_000 = read()
+let k: 2..=n - 2 = read()
 domain V = 1..=n
 
 let edges: [0..m](V, V) = read()
@@ -24,30 +30,25 @@ for (u, v) in edges if u > v:
     odd_out[v] = not odd_out[v]
 
 if k % 2 == 0:
-    print("Yes")
+    print(yes(true))
     return
 
-let g = Graph.undirected(edges)
-let forbidden = [V] u => g[u].sorted()
+let joined = Graph.undirected(edges)
 
 fn complement_components() -> List<List<V>>:
-    var unvisited = Set(V)
+    var unvisited = V.collect()
+    var near: [V]?V = None
     var comps: List<List<V>> = []
-    for start in V if start in unvisited:
+    while let s = unvisited.pop():
         var comp: List<V> = []
-        fn dfs(cur: V):
-            unvisited.remove(cur)
-            comp.push(cur)
-            var cursor: ?V = V.first
-            var ai = 0
-            while let at = cursor:
-                if let nxt = unvisited.first_ge(at):
-                    while ai < forbidden[cur].len and forbidden[cur][ai] < nxt: ai += 1
-                    if ai == forbidden[cur].len or forbidden[cur][ai] != nxt: dfs(nxt)
-                    cursor = nxt.next
-                else:
-                    break
-        dfs(start)
+        var queue = Deque<V>()
+        queue.push(s)
+        while let Some(u) = queue.pop_front():
+            comp.push(u)
+            for v in joined[u]: near[v] = u
+            let (apart, close) = unvisited.partition(v => near[v] != Some(u))
+            for v in apart: queue.push(v)
+            unvisited = close
         comps.push(comp)
     comps
 
@@ -60,4 +61,4 @@ for comp in complement_components():
     hi += sz - (sz - odd) % 2
 
 let target = n / 2
-print(if lo <= target <= hi: "Yes" else: "No")
+print(yes(lo <= target <= hi))
