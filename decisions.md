@@ -6125,3 +6125,19 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   the binary's.
 - **Reverse.** Delete the `#[global_allocator]` lines in `main.rs` and
   `crates/cpl-lsp/tests/latency.rs` and the two `mimalloc` dependency lines.
+
+## 250. `cpl fetch` reads Codeforces and AtCoder pages, or a saved one (2026-11-22)
+
+- **Decision.** `cpl fetch <url> [name]` (`crates/cpl-contest/src/fetch.rs`)
+  downloads the page with `curl`, as `cpl self` does, and reads the samples,
+  title and limits of a Codeforces or AtCoder problem. `--html FILE` reads a
+  page saved from the browser. Any other judge is a usage error pointing at
+  `cpl new --listen` (Competitive Companion). A sample file already present
+  with other content stops it, so stress cases and hand-written tests survive.
+- **Why.** Those two judges are where the corpus comes from. `curl
+  https://codeforces.com/problemset/problem/4/A` gets HTTP 403 (a script
+  check), so the saved page is the dependable path there; AtCoder serves
+  the page (abc300_a, 200). No HTTP crate: curl is already what `cpl self`
+  needs.
+- **Reverse.** Delete `fetch.rs`, its entries in `crates/cpl-cli`, and add
+  `fetch` back to `SPEC_ONLY` in `crates/cpl-cli/tests/spec_sync.rs`.

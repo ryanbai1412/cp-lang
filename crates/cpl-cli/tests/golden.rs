@@ -60,6 +60,65 @@ fn misused(command: &str, args: &[&str], message: &str) {
     assert!(!stderr.contains("commands:"), "{stderr}");
 }
 
+/// `cpl fetch` on a saved AtCoder page: creates the problem, then refreshes
+/// its samples, and won't overwrite a test that says something else.
+#[test]
+fn fetch_writes_a_pages_samples_and_keeps_other_tests() {
+    helps("fetch");
+    misused("fetch", &["fetch"], "`fetch` needs a problem page");
+    misused(
+        "fetch",
+        &["fetch", "https://example.com/p/1"],
+        "is not a Codeforces or AtCoder page",
+    );
+    let dir = scratch("fetch");
+    std::fs::write(
+        dir.join("page.html"),
+        "<span class=\"h2\">\nA - Sum\n<a href=\"/e\">Editorial</a></span>\n\
+         <p>Time Limit: 2 sec / Memory Limit: 1024 MiB</p>\n<span class=\"lang-en\">\n\
+         <h3>Sample Input 1</h3><pre>1 2\n</pre><h3>Sample Output 1</h3><pre>3\n</pre>\n\
+         <h3>Sample Input 2</h3><pre>5 &amp; 6\n</pre><h3>Sample Output 2</h3><pre>11\n</pre></span>",
+    )
+    .unwrap();
+    let url = "https://atcoder.jp/contests/abc999/tasks/abc999_a";
+    let out = cpl(&dir, &["fetch", url, "--html", "page.html"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "  created a.cp\n  created a.tests/ (2 samples)\n"
+    );
+    let source = std::fs::read_to_string(dir.join("a.cp")).unwrap();
+    assert!(
+        source.starts_with(&format!("// A - Sum\n// {url}\n")),
+        "{source}"
+    );
+    let sample = |name: &str| std::fs::read_to_string(dir.join("a.tests").join(name)).unwrap();
+    assert_eq!(
+        (sample("1.in"), sample("1.out")),
+        ("1 2\n".into(), "3\n".into())
+    );
+    assert_eq!(sample("2.in"), "5 & 6\n");
+
+    let again = cpl(
+        &dir,
+        &["fetch", url, "--html", "page.html", "--format", "json"],
+    );
+    assert_eq!(again.status.code(), Some(0), "{}", text(&again.stderr));
+    assert_eq!(
+        text(&again.stdout),
+        "{\"path\":\"a.cp\",\"created\":false,\"tests\":\"a.tests\",\"samples\":2}\n"
+    );
+    std::fs::write(dir.join("a.tests/2.out"), "12\n").unwrap();
+    let kept = cpl(&dir, &["fetch", url, "--html", "page.html"]);
+    assert_eq!(kept.status.code(), Some(EXIT_ERRORS.into()));
+    assert!(
+        text(&kept.stderr).contains("says something else"),
+        "{}",
+        text(&kept.stderr)
+    );
+    assert_eq!(sample("2.out"), "12\n");
+}
+
 #[test]
 fn new_creates_the_solution_and_its_tests_folder() {
     helps("new");
@@ -245,7 +304,7 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
         .filter(|line| !line.starts_with("   "))
         .filter_map(|line| line.split_whitespace().next())
         .collect();
-    assert_eq!(commands.len(), 23, "{help}");
+    assert_eq!(commands.len(), 24, "{help}");
     for command in commands {
         helps(command);
         let out = cpl(Path::new("."), &[command, "--no-such-option"]);
@@ -267,7 +326,7 @@ fn help_json_lists_every_command_with_its_usage_summary_and_help() {
     assert_eq!(out.status.code(), Some(0));
     let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
     let commands = json.at(&["commands"]).as_array().unwrap();
-    assert_eq!(commands.len(), 23);
+    assert_eq!(commands.len(), 24);
     let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();

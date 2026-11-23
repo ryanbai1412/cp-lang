@@ -1,8 +1,9 @@
-//! The contest workflow around one problem file: `cpl new`, `cpl test`,
-//! `cpl bench` and `cpl watch` (`plan/40-tooling.md`).
+//! The contest workflow around one problem file: `cpl new`, `cpl fetch`,
+//! `cpl test`, `cpl bench` and `cpl watch` (`plan/40-tooling.md`).
 
 pub mod bench;
 pub mod corpus_bench;
+pub mod fetch;
 pub mod new;
 pub mod problem;
 pub mod test;

@@ -96,6 +96,11 @@ pub(crate) const COMMANDS: &[Command] = &[
         summary: &["create a problem from its constraints or samples"],
     },
     Command {
+        name: "fetch",
+        args: "<url> [name]",
+        summary: &["download a Codeforces or AtCoder problem's samples"],
+    },
+    Command {
         name: "test",
         args: "<problem>",
         summary: &["run every case in <problem>.tests/"],
@@ -405,7 +410,7 @@ options:
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
 const JSON_FLAG: &[&str] = &[
-    "check", "fix", "build", "submit", "judge", "judges", "explain", "report", "fmt",
+    "check", "fix", "build", "submit", "judge", "judges", "explain", "report", "fmt", "fetch",
 ];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every

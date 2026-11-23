@@ -510,6 +510,7 @@ pub fn tool(command: &str) -> Option<Tool> {
         "doc" => cpl_doc::cli::run,
         "stress" => cpl_stress::cli::run,
         "new" => cpl_contest::new::run,
+        "fetch" => cpl_contest::fetch::run,
         "test" => cpl_contest::test::run,
         "bench" => cpl_contest::bench::run,
         "watch" => cpl_contest::watch::run,
@@ -1167,7 +1168,7 @@ mod tests {
     fn tooling_commands_reach_their_crates() {
         for command in [
             "check", "fix", "run", "build", "judge", "submit", "judges", "explain", "lsp", "fmt",
-            "lint", "doc", "stress", "new", "test", "bench", "watch",
+            "lint", "doc", "stress", "new", "fetch", "test", "bench", "watch",
         ] {
             let out = run(&[command, "--help"]);
             assert_eq!(out.code, 0, "{command}");

@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 /// In the spec, not in the binary.
-const SPEC_ONLY: &[&str] = &["fetch", "locate", "migrate"];
+const SPEC_ONLY: &[&str] = &["locate", "migrate"];
 /// In the binary, not in the spec.
 const CLI_ONLY: &[&str] = &[];
 
@@ -52,7 +52,7 @@ fn names(list: &[&str]) -> BTreeSet<String> {
 fn the_spec_and_the_binary_name_the_same_commands_but_a_shrinking_list() {
     let spec = spec_commands();
     let cli = cli_commands();
-    assert_eq!(cli.len(), 23, "{cli:?}");
+    assert_eq!(cli.len(), 24, "{cli:?}");
     let spec_only: BTreeSet<String> = spec.difference(&cli).cloned().collect();
     let cli_only: BTreeSet<String> = cli.difference(&spec).cloned().collect();
     assert_eq!(
