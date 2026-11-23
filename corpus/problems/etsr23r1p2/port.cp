@@ -35,8 +35,8 @@ for o in orders:
     let last = coord.last_le(o.r)!
     var gone = 0
     while starts.fold(first..=last) > 0: gone += throw_out(X(starts.fold(first..=last) - 1))
-    if let before = first - 1:
-        let top = starts.fold(X.first..=before)  // the last range that starts before l
+    if let before = X.at(first - 1):
+        let top = starts.fold(X.first!..=before)  // the last range that starts before l
         if top > 0 and end_of[X(top - 1)] >= o.l: gone += throw_out(X(top - 1))
     starts.set(first, first.idx + 1)
     end_of[first] = o.r

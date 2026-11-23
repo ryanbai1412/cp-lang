@@ -7,8 +7,8 @@ let n: Int = read()
 domain V = 1..=n
 var joined = Dsu<V>.new()
 var g: [V]List<V> = []
-var a = V.first
-var b = V.first
+var a = V.first!
+var b = V.first!
 for _ in 0..n:
     let u: V = read()
     let v: V = read()

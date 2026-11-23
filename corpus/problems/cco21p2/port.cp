@@ -31,7 +31,7 @@ fn spell(x: Int) -> ?List<Int>:
         if 0 in via:
             var (u, out): (Int, List<Int>) = (0, [])
             while true:
-                let b = via[u]!
+                let b = via[u]
                 out.push(b)
                 u = u * k + b
                 if u == x: return out

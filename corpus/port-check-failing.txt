@@ -36,7 +36,6 @@ cco19p5
 cco19p6
 cco20p1
 cco21p1
-cco21p2
 cco21p3
 cco21p5
 cco22p1
@@ -63,7 +62,6 @@ coci06c1p6
 coci20c6p1
 coci20c6p2
 coci20c6p3
-coci21c1p3
 coci21c2p4
 coci25c3p4
 coi06p2
@@ -73,12 +71,10 @@ dmopc21c4p4
 dwite10c3p3
 egoi22p3
 egoi23p2
-etsr23r1p2
 etsr23r3p1
 etsr23r3p2
 etsr23r3p3
 etsr23r4p2
-ioi00p4
 ioi05p2
 ioi05p6
 ioi07p2
