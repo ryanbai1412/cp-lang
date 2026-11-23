@@ -1,0 +1,102 @@
+---
+title: "Standard library design"
+description: "How the standard library is shaped: one vocabulary, options as named arguments, costs on every signature, operation values, and no privilege over user code."
+---
+
+The standard library is where contest shapes live: segment trees, DSU, graphs, flows, strings,
+modular combinatorics. The language core stays small and general, and the library is written in
+CP Lang itself. This chapter is about the rules every part of it follows, so that a name you
+haven't looked up yet is still guessable. The surfaces are in the [library reference](/docs/ref/std),
+and the normative designs are under <Spec file="lib/containers">`spec/lib/`</Spec>.
+
+## One vocabulary
+
+A name means the same thing everywhere it appears. Collections use `add`, `remove`, `in` and the
+`len` getter. Sequences use `push`, `pop`, `first` and `last`. Range structures use `get`, `set`,
+`update` and `fold`. Sorted lookup is always `first_ge`, `first_gt`, `last_le` and `last_lt`, on a
+`List`, a `[D]T`, a `Map` or a `SortedBag` alike. Algorithms use their textbook names.
+
+So once you know `SegTree`, a Fenwick tree, a sparse table and a lazy tree read the same way:
+
+```cp run input="4\n6 9 1 3\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+var seg = SegTree(max, a)
+print(seg.fold(V(2)..=V(4)))
+seg.set(V(3), 100)
+print(seg.fold(V.range))
+var g = SegTree(gcd, a)
+print(g.fold(V(1)..=V(2)))
+```
+
+## Operations are values
+
+`SegTree(max, a)` and `SegTree(gcd, a)` are one structure with two operations. The operation is
+an ordinary function value: `max`, `gcd`, `+`, or your own `fn`. Its identity comes with it, and
+because a function value that captures nothing is zero-size and inlined, the C++ is the same as a
+segment tree hand-written for that operation.
+
+## Options are named arguments
+
+There is one function per job, and its options are named arguments with defaults: `by:` for a key,
+`cmp:` for an order, `init:` for a start value. There is no `sort_by`, `min_by` or `max_with`:
+
+```cp run input="4\n7 1 9 3\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+var xs: List<Int> = [5, -3, 2, -8]
+xs.sort(by: x => abs(x))
+print(xs)
+print(V.min(by: v => a[v])!)
+for (i, x) in xs.items:
+    print(i, x)
+```
+
+The twin doesn't exist, so the compiler says so:
+
+```cp run rejects=E0203
+var xs: List<Int> = [5, -3, 2, -8]
+xs.sort_by(x => abs(x))
+print(xs)
+```
+
+`cpl lint --fix` rewrites a `_by` call into the base call with `by:`, so code written from habit
+converts in one step. `.items` is the one way to walk keys with values: it gives the keys a
+sequence already has, so an index found in a slice is valid on the source.
+
+## Costs are visible
+
+Every library function documents its cost on its signature, and the cost follows from how it
+looks. A bare member without parentheses, like `xs.len` or `v.next`, is an `@get` getter, which
+promises O(1). Anything that is O(n) or allocates is a call with parentheses, and a function that
+builds a new value looks like it returns one (`xs.sorted()` against `xs.sort()`). Hover in the
+editor shows the cost with the signature.
+
+## No privilege
+
+The library uses only public language features. When it needs a power, user code gets it too, or
+it becomes an explicit core feature. Reflection over fields, for instance, is a loop any program can
+write, `for f in fields(x)`, and the derives for `print` and `read` are built on it. A personal
+library in your `cp.toml` can declare the same kinds of functions, getters, operation values and
+lints as `std`.
+
+## Why it's designed this way
+
+**Guessable names.** A contestant at 3am shouldn't look up whether it's `lower_bound`, `bisect`
+or `ceiling`. <Decision n={26} /> kept the four sorted-lookup names over the spec's
+`first(from:)` family: they read the same in every container, are greppable, and need no overloading
+on argument labels, which the core doesn't have.
+
+**One function, named options.** <Decision n={60} /> removed eleven `_by` twins in favour of a
+`by:` parameter on the base operation. Twins double the surface, and each pair drifts apart in its
+tie-breaking and its docs. The reversal is to re-add the wrappers and drop the lint.
+
+**Values for operations.** The same decision (26.4) kept `Monoid` and `Action` as values rather
+than traits, so one type can have several operations, min and max over `Int`, without newtypes.
+
+**A library-only standard library.** <Decision n={28} /> lists the core mechanisms the library is
+built on, starting with reflection as a loop. The rejected alternatives, macros or a `comptime`
+block, need a new keyword and hide generated code from the trace and the formatter. A privileged
+stdlib would mean your own library can never be as good as `std`; here it can.

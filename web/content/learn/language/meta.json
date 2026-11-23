@@ -9,6 +9,7 @@
     "types-widths-proofs",
     "optionals",
     "multitest-state",
-    "checked-operations"
+    "checked-operations",
+    "standard-library"
   ]
 }

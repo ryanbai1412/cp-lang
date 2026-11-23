@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site(learn): language chapter on standard library design`: one vocabulary, operation values, named options instead of `_by` twins, visible costs, no privilege; 3 examples (1 rejected), citing decisions 26, 28 and 60.
 - Landed `site(learn): language chapter on values`: the four kinds of value, structs with `var` fields, enums and exhaustive `match`, literal unions, nothing implicit, local inference; 8 examples (4 rejected on purpose), citing decisions 127, 131, 132 and 136. Variant patterns use positional fields: `Add(x:)` (R02.7.6) doesn't parse yet; filed in the compiler worklog.
 - Landed `site(learn): language chapter on types, widths and proofs`: four number types, range types as contracts, storage widths, proved and unproved stores, Euclidean division, `Mod<P>`; 6 examples (2 traps the gate verifies), citing decisions 1 (rows 1.7 and 1.9), 100 and 149.
 - Landed `site(learn): language chapter on checked operations`: checked vs release builds, proved vs unproven operations, `with checks(...)`, `unchecked:`; 5 examples, 2 of them traps the gate now verifies (`rejects=R####`: the program checks and `cpl run` stops with that code). Cites decisions 148 and 180 and notes the judge-build traps question still with Ryan.
