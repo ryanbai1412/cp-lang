@@ -96,7 +96,6 @@ pub fn crash_dir() -> PathBuf {
 /// the one-line `cpl report --last` hint.
 pub fn install_ice_hook() {
     std::panic::set_hook(Box::new(|info| {
-        let bt = Backtrace::force_capture().to_string();
         let msg = if let Some(s) = info.payload().downcast_ref::<&str>() {
             (*s).to_string()
         } else if let Some(s) = info.payload().downcast_ref::<String>() {
@@ -104,6 +103,10 @@ pub fn install_ice_hook() {
         } else {
             "internal compiler error".to_string()
         };
+        if reader_went_away(&msg) {
+            std::process::exit(0);
+        }
+        let bt = Backtrace::force_capture().to_string();
         let location = info
             .location()
             .map(|l| format!("{}:{}:{}", basename(l.file()), l.line(), l.column()))
@@ -112,6 +115,13 @@ pub fn install_ice_hook() {
         let _ = write_crash_bundle(&crash_dir(), &ctx, &msg, &location, &bt);
         eprintln!("this is a cpl bug: run `cpl report --last`");
     }));
+}
+
+/// `print!` panics when whatever reads cpl's output stops early
+/// (`cpl --version | head -1`): the reader has all it wanted, so it isn't a bug.
+fn reader_went_away(msg: &str) -> bool {
+    msg.starts_with("failed printing to std")
+        && (msg.contains("(os error 32)") || msg.contains("(os error 232)"))
 }
 
 fn write_crash_bundle(

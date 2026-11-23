@@ -1585,3 +1585,19 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
         .expect(&err);
     assert!(inside < via && err.contains("main.cp:6:7"), "{err}");
 }
+
+#[test]
+fn a_reader_that_stops_early_is_not_a_cpl_bug() {
+    for args in [&["--version"][..], &["--help"][..]] {
+        let (reader, writer) = std::io::pipe().unwrap();
+        drop(reader);
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(args)
+            .stdout(writer)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(!stderr.contains("cpl bug"), "{args:?}: {stderr}");
+        assert!(out.status.success(), "{args:?}: {:?} {stderr}", out.status);
+    }
+}
