@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2823 (995 passing). Rules: 575.
+Cases: 2825 (995 passing). Rules: 575.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 169 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 170 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -86,7 +86,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.5 [1+ 1-]: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
 - R01.3.1 [2+ 3-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
-- R01.3.2 [4+ 1-]: , so compare a lowercase `const` with a guard (decision 369).
+- R01.3.2 [4+ 2-]: , so compare a lowercase `const` with a guard (decision 369).
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [4+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
@@ -745,7 +745,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 3 case(s)
-- E0208 Uppercase value name: 1 case(s)
+- E0208 Uppercase value name: 2 case(s)
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 45 case(s)
 - E0303 Wrong number of arguments: 10 case(s)
@@ -773,7 +773,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0408 assign_into_range *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 9 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 10 case(s)
+- E0503 Removed syntax from an older version: 11 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 40 case(s)
@@ -993,6 +993,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 ## Core cases without a `// rule:` line
 
+- core-01/else-if-names-elif.cp
 - core-01/for-filter-on-inner-clause.cp
 - core-01/inline-if-binds-loosest.cp
 - core-01/while-let-tuple-pattern.cp
