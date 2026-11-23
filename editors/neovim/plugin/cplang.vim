@@ -10,10 +10,10 @@ augroup cplang
     autocmd!
     autocmd User lsp_setup call lsp#register_server({
                 \ 'name': 'cpl',
-                \ 'cmd': [get(g:, 'cpl_path', 'cpl'), 'lsp'],
+                \ 'cmd': [cplang#path(), 'lsp'],
                 \ 'allowlist': ['cp']})
     autocmd VimEnter * if exists('*LspAddServer')
                 \ | call LspAddServer([{'name': 'cpl', 'filetype': ['cp'],
-                \     'path': get(g:, 'cpl_path', 'cpl'), 'args': ['lsp']}])
+                \     'path': cplang#path(), 'args': ['lsp']}])
                 \ | endif
 augroup END

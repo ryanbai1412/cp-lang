@@ -43,6 +43,8 @@ export class CpClient implements vscode.Disposable {
     private fallbackInlayHints: vscode.Disposable | undefined;
     private readonly status: vscode.LanguageStatusItem;
     private warnedMissing = false;
+    /** The `cpl` the server runs, shown in the status and the output. */
+    private binary: string | undefined;
 
     constructor(private readonly output: vscode.OutputChannel) {
         this.status = vscode.languages.createLanguageStatusItem('cp.server', SELECTOR);
@@ -58,6 +60,8 @@ export class CpClient implements vscode.Disposable {
             this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
+        this.binary = binary;
+        this.output.appendLine(`Using ${binary}`);
         this.status.command = { command: 'cp.restartServer', title: 'Restart' };
         const args = vscode.workspace.getConfiguration('cp').get<string[]>('server.args', ['lsp']);
         const serverOptions: ServerOptions = {
@@ -186,7 +190,7 @@ export class CpClient implements vscode.Disposable {
         this.status.busy = false;
         this.status.text = text;
         this.status.severity = severity;
-        this.status.detail = detail;
+        this.status.detail = detail ?? this.binary;
     }
 
     private missingBinary(): void {

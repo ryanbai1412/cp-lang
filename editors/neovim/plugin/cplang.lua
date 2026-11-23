@@ -1,7 +1,7 @@
 -- CP Lang for Neovim 0.10+: the filetype, tree-sitter highlighting when the parser is
 -- built, and `cpl lsp` on every .cp buffer with diagnostics, completion, `gd` to the
 -- definition and formatting on save. `cpl setup neovim` installs this folder.
--- Set vim.g.cpl_path when cpl is not on the PATH; vim.g.cpl_format_on_save = false
+-- cpl is found as autoload/cplang.vim says; vim.g.cpl_path overrides it; vim.g.cpl_format_on_save = false
 -- and vim.g.cpl_autocomplete = false turn those off.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
@@ -25,7 +25,7 @@ local function run_in_terminal(args)
     vim.diagnostic.reset(wrong_call, source)
     vim.cmd('botright new')
     local term = vim.api.nvim_get_current_buf()
-    vim.fn.termopen(vim.list_extend({ vim.g.cpl_path or 'cpl' }, args), {
+    vim.fn.termopen(vim.list_extend({ vim.fn['cplang#path']() }, args), {
         on_exit = function()
             -- The last of the output can reach the buffer just after the exit (Windows' ConPTY).
             vim.defer_fn(function()
@@ -60,7 +60,7 @@ end, {
     complete = function(lead, line)
         if line:match('^%S+%s+%S*$') == nil then return {} end
         if commands == nil then
-            local ok, help = pcall(vim.json.decode, vim.fn.system({ vim.g.cpl_path or 'cpl', '--help', '--json' }))
+            local ok, help = pcall(vim.json.decode, vim.fn.system({ vim.fn['cplang#path'](), '--help', '--json' }))
             commands = ok and vim.tbl_map(function(c) return c.name end, help.commands or {}) or {}
         end
         return vim.tbl_filter(function(name) return vim.startswith(name, lead) end, commands)
@@ -77,7 +77,7 @@ vim.api.nvim_create_autocmd('FileType', {
         local file = vim.api.nvim_buf_get_name(args.buf)
         vim.lsp.start({
             name = 'cpl',
-            cmd = { vim.g.cpl_path or 'cpl', 'lsp' },
+            cmd = { vim.fn['cplang#path'](), 'lsp' },
             init_options = { codeLens = true },
             root_dir = vim.fs.root(args.buf, { '.git' }) or vim.fs.dirname(file),
         }, { bufnr = args.buf })
@@ -132,7 +132,7 @@ vim.api.nvim_create_autocmd('FileType', {
     callback = function()
         local ok, dap = pcall(require, 'dap')
         if not ok or dap.adapters.cp ~= nil then return end
-        dap.adapters.cp = { type = 'executable', command = vim.g.cpl_path or 'cpl', args = { 'dap' } }
+        dap.adapters.cp = { type = 'executable', command = vim.fn['cplang#path'](), args = { 'dap' } }
         dap.configurations.cp = dap.configurations.cp or {
             { type = 'cp', request = 'launch', name = 'Debug this file', program = '${file}', stopOnEntry = true },
             {

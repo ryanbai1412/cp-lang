@@ -231,6 +231,21 @@ end
 local fixed = vim.api.nvim_buf_get_lines(0, 1, 2, false)[1]
 check(fixed == 'x += 1', 'no quick fix of ' .. vim.inspect(titles) .. ' writes `x += 1`: ' .. vim.inspect(fixed))
 
+-- Started from a desktop launcher, without the shell's PATH or vim.g.cpl_path, the
+-- plugin still runs the installer's ~/.cpl/bin/cpl.
+do
+    local saved = { vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME }
+    local home = dir .. '/home'
+    local installed = home .. '/.cpl/bin/' .. (vim.fn.has('win32') == 1 and 'cpl.exe' or 'cpl')
+    vim.fn.mkdir(home .. '/.cpl/bin', 'p')
+    check(vim.uv.fs_copyfile(cpl, installed), 'could not copy cpl to ' .. installed)
+    vim.uv.fs_chmod(installed, 493)
+    vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME = nil, '', home, nil
+    local found = vim.fn['cplang#path']()
+    vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME = saved[1], saved[2], saved[3], saved[4]
+    check(found == installed, ('without PATH the plugin runs %s, not %s'):format(found, installed))
+end
+
 -- With the parser built, a .cp buffer highlights through tree-sitter and the shared queries.
 local parser_dir = dir .. '/ts'
 vim.fn.mkdir(parser_dir .. '/parser', 'p')

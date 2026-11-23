@@ -57,6 +57,10 @@ const COMMON: &[(&str, &str)] = &[
         "plugin/cplang.vim",
         include_str!("../../../editors/neovim/plugin/cplang.vim"),
     ),
+    (
+        "autoload/cplang.vim",
+        include_str!("../../../editors/neovim/autoload/cplang.vim"),
+    ),
 ];
 const QUERIES: (&str, &str) = (
     "queries/cp/highlights.scm",
