@@ -1,8 +1,10 @@
-// Baltic OI 2019 Nautilus: a ship sits somewhere on the sea cells of an
-// r x c map and follows m signals, each N/E/S/W or '?' (any of the four),
-// never entering an island. Count the cells it can be in at the end.
-// Keep the set of possible cells as one bit per cell: a signal shifts the
-// whole set one step and masks it with the sea.
+// Source: Baltic OI 2019 P2 (Nautilus), https://dmoj.ca/problem/btoi19p2
+// Problem: an R x C map (R, C <= 500) of water '.' and island '#', and M <= 5000 signals, each
+//   N, E, S, W or '?' (any of the four). A submarine started on some water cell and made one move
+//   per signal, always on water. Print how many cells it can be in now.
+// Solution: keep the set of possible cells as bits, 30 columns per word: a signal shifts every
+//   row's words one step (OR of all four for '?') and masks them with the water bits, then count
+//   the bits at the end. O(R C M / 30).
 // original: corpus/submissions/4456161.cpp
 let r: 1..=500 = read()
 let c: 1..=500 = read()

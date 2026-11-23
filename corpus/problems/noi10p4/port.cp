@@ -1,13 +1,11 @@
-// NOI 2010 Flight Control: n planes take off one per time slot 1..n. Plane
-// i must leave no later than slot k[i], and m rules say plane a leaves
-// before plane b. A valid schedule exists. Print one, then for every plane
-// the earliest slot it can have in any valid schedule.
-//
-// Push the deadlines back along the rules: a plane must leave before the
-// tightened deadline of everything after it. Sorting by tightened deadline
-// is then a schedule. For plane u, send every plane that need not precede u
-// as late as its deadline allows; u and its predecessors get the slots
-// left over, and u takes the last of them.
+// Source: NOI 2010 P4 (Flight Control), https://dmoj.ca/problem/noi10p4
+// Problem: n <= 2000 flights take off one per slot 1..n; flight i must be in a slot <= k_i, and
+//   m <= 1e4 rules say a takes off before b. A valid schedule exists. Print one, then for each
+//   flight the earliest slot it can have in any valid schedule.
+// Solution: tighten deadlines backwards through a topological order, due[a] = min(k_a,
+//   due[b] - 1) over rules a -> b; sorting by due is then a schedule. For flight u, mark u and
+//   everything that must precede it, then give the unmarked flights the latest slots their
+//   deadlines allow, going down from slot n; u takes the highest slot left free. O(n (n + m)).
 // original: corpus/submissions/5670273.cpp
 use std.graph.{topo}
 

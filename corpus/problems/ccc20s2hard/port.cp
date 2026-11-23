@@ -1,4 +1,11 @@
-// CCC '20 S2 (Hard) — Escape Room (Hard) (today form for proto/cpc)
+// Source: CCC 2020 S2 (Escape Room, hard data), https://dmoj.ca/problem/ccc20s2hard
+// Problem: an M x N grid, M, N <= 4000, of values 1..MN. From a cell holding x you may jump to any
+//   cell (a, b) with a * b = x. Starting at (1, 1), can you reach (M, N)? The judge calls
+//   can_escape(M, N, v); like the original, this reads M, N and the (M + 1) x (N + 1) array v
+//   (row and column 0 all zeros) and prints yes or no.
+// Solution: where you can jump depends only on the value held, so the nodes are values: cell
+//   (r, c) is an edge from value r * c to the value it holds. Build that CSR adjacency in two
+//   passes and DFS from the value of (1, 1); holding MN means (M, N) is reachable. O(MN).
 // original: corpus/submissions/4324075.cpp
 let n: 1..=4000 = read()
 let m: 1..=4000 = read()

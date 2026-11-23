@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first cco18p5.cp
+// Source: CCO 2018 Day 2 P2 (Boring Lectures), https://dmoj.ca/problem/cco18p5
+// Problem: N <= 1e6 qualities a_i <= 1e9 and a window length K. The value is the largest a_i + a_j
+//   with i != j inside some K consecutive lectures, i.e. |i - j| < K. Print it for the initial
+//   array and after each of Q <= 1e5 point assignments.
+// Solution: the best pair is some p with its best partner within distance K - 1, counted at
+//   whichever of the two is larger (ties by index). An arg-max SegTree finds p's best partner on
+//   each side, and a max SegTree holds a_p + partner when p beats it, else 0. An update can only
+//   change the entries of the position and of its old best partner on each side, so refresh
+//   those three: O((N + Q) log N).
 // original: corpus/submissions/4801867.cpp
 
 let (n, k, q): (Int, Int, Int) = read()

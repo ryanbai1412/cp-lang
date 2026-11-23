@@ -1,7 +1,17 @@
-// NOI 2020 P5, surreal trees: can a set of binary trees grow into all but finitely many trees? (buildable today-form)
-// original: corpus/submissions/3803796.cpp
+// Source: NOI 2020 P5 (Surreal), https://dmoj.ca/problem/noi20p5
+// Problem: T <= 100 instances, each a set of m binary trees (left and right children differ),
+//   sum n, sum m and max height <= 2e6. grow(S) is every tree obtained from one in S by
+//   replacing leaves with trees, repeatedly. Print "Almost Complete" if only finitely many trees
+//   are outside grow(S), else "No".
+// Solution: only trees where each node has at most one non-leaf child matter: one is a word over
+//   four steps (left only, right only, both with the right a leaf, both with the left a leaf),
+//   and a node with two leaf children ends both of its two-step words. Insert the words in a
+//   4-ary trie, dropping a tree at a node whose two children both branch. The answer is Almost
+//   Complete iff every trie node reached from the root ends a word or has all four children:
+//   O(sum n).
 // The trie is two flat lists and the four shapes are Ints 0..4: the
 // prototype has no List<struct> arena with push_id and no enum-indexed array.
+// original: corpus/submissions/3803796.cpp
 let t: 1..=100 = read()
 for _ in 0..t:
     // a trie over the spine of each tree; a spine step is one of four shapes:

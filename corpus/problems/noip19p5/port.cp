@@ -1,14 +1,11 @@
-// NOIP 2019 Day 2 P2, Partition: cut a[1..=n] into consecutive blocks
-// whose sums never decrease, minimising the sum of the squared block
-// sums. Print the minimum.
-//
-// The best cut makes the last block as short as it can be: for a prefix
-// i, take the latest j whose own last block fits, s[j] - s[from[j]] <=
-// s[i] - s[j]. The threshold 2 s[j] - s[from[j]] is what a queue keeps
-// increasing, and the latest j under s[i] only moves right.
-//
-// n reaches 4e7, so the large tests give a generator instead of the
-// array, and the answer reaches 1.6e33, past `Int`: it is summed in `I128`.
+// Source: NOIP 2019 (CSP-S) Day 2 P2 (Partition), https://dmoj.ca/problem/noip19p5
+// Problem: a_1..a_n, n <= 4e7, a_i <= 1e9. Cut it into consecutive blocks whose sums never
+//   decrease and print the least sum of squared block sums (up to about 1.6e33). Large tests give
+//   a generator instead of the array.
+// Solution: an optimal partition makes the last block as short as possible: for prefix i, from[i]
+//   is the latest cut j with s[j] - s[from[j]] <= s[i] - s[j], i.e. 2 s[j] - s[from[j]] <= s[i].
+//   A monotone queue keeps cuts with increasing thresholds and its head only moves right; walk
+//   from[] back from n and sum the squares in I128. O(n).
 // input: `n 0` and the array, or `n 1`, `x y z b1 b2 m` and m lines
 // `p l r`: b[i] = (x b[i-1] + y b[i-2] + z) mod 2^30, and a[i] =
 // b[i] mod (r - l + 1) + l for the first line with i <= p.

@@ -1,11 +1,12 @@
-// IOI 2016 Aliens: n points of interest on an m by m grid. A photo is a
-// square whose corners lie on the main diagonal; take at most k photos so
-// that every point is in one, and print the least number of cells
-// photographed. (Input as the IOI sample grader gives it.)
-// A point (r, c) needs the diagonal span min(r, c)..=max(r, c), and a span
-// inside another is free. With the rest sorted, both ends increase, and a
-// photo covers a run of them. Charging a fee per photo makes the count
-// unconstrained; the fee that brings the best count down to k gives the answer.
+// Source: IOI 2016 P6 (Aliens), https://dmoj.ca/problem/ioi16p6
+// Problem: n <= 1e5 points on an m x m grid, m <= 1e6. A photo is a square whose two opposite
+//   corners lie on the main diagonal; with at most k photos covering every point, print the least
+//   number of cells photographed at least once. Input as the IOI sample grader gives it.
+// Solution: point (r, c) needs the diagonal span min..max; sorted by start with contained spans
+//   dropped, both ends increase and a photo covers a run. done[i] = min over j of done[j - 1] +
+//   (hi_i - lo_j + 1)^2 - (overlap of spans j - 1, j)^2 + fee is a monotone convex hull trick,
+//   ties to fewer photos. Binary search the smallest fee with at most k photos and print
+//   cost - k * fee (Aliens trick): O(n log m).
 // original: corpus/submissions/4730545.cpp
 let n: 1..=100_000 = read()
 let m: 1..=1_000_000 = read()

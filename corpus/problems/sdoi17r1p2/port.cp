@@ -1,17 +1,13 @@
-// SDOI '17 R1 P2 - Tree Colouring: a tree rooted at 1 where every vertex
-// starts with its own colour. "1 x" paints the path from the root to x in a
-// brand new colour; "2 x y" prints the number of colours on the path x..y;
-// "3 x" prints, over every u in the subtree of x, the largest number of
-// colours on the path from the root to u.
-// Only root paths are ever painted, so each colour is a vertical chain and
-// a vertex shares its colour with at most one child, `same[v]`. Let
-// f[u] = colours on root..u, kept by preorder position under range add and
-// range max. Painting root..x points `same` down the path; each pointer
-// that moves adds one to the subtree it leaves and takes one from the
-// subtree it enters. On a heavy chain the pointers that are not already on
-// the heavy child are kept in a second tree, so a paint only visits the
-// ones it has to move (O(log n) amortised, the access bound of link-cut
-// trees).
+// Source: SDOI 2017 Round 1 P2 (Tree Colouring), https://dmoj.ca/problem/sdoi17r1p2
+// Problem: a tree on n <= 1e5 vertices rooted at 1, every vertex its own colour; m <= 1e5 ops:
+//   "1 x" paints the path root..x a brand-new colour, "2 x y" prints the number of colours on
+//   path x..y, "3 x" prints the most colours on a path from the root to a vertex in sub(x).
+// Solution: only root paths are painted, so each colour is a vertical chain and a vertex shares
+//   its colour with at most one child, same[v]. f[u] = colours on root..u lives in a range add,
+//   range max SegTree over preorder; a pointer moving off child c adds 1 to sub(c), onto c takes
+//   1. Painting walks the heavy chains of root..x and re-points each; a second SegTree marks the
+//   vertices not pointing at their heavy child so only those are visited (amortised O(log n),
+//   the link-cut access bound), each an O(log n) update. Query 2 is f[x] + f[y] - 2 f[lca] + 1.
 // original: corpus/submissions/5463990.cpp
 
 let (n, q): (1..=1e5, 1..=1e5) = read()

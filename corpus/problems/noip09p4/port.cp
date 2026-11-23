@@ -1,7 +1,11 @@
-// NOIP 2009 P4, Target Sudoku: finish a sudoku so that the sum of every
-// digit times the worth of its cell is as large as possible. Cells are
-// worth 10 in the centre down to 6 on the border. Print -1 if it cannot
-// be finished.
+// Source: NOIP 2009 P4 (Target Sudoku), https://dmoj.ca/problem/noip09p4
+// Problem: a 9 x 9 sudoku with 0 for blanks (at least 24 givens). Cell worth is 10 in the centre,
+//   falling by one per ring to 6 on the border. Fill it validly to maximise the sum of digit times
+//   worth and print that sum, or -1 if it has no completion.
+// Solution: worth is 10 minus the Chebyshev distance to the centre. Row, column and box digit
+//   Subsets give the free digits of a cell; the search checks the givens, then always branches on
+//   the blank with the fewest free digits, marking and unmarking the three subsets, and keeps the
+//   best score at a full board. Exponential, but the fewest-options rule prunes it hard.
 // original: corpus/submissions/5185258.cpp
 domain Line = 0..9
 domain Box = 0..9

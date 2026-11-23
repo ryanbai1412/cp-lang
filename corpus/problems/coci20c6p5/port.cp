@@ -1,13 +1,9 @@
-// COCI 2020/21 Contest 6 #5 Index: n papers in a row with citation counts,
-// and q questions. A question l r asks for the h-index of the papers
-// l..=r: the largest h such that at least h of them have h or more
-// citations.
-//
-// Mo's algorithm: answer the questions in an order that moves the two ends
-// of the window O(n sqrt q) steps in total. The original keeps the window
-// in a Fenwick tree and binary-searches h for every question. The h-index
-// moves by at most one when a paper enters or leaves, so the window below
-// keeps h itself, at O(1) a step.
+// Source: COCI 2020/2021 Contest 6 P5 (Index), https://dmoj.ca/problem/coci20c6p5
+// Problem: n <= 2e5 papers with citation counts p_i <= 2e5, and q <= 2e5 questions l r: print
+//   the h-index of papers l..r, the largest h with at least h of them cited at least h times.
+// Solution: Mo's algorithm (blocks of sqrt n, alternating right-end order). Adding or removing a
+//   paper changes h by at most one, so the window keeps counts by citations (capped at n), h and
+//   how many papers have at least h citations, fixing h in O(1) per step: O((n + q) sqrt n).
 let (n, q): (Int, Int) = read()
 domain Paper = 1..=n
 domain Ask = 0..q
