@@ -42,7 +42,7 @@ g.deg(u)                              // O(1)
 | `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
 | `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | O(1) to make |
 | `g.only(from: f)` | arcs leaving a vertex `f` rejects are skipped (a stop vertex: arrive, never leave) | O(1) to make |
-| `g.matrix()` | `[V, V]?W`, least weight per pair | O(n² + m) |
+| `g.matrix()` | `[V, V]?W`, least weight per pair; a range-typed weight (`w: 1..=1e9`) bounds each edge, not a path, so the matrix stores `Int` and sums never trap (decision 315) | O(n² + m) |
 | `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | O(n + m) |
 
 ### Storage
