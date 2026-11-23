@@ -37,9 +37,15 @@ impl<'a> Parser<'a> {
                 "CP Lang builds a struct by calling its type, not with `{ ... }`",
             )
             .with_help("write `P(x: 1, y: 2)`");
+            let first = args
+                .first()
+                .and_then(|a: &Arg| a.name.as_ref())
+                .map(|n| n.span.start);
+            let last = args.last().map_or(close.start, |a| a.value.span.end);
+            let open = Span::new(callee.span.end, first.unwrap_or(last));
             diag.fixes.push(cpl_diag::Fix {
                 title: "use parentheses".into(),
-                edits: vec![(open, "(".into()), (close, ")".into())],
+                edits: vec![(open, "(".into()), (Span::new(last, close.end), ")".into())],
             });
             self.recovered(diag);
         }
