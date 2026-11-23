@@ -683,21 +683,35 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// order: `C` by smallest vertex; `comp` keyed by `V`
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[2], [], [0], []]; let (domain C, comp) = components(g); C.count == 3 and comp[0] == comp[2] and Int(comp[3]) == 2`
-pub fn components<V>(g: Next<V>) -> (domain C, comp: [V]C):
+pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
     var cid: [V]Int = -1
     var k = 0
-    var q = Deque<V>()
-    for s in V:
-        if cid[s] != -1: continue
-        cid[s] = k
-        q.push(s)
-        while let Some(u) = q.pop_front():
-            for a in g.out(u):
-                let v = a.to
-                if cid[v] == -1:
-                    cid[v] = k
-                    q.push(v)
-        k += 1
+    if G: ReachesUnvisited:
+        var unvisited = V.collect()
+        reverse(mut unvisited)
+        var mark: [V]?V = None
+        while let s = unvisited.pop():
+            cid[s] = k
+            var todo = [s]
+            while let u = todo.pop():
+                let (reached, rest) = g.reach_unvisited(u, unvisited, mut mark)
+                for v in reached: cid[v] = k
+                todo.extend(reached)
+                unvisited = rest
+            k += 1
+    else:
+        var q = Deque<V>()
+        for s in V:
+            if cid[s] != -1: continue
+            cid[s] = k
+            q.push(s)
+            while let u = q.pop_front():
+                for a in g.out(u):
+                    let v = a.to
+                    if cid[v] == -1:
+                        cid[v] = k
+                        q.push(v)
+            k += 1
     domain C = 0..k
     (C:, comp: [V] v => C(cid[v]))
 
@@ -846,6 +860,19 @@ pub fn two_color<V>(g: Next<V>) -> ?[V]Bool:
                 elif side[v] == side[u]:
                     return None
     [V] v => side[v]!
+
+@test
+fn complement_searches_match_the_explicit_complement():
+    domain V = 0..6
+    let missing: [V]List<V> = [[2, 3, 4], [2, 3, 4, 5], [0, 1, 3, 4, 5], [0, 1, 2], [0, 1, 2], [1, 2]]
+    let explicit = [V] u => [v for v in V if v != u and not missing[u].contains(v)]
+    let (domain C, comp) = components(complement(missing))
+    let (domain D, want) = components(explicit)
+    assert C.count == D.count
+    for u in V:
+        for v in V: assert (comp[u] == comp[v]) == (want[u] == want[v])
+        let got = reachable(complement(missing), from: [u]).collect().sorted()
+        assert got == reachable(explicit, from: [u]).collect().sorted()
 
 @test
 fn csr_keeps_edge_ids_and_order():
@@ -2014,13 +2041,31 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
 ///
 /// cost: \(O(n + m)\) total, \(O(1)\) per step
 /// empty: an empty `from` yields nothing
-/// order: discovery order, the order of `dfs`'s `Enter` events
+/// order: discovery order, the order of `dfs`'s `Enter` events; over a `Complement`, the
+///   order of its unvisited-set walk (each vertex's newly reached vertices together, ascending)
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; reachable(g, from: [V(0)]).collect() == [0, 1, 3, 2]`
+/// example: `domain V = 0..5; let g: [V]List<V> = [[1], [0, 2], [1], [], []]; reachable(complement(g), from: [V(0)]).collect() == [0, 2, 3, 4, 1]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; reachable(g, from: [V(1), V(2)]).collect() == [1, 0, 2]`
-pub fn reachable<V, S: Seq>(g: Next<V>, from: S) -> yields V:
-    let out = [V] v => [a.to for a in g.out(v)]
+pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
     var seen: [V]Bool = false
+    if G: ReachesUnvisited:
+        var unvisited = V.collect()
+        var mark: [V]?V = None
+        for s in from:
+            if seen[s]: continue
+            seen[s] = true
+            yield s
+            var todo = [s]
+            while let u = todo.pop():
+                let (reached, rest) = g.reach_unvisited(u, unvisited, mut mark)
+                unvisited = rest
+                for v in reached if not seen[v]:
+                    seen[v] = true
+                    yield v
+                    todo.push(v)
+        return
+    let out = [V] v => [a.to for a in g.out(v)]
     var path: List<(V, Int)> = []
     for s in from:
         if seen[s]: continue
@@ -2767,11 +2812,23 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
     (B, [E] e => B.nth(raw[e]))
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
-/// `missing.out(u)` does not reach. Its own `out(u)` is \(O(\lvert V \rvert)\), but `bfs`, `dfs`,
-/// `reachable` and `components` over a `Complement` run in \(O(\lvert V \rvert + m)\) by keeping the set of
-/// unvisited vertices and scanning only it, so "BFS in the complement graph" and its
-/// components are the ordinary searches: `components(complement(g))`.
-pub struct Complement<V, G>(missing: G):
+/// `missing.out(u)` does not reach. Its own `out(u)` is \(O(\lvert V \rvert)\), but
+/// `components` and `reachable` over a `Complement` run in \(O(\lvert V \rvert + m)\) by keeping
+/// the set of unvisited vertices and scanning only it, so the complement graph's components
+/// are the ordinary search: `components(complement(g))`. `bfs` and `dfs` still walk `out(u)`,
+/// \(O(\lvert V \rvert^2)\) in all.
+pub struct Complement<V, G>(missing: G)
+
+// A graph whose searches keep the unvisited vertices and ask the graph which of them `u`
+// reaches, instead of walking `out(u)`: `components` and `reachable` take this path.
+trait ReachesUnvisited<V>:
+    // `unvisited` split into the vertices `u` has an arc to and the rest, each in order, in
+    // O(|unvisited| + deg u). `mark` is scratch, all `None` at first, shared across calls.
+    fn reach_unvisited(self, u: V, unvisited: List<V>, mut mark: [V]?V) -> (List<V>, List<V>)
+
+impl Next<V> for Complement<V, G>:
+    type Arc = V
+
     /// Every `v != u` that `missing.out(u)` does not reach.
     ///
     /// cost: \(O(\lvert V \rvert + \deg u)\)
@@ -2783,6 +2840,18 @@ pub struct Complement<V, G>(missing: G):
         for a in missing.out(u): gone[a.to] = true
         for v in V:
             if v != u and not gone[v]: yield v
+
+// Each kept vertex but `u` is paid by an arc of `missing`, so a search is O(|V| + m).
+impl ReachesUnvisited<V> for Complement<V, G>:
+    fn reach_unvisited(self, u: V, unvisited: List<V>, mut mark: [V]?V) -> (List<V>, List<V>):
+        mark[u] = Some(u)
+        for a in self.missing.out(u): mark[a.to] = Some(u)
+        var reached: List<V> = []
+        var rest: List<V> = []
+        for v in unvisited:
+            if mark[v] == Some(u): rest.push(v)
+            else: reached.push(v)
+        (reached, rest)
 
 /// The `Complement` of `missing`, as a view; see there.
 ///
