@@ -55,7 +55,7 @@ fn lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget() {
     let modules = largest(&root.join(crate::STD_DIR), "", 3);
     let mut slow = Vec::new();
     for path in ports.iter().chain(&modules) {
-        let src = std::fs::read_to_string(&path).unwrap();
+        let src = std::fs::read_to_string(path).unwrap();
         let mut db = cpl_check::Database::new();
         db.set_file("<lint>.cp", src.as_str());
         let Some(analysis) = db.analyze("<lint>.cp") else {
