@@ -2296,7 +2296,6 @@ impl<'a> Lowerer<'a> {
             }
             "runs" => self.lower_runs(args, span),
             "span" => self.lower_span(args, span),
-            "counts" => self.lower_counts(args, span),
             "prefix" => self.lower_prefix(args, span),
             "List" => {
                 if args.is_empty() {
@@ -5699,11 +5698,6 @@ impl<'a> Lowerer<'a> {
             (Ty::Array { dims, .. }, "adjacent") if dims.len() == 1 => {
                 self.lower_adjacent(value, span)
             }
-            (Ty::Struct(sid), "len" | "distinct") if self.counter_key.contains_key(sid) => {
-                let map_ty = self.structs[*sid].def.fields[0].1.clone();
-                let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
-                self.len_of(map_expr, span)
-            }
             (Ty::Char, "ord" | "to_idx" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Char, "is_digit") => {
                 let ord = self.cast(Cast::CharToInt, value, Ty::Int);
@@ -7868,26 +7862,6 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let Ty::Struct(id) = &ty {
-            if method == "get" {
-                if let Some(key_ty) = self.counter_key.get(id).cloned() {
-                    let Some(key) = self.one_arg(method, args, &key_ty, span) else {
-                        return self.err_expr(span);
-                    };
-                    let map_ty = self.structs[*id].def.fields[0].1.clone();
-                    let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
-                    let found = self.mk(
-                        ExprKind::Builtin(Builtin::MapGet, vec![map_expr, key]),
-                        Ty::opt(Ty::Int),
-                        span,
-                    );
-                    let zero = self.int_lit(0, span);
-                    return self.mk(
-                        ExprKind::Binary(BinOp::Coalesce, Box::new(found), Box::new(zero)),
-                        Ty::Int,
-                        span,
-                    );
-                }
-            }
             if let Some(fn_id) = self.structs[*id].methods.get(method).copied() {
                 return self.method_call(fn_id, Some((base, value)), args, span);
             }
@@ -11946,80 +11920,6 @@ impl<'a> Lowerer<'a> {
                 span,
             );
             out.push(Stmt::Give(range));
-        })
-    }
-
-    /// `counts(xs)`: how many times each value occurs; `c[k]` is `0` for
-    /// a value that does not.
-    fn lower_counts(&mut self, args: &[ast::Arg], span: Span) -> Expr {
-        let Some(exprs) = self.positional_any("counts", args, 1, span) else {
-            return self.err_expr(span);
-        };
-        let (iter, elem) = self.iter(exprs[0]);
-        if elem == Ty::Error {
-            return self.err_expr(span);
-        }
-        let hashable = matches!(
-            elem,
-            Ty::Int | Ty::Char | Ty::Bool | Ty::Str | Ty::Pos(_) | Ty::Bound(_)
-        );
-        if !hashable && !self.ordered(&elem) {
-            let message = format!("a `{}` has no order to count by", self.show(&elem));
-            self.error(codes::BAD_OPERANDS, span, message);
-            return self.err_expr(span);
-        }
-        let sid = match self.counter_structs.get(&elem) {
-            Some(&sid) => sid,
-            None => {
-                let map_ty = if hashable {
-                    Ty::HashMap(Box::new(elem.clone()), Box::new(Ty::Int))
-                } else {
-                    Ty::Map(Box::new(elem.clone()), Box::new(Ty::Int))
-                };
-                let name = format!("Counter_{}", self.counter_structs.len());
-                let sid = self.push_synth_struct(name, vec![("m".into(), map_ty)]);
-                self.counter_structs.insert(elem.clone(), sid);
-                self.counter_key.insert(sid, elem.clone());
-                sid
-            }
-        };
-        let map_ty = self.structs[sid].def.fields[0].1.clone();
-        let struct_ty = Ty::Struct(sid);
-        self.do_expr(Some(&struct_ty), span, |lw, out| {
-            let m_slot = lw.temp(map_ty.clone());
-            out.push(Stmt::Let(
-                m_slot,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span)),
-            ));
-            let item = lw.temp(elem);
-            let lid = lw.fresh_loop();
-            let place = Place {
-                kind: PlaceKind::Index(
-                    Box::new(Place {
-                        kind: PlaceKind::Local(m_slot),
-                        ty: map_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![lw.local(item, span)],
-                ),
-                ty: Ty::Int,
-                span: lw.span(span),
-            };
-            let one = lw.int_lit(1, span);
-            out.push(Stmt::For(
-                lid,
-                item,
-                iter,
-                Block {
-                    stmts: vec![Stmt::Assign(place, AssignOp::Binary(BinOp::Add), one)],
-                },
-            ));
-            let res = lw.mk(
-                ExprKind::Tuple(vec![lw.local(m_slot, span)]),
-                struct_ty.clone(),
-                span,
-            );
-            out.push(Stmt::Give(res));
         })
     }
 

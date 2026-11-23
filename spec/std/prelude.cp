@@ -23,6 +23,7 @@ use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate, turn}
 use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, floyd_warshall, kruskal, peel, reachable, scc, topo}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
+use std.hashmap.{counts}
 use std.heap.{Heap, MaxHeap, MinHeap, Settle}
 use std.interval.{IntervalMap}
 use std.io.{Wire, io, read_all, yes}

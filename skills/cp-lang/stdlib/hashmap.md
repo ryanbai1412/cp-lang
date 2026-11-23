@@ -4,7 +4,7 @@
 
 Open-addressing hash map for `Int` keys with splitmix64 salting.  `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with linear probing and power-of-two capacity, avoiding per-node heap allocations when built-in `HashMap<Int, V>` overhead matters.
 
-Import: `use std.hashmap.{...}`.
+In prelude (no `use` needed): `counts`.
 
 ## `struct FlatMap<V>`
 
@@ -57,6 +57,7 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 
 - `fn push<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
 - `fn pop<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
+- `fn counts<S: Seq, T>(self: S) -> Counter<T>` — O(n) expected; How many times each element of `self` occurs, as a `Counter` whose missing keys read `0`: `counts(xs)[k]`.
 
 ## Example
 
