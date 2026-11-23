@@ -407,3 +407,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
 - #163 (`x is None`) and #189 (sibling lend) check clean on main now; #23 does
   not reproduce on main with in-loop query reads (`/tmp` repro, a brute that
   re-reads the queries); left open until the original draft is found.
+- #127: passing a call's result where `mut` is needed says it is a new value
+  that can never be `mut`; for `win[r].take()` the fix is `mut win[r]` (golden).
+- #143: `runs(xs)` written as a free call keeps `xs`'s keys like `xs.runs()`,
+  so `r[0]` on a run is E0305 at check time with the `r.nth(0)` fix, not a
+  trap (golden). Removed the stale `planned_a_line_continued...` golden that
+  syntax's 7d7fffdd8 took out of `PLANNED`.

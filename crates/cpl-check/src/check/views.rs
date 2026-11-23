@@ -194,13 +194,16 @@ impl Checker<'_> {
     /// The receiver of `xs.runs()`, `xs.windows(k)` or `xs.chunks(k)` on a
     /// `List` or `Str`: each piece keeps its keys.
     pub(crate) fn pieces_source(&mut self, e: &Expr) -> Option<String> {
-        let ExprKind::Call { callee, .. } = &unparen(e).kind else {
+        let ExprKind::Call { callee, args } = &unparen(e).kind else {
             return None;
         };
-        let ExprKind::Field { base, name } = &callee.kind else {
-            return None;
+        // `xs.runs()`, or the same call written `runs(xs)`.
+        let (base, name) = match (&callee.kind, args.first()) {
+            (ExprKind::Field { base, name }, _) => (&**base, name.text.as_str()),
+            (ExprKind::Name(name), Some(first)) => (&first.value, name.as_str()),
+            _ => return None,
         };
-        if !matches!(name.text.as_str(), "runs" | "windows" | "chunks") {
+        if !matches!(name, "runs" | "windows" | "chunks") {
             return None;
         }
         let ty = self.quietly(|c| c.infer(base));

@@ -1,0 +1,8 @@
+error[E0402]: `absorb` changes `other`, so pass it with `mut`
+  --> a_taken_temporary_passed_mut_names_the_place.cp:5:15
+  |
+5 | win[0].absorb(win[1].take())
+  |               ^^^^^^^^^^^^^
+  = help: `win[1].take()` is a new value, not a variable, so it can never be `mut`; pass the place itself, `mut win[1]`, which the call empties
+
+a_taken_temporary_passed_mut_names_the_place.cp: 1 error

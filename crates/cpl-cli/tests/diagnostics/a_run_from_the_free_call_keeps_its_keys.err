@@ -1,0 +1,8 @@
+error[E0305]: `r[0]` reads key 0, which isn't known to be one of `r.keys`: a view keeps the keys of `xs`
+  --> a_run_from_the_free_call_keeps_its_keys.cp:4:17
+  |
+4 |         print(r[0])
+  |                 ^
+  = help: write `r.nth(0)` for its element 0, or `xs[0]` for the source's key 0
+
+a_run_from_the_free_call_keeps_its_keys.cp: 1 error

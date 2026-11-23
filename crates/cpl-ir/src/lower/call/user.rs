@@ -1278,6 +1278,7 @@ impl<'a> Lowerer<'a> {
                         let message =
                             format!("`{name}` changes `{}`, so pass it with `mut`", param.name);
                         self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message);
+                        self.temporary_mut_help(&arg.value);
                         ok = false;
                     }
                     let place = if let ast::ExprKind::Call {

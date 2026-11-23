@@ -15,6 +15,40 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A call's result is a new value, never a place, so it can't be `mut`:
+    /// `absorb(win[r].take())` means `absorb(mut win[r])`, which empties it.
+    pub(super) fn temporary_mut_help(&mut self, arg: &ast::Expr) {
+        let ast::ExprKind::Call { callee, args } = &arg.kind else {
+            return;
+        };
+        let span = self.span(arg.span);
+        let text = self.source(arg.span);
+        let new_value =
+            format!("`{text}` is a new value, not a variable, so it can never be `mut`");
+        let (help, fix) = match &callee.kind {
+            ast::ExprKind::Field { base, name } if name.text == "take" && args.is_empty() => {
+                let place = format!("mut {}", self.source(base.span));
+                (
+                    format!(
+                        "{new_value}; pass the place itself, `{place}`, which the call empties"
+                    ),
+                    Some(place),
+                )
+            }
+            _ => (
+                format!("{new_value}; store it with `var` first and pass that with `mut`"),
+                None,
+            ),
+        };
+        let Some(diag) = self.diags.last_mut() else {
+            return;
+        };
+        diag.help = Some(help);
+        if let Some(fix) = fix {
+            diag.fix(format!("write `{fix}`"), span, fix);
+        }
+    }
+
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let at = span.shift(self.offset);
         let span = self.span(span);
