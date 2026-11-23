@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CRATES = ["cpl-syntax", "cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen"]
 SRC = [f"crates/{c}/src" for c in CRATES]
 SUBJECT = re.compile(r"^(syntax|check|ir|interp|codegen)(\([^)]*\))?: (.*)$")
-FIXY = re.compile(r"\b(fix|fixes|reject|accept|wrong|crash|panic|hang|trap|miscompil\w*|regression|stop|bug)\b", re.I)
+FIXY = re.compile(r"\b(fix|fixes|reject|accept|wrong|crash|panic|hang|trap|miscompil\w*|regression|stop|bug)\b", re.IGNORECASE)
 
 
 def git(*args, cwd=ROOT, check=True, **kw):
@@ -55,12 +55,12 @@ def candidates(limit):
 
 def run_suite(wt, env, board):
     build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "cpl-conform"], cwd=wt, env=env,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, check=False)
     if build.returncode:
         return None
     exe = Path(env["CARGO_TARGET_DIR"]) / "release" / "cpl-conform"
     subprocess.run([str(exe), "conformance", "--write", "--scoreboard", str(board)], cwd=wt, env=env,
-                   capture_output=True, text=True)
+                   capture_output=True, text=True, check=False)
     return json.loads(board.read_text())["suites"]["conformance"]["cases"]
 
 
@@ -116,11 +116,11 @@ def main():
             git("clean", "-fdq", cwd=wt)
             files = src_only(git("show", "--format=", "--name-only", sha).stdout.split())
             patch = git("diff", f"{sha}^", sha, "--", *files).stdout
-            ap_ = subprocess.run(["git", "apply", "-R"], cwd=wt, input=patch, text=True, capture_output=True)
+            ap_ = subprocess.run(["git", "apply", "-R"], cwd=wt, input=patch, text=True, capture_output=True, check=False)
             if ap_.returncode:
                 git("checkout", "-f", "-q", "HEAD", cwd=wt)
                 ap_ = subprocess.run(["git", "apply", "-R", "--3way"], cwd=wt, input=patch, text=True,
-                                     capture_output=True)
+                                     capture_output=True, check=False)
                 if ap_.returncode == 0 and git("diff", "--name-only", "--diff-filter=U", cwd=wt).stdout.strip():
                     ap_ = subprocess.CompletedProcess(ap_.args, 1)
             if ap_.returncode:
