@@ -321,3 +321,62 @@ fn json_and_format_json_are_one_flag_on_every_command_with_json() {
         assert_eq!(text(&json.stdout), text(&format.stdout));
     }
 }
+
+#[test]
+fn fmt_check_reports_without_writing_and_fmt_rewrites() {
+    let dir = scratch("fmt");
+    std::fs::write(dir.join("a.cp"), "fn inc(x: Int) -> Int:\n    return x+1\n").unwrap();
+    let check = cpl(&dir, &["fmt", "--check", "a.cp"]);
+    assert_eq!(check.status.code(), Some(1), "{}", text(&check.stderr));
+    assert!(text(&check.stdout).contains("would reformat a.cp"));
+    let written = || std::fs::read_to_string(dir.join("a.cp")).unwrap();
+    assert!(written().contains("x+1"), "--check writes nothing");
+    let out = cpl(&dir, &["fmt", "a.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(written().contains("return x + 1"), "{}", written());
+    assert_eq!(
+        cpl(&dir, &["fmt", "--check", "a.cp"]).status.code(),
+        Some(0)
+    );
+}
+
+#[test]
+fn lint_warns_with_its_code_and_exits_0_on_warnings_alone() {
+    let dir = scratch("lint");
+    std::fs::write(
+        dir.join("w.cp"),
+        "fn f() -> Int:\n    var x = 1\n    return x\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["lint", "w.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let report = text(&out.stdout);
+    assert!(
+        report.contains("warning[L0201]") && report.contains("w.cp:2:5"),
+        "{report}"
+    );
+    let list = cpl(&dir, &["lint", "--list"]);
+    assert_eq!(list.status.code(), Some(0));
+    assert!(text(&list.stdout).contains("L0201  var_never_reassigned"));
+}
+
+#[test]
+fn explain_shows_a_code_and_rejects_an_unknown_one() {
+    let out = cpl(Path::new("."), &["explain", "E0302"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).starts_with("E0302: "),
+        "{}",
+        text(&out.stdout)
+    );
+    let unknown = cpl(Path::new("."), &["explain", "E7777"]);
+    assert_eq!(unknown.status.code(), Some(EXIT_USAGE.into()));
+    assert!(text(&unknown.stderr).contains("unknown diagnostic or lint code `E7777`"));
+    let json = cpl(Path::new("."), &["explain", "--json"]);
+    let json = cpl_json::parse(&text(&json.stdout)).expect("cpl explain --json is JSON");
+    assert!(json
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e.at(&["code"]).as_str() == Some("E0302")));
+}

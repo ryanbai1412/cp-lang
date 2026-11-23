@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): golden success and exit-code tests for `fmt` (--check writes nothing, exit 1; rewrite; clean exit 0), `lint` (L0201 warning, exit 0; --list), `explain` (a code; unknown code exit 2; --json).
 - Measured (`cargo test --release -p cpl-lsp --test latency -- --nocapture`): 5,002 lines check 65 ms median (over 50, compiler request open, `devin/check-fx-hash` unlanded), first diagnostics 61 ms, hover 44 ms (p90 91). metrics.toml updated.
 - Landed (this): `cpl test --format json` (or `--json`): `{"cases": [...], "passed", "total"}`, each case with name, verdict, ms, peak_kb, expected, output, why, explained; unit test in `cpl-contest/src/tests.rs`. `--json` now also reaches `stress` and `test`.
 - Landed (this): `--json` and `--format json` work on every command with JSON output (decisions.md 230); golden test `json_and_format_json_are_one_flag_on_every_command_with_json`.
