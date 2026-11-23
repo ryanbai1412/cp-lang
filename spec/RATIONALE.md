@@ -20,12 +20,14 @@ Questions from site or any reader: add them to
 
 ## Values and types (`core/02-values-types.md`)
 
-- Decisions 1, 127, 128, 132, 134, 140, 157, 159.
+- Decisions 1, 127, 128, 132, 134, 140, 157, 159, 356.
 - Lost: method overloading (127; a name has one meaning, so errors and
   completion stay exact). Custom destructuring (132; views are methods
   returning enums, so patterns stay core-only). Members that compute
   without `()` (140; parentheses mean work, so `g.transpose()` looks like
-  the \(O(n)\) it is).
+  the \(O(n)\) it is). A union of string literals as a type (356; a
+  payload-free enum already reads each token by name, tables over it and
+  matches exhaustively).
 
 ## Numbers, widths and layout (`core/03-numbers-layout.md`, "The model in one paragraph")
 
@@ -70,10 +72,16 @@ Questions from site or any reader: add them to
 
 ## Sequences (`core/07-sequences.md`, "Key decisions")
 
-- Decisions 53, 142, 143.
+- Decisions 53, 142, 143, 326, 354.
 - Lost: free-function folds and sorts (53; methods, so completion finds
   them). One iterator trait (142; six capabilities say exactly what a
   view supports, so an \(O(n)\) read never hides behind `s[k]`).
+  Compiler-recognised closed forms such as `(a..b).step(k).sum()` (326;
+  cost belongs to the receiver's type through ordinary method resolution,
+  so `Range.sum` is closed form and a user type gets the same power).
+  Indexing a reversed view, either by source key or by walk position
+  (354; both readings looked right and one was silently wrong, so
+  `.rev[k]` is an error naming `.nth(k)` and `xs[i]`).
 
 ## Traits and generics (`core/08-traits-generics.md`)
 
