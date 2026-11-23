@@ -16,8 +16,8 @@ domain Step = 0..q
 domain V = 1..=n + q
 struct Op(x: Slot, y: Slot, z: Slot)
 
-fn initial(i: Slot) -> V = V(i.ord + 1)
-fn version(t: Step) -> V = V(n + t.ord + 1)
+fn initial(i: Slot) -> V = V.nth(i.ord)
+fn version(t: Step) -> V = V.nth(n + t.ord)
 
 let b: [Slot]Int = read()
 let ops: [Step]Op = read()
