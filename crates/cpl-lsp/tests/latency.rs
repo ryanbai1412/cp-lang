@@ -25,6 +25,11 @@ use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::time::{Duration, Instant};
 
+/// The allocator `cpl lsp` runs with (crates/cpl-cli/src/main.rs), so the
+/// numbers are the editor's.
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const CHECK_BUDGET: Duration = Duration::from_millis(50);
 const LSP_BUDGET: Duration = Duration::from_millis(100);
 const URI: &str = "file:///bench/solution.cp";

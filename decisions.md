@@ -6110,3 +6110,19 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   undirected graph, for a method no port or spec chapter calls.
 - **Reverse.** Store each edge's `u` (or an orientation bit) in `Graph` at
   build, have `edges()` read it, and make the case expect `0 1 0`.
+||||||| parent of c8fb2c703 (cli: allocate with mimalloc)
+
+## 249. The `cpl` binary allocates with mimalloc (2026-11-22)
+
+- **Decision.** `crates/cpl-cli/src/main.rs` sets `mimalloc::MiMalloc` as the
+  global allocator on every native target (not wasm). The LSP latency test
+  uses the same allocator, since `cpl lsp` is that binary.
+- **Why.** A cold check of the 5,000-line latency file spent about 17% of its
+  samples in glibc `malloc`, `free` and `realloc` (`perf record` on 40 cold
+  `Database::analyze` runs). The same 40 runs, alternating binaries five
+  times on one machine: 79-136 ms per check with the system allocator,
+  54-70 ms with mimalloc. The checker allocates many small, short-lived
+  `String`s and `Ty`s; changing that is compiler's design, the allocator is
+  the binary's.
+- **Reverse.** Delete the `#[global_allocator]` lines in `main.rs` and
+  `crates/cpl-lsp/tests/latency.rs` and the two `mimalloc` dependency lines.

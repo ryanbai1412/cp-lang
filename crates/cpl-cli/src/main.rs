@@ -1,6 +1,12 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
+/// The checker allocates many small, short-lived values; the system
+/// allocator spends a third of a cold check in malloc and free.
+#[cfg(not(target_arch = "wasm32"))]
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() -> ExitCode {
     cpl_cli::install_ice_hook();
     let args: Vec<String> = std::env::args().skip(1).collect();
