@@ -34,16 +34,16 @@ while head < order.len:
             order.push(v)
 
 fn plus(x: ?Int, y: ?Int) -> ?Int:
-    if x == none or y == none: return none
+    if x == None or y == None: return None
     x! + y!
 
 @memo
 fn blues(u: V, on: Bool, par_on: Bool, a_on: Bool, b_on: Bool) -> ?Int:
-    if (u == a and on != a_on) or (u == b and on != b_on): return none
+    if (u == a and on != a_on) or (u == b and on != b_on): return None
     let across = (u == a and b_on) or (u == b and a_on)
-    if par_on and across: return none
+    if par_on and across: return None
     var zero: ?Int = Int(on)
-    var one: ?Int = none
+    var one: ?Int = None
     for v in kids[u]:
         let off = blues(v, false, on, a_on, b_on)
         let lit = blues(v, true, on, a_on, b_on)
@@ -51,7 +51,7 @@ fn blues(u: V, on: Bool, par_on: Bool, a_on: Bool, b_on: Bool) -> ?Int:
         zero = plus(zero, off)
     if par_on or across: zero else: one
 
-var best: ?Int = none
+var best: ?Int = None
 for a_on in Bool:
     for b_on in Bool: best = min(best, blues(a, a_on, false, a_on, b_on))
 print(best ?? -1)

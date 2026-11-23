@@ -9,12 +9,12 @@ let (n, m, q): (1..=200, 1..=200, 1..=200_000) = read()
 let a: [0..n, 0..m]Int = read()
 
 type Query = (x1: Int, y1: Int, x2: Int, y2: Int, kv: Int, id: Int)
-var qans: [0..q]?Int = none
+var qans: [0..q]?Int = None
 var buckets: [0..n, 0..m]List<Query> = []
 
 fn small_dp(x1: Int, y1: Int, x2: Int, y2: Int, kv: Int) -> Int:
     let (h, w) = (x2 - x1 + 1, y2 - y1 + 1)
-    var dp: [0..h, 0..w, KDom]?Int = none
+    var dp: [0..h, 0..w, KDom]?Int = None
     for i in (0..h).rev:
         for j in (0..w).rev:
             if i == h - 1 and j == w - 1:
@@ -23,7 +23,7 @@ fn small_dp(x1: Int, y1: Int, x2: Int, y2: Int, kv: Int) -> Int:
                 continue
             let cost = a[x1 + i, y1 + j]
             for k in 0..=kv:
-                var best: ?Int = none
+                var best: ?Int = None
                 if i + 1 < h:
                     best min= dp[i + 1, j, KDom(k)] + cost
                     if k + 1 <= kv: best min= dp[i + 1, j, KDom(k + 1)]
@@ -45,8 +45,8 @@ for id in 0..q:
         if cx >= x1 and cy >= y1:
             buckets[cx, cy].push((x1:, y1:, x2:, y2:, kv:, id:))
 
-var dp: [0..n, 0..m, KDom]?Int = none
-var dp2: [D3, D3, KDom]?Int = none
+var dp: [0..n, 0..m, KDom]?Int = None
+var dp2: [D3, D3, KDom]?Int = None
 
 for cx in 0..n:
     for cy in 0..m:
@@ -59,7 +59,7 @@ for cx in 0..n:
                     for k in 0..=MAXK: dp2[D3(0), D3(0), KDom(k)] = 0
                     continue
                 for k in 0..=MAXK:
-                    var best: ?Int = none
+                    var best: ?Int = None
                     if dr > 0:
                         best min= dp2[D3(dr - 1), D3(dc), KDom(k)] + a[r, c]
                         if k > 0: best min= dp2[D3(dr - 1), D3(dc), KDom(k - 1)]
@@ -76,7 +76,7 @@ for cx in 0..n:
                     continue
                 let cost = a[r, c]
                 for k in 0..=MAXK:
-                    var best: ?Int = none
+                    var best: ?Int = None
                     if r + 1 <= cx:
                         best min= dp[r + 1, c, KDom(k)] + cost
                         if k > 0: best min= dp[r + 1, c, KDom(k - 1)]

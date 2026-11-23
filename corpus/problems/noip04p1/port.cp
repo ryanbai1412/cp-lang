@@ -4,10 +4,10 @@
 // at the end.
 var cash = 0
 var banked = 0
-var short: ?Int = none  // the first month the budget does not fit
+var short: ?Int = None  // the first month the budget does not fit
 for month in 1..=12:
     let budget: 0..=350 = read()
-    if short == none:
+    if short == None:
         cash += 300 - budget
         if cash < 0: short = month
         else:

@@ -63,6 +63,6 @@ for r in Row:
             fg.add(u, sink, -score[r, c])
         for nxt in dep[r, c]:
             if can_eat[nxt.r, nxt.c]:
-                fg.add(id(nxt.r, nxt.c), u, cap: none)
+                fg.add(id(nxt.r, nxt.c), u, cap: None)
 
 print(pos_sum - fg.max_flow(src, sink))

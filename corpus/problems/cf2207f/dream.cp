@@ -21,12 +21,12 @@ let ranks: [0..len]Rank = read()
 let colors: [0..len]Color = read()
 
 var must_rank: [Rank]Bool = false
-var run: [Color]?(Rank, Rank) = none
+var run: [Color]?(Rank, Rank) = None
 var by_right: [Rank]List<Rank> = []
 var total_intervals = 0
 
 fn force_between(after: ?Rank, before: ?Rank):
-    let lo: ?Rank = if let a = after: a + 1 else: some(Rank.first)
+    let lo: ?Rank = if let a = after: a + 1 else: Some(Rank.first)
     if let s = lo:
         if let b = before:
             for j in s..b: must_rank[j] = true
@@ -47,12 +47,12 @@ for (r, c) in zip(ranks, colors):
             close_run(lo, hi, r)
             run[c] = (r, r)
     else:
-        force_between(none, r)
+        force_between(None, r)
         run[c] = (r, r)
 
 for c in Color:
     let (lo, hi) = run[c]!
-    close_run(lo, hi, none)
+    close_run(lo, hi, None)
 
 var seg = SegTree<Rank.cuts, Int>(max, fill: 0, act: add)
 for r in Rank:

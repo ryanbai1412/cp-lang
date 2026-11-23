@@ -8,7 +8,7 @@ let seq: [1..=n]Int = read()
 
 // Originals keep their cyclic order, so every surviving original fixes the
 // same rotation.
-var shift: ?Int = none
+var shift: ?Int = None
 var ok = true
 for i in 1..=n if seq[i] <= n:
     let s = (seq[i] - i) % n
@@ -44,7 +44,7 @@ if task == 2:
 if not ok:
     print(0)
     return
-var ways: Z = if shift == none: Z(n) else: 1
+var ways: Z = if shift == None: Z(n) else: 1
 var prev = n
 var open = count(x > n for x in seq)
 for g in sorted_seq if g > n:

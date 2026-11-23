@@ -70,7 +70,7 @@ for _ in 0..tests:
         for i in 0..QUADS:
             for j in 0..SEGS:
                 if drawn[seg_key(seg[i, j].0, seg[i, j].1)]: v |= 1 << (7 * (3 - i) + j)
-        var best: ?Int = none
+        var best: ?Int = None
         for _ in 0..QUADS:
             v = ((v << 7) & ((1 << 28) - 1)) | (v >> 21)
             best min= v

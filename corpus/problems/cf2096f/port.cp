@@ -20,7 +20,7 @@ let st: [S](some: Bool, a: V, b: V) = read()
 
 var cover = LazySegTree<V, Int>(AddMin, fill: 0)
 var ends: [V]MonoDeque<Int> = MonoDeque()
-var shortest = SegTree<V, ?Int>(min, fill: none)
+var shortest = SegTree<V, ?Int>(min, fill: None)
 
 fn fits(i: S) -> Bool:
     let s = st[i]

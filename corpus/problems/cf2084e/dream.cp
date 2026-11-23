@@ -16,9 +16,9 @@ type Z = Mod<1e9 + 7>
 
 @!multitest
 domain Pos = read(1..=5000)
-let a: [Pos]?(0..Pos.count) = read(none: -1)
+let a: [Pos]?(0..Pos.count) = read(None: -1)
 let at = a.inverse()
-let blanks = a.map(x => Int(x == none)).scan(+)
+let blanks = a.map(x => Int(x == None)).scan(+)
 fn blank(l: Pos, r: Pos) -> Int = blanks[r.after] - blanks[l.before]
 let m = blanks.last
 let comb = Z.comb(Pos.count)

@@ -92,12 +92,12 @@ let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first!: Label.Zero else: parse_label(label_str[v.ord - 1])
 
 var kids: [V]List<V> = [V] _ => []
-var par: [V]?V = none
+var par: [V]?V = None
 for u in V:
     repeat read<Int>():
         let c = read<V>()
         kids[u].push(c)
-        par[c] = some(u)
+        par[c] = Some(u)
 let t = Rooted.from_parents(par)
 
 // `dp[v][depth]` holds the counts of each (active, resolved) state at that depth.

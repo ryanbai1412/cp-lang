@@ -17,26 +17,26 @@ let g = Graph<V, E>.undirected(edges)
 let side = two_color::<V>(u => g.out(u))!
 
 var deg: [V]Int = [V] u => g.deg(u)
-var mate: [V]?V = none
+var mate: [V]?V = None
 var dp: [V]Int = 0
-var nxt: [V]?V = none
+var nxt: [V]?V = None
 
 var q = [u for u in V if not side[u] and deg[u] == 1]
 var head = 0
 var best_len = -1
-var start: ?V = none
+var start: ?V = None
 
 while head < q.len:
     let u = q[head]
     head += 1
     for a in g.out(u):
-        if mate[a.to] == none:
+        if mate[a.to] == None:
             mate[a.to] = u
             mate[u] = a.to
     let p = mate[u]!
     for a in g.out(p):
         let v = a.to
-        if mate[v] == none:
+        if mate[v] == None:
             if dp[v] < dp[u] + 1:
                 dp[v] = dp[u] + 1
                 nxt[v] = u

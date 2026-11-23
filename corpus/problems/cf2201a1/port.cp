@@ -13,8 +13,8 @@
 let n: 1..=300_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
 
-var prv: [0..n]?Int = [0..n] i => if i > 0: i - 1 else: none
-var nxt: [0..n]?Int = [0..n] i => if i + 1 < n: i + 1 else: none
+var prv: [0..n]?Int = [0..n] i => if i > 0: i - 1 else: None
+var nxt: [0..n]?Int = [0..n] i => if i + 1 < n: i + 1 else: None
 var ans = n
 for i in (0..n).sorted(by: i => (-a[i], i)):
     if let p = prv[i] and a[p] == a[i] - 1:

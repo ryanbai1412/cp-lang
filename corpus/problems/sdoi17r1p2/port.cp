@@ -22,9 +22,9 @@ let g = Graph<V, E>.undirected(edges)
 let t = Rooted(u => g.out(u), V.first)
 
 var f = LazySegTree<t.Pre, Int, Int>(AddMax, [t.Pre] p => t.depth(t.at[p]) + 1)
-var same: [V]?V = [V] _ => none
+var same: [V]?V = [V] _ => None
 // 1 where same[v] is not the heavy child
-var off = SegTree<t.Pre, Int>(+, [t.Pre] p => if t.heavy[t.at[p]] == none: 0 else: 1)
+var off = SegTree<t.Pre, Int>(+, [t.Pre] p => if t.heavy[t.at[p]] == None: 0 else: 1)
 
 fn point(v: V, to: ?V):
     if same[v] == to: return
@@ -34,7 +34,7 @@ fn point(v: V, to: ?V):
     off.set(t.tin[v], if to == t.heavy[v]: 0 else: 1)
 
 fn paint(x: V):
-    var below: ?V = none
+    var below: ?V = None
     for (range, rising) in t.chains(x, V.first, false):
         let bottom = t.at[range.end.left]
         point(bottom, below)

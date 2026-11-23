@@ -12,7 +12,7 @@ domain V = 1..=n
 domain Region = 1..=r
 
 var home: [V]Region = [V] _ => Region.first
-var boss: [V]?V = none
+var boss: [V]?V = None
 let head: Region = read()
 home[V.first] = head
 for v in V:
@@ -47,7 +47,7 @@ fn sweep(x: Region) -> [Region]Int:
         if home[v] == x: above[v] += 1
     pairs
 
-var big: [Region]?[Region]Int = [Region] _ => none
+var big: [Region]?[Region]Int = [Region] _ => None
 var seen: Map<(Region, Region), Int> = Map()
 
 for _ in 0..q:

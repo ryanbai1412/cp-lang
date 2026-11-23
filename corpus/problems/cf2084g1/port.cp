@@ -12,15 +12,15 @@ let a: [P]?(1..=n) = read(none: 0)
 let half = n / 2
 let at = a.inverse()
 
-var dp: [0..=half]?Int = none
+var dp: [0..=half]?Int = None
 dp[0] = 0
 for k in 0..n:
     let forced = at[k + 1].map(p => p.label % 2 == 0)
-    var next: [0..=half]?Int = none
+    var next: [0..=half]?Int = None
     for c in 0..=min(k, half):
         if let x = dp[c]:
             let gain = (2 * c - k) * (2 * (half - c) - (n - k))
-            for z in [false, true] if c + Int(z) <= half and (forced == none or forced == some(z)):
+            for z in [false, true] if c + Int(z) <= half and (forced == None or forced == Some(z)):
                 next[c + Int(z)] max= x + gain
     dp = next
 print((dp[half]! + n * (n + 1) * (n + 1) / 2) / 2)

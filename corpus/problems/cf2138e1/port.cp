@@ -17,9 +17,9 @@ fn walk(x: Int, z: Int, room: Int) -> ?List<0..=1>:
             (a, b) = (b, a)
         else:
             diag.push(1)
-            if a == b: return if a == 1: diag else: none
+            if a == b: return if a == 1: diag else: None
             (a, b) = (b, a - b)
-    none
+    None
 
 // Candidates z in 1..x, nearest to x / phi first.
 fn nearest_walk(x: Int, room: Int) -> List<0..=1>:

@@ -27,8 +27,8 @@ struct Best<V>:
     other: ?Int
 
     fn best_other(self, br: V) -> ?Int:
-        let top = far ?? return none
-        if top.branch == br: other else: some(top.depth)
+        let top = far ?? return None
+        if top.branch == br: other else: Some(top.depth)
 
 fn merge<V>(a: Best<V>, o: Best<V>) -> Best<V>:
     let x = a.far ?? return o
@@ -50,10 +50,10 @@ for round in 2..:
     var next_dist: [V]Int = 0
     for c in V:
         let max_d = max(d for (_, d, _) in cd.piece(c)) ?? 0
-        var buckets = List.filled(max_d + 1, Best<V>(none, none))
+        var buckets = List.filled(max_d + 1, Best<V>(None, None))
         for (u, d, br) in cd.piece(c) if max_budget[u] >= d and max_budget[u] > 0:
             let idx = min(max_d, max_budget[u] - d)
-            buckets[idx] = merge(buckets[idx], Best((d, br), none))
+            buckets[idx] = merge(buckets[idx], Best((d, br), None))
         let bests = buckets.rev.scan(merge).rev
         for (u, d, br) in cd.piece(c) if s[u] == '1':
             if let far = bests[d].best_other(br): next_dist[u] max= d + far

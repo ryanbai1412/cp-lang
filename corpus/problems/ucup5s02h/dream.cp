@@ -76,13 +76,13 @@ if colour.size(Pin) == 1: colour.unite(C.first, Pin, differ: false)
 
 while colour.components > 1:
     let comp = colour.component_ids()
-    var best: [comp.groups]?(gap: Frac, i: C, j: C) = none
+    var best: [comp.groups]?(gap: Frac, i: C, j: C) = None
     for sweep in [C.ascending, C.descending.mirrored(x: 0)]:
         var hulls = GroupTree<Hull<C>>(comp.groups)
         for c in sweep:
             let cands = [(gap: gap(h.ch, ch[c]), i: c, j: h.id) for h in hulls.others(of: comp[c]).query(ch[c].x)]
             if let cand = min_by(cands, by: e => e.gap):
-                if best[comp[c]].all(b => cand.gap > b.gap): best[comp[c]] = some(cand)
+                if best[comp[c]].all(b => cand.gap > b.gap): best[comp[c]] = Some(cand)
             hulls.path(of: comp[c]).add(ch[c], c)
     for opt in best if let e = opt: colour.unite_new(e.i, e.j)
 

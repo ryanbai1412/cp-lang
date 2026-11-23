@@ -34,7 +34,7 @@ fn cheaper(a: Plan, b: Plan) -> Bool:
 fn sweep(stop: ?Worker) -> ?Plan:
     var hired = MaxHeap<(Int, Worker)>()
     var points = 0
-    var best: ?Plan = none
+    var best: ?Plan = None
     for r in by_rate:
         let i = r.w
         hired.push((ask[i].q, i))
@@ -42,7 +42,7 @@ fn sweep(stop: ?Worker) -> ?Plan:
         while points * ask[i].s > w * ask[i].q:
             points -= hired.pop()!.0
         let plan: Plan = (setter: i, size: hired.len, points:)
-        if best == none or plan.size > best!.size or (
+        if best == None or plan.size > best!.size or (
             plan.size == best!.size and cheaper(plan, best!)
         ):
             best = plan
@@ -52,5 +52,5 @@ fn sweep(stop: ?Worker) -> ?Plan:
             return best
     best
 
-let best = sweep(none)!
+let best = sweep(None)!
 sweep(best.setter)

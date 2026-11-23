@@ -26,10 +26,10 @@ fn opposite(s: Side) -> Side = match s:
     Side.Off => Side.Off
 
 fn parse_side(ch: Char) -> ?Side = match ch:
-    'L' => some(Side.Left)
-    'R' => some(Side.Right)
-    'N' => some(Side.Off)
-    _ => none
+    'L' => Some(Side.Left)
+    'R' => Some(Side.Right)
+    'N' => Some(Side.Off)
+    _ => None
 
 fn balanced_sides(id: Int, len: Int) -> List<Side>:
     var v = id

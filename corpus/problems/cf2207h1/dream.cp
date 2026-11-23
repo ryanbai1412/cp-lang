@@ -15,17 +15,17 @@ struct Node:
 @!multitest
 let n: Int = read()
 var x = [i for i in 0..n]
-var nodes = [Node(i..i + 1, none) for i in 0..n]
+var nodes = [Node(i..i + 1, None) for i in 0..n]
 
 fn ask() -> Int:
     print("?", [v + 1 for v in x])
     x.position(of: read::<Int>() - 1)!
 
 fn join(a: Int, b: Int, is_max: Bool) -> Int = nodes.push_id(
-    Node(nodes[a].span.start..nodes[b].span.end, some((is_max, a, b)))
+    Node(nodes[a].span.start..nodes[b].span.end, Some((is_max, a, b)))
 )
 
-fn solve(span: Range<Int>, is_max: Bool, known: ?Int = none) -> List<Int>:
+fn solve(span: Range<Int>, is_max: Bool, known: ?Int = None) -> List<Int>:
     if span.len <= 1: return span.to_list()
     let m = known ?? ask()
     var left = with x[span.start..=m].rotated_left(1): solve(span.start..m, is_max)

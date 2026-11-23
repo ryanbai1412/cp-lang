@@ -82,7 +82,7 @@ fn relabel(x: V):
     freq[nxt] = cn + 1
 
 var j = mb - 1
-var ans: ?Int = none
+var ans: ?Int = None
 
 fn relax(wa: Int):
     while j >= 0 and pairs_a + pairs_b - overlap >= k:

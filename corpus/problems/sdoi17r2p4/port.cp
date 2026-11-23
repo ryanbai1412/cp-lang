@@ -73,7 +73,7 @@ for _ in 0..tests:
         slot += here.len
 
     let dist = dijkstra(Graph.directed(arcs), start)
-    var best: [Town]?Int = none
+    var best: [Town]?Int = None
     for r in Road:
         if let d = dist[taken(r)]: best[roads[r].v] min= d
     for v in Town:

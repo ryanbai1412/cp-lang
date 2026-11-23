@@ -19,14 +19,14 @@ var cnt: [1..=n]Int = 0
 for m in 0..k:
     let cls = [i for i in m..n by k]
     if not cls.all(i => a[i] == a[m]):
-        if cls.any(i => b[i] != none and b[i] != a[i]):
+        if cls.any(i => b[i] != None and b[i] != a[i]):
             print("NO")
             return
     else:
         cnt[a[m]] += 1
-        if let first_i = cls.first(i => b[i] != none):
+        if let first_i = cls.first(i => b[i] != None):
             let bv = b[first_i]!
-            if cls.any(i => b[i] != none and b[i] != bv):
+            if cls.any(i => b[i] != None and b[i] != bv):
                 print("NO")
                 return
             cnt[bv] -= 1

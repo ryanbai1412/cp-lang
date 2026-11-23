@@ -40,9 +40,9 @@ var seg = SegTree<V, SegNode>(Monoid(SegNode.empty(), (x, y) => SegNode.join(x, 
 
 fn span_of(v: V) -> ?(lo: V, span: Int):
     if let lo = locs[v].first, let hi = locs[v].last, lo != hi:
-        some((lo, hi.ord - lo.ord))
+        Some((lo, hi.ord - lo.ord))
     else:
-        none
+        None
 
 fn clear(v: V):
     if let s = span_of(v): seg.set(s.lo, SegNode.empty())

@@ -32,7 +32,7 @@ enum Phase:
     Finish
 
 fn plan() -> ?(start: Cell, ops: List<Op>):
-    if any(a[i] > b[i] for i in Cell): return none
+    if any(a[i] > b[i] for i in Cell): return None
     let last = Cell.rev.first(i => a[i] != b[i]) ?? Cell.first
 
     var bound = last
@@ -43,7 +43,7 @@ fn plan() -> ?(start: Cell, ops: List<Op>):
     for i in (Cell.first..last).rev:
         okay[i] = b[i] > i and b[i] <= bound and okay[b[i]]
         if a[i] == b[i]: continue
-        if not okay[i]: return none
+        if not okay[i]: return None
         if i < a[low]:
             bound = i
             phase[low] = Phase.Sweep

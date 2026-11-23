@@ -33,11 +33,11 @@ for c in longest:
 var ops = ""
 fn type_out(at: Int):
     if trie.ends_at(at) > 0: ops.push('P')
-    var kept: ?(Char, Int) = none
+    var kept: ?(Char, Int) = None
     for c in Letter:
         if let next = trie.step(at, c):
             let ch = Char(c.label)
-            if next in on_longest: kept = some((ch, next))
+            if next in on_longest: kept = Some((ch, next))
             else:
                 ops.push(ch)
                 type_out(next)

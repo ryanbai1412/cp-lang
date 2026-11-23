@@ -30,10 +30,10 @@ fn merge(a: ?Low, b: ?Low) -> ?Low:
 let act = Action<?Low, Int>(
     id: 0,
     compose: (f, g) => f + g,
-    apply: (f, x, _) => if let l = x: Low(l.cover + f, l.first, l.last, l.gaps) else: none,
-    over: Monoid(id: none, op: merge),
+    apply: (f, x, _) => if let l = x: Low(l.cover + f, l.first, l.last, l.gaps) else: None,
+    over: Monoid(id: None, op: merge),
 )
-var low = SegTree<Cut, ?Low, Int>(Monoid(id: none, op: merge), [Cut] c => Low(0, c, c, 0), act: act)
+var low = SegTree<Cut, ?Low, Int>(Monoid(id: None, op: merge), [Cut] c => Low(0, c, c, 0), act: act)
 
 fn cover(i: Item, d: Int):
     let (lo, hi) = minmax(p[i], s[i])

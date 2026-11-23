@@ -8,23 +8,23 @@ domain H = 1..=m
 let moves: [X](up: 1..=1000, down: 1..=1000) = read()
 let pipes: [0..k](at: X, low: 0..=1000, high: 0..=1000) = read()
 
-var gap: [X]?(low: Int, high: Int) = none  // on arriving at a column, stay strictly inside
+var gap: [X]?(low: Int, high: Int) = None  // on arriving at a column, stay strictly inside
 for (at, low, high) in pipes: gap[at] = (low, high)
 
 var taps: [H]?Int = 0  // fewest taps to be at each height
 for x in X:
     let (up, down) = moves[x]
-    var next: [H]?Int = none
+    var next: [H]?Int = None
     for h in H:  // upward, so several taps chain
         next[h + up ?? H.last] min= min(taps[h], next[h]) + 1
     for h in H:
         if let low = h - down: next[low] min= taps[h]
     if let (low, high) = gap[x]:
-        for h in H if Int(h) <= low or Int(h) >= high: next[h] = none
-    if all(t == none for t in next):
+        for h in H if Int(h) <= low or Int(h) >= high: next[h] = None
+    if all(t == None for t in next):
         print(0)
         print(count(p.at < x for p in pipes))
         return
     taps = next
 print(1)
-print(min(t! for t in taps if t != none))
+print(min(t! for t in taps if t != None))

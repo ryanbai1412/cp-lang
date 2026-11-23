@@ -11,7 +11,7 @@ let n: 1..=500_000 = read()
 domain I = 1..=n
 domain Len = 1..=n
 let a: [I]I = read()
-var b: [I]?I = read(none: -1)
+var b: [I]?I = read(None: -1)
 
 fn solve() -> ?[I]I:
     var used_val: [I]Bool = false
@@ -22,19 +22,19 @@ fn solve() -> ?[I]I:
     var unused_val: [Len]List<I> = []
     for cyc in a.cycles():
         let len = Len(cyc.len)
-        if not cyc.any(i => b[i] != none): unused_ind[len].push(cyc[0])
+        if not cyc.any(i => b[i] != None): unused_ind[len].push(cyc[0])
         if not cyc.any(i => used_val[i]): unused_val[len].push(cyc[0])
 
     for len in Len:
-        if unused_ind[len].len != unused_val[len].len: return none
+        if unused_ind[len].len != unused_val[len].len: return None
         for (u, v) in zip(unused_ind[len], unused_val[len]): b[u] = v
 
-    for st in I if b[st] != none:
+    for st in I if b[st] != None:
         var (i, v) = (st, b[st]!)
-        while b[a[i]] == none:
+        while b[a[i]] == None:
             (i, v) = (a[i], a[v])
             b[i] = v
-        if b[a[i]] != a[v]: return none
+        if b[a[i]] != a[v]: return None
 
     [I] i => b[i]!
 

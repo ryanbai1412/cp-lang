@@ -28,7 +28,7 @@ for k in 0..al.len:
     app.push(al[k])
     out.push(app)
 out.sort()
-var prev: ?Str = none
+var prev: ?Str = None
 for w in out:
     if w != s and prev != w:
         print(w)

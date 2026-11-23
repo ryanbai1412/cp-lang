@@ -20,15 +20,15 @@ for i in 0..n:
             clash[j].push(i)
 
 // the earliest position of every component goes to stack 0, the cheaper letters
-var side: [0..n]?Int = none
+var side: [0..n]?Int = None
 var ok = true
 for s in 0..n:
-    if side[s] != none: continue
+    if side[s] != None: continue
     side[s] = 0
     var todo: List<Int> = [s]
     while let i = todo.pop():
         for j in clash[i]:
-            if side[j] == none:
+            if side[j] == None:
                 side[j] = 1 - side[i]!
                 todo.push(j)
             elif side[j] == side[i]: ok = false

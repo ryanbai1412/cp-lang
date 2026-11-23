@@ -12,7 +12,7 @@ const LINES = ROWS + [[(i, j) for i in 0..3] for j in 0..3]
 
 fn read_cell() -> ?Int:
     let w: Str = read()
-    if w == "X": none else: Int(w)
+    if w == "X": None else: Int(w)
 
 // Fill every forced cell. False when a middle would not be whole.
 fn settle(mut sq: Square) -> Bool:
@@ -21,14 +21,14 @@ fn settle(mut sq: Square) -> Bool:
         changed = false
         for line in LINES:
             let v = [sq[i][j] for (i, j) in line]
-            if sum(1 for x in v if x == none) != 1: continue
+            if sum(1 for x in v if x == None) != 1: continue
             let (a, b, c) = (v[0] ?? 0, v[1] ?? 0, v[2] ?? 0)
             var x = 2 * b - a  // the third term
             var (i, j) = line[2]
-            if v[0] == none:
+            if v[0] == None:
                 x = 2 * b - c
                 (i, j) = line[0]
-            elif v[1] == none:
+            elif v[1] == None:
                 if (a + c) % 2 != 0: return false
                 x = (a + c) / 2
                 (i, j) = line[1]
@@ -39,8 +39,8 @@ fn settle(mut sq: Square) -> Bool:
 fn attempt(given: Square) -> ?Square:
     var sq = given.copy()
     while true:
-        if not settle(sq): return none
-        let open = [(i, j) for i in 0..3 for j in 0..3 if sq[i][j] == none]
+        if not settle(sq): return None
+        let open = [(i, j) for i in 0..3 for j in 0..3 if sq[i][j] == None]
         if open.len == 0: return sq
         let (i, j) = open[rand(0, open.len - 1)]
         sq[i][j] = rand(-500, 499)

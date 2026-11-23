@@ -26,7 +26,7 @@ mod obstacles:
         var forest = Forest<Layer, Drop>()
         var open = SortedMap<Col, Node>()              // layers not yet inside a later run
         var waiting = Queue(Col.sort(by: h))         // columns not yet free, driest first
-        home = none
+        home = None
         for r in t.record_highs():                     // rows with a new maximum temperature
             let runs = waiting.pop_while(c => h[c] < t[r])
                 .map(c => wettest.span(around: c, while: x => x < t[r]))

@@ -26,7 +26,7 @@ domain V = verts.len
 let edges = [(V(u), V(v)) for (u, v) in raw_edges]
 let adj = Graph.directed(edges)
 let (domain C, comp) = scc(adj)
-var rep: [C]?V = none
+var rep: [C]?V = None
 for u in V: rep[comp[u]] ??= u
 let roots = [u for c in C if let u = rep[c]]
 let dist = bfs(u => [v for v in adj[u] if comp[v] == comp[u]], roots)

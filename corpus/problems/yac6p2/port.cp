@@ -7,13 +7,13 @@ domain V = 1..=n
 
 // a random tree, rooted at the first or (now and then) the last vertex
 fn random_parents() -> [V]?V:
-    if rand(0, 3) == 0: [V] v => (if v == V.last: none else: V(rand(v.label + 1, n)))
-    else: [V] v => (if v == V.first: none else: V(rand(1, v.label - 1)))
+    if rand(0, 3) == 0: [V] v => (if v == V.last: None else: V(rand(v.label + 1, n)))
+    else: [V] v => (if v == V.first: None else: V(rand(1, v.label - 1)))
 
 let have: [V]?V = read(gen: random_parents)
 let want: [V]?V = read(gen: random_parents)
 
-fn root(parent: [V]?V) -> V: min(v for v in V if parent[v] == none)!
+fn root(parent: [V]?V) -> V: min(v for v in V if parent[v] == None)!
 
 if root(have) != root(want): print(-1)
 else:

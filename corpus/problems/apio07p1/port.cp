@@ -18,7 +18,7 @@ fn is_forest(k: [Bar]Kids) -> Bool:
 
 // random binary tree rooted at Bar.first, for stress tests
 fn random_mobile() -> [Bar]Kids:
-    var kids: [Bar]Kids = [Bar] _ => (l: none, r: none)
+    var kids: [Bar]Kids = [Bar] _ => (l: None, r: None)
     var free: List<(Bar, Bool)> = [(Bar.first, true), (Bar.first, false)]
     for v in Bar:
         if v != Bar.first:
@@ -46,12 +46,12 @@ fn span(u: ?Bar, d: Int) -> ?(Int, Int):
     if rs >= ld:
         swaps += 1
         return (rd, ls)
-    return none
+    return None
 
 fn answer() -> ?Int:
     let (deep, shallow) = span(Bar.first, 0)?
     if deep - shallow > 1:
-        return none
+        return None
     return swaps
 
 print(answer() ?? -1)

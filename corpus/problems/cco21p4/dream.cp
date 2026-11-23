@@ -17,4 +17,4 @@ while let (road, x) = need.pop():
         ans[u] = x
         for a in into.out(u):
             need.offer(a.e, max(a.r, x - a.p))
-print(ans, none: -1)
+print(ans, None: -1)

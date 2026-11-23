@@ -24,10 +24,10 @@ domain I = 0..n
 let p: [I](1..=n) = read()
 
 let up = p.next_greater()
-var first: [I]?I = none
+var first: [I]?I = None
 var kids: [I]Int = 0
 for i in I if let u = up[i]:
-    if first[u] == none: first[u] = i
+    if first[u] == None: first[u] = i
     kids[u] += 1
 
 fn charge_edge(l: I, r: I, i: I, u: I) -> Int:

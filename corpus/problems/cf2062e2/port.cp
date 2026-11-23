@@ -28,9 +28,9 @@ var heavier = SortedSet<t.Pre>()
 fn above_lca(x: V) -> ?V:
     let r = t.sub(x)
     let (before, after) = (heavier.range(..r.l), heavier.range(r.r..))
-    let lo = (before.first ?? after.first) ?? return none
+    let lo = (before.first ?? after.first) ?? return None
     let hi = (after.last ?? before.last)!
-    some(t.lca(t.at[lo], t.at[hi]))
+    Some(t.lca(t.at[lo], t.at[hi]))
 
 var marks = [Mark] _ => Fenwick<t.Pre, Int>.new()
 var dangerous = 0

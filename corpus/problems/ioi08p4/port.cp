@@ -35,7 +35,7 @@ for t in Tele:
     ends.push((teles[t].e, t))
 let order = ends.sorted()
 var partner: [Point]Point = [Point] p => p
-var first_end: [Tele]?Point = none
+var first_end: [Tele]?Point = None
 for p in Point:
     let (_, t) = order[p.label - 1]
     if let o = first_end[t]:

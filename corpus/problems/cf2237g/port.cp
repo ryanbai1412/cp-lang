@@ -37,7 +37,7 @@ while smooth.len < 1 << SYMBOL:
     smooth += layer
     layer = [y for x in layer for y in grow(x)]
 let symbols = smooth[..1 << SYMBOL]
-var symbol: [0..=V]?Int = none
+var symbol: [0..=V]?Int = None
 for (s, x) in symbols.items: symbol[x] = s
 
 fn top_power(p: Int) -> Int:
@@ -52,7 +52,7 @@ fn decode(i: Int, k: Int) -> ?Int:
     for j in 0..P:
         print("?", i + 1, k + j + 1)
         let g: Int = read()
-        if g == -1: return none
+        if g == -1: return None
         x *= g
     symbol[x]
 

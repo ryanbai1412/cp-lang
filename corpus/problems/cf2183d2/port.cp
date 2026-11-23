@@ -16,13 +16,13 @@
 let n: 2..=200_000 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](V, V)>())
-var par: [V]?V = none
+var par: [V]?V = None
 var by_depth: [0..n]List<V> = []
 fn dfs(u: V, p: ?V, depth: Int):
     par[u] = p
     by_depth[depth].push(u)
-    for nb in g[u] if some(nb) != p: dfs(nb, u, depth + 1)
-dfs(V.first!, none, 0)
+    for nb in g[u] if Some(nb) != p: dfs(nb, u, depth + 1)
+dfs(V.first!, None, 0)
 
 let ans = [
     layer.len + Int(
@@ -32,8 +32,8 @@ let ans = [
 
 domain Slot = 0..ans
 var resp: [Slot]List<V> = []
-var last_depth: [Slot]?Int = none
-var forbidden_loc: [V]?Slot = none
+var last_depth: [Slot]?Int = None
+var forbidden_loc: [V]?Slot = None
 
 for (d, layer) in by_depth.items.rev if not layer.is_empty:
     fn place(u: V, loc: Slot):
@@ -43,14 +43,14 @@ for (d, layer) in by_depth.items.rev if not layer.is_empty:
 
     let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = Slot.find(x => last_depth[x] != some(d + 1))!
+        let s = Slot.find(x => last_depth[x] != Some(d + 1))!
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
         let rotated = forbiddens.map(f => f.loc).rotated_left(1)
         for k in 0..forbiddens.len: place(forbiddens[k].u, rotated[k])
 
-    let unconstrained = [u for u in layer if forbidden_loc[u] == none]
-    let free_slots = [s for s in Slot if last_depth[s] != some(d)]
+    let unconstrained = [u for u in layer if forbidden_loc[u] == None]
+    let free_slots = [s for s in Slot if last_depth[s] != Some(d)]
     for k in 0..min(unconstrained.len, free_slots.len): place(unconstrained[k], free_slots[k])
 
 print(ans)

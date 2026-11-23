@@ -14,7 +14,7 @@ fn right_ends(pref: [Drink.cuts]Int, end: ?[Drink.cuts]Int) -> [Drink.cuts]?Int:
         else: -pref                                           // day one: l = p
     pref + open.prefix_max(at:.cuts)                          // p < r
 
-var end: ?[Drink.cuts]Int = none
+var end: ?[Drink.cuts]Int = None
 repeat n:
     let pref = read<[Drink]-1e9..=1e9>().prefix_sums()
     let right = right_ends(pref, end)

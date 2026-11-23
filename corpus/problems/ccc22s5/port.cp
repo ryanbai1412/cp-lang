@@ -11,8 +11,8 @@ let cost: [V]Int = read()
 fn opt_add(a: ?Int, b: ?Int) -> ?Int:
     if let x = a:
         if let y = b: x + y
-        else: none
-    else: none
+        else: None
+    else: None
 
 fn opt_min(a: ?Int, b: ?Int) -> ?Int:
     if let x = a:
@@ -23,9 +23,9 @@ fn opt_min(a: ?Int, b: ?Int) -> ?Int:
 let g = Graph<V, E>.undirected(edges)
 let tree = Rooted(u => g.out(u), V.first)
 
-var need: [V]?Int = [V] _ => none
-var done: [V]?Int = [V] _ => none
-var push: [V]?Int = [V] _ => none
+var need: [V]?Int = [V] _ => None
+var done: [V]?Int = [V] _ => None
+var push: [V]?Int = [V] _ => None
 
 for u in tree.at.rev:
     let is_y = init_s[u.to_idx] == 'Y'
@@ -39,7 +39,7 @@ for u in tree.at.rev:
     if is_y:
         push[u] = opt_add(cost[u], sum_any)
     else:
-        var best_push: ?Int = none
+        var best_push: ?Int = None
         if let sa = sum_any:
             for c in tree.children(u):
                 if let pc = push[c]:
@@ -50,7 +50,7 @@ for u in tree.at.rev:
     if is_y:
         done[u] = opt_min(sum_done, push[u])
     else:
-        var best_unpaid: ?Int = none
+        var best_unpaid: ?Int = None
         if let sd = sum_done:
             for c in tree.children(u):
                 if let pc = push[c]:

@@ -35,19 +35,19 @@ fn solve() -> ?[I]I:
     var unused_val: [Len]List<I> = []
     for cyc in cycles(of: a):
         let len = Len(cyc.len)
-        if not cyc.any(i => b[i] != none): unused_ind[len].push(cyc[0])
+        if not cyc.any(i => b[i] != None): unused_ind[len].push(cyc[0])
         if not cyc.any(i => used_val[i]): unused_val[len].push(cyc[0])
 
     for len in Len:
-        if unused_ind[len].len != unused_val[len].len: return none
-        for k in 0..unused_ind[len].len: b[unused_ind[len][k]] = some(unused_val[len][k])
+        if unused_ind[len].len != unused_val[len].len: return None
+        for k in 0..unused_ind[len].len: b[unused_ind[len][k]] = Some(unused_val[len][k])
 
     for st in I if b[st] != none:
         var (i, v) = (st, b[st]!)
         while b[a[i]] == none:
             (i, v) = (a[i], a[v])
             b[i] = v
-        if b[a[i]] != a[v]: return none
+        if b[a[i]] != a[v]: return None
 
     [I] i => b[i]!
 

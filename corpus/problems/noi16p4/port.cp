@@ -24,7 +24,7 @@ var depth = AddMax<X>()
 fn cover(s: Span, times: Int):
     depth.add(coord.first_ge(s.l)!, coord.first_ge(s.r)!, times)
 
-var best: ?Int = none
+var best: ?Int = None
 var taken = 0  // the window is spans[i..taken]
 for i in 0..n:
     while taken < n and depth.max() < m:

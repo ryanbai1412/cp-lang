@@ -21,7 +21,7 @@ let ranks: [0..len]Rank = read()
 let colors: [0..len]Color = read()
 
 var must_rank: [Rank]Bool = false
-var run: [Color]?(Rank, Rank) = none
+var run: [Color]?(Rank, Rank) = None
 var by_right: [Rank]List<Rank> = []
 var total_intervals = 0
 
@@ -47,12 +47,12 @@ for (r, c) in zip(ranks, colors):
             close_run(lo, hi, r)
             run[c] = (r, r)
     else:
-        force_between(none, r)
+        force_between(None, r)
         run[c] = (r, r)
 
 for c in Color:
     let (lo, hi) = run[c]!
-    close_run(lo, hi, none)
+    close_run(lo, hi, None)
 
 var seg = LazySegTree<Rank.cuts, Int>(AddMax, fill: 0)
 for r in Rank:

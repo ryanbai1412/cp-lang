@@ -24,7 +24,7 @@ var logn = 1
 while (1 << logn) <= n:
     logn += 1
 
-var par: [V]?V = none
+var par: [V]?V = None
 var depth: [V]Int = 0
 var tin: [V]Int = 0
 var tout: [V]Int = 0
@@ -48,9 +48,9 @@ fn dfs(u: V, p: ?V):
             dfs(v, u)
     tout[u] = timer
 
-dfs(V.first, none)
+dfs(V.first, None)
 
-var lift: [0..logn, V]?V = none
+var lift: [0..logn, V]?V = None
 for v in V:
     lift[0, v] = par[v]
 for k in 1..logn:
@@ -125,9 +125,9 @@ for qi in 0..m:
         print(1)
         continue
 
-    var keep: ?V = none
-    var ins_c1: ?V = none
-    var ins_c2: ?V = none
+    var keep: ?V = None
+    var ins_c1: ?V = None
+    var ins_c2: ?V = None
     if active[u]:
         keep = u
     else:

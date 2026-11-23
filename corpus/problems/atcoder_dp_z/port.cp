@@ -25,7 +25,7 @@ type Line = (slope: Int, at0: Int)
 fn value(f: Line, s: Stone) -> Int = f.slope * h[s] + f.at0
 
 domain Node = 1..4 * n
-var winner: [Node]?Line = none
+var winner: [Node]?Line = None
 
 fn add(f: Line, node: Node, lo: Stone, hi: Stone):
     let mid = Stone((lo.label + hi.label) / 2)
@@ -45,7 +45,7 @@ fn lowest(s: Stone) -> Int:
     var node = Node.first
     var lo = Stone.first
     var hi = Stone.last
-    var best: ?Int = none
+    var best: ?Int = None
     while true:
         if let g = winner[node]: best min= value(g, s)
         if lo == hi: break

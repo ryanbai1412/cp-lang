@@ -11,8 +11,8 @@ domain Coord = -1000..=1000
 let lights: [n](x: Coord, y: Coord) = read()
 
 // on_x[y]: least walk to stand at (x of the last lighthouse, y); on_y likewise
-var on_x: [Coord]?Int = none
-var on_y: [Coord]?Int = none
+var on_x: [Coord]?Int = None
+var on_y: [Coord]?Int = None
 on_x[Coord(0)] = 0
 on_y[Coord(0)] = 0
 var (px, py) = (Coord(0), Coord(0))

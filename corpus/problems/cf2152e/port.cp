@@ -18,10 +18,10 @@
 @!multitest
 let n: 1..=100 = read()
 domain Pos = 1..=n * n + 1
-var layer: [Pos]?Int = none
+var layer: [Pos]?Int = None
 
 for i in 0..n:
-    let q = [v for v in Pos if layer[v] == none]
+    let q = [v for v in Pos if layer[v] == None]
     print("?", q.len, q)
     let cnt: Int = read()
     let got: [0..cnt]Pos = read()
@@ -30,7 +30,7 @@ for i in 0..n:
         print("!", [v for v in Pos if layer[v] == i][..=n])
         return
 
-var cur = Pos.find(u => layer[u] == none)!
+var cur = Pos.find(u => layer[u] == None)!
 var ans: List<Pos> = [cur]
 for j in (0..n).rev:
     while layer[cur] != j: cur = cur.prev!

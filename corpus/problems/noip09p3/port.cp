@@ -18,7 +18,7 @@ for (u, v, ways) in roads:
 
 // For every city `from` reaches along adj: the best price (by `pick`) met on the way.
 fn spread(adj: [City]List<City>, from: City, pick: (Int, Int) -> Int) -> [City]?Int:
-    var best: [City]?Int = none
+    var best: [City]?Int = None
     var queue = Deque<City>()
     best[from] = price[from]
     queue.push(from)

@@ -30,12 +30,12 @@ for i in Pos:
     deg[u] += 1
     deg[v] += 1
 
-var ans: [Pos]?Val = none
+var ans: [Pos]?Val = None
 var used_val: [Val]Bool = false
 var impossible = false
 
 fn assign(i: Pos, u: Val):
-    if ans[i] != none or used_val[u]:
+    if ans[i] != None or used_val[u]:
         impossible = true
         return
     ans[i] = u
@@ -48,7 +48,7 @@ while head < leaves.len and not impossible:
     let u = leaves[head]
     head += 1
     for a in adj[u]:
-        if ans[a.edge] == none:
+        if ans[a.edge] == None:
             assign(a.edge, u)
             deg[u] -= 1
             deg[a.to] -= 1
@@ -56,7 +56,7 @@ while head < leaves.len and not impossible:
 
 // Orient each remaining cycle starting from its smallest position index.
 for i in Pos:
-    if impossible or ans[i] != none: continue
+    if impossible or ans[i] != None: continue
     let (u, v) = ends[i]
     let first = min(u, v)
     let other = if first == u: v else: u
@@ -65,7 +65,7 @@ for i in Pos:
     while cur != first and not impossible:
         var moved = false
         for a in adj[cur]:
-            if ans[a.edge] == none:
+            if ans[a.edge] == None:
                 assign(a.edge, cur)
                 cur = a.to
                 moved = true
@@ -75,7 +75,7 @@ for i in Pos:
             break
 
 for i in Pos:
-    if ans[i] == none: impossible = true
+    if ans[i] == None: impossible = true
 for u in Val:
     if not used_val[u]: impossible = true
 

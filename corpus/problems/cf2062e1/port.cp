@@ -14,13 +14,13 @@ let t = Rooted(Graph.undirected(read::<[0..n - 1](V, V)>()), V.first)
 let by_w = buckets(w)
 
 fn win() -> ?V:
-    var heavier_lca: ?V = none
+    var heavier_lca: ?V = None
     for weight in W.rev:
         let b = by_w[weight]
         if let l = heavier_lca:
             if let v = b.first(v => not t.is_anc(v, l)): return v
         for v in b:
             heavier_lca = if let l = heavier_lca: t.lca(l, v) else: v
-    none
+    None
 
 if let v = win(): print(v) else: print(0)

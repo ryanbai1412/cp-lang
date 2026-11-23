@@ -39,7 +39,7 @@ fn off_both_diags(p: P) -> Bool:
     let (h0, h1, h2, h3) = (pts[hull[0]], pts[hull[1]], pts[hull[2]], pts[hull[3]])
     turn(h0, h2, pts[p]) != 0 and turn(h1, h3, pts[p]) != 0
 
-let off_diagonal: ?P = if hull.len == 4: first(p for p in P if off_both_diags(p)) else: none
+let off_diagonal: ?P = if hull.len == 4: first(p for p in P if off_both_diags(p)) else: None
 let hull_edges = if hull.len == 4:
     [(hull[0], hull[1]), (hull[1], hull[2]), (hull[2], hull[3]), (hull[3], hull[0])]
 else:
@@ -61,7 +61,7 @@ fn answer(c: Pt) -> List<P>:
             for k in j + 1..cands.len:
                 if in_tri(pts[cands[i]], pts[cands[j]], pts[cands[k]], c):
                     return [cands[i], cands[j], cands[k]]
-    if hull.len == 4 and off_diagonal == none and hull_edges.all(
+    if hull.len == 4 and off_diagonal == None and hull_edges.all(
         e => turn(pts[e.0], pts[e.1], c) > 0
     ):
         return hull

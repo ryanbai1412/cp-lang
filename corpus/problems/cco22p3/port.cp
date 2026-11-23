@@ -20,17 +20,17 @@ let a1 = raw1.sorted(by: s => (s.l, s.r))
 // Last interval index with l <= t, or none if every interval starts after t.
 fn last_starting_le(xs: List<Seg>, t: Int) -> ?Int:
     let lo = xs.first_gt(t, by: v => v.l) ?? xs.len
-    if lo == 0: none else: lo - 1
+    if lo == 0: None else: lo - 1
 
 let total = n + m
-var dist: [0..=total, 0..2, 0..2]?Int = none
+var dist: [0..=total, 0..2, 0..2]?Int = None
 var pq = MinHeap<(Int, Int, Int, Int)>()
 var ans = 0
 
 fn push_state(u: Int, loc: Int, other: Int, d: Int):
     ans max= u
     let prev = dist[u, loc, other]
-    if prev == none or d < prev!:
+    if prev == None or d < prev!:
         dist[u, loc, other] = d
         pq.push((d, u, loc, other))
 

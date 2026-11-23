@@ -12,7 +12,7 @@ var stack: List<Win> = [w for w in Win]  // bottom to top
 let q: Int = read()
 for _ in 0..q:
     let (x, y): (Int, Int) = read()
-    var hit: ?Int = none  // position in the stack
+    var hit: ?Int = None  // position in the stack
     for i in 0..stack.len:
         let f = frame[stack[i]]
         if f.x1 <= x and x <= f.x2 and f.y1 <= y and y <= f.y2: hit = i

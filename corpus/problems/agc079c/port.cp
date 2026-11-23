@@ -50,8 +50,8 @@ let a: [Pos]Val = read()
 struct Run(head: Val, tail: Val, opp_below: Bool)
 
 fn solve() -> ?Int:
-    var pred: [Val]?Val = none
-    var succ: [Val]?Val = none
+    var pred: [Val]?Val = None
+    var succ: [Val]?Val = None
     var runs: List<Run> = []
     var parity = ParityDsu<Val>.new()
 
@@ -102,9 +102,9 @@ fn solve() -> ?Int:
         while let v = unpushed and x <= v:
             runs.push(Run(v, v, false))
             unpushed = v.prev
-        if not pop_value(x): return none
+        if not pop_value(x): return None
 
-    var base_side: [Val]?Side = none
+    var base_side: [Val]?Side = None
     var active = Side.Back
     var q = Deque<Val>()
     var next: ?Pos = Pos.last

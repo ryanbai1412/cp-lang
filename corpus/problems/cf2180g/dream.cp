@@ -30,20 +30,20 @@ fn double_even(st: State, v: Z) -> State =
         p2: st.p2 * st.p2,
         sum: st.sum + v * (st.len + 1) - (st.mid ?? v),
         own: v,
-        mid: none,
+        mid: None,
     )
 
 fn total_value(st: State) -> Z = ((st.p2 - 1) / st.len + st.p2 / 2) * st.sum / 2
 
 @!multitest
 let q: 1..=1_000_000 = read()
-var stk: List<State> = [State(0, 1, 0, 0, none)]
+var stk: List<State> = [State(0, 1, 0, 0, None)]
 
 repeat q:
     let op: 1..=3 = read()
     match op:
         1 =>
-            let l = (0..stk.len).rev.first(i => stk[i].mid != none)!
+            let l = (0..stk.len).rev.first(i => stk[i].mid != None)!
             stk[l] = double_even(stk[l - 1], stk[l].own)
             for j in l + 1..stk.len:
                 stk[j] = double_odd(stk[j - 1], stk[j].own)

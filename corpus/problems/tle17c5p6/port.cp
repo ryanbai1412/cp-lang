@@ -13,7 +13,7 @@ fn random_gates() -> [Gate](a: Wire, b: Wire):
 let gates: [Gate](a: Wire, b: Wire) = read(gen: random_gates)
 
 // the output of the last gate when the first `ones` inputs are on and the rest off
-var value: [Wire]?Bool = none
+var value: [Wire]?Bool = None
 fn out(w: Wire) -> Bool:
     if let v = value[w]: return v
     let g = gates[Gate(w.label - n)]
@@ -23,7 +23,7 @@ fn out(w: Wire) -> Bool:
 fn light(ones: Int) -> Bool:
     for w in Wire:
         if w.label <= n: value[w] = w.label <= ones
-        else: value[w] = none
+        else: value[w] = None
     out(Wire.last)
 
 // If all off and all on differ, some input flips the light when it is the

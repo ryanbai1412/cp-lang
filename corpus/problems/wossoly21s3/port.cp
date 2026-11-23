@@ -14,7 +14,7 @@ const DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 fn step(p: Cell, d: (Int, Int)) -> ?Cell:  // WISH L1: p.step(d) over Dir4
     if let r = p.0 + d.0 and let c = p.1 + d.1:
         return (r, c)
-    return none
+    return None
 
 var place = Map<Char, Cell>()  // WISH L6: school.find('a')
 for r in Row:
@@ -23,12 +23,12 @@ for r in Row:
 // Where a step onto q really puts you.
 fn land(q: Cell) -> ?Cell:
     let ch = school[q]
-    if ch == '#' or ('a' <= ch and ch <= 'z'): return none  // WISH L9: ch.is_lower, ch.lower
+    if ch == '#' or ('a' <= ch and ch <= 'z'): return None  // WISH L9: ch.is_lower, ch.lower
     if 'A' <= ch and ch <= 'Z': return place[ch + 32]
     return q
 
 fn walk(from: Cell, to: Cell) -> ?Int:
-    var dist: [Row, Col]?Int = none  // WISH L7: bfs(from, p => (land(q) for q in p.around()))[to]
+    var dist: [Row, Col]?Int = None  // WISH L7: bfs(from, p => (land(q) for q in p.around()))[to]
     var todo: List<Cell> = [from]
     var next = 0
     dist[from] = 0
@@ -38,7 +38,7 @@ fn walk(from: Cell, to: Cell) -> ?Int:
         for d in DIRS:
             if let q = step(p, d):
                 if let at = land(q):
-                    if dist[at] == none:
+                    if dist[at] == None:
                         dist[at] = dist[p]! + 1
                         todo.push(at)
     return dist[to]

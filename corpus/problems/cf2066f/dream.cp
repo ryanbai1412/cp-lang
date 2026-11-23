@@ -32,9 +32,9 @@ struct Back(from: PosB.bounds, spent: Bool)
 struct Plan(piece: [Seg]Range<PosB>, free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var came: [Seg.bounds, PosB.bounds, Bool]?Back = none
+    var came: [Seg.bounds, PosB.bounds, Bool]?Back = None
     fn fit(k: Seg.bounds, j: PosB.bounds, spent: Bool) -> Bool =
-        came[k, j, spent] != none or (
+        came[k, j, spent] != None or (
             k == Seg.bounds.first and j == PosB.bounds.first and not spent
         )
     for s in Seg:
@@ -45,7 +45,7 @@ fn plan(x: Int) -> ?Plan:
                         came[s.r, j + span[s].len, spent] = Back(j, spent)
         else:
             for spent in [false, true]:
-                var latest: ?PosB.bounds = none
+                var latest: ?PosB.bounds = None
                 for j in PosB.bounds:
                     if let i = latest, mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
@@ -53,9 +53,9 @@ fn plan(x: Int) -> ?Plan:
                 for j in PosB.bounds:
                     if j > i: came[s.r, j, true] = Back(i, false)
     var at = Back(PosB.bounds.last, true)
-    if not fit(Seg.bounds.last, at.from, true): return none
+    if not fit(Seg.bounds.last, at.from, true): return None
     var piece: [Seg]Range<PosB> = PosB.bounds.first..PosB.bounds.first
-    var free: ?Seg = none
+    var free: ?Seg = None
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
         piece[s] = back.from..at.from

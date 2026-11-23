@@ -25,13 +25,13 @@ fn finish(l: City, r: City, at_r: Bool) -> ?City:
     let right = cw(r)
     let left = ccw(l)
     if right == l: return here  // everything is visited
-    if trade[here, right] and finish(l, right, true) != none: return right
-    if trade[here, left] and finish(left, r, false) != none: return left
-    none
+    if trade[here, right] and finish(l, right, true) != None: return right
+    if trade[here, left] and finish(left, r, false) != None: return left
+    None
 
 fn route() -> ?List<City>:
     for start in City:
-        if finish(start, start, false) != none:
+        if finish(start, start, false) != None:
             var path = [start]
             var l = start
             var r = start
@@ -42,7 +42,7 @@ fn route() -> ?List<City>:
                 if at_r: r = to else: l = to
                 path.push(to)
             return path
-    none
+    None
 
 if let path = route():
     for c in path: print(c)

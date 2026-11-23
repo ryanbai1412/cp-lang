@@ -18,7 +18,7 @@ for _ in 0..tcs:
         for ri in (li + 1)..n:
             num[l][Pos(ri)] = min(CAP + 1, num[l][Pos(ri - 1)] * 10 + (s[ri] - '0'))
 
-    var dp1: [Pos][Pos][Val]?Int = [Pos] _ => [Pos] _ => [Val] _ => none
+    var dp1: [Pos][Pos][Val]?Int = [Pos] _ => [Pos] _ => [Val] _ => None
     for li in (0..n).rev:
         let l = Pos(li)
         for ri in li..n:
@@ -31,14 +31,14 @@ for _ in 0..tcs:
                 let lhs = num[l][mid]
                 for vi in 0..=CAP:
                     let c = dp1[nxt][r][Val(vi)]
-                    if c != none:
+                    if c != None:
                         let nv = Val(min(lhs * vi, CAP))
                         let cand = 1 + c!
                         let cur = dp1[l][r][nv]
-                        if cur == none or cand < cur!:
+                        if cur == None or cand < cur!:
                             dp1[l][r][nv] = cand
 
-    var dp2: [Pos][Pos][Val]?Int = [Pos] _ => [Pos] _ => [Val] _ => none
+    var dp2: [Pos][Pos][Val]?Int = [Pos] _ => [Pos] _ => [Val] _ => None
     for li in (0..n).rev:
         let l = Pos(li)
         for ri in li..n:
@@ -51,16 +51,16 @@ for _ in 0..tcs:
                 let nxt = Pos(mi + 1)
                 for va in 0..=CAP:
                     let ca = dp1[l][mid][Val(va)]
-                    if ca == none: continue
+                    if ca == None: continue
                     for vb in 0..=CAP:
                         let cb = dp2[nxt][r][Val(vb)]
-                        if cb == none: continue
+                        if cb == None: continue
                         let nv = Val(min(va + vb, CAP))
                         let cand = ca! + 1 + cb!
                         let cur = dp2[l][r][nv]
-                        if cur == none or cand < cur!:
+                        if cur == None or cand < cur!:
                             dp2[l][r][nv] = cand
 
     let ans = dp2[Pos.first][Pos.last][Val(target)]
-    if ans == none: print(-1)
+    if ans == None: print(-1)
     else: print(ans!)

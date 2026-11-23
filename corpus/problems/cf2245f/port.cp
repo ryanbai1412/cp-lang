@@ -22,7 +22,7 @@ struct State(owner: Pos, next: ?Int)
 let n: 1..=500 = read()
 domain Pos = 0..=n
 let given: [0..n]?Int = read(none: -1)
-let a: [Pos]?Int = [Pos] i => if i.ord < n: given[i.ord] else: none
+let a: [Pos]?Int = [Pos] i => if i.ord < n: given[i.ord] else: None
 
 fn solve() -> Z:
     let ends = prefix([Pos] i => (a[i] ?? 0) + 1)
@@ -32,8 +32,8 @@ fn solve() -> Z:
     fn start(i: Pos) -> Int = ends.prefix(i.l)
     let last = [Pos] i => ends.prefix(i.r) - 1
     fn next(i: Pos, s: Int) -> ?Int:
-        guard let c = a[i] else: return some(s)
-        if s < start(i) + c: some(s + 1) else: none
+        guard let c = a[i] else: return Some(s)
+        if s < start(i) + c: Some(s + 1) else: None
     let states = [State(i, next(i, s)) for i in Pos for s in start(i)..=last[i]]
 
     let invs: [Pos]Z = [Pos] x => if x == Pos.first: 0 else: comb.inv(x.ord)

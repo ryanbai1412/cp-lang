@@ -64,21 +64,21 @@ fn compose_tag(new: Tag, old: Tag) -> Tag = match new.set:
     _ => new
 
 fn apply_tag(t: Tag, v: Entry, _span: Int) -> Entry = match t.set:
-    SetOp.Forbid => (cost: none, sym: v.sym)
-    SetOp.Set(c) => (cost: some(c + t.add), sym: v.sym)
-    SetOp.Keep => if let cur = v.cost: (cost: some(cur + t.add), sym: v.sym) else: v
+    SetOp.Forbid => (cost: None, sym: v.sym)
+    SetOp.Set(c) => (cost: Some(c + t.add), sym: v.sym)
+    SetOp.Keep => if let cur = v.cost: (cost: Some(cur + t.add), sym: v.sym) else: v
 
 let assign_add = Action<Entry, Tag>(
     id: (SetOp.Keep, 0),
     compose: compose_tag,
     apply: apply_tag,
-    over: Monoid<Entry>((none, Sym.last), pick_min),
+    over: Monoid<Entry>((None, Sym.last), pick_min),
 )
-var cost = LazySegTree<Sym, Entry, Tag>.new(assign_add, a: [Sym] s => (some(0), s))
+var cost = LazySegTree<Sym, Entry, Tag>.new(assign_add, a: [Sym] s => (Some(0), s))
 
 // switch_to[i]: escape to switch to before run i when esc == runs[i].sym;
 // adopt[i]: switch to runs[i].sym from any other escape before run i.
-var switch_to: [R]?Sym = none
+var switch_to: [R]?Sym = None
 var adopt: [R]Bool = false
 for i in R.rev:
     let (s, k) = run[i]
@@ -89,7 +89,7 @@ for i in R.rev:
     let opt = best.cost!
     x += escaped_cost(k)
     if x > opt + SWITCH_COST:
-        switch_to[i] = some(best.sym)
+        switch_to[i] = Some(best.sym)
         x = opt + SWITCH_COST
     if opt > x + SWITCH_COST:
         adopt[i] = true
@@ -101,7 +101,7 @@ esc = Sym(0)
 for i in R:
     let s = run[i].sym
     var k = run[i].len
-    let next = if esc == s: switch_to[i] elif adopt[i]: some(s) else: none
+    let next = if esc == s: switch_to[i] elif adopt[i]: Some(s) else: None
     if let e = next:
         out += [esc.ord, e.ord, 0]
         esc = e

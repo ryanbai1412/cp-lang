@@ -18,11 +18,11 @@ let ops: [Op]Int = read()
 fn level(i: Op) -> Int = max(0, -ops[i])
 
 // up[j, i]: 2^j steps down the chain under operation i (undos only)
-var up: [Lg, Op]?Op = none
+var up: [Lg, Op]?Op = None
 
 // the topmost operation of level < x in the chain whose top is `top`
 fn below(top: ?Op, x: Int) -> ?Op:
-    let t = top else: return none
+    let t = top else: return None
     if level(t) < x: return t
     var u = t
     for j in Lg.rev:
@@ -40,4 +40,4 @@ for i in Op:
             up[j, i] = up[lower, half]
     // WISH C2: `print(if let t = below(i, 1): ops[t] else: 0)`; `if let` is a statement only.
     let typed = below(i, 1)
-    print(if typed == none: 0 else: ops[typed!])
+    print(if typed == None: 0 else: ops[typed!])

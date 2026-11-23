@@ -34,12 +34,12 @@ fn covers(k: I128, v: I128, segs: List<(Int, Int)>, t: I128) -> Bool:
 fn solve(t: I128, p0: List<(Int, Int)>, p1: List<(Int, Int)>) -> ?Int:
     var k: I128 = 1
     while I128(6) * k <= t:
-        if not covers(k, I128(6), p0, t): return none
+        if not covers(k, I128(6), p0, t): return None
         if not covers(k, I128(1), p1, t) or not covers(k, I128(5), p1, t): k *= I128(6)
         elif not covers(k, I128(2), p1, t) or not covers(k, I128(4), p1, t): k *= I128(3)
         elif not covers(k, I128(3), p1, t): k *= I128(2)
-        else: return some(Int(I128(6) * k))
-    none
+        else: return Some(Int(I128(6) * k))
+    None
 
 let (n0, n1): (1..=200_000, 1..=200_000) = read()
 let p0: [0..n0](Int, Int) = read()

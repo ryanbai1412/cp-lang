@@ -2,7 +2,7 @@
 // original: corpus/submissions/4080824.cpp
 let n: Int = read()
 domain Player = 1..=8
-var last: [Player]?Int = none
+var last: [Player]?Int = None
 var first = 0
 var second = 0
 for _ in 0..n:

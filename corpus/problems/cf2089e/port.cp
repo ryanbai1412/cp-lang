@@ -31,7 +31,7 @@ fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 @!multitest
 let n: 1..=250_000 = read()
 domain V = 1..=n
-var parent: [V]?V = none
+var parent: [V]?V = None
 repeat n - 1:
     let (u, v): (V, V) = read()
     parent[max(u, v)] = min(u, v)
@@ -53,8 +53,8 @@ var ans: List<Z> = [1]
 for t in V.rev if t != V.first:
     let next = t.next
     let (moving, stop): (List<Z>, V) = match next:
-        some(s) => (dp[s], parent[s]!)
-        none => ([0, 1], V.first!)
+        Some(s) => (dp[s], parent[s]!)
+        None => ([0, 1], V.first!)
     dp[t] = add(dp[t], moving)
     let chain = tree.path(t, stop)
     var ways: List<Z> = [1]

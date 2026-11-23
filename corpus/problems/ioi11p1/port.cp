@@ -20,14 +20,14 @@ domain F = 0..n
 domain Trail = 0..m
 domain State = 0..2 * n  // 2 * fountain + (arrived by its best trail)
 var ends: List<(a: F, b: F)> = []
-var best: [F]?Trail = none
-var second: [F]?Trail = none
+var best: [F]?Trail = None
+var second: [F]?Trail = None
 for t in Trail:
     let (a, b): (Int, Int) = read()
     ends.push((a: F(a), b: F(b)))
     for f in [F(a), F(b)]:
-        if best[f] == none: best[f] = t
-        elif second[f] == none: second[f] = t
+        if best[f] == None: best[f] = t
+        elif second[f] == None: second[f] = t
 
 fn state(f: F, by_best: Bool) -> State = State(2 * f.to_idx + Int(by_best))
 

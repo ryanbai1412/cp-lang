@@ -14,4 +14,4 @@ let path = SegTree(*, hop)
 for (a, b) in read<[q](a: Node, b: Node)>():
     let (pa, pb) = (place(a), place(b))
     print(if pa.layer < pb.layer: path.fold(pa.layer..pb.layer)[pa.slot, pb.slot]
-          else: (a == b).then(0), none: -1)
+          else: (a == b).then(0), None: -1)

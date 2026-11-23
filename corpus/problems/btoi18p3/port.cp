@@ -33,7 +33,7 @@ let found: Cell =
         // a line: golden-section search keeps one of its two probes for the next round
         (local_max(X, x => height((x, Y.first, Z.first))), Y.first, Z.first)  // WISH R10
     elif k == 1:
-        (on_sheet((X, Y).all, none), Z.first)
+        (on_sheet((X, Y).all, None), Z.first)
     else:
         // a small box: start from the best of q / 2 random cells and walk uphill
         var c = argmax((Cell.random() for _ in 0..q / 2), by: height)

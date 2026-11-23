@@ -20,7 +20,7 @@ fn apart(d: Int, a: Int, b: Int) -> Bool:
 @memo
 fn best(d: 0..=last, a: 0..n, b: 0..n) -> ?Int:
     if d == last: return 0
-    var most: ?Int = none
+    var most: ?Int = None
     for a2 in a..=a + 1:
         for b2 in b..=b + 1:
             if b2 < n and d + 1 - a2 < m and apart(d + 1, a2, b2):

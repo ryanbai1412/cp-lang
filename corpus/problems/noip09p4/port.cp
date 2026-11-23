@@ -24,10 +24,10 @@ fn mark(r: Line, c: Line, d: Digit, on: Bool):  // WISH L11: in_row[r].toggle(d)
     in_col[c] = if on: in_col[c].with(d) else: in_col[c].without(d)
     in_box[b] = if on: in_box[b].with(d) else: in_box[b].without(d)
 
-var best: ?Int = none
+var best: ?Int = None
 fn fill(score: Int):
     // The blank with the fewest digits left is the cheapest to branch on.
-    var pick: ?(Line, Line) = none  // WISH L13: let (r, c) = min_by(blanks(), p => options(p)) else: ...
+    var pick: ?(Line, Line) = None  // WISH L13: let (r, c) = min_by(blanks(), p => options(p)) else: ...
     var fewest = 10
     for r in Line:
         for c in Line:
@@ -53,7 +53,7 @@ fn given() -> ?Int:
         for c in Line:
             if board[r, c] != 0:
                 let d = Digit(board[r, c])
-                if not fits(r, c, d): return none
+                if not fits(r, c, d): return None
                 mark(r, c, d, true)
                 score += d.label * worth(r, c)
     return score

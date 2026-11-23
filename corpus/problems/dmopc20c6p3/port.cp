@@ -15,7 +15,7 @@ let rg = g.transpose()
 var out_deg: [V]Int = [V] u => g.deg(u)
 var rem: [V]Int = [V] u => out_deg[u]
 var queued: [V]Bool = [V] _ => false
-var state: [V]?Bool = [V] _ => none
+var state: [V]?Bool = [V] _ => None
 var q: List<V> = []
 
 fn enqueue(u: V, force: Bool):

@@ -21,7 +21,7 @@ fn step(mv: Move, st: State) -> ?State:
     let (r, s) = st
     match mv:
         Create(t) => (R((r.ord + x[t]) % m), s.with(t))
-        Double(j) => if s.len == j: (R(2 * r.ord % m), s) else: none
+        Double(j) => if s.len == j: (R(2 * r.ord % m), s) else: None
 
 let moves = [Create(t) for t in T] + [Double(j) for j in 1..=3]
 let goal: State = (R(0), Subset<T>.full)

@@ -31,7 +31,7 @@ fn join(a: List<Int>, b: List<Int>) -> List<Int>:
     res
 
 fn split(f: List<?Int>, b: List<Int>) -> List<?Int>:
-    var res: List<?Int> = [none for _ in 0..f.len - b.len + 1]
+    var res: List<?Int> = [None for _ in 0..f.len - b.len + 1]
     for i in 0..res.len:
         for j in 0..b.len:
             if let x = f[i + j]: res[i] max= x + b[j]
@@ -50,7 +50,7 @@ for v in t.at.rev:
 
 var ans: [V]Int = 0
 var up: [V]List<?Int> = []
-up[t.root] = [if i == k: 0 else: none for i in 0..=n]
+up[t.root] = [if i == k: 0 else: None for i in 0..=n]
 for v in t.at:
     var f = up[v]
     for (z, c) in kids[v].items.rev:

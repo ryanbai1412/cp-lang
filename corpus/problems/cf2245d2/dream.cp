@@ -29,7 +29,7 @@ fn solve() -> ?[V]Int:
         ready: v => cnt[v, Kind(1)] == 0 or cnt[v, Kind(2)] == 0,
         on_remove: drop_edge,
     )
-    if order.len < n: return none
+    if order.len < n: return None
     for (z, v) in order.items:
         let mag = n - z
         ans[v] = if cnt[v, Kind(1)] == 0: -mag else: mag

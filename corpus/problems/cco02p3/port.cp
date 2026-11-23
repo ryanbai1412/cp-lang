@@ -15,7 +15,7 @@ const DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]  // N E S W, clockwise
 fn step(p: Cell, d: (Int, Int)) -> ?Cell:        // WISH L1: p.step(d) over Dir4
     if let r = p.0 + d.0 and let c = p.1 + d.1:
         return (r, c)
-    return none
+    return None
 
 var face = 0  // WISH L2: var face: Dir4 = read(); face.cw, face.ccw
 if facing == 'E': face = 1

@@ -16,7 +16,7 @@ fn down(u: V, parent: ?V) -> Int:
     seen[u] = true
     var deep = 0
     for v in g[u]:
-        if parent == none or v != parent!:
+        if parent == None or v != parent!:
             let d = down(v, u)
             longest max= deep + d + 1
             deep max= d
@@ -26,6 +26,6 @@ var total = 0
 for root in V:
     if not seen[root]:
         longest = 1
-        down(root, none)
+        down(root, None)
         total += longest
 print(total)

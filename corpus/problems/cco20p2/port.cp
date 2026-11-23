@@ -22,6 +22,6 @@ fn moves() -> ?Int:
         if let e = free.pop():
             total += placed.prefix(e.l)  // later days, but started further left
             placed.add(e, 1)
-        else: return none
+        else: return None
     total
 print(moves() ?? -1)

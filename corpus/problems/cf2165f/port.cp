@@ -26,7 +26,7 @@ for j in I:
     if let i = next_l[j]: open_at[i].push(j)
 
 var two = SegTree<V, ?I>(max)
-var best: [I]?I = none
+var best: [I]?I = None
 for i in I:
     for (v, r) in shapes[i]: best[r] max= two.fold(..v)
     for j in open_at[i]: two.set(a[j], j)

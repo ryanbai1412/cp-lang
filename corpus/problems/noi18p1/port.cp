@@ -24,7 +24,7 @@ for _ in 0..t_cases:
 
     var dsu = Dsu<V>.new()
     var comp_root: [V]KNode = [V] v => KNode(v.to_idx)
-    var parent: [KNode]?KNode = [KNode] _ => none
+    var parent: [KNode]?KNode = [KNode] _ => None
     var next_id = n
 
     let order = sorted([(-edges[e].alt, e.to_idx) for e in E])

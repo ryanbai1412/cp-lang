@@ -24,7 +24,7 @@ struct Gate:
 @!multitest
 let n: 1..=5000 = read()
 var x = [i + 1 for i in 0..n]
-var gates = [Gate(i..i + 1, false, none) for i in 0..n]
+var gates = [Gate(i..i + 1, false, None) for i in 0..n]
 
 fn probe() -> Int:
     print("?", x)
@@ -46,11 +46,11 @@ fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
     let m = known_m ?? probe()
 
     x[l..=m].rotate_left(1)
-    var left = solve(l, m, is_max, none)
+    var left = solve(l, m, is_max, None)
     x[l..=m].rotate_right(1)
 
     x[m..r].reverse()
-    var right = solve(m + 1, r, not is_max, none)
+    var right = solve(m + 1, r, not is_max, None)
     x[m..r].reverse()
     right.reverse()
 

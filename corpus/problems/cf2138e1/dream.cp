@@ -10,9 +10,9 @@ const MAX_N = 80
 
 // The diagonal built by the walk from (a, b) down to (1, 1), if it fits in `room`.
 fn walk(a: Int, b: Int, room: Int) -> ?List<0..=1> =
-    if room == 0: none
+    if room == 0: None
     elif a < b: [0] + walk(b, a, room - 1)?
-    elif a == b: if a == 1: [1] else: none
+    elif a == b: if a == 1: [1] else: None
     else: [1] + walk(b, a - b, room - 1)?
 
 let phi = (1.0 + sqrt(5.0)) / 2.0

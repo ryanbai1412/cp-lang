@@ -17,7 +17,7 @@ let a: [I]1..=500_000 = read()
 
 let prev_gt = a.prev_smaller(by: x => desc(x), strict: false)
 let next_lt = a.next_smaller(strict: false)
-var min_bad: [I]?I = none
+var min_bad: [I]?I = None
 for i in I:
     if let l = prev_gt[i] and let r = next_lt[i]:
         min_bad[l] min= r

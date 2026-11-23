@@ -29,10 +29,10 @@ let t = Rooted(g, root:)
 
 let max_leaf = V.filter(u => g[u].len == 1).map(u => u).max()!
 var sub_max = [V] u => u
-var prv_val: [V]?V = none
+var prv_val: [V]?V = None
 for u in t.at.rev:
     let ch = [sub_max[c] for c in t.children(u) if not (u == root and sub_max[c] == root.prev!)]
-    let max_ch: ?V = if ch.is_empty: none else: some(ch.max())
+    let max_ch: ?V = if ch.is_empty: None else: Some(ch.max())
     prv_val[u] = max_ch
     if let mc = max_ch: sub_max[u] max= mc
 

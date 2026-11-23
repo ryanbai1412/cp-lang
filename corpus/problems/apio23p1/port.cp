@@ -32,10 +32,10 @@ for _ in 0..m:
 fn times(starts: List<(C, F64)>) -> [C]?F64 = dijkstra(c => roads[c], starts, r => r.time)
 
 let reach = times([(C(0), 0.0)])
-if reach[C(h)] == none:
+if reach[C(h)] == None:
     print(-1)
 else:
-    var best = times([(c, 0.0) for c in C if reach[c] != none and (c == C(0) or kind[c] == 0)])
+    var best = times([(c, 0.0) for c in C if reach[c] != None and (c == C(0) or kind[c] == 0)])
     for _ in 0..min(k, 80):
         var starts: List<(C, F64)> = []
         for c in C:

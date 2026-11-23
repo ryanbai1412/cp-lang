@@ -26,9 +26,9 @@ for v in pubs: has_pub[comp[v]] = true
 
 // best[c]: the most a walk can take from c on, ending at a pub; none if it
 // cannot end at one. Roads lead to later components, so fill from the back.
-var best: [C]?Int = none
+var best: [C]?Int = None
 for c in C.rev:
-    var after: ?Int = if has_pub[c]: 0 else: none
+    var after: ?Int = if has_pub[c]: 0 else: None
     for a in onward[c]:
         if let b = best[a.to]: after = max(after ?? b, b)
     if let x = after: best[c] = loot[c] + x

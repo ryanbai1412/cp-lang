@@ -29,8 +29,8 @@ for _ in 0..m:
 let xors = scan(diff[0..n], ^)
 let hash = [xors.prefix(i + 1) for i in 0..n]
 
-var next: [0..n]?Int = none
-var (first_bad, last_bad): (?Int, ?Int) = (none, none)
+var next: [0..n]?Int = None
+var (first_bad, last_bad): (?Int, ?Int) = (None, None)
 let order = (0..n).sorted(by: i => (hash[i], i))
 for (a, b) in order.adjacent if hash[a] == hash[b]:
     next[a] min= b

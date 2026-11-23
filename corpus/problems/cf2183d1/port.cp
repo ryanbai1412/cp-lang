@@ -16,6 +16,6 @@ let t = Rooted(Graph.undirected(edges), root: V(1))
 var ans = 0
 for (_, layer) in V.group(by: t.depth):
     let p0 = t.parent(layer[0])
-    let same_parent = p0 != none and layer.all(v => t.parent(v) == p0)
+    let same_parent = p0 != None and layer.all(v => t.parent(v) == p0)
     ans max= layer.len + Int(same_parent)
 print(ans)

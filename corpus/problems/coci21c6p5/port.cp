@@ -11,7 +11,7 @@ for _ in 0..n:
     pairs.push((x - 1, y - 1))
 
 var kept: [0..2 * n]Bool = false
-var opens_mixed: [0..2 * n]?Int = none
+var opens_mixed: [0..2 * n]?Int = None
 for i in 0..n:
     let (x, y) = pairs[i]
     if s[x] == s[y]:

@@ -31,12 +31,12 @@ for t in Step:
 let g = Graph.directed(edges)
 let rev = g.transpose()
 var indeg: [V]Int = [V] u => rev[u].len
-var val_of: [V]?Int = none
+var val_of: [V]?Int = None
 
 let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => e.val, desc: true)
 var work: List<V> = []
 fn fix(u: V, v: Int):
-    if val_of[u] == none:
+    if val_of[u] == None:
         val_of[u] = v
         work.push(u)
 
@@ -44,7 +44,7 @@ for (val, st) in targets:
     if let prev = val_of[st], prev != val:
         print(-1)
         return
-    if val_of[st] == none:
+    if val_of[st] == None:
         fix(st, val)
         while let u = work.pop():
             for p in rev[u]: fix(p, val)

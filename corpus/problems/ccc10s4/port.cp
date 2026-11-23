@@ -25,5 +25,5 @@ fn spanning(outside: Bool) -> ?Int:
     var joined = Dsu<Pen>()
     var cost = 0
     for (c, u, v) in fences if (outside or v != Pen.first) and joined.unite(u, v): cost += c
-    if joined.components == (if outside: 1 else: 2): cost else: none
+    if joined.components == (if outside: 1 else: 2): cost else: None
 print(min(spanning(false), spanning(true))!)

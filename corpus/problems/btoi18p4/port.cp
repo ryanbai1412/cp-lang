@@ -82,7 +82,7 @@ fn covers_arc(segs: List<(Int, Int)>, ql: Int, qr: Int) -> Bool:
         evts.push((l + n, 1))
         evts.push((r + n + 1, -1))
     evts.sort()
-    var prev: ?Int = none
+    var prev: ?Int = None
     var cur = 0
     for idx in 0..evts.len:
         let e = evts[idx]

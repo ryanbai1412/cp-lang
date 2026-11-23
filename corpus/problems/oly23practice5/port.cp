@@ -40,7 +40,7 @@ fn solve():
     for x in 0..=n:
         for p in by_odd:
             let y = p.1
-            if y != x and pen.get((x, y)) == none:
+            if y != x and pen.get((x, y)) == None:
                 ans min= n - even[x] - odd[y]
                 break
     print(ans)

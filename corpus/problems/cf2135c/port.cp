@@ -25,7 +25,7 @@ let g = Graph.undirected(edges)
 let (domain C, comp) = two_edge_components(g)
 let depth = bfs(g, [V(1)])
 
-var want: [C]?Int = none
+var want: [C]?Int = None
 var ans: Z = 1
 fn force(c: C, x: Int):
     if (want[c] ?? x) != x: ans = 0

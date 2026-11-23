@@ -26,7 +26,7 @@ let (n, k): (2..=1000, 0..=1000) = read()
 domain V = 1..=n
 domain S = 0..=n
 let raw_par: [2..=n]V = read()
-var par: [V]?V = none
+var par: [V]?V = None
 for i in 2..=n: par[V(i)] = raw_par[i]
 let t = Rooted.from_parents(par)
 

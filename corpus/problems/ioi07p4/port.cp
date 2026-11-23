@@ -19,11 +19,11 @@ fn coal(older: Int, old: Int, new: Int) -> Int:
 // most[a, b, c, d]: the most coal so far when mine one last got a then b and
 // mine two last got c then d.
 type Memory = [0..=3, 0..=3, 0..=3, 0..=3]?Int
-var most: Memory = none
+var most: Memory = None
 most[0, 0, 0, 0] = 0
 for s in Ship:
     let f = if food[s] == 'M': 1 elif food[s] == 'F': 2 else: 3
-    var next: Memory = none
+    var next: Memory = None
     for a in 0..=3:
         for b in 0..=3:
             for c in 0..=3:

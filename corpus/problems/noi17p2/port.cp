@@ -26,8 +26,8 @@ fn concat(a: Block, b: Block) -> Block = Block(rh.combine(a.hash, b.hash, b.len)
 let (n, q): (1..=200_000, 1..=500_000) = read()
 domain Worm = 1..=n
 let size: [Worm]1..=6 = read()
-var ahead: [Worm]?Worm = none
-var behind: [Worm]?Worm = none
+var ahead: [Worm]?Worm = None
+var behind: [Worm]?Worm = None
 var blocks = Map<HashVal, Int>()
 
 fn count(block: Block, by: Int):
@@ -37,7 +37,7 @@ fn count(block: Block, by: Int):
 /// (`back = true`: extending on the right; `back = false`: prepending on the left).
 fn reach(from: Worm, toward: [Worm]?Worm, back: Bool) -> List<Block>:
     var out: List<Block> = []
-    var (at, block) = (some(from), empty_block)
+    var (at, block) = (Some(from), empty_block)
     while out.len < longest - 1:
         if let w = at:
             block = if back: concat(block, one[size[w]]) else: concat(one[size[w]], block)
@@ -60,12 +60,12 @@ repeat q:
         1 =>
             let (u, v): (Worm, Worm) = read()
             joint(u, v, 1)
-            (behind[u], ahead[v]) = (some(v), some(u))
+            (behind[u], ahead[v]) = (Some(v), Some(u))
         2 =>
             let u: Worm = read()
             let v = behind[u]!
             joint(u, v, -1)
-            (behind[u], ahead[v]) = (none, none)
+            (behind[u], ahead[v]) = (None, None)
         _ =>
             let (s, k): (Str, Int) = read()
             let hash = RollingHash.with_bases([c - '0' for c in s], rh.bases)

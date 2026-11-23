@@ -14,14 +14,14 @@ domain V = 1..=n
 // WISH TR9: `let s: [V]Char = read()`; the interpreter reads a `[V]Char` as n
 // separate tokens, so the string is read as `Str` and indexed by position.
 let s: Str = read()
-var boss: [V]?V = none
+var boss: [V]?V = None
 for v in V:
     if v == V.first: continue
     let b: V = read()
     boss[v] = b
 let t = Rooted.from_parents(boss)
 
-var open: [V]?V = [V] _ => none
+var open: [V]?V = [V] _ => None
 var ending: [V]Int = 0  // balanced substrings that end exactly at v
 var k: [V]Int = 0
 var ans = 0
@@ -34,7 +34,7 @@ for v in t.at:
         open[v] = v
     elif let j = open[v]:
         ending[v] = 1
-        open[v] = none
+        open[v] = None
         if let b = t.parent(j):
             ending[v] += ending[b]
             open[v] = open[b]

@@ -23,7 +23,7 @@ fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
 
 // The token starts on one of the two given cells; the hole is the other.
 let hole0 = if s == e1: e2 else: e1
-var dist: [Row, Col, Row, Col]?Int = none
+var dist: [Row, Col, Row, Col]?Int = None
 var q: List<(Cell, Cell)> = [(s, hole0)]
 dist[s.0, s.1, hole0.0, hole0.1] = 0
 var head = 0
@@ -44,7 +44,7 @@ while head < q.len:
     for st in next:
         let a = st.0
         let b = st.1
-        if dist[a.0, a.1, b.0, b.1] == none:
+        if dist[a.0, a.1, b.0, b.1] == None:
             dist[a.0, a.1, b.0, b.1] = d + 1
             q.push(st)
 print(ans)

@@ -36,7 +36,7 @@ fn feasible(v: Int) -> Bool:
     var stk: List<(top: Int, ends: Ends)> = []
     for (t, b) in cuts.items:
         let here = Span(b.at, b.at)
-        var ends = if b.odd: Ends(none, here) else: Ends(here, none)
+        var ends = if b.odd: Ends(None, here) else: Ends(here, None)
         let next = cuts.get(t + 1).filter(x => x.class == b.class)
         let top = next.map(x => peak.fold(b.at..x.at))
         while let s = stk.last and (top ?? s.top) >= s.top:

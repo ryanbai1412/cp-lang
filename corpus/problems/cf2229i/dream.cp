@@ -41,7 +41,7 @@ for v in t.at.rev:
 
 var ans: [V]Int = 0
 var up: [V]List<?Int> = []
-up[t.root] = [if i == k: 0 else: none for i in 0..=n]
+up[t.root] = [if i == k: 0 else: None for i in 0..=n]
 for v in t.at:
     var f = up[v]
     for (z, c) in kids[v].items.rev:

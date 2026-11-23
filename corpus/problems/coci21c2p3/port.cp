@@ -12,12 +12,12 @@ for e in E:
     adj[edges[e].u].push((edges[e].v, 1 << e.idx))
     adj[edges[e].v].push((edges[e].u, 1 << e.idx))
 
-var label: [V]?Int = none
+var label: [V]?Int = None
 label[V.first] = 0
 var todo = [V.first]
 while let u = todo.pop():
     for (v, bit) in adj[u]:
-        if label[v] == none:
+        if label[v] == None:
             label[v] = label[u]! ^ bit
             todo.push(v)
 

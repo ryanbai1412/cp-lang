@@ -6,8 +6,8 @@
 let (n, m, k) = read<(2..=2e5, 2..=2e5, Int)>()
 domain R = 0..n
 domain V = 1..=k
-let a: [R][m]?V = read(none: -1)
-let blank = [R] i => a[i].count(none)
+let a: [R][m]?V = read(None: -1)
+let blank = [R] i => a[i].count(None)
 let cnt = [R] i => a[i].present.tally()
 
 var credit = sum(blank[i] * blank[j] + cnt[i].dot(cnt[j]) for (i, j) in R.range.pairs())

@@ -36,5 +36,5 @@ var lies = 0
 for _ in 0..k:
     let (kind, x, y): (Int, Int, Int) = read()
     let (a, b) = (Animal.from_idx(x), Animal.from_idx(y))
-    if a == none or b == none or not relate(a!, b!, kind - 1): lies += 1
+    if a == None or b == None or not relate(a!, b!, kind - 1): lies += 1
 print(lies)

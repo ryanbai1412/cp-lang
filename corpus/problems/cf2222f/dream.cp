@@ -18,7 +18,7 @@ let good = V.mask(colors)
 let need = good.count() - 1
 
 let by_w = edges.filter(e => e.u != e.v).group(by: e => e.w)
-var conn = DsuOf<V, ?V>(v => if good[v]: v else: none, (a, b) => a ?? b)
+var conn = DsuOf<V, ?V>(v => if good[v]: v else: None, (a, b) => a ?? b)
 var mst = Dsu<V>()
 var ans = 0
 var links = 0

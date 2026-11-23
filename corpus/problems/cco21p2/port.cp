@@ -36,7 +36,7 @@ fn spell(x: Int) -> ?List<Int>:
                 u = u * k + b
                 if u == x: return out
         frontier = next
-    none
+    None
 
 for _ in 0..q:
     let x: Int = read()

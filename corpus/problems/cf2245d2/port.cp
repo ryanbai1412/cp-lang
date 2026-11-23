@@ -38,7 +38,7 @@ fn solve() -> ?[V]Int:
                 queued[a.to] = true
         z += 1
 
-    if order.len < n: none else: ans
+    if order.len < n: None else: ans
 
 if let ans = solve():
     print("YES")

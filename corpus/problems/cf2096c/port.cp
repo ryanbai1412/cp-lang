@@ -31,7 +31,7 @@ for i in 0..n:
 fn min_cost(c: [0..n]Int, bad: [0..n - 1, 0..3]Bool) -> ?Int:
     var dp: [0..2]?Int = [0, c[0]]
     for i in 1..n:
-        var nxt: [0..2]?Int = none
+        var nxt: [0..2]?Int = None
         for p in 0..2:
             if let cur = dp[p]:
                 for q in 0..2 if not bad[i - 1, 1 + p - q]:

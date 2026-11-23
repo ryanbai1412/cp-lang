@@ -15,7 +15,7 @@ let tree = Rooted.weighted(Graph.undirected(roads), City.first, a => roads[a.e].
 // to the fewest roads from the root, over the cities under v. A path that
 // turns at v joins two of those cities, taken from different children.
 var reach: [City]HashMap<Int, Int> = []
-var fewest: ?Int = none
+var fewest: ?Int = None
 for v in tree.at.rev:  // children before parents, so no recursion
     let (far_v, deep_v) = (tree.dist(tree.root, v), tree.depth(v))
     var here: HashMap<Int, Int> = [far_v: deep_v]

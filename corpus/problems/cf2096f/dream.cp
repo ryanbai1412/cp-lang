@@ -20,7 +20,7 @@ let st: [S](some: Bool, a: V, b: V) = read()
 
 var cover = SegTree<V, Int>(min, fill: 0, act: add)
 var ends: [V]Window<V.cuts> = Window(min)   // pieces leave in the order they came
-var shortest = SegTree<V, ?V.cuts>(min, fill: none)
+var shortest = SegTree<V, ?V.cuts>(min, fill: None)
 
 fn fits(i: S) -> Bool:
     let s = st[i]

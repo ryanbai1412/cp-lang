@@ -23,14 +23,14 @@ fn blocks(x: Int) -> Int:
 
 // States: 0 = Neutral, 1 = Push, 2 = Pull.
 domain Carry = 0..3
-var dp: [Carry]?Int = [Carry] _ => none
+var dp: [Carry]?Int = [Carry] _ => None
 dp[Carry(0)] = 0
 var prev_val = 0
 
 for ri in 0..run_val.len:
     let x = run_val[ri]
     let cnt = run_cnt[ri]
-    var ndp: [Carry]?Int = [Carry] _ => none
+    var ndp: [Carry]?Int = [Carry] _ => None
 
     fn upd(st: Carry, val: Int):
         if let cur = ndp[st]:

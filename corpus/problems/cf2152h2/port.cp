@@ -21,7 +21,7 @@ struct Breaks:
     fn single(mut self, b: Int, c: Int) -> ?Int:
         at.push(b)
         cnt.push(c)
-        kids.push((l: none, r: none))
+        kids.push((l: None, r: None))
         at.len - 1
 
     fn meld(mut self, oa: ?Int, ob: ?Int) -> ?Int:

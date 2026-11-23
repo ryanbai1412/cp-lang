@@ -25,7 +25,7 @@ for t in Tile:
             keys.push(p)
         nxt[p].push(Step(q, t))
 
-var start: ?Pt<Int> = none
+var start: ?Pt<Int> = None
 for k in keys:
     if nxt[k].len == 1:
         if let cur = start:

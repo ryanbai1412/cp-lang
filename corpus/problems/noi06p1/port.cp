@@ -19,7 +19,7 @@ for i in 0..n:
         psum[i, j + 1] = psum[i, j] + flow[i, j]
 
 let sz = n * 2
-var dp: [0..sz, 0..sz]?Int = none
+var dp: [0..sz, 0..sz]?Int = None
 
 for d in (0..=m).rev:
     let (u_lo, u_hi) = (1 << d, 1 << (d + 1))
@@ -41,7 +41,7 @@ for d in (0..=m).rev:
                             val += psum[cu, p + half] - psum[cu, p]
                     dp[u, state] = val
                 else:
-                    var best: ?Int = none
+                    var best: ?Int = None
                     let csz = 1 << (m - d - 1)
                     let cflag = (Int(cnt > csz) << d) | par
                     for acnt in max(0, cnt - csz)..=min(csz, cnt):
@@ -52,6 +52,6 @@ for d in (0..=m).rev:
                         ]
                     dp[u, state] = best
 
-var ans: ?Int = none
+var ans: ?Int = None
 for s in 0..sz: ans min= dp[1, s]
 print(ans!)

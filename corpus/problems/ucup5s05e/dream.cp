@@ -39,7 +39,7 @@ fn off_both_diags(p: P) -> Bool:
     let (h0, h1, h2, h3) = (pts[hull[0]], pts[hull[1]], pts[hull[2]], pts[hull[3]])
     turn(h0, h2, pts[p]) != 0 and turn(h1, h3, pts[p]) != 0
 
-let off_diagonal: ?P = if hull.len == 4: first(p for p in P if off_both_diags(p)) else: none
+let off_diagonal: ?P = if hull.len == 4: first(p for p in P if off_both_diags(p)) else: None
 let hull_edges = [(hull[i], hull[(i + 1) % hull.len]) for i in 0..hull.len]
 
 // Up to `WINDOW` consecutive chain vertices around where `c` falls in x order.
@@ -55,7 +55,7 @@ fn answer(c: Pt) -> List<P>:
     if let s = off_diagonal: cands.push(s)
     if let tri = cands.combinations(3).first(t => in_tri(pts[t[0]], pts[t[1]], pts[t[2]], c)):
         return tri
-    if hull.len == 4 and off_diagonal == none and hull_edges.all(
+    if hull.len == 4 and off_diagonal == None and hull_edges.all(
         e => turn(pts[e.0], pts[e.1], c) > 0
     ):
         return hull

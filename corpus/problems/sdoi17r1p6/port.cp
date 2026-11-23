@@ -50,7 +50,7 @@ fn edit(f: Edit, t: Sums, len: Int) -> Sums:
     )
 
 /// `f` after `g`.
-fn then(f: Edit, g: Edit) -> Edit = if f.set != none: f else: (
+fn then(f: Edit, g: Edit) -> Edit = if f.set != None: f else: (
     set: g.set,
     dx: g.dx + f.dx,
     dy: g.dy + f.dy,
@@ -61,7 +61,7 @@ domain Pos = 1..=n
 let x: [Pos]Int = read()
 let y: [Pos]Int = read()
 let empty: Sums = (xy: 0, x: 0, y: 0, xx: 0, lo: 0, len: 0)
-let keep: Edit = (set: none, dx: 0, dy: 0)
+let keep: Edit = (set: None, dx: 0, dy: 0)
 var tree = LazySegTree<Pos, Sums, Edit>(
     Action<Sums,
     Edit>(keep, then, edit, over: Monoid<Sums>(empty, join)),
@@ -82,5 +82,5 @@ for _ in 0..q:
         let (a, b): (Int, Int) = read()
         tree.apply(
             l..=r,
-            if kind == 2: (set: none, dx: a, dy: b) else: (set: (x: a, y: b), dx: 0, dy: 0),
+            if kind == 2: (set: None, dx: a, dy: b) else: (set: (x: a, y: b), dx: 0, dy: 0),
         )

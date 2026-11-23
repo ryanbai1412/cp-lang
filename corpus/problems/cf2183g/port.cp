@@ -35,15 +35,15 @@ let vr = ask("R")
 let vrl = ask("RL")
 let vl = ask("L")
 
-var ans: [0..n]?(0..=2) = none
-var idx: [Pos]?Int = none
+var ans: [0..n]?(0..=2) = None
+var idx: [Pos]?Int = None
 for (i, x) in a.items: idx[Pos(x)] = i
 for (v, r) in zip(vrl, vr): ans[idx[Pos(v)]!] = r - v
 
 var vl_has: [Pos]Bool = false
 for v in vl if v >= 1: vl_has[Pos(v)] = true
 
-for i in (0..n).rev if ans[i] == none:
+for i in (0..n).rev if ans[i] == None:
     if i + 1 < n and ans[i + 1] == 0 and a[i + 1] == a[i] + 1:
         if i > 0 and ans[i - 1] == 0 and a[i - 1] == a[i] - 1:
             print("!", -1)

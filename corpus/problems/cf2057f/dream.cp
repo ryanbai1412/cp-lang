@@ -35,7 +35,7 @@ fn x_range(r: Range<cuts.D>, l: 1..=31) -> Range<Int>:
 
 var ans: [q]Int = a.max()
 for l in 1..=31:
-    var saved = IntervalMap<cuts.D, ?Int>.new(none)
+    var saved = IntervalMap<cuts.D, ?Int>.new(None)
     let windows = [(s, window.sum(s..=e)) for s in Pos if let e = s + (l - 1)].sorted(by: w => w.1)
     for (s, total) in windows:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r

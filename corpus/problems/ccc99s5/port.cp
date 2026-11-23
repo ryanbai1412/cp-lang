@@ -17,7 +17,7 @@ for _ in 0..puzzles:
     let read_rows: [Row]Str = read()
     let rows = [read_rows[r] for r in Row]  // as a list: `fill` steps through rows by number
     let width = max(row.len for row in rows)
-    var digit: [Letter]?Int = none
+    var digit: [Letter]?Int = None
     var used: [Digit]Bool = false
     var leads: [Letter]Bool = false
     for row in rows: leads[Letter(row[0])] = true
@@ -25,15 +25,15 @@ for _ in 0..puzzles:
     /// The letter of a row in a column, columns counted from the right.
     fn at(row: Int, col: Int) -> ?Letter:
         let word = rows[row]
-        if col < word.len: some(Letter(word[word.len - 1 - col])) else: none
+        if col < word.len: Some(Letter(word[word.len - 1 - col])) else: None
 
     /// Give `x` the digit `d` if that is allowed, and go on with `rest`; take it back on failure.
     fn give(x: Letter, d: Int, rest: () -> Bool) -> Bool:
         if let old = digit[x]: return old == d and rest()
         if used[Digit(d)] or (d == 0 and leads[x]): return false
-        (digit[x], used[Digit(d)]) = (some(d), true)
+        (digit[x], used[Digit(d)]) = (Some(d), true)
         if rest(): return true
-        (digit[x], used[Digit(d)]) = (none, false)
+        (digit[x], used[Digit(d)]) = (None, false)
         false
 
     /// Fill in from `row` of `col` on; `total` is the column's sum so far, carry included.

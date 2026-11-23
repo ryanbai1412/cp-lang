@@ -15,17 +15,17 @@ fn solve_s1():
     let g = Graph<V, E>.undirected(edges)
 
     // Iterative DFS tree with explicit ancestor path stack.
-    var tin: [V]?Int = none
+    var tin: [V]?Int = None
     var out = [V] u => [a.to for a in g.out(u)]
     var stack = List<V>()
-    var pos_in_stack: [V]?Int = none
+    var pos_in_stack: [V]?Int = None
     var frames = List<(V, Int, ?V)>()
     var timer = 0
     var ans = false
 
     for root in V:
-        if tin[root] != none or ans: continue
-        frames.push((root, 0, none))
+        if tin[root] != None or ans: continue
+        frames.push((root, 0, None))
         while not frames.is_empty and not ans:
             let (u, i, p) = frames.last
             if i == 0:
@@ -36,8 +36,8 @@ fn solve_s1():
             if i < out[u].len:
                 frames[frames.len - 1] = (u, i + 1, p)
                 let v = out[u][i]
-                if p != none and v == p!: continue
-                if tin[v] == none:
+                if p != None and v == p!: continue
+                if tin[v] == None:
                     frames.push((v, 0, u))
                 elif tin[u]! > tin[v]!:
                     let start = pos_in_stack[v]!
@@ -56,7 +56,7 @@ fn solve_s1():
             else:
                 frames.pop()
                 stack.pop()
-                pos_in_stack[u] = none
+                pos_in_stack[u] = None
     print(if ans: "YES" else: "NO")
 
 fn solve_s2():
@@ -77,17 +77,17 @@ fn solve_s3():
     let edges: [E](u: V, v: V) = read()
     let g = Graph<V, E>.undirected(edges)
     let out = [V] u => [a.to for a in g.out(u)]
-    var tin: [V]?Int = none
+    var tin: [V]?Int = None
     var depth: [V]Int = 0
-    var par: [V]?V = none
+    var par: [V]?V = None
     var up: [V]Bool = false
     var frames = List<(V, Int, ?V)>()
     var timer = 0
     var ans = false
 
     for root in V:
-        if tin[root] != none: continue
-        frames.push((root, 0, none))
+        if tin[root] != None: continue
+        frames.push((root, 0, None))
         while not frames.is_empty:
             let (u, i, p) = frames.last
             if i == 0:
@@ -97,8 +97,8 @@ fn solve_s3():
             if i < out[u].len:
                 frames[frames.len - 1] = (u, i + 1, p)
                 let v = out[u][i]
-                if p != none and v == p!: continue
-                if tin[v] == none:
+                if p != None and v == p!: continue
+                if tin[v] == None:
                     depth[v] = depth[u] + 1
                     frames.push((v, 0, u))
                 elif tin[u]! > tin[v]!:

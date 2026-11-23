@@ -89,7 +89,7 @@ domain V = 1..=n
 let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
 
-var par: [V]?V = none
+var par: [V]?V = None
 for u in V:
     repeat read<Int>(): par[read<V>()] = u
 let t = Rooted.from_parents(par)

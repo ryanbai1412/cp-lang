@@ -14,7 +14,7 @@ use std.persistent.PMultiset
 let n: 1..=400_000 = read()
 domain V = 1..=n
 domain Key = 0..n
-let kids: [V]?(l: V, r: V) = read(none: (0, 0))
+let kids: [V]?(l: V, r: V) = read(None: (0, 0))
 
 let tree = Rooted(root: V.first, next: v => kids[v].list)
 var gen: [V]Int = 0

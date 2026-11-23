@@ -14,7 +14,7 @@
 let n: 1..=200_000 = read()
 let a: [0..n]-10 ** 9..=10 ** 9 = read()
 var best_delta = 0
-var best_idx: ?Int = none
+var best_idx: ?Int = None
 var cur_delta = 0
 for (i, v) in a.items:
     if v >= 0:

@@ -28,9 +28,9 @@ let pow2 = [0..=m] i => Z(2) ** i
 
 // The half t[from..from + m] folded onto `len` residues, or none on a clash.
 fn fold(from: Int, len: Int) -> ?List<?Char>:
-    var s: List<?Char> = [none for _ in 0..len]
+    var s: List<?Char> = [None for _ in 0..len]
     for i in 0..m if t[from + i] != '?':
-        if let c = s[i % len], c != t[from + i]: return none
+        if let c = s[i % len], c != t[from + i]: return None
         s[i % len] = t[from + i]
     s
 

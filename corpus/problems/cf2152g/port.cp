@@ -13,7 +13,7 @@ let monster = [V] v => flag[v] == 1
 let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
 
 type Side = (ends: Int, first: ?V, last: ?V)
-let empty_side: Side = (0, none, none)
+let empty_side: Side = (0, None, None)
 
 fn join(x: Side, y: Side) -> Side:
     var ends = x.ends + y.ends

@@ -44,7 +44,7 @@ fn heading(a: Pt, b: Pt) -> Dir:
 
 // out[p, d]: which side of the wall leaving p in direction d faces the
 // next direction round p.
-var out: [P, Dir]?Side = none
+var out: [P, Dir]?Side = None
 for w in W:
     let (u, v) = walls[w]
     let d = heading(pts[u], pts[v])
@@ -64,19 +64,19 @@ for w in W:
     across[a].push(b)
     across[b].push(a)
 
-var wet_at: [Side]?Int = none
+var wet_at: [Side]?Int = None
 var queue = Deque<Side>()
 for p in sorted(P, by: p => (pts[p].x, pts[p].y)):
     // The leftmost, then lowest, point of a group: outside lies below its
     // east wall, or left of its north wall if it has no east wall.
     let outer = out[p, East] ?? out[p, North]?.flip else: continue
     let f = faces.find(outer)
-    if wet_at[f] != none: continue
+    if wet_at[f] != None: continue
     wet_at[f] = 0
     queue.push(f)
     while let a = queue.pop_front():
         for b in across[a]:
-            if wet_at[b] == none:
+            if wet_at[b] == None:
                 wet_at[b] = wet_at[a]! + 1
                 queue.push(b)
 

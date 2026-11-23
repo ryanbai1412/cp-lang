@@ -23,7 +23,7 @@ struct Gate:
 @!multitest
 let n: 1..=5000 = read()
 var x = [i + 1 for i in 0..n]
-var gates = [Gate(i..i + 1, none) for i in 0..n]
+var gates = [Gate(i..i + 1, None) for i in 0..n]
 
 fn probe() -> Int:
     print("?", x)
@@ -31,10 +31,10 @@ fn probe() -> Int:
     x.find(winner)!
 
 fn join(a: Int, b: Int, is_max: Bool) -> Int = gates.push_id(
-    Gate(gates[a].span.start..gates[b].span.end, some((is_max, a, b)))
+    Gate(gates[a].span.start..gates[b].span.end, Some((is_max, a, b)))
 )
 
-fn solve(span: Range<Int>, is_max: Bool, known_m: ?Int = none) -> List<Int>:
+fn solve(span: Range<Int>, is_max: Bool, known_m: ?Int = None) -> List<Int>:
     if span.len <= 1: return span.to_list()
     let m = known_m ?? probe()
 

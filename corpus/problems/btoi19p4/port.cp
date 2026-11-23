@@ -18,8 +18,8 @@ let hours: [Chef]1..=300 = read()
 domain Paid = 0..=hours.sum()
 
 fn least_waste() -> ?Int:
-    if any(a < k for a in need): return none
-    var variety: [Paid]?Int = none
+    if any(a < k for a in need): return None
+    var variety: [Paid]?Int = None
     variety[Paid.first] = 0
     for b in hours:
         for p in Paid.rev:
@@ -30,7 +30,7 @@ fn least_waste() -> ?Int:
         if p.idx >= work:
             if let v = variety[p]:
                 if v >= n * k: return p.idx - work
-    none
+    None
 
 if let waste = least_waste(): print(waste)
 else: print("Impossible")

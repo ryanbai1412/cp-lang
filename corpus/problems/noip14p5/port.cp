@@ -15,6 +15,6 @@ for (u, v) in edges:
     back[v].push(u)
 
 let reaches = bfs(v => back[v], from: [t])
-let safe = [V] u => all(reaches[v] != none for v in out[u])
+let safe = [V] u => all(reaches[v] != None for v in out[u])
 let walk: [V]List<V> = [V] u => [v for v in out[u] if safe[u] and safe[v]]
 print(if safe[s]: bfs(v => walk[v], from: [s])[t] ?? -1 else: -1)

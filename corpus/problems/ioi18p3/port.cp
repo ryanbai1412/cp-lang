@@ -27,7 +27,7 @@ let g = Graph<V, E>.undirected(roads)
 // rewritten here.
 fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
     var top: [V]V = [V] v => v
-    var boss: [V]?V = none
+    var boss: [V]?V = None
     fn find(v: V) -> V:
         var x = v
         while top[x] != x:

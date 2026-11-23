@@ -13,12 +13,12 @@ let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first)
 let by_w = V.group(by: v => w[v])
 
 fn win() -> ?V:
-    var heavier_lca: ?V = none
+    var heavier_lca: ?V = None
     for bucket in by_w.rev:
         if let l = heavier_lca:
             if let v = bucket.first(v => not t.is_anc(v, l)): return v
         for v in bucket:
             heavier_lca = if let l = heavier_lca: t.lca(l, v) else: v
-    none
+    None
 
 print(win() ?? 0)

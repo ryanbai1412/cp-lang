@@ -26,7 +26,7 @@ let asks: [Ask](closed: Road, from: V) = read()
 // with far[] measured from the exit.
 let tree = Rooted(roads, exit, weight: .len)
 let far: [V]Int = [V] v => tree.dist(exit, v)
-var shop_under: [V]?Int = none  // far[] of the nearest shop in the subtree
+var shop_under: [V]?Int = None  // far[] of the nearest shop in the subtree
 for v in shops: shop_under[v] = far[v]
 for v in tree.at.rev:
     if let p = tree.parent(v):
@@ -39,13 +39,13 @@ for a in Ask: asked_at[asks[a].from].push(a)
 // ancestor of the current one. So a table over depth holds the whole path to
 // the exit, and "best turn between the cut and here" is one range minimum.
 domain Depth = 0..n
-var turn: [Depth]?Int = none
+var turn: [Depth]?Int = None
 var best_turn = SegTree<Depth, ?Int>.of(min, d => turn[d])
 var escaped: [Ask]Bool = false
-var nearest: [Ask]?Int = none
+var nearest: [Ask]?Int = None
 for v in tree.at:
     let here = Depth(tree.depth(v))
-    turn[here] = none
+    turn[here] = None
     if let d = shop_under[v]: turn[here] = d - 2 * far[v]
     best_turn.refresh(here)
     for a in asked_at[v]:

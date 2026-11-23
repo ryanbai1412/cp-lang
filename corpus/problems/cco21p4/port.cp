@@ -10,7 +10,7 @@ let rev = Graph<V, E>.directed([E] e => (u: roads[e].b, v: roads[e].a))
 var out_deg: [V]Int = [V] _ => 0
 for e in E: out_deg[roads[e].a] += 1
 
-var ans: [V]?Int = [V] _ => none
+var ans: [V]?Int = [V] _ => None
 var removed: [E]Bool = [E] _ => false
 var dead: [V]Bool = [V] _ => false
 var peel: List<V> = []

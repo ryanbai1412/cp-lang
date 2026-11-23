@@ -50,7 +50,7 @@ for v in Spot:
     if let p = tree.parent(v) and v != hub and p != hub: group.unite(v, p)
 for (u, v) in links:
     if u != hub and v != hub and group.size(u) < small and group.size(v) < small: group.unite(u, v)
-var seed: ?Spot = none
+var seed: ?Spot = None
 for v in Spot:
     if v != hub and group.size(v) >= small: seed = v
 

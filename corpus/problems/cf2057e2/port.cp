@@ -10,7 +10,7 @@ domain Q = 0..q
 let edges = read<[m](u: V, v: V, w: 1..=1e9)>().sorted(by: e => e.w)
 let queries: [Q](a: V, b: V, k: Int) = read()
 
-var hop: [V, V]?Int = none
+var hop: [V, V]?Int = None
 for e in edges:
     for (x, y) in [(e.u, e.v), (e.v, e.u)]: hop[x, y] = 1
 assert floyd_warshall(mut hop)

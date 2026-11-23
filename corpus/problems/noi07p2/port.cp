@@ -34,7 +34,7 @@ for d in by_ratio:
 // that wins at the middle of its span.
 struct Line(k: F64, m: F64):
     fn at(self, x: F64) -> F64 = k * x + m
-var held: List<?Line> = List.filled(4 * n, none)
+var held: List<?Line> = List.filled(4 * n, None)
 
 fn add(fresh: Line):
     var (at, lo, hi, cur) = (1, 0, n - 1, fresh)

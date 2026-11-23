@@ -16,7 +16,7 @@ let attack: [Elf]Int = read()
 let ord = Elf.sort(by: e => attack[e])
 
 fn plan() -> ?List<(Elf, Elf)>:
-    if 2 * m > n: return none
+    if 2 * m > n: return None
     if m >= 1:
         let k = n - 2 * m
         return [p for p in ord[..=k].adjacent] + [
@@ -24,7 +24,7 @@ fn plan() -> ?List<(Elf, Elf)>:
         ]
     let top = ord.last!
     let pref = prefix(ord.map(e => attack[e]))
-    let s = (0..n - 1).last_true(k => pref.fold(k..n - 1) >= attack[top]) ?? return none
+    let s = (0..n - 1).last_true(k => pref.fold(k..n - 1) >= attack[top]) ?? return None
     [p for p in ord[..=s].adjacent] + [(e, top) for e in ord[s..n - 1].rev]
 
 let moves = plan() ?? return print(-1)

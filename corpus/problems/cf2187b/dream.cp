@@ -17,21 +17,21 @@
 // for both axes.
 
 fn step(sep: Bool, ge: Bool, v: Bool, bit: Bool) -> ?(Bool, Int):
-    if not sep and v != bit and v != ge: return none
+    if not sep and v != bit and v != ge: return None
     let diff = Int(v) - Int(bit)
-    some((sep or v != bit, if ge: diff else: -diff))
+    Some((sep or v != bit, if ge: diff else: -diff))
 
 @!multitest
 let (x, y): (0..2 ** 30, 0..2 ** 30) = read()
-var ans: ?(Int, Int, Int) = none
+var ans: ?(Int, Int, Int) = None
 
 for ge_x in [false, true]:
     for ge_y in [false, true]:
-        var dp: [Bool, Bool]?(Int, Int, Int) = none
+        var dp: [Bool, Bool]?(Int, Int, Int) = None
         dp[false, false] = (0, 0, 0)
         for b in (0..=30).rev:
             let (bx, by) = (x.bit(b), y.bit(b))
-            var ndp: [Bool, Bool]?(Int, Int, Int) = none
+            var ndp: [Bool, Bool]?(Int, Int, Int) = None
             for sx in [false, true]:
                 for sy in [false, true] if let (w, px, py) = dp[sx, sy]:
                     for (vx, vy) in [(false, false), (false, true), (true, false)]:

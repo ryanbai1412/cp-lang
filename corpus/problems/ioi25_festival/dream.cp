@@ -21,7 +21,7 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
         rest = rest.drop(1)
 
     domain K = 0..=min(rest.len, 70)
-    var best: [0..=rest.len][K]?Int = none            // most tokens after k of the first i
+    var best: [0..=rest.len][K]?Int = None            // most tokens after k of the first i
     best[0][0] = a
     for (i, c) in rest.enumerate():
         for k in K:
@@ -30,7 +30,7 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
 
     let cost = plain.map(c => p[c]).prefix_sums()
     fn total(k: K) -> Int = k + cost.count(where: s => s <= best[rest.len][k]!)
-    let k = K.filter(k => best[rest.len][k] != none).max_by(total)!
+    let k = K.filter(k => best[rest.len][k] != None).max_by(total)!
 
     var took: List<C> = []                            // walk back: a skip that keeps best was optimal
     var j = k

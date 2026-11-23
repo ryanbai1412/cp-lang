@@ -33,8 +33,8 @@ fn step(c: Int, ch: Char) -> Int = if ch == '0': x + c else: y - c
 let (head, rest) = s.split_once('?') ?? return print(Z(s.scan(step, from: 0).sum()))
 let head_walk = head.scan(step, from: 0)
 let c0 = match head_walk.last:
-    some(v) => v
-    none => 0
+    Some(v) => v
+    None => 0
 let f = head_walk.sum()
 
 var (p0, p1) = (1, 0)

@@ -15,8 +15,8 @@ for (r, c) in at: count[r, c] += 1
 
 // For every row: the least fence around exactly k roses at or above it.
 fn above<R, C>(garden: [R, C]Int) -> [R]?Int:
-    var best: [R]?Int = none
-    var least: ?Int = none
+    var best: [R]?Int = None
+    var least: ?Int = None
     for bottom in R:
         var strip: [C]Int = 0  // roses per column in rows top..=bottom
         for top in (..=bottom).rev:
@@ -36,7 +36,7 @@ fn above<R, C>(garden: [R, C]Int) -> [R]?Int:
 fn split<R, C>(garden: [R, C]Int) -> ?Int:
     let up = above(garden)
     let down = above([R, C] (r, c) => garden[R.from_idx(R.len - 1 - r.idx)!, c])  // WISH G2: garden.flipped
-    var least: ?Int = none
+    var least: ?Int = None
     for cut in 1..R.len:
         if let a = up[R.from_idx(cut - 1)!] and let b = down[R.from_idx(R.len - 1 - cut)!]: least min= a + b
     least

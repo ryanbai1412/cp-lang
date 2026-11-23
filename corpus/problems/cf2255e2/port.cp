@@ -16,7 +16,7 @@ type Tag = (neg: Path, zero: Path, pos: Path, set: ?Cell)
 
 fn path(f: Tag, s: Sign) -> Path = if s < 0: f.neg elif s == 0: f.zero else: f.pos
 
-fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = none) -> Tag =
+fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = None) -> Tag =
     ((to(-1), seen(-1)), (to(0), seen(0)), (to(1), seen(1)), set)
 
 fn run(f: Tag, c: Cell) -> Cell:

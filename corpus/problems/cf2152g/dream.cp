@@ -13,7 +13,7 @@ let monster: [V]Bool = read()
 let t = Rooted(Graph<V>.undirected(read<[V.count - 1](V, V)>()), V.first)
 
 struct Side(ends: 0..=V.count, first: ?V, last: ?V):
-    const empty = Side(0, none, none)
+    const empty = Side(0, None, None)
     fn join(x: Side, y: Side) -> Side:
         var ends = x.ends + y.ends
         if let u = x.last, let w = y.first, t.is_anc(u, w): ends -= 1

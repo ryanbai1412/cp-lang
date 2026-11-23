@@ -103,12 +103,12 @@ fn seg_harvest(o: Int, l: Int, r: Int, qlx: Int, qrx: Int, qly: Int, qry: Int):
     if qlx <= mid: seg_harvest(o * 2, l, mid, qlx, qrx, qly, qry)
     if mid < qrx: seg_harvest(o * 2 + 1, mid + 1, r, qlx, qrx, qly, qry)
 
-var dist: [0..n + m]?Int = none
+var dist: [0..n + m]?Int = None
 var pq = MinHeap<(Int, Int)>()
 
 fn push_dist(u: Int, d: Int):
     let prev = dist[u]
-    if prev == none or d < prev!:
+    if prev == None or d < prev!:
         dist[u] = d
         pq.push((d, u))
 

@@ -25,7 +25,7 @@ var groups = Dsu<Glass>.new()
 var lo: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
 var hi: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
 var pairs = 0
-var best: ?Int = none
+var best: ?Int = None
 
 fn join(j: Int):
     let (a, b) = (groups.find(Glass.nth(j)), groups.find(Glass.nth(j + 1)))

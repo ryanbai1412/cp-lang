@@ -21,7 +21,7 @@ fn through(x1: Int, y1: Int, x2: Int, y2: Int) -> Line = Line(y1 - y2, x2 - x1, 
 
 fn crossing(p: Line, q: Line) -> ?Hom:
     let w = p.a * q.b - q.a * p.b
-    if w == 0: return none  // parallel, or the same line
+    if w == 0: return None  // parallel, or the same line
     let (x, y) = (p.b * q.c - q.b * p.c, p.c * q.a - q.c * p.a)
     let g = gcd(gcd(abs(x), abs(y)), abs(w)) * (if w < 0: -1 else: 1)
     Hom(x / g, y / g, w / g)

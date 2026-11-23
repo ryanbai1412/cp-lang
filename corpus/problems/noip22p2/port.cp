@@ -11,12 +11,12 @@ for _ in 0..tests:
     let deck: [0..m]Int = read()
 
     // leaves_at[i]: when the card dealt at time i is cancelled by its twin, for the first of each pair
-    var leaves_at: [0..m]?Int = none
-    var waiting: [1..=k]?Int = none
+    var leaves_at: [0..m]?Int = None
+    var waiting: [1..=k]?Int = None
     for i in 0..m:
         if let first = waiting[deck[i]]:
             leaves_at[first] = i
-            waiting[deck[i]] = none
+            waiting[deck[i]] = None
         else: waiting[deck[i]] = i
 
     var stacks: [0..n]List<Int> = []  // bottom first

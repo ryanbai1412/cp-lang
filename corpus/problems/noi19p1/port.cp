@@ -14,7 +14,7 @@ for _ in 0..m:
 routes.push((u: Station.first, v: Station.first, s: 0, e: 0))
 let total_m = m + 1
 
-var root: [Station]?Int = none
+var root: [Station]?Int = None
 var slope: List<Int> = []
 var icept: List<Int> = []
 var left_c: List<?Int> = []
@@ -23,12 +23,12 @@ var right_c: List<?Int> = []
 fn new_node(k: Int, b: Int) -> Int:
     slope.push(k)
     icept.push(b)
-    left_c.push(none)
-    right_c.push(none)
+    left_c.push(None)
+    right_c.push(None)
     slope.len - 1
 
 fn add_line(st: Station, k0: Int, b0: Int):
-    if root[st] == none:
+    if root[st] == None:
         root[st] = new_node(k0, b0)
         return
     var at = root[st]!
@@ -58,7 +58,7 @@ fn add_line(st: Station, k0: Int, b0: Int):
 fn query_min(st: Station, x: Int) -> ?Int:
     var cur = root[st]
     var (lo, hi) = (0, max_t)
-    var best: ?Int = none
+    var best: ?Int = None
     while let at = cur:
         best min= slope[at] * x + icept[at]
         if lo == hi: break
@@ -76,7 +76,7 @@ for i in 0..total_m:
     events.push((-routes[i].s, 0, i))
     events.push((-routes[i].e, 1, i))
 
-var dp: [0..total_m]?Int = none
+var dp: [0..total_m]?Int = None
 for (_, kind, i) in events.sorted():
     let r = routes[i]
     if kind == 0:

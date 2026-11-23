@@ -10,13 +10,13 @@ for i in V: x[i] = a[i] - i.idx
 
 // Array-backed max skew heap: node i starts with value x[i].
 var hval: [V]Int = 0
-var hlc: [V]?V = none
-var hrc: [V]?V = none
+var hlc: [V]?V = None
+var hrc: [V]?V = None
 for i in V: hval[i] = x[i]
 
 fn merge_heap(a_in: ?V, b_in: ?V) -> ?V:
-    if a_in == none: return b_in
-    if b_in == none: return a_in
+    if a_in == None: return b_in
+    if b_in == None: return a_in
     var u = a_in!
     var v = b_in!
     if hval[u] < hval[v]:

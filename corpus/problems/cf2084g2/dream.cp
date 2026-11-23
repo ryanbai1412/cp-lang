@@ -20,7 +20,7 @@ enum Side: Odd, Even
 @!multitest
 let n: 1..=500_000 = read()
 domain P = 1..=n
-let a: [P]?(1..=n) = read(none: 0)
+let a: [P]?(1..=n) = read(None: 0)
 let half = n / 2
 let at = a.inverse()
 fn side(p: P) -> Side = if p.label % 2 == 0: Even else: Odd
@@ -30,7 +30,7 @@ var best = Concave.point(0)
 for k in 0..n:
     best.add_quadratic(c => gain(k, c))
     best.max_convolve(match at[k + 1].map(side):
-        some(Odd) => Concave.point(0)
-        some(Even) => Concave.point(1)
-        none => Concave.flat(0..=1))
+        Some(Odd) => Concave.point(0)
+        Some(Even) => Concave.point(1)
+        None => Concave.flat(0..=1))
 print((best.at(half) + n * (n + 1) ** 2 / 2) / 2)

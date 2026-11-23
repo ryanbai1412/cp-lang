@@ -20,7 +20,7 @@ var by_w: [W]List<(u: V, v: V)> = []
 for e in edges if e.u != e.v:
     by_w[e.w].push((u: e.u, v: e.v))
 
-var conn = DsuOf<V, ?V>(v => if v in good: v else: none, (a, b) => a ?? b)
+var conn = DsuOf<V, ?V>(v => if v in good: v else: None, (a, b) => a ?? b)
 var mst = Dsu<V>()
 var ans = 0
 var links = 0

@@ -19,7 +19,7 @@ fn steps() -> ?Int:
     for k in 0..=30:
         if all(d[i] == d[d.len - 1 - i] for i in 0..d.len): return k
         d = mirror_sum(d)
-    none
+    None
 if let k = steps():
     print("STEP=", end: "")
     print(k)

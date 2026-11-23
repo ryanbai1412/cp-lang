@@ -6,7 +6,7 @@ fn main_solve():
     domain I = 0..n
     let h: [I]Int = read()
     domain L = 0..n
-    var ans: [L]?Int = none
+    var ans: [L]?Int = None
     for i in 0..n:
         for off in 0..=1:
             var cur = 0

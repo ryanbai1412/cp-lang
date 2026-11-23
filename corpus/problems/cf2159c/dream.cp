@@ -31,6 +31,6 @@ for i in 1..=n if let v = a[i]:
 var invs: [0..=n]Z = 1
 for i in 2..=n: invs[i] = invs[i - 1] + invs[i - 2] * (i - 1)
 
-let free = count(a[i] == none for i in 1..n)
-let extra = Int(a[n] == none)
+let free = count(a[i] == None for i in 1..n)
+let extra = Int(a[n] == None)
 print(sum(comb.choose(free, i) * invs[i + extra] for i in 0..=free))

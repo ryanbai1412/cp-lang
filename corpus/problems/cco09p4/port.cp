@@ -12,7 +12,7 @@ fn pair_up(caps: List<Cap>, bottles: List<Bottle>):
     let pivot = bottles[rand(0, bottles.len - 1)]
     var small: List<Cap> = []
     var big: List<Cap> = []
-    var fits: ?Cap = none
+    var fits: ?Cap = None
     for c in caps:
         let r = fit(c, pivot)
         if r < 0: small.push(c)

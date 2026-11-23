@@ -31,7 +31,7 @@ var bit = Fenwick<Card, Int>()
 var run_len: [Card]Int = 0
 
 fn insert_runs(lo: Pos, hi: Pos):
-    var cur: ?Pos = some(lo)
+    var cur: ?Pos = Some(lo)
     while let p = cur, p <= hi:
         let end_p = if let np = nxt_gt[p], np <= hi: np.prev! else: hi
         let len = end_p.ord - p.ord + 1
@@ -44,8 +44,8 @@ insert_runs(Pos.first, Pos.last)
 
 let order = [qi for qi in Q].sorted(by: qi => qs[qi].t)
 let half = n / 2
-var cur_t: ?Int = some(0)
-var ans: [Q]?Card = none
+var cur_t: ?Int = Some(0)
+var ans: [Q]?Card = None
 
 for qi in order:
     let target_t = qs[qi].t
@@ -54,13 +54,13 @@ for qi in order:
         let keep = half - bit.prefix(leader.l)
         let full_len = run_len[leader]
         if keep == full_len:
-            cur_t = none
+            cur_t = None
         else:
             run_len[leader] = keep
             bit.add(leader, -(full_len - keep))
             let start = pos_of[leader]
             insert_runs(start.offset(keep)!, start.offset(full_len - 1)!)
-            cur_t = some(t + 1)
+            cur_t = Some(t + 1)
 
     let pos1 = qs[qi].i.ord + 1
     let leader = bit.first_ge(pos1)!.left!

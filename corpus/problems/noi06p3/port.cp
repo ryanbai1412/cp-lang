@@ -26,14 +26,14 @@ fn cands_at(arr: [Col]Int, i: Int) -> List<Int>:
 fn solve_env(arr: [Col]Int) -> Int:
     var nxt_h = cands_at(arr, n - 1)
     var dp_lo: List<?Int> = [0 for _ in 0..nxt_h.len]
-    var dp_hi: List<?Int> = [none for _ in 0..nxt_h.len]
+    var dp_hi: List<?Int> = [None for _ in 0..nxt_h.len]
 
     for i in (0..n - 1).rev:
         let cur_h = cands_at(arr, i)
         let m_nxt = nxt_h.len
         let a_next = arr[Col(i + 1)]
-        var pref_lo: [0..m_nxt]?Int = none
-        var suff_hi: [0..m_nxt]?Int = none
+        var pref_lo: [0..m_nxt]?Int = None
+        var suff_hi: [0..m_nxt]?Int = None
         for q in 0..m_nxt:
             if q > 0: pref_lo[q] = pref_lo[q - 1]
             pref_lo[q] min= dp_lo[q] + (nxt_h[q] - a_next)
@@ -46,8 +46,8 @@ fn solve_env(arr: [Col]Int) -> Int:
         var q = 0
         for h in cur_h:
             while q < m_nxt and nxt_h[q] < h: q += 1
-            var best_lo: ?Int = none
-            var best_hi: ?Int = none
+            var best_lo: ?Int = None
+            var best_hi: ?Int = None
             if q > 0: best_hi min= pref_lo[q - 1]
             if q < m_nxt and nxt_h[q] == h:
                 let diff = h - a_next
@@ -63,7 +63,7 @@ fn solve_env(arr: [Col]Int) -> Int:
         dp_lo = new_lo
         dp_hi = new_hi
 
-    var ans: ?Int = none
+    var ans: ?Int = None
     let a0 = arr[Col(0)]
     for q in 0..nxt_h.len: ans min= dp_lo[q] + (nxt_h[q] - a0)
     ans!

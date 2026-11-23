@@ -34,9 +34,9 @@ fn walk(u: V, parent: ?V, start_pass: Int):
     let d = adj[u].len
     var t = start_pass
     var pass_at = List.filled(d, 0)
-    var p_idx: ?Int = none
+    var p_idx: ?Int = None
     for i in 0..d:
-        if parent != none and adj[u][i] == parent!:
+        if parent != None and adj[u][i] == parent!:
             t += 1
             p_idx = i
         else:
@@ -53,7 +53,7 @@ fn walk(u: V, parent: ?V, start_pass: Int):
         born.push(pt)
         tour_node.push(u)
 
-walk(V(0), none, 0)
+walk(V(0), None, 0)
 
 let total_steps = tour_node.len
 domain Step = 0..total_steps

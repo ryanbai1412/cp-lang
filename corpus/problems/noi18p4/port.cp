@@ -9,7 +9,7 @@ use std.math.{ext_gcd, crt, mul_mod}
 fn solve_linear(a: Int, b: Int, m: Int) -> ?(Int, Int):
     let (a, b) = (a % m, b % m)
     let g = gcd(a, m)
-    if b % g != 0: return none
+    if b % g != 0: return None
     let step = m / g
     (mul_mod(b / g, ext_gcd(a / g, step).x % step, step), step)
 
@@ -34,7 +34,7 @@ for _ in 0..t:
         swords.add(reward[d])
         at_least max= ceil_div(life[d], atk)
         let one = solve_linear(atk, life[d], regrow[d])
-        all = if all == none or one == none: none else: crt(all!.0, all!.1, one!.0, one!.1)
+        all = if all == None or one == None: None else: crt(all!.0, all!.1, one!.0, one!.1)
     if let (r, md) = all:
         print(r + md * max(0, ceil_div(at_least - r, md)))
     else:

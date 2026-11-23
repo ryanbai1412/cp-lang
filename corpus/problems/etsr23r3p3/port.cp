@@ -18,7 +18,7 @@ let dist = dijkstra(u => g.out(u), [(V.first, 0)], a => edges[a.e.idx].l)
 var dsu = Dsu<V>()
 var root_of: [V]Int = [V] v => v.idx
 var kids: List<List<Int>> = [[] for _ in 0..n]
-var gate: List<?Int> = [none for _ in 0..n]
+var gate: List<?Int> = [None for _ in 0..n]
 var mn: List<?Int> = [dist[v] for v in V]
 
 for (_, ei) in sorted([(-edges[i].w, i) for i in 0..m]):

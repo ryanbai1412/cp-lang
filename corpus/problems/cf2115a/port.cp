@@ -18,7 +18,7 @@ let at_g = a.count(g)
 if at_g > 0: return print(n - at_g)
 
 let values = a.distinct()
-var fewest: [Val]?Int = none
+var fewest: [Val]?Int = None
 for x in values: fewest[x] = 1
 for d in (1..=a.max()!).rev:
     let k = fewest[d] ?? continue

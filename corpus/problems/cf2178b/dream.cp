@@ -17,12 +17,12 @@ enum Last:
 
 @!multitest
 let s: Str = read()
-var dp: [Last]?Int = none
+var dp: [Last]?Int = None
 dp[Last.U] = 0
 for c in s:
     let m = min(dp[Last.U], dp[Last.S])!
     if c == 's':
-        dp[Last.U] = none
+        dp[Last.U] = None
         dp[Last.S] = m
     else:
         dp[Last.U] = dp[Last.S]

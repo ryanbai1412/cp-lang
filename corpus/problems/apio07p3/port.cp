@@ -34,10 +34,10 @@ fn slide(v: View, empty_new: Bool) -> View: View.nth(v.idx / 2 + (if empty_new: 
 // Fix the view at the first pen, slide once round the ring, and come back to it.
 var best = 0
 for start in View:
-    var cur: [View]?Int = none
+    var cur: [View]?Int = None
     cur[start] = 0
     for p in Pen:
-        var next: [View]?Int = none
+        var next: [View]?Int = None
         for v in View:
             if let so_far = cur[v]:
                 for empty_new in Bool: next[slide(v, empty_new)] max= so_far + happy[p, v]

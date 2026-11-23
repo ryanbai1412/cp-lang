@@ -23,9 +23,9 @@ let run_monoid = Monoid<Run>(
 )
 
 let paint_action = Action<Run, ?Int>(
-    id: none,
-    compose: (f, g) => if f == none: g else: f,
-    apply: (f, x, len) => if f == none or x.empty: x else: Run(false, f!, f!, 1),
+    id: None,
+    compose: (f, g) => if f == None: g else: f,
+    apply: (f, x, len) => if f == None or x.empty: x else: Run(false, f!, f!, 1),
     over: run_monoid,
 )
 

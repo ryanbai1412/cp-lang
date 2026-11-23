@@ -17,7 +17,7 @@ for p in P:
         let boss: P = read()
         reports[boss].push((to: p))
 
-var best: ?Int = none
+var best: ?Int = None
 for root in P:
     let depth = bfs(u => reports[u], [root])
     var pay = n

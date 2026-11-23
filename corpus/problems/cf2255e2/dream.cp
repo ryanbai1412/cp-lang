@@ -29,7 +29,7 @@ fn then(g: Tag, f: Tag) -> Tag:  // f first, then g
         Path(b.to, a.seen + b.seen)
     Tag([Sign] x => compose_sign(x), g.set)
 
-fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = none) -> Tag =
+fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = None) -> Tag =
     Tag([Sign] x => Path(to(x), seen(x)), set)
 
 let record = tag(seen: x => MaxSub.of(Int(x)))

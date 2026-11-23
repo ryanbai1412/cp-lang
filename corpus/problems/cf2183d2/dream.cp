@@ -28,8 +28,8 @@ let ans = [
 
 domain Slot = 0..ans
 var resp: [Slot]List<V> = []
-var last_depth: [Slot]?Int = none
-var forbidden_loc: [V]?Slot = none
+var last_depth: [Slot]?Int = None
+var forbidden_loc: [V]?Slot = None
 
 for (d, layer) in by_depth.items.rev:
     fn place(u: V, loc: Slot):
@@ -39,15 +39,15 @@ for (d, layer) in by_depth.items.rev:
 
     let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = Slot.first(x => last_depth[x] != some(d + 1))!
+        let s = Slot.first(x => last_depth[x] != Some(d + 1))!
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
         let rotated = forbiddens.map(f => f.loc).rotated_left(1)
         for (f, loc) in zip(forbiddens, rotated):
             place(f.u, loc)
 
-    let unconstrained = [u for u in layer if forbidden_loc[u] == none]
-    let free_slots = [s for s in Slot if last_depth[s] != some(d)]
+    let unconstrained = [u for u in layer if forbidden_loc[u] == None]
+    let free_slots = [s for s in Slot if last_depth[s] != Some(d)]
     for (u, s) in zip(unconstrained, free_slots):
         place(u, s)
 

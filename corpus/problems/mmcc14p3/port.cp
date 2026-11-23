@@ -16,12 +16,12 @@ let g = Graph<V, E>.undirected(edges)
 let t = Rooted(u => g.out(u), V.first)
 
 fn outposts(radius: Int) -> Int:
-    var open: [V]?Int = [V] _ => none  // farthest uncovered vertex below, if any
-    var post: [V]?Int = [V] _ => none  // nearest outpost below, if any
+    var open: [V]?Int = [V] _ => None  // farthest uncovered vertex below, if any
+    var post: [V]?Int = [V] _ => None  // nearest outpost below, if any
     var used = 0
     for v in t.at.rev:
         var far = 0
-        var near: ?Int = none
+        var near: ?Int = None
         for c in t.children(v):
             if let d = post[c]: near = min(near ?? n, d + 1)
             if let d = open[c]:
@@ -31,8 +31,8 @@ fn outposts(radius: Int) -> Int:
                 else:
                     far max= d + 1
         post[v] = near
-        open[v] = if far + (near ?? n) <= radius: none else: far
-    if open[V.first] != none: used += 1
+        open[v] = if far + (near ?? n) <= radius: None else: far
+    if open[V.first] != None: used += 1
     used
 
 // WISH TR4: `(0..n).first_true(r => outposts(r) <= k)`

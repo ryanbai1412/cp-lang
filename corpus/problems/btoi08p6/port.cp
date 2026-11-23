@@ -28,12 +28,12 @@ for i in (0..m - 1).rev:
 
 var best_x = 0
 var best_y = 0
-var best_s: ?Int = none
+var best_s: ?Int = None
 for i in 0..m - 1:
     let x = boxes[i].0 + 1
     let y = suff[i + 1] + 1
     if x <= sa_tot and y <= sb_tot:
-        if best_s == none or x + y < best_s!:
+        if best_s == None or x + y < best_s!:
             best_s = x + y
             best_x = x
             best_y = y

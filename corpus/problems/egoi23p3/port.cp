@@ -15,7 +15,7 @@ fn step(p: Cell, ch: Char) -> ?Cell:
         if let r = p.0 - 1: return (r, p.1)
     elif ch == 'v':
         if let r = p.0 + 1: return (r, p.1)
-    none
+    None
 
 fn simu(bad: Cell, moves: List<Char>) -> Cell:
     var pos: Cell = (Row.first, Col.first)

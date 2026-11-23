@@ -22,10 +22,10 @@ var count: [Vol]Int = 0
 var total = 0
 var unique = SortedSet<Vol>()
 var unique_sum = Fenwick<Vol, Int>()
-var gap = SegTree<Vol, ?Int>(min, fill: none)
+var gap = SegTree<Vol, ?Int>(min, fill: None)
 
 fn refresh_gap(u: Vol):
-    gap.set(u, if let nxt = u.next: unique.range(nxt..).first.map(w => w - u) else: none)
+    gap.set(u, if let nxt = u.next: unique.range(nxt..).first.map(w => w - u) else: None)
 
 fn put(v: Vol, d: Delta):
     let sign = match d:
@@ -43,7 +43,7 @@ fn put(v: Vol, d: Delta):
     else:
         unique.remove(v)
         unique_sum.add(v, -v.ord)
-        gap.set(v, none)
+        gap.set(v, None)
     if let u = unique.range(..v).last: refresh_gap(u)
 
 fn safe_before(b: Vol) -> Int = total - unique_sum.fold(b..)
@@ -55,7 +55,7 @@ fn identifiable() -> Bool:
         let have = safe_before(b)
         if b.ord > have and gap.fold(b..)! > have: return false
         let next_v = max(have, b.ord) + 1
-        at = if next_v <= max_v: unique.range(Vol(next_v)..).first else: none
+        at = if next_v <= max_v: unique.range(Vol(next_v)..).first else: None
     true
 
 let (n, q): (1..=200_000, 1..=200_000) = read()

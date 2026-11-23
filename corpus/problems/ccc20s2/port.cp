@@ -14,4 +14,4 @@ var leads: [Num]List<Num> = []
 for r in R:
     for c in C: leads[Num(r.label * c.label)].push(room[r, c])
 let reach = bfs(x => leads[x], from: [room[R.first, C.first]])
-print(if reach[Num(rows * cols)] != none: "yes" else: "no")
+print(if reach[Num(rows * cols)] != None: "yes" else: "no")

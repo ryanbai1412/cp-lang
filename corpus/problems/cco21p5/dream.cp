@@ -8,9 +8,9 @@ domain V = [n]
 var earliest: [V]?V = []
 for e in read<[m](u: V, v: V)>():
     let (lo, hi) = minmax(e.u, e.v)
-    earliest[hi] = min(earliest[hi], Some(lo), none: last)
+    earliest[hi] = min(earliest[hi], Some(lo), None: last)
 let found_by = V.group(by: v => earliest[v])
-let later = earliest.suffix_min(none: last)
+let later = earliest.suffix_min(None: last)
 
 var best = SegTree(min, [V.cuts] c => if c == V.cuts.last!: 0 else: inf, act: add)
 for i in V.drop(1).rev:

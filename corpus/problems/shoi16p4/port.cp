@@ -19,7 +19,7 @@ for c in Company:
 fn det(mut a: [Rest, Rest]Z) -> Z:
     var ans = Z.one
     for i in Rest:
-        var pivot: ?Rest = none
+        var pivot: ?Rest = None
         for r in i..:
             if a[r, i] != Z.zero:
                 pivot = r

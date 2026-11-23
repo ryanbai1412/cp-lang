@@ -17,8 +17,8 @@ fn serve(i: 0..n, j: 0..n) -> Int:
 @memo
 fn best(i: 0..=n, k: 0..=m) -> ?Int:
     if i == n: return 0
-    if k == 0: return none
-    var least: ?Int = none
+    if k == 0: return None
+    var least: ?Int = None
     for j in i..n:
         if let rest = best(j + 1, k - 1): least min= serve(i, j) + rest
     least
@@ -29,7 +29,7 @@ var i = 0
 var k = m
 while i < n:
     var j = i
-    while best(j + 1, k - 1) == none or serve(i, j) + best(j + 1, k - 1)! != best(i, k)!: j += 1
+    while best(j + 1, k - 1) == None or serve(i, j) + best(j + 1, k - 1)! != best(i, k)!: j += 1
     offices.push(at[(i + j) / 2])
     i = j + 1
     k -= 1

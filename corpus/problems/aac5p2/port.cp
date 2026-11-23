@@ -17,9 +17,9 @@ fn unfold(first: Int) -> ?[I]Int:
     used[I(first)] = true
     for g in Gap:
         let here = a[I(g.label)]
-        if product[g] % here != 0: return none
+        if product[g] % here != 0: return None
         let next = product[g] / here
-        if next not in I or used[I(next)]: return none
+        if next not in I or used[I(next)]: return None
         used[I(next)] = true
         a[I(g.label + 1)] = next
     a

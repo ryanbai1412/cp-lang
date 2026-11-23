@@ -16,9 +16,9 @@ for v in tree.at.rev:
 
 // With town c closed, the part of c's subtree that x is cut off in, if any.
 fn stranded(c: Town, x: Town) -> ?Town:
-    if not tree.is_anc(c, x): return none
+    if not tree.is_anc(c, x): return None
     let child = tree.step(c, x, 1)?
-    if low[child] < tree.pos(c): none else: child
+    if low[child] < tree.pos(c): None else: child
 
 fn answer(ok: Bool): print(if ok: "yes" else: "no")
 

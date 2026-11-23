@@ -26,10 +26,10 @@ fn merge(x: Int, y: Int) -> Int:
 
 // A path of L + 1 nodes spelling `x` from the top bit down; returns its root.
 fn chain(x: Int) -> Int:
-    nodes.push(Node(1, [Bool] _ => none))
+    nodes.push(Node(1, [Bool] _ => None))
     for z in 0..L:
         let below = nodes.len - 1
-        var node = Node(1, [Bool] _ => none)
+        var node = Node(1, [Bool] _ => None)
         node.kid[x.bit(z)] = below
         nodes.push(node)
     nodes.len - 1

@@ -14,14 +14,14 @@ const DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 fn step(p: Cell, d: (Int, Int)) -> ?Cell:  // WISH L1: p.step(d) over Dir4
     if let r = p.0 + d.0 and let c = p.1 + d.1:
         return (r, c)
-    return none
+    return None
 
 fn belt(ch: Char) -> ?(Int, Int):  // WISH L2: Dir4.from("UDLR", ch)
     if ch == 'U': return DIRS[0]
     if ch == 'D': return DIRS[1]
     if ch == 'L': return DIRS[2]
     if ch == 'R': return DIRS[3]
-    return none
+    return None
 
 fn cells() -> List<Cell>: [(r, c) for r in Row for c in Col]
 
@@ -33,11 +33,11 @@ for cam in cells():  // WISH L5: `for cam in Cell` over a product domain
             var at: ?Cell = cam  // WISH L3: for q in cam.ray(d).take_while(q => g[q] != 'W')
             while let q = at:
                 if g[q] == 'W': break
-                if belt(g[q]) == none: seen[q] = true
+                if belt(g[q]) == None: seen[q] = true
                 at = step(q, d)
 
 // Zero-one search: riding a conveyor is free, a step off any other cell costs one.
-var dist: [Row, Col]?Int = none
+var dist: [Row, Col]?Int = None
 var done: [Row, Col]Bool = false
 var near: List<Cell> = []  // WISH L4: a Deque; WISH L7: shortest(moves, from: start) with weights 0..=1
 var far: List<Cell> = []
@@ -54,8 +54,8 @@ while near.len > 0 or far.len > 0:
         done[p] = true
         let here = dist[p]!
         let ride = belt(g[p])
-        let cost = if ride == none: 1 else: 0
-        let moves = if ride == none: DIRS else: [ride!]
+        let cost = if ride == None: 1 else: 0
+        let moves = if ride == None: DIRS else: [ride!]
         for d in moves:
             if let q = step(
                 p,

@@ -13,7 +13,7 @@ let top_level = level(max_a)
 @!multitest
 let n: 1..=2e5 = read()
 var freq: [0..=top_level]Int = 0
-var least: [0..=top_level]?Int = none
+var least: [0..=top_level]?Int = None
 
 fn add(x: 1..=max_a):
     let b = level(x)

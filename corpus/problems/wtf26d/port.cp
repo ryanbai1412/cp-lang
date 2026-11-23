@@ -60,9 +60,9 @@ fn solve():
         res
 
     // Earliest P-position among unused values <= v.
-    let unused_pos: [Val]?Pos = [Val] v => if not used[v]: some(inv_p[v]) else: none
-    var pref_min: [Val]?Pos = none
-    var low: ?Pos = none
+    let unused_pos: [Val]?Pos = [Val] v => if not used[v]: Some(inv_p[v]) else: None
+    var pref_min: [Val]?Pos = None
+    var low: ?Pos = None
     for v in Val:
         low = min_pos(low, unused_pos[v])
         pref_min[v] = low
@@ -73,17 +73,17 @@ fn solve():
         had_inv or (i > first_diff and v < q[i.prev!] and inv_p[v] < inv_p[q[i.prev!]])
 
     fn required_cap(i: Pos, v: Val, next_cap: ?Val, had_inv: Bool) -> ?Val:
-        if i == first_diff and v == p[i]: return none
+        if i == first_diff and v == p[i]: return None
         let pos = inv_p[v]
         if not forms_inversion(i, v, had_inv):
-            var cap: ?Val = some(v)
+            var cap: ?Val = Some(v)
             cap min= next_cap
             cap min= conds.active_cap(pos)
             cap
         elif let ac = conds.active_cap(pos), v > ac:
             ac
         else:
-            none
+            None
 
     fn can_place(i: Pos, v: Val, next_cap: ?Val, had_inv: Bool) -> Bool:
         if let cap = required_cap(i, v, next_cap, had_inv):
@@ -120,11 +120,11 @@ fn solve():
                 had_inv = commit_place(i, q[i], next_cap, had_inv)
             else:
                 let v = Val.rev.find(
-                    u => u < q[i] and not used[u] and can_place(i, u, none, had_inv)
+                    u => u < q[i] and not used[u] and can_place(i, u, None, had_inv)
                 )!
-                had_inv = commit_place(i, v, none, had_inv)
+                had_inv = commit_place(i, v, None, had_inv)
                 return i.next
-        none
+        None
 
     if let start = match_prefix():
         var suffix: List<Val> = []
@@ -132,7 +132,7 @@ fn solve():
         while let cond = conds.items.pop(), let hi_bound = right_end:
             let p_thresh = pref_min[cond.max_v]!
             var max_p = cond.max_p
-            while let top = conds.items.last, pref_min[top.max_v] == some(p_thresh):
+            while let top = conds.items.last, pref_min[top.max_v] == Some(p_thresh):
                 max_p = top.max_p
                 conds.items.pop()
             let min_p = pick_witness(p_thresh, min(max_p.prev!, hi_bound), cond.max_v)

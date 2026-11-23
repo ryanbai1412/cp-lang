@@ -32,7 +32,7 @@ fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int):
 // Smallest x >= 0 with a x = b (mod m), if any.
 fn first_solution(a: Int, b: Int, m: Int) -> ?Int:
     let e = ext_gcd(a % m, m)
-    if b % e.g != 0: return none
+    if b % e.g != 0: return None
     let step = m / e.g
     (e.x % step) * ((b / e.g) % step) % step
 

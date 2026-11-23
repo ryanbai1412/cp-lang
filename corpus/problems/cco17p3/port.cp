@@ -34,15 +34,15 @@ fn path_sum(t: Trie<Bit>, total: List<Int>, y: Int) -> Int:
 
 let (n, q): (Int, Int) = read()
 var xs = Trie<Bit>.new()
-var y_id: List<?Int> = [none]
+var y_id: List<?Int> = [None]
 var y_tries: List<Trie<Bit>> = []
 var y_totals: List<List<Int>> = []
 
 for _ in 0..n:
     let (x, y, v): (Int, Int, Int) = read()
     let col = xs.add(bits_of(x))
-    while y_id.len < xs.len: y_id.push(none)
-    if y_id[col] == none:
+    while y_id.len < xs.len: y_id.push(None)
+    if y_id[col] == None:
         y_id[col] = y_tries.len
         y_tries.push(Trie<Bit>.new())
         y_totals.push([0])

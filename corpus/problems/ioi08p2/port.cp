@@ -38,10 +38,10 @@ for start in I:
     // longer way round, b's distance from start minus a's, or the rest.
     var best = 0
     var at = 0                                      // distance from start, going round
-    var (short, long): (?Int, ?Int) = (none, none)  // best reach[a] - at, reach[a] + at so far
+    var (short, long): (?Int, ?Int) = (None, None)  // best reach[a] - at, reach[a] + at so far
     for b in ring:
         best max= inside[b]
-        if short != none: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)
+        if short != None: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)
         short = max(short ?? Int.MIN, reach[b] - at)
         long = max(long ?? Int.MIN, reach[b] + at)
         at += bridge[b].len

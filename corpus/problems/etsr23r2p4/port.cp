@@ -33,13 +33,13 @@ for _ in 0..tcs:
         let key = (ci, prv, cm)
         if key in memo: return memo[key]
 
-        var best: ?Int = none
+        var best: ?Int = None
         for pos in ci..=mxloc:
             let bit = pos - ci
             if ((cm >> bit) & 1) == 1: continue
             let cost = if prv == -1: 0 else: val[Item(prv)] ^ val[Item(pos)]
             let cand = cost + dp(ci, pos, cm | (1 << bit))
-            if best == none or cand < best!:
+            if best == None or cand < best!:
                 best = cand
         memo[key] = best!
         best!

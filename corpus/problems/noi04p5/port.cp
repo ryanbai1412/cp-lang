@@ -21,7 +21,7 @@ fn even_split(len: Int, parts: Int) -> Int:
     r * (q + 1) * (q + 1) + (parts - r) * q * q
 
 // cost[i, k, j]: i main pieces cover the first k units and hold j parts
-var cost: [0..=n, 0..=100, 0..=m]?Int = none
+var cost: [0..=n, 0..=100, 0..=m]?Int = None
 cost[0, 0, 0] = 0
 for i in 0..n:
     for k in 0..100:

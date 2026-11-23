@@ -23,7 +23,7 @@ fn solve_dc(lo: Int, hi: Int) -> List<?Int>:
     let m = hi - lo - 1
     if m <= 0: return []
     let md = (lo + hi) / 2
-    var res: List<?Int> = List.filled(m, none)
+    var res: List<?Int> = List.filled(m, None)
     for (i, v) in solve_dc(lo, md).items:
         if let y = v: res[i] max= y
     for (i, v) in solve_dc(md, hi).items:

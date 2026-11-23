@@ -23,7 +23,7 @@ let rt = if let i = s.find('1'): V(i + 1) else: V(1)
 let t = Rooted(g, root: rt)
 
 var dp0: [V]F64 = 0.0
-var dp1: [V]?F64 = none
+var dp1: [V]?F64 = None
 for u in t.at.rev:
     var base = sum(dp0[c] for c in t.children(u))
     if s[u.ord] == '1':
@@ -33,7 +33,7 @@ for u in t.at.rev:
     let ch = [d1 - dp0[c] for c in t.children(u) if let d1 = dp1[c]].sorted()
     let deg = F64(g[u].len)
     var b0 = base + deg
-    var b1: ?F64 = none
+    var b1: ?F64 = None
     for (i, x) in ch.items:
         base += x
         b1 min= base + deg / F64(i + 1)

@@ -25,9 +25,9 @@
 let (n, m): (1..=200_000, 1..=200_000) = read()
 let a: [0..n]1..=m = read()
 var at_boundary: [0..=n]Int = 0
-var after_block: [0..=n]?Int = none
-var ending_at: [0..=n]?Int = none
-var last_with_start: [0..=n - m]?Int = none
+var after_block: [0..=n]?Int = None
+var ending_at: [0..=n]?Int = None
+var last_with_start: [0..=n - m]?Int = None
 
 after_block[m] = 0
 for i in 0..n:

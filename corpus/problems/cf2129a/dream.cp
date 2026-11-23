@@ -11,7 +11,7 @@
 let n: 1..=3_000 = read()
 domain Pos = 1..=2 * n
 domain Id = 1..=n
-var best_end: [Pos]?(end: Pos, id: Id) = none
+var best_end: [Pos]?(end: Pos, id: Id) = None
 for id in Id:
     let (a, b): (Pos, Pos) = read()
     best_end[a] max= (end: b, id:)

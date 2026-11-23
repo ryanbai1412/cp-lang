@@ -14,7 +14,7 @@ var deals = [
 deals.sort()
 
 let top = 50 * n
-var best: [0..=top]?Int = none  // best profit leaving this many spare cores
+var best: [0..=top]?Int = None  // best profit leaving this many spare cores
 best[0] = 0
 for (_, cores, gain) in deals.rev:
     // each deal is taken at most once: walk away from where the cores come from

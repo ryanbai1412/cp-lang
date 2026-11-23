@@ -5,9 +5,9 @@ type Z = Mod<998_244_353>
 
 @!multitest
 let (n, m): (2..=3000, 2..=3000) = read()
-let a: [0..n]?(1..=m) = read(none: 0)
+let a: [0..n]?(1..=m) = read(None: 0)
 var ways, next: [1..=m]Z = 0
-if a[0] in [none, 1]: ways[1] = 1
+if a[0] in [None, 1]: ways[1] = 1
 for i in 1..n:
     for d in 1..=m:
         for x in (d..=m - d).step(d): next[x + d] += ways[x]

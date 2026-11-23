@@ -47,7 +47,7 @@ fn get(s: Sym) -> Int:
 
 // switch_to[i]: escape to switch to before run i when the escape is the
 // run's own symbol; adopt[i]: switch to the run's symbol from anything else
-var switch_to: [R]?Sym = none
+var switch_to: [R]?Sym = None
 var adopt: [R]Bool = false
 for i in (0..runs).rev:
     let s = sym[i]
@@ -83,7 +83,7 @@ esc = Sym(0)
 for i in 0..runs:
     let s = sym[i]
     var k = len[i]
-    var next: ?Sym = none
+    var next: ?Sym = None
     if esc == s: next = switch_to[R(i)]
     elif adopt[R(i)]: next = s
     if let e = next:

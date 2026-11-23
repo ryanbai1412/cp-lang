@@ -19,10 +19,10 @@ fn gap(a: F64, b: F64) -> F64:
     while turn >= 360.0: turn -= 360
     min(turn, 360 - turn)
 
-var best: ?(gap: F64, id: Int) = none
+var best: ?(gap: F64, id: Int) = None
 for id in 1..=n:
     let x: F64 = read()
     let y: F64 = read()
     let g = gap(F64(aim), atan2(y, x) * 180 / PI)
-    if best == none or g < best!.gap: best = (gap: g, id:)
+    if best == None or g < best!.gap: best = (gap: g, id:)
 print(best!.id)

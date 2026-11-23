@@ -42,7 +42,7 @@ print(out, sep: "\n")
 
 @brute(main)
 fn slow():
-    var best_len: [V]?Int = none
+    var best_len: [V]?Int = None
     var best_str: [V]Str = ""
     best_len[V.first] = 0
     for step in 0..n:
@@ -53,7 +53,7 @@ fn slow():
             if let du = best_len[u]:
                 let cand = best_str[u] + Str(['0' + c])
                 let nd = du + 1
-                if best_len[v] == none or nd < best_len[v]! or (
+                if best_len[v] == None or nd < best_len[v]! or (
                     nd == best_len[v]! and cand < best_str[v]
                 ):
                     best_len[v] = nd

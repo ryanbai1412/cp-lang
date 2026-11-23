@@ -79,7 +79,7 @@ mod migrations:
     var (p2, q3): ([2]Site, [3]Site)
 
     fn send_message(n: Int, i: Site, parent: Site) -> 0..=4:
-        if i == 1: (tree, plan, p, q, pending) = (Graph(n), phase_plan(n), [0], [0], none)
+        if i == 1: (tree, plan, p, q, pending) = (Graph(n), phase_plan(n), [0], [0], None)
         tree.add_edge(i, parent)
         if i < n - 3: p.push(i); q.push(i)
         if plan.first?.start == i:

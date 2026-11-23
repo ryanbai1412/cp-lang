@@ -26,20 +26,20 @@ for (u, v, w) in roads:
 fn parks(reach: Int) -> List<Town>:
     var built: List<Town> = []
     var far: [Town]?Int = 0      // farthest town at or below v that no park serves yet
-    var near: [Town]?Int = none  // nearest park at or below v
+    var near: [Town]?Int = None  // nearest park at or below v
     for v in tree.at.rev:        // children before parents
         if let f = far[v]:
             if let d = near[v]:
-                if f + d <= reach: far[v] = none
+                if f + d <= reach: far[v] = None
         if let p = tree.parent(v):
             if let f = far[v]:
                 if f + up[v] > reach:
                     built.push(v)
                     near[v] = 0
-                    far[v] = none
+                    far[v] = None
             if let f = far[v]: far[p] max= f + up[v]
             if let d = near[v]: near[p] min= d + up[v]
-        elif far[v] != none:
+        elif far[v] != None:
             built.push(v)
     built
 

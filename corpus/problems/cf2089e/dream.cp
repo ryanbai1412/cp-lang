@@ -21,7 +21,7 @@ type P = Poly<Z>
 @!multitest
 let n: Int = read()
 domain V = 1..=n
-var parent: [V]?V = none
+var parent: [V]?V = None
 repeat n - 1:
     let (u, v): (V, V) = read()
     parent[max(u, v)] = min(u, v)

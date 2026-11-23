@@ -16,7 +16,7 @@ struct Node:
 @!multitest
 let n: 1..=5000 = read()
 var x = [i for i in 0..n]
-var nodes = [Node(i..i + 1, none) for i in 0..n]
+var nodes = [Node(i..i + 1, None) for i in 0..n]
 
 fn ask() -> Int:
     print("?", [v + 1 for v in x])
@@ -28,7 +28,7 @@ fn join(a: Int, b: Int, is_max: Bool) -> Int:
     nodes.push(Node(cover(a, b), (is_max, a, b)))
     nodes.len - 1
 
-fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = none) -> List<Int>:
+fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = None) -> List<Int>:
     if r - l <= 1: return [l for _ in l..r]
     let m = known ?? ask()
     x[l..=m].rotate_left(1)

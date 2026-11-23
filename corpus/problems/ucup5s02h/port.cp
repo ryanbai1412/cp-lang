@@ -46,7 +46,7 @@ struct Hull:
 
     fn query(mut self, x: Int) -> ?Pt:
         self.advance(x)
-        if idx == pts.len: none else: some(pts[idx])
+        if idx == pts.len: None else: Some(pts[idx])
 
 fn weaker(a: ?Pt, b: ?Pt, x: Int) -> ?Pt:
     let pa = a else: return b
@@ -87,7 +87,7 @@ while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
     var comp: [Node]Int = 0
     for (k, r) in roots.items: comp[r] = k
     let v = roots.len
-    var best: [0..v]?(gap: (num: Int, den: Int), i: C, j: C) = none
+    var best: [0..v]?(gap: (num: Int, den: Int), i: C, j: C) = None
     fn sweep(order: List<C>, sign: Int):
         var hulls = [Hull.new() for _ in 0..2 * v]
         fn ancestors(cc: Int) -> List<Int>:
@@ -101,26 +101,26 @@ while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
             let x = sign * pts[i].x
             let cc = comp[colour.find(node_of(i)).root]
             let path = ancestors(cc)
-            var hit: ?Pt = none
+            var hit: ?Pt = None
             for node in path: hit = weaker(hit, hulls[node ^ 1].query(x), x)
             if let h = hit:
                 let j = C.at(h.id)
                 let cand = gap(pts[j!], pts[i])
                 let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
-                if wins: best[cc] = some((cand, i, j!))
+                if wins: best[cc] = Some((cand, i, j!))
             for node in path: hulls[node].add(Pt(x, pts[i].q, i.ord))
     sweep([i for i in C], 1)
     sweep([i for i in C.rev], -1)
     for e in best if let edge = e: link(edge.i, edge.j)
 
-var weakest: ?(num: Int, den: Int) = none
+var weakest: ?(num: Int, den: Int) = None
 for side in [false, true]:
     var hull = Hull.new()
-    for i in C if (colour.diff(node_of(i), pin!) == some(false)) == side:
+    for i in C if (colour.diff(node_of(i), pin!) == Some(false)) == side:
         let p = pts[i]
         if let prev = hull.query(p.x):
             let g = gap(prev, p)
-            if weakest == none or not weaker_gap(weakest!, g): weakest = some(g)
+            if weakest == None or not weaker_gap(weakest!, g): weakest = Some(g)
         hull.add(p)
 
 // Fallback only triggers when n = 2 puts one charge on each side (no same-side pair).

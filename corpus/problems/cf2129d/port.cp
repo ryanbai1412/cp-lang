@@ -35,14 +35,14 @@ for len in 1..=n:
     let pick_prob = Z(len).inv()
     for l in 0..=n - len:
         let r = l + len
-        let lim_l = if l > 0: target[l - 1] else: none
-        let lim_r = if r < n: target[r] else: none
+        let lim_l = if l > 0: target[l - 1] else: None
+        let lim_r = if r < n: target[r] else: None
         let vl_cap = cap(lim_l)
         let vr_cap = cap(lim_r)
         for k in l..r:
             let side = nearest_boundary(l, r, k)
-            let add_l = Int(side == Side.Left and lim_l != none)
-            let add_r = Int(side == Side.Right and lim_r != none)
+            let add_l = Int(side == Side.Left and lim_l != None)
+            let add_r = Int(side == Side.Right and lim_r != None)
             let lim_k = target[k]
             for vl in 0..=vl_cap:
                 for vkl in 0..=cap(lim_k) if dp[l, k, vl, vkl] != 0:

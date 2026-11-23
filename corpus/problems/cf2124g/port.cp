@@ -49,7 +49,7 @@ let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.n
 let top_val = a[suffix_max_pos.last!]
 
 var ans: [0..n]Int = base_ans
-var next_min: ?Pos = none
+var next_min: ?Pos = None
 
 for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
@@ -75,7 +75,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
         ans[pos - i] max= base_ans + gain - loss
         if ai + a[pos] >= cap: break
 
-    next_min = some(i)
+    next_min = Some(i)
 
 let sa = suffix_fold(max, ans)
 print([sa[i] for i in 0..n])

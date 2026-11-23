@@ -43,7 +43,7 @@ else:
     for (u, v, cost) in kept:
         above.set(tree.sub(if tree.parent(u) == v: u else: v).l, (cost, 0))
     let base = sum(r.cost for r in kept)
-    var best: ?Int = none
+    var best: ?Int = None
     for (u, v, cost) in roads:
         // the roads on the path: every town on it stands for the road above
         // it, except the highest town

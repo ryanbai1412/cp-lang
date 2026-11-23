@@ -70,7 +70,7 @@ let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
 
 // Keep the input child order: sibling tie-breaking is order-sensitive, and Rooted.from_parents discards it.
-var par: [V]?V = none
+var par: [V]?V = None
 var children: [V]List<V> = []
 for u in V:
     repeat read<Int>():

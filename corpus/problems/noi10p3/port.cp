@@ -33,10 +33,10 @@ fn flow(x: Int, y: Int, dir: Int) -> Int:
     if dir == 4: return if y < n - 1: east[X(x), y] else: 0
     if x >= 1: north[x, Y(y)] else: 0
 
-var dist: [Ext, Ext, Dir]?Int = none
+var dist: [Ext, Ext, Dir]?Int = None
 var pq = MinHeap<(Int, State)>()
 fn relax(s: State, d: Int):
-    if dist[s.0, s.1, s.2] == none or d < dist[s.0, s.1, s.2]!:
+    if dist[s.0, s.1, s.2] == None or d < dist[s.0, s.1, s.2]!:
         dist[s.0, s.1, s.2] = d
         pq.push((d, s))
 
@@ -60,9 +60,9 @@ while let (d, s) = pq.pop():
             relax((Ext(nx + 1), Ext(ny + 1), Dir((dir + 4) % 8)), d + paid)
         if dir % 2 == 0: paid += flow(x, y, dir)
 
-var best: ?Int = none
+var best: ?Int = None
 for i in 0..n:
     for exit in [dist[Ext(0), Ext(i + 1), Dir(2)], dist[Ext(i + 1), Ext(n + 1), Dir(0)]]:
         if let v = exit:
-            if best == none or v < best!: best = v
+            if best == None or v < best!: best = v
 print(best!)

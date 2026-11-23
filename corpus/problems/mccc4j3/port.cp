@@ -9,7 +9,7 @@ var total = 0
 for i in V: total += a[i]
 
 var cur = 0
-var ans: ?V = none
+var ans: ?V = None
 for i in V:
     cur += a[i]
     if 2 * cur == total:

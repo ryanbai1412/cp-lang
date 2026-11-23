@@ -93,7 +93,7 @@ fn solve():
     for c in Comp:
         if c in to_vis:
             to_vis.remove(c)
-            dfs_comp(c, none)
+            dfs_comp(c, None)
             to_vis.insert(c)
 
     if comp_u.len != ccnt - 1:

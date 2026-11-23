@@ -17,16 +17,16 @@ enum Side: Odd, Even
 @!multitest
 let n: 1..=5000 = read()
 domain P = 1..=n
-let a: [P]?(1..=n) = read(none: 0)
+let a: [P]?(1..=n) = read(None: 0)
 let half = n / 2
 let at = a.inverse()
 fn side(p: P) -> Side = if p.label % 2 == 0: Even else: Odd
 
-var best: [0..=half]?Int = none
+var best: [0..=half]?Int = None
 best[0] = 0
 for k in 0..n:
     let forced = at[k + 1].map(side)
-    var next: [0..=half]?Int = none
+    var next: [0..=half]?Int = None
     for c in 0..=min(k, half):
         let product = (2 * c - k) * (2 * (half - c) - (n - k))
         for (s, to) in [(Odd, c), (Even, c + 1)] if (forced ?? s) == s and to <= half:

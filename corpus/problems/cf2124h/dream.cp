@@ -25,7 +25,7 @@ var max_len: [0..n * (n + 1) / 2]0..=2 * n = 0
 
 for i in (0..n).rev:
     let ai = a[i]
-    var first_vis: [0..=n]?Int = none
+    var first_vis: [0..=n]?Int = None
     var cur_best = ai - 1
     for j in i..n:
         let aj = a[j]

@@ -11,8 +11,8 @@ let dag = roads.condense(comp)
 let gain = [C] c => comp.members(c).sum(of: v => cash[v])
 let ends = C.mask(pubs.map(p => comp[p]))
 
-# best[c]: the most cash on a path from c to a pub, none when no pub is reachable.
+# best[c]: the most cash on a path from c to a pub, None when no pub is reachable.
 let best = dag.up(order: dag.topo().rev, (c, next) =>
-    let tail = max(next.map(d => best[d]).some(), none: if ends[c]: Some(0) else: None)
+    let tail = max(next.map(d => best[d]).some(), None: if ends[c]: Some(0) else: None)
     tail.map(t => gain[c] + t))
 print(best[comp[start]]!)

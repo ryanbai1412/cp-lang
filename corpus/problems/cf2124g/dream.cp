@@ -46,7 +46,7 @@ let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.n
 let top_val = a[suffix_max_pos.last!]
 
 var ans: [0..n]Int = base_ans
-var next_min: ?Pos = none
+var next_min: ?Pos = None
 
 for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
@@ -62,7 +62,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
         let last_capped = bsearch_last(Blk.first..=Blk.last, t => lifted[t] > cur_cap)
-        let first_uncapped = if let s = last_capped: s.next else: some(Blk.first)
+        let first_uncapped = if let s = last_capped: s.next else: Some(Blk.first)
         let capped_cnt = if let t = first_uncapped: t.ord else: blk_len
         let uncapped_gain = if let t = first_uncapped: lifted_suff[t] - ai * (blk_len - t.ord) else: 0
         let gain = (cur_cap - ai) * capped_cnt + uncapped_gain
@@ -70,6 +70,6 @@ for i in Pos.rev if pref_min[i] == a[i]:
         ans[pos - i] max= base_ans + gain - loss
         if ai + a[pos] >= cap: break
 
-    next_min = some(i)
+    next_min = Some(i)
 
 print(ans.suffix_scan(max))

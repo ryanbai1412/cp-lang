@@ -18,5 +18,5 @@ for (a, b) in read<[q](a: Node, b: Node)>():
             Int(pa.slot),
             Int(pb.slot),
         ) else: (a == b).then(0),
-        none: -1,
+        None: -1,
     )

@@ -50,14 +50,14 @@ for c in Col:
             below = s
             below_row = n - 1 - i
 
-var drop: [S]?Int = none
+var drop: [S]?Int = None
 var pq = MinHeap<(Int, S)>()
 drop[S(0)] = 0
 pq.push((0, S(0)))
 while let (d, u) = pq.pop():
     if drop[u] != d: continue
     for (v, w) in gaps[u]:
-        if drop[v] == none or d + w < drop[v]!:
+        if drop[v] == None or d + w < drop[v]!:
             drop[v] = d + w
             pq.push((d + w, v))
 

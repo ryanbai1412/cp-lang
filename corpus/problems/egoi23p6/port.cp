@@ -21,8 +21,8 @@ for i in (0..m).rev:
                 a[Box(j)] + best[Take(i + 1), Pos(j + 1), Swaps(s - (j - i))],
             )
 
-var ans: ?Int = none
+var ans: ?Int = None
 for s in 0..cap:
-    if ans == none and best[Take(0), Pos(0), Swaps(s)] >= k: ans = s
+    if ans == None and best[Take(0), Pos(0), Swaps(s)] >= k: ans = s
 if let s = ans: print(s)
 else: print("NO")

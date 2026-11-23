@@ -18,7 +18,7 @@ fn swaps(shoe: [Pos]Int) -> Int:
     // joins the queue.
     var waiting: [Size]List<Pos> = []
     var served: [Size]Int = 0
-    var partner: [Pos]?Pos = none
+    var partner: [Pos]?Pos = None
     for p in Pos:
         let size = Size(abs(shoe[p]))
         let k = served[size]

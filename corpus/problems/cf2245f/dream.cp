@@ -19,13 +19,13 @@ let comb = Comb<Z>()
 @!multitest
 let n: 1..=500 = read()
 domain Pos = 0..=n
-let a: [Pos]?Int = read<[0..n]?Int>(none: -1).padded(to: Pos, with: none)
+let a: [Pos]?Int = read<[0..n]?Int>(None: -1).padded(to: Pos, with: None)
 
 let runs = Runs<Pos>(sizes: [i => (a[i] ?? 0) + 1])
 domain State = runs.items
 fn next(s: State) -> ?State:
-    guard let c = a[s.owner] else: return some(s)
-    if s.rank < c: some(s + 1) else: none
+    guard let c = a[s.owner] else: return Some(s)
+    if s.rank < c: Some(s + 1) else: None
 
 print(
     if a.map(c => c ?? 0).scan(+).items.any((i, t) => t > i): 0
@@ -37,5 +37,5 @@ fn dp(i: Pos, s: State) -> Z:
     if s == runs[i].first: return 1
     sum(
         dp(i, runs[j].last) * dp(j.next!, k) * comb.inv(k.owner - i)
-        for j in i..Pos.last for k in runs.items(from: j.next!) if next(k) == some(s)
+        for j in i..Pos.last for k in runs.items(from: j.next!) if next(k) == Some(s)
     )

@@ -23,7 +23,7 @@ fn ops() -> yields Op:
         let op: Op = read(gen: random_op)
         yield op
 
-var toward: [Ship]?Ship = none  // a ship nearer the front of the same column
+var toward: [Ship]?Ship = None  // a ship nearer the front of the same column
 var gap: [Ship]Int = 0          // distance from u to toward[u]
 var size: [Ship]Int = 1         // column size, valid at front ships
 

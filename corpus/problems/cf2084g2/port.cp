@@ -9,7 +9,7 @@ domain Pos = 1..=n
 let a: [Pos]?(1..=n) = read(none: 0)
 let half = n / 2
 
-var fixed_even: [1..=n]?Bool = none
+var fixed_even: [1..=n]?Bool = None
 for i in Pos:
     if let v = a[i]:
         fixed_even[v] = i.label % 2 == 0

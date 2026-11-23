@@ -7,7 +7,7 @@ let init: [Player]Player = read()
 
 var q: [Player]List<Player> = [Player] p => [init[p]]
 var head: [Player]Int = [Player] _ => 0
-var last: [Player]?Player = [Player] _ => none
+var last: [Player]?Player = [Player] _ => None
 
 for _ in 0..t:
     var arrivals: List<(to: Player, from: Player)> = []

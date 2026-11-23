@@ -19,15 +19,15 @@ domain Node = 0..2 * n - 1
 let edges = read<[0..n - 1](u: U, v: U, w: Int)>().sorted(by: e => e.w, desc: true)
 let max_w = edges[0].w * (n - 1)
 
-var cut: [Node]?Cut = none
+var cut: [Node]?Cut = None
 var sets = Dsu<U>()
 var top = [U] u => Node(u.ord)
 for (e, edge) in edges.items:
     let (su, sv) = (sets.size(edge.u), sets.size(edge.v))
     let (tu, tv) = (top[sets.find(edge.u)], top[sets.find(edge.v)])
     let joined = Node(n + e)
-    cut[tu] = some(Cut(edge.w * sv, su, joined))
-    cut[tv] = some(Cut(edge.w * su, sv, joined))
+    cut[tu] = Some(Cut(edge.w * sv, su, joined))
+    cut[tv] = Some(Cut(edge.w * su, sv, joined))
     let (kept, _) = sets.merge(edge.u, edge.v)!
     top[kept] = joined
 

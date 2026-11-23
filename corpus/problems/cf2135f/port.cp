@@ -19,7 +19,7 @@ let kids: [V](Int, Int) = read()
 
 fn split(v: V) -> ?(l: V, r: V):
     let (l, r) = kids[v]
-    if l == 0: none else: some((V(l), V(r)))
+    if l == 0: None else: Some((V(l), V(r)))
 
 let tree = Rooted(v => if let (l, r) = split(v): [l, r] else: List<V>(), root: V(1))
 var gen: [V]Int = 0

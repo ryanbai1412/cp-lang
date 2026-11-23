@@ -29,7 +29,7 @@ let t = Rooted(g, root:)
 
 let max_leaf = max(u for u in V if g.deg(u) == 1)!
 var sub_max = [V] u => u
-var prv_val: [V]?V = none
+var prv_val: [V]?V = None
 for u in t.at.rev:
     let max_ch: ?V = max(
         sub_max[c] for c in t.children(u) if not (u == root and sub_max[c] == root.prev!)

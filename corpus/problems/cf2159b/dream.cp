@@ -18,7 +18,7 @@ let tr = n0 > m0
 let (n, m) = if tr: (m0, n0) else: (n0, m0)
 let g = [0..n, 0..m] (i, j) => (if tr: rows[j][i] else: rows[i][j]) == '1'
 
-var ans: [0..n, 0..m]?Int = none
+var ans: [0..n, 0..m]?Int = None
 for l in (2..=min(n, m)).rev:
     for i0 in (0..=n - l).rev:
         let i1 = i0 + l - 1

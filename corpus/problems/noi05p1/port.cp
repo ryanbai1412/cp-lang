@@ -21,11 +21,11 @@ fn lines(way: Int) -> List<List<Cell>>:  // WISH L3: for line in Cell.lines(way)
     if way == 3: return [[(r, c) for c in Col.rev] for r in Row]
     return [[(r, c) for c in Col] for r in Row]
 
-var far: [Row, Col]?Int = none  // longest slide that ends here
+var far: [Row, Col]?Int = None  // longest slide that ends here
 far[start] = 0
 for (from, to, way) in tilts:
     let seconds = to - from + 1
-    var next: [Row, Col]?Int = none
+    var next: [Row, Col]?Int = None
     for line in lines(way):
         // (slide minus place, place) of the starts still in reach, best first
         var reach: List<(Int, Int)> = []  // WISH L15: sliding(max, xs, width) over a MonoQueue

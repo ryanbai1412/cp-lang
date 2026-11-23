@@ -18,14 +18,14 @@ let (n, h): (1..=200_000, 1..=10 ** 9) = read()
 domain C = 0..n
 let a: [C]0..=h = read()
 
-var left: [C]?C = none
-var right: [C]?C = none
+var left: [C]?C = None
+var right: [C]?C = None
 var span_l = [C] i => i.ord
 var span_r = [C] i => i.ord
 
 var stk: List<C> = []
 for i in C:
-    var last_popped: ?C = none
+    var last_popped: ?C = None
     while let top = stk.last and a[i] > a[top]:
         stk.pop()
         right[top] = last_popped
@@ -35,7 +35,7 @@ for i in C:
     if let l = last_popped: span_l[i] = span_l[l]
     stk.push(i)
 
-var root: ?C = none
+var root: ?C = None
 while let top = stk.pop():
     right[top] = root
     if let r = root: span_r[top] = span_r[r]

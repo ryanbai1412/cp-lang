@@ -30,13 +30,13 @@ domain Who = 0..2  // 0: a small head, 1: the big head
 let big = Who(1)
 // cost[v, w, x]: cheapest sharing of v's subtree where w eats v and the big
 // head eats x fruits of the subtree
-var cost: [Fruit, Who, 0..=n]?Int = none
+var cost: [Fruit, Who, 0..=n]?Int = None
 for v in Fruit:
     cost[v, Who(0), 0] = 0
     cost[v, big, 1] = 0
 for c in tree.at.rev:  // children are complete before parents
     if let p = tree.parent(c):
-        var merged: [Who, 0..=n]?Int = none
+        var merged: [Who, 0..=n]?Int = None
         for wp in Who:
             for wc in Who:
                 let clash = wp == wc and (wp == big or heads == 2)

@@ -25,8 +25,8 @@ fn pour_jug(x: Jug, y: Jug) -> Int:
     cur_water[y] += moved
     moved
 
-var cap: [Jug]?Int = [Jug] _ => none
-var best_jug: ?Jug = none
+var cap: [Jug]?Int = [Jug] _ => None
+var best_jug: ?Jug = None
 
 fn record_cap(u: Jug, val: Int):
     cap[u] = val
@@ -36,20 +36,20 @@ fn record_cap(u: Jug, val: Int):
         best_jug = u
 
 empty_jug(Jug.first)
-var full_known: ?Jug = none
+var full_known: ?Jug = None
 var scan = 1
 
 while scan <= n:
-    while scan <= n and cap[Jug(scan)] != none:
+    while scan <= n and cap[Jug(scan)] != None:
         scan += 1
     if scan > n: break
     let cur = Jug(scan)
     scan += 1
     var acc = 0
     while true:
-        while scan <= n and cap[Jug(scan)] != none:
+        while scan <= n and cap[Jug(scan)] != None:
             scan += 1
-        var poured_probe: ?Int = none
+        var poured_probe: ?Int = None
         if scan <= n:
             let x1 = pour_jug(Jug(scan), cur)
             acc += x1
@@ -59,7 +59,7 @@ while scan <= n:
         var x2 = 0
         if let f = full_known:
             x2 = pour_jug(f, cur)
-            full_known = none
+            full_known = None
         else:
             let src = best_jug ?? Jug(2)
             fill_jug(src)

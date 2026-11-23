@@ -14,10 +14,10 @@ domain Gap = 0..num_gaps
 type Mat = [Slot, Slot]?Int
 
 fn mat_id() -> Mat:
-    [Slot, Slot] (i, j) => if i == j: 0 else: none
+    [Slot, Slot] (i, j) => if i == j: 0 else: None
 
 fn mat_empty() -> Mat:
-    [Slot, Slot] (i, j) => none
+    [Slot, Slot] (i, j) => None
 
 fn mat_mul(x: Mat, y: Mat) -> Mat:
     var out: Mat = mat_empty()

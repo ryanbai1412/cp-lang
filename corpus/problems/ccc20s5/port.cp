@@ -11,7 +11,7 @@ let josh = fav[Pos.last]
 if coach == josh:
     print(1.0, prec: 8)  // WISH P4
 else:
-    var last_of: [1..=500000]?Pos = none
+    var last_of: [1..=500000]?Pos = None
     for i in Pos: last_of[fav[i]] = i
 
     // dp[i]: probability Josh gets his burger if the chain of forced steals

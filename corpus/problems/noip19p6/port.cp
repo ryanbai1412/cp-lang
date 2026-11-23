@@ -32,7 +32,7 @@ for _ in 0..tests:
     // the root: its two largest children decide
     var second = 0
     for k in t.children(c):
-        if some(k) != t.heavy[c]: second = max(second, t.size(k))
+        if Some(k) != t.heavy[c]: second = max(second, t.size(k))
     for v in V:
         if v == c: continue
         let rest = if t.is_anc(t.heavy[c]!, v): second else: heavy(c)

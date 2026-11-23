@@ -23,9 +23,9 @@ let slack: [Player]Int = read()                           // how many of his bes
 // The chance that `who`, about to move, wins from here.
 @memo                                                     // WISH L23: @memo keyed by an array value
 fn wins(board: Board, who: Player) -> F64:
-    let chances = sorted_desc(1.0 - wins(board.with(p: none, q: who), other(who))   // WISH L24: board.with(p: v, q: w), a copy with two cells changed
+    let chances = sorted_desc(1.0 - wins(board.with(p: None, q: who), other(who))   // WISH L24: board.with(p: v, q: w), a copy with two cells changed
                               for p in Cell if board[p] == who
-                              for q in p.around() if board[q] != none)              // WISH L1: p.around() over Dir4
+                              for q in p.around() if board[q] != None)              // WISH L1: p.around() over Dir4
     if chances.len == 0: return 0.0
     mean(chances.take(slack[who]))                        // WISH G21: take; WISH L25: mean
 

@@ -33,7 +33,7 @@ fn tour(colour: Bool) -> ?List<City>:
                 walk.push(u)
     go(City.first)
     // WISH C1: `if all(seen): walk else: none`; `all`, `any`, `count` are not in the prelude.
-    if sum(1 for c in City if seen[c]) == n: walk else: none
+    if sum(1 for c in City if seen[c]) == n: walk else: None
 
 var walk = tour(false) ?? tour(true)!
 walk.pop()  // closed: drop the repeated start

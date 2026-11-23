@@ -21,8 +21,8 @@ fn next_triple(avail: List<Query>, chosen: Set<Int>) -> ?Int:
         for (j, b) in avail.items if j > i:
             for c in avail[j + 1..]:
                 let m = (1 << a.ord) | (1 << b.ord) | (1 << c.ord)
-                if not chosen.contains(m): return some(m)
-    none
+                if not chosen.contains(m): return Some(m)
+    None
 
 // Masks stay as `Int` bit codes until `Bitset<Query>` is hashable in `Set`/`Map`
 // (`cpl::CpHash` rejects `cpl::Row<u64, 1>` in g++; see friction).

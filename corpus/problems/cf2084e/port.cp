@@ -23,7 +23,7 @@ domain Val = 0..n
 let a: [Pos]?Val = read(none: -1)
 let at = a.inverse()
 
-let blanks = prefix([Pos] i => Int(a[i] == none))
+let blanks = prefix([Pos] i => Int(a[i] == None))
 let m = blanks.prefix(Pos.last!.r)
 let comb = Comb<Z>(n)
 

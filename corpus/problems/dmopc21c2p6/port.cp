@@ -25,7 +25,7 @@ for qid in Q:
         let x: Int = read()
         q2.push((passes:, val: x - 1, qid:))
 
-var ans: [Q]?Int = [Q] _ => none
+var ans: [Q]?Int = [Q] _ => None
 
 // Pass 1: Parallel binary search over values 0..n-1.
 var active: [Pos]Int = [Pos] _ => 1

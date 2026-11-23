@@ -36,7 +36,7 @@ fn solve():
         if at_c: colour[i] = 1
         elif at_d: colour[i] = 2
 
-    var dist: [V, Seen]?Int = none
+    var dist: [V, Seen]?Int = None
     var queue: List<(V, Seen)> = [(a, mark(a, Seen(0)))]
     dist[a, mark(a, Seen(0))] = 0
     var head = 0
@@ -45,15 +45,15 @@ fn solve():
         head += 1
         for v in adj[u]:
             let s2 = mark(v, s)
-            if dist[v, s2] == none:
+            if dist[v, s2] == None:
                 dist[v, s2] = dist[u, s]! + 1
                 queue.push((v, s2))
 
-    var best: ?(Int, Int) = none
+    var best: ?(Int, Int) = None
     for s in 0..3:
         if let x = dist[b, Seen(s)]:
-            if best == none or x < best!.0: best = (x, s)
-    if best == none:
+            if best == None or x < best!.0: best = (x, s)
+    if best == None:
         print(-1)
         return
     let rest = if best!.1 >= 2: 2 else: 1

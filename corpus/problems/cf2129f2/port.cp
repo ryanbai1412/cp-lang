@@ -49,7 +49,7 @@ var at = Map<Int, List<Pos>>()
 for p in Pos: at[sig[p]] = (at.get(sig[p]) ?? []) + [p]
 
 var ans: [Pos]Val = Val.first!
-var undo: [Val]?(Pos, Pos) = none
+var undo: [Val]?(Pos, Pos) = None
 var probes = List<Pos>()
 for (s, ps) in at:
     let vs = holders[s]
@@ -59,7 +59,7 @@ for (s, ps) in at:
         let (p0, p1) = if rng.int(0, 1) == 1: (ps[1], ps[0]) else: (ps[0], ps[1])
         (ans[p0], ans[p1]) = (vs[0], vs[1])
         probes.push(p0)
-        undo[vs[1]] = some((p0, p1))
+        undo[vs[1]] = Some((p0, p1))
 
 if not probes.is_empty:
     print(3, probes.len, probes)

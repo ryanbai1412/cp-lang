@@ -55,15 +55,15 @@ for p in PosA.rev:
         if a[p] == b[q]: agree[p.l, q.l] = agree[p.r, q.r] + 1
 
 fn matches(j: PosB.cuts, s: Seg) -> ?PosB.cuts =
-    if agree[span[s].start, j] >= span[s].len: some(PosB.cuts.nth(j.ord + span[s].len)) else: none
+    if agree[span[s].start, j] >= span[s].len: Some(PosB.cuts.nth(j.ord + span[s].len)) else: None
 
 struct Back(from: PosB.cuts, spent: Bool)
 struct Plan(piece: [Seg](from: PosB.cuts, to: PosB.cuts), free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var came: [Seg.cuts, PosB.cuts, Bool]?Back = none
+    var came: [Seg.cuts, PosB.cuts, Bool]?Back = None
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
-        came[k, j, spent] != none or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
+        came[k, j, spent] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
@@ -72,7 +72,7 @@ fn plan(x: Int) -> ?Plan:
                         came[s.r, k, spent] = Back(j, spent)
         else:
             for spent in [false, true]:
-                var latest: ?PosB.cuts = none
+                var latest: ?PosB.cuts = None
                 for j in PosB.cuts:
                     if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
@@ -80,12 +80,12 @@ fn plan(x: Int) -> ?Plan:
                 for j in PosB.cuts:
                     if j > i: came[s.r, j, true] = Back(i, false)
     var at = Back(PosB.cuts.last!, true)
-    if not fit(Seg.cuts.last!, at.from, true): return none
+    if not fit(Seg.cuts.last!, at.from, true): return None
     var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (
         from: PosB.cuts.first!,
         to: PosB.cuts.first!,
     )
-    var free: ?Seg = none
+    var free: ?Seg = None
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
         piece[s] = (from: back.from, to: at.from)
@@ -96,8 +96,8 @@ fn plan(x: Int) -> ?Plan:
 let thresholds = total.sorted(desc: true).distinct()
 fn first_plan() -> ?(Int, Plan):
     for t in thresholds:
-        if let p = plan(t): return some((t, p))
-    none
+        if let p = plan(t): return Some((t, p))
+    None
 
 let (x, plan_x) = first_plan() else:
     print(-1)

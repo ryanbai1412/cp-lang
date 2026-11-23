@@ -13,7 +13,7 @@ fn find() -> ?(Int, Int):
     for l in 0..n:
         for len in 1..=(n - l) / k:
             if repeats(l, len): return (l, len)
-    none
+    None
 
 if let hit = find():
     print(hit.1)

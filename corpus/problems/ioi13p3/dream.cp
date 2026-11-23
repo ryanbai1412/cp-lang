@@ -19,24 +19,24 @@ const B = 10
 type Matrix = List<List<?Int>>
 
 fn identity(c: Int) -> Matrix:
-    var out = List.filled(c, List.filled(c, none))
-    for i in 0..c: out[i][i] = some(0)
+    var out = List.filled(c, List.filled(c, None))
+    for i in 0..c: out[i][i] = Some(0)
     out
 
 fn mul(x: Matrix, y: Matrix) -> Matrix:
     let c = x.len
-    var out = List.filled(c, List.filled(c, none))
+    var out = List.filled(c, List.filled(c, None))
     var opt = List.filled(c, List.filled(c, 0))
     for i in (0..c).rev:
         for j in 0..c:
             let lo = if j > 0: opt[i][j - 1] else: 0
             let hi = if i + 1 < c: opt[i + 1][j] else: c - 1
-            var best: ?Int = none
+            var best: ?Int = None
             var best_k = lo
             for k in lo..=hi:
                 if let cand = x[i][k] + y[k][j]:
                     if best.all(b => cand < b):
-                        best = some(cand)
+                        best = Some(cand)
                         best_k = k
             out[i][j] = best
             opt[i][j] = best_k

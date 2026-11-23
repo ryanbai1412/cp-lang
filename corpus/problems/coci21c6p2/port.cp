@@ -7,7 +7,7 @@ let b: Int = read()
 let grid: [n, m]Int = read()
 let lo = min(a, b)
 
-var best: ?Int = none
+var best: ?Int = None
 fn offer(s: Int): best min= abs(s - a) + abs(s - b)
 
 for top in 0..n:

@@ -20,7 +20,7 @@ fn insert(mut stairs: Map<Int, Int>, k: Int, v: Int):
     stairs[k] = v
 
 fn upto(stairs: Map<Int, Int>, x: Int) -> ?Int:
-    let (_, v) = stairs.last_le(x) ?? return none
+    let (_, v) = stairs.last_le(x) ?? return None
     v
 
 var x_below = Map<Int, Int>()

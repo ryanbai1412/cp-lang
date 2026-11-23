@@ -24,7 +24,7 @@ fn main_solve():
     for u in g[root]: special[u] = true
 
     var vis: [V]Bool = false
-    var par: [V]?V = none
+    var par: [V]?V = None
     var kids: [V]List<V> = []
     var roots: List<V> = []
     var comp_special = 0
@@ -41,7 +41,7 @@ fn main_solve():
         if vis[u]: continue
         roots.push(u)
         comp_special = 0
-        build_tree(u, none)
+        build_tree(u, None)
         if comp_special % 2 == 1:
             print("NO")
             return
@@ -71,7 +71,7 @@ fn main_solve():
             pairings.push(full)
             i += 2
         if open.len % 2 == 1: return open.last!
-        return none
+        return None
 
     for r in roots:
         let _ = pair_sub(r)

@@ -33,7 +33,7 @@ var pq: [V]List<(Int, Int)> = []
 var sq: [V]List<(Int, Int)> = []
 var active = SortedBag<Int>()
 var ans: Z = 0
-var prev_h: ?Int = none
+var prev_h: ?Int = None
 
 for cid in hs.D:
     let cur_h = hs[cid]

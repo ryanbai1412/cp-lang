@@ -8,10 +8,10 @@ var memo = Map<(Int, Int), (?Int, ?Int)>()
 fn dp(n: Int, m: Int) -> (?Int, ?Int):
     if n == 0 or m == 0: return (0, 0)
     let jump = if n % 2 == 0: n / 2 else: 2 * n
-    if jump > m: return (none, none)
+    if jump > m: return (None, None)
     let key = (n, m)
     if let hit = memo.get(key): return hit
-    var (lo, hi): (?Int, ?Int) = (none, none)
+    var (lo, hi): (?Int, ?Int) = (None, None)
     var k = max(1, (m - 2 * n) / jump - 1)
     while m - k * jump >= 0:
         let (nlo, nhi) = dp(m - k * jump, n)

@@ -7,7 +7,7 @@ domain V = 1..=n
 let feuds: [0..m](a: V, b: V, anger: 1..=1e9) = read()
 
 var together = Dsu<V>()
-var foe: [V]?V = none  // someone known to be in the other prison
+var foe: [V]?V = None  // someone known to be in the other prison
 for (a, b, anger) in feuds.sorted(by: f => -f.anger):
     if together.same(a, b):
         print(anger)

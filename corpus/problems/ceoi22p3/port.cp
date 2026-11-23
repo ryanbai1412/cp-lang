@@ -18,8 +18,8 @@ let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read(
 domain V = 1..=n
 domain Ask = 0..k - 1
 
-let one = Rooted.from_parents(read<[V]?V>(none: -1))
-let two = Rooted.from_parents(read<[V]?V>(none: -1))
+let one = Rooted.from_parents(read<[V]?V>(None: -1))
+let two = Rooted.from_parents(read<[V]?V>(None: -1))
 
 var picked: List<V> = [one.at[one.Pre.at(i)] for i in 0..k]
 // CEOI '22 judge expects the k chosen vertices one per line before queries.
@@ -44,14 +44,14 @@ fn depths(
         ties[a].push((to: top, d: -da))
         ties[top].push((to: b, d: db))
         ties[b].push((to: top, d: -db))
-    var depth: [V]?Int = none
+    var depth: [V]?Int = None
     var queue: Deque<V> = Deque()
     depth[picked[0]] = 0
     queue.push(picked[0])
     while let x = queue.pop_front():
         let dx = depth[x]!
         for e in ties[x]:
-            if depth[e.to] != none: continue
+            if depth[e.to] != None: continue
             depth[e.to] = dx + e.d
             queue.push(e.to)
     [V] v => depth[v] ?? 0

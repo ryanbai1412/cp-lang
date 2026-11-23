@@ -20,7 +20,7 @@ fn roles(a: Int, b: Int) -> List<(Stage, Stage, Int)> = [
     (two_ends, done, 2 * a),
 ]
 
-var cost: [0..=n, Stage]?Int = none
+var cost: [0..=n, Stage]?Int = None
 cost[0, start] = 0
 for (i, (a, b)) in read<[n](a: 0..=1e9, b: 0..=1e9)>().sorted(by: c => c.a - c.b).items:
     for k in (0..=i).rev, (from, to, w) in roles(a, b):

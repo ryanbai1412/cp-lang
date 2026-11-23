@@ -28,9 +28,9 @@ domain Q = 0..q
 let a: [Row, Col]Int = read()
 
 struct Query(x1: Row, y1: Col, x2: Row, y2: Col, kv: KDom, id: Q)
-var qans: [Q]?Int = none
+var qans: [Q]?Int = None
 var buckets: [Row, Col]List<Query> = []
-fn empty_cell() -> Cell = [KDom] _ => none
+fn empty_cell() -> Cell = [KDom] _ => None
 var dp: [Row, Col]Cell = empty_cell()
 var dp2: [D3, D3]Cell = empty_cell()
 
@@ -48,7 +48,7 @@ fn backward_dp(x1: Row, y1: Col, x2: Row, y2: Col):
         for c in (y1..=y2).rev:
             let cost = a[r, c]
             if r == x2 and c == y2:
-                dp[r, c] = [KDom] k => if k == KDom.first: some(cost) else: some(0)
+                dp[r, c] = [KDom] k => if k == KDom.first: Some(cost) else: Some(0)
             else:
                 var cell = empty_cell()
                 if let nr = r.next and nr <= x2: cell = relax(cell, dp[nr, c], cost)
@@ -74,7 +74,7 @@ for cx in Row:
             for dc in D3:
                 if let r = cx.offset(dr.ord), let c = cy.offset(dc.ord):
                     if dr == D3.first and dc == D3.first:
-                        dp2[dr, dc] = [KDom] _ => some(0)
+                        dp2[dr, dc] = [KDom] _ => Some(0)
                     else:
                         let cost = a[r, c]
                         var cell = empty_cell()

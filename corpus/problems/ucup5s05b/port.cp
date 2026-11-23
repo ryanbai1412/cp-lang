@@ -22,7 +22,7 @@ fn to_mirror(s: Int, e: Int, m: Int) -> Int:
 
 fn union_len(spans: List<(Int, Int)>) -> Int:
     var total = 0
-    var reach: ?Int = none
+    var reach: ?Int = None
     for (lo, hi) in spans.sorted():
         let from = max(lo, reach ?? lo)
         if hi > from: total += hi - from

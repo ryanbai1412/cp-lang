@@ -13,7 +13,7 @@ for i in 0..m: bcnt[Letter(b[i])] += 1
 
 var base = 0
 var hi = 0
-var lo: ?Int = none
+var lo: ?Int = None
 for c in Letter:
     base += acnt[c] * bcnt[c]
     if acnt[c] > hi: hi = acnt[c]

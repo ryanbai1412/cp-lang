@@ -8,7 +8,7 @@ domain Event = 0..m
 
 var winner: [Event]Player = Player.first
 var children: [Event]List<Event> = []
-var rep: [Player]?Event = none
+var rep: [Player]?Event = None
 for e in Event:
     let u: Player = read()
     let v: Player = read()
@@ -16,7 +16,7 @@ for e in Event:
     if let pu = rep[u]: children[e].push(pu)
     if let pv = rep[v]: children[e].push(pv)
     rep[u] = e
-    rep[v] = none
+    rep[v] = None
 
 var cnt: [Player]Int = 0
 var board = Set<(Int, Int)>()

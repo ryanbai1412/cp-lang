@@ -16,7 +16,7 @@ let med = a.sorted()[n / 2]
 let pref_lt = prefix([Int(x < med) for x in a])
 let pref_le = prefix([Int(x <= med) for x in a])
 
-var dp: [0..=n]?Int = none
+var dp: [0..=n]?Int = None
 dp[0] = 0
 for i in 0..n if let cur = dp[i]:
     for j in i + 1..=n by 2:
