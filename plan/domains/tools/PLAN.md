@@ -2,6 +2,17 @@
 
 The detail behind the [README](README.md): workstreams and their order, why each milestone, alternatives considered, risks, what comes first.
 
+## Milestone 1 order (from 2026-11-22)
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) sets the order; the workstreams below serve it and anything not on this path waits.
+1. **Run is the sample runner.** `cpl run a` with no input and a terminal on stdin runs `a.tests/` like `cpl test`; a number or file name picks one case; piped input runs once as today. Why first: Ryan's experience doc makes it the default loop (J6), and today `cpl run a` waits on stdin.
+2. **Short forms.** `cpl b` for `build`, `-c` for `--copy`; generalise to a small alias table in the command table, not one-off cases.
+3. **Custom tests.** `cpl test a --add [FILE|-]` writes the next `a.tests/<n>.in` (and `.out` with `--expect`); VS Code `CP: Add Test`.
+4. **Companion from the editor.** VS Code `CP: Listen for Competitive Companion` runs `cpl new --listen` and opens the new file.
+5. **VS Code install and polish.** Release `.vsix` (with infra), format on save default for `.cp`, a cold-install probe of steps 3-6, every stumble fixed.
+6. **Contest-flow golden test.** One test drives new → run → test --add → stress → b -c on a Companion fixture, so the scenario cannot regress.
+
+Deferred: workstream 3 (explain), the rest of 2 (shared parser beyond new flags), and tier-2 editor polish.
+
 ## Workstreams
 1. **Land in-flight work.** `devin/wip-editor-lsp` (5 commits, based on `0fc84cf7`): edition-aware `use std.` completion, a v0.3 LSP feature test, a corpus latency benchmark, VS Code and Vim smoke tests, VS Code install docs, the synced VS Code prelude/stdlib tables (fixes the 1 failing VS Code unit test). Rebase, gate, land; drop anything `git cherry` shows superseded.
 2. **Command contract.** One table of commands (name, one-line summary, flags, whether it prints results, owner lane) that drives `cpl --help`, each `<cmd> --help`, dispatch, and a `cpl --help --json` the site reads instead of scraping text. A fast-gate test diffs the table against `spec/tools/cli.md`. Golden tests per command: help, one success, one usage error, exit code. A shared `Args`/`Output` helper (positional, `--flag value`, `--json`, usage error → exit 3) that crates adopt one command at a time. Split `crates/cpl-cli/src/lib.rs` by command (`check.rs`, `build.rs`, `explain.rs`, `run.rs`) along the way, under the 2,000-line cap.
@@ -30,7 +41,5 @@ Order: 1 → 2 → (3 ∥ 4) → 5. 1 first because it is done work rotting agai
 - **Editor tests need binaries the VM lacks** (nvim ≥ 0.10, emacs, hx, tree-sitter) and Gradle downloads are blocked or rate-limited. Mitigation: ask infra to add nvim to the environment; JetBrains stays CI-only.
 - **Touching `lib.rs` collides with other lanes** (debugger code and tests live there). Mitigation: split by command in small commits, land each fast, move debugger files only with the debugger lane.
 
-## First in phase 2
-1. Rebase `devin/wip-editor-lsp` on main, run `cargo test -p cpl-lsp`, `npm test` in `editors/vscode`, `editors/smoke.sh`, land through `scripts/land.sh`.
-2. Add the spec/CLI sync test, asserting today's 14 mismatches as an explicit known list that may only shrink (a ratchet), then apply the Q tools-1 default.
-3. Introduce the command table and move `check`, `build`, `explain` onto it, extracting each into its own file.
+## Next
+Milestone 1 order, items 1-3, each a small commit with its golden test.
