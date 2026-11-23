@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 9: 22 holes (round 8: 23); 6 contradictions, 12 silent, 4 missing stdlib; 1 outside the subset. Spec fixes: `match` is an expression (R01.10.3), a parameter label may be a reserved word (`while ok:`), `Int ** Int` is exact, traps on a negative power or overflow and folds in bounds (R01.5.8), `v.ord` is the 0-based ordinal (R04.2.22); 6 cases. Nine std holes routed to stdlib, the `[m]List<T>` read to compiler. Still to settle: H-COUNTED-LIST-ROWS, H-ENUM-RUNTIME-DOMAIN, H-ENUM-ARRAY-READ, H-POSITION-ORD-TRAIT, H-RUNTIME-RANGE-LOCAL, H-STR-LEN-EXACT, H-REPEAT-VS-FOR.
 - Decision 354: a reversed view is not indexable (`xs.rev[k]` is E0305, fix `.nth(k)`); question removed; R07.4.7, R07.5.3 and R04b.1.8 updated; `rev-slice-index-outside-traps.cp` becomes `rev-view-is-not-indexable.cp`. Routed to compiler, stdlib and lint-fmt. Fixed two wrong expectations tech-debt found (`.ord` counts from 0; the divisors `break` skips the 12). Spec-block ids are now `file#section:k`, so editing a spec block no longer looks like a lost case.
 - Trait coverage 118/120 to 120/120: cases for `IndexOp` on `Disjoint` (`at`, `len`); trait-gaps.txt is empty.
 - sig-gaps 5 to 3: `conformance-sigs.py` lets a variadic `..xs` take any name (decision 324), so `each(sum: +, hi: max)` is no longer a false gap. The other three (`dijkstra(step:)`, `pow(op:)`, `convolve(concave:)` vs std `shape:`) are routed to stdlib.

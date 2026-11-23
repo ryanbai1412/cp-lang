@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2483 (995 passing). Rules: 561.
+Cases: 2489 (995 passing). Rules: 564.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 53 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 55 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 67 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,10 +45,10 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 53 | 53 (100%) | 28 | 28 (100%) | 53 (100%) |
+| R01 | 55 | 55 (100%) | 29 | 29 (100%) | 55 (100%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 66 | 66 (100%) | 15 | 15 (100%) | 66 (100%) |
+| R04 | 67 | 67 (100%) | 15 | 15 (100%) | 67 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 561 | 560 (99%) | 215 | 215 (100%) | 560 (99%) |
+| all | 564 | 563 (99%) | 216 | 216 (100%) | 563 (99%) |
 
 ## Rules
 
@@ -98,6 +98,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.4.4 [1+ 1-]: **Strings**: `"..."` with the same escapes plus `\"`. Every string literal interpolates: `...
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
 - R01.4.6 [1+ 1-]: `++` is a lex error ("CP Lang concatenates with `+`").
+- R01.5.8 [1+ 2-]: `**` (right-associative; the right operand may start with unary `-`) On `Int`, `x ** k` is...
 - R01.5.1 [3+ 1-]: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
 - R01.5.2 [3+ 1-]: `/` and `%` are Euclidean: `%` is never negative and `a == (a / b) * b + a % b`, so `7 / -...
 - R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
@@ -125,6 +126,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 1-]: Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`); anything that does wor...
 - R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
+- R01.10.3 [1+ 0-]: expr        := lambda | if_expr | match_expr | binary lambda      := lparams '=>' (expr | ...
 - R01.10.1 [4+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
 - R01.10.2 [1+ 4-]: A program the grammar does not derive is a syntax error, E0103: `var x: Int` with no `= ex...
 - R01.11.1 [2+ 3-]: Each of these gets an error with a machine-applicable fix:
@@ -232,6 +234,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [5+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
+- R04.2.22 [1+ 0-]: | `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, t...
 - R04.2.17 [2+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions bef...
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
@@ -839,11 +842,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 5 case(s)
+- R0001 Runtime trap: 6 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)
-- R0202 Integer overflow: 9 case(s)
+- R0202 Integer overflow: 10 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 72 case(s)
@@ -871,9 +874,9 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 157: `for j in ..i:`
-  - line 251: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 272: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 158: `for j in ..i:`
+  - line 252: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 273: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`

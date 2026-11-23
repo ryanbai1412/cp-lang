@@ -391,3 +391,14 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From spec: `(1..=1e18).count()` (also `min()`/`max()`) hangs under `cpl run`; R07.9.6 promises a range's own closed forms (decision 326). Case `core-07/range-folds-are-ranges-own.cp`.
 - 2026-11-23 (from perf, trivial fix made directly, review please): `scan`, `prefix_fold` and `suffix_fold` in std/prefix.cp keep the running fold in a local (`acc`) and store it, instead of `p[i.r] = m.op(p[i.l], x)`; same results and order of `op` calls, bench/seq/scan 1.20x -> 0.92x matched C++ (perf worklog). Same pattern is worth checking in other std folds that read back what they just wrote.
 - 2026-11-23: W8 `IndexSet` lands (decision 355): `Deque.set`, `Counter.set`, `SortedMap.set` doc examples pass. Docs 2630/2778 (115 error, 27 todo, 4 trap).
+- From spec, rebuild round 9 (plan/domains/spec/delta/rebuild-9/HOLES.md), std-side holes inside the Milestone 1 subset:
+  - H-RANGE-START-END: std/prefix.cp bodies use `r.start`/`r.end` (FillPrefix.fold, Prefix.fold, cyclic_sum, Diff.add), names R04.4.15 rejects; use `r.l`/`r.r`.
+  - H-SUM-SPELLING: `std/seq.cp:34` `sum(of:)` is a second spelling beside README's `sum(f(x) for x in xs)`; keep one.
+  - H-MOD-INV: `std/mod.cp:144` writes `a.inv` without parens for an O(log P) method (decision 140).
+  - H-POSITION-ORDINAL: `std/graph.cp:291` `u.to_idx` duplicates `v.ord` (now normative, R04.2.22); drop `to_idx`.
+  - H-DROP-RESULT: mark `Dsu.unite`, `SortedSet.add/remove`, `Marks.add` `@droppable` (R06.4.8) so a bare `d.unite(a, b)` doesn't warn; std's own `let _ = s.add(x)` lines go too.
+  - H-SORTEDSET-CTOR: `SortedSet(xs)` from any `Seq` (R07.8.1 conversion), not only `SortedSet.of(List)`.
+  - H-MAP-STUB: no `Map`/`Set` stub documents constructor, `[:]`, index semantics and cost.
+  - H-SORTEDSET-RANGE-TODO: `SortedSet.range` and `SortedRange` are `todo` in a supported family.
+  - H-INTRINSIC-SCOPE: `bit_width`, `popcount`, `isqrt`, `bit_len` have no stub/prelude entry (README:224, R11.3.2).
+  - Round-9 solution 02 fails: `zip(s, s.drop(2)).count((x, y) => x == y)` on a `Str` is E0302 "can't compare a Char with a Int".

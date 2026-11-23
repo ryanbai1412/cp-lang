@@ -44,6 +44,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\) (R04.2.14) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |
 | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free (R04.2.16) |
+| `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, the same as `Int(v.l)` | free (R04.2.22) |
 | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions before it whatever the base (`1..=n`: `V.cuts(2)` is between positions 2 and 3); trapping, or `?V.cuts` | \(O(1)\) (R04.2.17) |
 | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free (R04.2.18) |
 

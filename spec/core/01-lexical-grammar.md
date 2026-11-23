@@ -168,6 +168,9 @@ Tightest first:
    trap), `?` (propagate `None`), `is pattern` (so `a + b is P` is
    `a + (b is P)`; parenthesize the left side)
 2. `**` (right-associative; the right operand may start with unary `-`)
+   On `Int`, `x ** k` is the exact power: a negative `k` traps (R0001), and a
+   result past 64 bits traps like `*` (R0202). With literal operands it folds
+   at compile time, so `read<1..=2 ** 29>()` has a static bound. (R01.5.8)
 3. unary `-`, `+` (numeric only), `~`
 4. `*`, `/`, `%`
 5. `+`, `-`
@@ -351,7 +354,9 @@ fn_name     := NAME | '(' param ')' BINOP '(' param ')'     // operator fns
 ret         := '->' ('yields' | 'lends' lend_src?)? type
 lend_src    := '(' NAME (',' NAME)* ')'
 params      := param (',' param)* (';' param (',' param)*)? ','?
-param       := 'mut'? (pattern | 'self') (':' type)? ('=' expr)?
+param       := 'mut'? (WORD NAME | pattern | 'self') (':' type)? ('=' expr)?
+               // `while ok: K -> Bool`: the caller writes `while:`, the body `ok`;
+               // the outer label may be a reserved word
              | '..' NAME ':' TYPE_NAME                      // variadic tuple
 generics    := '<' gparam (',' gparam)* ','? '>'
 gparam      := 'domain'? TYPE_NAME (':' bound)? ('=' type)?
@@ -415,10 +420,12 @@ type        := '?' type | '[' dims ']' type | '(' type (',' type)* ','? ')'
 dims        := type (',' type)* | '(' type (',' type)* ')' | expr
 range_type  := expr? ('..' | '..=') expr?
 
-expr        := lambda | if_expr | binary
+expr        := lambda | if_expr | match_expr | binary
 lambda      := lparams '=>' (expr | assign | NL INDENT stmt* expr? DEDENT)
 lparams     := NAME | '_' | '(' (param (',' param)*)? ')' ('->' type)?
 if_expr     := 'if' cond ':' expr ('elif' cond ':' expr)* 'else' ':' expr
+match_expr  := 'match' expr ':' NL INDENT (pattern ('if' expr)? '=>' expr NL)+ DEDENT
+               // a match used as a value: every arm gives one, of one type (R01.10.3)
 binary      := the operators of 1.5 over unary; `not` is the prefix
                operator at level 12, so `not a == b` is `not (a == b)`
 unary       := ('-' | '+' | '~') unary | power
