@@ -1764,7 +1764,7 @@ impl<'a> Checker<'a> {
     /// The top-level fn `name` whose first parameter is a `self` of the
     /// struct or enum `base`, as the method it is: the fn without that
     /// parameter.
-    fn own_method(&mut self, base: &Ty, name: &str) -> Option<Ty> {
+    pub(super) fn own_method(&mut self, base: &Ty, name: &str) -> Option<Ty> {
         if !matches!(base, Ty::Named { .. } | Ty::Record(_) | Ty::Tuple(_)) {
             return None;
         }

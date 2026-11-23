@@ -131,6 +131,16 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if let (ExprKind::Name(n), [arg]) = (&callee.kind, args) {
+            if n == "count"
+                && arg.name.is_none()
+                && !Self::generator_test(callee, args)
+                && self.local(n).is_none()
+            {
+                let over = self.quietly(|c| c.infer(&arg.value));
+                self.bool_count(call, &over);
+            }
+        }
         if Self::binary_min_max(callee, args) || Self::generator_test(callee, args) {
             for arg in args {
                 self.infer(&arg.value);
@@ -798,6 +808,9 @@ impl<'a> Checker<'a> {
         let base_ty = self.quietly(|c| c.infer(base));
         if self.ambiguous_method(&base_ty, base, name) {
             return Some(Ty::Error);
+        }
+        if name.text == "count" && args.is_empty() {
+            self.bool_count(call, &base_ty);
         }
         // R04.2.17: `V.cuts(k)` is the cut numbered `k`, not the range of cuts.
         if let (Ty::Domain(d), "cuts" | "bounds", [arg]) = (&base_ty, name.text.as_str(), args) {

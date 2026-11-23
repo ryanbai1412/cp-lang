@@ -25,6 +25,18 @@ impl<'a> Checker<'a> {
                 && matches!(arg.value.kind, ExprKind::Comprehension { .. }))
     }
 
+    /// `b.count()` or `count(b)` on bools: `count()` counts every element, the falses too, so it
+    /// is an error naming the two questions it could mean (decision 378, R07.9.4).
+    pub(super) fn bool_count(&mut self, call: &Expr, over: &Ty) {
+        if self.element_ty(over) != Ty::Bool || self.own_method(over, "count").is_some() {
+            return;
+        }
+        let message = "`count()` with no test counts every element, the falses too".to_string();
+        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
+            diag.help = Some("the trues are `count(x => x)`; every element is `len`".into());
+        }
+    }
+
     pub(super) fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
