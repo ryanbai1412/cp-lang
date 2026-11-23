@@ -180,7 +180,7 @@ pub(crate) struct Emitter<'p> {
     pub found: Vec<(Expr, Expr, String)>,
     /// `(list, index)` slots of the loops being written whose index
     /// walks `0..list.len` over a list the body leaves at that length.
-    pub inside: Vec<(usize, usize)>,
+    pub inside: Vec<crate::bounds::Inside>,
     /// Rows the loops being written reach once: the row, the pointer
     /// that holds it, and the C++ that reaches it the first time.
     pub row_ptrs: Vec<(crate::rowcache::Row, String, String)>,

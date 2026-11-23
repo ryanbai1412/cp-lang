@@ -1484,7 +1484,12 @@ impl<'p> Emitter<'p> {
                 self.loop_body(*id, &[], body, out);
             }
             Stmt::For(id, slot, iter, body) => {
-                let inside = walk::inside_list(*slot, iter, body, self.locals());
+                let mut inside = self.check_ahead(*slot, iter, body, out);
+                inside.extend(
+                    walk::inside_list(*slot, iter, body, self.locals())
+                        .map(|(l, i)| ((false, l), i, 0, 0)),
+                );
+                let pushed = inside.len();
                 self.inside.extend(inside);
                 let rows = self.loop_rows(*slot, body);
                 let (start, mark) = (out.len(), self.row_ptrs.len());
@@ -1503,8 +1508,7 @@ impl<'p> Emitter<'p> {
                     out.insert_str(start, &head);
                     self.line(out, "}");
                 }
-                self.inside
-                    .truncate(self.inside.len() - usize::from(inside.is_some()));
+                self.inside.truncate(self.inside.len() - pushed);
             }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),

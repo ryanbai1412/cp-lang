@@ -763,7 +763,6 @@ fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
         "        s += b[j]\n        if s > 9: b.pop()\n",
         "        s += b[j]\n        grow(mut b)\n",
         "        s += b[j]\n        b = [1]\n",
-        "        s += b[j + 1]\n",
     ] {
         let out = dot(body);
         assert!(out.contains("cpl::at(b, j"), "{body}: {out}");

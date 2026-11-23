@@ -13,6 +13,7 @@ The code as it is on main (read 2026-11-22). Updated in the same commit as any s
 | `src/expr.rs` | 2883 | Expressions, indexing (`cpl::at` vs unchecked), builtin calls, map/set ops, IR-shape recognizers (`map_remove_do`). |
 | `src/stmt.rs` | 1811 | Statements and loops. |
 | `src/fuse.rs` | 381 | Producer-consumer loop fusion: a loop over a `do { let v = []; for .. { v.push(e) }; give v }` runs its body at each `push` (`FusedPush`); taken only when the loops' effects don't interleave and one side cannot trap or stop early. |
+| `src/bounds.rs` | 415 | Index checks taken out of a range loop: one test before `for i in lo..hi` covers `xs[i + c]` reached every round, when the body can only compute and store (no print, exit, resize or other trap); `Emitter::inside` holds what is covered. |
 | `src/divrem.rs` | 79 | Euclidean `/` `%` on `Int`: plain C++ when signs allow, shift/mask for a power-of-two divisor, else `cpl::ediv`/`emod`/`divp`/`modp`. |
 | `src/runtime.rs` | 1767 | 100 runtime `Piece`s (I/O, `emod`, `at`, `reserve`, judge conversions), each emitted only when used; `unused_lines` trims the rest. |
 | `src/show.rs` | 586 | Printing and reading values. |

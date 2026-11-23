@@ -1,5 +1,6 @@
 //! Lowering of a checked program to a single C++17 file.
 
+mod bounds;
 mod devirt;
 mod divrem;
 mod emit;

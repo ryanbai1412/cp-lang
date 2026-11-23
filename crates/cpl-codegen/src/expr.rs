@@ -321,8 +321,7 @@ impl<'p> Emitter<'p> {
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) =>
-                    {
+                    Ty::List(_) | Ty::MutView(_) if self.inside_place(&base.kind, &indices[0]) => {
                         format!("{b}[{}]", at[0])
                     }
                     Ty::List(_) | Ty::MutView(_) => {
@@ -810,7 +809,7 @@ impl<'p> Emitter<'p> {
                 let base_ty = &base.ty;
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
-                    || matches!((&base.kind, &indices[0].kind), (ExprKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i)));
+                    || self.inside_at(crate::bounds::var_of(&base.kind), &indices[0]);
                 let checked = !proven(indices) && !raw_list;
                 if (matches!(
                     base_ty,
