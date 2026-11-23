@@ -6287,21 +6287,14 @@ impl<'a> Lowerer<'a> {
             _ => None,
         }
     }
-    /// `xs.items` in a `for` or a comprehension, when `xs` names a
-    /// variable, a field or a cell: the loop counts through the indices
-    /// and reads each element in place, so no list of pairs is built.
+    /// `xs.items` in a `for` or a comprehension: the loop counts through
+    /// the indices and reads each element in place, so no list of pairs
+    /// is built.
     pub(super) fn items_head(&mut self, e: &ast::Expr) -> Option<Items> {
         let ast::ExprKind::Field { base, name } = &e.kind else {
             return None;
         };
         if name.text != "items" {
-            return None;
-        }
-        let is_view_expr = matches!(&base.kind, ast::ExprKind::Index { .. })
-            || matches!(&base.kind, ast::ExprKind::Field { name, .. } if name.text == "rev")
-            || matches!(&base.kind, ast::ExprKind::Call { callee, .. }
-                if matches!(&callee.kind, ast::ExprKind::Field { name, .. } if name.text == "keyed"));
-        if !is_place(base) && !is_view_expr {
             return None;
         }
         if !matches!(
@@ -6320,10 +6313,14 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let seq = self.expr(base, None);
-        let seq = if matches!(
+        // A view or a temporary (`(0..n).items`, `f(a).items`) is held
+        // once, so the loop reads it without building it again.
+        let view = matches!(
             seq.ty,
             Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
-        ) && !matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_))
+        );
+        let seq = if (view || !is_place(base))
+            && !matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_))
         {
             let held = self.temp(seq.ty.clone());
             self.cx.pending.push(Stmt::Let(held, Some(seq)));

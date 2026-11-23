@@ -74,6 +74,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "float_digits",
             "grid_parts_generic",
             "interval_default_on_old",
+            "items_of_temporary",
             "map_get_lend",
             "map_update_field",
             "mut_cell_receiver",
