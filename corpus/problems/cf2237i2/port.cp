@@ -32,6 +32,7 @@ enum Edge: Zero | One
 enum Active: Off | On | Deferred
 
 struct State(depth: Int, active: Active, resolved: Bool)
+type Table = [Active, Bool]Z
 
 fn parse_label(ch: Char) -> Label = match ch:
     '0' => Label.Zero
@@ -44,7 +45,7 @@ fn lift(child: State, edge: Edge) -> State:
     else:
         State(child.depth + if edge == Edge.One: 1 else: 0, child.active, child.resolved)
 
-fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, mut out: List<(State, Int)>):
+fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, w: Z, mut out: List<Table>):
     let lifted = lift(child, edge)
     let one_active = parent.active == Active.Off or lifted.active == Active.Off
     let one_resolved = not (parent.resolved and lifted.resolved)
@@ -61,53 +62,65 @@ fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, mut out: List
         (Active.Deferred, Active.Deferred) => return
         (_, Active.Deferred) =>
             if lbl == Label.Zero:
-                out.push((State(nd, Active.Deferred, nr), 1))
+                add(mut out, State(nd, Active.Deferred, nr), w)
         (Active.Deferred, _) =>
             if lbl == Label.One:
-                out.push((State(nd, Active.On, nr), 1))
+                add(mut out, State(nd, Active.On, nr), w)
             elif lbl == Label.Any and edge == Edge.One:
-                out.push((State(nd, Active.Deferred, nr), 1))
+                add(mut out, State(nd, Active.Deferred, nr), w)
         _ =>
             let na = if parent.active != Active.Off or lifted.active != Active.Off: Active.On else: Active.Off
-            out.push((State(nd, na, nr), 1))
+            add(mut out, State(nd, na, nr), w)
             if parent.active == Active.Off and edge == Edge.One and parent.depth == 0:
-                out.push((State(nd, Active.On, nr), -1))
+                add(mut out, State(nd, Active.On, nr), -w)
 
-fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
-    var out: List<(State, Int)> = []
+fn add(mut out: List<Table>, s: State, w: Z):
+    out[s.depth][s.active, s.resolved] += w
+
+fn merge(parent: State, child: State, lbl: Label, w: Z, mut out: List<Table>):
     match lbl:
-        Label.Zero => merge_edge(parent, child, lbl, Edge.Zero, mut out)
-        Label.One => merge_edge(parent, child, lbl, Edge.One, mut out)
+        Label.Zero => merge_edge(parent, child, lbl, Edge.Zero, w, mut out)
+        Label.One => merge_edge(parent, child, lbl, Edge.One, w, mut out)
         Label.Any =>
-            merge_edge(parent, child, lbl, Edge.Zero, mut out)
-            merge_edge(parent, child, lbl, Edge.One, mut out)
-    out
+            merge_edge(parent, child, lbl, Edge.Zero, w, mut out)
+            merge_edge(parent, child, lbl, Edge.One, w, mut out)
 
 @!multitest
-let n: 1..=500 = read()
+let n: 2..=3000 = read()
 domain V = 1..=n
 let label_str: Str = read()
-let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
+let label: [V]Label = [V] v => if v == V.first!: Label.Zero else: parse_label(label_str[v.ord - 1])
 
+var kids: [V]List<V> = [V] _ => []
 var par: [V]?V = none
 for u in V:
-    repeat read<Int>(): par[read<V>()] = u
+    repeat read<Int>():
+        let c = read<V>()
+        kids[u].push(c)
+        par[c] = some(u)
 let t = Rooted.from_parents(par)
 
-var dp: [V]Map<State, Z> = [V] _ => Map<State, Z>()
+// `dp[v][depth]` holds the counts of each (active, resolved) state at that depth.
+var dp: [V]List<Table> = [V] _ => []
+let zero: Table = Z(0)
 for p in t.Pre.rev:
     let u = t.at[p]
-    var cur: Map<State, Z> = Map()
-    cur[State(0, Active.Off, false)] = Z(1)
-    cur[State(0, Active.Deferred, false)] = Z(1)
-    for c in t.children(u):
-        var next: Map<State, Z> = Map()
-        for (parent, w0) in cur.items:
-            for (child, w1) in dp[c].items:
-                for (s, sign) in merge(parent, child, label[c]):
-                    next[s] = (next.get(s) ?? Z(0)) + sign * w0 * w1
+    var base: Table = Z(0)
+    base[Active.Off, false] = Z(1)
+    base[Active.Deferred, false] = Z(1)
+    var cur: List<Table> = [base]
+    for c in kids[u]:
+        var next: List<Table> = [zero.clone() for _ in 0..max(cur.len, dp[c].len + 1)]
+        for d0 in 0..cur.len:
+            for pa in Active:
+                for pr in Bool if cur[d0][pa, pr] != Z(0):
+                    for d1 in 0..dp[c].len:
+                        for ca in Active:
+                            for cr in Bool if dp[c][d1][ca, cr] != Z(0):
+                                merge(State(d0, pa, pr), State(d1, ca, cr), label[c], cur[d0][pa, pr] * dp[c][d1][ca, cr], mut next)
         cur = next
+        dp[c] = []
     dp[u] = cur
 
 // Exclude Active.Deferred at the root: no parent edge exists to close it.
-print([w for (s, w) in dp[V.first].items if s.active != Active.Deferred].sum())
+print([row[a, r] for row in dp[V.first!] for a in Active if a != Active.Deferred for r in Bool].sum())
