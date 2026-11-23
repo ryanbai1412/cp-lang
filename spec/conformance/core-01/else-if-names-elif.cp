@@ -1,5 +1,5 @@
 // expect: E0503 at 4
-// rule: 
+// rule: 01.10.4
 // has: "elif"
 // `else if` is spelled `elif`, and the error writes it (rebuild round 32 FL3).
 let a = 1

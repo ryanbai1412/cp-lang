@@ -374,7 +374,7 @@ EBNF over the token stream. `NL` ends a logical line; `INDENT` and
 `DEDENT` come from layout. `block := ':' (simple_stmts NL | NL INDENT
 stmt+ DEDENT)`. On one line, `if c: s1 else: s2` (and `elif`) with simple
 statements is an `if_stmt`: the `NL` before `else` is optional when the
-whole statement fits on one line. In a type position, `[D]` is followed by
+whole statement fits on one line. A further condition is `elif c:`; `else if` is E0503, whose fix writes `elif`. (R01.10.4) In a type position, `[D]` is followed by
 a type, so `[V]-1e9..=1e9` is a range type whose ends may be signed.
 
 <!-- spec-only: grammar, not CP code -->
