@@ -1,0 +1,7 @@
+error[E0302]: expected `List<List<Int>>`, found `List<List<Int>>` made of views into another sequence, not copies
+  --> list_of_views_where_lists_are_declared.cp:2:28
+  |
+2 | let got: List<List<Int>> = xs.windows(2)
+  |                            ^^^^^^^^^^^^^
+
+list_of_views_where_lists_are_declared.cp: 1 error

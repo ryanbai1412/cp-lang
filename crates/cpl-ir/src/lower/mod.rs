@@ -1027,11 +1027,7 @@ impl<'a> Lowerer<'a> {
         if want.mentions_error() || found.mentions_error() {
             return;
         }
-        let message = format!(
-            "expected `{}`, found `{}`",
-            self.show(want),
-            self.show(found)
-        );
+        let message = crate::show::mismatch(&self.show(want), &self.show(found), found);
         self.error(codes::TYPE_MISMATCH, span, message);
     }
 
