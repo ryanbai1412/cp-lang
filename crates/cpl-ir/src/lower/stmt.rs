@@ -1,5 +1,6 @@
 //! Statements, blocks and patterns.
 
+mod lambda_tuple;
 mod lends;
 mod slice_place;
 
@@ -662,6 +663,9 @@ impl<'a> Lowerer<'a> {
                 init,
                 ..
             } => {
+                if self.let_lambda_tuple(stmt, rest, out) {
+                    return;
+                }
                 // §127: `let f = (n: Int) -> Int => ...` that refers to `f`
                 // recursively lowers like a local `fn` (self-passing generic
                 // lambda in C++, no `std::function`).
@@ -681,7 +685,7 @@ impl<'a> Lowerer<'a> {
                         }),
                     ) = (&pat.kind, init)
                     {
-                        if expr_mentions_name(body, vname)
+                        if lambda_tuple::expr_mentions_name(body, vname)
                             && params
                                 .iter()
                                 .all(|p| matches!(p.kind, ast::PatternKind::Name(_)))
@@ -6166,30 +6170,6 @@ pub(super) fn settled(e: &Expr) -> bool {
         }
         _ => false,
     }
-}
-
-fn expr_mentions_name(e: &ast::Expr, target: &str) -> bool {
-    struct Find<'a> {
-        target: &'a str,
-        found: bool,
-    }
-    impl cpl_syntax::visit::Visitor for Find<'_> {
-        fn expr(&mut self, expr: &ast::Expr) {
-            if !self.found {
-                if let ast::ExprKind::Name(n) = &expr.kind {
-                    if n == self.target {
-                        self.found = true;
-                    }
-                }
-            }
-        }
-    }
-    let mut f = Find {
-        target,
-        found: false,
-    };
-    cpl_syntax::visit::walk_expr(e, &mut f);
-    f.found
 }
 
 fn leaves(stmt: &ast::Stmt) -> bool {

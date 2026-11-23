@@ -88,3 +88,13 @@ fn a_fn_named_twice_as_one_field_value_is_still_one_fn() {
     ));
     assert!(!out.contains("std::function"), "{out}");
 }
+
+#[test]
+fn tuple_of_lambdas_binds_each_without_std_function() {
+    let out = cpp("fn f(n: Int) -> Int:
+    let (pre, suf) = ((i: Int) => n + i, (i: Int) => 2 * n + i)
+    pre(1) + suf(2)
+print(f(read()))
+");
+    assert!(!out.contains("std::function"), "{out}");
+}
