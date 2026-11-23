@@ -204,7 +204,7 @@ pub struct Heap<T>:
     /// empty: an empty `items` does nothing
     /// traps: never
     /// example: `var h = Heap.of([4]); h.push_all([3, 1]); h.peek == Some(1) and h.len == 3`
-    pub fn push_all(mut self, items: List<T>):
+    pub fn push_all(mut self, items: Seq<T>):
         for x in items: self.push(x)
 
     /// Pop and yield all elements in ascending order, leaving the heap empty.
@@ -794,7 +794,7 @@ pub struct MeldHeap<T>:
     /// empty: an empty `items` does nothing
     /// traps: never
     /// example: `var h = MeldHeap.of([4]); h.push_all([3, 1]); h.drain() == [1, 3, 4]`
-    pub fn push_all(mut self, items: List<T>):
+    pub fn push_all(mut self, items: Seq<T>):
         for x in items: self.push(x)
 
     /// Remove and return the smallest element, or `None` if empty.
@@ -1173,7 +1173,7 @@ pub struct MaxHeap<T>:
     /// empty: changes nothing
     /// traps: never
     /// example: `var h = MaxHeap<Int>(); h.push_all([3, 8]); h.peek == Some(8)`
-    pub fn push_all(mut self, items: List<T>):
+    pub fn push_all(mut self, items: Seq<T>):
         self.h.push_all([desc(x) for x in items])
 
     /// Pop every element, largest first.
