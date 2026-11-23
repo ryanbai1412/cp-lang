@@ -130,7 +130,15 @@ Emacs's own entry, which calls `.cp` C++.
 
 ## JetBrains IDEs (2024.3 or later)
 
-`cd editors/jetbrains && ./gradlew buildPlugin` writes
+One step, once `cpl` is installed and the IDE has been opened once:
+
+```sh
+cpl setup jetbrains
+```
+
+It unpacks the edge release's plugin into every installed IDE's plugins folder
+(`--zip FILE` installs a file you have, `--dir DIR` one plugins folder); restart
+the IDE. Or build it: `cd editors/jetbrains && ./gradlew buildPlugin` writes
 `build/distributions/cp-lang-jetbrains-<version>.zip`; install it with
 Settings, Plugins, Install Plugin from Disk. The IntelliJ Platform's LSP API
 ships only in the commercial IDEs (IntelliJ IDEA Ultimate, CLion, PyCharm

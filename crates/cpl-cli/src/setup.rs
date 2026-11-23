@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub(crate) const USAGE: &str = "\
-usage: cpl setup <neovim | vim | vscode> [--dir DIR | --vsix FILE]
+usage: cpl setup <neovim | vim | vscode | jetbrains> [OPTIONS]
 
 Writes CP Lang's editor files where the editor loads them at startup, then
 says where. Neovim gets the filetype, highlighting and `cpl lsp`:
@@ -14,11 +14,14 @@ Vim gets the filetype and highlighting, and the server through vim-lsp or
 yegappan/lsp when one is installed. VS Code gets the extension from the
 edge release, installed with `code --install-extension` (`$CPL_CODE` names
 another editor command, such as `codium` or `cursor`). Run it again after
-`cpl self update`.
+`cpl self update`. JetBrains IDEs get the edge release's plugin unpacked
+into every installed IDE's plugins folder; restart the IDE. Its LSP features
+need a commercial IDE (IDEA Ultimate, CLion, PyCharm Professional, ...).
 
 options:
   --dir DIR     write into DIR instead (a `pack/*/start/<name>` folder)
   --vsix FILE   install this extension file instead of downloading it
+  --zip FILE    install this JetBrains plugin file instead of downloading it
 ";
 
 const LUA: (&str, &str) = (
@@ -84,12 +87,17 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let mut editor = None;
     let mut dir = None;
     let mut vsix = None;
+    let mut zip = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match *arg {
             "--dir" => match rest.next() {
                 Some(d) => dir = Some(PathBuf::from(d)),
                 None => return usage(stderr, "`--dir` needs a folder"),
+            },
+            "--zip" => match rest.next() {
+                Some(f) => zip = Some(PathBuf::from(f)),
+                None => return usage(stderr, "`--zip` needs a file"),
             },
             "--vsix" => match rest.next() {
                 Some(f) => vsix = Some(PathBuf::from(f)),
@@ -105,8 +113,13 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             "name the editor: `cpl setup neovim` or `cpl setup vim`",
         );
     };
-    if editor == "vscode" || editor == "code" {
-        return match install_vscode(vsix) {
+    let installed = match editor {
+        "vscode" | "code" => Some(install_vscode(vsix)),
+        "jetbrains" | "intellij" | "idea" => Some(install_jetbrains(zip, dir.take())),
+        _ => None,
+    };
+    if let Some(installed) = installed {
+        return match installed {
             Ok(done) => {
                 let _ = writeln!(stdout, "{done}");
                 0
@@ -120,7 +133,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let Some(files) = files(editor) else {
         return usage(
             stderr,
-            &format!("no setup for `{editor}`: `neovim`, `vim` or `vscode`"),
+            &format!("no setup for `{editor}`: `neovim`, `vim`, `vscode` or `jetbrains`"),
         );
     };
     let Some(dir) = dir.or_else(|| package_dir(editor)) else {
@@ -177,6 +190,116 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
         "installed CP Lang for VS Code from {}\nopen a .cp file to start; `cpl` must be on the PATH (or set `cp.server.path`)",
         file.display()
     ))
+}
+
+/// Each installed JetBrains IDE's plugins folder, from its config folders
+/// (`IntelliJIdea2024.3`, `CLion2025.1`, ...).
+fn jetbrains_plugin_dirs() -> Vec<PathBuf> {
+    let var = |name: &str| {
+        std::env::var_os(name)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let home = var("HOME").or_else(|| var("USERPROFILE"));
+    let (config, plugins): (Option<PathBuf>, Box<dyn Fn(&str) -> Option<PathBuf>>) =
+        if cfg!(windows) {
+            let roaming = var("APPDATA").map(|d| d.join("JetBrains"));
+            let r = roaming.clone();
+            (
+                roaming,
+                Box::new(move |ide| Some(r.clone()?.join(ide).join("plugins"))),
+            )
+        } else if cfg!(target_os = "macos") {
+            let support = home.map(|h| h.join("Library/Application Support/JetBrains"));
+            let s = support.clone();
+            (
+                support,
+                Box::new(move |ide| Some(s.clone()?.join(ide).join("plugins"))),
+            )
+        } else {
+            let config = var("XDG_CONFIG_HOME").or_else(|| Some(home.clone()?.join(".config")));
+            let data = var("XDG_DATA_HOME").or_else(|| Some(home.clone()?.join(".local/share")));
+            (
+                config.map(|c| c.join("JetBrains")),
+                Box::new(move |ide| Some(data.clone()?.join("JetBrains").join(ide))),
+            )
+        };
+    let Some(entries) = config.and_then(|c| std::fs::read_dir(c).ok()) else {
+        return Vec::new();
+    };
+    let mut ides: Vec<String> = entries
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter(|name| {
+            let digits = name.trim_start_matches(|c: char| c.is_ascii_alphabetic());
+            digits.len() < name.len()
+                && digits.contains('.')
+                && digits.chars().all(|c| c.is_ascii_digit() || c == '.')
+        })
+        .collect();
+    ides.sort();
+    ides.iter().filter_map(|ide| plugins(ide)).collect()
+}
+
+/// Unpacks the plugin in `zip`, or the edge release's, into `dir` or every
+/// installed IDE's plugins folder.
+fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<String, String> {
+    let targets = match dir {
+        Some(dir) => vec![dir],
+        None => jetbrains_plugin_dirs(),
+    };
+    if targets.is_empty() {
+        return Err("no JetBrains IDE found (open one once first), or pass --dir PLUGINS".into());
+    }
+    let downloaded =
+        std::env::temp_dir().join(format!("cp-lang-jetbrains-{}.zip", std::process::id()));
+    let file = match zip {
+        Some(file) => file,
+        None => {
+            let url = format!(
+                "{}/download/edge/cp-lang-jetbrains.zip",
+                crate::toolchain::releases_url()
+            );
+            crate::toolchain::fetch(&url, &downloaded)?;
+            downloaded.clone()
+        }
+    };
+    let result = targets.iter().try_for_each(|target| unzip(&file, target));
+    let _ = std::fs::remove_file(&downloaded);
+    result?;
+    let list: Vec<String> = targets.iter().map(|t| t.display().to_string()).collect();
+    Ok(format!(
+        "installed CP Lang for JetBrains in {}\nrestart the IDE; set the path to `cpl` under Settings, Tools, CP Lang if it is not on the PATH",
+        list.join(", ")
+    ))
+}
+
+/// `unzip`, or `tar` (bsdtar on macOS and Windows reads zips).
+fn unzip(file: &Path, into: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(into).map_err(|e| format!("can't write {}: {e}", into.display()))?;
+    let unzip = std::process::Command::new("unzip")
+        .arg("-oq")
+        .arg(file)
+        .arg("-d")
+        .arg(into)
+        .output();
+    let out = match unzip {
+        Ok(out) => out,
+        Err(_) => std::process::Command::new("tar")
+            .arg("-xf")
+            .arg(file)
+            .arg("-C")
+            .arg(into)
+            .output()
+            .map_err(|e| format!("unpacking the plugin needs unzip or tar: {e}"))?,
+    };
+    match out.status.success() {
+        true => Ok(()),
+        false => Err(format!(
+            "could not unpack {}: {}",
+            file.display(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        )),
+    }
 }
 
 fn write_all(dir: &Path, files: &[(&str, &str)]) -> std::io::Result<()> {

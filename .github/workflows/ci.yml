@@ -154,6 +154,31 @@ jobs:
           npm test
           if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
 
+  # JetBrains: the plugin builds, and its tests run in a headless IDE against
+  # the real `cpl` (file type, highlighting, the LSP server, run configurations).
+  jetbrains:
+    name: jetbrains
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Plugin build and tests
+        working-directory: editors/jetbrains
+        run: ./gradlew --no-daemon buildPlugin test
+      - name: The server handshake the plugin starts
+        run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
+
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
   # prelude gaps) gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by

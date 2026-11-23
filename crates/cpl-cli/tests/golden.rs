@@ -1326,3 +1326,35 @@ fn setup_installs_the_vscode_extension() {
         text(&out.stderr)
     );
 }
+
+/// `cpl setup jetbrains --zip FILE` unpacks the plugin into each IDE found
+/// under the config folder, here one IntelliJ IDEA.
+#[cfg(target_os = "linux")]
+#[test]
+fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
+    let dir = scratch("setup-jetbrains");
+    std::fs::create_dir_all(dir.join("config/JetBrains/IntelliJIdea2025.1")).unwrap();
+    std::fs::create_dir_all(dir.join("config/JetBrains/consentOptions")).unwrap();
+    let made = Command::new("python3")
+        .args([
+            "-c",
+            "import zipfile; zipfile.ZipFile('p.zip', 'w').writestr('cp-lang/lib/x.jar', 'x')",
+        ])
+        .current_dir(&dir)
+        .status();
+    if !made.map(|s| s.success()).unwrap_or(false) {
+        return;
+    }
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["setup", "jetbrains", "--zip", "p.zip"])
+        .current_dir(&dir)
+        .env("XDG_CONFIG_HOME", dir.join("config"))
+        .env("XDG_DATA_HOME", dir.join("data"))
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir
+        .join("data/JetBrains/IntelliJIdea2025.1/cp-lang/lib/x.jar")
+        .is_file());
+    assert!(!dir.join("data/JetBrains/consentOptions").exists());
+}
