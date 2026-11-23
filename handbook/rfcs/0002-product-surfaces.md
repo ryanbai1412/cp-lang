@@ -141,7 +141,9 @@ reverse, and how many surfaces it touches. The levels are heuristics:
 
 An acceptance case is one of:
 
-- **program:** a CP Lang file and its expected output, run in CI.
+- **program:** a CP Lang file with its expected output and, when the use
+  case states a cost, an input large enough that the wrong complexity
+  times out. Run in CI.
 - **integration:** an editor, CLI or browser fixture, such as completion
   offering `find_index` after `a.fi`.
 - **comparison:** the design side by side with its alternatives on real
