@@ -7,14 +7,19 @@ import com.intellij.platform.lsp.api.LspServerSupportProvider
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
 import java.io.File
 
-/** Diagnostics, hover, completion, navigation, rename, quick fixes and inlay hints all come from `cpl lsp`. */
+/**
+ * Diagnostics, hover, completion, navigation, rename, quick fixes and inlay hints all come from
+ * `cpl lsp`, through the commercial IDEs' built-in client when LSP4IJ isn't loaded.
+ */
 class CpLspServerSupportProvider : LspServerSupportProvider {
     override fun fileOpened(
         project: Project,
         file: VirtualFile,
         serverStarter: LspServerSupportProvider.LspServerStarter,
     ) {
-        if (file.extension == "cp") serverStarter.ensureServerStarted(CpLspServerDescriptor(project))
+        if (file.extension == "cp" && !CpLsp4ijFactory.loaded) {
+            serverStarter.ensureServerStarted(CpLspServerDescriptor(project))
+        }
     }
 }
 

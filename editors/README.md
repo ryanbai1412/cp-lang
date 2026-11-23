@@ -115,8 +115,9 @@ cd /path/to/cp-lang/editors && mkdir -p neovim/parser &&
 ```
 
 Vim: `cpl setup vim` installs the filetype and highlighting into
-`~/.vim/pack/cpl/start/cplang` (`~/vimfiles` on Windows), and registers
-`cpl lsp` with vim-lsp or yegappan/lsp when one of them is installed. `gq` formats
+`~/.vim/pack/cpl/start/cplang` (`~/vimfiles` on Windows), and vim-lsp beside
+it in `pack/cpl/start/vim-lsp` to run `cpl lsp`, unless vim-lsp or yegappan/lsp
+is already installed, which it then registers `cpl lsp` with. `gq` formats
 through `cpl fmt --stdin`. To format on write:
 
 ```vim

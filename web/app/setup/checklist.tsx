@@ -144,31 +144,26 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
       <>
         <SetupCmd editor="vim" />
         <p>
-          The same package gives Vim 8.2 or later the filetype, highlighting and
-          indent, with no LSP client needed: <code>:make</code> runs{" "}
-          <code>cpl check</code> and puts each error in the quickfix list (
-          <code>:copen</code>), and <code>gq</code> formats through{" "}
-          <code>cpl fmt</code>. On Windows, use <code>~/vimfiles</code> for{" "}
-          <code>~/.vim</code> and the PowerShell lines from the Neovim tab.
-        </p>
-        <Code>
-          {
-            "mkdir -p ~/.vim/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.vim/pack/cpl/start cp-lang-editors/neovim"
-          }
-        </Code>
-        <p className="mt-3">
-          For live diagnostics, completion, hover and go to definition, install{" "}
+          That gives Vim 8.2 or later the filetype, highlighting and indent,
+          and installs{" "}
           <a
             className="underline"
             href="https://github.com/prabirshrestha/vim-lsp"
           >
             vim-lsp
           </a>{" "}
-          and add this to your <code>.vimrc</code>:
+          beside it, through which <code>cpl lsp</code> gives live
+          diagnostics, completion, hover and go to definition. If vim-lsp or
+          yegappan/lsp is already installed, it uses that one instead. Without
+          any LSP client, <code>:make</code> runs <code>cpl check</code> and
+          puts each error in the quickfix list (<code>:copen</code>), and{" "}
+          <code>gq</code> formats through <code>cpl fmt</code>. On Windows,
+          use <code>~/vimfiles</code> for <code>~/.vim</code>.
         </p>
+        <p className="mt-3">Without <code>cpl setup</code>, by hand:</p>
         <Code>
           {
-            "au User lsp_setup call lsp#register_server({'name': 'cpl', 'cmd': ['cpl', 'lsp'], 'allowlist': ['cp']})"
+            "mkdir -p ~/.vim/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.vim/pack/cpl/start cp-lang-editors/neovim\ngit clone https://github.com/prabirshrestha/vim-lsp ~/.vim/pack/cpl/start/vim-lsp"
           }
         </Code>
       </>

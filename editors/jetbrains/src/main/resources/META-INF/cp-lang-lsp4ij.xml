@@ -3,6 +3,6 @@
         <server id="cpl" name="CP Lang" factoryClass="dev.cplang.ide.CpLsp4ijFactory">
             <description><![CDATA[CP Lang's language server, <code>cpl lsp</code>.]]></description>
         </server>
-        <languageMapping language="CP" serverId="cpl"/>
+        <languageMapping language="CP" serverId="cpl" languageId="cp"/>
     </extensions>
 </idea-plugin>

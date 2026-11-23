@@ -11,15 +11,16 @@ usage: cpl setup <neovim | vim | vscode | jetbrains> [OPTIONS]
 Writes CP Lang's editor files where the editor loads them at startup, then
 says where. Neovim gets the filetype, highlighting and `cpl lsp`:
 diagnostics, completion, `gd` to the definition and formatting on save.
-Vim gets the filetype and highlighting, and the server through vim-lsp or
-yegappan/lsp when one is installed. VS Code gets the extension from the
+Vim gets the filetype and highlighting, and `cpl lsp` through vim-lsp,
+which it installs beside CP Lang unless vim-lsp or yegappan/lsp is already
+there. VS Code gets the extension from the
 edge release, installed with `code --install-extension` (`$CPL_CODE` names
 another editor command, such as `codium` or `cursor`). Run it again after
 `cpl self update`. JetBrains IDEs get the edge release's plugin unpacked
-into every installed 2024.3 or newer IDE's plugins folder; the commercial
-IDEs run `cpl lsp` with their built-in client, and IntelliJ IDEA or PyCharm
-Community get LSP4IJ installed beside it. Restart the IDE, then
-`cpl setup jetbrains --check` reads its log to say whether CP Lang loaded.
+into every installed 2024.3 or newer IDE's plugins folder, with LSP4IJ
+beside it to run `cpl lsp` (the free IntelliJ IDEA has no built-in LSP
+client). Restart the IDE, then `cpl setup jetbrains --check` reads its log
+to say whether CP Lang and LSP4IJ loaded.
 
 options:
   --dir DIR     write into DIR instead (a `pack/*/start/<name>` folder)
@@ -145,7 +146,12 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
                     &format!("no setup for `{editor}`: `neovim`, `vim`, `vscode` or `jetbrains`"),
                 );
             };
-            write_files(editor, &files, dir)
+            let dir = dir.or_else(|| package_dir(editor));
+            let written = write_files(editor, &files, dir.clone());
+            match (editor, dir) {
+                ("vim", Some(dir)) => written.and_then(|done| Ok(done + &install_vim_lsp(&dir)?)),
+                _ => written,
+            }
         }
     };
     let ok = outcome.is_ok();
@@ -195,6 +201,83 @@ fn write_files(
         "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
         dir.shown()
     ))
+}
+
+/// The vim-lsp commit `cpl setup vim` installs: Vim has no LSP client of its
+/// own, and vim-lsp runs on the Vim 8.2 the package supports.
+const VIM_LSP: &str = "977e704cdbbbbc89a54f8f226d3468b0aa0405c9";
+
+/// Installs vim-lsp beside CP Lang's `package` (`pack/cpl/start/cplang`)
+/// unless Vim already has a client, and says which client runs `cpl lsp`.
+fn install_vim_lsp(package: &Path) -> Result<String, String> {
+    let start = package
+        .parent()
+        .ok_or("no folder beside the package for vim-lsp")?;
+    if let Some(client) = package.ancestors().nth(3).and_then(vim_lsp_client) {
+        return Ok(format!(
+            "\n`cpl lsp` runs through the {client} already installed"
+        ));
+    }
+    let dest = start.join("vim-lsp");
+    let id = std::process::id();
+    let zip = std::env::temp_dir().join(format!("vim-lsp-{id}.zip"));
+    let unpacked = start.join(format!(".vim-lsp-{id}"));
+    let url = format!("https://github.com/prabirshrestha/vim-lsp/archive/{VIM_LSP}.zip");
+    let result = crate::toolchain::fetch(&url, &zip)
+        .and_then(|()| unzip(&zip, &unpacked))
+        .and_then(|()| {
+            let _ = std::fs::remove_dir_all(&dest);
+            std::fs::rename(unpacked.join(format!("vim-lsp-{VIM_LSP}")), &dest)
+                .map_err(|e| format!("can't write {}: {e}", dest.shown()))
+        });
+    let _ = std::fs::remove_file(&zip);
+    let _ = std::fs::remove_dir_all(&unpacked);
+    match result {
+        Ok(()) => Ok(format!(
+            "\nwith vim-lsp in {} for `cpl lsp`: diagnostics, completion, hover and go to definition",
+            dest.shown()
+        )),
+        Err(e) => Err(format!(
+            "CP Lang's highlighting is installed, but vim-lsp for `cpl lsp` is not: {e}\n\
+             to install it by hand: git clone https://github.com/prabirshrestha/vim-lsp {}",
+            dest.shown()
+        )),
+    }
+}
+
+/// The LSP client a Vim whose folder is `vim` (`~/.vim`) already loads, from
+/// its packages, vim-plug's `plugged/` or pathogen's `bundle/`, other than the
+/// vim-lsp `cpl setup vim` installed (that one it refreshes).
+fn vim_lsp_client(vim: &Path) -> Option<&'static str> {
+    let dirs = |dir: PathBuf| {
+        std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .collect::<Vec<_>>()
+    };
+    let mut plugins: Vec<PathBuf> = ["plugged", "bundle"]
+        .iter()
+        .flat_map(|dir| dirs(vim.join(dir)))
+        .collect();
+    for pack in dirs(vim.join("pack")) {
+        if pack.ends_with("cpl") {
+            continue;
+        }
+        for kind in ["start", "opt"] {
+            plugins.extend(dirs(pack.join(kind)));
+        }
+    }
+    plugins.iter().find_map(|plugin| {
+        if plugin.join("autoload/lsp.vim").is_file() {
+            Some("vim-lsp")
+        } else if plugin.join("autoload/lsp/lsp.vim").is_file() {
+            Some("yegappan/lsp")
+        } else {
+            None
+        }
+    })
 }
 
 /// A warning when `nvim --version` printed a Neovim older than the 0.10 the
@@ -270,8 +353,8 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
 
 /// The plugin zip's top folder, `rootProject.name` in editors/jetbrains.
 const JETBRAINS_PLUGIN: &str = "cp-lang-jetbrains";
-/// The LSP4IJ that Community IDEs get, `lsp4ijVersion` in editors/jetbrains.
-const LSP4IJ: &str = "0.19.4";
+/// The LSP4IJ every IDE gets, `lsp4ijVersion` in editors/jetbrains.
+const LSP4IJ: &str = "0.30.1";
 
 /// An installed JetBrains IDE: its config folder's name (`IntelliJIdea2024.3`,
 /// `IdeaIC2025.1`, ...), its plugins folder and its log.
@@ -282,12 +365,6 @@ struct Ide {
 }
 
 impl Ide {
-    /// IntelliJ IDEA and PyCharm Community have no built-in LSP client; the
-    /// plugin reaches `cpl lsp` through LSP4IJ there.
-    fn community(&self) -> bool {
-        self.name.starts_with("IdeaIC") || self.name.starts_with("PyCharmCE")
-    }
-
     /// The plugin's `sinceBuild` is 243, the 2024.3 releases.
     fn too_old(&self) -> bool {
         let digits = self
@@ -372,7 +449,7 @@ fn jetbrains_ides() -> Vec<Ide> {
 }
 
 /// Unpacks the plugin in `zip`, or the edge release's, into `dir` or every
-/// installed IDE's plugins folder, with LSP4IJ for a Community IDE, then
+/// installed IDE's plugins folder, with LSP4IJ, then
 /// checks that each IDE has what it needs to load it.
 fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<String, String> {
     let ides = match dir {
@@ -410,23 +487,27 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
     let result = ides.iter().try_for_each(|ide| unzip(&file, &ide.plugins));
     let _ = std::fs::remove_file(&downloaded);
     result?;
-    let community: Vec<&Ide> = ides
+    // The plugin runs `cpl lsp` through LSP4IJ wherever it is loaded: the free
+    // IntelliJ IDEA has the built-in client's classes but not its module.
+    let stale: Vec<&Ide> = ides
         .iter()
-        .filter(|ide| ide.community() && !ide.plugins.join("lsp4ij/lib").is_dir())
+        .filter(|ide| lsp4ij_version(&ide.plugins).is_none_or(|v| v < version(LSP4IJ)))
         .collect();
-    if !community.is_empty() {
+    if !stale.is_empty() {
         let lsp4ij = std::env::temp_dir().join(format!("lsp4ij-{}.zip", std::process::id()));
         let url = format!(
             "https://plugins.jetbrains.com/plugin/download?pluginId=com.redhat.devtools.lsp4ij&version={LSP4IJ}"
         );
         let result = crate::toolchain::fetch(&url, &lsp4ij).and_then(|()| {
-            community
-                .iter()
-                .try_for_each(|ide| unzip(&lsp4ij, &ide.plugins))
+            stale.iter().try_for_each(|ide| {
+                // An older LSP4IJ's jars would load beside the new ones.
+                let _ = std::fs::remove_dir_all(ide.plugins.join("lsp4ij"));
+                unzip(&lsp4ij, &ide.plugins)
+            })
         });
         let _ = std::fs::remove_file(&lsp4ij);
         result.map_err(|e| {
-            format!("Community IDEs need LSP4IJ for `cpl lsp`, and installing it failed: {e}")
+            format!("CP Lang needs LSP4IJ for `cpl lsp`, and installing it failed: {e}")
         })?;
     }
     let mut report = String::new();
@@ -444,13 +525,8 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
         } else {
             &ide.name
         };
-        let lsp = if ide.community() {
-            ", with LSP4IJ for `cpl lsp`"
-        } else {
-            ""
-        };
         report += &format!(
-            "installed CP Lang for {name} in {}{lsp}\n",
+            "installed CP Lang for {name} in {}, with LSP4IJ for `cpl lsp`\n",
             ide.plugins.shown()
         );
     }
@@ -464,7 +540,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
     Ok(report)
 }
 
-/// What `ide` lacks to load the plugin: its jar, and LSP4IJ in a Community IDE.
+/// What `ide` lacks to load the plugin and run `cpl lsp`: its jar and LSP4IJ's.
 fn missing_jetbrains_files(ide: &Ide) -> Vec<String> {
     let has_jar = |dir: PathBuf| {
         std::fs::read_dir(dir).is_ok_and(|entries| {
@@ -477,7 +553,7 @@ fn missing_jetbrains_files(ide: &Ide) -> Vec<String> {
     if !has_jar(ide.plugins.join(JETBRAINS_PLUGIN).join("lib")) {
         missing.push(format!("{JETBRAINS_PLUGIN}/lib/*.jar"));
     }
-    if ide.community() && !has_jar(ide.plugins.join("lsp4ij/lib")) {
+    if !has_jar(ide.plugins.join("lsp4ij/lib")) {
         missing.push("lsp4ij/lib/*.jar".into());
     }
     missing
@@ -533,7 +609,13 @@ fn plugin_load(log: &str) -> Result<String, String> {
     {
         let names = line.split("Loaded custom plugins:").nth(1).unwrap_or("");
         let ours = names.split(", ").find(|p| p.contains("CP Lang"));
-        return Ok(ours.unwrap_or("CP Lang").trim().to_string());
+        let ours = ours.unwrap_or("CP Lang").trim().to_string();
+        if !names.contains("LSP4IJ") {
+            return Err(format!(
+                "{ours} loaded without LSP4IJ, so .cp files get highlighting but no `cpl lsp`; run `cpl setup jetbrains` again"
+            ));
+        }
+        return Ok(ours);
     }
     match last
         .lines()
@@ -547,6 +629,24 @@ fn plugin_load(log: &str) -> Result<String, String> {
             Err("CP Lang did not load at the last start; restart the IDE and check again".into())
         }
     }
+}
+
+/// The LSP4IJ in `plugins`, from its jar's name (`lsp4ij/lib/lsp4ij-0.30.1.jar`).
+fn lsp4ij_version(plugins: &Path) -> Option<Vec<u32>> {
+    std::fs::read_dir(plugins.join("lsp4ij/lib"))
+        .ok()?
+        .filter_map(Result::ok)
+        .find_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let v = name.strip_prefix("lsp4ij-")?.strip_suffix(".jar")?;
+            v.chars()
+                .all(|c| c.is_ascii_digit() || c == '.')
+                .then(|| version(v))
+        })
+}
+
+fn version(text: &str) -> Vec<u32> {
+    text.split('.').map(|p| p.parse().unwrap_or(0)).collect()
 }
 
 /// `unzip`, or `tar` (bsdtar on macOS and Windows reads zips).
@@ -597,6 +697,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn vim_keeps_the_lsp_client_it_has_and_otherwise_gets_vim_lsp() {
+        let vim = std::env::temp_dir().join(format!("cpl-vim-{}", std::process::id()));
+        let plugin = |dir: &str, file: &str| {
+            let path = vim.join(dir).join(file);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, "").unwrap();
+        };
+        plugin("pack/cpl/start/vim-lsp", "autoload/lsp.vim");
+        plugin("pack/colors/start/gruvbox", "autoload/gruvbox.vim");
+        assert_eq!(vim_lsp_client(&vim), None, "its own vim-lsp is refreshed");
+        plugin("pack/plugins/opt/lsp", "autoload/lsp/lsp.vim");
+        assert_eq!(vim_lsp_client(&vim), Some("yegappan/lsp"));
+        std::fs::remove_dir_all(vim.join("pack/plugins")).unwrap();
+        plugin("plugged/vim-lsp", "autoload/lsp.vim");
+        assert_eq!(vim_lsp_client(&vim), Some("vim-lsp"));
+        std::fs::remove_dir_all(&vim).unwrap();
+    }
+
+    #[test]
     fn a_neovim_older_than_0_10_gets_a_warning_with_where_to_upgrade() {
         let apt = "NVIM v0.6.1\nBuild type: Release\nLuaJIT 2.1.0-beta3\n";
         let warning = old_neovim(apt).expect("0.6 is too old");
@@ -632,7 +751,7 @@ mod tests {
     #[test]
     fn the_ide_log_says_whether_cp_lang_loaded_at_the_last_start() {
         let started = "INFO - #c.i.i.i.AppStarter - ------ IDE STARTED ------\n";
-        let loaded = "INFO - #c.i.i.p.PluginManager - Loaded custom plugins: LSP4IJ (0.19.4), CP Lang (0.3.0)\n";
+        let loaded = "INFO - #c.i.i.p.PluginManager - Loaded custom plugins: LSP4IJ (0.30.1), CP Lang (0.3.0)\n";
         let refused = "WARN - #c.i.i.p.PluginManager - Plugin 'CP Lang' requires plugin 'com.intellij.modules.ultimate' to be installed\n";
         assert_eq!(
             plugin_load(&format!("{started}{loaded}")),
@@ -641,17 +760,39 @@ mod tests {
         let failed = plugin_load(&format!("{started}{loaded}{started}{refused}")).unwrap_err();
         assert!(failed.contains("com.intellij.modules.ultimate"), "{failed}");
         assert!(plugin_load(started).is_err());
+        // The free IntelliJ IDEA has no built-in client: without LSP4IJ it only highlights.
+        let alone = "INFO - #c.i.i.p.PluginManager - Loaded custom plugins: CP Lang (0.3.0)\n";
+        let failed = plugin_load(&format!("{started}{alone}")).unwrap_err();
+        assert!(failed.contains("without LSP4IJ"), "{failed}");
+    }
+
+    /// An IDE whose LSP4IJ is older than the pinned one gets the pinned one.
+    #[test]
+    fn the_installed_lsp4ij_version_comes_from_its_jar() {
+        let plugins = std::env::temp_dir().join(format!("cpl-lsp4ij-{}", std::process::id()));
+        let lib = plugins.join("lsp4ij/lib");
+        std::fs::create_dir_all(&lib).unwrap();
+        assert_eq!(lsp4ij_version(&plugins), None);
+        for jar in [
+            "lsp4ij-0.19.4-searchableOptions.jar",
+            "gson-2.10.jar",
+            "lsp4ij-0.19.4.jar",
+        ] {
+            std::fs::write(lib.join(jar), "").unwrap();
+        }
+        assert_eq!(lsp4ij_version(&plugins), Some(vec![0, 19, 4]));
+        assert!(lsp4ij_version(&plugins).unwrap() < version(LSP4IJ));
+        assert!(version("0.30.1") > version("0.4.10") && version("1.0") > version("0.30.1"));
+        std::fs::remove_dir_all(&plugins).unwrap();
     }
 
     #[test]
-    fn community_and_old_ides_are_told_apart() {
+    fn old_ides_are_told_apart() {
         let ide = |name: &str| Ide {
             name: name.into(),
             plugins: PathBuf::new(),
             log: None,
         };
-        assert!(ide("IdeaIC2024.3").community() && ide("PyCharmCE2025.1").community());
-        assert!(!ide("IntelliJIdea2024.3").community() && !ide("CLion2025.1").community());
         assert!(ide("IntelliJIdea2024.2").too_old() && ide("IdeaIC2023.3").too_old());
         assert!(
             !ide("IdeaIC2024.3").too_old() && !ide("CLion2025.1").too_old() && !ide("").too_old()
