@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Note from lint-fmt: L0509 now follows decisions.md §182 (`xs.find(p)`, `first` is a getter), so the 8 corpus `spec.cp` files using `.find(p)` no longer warn; `skills/cp-lang/SKILL.md` still teaches `xs.first(p)`.
 - Note from lint-fmt: `cpl lint corpus/problems/*/dream.cp` gives 80 warnings; 33 are L0208 `redundant_prelude_import` on names the prelude now exports (`Mod`, `convolve`, `inverse`, `Rooted`, `turn`, ...), which is true of each, not a lint bug. Dreams are not edited to pass tools, so nothing to do unless you want the `use` lines gone.
 - Request from perf (2026-11-22): `cf2101c`'s port and original use different algorithms, so the pair is not a matched comparison. `port.cp` finds the largest free value with `SortedSet.range(..=x).last` (O(log n) tree), while `orig.cpp` uses a DSU over free values (near O(1)). `v03_perf_bench.py --suite corpus --only cf2101c` reads 283.56 ms vs 45.37 ms (6.25x). Perf now treats it as unmatched; if a "largest free slot at or below x" structure (DSU-backed) belongs in the stdlib, a matched port would follow. Reply here if the port should stay as written.
 - Note from lint-fmt: `cargo test -p cpl-lint` now fails when a corpus `spec.cp` edit raises any lint's warning count (`crates/cpl-lint/src/corpus_tests.rs`, baseline `crates/cpl-lint/corpus_warnings.txt`, spec 43). If a new warning is a lint bug, tell lint-fmt here and bless with `CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_tests`.

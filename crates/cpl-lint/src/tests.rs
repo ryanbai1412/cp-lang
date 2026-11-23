@@ -841,11 +841,13 @@ fn free_fold_becomes_a_method() {
         fixed(src),
         "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => -y)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
     );
-    let find = "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3), xs.find(4))\n";
+    let first = "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.first)\n";
     assert_eq!(
-        fixed(find),
-        "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.find(4))\n"
+        fixed(first),
+        "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3), xs.first)\n"
     );
+    let find = "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3))\n";
+    assert_eq!(taste_codes(find), Vec::<&str>::new());
     // Generators, two values, a domain, a list of values and a fn of the file stay free.
     let math = "domain V = 0..3\nfn sum(a: Int) -> Int = a\nlet xs = [3, 1]\nprint(count(x > 1 for x in xs), min(xs[0], xs[1]), max([xs[0], 2]), sorted(V, by: v => -v.ord), sum(2))\n";
     assert_eq!(taste_codes(math), Vec::<&str>::new());
@@ -894,7 +896,7 @@ let c = V.group_by(v => Int(v) % 2)
 domain V = 1..=3
 let w: [V]Int = [3, 1, 2]
 let a = V.sort(by: w)
-let b = V.first(v => w[v] > 1)
+let b = V.find(v => w[v] > 1)
 let c = V.group(by: v => Int(v) % 2)
 "
     );
@@ -1168,11 +1170,11 @@ fn getter_parens_lint_warns_and_drops_parens() {
     let src = "let xs = [1, 2, 3]\nprint(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), xs.first(x => x > 1))\n";
     assert_eq!(
         codes(src),
-        vec!["L0206", "L0206", "L0206", "L0206", "L0206", "L0206"]
+        vec!["L0206", "L0206", "L0206", "L0206", "L0206", "L0206", "L0509"]
     );
     assert_eq!(
         fixed(src),
-        "let xs = [1, 2, 3]\nprint(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1))\n"
+        "let xs = [1, 2, 3]\nprint(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.find(x => x > 1))\n"
     );
 }
 

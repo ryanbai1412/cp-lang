@@ -1000,22 +1000,22 @@ impl<'a> Taste<'a> {
         let ExprKind::Call { callee, args } = &expr.kind else {
             return;
         };
-        // `xs.find(x => ..)` is the element a test holds for: `xs.first(..)`,
-        // where `xs.find(x)` is the index of a value.
+        // `xs.first` is the first element; the element a test holds for is
+        // `xs.find(x => ..)` (decisions.md §182).
         if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if method.text == "find"
+            if method.text == "first"
                 && test.name.is_none()
                 && matches!(test.value.kind, ExprKind::Lambda { .. })
             {
                 let mut diag = Diagnostic::warning(
                     FREE_FOLD.code,
                     method.span,
-                    "the element a test holds for is `first`; `find` is the index of a value",
+                    "the element a test holds for is `find`; `first` is the first element",
                 )
-                .with_help("write `.first(..)`");
+                .with_help("write `.find(..)`");
                 diag.fixes.push(Fix {
-                    title: "use `.first`".to_string(),
-                    edits: vec![(method.span, "first".to_string())],
+                    title: "use `.find`".to_string(),
+                    edits: vec![(method.span, "find".to_string())],
                 });
                 self.push(&FREE_FOLD, diag);
             }
@@ -1274,12 +1274,14 @@ impl<'a> Taste<'a> {
                     let mut diag = Diagnostic::warning(
                         DOMAIN_SPELLING.code,
                         arg_name.span,
-                        "pass the predicate to `.first(p)` positionally, without `where:`",
+                        "a predicate search is `.find(p)`, without `where:`",
                     )
-                    .with_help("use `.first(p)` to match `xs.first(p)`");
+                    .with_help(
+                        "`first` is the first element; `find(p)` is the first one `p` holds for",
+                    );
                     diag.fixes.push(Fix {
-                        title: "drop `where:`".into(),
-                        edits: vec![(label_span, String::new())],
+                        title: "use `.find(p)`".into(),
+                        edits: vec![(method.span, "find".into()), (label_span, String::new())],
                     });
                     self.push(&DOMAIN_SPELLING, diag);
                 }

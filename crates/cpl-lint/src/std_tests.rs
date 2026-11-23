@@ -37,8 +37,8 @@ fn a_library_module_may_build_a_sieve_or_prefix_sums() {
 
 #[test]
 fn a_fn_is_not_told_to_call_itself() {
-    let src = "pub fn first(xs: List<Int>) -> ?Int = xs.find(_ => true)\n";
+    let src = "pub fn find(xs: List<Int>) -> ?Int = xs.first(_ => true)\n";
     assert!(!codes(src).contains(&FREE_FOLD.code.0));
-    let call = "let xs = [1, 2]\nprint(xs.find(_ => true))\n";
+    let call = "let xs = [1, 2]\nprint(xs.first(_ => true))\n";
     assert!(codes(call).contains(&FREE_FOLD.code.0));
 }
