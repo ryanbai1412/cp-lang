@@ -20,5 +20,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "spec.cp follows the accepted C++ (O(m log m) checks); type-checked only, not run"
+ "notes": "spec.cp follows the accepted C++ (O(m log m) checks); several valid answers, checker.py judges them"
 }

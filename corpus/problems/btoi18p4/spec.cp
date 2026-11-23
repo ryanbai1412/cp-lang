@@ -24,24 +24,27 @@ fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
     reach >= part.hi
 
 let whole = (lo: 1, hi: n)
-var holder: [Wire]?Wire = []
+var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
 let copies = [(start: lo[w] + s, end: hi[w] + s, w:) for w in Wire for s in [0, n]]
 for c in copies.sorted(by: c => (c.start, desc(c.end))):
     match reach:
         Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
         _ => reach = Some((end: c.end, by: c.w))
-fn top(w: Wire) -> Wire = iterate(from: Some(w), step: v => holder[v]).last()!
-let tops = Wire.filter(w => holder[w].is_none()).collect().sorted(by: w => lo[w])
+let top = [Wire] w =>
+    var u = w
+    while let h = holder[u]: u = h
+    u
+let tops = Wire.filter(w => holder[w] == None).collect().sorted(by: w => lo[w])
 domain T = [tops.len]
-var rank: [Wire]?T = []
+var rank: [Wire]?T = None
 for t in T:
     rank[tops[Int(t)]] = Some(t)
-let inside = Wire.filter(w => holder[w].is_some()).collect().group(by: w => top(w))
+let inside = Wire.filter(w => holder[w] != None).collect().group(by: w => top[w])
 fn kids(t: T) -> List<Wire> = inside.get(tops[Int(t)]) ?? List()
 
 fn spread(side: T -> Bool) -> ?[Wire]Bool:
-    let dir = [Wire] w => if holder[w].is_none(): side(rank[w]!) else: not side(rank[top(w)]!)
+    let dir = [Wire] w => if holder[w] == None: side(rank[w]!) else: not side(rank[top[w]]!)
     let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).collect(), whole))
     if both: Some(dir) else: None
 
@@ -49,30 +52,30 @@ fn spread(side: T -> Bool) -> ?[Wire]Bool:
 // tops still cover it from the other side.
 fn alone(t: T) -> Bool =
     covers(
-        kids(t) + [tops[Int(T.ring.prev(t))], tops[Int(T.ring.next(t))]],
+        kids(t) + [tops[Int(T.wrap(t.ord - 1))], tops[Int(T.wrap(t.ord + 1))]],
         (lo: lo[tops[Int(t)]], hi: hi[tops[Int(t)]]),
     )
 
 let answer: ?[Wire]Bool =
-    if T.len % 2 == 0 or T.len == 1:
+    if T.count % 2 == 0 or T.count == 1:
         spread(t => Int(t) % 2 == 1)
-    elif T.len == 3:
-        T.first_some(b => spread(t => T.ring.dist(b, t) % 2 == 0))
+    elif T.count == 3:
+        T.first_some(b => spread(t => T.wrap(t.ord - b.ord).ord % 2 == 0))
     elif not covers(Wire.collect(), whole):
         None
     else:
         let free = [T] t => alone(t)
         let good = T.filter(t => free[t]).collect().len
         T.first_some(b =>
-            let c = T.ring.next(b)
+            let c = T.wrap(b.ord + 1)
             let (wb, wc) = (tops[Int(b)], tops[Int(c)])
             let pair = (lo: lo[wb], hi: hi[wc] + (if lo[wc] < lo[wb]: n else: 0))
-            let others = [tops[Int(T.ring.prev(b))], tops[Int(T.ring.next(c))]]
-            if good - Int(free[b]) - Int(free[c]) == T.len - 2 and covers(
+            let others = [tops[Int(T.wrap(b.ord - 1))], tops[Int(T.wrap(c.ord + 1))]]
+            if good - Int(free[b]) - Int(free[c]) == T.count - 2 and covers(
                 kids(b) + kids(c) + others,
                 pair,
             ):
-                spread(t => T.ring.dist(c, t) % 2 == 0)
+                spread(t => T.wrap(t.ord - c.ord).ord % 2 == 0)
             else: None
         )
 
