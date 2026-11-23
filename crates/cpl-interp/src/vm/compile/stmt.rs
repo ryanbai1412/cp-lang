@@ -166,6 +166,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) if self.traced_quiet(cond) => {
                 return false
             }
+            // Only the condition is left to the tree-walker; the branches stay here.
+            Stmt::If(cond, then_b, else_b) if cond_writes(cond).is_some() => {
+                let reg = self.emit_fallback_expr_i(cond);
+                for (place, span) in cond_writes(cond).unwrap() {
+                    self.emit_trace(TracePoint::Mutated(place, span), span);
+                }
+                let j_else = self.emit(Op::JmpIfZero { reg, target: 0 }, cond.span);
+                self.compile_stmts(&then_b.stmts);
+                let j_end = self.emit(Op::Jmp { target: 0 }, cond.span);
+                let else_pc = self.ops.len() as u32;
+                self.patch(j_else, else_pc);
+                self.compile_stmts(&else_b.stmts);
+                let end = self.ops.len() as u32;
+                self.patch(j_end, end);
+            }
             Stmt::Assert { cond, .. } if quiet(cond) => return false,
             Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
                 return false
@@ -1575,4 +1590,24 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         true
     }
+}
+
+/// The places a condition the tree-walker evaluates changes in place, in
+/// order, when those are its only writes: calls without `mut` arguments
+/// report their own steps. `None` for any other write.
+fn cond_writes(cond: &Expr) -> Option<Vec<(&Place, Span)>> {
+    let mut writes = Some(vec![]);
+    cpl_ir::walk::deep_expr(cond, &mut |e| match &e.kind {
+        ExprKind::Mutate(_, place, _) => {
+            if let Some(w) = &mut writes {
+                w.push((&**place, e.span));
+            }
+        }
+        ExprKind::Call(_, args) if args.iter().all(|a| !matches!(a, Arg::Mut(_))) => {}
+        ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Do(_) | ExprKind::Closure(_) => {
+            writes = None
+        }
+        _ => {}
+    });
+    writes
 }

@@ -343,13 +343,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// The fallback op from `start` on whose statement makes `call`.
     fn inner_fallback(&self, start: usize, call: &Expr) -> Option<u32> {
         let pc = (start..self.ops.len()).find(|&pc| {
-            let Op::FallbackStmt { idx, .. } = self.ops[pc] else {
-                return false;
-            };
             let mut found = false;
-            cpl_ir::walk::stmt_exprs(self.fallback_stmts[idx as usize], &mut |e| {
+            let mut look = |e: &'p Expr| {
                 cpl_ir::walk::deep_expr(e, &mut |inner| found |= std::ptr::eq(inner, call))
-            });
+            };
+            match self.ops[pc] {
+                Op::FallbackStmt { idx, .. } => {
+                    cpl_ir::walk::stmt_exprs(self.fallback_stmts[idx as usize], &mut look)
+                }
+                Op::FallbackExprI { idx, .. } | Op::FallbackExprV { idx, .. } => {
+                    look(self.fallback_exprs[idx as usize])
+                }
+                _ => {}
+            }
             found
         })?;
         Some(pc as u32)
