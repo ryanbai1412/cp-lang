@@ -1,10 +1,13 @@
-// Universal Cup 5 Stage 5 (Chengdu) F: for every k in 1..=n, the sum over distinct substrings u
-// of choose(d(u), k), d(u) = number of distinct substrings starting with u; modulo 998244353.
-// Substrings are the points of the suffix tree. Along an edge d runs from top_size + 1 to
-// bottom_size, so its choose(d, k) telescope to choose(bottom_size, k) - choose(top_size, k).
-// Sizes reach n^2, so keep only their power sums p[j] = sum bottom^j - top^j for j <= n (a size
-// of 0 adds nothing for k >= 1), move them onto weights w at the points 0..=n with the same
-// power sums, and read sum_k answer[k] y^k = sum_m w[m] (1 + y)^m off a Taylor shift.
+// Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem F
+// Problem: multitest. A string s of n <= 2e5 lowercase letters. For a distinct substring u let
+//   d(u) be the number of distinct substrings of s that start with u. For every k in 1..=n print
+//   the sum over distinct substrings u of choose(d(u), k), modulo 998244353.
+// Solution: substrings are the points of the suffix tree, and along an edge d runs from
+//   top_size + 1 to bottom_size, so its choose(d, k) telescope to choose(bottom_size, k) -
+//   choose(top_size, k). Sizes reach n^2, so keep only the power sums p[j] = sum bottom^j - top^j
+//   for j <= n (a size of 0 adds nothing for k >= 1), move them onto weights w at the points
+//   0..=n with the same power sums (transposed interpolation), and read
+//   sum_k answer[k] y^k = sum_m w[m] (1 + y)^m off a Taylor shift; O(n log^2 n).
 use std.poly.{eval_all, power_sums, prod_linear, taylor_shift}
 use std.strings.{suffix_tree_edges}
 
@@ -20,8 +23,9 @@ fn binomial_sums(p: List<Z>) -> List<Z>:
     let q = prod_linear(points)
     let num = convolve(q, p.rev.to_list())[deg + 1..].to_list()
     let at = eval_all(num, points)
-    let sign = (m: Int) => if (deg - m) % 2 == 0: Z(1) else: -Z(1)
-    let w = [at[m] * sign(m) * comb.inv_fact(m) * comb.inv_fact(deg - m) for m in 0..=deg]
+    let w = [
+        at[m] * (-Z(1)) ** (deg - m) * comb.inv_fact(m) * comb.inv_fact(deg - m) for m in 0..=deg
+    ]
     taylor_shift(w, Z(1))
 
 @!multitest
@@ -31,4 +35,4 @@ let edges = suffix_tree_edges(s)
 let bottom = power_sums([Z(e.bottom_size) for e in edges], n)
 let top = power_sums([Z(e.top_size) for e in edges if e.top_size > 0], n)
 let answer = binomial_sums([bottom[j] - top[j] for j in 0..=n])
-print(answer[1..=n].map(a => a.v))
+print(answer[1..=n])

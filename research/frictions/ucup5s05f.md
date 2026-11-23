@@ -40,8 +40,17 @@
 - **Repro:** `use std.poly.{compose, log}` / `type Z = Mod<998_244_353>` / `let n = 200000` / `print(compose([Z(i) for i in 0..=n], log([Z(1), Z(1)], n + 1), n + 1)[1].v)`: 1.87 s native.
 - **Severity:** medium.
 
+## Slow: the port runs 1.44x orig.cpp on max random `ab` input
+- **Where:** `corpus/problems/ucup5s05f/port.cp`, the two `power_sums` lines and `binomial_sums`.
+- **What felt wrong:** at n = 2e5 over a random `ab` string (g++ 14 -O2, `cpl build --judge codeforces`, median of 9): port 1.43 s, orig.cpp 0.99 s (1.44x, over the 1.1x bar; ae9d57012 measured 1.38x). `cpl profile --native`: `power_sums` of the bottom sizes 581 ms and of the top sizes 273 ms; in `binomial_sums`, `prod_linear(points)` 203 ms and `eval_all(num, points)` 519 ms build two subproduct trees over the same points `0..=n`. orig.cpp does the same work (two product trees with an inverse, one transposed pass) in 0.99 s total.
+- **Goal it hurts:** perf.
+- **Ideal code:** the port as written, within 1.1x.
+- **General fix:** a faster `std.poly` product tree / `prod_linear` and `inv` (orig.cpp's `prod` over 4e5 linear factors plus `ps_inv` is a fraction of the port's 505 ms), and `SubproductTree.interpolate_transposed` (or a public root of `SubproductTree`) so the points' tree is built once.
+- **Repro:** `use std.poly.{power_sums}` / `type Z = Mod<998_244_353>` / `let n = 200000` / `print(power_sums([Z(i * i) for i in 0..2 * n], n)[1])`: 505 ms native (`cpl profile --native`).
+- **Severity:** medium.
+
 ## Submission size over the 32 KB target
-- **Where:** `cpl build --judge codeforces corpus/problems/ucup5s05f/port.cp`: 40765 bytes (the previous port 36674).
+- **Where:** `cpl build --judge codeforces corpus/problems/ucup5s05f/port.cp`: 40320 bytes (the previous port 40765).
 - **What felt wrong:** the solution is 20 lines; the bytes are std.poly (`eval_all`, the subproduct tree, `power_sums`, `taylor_shift`, `convolve`) and `suffix_tree_edges`.
 - **Goal it hurts:** dependable submission.
 - **General fix:** smaller emitted std.poly code (shared NTT/tree helpers); `--size` shows where the bytes go.
