@@ -251,7 +251,12 @@ impl HandMath<'_> {
     }
 
     fn binom(&mut self, expr: &Expr) {
-        let ExprKind::Binary { .. } = &expr.kind else {
+        // A binomial multiplies and divides; `ps[x] - (ps[n] - ps[n - x])` is a prefix sum.
+        let ExprKind::Binary {
+            op: BinOp::Mul | BinOp::Div | BinOp::Rem,
+            ..
+        } = &expr.kind
+        else {
             return;
         };
         if self

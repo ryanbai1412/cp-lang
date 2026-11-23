@@ -1882,3 +1882,10 @@ fn a_slice_copied_sorted_and_written_back_is_one_finding() {
     let src = "let (n, l, r): (1..=100, 0..=99, 1..=100) = read()\nvar a: [0..n]Int = read()\nvar tmp: List<Int> = []\nfor i in l..r:\n    tmp.push(a[i])\ntmp.sort()\nfor i in l..r:\n    a[i] = tmp[i - l]\nprint(a)\n";
     assert_eq!(codes(src), ["L0522"]);
 }
+
+#[test]
+fn a_prefix_sum_difference_is_not_a_binomial() {
+    // corpus/newcomer/n51_run1_cf2285d.cp: `ps` is a running total.
+    let src = "let n: 1..=10 = read()\nlet ps: [0..=n]Int = read()\nfn diff(x: 0..=n) -> Int = ps[x] - (ps[n] - ps[n - x])\nprint(diff(1))\n";
+    assert!(!codes(src).contains(&"L0557"), "{:?}", codes(src));
+}
