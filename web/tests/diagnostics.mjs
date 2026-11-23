@@ -3,13 +3,14 @@
 // registry's triggers (`cpl explain --json`), the editor must show the same
 // code within 1.5 s of the last keystroke.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+;
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { base, open } from "./browser.mjs";
+import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const cpl = process.env.CPL ?? ["target/release/cpl", "target/debug/cpl"].map((p) => join(repo, p)).find(existsSync) ?? "cpl";
+const cpl = cplBin();
 const codes = JSON.parse(execFileSync(cpl, ["explain", "--json"], { encoding: "utf8" }))
   .filter((c) => c.mode === "check" && c.trigger && c.code.startsWith("E"));
 const sample = codes.filter((_, i) => i % Math.ceil(codes.length / 12) === 0);

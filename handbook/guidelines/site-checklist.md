@@ -124,3 +124,12 @@ A route a visitor lands on has no axe-core violation of the WCAG 2 A and AA rule
 - **Why:** a contestant on a screen reader, on a dim screen at 3am, or driving the site from the keyboard during a contest should be able to read, search and run code.
 - **Example:** each code editor carries an `aria-label` naming what it holds, so a screen reader announces "CP Lang source" instead of "edit text".
 - **Enforced by:** `web/tests/a11y.mjs`, with today's violations in `web/tests/a11y-known.txt`, a list that only shrinks.
+
+## site/R15: The browser's tools answer as the CLI's do
+
+A tool the site runs in the page (Stress, and the checks and runs the gate already compares) gives the result its `cpl` command gives on the same program and options.
+
+- **Why:** a contestant who stress tests in the playground and then locally must not get two different counterexamples, or a counterexample in one and none in the other.
+- **Example:** for every repo program with an `@alt(program)` brute, the Stress tab and `cpl stress --explain` with seed 1, 200 cases and size 8 report the same verdict, shrunk input and first diverging variable.
+- **Enforced by:** `web/scripts/stress-parity.mjs` (site prebuild); `web/scripts/gate.mjs` for check, run and C++.
+

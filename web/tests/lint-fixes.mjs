@@ -4,14 +4,15 @@
 // sample of the rest, the editor must show the lint's code, and clicking its
 // first fix must give the trigger with that fix's edits applied.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { base, open } from "./browser.mjs";
+import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const cpl = process.env.CPL ?? ["target/release/cpl", "target/debug/cpl"].map((p) => join(repo, p)).find(existsSync) ?? "cpl";
+const cpl = cplBin();
 const dir = mkdtempSync(join(tmpdir(), "lint-fixes-"));
 const native = (src) => {
   const f = join(dir, "t.cp");

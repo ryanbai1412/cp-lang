@@ -8,15 +8,13 @@ import { commonSetup, layoutSignature, mathSpans, parseExample, plainSpans, spli
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const out = join(web, 'content/docs/ref');
 const blob = 'https://github.com/ryanbai1412/cp-lang/blob/main';
-const cpl =
-  process.env.CPL ??
-  ['target/release/cpl', 'target/debug/cpl'].map((p) => join(repo, p)).find(existsSync) ??
-  'cpl';
+const cpl = cplBin();
 
 rmSync(out, { recursive: true, force: true });
 const write = (rel, text) => {

@@ -39,14 +39,14 @@ Evidence: differential in `web/scripts/gate.mjs` (identical C++ to the CLI)
 ### play/U7: find why a run trapped or went wrong
 Need: see the state that first went wrong.
 Design: trap message with local values; Trace tab with the step-by-step state.
-Milestone: M1-differentiating. Status: partial (no browser test of Trace)
-Evidence: gap
+Milestone: M1-differentiating. Status: partial (one trap and one trace are tested)
+Evidence: integration `web/tests/smoke.mjs` (a trap's message, the Trace viewer opening and replaying an edited call)
 
 ### play/U8: find an input where the solution is wrong
 Need: a counterexample before rewriting.
 Design: Stress tab: solution against a brute force on generated small inputs, the first disagreement shrunk.
-Milestone: M1-differentiating. Status: partial (engine tested, browser tab not)
-Evidence: gap
+Milestone: M1-differentiating. Status: partial (a TLE's first diverging loop isn't named in the browser)
+Evidence: integration `web/scripts/stress-parity.mjs` (the browser and `cpl stress` agree on every `@alt` program); `web/tests/smoke.mjs` (the Stress tab shrinks a planted bug)
 
 ### play/U9: keep the work across a reload
 Need: not lose a half-written solution.
@@ -58,7 +58,7 @@ Evidence: integration `web/tests/drafts.mjs`
 Need: show a teammate or a forum the exact code and input.
 Design: Share makes a short link that opens the same code and input.
 Milestone: M1-differentiating. Status: partial (fails when the share service is down)
-Evidence: gap
+Evidence: integration `web/tests/smoke.mjs` (a shared link reopens the same code and input)
 
 ### play/U11: use it on a phone or from the keyboard alone
 Need: read and run code on a phone, or without a mouse or sight.

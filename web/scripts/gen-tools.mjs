@@ -2,9 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cplBin } from './cpl-bin.mjs';
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
+const cpl = cplBin();
 const run = (...args) => execFileSync(cpl, args, { encoding: 'utf8' });
 
 // The CLI's own contracts (spec/tools/cli.md): `--help --json` and `judges --json`.

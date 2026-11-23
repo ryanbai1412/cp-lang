@@ -5,10 +5,11 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
-const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
+const cpl = cplBin();
 if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
 
 const dir = mkdtempSync(join(tmpdir(), 'cp-debug-'));

@@ -4,14 +4,15 @@
 // tests miss that bug, unless practice-mutants-equivalent.txt lists it with the
 // reason no test can. Writes .gate/mutants.json.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
-const cpl = process.env.CPL ?? ['target/release/cpl', 'target/debug/cpl'].map((p) => join(repo, p)).find(existsSync) ?? 'cpl';
+const cpl = cplBin();
 const only = process.argv.slice(2);
 
 const operators = [

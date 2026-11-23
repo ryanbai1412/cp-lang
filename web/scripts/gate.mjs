@@ -19,10 +19,11 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { availableParallelism, tmpdir } from 'node:os';
 import { Worker } from 'node:worker_threads';
+import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
-const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
+const cpl = cplBin();
 if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
 // A cpl older than the compiler sources (or still being rebuilt) can report
 // false failures; a failing run says so, without paying for a rebuild.
