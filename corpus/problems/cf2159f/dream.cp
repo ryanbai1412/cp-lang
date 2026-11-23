@@ -23,7 +23,7 @@
 
 @!multitest
 let n: 1..=500 = read()
-let m: 1..=n * n = read()
+let m: 1..=n * (2 * n - 1) = read()
 domain Val = 1..=n * n
 domain Time = 1..=2 * n - 1
 
@@ -68,6 +68,6 @@ repeat m:
     let seg = heap.pop()!
     ans.push(seg.val)
     if seg.cur != seg.end:
-        let next_t = (seg.cur + seg.dir)!
+        let next_t = Time(seg.cur + seg.dir)
         heap.push(Seg(query(seg.len, next_t), seg.len, next_t, seg.end, seg.dir))
 print("!", ans)
