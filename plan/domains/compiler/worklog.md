@@ -753,3 +753,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - 2026-11-23 Request from idioms (corpus `ioi96p1`): `@memo(array)` rejects a `V.ranges` parameter with E0311 "`r: Range<I>` is unbounded", against spec/lib/search-dp.md (`V.ranges` is a bounded triangle domain). Repro: `domain I = 0..3; let a: [I]Int = [I] i => i.ord; @memo(array) fn f(r: I.ranges) -> Int = if r.len == 1: a[r.first] else: f(r.drop(1)); print(f(I.range))`.
 
 2026-11-23: `xs.min()` / `xs.max()` on a list, array or range lowered as the one-argument free `min(xs)`, which traps on an empty sequence, though R07.9.3 and `std/seq.cp` make the method `?T`. The method form now always reduces to an optional, as list views already did. Case `std-seq/min-of-empty-list-is-none` now passes; parity program `seq_min_max_empty_is_none`.
+
+2026-11-23: a lambda given for an optional fn parameter (`by: ?(T -> K) = None`) now infers like one given for `by: T -> K`: generic inference unwraps the optional before probing the lambda, so `K` comes from the lambda's body (`Heap(by: x => desc(x))` binds `K = Desc<Int>`). Case core-07/heap-by-desc-lambda; parity program optional_fn_lambda.

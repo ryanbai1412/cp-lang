@@ -2000,7 +2000,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             for (param, arg) in ast_params.iter().zip(&matched) {
-                let Some(pty) = &param.ty else {
+                let Some(pty) = param.ty.as_ref().map(lambda_infer::unwrap_optional) else {
                     continue;
                 };
                 let is_default = arg.is_none();

@@ -173,3 +173,11 @@ impl<'a> Lowerer<'a> {
         (ty != Ty::Error).then_some(ty)
     }
 }
+
+/// `by: ?(T -> K) = None` infers from a lambda as `by: T -> K` does.
+pub(super) fn unwrap_optional(ty: &ast::Type) -> &ast::Type {
+    match &ty.kind {
+        ast::TypeKind::Optional(inner) => inner,
+        _ => ty,
+    }
+}
