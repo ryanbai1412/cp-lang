@@ -1,8 +1,8 @@
 -- nvim --headless --clean -l editors/neovim/test/smoke.lua CPL REPO
 -- Loads editors/neovim as a plugin, opens a .cp file with a type error and checks the
 -- filetype, the highlighting, the server's diagnostic, its hover and the run lens beside
--- the sample `i1`, run through `cpl.exec`; then, with the tree-sitter parser built, the
--- highlighting the shared queries give.
+-- the sample `i1`, run through `cpl.exec`; `:Cpl check` and its completion; then, with the
+-- tree-sitter parser built, the highlighting the shared queries give.
 local cpl, repo = arg[1], arg[2]
 vim.opt.rtp:prepend(repo .. '/editors/neovim')
 vim.g.cpl_path = cpl
@@ -57,6 +57,18 @@ check(vim.bo[term].buftype == 'terminal', 'cpl.exec did not open a terminal')
 check(vim.wait(10000, function() return vim.v.shell_error ~= nil and vim.b[term].terminal_job_id ~= nil and vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl run did not finish')
 local shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
 check(shown:find('Str', 1, true) ~= nil, 'the run lens showed ' .. vim.inspect(shown))
+
+-- `:Cpl check` runs on the file in a terminal split and completes command names.
+vim.cmd('wincmd k')
+check(vim.api.nvim_buf_get_name(0) == file, 'back in ' .. vim.api.nvim_buf_get_name(0))
+local names = vim.fn.getcompletion('Cpl sub', 'cmdline')
+check(vim.tbl_contains(names, 'submit'), ':Cpl completes sub to ' .. vim.inspect(names))
+vim.cmd('Cpl check')
+term = vim.api.nvim_get_current_buf()
+check(vim.bo[term].buftype == 'terminal', ':Cpl did not open a terminal')
+check(vim.wait(10000, function() return vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl check did not finish')
+shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+check(shown:find('a.cp:3', 1, true) ~= nil, ':Cpl check showed ' .. vim.inspect(shown))
 
 -- With the parser built, a .cp buffer highlights through tree-sitter and the shared queries.
 local parser_dir = dir .. '/ts'

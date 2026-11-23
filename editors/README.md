@@ -9,7 +9,7 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | Editor | Where | Highlighting | Run, test, trace |
 |---|---|---|---|
 | VS Code | `editors/vscode/` | TextMate grammar | lenses, stress, trace view |
-| Neovim and Vim | `editors/neovim/` | Vim syntax, or tree-sitter | Run, Trace, Test and Stress lenses |
+| Neovim and Vim | `editors/neovim/` | Vim syntax, or tree-sitter | Run, Trace, Test and Stress lenses; `:Cpl <command>` |
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
 | JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | run configurations, gutter marker, trace tab |
 | Helix | `editors/helix/` | tree-sitter (`editors/tree-sitter-cp/`) | `:sh cpl run %` |
