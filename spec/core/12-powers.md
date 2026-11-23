@@ -310,8 +310,8 @@ Comb<Mod<P>>(N)`). Compile-time evaluation is not part of the spec:
 contest tables are cheap at start-up, and baking them would grow the bundle.
 Status: checks.
 
-## W16. Contexts (P16): deferred
+## W16. Contexts (P16)
 
-`with io(base: 1)` and friends wait for the program-shape design. Until
-then a dream passes the option where it is used. Five dreams use contexts;
-they are listed in `delta/parser-gaps.md`.
+`with io(base: 1)` (R10.2.2) and user contexts (chapter 9) are core
+features a library can declare and read. Status: checks
+(`core-10/counted-domain-base.cp`, `core-09/context-constant-value.cp`).
