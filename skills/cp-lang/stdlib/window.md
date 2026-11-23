@@ -10,11 +10,11 @@ In prelude (no `use` needed): `Sweep`, `Track`, `Undo`, `Undoing`, `Window`, `tr
 
 A sliding fold queue over `op`.
 
-Fields: `q: List<T>`, `front: List<T>`, `back: ?T`.
+Fields: `q: List<T>`, `front: List<T>`, `olds: List<T>`, `head: Int`, `back: ?T`.
 
 - `fn new(op: M) -> Window<T, M>` — \(O(1)\); An empty window over `op`.
 - `fn push(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: never (beyond what `op` traps on)
-- `fn pop(mut self)` — \(O(1)\) amortized calls of `op`; Pop the front: remove the oldest element.; traps: on an empty window
+- `fn pop(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Pop the front: remove the oldest element, `x`.; traps: on an empty window, or in a checked build when `x` is not the oldest element
 - `@get fn all(self) -> ?T` — \(O(1)\); The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`, `x3`), so a non-commutative op folds in push order; `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window: pushes minus pops.
 
