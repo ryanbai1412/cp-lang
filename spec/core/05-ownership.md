@@ -982,7 +982,7 @@ a[l] = 0
   domain V = 0..8
   var a: [V]Int = 0
   let l = V(2) -->
-<!-- rejects: E0608 -->
+<!-- rejects: E0602 -->
 ```python
 fn evens(xs: [V]Int) -> lends Seq<Int> = xs.filter(x => x % 2 == 0)
 for x in evens(a): a[l] += x
