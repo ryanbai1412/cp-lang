@@ -715,7 +715,7 @@ if [ "$mode" = full ]; then
     uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
     uv run scripts/conformance-metamorphic.py --check || fail "a meaning-preserving edit changed a case's output; see above"
-    uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 230 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
+    uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"

@@ -406,7 +406,7 @@ where       := 'where' TYPE_NAME ':' bound (',' TYPE_NAME ':' bound)*
 struct_decl := 'pub'? 'struct' TYPE_NAME generics? (':' fields NL
              | ':' NL INDENT (field NL | fn_decl)+ DEDENT | NL)  // bodyless: opaque
 fields      := field (',' field)*
-field       := 'pub'? 'var'? NAME (':' type)? ('=' expr)?   // `pub`: R11.1.4
+field       := 'pub'? 'var'? NAME ':' type ('=' expr)?   // `pub`: R11.1.4
 enum_decl   := 'pub'? 'enum' TYPE_NAME generics? ('=' NAME ('|' NAME)* NL
              | ':' NL INDENT (variant NL | fn_decl)+ DEDENT)
 variant     := decorator* NAME ('(' fields ')')?
@@ -453,11 +453,12 @@ range_pat   := literal ('..' | '..=') literal
 type        := '?' type | '[' dims ']' type | '(' type (',' type)* ','? ')'
              | '(' NAME ':' type (',' NAME ':' type)* (',' '..' TYPE_NAME
                ('without' '(' NAME (',' NAME)* ')')?)? ')'     // records, rows
-             | path generic_args? | range_type | literal ('|' literal)*
+             | path generic_args? | range_type | lit_type ('|' lit_type)*
              | '(' (type (',' type)*)? ')' '->' type          // fn types
              | type 'of' STRING
 dims        := type (',' type)* | '(' type (',' type)* ')' | expr
 range_type  := expr? ('..' | '..=') expr?
+lit_type    := INT | STRING | CHAR                 // `Bool` and `?T` are already types
 
 expr        := lambda | if_expr | match_expr | binary
 lambda      := lparams '=>' (expr | assign | NL INDENT stmt+ DEDENT)   // the last stmt may be the value
@@ -473,7 +474,7 @@ postfix     := primary ('.' NAME | '.' INT | call_args | '[' args ']'
              | '!' | '?' | 'is' pattern | 'with' NAME ':' expr (',' NAME ':' expr)*)*
 generic_args := '<' targ (',' targ)* '>'
 targ        := type | expr        // a static Int: `Mod<1e9 + 7>`, `Mod<P>` with `const P`
-call_args   := '(' (arg (',' arg)*)? ','? ')'
+call_args   := '(' (arg (',' arg)* ','?)? ')'
 arg         := expr | NAME ':' expr | 'mut' place
              | expr 'for' clause (',' clause)*      // generator: `sum(f(x) for x in xs)`
 primary     := literal | NAME | path generic_args? | '(' expr ')' | tuple
