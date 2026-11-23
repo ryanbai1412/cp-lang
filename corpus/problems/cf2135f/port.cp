@@ -7,7 +7,6 @@
 // differ first at the largest key whose subtrees hash apart.
 
 use std.rand.{Rng}
-use std.seq.{run_ranges}
 
 type Ix = 0..=10_000_000
 
@@ -22,7 +21,7 @@ fn split(v: V) -> ?(l: V, r: V):
     let (l, r) = kids[v]
     if l == 0: none else: some((V(l), V(r)))
 
-let tree = Rooted(root: V.first, adj: v => if let (l, r) = split(v): [l, r] else: List<V>())
+let tree = Rooted(v => if let (l, r) = split(v): [l, r] else: List<V>(), root: V(1))
 var gen: [V]Int = 0
 var by_gen: [0..n]List<V> = []
 for v in tree.at.rev:
@@ -63,8 +62,8 @@ for g in 0..n:
     let ranked = by_gen[g].sorted(
         cmp: (a, b) => if pool[set[a]].h == pool[set[b]].h: a < b else: less(set[a], set[b])
     )
-    for r in ranked.run_ranges(by: v => pool[set[v]].h):
-        for i in r:
+    for r in ranked.runs(by: v => pool[set[v]].h):
+        for i in r.keys:
             key[ranked[i]] = keys
             order.push(ranked[i])
         keys += 1
