@@ -4718,6 +4718,46 @@ impl<'a> Lowerer<'a> {
                         out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
                     }));
                 }
+                // Cells keyed by `d`'s positions (`cells.rekey(s.keys)` with `s: [d]T`) are a
+                // `[d]T` once they cover all of `d`.
+                [Dim::Pos(d)]
+                    if want_elem == elem
+                        && matches!(&e.ty, Ty::Keyed(_, Dim::Pos(k)) | Ty::ListView(_, Dim::Pos(k)) if k == d) =>
+                {
+                    let d = *d;
+                    let list_ty = Ty::list((**elem).clone());
+                    return Ok(self.do_expr(Some(want), span, |lw, out| {
+                        let held = lw.hold(e, out);
+                        let len = lw.mk(
+                            ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
+                            Ty::Int,
+                            span,
+                        );
+                        let n = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let short = lw.mk(
+                            ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(n)),
+                            Ty::Bool,
+                            span,
+                        );
+                        let trap = Stmt::Trap(
+                            "a table keyed by part of a domain is not an array over all of it"
+                                .into(),
+                            lw.span(span),
+                        );
+                        out.push(Stmt::If(
+                            short,
+                            Block { stmts: vec![trap] },
+                            Block::default(),
+                        ));
+                        let list = lw.mk(
+                            ExprKind::Builtin(Builtin::ToList, vec![held]),
+                            list_ty,
+                            span,
+                        );
+                        let array = ExprKind::Builtin(Builtin::ListToArray, vec![list]);
+                        out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
+                    }));
+                }
                 _ => e,
             },
             (Ty::List(want_elem), Ty::Array { dims, elem })

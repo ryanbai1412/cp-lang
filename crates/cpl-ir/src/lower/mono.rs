@@ -1921,6 +1921,44 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // `S: Indexed<K, T>`: `K` is what `S` is keyed by and `T` its element (R04b.5.3).
+        for b in &decl.bounds {
+            let Some(GenArg::Ty(seq)) = inferred.get(&b.name.text).cloned() else {
+                continue;
+            };
+            for tr in &b.traits {
+                let ast::TypeKind::Named { name, args: targs } = &tr.kind else {
+                    continue;
+                };
+                if !matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut") {
+                    continue;
+                }
+                let free = |t: Option<&ast::Type>| match t.map(|t| &t.kind) {
+                    Some(ast::TypeKind::Named { name, args })
+                        if args.is_empty()
+                            && gen_names.contains(&name.text)
+                            && !inferred.contains_key(&name.text) =>
+                    {
+                        Some(name.text.clone())
+                    }
+                    _ => None,
+                };
+                let (k, t) = (free(targs.first()), free(targs.get(1)));
+                match (k, seq.seq_key()) {
+                    (Some(k), Some(Dim::Pos(d))) => {
+                        inferred.insert(k, GenArg::Domain(d));
+                    }
+                    (Some(k), Some(Dim::Int | Dim::IntFrom(_))) => {
+                        inferred.insert(k, GenArg::Ty(Ty::Int));
+                    }
+                    _ => {}
+                }
+                if let (Some(t), Some(elem)) = (t, seq.seq_elem()) {
+                    inferred.insert(t, GenArg::Ty(elem));
+                }
+            }
+        }
+
         // Pass 2 (up to 4 rounds for chained lambdas like `dijkstra(adj, from, w)`):
         // unify from lambda arguments whose parameter types are now known.
         for _ in 0..4 {

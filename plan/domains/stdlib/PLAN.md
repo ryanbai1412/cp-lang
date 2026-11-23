@@ -41,6 +41,15 @@ Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order, in hours: a 2-hour c
 
 W2 runs before W3 because writing bodies whose examples fail for a compiler reason wastes the body's test.
 
+## General fixes owed
+
+Each: the instance, the general fix, the owner when it is not stdlib.
+
+- **`nth` on `[D]T` inside std (cf1943b).** Instance: `manacher`, `z_function` and the other `std/strings` functions failed on a `[Pos]Char`. Fixed generally here: `S: Indexed<K, T>` binds `K` to the receiver's key (`mono.rs`), `.at` takes the receiver's key type (`call.rs`), and `cells.rekey(s.keys)` over a whole domain is a `[D]T` (`mod.rs`). Still owed: a std module only sees a method it `use`s (`std/strings.cp` lacked `use std.seq.{nth}` and nothing said so until a `[D]T` reached it); the general fix is a check that every std module resolves its method calls for every `Indexed` shape, e.g. one conformance case per module over `[D]T` (stdlib).
+- **`find_all` on `[D]T`.** Its empty pattern yields the end key, which a `[D]T` has no value of, so `find_all` on a domain array doesn't compile. General fix: yield cuts (`D.cuts`) rather than keys, or spec rules the empty pattern yields keys only (spec).
+- **Corpus gate misses ports without `spec.cp`.** `cpl-conform corpus` and `crates/cpl-cli/tests/corpus.rs` only run `corpus/problems/*/spec.cp`; cf1943b has only `port.cp`, so its break went unseen. General fix: the corpus job runs every `port.cp` on its `tests/` in the interpreter (idioms, requested in their worklog).
+- **Tuple/record monoids.** `Monoid(id, each((size: +, dist: +)))` infers an `Int` element; `each` is `todo` (`std/algebra.cp`). General fix: `each` over a tuple or record of operations gives the field-wise operation, with the element type taken from the identity (stdlib, compiler for inference).
+
 ## Why each milestone
 
 - **M1** banks work already done (about 120 stubs) and puts the cycle guard in the gate before more bodies add `use` edges. Cheapest big move.

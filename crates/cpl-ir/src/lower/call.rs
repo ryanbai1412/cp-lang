@@ -8130,7 +8130,7 @@ impl<'a> Lowerer<'a> {
             }
             (ty, "at") if ty.is_indexed() => {
                 let elem = ty.seq_elem().unwrap();
-                match self.one_arg("at", args, &Ty::Int, span) {
+                match self.one_arg("at", args, &ty.key_ty(), span) {
                     Some(at) => {
                         let indices = self.vouched(ty, vec![at]);
                         self.mk(ExprKind::Index(Box::new(value), indices), elem, span)
