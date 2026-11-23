@@ -1,4 +1,11 @@
-// IOI 2017 Day 1 P2, Wiring (buildable today-form)
+// Source: IOI 2017 Day 1 P2 (Wiring), https://dmoj.ca/problem/ioi17p2
+// Problem: n red and m blue points on a line (n, m <= 1e5, sorted, positions <= 1e9). Wire
+//   points so that each has a wire to a point of the other colour; print the least total length.
+// Solution: merge the points by position. cost[p] = cheapest wiring of the first p points: point
+//   p - 1 either takes its own wire to the nearest other colour (near[], two scans), or closes
+//   the block since the latest prefix with the same red-minus-blue balance, matched like
+//   brackets at cost |sum of signed positions| over the block. last[] maps each balance to its
+//   latest prefix, so the DP is O(n + m).
 // original: corpus/submissions/5724153.cpp (grader function min_total_length)
 // stdin: n m, the n red positions, the m blue positions (each sorted).
 let n: 1..=100000 = read()

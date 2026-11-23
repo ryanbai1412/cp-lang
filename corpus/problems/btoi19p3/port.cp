@@ -1,6 +1,12 @@
-// Baltic OI 2019 Alpine Valley: a tree of n villages, some with shops, and an
-// exit village. Each question closes one road and names a village: can it
-// still reach the exit? If not, how far is its nearest reachable shop?
+// Source: Baltic OI 2019 Day 1 P3 (Alpine Valley), https://dmoj.ca/problem/btoi19p3
+// Problem: a weighted tree on n <= 1e5 villages, s of them with shops, and the exit E. Each of
+//   q <= 1e5 queries closes road I and names village R: print "escaped" if R still reaches E,
+//   else the distance to the nearest reachable shop, or "oo" if none.
+// Solution: root at E; closing a road cuts off the subtree of its lower end, so R escapes unless
+//   it lies inside. Otherwise the best walk climbs to a turn t between R and the cut and drops to
+//   the nearest shop under t: far[R] + min(shop_under[t] - 2 far[t]). Queries are answered
+//   offline in preorder, where a table over depth holds the path to E, so the minimum is one
+//   SegTree range fold: O((n + q) log n).
 // original: corpus/submissions/4456164.cpp
 let n: 2..=1e5 = read()
 let s: 1..=n = read()

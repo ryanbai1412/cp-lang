@@ -1,12 +1,11 @@
-// CCC 2014 S4 Tinted Glass Window: n rectangular panes, each with a tint,
-// lie over a window. Print the area where the tints add up to at least t.
-//
-// The 2n pane edges cut each axis into at most 2n - 1 strips, and the tint
-// is constant on every cell of that grid. Each pane adds its tint to a box
-// of cells: mark the four corners in a difference grid, take 2D prefix
-// sums, and add up the cells that are dark enough. The original sweeps x
-// with a sqrt-decomposed y axis; with n <= 1000 the 4n^2 cells are cheaper
-// than that and need no data structure.
+// Source: CCC 2014 Senior S4 (Tinted Glass Window), https://dmoj.ca/problem/ccc14s4
+// Problem: n <= 1000 axis-parallel rectangles, corners x_l y_t x_r y_b in 0..=K with K <= 1e9,
+//   each adding tint t_i; overlaps add up. Print the total area whose tint is at least
+//   T <= 1e9 (the answer can exceed 2^32 but fits 64 bits).
+// Solution: the 2n pane edges cut each axis into at most 2n - 1 strips, and the tint is constant
+//   on every cell of that grid. Compress both axes, mark each pane's four corners in a
+//   difference grid, take 2D prefix sums and add the area of every cell dark enough: O(n^2)
+//   cells, no data structure (the original sweeps x over a sqrt-decomposed y axis).
 // original: corpus/submissions/5672281.cpp
 let n: Int = read()
 let t: Int = read()

@@ -1,4 +1,11 @@
-// COCI '21 Contest 6 #3, Naboj (multi-answer constructive graph, buildable today-form)
+// Source: COCI 2021/2022 Contest 6 #3 (Naboj), https://dmoj.ca/problem/coci21c6p3
+// Problem: a connected graph, n <= 2e5 balls and m <= 5e5 wires, each wire wanting its electrons
+//   at a given end. Charging a ball + pulls every wire at it towards it, - pushes them away; the
+//   last charge on a wire's ends decides it. Print -1 or a sequence of k <= 2e5 chargings.
+// Solution: think backwards: the last ball charged must have all its remaining wires pointing
+//   the same way (in- or out-degree 0), and its wires are then settled. Peel such balls with a
+//   queue, updating degrees, like a topological sort; if some ball is never peeled the wires
+//   hold a cycle and the answer is -1. Print the peel order reversed, O(n + m).
 // original: corpus/submissions/4530006.cpp
 let n: 1..=2e5 = read()
 let m: 0..=2e5 = read()

@@ -1,6 +1,12 @@
-// Mock CCC '22 Contest 1 S4 (nccc9s4): answer q range-mode queries on a[1..=n],
-// breaking ties by largest value. Uses per-value prefix sums when there are at
-// most 800 distinct values and rollback Mo's algorithm otherwise.
+// Source: Mock CCC 2022 Contest 1 S4 (Berkeley Math Tournament Statistics),
+//   https://dmoj.ca/problem/nccc9s4
+// Problem: n <= 1e5 scores s_i in 1..=n and q <= 1e5 queries l r: print the most frequent score
+//   among students l..=r, the largest one on ties.
+// Solution: with at most HEAVY = 800 distinct values, a prefix count per value answers each query
+//   in O(1) per value: O(800 (n + q)). Otherwise rollback Mo's: queries shorter than B = 270 are
+//   counted directly; longer ones are bucketed by the block of l and sorted by r, the right end
+//   grows from the block boundary and the O(B) left part is added and rolled back per query.
+//   Ties compare (count, value) pairs. O(q B + n^2 / B).
 // original: corpus/submissions/4145494.cpp
 const B = 270
 const HEAVY = 800

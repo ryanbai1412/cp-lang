@@ -1,4 +1,12 @@
-// IOI 2001 Day 1 P3, Twofive (buildable today-form)
+// Source: IOI 2001 Day 1 P3 (Twofive), https://dmoj.ca/problem/ioi01p3
+// Problem: words are the 25 letters A..Y written row by row in a 5x5 grid with every row and
+//   column increasing, numbered from 1 in lexicographic order (fewer than 2^31 of them). Given
+//   "W" and a word print its number; given "N" and a number print that word.
+// Solution: placing A..Y in order, the filled cells always form a staircase (row r shorter than
+//   row r - 1), so ways(key) counts the completions from a staircase of five row lengths packed
+//   base 6, memoized over 7776 keys, with cell_of[] pinning chosen letters to cells. Rank: for
+//   each cell add the completions of every smaller unused letter put there; unrank: walk the
+//   letters skipping whole blocks. Each count is O(6^5 * 5), at most 25 * 25 counts.
 // original: corpus/submissions/4806167.cpp
 // stdin: "W" and a 25-letter word (print its rank), or "N" and a rank (print the word).
 let kind: Char = read()

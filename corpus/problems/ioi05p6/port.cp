@@ -1,7 +1,12 @@
+// Source: IOI 2005 (Rivers), https://dmoj.ca/problem/ioi05p6
+// Problem: n <= 100 villages on a river tree draining to Bytetown (0), which has a sawmill;
+//   village i cuts w_i trees and flows to v_i, d_i km away. Build k <= 50 more mills in
+//   villages; trees float to the first mill downriver at 1 cent per tree-km. Print the least cost.
+// Solution: the cost of a village depends only on its nearest milled ancestor, so cost(v, mill)
+//   is a memoized Row over j = 0..=k mills in v's subtree: either v ships to `mill`, its children
+//   seeing `mill`, or v builds one and they see v. spread() min-plus merges the children's rows,
+//   O(k^2) per child, so O(n^2 k^2) overall; the answer is Bytetown's spread with k mills.
 // cp: 0.1 8ef64b9+dirty
-// IOI 2005 Rivers. Villages drain down a river tree into Bytetown, which
-// already has a sawmill. Build at most k more mills in villages to minimise
-// the sum of trees[v] * (distance from v down to the first mill it reaches).
 let n: 2..=100 = read()
 let k: 1..=50 = read()
 domain Village = 1..=n

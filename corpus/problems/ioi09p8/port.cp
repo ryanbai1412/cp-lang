@@ -1,11 +1,13 @@
-// IOI 2009 Salesman: fairs along a river, each at a location on a given day
-// with a profit. The salesman starts and ends at home; moving upstream
-// (towards smaller locations) costs `up` per metre and downstream `down`.
-// Visit fairs in day order for the largest total profit.
-// best[x] = most money when standing at x. Arriving at x from above costs
-// down * (x - y) and from below up * (y - x), so two max-trees hold
-// best[y] + down * y and best[y] - up * y. Fairs on one day are swept once
-// downstream and once upstream: within a day the route is monotone.
+// Source: IOI 2009 (Salesman), https://dmoj.ca/problem/ioi09p8
+// Problem: n <= 5e5 fairs on a river, fair k on day T_k at location L_k (<= 500001, all distinct)
+//   with profit M_k. Starting and ending at home S, moving upstream (towards smaller locations)
+//   costs U per metre and downstream D (D <= U <= 10); fairs must be visited in day order, any
+//   order within a day. Print the largest profit minus travel cost.
+// Solution: best[x] = most money standing at x. Arriving at x from y above costs D (x - y) and
+//   from below U (y - x), so two max SegTrees over locations hold best[y] + D y and
+//   best[y] - U y, and reach(x) is two range folds. Within a day the route is monotone: sweep
+//   the day's fairs once downstream and once upstream, then store the better of the two at each
+//   fair. The answer is reach(home); O((n + L) log L).
 // original: corpus/submissions/4811954.cpp
 let n: 1..=500000 = read()
 let up: 1..=10 = read()

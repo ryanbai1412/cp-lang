@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c2p5.cp
+// Source: DMOPC 2021 Contest 2 P5 (Permutations), https://dmoj.ca/problem/dmopc21c2p5
+// Problem: a tree on n <= 3000 nodes, node i holding value i. An operation swaps the values at
+//   the ends of an edge and deletes the edge. Print how many permutations of the values can
+//   result from exactly k < n operations, mod 998244352.
+// Solution: a set S of k used edges gives prod over nodes of deg_S(v)! permutations (only the
+//   order of the used edges at each node matters), so sum that over all |S| = k. Tree knapsack:
+//   memo0/memo1[v][i] (edge to the parent unused/used) over i used edges in v's subtree, with the
+//   used degree d of v as an extra dimension weighted by d!. Since 998244352 = 2^23 * 7 * 17
+//   divides 26!, d stops at 25: O(26 n^2).
 // original: corpus/submissions/3968384.cpp
 
 const MOD = 998_244_352

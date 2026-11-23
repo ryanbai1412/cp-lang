@@ -1,8 +1,11 @@
-// DMOPC '21 Contest 6 P4: colour each road 1 or 2. Roads at c get colour 1,
-// roads at d colour 2 (a road joining c and d is impossible). A breadth-first
-// search over (city, which of c and d were met) finds the nearest way to
-// reach b without meeting both; the other roads take the colour it needs.
-// Runnable on proto/cpc today.
+// Source: DMOPC 2021 Contest 6 P4 (Colourful Paths), https://dmoj.ca/problem/dmopc21c6p4
+// Problem: a connected simple graph, n, m <= 2e5, and distinct houses A, B, C, D. Colour the
+//   roads so that some A-B path is one colour and every C-D path has two colours, using the
+//   fewest colours and then the shortest one-colour A-B path. Print -1 or K and the colours.
+// Solution: K = 2: roads at C get colour 1, roads at D colour 2 (a C-D road makes it -1). An A-B
+//   path stays one colour iff it does not pass both C and D, so BFS over (city, which of C and D
+//   were met) finds the shortest such path, and every other road takes the colour that path
+//   needs (2 if it met D, else 1). O(n + m).
 // original: corpus/submissions/4342347.cpp
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()
