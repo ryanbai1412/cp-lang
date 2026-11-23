@@ -29,9 +29,11 @@ list=corpus/port-check-failing.txt
 export CPL_STD_DIR=${CPL_STD_DIR:-$PWD/std}
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 start=$(date +%s)
-# xargs exits 123 when any port fails; the diagnostics say which.
+# xargs exits 123 when any port fails; the errors say which (a warning never fails).
 now=$( { ls corpus/problems/*/port.cp | xargs -P "$jobs" -n 16 "$cpl" check 2>&1 || true; } |
-    sed -nE 's|^ *--> corpus/problems/([^/]+)/port\.cp:.*|\1|p' | sort -u)
+    awk '/^(error|warning)/ { err = /^error/ }
+         err && match($0, /^ *--> corpus\/problems\/[^\/]+\/port\.cp:/) {
+             sub(/^ *--> corpus\/problems\//, ""); sub(/\/.*/, ""); print }' | sort -u)
 if [ "$update" = 1 ]; then
     printf '%s\n' "$now" | sed '/^$/d' >"$list"
     echo "port-check: wrote $list ($(grep -c . "$list") failing)"
