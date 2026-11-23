@@ -319,6 +319,34 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `vis.map(yes)`: a fn value given where a fn of `given` parameters
+    /// is expected takes only those; every one after them needs a default
+    /// (R06.1.8).
+    pub(crate) fn fn_value_takes(&mut self, method: &str, arg: &Expr, given: usize) {
+        let Ty::Fn { params, .. } = self.quietly(|c| c.infer(arg)) else {
+            return;
+        };
+        let Some(missing) = params
+            .iter()
+            .skip(given)
+            .find(|p| !p.has_default && !p.variadic)
+        else {
+            return;
+        };
+        let noun = if given == 1 { "argument" } else { "arguments" };
+        let message = format!(
+            "`{method}` calls `{}` with {given} {noun}, but its parameter `{}` has no default",
+            self.quote(arg.span),
+            missing.name,
+        );
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, arg.span, message) {
+            diag.help = Some(format!(
+                "give `{}` a default, or pass a lambda that supplies it",
+                missing.name
+            ));
+        }
+    }
+
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.
