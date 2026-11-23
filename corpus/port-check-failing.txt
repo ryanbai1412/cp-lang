@@ -1,6 +1,5 @@
 apio07p1
 apio07p3
-apio23p1
 apio23p2
 atcoder_dp_j
 atcoder_dp_o
@@ -20,9 +19,7 @@ ccc20s1
 ccc23s4
 cco04p2
 cco16p4
-cco17p4
 cco19p1
-cco19p5
 cco19p6
 cco20p1
 cco21p5

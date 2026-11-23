@@ -15,7 +15,6 @@
 // The original is a grader function; this port reads
 // `n m k h`, the n kinds, then m lines `u v time`.
 // original: corpus/submissions/5593318.cpp
-use real.float.{fixed}
 
 let (n, m, k, h): (Int, Int, Int, Int) = read()
 domain C = 0..n
@@ -23,13 +22,15 @@ var kind: [C]Int = 0
 for c in C:
     let x: Int = read()
     kind[c] = x
-var roads: [C]List<(to: C, time: F64)> = []
+var roads: [C]List<(to: C, w: F64)> = []
 for _ in 0..m:
     let (u, v, time): (Int, Int, F64) = read()
-    if u != h: roads[C(u)].push((to: C(v), time:))  // nobody leaves h
-    if v != h: roads[C(v)].push((to: C(u), time:))
+    if u != h: roads[C(u)].push((to: C(v), w: time))  // nobody leaves h
+    if v != h: roads[C(v)].push((to: C(u), w: time))
 
-fn times(starts: List<(C, F64)>) -> [C]?F64 = dijkstra(c => roads[c], starts, r => r.time)
+fn times(starts: List<(C, F64)>) -> [C]?F64:
+    let paths = dijkstra(roads, from: starts)
+    [C] c => paths[c]
 
 let reach = times([(C(0), 0.0)])
 if reach[C(h)] == None:
@@ -42,6 +43,6 @@ else:
             let t = best[c] else: continue
             starts.push((c, t))
             if kind[c] == 2:
-                for r in roads[c]: starts.push((r.to, t / 2 + r.time))
+                for r in roads[c]: starts.push((r.to, t / 2 + r.w))
         best = times(starts)
-    print(fixed(best[C(h)]!, 6))
+    print(best[C(h)]!, precision: 6)
