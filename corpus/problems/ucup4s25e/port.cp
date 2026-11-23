@@ -10,7 +10,7 @@
 //   maxima in O(hi - lo) time.
 // Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
 // answers each query in O(log n).
-use std.geometry.{dot, hull_extreme, minkowski_upper, upper_hull}
+use std.geometry.{hull_extreme, minkowski_upper, upper_hull}
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
@@ -40,7 +40,7 @@ hull.reverse()
 
 fn answer(v: Int) -> Int:
     let dir = Pt(v, 1)
-    dot(hull[hull_extreme(hull, dir)], dir)
+    hull[hull_extreme(hull, dir)].dot(dir)
 
 let qs: [0..q]Int = read()
 print([answer(v) for v in qs])

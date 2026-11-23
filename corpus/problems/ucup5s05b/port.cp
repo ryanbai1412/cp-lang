@@ -6,7 +6,6 @@
 // the line in one point or, when parallel and on it, in a whole x-interval.
 // The answer is the length of the union of those x-intervals (b != 0 after the
 // swap, so x determines the point).
-use std.geometry.{dot}
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:
@@ -30,7 +29,7 @@ fn union_len(spans: List<(Int, Int)>) -> Int:
         reach = max(hi, reach ?? hi)
     total
 
-fn signs(p: Pt) -> Pt = Pt(p.x.sign, p.y.sign)
+fn signs(p: Pt) -> Pt = Pt(Int(p.x.sign), Int(p.y.sign))
 
 @!multitest
 let (n, px, py, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
@@ -61,9 +60,9 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
             cur = cur + dir * len
             left -= len
             let v = fold_pt(cur, m)
-            let at = dot(u, normal) + c
+            let at = u.dot(normal) + c
             let step = signs(v - u)
-            let slope = dot(step, normal)
+            let slope = step.dot(normal)
             if slope == 0:
                 if at == 0: spans.push((min(u.x, v.x), max(u.x, v.x) + 1))
             elif at % slope == 0:
