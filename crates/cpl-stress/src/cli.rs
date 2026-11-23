@@ -632,6 +632,9 @@ pub fn run_with(
         _ => (&[][..], None),
     };
     let explained = match (&report.failure, &traced) {
+        (Some(_), Some(Ok(traced))) if part_brute.is_some() && traced.divergence.is_some() => {
+            Some(Ok(traced.divergence.clone()))
+        }
         (Some(_), Some(Ok(traced)))
             if args.explain && (own_brute.is_some() || part_brute.is_some()) =>
         {
@@ -831,7 +834,7 @@ pub fn run_with(
     match saved {
         Some(path) => {
             let _ = writeln!(stdout, "  saved {}", path.display());
-            if !part_alts(&src).is_empty() {
+            if !part_alts(&src).is_empty() && explained.is_none() {
                 let _ = writeln!(
                     stdout,
                     "  next: `cpl locate {}` names the first part whose alt disagrees",

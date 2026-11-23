@@ -195,12 +195,9 @@ pub fn against_brute(
         .collect();
     Ok(cpl_stress::cli::Traced {
         stages,
-        divergence: explain
-            .then(|| {
-                first_call_divergence(&source, &fast, &slow)
-                    .or_else(|| first_divergence(&fast, &slow))
-            })
-            .flatten(),
+        // The wrong call of a part needs no `explain`: calls are always kept.
+        divergence: first_call_divergence(&source, &fast, &slow)
+            .or_else(|| explain.then(|| first_divergence(&fast, &slow)).flatten()),
         html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
     })
 }
