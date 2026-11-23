@@ -139,10 +139,13 @@ fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> 
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
     // to turn undefined behaviour in emitted C++ into a failing case.
     let flags = std::env::var("CPL_CONFORM_CXXFLAGS").unwrap_or_else(|_| "-O2".into());
-    let key = if flags == "-O2" {
+    // `CPL_CXX_SYSTEM_KEY` fingerprints the compiler and system headers when the
+    // cache outlives them (shared across checkouts and CI runs).
+    let system = std::env::var("CPL_CXX_SYSTEM_KEY").unwrap_or_default();
+    let key = if flags == "-O2" && system.is_empty() {
         fnv1a_hex(cpp.as_bytes())
     } else {
-        fnv1a_hex(format!("{flags}\0{cpp}").as_bytes())
+        fnv1a_hex(format!("{system}\0{flags}\0{cpp}").as_bytes())
     };
     let bin = cache_dir.join(&key);
     if bin.is_file() {
@@ -425,10 +428,15 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
 
 pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
     let targets = discover(root, filter);
-    let target_dir = std::env::var_os("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.join("target"));
-    let cache_dir = target_dir.join("conform-cxx");
+    // The per-user g++ cache (scripts/check.sh, kept across CI runs) when there is one,
+    // so a fresh checkout or CI job doesn't recompile every case.
+    let cache_dir = match std::env::var_os("CPL_CXX_CACHE_DIR") {
+        Some(dir) => PathBuf::from(dir).join("conform-diff"),
+        None => std::env::var_os("CARGO_TARGET_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("target"))
+            .join("conform-cxx"),
+    };
 
     let outcomes = runner::parallel_with_db(&targets, |db, target| {
         let (id, outcome) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
