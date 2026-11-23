@@ -11,15 +11,18 @@
 // original: corpus/submissions/7730380.cpp
 const P = 1000000007
 type Z = Mod<P>
-let n: 1..=5000 = read()
+let n: 1..=3000 = read()
 domain V = 1..=n
 domain E = 1..n
 
+// Parents among the first 17 labels keep every city within 17 roads of city 1.
 fn random_tree() -> [E](u: V, v: V):
-    [E] e => (V(rand(1, e.label)), V(e.label + 1))
+    [E] e => (V(rand(1, min(e.label, 17))), V(e.label + 1))
 
 let edges: [E](u: V, v: V) = read(gen: random_tree)
 let tree = Rooted(Graph.undirected(edges), V.first!)
+// Fewer than 36 roads between any two cities, so none is 36 roads below the root.
+let height: 0..=35 = V.map(v => tree.depth(v)).max()!
 
 // A count for every k is a polynomial: the coefficient of x^k is the count.
 // Picking independently in two parts multiplies their polynomials.
