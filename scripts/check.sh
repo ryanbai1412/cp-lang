@@ -400,6 +400,12 @@ if [ "$mode" = commit ]; then
         step "corpus package audit, no compiles (corpus/audit.py --check --no-run)"
         uv run --quiet python corpus/audit.py --check --no-run \
             || fail "a corpus package breaks handbook/guidelines/problem-packages-checklist.md; the finding above names the rule"
+        step "staged ports: generators and interpreter vs C++ (corpus/generators.py, corpus/differential.py)"
+        cargo build -q -p cpl-cli
+        uv run --quiet python corpus/generators.py --check --changed staged --cpl "$cpl" \
+            || fail "a staged port's generator or answer disagrees with its accepted C++; the finding above names the port and test"
+        uv run --quiet python corpus/differential.py --check --changed staged --cpl "$cpl" \
+            || fail "a staged port's cpl run disagrees with its C++; the finding above names the port and test"
     fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
