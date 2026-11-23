@@ -220,7 +220,7 @@ GCC and LLVM's differential testing against a reference.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; per-port max input for every tracked port: `missing` |
+| Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; `corpus/generators.py` (`slow`: over 1.5x on the `--max` input, best of three) |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
 | Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `corpus/differential.py` (`over-32kb`, ratchet `corpus/differential-known.txt`) |
 | A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |

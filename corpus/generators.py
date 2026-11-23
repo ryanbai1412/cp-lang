@@ -12,6 +12,9 @@ Codeforces C++ build. Findings (problem-packages/R5, R6):
   invalid-input <id> <args>  the port rejects what gen.py printed
   no-max <id> -              gen.py has no --max (no maximum-bound input)
   invalid-test <id> <file>   the port rejects a committed test input
+  slow <id> --max            on the max input the port's C++ takes over 1.5x
+                             the accepted C++ (best of three runs, ignoring
+                             times under 0.1 s; AGENTS.md goal 3)
   disagrees <id> <args>      the port's C++ and the accepted C++ (orig.cpp, or
                              the first accepted submission) give different
                              answers, judged by checker.py when there is one
@@ -22,7 +25,7 @@ data, not the port's input.
 Known findings live in corpus/generators-known.txt, which only shrinks.
 Same flags as corpus/differential.py: --check, --update, --cpl, -j.
 """
-import argparse, concurrent.futures, json, os, re, subprocess, sys, tempfile
+import argparse, concurrent.futures, json, os, re, subprocess, sys, tempfile, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import audit, differential
@@ -32,6 +35,8 @@ KNOWN = os.path.join(ROOT, "corpus", "generators-known.txt")
 SEEDS = (1, 2, 3)
 SIZES = (5, 50)
 TIMEOUT = 20
+SLOWER = 1.5
+FLOOR = 0.1
 RANGE = re.compile(rb"error\[R05\d\d\]|outside its range")
 
 
@@ -109,7 +114,29 @@ def check(pid, cpl):
         found.append(f"gen-fails {pid} --max")
     elif exe and rejects([exe], data):
         found.append(f"invalid-input {pid} --max")
+    elif exe and orig and slow(exe, orig, data):
+        found.append(f"slow {pid} --max")
     return found
+
+
+def seconds(exe, data):
+    """The best of three wall times, so one busy moment on the machine doesn't count."""
+    best = None
+    for _ in range(3):
+        start = time.perf_counter()
+        if output(exe, data) is None:
+            return None
+        best = min(best or 1e9, time.perf_counter() - start)
+    return best
+
+
+def slow(exe, orig, data):
+    """The port's C++ takes over SLOWER times the accepted C++ on the max input, above the noise floor."""
+    mine = seconds(exe, data)
+    if mine is None or mine < FLOOR:
+        return False
+    theirs = seconds(orig, data)
+    return theirs is not None and mine > SLOWER * max(theirs, FLOOR)
 
 
 def main(argv=None):
