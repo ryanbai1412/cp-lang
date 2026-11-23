@@ -13,6 +13,6 @@ for r in roads:
 
 domain S = (V, V)
 fn better(b: V, u: V) -> V = if s[u] < s[b]: u else: b
-let p = dijkstra((v, b) => adj[v].map(a => (to: (a.to, better(b, a.to)), w: a.w * s[b])),
+let p = dijkstra(((v, b)) => adj[v].map(a => (to: (a.to, better(b, a.to)), w: a.w * s[b])),
     from: [((V.first!, V.first!), 0)])
 print(V.map(b => p[(V.last!, b)]).present().min()!)

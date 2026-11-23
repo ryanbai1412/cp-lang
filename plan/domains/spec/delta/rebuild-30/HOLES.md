@@ -21,8 +21,8 @@ range); 1948D adds a second string problem over `runs`.
 | silent | 38 | 36 |
 | contradiction | 1 | 1 |
 | missing-stdlib | 3 | 2 |
-| found-late | 0 | 0 |
-| **total** | **42** | **39** |
+| found-late | 9 | 8 |
+| **total** | **51** | **47** |
 
 M1 means the hole sits in a family that `spec/SUBSET.md` lists as supported
 (sequences, prefix sums, segment trees, graphs/trees, DP, modular math, I/O,
@@ -109,8 +109,69 @@ search). `SortedSet` (containers beyond heaps and DSU) is outside it.
 | File | Change | Lines changed | Chunks | Hesitation | Duplicated fact | Unrelated rewrite |
 |---|---|---|---|---|---|---|
 | 07-1929E-rev | each edge has a colouring cost; minimise total cost | 6 (1 comment, read, mask table type, mask table write, mask list, transition) | 3 (input, mask table, transition) | how to reach the edge's cost from the child vertex (`t.up_arc(v)!.c`, H42); `if let` inside a comprehension filter | none | none |
+| 07-1929E-rev, after F04/F05 | same | 9 (1 comment; read split in 2; 2 new lines for `up_cost`; table type; table write; mask list; transition) | 4 (input, new per-vertex cost, mask table, transition) | `t.up_arc` was the obvious call and is unimplemented (F05); `if let` in a comprehension does not parse (F04) | yes: the `up_cost` loop restates which endpoint of each edge is the child, a fact `Rooted` already holds | none |
 | 03-1915G-rev | print the shortest time to every city 2..n | 1 (+1 comment) | 1 (output) | none | none: "min over bikes" still written once | none |
+
+## Found-late holes
+
+Found by the runs below, after everything above was written. Each has the
+smallest reproduction I found; the files under `rebuild-30/` now carry the
+workaround, and the first commit on the branch keeps the cold version.
+
+| ID | Location | M1 | Reproduction | What happens | Guess held? | Workaround |
+|---|---|---|---|---|---|---|
+| F01 | `std/seq.cp` `maximal` (lines 3160-3190), `lib/sequence-patterns.md` two pointers | yes | `let a = [3, 1, 4]`<br>`let g = a.maximal(Window(+), ok: w => (w.all ?? 0) <= 4)` | `cpl check`: E0303 inside `std.seq` (`pop` takes 0 arguments, but 1 were given); on a `[P]Int` it is E0301 (`self[r]` with an `Int` `r`). The documented two-pointer pattern cannot be compiled at all | H01 held on reading the std body (an empty piece `cuts.nth(r+1)..cuts.nth(r+1)`), H02 untestable | 01-1918D walks the two pointers by hand over a `Window(+)` |
+| F02 | `lib/graphs-trees.md` line 148 (state-space example) | yes | `dijkstra((v: V, k: K) => adj[v].map(a => (to: (a.to, k), w: a.w)), from: [((V(0), K(0)), 0)])` | E0302 expected `Int`, found the lambda. The spec's own example `(v, k) => ...` is a two-parameter lambda; a state is one tuple parameter | H07 failed: storage was fine, the lambda shape was wrong | `((v, b)) => ...` (a tuple pattern parameter) works |
+| F03 | `core/02-values-types.md` line 69 | yes | `let s = read<Str of "01?">()` | E0107 expected the end of the statement, found a name. The spec documents the type; the parser rejects it | H16 failed (spec-correct, not implemented) | `read<Str>()` |
+| F04 | `core/01` comprehension grammar (not spelled out) | yes | `print([y for x in xs if let y = x, y > 1])` | E0103 expected `]` | H45-style guess (rev only) failed | `if cheapest[e] != None and ...` then `cheapest[e]!` |
+| F05 | `lib/graphs-trees.md` line 257 vs `std/tree.cp` line 266 | yes | `t.up_arc(v)!.c` on a tree read with a `c` field | `std/tree.cp` has `up_arc` as `todo`; `cpl check` then says "an `Int` has no member `c`", not that the function is unimplemented | H42 failed | per-vertex `up_cost` filled from the edge list with `t.parent` |
+| F06 | `core/02` conversions, `core/03` overflow; my code | yes | `let (s, k): (1..=1e14, 1..=2e5) = read()`<br>`print(s * k * Z(3).inv())` on `100000000000000 200000` | `cpl run` traps R0202 (`1e14 * 2e5` overflows `Int`); the `cpl build` + g++ binary prints a wrong `139218993` (right: `666666998`). The bounds prove the product can overflow, yet `cpl check` is silent, and debug and release disagree | H26 failed: `*` is left-associative, so `Int * Int` happens before any conversion to `Mod` | `Z(friends.map(.f).sum()) * k * p` |
+| F07 | `core/07-sequences.md` R07.1.3 ("allocation happens only at `.collect()`, a comprehension or `List(...)`"); `cpl explain` | yes | `for d in 1..=3: print((0..n).map(i => i % d == 0).runs().len)` | the C++ fills a fresh `std::vector<char>` on every iteration (and a vector of run views); `cpl explain` lists only "slice view ... O(1)". A hidden heap allocation inside a loop that explain does not show | n/a (H30 held for meaning) | none needed at \(n = 5000\) |
+| F08 | `cpl explain` "Views & copies" | no | `var q = Deque<Int>()`<br>`q.push(1)`<br>`print(q.len)` | explain prints two rows at `1:1`: "explicit copy -> std::vector<Char>, O(n)" and "reverse view -> ListView<Char>", in a program with no `Char`. They appear in 9 of the 12 files here (everything using `Deque` or `Window` through std) | n/a | ignore |
+| F09 | `cpl run` (interpreter), `core/07` R07.1.3 | yes | `domain I = 1..=3000`<br>`let a: [I]Int = [I] i => Int(i)`<br>`print(a.runs().count())` | `cpl run` peaks at 540 MB (the same over `List(0..3000)`: 56 MB; native: 3 MB). Memory grows with runs times length, so 10-1923D under `cpl run` is killed at 31 GB already at n = 3e4; the native build takes 40 MB at n = 3e5 | n/a (H30, H31 held for meaning) | none in the file; the native build is what the judge runs |
+
+### Did the other guesses hold?
+
+Every hole not named in F01-F09 held: each file checks clean (after the
+workarounds), passes its samples under `cpl run`, `cpl test` and the native
+build, and agrees with an independent brute force on 200 random inputs, both
+interpreted and native. In particular H03-H05 (hand-rolled deque work), H09-H11
+(custom `Action` over a `Monoid`), H12 (`SortedSet` with `first_true` and
+`last_true`), H13 (tagged enum reads, block match arms), H22 (`is_anc` order),
+H24 (`Subset` union and tables), H26 apart from F06, H30 (`runs()` of a mapped
+view), H33 (`last_true` on a position range) and H36 (`min` of optionals) held.
 
 ## Verification
 
-Filled in after the runs below.
+All on the files as they now stand (`cargo build -p cpl-cli`, debug).
+
+| File | check | samples (`cpl run`) | `cpl test` | build + g++ -O2 | fuzz (200) | max input, native | ASan/UBSan + `_GLIBCXX_DEBUG` | heap copies in loops (`explain`) |
+|---|---|---|---|---|---|---|---|---|
+| 01-1918D | ok (F01 cold) | ok | 1/1 | ok | 200/200 | 0.06 s (n = 1e5) | clean | none (F08 rows) |
+| 02-1905D | ok | ok | 1/1 | ok | 200/200 | 0.03 s (n = 1e6) | clean | none (F08 rows) |
+| 03-1915G | ok (F02 cold) | ok | 1/1 | ok | 200/200 | 0.05 s (n = m = 1000) | clean | none (F08 rows) |
+| 03-1915G-rev | ok (F02 cold) | ok | 1/1 | ok | 200/200 | 0.05 s | clean | none (F08 rows) |
+| 04-1924B | ok | ok | 1/1 | ok | 200/200 | 0.23 s (n = q = 3e5) | clean | none (F08 rows) |
+| 05-1930D2 | ok (F03 cold) | ok | 1/1 | ok | 200/200 | 0.01 s (n = 1e6) | clean | none |
+| 06-1934C | ok | ok (interactor accepts) | 1/1 | ok | 200/200 (interpreter with `@interactor`, native with a Python judge; same transcripts) | 0.26 s (t = 3000, Python judge) | clean (200 runs) | none |
+| 07-1929E | ok | ok | 1/1 | ok | 200/200 | 0.03 s (n = 1e5, k = 20, 2^20 reachable sets) | clean | none (F08 rows) |
+| 07-1929E-rev | ok (F04, F05 cold) | ok | 1/1 | ok | 200/200 | 0.02 s | clean | none (F08 rows) |
+| 08-1925D | ok | ok | 1/1 | ok | 200/200 | 0.03 s (k = 2e5) | F06 cold, clean after | none (F08 rows) |
+| 09-1948D | ok | ok | 1/1 | ok | 200/200 | 0.08 s (\|s\| = 5000) | clean | F07 (one vector per `d`) |
+| 10-1923D | ok | ok | 1/1 | ok | 200/200 | 0.04 s (n = 3e5; all-equal 0.01 s) | clean | none (F08 rows) |
+
+The brute forces are in Python, written from the statements and not from the
+solutions (exhaustive blocking sets, every shift, state relaxation, direct
+recomputation per query, every pattern string for `f`, every edge subset,
+every pick sequence with exact fractions, every substring, and a BFS over
+eating orders). Native and interpreter outputs agreed on every fuzz input, so
+there was no mismatch to rerun under the sanitizers; each file still ran once
+under them on its samples and maximum input (revisions and 06 on 20 and 200
+random inputs). The interpreter on the maximum inputs agrees with the native outputs for
+every file but 10-1923D (F09): 01 9.9 s, 02 7.3 s, 03 6.4 s, 03-rev 8.3 s,
+04 40.9 s, 05 0.1 s, 07 4.2 s (wide 4.5 s), 07-rev 5.3 s, 08 1.6 s, 09 2.8 s,
+10 all-equal 0.7 s.
+
+Coverage note: the two-pointer slot (01-1918D) was written with
+`maximal(Window(+), ...)` as asked, but F01 makes that call uncompilable, so
+the file now walks the two pointers by hand over `Window(+)`.

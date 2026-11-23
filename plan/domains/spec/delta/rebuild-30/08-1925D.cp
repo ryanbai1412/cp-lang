@@ -8,4 +8,4 @@ let friends = read<[m](a: 1..=n, b: 1..=n, f: 1..=1e9)>()
 let p = Z(n * (n - 1) / 2).inv()
 let q = 1 - p
 let repeats = (0..=k).map(c => comb.choose(k, c) * p ** c * q ** (k - c) * (c * (c - 1) / 2)).sum()
-print(friends.map(.f).sum() * k * p + m * repeats)
+print(Z(friends.map(.f).sum()) * k * p + m * repeats)

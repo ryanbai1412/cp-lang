@@ -3,7 +3,7 @@
 // dp[i] = (n - i) + dp[i + 3] for a '1', else dp[i + 1]; the answer sums dp.
 @!multitest
 let n: 1..=1e6 = read()
-let s = read<Str of "01">()
+let s = read<Str>()
 var dp: [0..n + 3]Int = 0
 for i in (0..n).rev:
     dp[i] = if s[i] == '1': n - i + dp[i + 3] else: dp[i + 1]
