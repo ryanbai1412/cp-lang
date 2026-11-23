@@ -927,7 +927,10 @@ impl<'a> Taste<'a> {
             return;
         }
         let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
-        let comp = format!("[{v} for {p} in {it}{filter}]");
+        let reversed = c.is_none().then(|| forms::reversed(p, &it, v)).flatten();
+        let comp = reversed
+            .clone()
+            .unwrap_or_else(|| format!("[{v} for {p} in {it}{filter}]"));
         let text = if items.is_empty() {
             comp.clone()
         } else {
@@ -938,9 +941,13 @@ impl<'a> Taste<'a> {
             self.pair_span(decl.span, next.span),
             format!("a loop that only pushes onto `{name}` is a comprehension"),
         )
-        .with_help(format!(
-            "write `{text}`; the comprehension says what each item is, so no push is missed or doubled"
-        ));
+        .with_help(if reversed.is_some() {
+            format!("write `{text}`: it is the sequence reversed, with no `- 1 -` index to get wrong")
+        } else {
+            format!(
+                "write `{text}`; the comprehension says what each item is, so no push is missed or doubled"
+            )
+        });
         if let Some(edits) = self.fold(init, next, "", text) {
             diag.fixes.push(Fix {
                 title: "use a comprehension".into(),

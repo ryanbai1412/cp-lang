@@ -254,3 +254,14 @@ pub(super) fn write_once<'e>(stmts: &'e [Stmt], name: &str) -> Option<(&'e Expr,
             && matches!(&rest[..], [(CmpOp::Eq, v)] if matches!(v.kind, ExprKind::None)));
     unset.then_some((&**lhs, value))
 }
+
+/// `xs.rev.collect()` when a loop over `0..N` pushes `xs[N - 1 - i]`.
+pub(super) fn reversed(i: &str, it: &str, v: &str) -> Option<String> {
+    let n = it.strip_prefix("0..")?;
+    let (xs, rest) = v.split_once('[')?;
+    let idx = rest.strip_suffix(']')?;
+    let len = format!("{xs}.len");
+    let ok = idx == format!("{n} - 1 - {i}") && (n == len || !n.contains('.'));
+    (ok && !xs.is_empty() && xs.chars().all(|c| c.is_alphanumeric() || c == '_'))
+        .then(|| format!("{xs}.rev.collect()"))
+}

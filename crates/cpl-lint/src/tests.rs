@@ -1889,3 +1889,23 @@ fn a_prefix_sum_difference_is_not_a_binomial() {
     let src = "let n: 1..=10 = read()\nlet ps: [0..=n]Int = read()\nfn diff(x: 0..=n) -> Int = ps[x] - (ps[n] - ps[n - x])\nprint(diff(1))\n";
     assert!(!codes(src).contains(&"L0557"), "{:?}", codes(src));
 }
+
+#[test]
+fn a_push_loop_that_walks_backwards_is_rev() {
+    // corpus/newcomer/n47_reverse.cp and n74_string_reverse.cp.
+    let arr = "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\nvar b: List<Int> = []\nfor i in 0..n:\n    b.push(a[n - 1 - i])\nprint(b)\n";
+    assert!(
+        fixed(arr).contains("let b: List<Int> = a.rev.collect()\n"),
+        "{}",
+        fixed(arr)
+    );
+    let s = "let s: Str = read()\nvar t: List<Char> = []\nfor i in 0..s.len:\n    t.push(s[s.len - 1 - i])\nprint(Str(t))\n";
+    assert!(
+        fixed(s).contains("let t: List<Char> = s.rev.collect()\n"),
+        "{}",
+        fixed(s)
+    );
+    // Any other index is a plain comprehension.
+    let other = "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\nvar b: List<Int> = []\nfor i in 0..n - 1:\n    b.push(a[n - 2 - i])\nprint(b)\n";
+    assert!(!fixed(other).contains("rev"), "{}", fixed(other));
+}

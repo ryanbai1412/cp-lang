@@ -287,3 +287,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-23: test `nested_findings_are_one_cause_or_listed_distinct`: every pair of lints nested on one span (newcomer, std, ports) is superseded (7 new pairs: code a hand-written algorithm deletes) or listed as teaching two things (12).
 - 2026-11-23: L0557 binom_by_hand needs a product or quotient: a prefix-sum difference `ps[x] - (ps[n] - ps[n - x])` (n51) no longer reads as `n` choose `x`. Newcomer 149/150: that false positive had credited n51's `missing group-by-key-loop` mark 3 lines below.
 - 2026-11-23: newcomer score made honest (decision 346): `missing` marks no longer credited by a nearby unrelated lint; 8 marks relabelled to the lint that teaches them, 6 genuine unmarked findings marked. 132/150 (88%).
+- 2026-11-23: L0507 push_loop teaches `xs.rev.collect()` for a loop pushing `xs[N - 1 - i]` over `0..N` (n47, n74). Newcomer 138/154 (90%).
