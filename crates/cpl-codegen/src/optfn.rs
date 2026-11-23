@@ -298,15 +298,21 @@ fn fold(program: &mut Program, owner: Owner) {
     loop {
         let mut subst: BTreeMap<Slot, Expr> = BTreeMap::new();
         walk::blocks_mut(body, &mut |block| {
-            block.stmts.retain(|st| match st {
-                Stmt::Let(t, Some(init))
-                    if !stored.contains(t) && !captured.contains(t) && known(*t, init) =>
-                {
-                    subst.insert(*t, init.clone());
-                    false
+            for st in &mut block.stmts {
+                let folded = match st {
+                    Stmt::Let(t, Some(init))
+                        if !stored.contains(t) && !captured.contains(t) && known(*t, init) =>
+                    {
+                        Some((*t, init.clone()))
+                    }
+                    _ => None,
+                };
+                // The `let` still runs where it is written, as a profile counts it.
+                if let Some((t, init)) = folded {
+                    *st = Stmt::Expr(unit(init.span));
+                    subst.insert(t, init);
                 }
-                _ => true,
-            })
+            }
         });
         exprs_mut(body, &mut |e| {
             if let ExprKind::Local(s) = e.kind {
