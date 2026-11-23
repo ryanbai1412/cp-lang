@@ -53,6 +53,8 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0313 | domain_escapes | a value of fresh type `V` leaves its block |
 | E0314 | non_exhaustive_match | this `match` has no arm for `R` |
 | E0315 | not_a_token_type *(0.3)* | `read<Bool>()`: `Bool` is not a token type; read a `Str` and compare it, or use a type `read` takes (R10.2.3) |
+| E0316 | field_bound_from_input *(0.3)* | `x: 0..=n` in `struct P`: a field's bounds are fixed before input is read, but `n` is read; bound it by a constant or keep the value outside the struct (R03.1.3) |
+| E0317 | getter_needs_defaults *(0.3)* | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |
@@ -60,6 +62,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0405 | assign_fixed_field | `e.w` is not `var`; declare `var w` or rebuild with `e with w: x` |
 | E0406 | var_lambda_recursion | a `var`-bound lambda cannot call itself |
 | E0407 | duplicate_variant_tag | two variants of one enum read as the same token; give one a different `@tag` |
+| E0408 | assign_into_range *(0.3)* | `r[i] = x`: `r` is a `Range`, which has no storage to write; copy it with `List(r)` first (R07.2.5) |
 | E0501 | unsupported | `yield` outside a generator |
 | E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
 | E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`) |
