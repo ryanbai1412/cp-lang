@@ -61,8 +61,12 @@ impl Ord for Frac:
   fieldwise when every field has them, so a rerooting DP over
   `(cnt: Int, sum: Int)` passes `+` as its operation. (R08.1.6)
 - **Field traits**: a trait may require fields (`trait Target<V>: to:
-  V`). Records satisfy field-only traits structurally; named structs opt
-  in with a bodiless `impl Target<V> for Edge`. (R08.1.7)
+  V`); a bodiless `@get fn` member is the same requirement, met by a
+  field of that name. A record or tuple satisfies a trait structurally
+  when a field meets each member the trait leaves without a body; a named
+  struct satisfies it only through an `impl`, bodiless when its fields
+  meet those members. One relation decides a bound, a parameter typed by
+  the trait and `if T: Trait` (decision 361). (R08.1.7)
 - Library-authored diagnostics: a trait may attach a message to "not
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write. (R08.1.8)

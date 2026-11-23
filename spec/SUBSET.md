@@ -258,6 +258,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/static-fn-default-param-mismatch.cp: compiler
 - core-08/trait-assoc-type-bound.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
+- core-08/if-bound-field-trait-record.cp: compiler
+- core-08/if-bound-struct-needs-impl.cp: compiler
+- core-08/getter-trait-struct-opt-in.cp: compiler
 - core-09/release-division-by-zero-fallback.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
 - core-09/release-skips-assert.cp: compiler

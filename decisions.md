@@ -7614,7 +7614,7 @@ records. User traits and libraries get it the same. Cases
 `has_bound_by_shape` call in `ExprKind::HasBound` lowering and `arc_len`
 falls back to 1 on records. `lower/expr.rs` +1 line (`--update rs_over_cap`).
 
-## 359. Rebuild-11 rulings: `if let` else, ring receiver, wrap of negatives (2026-11-23)
+## 360. Rebuild-11 rulings: `if let` else, ring receiver, wrap of negatives (2026-11-23)
 
 Rebuild round 11 found readers guessing at these. `if let x = e, cond: A
 else: B` runs `B` when the binder fails or any condition is false (one
@@ -7627,3 +7627,22 @@ multitest divider captures the case's names, a counted array's count is
 any expression, and a runtime `Mod(m)` may be read per case. Reverse: each
 is one sentence in R01.7.1, R04.2.13, R07.1.2, R10.1.1, R10.2.1, R10.3.1,
 R03.1.7 or R03.5.1.
+
+## 361. One trait-satisfaction relation: records by shape, structs by `impl` (2026-11-23)
+
+Spec's review of stdlib's decision 359 (`if A: Trait` holds by shape). The
+idea is R08.1.7 already: records satisfy field traits structurally. But the
+implementation made two relations: `if A: HasW` was false for a record that
+`A: HasW` accepted, and `if A: Named` was true for a struct with a `name`
+field that `A: Named` rejected (E0606). Now one relation decides a bound, a
+parameter typed by a trait and `if T: Trait`: a record or tuple satisfies a
+trait when a field meets every member the trait leaves without a body; a
+named struct only through an `impl`, which may be bodiless when its fields
+meet them. A bodiless `@get fn w(self) -> W` is the same requirement as a
+field `w: W`, so std's getter traits and the spec's field traits are one
+concept. Records are structural already (rows, derived `+`), so a record
+meeting a trait by accident is no new surprise; structs keep their fields
+private (R11.1.4) and opt in. Not a change of the language's character.
+Cases `core-08/if-bound-*`, `core-08/getter-trait-struct-opt-in`. Reverse:
+let structs satisfy by shape too, or drop shape satisfaction from
+`if T: Trait` (then `arc_len` needs `Graph` arcs to `impl Weighted`).

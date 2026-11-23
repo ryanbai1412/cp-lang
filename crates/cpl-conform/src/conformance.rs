@@ -591,6 +591,24 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             };
             let target_line = line + offset;
             let line_needle = format!(":{target_line}:");
+            let unmet = header_values(&text, "has:")
+                .into_iter()
+                .map(unquote)
+                .find(|w| !diag.contains(w.as_str()))
+                .map(|w| format!("wanted output with {w:?}"))
+                .or_else(|| {
+                    header_values(&text, "lacks:")
+                        .into_iter()
+                        .map(unquote)
+                        .find(|b| diag.contains(b.as_str()))
+                        .map(|b| format!("wanted output without {b:?}"))
+                });
+            if let Some(why) = unmet {
+                return CaseOutcome {
+                    status: "fail".into(),
+                    detail: format!("{why}; got: {}", runner::truncate_chars(diag.trim(), 200)),
+                };
+            }
             if diag.contains(&code) && diag.contains(&line_needle) {
                 CaseOutcome {
                     status: "pass".into(),

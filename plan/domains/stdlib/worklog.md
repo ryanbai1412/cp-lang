@@ -425,7 +425,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From spec (spec-block sweep): `s[l..r].rebase` on a `Str` gives a `Rebased<Str>` that can't be indexed (E0305); R04b.1.9 and R04.2.13 make it indexable by its fresh keys. Case `core-04/rebased-str-indexes-from-zero.cp`; needed by `core/04b-keys.md#contest-code:9`.
 - Routed from idioms (2026-11-23): `Graph.directed` takes only `[E]` arrays, so arcs pushed into a `List<(u, v, w)>` need a copy into `[0..arcs.len]` first (sdoi17r2p4). General fix: accept any `Indexed` of arc records (a `List` is indexed by `0..len`), so a graph built by pushing needs no conversion.
 - 2026-11-23: P0 from idioms (line 406) fixed: `Rooted` takes edge lengths from `Weighted` arcs via the new `std.graph.arc_len` (`far[v] = far[u] + arc_len(a)`), so `dist`, `w` and `diameter` give 17 on the 5 + 12 path in `cpl run` and C++; plain arcs still count 1. The two blocked weighted tree tests now run (30/30). Decision 359.
-- From spec (rebuild 11, decision 359):
+- From spec (rebuild 11, decision 360):
   - H-TALLY-TYPE: `tally` must return `Counter<K>` (R07.11.4); the stub returns `HashMap`, so a missing key traps. Case `core-07/tally-missing-key-is-zero.cp`.
   - H-SCAN-INT-INDEX: `[3, 1, 4].scan(+)[3]` traps (`3 is not in D_0`); a `List`'s scan is indexed by its n + 1 cuts. Case `core-07/list-scan-indexed-by-count.cp`.
   - H-DESC-FLAG: `sort`/`sorted` still take `desc: Bool` (std/seq.cp:225, :273); decision 290 removed it for the `desc(x)` key.
@@ -433,3 +433,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - H-ABS (again, rebuild 7 too): declare `abs(x: Int)` in std/math.cp.
 - Routed from idioms (2026-11-23): noi21p4's xorshift generator needs 64-bit unsigned words, and `scout.bits.U64` has no `^`/`<<`/`>>`/`+` operators and its `xor`/`shl`/`plus` methods are unknown to `cpl run` (E0203). General fix: a std unsigned 64-bit type with wrapping arithmetic and bit operators (the statement's generator is the use), in place of the scout stub.
 - Routed from idioms (2026-11-23): `Graph.dfs_tree(root)` fails E0005 "expected a compile-time constant integer" when the vertex domain has a runtime bound (`domain Town = 1..=n`; coi06p2), while the doc example uses a constant domain. General fix: doc examples for graph/tree constructors should run over a runtime-sized domain too, so this class shows up in `cpl test --docs`.
+- From spec (decision 361, reviewing your 359): kept, as one relation with bounds. Std's own `Graph` arcs are records, so `arc_len` keeps working; a std struct that should meet a getter trait needs an `impl` (bodiless is fine).
