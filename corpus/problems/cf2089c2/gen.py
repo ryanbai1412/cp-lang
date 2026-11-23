@@ -1,10 +1,14 @@
 import sys, random
-rng = random.Random(int(sys.argv[1]))
-size = int(sys.argv[2])
-T = rng.randint(1, 3)
-print(T)
-for _ in range(T):
-    n = rng.randint(1, size + 2)
-    l = rng.randint(1, size + 2)
-    k = rng.randint(0, min(5, size))
-    print(n, l, k)
+seed, size = int(sys.argv[1]), int(sys.argv[2])
+rng = random.Random(seed)
+if size <= 20:
+    T = rng.randint(1, 3)
+    print(T)
+    for _ in range(T):
+        print(rng.randint(1, size + 2), rng.randint(1, size + 2), rng.randint(0, min(25, size)))
+else:
+    # sum l = 5000 split over T cases, n = 100 and k = 25 for the most work.
+    T = [1, 2, 5, 50][seed % 4]
+    print(T)
+    for _ in range(T):
+        print(100, 5000 // T, 25 if seed % 5 else rng.randint(0, 25))

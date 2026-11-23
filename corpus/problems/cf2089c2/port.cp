@@ -1,8 +1,8 @@
 // Source: Codeforces 2089C2 (Key of Like, hard), https://codeforces.com/contest/2089/problem/C2
-// Problem: n <= 100 members take turns trying one key on one lock, always a pair most likely to
-//   match given all past tries (ties uniform), until all l <= 5000 locks are open; there are
-//   l + k keys, k <= 25 of them fake. Print each member's expected number of successful matches
-//   mod 1e9+7. Multitest, sum l <= 5000.
+// Problem: 1 <= n <= 100 members take turns trying one key on one lock, always a pair most
+//   likely to match given all past tries (ties uniform), until all 1 <= l <= 5000 locks are
+//   open; there are l + k keys, 0 <= k <= 25 of them fake. Print each member's expected number
+//   of successful matches mod 1e9+7. Multitest, sum l <= 5000.
 // Solution: with i unused keys, k of them fake, play settles one key or one lock at a time: a lock
 //   tried key by key opens after a uniform 1..i tries, a key tried lock by lock opens after a
 //   uniform 1..i - k tries or, if fake, is dropped after i - k misses (k - 1 left); the two modes
@@ -16,7 +16,7 @@ let comb = Comb<Z>()
 @!multitest
 let n: 1..=100 = read()
 let l: 1..=5_000 = read()
-let k_max: 0..=100 = read()
+let k_max: 0..=25 = read()
 domain Pos = 0..n
 
 fn shift_back(p: Pos, off: Int) -> Pos = Pos((p.ord + n - off % n) % n)
