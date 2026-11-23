@@ -7,13 +7,14 @@ name: debugger-loop
 # where the full workspace run in os.yml is often cancelled by newer pushes.
 on:
   push:
-    branches: [main]
+    branches: [main, lane/debugger]
     paths:
       - crates/cpl-stress/**
       - crates/cpl-judge/**
       - crates/cpl-lsp/**
       - crates/cpl-cli/**
       - editors/neovim/**
+      - editors/vscode/**
       - .github/workflows/debugger-loop.yml
   workflow_dispatch:
 
@@ -22,7 +23,7 @@ permissions:
 
 concurrency:
   group: debugger-loop-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   loop:
@@ -68,3 +69,32 @@ jobs:
       - name: Vim stress loop
         if: runner.os != 'Windows'
         run: editors/neovim/test/stress_loop_vim.sh "$PWD/target/debug/cpl"
+
+  # The same loop through the VS Code commands (cp.stress, cp.runAllSamples), in the
+  # extension-host suite against the real `cpl lsp`; ci.yml's vscode job runs it too.
+  vscode:
+    name: vscode (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Extension integration tests
+        shell: bash
+        working-directory: editors/vscode
+        run: |
+          npm ci --no-audit --no-fund
+          if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
