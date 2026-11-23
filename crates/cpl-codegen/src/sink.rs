@@ -163,10 +163,11 @@ fn pure_call(
         }
         _ => return false,
     };
+    let here = |x: &Expr| pure_call(program, devirt, pure, home, x);
     known
         && args
             .iter()
-            .all(|a| matches!(a, Arg::Value(v) if trap_free_with(v, &inner)))
+            .all(|a| matches!(a, Arg::Value(v) if trap_free_with(v, &here)))
 }
 
 /// The list argument is a producer and every other argument a constant,

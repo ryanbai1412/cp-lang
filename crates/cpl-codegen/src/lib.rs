@@ -409,6 +409,8 @@ mod devirt_tests;
 #[cfg(test)]
 mod prune_tests;
 #[cfg(test)]
+mod range_tests;
+#[cfg(test)]
 mod sink_tests;
 #[cfg(test)]
 mod tests;

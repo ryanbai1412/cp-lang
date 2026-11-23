@@ -574,6 +574,8 @@ struct FnCx {
     local_specs: HashMap<Slot, ast::Type>,
     /// Declared integer range bounds for local variables, parameters, and range-typed arrays/lists.
     local_ranges: HashMap<Slot, RangeInfo>,
+    /// Constant bounds of an immutable `let x = e` with no declared type, from `e`.
+    let_bounds: HashMap<Slot, (i64, i64)>,
     view_lo: HashMap<Slot, i64>,
     ret: Option<Ty>,
     new_domain_slots: Vec<DomainId>,

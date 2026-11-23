@@ -932,16 +932,10 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => None,
                     };
-                    let array_ty_ast = if let (Some(ty_ast), Some(_)) = (ty.as_ref(), &single_name)
-                    {
-                        if matches!(ty_ast.kind, ast::TypeKind::Array { .. }) {
-                            Some(ty_ast.clone())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
+                    let array_ty_ast = ty.as_ref().filter(|t| {
+                        single_name.is_some() && matches!(t.kind, ast::TypeKind::Array { .. })
+                    });
+                    let array_ty_ast = array_ty_ast.cloned();
                     let runtime_const_name =
                         if !*mutable && !self.at_top_level() && value.ty == Ty::Int {
                             single_name.clone().filter(|n| {
@@ -950,7 +944,10 @@ impl<'a> Lowerer<'a> {
                         } else {
                             None
                         };
+                    let bounds =
+                        self.let_bounds(*mutable || ty.is_some() || self.at_top_level(), &value);
                     self.bind_mut(pat, value, *mutable, out);
+                    self.note_let_bounds(bounds, single_name.as_deref());
                     if let (
                         false,
                         Some(name),

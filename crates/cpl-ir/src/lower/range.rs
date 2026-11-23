@@ -53,6 +53,21 @@ impl RangeBounds {
     }
 }
 
+/// The bounds of `e` when it is `x`, `x + c` or `x - c` for a constant `c`
+/// and `x` lies in `within`.
+fn offset_of(e: &Expr, x: &Expr, within: (i64, i64)) -> Option<(i64, i64)> {
+    let (lo, hi) = within;
+    let c = match &e.kind {
+        _ if same_expr(e, x) => 0,
+        ExprKind::Binary(BinOp::Add, a, b) if same_expr(a, x) => const_int_expr(b)?,
+        ExprKind::Binary(BinOp::Sub, a, b) if same_expr(a, x) => {
+            const_int_expr(b)?.checked_neg()?
+        }
+        _ => return None,
+    };
+    (lo <= hi).then_some((lo.checked_add(c)?, hi.checked_add(c)?))
+}
+
 fn expr_limits(e: &Expr) -> Option<(i64, i64)> {
     match &e.kind {
         ExprKind::Int(v) => Some((*v, *v)),
@@ -495,6 +510,23 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The constant bounds a local `let` bound to `value` keeps (see `FnCx::let_bounds`):
+    /// none when it is mutable, typed or global (`fixed`), or not an `Int`.
+    pub(super) fn let_bounds(&self, fixed: bool, value: &Expr) -> Option<(i64, i64)> {
+        if fixed || value.ty != Ty::Int {
+            return None;
+        }
+        let (lo, hi) = self.expr_const_bounds(value);
+        lo.zip(hi)
+    }
+
+    /// Records `bounds` for the local just bound to `name`.
+    pub(super) fn note_let_bounds(&mut self, bounds: Option<(i64, i64)>, name: Option<&str>) {
+        if let (Some(b), Some(slot)) = (bounds, name.and_then(|n| self.lookup(n))) {
+            self.cx.let_bounds.insert(slot, b);
+        }
+    }
+
     /// Computes sound static inclusive bounds `(lo, hi)` for `e` when provable.
     fn expr_const_bounds(&self, e: &Expr) -> (Option<i64>, Option<i64>) {
         match &e.kind {
@@ -514,7 +546,14 @@ impl<'a> Lowerer<'a> {
                 }
                 match self.expr_range(e) {
                     Some(RangeInfo::Scalar(b)) => (b.lo_const, b.hi_const),
-                    _ => (None, None),
+                    _ => match &e.kind {
+                        ExprKind::Local(slot) => self
+                            .cx
+                            .let_bounds
+                            .get(slot)
+                            .map_or((None, None), |&(lo, hi)| (Some(lo), Some(hi))),
+                        _ => (None, None),
+                    },
                 }
             }
             ExprKind::Read(spec) => match spec.as_ref() {
@@ -563,8 +602,31 @@ impl<'a> Lowerer<'a> {
             }
             ExprKind::If(cond, then_e, else_e) => {
                 let (mut tlo, mut thi) = self.expr_const_bounds(then_e);
-                let (elo, mut ehi) = self.expr_const_bounds(else_e);
+                let (mut elo, mut ehi) = self.expr_const_bounds(else_e);
                 if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
+                    // A branch that is the compared value plus a constant, under the
+                    // bound the condition (or its negation) puts on that value.
+                    if let (Some(k), (Some(lo), Some(hi))) =
+                        (const_int_expr(rhs), self.expr_const_bounds(lhs))
+                    {
+                        let below = |k: i64| (lo, hi.min(k));
+                        let above = |k: i64| (lo.max(k), hi);
+                        let split = match op {
+                            CmpOp::Lt => Some((below(k.saturating_sub(1)), above(k))),
+                            CmpOp::Le => Some((below(k), above(k.saturating_add(1)))),
+                            CmpOp::Gt => Some((above(k.saturating_add(1)), below(k))),
+                            CmpOp::Ge => Some((above(k), below(k.saturating_sub(1)))),
+                            _ => None,
+                        };
+                        if let Some((yes, no)) = split {
+                            if let Some((l, h)) = offset_of(then_e, lhs, yes) {
+                                (tlo, thi) = (Some(l), Some(h));
+                            }
+                            if let Some((l, h)) = offset_of(else_e, lhs, no) {
+                                (elo, ehi) = (Some(l), Some(h));
+                            }
+                        }
+                    }
                     match op {
                         CmpOp::Ge => {
                             if let Some(k) = const_int_expr(rhs) {

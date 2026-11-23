@@ -1405,36 +1405,6 @@ fn items_of_a_slice_keep_its_list_narrow() {
 }
 
 #[test]
-fn range_typed_stores_emit_check_only_when_unproven() {
-    let unchecked_store = cpp("struct S:
-    var a: 0..=1_000_000
-    b: Int
-let k: Int = read()
-var s = S(0, 1)
-s.a = k
-print(s.a)
-");
-    assert!(
-        unchecked_store.contains("cpl::check_range(k, 0, 1000000, \"0..=1_000_000\")"),
-        "{unchecked_store}"
-    );
-
-    let proven_store = cpp("const P = 998244353
-struct M(v: 0..P)
-let k: Int = read()
-let r: 0..=100 = read()
-var x: 0..=1_000_000 = 0
-x = r
-let m = M(k % P)
-print(x, m.v)
-");
-    assert!(
-        !proven_store.contains("cpl::check_range"),
-        "proven stores (literal, narrower range var, k % P into 0..P) must elide check_range:\n{proven_store}"
-    );
-}
-
-#[test]
 fn ranged_array_elements_narrow_to_32_bit_and_widen_on_plain_flow() {
     let top_level = cpp("let n: 1..=100 = read()
 domain V = 1..=n
