@@ -5,8 +5,8 @@ const MOD = 1_000_000_007
 type Z = Mod<MOD>
 
 let n: Int = read()
-let comb = Comb<MOD>.new(n)
-let step = Z(n - 1).inv
+let comb = Comb<Mod<MOD>>(n)
+let step = Z(n - 1).inv()
 
 var ans: Z = 0
 var scale = step

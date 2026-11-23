@@ -11,7 +11,7 @@ let (n, m, k): (Int, Int, Int) = read()  // m <= n <= 128, k <= 1e9
 let (s, t): (Str, Str) = read()
 domain Off = 0..=n  // how many places differ
 type Mat = [Off, Off]Z
-let comb = Comb<P>.new(n)
+let comb = Comb<Mod<P>>(n)
 
 fn mul(a: Mat, b: Mat) -> Mat:
     var c: Mat = [Off, Off] (i, j) => Z.zero

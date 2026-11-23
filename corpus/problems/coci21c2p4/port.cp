@@ -28,7 +28,7 @@ for r in radius.sorted():
     ways = next
 
 // One block of k cells: the l - k free cells go into the n + 1 gaps around the magnets.
-let comb = Comb<P>.new(l + n)
+let comb = Comb<Mod<P>>(l + n)
 var total: Z = 0
 for k in 1..=l: total += ways[1][k] * comb.choose(l - k + n, n)
 print(total)

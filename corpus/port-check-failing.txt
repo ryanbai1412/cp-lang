@@ -16,7 +16,6 @@ btoi18p6
 btoi19p3
 btoi19p4
 btoi19p5
-canada21p5
 ccc00s5
 ccc02s4hard
 ccc05s5
@@ -62,12 +61,10 @@ coci06c1p6
 coci20c6p1
 coci20c6p2
 coci20c6p3
-coci21c2p4
 coci25c3p4
 coi06p2
 cpc21c1p5
 dmopc20c7p5
-dmopc21c4p4
 dwite10c3p3
 egoi22p3
 egoi23p2
