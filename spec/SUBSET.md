@@ -138,8 +138,10 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-04/a7-consume-front.cp: compiler
 - core-04/b4-prefix-of-range.cp: compiler
 - core-04/f2-sub-rectangle-offset.cp: compiler
+- core-04/grid-keys-are-cells.cp: compiler
 - core-04/h-step-keeps-source-keys.cp: compiler
 - core-04/h-step-skipped-key-traps.cp: compiler
+- core-04/inline-product-domain-is-seq.cp: compiler
 - core-04/keyed-counter-is-not-a-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
 - core-04/literal-position-in-list-outside.cp: compiler

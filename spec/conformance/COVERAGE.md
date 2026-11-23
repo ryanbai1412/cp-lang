@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2386 (995 passing). Rules: 558.
+Cases: 2388 (995 passing). Rules: 558.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -214,7 +214,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
-- R04.2.20 [3+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
+- R04.2.20 [4+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
@@ -223,7 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | O(1)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | O(1)
 - R04.2.9 [1+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
-- R04.2.10 [2+ 1-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
+- R04.2.10 [3+ 1-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [2+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [2+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
