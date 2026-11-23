@@ -25,10 +25,30 @@ pub(crate) fn domains(file: &File) -> HashSet<String> {
     found.0
 }
 
+/// The domains whose first label is 0, where a label and a position agree.
+fn zero_based(file: &File) -> HashSet<String> {
+    struct Zero(HashSet<String>);
+    impl Visitor for Zero {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Domain { name, def } = &stmt.kind {
+                if let ExprKind::Range { lo: Some(lo), .. } = &unparen(def).kind {
+                    if matches!(unparen(lo).kind, ExprKind::Int(0)) {
+                        self.0.insert(name.text.clone());
+                    }
+                }
+            }
+        }
+    }
+    let mut found = Zero(HashSet::new());
+    file.walk(&mut found, |_, _| {});
+    found.0
+}
+
 struct Types<'a> {
     src: &'a str,
     base: u32,
     domains: HashSet<String>,
+    zero_based: HashSet<String>,
     lines: cpl_diag::LineIndex,
     /// Sets that are walked in order (`s.first`, `s.pop_last()`), by name:
     /// an array of `Bool` has no order to ask.
@@ -36,6 +56,9 @@ struct Types<'a> {
     /// Types written inside another container, by where they start:
     /// `[V]Set<V>` holds few of each `V`, and `[V][V]Bool` would hold all.
     inner: HashSet<u32>,
+    /// Declarations, by where their type or init starts, of names walked in
+    /// order: `m.last_le(t)` has no dense `[K]?V` spelling.
+    walked: HashSet<u32>,
     /// The line of the last `domain_keyed_map` finding.
     last_keyed_line: Option<u32>,
     findings: Vec<Finding>,
@@ -57,6 +80,10 @@ impl Types<'_> {
         }
         if name == "Set" && self.inner.contains(&span.shift(self.base).start) {
             // The `Set<V>()` such a declaration starts from goes with it.
+            self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
+            return;
+        }
+        if name == "Map" && self.walked.contains(&span.shift(self.base).start) {
             self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
             return;
         }
@@ -96,7 +123,13 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
             Some(&**base)
         }
         ExprKind::Call { callee, args }
-            if args.len() == 1 && matches!(&callee.kind, ExprKind::Name(n) if n == "Int") =>
+            // `Int(v)` of a value read, not of a computed number.
+            if args.len() == 1
+                && matches!(&callee.kind, ExprKind::Name(n) if n == "Int")
+                && matches!(
+                    unparen(&args[0].value).kind,
+                    ExprKind::Name(_) | ExprKind::Field { .. }
+                ) =>
         {
             Some(&args[0].value)
         }
@@ -128,6 +161,7 @@ const ORDERED: &[&str] = &[
     "last_lt",
     "pop_first",
     "pop_last",
+    "range",
 ];
 
 /// The names `x` of the file with an `x.first`, `x.pop_last()` and so on.
@@ -257,6 +291,7 @@ impl Visitor for Types<'_> {
                     .chain(init.iter().map(|init| init.span));
                 for span in spans {
                     self.inner.insert(span.shift(self.base).start);
+                    self.walked.insert(span.shift(self.base).start);
                 }
             }
         }
@@ -346,7 +381,7 @@ impl Visitor for Types<'_> {
                 let [arg] = args.as_slice() else {
                     return;
                 };
-                if !self.domains.contains(domain) {
+                if !self.domains.contains(domain) || self.zero_based.contains(domain) {
                     return;
                 }
                 let Some((value, offset)) = position_offset(&arg.value, self.src, self.base) else {
@@ -390,8 +425,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         domains: domains(file),
+        zero_based: zero_based(file),
         ordered: ordered(file),
         inner: HashSet::new(),
+        walked: HashSet::new(),
         lines: cpl_diag::LineIndex::new(file.src),
         last_keyed_line: None,
         findings: Vec::new(),
