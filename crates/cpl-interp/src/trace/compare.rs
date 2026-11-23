@@ -124,9 +124,9 @@ pub(super) fn run_json(
 ) -> String {
     let mut out = String::from("{\"label\":");
     string(&mut out, label);
-    out += &(rec.skipped > 0)
-        .then(|| format!(",\"firstStep\":{}", rec.skipped))
-        .unwrap_or_default();
+    if rec.skipped > 0 {
+        out += &format!(",\"firstStep\":{}", rec.skipped);
+    }
     out.push_str(",\"steps\":[");
     for (index, step) in rec.steps(0..rec.len()).enumerate() {
         if index > 0 {
