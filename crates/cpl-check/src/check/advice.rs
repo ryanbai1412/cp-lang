@@ -438,7 +438,20 @@ impl Checker<'_> {
                 return;
             }
         }
+        let arg_ty = match args {
+            [a] => self.hovers.iter().rev().find(|h| h.span == a.value.span),
+            _ => None,
+        }
+        .map(|h| h.ty.clone());
         let (ours, what) = match (name.as_str(), args) {
+            ("int", [x]) if matches!(arg_ty, Some(Ty::Float)) => (
+                format!("{}.trunc", operand(self, x)),
+                "a float rounds toward zero with `trunc` (or `floor`, `round`)",
+            ),
+            ("int", [c]) if matches!(arg_ty, Some(Ty::Char)) => (
+                format!("{}.digit", operand(self, c)),
+                "a digit's value is its `digit`",
+            ),
             ("int" | "float", [_]) if input.is_some() => (
                 format!("read<{}>()", read.unwrap_or("Int")),
                 "a value is read from the input with `read`",
