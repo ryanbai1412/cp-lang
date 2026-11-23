@@ -41,12 +41,12 @@ fn solve_overlap(blocks: List<Block>) -> Int:
     let ys = compress_list(raw)
     let m = ys.len
     var tree = [0..4 * m + 5] _ => -1
-    var lazy = [0..4 * m + 5] _ => -1
+    var pending = [0..4 * m + 5] _ => -1
 
     fn upd(o: Int, l: Int, r: Int, ql: Int, qr: Int, v: Int):
         tree[o] max= v
         if ql <= l and r <= qr:
-            lazy[o] max= v
+            pending[o] max= v
             return
         let mid = (l + r) / 2
         if ql <= mid: upd(o * 2, l, mid, ql, qr, v)
@@ -54,7 +54,7 @@ fn solve_overlap(blocks: List<Block>) -> Int:
 
     fn qry(o: Int, l: Int, r: Int, ql: Int, qr: Int) -> Int:
         if ql <= l and r <= qr: return tree[o]
-        var res = lazy[o]
+        var res = pending[o]
         let mid = (l + r) / 2
         if ql <= mid: res max= qry(o * 2, l, mid, ql, qr)
         if mid < qr: res max= qry(o * 2 + 1, mid + 1, r, ql, qr)
@@ -87,7 +87,7 @@ fn solve_dom(blocks: List<Block>) -> Int:
         evts.push((-b.yl, 0, i))
         evts.push((-b.yr, -1, i))
     evts.sort()
-    var st = SegTree<Y, Int>(-1, (a, b) => max(a, b))
+    var st = SegTree(Monoid<Int>(-1, max), [Y] _ => -1)
     var cur: [Y]Int = -1
     var ans = 0
     for e in evts:
@@ -99,7 +99,7 @@ fn solve_dom(blocks: List<Block>) -> Int:
             st.set(y, cur[y])
         else:
             let y = Y(bsearch_idx(ys, b.x - b.yr))
-            let got = st.fold(y, Y.last)
+            let got = st.fold(y..)
             if got != -1: ans max= got - b.x
     return ans
 
@@ -121,7 +121,7 @@ fn main_solve():
         pos[Val(x - 1)].push(i)
 
     let id_np = NP(false, 0, 0, 0, 0)
-    var st = SegTree<Pre, NP>(id_np, (a, b) => np_merge(a, b))
+    var st = SegTree(Monoid<NP>(id_np, np_merge), [Pre] _ => id_np)
     st.set(Pre(0), NP(true, 0, 0, 0, 0))
     for i in 1..=n:
         st.set(Pre(i), NP(true, 1, 1, 1, 0))
@@ -135,7 +135,7 @@ fn main_solve():
             var blocks: List<Block> = []
             var pref = NP(true, 0, 0, 0, 0)
             fn add_gap(ql: Int, qr: Int):
-                let seg = st.fold(Pre(ql), Pre(qr - 1))
+                let seg = st.fold(Pre(ql)..=Pre(qr - 1))
                 blocks.push(Block(seg.yl + pref.y, seg.yr + pref.y, pref.x + seg.x))
                 pref = np_merge(pref, seg)
             add_gap(0, pos[v][0] + 1)
