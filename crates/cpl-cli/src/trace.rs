@@ -3,8 +3,8 @@
 
 use cpl_diag::Shown;
 use cpl_interp::trace::{
-    document, explain_divergence, mentions, named_values, stages, stuck_divergence, Divergence,
-    Recording, TraceConfig,
+    answered_divergence, document, explain_divergence, mentions, named_values, stages,
+    stuck_divergence, Divergence, Recording, TraceConfig,
 };
 use std::path::Path;
 
@@ -179,9 +179,32 @@ pub fn against_brute(
             .recording
             .unwrap_or_default()
     };
-    // An interactive solution has no one to talk to here.
+    // An interactive solution talks to the file's `@interactor`.
     if fast.interactive {
-        return Err("an interactive solution is traced with `cpl run --trace`".to_string());
+        let judge = cpl_ir::interactor(&analysis).ok_or(
+            "an interactive solution judged by another program is traced with `cpl run --trace`",
+        )?;
+        let judge = cpl_ir::lower_judge(&analysis, &judge).map_err(first)?;
+        let config = cpl_interp::trace::TraceConfig {
+            assignments: explain,
+            ..config(&source, None)
+        };
+        let ran = crate::interact::run_traced(
+            &fast,
+            &judge,
+            input.as_bytes(),
+            &mut Vec::new(),
+            config,
+            true,
+        );
+        let rec = ran.recording.unwrap_or_default();
+        return Ok(cpl_stress::cli::Traced {
+            stages: Vec::new(),
+            html: html(&single(&name, &source, &rec)),
+            divergence: explain
+                .then(|| answered_divergence(&source, &rec))
+                .flatten(),
+        });
     }
     if timed_out {
         // Its first steps only: they are enough to see it go round.

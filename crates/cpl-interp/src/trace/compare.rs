@@ -193,12 +193,6 @@ pub(super) fn run_json(
 /// the lines that last changed what it prints, and the loop each sits in.
 pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
     let lines: Vec<&str> = source.lines().collect();
-    let text_of = |line: u32| {
-        lines
-            .get((line as usize).wrapping_sub(1))
-            .copied()
-            .unwrap_or("")
-    };
     let theirs = slow
         .step(slow.len().checked_sub(1)?)
         .map(|s| printed(slow, &s))?;
@@ -217,6 +211,57 @@ pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> O
         let k = wrong(&out)?;
         Some((at, k, out[k].clone()))
     })?;
+    let print = steps[at].line;
+    let blame = output_trail(&lines, fast, &steps, at);
+    let their_line = (slow.steps(0..slow.len()))
+        .find(|step| printed(slow, step).len() > k)
+        .map_or(0, |step| step.line);
+    Some(Divergence {
+        name: "output".to_string(),
+        nth: k + 1,
+        fast: Some((print, ours)),
+        brute: Some((their_line, theirs[k].clone())),
+        inside: Vec::new(),
+        blame,
+        call: false,
+        stuck: false,
+    })
+}
+
+/// The answer a judge rejected: the last line `fast` wrote, the `print`
+/// that wrote it, and the lines that last changed what it shows.
+pub fn answered_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+    let lines: Vec<&str> = source.lines().collect();
+    let steps: Vec<_> = fast.steps(0..fast.len()).collect();
+    let total = printed(fast, steps.last()?).len();
+    let at = (steps.iter()).position(|step| printed(fast, step).len() == total)?;
+    let ours = printed(fast, &steps[at]).pop()?;
+    Some(Divergence {
+        name: "answer".to_string(),
+        nth: total,
+        fast: Some((steps[at].line, ours)),
+        brute: None,
+        inside: Vec::new(),
+        blame: output_trail(&lines, fast, &steps, at),
+        call: false,
+        stuck: false,
+    })
+}
+
+/// The lines that last set what the `print` at step `at` shows, and the
+/// loops they run in.
+fn output_trail(
+    lines: &[&str],
+    fast: &Recording,
+    steps: &[super::Step],
+    at: usize,
+) -> Vec<(u32, String)> {
+    let text_of = |line: u32| {
+        lines
+            .get((line as usize).wrapping_sub(1))
+            .copied()
+            .unwrap_or("")
+    };
     let print = steps[at].line;
     let values: Vec<HashMap<String, String>> = steps[..=at]
         .iter()
@@ -271,19 +316,7 @@ pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> O
         .collect();
     blame.extend(loops);
     blame.dedup_by_key(|(line, _)| *line);
-    let their_line = (slow.steps(0..slow.len()))
-        .find(|step| printed(slow, step).len() > k)
-        .map_or(0, |step| step.line);
-    Some(Divergence {
-        name: "output".to_string(),
-        nth: k + 1,
-        fast: Some((print, ours)),
-        brute: Some((their_line, theirs[k].clone())),
-        inside: Vec::new(),
-        blame,
-        call: false,
-        stuck: false,
-    })
+    blame
 }
 
 /// What a run had printed by `step`, a line at a time.

@@ -433,6 +433,16 @@ pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergenc
         }
         return;
     }
+    if let (Some((line, answer)), None, "answer") = (&d.fast, &d.brute, d.name.as_str()) {
+        let _ = writeln!(
+            stdout,
+            "  the judge rejected the run after its last line:\n    solution `{answer}` at line {line}"
+        );
+        for (line, why) in &d.blame {
+            let _ = writeln!(stdout, "    look at line {line}: {why}");
+        }
+        return;
+    }
     let _ = match d.name.split_once('(').filter(|_| d.call) {
         Some((f, _)) => writeln!(
             stdout,
@@ -717,7 +727,11 @@ pub fn run_with(
         _ => (&[][..], None),
     };
     let explained = match (&report.failure, &traced) {
-        (Some(_), Some(Ok(traced))) if part_brute.is_some() && traced.divergence.is_some() => {
+        (Some(_), Some(Ok(traced)))
+            if (part_brute.is_some()
+                || (args.explain && matches!(judge, Judge::Interactor(_))))
+                && traced.divergence.is_some() =>
+        {
             Some(Ok(traced.divergence.clone()))
         }
         (Some(_), Some(Ok(traced)))
