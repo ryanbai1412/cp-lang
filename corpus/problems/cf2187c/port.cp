@@ -1,22 +1,13 @@
-// Codeforces 2187 C — Jerry and Tom
-//
-// In the DAG with backbone edges i -> i + 1 plus m forward edges u -> v, the
-// optimal next move from every non-sink vertex i is the farthest reachable
-// vertex nxt[i] = max(i + 1, max_{(i, v)} v) > i. These parent pointers form
-// a tree rooted at the sink V.last.
-//
-// For any pair of starting vertices (x, y) whose LCA in this tree is p, the
-// game ends after min(depth(x) - depth(p), depth(y) - depth(p)) steps. To sum
-// this over all pairs (x, y) in O(n) via small-to-large merging, each node i
-// keeps a reversed depth table `by_depth[i]` where entry `len - l` (l >= 1)
-// stores `Bucket(cnt, sum)`: the number of descendants of i at distance l - 1
-// below i, and the sum of their subtree sizes (each node u at depth l accounts
-// for sz[u] descendants at depth >= l).
-//
-// When merging child i into parent p (after swapping so `into` is the longer
-// table), every depth l in the shorter table pairs nodes at depth l in one
-// branch with all nodes at depth >= l in the other branch:
-//   (a.cnt * b.sum + b.cnt * a.sum) * l.
+// Source: Codeforces 2187C (Jerry and Tom), https://codeforces.com/contest/2187/problem/C
+// Problem: a DAG on 1..n with edges u -> u + 1 and m extra edges u -> v (no two crossing).
+//   Jerry must move each turn, Tom may move or wait; Tom wins on meeting, Jerry on reaching
+//   n. f(x, y) = Tom's minimum number of moves to force a win from (x, y), 0 if he can't.
+//   Print the sum of f over all ordered pairs x != y. n <= 2e5 (sum), m <= n - 2, multitest.
+// Solution: the best step from i is to nxt[i], the farthest vertex i reaches in one edge;
+//   these pointers form a tree rooted at n, and a pair whose tree LCA is p contributes the
+//   smaller of the two depths below p. Sum it by merging depth tables up the tree, the
+//   shorter into the longer (each bucket keeps a count and a subtree-size sum, so one pass
+//   over the shorter table adds every cross pair). O(n) by long-path merging.
 
 struct Bucket(cnt: Int, sum: Int)
 

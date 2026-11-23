@@ -1,13 +1,13 @@
-// Codeforces 2115 B: Gellyfish and Camellia Japonica.
-// Each operation `c[z] = min(c[x], c[y])` creates a version node `v` with
-// edges `cur[x] -> v` and `cur[y] -> v` in a version DAG (`val(v) = min` of
-// its two predecessors). Processing final values `(b[i], cur[i])` in
-// decreasing order of `b[i]`:
-//   - every unfixed predecessor `p` of `u` must have `val(p) >= val(u)`, so
-//     fixing `p = val(u)` assigns its tightest lower bound;
-//   - when both predecessors of a node `w` are fixed (`indeg[w] == 0`), the
-//     last one fixed equals `val(u)` (the minimum so far), forcing `val(w) = val(u)`.
-// Any initial slot left unconstrained after all constraints is set to `0`.
+// Source: Codeforces 2115B (Gellyfish and Camellia Japonica),
+//   https://codeforces.com/contest/2115/problem/B
+// Problem: an unknown array a of n values becomes b after q operations c[z] := min(c[x], c[y]).
+//   Given b and the operations, print any valid a (0 <= a_i <= 1e9), or -1 if none exists.
+//   n, q <= 3e5 (sums over tests), multitest.
+// Solution: each operation makes a version node fed by the current versions of x and y, a
+//   DAG whose sources are the initial slots. Take the final values in decreasing order; the
+//   node holding b = v gets v, every unfixed predecessor gets v (its tightest lower bound),
+//   and a node whose both inputs are now fixed gets v too (its min). A final node already
+//   fixed to another value means -1; unconstrained initial slots get 0. O(n + q) after sort.
 
 @!multitest
 let (n, q): (1..=300_000, 0..=300_000) = read()

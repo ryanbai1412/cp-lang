@@ -1,26 +1,12 @@
-// Codeforces 2165 D — Path Split
-//
-// Partition `vals[0..n]` into the fewest subsequences whose consecutive
-// elements differ by +-1. Minimizing chains equals `n` minus the maximum
-// number of directed transitions `i -> j` (`i < j`, `|vals[i] - vals[j]| == 1`)
-// with each index having in-degree <= 1 and out-degree <= 1.
-//
-// Every transition links an even value to an adjacent odd value, and the two
-// degree bounds decouple into two independent matchings:
-// - `Flip.Even`: edges entering odd values (`even < odd`) and edges leaving
-//   odd values (`odd < even`). Reflecting every even value's positions via
-//   `reflect(xs)` reverses their order so both directions become the uniform
-//   condition `carried_pos < pos` once `unmatched_prev` is reflected into
-//   `v`'s coordinate frame at each step.
-// - `Flip.Odd`: symmetrically, edges entering and leaving even values.
-//
-// Sweep `v = 0..=2n` with `carried` holding the unmatched positions of `v - 1`
-// in sorted order (already reflected into `v`'s coordinate frame). As `pos`
-// increases through `positions`, `ptr` advances monotonically over `carried`
-// and `available` counts carried positions strictly before `pos`. Every
-// available earlier position can match `pos` or any later position equally
-// well, so greedily consuming one whenever `available > 0` is optimal by an
-// exchange argument; unmatched positions of `v` stay in `unmatched` for `v + 1`.
+// Source: Codeforces 2165D (Path Split), https://codeforces.com/contest/2165/problem/D
+// Problem: split a_1..a_n (1 <= a_i <= 2n) into the fewest subsequences whose consecutive
+//   elements differ by exactly 1; print that number. n <= 1e6 (sum), multitest.
+// Solution: the answer is n minus the most links i -> j (i < j, |a_i - a_j| = 1) with every
+//   index in at most one incoming and one outgoing link. Links join even and odd values,
+//   so the two degree limits split into two independent matchings between values v - 1 and v
+//   (by which side's out-degree is used). Reflecting the positions of one parity turns both
+//   directions into "earlier carried position < pos"; sweep v = 0..=2n and greedily match
+//   each position of v to any carried unmatched position of v - 1 before it. O(n) per test.
 
 enum Flip:
     Even

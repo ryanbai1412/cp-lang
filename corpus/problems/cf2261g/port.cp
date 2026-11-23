@@ -1,10 +1,14 @@
-// Codeforces 2261 G: sum over subarrays of (xor of the subarray) AND (and of
-// the subarray). For a fixed right end the suffix ANDs take at most 25 values;
-// each keeps a binary trie of the prefix xors of its left ends, and tries are
-// merged when two suffix ANDs become equal. A group with AND `mask` adds, for
-// each set bit b of `mask`, 2^b times the number of its left ends whose prefix
-// xor differs from the current one at b: walking the trie along
-// `pref ^ mask` counts exactly those as it passes each bit of `mask`.
+// Source: Codeforces 2261G (1 2 3 and XOR, Where Did Everybody Go?),
+//   https://codeforces.com/contest/2261/problem/G
+// Problem: f(b) is the least b_1 xor ... xor b_k after adding any non-negative number to
+//   one element of b. Given a_1..a_n (a_i < 2^25), print the sum of f over all subarrays.
+//   n <= 4e5 (sum), multitest.
+// Solution: per the code, f is the AND of the subarray kept only on its top bits down to
+//   the highest bit where the XOR and the AND differ. For a fixed right end the suffix ANDs
+//   take <= 25 values; each group keeps a binary trie of the prefix xors of its left ends,
+//   merged when two ANDs coincide. Walking a group's trie along pref ^ mask counts, at each
+//   set bit b of mask, the left ends whose XOR agrees with the AND on bits >= b; add 2^b
+//   times that. O(n * 25^2) plus trie merges.
 const L = 25
 const FULL = (1 << L) - 1
 

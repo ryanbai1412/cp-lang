@@ -1,23 +1,14 @@
-// Codeforces 2261 F1 (and F2): output `n * n` grids of size `n * n` and a walk
-// of `n * n + 1` moves that distinguishes all `n * n` grids by their final
-// reachable positions (each grid is tested from every open start cell).
-//
-// Construction for `n >= 4`:
-// - Grid `(a, b)` places a horizontal wall of `'0'`s across row `a` with a
-//   single `'1'` gate at column `b - 1` (no gate when `b == 0`), and blocks
-//   `BLOCKED_COLS = 0..2` in row `a - 1`; all other cells are `'1'`.
-// - The walk starts with `'R', 'L'` (probing `BLOCKED_COLS` in row `0`), then
-//   runs `n` cycles of `n - 2` `'U'` steps and `2` `'D'` steps (`i % n < 2`),
-//   ending with one final `'D'` at `i = n * n`.
-// - Separation invariant: because `n - 2 >= 2`, each `'U'^(n-2)` phase resets
-//   every column to the top of its vertical component (row `0` above the wall,
-//   or row `a + 1` below it, except column `b - 1` which passes through the
-//   gate). The `2` `'D'` steps and the `BLOCKED_COLS` notch in row `a - 1` then
-//   leave row `a` and gate column `b - 1` uniquely encoded in the final position
-//   distribution across the `n * n` grids.
-// - Why `n = 3` is separate: at `n = 3`, `n - 2 = 1 < 2`, so `'U'` no longer
-//   offsets `'D'^2` and the cycle drifts downward instead of resetting; the
-//   9 grids and `"DURLDULRUU"` below are a precomputed solution found by search.
+// Source: Codeforces 2261F1 (Plegma II: Ask Me Any Cell, Easy Version),
+//   https://codeforces.com/contest/2261/problem/F1
+// Problem: given n (3 or 20), print n^2 binary n x n grids, the one for target (r, c) with
+//   at most k zeros (k = 9, 24), and a table a_0..a_{n^2} of moves U/L/D/R: starting from the
+//   whole grid, a robot makes 2n - 2 moves, each shrinking one side of its rectangle by the
+//   entry a_S for S = ones inside it, and must end on exactly the target cell.
+// Solution: n = 3 prints a precomputed answer. Otherwise grid (a, b) (0-based) zeroes row a
+//   except a '1' gate at column b - 1 and zeroes columns 0..2 of row a - 1 (<= n + 1 zeros).
+//   The table is R for S = 0, L for S = 1, else D when S mod n < 2 and U otherwise, so the
+//   count of ones (missing ones mark the wall row and gate) steers the rectangle onto the
+//   target. O(n^4) output.
 let n: 3..=50 = read()
 
 if n == 3:

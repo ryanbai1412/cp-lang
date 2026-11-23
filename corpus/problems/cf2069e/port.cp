@@ -1,19 +1,12 @@
-// Codeforces 2069 E: partition a string over {'A', 'B'} into at most `a` A's,
-// `b` B's, `ab` "AB"'s, and `ba` "BA"'s.
-//
-// Every pair ("AB" or "BA") uses one A and one B, so we need at least
-// `need = max(0, cnt_a - a, cnt_b - b)` pairs in total. Adjacent equal letters
-// cannot belong to the same pair, so splitting `s` at adjacent equal letters
-// yields maximal alternating runs:
-// - An odd run of length 2k + 1 can form k pairs of any mix of AB and BA
-//   ("wild"), by leaving one endpoint unpaired.
-// - An even run of length 2l starting with 'A' (resp. 'B') forms l AB (resp.
-//   BA) pairs natively, or l - 1 pairs of the opposite type by sacrificing its
-//   two endpoints.
-// After spending all wild pairs, if one side's native supply exceeds its cap
-// (`ab` or `ba`), convert its largest runs to the other side: dropping a run of
-// `l` native pairs yields `l - 1` opposite-side pairs (reducing `need` by
-// `l - 1`) while freeing `l` from the overfull side.
+// Source: Codeforces 2069E (A, B, AB and BA), https://codeforces.com/contest/2069/problem/E
+// Problem: split a string s over {A, B} into blocks "A", "B", "AB", "BA" using at most a,
+//   b, ab and ba of each; print YES or NO. |s| <= 5e5 (sum), counts <= 5e5, multitest.
+// Solution: we need at least need = max(0, #A - a, #B - b) pair blocks. Cut s between equal
+//   neighbours into alternating runs: an odd run of length 2k + 1 gives k pairs of any kind,
+//   an even run of 2l starting with A gives l AB (or l - 1 BA), and symmetrically for B.
+//   Spend the free pairs, then if one side's supply exceeds its cap, convert its largest
+//   runs to the other kind one by one (each loses one pair) and check the total reaches
+//   need. O(|s| log |s|) for the sort.
 
 @!multitest
 let s: Str = read()

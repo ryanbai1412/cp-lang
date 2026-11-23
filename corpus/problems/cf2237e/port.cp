@@ -1,11 +1,13 @@
-// Codeforces 2237 E: find a permutation b commuting with a (b[a[i]] == a[b[i]]).
-// Commutation means b maps each cycle of a onto a cycle of a of the same length
-// preserving step order: fixing b[i] forces b[a^k(i)] = a^k(b[i]). Untouched
-// index cycles must pair bijectively by length with untouched value cycles;
-// once one representative per untouched cycle is paired, every remaining cycle
-// has a fixed entry, and propagating b[a[i]] = a[b[i]] either closes consistently
-// (by total-size balance, no cycle can wrap onto a shorter one without another
-// failing to close on a longer one) or detects a conflict.
+// Source: Codeforces 2237E (Permutation Commutation),
+//   https://codeforces.com/contest/2237/problem/E
+// Problem: a permutation a of 1..n and b with some entries -1 (the given values distinct).
+//   Complete b to the lexicographically smallest permutation with a[b[i]] = b[a[i]] for all
+//   i: print YES and it, or NO. n <= 2e5 (sum), multitest.
+// Solution: commuting means b maps each cycle of a onto a same-length cycle step by step:
+//   b[a^k(i)] = a^k(b[i]). Cycles with no fixed entry must pair by length with cycles none
+//   of whose values are used; pair them smallest-first (the k-th smallest index cycle gets
+//   the k-th smallest value cycle, minimum to minimum), else NO. Then from every fixed entry
+//   walk b[a[i]] = a[b[i]] until a filled entry, which must agree. O(n).
 @!multitest
 let n: 1..=500_000 = read()
 domain I = 1..=n

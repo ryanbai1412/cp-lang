@@ -1,16 +1,14 @@
-// Codeforces 2183 D2: Tree Coloring.
-// Partition vertices of a rooted tree into `ans` slots so no two vertices at
-// the same depth share a slot and no parent shares a slot with its child.
-// Lower bound: a depth `d` with `sz` vertices needs `>= sz` slots, and if
-// `d > 0` and all `sz` vertices share one parent `p0`, `p0` cannot use any of
-// those slots, forcing `>= sz + 1`. Thus `ans = max_d (sz + Int(same_parent))`
-// is necessary and sufficient.
-// Bottom-up by depth `d`, vertices whose children occupy a slot at depth `d + 1`
-// form `forbiddens` with pairwise distinct forbidden slots:
-//   - If `forbiddens.len == 1`, at least one slot was unused at depth `d + 1`.
-//   - If `forbiddens.len >= 2`, cyclically rotating their forbidden slots via
-//     `rotated_left(1)` gives every vertex a slot distinct from its own.
-// Remaining vertices at depth `d` take the remaining slots unused at depth `d`.
+// Source: Codeforces 2183D2 (Tree Coloring, Hard Version),
+//   https://codeforces.com/contest/2183/problem/D2
+// Problem: a tree on n <= 2e5 vertices (sum), rooted at 1. An operation colours a set of
+//   vertices with pairwise distinct depths and no edge between them. Print the fewest
+//   operations that colour every vertex once, and the sets. Multitest.
+// Solution: the answer is max over depths of (layer size + 1 if the whole layer, below the
+//   root, hangs off one parent): that parent conflicts with all of it. Build it bottom-up,
+//   slots = operations: in each layer, vertices with a child in a slot (all distinct slots)
+//   take another slot - one not used one layer down if there is a single such vertex, else
+//   a cyclic rotation of their forbidden slots - and the rest fill slots unused at this
+//   depth. O(n * ans) worst case for the free-slot scans.
 
 @!multitest
 let n: 2..=200_000 = read()
