@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2347 (995 passing). Rules: 540.
+Cases: 2354 (995 passing). Rules: 542.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 103 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -26,6 +26,7 @@ Cases: 2347 (995 passing). Rules: 540.
 - R11 (11-modules-prelude.md): 15 rules, 35 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
 26 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
@@ -53,7 +54,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 540 | 539 (99%) | 207 | 207 (100%) | 539 (99%) |
+| Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
+| all | 542 | 541 (99%) | 208 | 208 (100%) | 541 (99%) |
 
 ## Rules
 
@@ -217,7 +219,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [4+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
-- R04.2.18 [3+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
+- R04.2.18 [4+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [2+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
@@ -644,6 +646,11 @@ Each rule: positive / negative case counts, then the gap if any.
 - R13.3.4 [1+ 0-]: `@memo(array)` is a lazily allocated dense table of `?R` (jagged when bounds depend on ear...
 - R13.3.5 [1+ 0-]: Views are ordinary structs holding a pointer (lent) or the value (owned) plus their closur...
 
+### Rcli: cli.md
+
+- Rcli.1 [3+ 1-]: Output is plain text for people and `--json` (the same as `--format json`, on every comman...
+- Rcli.2 [2+ 1-]: `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each diagnostic ha...
+
 ## Diagnostics
 
 Codes from `crates/cpl-diag/src/registry.rs`, `crates/cpl-lint/src/lib.rs`
@@ -668,7 +675,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 else_falls_through *(0.3)*: 1 case(s)
-- E0201 Unresolved name: 5 case(s)
+- E0201 Unresolved name: 6 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 9 case(s)
 - E0204 Unknown type: 3 case(s)

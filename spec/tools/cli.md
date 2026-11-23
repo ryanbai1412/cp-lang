@@ -38,12 +38,12 @@ JSON output) for tools; exit codes are
 0 success; 1 the files have errors or a check failed (compile errors, a
 failing test case, `fmt --check` or `lint` findings); 2 usage error, as
 POSIX tools and getopt use it; 3 the program itself failed (a trap, a failed
-`assert`, a nonzero exit), the same code the emitted C++ exits with. Everything is deterministic given the seed.
+`assert`, a nonzero exit), the same code the emitted C++ exits with. (Rcli.1) Everything is deterministic given the seed.
 
 `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
 diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 `notes`, `help` and `fixes`, positions as 1-based `line` and byte `col` plus
-the byte `offset`. `cpl fix --json` prints the same `files`, each also with
+the byte `offset`. (Rcli.2) `cpl fix --json` prints the same `files`, each also with
 the number of fixes `applied`, its diagnostics those left in the rewritten
 file. `cpl judge --json` prints `{"accepted", "reason", "diagnostic"}`, the
 last two `null` when the judge accepts. `cpl build --json` prints the C++

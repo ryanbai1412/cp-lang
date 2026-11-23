@@ -6905,3 +6905,9 @@ Reverse: `git mv` each file back and delete `scripts/status.py`.
   hand-resolved conflict left a stray `|||||||` line three times on
   2026-11-22, and each one failed every CI job and every push.
 - **Reverse.** Delete the `decisions.md merge=union` line.
+
+## 311. Tool contracts get rule ids `R<tool>.<n>` (2026-11-22)
+
+- **Call.** A rule in `spec/tools/<tool>.md` is cited as `(R<tool>.<n>)`, e.g. `(Rcli.1)` for `cpl`'s exit codes, and a case cites it as `// rule: cli.1`. `scripts/conformance-coverage.py` reads `spec/tools/` beside `spec/core/` and gates those rules the same way.
+- **Why.** Tool behaviour (exit codes, `--json` shapes) had no citable rules, so a tool regression broke no rule and coverage could not see it; numbered chapters belong to the core, and a tool name reads better than a fake chapter number.
+- **Reverse.** Drop the `(R<tool>.<n>)` marks from `spec/tools/`, the `tools` glob and the `[a-z]+` alternative from `RULE_DEF`, and the `// rule: <tool>.<n>` lines from `spec/conformance/tools-cli/`.

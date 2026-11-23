@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "spec"
 CONF = SPEC / "conformance"
-RULE_DEF = re.compile(r"\(R(\d\d[a-z]?(?:\.\d+)+)\)")
+RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)\)")
 CODE = re.compile(r"\b([ELRW]\d{4})\b")
 UNTESTABLE = {
     "E9998": "internal: a construct the compiler cannot lower",
@@ -28,12 +28,13 @@ NEGATIVE_WORDS = re.compile(
 
 
 def rule_key(rid):
-    return [(int(p), "") if p.isdigit() else (int(p[:2]), p[2:]) for p in rid.split(".")]
+    return [(int(p), "") if p.isdigit() else (int(p[:2]), p[2:]) if p[:2].isdigit() else (100, p)
+            for p in rid.split(".")]
 
 
 def rule_texts():
     rules = {}
-    for path in sorted((SPEC / "core").glob("*.md")):
+    for path in sorted((SPEC / "core").glob("*.md")) + sorted((SPEC / "tools").glob("*.md")):
         lines = path.read_text().split("\n")
         start = 0
         for i, line in enumerate(lines):

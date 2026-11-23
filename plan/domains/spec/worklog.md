@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rule ids for tool contracts (decision 311): `(Rcli.1)` exit codes, `(Rcli.2)` `cpl check --json` shape; `conformance-coverage.py` reads `spec/tools/`; six cases in `spec/conformance/tools-cli/` (6/6 pass), both rules complete. Improve item 6 started. Rebuild round 6 (round 5's ten problems at 136ca9833, so a regression measure) is running.
 - spec-blocks 85/185 (29 error, 71 skip; was 84, 27, 74): `given:` keeps its relative indentation, so a setup can hold an `impl`; three fragments get setups (two `Low` blocks in lib/ops-ranges.md, the prefix DP in lib/search-dp.md). The inline no-identity op is `Semigroup(...)`, not `Op(...)` (`Op` is a trait). The two new errors are routed: `.commutative()` to stdlib, `Semigroup(lambda)` inference to compiler.
 - Runner: `// file: <path> "..."` writes extra files into a tool case's scratch dir; first use closes R11.3.1's reject gap (`core-11/library-module-no-prelude.cp`, plus `library-module-uses-std.cp`), both pass.
 - Bug-catch 23/25 measurable fixes (92%; target 90%): the 15 unrevertible fixes measured at their own commit via the CLI backend, then the 5 misses rerun after their cases landed (3 now caught). `plan/domains/spec/bugcatch.md` merges the runs. Routed `Graph.directed` record edges (flows.md block) to compiler.
