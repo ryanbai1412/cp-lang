@@ -174,6 +174,22 @@ pub fn header_input(text: &str) -> Vec<u8> {
 }
 
 /// Every `// <key> ...` header value, in order.
+/// The first `// has:` string missing from `out`, or `// lacks:` string in it.
+fn unmet_has_lacks(text: &str, out: &str) -> Option<String> {
+    header_values(text, "has:")
+        .into_iter()
+        .map(unquote)
+        .find(|w| !out.contains(w.as_str()))
+        .map(|w| format!("wanted output with {w:?}"))
+        .or_else(|| {
+            header_values(text, "lacks:")
+                .into_iter()
+                .map(unquote)
+                .find(|b| out.contains(b.as_str()))
+                .map(|b| format!("wanted output without {b:?}"))
+        })
+}
+
 fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
     let mut out = Vec::new();
     for line in text.lines() {
@@ -581,9 +597,18 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                 && run.trap_rendered.contains(&code)
                 && rendered_at(&run.trap_rendered, target_line)
             {
-                CaseOutcome {
-                    status: "pass".into(),
-                    detail: String::new(),
+                match unmet_has_lacks(&text, &run.trap_rendered) {
+                    Some(why) => CaseOutcome {
+                        status: "fail".into(),
+                        detail: format!(
+                            "{why}; got: {}",
+                            runner::truncate_chars(run.trap_rendered.trim(), 200)
+                        ),
+                    },
+                    None => CaseOutcome {
+                        status: "pass".into(),
+                        detail: String::new(),
+                    },
                 }
             } else {
                 CaseOutcome {
@@ -602,18 +627,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                 diag
             };
             let target_line = line + offset;
-            let unmet = header_values(&text, "has:")
-                .into_iter()
-                .map(unquote)
-                .find(|w| !diag.contains(w.as_str()))
-                .map(|w| format!("wanted output with {w:?}"))
-                .or_else(|| {
-                    header_values(&text, "lacks:")
-                        .into_iter()
-                        .map(unquote)
-                        .find(|b| diag.contains(b.as_str()))
-                        .map(|b| format!("wanted output without {b:?}"))
-                });
+            let unmet = unmet_has_lacks(&text, &diag);
             if let Some(why) = unmet {
                 return CaseOutcome {
                     status: "fail".into(),
@@ -832,6 +846,14 @@ mod tests {
         assert_eq!(header_input(text), b"3 4\n");
         assert_eq!(parse_header(text).unwrap().1, 2);
         assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
+    }
+
+    #[test]
+    fn has_and_lacks_are_checked_against_any_output() {
+        let text = "// expect: R0203 at 1\n// has: \"call stack: f\"\n// lacks: zzz\nprint(1)\n";
+        assert_eq!(unmet_has_lacks(text, "note: call stack: f (a.cp:3)"), None);
+        assert!(unmet_has_lacks(text, "note: locals: a = 1").is_some());
+        assert!(unmet_has_lacks(text, "call stack: f zzz").is_some());
     }
 
     #[test]
