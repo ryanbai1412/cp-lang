@@ -47,7 +47,7 @@ Whether a value is owned or lent is not part of its type (chapter 5). (R02.1.4)
 | `I128` | signed 128-bit | products past `Int` |
 | `F64` | IEEE double | `==` is exact; `close(a, b, eps:)` is the tolerant compare |
 | `Bool` | `true`, `false` | 1 byte; packed in `Bits`; `Int(b)` is 1 or 0 |
-| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)`, `c.is_digit`, ... |
+| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)` (traps outside `0..=127`), `c.is_digit`, ... |
 | `()` | the unit value | what statements and `print` return |
 | `Never` | no values | the type of `return`, `break`, traps, `todo` |
 

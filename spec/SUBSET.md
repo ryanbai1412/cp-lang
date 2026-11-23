@@ -178,6 +178,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-01/lone-cr-in-string-is-error.cp: compiler
 - core-01/lowercase-const-rejected.cp: compiler
 - core-01/scientific-fraction-is-int.cp: compiler
+- core-01/stepped-range-is-a-value.cp: compiler
 - core-02/enum-method-is-variant.cp: compiler
 - core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
@@ -186,6 +187,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
+- core-02/char-of-non-ascii-traps.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
@@ -221,6 +223,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/spec-block-first-drop-next-greater.cp: compiler
 - core-04/spec-block-split-by-search.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
+- core-04/char-domain-position-to-char.cp: compiler
 - core-05/at-assign-needs-var.cp: compiler
 - core-05/closure-capture-blocks-push.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler

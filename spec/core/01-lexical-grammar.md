@@ -210,7 +210,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 - `??` written next to `+ - * / %` without parentheses is an error:
   `a ?? 0 + 1` must be written `(a ?? 0) + 1` or `a ?? (0 + 1)`, since
   either reading is a common slip. (R01.5.6)
-- `and` and `or` evaluate their right side only when the left side does
+- `and` and `or` short-circuit: they evaluate their right side only when the left side does
   not decide the result, like `??`: `j < m and a[j] > 0` never reads
   `a[j]` when `j == m`. (R01.5.7)
 
@@ -277,7 +277,8 @@ match d: L => -1, R => 1            // one-line match
   the value-position form. `if x is p:` in a header gets a lint with a
   fix to the `let` form (decision 111). An `else:` runs when any binder
   fails to match or any comma condition is false. (R01.7.1)
-- `for` and `while` take an `else:` that runs when the loop ended
+- `for` and `while` (there is no `loop`: `while true:` with a `break` is
+  the loop that exits in the middle) take an `else:` that runs when the loop ended
   without `break`; a labelled break from an inner loop skips the inner
   `else` (decision 125). Labels are `'name:` before the loop. (R01.7.2)
 - `match` is exhaustive over enums, literal unions, `Bool` and `?T`.
@@ -307,7 +308,9 @@ match d: L => -1, R => 1            // one-line match
 - **Record update** `e with f: v, g: w` and `(..e, f: v)` copy `e` with
   some fields replaced (decision 134, row types in chapter 8). (R01.8.3)
 - **Ranges** `a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..` (the full range
-  wherever a range is taken), steps `a..b by k`. (R01.8.4)
+  wherever a range is taken), steps `a..b by k`. A stepped range is a value like any range: it walks
+  both ways (`(1..=n by 2).rev` starts from the last value it reaches) and
+  its `len`, `first` and `last` are \(O(1)\). (R01.8.4)
 - **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T`
   is the row place. `a[l..r]` is a slice view keeping the source keys. (R01.8.5)
 - **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y`

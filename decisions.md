@@ -7741,3 +7741,21 @@ tuple position (decision 16.5) in the product-domain table, `Int` operands of
 `Mod<P>` arithmetic (R04.4.28), the first factor of `[R, C]Char` is the row
 (R10.2.3), counted arrays take `Int` keys (R10.2.2), a `fn` below `@!multitest`
 captures the case (R06.1.7), and `min=` on a `None` target (R01.6.4).
+
+## 368. Rebuild-15 rulings: `Char`-domain positions, stepped ranges, `Char` traps (2026-11-23)
+
+Rebuild round 15 found 14 holes (3 silent, 2 contradiction, 1 missing-stdlib,
+8 found-late). Rulings:
+- A position of a `Char` domain (`domain Letter = 'a'..='z'`) converts back
+  with `Char(l)`; `Int(l)` is its code, like `Int(v)` on an integer domain,
+  and `l.ord` is its ordinal (R04.2.24). Alternative: `Int(l)` as the
+  ordinal; rejected because `Int(v)` is the value on every other domain and
+  `.ord` already names the ordinal.
+- A stepped range `a..b by k` is a value like any range: it walks both ways
+  and has \(O(1)\) `len`, `first`, `last` (R01.8.4). Alternative: a walk-only
+  generator; rejected because `(1..=n by 2).rev` is the natural spelling.
+- `Char(i)` traps outside `0..=127` (R02.2.1), since `Str` is ASCII.
+- No `loop` keyword: `while true:` with `break` (R01.7.2); `and`/`or` now
+  say "short-circuit" where readers search for it (R01.5.7).
+The two contradictions (`tally` type, `sort` `desc:`) were already routed to
+stdlib in rounds 11 and 13. Reverse: edit the named rules and cases.

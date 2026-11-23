@@ -19,6 +19,7 @@ let (domain C, comp) = compress(xs)    // fresh domain from a computation
 domain Cell = (Row, Col)               // product: [Cell]T and [Row, Col]T are one 2-D array type
 domain State = (comps: 0..=n, used: 0..l)  // named factors: s.comps, State.at((c, u)) -> ?State
 enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir]Int
+domain Letter = 'a'..='z'              // so is a Char range: Letter(c), [Letter]Int
 ```
 
 ## Domains
@@ -44,6 +45,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last position): rings and cyclic shifts | \(O(1)\) (R04.2.13) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\) (R04.2.14) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |
+| `Char(l)` | a position of a `Char` domain to its `Char`; `Int(l)` is its code (99 for `Letter('c')`) and `l.ord` its ordinal (2) | free (R04.2.24) |
 | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free (R04.2.16) |
 | `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, the same as `Int(v.l)` | free (R04.2.22) |
 | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions before it whatever the base (`1..=n`: `V.cuts(2)` is between positions 2 and 3); trapping, or `?V.cuts` | \(O(1)\) (R04.2.17) |
