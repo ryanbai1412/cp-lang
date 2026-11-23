@@ -64,6 +64,8 @@ Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `to
 
 ## `struct RollingHash`
 
+\(O(n)\) build, \(O(1)\) slice hash.
+
 Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 
 - `fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash` — \(O(n)\); A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.; traps: when a given base is outside `2..M`
