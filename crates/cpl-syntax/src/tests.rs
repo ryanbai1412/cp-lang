@@ -1671,3 +1671,20 @@ fn an_unclosed_paren_offers_each_closer_spot() {
     let d = one_diag("let n = f(g(1\nprint(n)\n");
     assert_eq!(d.fixes.len(), 1, "{:?}", d.fixes);
 }
+
+#[test]
+fn a_size_run_into_its_type_is_one_missing_bracket() {
+    let src = "let n = 3\nlet a: [n - 1Int = read()\nfor x in read<[n - 1Int>():\n    print(x)\n";
+    let diags = parse_file(src).diagnostics;
+    let found: Vec<_> = diags
+        .iter()
+        .map(|d| (d.code.0, d.help.clone().unwrap()))
+        .collect();
+    let want = ("E0101", "add `]` before `Int`".to_string());
+    assert_eq!(found, [want.clone(), want], "{diags:?}");
+    assert_eq!(
+        diags[0].fixes[0].edits[0].0.start as usize,
+        src.find("Int ").unwrap()
+    );
+    assert_eq!(codes("print(0xFF)\nlet a = [1Q]\n"), ["E0005"]);
+}

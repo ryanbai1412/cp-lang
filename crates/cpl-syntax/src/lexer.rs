@@ -913,6 +913,18 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
+        let in_bracket = self
+            .openers
+            .last()
+            .is_some_and(|o| o.kind == TokenKind::LBracket);
+        let unclosed = !self.src[self.pos..]
+            .lines()
+            .next()
+            .unwrap_or("")
+            .contains(']');
+        if in_bracket && unclosed && !radix_prefix && !float && self.peek().is_ascii_uppercase() {
+            return self.size_before_type(start);
+        }
         // `12abc` is one bad token, not a number followed by a name.
         let digits_end = self.pos;
         while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
@@ -945,6 +957,32 @@ impl<'a> Lexer<'a> {
             TokenKind::Int
         };
         self.push(kind, start);
+    }
+
+    /// `[n - 1Int`: the `]` of `[n]Int` is missing between size and type,
+    /// one error at the `[` rather than a bad number `1Int`.
+    fn size_before_type(&mut self, start: usize) {
+        let opener = self.openers.pop().unwrap();
+        self.push(TokenKind::Int, start);
+        let rest = &self.src[self.pos..];
+        let ty = rest
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .next();
+        let ty = ty.unwrap_or("");
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::UNCLOSED_DELIMITER,
+                opener.span,
+                "this `[` is never closed",
+            )
+            .with_help(format!("add `]` before `{ty}`"))
+            .with_fix(
+                format!("insert `]` before `{ty}`"),
+                Span::point(self.pos as u32),
+                "]",
+            ),
+        );
+        self.push_empty(TokenKind::RBracket, self.pos);
     }
 
     fn digits(&mut self) {

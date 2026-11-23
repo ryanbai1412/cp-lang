@@ -14,7 +14,7 @@ milestone = "M1"
 [[metric]]
 name = "broken ports: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "1 per 414 files (0.2%) (80a47142)"
+today = "0 per 414 files (the `[n - 1Int>` cascade is one E0101 now)"
 target = "<= 2% (M1: <= 5%)"
 milestone = "M1"
 
@@ -28,7 +28,7 @@ milestone = "M1"
 [[metric]]
 name = "broken ports: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "79.3% (400 copies); the doubled `==` now reads `a == * b`, not `a = *= b`"
+today = "79.5% (414 copies); the doubled `==` now reads `a == * b`, not `a = *= b`"
 target = ">= 80% (cut-the-value rows have no right fix and stay 0%)"
 milestone = "M2"
 
@@ -57,7 +57,7 @@ milestone = "M2"
 name = "spec code blocks: first error a generic `expected ...`"
 # Signature-only blocks (API synopses, never programs) are skipped since decision 224.
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --nocapture | grep 'spec/{core,lib}'"
-today = "6 of 56 failing blocks (78 blocks, 209 errors, 15 cascaded); was 41 of 100 while ```python quiz fences were read as cp"
+today = "6 of 54 failing blocks (78 blocks, 206 errors, 15 cascaded); was 41 of 100 while ```python quiz fences were read as cp"
 target = "<= 20"
 milestone = "M2"
 
