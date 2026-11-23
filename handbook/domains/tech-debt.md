@@ -93,10 +93,22 @@ means no real check exists yet. Targets and current numbers are in
 | Handbook reads for an outsider | Shared-history phrases, commit hashes | Lint | `scripts/check-handbook.py` |
 | Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
 | Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `missing` |
-| Every register row names a real check | Rows naming no existing test or job, per domain | Lint plus ratchet | `missing` |
+| Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector | `missing` |
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing | `missing` |
 | Escaped bugs fix the suite | Escapes traced to the register row that should have caught them | Escape log | `missing` |
+| Every feature works in every tool | Features (syntax forms, std items) with no case in the checker, VM, C++ backend, trace, fmt, lint, LSP or docs | Generated coverage matrix | `missing` |
+| Every builtin with two engine paths agrees at its edges | Builtins without an interpreter-vs-C++ case at negative, empty, overflow and boundary inputs | Generated differential cases | `missing` |
+| Stdlib privilege gone, not hidden | Std items that compile only because the compiler knows their name | Re-architecture: build std as a user library in a test | `missing` |
+| Facts are generated, not written twice | Hand-written lists (lints, crates, metrics, std items) that a generator could produce | Ratchet with a detector | `missing` |
+| Generated files are fresh | Committed generated files that differ from regenerating them | Regenerate and diff in the gate | `scripts/regen.sh` |
+| Decisions stay findable | Decision numbers used twice | Ratchet | `scripts/debt-ratchet.py` (`decision_dup_numbers`) |
+| No dead language era | References to the removed 0.2 edition | Ratchet | `scripts/debt-ratchet.py` (`edition_refs`) |
+| No unfinished std | Std functions whose body is a stub | Ratchet | `scripts/debt-ratchet.py` (`stdlib_todo`) |
+| Dead code is deleted | `allow(dead_code)` and items no caller reaches | Ratchet | `missing` |
+| Suites cover the code they own | Line and branch coverage per crate | Coverage matrix | `missing` |
+| Tests are deterministic | Tests that pass and fail on the same tree | Rerun-on-fail detector | `missing` |
+| Few, vetted third-party crates | External dependencies and their licenses | Gate on new dependencies | `missing` |
 | An everyday change touches one obvious place | Files, crates and minutes for a cold agent on a fixed change | Process: cold change-cost probes | process |
 | Landed diffs add no new debt | Duplicates, special cases, single-use helpers per review | Process: hourly review of landed diffs | process |
 

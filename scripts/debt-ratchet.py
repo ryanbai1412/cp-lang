@@ -478,6 +478,60 @@ def stale_arch_paths(root: Path) -> list[str]:
     return [f"{where} {p}" for where, p in found if p not in ignored]
 
 
+REGISTER_SPAN_RE = re.compile(r"`([^`]+)`")
+REGISTER_COMMANDS = {"cargo", "cpl", "cpl-conform", "just"}
+
+
+def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
+    """Whether a register cell names a check, and the paths it names that are gone."""
+    named, gone = False, []
+    for span in REGISTER_SPAN_RE.findall(check):
+        words = span.split()
+        if words[0] == "python3" and len(words) > 1:
+            words = words[1:]
+        elif words[0] in REGISTER_COMMANDS:
+            named = True
+            continue
+        if "/" not in words[0] or "*" in words[0] or "<" in words[0]:
+            continue
+        path = words[0].rstrip("/")
+        if (root / path).exists():
+            named = True
+        else:
+            gone.append(path)
+    return named, gone
+
+
+def register_rows(root: Path) -> list[str]:
+    """Quality-register rows in handbook/domains/*.md that name no existing check.
+
+    A row's last cell names the test files, scripts, commands or CI jobs that
+    check it, says `missing`, or starts with "process" where no mechanism can
+    decide. Rows marked `missing`, rows naming no check, and rows naming a
+    path that doesn't exist count.
+    """
+    found = []
+    for d in sorted((root / "handbook/domains").glob("*.md")):
+        lines, in_register = _lines(d), False
+        for i, line in enumerate(lines, 1):
+            if line.startswith("#"):
+                in_register = line.lstrip("#").strip().lower() == "quality register"
+                continue
+            is_row = line.startswith("|") and not set(line) <= set("|-: ")
+            header = i < len(lines) and set(lines[i].strip()) <= set("|-: ") and "-" in lines[i]
+            if not in_register or not is_row or header:
+                continue
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            check, where = cells[-1], f"{_rel(root, d)}:{i}"
+            if check.lower().startswith("process"):
+                continue
+            named, gone = _register_check(root, check)
+            if gone:
+                found.append(f"{where} no such check {', '.join(gone)}: {cells[0]}")
+            elif "`missing`" in check or not named:
+                found.append(f"{where} missing: {cells[0]}")
+    return found
+
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
@@ -508,6 +562,8 @@ COUNTERS = {
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
     "spec_std_refs": ("spec/std references", spec_std_refs, False),
+    # Shown, not gated: a register that lists a missing check is better than one that hides it.
+    "register_rows": ("quality-register rows naming no existing check", register_rows, False),
 }
 
 

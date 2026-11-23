@@ -153,6 +153,26 @@ class DebtRatchetTest(unittest.TestCase):
                         "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
             self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
 
+    def test_register_rows_counts_missing_and_unknown_checks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "scripts/ok.py", "")
+            self._write(root, "handbook/domains/x.md", "\n".join([
+                "| Attribute | Check |", "|---|---|",
+                "| outside | `missing` |",
+                "## Quality register",
+                "| Attribute | Metric | Check |", "|---|---|---|",
+                "| a | m | `scripts/ok.py` (`name`) |",
+                "| f | m | `cargo nextest run -p x`, `gaps.txt` |",
+                "| b | m | `missing` |",
+                "| c | m | `scripts/gone.py` |",
+                "| d | m | process |",
+                "## Suites", "| e | `missing` |", ""]))
+            self.assertEqual(dr.register_rows(root), [
+                "handbook/domains/x.md:9 missing: b",
+                "handbook/domains/x.md:10 no such check scripts/gone.py: c",
+            ])
+
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

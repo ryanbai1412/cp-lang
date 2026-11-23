@@ -178,8 +178,8 @@ target = "<= 3 files each"
 milestone = "M2, M3"
 
 [[metric]]
-name = "register_missing"
-command = "rows marked `missing` in the Quality register of handbook/domains/tech-debt.md"
-today = 5
+name = "register_rows"
+command = "python3 scripts/debt-ratchet.py --list register_rows"
+today = 74
 target = "0"
 milestone = "M2"
