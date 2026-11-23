@@ -272,7 +272,7 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc:
 /// example: `[3, 1, 2].sorted(desc: true) == [3, 2, 1]`
 pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T>:
     var out: List<T> = [x for x in self]
-    sort(mut out, by: by, desc: desc)
+    sort(mut out, by:, desc:)
     out
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
@@ -355,10 +355,7 @@ pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
 /// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
 pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
     var seen = HashSet<K>()
-    var out: List<T> = []
-    for x in self:
-        if seen.add(by(x)):
-            out.push(x)
+    let out: List<T> = [x for x in self if seen.add(by(x))]
     out
 
 /// The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
@@ -734,7 +731,7 @@ pub fn runs<S: Indexed, T, K>(
 ) -> yields Slice<S>:
     let n = self.len
     var i = 0
-    if link is Some(linked):
+    if let Some(linked) = link:
         while i < n:
             var j = i + 1
             while j < n and linked(self.nth(j - 1), self.nth(j)): j += 1
@@ -1078,12 +1075,7 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: none: a monotone `ok` has one last true position
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
-    var lo = 0
-    var hi = self.len
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if ok(self[m]): lo = m + 1
-        else: hi = m
+    let lo = (0..self.len).first_true(m => not (ok(self[m]))) ?? self.len
     if lo > 0: Some(self[lo - 1]) else: None
 
 /// \(O(\log n)\) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
@@ -1097,12 +1089,7 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
 pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
     let n = self.len
-    var lo = 0
-    var hi = n
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if ok(self[m]) != last: hi = m
-        else: lo = m + 1
+    let lo = (0..n).first_true(m => ok(self[m]) != last) ?? n
     if lo < n: (self[lo]..self[lo]).l else: self.r
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
@@ -1127,10 +1114,7 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    var (lo, hi) = (0, D.K)
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if by(self[D.nth(m)]) > target: hi = m else: lo = m + 1
+    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) > target) ?? D.K
     if lo < D.K: Some(D.nth(lo)) else: None
 
 /// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
@@ -1141,10 +1125,7 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
 pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    var (lo, hi) = (0, D.K)
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if by(self[D.nth(m)]) < target: lo = m + 1 else: hi = m
+    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) >= target) ?? D.K
     if lo > 0: Some(D.nth(lo - 1)) else: None
 
 // ---- Permutations, monotone stack, and sliding-window extrema
@@ -1281,7 +1262,7 @@ pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
 pub fn pop_if<T>(
     mut self: List<T>,
     ok: T -> Bool,
-) -> ?T = if self.len > 0 and ok(self[self.len - 1]): self.pop() else: None
+) -> ?T = if self.len > 0 and ok(self.last!): self.pop() else: None
 
 /// \(O(\mathit{popped})\). Pop from the back while `ok` holds for the last element; the popped
 /// elements, last first. The back twin of `Deque.pop_front_while`.
@@ -1293,7 +1274,7 @@ pub fn pop_if<T>(
 /// example: `var s = [1, 4, 5]; s.pop_while(x => x > 3) == [5, 4] and s == [1]`
 pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>:
     var out: List<T> = []
-    while self.len > 0 and ok(self[self.len - 1]): out.push(self.pop()!)
+    while self.len > 0 and ok(self.last!): out.push(self.pop()!)
     out
 
 /// \(O(n)\), allocates. A separate copy: `let b = a` moves, `let b = a.clone()` copies.
@@ -1699,8 +1680,7 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
     assert k >= 1
     var i = 0
     while i < self.len:
-        var c: List<T> = []
-        for j in i..i + k: c.push(if j < self.len: self.nth(j) else: pad)
+        let c: List<T> = [if j < self.len: self.nth(j) else: pad for j in i..i + k]
         yield c
         i += k
 
@@ -1933,10 +1913,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 /// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
 pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
-    var (lo, hi) = (0, D.K)
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if ok(self[D.nth(m)]): hi = m else: lo = m + 1
+    let lo = (0..D.K).first_true(m => ok(self[D.nth(m)])) ?? D.K
     D.cuts.nth(lo)
 
 /// \(O(\log n)\). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
@@ -1947,14 +1924,8 @@ pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
 /// traps: never; unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
 pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
-    var (lo, hi) = (0, D.K)
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if by(self[D.nth(m)]) < target: lo = m + 1 else: hi = m
-    var (a, b) = (lo, D.K)
-    while a < b:
-        let m = a + (b - a) / 2
-        if by(self[D.nth(m)]) > target: b = m else: a = m + 1
+    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) >= target) ?? D.K
+    let a = (lo..D.K).first_true(m => by(self[D.nth(m)]) > target) ?? D.K
     D.cuts.nth(lo)..D.cuts.nth(a)
 
 /// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
@@ -1970,7 +1941,7 @@ pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
     var (i, j) = (0, 0)
     while i < a.len or j < b.len:
         let x = if j == b.len or (i < a.len and a.nth(i) < b.nth(j)): a.nth(i) else: b.nth(j)
-        if out.len == 0 or out[out.len - 1] != x: out.push(x)
+        if out.len == 0 or out.last! != x: out.push(x)
         if i < a.len and a.nth(i) == x: i += 1
         else: j += 1
     out
@@ -2044,8 +2015,7 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
 pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
     let n = self.len
     if n <= 1: return
-    var cur: List<(Int, T)> = []
-    for i in 0..n: cur.push((by(self.nth(i)), self.nth(i)))
+    var cur: List<(Int, T)> = [(by(self.nth(i)), self.nth(i)) for i in 0..n]
     var lo = cur[0].0
     var hi = cur[0].0
     for p in cur:
@@ -2064,7 +2034,7 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
             count[d] += 1
         cur = out
         shift += 8
-        span = span >> 8
+        span >>= 8
     for i in 0..n: self[i] = cur[i].1
 
 /// Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
@@ -2336,14 +2306,14 @@ pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
     let n = self.len
     var pick: List<Int> = []
     while true:
-        var step = SubseqStep<T>([self.nth(i) for i in pick], false)
+        let step = SubseqStep<T>([self.nth(i) for i in pick], false)
         yield step
         if not step.pruned:
-            let next = if pick.len > 0: pick[pick.len - 1] + 1 else: 0
+            let next = if pick.len > 0: pick.last! + 1 else: 0
             if next < n:
                 pick.push(next)
                 continue
-        while pick.len > 0 and pick[pick.len - 1] + 1 >= n:
+        while pick.len > 0 and pick.last! + 1 >= n:
             pick.pop()
         if pick.len == 0: return
         pick[pick.len - 1] += 1
@@ -2373,12 +2343,11 @@ pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> Lis
         if lo > 0: prev[i] = tails[lo - 1]
         if lo == tails.len: tails.push(i) else: tails[lo] = i
     var out: List<D> = []
-    var cur: ?D = if tails.len > 0: Some(tails[tails.len - 1]) else: None
+    var cur: ?D = if tails.len > 0: Some(tails.last!) else: None
     while let c = cur:
         out.push(c)
         cur = prev[c]
-    var res: List<D> = []
-    for i in (0..out.len).rev: res.push(out[i])
+    let res: List<D> = [out[i] for i in (0..out.len).rev]
     res
 
 /// \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory. Longest common subsequence of `a` and `b` as matched `(i, j)` index pairs.
@@ -2428,18 +2397,18 @@ pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (
     for i in D:
         var last: ?D = None
         while st.len > 0 and (
-            if min_root: self[st[st.len - 1]] > self[i] else: self[st[st.len - 1]] < self[i]
+            if min_root: self[st.last!] > self[i] else: self[st.last!] < self[i]
         ):
             last = st.pop()
         if let l = last:
             left[i] = l
             parent[l] = i
         if st.len > 0:
-            let t = st[st.len - 1]
+            let t = st.last!
             right[t] = i
             parent[i] = t
         st.push(i)
-    (root: if st.len > 0: Some(st[0]) else: None, left: left, right: right, parent: parent)
+    (root: if st.len > 0: Some(st[0]) else: None, left:, right:, parent:)
 
 // --- Incremental / online sequence structures (with mark/undo_to rollback for tree DFS) ---
 
@@ -2461,11 +2430,7 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); t.push(5); t.push(1); t.push(7) == 2`
     pub fn push(mut self, x: T) -> Int:
-        var (lo, hi) = (0, tails.len)
-        while lo < hi:
-            let m = (lo + hi) / 2
-            if tails[m] < x or (not strict and tails[m] == x): lo = m + 1
-            else: hi = m
+        let lo = (0..tails.len).first_true(m => not (tails[m] < x or (not strict and tails[m] == x))) ?? tails.len
         prev.push(if lo > 0: tail_at[lo - 1] else: -1)
         ends.push(lo + 1)
         vals.push(x)
@@ -2573,12 +2538,12 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.push(1, 3) == Some(0)`
     pub fn push(mut self, i: D, x: T) -> ?D:
         var n = 0
-        while vals.len > 0 and self.pops(vals[vals.len - 1], x):
+        while vals.len > 0 and self.pops(vals.last!, x):
             out_idx.push(idx.pop()!)
             out_val.push(vals.pop()!)
             n += 1
         popped.push(n)
-        let below = if idx.len > 0: Some(idx[idx.len - 1]) else: None
+        let below = if idx.len > 0: Some(idx.last!) else: None
         idx.push(i)
         vals.push(x)
         below
@@ -2589,7 +2554,7 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// example: `var s = MonoStack<Int, Int>(); s.push(3, 8); s.top == Some((index: 3, val: 8))`
     /// ties: none: the stack has one top
     @get pub fn top(self) -> ?(index: D, val: T):
-        if idx.len == 0: None else: Some((index: idx[idx.len - 1], val: vals[vals.len - 1]))
+        if idx.len == 0: None else: Some((index: idx.last!, val: vals.last!))
     /// \(O(1)\). Current stack depth.
     ///
     /// cost: \(O(1)\)
@@ -3132,7 +3097,7 @@ fn scan_prod_and_rotate_method_syntax():
         let ys = [rand(0, 9) for _ in 0..rand(1, 8)]
         let k = rand(-10, 10)
         let n = ys.len
-        assert ys.rotated_left(k) == [ys[((i + k) % n + n) % n] for i in 0..n]
+        assert ys.rotated_left(k) == [ys[(i + k) % n] for i in 0..n]
         var z = ys.clone()
         z.rotate_right(k)
         assert z == ys.rotated_right(k)
@@ -3487,10 +3452,10 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
     var st: List<Int> = []
     for j in 0..n:
         let x = self[D.nth(j)]
-        while st.len > 0 and self[D.nth(st[st.len - 1])] < x:
+        while st.len > 0 and self[D.nth(st.last!)] < x:
             st.pop()
-            if st.len > 0: ends[st[st.len - 1]].push(j)
-        if st.len > 0 and self[D.nth(st[st.len - 1])] == x: st.pop()
+            if st.len > 0: ends[st.last!].push(j)
+        if st.len > 0 and self[D.nth(st.last!)] == x: st.pop()
         st.push(j)
     for l in 0..n:
         for r in ends[l]: yield D.nth(l + 1)..D.nth(r)
@@ -3505,8 +3470,8 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
 /// traps: never
 /// example: `[2, 1, 1].spans() == [0..1, 0..3, 2..3]`
 pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
-    let left = self.prev_smaller(by: by, strict: false)
-    let right = self.next_smaller(by: by, strict: true)
+    let left = self.prev_smaller(by:, strict: false)
+    let right = self.next_smaller(by:, strict: true)
     [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(
         if let r = right[i]: r.l else: D.cuts.nth(D.K)
     )
@@ -3524,10 +3489,10 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
     var st: List<D> = []
     for i in D:
         while st.len > 0 and (
-            if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])
+            if strict: by(self[st.last!]) >= by(self[i]) else: by(self[st.last!]) > by(self[i])
         ):
             let _ = st.pop()
-        if st.len > 0: out[i] = st[st.len - 1]
+        if st.len > 0: out[i] = st.last!
         st.push(i)
     out
 
@@ -3545,10 +3510,10 @@ pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
     for k in (0..D.K).rev:
         let i = D.nth(k)
         while st.len > 0 and (
-            if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])
+            if strict: by(self[st.last!]) >= by(self[i]) else: by(self[st.last!]) > by(self[i])
         ):
             let _ = st.pop()
-        if st.len > 0: out[i] = st[st.len - 1]
+        if st.len > 0: out[i] = st.last!
         st.push(i)
     out
 
@@ -3600,7 +3565,7 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
     rs.sort(by: p => (p.1.start, -Int(p.1.end), p.0))
     var out: List<Range<D>> = []
     for (_, r) in rs:
-        if out.len == 0 or out[out.len - 1].r < r.r: out.push(r)
+        if out.len == 0 or out.last!.r < r.r: out.push(r)
     out
 
 /// \(O(1)\). A list's keys: `0..xs.len`, in increasing order.
