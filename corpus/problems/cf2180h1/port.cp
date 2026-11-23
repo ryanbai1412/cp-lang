@@ -1,17 +1,13 @@
-// Codeforces 2180 H1 — Bug Is Feature (Easy Version)
-//
-// Each tuple (a, b, c, l, r) with b - a = c - b = d contributes one impartial
-// game per pile size x in [l, r]; by Sprague-Grundy, "Bug" wins iff the XOR
-// over all intervals is non-zero, computed as prefix_xor(r - c + 1, d) ^
-// prefix_xor(l - c, d). (H2 `cf2180h2` is the same prefix-XOR game with a
-// different move set and Grundy closed form.)
-//
-// Write d0 = 2^l * d with d odd (l = ctz(d0)). Partitioning offsets into
-// blocks of size d collapses the prefix length to g_hi = len / d + ((len % d) & 1).
-// The Grundy prefix XOR has period 2^(l+2): bit (l + 1) of g_hi toggles bit 0,
-// leaving rem = g_hi & ((2 << l) - 1). For rem == 0 we are done; otherwise
-// bit 0 flips, and for odd rem the distance to the nearest multiple of 2^(l+1)
-// gives highest bit i whose parity against l selects the 2-bit correction.
+// Source: Codeforces 2180H1, https://codeforces.com/contest/2180/problem/H1
+// Problem: multitest; n <= 2e5 series (sum n <= 2e5) of an AP a < b < c <= l <= r <= 1e18.
+//   Series i is one game per x in [l, r]: raise one of a, b, c so they stay an AP (any order),
+//   all <= x. Bug moves first in the sum of all games and whoever cannot move loses. Print Bug
+//   or Feature.
+// Solution: by Sprague-Grundy Bug wins iff the XOR of all Grundy values is non-zero, and a
+//   game's value depends only on d = c - b and the offset x - c. prefix_xor(len, d) is the XOR
+//   over offsets 0..len in closed form: write d = 2^l * odd, collapse the offsets to
+//   g_hi = len / odd + ((len % odd) & 1), and a pattern of period 2^(l+2) in g_hi gives the
+//   bits. A series is prefix_xor(r - c + 1) ^ prefix_xor(l - c): O(1) each.
 
 fn prefix_xor(len: Int, d0: Int) -> Int:
     let l = ctz(d0)

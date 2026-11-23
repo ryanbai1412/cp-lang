@@ -1,25 +1,12 @@
-// Codeforces 2201 C — Valid Bracket-Subsequence Counting
-//
-// A non-empty subsequence `T` of the balanced bracket string `s` is valid iff
-// cyclically shifting `T`'s characters one step right (moving the last picked
-// character `T_last` to the first picked position `T_first`) keeps `s` balanced
-// (every prefix balance stays `>= 0`).
-//
-// Scan `s` tracking its prefix balance `pref` (after index `i`) and two counts
-// over valid subsequences of `s[0..i]` that could still be closed by a later
-// `')'`: `ways_open` (ending in `'('`) and `ways_close` (ending in `')'`).
-// - At `s[i] == '('`: moving a trailing `'('` to `T_first` never lowers any
-//   prefix balance, so every subsequence of `s[0..i]` (empty or non-empty,
-//   `Z(2) ** i` in total) yields a valid subsequence ending at `i`, and
-//   `ways_open` grows by `1 + ways_open + ways_close`.
-// - At `s[i] == ')'`: moving a trailing `')'` onto an earlier `'('` lowers the
-//   prefix balance by `2` from that `'('` onward, so only the `1 + ways_open +
-//   ways_close` subsequences whose pending `'('` never crossed a `pref < 2`
-//   dip remain valid; both `ans` and `ways_close` grow by `1 + ways_open +
-//   ways_close`.
-// - Whenever `pref < 2` after step `i`, dropping `pref` by `2` would go
-//   negative, so no pending subsequence in `ways_open` can ever accept a later
-//   `')'`, and `ways_open` resets to `0`.
+// Source: Codeforces 2201C, https://codeforces.com/contest/2201/problem/C
+// Problem: multitest; a regular bracket sequence s, 2 <= n <= 3e5 (sum n <= 3e5). Count the
+//   non-empty subsequences whose cyclic right shift (each chosen character takes the previous
+//   chosen one's value, the first takes the last's) leaves s regular, modulo 998244353.
+// Solution: one scan with the prefix balance pref and the counts ways_open / ways_close of
+//   chosen prefixes ending in '(' / ')' that a later ')' can still end. A subsequence ending
+//   at '(' is always valid (2^i of them); ending at ')' gives 1 + ways_open + ways_close valid
+//   ones, which also join ways_close. Once pref < 2 no pending prefix ending in '(' can take a
+//   later ')', so ways_open resets to 0. O(n).
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

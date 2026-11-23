@@ -1,25 +1,12 @@
-// Codeforces 2237 F — Length-M Block Alignment DP
-//
-// Partition `0..n` so every kept index `i` sits at offset `a[i] - 1` inside a
-// length-`m` block `[block_start .. block_start + m)` where
-// `block_start = i - (a[i] - 1) in 0..=n - m`, and the array contains at least
-// one full length-`m` block. Maximizing kept elements minimizes edits `n - kept`.
-//
-// Three DP tables:
-// - `ending_at[i]` (`?Int`): max kept elements ending with `i` kept.
-// - `at_boundary[i]` (`Int`, seeded `0`): prefix max of `ending_at[j]` over
-//   `j < i` (0 when no element is kept yet) — any kept prefix ending before
-//   `block_start` can start a new block at `block_start`.
-// - `after_block[i]` (`?Int`, seeded `after_block[m] = 0`): max kept elements
-//   where some full length-`m` block has already finished at or before `i`
-//   (seeding `after_block[m] = 0` allows skipping an initial length-`m` block
-//   with 0 kept elements).
-// - `last_with_start[st]`: last index `p < i` sharing `block_start == st`,
-//   allowing `i` to continue the same block (`ending_at[p] + 1`).
-//
-// Final answer: either a full length-`m` block finishes at or before `n`
-// (`after_block[n]`), or a final untouched length-`m` block sits in `[n - m..n)`
-// after a kept prefix ending before `n - m` (`at_boundary[n - m]`).
+// Source: Codeforces 2237F, https://codeforces.com/contest/2237/problem/F
+// Problem: multitest; a of n values in 1..=m (m <= n <= 5e5, sum n <= 5e5). A paint writes
+//   1, 2, .., m over a length-m interval, later paints overwrite earlier ones; a is valid if
+//   some paints cover every position. Print the fewest elements to change to make a valid.
+// Solution: maximise the kept elements. A kept a[i] belongs to the paint starting at
+//   st = i - (a[i] - 1) in 0..=n - m, and some paint must survive whole (possibly rewritten).
+//   One left-to-right DP: ending_at[i] (best with i kept), at_boundary (its prefix max, to
+//   open a paint at st), after_block (a whole paint already ended) and last_with_start[st]
+//   (the previous kept index of the same paint). Print n - best; O(n).
 
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()

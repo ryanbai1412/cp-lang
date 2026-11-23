@@ -1,10 +1,13 @@
-// Codeforces 2261 H: a Hamming code on a complete binary tree. The tree holds
-// 2^h - 1 bits at positions 0..size; positions that are powers of two carry
-// parity (bit z of a position says which parities cover it), so the parity
-// failures spell the position of one flipped bit. Every other position
-// carries data, filled from the high end. Flipping node p also swaps its two
-// subtrees, and `untwist` undoes that: below a 1 the children are read in
-// swapped order.
+// Source: Codeforces 2261H, https://codeforces.com/contest/2261/problem/H
+// Problem: communication, run twice, multitest (t <= 1024). Run "first": given h and n bits b
+//   (n = 2030, h = 11), print the 2^h - 1 bits of a complete binary tree (heap order). Someone
+//   flips one node and swaps its two children; run "second" gets the relabelled tree's bits
+//   and prints b.
+// Solution: a Hamming code over positions 0..2^h - 1: positions 2^z hold parities (j is in
+//   parity 2^z when bit z of j is set) and the other 2036 hold data, so the failing parities
+//   spell the flipped position. The tree stores the code twisted: below a node holding 1 its
+//   children are swapped, so flip-and-swap only flips that node's bit and untwist recovers the
+//   code. O(2^h * h) per test.
 let op: Str = read()
 
 fn size(h: Int) -> Int = (1 << h) - 1

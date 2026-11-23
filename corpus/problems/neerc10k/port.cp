@@ -1,4 +1,9 @@
-// NEERC 2010 K, K-Graph Oddity: colour a connected odd graph with the least odd k >= max degree (buildable today-form)
+// Source: NEERC 2010 K (K-Graph Oddity), https://dmoj.ca/problem/neerc10k
+// Problem: a connected graph, odd n <= 9999 vertices, m <= 1e5 edges. Print the least odd
+//   k >= the maximum degree and a proper colouring of the vertices with colours 1..=k.
+// Solution: n and k odd means not every degree is k, so start a BFS at a vertex of degree
+//   < k. Colour greedily in reverse BFS order: every other vertex still has an uncoloured BFS
+//   parent, so at most k - 1 colours are taken around it. O(m + nk).
 // original: corpus/submissions/5325567.cpp
 let n: 1..=9999 = read()
 let m: 0..=1e5 = read()

@@ -1,9 +1,12 @@
-// JOI 2017 Final Semiexpress: a line of stations 1..=stations. A local train
-// stops everywhere and takes `slow` per station; the express stops at the n
-// given stations and takes `fast`; the semiexpress takes `semi` and stops at
-// the express stops and at k - n more stations that we choose. Print how many
-// stations other than the first can be reached from it within `limit`,
-// changing trains freely and never going back.
+// Source: JOI 2017 Final P2 (Semiexpress), https://dmoj.ca/problem/joi16fp2
+// Problem: stations 1..=N (N <= 1e9). The local takes A per station and stops everywhere, the
+//   express takes B and stops at the M given stations, the semiexpress takes C (B < C < A) and
+//   stops at exactly K stations including the express ones (M <= K <= 3000). Choose its other
+//   stops to maximise the stations besides 1 reachable from 1 within T <= 1e18.
+// Solution: in the stretch after express stop e, a stop at reaches time B(e - 1) + C(at - e)
+//   and then serves min(left / A + 1, next express - at) stations by local, so the next stop
+//   goes right after them. Each further stop serves no more than the one before, so make up to
+//   K - M per stretch and add the K - M largest. O(MK log(MK)).
 // original: corpus/submissions/5331716.cpp
 let stations: 2..=1e9 = read()
 let n: 2..=3000 = read()

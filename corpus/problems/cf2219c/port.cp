@@ -1,16 +1,12 @@
-// Codeforces 2219 C — Expected Random-Walk Exit Tree DP
-//
-// Root the tree at any '1' vertex (which has 0 exit cost). For each vertex `u`:
-// - `dp0[u]` = minimum expected cost in `u`'s subtree when `u` may exit via
-//   its parent edge.
-// - `dp1[u]` = minimum expected cost when `u` must exit into one of its
-//   children (`none` if no child has a finite `dp1`).
-//
-// At a '0' vertex `u` of degree `deg`, start with all children in `dp0` mode
-// (`base = sum(dp0[c])`) and greedily switch children into `dp1` mode in
-// increasing order of marginal cost `dp1[c] - dp0[c]`. With `k` switched
-// children, `u` has `k` valid exit edges without the parent (expected wait
-// `deg / k`) and `k + 1` with the parent (expected wait `deg / (k + 1)`).
+// Source: Codeforces 2219C, https://codeforces.com/contest/2219/problem/C
+// Problem: multitest; a tree on n <= 2e5 nodes (sum n <= 2e5), each red or black, at least one
+//   red. An operation picks a node and gives it the colour of a uniformly random neighbour.
+//   Print the minimum expected number of operations to make all red (error 1e-6).
+// Solution: each black node is operated on until it copies a red neighbour: deg / k expected
+//   tries with k red neighbours. Root at a red node and DP bottom-up: dp0[u] when u's parent
+//   is red first, dp1[u] when u turns red before it, from a child. Sort the children by
+//   dp1 - dp0 and switch the cheapest k to dp1: u then waits deg / (k + 1) with the parent,
+//   deg / k without. O(n log n).
 
 @!multitest
 let n: 2..=200_000 = read()
