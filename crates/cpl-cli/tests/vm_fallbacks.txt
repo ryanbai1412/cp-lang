@@ -32,7 +32,6 @@ traced stmt:Assign(Local,Binary(Add))
 traced stmt:Assign(Local,Set)
 traced stmt:DefDomain
 traced stmt:DefDomainFromVal
-traced stmt:Expr(Builtin)
 traced stmt:Expr(CallExpr)
 traced stmt:Expr(Field)
 traced stmt:Expr(Mutate)
@@ -69,7 +68,6 @@ untraced stmt:Assign(IndexND,Set)
 untraced stmt:Assign(Local,Binary(Add))
 untraced stmt:Assign(Local,Set)
 untraced stmt:DefDomain
-untraced stmt:Expr(Builtin)
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)
 untraced stmt:Expr(Field)

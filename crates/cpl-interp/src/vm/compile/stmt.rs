@@ -645,6 +645,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     for j in target.exits_mut().drain(..) {
                         self.patch(j, end_pc);
                     }
+                } else if let Some(dst) = self.try_compile_apply_v(expr) {
+                    self.emit(Op::ClearV { reg: dst }, expr.span);
                 } else {
                     self.emit_fallback_stmt(stmt);
                 }
