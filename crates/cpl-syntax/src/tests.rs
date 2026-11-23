@@ -1717,3 +1717,16 @@ fn a_c_increment_is_one_error_with_a_plus_equals_fix() {
     assert_eq!(found, [("E0004", " += 1"), ("E0004", " += 1")], "{d:?}");
     assert_eq!(codes("let zs = xs ++ ys\n"), ["E0004"]);
 }
+
+#[test]
+fn another_languages_def_is_one_error_read_as_fn() {
+    let d = parse_file(
+        "def f(x: Int) -> Int:\n    return x\nfunc g():\n    print(f(1))\nlet def = 1\n",
+    )
+    .diagnostics;
+    let found: Vec<_> = d
+        .iter()
+        .map(|d| (d.code.0, d.fixes[0].edits[0].1.as_str()))
+        .collect();
+    assert_eq!(found, [("E0503", "fn"), ("E0503", "fn")], "{d:?}");
+}

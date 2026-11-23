@@ -688,7 +688,9 @@ impl<'a> Lexer<'a> {
             while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
                 self.pos += 1;
             }
-            let kind = TokenKind::keyword(&self.src[start..self.pos]).unwrap_or(TokenKind::Ident);
+            let kind = TokenKind::keyword(&self.src[start..self.pos])
+                .or_else(|| self.foreign_fn(start))
+                .unwrap_or(TokenKind::Ident);
             self.push(kind, start);
             return;
         }
@@ -1012,6 +1014,37 @@ impl<'a> Lexer<'a> {
             .with_fix("replace `++` with ` += 1`", span, " += 1"),
         );
         true
+    }
+
+    /// `def f(` or `func f(` starting a line: another language's `fn`, read
+    /// as `fn` so the declaration and its uses parse with no cascade.
+    fn foreign_fn(&mut self, start: usize) -> Option<TokenKind> {
+        let word = &self.src[start..self.pos];
+        let line = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
+        if !matches!(word, "def" | "func" | "function") || !self.src[line..start].trim().is_empty()
+        {
+            return None;
+        }
+        let after = self.src[self.pos..]
+            .strip_prefix(' ')?
+            .trim_start_matches(' ');
+        let name = after
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .next()?;
+        if name.is_empty() || !after[name.len()..].starts_with('(') {
+            return None;
+        }
+        let span = Span::new(start as u32, self.pos as u32);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                span,
+                format!("CP Lang declares a function with `fn`, not `{word}`"),
+            )
+            .with_help(format!("write `fn {name}(...)`"))
+            .with_fix(format!("replace `{word}` with `fn`"), span, "fn"),
+        );
+        Some(TokenKind::Fn)
     }
 
     fn digits(&mut self) {
