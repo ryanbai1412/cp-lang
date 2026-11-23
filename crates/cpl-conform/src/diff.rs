@@ -319,7 +319,18 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
 
     let mut interp_outputs = Vec::with_capacity(inputs.len());
     for (_, inp) in &inputs {
-        let run = runner::run_interp(&compiled.program, &path_str, &text, inp);
+        let run = match runner::run_interp_bounded(&compiled.program, &path_str, &text, inp) {
+            Ok(run) => run,
+            Err(detail) => {
+                return (
+                    id,
+                    CaseOutcome {
+                        status: "error".into(),
+                        detail,
+                    },
+                )
+            }
+        };
         if run.trap.is_some() {
             return (
                 id,
