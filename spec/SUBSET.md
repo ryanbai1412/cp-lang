@@ -218,6 +218,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/file-body-var-holds-lent.cp: compiler
 - core-05/lent-var-reassigned-from-itself.cp: compiler
 - std-window/track-infers-element-from-sequence.cp: compiler
+- core-07/rev-keeps-direction-through-generic-fn.cp: compiler
 - std-seq/present-unwraps-pieces.cp: compiler
 - core-11/prelude-exports-signature-types.cp: stdlib
 - core-07/zip-takes-a-rev.cp: stdlib

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2852 (995 passing). Rules: 576.
+Cases: 2853 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2852 (995 passing). Rules: 576.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 182 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -475,7 +475,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.5 [5+ 9-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
-- R07.4.7 [3+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
+- R07.4.7 [4+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
 - R07.4.9 [6+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
