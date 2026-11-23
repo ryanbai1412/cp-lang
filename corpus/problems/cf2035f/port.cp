@@ -1,7 +1,12 @@
-// Codeforces 2035 F: the fewest operations that zero every node, operation i acting in the subtree of node i mod n.
-// With t operations node v owns ⌊t / n⌋ + [v <= t mod n] of them, and t works iff the need folded up from
-// the leaves (a_v plus the children's need, minus what v owns; a surplus only cancels in pairs) is 0 at
-// the root. If t works so does t + 2n, so each residue mod 2n binary-searches its number of rounds.
+// Source: Codeforces 2035F (Tree Operations), https://codeforces.com/contest/2035/problem/F
+// Problem: a tree on n nodes rooted at x, values a_i <= 1e9 (multitest, sum of n <= 2000).
+//   Operation i acts on node ((i - 1) mod n) + 1 and adds or subtracts 1 at one node of its
+//   subtree; none may be skipped. Print the fewest operations zeroing every value, or -1.
+// Solution: with t operations node v owns floor(t / n) + [v <= t mod n] of them, and t works
+//   iff the need folded up from the leaves (a_v plus the children's need minus what v owns;
+//   a surplus only cancels in pairs) is 0 at the root. If t works so does t + 2n, so each
+//   residue mod 2n binary-searches its number of rounds; print the least t found.
+//   O(n^2 log(n + max a)) per test.
 @!multitest
 let n: 1..=2000 = read()
 domain V = 1..=n

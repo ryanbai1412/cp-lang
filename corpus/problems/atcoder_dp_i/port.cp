@@ -1,4 +1,10 @@
-// AtCoder EDPC I - Coins (runnable on proto/cp.py lib-run today)
+// Source: AtCoder Educational DP Contest I (Coins), https://atcoder.jp/contests/dp/tasks/dp_i
+// Problem: N coins, N odd and <= 2999; coin i shows heads with probability p_i. Print the
+//   probability of more heads than tails, to absolute error 1e-9.
+// Solution: dp[h] = probability of h heads among the coins so far; each coin updates it in
+//   place from high h down (dp[h + 1] += dp[h] p, dp[h] *= 1 - p). Sum dp[h] over h > N / 2.
+//   O(N^2).
+// Runnable on proto/cp.py lib-run today.
 let n: Int = read()
 var p: List<F64> = []
 for _ in 0..n:

@@ -1,14 +1,11 @@
-// Codeforces 2147 D — Game on Array
-//
-// Each move decrements all copies of a chosen positive value `x` by 1 and
-// scores its frequency `freq[x]`. Every even height `2 * (x / 2)` is split
-// equally (`x / 2` turns for each player) because the second player can always
-// mirror the first player's move on that value, giving `base = sum(x / 2)` to
-// both players.
-//
-// Each distinct odd value leaves one extra turn worth `freq[x]` points; optimal
-// play claims these odd-value multiplicities in descending order, alternating
-// between player 0 and player 1 (`score[k % 2] += c`).
+// Source: Codeforces 2147D (Game on Array), https://codeforces.com/contest/2147/problem/D
+// Problem: n positive integers a_i <= 1e9 (multitest, sum of n <= 2e5). Alice and Bob
+//   alternate, Alice first; a move picks a value x > 0 in the array, scores its number of
+//   copies and decrements all of them. Print both scores under optimal play.
+// Solution: an element x is worth x points over the game. Its even part 2 * floor(x / 2)
+//   splits evenly (the other player mirrors moves on it), so both get sum floor(x / 2). Each
+//   odd distinct value leaves one unpaired move worth its frequency; the players take these
+//   in descending order, alternating. A frequency map and a sort, O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()

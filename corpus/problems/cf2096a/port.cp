@@ -1,11 +1,9 @@
-// Codeforces 2096 A — Wonderful Sticks
-//
-// Build a permutation `ans[0..n]` of `1..=n` where `s[i] == '>'` means
-// `ans[i + 1]` is larger than every earlier entry `ans[0..=i]` and `'<'` means
-// smaller. Filling from the right (`i = n - 2` down to `0`) with unused range
-// `[lo..=hi]`: `'>'` takes `hi` (strictly greater than everything left in
-// `[lo..=hi - 1]`) and `'<'` takes `lo` (strictly smaller than `[lo + 1..=hi]`).
-// After `n - 1` placements, `lo == hi` is the sole remaining value for `ans[0]`.
+// Source: Codeforces 2096A (Wonderful Sticks), https://codeforces.com/contest/2096/problem/A
+// Problem: arrange sticks of distinct lengths 1..n (n <= 100) in a row so that stick i + 1 is
+//   shorter than every earlier stick if s_i = '<' and longer than every one if s_i = '>';
+//   print any such arrangement. Multitest (t <= 500).
+// Solution: fill from the right, keeping the unused lengths as an interval [lo, hi]: all of
+//   them go earlier, so '>' takes hi and '<' takes lo. The value left over goes first. O(n).
 
 @!multitest
 let n: 2..=100 = read()

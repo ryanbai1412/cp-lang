@@ -1,10 +1,11 @@
-// CCO 2019 Marshmallow Molecules: marshmallows 1..n, some joined by sticks.
-// Going up from the lowest, whenever a marshmallow is joined to two higher
-// ones, those two get a stick as well. Count the sticks at the end.
-//
-// Only the lowest higher neighbour `f` of v matters: the others all end up
-// joined to f, and f passes them on in its own turn. So v hands its set to
-// f, and merging the smaller set into the larger keeps it O(n log^2 n).
+// Source: CCO 2019 P5 (Marshmallow Molecules), https://dmoj.ca/problem/cco19p5
+// Problem: N <= 1e5 marshmallows and M <= 1e5 required skewers (a, b), a < b. The set must be
+//   closed: if a < b < c and skewers a-b and a-c exist, so does b-c. Print the fewest skewers
+//   in a closed set containing all the required ones.
+// Solution: go up from vertex 1 with S = v's higher neighbours; closure joins every pair in S,
+//   but joining the lowest f in S to the rest suffices, as f's own turn then joins those
+//   among themselves. So count |S|, remove f and merge S into f's set, smaller into larger
+//   (swapping the sets first). O((N + M) log^2).
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
 domain Stick = 0..m

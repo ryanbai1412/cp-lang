@@ -1,19 +1,11 @@
-// Codeforces 2180 E — No Effect XOR
-//
-// Count positive integers `x > 0` such that `v ^ x in [l, r)` for every
-// `v in [l, r)`, where `r = r0 + 1` is the half-open upper bound (`1 <= l <= r0`).
-//
-// - Low bits: let `b = min(ctz(l), ctz(r))`. Since `2^b` divides both `l` and
-//   `r`, `[l, r)` is a union of aligned `2^b`-blocks, and XORing by any value
-//   using only bits `< b` permutes each block internally. Thus all `2^b` such
-//   shifts preserve `[l, r)` (and no higher bit below the split bit can be set
-//   without moving a boundary block outside `[l, r)`).
-// - Split bit: let `half = 1 << (bit_width(l ^ r) - 1)` be the highest bit
-//   where `l` and `r` differ, dividing `[l, r)` at its aligned midpoint `M`.
-//   Flipping that bit swaps `[l, M)` with `[M, M + (M - l))`, which lands
-//   exactly on `[l, r)` iff `M - l == r - M`, i.e.
-//   `(l & (half - 1)) + (r & (half - 1)) == half`. When symmetric, combining
-//   that flip with any low `2^b` shift doubles the count (excluding `x = 0`).
+// Source: Codeforces 2180E (No Effect XOR), https://codeforces.com/contest/2180/problem/E
+// Problem: count the positive x such that i XOR x lies in [l, r] for every i in [l, r]
+//   (1 <= l <= r <= 1e15). Multitest, t <= 1e5.
+// Solution: use the half-open [l, r + 1). Any x below 2^b, b = min(ctz(l), ctz(r + 1)),
+//   permutes the aligned 2^b blocks the range is made of; other low bits push a boundary
+//   block out. The top bit where l and r + 1 differ splits the range at an aligned midpoint,
+//   and flipping it works iff both halves are equally long. So the answer is
+//   (1 or 2) * 2^b - 1, excluding x = 0. O(1).
 
 @!multitest
 let (l, r0): (1..=2 ** 60, 1..=2 ** 60) = read()

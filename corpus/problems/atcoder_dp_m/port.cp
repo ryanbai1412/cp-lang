@@ -1,5 +1,9 @@
-// Educational DP M, Candies: share exactly k candies among n children, child i
-// getting at most a[i]. Count the ways.
+// Source: AtCoder Educational DP Contest M (Candies), https://atcoder.jp/contests/dp/tasks/dp_m
+// Problem: count the ways to share exactly K <= 1e5 candies among N <= 100 children, child i
+//   getting 0..a_i of them (a_i <= K), modulo 1e9+7.
+// Solution: ways[g] = ways to give out g candies to the children so far; the next child with
+//   cap a makes next[g] = sum of ways[g - a ..= g], a sliding window over the previous row.
+//   O(N K).
 // original: corpus/submissions/4131778.cpp
 const P = 1000000007
 type Z = Mod<P>
