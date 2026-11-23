@@ -28,8 +28,21 @@ impl<'p> Emitter<'p> {
         let dividend = self.facts.sign(self.fn_id, l);
         let divisor = self.facts.sign(self.fn_id, r);
         if dividend != Sign::Unknown && divisor == Sign::Positive {
-            // Nothing is negative: C++'s own operator agrees.
-            let mut code = infix(a, if div { "/" } else { "%" }, b, MUL);
+            // Nothing is negative: C++'s own operator agrees, and in 32
+            // bits when both fit, where division is several times faster.
+            let sym = if div { "/" } else { "%" };
+            if !both_narrow
+                && !matches!(r.kind, ExprKind::Int(_))
+                && self.facts.fits_u32(self.fn_id, l)
+                && self.facts.fits_u32(self.fn_id, r)
+            {
+                let int = self.ty(&cpl_ir::Ty::Int);
+                return Code::primary(format!(
+                    "{int}(uint32_t({}) {sym} uint32_t({}))",
+                    a.text, b.text
+                ));
+            }
+            let mut code = infix(a, sym, b, MUL);
             code.narrow = both_narrow;
             return code;
         }

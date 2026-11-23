@@ -65,8 +65,14 @@ fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
     let body = body(
         "let a: 0..=100 = read()\nlet b: 1..=100 = read()\nprint(a / b, a % b, a % 1000000007)\n",
     );
-    assert!(body.contains("cpl::put_int(a / b)"), "{body}");
-    assert!(body.contains("cpl::put_int(a % b)"), "{body}");
+    assert!(
+        body.contains("cpl::put_int(ll(uint32_t(a) / uint32_t(b)))"),
+        "{body}"
+    );
+    assert!(
+        body.contains("cpl::put_int(ll(uint32_t(a) % uint32_t(b)))"),
+        "{body}"
+    );
     assert!(body.contains("cpl::put_int(a % 1000000007)"), "{body}");
     assert!(
         !body.contains("cpl::ediv") && !body.contains("cpl::divp"),

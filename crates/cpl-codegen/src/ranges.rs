@@ -467,6 +467,14 @@ impl<'p> Facts<'p> {
     /// True when `e` can't be `Int.MAX`, so `i <= e` ends a loop that
     /// steps `i` by one: a length, a domain size, a bounded value, or
     /// less than one of those.
+    /// True when `e` is `>= 0` and at most `u32::MAX`.
+    pub fn fits_u32(&self, fn_id: Option<usize>, e: &Expr) -> bool {
+        self.sign(fn_id, e) != Sign::Unknown
+            && self
+                .upper_bound(fn_id, e, 0)
+                .is_some_and(|hi| hi <= i64::from(u32::MAX))
+    }
+
     pub fn below_max(&self, fn_id: Option<usize>, e: &Expr) -> bool {
         self.below_max_at(fn_id, e, 0)
     }
