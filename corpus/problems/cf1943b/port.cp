@@ -17,7 +17,7 @@ let pal = manacher(s)
 
 // t has period d iff no position past its first d differs from the one d before it.
 let differs = [1..=2] d => prefix([Pos] i => Int(i.back(d).map(p => s[p] != s[i]) ?? false))
-fn has_period(t: Range<Pos>, d: 1..=2) -> Bool = differs[d].sum(t.drop(d)) == 0
+fn has_period(t: Range<Pos>, d: 1..=2) -> Bool = differs[d].fold(t.drop(d)) == 0
 
 repeat q:
     let (l, r): (Pos, Pos) = read()

@@ -27,14 +27,14 @@ let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first)
 var heavier = SortedSet<t.Pre>()
 fn above_lca(x: V) -> ?V:
     let r = t.sub(x)
-    let (before, after) = (heavier.range(..r.start), heavier.range(r.end..))
+    let (before, after) = (heavier.range(..r.l), heavier.range(r.r..))
     let lo = (before.first ?? after.first) ?? return none
     let hi = (after.last ?? before.last)!
     some(t.lca(t.at[lo], t.at[hi]))
 
 var marks = [Mark] _ => Fenwick<t.Pre, Int>.new()
 var dangerous = 0
-fn inside(m: Mark, u: V) -> Int = marks[m].sum(t.sub(u))
+fn inside(m: Mark, u: V) -> Int = marks[m].fold(t.sub(u))
 
 let by_w = buckets(w)
 var winners: List<V> = []
@@ -42,7 +42,7 @@ for weight in W.rev:
     let bucket = by_w[weight]
     for u in bucket:
         let r = t.sub(u)
-        let in_sub = marks[Mark.Reply].sum(r)
+        let in_sub = marks[Mark.Reply].fold(r)
         let replies = heavier.len - heavier.range(r).len
         let fatal = dangerous - in_sub - inside(Mark.Target, u) + inside(Mark.Meet, u)
         if replies > 0 and fatal == 0:

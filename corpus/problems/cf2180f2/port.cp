@@ -23,7 +23,7 @@ type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
 fn state(open: Z, shut: Z, floor: Int, wall: Int) -> Ways =
     (open * floor * wall, open * floor, shut * wall, shut)
 var ways: [J]Ways = (0, 0, 0, 0)
-ways[J.first] = state(1, 1, floor: 3, wall: 3)
+ways[J.first!] = state(1, 1, floor: 3, wall: 3)
 // A stop in (i, j) has chosen 2(i + j) + 3 corners.
 let weight = [(Z(1) / 4) ** (2 * d + 3) for d in 0..I.len + J.len]
 // stopped[i, j]: stops in rows ..=i and columns ..=j; column[j] its last row.
