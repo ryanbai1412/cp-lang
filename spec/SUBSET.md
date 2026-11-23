@@ -285,6 +285,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics
 - std-dp/ranges-key-first-is-not-optional.cp: stdlib
+- std-graph/dfs-shares-seen.cp: stdlib
 - std-graph/graph-only-and-transpose.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
 - std-grid/step-on-product-domain-position.cp: stdlib
@@ -292,6 +293,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-prefix/scan-at-position-folds-through.cp: stdlib
 - std-prefix/scan-max-of-bounded.cp: stdlib
 - std-prefix/scan-of-list-int-is-cut.cp: stdlib
+- std-segtree/closure-op-picks-index.cp: compiler
 - std-segtree/dual-add-point-read.cp: stdlib
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-tree/from-prufer-empty-code-is-one-edge.cp: stdlib

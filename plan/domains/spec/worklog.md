@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block triage (05-ownership): two failures were implementation bugs, now cases: `dfs` ignores `seen:` (stdlib, std-graph/dfs-shares-seen.cp) and a closure `op` to `SegTree` (compiler, std-segtree/closure-op-picks-index.cp).
 - Bug-catch r11: cases for 6491db226 (Fenwick `.sum(range)` help names `fold`) and c82f71a1e (a pair pattern over `runs` names the slice). e47f70d3e (rename an uppercase value at every use) changes only fix edits, which a conformance case can't see; General fix done: a `// rewritten:` directive checks the case file after a tool case (`tool: fix`), with core-01/uppercase-value-fix-renames-uses.cp for e47f70d3e.
 - Spec-block triage: every core error now has a case. New: decision 362 (a top-level `var` is a local of the file body; core/04b's examples relied on it), 3 cases (2 fail, compiler); exercise 33's marker E0608 -> E0602. Bug-catch r11 misses so far 6009436c, 11382d5f, e1daa8b8, d648e671, d420e7c8: each has a case.
 - Reviewed stdlib's 359 (shape satisfaction in `if A: Trait`): kept as R08.1.7, one relation with bounds; decision 361, 4 cases (3 fail, compiler). Renumbered spec's 359 to 360. cpl-conform: `has:`/`lacks:` now apply to in-process diagnostic cases (they were silently ignored); case `core-01/unindented-nested-header-one-error.cp` from bug-catch r11 miss 11382d5f.
