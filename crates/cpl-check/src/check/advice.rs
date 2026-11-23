@@ -295,7 +295,19 @@ impl Checker<'_> {
             let value = self.quote(rhs.span);
             return Some((span, format!("{}{{{value}}}\"", &text[..text.len() - 1])));
         }
-        let text = literal(rhs)?;
+        let Some(text) = literal(rhs) else {
+            // `s + 1`, `n + s`: both sides placed, when each is a name,
+            // field or number.
+            let simple = |e: &Expr| {
+                matches!(
+                    e.kind,
+                    ExprKind::Name(_) | ExprKind::Int(_) | ExprKind::Field { .. }
+                )
+            };
+            let (l, r) = (self.quote(lhs.span), self.quote(rhs.span));
+            let placed = simple(lhs) && simple(rhs) && !l.contains('\n') && !r.contains('\n');
+            return placed.then(|| (span, format!("\"{{{l}}}{{{r}}}\"")));
+        };
         Some((
             span,
             format!("\"{{{}}}{}", self.quote(lhs.span), &text[1..]),

@@ -1391,7 +1391,7 @@ impl<'a> Checker<'a> {
                     );
                     if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
                         if let Some((span, text)) = into_string {
-                            diag.fix("put the value in the string", span, text);
+                            diag.fix(format!("write `{text}`"), span, text);
                         } else if left == Ty::Str || right == Ty::Str {
                             diag.help = Some("put the value in the string: `\"{x}\"`".into());
                         }

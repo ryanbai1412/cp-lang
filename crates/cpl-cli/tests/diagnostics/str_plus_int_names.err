@@ -1,0 +1,8 @@
+error[E0309]: `+` can't combine a Str and an Int
+  --> str_plus_int_names.cp:3:9
+  |
+3 | print(s + n)
+  |         ^
+  = help: write `"{s}{n}"`
+
+str_plus_int_names.cp: 1 error
