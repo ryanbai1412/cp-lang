@@ -1,64 +1,67 @@
 // Source: Codeforces 2115F1 (Gellyfish and Lycoris Radiata, Easy Version),
 //   https://codeforces.com/contest/2115/problem/F1
-// Problem: n sets, all empty, and q ops (n, q <= 1e5), decoded online with the last answer. Op i
+// Problem: n sets, all empty, and q ops (n, q <= 3e5), decoded online with the last answer. Op i
 //   first inserts i into sets 1..r, reverses the order of sets 1..r, or deletes x from every set;
 //   then print the smallest element of set p (0 if empty).
 // Solution: keep the sets' order in an implicit treap with lazy reversal; each node carries the
 //   ids tagged on it (`own`) and pending for its subtree (`lazy`) as shared mergeable binary
-//   segment trees over the op ids. Insert tags the split-off prefix; splits and merges push tags
-//   down, so every id at a node is smaller than those at its ancestors. A query walks root to p
-//   without pushing and returns the deepest alive id (leftmost alive leaf), pruning dead leaves in
-//   place so each is visited once. O(log) treap work per op plus the segment-tree merges.
+//   segment trees over the op ids, in an `Arena` whose node `empty` is the empty set. Insert tags
+//   the split-off prefix; splits and merges push tags down, so every id at a node is smaller than
+//   those at its ancestors. A query walks root to p without pushing and returns the deepest alive
+//   id (leftmost alive leaf), pruning dead leaves in place so each is visited once. O(log) treap
+//   work per op plus the segment-tree merges.
+use std.marks.{Arena, Id}
 use std.rand.Rng
 
-struct SegNode:
-    var l: ?Int
-    var r: ?Int
+struct SegNode(l: Id<SegNode>, r: Id<SegNode>)
 
 struct TreapNode:
     var l: ?Int
     var r: ?Int
     var pri: U64
-    var own: ?Int
-    var lazy: ?Int
+    var own: Id<SegNode>
+    var lazy: Id<SegNode>
     var sz: Int
     var flip: Bool
 
 let (n, q_cnt): (1..=300_000, 1..=300_000) = read()
+domain Pos = 1..=n
 domain Query = 1..=q_cnt
-var seg: List<SegNode> = []
+
+enum Op:
+    @tag(1) Insert(r: Pos)
+    @tag(2) Reverse(r: Pos)
+    @tag(3) Delete(id: 1..=q_cnt)  // not `Query`: domain-only payloads misread tags
+var seg = Arena<SegNode>.new()
 var alive: [Query]Bool = false
 
-fn new_seg(l: ?Int, r: ?Int) -> Int:
-    seg.push(SegNode(l, r))
-    seg.len - 1
+fn new_seg(l: Id<SegNode>, r: Id<SegNode>) -> Id<SegNode> = seg.alloc(SegNode(l, r))
+let empty = new_seg(Id(0), Id(0))
 
-fn build_seg(q: Int, lo: Int, hi: Int) -> Int:
-    if lo + 1 >= hi: return new_seg(None, None)
+fn build_seg(q: Int, lo: Int, hi: Int) -> Id<SegNode>:
+    if lo + 1 >= hi: return new_seg(empty, empty)
     let mid = (lo + hi) / 2
-    if q < mid: new_seg(build_seg(q, lo, mid), None)
-    else: new_seg(None, build_seg(q, mid, hi))
+    if q < mid: new_seg(build_seg(q, lo, mid), empty)
+    else: new_seg(empty, build_seg(q, mid, hi))
 
-fn concat_seg(x: ?Int, y: ?Int, lo: Int, hi: Int) -> ?Int:
-    let a = x ?? return y
-    let b = y ?? return x
+fn concat_seg(a: Id<SegNode>, b: Id<SegNode>, lo: Int, hi: Int) -> Id<SegNode>:
+    if a == empty: return b
+    if b == empty: return a
     let mid = (lo + hi) / 2
-    let lc = concat_seg(seg[a].l, seg[b].l, lo, mid)
-    let rc = concat_seg(seg[a].r, seg[b].r, mid, hi)
-    new_seg(lc, rc)
+    new_seg(concat_seg(seg[a].l, seg[b].l, lo, mid), concat_seg(seg[a].r, seg[b].r, mid, hi))
 
-fn query_seg(s: ?Int, lo: Int, hi: Int) -> (?Int, ?Query):
-    let u = s ?? return (None, None)
+fn query_seg(u: Id<SegNode>, lo: Int, hi: Int) -> (Id<SegNode>, ?Query):
+    if u == empty: return (empty, None)
     if lo + 1 == hi:
-        let q = Query(lo + 1)
-        return if alive[q]: (u, q) else: (None, None)
+        let q = Query.nth(lo)
+        return if alive[q]: (u, q) else: (empty, None)
     let mid = (lo + hi) / 2
-    let (nl, rl) = query_seg(seg[u].l, lo, mid)
-    seg[u].l = nl
-    if let v = rl: return (u, v)
-    let (nr, rr) = query_seg(seg[u].r, mid, hi)
-    seg[u].r = nr
-    if let v = rr: (u, v) else: (None, None)
+    let (l, in_l) = query_seg(seg[u].l, lo, mid)
+    seg[u] = SegNode(l, seg[u].r)
+    if let q = in_l: return (u, q)
+    let (r, in_r) = query_seg(seg[u].r, mid, hi)
+    seg[u] = SegNode(l, r)
+    if let q = in_r: (u, q) else: (empty, None)
 
 var rng = Rng.new(48)
 var tr: List<TreapNode> = []
@@ -81,11 +84,12 @@ fn push_flip(t: Int):
 
 fn push_down(t: Int):
     push_flip(t)
-    let lz = tr[t].lazy ?? return
+    let lz = tr[t].lazy
+    if lz == empty: return
     if let lc = tr[t].l: tr[lc].lazy = concat_seg(tr[lc].lazy, lz, 0, q_cnt)
     if let rc = tr[t].r: tr[rc].lazy = concat_seg(tr[rc].lazy, lz, 0, q_cnt)
     tr[t].own = concat_seg(tr[t].own, lz, 0, q_cnt)
-    tr[t].lazy = None
+    tr[t].lazy = empty
 
 fn split_treap(u: ?Int, l: Int) -> (?Int, ?Int):
     let r = u ?? return (None, None)
@@ -134,29 +138,26 @@ fn query_treap(u: ?Int, l: Int) -> ?Query:
     rl
 
 var root: ?Int = None
-for _ in 0..n:
-    tr.push(TreapNode(None, None, rng.next(), None, None, 1, false))
+for _ in Pos:
+    tr.push(TreapNode(None, None, rng.next(), empty, empty, 1, false))
     root = merge_treap(root, tr.len - 1)
 
 var last = 0
-fn decode(x: Int, lim: Int) -> Int = (x + last - 1) % lim + 1
+fn decode<D>(x: D) -> D = D.nth((x.ord + last) % D.count)
 
 for q in Query:
-    let (kind, b, c): (1..=3, Int, Int) = read()
-    match kind:
-        1 =>
-            let r = decode(b, n)
+    let (op, p): (Op, Pos) = read()
+    match op:
+        Insert(r) =>
             alive[q] = true
-            let (ta, tb) = split_treap(root, r)
+            let (ta, tb) = split_treap(root, decode(r).ord + 1)
             if let a = ta:
                 tr[a].lazy = concat_seg(tr[a].lazy, build_seg(q.ord, 0, q_cnt), 0, q_cnt)
             root = merge_treap(ta, tb)
-        2 =>
-            let r = decode(b, n)
-            let (ta, tb) = split_treap(root, r)
+        Reverse(r) =>
+            let (ta, tb) = split_treap(root, decode(r).ord + 1)
             flip_treap(ta)
             root = merge_treap(ta, tb)
-        3 => alive[Query(decode(b, q_cnt))] = false
-    let p = decode(c, n) - 1
-    last = if let v = query_treap(root, p): v.ord + 1 else: 0
+        Delete(id) => alive[decode(Query(id))] = false
+    last = if let v = query_treap(root, decode(p).ord): v.ord + 1 else: 0
     print(last)

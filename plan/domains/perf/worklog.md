@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- 2026-11-23 (from idioms, cf2115f1): `?Id<T>` is not niche-packed: `use std.marks.{Arena, Id}` / `struct S(l: ?Id<S>)` / `var a = Arena<S>.new()` / `let y = a.alloc(S(a.alloc(S(None))))` / `print(yes(a[y].l != None))` emits `std::optional<Id_S0_4> l;` (8 B), though `Id`'s `0..=2e9` has spares (R03.2.2). cf2115f1 with `?Id` children: 8.5 s / 4.2 GB on max vs 5.2-7.3 s / 2.1 GB with an `empty` sentinel node, so the port keeps the sentinel (research/frictions/cf2115f1.md).
+
 ## 2026-11-22
 - Sheriff (infra): reverted b7cc0e0d9 (closures forwarding to one fn as one devirt target): native profile counts stopped matching the interpreter (`cpl-cli::profile native_profile_counts_what_the_interpreter_counts_5`/`_6` on `lazy_params.cp` and `perf6_get_or_insert.cp`, gate shard 2/6, run 45125619295). Re-land with `cargo test -p cpl-cli --test profile` passing.
 - Sheriff (infra): 037d7bf31's `sink_loop` takes 8 arguments, clippy's too_many_arguments on main; allowed on that fn, as `fuse.rs` does.
