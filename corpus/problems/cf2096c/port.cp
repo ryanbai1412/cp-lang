@@ -15,14 +15,14 @@ let b: [0..n]0..=10 ** 9 = read()
 
 var row_bad: [0..n - 1, 0..3]Bool = false
 var col_bad: [0..n - 1, 0..3]Bool = false
-for i in 0..n:
+for i in 1..n:
     for j in 0..n:
-        if i > 0:
-            let d = h[i, j] - h[i - 1, j]
-            if -1 <= d <= 1: row_bad[i - 1, d + 1] = true
-        if j > 0:
-            let d = h[i, j] - h[i, j - 1]
-            if -1 <= d <= 1: col_bad[j - 1, d + 1] = true
+        let d = h[i, j] - h[i - 1, j]
+        if -1 <= d <= 1: row_bad[i - 1, d + 1] = true
+for i in 0..n:
+    for j in 1..n:
+        let d = h[i, j] - h[i, j - 1]
+        if -1 <= d <= 1: col_bad[j - 1, d + 1] = true
 
 fn min_cost(c: [0..n]Int, bad: [0..n - 1, 0..3]Bool) -> ?Int:
     var dp: [0..2]?Int = [0, c[0]]
