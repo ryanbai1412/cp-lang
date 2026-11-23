@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from site: spec W10 (`spec/core/12-powers.md`) writes a custom identity as `SegTree(op: f, id: e)`, but `SegTree.new` has no `id:` parameter (E0310); std takes `Monoid(id, op)`. One of spec or std should change so they agree. `/learn/language/library-powers` uses `Monoid(1, f)` since it runs.
 - Sheriff (infra): the trait gate failed gate (checks) on run 45125619295: `IndexOp/Disjoint/at` and `IndexOp/Disjoint/len` (from f56963d96) had no conformance case. They are recorded as gaps in `spec/conformance/trait-gaps.txt`; write the two cases and drop the gap lines.
 - Owed (infra's new port-check gate): `corpus/problems/cf1943b/port.cp` fails `cpl check` (E0203, `[Pos]Char` has no `nth` that `cpl run` knows, via `manacher(s)`); it starts in `corpus/port-check-failing.txt`; fix it and run `scripts/port-check.sh --update`.
 - Request from site (2026-11-22): 286 of the 2,767 `example:` lines in `std/` don't run as programs (`use std.<module>.*`, the statements, then `assert(expr == value)`), so the site shows them static. Most fail on names not in scope (`D`, `V`, `C` used without a domain), `Monoid<Int>` where `Int` is passed, `todo` reached, or `[V]List<V>` not implementing `Next`. Top modules: tree 37, interval 23, bitset 21, bag 21, marks 19, graph 19. `node web/scripts/gen-ref.mjs` writes the list to `web/node_modules/.cache/doc-examples-failing.txt`. General fix: `cpl doc --test` runs examples instead of only parsing them.

@@ -16,6 +16,7 @@
     "checked-operations",
     "modules-and-prelude",
     "standard-library",
+    "library-powers",
     "cpp-and-the-judge"
   ]
 }

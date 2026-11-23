@@ -1,0 +1,94 @@
+---
+title: "Library powers"
+description: "The standard library has no power a user library lacks: operators, Show, operation values, identities and generators are ordinary declarations."
+---
+
+A power is a mechanism that lets library code feel built in. The standard library has no power a
+user library lacks: if a std module needs something, it is a listed power or core syntax, and your
+own library can use it the same way. The normative list is
+<Spec file="core/12-powers">Powers: what a user library can define</Spec>.
+
+## Operators on your types
+
+`fn (a: T) + (b: T) -> R` defines an operator the way it reads. It is the `Add` trait's impl, so
+generic code bounded by `T: Add` accepts your type, and `+=` comes with it:
+
+```cp run
+struct V2:
+    x: Int
+    y: Int
+
+fn (a: V2) + (b: V2) -> V2 = V2(x: a.x + b.x, y: a.y + b.y)
+
+var s = V2(x: 1, y: 2)
+s += V2(x: 3, y: 4)
+print(s.x, s.y)
+```
+
+(<Spec file="core/12-powers" section="W9. Operators on user types (P9)">W9</Spec>)
+
+## Printing and reading
+
+A type prints through `Show` and reads through `Read`. Structural types derive both; a type that
+wants its own form writes the impl, and `print` and interpolation use it:
+
+```cp run
+struct Low:
+    v: Int
+
+impl Show for Low:
+    fn show(self) -> Str = "low={self.v}"
+
+print(Low(v: 3))
+```
+
+## Operation values and identities
+
+Algebra is passed as values: `SegTree(+)`, `SparseTable(min)`, `a.scan(gcd)`. The identity comes from
+the element type (`+` uses zero, `min` over `?T` uses `None`), and anything else is a `Monoid` you
+build from an identity and an operation, exactly as std's own structures do:
+
+```cp run
+use std.segtree.*
+use std.algebra.{Monoid}
+let mul = Monoid(1, (a: Int, b: Int) => a * b % 97)
+let t = SegTree(mul, [3, 5, 7])
+print(t.fold(0..3))
+```
+
+(<Spec file="core/12-powers" section="W10. Protocols, laws and operation values (P10)">W10</Spec>)
+
+## Generators and places
+
+A library's loop-shaped facility is a generator (`-> yields T`), so its callers get `break`,
+`return` and every adapter for free:
+
+```cp run
+fn evens(n: Int) -> yields Int:
+    for i in 0..n:
+        if i % 2 == 0: yield i
+
+print(evens(10).map(x => x * x).sum())
+```
+
+A type defines what `x[k]` is as a place with `IndexMut` (a real place, as `Map` does) or `IndexSet`
+(write-through, as `SegTree` does, since an update must recompute ancestors), so `t[i] = v` and
+`t[i] += v` read the same on your structure as on an array
+(<Spec file="core/12-powers" section="W8. User places (P8)">W8</Spec>).
+
+## Why it's designed this way
+
+**No privileged stdlib.** If std needs a power and users don't get it, every personal library is
+second class, and contestants copy std code instead of extending it. Keeping the list closed and
+shared means a technique you write once has std's ergonomics and speed.
+
+**Operators spelled as they read.** <Decision n={133} /> replaced hand-written `impl Add for T`
+with `fn (a: T) + (b: T)`, one spelling that is still the trait impl underneath.
+
+**Operations are values, not trait impls.** A segment tree of `max` and one of `+` over the same
+`Int` are both common; making the operation a value instead of an `impl Monoid for Int` keeps
+both one line. <Decision n={127} /> keeps one function per name, so `SegTree(+)` names exactly one
+function.
+
+**Places are a protocol.** <Decision n={128} /> defined the two place protocols so a structure that
+must do work on write can still be written with `t[i] = v`, and the borrow rules still apply.
