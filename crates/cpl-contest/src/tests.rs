@@ -313,9 +313,9 @@ fn cases_are_samples_in_order_then_the_rest_by_name() {
     assert_eq!(source_path("d"), PathBuf::from("d.cp"));
     assert_eq!(source_path("d.cp"), PathBuf::from("d.cp"));
     // A binary built beside the problem doesn't shadow it.
-    let dir = std::env::temp_dir().join(format!("cpl-source-path-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let built = dir.join("cf2272A");
+    let beside = std::env::temp_dir().join(format!("cpl-source-path-{}", std::process::id()));
+    std::fs::create_dir_all(&beside).unwrap();
+    let built = beside.join("cf2272A");
     std::fs::write(&built, b"\x7fELF").unwrap();
     assert_eq!(source_path(built.to_str().unwrap()), built);
     std::fs::write(built.with_extension("cp"), "print(1)\n").unwrap();
@@ -323,7 +323,7 @@ fn cases_are_samples_in_order_then_the_rest_by_name() {
         source_path(built.to_str().unwrap()),
         built.with_extension("cp")
     );
-    std::fs::remove_dir_all(&dir).unwrap();
+    std::fs::remove_dir_all(&beside).unwrap();
     std::fs::remove_dir_all(dir).unwrap();
 }
 
