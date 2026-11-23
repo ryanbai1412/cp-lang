@@ -9,18 +9,18 @@ fn comb(depth: List<Int>) -> Int:
 
     @memo(array)
     fn best(i: I, h: H, prev: Side, cur: Side) -> Int:
-        if depth[i] > Int(h):
+        if depth[Int(i)] > Int(h):
             return inf
         let j = i.next ?? return if cur == Low: 0 else: inf
-        let keep = Int(h) - depth[j] + best(j, h, cur, cur)
+        let keep = Int(h) - depth[Int(j)] + best(j, h, cur, cur)
         let step = if cur == Low: -1 else: 1
         let nudge = if prev == cur: inf else: (h + step).map(g => step + best(i, g, prev, cur)) ?? inf
-        let turn_to = if cur == Low: max(Int(h) + 1, depth[j]) else: min(Int(h) - 1, depth[j])
+        let turn_to = if cur == Low: max(Int(h) + 1, depth[Int(j)]) else: min(Int(h) - 1, depth[Int(j)])
         let flip = if cur == Low: High else: Low
-        let turn = H.at(turn_to).map(g => Int(g) - depth[j] + best(j, g, cur, flip)) ?? inf
+        let turn = H.at(turn_to).map(g => Int(g) - depth[Int(j)] + best(j, g, cur, flip)) ?? inf
         min(keep, nudge, turn)
 
-    best(I.first!, H(depth[I.first!]), High, Low)
+    best(I.first!, H(depth[Int(I.first!)]), High, Low)
 
 let n = read<1..=1000>()
 let rows = read<[n](l: 0..=1000, r: 0..=1000)>()
