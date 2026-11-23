@@ -1,4 +1,4 @@
-//! Segment tree over a domain, for any associative operation.
+//! Segment tree over a domain, for any associative operation: point or range update, range query.
 use std.algebra.{Action, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit}

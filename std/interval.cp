@@ -1,4 +1,4 @@
-//! Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`.
+//! Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`; merge overlapping intervals.
 
 use std.rand.{Rng}
 use std.seq.{ends}

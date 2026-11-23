@@ -1,4 +1,4 @@
-//! The DP toolkit: the structures and optimizations a DP calls by name.
+//! The DP toolkit: the structures and optimizations a DP calls by name (CHT, SOS; a 0/1 knapsack over sums is `Bitset.shift_or`).
 //!
 //! A minimum or maximum of lines (the convex hull trick) is a `LiChao`; a
 //! layer whose optimal split moves right is `dnc_layer` (over `monotone_minima`); an interval DP with
