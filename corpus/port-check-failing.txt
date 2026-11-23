@@ -59,6 +59,5 @@ sac22cc3p5
 sdoi17r1p2
 sdoi17r1p6
 sdoi17r2p4
-shoi15p2
 ucup4s24f
 utso15p5

@@ -79,8 +79,5 @@ for _ in 0..q:
         if moved > 0:
             assign(1, 1, n, l, r, 1)
             // fill holes of to_l..=to_r left to right until the tissue runs out
-            let lo = bsearch_first(
-                to_l..to_r,
-                mid => fold(1, 1, n, to_l, mid).holes >= moved,
-            ) ?? to_r
+            let lo = (to_l..to_r).first_true(mid => fold(1, 1, n, to_l, mid).holes >= moved) ?? to_r
             assign(1, 1, n, to_l, lo, 0)
