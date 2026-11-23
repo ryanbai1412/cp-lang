@@ -16,7 +16,7 @@
 // +1/-1 letter signs gives agree - disagree, correlating known flags gives
 // the number of known pairs.
 use std.math.{divisors, factor}
-use std.ntt.{convolve_int}
+use std.ntt.{convolve}
 
 type Z = Mod<998_244_353>
 
@@ -40,8 +40,8 @@ fn known(c: ?Char) -> Int = if let _ = c: 1 else: 0
 fn ways(len: Int) -> Z:
     let x = fold(0, len) ?? return 0
     let y = fold(m, len) ?? return 0
-    let agree = convolve_int(x.map(sign), y.map(sign).reversed(), cyclic: true)
-    let pairs = convolve_int(x.map(known), y.map(known).reversed(), cyclic: true)
+    let agree = convolve(x.map(sign), y.map(sign).reversed(), cyclic: true)
+    let pairs = convolve(x.map(known), y.map(known).reversed(), cyclic: true)
     let fixed = x.count(c => c is some) + y.count(c => c is some)
     sum(pow2[len - fixed + pairs[i]] for i in 0..len if agree[i] == pairs[i])
 
