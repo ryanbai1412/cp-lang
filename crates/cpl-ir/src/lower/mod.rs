@@ -1581,6 +1581,46 @@ impl<'a> Lowerer<'a> {
             .collect()
     }
 
+    /// The product domain whose grid is `dims`, a declared one before an anonymous one.
+    pub(super) fn product_of_grid(&self, dims: &[Dim]) -> Option<DomainId> {
+        let mut ids: Vec<_> = self.product_domains.keys().copied().collect();
+        ids.sort_by_key(|id| (self.anon_product_domain_set.contains(id), *id));
+        ids.into_iter()
+            .find(|&id| self.product_grid(id).as_deref() == Some(dims))
+    }
+
+    /// Registers the product domain each `V` of an `[V, V]T` parameter is when given an
+    /// `[A, B, A, B]T`.
+    pub(super) fn intern_grid_products(&mut self, pat: &ast::Type, concrete: &Ty) {
+        let (ast::TypeKind::Array { index, .. }, Ty::Array { dims, .. }) = (&pat.kind, concrete)
+        else {
+            return;
+        };
+        let per = dims.len() / index.len().max(1);
+        if per < 2 || dims.len() != per * index.len() {
+            return;
+        }
+        for chunk in dims.chunks(per) {
+            let factors: Option<Vec<_>> = chunk
+                .iter()
+                .map(|d| match d {
+                    Dim::Pos(d) => Some((None, ProductFactor::Domain(*d))),
+                    _ => None,
+                })
+                .collect();
+            let Some(factors) = factors else { continue };
+            let id = match self.product_of_grid(chunk) {
+                Some(id) => id,
+                None => self.intern_anon_product_domain(factors),
+            };
+            if self.anon_product_domain_set.contains(&id) {
+                let mut defs = Vec::new();
+                self.def_anon_product_domain(id, pat.span, &mut defs);
+                self.cx.pending.extend(defs);
+            }
+        }
+    }
+
     pub(super) fn decode_product_field(
         &mut self,
         id: DomainId,
@@ -2735,6 +2775,18 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Named { name, args } if args.is_empty() => {
                 match self.gen_env.get(&name.text) {
                     Some(GenArg::Ty(ty)) => ty.clone(),
+                    // `[V]T` with `V` a product domain is its grid.
+                    Some(GenArg::Domain(id)) => {
+                        let grid = self.product_grid(*id)?;
+                        return Some(
+                            grid.into_iter()
+                                .map(|d| match d {
+                                    Dim::Pos(d) => DimSpec::Pos(d),
+                                    _ => unreachable!("a product grid has position dimensions"),
+                                })
+                                .collect(),
+                        );
+                    }
                     Some(_) => return None,
                     None if matches!(self.get_sym(&name.text), Some(Sym::Alias(_)))
                         || self.cx.local_type_aliases.contains_key(&name.text) =>

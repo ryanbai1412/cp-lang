@@ -280,8 +280,9 @@ impl Ty {
                     elem: be,
                 },
             ) => {
+                let (ai, bi) = (flat_positions(ai), flat_positions(bi));
                 ai.len() == bi.len()
-                    && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number))
+                    && ai.iter().zip(&bi).all(|(a, b)| a.fits_in(b, number))
                     && ae.fits_in(be, number)
             }
             (Ty::Tuple(a), Ty::Tuple(b)) => {
@@ -631,8 +632,19 @@ impl Ty {
                     elem: got_elem,
                 },
             ) => {
-                for (want, got) in index.iter().zip(got_index) {
-                    want.unify(got, bindings);
+                // `[V, V]T` given `[A, B, A, B]T` (`[P, P]` over `type P = (A, B)`): each `V` is `P`.
+                let per = got_index.len() / index.len().max(1);
+                if per > 1
+                    && got_index.len() == per * index.len()
+                    && got_index.iter().all(|t| matches!(t, Ty::Pos(_)))
+                {
+                    for (want, got) in index.iter().zip(got_index.chunks(per)) {
+                        want.unify(&Ty::Tuple(got.to_vec()), bindings);
+                    }
+                } else {
+                    for (want, got) in index.iter().zip(got_index) {
+                        want.unify(got, bindings);
+                    }
                 }
                 elem.unify(got_elem, bindings);
             }
@@ -981,6 +993,23 @@ pub fn human_int(n: i128) -> String {
         }
     }
     n.to_string()
+}
+
+/// An array's index with each product position `(A, B)` as its factors: `[P]T` and `[A, B]T`
+/// are one type (R04.2.11).
+fn flat_positions(index: &[Ty]) -> Vec<Ty> {
+    let mut flat = Vec::with_capacity(index.len());
+    for ty in index {
+        match ty {
+            Ty::Tuple(items)
+                if items.len() > 1 && items.iter().all(|t| matches!(t, Ty::Pos(_))) =>
+            {
+                flat.extend(items.iter().cloned())
+            }
+            _ => flat.push(ty.clone()),
+        }
+    }
+    flat
 }
 
 #[cfg(test)]

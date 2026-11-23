@@ -165,3 +165,45 @@ pub(super) fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) ->
     decl.fields.iter().any(|f| ty_uses_domain(&f.ty, name))
         || decl.methods.iter().any(|m| stmt_uses_domain(m, name))
 }
+
+impl<'a> Lowerer<'a> {
+    /// Binds the generics of an array parameter's index `[I, J]` from the
+    /// dimensions it was given.
+    pub(super) fn unify_array_dims(
+        &self,
+        index: &[ast::Type],
+        dims: &[Dim],
+        tpl_mod: ModId,
+        gen_names: &[String],
+        env: &mut GenEnv,
+    ) {
+        // `[V, V]T` given `[A, B, A, B]T`, an `[P, P]T` over `type P = (A, B)`.
+        let per = dims.len() / index.len().max(1);
+        if per > 1 && dims.len() == per * index.len() {
+            let products: Option<Vec<_>> =
+                dims.chunks(per).map(|c| self.product_of_grid(c)).collect();
+            if let Some(products) = products {
+                for (ix, p) in index.iter().zip(products) {
+                    self.unify_ast_ty(ix, &Ty::Pos(p), tpl_mod, gen_names, env);
+                }
+                return;
+            }
+        }
+        for (ix, d) in index.iter().zip(dims) {
+            match d {
+                Dim::Pos(did) | Dim::Sym(did) => {
+                    self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
+                }
+                Dim::Bound(did) => {
+                    self.unify_ast_ty(ix, &Ty::Bound(*did), tpl_mod, gen_names, env);
+                }
+                Dim::Enum(e) => {
+                    self.unify_ast_ty(ix, &Ty::Enum(*e), tpl_mod, gen_names, env);
+                }
+                Dim::Int | Dim::IntFrom(_) => {
+                    self.unify_ast_ty(ix, &Ty::Int, tpl_mod, gen_names, env);
+                }
+            }
+        }
+    }
+}

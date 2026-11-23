@@ -5195,6 +5195,8 @@ impl<'a> Lowerer<'a> {
                     match name.text.as_str() {
                         "zero" => return self.mk(ExprKind::Float(0.0), Ty::Float, span),
                         "one" => return self.mk(ExprKind::Float(1.0), Ty::Float, span),
+                        "MAX" => return self.mk(ExprKind::Float(f64::MAX), Ty::Float, span),
+                        "MIN" => return self.mk(ExprKind::Float(f64::MIN), Ty::Float, span),
                         _ => {}
                     }
                 }

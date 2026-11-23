@@ -1828,6 +1828,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+                self.intern_grid_products(pty, &concrete);
                 self.unify_ast_ty(pty, &concrete, tpl_mod, &gen_names, &mut inferred);
                 // If this argument bound a `Seq`/`Indexed`/`IndexedMut` container generic
                 // (e.g. `resized<S: Indexed, T>(self: S, n: Int, fill: T)`), deduce `T` now so
@@ -3241,22 +3242,7 @@ impl<'a> Lowerer<'a> {
             },
             ast::TypeKind::Array { index, elem } => {
                 if let Ty::Array { dims, elem: ce } = concrete {
-                    for (ix, d) in index.iter().zip(dims) {
-                        match d {
-                            Dim::Pos(did) | Dim::Sym(did) => {
-                                self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
-                            }
-                            Dim::Bound(did) => {
-                                self.unify_ast_ty(ix, &Ty::Bound(*did), tpl_mod, gen_names, env);
-                            }
-                            Dim::Enum(e) => {
-                                self.unify_ast_ty(ix, &Ty::Enum(*e), tpl_mod, gen_names, env);
-                            }
-                            Dim::Int | Dim::IntFrom(_) => {
-                                self.unify_ast_ty(ix, &Ty::Int, tpl_mod, gen_names, env);
-                            }
-                        }
-                    }
+                    self.unify_array_dims(index, dims, tpl_mod, gen_names, env);
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
                 } else if let (
                     Ty::List(ce) | Ty::ListView(ce, _) | Ty::Keyed(ce, _) | Ty::MutView(ce),
