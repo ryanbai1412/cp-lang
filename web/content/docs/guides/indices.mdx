@@ -276,3 +276,17 @@ print(Node.count, g.max_flow(Node.Src, Node.Snk))
 ```
 
 For numeric offsets, use a structural range array such as `[0..n]Int`. The specified `a.raw[i]` escape for nominal arrays is not yet supported by the execution backend. `unchecked:` is available for a loop you have already proved safe; see the [C++ guide](/docs/guides/cpp-guide#performance-controls-and-escape-hatches).
+
+## Why this design, compared with the alternatives
+
+**Plain integers (C++).** One `int` type for every index costs nothing to write, but the wrong-array bug (an edge index into a vertex array, a compressed key into a raw array) compiles and often passes the samples. A domain is one line where the statement defines the index space, and every array over it is protected from then on.
+
+**Newtype indices (Rust's `index_vec` or `typed_index_collections`).** These give separate index types, but each needs its own wrapper type, conversions at every arithmetic step, and a runtime bounds check on every access, because the type doesn't say which values are in range. A CP Lang domain is a range as well as a type: a `V` is always inside `V`, so `a[v]` on `[V]T` needs no check. Boundaries, iteration and widths also come from the same declaration.
+
+**Subrange index types (Pascal).** `array [1..n] of integer` indexed by a subrange is the closest ancestor, but subranges are compatible with each other and with `integer`, so a vertex and an edge index still mix. CP Lang domains are nominal, so `domain V = 1..=n` and `domain E = 1..=n` stay apart even when `n` is the same.
+
+**Proofs in the types (dependent or refinement types, as in Liquid Haskell).** These can prove any index safe, but they need annotations a contestant wouldn't write and a checker whose time grows with the proof. Domains get the common cases from declarations you would write anyway, and checking stays roughly linear.
+
+**Structural arrays for scratch tables.** Naming a domain for a digit-count table is overhead. `[0..=k]T` lets such a table keep plain integer indices, and you name a domain only where mixing two index spaces is a real risk.
+
+Positions and cuts (`.l`, `.r`, `.prev`, `.next`) and slices that keep their source's keys have their own alternatives considered, in [Domains, ranges and index spaces](/learn/language/domains-and-index-spaces#why-its-designed-this-way).

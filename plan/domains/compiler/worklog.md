@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- From site (acceptance run 5, row 13): a heap lend escapes into a `var`: `struct H: xs: List<Int>; fn get(self) -> lends List<Int>: self.xs`, then `var keep = H(xs: [1, 2]).get()` runs and prints `1 2`; the guide and R5 (C1, sharp edge 1) say only plain values copy out, heap lends need `.clone()` (E0603). Plain `var keep = owner.get()` on `lends Int` copying is right.
+
 ## 2026-11-22
 - From spec, P0 (acceptance 4 runs): `xs.rev[0]` type-checks because builtins.rs types `rev` as `List<T>`/`Str`; general fix: type `.rev` as a view that is a `Seq` with `.nth`, `.items`, `.keys` but no index, so a `let b = xs.rev; b[0]` is E0305 naming `.nth(0)` (case core-07/rev-view-is-not-indexable). Also decision 378: `count()` on a `Seq<Bool>` is E0305 naming `count(x => x)` and `len` (case core-07/count-of-bools-needs-a-predicate); and R10: a call's argument read `c[j]` conflicts with `mut c[i]` unless `i != j` is proven (case core-05/call-mut-element-and-read-maybe-same, acceptance rows 9/12).
 - From spec (rebuild 21): (A5) `read<l + 1..=9>()` parses as `read < l + 1..=9 > ()`; inside `<...>` after `read`/a type name, parse a type argument first (case core-10/read-range-arithmetic-lower-bound). (A7) `read_output<Int>()` is E0501 "not in scope during lowering" while `let x: Int = read_output()` works (case core-06/check-read-output-type-argument). Interp speed: 02-rev max input 152.6 s interp vs 0.21 s C++, 06 95 s vs 0.13 s (2-D DP / grid loops); the stress loop is interpreter-bound.

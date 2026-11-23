@@ -21,8 +21,19 @@ fn bump(mut a: [V]Int, v: V):
 
 print(total(a))       // read-only borrow, no array copy
 bump(mut a, V(1))     // mutable borrow, explicit at both ends
-let saved = a.copy()  // an owned copy, explicit cost
+let saved = a.clone()  // an owned copy, explicit cost
 ```
+
+A plain value (a number, `Bool`, a range, a domain value, or a record or tuple of those) copies on `let b = a`. A heap value (a `List`, a fixed array such as `[V]Int`, a `Map`, a `Str`, or a struct holding one) **moves**: `b` takes the data in O(1), and a later use of `a` is an error that suggests `a.clone()`:
+
+```cp
+var a = [1, 2, 3]
+var b = a        // a moves into b; nothing is copied
+b.push(4)
+print(b)         // 1 2 3 4; print(a) here is error E0608: `a` was already moved
+```
+
+There is never a silent deep copy and never a second name for the same list, so a change through `b` can't show up in `a`. Write `let b = a.clone()` when you need both.
 
 While a place is borrowed mutably, other code cannot read or write the same place. Multiple read-only borrows are fine. Separate struct fields can be borrowed separately; overlapping container accesses need more evidence.
 
@@ -59,11 +70,11 @@ The local `lent` is temporary access to `owner`, not an independent owner. A mut
 
 ## Why there are no lifetime annotations
 
-CP Lang does not ask you to name how long references live. It restricts where a borrow can go instead. A lent value may be a local `let`, an argument, a use inside one expression, or a loop's temporary value. It cannot escape into an owning field, a container, a `var`, a stored closure, or an ordinary return value.
+CP Lang does not ask you to name how long references live. It restricts where a borrow can go instead. A lent value may be a local `let`, an argument, a use inside one expression, or a loop's temporary value. It cannot escape into an owning field, a container, a `var`, a stored closure, or an ordinary return value. Plain values are the exception: they copy, so `var keep = owner.get()` on a `lends Int` gives `keep` its own `Int`, and changing `keep` leaves `owner` alone. The rule is about heap values, where escaping would mean either a hidden copy or a second owner; write `.clone()` to keep one.
 
 The implementation model is an inlined callback (there is no `inline` keyword; `lends`, `yield`, and closure arguments carry that contract): a projection runs the caller's use of the lent place while the owner is still available. Binding a lend to `let` puts the rest of that block inside the callback. The checker can see the whole use; there is no returned reference whose lifetime must be related to some other reference.
 
-That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or `List.push_id` handles. Functions that find a useful sub-range return a `Range<V>`, then the caller reopens `a[span]` when needed. If you truly want independent storage, ask for `.copy()`.
+That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or `List.push_id` handles. Functions that find a useful sub-range return a `Range<V>`, then the caller reopens `a[span]` when needed. If you truly want independent storage, ask for `.clone()`.
 
 ```cp
 domain V = 1..=4
@@ -74,7 +85,7 @@ fn find_span(a: [V]Int) -> Range<V>:
 let span: Range<V> = find_span(a)  // plain data: two boundaries
 let part = a[span]                 // a lexical lend, used here
 print(part.sum())
-let saved = part.copy()  // owned data may escape
+let saved = part.to_list()  // an owned List: may escape
 ```
 
 `find_span` above is an ordinary user helper returning a range. It must not return a borrowed slice. Returning the recipe for access is simpler than returning access itself.

@@ -73,7 +73,7 @@ print(ps[best].name, ps[best].score)
 Tuples compare field by field, so `(score, -time)` is "higher score,
 then less time". The loop keeps the index of the best player, not a
 copy: a record taken from `ps` in a loop is lent from `ps`, and storing
-it in an outer `var` does not compile (`ps[i].copy()` would make one).
+it in an outer `var` does not compile (`ps[i].clone()` would make one).
 
 ## Enums and match
 

@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- From site: `.clone()` on a slice is E0302 "expected `List<Int>`, found `List<Int>`" (`let part = a[V(1)..=V(3)]; let saved = part.clone()` with `a: [V]Int`), while `.copy()`, `.to_list()` and `List(part)` run. `clone<T>(self: T) -> T` returns the slice type; spec 5 made `.clone()` the copy spelling, so it should give the owned value (and the message names two identical types: diagnostics). The borrowing guide uses `.to_list()` until then.
+
 ## 2026-11-22
 - From spec (rebuild 21), P0 again: `Int` index into a `Prefix` is a position, not a cut (4th round to hit it: 8, 11, 18, 21): `[1,1,-1,-1].scan(+)[0]` is 1 (spec 0), `[4]` traps; same on a `Str.map` view. Also: `Comb<Z>(n)` in the doc example vs `pub fn new(limit:)`; no disjoint-occurrence count in strings.cp (readers hand-loop `z_function`); no 1-based view of a `Str` for 1-based query positions (general fix: `io(base: 1)` or a domain-keyed `Str` view; spec to decide).
 - From spec (rebuild 20): `RollingHash.new` draws random bases per constructor while random-stress.md says hashing salts are fixed per build profile, so two constructors' hashes never compare without `bases:` (general fix: one fixed-per-profile basis, or a hash-family value). `t.children(v)` is a generator but lib/graphs-trees.md calls it an `Indexed` view. `Rng`, `BigInt`, `HashVal` need `use` while spec/lib shows them bare; general fix: every spec/lib example compiles with only its shown `use` lines.

@@ -63,6 +63,24 @@ function rewriteLinks(text, dir) {
   });
 }
 
+// Each Language chapter that cites a spec/core chapter with <Spec> explains
+// why that part is designed the way it is; the reference page links there.
+const learnDir = join(web, 'content/learn/language');
+const why = new Map();
+for (const f of readdirSync(learnDir).filter((f) => f.endsWith('.mdx') && f !== 'index.mdx').sort()) {
+  const src = readFileSync(join(learnDir, f), 'utf8');
+  if (!src.includes("## Why it's designed this way")) continue;
+  const title = /^title: "(.+)"$/m.exec(src)?.[1] ?? basename(f, '.mdx');
+  for (const [, core] of src.matchAll(/<Spec file="core\/([0-9a-z-]+)"/g)) {
+    const list = why.get(core) ?? [];
+    const link = `[${title}](/learn/language/${basename(f, '.mdx')}#why-its-designed-this-way)`;
+    if (!list.includes(link)) why.set(core, [...list, link]);
+  }
+}
+
+const chapters = (links) =>
+  links.length === 1 ? `the Language chapter ${links[0]}` : `the Language chapters ${links.slice(0, -1).join(', ')} and ${links.at(-1)}`;
+
 const fenceLangs = new Set(['cp', 'cpp', 'java', 'rust', 'sh', 'json', 'text']);
 let specPages = 0;
 for (const [dir, title, description] of specDirs) {
@@ -75,7 +93,7 @@ for (const [dir, title, description] of specDirs) {
     const body = checkMath(`spec/${dir}/${f}`, texSpans(rewriteLinks(src.replace(/^# .+\n/m, ''), dir))).replace(/^```(\w+)/gm, (_, lang) => '```' + (lang === 'python' ? 'cp' : fenceLangs.has(lang) ? lang : 'text'));
     const note =
       dir === 'core'
-        ? `This is the normative specification ([source](${blob}/spec/${dir}/${f})). For a gentler introduction, start with the [tour](/docs/guides/tour).\n\n`
+        ? `This is the normative specification ([source](${blob}/spec/${dir}/${f})). For a gentler introduction, start with the [tour](/docs/guides/tour).${why.has(slugOf(f)) ? ` The alternatives considered and why this design won are in ${chapters(why.get(slugOf(f)))}.` : ''}\n\n`
         : `Normative text from [spec/${dir}/${f}](${blob}/spec/${dir}/${f}).\n\n`;
     write(`${dir}/${slugOf(f)}.md`, page(heading, description, note + body));
     specPages++;

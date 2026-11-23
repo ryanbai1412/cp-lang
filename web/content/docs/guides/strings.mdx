@@ -26,7 +26,7 @@ if s.len >= 2 and s[..2] == "ab":
     print(out)
 ```
 
-Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the [playground](/play).
+Because `Str` has value semantics, `var t = s` moves `s` into `t` without hidden aliasing, so `s` can't be used afterwards; call `s.clone()` when you want an independent copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the [playground](/play).
 
 ## Common string helpers
 
