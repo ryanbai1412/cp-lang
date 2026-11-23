@@ -3,11 +3,10 @@
 
 use super::*;
 
+use crate::tests::all_on;
+
 fn codes(src: &str) -> Vec<&'static str> {
-    lint(src, &Config::default())
-        .iter()
-        .map(|d| d.code.0)
-        .collect()
+    lint(src, &all_on()).iter().map(|d| d.code.0).collect()
 }
 
 #[test]
@@ -118,7 +117,7 @@ fn every_lint_matches_the_spec_lint_list() {
 
 #[test]
 fn every_record_fix_clears_its_lint_and_still_parses() {
-    let config = Config::default();
+    let config = all_on();
     for lint in LINTS {
         let (fixed, applied) = fix(lint.trigger, &config);
         if applied == 0 {

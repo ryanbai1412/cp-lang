@@ -1,8 +1,17 @@
 use super::*;
 
-/// The codes `src` is reported for, in source order.
+/// Every lint on, so allowed-by-default lints are tested too.
+pub(crate) fn all_on() -> Config {
+    let mut config = Config::default();
+    for lint in LINTS {
+        config.set(lint, Level::Warn);
+    }
+    config
+}
+
+/// The codes `src` is reported for with every lint on, in source order.
 pub(crate) fn codes(src: &str) -> Vec<&'static str> {
-    codes_with(src, &Config::default())
+    codes_with(src, &all_on())
 }
 
 fn codes_with(src: &str, config: &Config) -> Vec<&'static str> {
@@ -10,7 +19,7 @@ fn codes_with(src: &str, config: &Config) -> Vec<&'static str> {
 }
 
 pub(crate) fn only(src: &str) -> Diagnostic {
-    let mut found = lint(src, &Config::default());
+    let mut found = lint(src, &all_on());
     assert_eq!(found.len(), 1, "{found:#?}");
     found.remove(0)
 }

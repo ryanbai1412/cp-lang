@@ -1,1 +1,1 @@
-Indexing a `List<T>` with an arbitrary `Int` inside nested loops emits a runtime bounds check on every iteration. Declare a `domain` and `[D]T` array so bounds are verified once.
+Indexing a `List<T>` with an arbitrary `Int` inside nested loops emits a runtime bounds check on every iteration. Declare a `domain` and `[D]T` array so bounds are verified once. Allowed by default (`pedantic`): the check is cheap and the warning was the most frequent on C++-shaped code; turn it on with `unproven_list_index = "warn"` under `[lints]` in `cp.toml`.

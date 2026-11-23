@@ -4,7 +4,6 @@ spec L0204 1
 spec L0207 6
 spec L0209 14
 spec L0412 3
-spec L0414 8
 spec L0503 1
 spec L0506 1
 spec L0509 1
@@ -17,7 +16,6 @@ std L0207 2
 std L0209 30
 std L0210 72
 std L0301 38
-std L0414 183
 std L0501 6
 std L0503 7
 std L0504 22

@@ -1,5 +1,5 @@
 code = "L0414"
-level = "warn"
-group = "perf"
+level = "allow"
+group = "pedantic"
 title = "Unproven `List` index in nested loop"
 summary = "a `List` index inside nested loops that is checked on every access"

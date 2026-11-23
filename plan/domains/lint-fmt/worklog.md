@@ -167,3 +167,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: format on save just works: LSP formatting honours `cp.toml [fmt]`; VS Code defaults `editor.formatOnSave` for `cp`.
 - 2026-11-22: `cpl fmt` keeps a CRLF file CRLF (Windows checkouts); mixed endings become LF.
 - 2026-11-22: format on write in Neovim (LSP) and Vim (`gq` via `cpl fmt --stdin`), covered by both editor smoke tests.
+- 2026-11-22: L0414 off by default (pedantic; decision 317): port warnings 739 -> 459; newcomer ranking in metrics.toml.

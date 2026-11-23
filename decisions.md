@@ -6983,3 +6983,15 @@ command because the editors are not toolchains (`cpl self`). The Neovim plugin n
 also completes as you type `.` and maps `gd`, each with an
 off switch. Reverse: drop the command and the file list; the runtime-path setup in
 `editors/README.md` still works.
+
+## 317. L0414 `unproven_list_index` is `pedantic`, allowed by default (2026-11-22)
+Milestone 1 treats lint as teaching for newcomers, and C++-shaped code
+(the 1,160 corpus `port.cp` files) drew 279 L0414 warnings on 214 lines in
+86 files, often five on one line of index arithmetic, each with help that
+does not fit a computed index. The check it warns about is cheap, and a wall
+of perf warnings teaches newcomers to ignore lints. It now sits in
+`pedantic` at `allow`; the unit and record tests run every lint on, so it
+stays tested, and `unproven_list_index = "warn"` under `[lints]` turns it
+back on. Port warnings at default levels: 739 -> 459. Reverse: set
+`level = "warn"`, `group = "perf"` in `spec/lints/unproven_list_index/lint.toml`
+and re-bless `crates/cpl-lint/corpus_warnings.txt`.
