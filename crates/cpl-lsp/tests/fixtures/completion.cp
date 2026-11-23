@@ -8,3 +8,4 @@ let e = Edge(to: 1, w: 2)
 let a = e.$0
 let b = es.$0
 let c: Int = $0
+print(n$0)

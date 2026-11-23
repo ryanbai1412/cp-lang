@@ -88,7 +88,7 @@ today = "5"
 
 [[metric]]
 name = "completion recall over the corpus (token-by-token replay)"
-command = "missing: see handbook/domains/tools.md"
+command = "cargo test --release -p cpl-lsp --test completion_replay -- --nocapture"
 target = "ratchet up; every identifier offered after `.`, `(` and in scope"
 today = "not measured"
 

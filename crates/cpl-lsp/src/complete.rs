@@ -790,8 +790,11 @@ fn scope_completion(
     let analysis = cursor.analysis;
     let mut seen = HashSet::new();
     let mut items = Vec::new();
+    // The word being typed is offered when it names something; only a word
+    // that appears nowhere else (a new name) is left out.
+    let new_word = whole_words(&analysis.text, word) <= 1;
     let mut add = |entry: &Entry, sort: u8, items: &mut Vec<Value>| {
-        if entry.name != word && seen.insert(entry.name.clone()) {
+        if !(new_word && entry.name == word) && seen.insert(entry.name.clone()) {
             items.push(item_json(entry, rank(entry, sort)));
         }
     };
@@ -894,6 +897,20 @@ fn scope_completion(
         }
     }
     items
+}
+
+/// How many times `word` appears in `text` as a whole identifier.
+fn whole_words(text: &str, word: &str) -> usize {
+    if word.is_empty() {
+        return 0;
+    }
+    text.match_indices(word)
+        .filter(|&(at, _)| {
+            let before = text[..at].chars().next_back();
+            let after = text[at + word.len()..].chars().next();
+            !before.is_some_and(is_ident) && !after.is_some_and(is_ident)
+        })
+        .count()
 }
 
 /// The fn bodies of an item: a local declared in one is seen only in it.
