@@ -94,6 +94,7 @@ means no real check exists yet. Targets and current numbers are in
 | Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
 | Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
 | Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
+| Every rule has one home | Lints and gates citing no handbook guideline heading | Count, gated once domains fold their rules ([quality.md](../process/quality.md#rules-live-in-guidelines)) | `scripts/debt-ratchet.py` (`uncited_rules`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector, read in the hourly review | `scripts/expectation-edits.py` |
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing on the code each change touched | `scripts/mutation-score.py` |
 | Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |

@@ -4,6 +4,7 @@
 Handbook documents and RFCs are written for an outsider, so they must not
 lean on shared history: "as discussed", commit hashes, session links,
 relative dates. Fenced code and inline code spans are not checked.
+Rule: handbook/process/handbook-and-rfcs.md#writing-for-an-outsider.
 
 Usage:
     python3 scripts/check-handbook.py [file ...]

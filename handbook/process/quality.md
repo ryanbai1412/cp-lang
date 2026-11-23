@@ -89,10 +89,38 @@ owns, and by asking how mature projects measure the same thing.
 - **Escapes.** Bugs found by users or other domains that the suite should
   have caught.
 
+## Rules live in guidelines
+
+A rule is written once, as an item in a handbook guideline or checklist,
+with its reason and an example. Everything that enforces it points there.
+
+For example, "a search that can find nothing returns `?T`" is an item in
+the std API guideline. The lint that flags a `-1` sentinel return cites
+`handbook/guidelines/std-api.md#return-conventions` in its record, the test
+that checks every std search names the same heading, and the stdlib
+register row's Mechanism cell names the lint and the heading. Nobody restates
+the rule.
+
+- **One home per rule.** A rule stated only in a register row, a lint, a
+  script or a worklog moves into the guideline that owns that kind of work:
+  std API, std docs, errors, lints, performance, testing or writing. If that
+  guideline doesn't exist yet, create it.
+- **General items, not one-off rules.** Several narrow rules are usually
+  one item stated generally ("absence is a type, never a sentinel" covers
+  searches, lookups and parsers). Prefer that item to a list of cases.
+- **Enforcers cite the item.** A lint's record (`spec/lints/<name>/`), a
+  gate script's opening docstring, or a test's name or doc comment carries
+  `handbook/<doc>.md#<heading>`. A lint is how a guideline is enforced.
+- **Measured.** `python3 scripts/debt-ratchet.py --list uncited_rules`
+  lists lints and gates that cite no existing heading. The count is
+  reported now and becomes a gate once domains have folded their rules.
+
 ## Accountability
 
 - **Every row names a real check.** Empty rows are counted per domain and
   go down.
+- **Every lint and gate cites its rule.** See
+  [Rules live in guidelines](#rules-live-in-guidelines).
 - **Skips only shrink.** Ignored tests, xfails, allowlists and lists of
   known differences have shrink-only counts.
 - **Expected output changes for a reason.** A commit that edits expected

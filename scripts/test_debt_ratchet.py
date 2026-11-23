@@ -208,6 +208,18 @@ class DebtRatchetTest(unittest.TestCase):
                 "handbook/domains/x.md:17 missing: k",
             ])
 
+    def test_uncited_rules_needs_an_existing_heading_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "handbook/guidelines/lints.md", "# Lints\n## The rules\n")
+            self._write(root, "spec/lints/good/lint.toml", 'rule = "handbook/guidelines/lints.md#the-rules"\n')
+            self._write(root, "spec/lints/bad/explain.md", "see handbook/guidelines/lints.md#gone\n")
+            self._write(root, "spec/lints/none/lint.toml", "code = 1\n")
+            self._write(root, "scripts/check.sh", "python3 scripts/a.py\npython3 scripts/b.py scripts/test_x.py\n")
+            self._write(root, "scripts/a.py", '"""Gate. Rule: handbook/guidelines/lints.md#the-rules."""\n')
+            self._write(root, "scripts/b.py", '"""Gate."""\n')
+            self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint none", "gate scripts/b.py"])
+
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

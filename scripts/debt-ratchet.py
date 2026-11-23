@@ -5,6 +5,7 @@ Every count below is measured from the tree and compared with
 `scripts/debt-ratchet.json`. A count above its baseline fails the gate; the
 only way past is `--update` in the same commit plus a `decisions.md` line
 saying why. Lower counts pass and print a hint to tighten the baseline.
+Why these ratchets exist: handbook/process/quality.md#accountability.
 
   rs_file_size_allowlist  `.rs` files under `crates/` over `max_rs_lines` (2000);
                           an allowlisted file may not grow, a new one fails
@@ -587,6 +588,48 @@ def register_rows(root: Path) -> list[str]:
                 found.append(f"{where} missing: {cells[0]}")
     return found
 
+GUIDELINE_CITE_RE = re.compile(r"handbook/([\w/-]+\.md)#([\w-]+)")
+
+
+def _anchors(path: Path) -> set[str]:
+    """GitHub-style heading anchors of a markdown file."""
+    out = set()
+    for line in _lines(path) if path.is_file() else []:
+        if line.startswith("#"):
+            title = line.lstrip("#").strip().lower()
+            out.add(re.sub(r"\s", "-", re.sub(r"[^\w\s-]", "", title)))
+    return out
+
+
+def _cites_guideline(root: Path, text: str) -> bool:
+    return any(m.group(2) in _anchors(root / "handbook" / m.group(1))
+               for m in GUIDELINE_CITE_RE.finditer(text))
+
+
+def uncited_rules(root: Path) -> list[str]:
+    """Lints and gates that cite no handbook rule by heading anchor.
+
+    A rule lives once, as an item in a handbook guideline or process doc; the
+    lint (`spec/lints/<name>/lint.toml` or `explain.md`) or gate script (its
+    first 40 lines) that enforces it cites `handbook/<doc>.md#<heading>`.
+    """
+    found = []
+    for d in sorted((root / "spec/lints").glob("*/")):
+        text = "".join((d / f).read_text(encoding="utf-8") for f in ("lint.toml", "explain.md") if (d / f).is_file())
+        if not _cites_guideline(root, text):
+            found.append(f"lint {d.name}")
+    check = root / "scripts/check.sh"
+    gates = sorted(set(re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", check.read_text(encoding="utf-8")))) \
+        if check.is_file() else []
+    for g in gates:
+        name = Path(g).name
+        if name.startswith("test_") or name in ("check.sh", "gate-env.sh") or not (root / g).is_file():
+            continue
+        if not _cites_guideline(root, "\n".join(_lines(root / g)[:40])):
+            found.append(f"gate {g}")
+    return found
+
+
 def _register_lines(path: Path) -> list[tuple[int, str]]:
     """(line number, line) of the Quality register section, subsections included."""
     out, level = [], 0
@@ -659,6 +702,7 @@ COUNTERS = {
     # Shown, not gated: a register that lists a missing check is better than one that hides it.
     "register_rows": ("quality-register rows naming no existing check", register_rows, False),
     "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
+    "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, False),
 }
 
 
