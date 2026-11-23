@@ -2,6 +2,7 @@
 // same commands the editor uses, against the real `cpl lsp`.
 
 import * as assert from 'node:assert/strict';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
@@ -121,6 +122,45 @@ const tests: [string, () => Promise<void>][] = [
             edit.set(document.uri, edits);
             assert.ok(await vscode.workspace.applyEdit(edit));
             assert.equal(document.getText(), 'let x = 1\nprint(x)\n');
+        },
+    ],
+    [
+        'add a test writes the next case and runs it',
+        async () => {
+            const document = await open('add.cp');
+            const added = await vscode.commands.executeCommand<boolean>('cp.addTest', document.uri, '4', '8');
+            assert.equal(added, true);
+            assert.equal(fs.readFileSync(file('add.tests/1.in').fsPath, 'utf8'), '4\n');
+            assert.equal(fs.readFileSync(file('add.tests/1.out').fsPath, 'utf8'), '8\n');
+        },
+    ],
+    [
+        'import a problem takes what Competitive Companion sends',
+        async () => {
+            await vscode.workspace.getConfiguration('cp').update('companion.port', 10071, vscode.ConfigurationTarget.Global);
+            const document = await open('add.cp');
+            await vscode.commands.executeCommand('cp.importProblem', path.dirname(document.uri.fsPath));
+            const problem = JSON.stringify({
+                name: 'B. Twice',
+                group: 'Codeforces Round',
+                url: 'https://codeforces.com/problemset/problem/1/B',
+                memoryLimit: 256,
+                timeLimit: 1000,
+                tests: [{ input: '2\n', output: '4\n' }],
+                testType: 'single',
+                input: { type: 'stdin' },
+                output: { type: 'stdout' },
+            });
+            await until('the listener to take the problem', async () => {
+                try {
+                    const response = await fetch('http://127.0.0.1:10071/', { method: 'POST', body: problem });
+                    return response.ok || response.status < 500 ? true : undefined;
+                } catch {
+                    return undefined;
+                }
+            });
+            await until('b.cp and its sample', () => (fs.existsSync(file('b.tests/1.out').fsPath) ? true : undefined));
+            assert.match(fs.readFileSync(file('b.cp').fsPath, 'utf8'), /B\. Twice/);
         },
     ],
     [

@@ -41,6 +41,10 @@ It downloads the edge release's `cp-lang.vsix` and runs `code --install-extensio
 (`--vsix FILE` installs a file you have; `CPL_CODE=codium` or `cursor` picks
 another editor). Open a `.cp` file: highlighting, diagnostics, completion,
 go to definition, format on save, and the Run, Test, Stress and Submit commands.
+`CP: Import a Problem from Competitive Companion` waits for the browser
+extension (`cpl new --listen`) and creates `a.cp` with its samples beside the
+open file; `CP: Add a Test from the Selection or Clipboard` saves the next case
+(`cpl test --add -`) and runs it.
 
 Or build it from this repo (no marketplace needed):
 

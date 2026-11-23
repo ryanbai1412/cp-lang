@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { CpClient, SELECTOR, serverBinary } from './client';
 import { LensProvider } from './lenses';
@@ -27,6 +28,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
         command('cp.stress', (uri?: vscode.Uri, part?: string) => runner.stress(uri, part)),
         command('cp.submit', (uri?: vscode.Uri) => runner.submit(uri)),
+        command('cp.addTest', (uri?: vscode.Uri, input?: string, expected?: string) => runner.addTest(uri, input, expected)),
+        command('cp.importProblem', (folder?: string) => {
+            const active = vscode.window.activeTextEditor?.document.uri;
+            const workspace = active ? vscode.workspace.getWorkspaceFolder(active) : vscode.workspace.workspaceFolders?.[0];
+            const target = folder ?? (active?.scheme === 'file' ? path.dirname(active.fsPath) : workspace?.uri.fsPath);
+            if (!target) {
+                void vscode.window.showInformationMessage('Import a Problem: open a folder first; the problem lands there.');
+                return;
+            }
+            runner.listen(target);
+        }),
         command('cp.trace', (uri?: vscode.Uri, sample?: Sample, part?: string) => runner.trace(uri, sample, part)),
         command('cp.debug', async (uri?: vscode.Uri) => {
             const target = uri ?? vscode.window.activeTextEditor?.document.uri;

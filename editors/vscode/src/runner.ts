@@ -3,6 +3,8 @@
 // `cpl`, writes what happened to the output panel and updates the inline
 // overlays.
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
@@ -177,6 +179,74 @@ export class Runner {
         this.output.appendLine(renderCounterexample(report.counterexample));
         this.overlays.setSampleStatus(document.uri, undefined);
         this.overlays.setCounterexample(document.uri, report.counterexample);
+    }
+
+    /**
+     * `cpl test --add -`: the input (the selection, else the clipboard) becomes the
+     * next case in `<file>.tests/`, with the expected output when one is given, and runs.
+     */
+    async addTest(uri?: vscode.Uri, input?: string, expected?: string): Promise<boolean> {
+        const document = await this.document(uri);
+        if (!document) {
+            return false;
+        }
+        if (input === undefined) {
+            const editor = vscode.window.activeTextEditor;
+            const selected = editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection) : '';
+            input = selected || (await vscode.env.clipboard.readText());
+            if (input.trim() === '') {
+                void vscode.window.showInformationMessage('Add a Test: select the input, or copy it, first.');
+                return false;
+            }
+            expected = await vscode.window.showInputBox({
+                title: 'Add a Test: the expected output',
+                prompt: 'Leave empty to only record the input; `\\n` starts a new line.',
+            });
+            if (expected === undefined) {
+                return false;
+            }
+            expected = expected.replace(/\\n/g, '\n');
+        }
+        if (!input.endsWith('\n')) {
+            input += '\n';
+        }
+        const args = ['test', document.uri.fsPath, '--add', '-'];
+        let expectFile: string | undefined;
+        if (expected) {
+            expectFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cp-expect-')), 'out');
+            fs.writeFileSync(expectFile, expected.endsWith('\n') ? expected : `${expected}\n`);
+            args.push('--expect', expectFile);
+        }
+        this.output.show(true);
+        const result = await this.cpl(document, args, 'cpl test --add', input, { allowRuntimeError: true });
+        if (expectFile) {
+            fs.rmSync(path.dirname(expectFile), { recursive: true, force: true });
+        }
+        if (!result) {
+            return false;
+        }
+        this.printRaw(result);
+        const added = /added (\S+)/.exec(result.stderr + result.stdout)?.[1];
+        if (added) {
+            void vscode.window.showInformationMessage(`Added ${added}${result.code === 0 ? '' : '; it fails, see the output'}`);
+        }
+        return added !== undefined;
+    }
+
+    /** `cpl new --listen` in a terminal: the next problem Competitive Companion sends lands in `folder`. */
+    listen(folder: string): void {
+        const binary = serverBinary();
+        if (!binary) {
+            void vscode.window.showErrorMessage(
+                "Couldn't find `cpl`. Build it with `cargo build --release -p cpl-cli`, or set `cp.server.path`.",
+            );
+            return;
+        }
+        const port = vscode.workspace.getConfiguration('cp').get<number>('companion.port', 10043);
+        vscode.window
+            .createTerminal({ name: 'Competitive Companion', shellPath: binary, shellArgs: ['new', '--listen', '--port', String(port)], cwd: folder })
+            .show();
+        void vscode.window.showInformationMessage('Waiting for Competitive Companion: open the problem in the browser and click the extension.');
     }
 
     /** `cpl submit`: build what the judge gets, check it on the samples, and copy it when it is ready. */

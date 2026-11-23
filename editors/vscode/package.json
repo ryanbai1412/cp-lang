@@ -72,6 +72,16 @@
         "category": "CP"
       },
       {
+        "command": "cp.addTest",
+        "title": "Add a Test from the Selection or Clipboard",
+        "category": "CP"
+      },
+      {
+        "command": "cp.importProblem",
+        "title": "Import a Problem from Competitive Companion",
+        "category": "CP"
+      },
+      {
         "command": "cp.trace",
         "title": "Trace a Sample",
         "category": "CP"
@@ -123,6 +133,10 @@
         },
         {
           "command": "cp.submit",
+          "when": "editorLangId == cp"
+        },
+        {
+          "command": "cp.addTest",
           "when": "editorLangId == cp"
         },
         {
@@ -289,6 +303,11 @@
           "default": 10000,
           "minimum": 100,
           "description": "Kill a sample run or stress run that takes longer than this."
+        },
+        "cp.companion.port": {
+          "type": "number",
+          "default": 10043,
+          "markdownDescription": "The port `CP: Import a Problem` waits on for Competitive Companion (`cpl new --listen --port`); 10043 is one the extension sends to out of the box."
         }
       }
     },
