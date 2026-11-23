@@ -2905,6 +2905,18 @@ impl<'a> Checker<'a> {
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         let base_ty = self.infer(base);
+        // `a[(i, j)]` is `a[i, j]` (decision 2.5): one tuple literal over a
+        // multi-dimensional array checks as its components.
+        let indices = match (&base_ty, indices) {
+            (
+                Ty::Array { index, .. },
+                [Expr {
+                    kind: ExprKind::Tuple(items),
+                    ..
+                }],
+            ) if items.len() >= 2 && items.len() == index.len() => items.as_slice(),
+            _ => indices,
+        };
         if self.double_index(base, indices) {
             return Ty::Error;
         }

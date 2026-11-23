@@ -27,6 +27,23 @@ Order of work (hours, not days): divergences, then wrong outputs, then traps and
 2. The 11 `wrong output` conformance cases and `aac5p4`, by cause; where a construct can't be made right yet, reject it with an error instead.
 3. Internal traps to named errors (`etsr23r4p2`), then the corpus `error` cases split by owner, compiler causes fixed biggest first.
 
+## Milestone 2
+
+[Milestone 2](../../product/MILESTONE-2.md), the stable release. Most ambitious complete version: one language and two back ends that cannot disagree. Every construct in `spec/` checks, interprets and compiles to the same answer, or is rejected by a named error; the interpreter is one engine, fast enough for debugging and replay; the compiler knows no std names; and every proof the types carry (ranges, domains, non-emptiness) is used for checks and widths in both back ends.
+
+| Exit criterion | Command | Exit |
+|---|---|---|
+| Spec-complete | `cpl-conform conformance`, `spec-blocks`, `docs` | every case passes; `--causes` empty |
+| Back ends agree | `cpl-conform diff`, sanitized C++ | 0 mismatches, 0 skipped, 0 `cpp_trap` |
+| Corpus right | `cpl-conform corpus` | 0 wrong, 0 trap, 0 compiler-caused error |
+| Runtime vs matched C++ | `bench/` idiomatic and tuned sets | idiomatic p50 <= 1.1x, p95 <= 1.2x, max <= 1.5x, AND tuned max <= 1.1x |
+| Interpreter speed | debug `cpl run` vs C++ over the corpus | within 5x; trace replay (snapshot/restore) at most +20% |
+| One engine, no privilege | `CPL_VM_STATS`, `scripts/debt-ratchet.py` | 0 fallbacks, tree-walker deleted, wasm on the VM; `ir_builtin_names`, `prelude_privilege`, `backend_std_names` at 0 |
+| General mechanisms | `Gen`/`Hash` derive, user `@intrinsic` | user libraries declare what std does |
+| Front end | largest corpus and std file | under 500 ms |
+
+Next steps, after the M1 exits pass: (1) interpreter snapshot/restore (M1.5 replay); (2) the general `Gen` mechanism covering `Hash`; (3) close the `General fixes owed` list in [PLAN.md](PLAN.md); then the conformance and diff tails by cause.
+
 ## Covers
 
 - Lexer, parser, syntax tree (`cpl-syntax`); names, types, domains, lends, the incremental database and its query API (`cpl-check`); lowering to the typed IR, monomorphization (`cpl-ir`); the checked interpreter, its VM, traces and replay (`cpl-interp`); the integer prover (`prover`).
