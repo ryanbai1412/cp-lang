@@ -367,6 +367,32 @@ fn cp_toml_sets_levels() {
 }
 
 #[test]
+fn cp_toml_sets_a_level_for_a_whole_group() {
+    let src = "var total = 0\nlet x: F64 = read()\nprint(total, x == 1.0)\n";
+    let toml = "[lints]\nstyle = \"allow\"\ncorrectness = \"deny\"\nfloat_equality = \"warn\"\n";
+    let (config, errors) = Config::from_toml(toml);
+    assert_eq!(errors, []);
+    // `style` turns off L0201; float_equality's own line beats `correctness`.
+    let found = lint(src, &config);
+    assert_eq!(found.len(), 1);
+    assert_eq!(
+        (found[0].code.0, found[0].severity),
+        ("L0301", Severity::Warning)
+    );
+    assert_eq!(config.level(&STATE_ABOVE_MULTITEST), Level::Deny);
+    let (config, errors) = Config::from_toml("[lints]\nperf = \"quiet\"\n");
+    assert_eq!(
+        errors[0].to_string(),
+        "line 2: the level of `perf` is \"allow\", \"warn\" or \"deny\", not `\"quiet\"`"
+    );
+    assert_eq!(config, Config::default());
+    // Every lint has a group.
+    for lint in LINTS {
+        assert!(Group::ALL.contains(&lint.group), "{}", lint.name);
+    }
+}
+
+#[test]
 fn cp_toml_mistakes_are_reported_by_line() {
     let toml = "[lints]\nfloat_equalty = \"deny\"\nunread_field = \"loud\"\nmemory_mb = lots\nshadows_top_level\nunread_field = \"allow\"\n";
     let (config, errors) = Config::from_toml(toml);

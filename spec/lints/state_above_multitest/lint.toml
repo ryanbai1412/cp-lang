@@ -1,4 +1,5 @@
 code = "L0211"
-level = "warn"
+level = "deny"
+group = "correctness"
 title = "State above multitest"
 summary = "a top-level `var` above `@!multitest` that each test writes"

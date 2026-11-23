@@ -1,4 +1,5 @@
 code = "L0518"
 level = "warn"
+group = "idiom"
 title = "Hand-rolled prime or SPF sieve"
 summary = "manual Eratosthenes or linear sieve loop: use `std.math.Sieve`"

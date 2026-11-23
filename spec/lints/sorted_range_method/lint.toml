@@ -1,4 +1,5 @@
 code = "L0515"
 level = "warn"
+group = "idiom"
 title = "Removed bound-query method on `SortedBag` or `SortedSet`"
 summary = "`first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` on `SortedBag`/`SortedSet`: use `.range(r)`"

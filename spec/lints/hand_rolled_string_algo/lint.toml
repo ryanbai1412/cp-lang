@@ -1,4 +1,5 @@
 code = "L0516"
 level = "warn"
+group = "idiom"
 title = "Hand-rolled string algorithm"
 summary = "manual prefix-function, Z-function, polynomial hash, or trie loop: use `std.strings`"

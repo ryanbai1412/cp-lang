@@ -1,4 +1,5 @@
 code = "L0203"
 level = "warn"
+group = "style"
 title = "Local shadows top-level binding"
 summary = "a local name that hides a top-level `let`"

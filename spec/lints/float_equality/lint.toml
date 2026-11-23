@@ -1,4 +1,5 @@
 code = "L0301"
 level = "warn"
+group = "correctness"
 title = "Exact float equality comparison"
 summary = "`==` or `!=` on floats"

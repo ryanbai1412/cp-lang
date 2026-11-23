@@ -84,6 +84,46 @@ impl Level {
     }
 }
 
+/// A family of lints, so a project can set one level for all of them
+/// (`cp.toml [lints] style = "allow"`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Group {
+    /// Probably a bug: denied by default.
+    Correctness,
+    /// Slower or bigger than it looks.
+    Perf,
+    /// The language or the stdlib has a construct for it.
+    Idiom,
+    /// A spelling the language writes another way.
+    Style,
+    /// Opinions most code can ignore: allowed by default.
+    Pedantic,
+}
+
+impl Group {
+    pub const ALL: [Group; 5] = [
+        Group::Correctness,
+        Group::Perf,
+        Group::Idiom,
+        Group::Style,
+        Group::Pedantic,
+    ];
+
+    pub fn parse(text: &str) -> Option<Group> {
+        Group::ALL.into_iter().find(|g| g.as_str() == text)
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Group::Correctness => "correctness",
+            Group::Perf => "perf",
+            Group::Idiom => "idiom",
+            Group::Style => "style",
+            Group::Pedantic => "pedantic",
+        }
+    }
+}
+
 /// One lint: its stable code, the name `with lint` and `cp.toml` use, and
 /// what it looks for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -91,6 +131,7 @@ pub struct Lint {
     pub code: Code,
     pub name: &'static str,
     pub default: Level,
+    pub group: Group,
     pub title: &'static str,
     pub summary: &'static str,
     pub explanation: &'static str,

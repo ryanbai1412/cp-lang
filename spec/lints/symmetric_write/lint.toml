@@ -1,4 +1,5 @@
 code = "L0503"
 level = "warn"
+group = "idiom"
 title = "Duplicate symmetric write"
 summary = "the same fact written for `(u, v)` and then `(v, u)`"

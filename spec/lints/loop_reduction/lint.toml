@@ -1,4 +1,5 @@
 code = "L0504"
 level = "warn"
+group = "idiom"
 title = "Manual accumulation loop"
 summary = "a loop that only accumulates: `sum`, `count`, `max` or `min`"

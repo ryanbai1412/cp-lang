@@ -1,4 +1,5 @@
 code = "L0501"
 level = "warn"
+group = "idiom"
 title = "Flag-and-break search loop"
 summary = "a loop that sets a flag or `?T` and breaks: `first`, `any` or `all`"

@@ -1,4 +1,5 @@
 code = "L0519"
 level = "warn"
+group = "idiom"
 title = "Hand-rolled binary lifting table"
 summary = "manual `up[k][v] = up[k - 1][up[k - 1][v]]` table: use `std.tree`"

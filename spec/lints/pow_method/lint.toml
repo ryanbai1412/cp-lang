@@ -1,4 +1,5 @@
 code = "L0205"
 level = "warn"
+group = "style"
 title = "Power written with `.pow(e)`"
 summary = "`a.pow(e)`: power is written `a ** e`"

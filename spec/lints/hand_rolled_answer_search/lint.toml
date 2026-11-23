@@ -1,4 +1,5 @@
 code = "L0520"
 level = "warn"
+group = "idiom"
 title = "Hand-rolled binary search"
 summary = "manual `while lo < hi` midpoint loop over a predicate: use `r.first_true`/`r.last_true`"

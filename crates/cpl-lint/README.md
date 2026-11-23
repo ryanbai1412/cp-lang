@@ -47,11 +47,14 @@ sit in a save hook; only a lint set to `deny` exits 1.
 ## Levels
 
 Each lint runs at `allow`, `warn` or `deny`. The nearest `cp.toml` at or
-above the file sets them, and `with lint(name: allow)` turns one off for the
-rest of its block, or for the block under it:
+above the file sets them, for one lint or a whole group (`correctness`,
+`perf`, `idiom`, `style`, `pedantic`; a lint's own line wins), and
+`with lint(name: allow)` turns one off for the rest of its block, or for the
+block under it. `cpl lint --list` prints each lint's group and default:
 
 ```toml
 [lints]
+style = "allow"           # every style lint
 float_equality = "deny"
 shadows_top_level = "allow"
 memory_mb = 64            # what memo_key_space checks against; 256 by default

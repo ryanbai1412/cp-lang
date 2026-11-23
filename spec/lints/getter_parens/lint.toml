@@ -1,4 +1,5 @@
 code = "L0206"
 level = "warn"
+group = "style"
 title = "Built-in getter called with `()`"
 summary = "`.len()`, `.is_empty()`, `.first()`, `.last()`, `.rev()`, `.items()` are read without `()`"

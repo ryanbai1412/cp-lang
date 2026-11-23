@@ -2,13 +2,14 @@
 //!
 //! ```toml
 //! [lints]
+//! style = "allow"         # a whole group: correctness, perf, idiom, style, pedantic
 //! float_equality = "deny"
 //! shadows_top_level = "allow"
 //! memory_mb = 64          # the budget `memo_key_space` checks against
 //! ```
 
 use crate::checker::CHECKER_LINTS;
-use crate::{any_lint_named, closest_lint, Level, Lint};
+use crate::{any_lint_named, closest_lint, Group, Level, Lint};
 use cpl_diag::Code;
 use std::collections::HashMap;
 use std::path::Path;
@@ -20,6 +21,8 @@ pub const DEFAULT_MEMORY_MB: u64 = 256;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Config {
     levels: HashMap<&'static str, Level>,
+    /// Levels set for a whole group; a lint's own entry wins.
+    groups: HashMap<Group, Level>,
     /// What `memo_key_space` compares a memo table against.
     pub memory_mb: u64,
 }
@@ -28,6 +31,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             levels: HashMap::new(),
+            groups: HashMap::new(),
             memory_mb: DEFAULT_MEMORY_MB,
         }
     }
@@ -50,7 +54,11 @@ impl std::fmt::Display for ConfigError {
 impl Config {
     /// The level `lint` runs at.
     pub fn level(&self, lint: &Lint) -> Level {
-        self.levels.get(lint.name).copied().unwrap_or(lint.default)
+        self.levels
+            .get(lint.name)
+            .or_else(|| self.groups.get(&lint.group))
+            .copied()
+            .unwrap_or(lint.default)
     }
 
     pub fn set(&mut self, lint: &'static Lint, level: Level) {
@@ -62,7 +70,12 @@ impl Config {
         CHECKER_LINTS
             .iter()
             .filter(|lint| lint.code == code)
-            .find_map(|lint| self.levels.get(lint.name).copied())
+            .find_map(|lint| {
+                self.levels
+                    .get(lint.name)
+                    .or_else(|| self.groups.get(&lint.group))
+                    .copied()
+            })
             .unwrap_or(Level::Warn)
     }
 
@@ -105,6 +118,23 @@ impl Config {
                 }
                 continue;
             }
+            let level = |value: &str| {
+                value
+                    .strip_prefix('"')
+                    .and_then(|v| v.strip_suffix('"'))
+                    .and_then(Level::parse)
+            };
+            if let Some(group) = Group::parse(key) {
+                match level(value) {
+                    Some(level) => {
+                        config.groups.insert(group, level);
+                    }
+                    None => error(format!(
+                        "the level of `{key}` is \"allow\", \"warn\" or \"deny\", not `{value}`"
+                    )),
+                }
+                continue;
+            }
             let Some(name) = any_lint_named(key) else {
                 error(match closest_lint(key) {
                     Some(close) => {
@@ -114,11 +144,7 @@ impl Config {
                 });
                 continue;
             };
-            let level = value
-                .strip_prefix('"')
-                .and_then(|v| v.strip_suffix('"'))
-                .and_then(Level::parse);
-            match level {
+            match level(value) {
                 Some(level) => {
                     config.levels.insert(name, level);
                 }

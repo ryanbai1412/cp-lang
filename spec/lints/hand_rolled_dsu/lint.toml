@@ -1,4 +1,5 @@
 code = "L0517"
 level = "warn"
+group = "idiom"
 title = "Hand-rolled union-find (DSU)"
 summary = "manual parent-pointer path compression: use `std.dsu`"

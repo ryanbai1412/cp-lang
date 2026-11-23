@@ -80,9 +80,10 @@ pub fn run_with(
                 for lint in LINTS {
                     let _ = writeln!(
                         stdout,
-                        "{}  {:<22} {:<5}  {}",
+                        "{}  {:<26} {:<11} {:<5}  {}",
                         lint.code.0,
                         lint.name,
+                        lint.group.as_str(),
                         lint.default.as_str(),
                         lint.summary
                     );

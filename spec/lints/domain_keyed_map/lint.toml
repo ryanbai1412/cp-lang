@@ -1,4 +1,5 @@
 code = "L0412"
 level = "warn"
+group = "perf"
 title = "Map or Set keyed by a domain"
 summary = "a `Map` or `Set` keyed by a domain"

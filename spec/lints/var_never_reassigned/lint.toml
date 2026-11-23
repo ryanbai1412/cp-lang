@@ -1,4 +1,5 @@
 code = "L0201"
 level = "warn"
+group = "style"
 title = "Mutable binding never reassigned"
 summary = "a `var` that is never changed"

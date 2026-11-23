@@ -1,12 +1,12 @@
 //! Generates the lint registry from the records in `spec/lints/<name>/`:
 //! one `pub const <NAME>: Lint` per record and `LINTS`, every lint in code
-//! order. A record's `lint.toml` holds `code`, `level`, `title` and `summary`,
+//! order. A record's `lint.toml` holds `code`, `level`, `group`, `title` and `summary`,
 //! each a one-line basic string.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-const KEYS: [&str; 4] = ["code", "level", "title", "summary"];
+const KEYS: [&str; 5] = ["code", "level", "title", "summary", "group"];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
     ("trigger", "before.cp"),
@@ -49,10 +49,20 @@ fn main() {
                 panic!("spec/lints/{name}/lint.toml: level {other:?} is not allow, warn or deny")
             }
         };
+        let group = match fields[4].as_str() {
+            "correctness" => "Correctness",
+            "perf" => "Perf",
+            "idiom" => "Idiom",
+            "style" => "Style",
+            "pedantic" => "Pedantic",
+            other => panic!(
+                "spec/lints/{name}/lint.toml: group {other:?} is not correctness, perf, idiom, style or pedantic"
+            ),
+        };
         writeln!(out, "pub const {}: Lint = Lint {{", name.to_uppercase()).unwrap();
         writeln!(
             out,
-            "    code: Code({code:?}),\n    name: {name:?},\n    default: Level::{level},"
+            "    code: Code({code:?}),\n    name: {name:?},\n    default: Level::{level},\n    group: Group::{group},"
         )
         .unwrap();
         writeln!(

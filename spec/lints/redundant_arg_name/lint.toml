@@ -1,4 +1,5 @@
 code = "L0209"
 level = "warn"
+group = "style"
 title = "Named argument or record field repeating its own name"
 summary = "`f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)`"

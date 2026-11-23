@@ -1,4 +1,5 @@
 code = "L0507"
 level = "warn"
+group = "idiom"
 title = "Loop that only pushes"
 summary = "a list built by a loop that only pushes: a comprehension"
