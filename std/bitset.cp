@@ -1443,9 +1443,9 @@ fn nav_helpers_and_in_place_shifts():
     b.remove(P(0))
     assert b.prev(P(0)) == None and b.prev(P(62)) == None
     assert b.count_below(P(0)) == 0
-    assert b.count_below(P(64)) == 2
-    assert b.count_below(P(128)) == 4
-    assert b.count_below(P(194)) == 5
+    assert b.count_below(P(64)) == 1
+    assert b.count_below(P(128)) == 3
+    assert b.count_below(P(194)) == 4
     assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
     assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
     assert b.find(x => x.ord > 100) == Some(P(127))
