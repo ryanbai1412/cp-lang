@@ -12,12 +12,12 @@ domain Bit = 0..2
 
 @!multitest
 let n: 1..=200_000 = read()
-let s: [0..n]Char = read()
+let s: Str = read()
 
 var total: [Bit]Int = 0
 var blocks: [Bit]Int = 0
-for (c, len) in runs(s):
-    let d = Bit(c - '0')
-    total[d] += len
+for run in s.runs():
+    let d = Bit(run.first! - '0')
+    total[d] += run.len
     blocks[d] += 1
 print(fold(*, comb.choose(total[d] - 1, blocks[d] - 1) for d in Bit if blocks[d] > 0))
