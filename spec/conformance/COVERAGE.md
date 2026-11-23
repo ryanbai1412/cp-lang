@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2840 (995 passing). Rules: 576.
+Cases: 2850 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 177 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,7 +48,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 57 | 57 (100%) | 32 | 32 (100%) | 57 (100%) |
 | R02 | 52 | 52 (100%) | 30 | 30 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 73 | 73 (100%) | 17 | 17 (100%) | 73 (100%) |
+| R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 43 | 43 (100%) | 22 | 22 (100%) | 43 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 576 | 575 (99%) | 229 | 229 (100%) | 575 (99%) |
+| all | 576 | 575 (99%) | 230 | 230 (100%) | 575 (99%) |
 
 ## Rules
 
@@ -233,7 +233,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.10 [7+ 2-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [8+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
-- R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
+- R04.2.12 [1+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [4+ 0-]: | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last pos...
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
@@ -747,9 +747,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 2 case(s)
+- E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 45 case(s)
-- E0303 Wrong number of arguments: 10 case(s)
+- E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
@@ -870,14 +871,14 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 11 case(s)
+- R0001 Runtime trap: 10 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 10 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 74 case(s)
+- R0401 Assertion failed: 75 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -885,7 +886,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-60 of 160 testable codes have no negative case.
+60 of 161 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -989,14 +990,14 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
 - **strings** (183/197 named by a case)
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
-- **subset** (15/15 named by a case)
+- **subset** (16/16 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (158/183 named by a case)
   - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `LinkCut.access`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2192 of 2318 std items are named by a case.
+2193 of 2319 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

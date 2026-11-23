@@ -3,7 +3,7 @@
 use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL};
 use crate::expr::string_literal;
 use crate::lend::{Hold, Tail};
-use crate::names::{fn_name, ident};
+use crate::names::{dom_ident, fn_name};
 use crate::walk::{self, Effects};
 use cpl_ir::{
     AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
@@ -1694,7 +1694,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("if (!({cond})) cpl::fail({why});"));
             }
             Stmt::DefDomain { id, lo, len } => {
-                let d = ident(&program.domains[*id]);
+                let d = dom_ident(program, *id);
                 let lo_const = self.facts.const_domain_lo(*id).is_some();
                 let lo = if lo_const {
                     String::new()
@@ -1708,7 +1708,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
             }
             Stmt::DefDomainFromVal { id, val } => {
-                let d = ident(&program.domains[*id]);
+                let d = dom_ident(program, *id);
                 let v = self.expr(val).text;
                 let tmp = self.temp();
                 self.line(out, &format!("auto {tmp} = {v};"));

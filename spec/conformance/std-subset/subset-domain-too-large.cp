@@ -1,4 +1,4 @@
-// expect: R0401 at 3
+// expect: R0401 at 4
 // input: "30\n"
 // A `Subset` over more than 25 values traps where its domain is sized, in both engines.
 let n: Int = read()

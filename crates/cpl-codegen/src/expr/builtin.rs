@@ -1,6 +1,7 @@
 //! Built-in operations and the fused bitset folds.
 
 use super::*;
+use crate::names::dom_ident;
 
 impl<'p> Emitter<'p> {
     pub(super) fn builtin(
@@ -411,7 +412,7 @@ impl<'p> Emitter<'p> {
             Builtin::PosPrev => helper(self, "prev_pos"),
             Builtin::PosTryOrd(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!("cpl::pos_try_ord({}, {dn}_len)", text(0)))
             }
             Builtin::SymIdx => {
@@ -420,7 +421,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::PosOffset(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!(
                     "cpl::pos_offset({}, {}, {dn}_len)",
                     text(0),
@@ -429,12 +430,12 @@ impl<'p> Emitter<'p> {
             }
             Builtin::PosCyc(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!("cpl::pos_cyc({}, {}, {dn}_len)", text(0), text(1)))
             }
             Builtin::BoundStepL(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!(
                     "cpl::bound_step((ll)({}) + 1 - ({}), {dn}_len)",
                     text(0),
@@ -443,7 +444,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::BoundStepR(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!(
                     "cpl::bound_step((ll)({}) + ({}), {dn}_len)",
                     text(0),
@@ -456,7 +457,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::BoundRight(d) => {
                 self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
+                let dn = dom_ident(self.program, d);
                 Code::primary(format!("cpl::bound_right({}, {dn}_len)", text(0)))
             }
             // `(a..b).lo` with `a` a literal at least 0 is `a`: `b` can neither trap nor

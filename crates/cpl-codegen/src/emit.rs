@@ -1,6 +1,6 @@
 //! Printing a lowered program as one C++17 file.
 
-use crate::names::{cty, fn_name, ident, is_plain_enum, judge_ty, Niches};
+use crate::names::{cty, dom_ident, fn_name, ident, is_plain_enum, judge_ty, Niches};
 use crate::ranges::Facts;
 use crate::runtime::PIECES;
 use crate::walk;
@@ -233,8 +233,8 @@ impl<'p> Emitter<'p> {
         top_names.extend(program.enums.iter().map(|e| ident(&e.name)));
         top_names.extend(program.globals.iter().map(|g| ident(&g.name)));
         top_names.extend(program.fns.iter().map(|f| fn_name(&f.name)));
-        for d in &program.domains {
-            let d = ident(d);
+        for id in 0..program.domains.len() {
+            let d = dom_ident(program, id);
             top_names.insert(format!("{d}_lo"));
             top_names.insert(format!("{d}_len"));
             top_names.insert(d);
@@ -1346,7 +1346,7 @@ impl<'p> Emitter<'p> {
             }
             for d in program.fn_guarded_domains(&f.ret, &f.body) {
                 self.need("dom_guard");
-                let dn = ident(&program.domains[d]);
+                let dn = dom_ident(program, d);
                 let g = self.temp();
                 fns.push_str(&format!("    cpl::DomGuard {g}({dn}_lo, {dn}_len);\n"));
             }
@@ -1572,8 +1572,8 @@ impl<'p> Emitter<'p> {
                 .push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
         }
         let mut dom_vars = String::new();
-        for (id, d) in program.domains.iter().enumerate() {
-            let d = ident(d);
+        for id in 0..program.domains.len() {
+            let d = dom_ident(program, id);
             let lo_name = format!("{d}_lo");
             let len_name = format!("{d}_len");
             let used_in = |name: &str| {

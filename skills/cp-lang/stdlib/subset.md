@@ -22,6 +22,7 @@ A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for 
 - `fn complement(self) -> Subset<B>` — \(O(1)\); The members of `B` not in `self`; no bit at or above `\|B\|` is ever set.
 - `fn first(self) -> ?B` — \(O(1)\); The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None` for the empty subset.
 - `@get fn items(self) -> yields B` — \(O(1)\) per member; The members in `B`'s order; `for b in s` walks the same sequence.
+- `fn each(self) -> yields B` — \(O(1)\) per member; What `for b in s` walks: the members, as `s.items`.
 - `@get fn subsets(self) -> yields Subset<B>` — \(O(1)\) per subset, `2^s.len` subsets; Every subset of `self`, `self` first and the empty subset last: the submask walk `g = (g - 1) & self`, so the masks come in decreasing order as words.
 - `@get fn supersets(self) -> yields Subset<B>` — \(O(1)\) per superset, `2^(|B| - s.len)` supersets; Every superset of `self` within `B`, `self` first and `B` last: the walk `g = (g + 1) \| self`, so the masks come in increasing order as words.
 

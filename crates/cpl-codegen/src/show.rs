@@ -2,7 +2,7 @@
 
 use crate::emit::{pad, Code, Emitter, PRIMARY, UNARY};
 use crate::expr::string_literal;
-use crate::names::{elem_ty, ident, is_plain_enum};
+use crate::names::{dom_ident, elem_ty, ident, is_plain_enum};
 use cpl_ir::{sep_of, DimSpec, FmtArg, Sep, Spec, Ty};
 
 fn sep_char(sep: Sep) -> &'static str {
@@ -49,7 +49,7 @@ impl<'p> Emitter<'p> {
                 format!(
                     "cpl::put_int({} + {}_lo);",
                     value.at(UNARY),
-                    ident(&program.domains[*d])
+                    dom_ident(program, *d)
                 )
             }
             Ty::Float => {
@@ -258,7 +258,7 @@ impl<'p> Emitter<'p> {
             }
             Ty::Range(inner) => {
                 if let Ty::Pos(d) = **inner {
-                    let dlo = format!("{}_lo", ident(&program.domains[d]));
+                    let dlo = format!("{}_lo", dom_ident(program, d));
                     self.need("put_int");
                     b.push_str(&format!(
                         "    cpl::put_int((ll)v.lo + {dlo}); cpl::put_str(\"..\"); cpl::put_int((ll)v.hi + {dlo});\n"
@@ -385,7 +385,7 @@ impl<'p> Emitter<'p> {
                 // later tests an index of its domain.
                 self.need("read_int");
                 self.need("at");
-                let d = ident(&program.domains[*d]);
+                let d = dom_ident(program, *d);
                 Code::primary(format!("cpl::pos(cpl::read_int() - {d}_lo, {d}_len)"))
             }
             Spec::Plain(Ty::Range(inner)) if matches!(**inner, Ty::Int | Ty::Pos(_)) => {
@@ -396,7 +396,7 @@ impl<'p> Emitter<'p> {
                 let dom_ident = match &**inner {
                     Ty::Pos(d) => {
                         self.need("at");
-                        Some(ident(&program.domains[*d]))
+                        Some(dom_ident(program, *d))
                     }
                     _ => None,
                 };
@@ -432,7 +432,7 @@ impl<'p> Emitter<'p> {
                 let value = match &**inner {
                     Spec::Plain(Ty::Pos(d)) => {
                         self.need("at");
-                        let d = ident(&program.domains[*d]);
+                        let d = dom_ident(program, *d);
                         format!("cpl::pos(x - {d}_lo, {d}_len)")
                     }
                     _ => "x".to_string(),

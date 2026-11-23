@@ -110,6 +110,16 @@ pub struct Subset<B>(bits: U64):
             yield B.nth(ctz(m))
             m &= m - U64(1)
 
+    /// What `for b in s` walks: the members, as `s.items`.
+    ///
+    /// cost: \(O(1)\) per member
+    /// empty: yields nothing
+    /// order: increasing in `B`'s order (increasing bit index)
+    /// traps: never
+    /// example: `domain B = 0..4; [b for b in Subset<B>.single(B(3)).with(B(1))] == [B(1), B(3)]`
+    pub fn each(self) -> yields B:
+        for b in self.items: yield b
+
     /// Every subset of `self`, `self` first and the empty subset last: the submask walk
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
     ///

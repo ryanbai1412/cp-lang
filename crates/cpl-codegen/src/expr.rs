@@ -3,7 +3,7 @@
 use crate::emit::{
     pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
 };
-use crate::names::{cast, elem_ty, fn_name, ident, is_bitset_ty, is_plain_enum};
+use crate::names::{cast, dom_ident, elem_ty, fn_name, ident, is_bitset_ty, is_plain_enum};
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -414,10 +414,10 @@ impl<'p> Emitter<'p> {
 
     pub fn dim(&mut self, dim: &DimSpec) -> String {
         match dim {
-            DimSpec::Pos(d) => format!("{}_len", ident(&self.program.domains[*d])),
-            DimSpec::Bound(d) => format!("{}_len + 1", ident(&self.program.domains[*d])),
+            DimSpec::Pos(d) => format!("{}_len", dom_ident(self.program, *d)),
+            DimSpec::Bound(d) => format!("{}_len + 1", dom_ident(self.program, *d)),
             DimSpec::Sym(d) => {
-                let dn = ident(&self.program.domains[*d]);
+                let dn = dom_ident(self.program, *d);
                 format!("({dn}_len * ({dn}_len + 1) / 2)")
             }
             DimSpec::Enum(e) => self.program.enums[*e].variants.len().to_string(),
@@ -742,11 +742,7 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(ord);
                 match cast {
                     Cast::FromLabel(d) => Code::new(
-                        format!(
-                            "(int)({} - {}_lo)",
-                            code.at(ADD),
-                            ident(&program.domains[*d])
-                        ),
+                        format!("(int)({} - {}_lo)", code.at(ADD), dom_ident(program, *d)),
                         UNARY,
                     ),
                     _ => Code::new(format!("(int){}", code.at(UNARY)), UNARY),
@@ -803,17 +799,17 @@ impl<'p> Emitter<'p> {
                         Code::primary(format!("cpl::char_step({})", code.text))
                     }
                     Cast::Label(d) => Code::new(
-                        format!("{} + {}_lo", code.at(ADD), ident(&program.domains[*d])),
+                        format!("{} + {}_lo", code.at(ADD), dom_ident(program, *d)),
                         ADD,
                     ),
                     Cast::FromLabel(d) => {
                         self.need("at");
-                        let d = ident(&program.domains[*d]);
+                        let d = dom_ident(program, *d);
                         Code::primary(format!("cpl::pos({} - {d}_lo, {d}_len)", code.at(ADD)))
                     }
                     Cast::FromOrd(d) => {
                         self.need("at");
-                        let d = ident(&program.domains[*d]);
+                        let d = dom_ident(program, *d);
                         Code::primary(format!("cpl::pos({}, {d}_len)", code.text))
                     }
                     Cast::Raw if inner.ty == Ty::U64 => c_cast("ll"),
@@ -1232,7 +1228,7 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::DomainVal(id) => {
                 self.need("domain_val");
-                let d = ident(&program.domains[*id]);
+                let d = dom_ident(program, *id);
                 Code::primary(format!("cpl::DomainVal{{{d}_lo, {d}_len}}"))
             }
             ExprKind::Builtin(Builtin::Copy, args)
@@ -1566,8 +1562,8 @@ impl<'p> Emitter<'p> {
                     ))
                 }
             }
-            ExprKind::DomainLen(d) => Code::primary(format!("{}_len", ident(&program.domains[*d]))),
-            ExprKind::DomainLo(d) => Code::primary(format!("{}_lo", ident(&program.domains[*d]))),
+            ExprKind::DomainLen(d) => Code::primary(format!("{}_len", dom_ident(program, *d))),
+            ExprKind::DomainLo(d) => Code::primary(format!("{}_lo", dom_ident(program, *d))),
         }
     }
 

@@ -155,6 +155,18 @@ pub(crate) fn ident(name: &str) -> String {
     }
 }
 
+/// A domain's C++ name, the stem of its `_lo`/`_len` statics. A library
+/// domain shares its struct's name, so it takes a `_dom` suffix there: the
+/// struct's `len` method is already `S_len`.
+pub(crate) fn dom_ident(program: &Program, id: usize) -> String {
+    let d = ident(&program.domains[id]);
+    if program.structs.iter().any(|s| ident(&s.name) == d) {
+        format!("{d}_dom")
+    } else {
+        d
+    }
+}
+
 /// A fn's C++ name. A method `Edge.other` is the free fn `Edge_other`.
 pub(crate) fn fn_name(name: &str) -> String {
     match name.split_once('.') {
