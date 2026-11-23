@@ -1078,7 +1078,13 @@ impl<'a> Taste<'a> {
             }
             _ => "",
         };
-        let call = format!("{recv}.{name}({rest})");
+        // The method form of `first(xs, p)` is `xs.find(p)` (decisions.md §182).
+        let method = if name == "first" {
+            "find"
+        } else {
+            name.as_str()
+        };
+        let call = format!("{recv}.{method}({rest})");
         let mut diag = Diagnostic::warning(
             FREE_FOLD.code,
             expr.span,
@@ -1086,7 +1092,7 @@ impl<'a> Taste<'a> {
         )
         .with_help(format!("write `{call}`"));
         diag.fixes.push(Fix {
-            title: format!("use `.{name}`"),
+            title: format!("use `.{method}`"),
             edits: vec![(expr.span, call)],
         });
         self.push(&FREE_FOLD, diag);

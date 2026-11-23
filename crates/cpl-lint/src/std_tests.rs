@@ -73,3 +73,12 @@ fn every_std_module_but_the_known_ones_parses() {
         "these std modules stopped parsing: {failing:?}"
     );
 }
+
+#[test]
+fn free_first_with_a_test_becomes_find() {
+    let src = "let xs = [3, 1, 4]\nprint(first(xs, x => x > 3))\n";
+    assert_eq!(codes(src), vec!["L0509"]);
+    let (out, _) = fix(src, &Config::default());
+    assert_eq!(out, "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3))\n");
+    assert!(codes(&out).is_empty());
+}
