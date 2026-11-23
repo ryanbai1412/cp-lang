@@ -48,7 +48,7 @@ cpl-stress: Program (spec.rs typed reads) -> gen.rs/choices.rs -> engine.rs (pro
 |---|---|
 | `cpl_stress::{args::Args, fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value, Outcome, gen::MAX_LEN}` | `crates/cpl-contest/src/bench.rs`, `corpus_bench.rs` (perf/tools: `cpl bench`) |
 | `cpl_stress::stress_source`, `InterpEngine` | `crates/cpl-wasm/src/lib.rs` (site playground) |
-| `cpl_interp::trace::{TraceConfig, Recording}`, `cpl_interp::run_observed` | `crates/cpl-cli` (`trace.rs`, `live.rs`, `dap.rs`, `replay.rs`, `interact.rs`), `crates/cpl-stress/src/engine.rs`, `cpl-wasm` |
+| `cpl_interp::observe_on_this_thread(program, io, output, limits, Option<TraceConfig>)`, the one trace entry (`plan/ARCHITECTURE.md` B6), with `run_observed` the same on a large-stack thread; `cpl_interp::trace::{TraceConfig, Recording}` | `crates/cpl-cli` (`trace.rs`, `live.rs`, `dap.rs`, `replay.rs`, `interact.rs`), `crates/cpl-stress/src/engine.rs`, `cpl-wasm` |
 | Trace JSON, `tools/trace/trace-schema.json` | the viewer, `editors/vscode/src/traceView.ts` (tools), `web/scripts/gen-debug.mjs` (site) |
 | `tools/trace/index.html` (raw file) | `crates/cpl-cli/src/trace.rs` (`include_str!`), `web/scripts/gen-debug.mjs`, the VS Code webview |
 
@@ -60,10 +60,12 @@ What this domain uses from the shared core: `cpl_ir::Program` and `cpl_interp` h
 - A shrunk input still satisfies its `InputSpec`; shrinking never produces input the program would reject.
 - The trace never changes behaviour: a traced run prints the same output as an untraced one.
 - Step `k` is rebuilt from the nearest snapshot plus deltas; nothing is re-executed (`trace/log.rs` header).
-- The VM trace equals the tree-walker trace on every program in `crates/cpl-cli/tests/programs` (`tests/trace_engines.rs`).
+- Every program in `crates/cpl-cli/tests/programs` records its saved `.trace` (`tests/trace_goldens.rs`), and no saved trace holds a cpl crash.
 - The viewer works offline from one file; the trace JSON validates against `trace-schema.json`.
 
 ## Known debt
+
+- **Trace entries outside the one entry.** `checkpoint::{record,record_live,count,resume}_on_this_thread`, `trace::resumed_tail` and `Timeline::record_on_this_thread` each run a traced program their own way. They fold into `observe_on_this_thread` as `TraceConfig` fields: checkpoint cadence and how many to keep, the checkpoint to resume from, steps to keep from the end, and the transcript to record; each returns its checkpoints in `Observed`.
 
 - **Trace lives in a compiler-owned crate.** `crates/cpl-interp/src/trace.rs`, `trace/log.rs`, `replay.rs` (4186 lines) should be `crates/cpl-trace` behind an observer interface; today the tracer reaches into `Interp` internals (`lib.rs` 394, 627, 854-920).
 - **Two trace engines.** `CPL_TRACE_ENGINE=tree` (`crates/cpl-interp/src/lib.rs` ~772) exists only for `tests/trace_engines.rs`; and the VM path is `#[cfg(not(target_arch = "wasm32"))]` (~786), so browser traces always tree-walk.
