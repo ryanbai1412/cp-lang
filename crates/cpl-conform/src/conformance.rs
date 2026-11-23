@@ -354,9 +354,7 @@ fn run_tool_case(
     let met = match &expect {
         Expect::Ok => first.status == 0,
         Expect::OkOutput(want) => first.status == 0 && first.stdout.trim_end_matches('\n') == want,
-        Expect::Diag { code, line } => {
-            all.contains(code.as_str()) && all.contains(&format!(":{}:", line + offset))
-        }
+        Expect::Diag { code, line } => diag_lines(&all, code).any(|l| l == line + offset),
         Expect::Trap { code, line } => {
             all.contains(code.as_str()) && all.contains(&format!(":{}", line + offset))
         }
@@ -620,7 +618,6 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                 diag
             };
             let target_line = line + offset;
-            let line_needle = format!(":{target_line}:");
             let unmet = header_values(&text, "has:")
                 .into_iter()
                 .map(unquote)
@@ -639,7 +636,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     detail: format!("{why}; got: {}", runner::truncate_chars(diag.trim(), 200)),
                 };
             }
-            if diag.contains(&code) && diag.contains(&line_needle) {
+            if diag_lines(&diag, &code).any(|l| l == target_line) {
                 CaseOutcome {
                     status: "pass".into(),
                     detail: String::new(),
@@ -867,12 +864,28 @@ mod release_tests {
 
 /// The line of the first `--> file:L:C` after the first diagnostic with `code`.
 fn diag_line(diag: &str, code: &str) -> Option<usize> {
-    let at = diag.find(&format!("[{code}]"))?;
-    let arrow = diag[at..].find("-->")? + at;
-    let loc = diag[arrow + 3..].lines().next()?.trim();
-    let mut parts = loc.rsplitn(3, ':');
-    parts.next()?;
-    parts.next()?.parse().ok()
+    diag_lines(diag, code).next()
+}
+
+/// The line of each `code` diagnostic in `diag`, read off its own `-->`.
+fn diag_lines(diag: &str, code: &str) -> std::vec::IntoIter<usize> {
+    let tag = format!("[{code}]");
+    let lines: Vec<usize> = diag
+        .match_indices(&tag)
+        .filter_map(|(at, _)| {
+            let rest = &diag[at..];
+            let arrow = rest.find("-->")?;
+            // The `-->` must belong to this diagnostic, not to the next one.
+            if rest[tag.len()..arrow].contains("]: ") {
+                return None;
+            }
+            let loc = rest[arrow + 3..].lines().next()?.trim();
+            let mut parts = loc.rsplitn(3, ':');
+            parts.next()?;
+            parts.next()?.parse().ok()
+        })
+        .collect();
+    lines.into_iter()
 }
 
 #[cfg(test)]
@@ -882,5 +895,7 @@ mod diag_line_tests {
         let d = "error[E0101]: x\n  --> a.cp:2:1\nerror[E0608]: y\n  --> /t/a.cp:9:17\n";
         assert_eq!(super::diag_line(d, "E0608"), Some(9));
         assert_eq!(super::diag_line(d, "E0999"), None);
+        // E0101's line is 2, not E0608's 9.
+        assert!(!super::diag_lines(d, "E0101").any(|l| l == 9));
     }
 }
