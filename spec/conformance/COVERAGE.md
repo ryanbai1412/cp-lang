@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3037 (1089 passing). Rules: 582.
+Cases: 3044 (1089 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 3037 (1089 passing). Rules: 582.
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 225 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 24 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 204 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -52,7 +52,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 49 | 49 (100%) | 25 | 25 (100%) | 49 (100%) |
-| R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
+| R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
 | R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 27 | 27 (100%) | 15 | 15 (100%) | 27 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 582 | 581 (99%) | 233 | 233 (100%) | 581 (99%) |
+| all | 583 | 582 (99%) | 234 | 234 (100%) | 582 (99%) |
 
 ## Rules
 
@@ -441,6 +441,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.4.3 [15+ 5-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
+- R06.4.9 [1+ 6-]: `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the library declares, so...
 - R06.5.1 [3+ 1-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
 
 ### R07: 07-sequences.md
@@ -783,6 +784,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
+- E0505 bad_library_lint: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 42 case(s)
 - E0603 Lent value escapes its scope: 37 case(s)
@@ -951,7 +953,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 220 testable codes have no negative case.
+86 of 221 testable codes have no negative case.
 
 ## Spec code blocks
 
