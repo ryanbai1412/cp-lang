@@ -26,8 +26,8 @@ for t in Trail:
     let (a, b): (Int, Int) = read()
     ends.push((a: F(a), b: F(b)))
     for f in [F(a), F(b)]:
-        if best[f] == None: best[f] = t
-        elif second[f] == None: second[f] = t
+        if best[f] == none: best[f] = t
+        elif second[f] == none: second[f] = t
 
 fn state(f: F, by_best: Bool) -> State = State(2 * f.to_idx + Int(by_best))
 

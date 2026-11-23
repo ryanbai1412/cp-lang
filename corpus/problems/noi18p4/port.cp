@@ -34,7 +34,7 @@ for _ in 0..t:
         swords.add(reward[d])
         at_least max= ceil_div(life[d], atk)
         let one = solve_linear(atk, life[d], regrow[d])
-        all = if all == None or one == None: None else: crt(all!.0, all!.1, one!.0, one!.1)
+        all = if all == None or one == none: None else: crt(all!.0, all!.1, one!.0, one!.1)
     if let (r, md) = all:
         print(r + md * max(0, ceil_div(at_least - r, md)))
     else:

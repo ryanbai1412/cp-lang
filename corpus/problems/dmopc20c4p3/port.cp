@@ -19,11 +19,11 @@ sort(mut stops, by: s => (-s.y, s.sweeps))  // at one height the climbers come f
 
 let xs = [c.x for c in climbers]
 let (X, col) = compress(xs)
-var standing = SegTree<X, Int>(0, (a, b) => a + b)
+var standing = SegTree<X, Int>(+, fill: 0)
 var crossings = 0
 for s in stops:
     if s.sweeps:
-        if let reach = col.last_le(s.x): crossings += standing.fold(X.first!, reach)
+        if let reach = col.last_le(s.x): crossings += standing.fold(X.first!..=reach)
     else:
         let at = col.first_ge(s.x)!
         standing.set(at, standing.get(at) + 1)

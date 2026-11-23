@@ -25,8 +25,8 @@ fn finish(l: City, r: City, at_r: Bool) -> ?City:
     let right = cw(r)
     let left = ccw(l)
     if right == l: return here  // everything is visited
-    if trade[here, right] and finish(l, right, true) != None: return right
-    if trade[here, left] and finish(left, r, false) != None: return left
+    if trade[here, right] and finish(l, right, true) != none: return right
+    if trade[here, left] and finish(left, r, false) != none: return left
     None
 
 fn route() -> ?List<City>:

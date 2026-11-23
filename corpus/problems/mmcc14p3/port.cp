@@ -32,7 +32,7 @@ fn outposts(radius: Int) -> Int:
                     far max= d + 1
         post[v] = near
         open[v] = if far + (near ?? n) <= radius: None else: far
-    if open[V.first!] != None: used += 1
+    if open[V.first!] != none: used += 1
     used
 
 // WISH TR4: `(0..n).first_true(r => outposts(r) <= k)`

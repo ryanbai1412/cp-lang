@@ -86,7 +86,7 @@ fn solve_s3():
     var ans = false
 
     for root in V:
-        if tin[root] != None: continue
+        if tin[root] != none: continue
         frames.push((root, 0, None))
         while not frames.is_empty:
             let (u, i, p) = frames.last!

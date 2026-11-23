@@ -41,7 +41,7 @@ for start in I:
     var (short, long): (?Int, ?Int) = (None, None)  // best reach[a] - at, reach[a] + at so far
     for b in ring:
         best max= inside[b]
-        if short != None: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)
+        if short != none: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)
         short = max(short ?? Int.MIN, reach[b] - at)
         long = max(long ?? Int.MIN, reach[b] + at)
         at += bridge[b].len

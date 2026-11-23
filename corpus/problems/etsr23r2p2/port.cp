@@ -51,10 +51,10 @@ for _ in 0..tcs:
                 let nxt = Pos(mi + 1)
                 for va in 0..=CAP:
                     let ca = dp1[l][mid][Val(va)]
-                    if ca == None: continue
+                    if ca == none: continue
                     for vb in 0..=CAP:
                         let cb = dp2[nxt][r][Val(vb)]
-                        if cb == None: continue
+                        if cb == none: continue
                         let nv = Val(min(va + vb, CAP))
                         let cand = ca! + 1 + cb!
                         let cur = dp2[l][r][nv]
@@ -62,5 +62,5 @@ for _ in 0..tcs:
                             dp2[l][r][nv] = cand
 
     let ans = dp2[Pos.first!][Pos.last!][Val(target)]
-    if ans == None: print(-1)
+    if ans == none: print(-1)
     else: print(ans!)

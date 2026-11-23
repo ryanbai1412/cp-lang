@@ -16,7 +16,7 @@ let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()
 domain Floor = 1..=n
 domain Time = 1..=m
 domain Used = 0..=m - c
-let a: [Time]?Floor = read(None: 0)
+let a: [Time]?Floor = read(none: 0)
 
 let open = prefix([Time] t => Int(a[t] == None))
 var dp: [Used]M = 0

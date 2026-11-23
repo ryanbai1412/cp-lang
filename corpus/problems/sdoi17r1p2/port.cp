@@ -24,7 +24,7 @@ let t = Rooted(u => g.out(u), V.first)
 var f = SegTree<t.Pre, Int, Int>(max, act: add, a: [t.Pre] p => t.depth(t.at[p]) + 1)
 var same: [V]?V = [V] _ => None
 // 1 where same[v] is not the heavy child
-var off = SegTree<t.Pre, Int>(+, [t.Pre] p => if t.heavy[t.at[p]] == None: 0 else: 1)
+var off = SegTree<t.Pre, Int>(+, [t.Pre] p => if t.heavy[t.at[p]] == none: 0 else: 1)
 
 fn point(v: V, to: ?V):
     if same[v] == to: return

@@ -56,7 +56,7 @@ while head < leaves.len and not impossible:
 
 // Orient each remaining cycle starting from its smallest position index.
 for i in Pos:
-    if impossible or ans[i] != None: continue
+    if impossible or ans[i] != none: continue
     let (u, v) = ends[i]
     let first = min(u, v)
     let other = if first == u: v else: u
@@ -75,7 +75,7 @@ for i in Pos:
             break
 
 for i in Pos:
-    if ans[i] == None: impossible = true
+    if ans[i] == none: impossible = true
 for u in Val:
     if not used_val[u]: impossible = true
 
