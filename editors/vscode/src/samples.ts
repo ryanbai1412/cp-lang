@@ -117,8 +117,9 @@ export interface LensSpec {
 export function planLenses(text: string, samples: readonly Sample[]): LensSpec[] {
     const out: LensSpec[] = [];
     const fns = parts(text);
-    const bruted = fns.filter(p => p.decorators.some(d => d.name === 'brute'));
-    const checkers = fns.filter(p => p.decorators.some(d => d.name === 'checker'));
+    // `@alt` and `@check`, and their old spellings `@brute` and `@checker`.
+    const bruted = fns.filter(p => p.decorators.some(d => d.name === 'alt' || d.name === 'brute'));
+    const checkers = fns.filter(p => p.decorators.some(d => d.name === 'check' || d.name === 'checker'));
     const interactors = fns.filter(p => p.decorators.some(d => d.name === 'interactor'));
     const hasStressTarget = bruted.length > 0 || checkers.length > 0 || interactors.length > 0;
     const first = samples[0];
@@ -136,11 +137,11 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
     }
     out.push({ line: 0, title: 'Trace', command: 'cp.trace', args: first ? [first] : [] });
     for (const part of bruted) {
-        const target = part.decorators.find(d => d.name === 'brute')?.args?.trim();
-        if (target === 'main') {
+        const target = part.decorators.find(d => d.name === 'alt' || d.name === 'brute')?.args?.trim();
+        if (target === 'main' || target === 'program') {
             out.push({
                 line: part.line,
-                title: `Stress main against ${part.name}`,
+                title: `Stress ${target === 'main' ? 'main' : 'the program'} against ${part.name}`,
                 command: 'cp.stress',
                 args: [],
             });
@@ -179,7 +180,7 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
  * that runs its call at the current step again with the fn as edited.
  */
 export function replayLenses(text: string): LensSpec[] {
-    const tools = new Set(['brute', 'checker', 'interactor', 'grader']);
+    const tools = new Set(['alt', 'brute', 'check', 'checker', 'interactor', 'grader']);
     return parts(text)
         .filter(part => !part.decorators.some(d => tools.has(d.name)))
         .map(part => ({ line: part.fnLine, title: '$(debug-restart) Replay this call', command: 'cp.replayCall', args: [{ fn: part.name }] }));

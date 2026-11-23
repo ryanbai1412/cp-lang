@@ -841,14 +841,14 @@ fn run_release_judged(
 }
 
 /// What `cpl test` suggests next: `submit` once the samples pass; on a
-/// failure, `stress` when the file has a brute or an alt to compare.
+/// failure, `stress` when the file has an `@alt` to compare.
 fn next_after_test(file: &str, code: u8) -> String {
     let src = std::fs::read_to_string(cpl_contest::problem::source_path(file)).unwrap_or_default();
     match code {
         0 => format!(
             "next: `cpl submit {file}` builds what the judge gets and checks it on these cases\n"
         ),
-        1 if src.contains("@brute") || src.contains("@alt(") => {
+        1 if src.contains("@alt(") => {
             format!("next: `cpl stress {file}` looks for a small case where the brute disagrees\n")
         }
         _ => String::new(),

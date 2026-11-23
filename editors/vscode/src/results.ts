@@ -370,3 +370,51 @@ export function parseTraceMessage(message: unknown): TraceMessage | undefined {
     }
     return { type, line };
 }
+
+/** What `cpl submit <file> --json` reports. */
+export interface SubmitReport {
+    ready: boolean;
+    path?: string;
+    bytes?: number;
+    limit?: number;
+    judge?: string;
+    passed?: number;
+    total?: number;
+}
+
+/** Parses the output of `cpl submit <file> --json`; undefined if it is not that. */
+export function parseSubmitReport(stdout: string): SubmitReport | undefined {
+    let json: unknown;
+    try {
+        json = JSON.parse(stdout.trim());
+    } catch {
+        return undefined;
+    }
+    if (typeof json !== 'object' || json === null || typeof (json as { ready?: unknown }).ready !== 'boolean') {
+        return undefined;
+    }
+    const report = json as { ready: boolean; build?: Record<string, unknown>; test?: Record<string, unknown> };
+    const num = (v: unknown) => (typeof v === 'number' ? v : undefined);
+    const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+    return {
+        ready: report.ready,
+        path: str(report.build?.path),
+        bytes: num(report.build?.bytes),
+        limit: num(report.build?.limit),
+        judge: str(report.build?.judge),
+        passed: num(report.test?.passed),
+        total: num(report.test?.total),
+    };
+}
+
+/** One line for the submit result: `ready to send: a.cpp (4.5 KB, 7% of codeforces's limit), 2/2 samples`. */
+export function submitSummary(report: SubmitReport): string {
+    const size =
+        report.bytes !== undefined
+            ? ` (${(report.bytes / 1024).toFixed(1)} KB` +
+              (report.limit ? `, ${Math.round((100 * report.bytes) / report.limit)}% of ${report.judge ?? 'the judge'}'s limit` : '') +
+              ')'
+            : '';
+    const samples = report.total !== undefined ? `, ${report.passed ?? 0}/${report.total} samples` : ', no samples';
+    return `${report.ready ? 'ready to send' : 'not ready to send'}: ${report.path ?? 'the file'}${size}${samples}`;
+}

@@ -12,6 +12,8 @@ import {
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
+    parseSubmitReport,
+    submitSummary,
     parseTraceMessage,
     renderCounterexample,
     runtimeErrorLabel,
@@ -209,4 +211,17 @@ test('the editor reads what the real trace viewer posts, and nothing else', () =
     for (const bad of [null, 'step', { type: 'step' }, { type: 'step', line: 0 }, { type: 'jump', line: 2 }, { type: 'reveal', line: 1.5 }]) {
         assert.equal(parseTraceMessage(bad), undefined, JSON.stringify(bad));
     }
+});
+
+test('parseSubmitReport reads `cpl submit --json` and submitSummary says if it is ready', () => {
+    const stdout =
+        '{"build":{"bytes":4593,"checks":"none","judge":"codeforces","limit":65536,"path":"a.cpp","sizes":[]},' +
+        '"ready":true,"test":{"cases":[],"passed":2,"total":2}}\n';
+    const report = parseSubmitReport(stdout);
+    assert.deepEqual(report, { ready: true, path: 'a.cpp', bytes: 4593, limit: 65536, judge: 'codeforces', passed: 2, total: 2 });
+    assert.equal(submitSummary(report!), "ready to send: a.cpp (4.5 KB, 7% of codeforces's limit), 2/2 samples");
+    const failed = parseSubmitReport('{"ready":false,"build":{"path":"a.cpp","bytes":10},"test":{"passed":0,"total":1}}');
+    assert.equal(submitSummary(failed!), 'not ready to send: a.cpp (0.0 KB), 0/1 samples');
+    assert.equal(parseSubmitReport('wrote a.cpp'), undefined);
+    assert.equal(parseSubmitReport('{"cases":[]}'), undefined);
 });

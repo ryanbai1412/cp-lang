@@ -67,6 +67,11 @@
         "category": "CP"
       },
       {
+        "command": "cp.submit",
+        "title": "Submit: Build for the Judge and Check the Samples",
+        "category": "CP"
+      },
+      {
         "command": "cp.trace",
         "title": "Trace a Sample",
         "category": "CP"
@@ -114,6 +119,10 @@
         },
         {
           "command": "cp.stress",
+          "when": "editorLangId == cp"
+        },
+        {
+          "command": "cp.submit",
           "when": "editorLangId == cp"
         },
         {
@@ -255,6 +264,11 @@
           "default": 60,
           "minimum": 10,
           "description": "Longest value shown inline before it is cut; the full value is in the hover."
+        },
+        "cp.submit.copy": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Copy the C++ to the clipboard when `CP: Submit` finds it ready to send (`cpl submit --copy`)."
         },
         "cp.stress.args": {
           "type": "array",

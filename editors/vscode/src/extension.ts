@@ -26,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         command('cp.runSample', (uri?: vscode.Uri, sample?: Sample) => runner.runSample(uri, sample)),
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
         command('cp.stress', (uri?: vscode.Uri, part?: string) => runner.stress(uri, part)),
+        command('cp.submit', (uri?: vscode.Uri) => runner.submit(uri)),
         command('cp.trace', (uri?: vscode.Uri, sample?: Sample, part?: string) => runner.trace(uri, sample, part)),
         command('cp.debug', async (uri?: vscode.Uri) => {
             const target = uri ?? vscode.window.activeTextEditor?.document.uri;

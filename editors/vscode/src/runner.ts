@@ -14,8 +14,10 @@ import {
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
+    parseSubmitReport,
     renderCounterexample,
     RuntimeErrorOverlay,
+    submitSummary,
 } from './results';
 import { Sample } from './samples';
 import { TraceView } from './traceView';
@@ -175,6 +177,37 @@ export class Runner {
         this.output.appendLine(renderCounterexample(report.counterexample));
         this.overlays.setSampleStatus(document.uri, undefined);
         this.overlays.setCounterexample(document.uri, report.counterexample);
+    }
+
+    /** `cpl submit`: build what the judge gets, check it on the samples, and copy it when it is ready. */
+    async submit(uri?: vscode.Uri): Promise<void> {
+        const document = await this.document(uri);
+        if (!document) {
+            return;
+        }
+        this.output.show(true);
+        const copy = vscode.workspace.getConfiguration('cp').get<boolean>('submit.copy', true);
+        const args = ['submit', document.uri.fsPath, '--json', ...(copy ? ['--copy'] : [])];
+        const result = await this.cpl(document, args, 'cpl submit');
+        if (!result) {
+            return;
+        }
+        const report = parseSubmitReport(result.stdout);
+        if (!report) {
+            this.printRaw(result);
+            return;
+        }
+        const summary = submitSummary(report) + (report.ready && /copied/.test(result.stderr) ? '; copied to the clipboard' : '');
+        this.output.appendLine(summary);
+        if (!report.ready && result.stderr.trim() !== '') {
+            this.output.appendLine(indent(result.stderr));
+        }
+        this.overlays.setSampleStatus(document.uri, { line: 0, ok: report.ready, label: summary });
+        if (report.ready) {
+            void vscode.window.showInformationMessage(summary);
+        } else {
+            void vscode.window.showWarningMessage(summary);
+        }
     }
 
     async trace(uri?: vscode.Uri, sample?: Sample, part?: string): Promise<void> {

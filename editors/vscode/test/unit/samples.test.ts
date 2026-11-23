@@ -105,3 +105,12 @@ test('replayLenses puts Replay above each fn of the solution, not its tools', ()
         [[0, '$(debug-restart) Replay this call', 'cp.replayCall', [{ fn: 'most' }]]],
     );
 });
+
+test('planLenses gives @alt(program) and @check the lenses of their old spellings', () => {
+    const old = ['let n = read()', '', '@brute(main)', 'fn slow():', '    print(n)', '', '@checker', 'fn ok():', '    assert true'];
+    const now = old.map(line => line.replace('@brute(main)', '@alt(program)').replace('@checker', '@check'));
+    const plan = (lines: string[]) => planLenses(lines.join('\n'), []).map(l => [l.line, l.command, l.args]);
+    assert.deepEqual(plan(now), plan(old));
+    assert.ok(planLenses(now.join('\n'), []).some(l => l.title === 'Stress the program against slow'));
+    assert.ok(planLenses(now.join('\n'), []).some(l => l.command === 'cp.stress'));
+});
