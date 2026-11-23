@@ -5502,11 +5502,7 @@ impl<'a> Lowerer<'a> {
         self.cx.as_written = false;
         let Ty::Opt(inner) = value_expr.ty.clone() else {
             if value_expr.ty != Ty::Error {
-                let message = format!(
-                    "`{what}` takes the value out of an optional, but this is a `{}`",
-                    self.show(&value_expr.ty)
-                );
-                self.error(codes::TYPE_MISMATCH, value.span, message);
+                self.not_optional(what, &value_expr, value.span);
             }
             return None;
         };

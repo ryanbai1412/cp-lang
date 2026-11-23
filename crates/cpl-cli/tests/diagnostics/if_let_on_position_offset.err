@@ -1,0 +1,8 @@
+error[E0302]: `if let` takes the value out of an optional, but this is a `Int`
+  --> if_let_on_position_offset.cp:4:12
+  |
+4 | if let r = p.0 - 1:
+  |            ^^^^^^^
+  = help: write `Row.at(p.0 - 1)`: a position plus an `Int` is an `Int`, and `Row.at` gives back a `?Row` that is `None` outside `Row`
+
+if_let_on_position_offset.cp: 1 error

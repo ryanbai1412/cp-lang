@@ -1,0 +1,5 @@
+let n: 2..=100 = read()
+domain Row = 0..n
+let p: (Row, Row) = (Row.last!, Row.first!)
+if let r = Row.at(p.0 - 1):
+    print(r)

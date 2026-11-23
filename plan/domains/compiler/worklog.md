@@ -371,3 +371,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - Declare `Seq`, `Sized`, `Bidir` and `Indexed` in std with the folds as default bodies, so std and user impls can override them. No stdlib privilege.
   - Make `impl Seq<T> for Bag` walk in `for` and get the generic folds. Today it is E0302 "a `for` can't walk over a `Bag`" (`core-12/user-seq-gets-folds.cp`).
   - Two extension fns of one name that both take the receiver should be E0701. Today `pub fn sum(self: Range<Int>)` is silently ignored in favour of the generic `sum` (`core-08/extension-concrete-and-generic-ambiguous.cp`).
+- From diagnostics (2026-11-23): removed the second `(Ty::Pos(d), Ty::Int) if Add | Sub` arm in `cpl-ir/src/lower/expr.rs` binary lowering; the first arm already matched, so the `PosOffset` (`?D`) form was dead since 0.3 made a position plus an `Int` an `Int`. No behaviour change; `cargo test -p cpl-check -p cpl-ir` green.

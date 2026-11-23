@@ -1,0 +1,3 @@
+let n: 1..=100 = read()
+domain V = 0..n
+print(V.first!)

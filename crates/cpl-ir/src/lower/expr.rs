@@ -1216,6 +1216,9 @@ impl<'a> Lowerer<'a> {
                 }
                 let message = format!("`{name}` is a type, and a value is needed here");
                 self.error(codes::TYPE_MISMATCH, span, message);
+                if m == 0 && matches!(ty_ast.kind, ast::TypeKind::Range { .. }) {
+                    self.range_alias_as_domain(name, ty_ast.span.shift(offset));
+                }
             }
             Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::GenAlias(_)) => {
                 let message = format!("`{name}` is a type, and a value is needed here");
@@ -2398,19 +2401,6 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) => {
                 let d = *d;
                 (self.cast(Cast::Label(d), l, Ty::Int), r, Ty::Int)
-            }
-            (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) => {
-                let d = *d;
-                let step = if op == Sub {
-                    self.mk(ExprKind::Unary(UnOp::Neg, Box::new(r)), Ty::Int, rhs.span)
-                } else {
-                    r
-                };
-                return self.mk(
-                    ExprKind::Builtin(Builtin::PosOffset(d), vec![l, step]),
-                    Ty::opt(Ty::Pos(d)),
-                    span,
-                );
             }
             _ => {
                 let message = format!(

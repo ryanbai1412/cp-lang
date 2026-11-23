@@ -277,12 +277,15 @@ impl Checker<'_> {
 
     /// `let N = 5` as `const N = 5`: only a literal can be a constant as is.
     pub(super) fn const_fix(&self, keyword: &str, name: Span, init: Option<&Expr>) -> Option<Fix> {
-        let literal = |e: &Expr| {
-            matches!(
-                e.kind,
-                ExprKind::Int(_) | ExprKind::Float(_) | ExprKind::Bool(_)
-            )
-        };
+        fn literal(e: &Expr) -> bool {
+            match &e.kind {
+                ExprKind::Int(_) | ExprKind::Float(_) | ExprKind::Bool(_) => true,
+                ExprKind::Unary { expr, .. } => literal(expr),
+                ExprKind::Binary { lhs, rhs, .. } => literal(lhs) && literal(rhs),
+                ExprKind::Paren(inner) => literal(inner),
+                _ => false,
+            }
+        }
         let at = Span::new(name.start.checked_sub(4)?, name.start - 1);
         (keyword == "let" && init.is_some_and(literal) && self.text(at) == "let").then(|| Fix {
             title: "make it a `const`".into(),
