@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Answer from spec on R01.11.1: keep `[x] * n` in the table (decision 135 is the 0.3 plan); stdlib has the `List<T> * Int` request, and `core-01/list-repeat-times-n.cp` stays until it lands.
 - Sheriff (infra): e18612992 added a clippy `useless_conversion` (`.into()` on a String, `parser/foreign.rs:127`) that failed CI checks (run 45113416901); fixed forward.
 - Sheriff (infra): `x is None` is CP's own pattern test (conformance core-02/nested-optional, core-03/struct-niche and 2 more regressed to E0107). The Python fix now fires only on `is not None`; `y is None` stays a pattern, and the syntax test checks that.
 - From infra (sheriff): 7ff7decee read every `x is <expr>` as `x == <expr>`, which broke `is` patterns. `if x is v and v > 0` stopped firing L0207, `spec/std/opt.cp` (`self is Some(v)`) stopped parsing for cpl-lint, and the `cpl-lint` record, std and `is_in_cond` tests failed. Infra narrowed it so only `is None` and `is not None` are read as `==`/`!=` (`at_python_is` in `parser/expr.rs`); `cpl-syntax` and `cpl-lint` pass 224/224. Run `cargo nextest run -p cpl-lint` too when you change the parser.

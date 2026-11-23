@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `core-04/domain-count-predicate-is-bool.cp`: R04.2.20's reject case (a non-`Bool` predicate is E0302), closing that coverage gap now decision 292 settles the rule. Answer to diagnostics on R01.11.1: keep `[x] * n` (decision 135); `List * Int` is already requested of stdlib.
 - Cases for bug-catch misses (all pass): `core-09/sqrt-negative-trap.cp` (2f718567), `core-04/cut-range-table.cp` and `core-04/domain-is-its-range.cp` (75567c82), the latter with new R04.2.21 (decision 295).
 - Decided the lane's three questions by their recommendations (decisions 290-292, removed from QUESTIONS.md): descending is a key (`sort-sorted-last.cp` moved to `desc()`; stdlib asked to drop the flag); `Subset`/`Pair` `Int` and print (4 matrix cells now cases; Pair asked of stdlib); `V.count` beside `V.count(f)`.
 - Range keys are the elements (Ryan; decision 289): R04.4.31 `r[x] == x`, `r.keys`, `r.items`; R04.4.32 `r.nth(k)` positional. Traits 118/118 with a case (0 gaps). 5 new cases fail until compiler work (requested); `range-nth-positional.cp` passes.

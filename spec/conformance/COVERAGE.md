@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2340 (995 passing). Rules: 540.
+Cases: 2341 (995 passing). Rules: 540.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 100 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 101 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -41,7 +41,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
 | R02 | 51 | 51 (100%) | 26 | 26 (100%) | 51 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 66 | 66 (100%) | 16 | 15 (93%) | 65 (98%) |
+| R04 | 66 | 66 (100%) | 16 | 16 (100%) | 66 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 540 | 539 (99%) | 207 | 205 (99%) | 537 (99%) |
+| all | 540 | 539 (99%) | 207 | 206 (99%) | 538 (99%) |
 
 ## Rules
 
@@ -199,7 +199,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
-- R04.2.20 [3+ 0-] *happy-path only*: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
+- R04.2.20 [3+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
@@ -677,7 +677,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 37 case(s)
+- E0302 Type mismatch: 38 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
