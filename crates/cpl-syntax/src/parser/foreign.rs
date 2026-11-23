@@ -298,6 +298,59 @@ impl<'a> Parser<'a> {
         );
     }
 
+    /// `(long long)n`, `(double)x`: a C cast. One error, with the
+    /// conversion call: `Int(n)`, `F64(x)`.
+    pub(super) fn c_cast(&mut self) -> Option<Expr> {
+        const INTS: [&str; 10] = [
+            "int", "long", "ll", "unsigned", "signed", "short", "size_t", "int64_t", "i64", "lld",
+        ];
+        const FLOATS: [&str; 3] = ["double", "float", "ld"];
+        let (mut n, mut float) = (1, false);
+        while self.peek_n(n) == T::Ident {
+            let word = self.tokens[self.pos + n].span.text(self.src);
+            if !INTS.contains(&word) && !FLOATS.contains(&word) {
+                return None;
+            }
+            float |= FLOATS.contains(&word);
+            n += 1;
+        }
+        let operand_next = matches!(self.peek_n(n + 1), T::Ident | T::Int | T::Float | T::LParen);
+        if n == 1 || self.peek_n(n) != T::RParen || !operand_next {
+            return None;
+        }
+        let cast = Span::new(self.span().start, self.span_n(n).end);
+        let group = (self.peek_n(n + 1) == T::LParen)
+            .then(|| super::after_group(self.tokens, self.pos + n + 1));
+        for _ in 0..=n {
+            self.bump();
+        }
+        let operand = self.postfix();
+        let wrapped = group == Some(self.pos);
+        let (ty, help) = if float {
+            ("F64", "a float is made with `F64(x)`")
+        } else {
+            (
+                "Int",
+                "an integer is made with `Int(x)`, and an `Int` is already 64 bits",
+            )
+        };
+        let edits = if wrapped {
+            vec![(cast, ty.to_string())]
+        } else {
+            let close = (Span::point(operand.span.end), ")".to_string());
+            vec![(cast, format!("{ty}(")), close]
+        };
+        let title = format!("write `{ty}(...)`");
+        let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, cast, "CP Lang has no C casts")
+            .with_help(help);
+        diag.fixes.push(cpl_diag::Fix {
+            title: title.to_string(),
+            edits,
+        });
+        self.recovered(diag);
+        Some(operand)
+    }
+
     /// `P { x: 1 }`, read as the call CP Lang builds a struct with, `P(x: 1)`.
     pub(super) fn struct_literal(&mut self, callee: Expr) -> ExprKind {
         let open = self.span();

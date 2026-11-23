@@ -1125,6 +1125,9 @@ impl<'a> Parser<'a> {
                 return expr;
             }
             T::LParen => {
+                if let Some(operand) = self.c_cast() {
+                    return operand;
+                }
                 self.bump();
                 if matches!(self.peek(), T::Plus | T::Star | T::Caret | T::Amp | T::Pipe)
                     && self.peek_n(1) == T::Comma
