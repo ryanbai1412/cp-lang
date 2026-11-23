@@ -209,4 +209,18 @@ checks and runs exactly as the original did.
 Reason: a formatter that changes behaviour, or never settles, can't run on save.
 Example: formatting a corpus port leaves its `cpl check` codes and its output on
 the sample input unchanged.
-Enforced by: `scripts/fmt_check.py` over every tracked `.cp` file.
+Enforced by: `scripts/fmt_check.py` over every tracked `.cp` file;
+idempotence on broken files by `mutated_sources_never_crash_lint_or_fmt` in
+`crates/cpl-lint/src/fuzz_tests.rs`.
+
+## Robustness
+
+### R23: No input crashes lint or fmt
+
+Lint and fmt answer every file, however broken, without panicking.
+Reason: the editor runs both on every keystroke over half-typed code; a
+crash there loses the user's diagnostics and formatting.
+Example: `cnt[]x = 1`, a key deleted mid-edit, gets a checker error, not a
+crash.
+Enforced by: `mutated_sources_never_crash_lint_or_fmt` in
+`crates/cpl-lint/src/fuzz_tests.rs` (deeper runs with `CPL_FUZZ_MUTANTS`).

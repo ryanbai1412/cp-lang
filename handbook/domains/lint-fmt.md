@@ -63,10 +63,9 @@ tracked file and checks the result is stable and checks and runs the same.
 Parity tests check that the editor, the playground and `cpl lint` report the
 same findings.
 
-The weakest areas today: no fuzzer feeds random programs to lint and fmt,
-fixed programs are not yet run on the whole corpus to show the output is
-unchanged, nothing measures how much a small edit reformats, and the suites
-have no mutation score. Those rows are marked `missing` in the quality
+The weakest areas today: fixed programs are not yet run on the whole
+corpus to show the output is unchanged, nothing measures how much a small
+edit reformats, and the suites have no mutation score. Those rows are marked `missing` in the quality
 register below and are built first.
 
 ## Where to start
@@ -185,7 +184,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | Formatted programs still print the same | programs whose output differs after `cpl fmt` | `missing` as a run (token equality implies it today) | — |
 | Every tracked `.cp` file is formatted | files `cpl fmt --check` would change | gate | `scripts/check.sh` fmt step, `scripts/fmt_check.py` |
 | Files that don't parse still format, and unfinished statements are left alone | panics or edits inside a broken statement | hand-written suite | `range_tests.rs` `an_unfinished_statement_is_left_alone` |
-| No input crashes fmt or lint | panics on generated and mutated sources | `missing`: no fuzzer | — |
+| No input crashes fmt or lint (`lints/R23`) | panics and non-idempotent fmt on mutated sources | generated suite: token mutations of `std`, corpus `spec.cp` and every record, fixed seed | `crates/cpl-lint/src/fuzz_tests.rs` `mutated_sources_never_crash_lint_or_fmt` |
 
 ### Fmt output quality
 
