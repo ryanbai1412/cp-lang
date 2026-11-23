@@ -47,3 +47,12 @@ Deferred (milestone "what can wait"): interval DP and chapters past Div 2 C; tra
 2. Fix the `/docs/guides/` target and wire `web/scripts/links.mjs` into the gate path.
 3. File the eval and CI requests in the infra and idioms worklogs.
 4. Start the UI pass with the nav and landing tabs, screenshots in the worklog.
+
+## General fixes owed
+
+Each row: the instance, the general fix, and who owns it.
+
+- **Practice refs that our own lints flag** (5 of 21 refs; hints taught the flagged form). Made general in the site gate: every practice `ref.cp` must lint clean and every problem needs a hint that links to the docs, a chapter or a lint. Still owed (site): lint every runnable docs and Learn snippet the same way, with an allow marker for snippets that show the flagged form on purpose.
+- **`loop_reduction` says "is one `min`"**, but `min(e for ...)` is `E0303` and `(e for ...).min()` does not parse; refs use `[e for ...].min()` and `filter(p).max()`. General fix: generator arguments for `min`/`max`, as for `sum` (compiler/stdlib), and help text that names a spelling that compiles (lint-fmt). Filed in lint-fmt's worklog.
+- **Record patterns `Add(x:)` do not parse** (R02.7.6, decision 230); the values chapter uses positional `Add(x)`. General fix: field patterns in the parser (compiler). Filed in compiler's worklog.
+- **Generic trap messages for slice keys (`w[0]`, R04b.1.10) and `!` on `[V]?Int` (R02.4.8)**; the chapters explain them in prose. General fix: key-aware and gap-naming trap messages (diagnostics). Filed in diagnostics' worklog.

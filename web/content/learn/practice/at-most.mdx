@@ -16,5 +16,6 @@ You are given n integers (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹) and q quer
 - In the sorted array, the values at most x are a prefix. Its length is the index of the first value greater than x.
 - `b.first_gt(x)` is that index, found by binary search in O(log n). It returns `?Int`, `None` when every value is at most x, so `?? n` is that case.
 - The four searches, `first_ge`, `first_gt`, `last_le`, `last_lt`, are named for what they return, so there is no `upper_bound` minus one to work out.
+- [Sorting and searching](/learn/read/sorting-and-searching) covers the four sorted lookups; a hand-written `while lo < hi` search is what the [hand_rolled_answer_search](/lints/hand_rolled_answer_search) lint flags.
 
 </Judge>

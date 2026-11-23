@@ -16,5 +16,6 @@ Given two words s and t of lowercase letters (1 ≤ |s|, |t| ≤ 2000), print th
 - `d[i, j]` is the answer for the first i letters of s and the first j of t; `[0..=s.len, 0..=t.len]Int` includes the empty prefixes.
 - The empty prefix row and column are `i + j`: only insertions or only deletions.
 - The three options (delete, insert, replace or keep) are the three arguments of one `min`.
+- [Dynamic programming](/learn/read/dynamic-programming) has the two-string table pattern and how `[0..=s.len, 0..=t.len]` covers the empty prefixes.
 
 </Judge>

@@ -90,6 +90,13 @@ for (const id of readdirSync(join(web, 'content/practice'))) {
   if (existsSync(file('tests.json')) && !JSON.parse(readFileSync(file('tests.json'), 'utf8')).some((t) => t.sample)) lacks.push('a test with "sample": true');
   if (!existsSync(page) || !readFileSync(page, 'utf8').includes(`<Judge id="${id}"`)) lacks.push(`content/learn/practice/${id}.mdx with <Judge id="${id}">`);
   if (!listed.includes(id)) lacks.push('an entry in content/learn/practice/meta.json');
+  const hints = existsSync(page) ? /<Judge[^>]*>([\s\S]*?)<\/Judge>/.exec(readFileSync(page, 'utf8'))?.[1] ?? '' : '';
+  if (!/\]\(\/[^)]+\)/.test(hints)) lacks.push('a hint that links to the docs, a chapter or a lint');
+  if (existsSync(file('ref.cp'))) {
+    const lint = spawnSync(cpl, ['lint', file('ref.cp')], { encoding: 'utf8' });
+    const found = (lint.stdout + lint.stderr).match(/^warning\[L\d{4}\].*$/gm);
+    if (found) lacks.push(`a ref.cp with no lint warnings (has ${found.join('; ')})`);
+  }
   if (lacks.length) {
     failed++;
     console.error(`gate: practice problem ${id} lacks ${lacks.join(', ')}`);

@@ -55,9 +55,17 @@ export function Solve({ id, starter, reference, tests, children }: SolveProps) {
           </AlertDescription>
         </Alert>
       ) : (
-        <Button variant="ghost" size="sm" onClick={() => setShown((s) => !s)}>
-          {shown ? 'Hide the reference solution' : 'Show the reference solution'}
-        </Button>
+        <div className="space-y-2">
+          {children && (
+            <details className="rounded-xl border bg-card px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-medium">Hints</summary>
+              <div className="prose prose-sm mt-2 max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-5">{children}</div>
+            </details>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setShown((s) => !s)}>
+            {shown ? 'Hide the reference solution' : 'Show the reference solution'}
+          </Button>
+        </div>
       )}
       {(solved || shown) && (
         <div className="not-prose overflow-hidden rounded-xl border bg-card shadow-sm">

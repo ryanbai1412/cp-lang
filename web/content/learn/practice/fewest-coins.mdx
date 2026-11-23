@@ -16,5 +16,6 @@ There are n coin values (1 ≤ n ≤ 100, each from 1 to 10⁵), each available 
 - `dp[s]` is the fewest coins for the sum `s`, or `None` if `s` can't be made. There is no `INF` to add 1 to.
 - `if let d = dp[s - v]` uses only sums that can be made, and `dp[s] min= d + 1` keeps the better one; `None` loses to every value.
 - The -1 the statement asks for appears once, at the output.
+- A table of `-1` or `INF` tested with `==` is what the [sentinel_table](/lints/sentinel_table) lint flags; [Optionals](/learn/read/optionals) shows `?Int` instead.
 
 </Judge>

@@ -16,5 +16,6 @@ You are given n integers (3 ≤ n ≤ 100, each from 1 to 100). All of them have
 - `a.count(x => x % 2 == 1)` counts with a lambda. No loop, no counter variable.
 - `if c: a else: b` is an expression, so `want` can be a `let`.
 - `a.items` gives `(index, value)` pairs. The array is `[0..n]`, so the index starts at 0 and the answer is `i + 1`. Chapter 2 shows how to make the array 1-based instead.
+- A loop that only counts is what the [loop_reduction](/lints/loop_reduction) lint flags; [Arrays and index spaces](/learn/read/arrays-and-index-spaces) shows 1-based arrays.
 
 </Judge>

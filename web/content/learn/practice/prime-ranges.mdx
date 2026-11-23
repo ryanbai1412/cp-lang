@@ -14,7 +14,7 @@ You are given q queries (1 ≤ q ≤ 2·10⁵), each two numbers 1 ≤ l ≤ r �
 <Judge id="prime-ranges">
 
 - `Sieve(N)` from `std.math` builds the table once, in O(N log log N). `sv.is_prime(k)` is then a lookup.
-- `pre[k]` counts the primes up to k, so a query is one subtraction. The sieve sits above the queries, so it is not rebuilt for each one.
-- `use std.math.{Sieve}` names what the program takes from the library; the [library guide](/docs/guides/stdlib) lists the rest.
+- `Prefix(...)` builds the prefix sums once, above the queries, and `pre.fold(l..=r)` is the number of primes in `l..=r` in O(1). Writing the `pre[k] = pre[k - 1] + ...` loop yourself is what the [hand_rolled_prefix_sum](/lints/hand_rolled_prefix_sum) lint flags.
+- `Sieve` and `Prefix` are in the prelude, so no `use` is needed; the [math reference](/docs/ref/std/math) and the [library guide](/docs/guides/stdlib) list the rest.
 
 </Judge>

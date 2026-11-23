@@ -16,5 +16,6 @@ Start from n (1 ≤ n ≤ 10⁶). If the number is even, halve it; otherwise rep
 - `x = if x % 2 == 0: x / 2 else: 3 * x + 1` is the rule, written once.
 - `peak max= x` is `peak = max(peak, x)`.
 - The values go far above 10⁶ (for 837799 the peak is 2974984576, which does not fit in 32 bits). Local variables are 64-bit, so nothing overflows here; if something did, the run would stop on that line and say so instead of wrapping.
+- Write `peak = max(peak, x)` and the [chmin_chmax_if](/lints/chmin_chmax_if) lint suggests `peak max= x`; [checked operations](/learn/language/checked-operations) covers the overflow trap.
 
 </Judge>

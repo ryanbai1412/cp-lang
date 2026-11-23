@@ -16,5 +16,6 @@ You are given n integers (1 ≤ n ≤ 2·10⁵, each between −10⁹ and 10⁹)
 - `cur` is the best sum of a run that ends at the current element: either extend the previous run or start again here.
 - To check a scan like this, add the obvious O(n²) answer to the same file as `@alt(program)` and press Stress in the [playground](/play). With small ranges for `n` and `a`, it compares the two on random inputs and shrinks any disagreement. Chapter 11 shows how.
 - With all values negative, the answer is the largest single value, which is why `best` starts at `a[0]`, not 0.
+- [Greedy and two pointers](/learn/read/greedy-and-two-pointers) has other one-pass scans; [Stress and trace](/learn/read/stress-and-trace) shows the stress workflow step by step.
 
 </Judge>

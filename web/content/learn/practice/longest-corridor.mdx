@@ -17,5 +17,6 @@ A floor plan is a grid of h rows and w columns (1 ≤ h, w ≤ 50). Each cell is
 - `g[r, c]` takes a row, then a column. Swap them and it does not compile, because `Row` and `Col` are different domains.
 - `best max= run` is `best = max(best, run)`.
 - `var run = 0` sits inside the row loop, so every row starts fresh. Declaring a variable where it is used, instead of resetting it, is the habit that prevents "forgot to reset" bugs.
+- [Arrays and index spaces](/learn/read/arrays-and-index-spaces) shows 2-D domains; write `best = max(best, run)` and the [chmin_chmax_if](/lints/chmin_chmax_if) lint suggests `max=`.
 
 </Judge>

@@ -13,8 +13,7 @@ You are given n scores (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹). Print the l
 
 <Judge id="second-place">
 
-- `var second: ?Int = None` says "no second place yet" without picking a fake number for it.
-- `second max= x` treats `None` as smaller than everything, so the first candidate just replaces it.
-- `second ?? -1` puts the `-1` in one place: the output, where the statement asks for it.
+- `a.filter(x => x < top)` keeps the values below the maximum, and `.max()` of what is left is a `?Int`: `None` when nothing is left, with no fake number for "no second place".
+- `?? -1` puts the `-1` in one place: the output, where the statement asks for it. [Optionals](/learn/read/optionals) covers `?T`; a loop that only keeps a maximum is what the [loop_reduction](/lints/loop_reduction) lint flags.
 
 </Judge>

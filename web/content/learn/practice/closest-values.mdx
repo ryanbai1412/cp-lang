@@ -13,8 +13,9 @@ You are given n integers (2 ≤ n ≤ 2·10⁵, each from 1 to 10⁹). Print the
 
 <Judge id="closest-values">
 
-- After sorting, the closest pair is next to each other, so n − 1 differences are enough.
+- After sorting, the closest pair is next to each other, so n − 1 differences are enough, and `[b[i] - b[i - 1] for i in 1..n].min()` takes the smallest of them.
 - `a.sorted()` returns a sorted copy; `a` itself is unchanged.
-- `n: 2..=2e5` promises at least one pair, so `best!` cannot fail. The range in the type is the reason, and the compiler holds the input to it.
+- `n: 2..=2e5` promises at least one pair, so `.min()!` cannot fail. The range in the type is the reason, and the compiler holds the input to it.
+- A loop that only keeps the smallest difference is what the [loop_reduction](/lints/loop_reduction) lint flags; [Sorting and searching](/learn/read/sorting-and-searching) has the other sorted-array patterns.
 
 </Judge>

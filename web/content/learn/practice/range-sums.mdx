@@ -14,8 +14,8 @@ You are given n integers a₁ … aₙ (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10�
 <Judge id="range-sums">
 
 - `domain V = 1..=n` makes the array 1-based, like the statement. `l` and `r` are read as `V`, so they are checked against `1..=n` as they are read.
-- Prefix sums are indexed by cuts, the gaps between positions: `[V.cuts]Int` has n + 1 entries. `v.l` and `v.r` are the cuts on either side of position `v`.
-- The query is `pre[r.r] - pre[l.l]`: up to the right edge of r, minus up to the left edge of l. There is no `- 1` to get wrong, and `pre[l]` with a position does not compile.
+- `Prefix(a)` builds the prefix sums in O(n), and `pre.fold(l..=r)` is aₗ + … + aᵣ in O(1). The range is in positions of `V`, so there is no `- 1` to get wrong. See [prefix sums](/docs/ref/std/prefix).
+- Underneath, the table is indexed by cuts, the gaps between positions; the [domains chapter](/learn/language/domains-and-index-spaces) gives the rule. Writing the loop yourself is what the [hand_rolled_prefix_sum](/lints/hand_rolled_prefix_sum) lint flags.
 - The sums reach 2·10¹⁴. `pre` holds `Int`, which is 64-bit.
 
 </Judge>

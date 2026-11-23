@@ -16,5 +16,6 @@ You are given n prices (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹) and a budget
 - Prices are positive, so adding one to the window never lowers its total: when it goes over, move the left end until it fits again. Each end moves at most n times.
 - `best max= hi - lo + 1` after the inner loop; an empty window gives 0, which is the answer when every price is above s.
 - The total can reach 2·10¹⁴ with s up to 10¹⁸: `Int` is 64-bit, and the range types say so.
+- [Greedy and two pointers](/learn/read/greedy-and-two-pointers) has the sliding-window pattern; write `best = max(best, ...)` and the [chmin_chmax_if](/lints/chmin_chmax_if) lint suggests `max=`.
 
 </Judge>

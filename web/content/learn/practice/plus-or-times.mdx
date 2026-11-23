@@ -16,5 +16,6 @@ A number x starts at 1. You are given q operations (1 ≤ q ≤ 2·10⁵), each 
 - `apply` is a function with typed parameters and a return type. Its body is one `match`, and a `match` is an expression, so its value is the function's result.
 - `let (op, y): (Char, 0..=1e9) = read()` reads a character and a number in one line. The type is the input format.
 - `'+'` is a pattern; `_` matches anything else. Take the remainder after every step: x · y reaches 10¹⁸, which still fits in a 64-bit `Int`, but a product of two of those would not.
+- [Functions and records](/learn/read/functions-and-records) covers `fn`, `match` and reading tuples; the [types chapter](/learn/language/types-widths-proofs) explains why the remainder keeps the product in 64 bits.
 
 </Judge>

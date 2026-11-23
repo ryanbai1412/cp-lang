@@ -17,5 +17,6 @@ You are given an integer n (1 ≤ n ≤ 10¹⁸). While n is even, halve it. Pri
 - `n` is declared with `var` because it changes. With `let`, the assignment is a compile error that says to use `var`.
 - `/` on integers rounds down and `%` is never negative.
 - `print(a, b)` separates its arguments with a space.
+- `n /= 2` halves in place. Write `n = n / 2` and the [compound_self_ref](/lints/compound_self_ref) lint suggests the shorter form; the [types chapter](/learn/language/types-widths-proofs) explains the widths.
 
 </Judge>
