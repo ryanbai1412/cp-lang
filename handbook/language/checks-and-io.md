@@ -187,7 +187,8 @@ print(top, a[top])
 ```
 
 `print(x, y)` joins by `io.sep` and ends the line; a sequence prints on
-one line. `Bool` and `?T` are not printable on their own: `yes(b)` prints
+one line, except a sequence of tuples, records or structs, which prints
+one element per line (`print(edges)` writes `u v` lines). `Bool` and `?T` are not printable on their own: `yes(b)` prints
 the profile's answer words (`YES`/`NO` by default, or
 `with io(answers: ("Alice", "Bob"))`), and an optional is printed with
 `x ?? d` or `print(xs, none: d)`. Floats print with 10 decimals unless
@@ -216,6 +217,15 @@ flushes buffered output before writing its report to stderr. Locally,
 (`spec/tools/stress.md`).
 
 ## Key decisions
+
+**A list of pairs prints one pair per line (decision 437).** Output
+mirrors input: a problem that reads m pairs reads them one per line, and
+one that prints pairs nearly always wants them the same way. About 50
+ported corpus solutions write `print(ps)` and expect exactly that. Lost:
+printing every sequence on one line, the more uniform rule. It made the
+common case need `sep: "\n"`, and a missing one gave a wrong answer
+rather than an error. `print(ps, sep: " ")` still writes one line.
+Reverse: drop the tuple exception in R10.3.5.
 
 **Release runs no checks by default (decision 148).** On the judge a
 wrong answer is a wrong answer whether it is a crash or a silent wrong

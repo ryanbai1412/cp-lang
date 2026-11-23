@@ -8436,3 +8436,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** The in-process engine (the browser's Stress tab) runs each program's first case with `Checkpoints::before_input`: a checkpoint about every 65,536 loop rounds and calls, taken only while the run has read, looked at and printed nothing. Every later case of that engine starts from the last such checkpoint, on its own input, instead of from the top.
 - **Why.** Precomputes that read nothing (sieves, factorial tables, the O(60^4) table of abc476g) ran again for every case: about 3 s a case in the browser, where the CLI's compiled C++ takes milliseconds. The rest of a run from a checkpoint is what a whole run does, as `crates/cpl-interp/tests/checkpoint.rs` checks. A case's time limit no longer counts the precompute, which case 1 still runs whole.
 - **Reverse.** Make `InterpEngine::run_case` in `crates/cpl-stress/src/engine.rs` call `run_ir`, and drop `Checkpoints::before_input`.
+
+## 437. A sequence of tuples, records or structs prints one element per line (spec, 2026-11-23)
+
+- **Call.** `print(ps)` on a sequence whose elements are tuples, records or structs prints one element per line, each element's fields joined by `io.sep`; `sep:` overrides (R10.3.5).
+- **Why.** Output mirrors input (R10.3.6), and pair input comes one pair per line. About 50 corpus solutions and std cases (std-dp/dp-bodies, std-seq/adjacent-buckets-counting-sort-span) already expect it; only core-10/print-list-of-pairs-one-line asked for one line.
+- **Reverse.** Drop the tuple sentence from R10.3.5 and give the corpus programs that print pairs `sep: "\n"`.
