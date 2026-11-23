@@ -10,8 +10,8 @@ You can try CP Lang immediately with zero setup in the [browser playground](/pla
 From the first release, one line installs a prebuilt binary. That release is not out yet, so this command does not work today:
 
 ```sh
-curl -fsSL https://cp-lang.org/install.sh | sh              # latest stable release
-curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge  # newest build of main that passed every check
+curl -fsSL https://cp-lang.org/install.sh | sh                         # stable (beta while 0.x)
+curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge  # newest build of main that passed every check
 ```
 
 Until then, build `cpl` with Rust. It compiles CP Lang programs to standard C++17 (any `g++` or `clang++` that supports `-std=c++17`).

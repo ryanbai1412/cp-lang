@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Two channels: the installers take `--channel stable|edge` (`-Channel` in PowerShell; `--edge` and `-Edge` stay as aliases). Stable falls back to edge until the first `v*` release. A stable release is titled `(beta)` while 0.x, and its notes are the version's CHANGELOG.md section; publish stops if that section is missing. The release smoke checks the 0.3.0 version line (`cpl 0.3.0-edge+<sha>`, stable `cpl 0.3.0+<sha>`).
 - Version 0.3.0: the workspace and pyproject say 0.3.0, and `cpl --version` prints `cpl 0.3.0-edge+<sha8>` on edge, `-dev+` from a source build, and no channel on stable.
 - First `os` run: Windows failed to compile the tests (`std::os::unix` in cpl-judge, cpl-contest, cpl-stress tests). The unix-only probe test is `#[cfg(unix)]`, and the shell-script helpers set the exec bit only on unix.
 - Sheriff: two script-test reds of my own: 4b2c1959d's land.sh checks ran `scripts/debt-ratchet.py` in test repos without it (now skipped when absent). The clippy stage excluded `editors/*`, which tools' 6b97eec5e now `include_str!`s (`cpl setup`'s Neovim files); `editors/neovim/` and the tree-sitter queries are inputs again.

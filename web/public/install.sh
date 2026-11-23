@@ -1,7 +1,11 @@
 #!/bin/sh
 # Installs CP Lang: curl -fsSL https://cp-lang.org/install.sh | sh
 #
-#   sh install.sh [--edge] [--version 0.3.0 | edge-YYYY-MM-DD] [--no-modify-path]
+#   sh install.sh [--channel stable|edge] [--version 0.3.0 | edge-YYYY-MM-DD]
+#                 [--no-modify-path]
+#
+# stable (the default) is the newest v* release, beta while 0.x; until the
+# first one exists it installs edge, the build of the newest green main.
 #
 # Downloads the release for this platform from GitHub, checks it against the
 # sha256 in the release's latest.json, unpacks it into
@@ -21,6 +25,8 @@ die() { printf 'cpl-install: error: %s\n' "$*" >&2; exit 1; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --channel) [ $# -ge 2 ] || die "--channel needs stable or edge"; channel="$2"; shift ;;
+        --channel=*) channel="${1#--channel=}" ;;
         --edge) channel=edge ;;
         --stable) channel=stable ;;
         --version) [ $# -ge 2 ] || die "--version needs a value"; version="$2"; shift ;;
@@ -31,6 +37,10 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+case "$channel" in
+    stable | edge) ;;
+    *) die "--channel takes stable or edge, not $channel" ;;
+esac
 
 case "$(uname -s)" in
     Linux) os=unknown-linux-musl ;;

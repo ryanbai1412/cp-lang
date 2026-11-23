@@ -164,9 +164,9 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
           every check.
         </p>
         <p className="mt-3">Linux and macOS:</p>
-        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge'}</Code>
+        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge'}</Code>
         <p className="mt-3">Windows (PowerShell):</p>
-        <Code>{'& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Edge'}</Code>
+        <Code>{'& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge'}</Code>
         <p className="mt-3">
           Then open a new terminal and run <code>cpl --version</code>. <code>cpl self update</code> fetches newer builds
           later. On a platform without a binary, build it with Rust:

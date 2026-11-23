@@ -19,8 +19,13 @@ notes="CP Lang $toolchain ($channel, ${commit:0:8}). Install: https://cp-lang.or
 for tag in $tags; do
     case "$tag" in
         v*)
-            gh release create "$tag" "${files[@]}" --target "$commit" --title "CP Lang $version" \
-                --notes "$notes" --latest
+            # Stable notes are the version's CHANGELOG.md section; 0.x is beta.
+            changes=$(awk -v v="$version" '/^## /{on = ($2 == v); next} on' CHANGELOG.md)
+            [ -n "${changes//[[:space:]]/}" ] || { echo "publish: CHANGELOG.md has no ## $version section" >&2; exit 2; }
+            title="CP Lang $version"
+            case "$version" in 0.*) title="$title (beta)" ;; esac
+            gh release create "$tag" "${files[@]}" --target "$commit" --title "$title" \
+                --notes "$changes"$'\n\n'"$notes" --latest
             ;;
         edge)
             gh release delete edge --cleanup-tag --yes >/dev/null 2>&1 || true

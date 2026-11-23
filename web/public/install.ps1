@@ -1,7 +1,10 @@
 # Installs CP Lang on Windows: irm https://cp-lang.org/install.ps1 | iex
 #
-#   & ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Edge
-#   .\install.ps1 [-Edge] [-Version 0.3.0|edge-YYYY-MM-DD] [-NoModifyPath]
+#   & ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge
+#   .\install.ps1 [-Channel stable|edge] [-Version 0.3.0|edge-YYYY-MM-DD] [-NoModifyPath]
+#
+# stable (the default) is the newest v* release, beta while 0.x; until the
+# first one exists it installs edge, the build of the newest green main.
 #
 # Downloads the release for this machine from GitHub, checks it against the
 # sha256 in the release's latest.json, unpacks it into
@@ -9,6 +12,8 @@
 # the launcher at $env:CPL_HOME\bin\cpl.exe and adds that folder to the user
 # PATH. CPL_RELEASES_URL points it at a mirror.
 param(
+    [ValidateSet("stable", "edge")]
+    [string]$Channel = "stable",
     [switch]$Edge,
     [string]$Version = "",
     [switch]$NoModifyPath
@@ -24,7 +29,7 @@ function Die($message) {
 
 $releases = if ($env:CPL_RELEASES_URL) { $env:CPL_RELEASES_URL.TrimEnd("/") } else { "https://github.com/ryanbai1412/cp-lang/releases" }
 $cplHome = if ($env:CPL_HOME) { $env:CPL_HOME } else { Join-Path $HOME ".cpl" }
-$channel = if ($Edge) { "edge" } else { "stable" }
+$channel = if ($Edge) { "edge" } else { $Channel }
 
 $target = $env:CPL_INSTALL_TARGET
 if (-not $target) {
@@ -39,7 +44,7 @@ if ($Version) {
     if ($Version -match '^(edge|edge-\d{4}-\d{2}-\d{2}|v\d+\.\d+\.\d+)$') { $tag = $Version }
     elseif ($Version -match '^\d+\.\d+\.\d+$') { $tag = "v$Version" }
     elseif ($Version -ne "stable") { Die "-Version takes 0.3.0, edge or edge-YYYY-MM-DD, not $Version" }
-} elseif ($Edge) {
+} elseif ($channel -eq "edge") {
     $tag = "edge"
 }
 $base = if ($tag) { "$releases/download/$tag" } else { "$releases/latest/download" }

@@ -138,7 +138,11 @@ jobs:
             *) tar -xzf "dist/cpl-${{ matrix.target }}.tar.gz" -C smoke ;;
           esac
           smoke/bin/cpl --version | tee version.txt
-          grep -F "(${{ needs.plan.outputs.channel }}, $(cut -c1-8 <<<"${{ needs.plan.outputs.commit }}"))" version.txt
+          sha=$(cut -c1-8 <<<"${{ needs.plan.outputs.commit }}")
+          case "${{ needs.plan.outputs.channel }}" in
+            stable) grep -E "^cpl [0-9.]+\+$sha" version.txt ;;
+            *) grep -F -- "-${{ needs.plan.outputs.channel }}+$sha" version.txt ;;
+          esac
           printf 'print("ok")\n' >smoke/hello.cp
           test "$(smoke/bin/cpl run smoke/hello.cp)" = ok
       - uses: actions/upload-artifact@v4
@@ -229,12 +233,12 @@ jobs:
           sparse-checkout: web/public
       - name: sh install.sh (curl -fsSL https://cp-lang.org/install.sh | sh)
         if: runner.os != 'Windows'
-        run: sh web/public/install.sh ${{ needs.plan.outputs.channel == 'edge' && '--edge' || '' }} && echo "$HOME/.cpl/bin" >>"$GITHUB_PATH"
+        run: sh web/public/install.sh --channel ${{ needs.plan.outputs.channel }} && echo "$HOME/.cpl/bin" >>"$GITHUB_PATH"
       - name: install.ps1 (irm https://cp-lang.org/install.ps1 | iex)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          & ([scriptblock]::Create((Get-Content -Raw web/public/install.ps1))) ${{ needs.plan.outputs.channel == 'edge' && '-Edge' || '' }}
+          & ([scriptblock]::Create((Get-Content -Raw web/public/install.ps1))) -Channel ${{ needs.plan.outputs.channel }}
           "$HOME\.cpl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
       - name: cpl runs and builds
         shell: bash
