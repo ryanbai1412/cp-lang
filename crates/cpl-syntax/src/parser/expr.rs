@@ -4,7 +4,7 @@ use super::*;
 use crate::literal::{self, StrPart};
 
 impl<'a> Parser<'a> {
-    fn lambda_body(&mut self) -> Expr {
+    pub(super) fn lambda_body(&mut self) -> Expr {
         if self.at(T::Newline) && self.peek_n(1) == T::Indent {
             let start = self.start();
             let block = self.block("the `=>`");
@@ -39,6 +39,9 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expr(&mut self) -> Expr {
         let start = self.start();
+        if self.at_ident("lambda") && matches!(self.peek_n(1), T::Ident | T::Colon) {
+            return self.python_lambda();
+        }
         // Lambdas: `x => x + 1`, `(a, b) => a + b`, `(n: Int) -> Int => ...`.
         let lambda = match self.peek() {
             T::Ident => self.peek_n(1) == T::FatArrow,
@@ -61,14 +64,8 @@ impl<'a> Parser<'a> {
                 });
                 let has_ty = items.iter().any(|(_, t, _)| t.is_some());
                 let has_mut = items.iter().any(|(_, _, m)| *m);
-                let mut ps = Vec::new();
-                let mut ts = Vec::new();
-                let mut ms = Vec::new();
-                for (p, t, m) in items {
-                    ps.push(p);
-                    ts.push(t);
-                    ms.push(m);
-                }
+                let (ps, (ts, ms)): (Vec<_>, (Vec<_>, Vec<_>)) =
+                    items.into_iter().map(|(p, t, m)| (p, (t, m))).unzip();
                 (
                     ps,
                     if has_ty { ts } else { Vec::new() },
@@ -1070,6 +1067,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.bracket()
             }
+            T::Ident if self.f_string_prefix() => self.primary().kind,
             T::Ident => {
                 let mut name = self.name();
                 if name.text == "Some" {

@@ -3,6 +3,85 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `lambda x: x * 2`: Python's lambda. One error with the `x => x * 2`
+    /// fix, read as that lambda.
+    pub(super) fn python_lambda(&mut self) -> Expr {
+        let start = self.start();
+        let kw = self.span();
+        self.bump();
+        let (mut params, mut names) = (Vec::new(), Vec::new());
+        while self.at(T::Ident) {
+            names.push(self.text().to_string());
+            params.push(self.pattern());
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        let colon = self.span();
+        if !self.eat(T::Colon) {
+            self.error_expected(
+                codes::EXPECTED_TOKEN,
+                "`:` after the lambda's parameters",
+                None,
+            );
+            return Expr {
+                kind: ExprKind::Error,
+                span: self.span_from(start),
+            };
+        }
+        let ours = match &names[..] {
+            [one] => format!("{one} =>"),
+            _ => format!("({}) =>", names.join(", ")),
+        };
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                kw,
+                "CP Lang writes a lambda with `=>`, not `lambda`",
+            )
+            .with_help("write `x => x * 2`, or `(a, b) => a + b`")
+            .with_fix(
+                format!("write `{ours}`"),
+                Span::new(kw.start, colon.end),
+                ours,
+            ),
+        );
+        let body = self.lambda_body();
+        Expr {
+            kind: ExprKind::Lambda {
+                params,
+                param_tys: Vec::new(),
+                param_mut: Vec::new(),
+                ret_ty: None,
+                body: Box::new(body),
+            },
+            span: self.span_from(start),
+        }
+    }
+
+    /// `f"{n}"`: Python's f-string. Every CP Lang string interpolates, so
+    /// one error with the fix that drops the `f`, read as the string.
+    pub(super) fn f_string_prefix(&mut self) -> bool {
+        let next = self.tokens.get(self.pos + 1);
+        let adjacent = next
+            .is_some_and(|t| t.kind == T::Str && t.span.start == self.tokens[self.pos].span.end);
+        if !self.at_ident("f") || !adjacent {
+            return false;
+        }
+        let span = self.span();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                span,
+                "CP Lang strings interpolate without an `f` prefix",
+            )
+            .with_help("write `\"n = {n}\"`")
+            .with_fix("remove the `f`", span, ""),
+        );
+        self.bump();
+        true
+    }
+
     /// `let a, b = t`: Python's unpacking without parentheses. One error
     /// with the fix that adds them, read as the tuple pattern.
     pub(super) fn bare_tuple_pattern(&mut self, first: Pattern) -> Pattern {
@@ -39,25 +118,33 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// `if x == 3 then`: Lua's and Pascal's `then` at the end of a header.
+    /// `if x == 3 then`, `while n > 0 do`: Lua's and Pascal's word at the
+    /// end of a header.
     /// One error with the `:` fix, read as the `:`.
     pub(super) fn foreign_then(&mut self) -> bool {
-        if !self.at_ident("then") || !matches!(self.peek_n(1), T::Newline | T::Eof) {
+        let Some(word) = ["then", "do"].into_iter().find(|w| self.at_ident(w)) else {
+            return false;
+        };
+        if !matches!(self.peek_n(1), T::Newline | T::Eof) {
             return false;
         }
         let end = self.tokens[self.pos].span.end;
         let start = self
             .pos
             .checked_sub(1)
-            .map_or(end - 4, |p| self.tokens[p].span.end);
+            .map_or(end - word.len() as u32, |p| self.tokens[p].span.end);
         let gap = self.rel(Span::new(start, end));
         self.recovered(
             Diagnostic::error(
                 codes::EXPECTED_TOKEN,
                 self.span(),
-                "a header ends with `:` in CP Lang, not `then`",
+                format!("a header ends with `:` in CP Lang, not `{word}`"),
             )
-            .with_help("write `if x == 3:`")
+            .with_help(if word == "do" {
+                "write `while n > 0:`"
+            } else {
+                "write `if x == 3:`"
+            })
             .with_fix("write `:`", gap, ":"),
         );
         self.bump();

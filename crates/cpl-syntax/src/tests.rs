@@ -1876,3 +1876,14 @@ fn a_tuple_unpacked_without_parentheses_is_one_error_with_the_fix() {
         .collect();
     assert_eq!(fixed, [["(", ")"]; 2], "{d:?}");
 }
+
+#[test]
+fn pythons_lambda_f_string_and_do_are_each_one_error_with_a_fix() {
+    let src = "let ys = xs.map(lambda x: x * 2)\n\
+               let z = f(lambda a, b: a + b)\n\
+               print(f\"{n}\", f(1))\n\
+               while n > 0 do\n    n -= 1\n";
+    let d = parse_file(src).diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, ["x =>", "(a, b) =>", "", ":"], "{d:?}");
+}
