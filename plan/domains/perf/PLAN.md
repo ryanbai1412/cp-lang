@@ -43,6 +43,7 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 
 | Instance | General fix | Owner |
 |---|---|---|
+| cf2035f tuned by hand: `ops / n` and `ops % n` named before `t.up(..., finish: (s, v) => ... ops / n ... ops % n ...)` (idiomatic 1.083x -> tuned 0.614x), since the closure recomputes two 64-bit divisions per vertex | a closure subexpression that reads only captures and globals no one writes while the closure lives is worked out once where the closure is made (capture-time hoisting in devirt/closure emission) | perf |
 | `(0..b).start` emits `0`, not `Range::make(0, b).lo` (`expr/builtin.rs`; noi17p2 34530 -> 32521 B) | lowering stops building `Range::make(0, 0 + len).lo + i + 0` around view indexes; failing that, one IR simplifier pass (pure projections of literals, `x + 0`) in `lib.rs::prepared` beside `prune` | compiler (lowering), perf (pass) |
 | `if` on a known `same(op, op)` pruned in `prune.rs`, but only when `on:` is passed | `same` folds for a default-valued op parameter too (request in compiler's worklog) | compiler |
 | Bitset fusion keyed on the field list (`is_bitset_ty`, `scope::rows`), stale twice | recognise std types by declaration, one predicate shared by codegen | perf |
