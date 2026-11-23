@@ -53,7 +53,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 110 (std and core claimers) | 0 | M2 |
-| Rebuild holes (cold agent) | probe P1 | 32 (round 2) | < 5 | M3 |
+| Rebuild holes (cold agent) | probe P1 | 21 (round 3; round 2 was 32) | < 5 | M3 |
 | Reverted compiler fixes caught | probe P2 | not measured | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
 | Suite wall time (2 cores) | `time cpl-conform conformance spec-blocks` | 8.7 s | < 20 s | - |

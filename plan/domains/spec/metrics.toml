@@ -78,9 +78,9 @@ target = "0, over std and core claimers"
 
 [[metric]]
 name = "rebuild holes (probe P1, cold agent, spec/ only)"
-command = "grep -m1 'There are' spec/delta/rebuild-2/HOLES.md"
-today = "32 (round 2)"
-target = "< 5 (round 3)"
+command = "grep -m1 'There are' spec/delta/rebuild-3/HOLES.md"
+today = "21 (round 3, at e04eb0d70: 7 silent, 11 contradiction, 3 missing-stdlib; round 2 was 32)"
+target = "< 5 (round 4)"
 
 [[metric]]
 name = "reverted compiler fixes caught (probe P2)"
