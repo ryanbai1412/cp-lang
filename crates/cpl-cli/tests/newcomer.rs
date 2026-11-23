@@ -390,18 +390,18 @@ fn newcomer_scoreboard() {
         all.copies
     );
     assert!(
-        all.silent <= 1,
+        all.silent == 0,
         "{} copies with a mistake checked clean",
         all.silent
     );
     assert!(
-        pct(all.first_right) >= 99.0,
+        pct(all.first_right) >= 99.5,
         "first error off the changed line ({:.1}%)",
         pct(all.first_right)
     );
     assert!(
-        pct(all.runs) >= 98.0,
-        "fewer than 98% of copies run right after `cpl fix` ({:.1}%)",
+        pct(all.runs) >= 99.5,
+        "fewer than 99.5% of copies run right after `cpl fix` ({:.1}%)",
         pct(all.runs)
     );
     assert!(
