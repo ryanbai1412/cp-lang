@@ -1,0 +1,5 @@
+code = "L0570"
+level = "warn"
+group = "idiom"
+title = "Interval DP stepped by length by hand"
+summary = "`for len in ..: for l in ..: let r = l + len - 1`: a table over `[I.ranges]`"

@@ -1,0 +1,5 @@
+code = "L0568"
+level = "warn"
+group = "idiom"
+title = "Smaller set merged into the larger by hand"
+summary = "`if a.len < b.len: (a, b) = (b, a)` then `for x in b: a.add(x)`: `a.absorb(mut b)`"

@@ -30,7 +30,7 @@ for k in n + 1..=m:
             ans[w] = depth[w] - depth[k]
     var big = id[x]
     var small = id[y]
-    if sets[big].len < sets[small].len:  // expect: missing manual-small-to-large
+    if sets[big].len < sets[small].len:  // expect: small_to_large_by_hand
         (big, small) = (small, big)
     for w in sets[small]:
         sets[big].add(w)

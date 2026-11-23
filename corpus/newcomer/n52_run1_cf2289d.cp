@@ -12,7 +12,7 @@ if s.any(x => x < 0):
     print(-1)
 else:
     let (domain C, comp) = compress(s)
-    var bit = Fenwick<C, Int>()  // expect: missing manual-inversion-count
+    var bit = Fenwick<C, Int>()  // expect: inversions_by_fenwick
     var inv = 0
     for i in I:
         let id = comp.at(s[i])

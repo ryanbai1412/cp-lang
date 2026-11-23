@@ -7298,3 +7298,16 @@ prints `YES`. The acceptance run lost minutes to a sample printing `Yes`.
 Only the words yes and no fold; every other token stays exact. AtCoder
 wants the exact case, so a judge-aware comparison is the maximal version.
 Reverse: drop `same_token` in cpl-stress judge.rs.
+## 337. Small-to-large, Fenwick inversions and by-length interval DPs teach `absorb`, `inversions` and `[I.ranges]`: L0568-L0570; `lint_std_names` 159 -> 164 (2026-11-22)
+
+`small_to_large_by_hand` (L0568): `if a.len < b.len: (a, b) = (b, a)` then a
+loop adding each element of the smaller (`add`/`insert`) into the larger;
+help names `a.absorb(mut b)`. `inversions_by_fenwick` (L0569): a loop with
+`x += k - bit.prefix(..)` and `bit.add(.., 1)`; help names `inversions(xs)`.
+`interval_dp_by_length` (L0570): `for len ..: for l ..: let r = l + len - 1`
+(start inside, length outside); help names `[I.ranges]` and its order, as
+in the atcoder_dp_l port. All `idiom`, `warn`, help only. 0 hits on ports
+and std. The 5 new `lint_std_names` are the method names the shapes read
+(`len`, `add`, `insert`, `prefix`); the fact table removes them. Reverse:
+delete the three records and `rules/hand_ds.rs`.
+

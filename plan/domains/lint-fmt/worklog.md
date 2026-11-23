@@ -275,3 +275,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: `cpl fmt` with no path formats stdin and rewrites no file; `--stdin` honours the nearest cp.toml (decision 335, infra devex ask).
 - From spec (2026-11-22, decision 335): lint records write math as LaTeX inside `\( ... \)` (`\(O(n \log n)\)`), with sizes as `\lvert x \rvert`. The CLI shows the plain-Unicode fallback.
 - 2026-11-22: `scripts/new-lint.py` allocates lint codes against the tree and origin/main and scaffolds the record (decision 336, infra devex ask).
+- 2026-11-22: L0568 `small_to_large_by_hand`, L0569 `inversions_by_fenwick`, L0570 `interval_dp_by_length` (`rules/hand_ds.rs`, decision 337). Newcomer 138/141 (98%), fixes 77/77 check-clean; 0 port/std hits.
