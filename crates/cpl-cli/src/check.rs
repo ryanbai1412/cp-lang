@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use crate::{json_out, EXIT_ERRORS, EXIT_USAGE};
-pub(crate) use cpl_ir::fix::{apply_error_fixes_in, errors_in};
+pub(crate) use cpl_ir::fix::errors_in;
 
 /// Checks each file through the shared front end and renders what it
 /// finds.
@@ -62,12 +62,6 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     code
 }
 
-/// `text` with the lint fixes `cpl lint --fix` would make, and how many.
-fn apply_lint_fixes(db: &mut cpl_check::Database, path: &str, text: String) -> (String, usize) {
-    let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
-    cpl_lint::apply_lint_fixes(db, path, text, &config)
-}
-
 pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
@@ -83,14 +77,8 @@ pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
                 continue;
             }
         };
-        let (fixed, mut applied, left) = apply_error_fixes_in(&mut db, path, &text);
-        let fixed = if left.is_empty() {
-            let (linted, n) = apply_lint_fixes(&mut db, path, fixed);
-            applied += n;
-            linted
-        } else {
-            fixed
-        };
+        let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
+        let (fixed, applied, left) = cpl_lsp::fix::document(&mut db, path, &text, &config);
         if applied > 0 {
             if let Err(error) = std::fs::write(path, &fixed) {
                 *stderr += &format!("cpl: can't write `{path}`: {error}\n");

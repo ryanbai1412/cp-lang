@@ -106,16 +106,8 @@ impl Playground {
     /// for errors, then lint fixes once it checks clean), as `fixed`, with
     /// `applied` and the errors left as its diagnostics.
     pub fn fix(&mut self, name: &str, source: &str) -> Value {
-        let (fixed, mut applied, left) =
-            cpl_ir::fix::apply_error_fixes_in(&mut self.db, name, source);
-        let fixed = if left.is_empty() {
-            let config = cpl_lint::Config::default();
-            let (linted, n) = cpl_lint::apply_lint_fixes(&mut self.db, name, fixed, &config);
-            applied += n;
-            linted
-        } else {
-            fixed
-        };
+        let config = cpl_lint::Config::default();
+        let (fixed, applied, left) = cpl_lsp::fix::document(&mut self.db, name, source, &config);
         let code = if left.is_empty() { 0 } else { EXIT_ERRORS };
         let stderr = rendered(&left, name, &fixed);
         let applied = Value::from(u32::try_from(applied).unwrap_or(u32::MAX));

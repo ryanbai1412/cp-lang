@@ -10,6 +10,7 @@
 
 mod complete;
 pub mod explain;
+pub mod fix;
 mod imports;
 mod outline;
 mod rename;

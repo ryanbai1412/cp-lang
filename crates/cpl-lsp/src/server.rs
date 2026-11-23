@@ -1386,14 +1386,7 @@ fn fix_file(_db: &mut Database, _uri: &str, _text: &str) -> Option<String> {
 /// the client hasn't applied the edit yet.
 #[cfg(not(target_arch = "wasm32"))]
 fn fix_file(db: &mut Database, uri: &str, text: &str) -> Option<String> {
-    let (fixed, mut applied, left) = cpl_ir::fix::apply_error_fixes_in(db, uri, text);
-    let fixed = if left.is_empty() {
-        let (linted, n) = cpl_lint::apply_lint_fixes(db, uri, fixed, &lint_config(uri));
-        applied += n;
-        linted
-    } else {
-        fixed
-    };
+    let (fixed, applied, _) = crate::fix::document(db, uri, text, &lint_config(uri));
     db.set_file(uri, text);
     (applied > 0).then_some(fixed)
 }
