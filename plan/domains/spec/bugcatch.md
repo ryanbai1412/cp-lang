@@ -127,3 +127,12 @@ Bugs: 3, all compiler.
 - A table over a named product, `[P] (i, d) => e`, is E0303 (R01.8.1).
 
 Cases added: 3, all known gaps.
+
+## Round 17 result (2026-11-23)
+
+2 of 5 behaviour fixes caught (40%), with 4 more classed as optimisations. Misses:
+- `02e44dcc1`, a lone `\r` in a comment. Now covered by `core-01/lone-cr-in-comment-is-error`.
+- `f560237da`, a codegen scan for a surviving `Iter::Walk`. This is an internal invariant that no program output shows.
+- `47e918780`, which walks library domains without building a list. The change is in cost only; a `tool: build` case with `lacks: "std::vector"` on a `Subset` walk would catch it.
+
+The script runs the interpreter leg alone. That is why `38f04e5ba`, an assert kept in the judge build, counted as an optimisation: its case's C++ leg isn't measured. Round 18 should add native legs.
