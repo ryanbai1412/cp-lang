@@ -6,28 +6,28 @@
 name = "zero-cost pairs passing (both bars)"
 command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
 target = "7/7"
-today = "3/7 (domains, op_values, slices_views); modular and segtree_prefix do not build on v0.3; exit 1"
+today = "5/7 at --reps 7 on 9dab3159c (all 7 build; optionals FAIL 1.316x vs hand.cpp, held for Q2; slices_views 1.068x vs direct.cp, 1.011x at --reps 21), exit 1"
 milestone = "M2"
 
 [[metric]]
 name = "zero-cost worst ratio vs hand.cpp"
 command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
 target = "<= 1.05"
-today = "7.976 (iterators)"
+today = "1.316 (optionals; held for Q2); iterators 0.933 at --reps 7, 1.097 at --reps 21 (same box, noise of about 0.15)"
 milestone = "M2"
 
 [[metric]]
 name = "zero-cost worst ratio vs direct.cp"
 command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
 target = "<= 1.05"
-today = "4.996 (iterators)"
+today = "1.068 (slices_views at --reps 7; 1.011 at --reps 21)"
 milestone = "M2"
 
 [[metric]]
 name = "zero-cost optionals vs hand.cpp"
 command = "E ./target/release/cpl bench --zero-cost bench/zero-cost --reps 11 --format json"
 target = "<= 1.05"
-today = "1.264 (1.007 vs direct.cp)"
+today = "1.316 (0.781 vs direct.cp), --reps 7 on 9dab3159c"
 milestone = "M2"
 
 [[metric]]
