@@ -21,11 +21,14 @@ std::string out;
 // Binary mode, so Windows writes \\n as \\n, not \\r\\n: the same bytes on every OS.
 inline const int binary_stdout = _setmode(_fileno(stdout), _O_BINARY);
 #endif
+// Open `Capture`s: while one lives, `out` holds only what it collects, and
+// writing it out early would put it before what was printed first.
+inline int capturing = 0;
 inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
-inline void put_char(u8 c) { out.push_back((char)c); if (out.size() >= (1u << 16)) flush(); }
+inline void put_char(u8 c) { out.push_back((char)c); if (out.size() >= (1u << 16) && !capturing) flush(); }
 inline void put_str(const std::string& s) { out += s; }
 inline void put_str(const char* s) { out += s; }
-inline void put_line() { out.push_back('\\n'); if (out.size() >= (1u << 16)) flush(); }
+inline void put_line() { out.push_back('\\n'); if (out.size() >= (1u << 16) && !capturing) flush(); }
 ",
     },
     Piece {
@@ -105,8 +108,8 @@ inline void put_fixed(double x, int digits, bool zero, int width) {
 // Collects what is printed while it lives: how a \"{x}\" string is built.
 struct Capture {
     std::string saved;
-    Capture() { saved.swap(out); }
-    std::string take() { std::string text; text.swap(out); out.swap(saved); return text; }
+    Capture() { saved.swap(out); ++capturing; }
+    std::string take() { std::string text; text.swap(out); out.swap(saved); --capturing; return text; }
 };
 ",
     },
