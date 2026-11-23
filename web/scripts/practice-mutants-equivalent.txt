@@ -9,5 +9,3 @@ meeting-rooms: var rooms = 0  =>  var rooms = 1  # n >= 1, so the answer is at l
 round-trip: for mask in 1..1 << n:  =>  for mask in 1..=1 << n:  # mask 1 << n has no bit below n set, so the body does nothing
 round-trip: var best: [0..1 << n, T]?Int = None  =>  var best: [0..=1 << n, T]?Int = None  # one unused extra row
 stepping-stones: var cost: [0..n]Int = 0  =>  var cost: [0..=n]Int = 0  # one unused extra cell
-fibonacci-mod: print((step ** n).get(0, 1))  =>  print((step ** n).get(0, 2))  # bug: Mat.get does not bounds-check; killed once it traps
-prime-count: let prime: [0..=top]Int = [0..=top] x => if s.is_prime(x): 1 else: 0  =>  let prime: [0..top]Int = [0..=top] x => if s.is_prime(x): 1 else: 0  # bug: an array's declared domain is not checked against its value; killed once it is
