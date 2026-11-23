@@ -1,16 +1,12 @@
-// IOI 2012 Crayfish Scrivener: a text, empty at first. "T c" types the
-// letter c at the end, "U x" undoes the last x commands (an undo is a
-// command too, and can be undone), and "P i" prints the letter at position
-// i, counting from 0. P is not a command. The input is the number of lines
-// and then the lines.
-//
-// The original is a persistent segment tree with one root per command.
-// Every text is some earlier text plus one letter, so the texts form a
-// tree: a node is a text, its parent is the text without the last letter.
-// A command only names a node, and an undo names the node of an earlier
-// command. "P i" is the ancestor of the current node with i + 1 letters;
-// each node keeps one long jump upwards, chosen so that the climb takes
-// O(log n) steps and a new node needs no table.
+// Source: IOI 2012 P3 (Crayfish Scrivener), https://dmoj.ca/problem/ioi12p3
+// Problem: a text starts empty. "T c" appends letter c, "U x" undoes the last x commands (an undo
+//   is a command and can be undone too), "P i" prints the letter at 0-based position i (not a
+//   command). Up to 1e6 operations; here stdin gives their count and then the lines.
+// Solution: every text is an earlier text plus one letter, so the texts form a tree (parent =
+//   the text without its last letter) and a command just names a node: T adds a child, U reuses
+//   the node of an earlier command. "P i" climbs to the ancestor with i + 1 letters. Each node
+//   keeps its parent and one skew-binary jump (its parent's jump's jump when the two jumps span
+//   equal lengths, else its parent), so a climb is O(log n) steps and a new node is O(1).
 let n: Int = read()
 domain Text = 0..=n  // Text.first is the empty text
 var len: [Text]Int = 0

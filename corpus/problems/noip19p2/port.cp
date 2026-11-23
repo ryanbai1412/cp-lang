@@ -1,12 +1,11 @@
-// NOIP '19 P2 - Brackets on a Tree: every vertex of a tree rooted at 1 holds
-// '(' or ')'. Let k[v] be the number of balanced substrings of the string
-// read from the root down to v. Print the xor of v * k[v] over all v.
-// Walk down from the root. open[v] is the nearest ancestor-or-self '(' still
-// unmatched on the way to v. A ')' at v closes j = open[parent]; the
-// balanced strings ending at v are the one from j to v plus every balanced
-// string ending just above j, and what is still open is whatever was open
-// above j. Everything a vertex needs comes from its parent and from j's
-// parent, so a single preorder pass does it.
+// Source: NOIP 2019 Senior P2 (Brackets on a Tree), https://www.luogu.com.cn/problem/P5658
+// Problem: a tree of n <= 5e5 vertices rooted at 1 (parent f_u < u), each vertex holding '(' or
+//   ')'. k_i counts the substrings (by position) of the root-to-i string that are balanced.
+//   Print the xor of i * k_i over all i.
+// Solution: walk down from the root. open[v] is the nearest '(' on the path to v still
+//   unmatched. A ')' at v closes j = open[parent]: the balanced strings ending at v are j..v plus
+//   one per balanced string ending at j's parent, and open[v] becomes open[j's parent]. k[v] is
+//   k[parent] plus those. Everything comes from the parent and j's parent: one preorder, O(n).
 // original: corpus/submissions/5127828.cpp
 
 let n: 1..=5e5 = read()

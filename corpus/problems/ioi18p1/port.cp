@@ -1,7 +1,11 @@
-// IOI 2018 Combo: a hidden word of n letters over A B X Y, whose first
-// letter never appears again. press(p) returns the longest prefix of the
-// word that occurs in p (p at most 4n long). Find the word in n + 2 presses.
-//
+// Source: IOI 2018 P1 (Combo), https://dmoj.ca/problem/ioi18p1
+// Problem: interactive. A hidden word S of N <= 2000 letters over A B X Y whose first letter
+//   never appears again; press(p), |p| <= 4N, returns the longest prefix of S that is a substring
+//   of p. Find S; full score needs at most N + 2 presses.
+// Solution: a letter in two presses: press(s+A+s+B) says the pair {A, B} or {X, Y}, then press
+//   one of the pair. That finds the first letter; a, b, c are the other three. Each middle letter
+//   takes one press of s+a + s+b+a + s+b+b + s+b+c (length 4|s| + 6 <= 4N), which scores |s| + 1
+//   for a, |s| + 2 for b, |s| for c. The last letter takes two presses again: N + 2 in all.
 // IDEAL SKETCH, not run: the prototype has no `protocol` / `@interactor`.
 // The solution below is complete; the judge half is what `cpl stress` needs.
 // original: corpus/submissions/4707803.cpp

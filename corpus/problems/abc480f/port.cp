@@ -1,5 +1,11 @@
-// ABC480 F — Cake Cutting
-// Bitmask DP (N <= 20): Subset<I> + submask @brute(main)
+// Source: AtCoder ABC 480 F (Cake Cutting), https://atcoder.jp/contests/abc480/tasks/abc480_f
+// Problem: N <= 20 cakes of sizes A_i <= 1e9, M <= 100 people, sum S divisible by M. A cut splits
+//   one piece in two (any real sizes). Print the fewest cuts after which every person can get
+//   exactly S / M.
+// Solution: lay the cakes in some order and cut at every multiple of T = S / M: that costs M
+//   minus the number of prefixes whose sum is a multiple of T, and is optimal. dp[s] is the most
+//   such prefixes over orders of the cakes in s (rem[s] = sum mod T); answer M - dp[full].
+//   O(2^N N). The @brute partitions into groups with sums divisible by T over submasks, O(3^N).
 
 let (n, m): (1..=20, 1..=100) = read()
 domain I = 0..n

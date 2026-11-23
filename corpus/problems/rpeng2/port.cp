@@ -1,4 +1,11 @@
-// RPENG 2 (IOI 1998 Polygon): cut one edge, then merge neighbours by their edge's + or x (buildable today-form)
+// Source: RPENG 2, which is IOI 1998 Polygon, https://dmoj.ca/problem/ioi98p6
+// Problem: a polygon of N <= 50 integer vertices whose edges are + ('t') or * ('x'). Remove one
+//   edge, then repeatedly merge two neighbours by their edge's operation. Print the best final
+//   value, then every edge (increasing) whose removal can reach it.
+// Solution: removing edge i leaves a chain, and a chain's best value comes from splitting it at
+//   its last operation. Products of negatives need both ends, so lo/hi[i, len] keep the least
+//   and largest value of the chain of len + 1 vertices from vertex i round the ring: + combines
+//   lo with lo and hi with hi, * all four products. O(N^3).
 // original: corpus/submissions/4810287.cpp
 let n: 1..=50 = read()
 var times: List<Bool> = []

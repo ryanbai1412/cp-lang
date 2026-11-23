@@ -1,4 +1,12 @@
-// IOI '20 P4, Packing Biscuits (buildable today-form)
+// Source: IOI 2020 P4 (Packing Biscuits), https://dmoj.ca/problem/ioi20p4
+// Problem: k <= 60 biscuit types, a[i] of type i, each of tastiness 2^i, total tastiness <= 1e18.
+//   Count the y for which x <= 1e18 bags can each be packed with total tastiness exactly y.
+//   q <= 1000 independent calls.
+// Solution: y works iff x * (y mod 2^(i+1)) <= s[i] for every i, s[i] the tastiness of types
+//   0..=i (leftovers carry upwards). pow[i] counts the working y < 2^i. For pow[i + 1], the y
+//   with bit i set need y <= s[i] / x; the working lower parts under that cap are counted by
+//   walking the cap's high bits j, adding pow[j] and tightening the cap by s[j] / x each time.
+//   O(k^2) per call.
 // original: corpus/submissions/4733047.cpp (grader function count_tastiness)
 // stdin here: q, then per call `k x` and a[0..k).
 use std.math.{bit_len}
