@@ -57,7 +57,15 @@ impl<'a> Lowerer<'a> {
                 _ => return None,
             },
         };
-        let seq = self.expr(base, None);
+        let mut seq = self.expr(base, None);
+        // A reversed view keys its cells from the far end; the counter follows the walk (R04a.9.6).
+        if matches!(seq.kind, ExprKind::Builtin(Builtin::Reversed, _)) {
+            seq = self.mk(
+                ExprKind::Builtin(Builtin::ToList, vec![seq]),
+                Ty::list(elem.clone()),
+                span,
+            );
+        }
         let res = if matches!(seq.ty, Ty::List(_)) {
             Ty::Keyed(Box::new(elem), dim)
         } else {

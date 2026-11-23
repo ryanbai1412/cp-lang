@@ -486,3 +486,8 @@ Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Co
   - `first-bang-trap-on-full-prefix` (hesitation, step `compete`): 2272A: `(0..n).first(v => ...)!` trapped with error[R0301] when the mex is n; needed `?? n`. Evidence: round/cf2272A.cp: `fn mex(b: [P]Int) -> Int = (0..n).first(v => not (1..=m).any(i => b[P(i)] == v)) ?? n`
   - `copy-clone-two-spellings` (hesitation, step `design`): The borrowing guide uses `a.copy()` while the spec and every diagnostic say `a.clone()`; both run, two spellings for one idea. Evidence: https://cp-lang.org/docs/guides/borrowing `let saved = a.copy()` vs https://cp-lang.org/docs/ref/core/05-ownership R2 `x.clone()`; design/p10.cp prints `1 2 1 2 1 2`
 - 2026-11-23: `maximal`/`minimal` return `[D]Range<D>` / `[D]?Range<D>` (decision 372, spec/lib/sequence-patterns.md updated): the 5 lent-slice check errors are gone, seq.cp check 7 -> 2 (both compiler: `?D` Eq, field-name parse); `minimal` doc uses `track(..)` (Window has no `pop(x)`), seq docs 200/209. coci21c2p5 was already failing (`iv.keys` types as `Int`) and now also says `maximal` needs a domain for `D`.
+- 2026-11-23: P0 `rev-view-index-not-reversed`: `a.rev.keyed().items` gave source keys 3..0 in both
+  `cpl run` and C++; R04a.9.6 says `keyed()` counts from 0 in walk order. Lowering now copies a
+  reversed view into a list before rekeying (\(O(n)\) make instead of \(O(1)\)); `a.rev.items` keeps
+  source keys per R04a.9.2. Case `core-04/rev-keyed-counts-in-walk-order`. General fix owed (compiler/interp):
+  a view flag for "keys follow the walk" so the reversed case stays \(O(1)\).
