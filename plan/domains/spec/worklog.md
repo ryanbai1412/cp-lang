@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rlsp.5 names the one-step `cpl setup neovim` / `cpl setup vim` that `cpl` ships, instead of a runtime-path line into a checkout; editors README routed to tools.
 - Decision 324: named arguments to a variadic parameter make a named tuple (R06.1.5), the mechanism behind `each(sum: +, hi: max)`. Three cases, all failing: core one routed to compiler (SUBSET known gap), `each` return type to stdlib.
 - Round 6 H-SEGTREE-NO-OP: `lib/ops-ranges.md` §8 now states what an act-only tree's `st[k]` returns; its case fails in std (E0302), re-routed to stdlib. H-STD-K-COUNT: spec defines `V.count`/`Int(v)`; 404 `D.K`/`to_idx` uses in `std/*.cp` remain stdlib's (routed). All 26 round-6 holes now have a rule, a case or a routed request.
 - Checkpoint 22:05: landed spec-block triage (1d231f37c, 0163534bb, fec05e091), scoreboard baseline fix (55d558027), decision 322 interval DP + product-array cases (7f0047f52), owner refinement (e309f0476), site findings (46e3780c4), BLOCKERS #2/#3 (d908df023). Full gate set green. Milestone 2 section added to README. Next: round-6 holes inside the subset, then rebuild round 7.
