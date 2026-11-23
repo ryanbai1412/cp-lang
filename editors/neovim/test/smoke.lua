@@ -245,7 +245,9 @@ do
     vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME = nil, '', home, nil
     local found = vim.fn['cplang#path']()
     vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME = saved[1], saved[2], saved[3], saved[4]
-    check(found == installed, ('without PATH the plugin runs %s, not %s'):format(found, installed))
+    -- Windows mixes `\\` from `~` with `/`, and its paths ignore case.
+    local same = function(path) return vim.fs.normalize(path):lower() end
+    check(same(found) == same(installed), ('without PATH the plugin runs %s, not %s'):format(found, installed))
 end
 
 -- With the parser built, a .cp buffer highlights through tree-sitter and the shared queries.
