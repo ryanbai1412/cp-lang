@@ -19,10 +19,23 @@ Exit criteria, each checked by a test or a recorded cold run:
 
 Deferring until after Milestone 1 (continues in parallel only when cheap): `explain` representation sections (tools-3), the shared parser/output refactor, the last `--json` gaps, editor polish beyond item 1, Zed/Helix/Emacs beyond staying working, debugger code moves.
 
-Top 3 next steps:
-1. Editors in order: Neovim (`cpl setup neovim` and its CI smoke, landed with this section's update), then VS Code (`.vsix`, format on save, definition), then JetBrains (LSP client plugin, smoke in CI).
-2. Windows: CRLF input and sample files, `\` paths, `clip.exe` for `cpl b -c`, with tests that run on a Windows CI runner.
-3. A contest-flow golden test (new → run → test --add → stress → b -c) on a Companion fixture, run on all three platforms.
+Top 3 next steps (setup for all three editors, the contest-flow golden test, VS Code Import and Add Test have landed):
+1. Make every editor job green on macOS and Windows: `neovim`, `vscode` and the new `cli` jobs in CI.
+2. Prove editor formatting and go-to-definition in the JetBrains smoke, not only that the LSP server is registered.
+3. A cold run of the scenario from `editors/README.md` and `cpl --help` alone, on a fresh machine.
+
+## Milestone 2 (plan/product/MILESTONE-2.md): the complete toolchain
+The most ambitious version: from the first Companion click to an accepted, understood submission, every step is one guessable command or one editor action, on every platform and editor a contestant uses, and each answers faster than the C++ setup it replaces.
+
+Exit criteria:
+1. **One contract:** every command shares one parser, one output layer and one `--json` schema, published as `cli.json`; 25 of 25 commands have JSON; every usage error names the right invocation (a test per command).
+2. **Editors as products:** VS Code and JetBrains have native UIs beyond LSP (test panel with sample diffs, stress and trace views, Companion import); Neovim, Vim, Zed, Helix and Emacs pass the same smoke as tier 1; marketplace listings for VS Code and JetBrains.
+3. **Explain everything:** `cpl explain` and hover show representation (bytes, niches), arrays and peak memory, specializations and remaining checks, from compiler's representation query.
+4. **Contest workspace:** a whole contest imports, times and submits as one folder; `fetch` covers Codeforces, AtCoder and CSES; judge profiles fix compiler, flags and limits per judge.
+5. **Speed:** LSP p95 under 50 ms at 5,000 lines in the release gate; every command's cold start under 100 ms; editor latency tests on all three platforms.
+6. **Release:** `stable` and `edge` channels, `cpl self update --channel`, signed installers and package managers on Linux, macOS and Windows.
+
+Next steps: the shared parser/output refactor, the `explain` sections once compiler's query lands, and the VS Code test panel.
 
 ## Mission
 Every `cpl` command and every editor answers the contestant fast, does what its name says, and tells the truth about the program: one vocabulary, one JSON contract, all built on the compiler's query API.
