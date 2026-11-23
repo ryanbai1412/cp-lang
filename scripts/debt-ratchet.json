@@ -139,7 +139,7 @@
     "diagnostics": 6,
     "idioms": 1,
     "infra": 1,
-    "lint-fmt": 3,
+    "lint-fmt": 2,
     "perf": 4,
     "site": 9,
     "spec": 9,
@@ -148,5 +148,6 @@
     "tools": 22
   },
   "written_twice": 6,
-  "lint_type_syntax": 35
+  "lint_type_syntax": 35,
+  "idioms_evidenced_unlinted": 13
 }

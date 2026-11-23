@@ -261,6 +261,34 @@ def lint_type_syntax(root: Path) -> list[str]:
             for i, line in enumerate(_lines(p), 1) if "TypeKind::" in line]
 
 
+def idioms_evidenced_unlinted(root: Path) -> list[str]:
+    """Spots a real program shows to be non-idiomatic that no lint teaches: each
+    `// expect: missing <pattern>` in corpus/newcomer, and each `non-idiomatic` finding
+    of an acceptance run that corpus/newcomer/acceptance.txt leaves out, marks
+    `missing:`, or maps to a lint that doesn't exist
+    (handbook/guidelines/lints-checklist.md, lints/R26)."""
+    out = [f"{_rel(root, p)}:{i} {m.group(1)}" for p in sorted((root / "corpus/newcomer").glob("*.cp"))
+           for i, line in enumerate(_lines(p), 1)
+           for m in re.finditer(r"missing ([\w-]+)", line.split("// expect:", 1)[1] if "// expect:" in line else "")]
+    ledger = root / "corpus/newcomer/acceptance.txt"
+    fate = {}
+    if ledger.is_file():
+        for line in _lines(ledger):
+            if line.strip() and not line.startswith("#"):
+                id_, _, rest = line.partition(" ")
+                fate[id_] = rest.strip()
+    for run in sorted((root / "research/acceptance/runs").glob("*.json")):
+        for f in json.loads(run.read_text(encoding="utf-8")).get("findings", []):
+            if f.get("kind") != "non-idiomatic":
+                continue
+            d = fate.get(f["id"], "")
+            lint = d[len("lint:"):] if d.startswith("lint:") else None
+            known = lint and ((root / "spec/lints" / lint).is_dir() or (root / "spec/checker-lints" / lint).is_dir())
+            if not (known or d.startswith("not-lint:")):
+                out.append(f"{_rel(root, run)} {f['id']} {d or 'no entry in corpus/newcomer/acceptance.txt'}")
+    return sorted(set(out))
+
+
 def backend_std_names(root: Path) -> list[str]:
     subdirs = [f"crates/{c}/src" for c in BACK_ENDS]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
@@ -836,6 +864,7 @@ COUNTERS = {
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),
+    "idioms_evidenced_unlinted": ("non-idiomatic spots with evidence that no lint teaches", idioms_evidenced_unlinted, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
     "near_dup_fns": ("near-identical fns across crates", near_dup_fns, True),
     "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),

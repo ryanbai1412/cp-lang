@@ -146,7 +146,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | C++, Python and Rust habits get the CP Lang spelling | marked spots flagged on the newcomer set and skill-eval first tries | generated suite | `crates/cpl-cli/tests/newcomer.rs`, `crates/cpl-lint/src/idiom_tests.rs` |
-| Every idiom in the catalogue with evidence has a rule | catalogue families with port or newcomer evidence and no rule | `missing` | — |
+| Every idiom with evidence has a rule (`lints/R26`) | newcomer `missing` marks, and acceptance findings with no lint, no owed mark or no owner | ratchet `idioms_evidenced_unlinted` | `scripts/debt-ratchet.py`, `corpus/newcomer/acceptance.txt` |
 | A lint catches the bug it names (`lints/R25`) | records whose `before.cp`, renamed and planted after a clean corpus program, fires a different count, or whose planted `near_miss.cp` fires | metamorphic suite over every record | `crates/cpl-lint/src/plant_tests.rs` |
 | The most frequent lints are worth seeing | hits per lint on corpus `port.cp`; top lints sampled for true positives | process, ranked in metrics | `plan/domains/lint-fmt/metrics.toml` |
 | A finding teaches in one read: the fact, the CP Lang way, a link | findings without a help or an explain page | gate | `crates/cpl-lint/src/record_tests.rs`, `crates/cpl-lint/src/checker_tests.rs` `every_checker_lint_has_a_registry_entry_for_cpl_explain` |

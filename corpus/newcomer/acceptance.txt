@@ -1,0 +1,33 @@
+# What became of each `non-idiomatic` finding in research/acceptance/runs/*.json.
+# One line per finding id: `lint:<name>` (a lint teaches it), `missing:<pattern>`
+# (a lint is owed; counted by `idioms_evidenced_unlinted` in scripts/debt-ratchet.py),
+# or `not-lint: <why>` (no lint can decide it; the owner is named).
+# Rule: lints/R26, handbook/guidelines/lints-checklist.md#r26-an-idiom-with-evidence-gets-a-lint
+no-sort-desc-spelling lint:sort_desc_by_negation
+prefix-sum-manual-push missing:prefix-totals-list
+inversions-manual-fenwick lint:inversions_by_fenwick
+argmax-manual-loop lint:loop_argmax
+array-to-list-copy-for-helper not-lint: how to type an array parameter is a docs question (idioms)
+run-length-manual-loop lint:runs_by_hand
+per-tree-graph-manual-bfs lint:queue_head_index
+runs-not-taught-in-practice not-lint: practice text (site)
+scan-includes-leading-zero missing:prefix-totals-list
+map-get-index-workaround-nonidiomatic not-lint: the copy made by `get` is an API question (stdlib)
+heap-len-hesitation lint:small_to_large_by_hand
+scan-returns-prefix-not-seq missing:prefix-totals-list
+checker-shares-only-input not-lint: what a `@check` sees is language scope (spec)
+str-no-split not-lint: a missing std function (stdlib)
+map-index-push-no-autoinsert lint:group_into_map
+fill-spelling-hesitation not-lint: the spelling of a filled array (stdlib); `[0; n]` already gets an error with the fix
+optional-last-loop-guard lint:coalesce_test_then_unwrap
+prefix-sums-manual-loop missing:prefix-totals-list
+optional-index-default not-lint: arithmetic on optionals is a language question (spec)
+copy-clone-two-spellings not-lint: two std spellings for one copy (stdlib)
+checker-duplicates-solution not-lint: what a `@check` sees is language scope (spec)
+runs-doc-contradiction-slice-key not-lint: `runs` docs disagree with the code (stdlib)
+map-of-list-push-traps lint:group_into_map
+take-into-other-index-lint not-lint: a report about L0601 itself (diagnostics)
+let-list-element-copies not-lint: codegen copies a lent element (compiler)
+heap-small-to-large-indirection lint:small_to_large_by_hand
+manual-binary-search-flat-nodes lint:hand_rolled_answer_search
+empty-list-of-lists-init not-lint: the spelling of n empty lists (stdlib)

@@ -252,3 +252,16 @@ corpus solution just as on `xs[i] /= d` alone.
 Enforced by: `a_record_fires_the_same_renamed_and_planted_in_a_clean_program`
 in `crates/cpl-lint/src/plant_tests.rs`.
 
+### R26: An idiom with evidence gets a lint
+
+When a real program (a newcomer draft, an acceptance run) writes a pattern
+CP Lang has a better spelling for, a lint teaches it, or the spot is
+recorded as owed, or as something no lint can decide, with its owner.
+Reason: users repeat the hand-written version until something points them
+to the better one; a pattern seen and not recorded is seen again.
+Example: acceptance runs wrote prefix sums with a push loop four times;
+`corpus/newcomer/acceptance.txt` records them as `missing:prefix-totals-list`
+until `Prefix` can be walked whole.
+Enforced by: the `idioms_evidenced_unlinted` ratchet in
+`scripts/debt-ratchet.py`, over `// expect: missing` marks in
+`corpus/newcomer` and `corpus/newcomer/acceptance.txt`.
