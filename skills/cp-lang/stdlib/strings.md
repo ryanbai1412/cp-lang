@@ -32,7 +32,7 @@ In prelude (no `use` needed): `RollingHash`, `SuffixArray`, `common_prefix_len`,
 
 \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ).
 
-Fields: `rank: List<Int>`, `rmq: List<Int>`, `log: List<Int>`, `dcum: List<Int>`, `toks: List<Int>`.
+Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `toks: List<Int>`.
 
 - `fn new<S: Indexed>(s: S) -> SuffixArray` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
