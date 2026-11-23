@@ -383,6 +383,8 @@ fn capitalized_name_with_closed_type_arguments_is_generic() {
         "((cmp i Lt n) and (cmp m Gt k))"
     );
     assert!(!show(&expr("a < b > (c)\n")).contains("a<"));
+    assert_eq!(show(&expr("shift<3>(x)\n")), "shift<1>(x)");
+    assert_eq!(show(&expr("shift<2 + 1>(x)\n")), "shift<1>(x)");
 }
 
 #[test]

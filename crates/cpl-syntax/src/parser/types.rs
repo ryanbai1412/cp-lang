@@ -865,3 +865,44 @@ fn foreign_type(name: &str) -> Option<&'static str> {
         _ => return None,
     })
 }
+
+/// Written as only a type can be: a capitalized name, or a tuple, array,
+/// optional or record of them.
+pub(super) fn names_a_type(ty: &crate::ast::Type) -> bool {
+    use crate::ast::TypeKind;
+    match &ty.kind {
+        TypeKind::Named { name, args } => {
+            name.is_type_like()
+                && args
+                    .iter()
+                    .all(|a| matches!(a.kind, TypeKind::Value(_)) || names_a_type(a))
+        }
+        TypeKind::Tuple(items) => items.iter().all(names_a_type),
+        TypeKind::Optional(t) | TypeKind::Mut(t) => names_a_type(t),
+        TypeKind::Array { elem, .. } => names_a_type(elem),
+        TypeKind::Range { .. } | TypeKind::LiteralUnion(_) | TypeKind::ConstrainedStr { .. } => {
+            true
+        }
+        TypeKind::Record(fields) => fields.iter().all(|(_, t)| names_a_type(t)),
+        // A `const` argument, as in `shift<3>(x)`: `a < v > (x)` is no comparison (R01.5.3).
+        TypeKind::Value(e) => const_arith(e),
+        _ => false,
+    }
+}
+
+/// An arithmetic value of literals and `const` names such as `3` or `N - 1`, so
+/// `i < n and m > (k)` and `a < b > (c)` stay comparisons.
+fn const_arith(e: &crate::ast::Expr) -> bool {
+    use crate::ast::{BinOp, ExprKind};
+    match &e.kind {
+        ExprKind::Int(_) => true,
+        ExprKind::Name(n) => n.starts_with(|c: char| c.is_ascii_uppercase()),
+        ExprKind::Paren(e) | ExprKind::Unary { expr: e, .. } => const_arith(e),
+        ExprKind::Binary { op, lhs, rhs, .. } => {
+            !matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce)
+                && const_arith(lhs)
+                && const_arith(rhs)
+        }
+        _ => false,
+    }
+}

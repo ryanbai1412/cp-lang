@@ -1,5 +1,6 @@
 //! Expressions.
 
+use super::types::names_a_type;
 use super::*;
 use crate::literal::{self, StrPart};
 
@@ -1932,28 +1933,6 @@ pub(crate) fn unescape(text: &str) -> String {
         }
     }
     out
-}
-
-/// Written as only a type can be: a capitalized name, or a tuple, array,
-/// optional or record of them.
-fn names_a_type(ty: &crate::ast::Type) -> bool {
-    use crate::ast::TypeKind;
-    match &ty.kind {
-        TypeKind::Named { name, args } => {
-            name.is_type_like()
-                && args
-                    .iter()
-                    .all(|a| matches!(a.kind, TypeKind::Value(_)) || names_a_type(a))
-        }
-        TypeKind::Tuple(items) => items.iter().all(names_a_type),
-        TypeKind::Optional(t) | TypeKind::Mut(t) => names_a_type(t),
-        TypeKind::Array { elem, .. } => names_a_type(elem),
-        TypeKind::Range { .. } | TypeKind::LiteralUnion(_) | TypeKind::ConstrainedStr { .. } => {
-            true
-        }
-        TypeKind::Record(fields) => fields.iter().all(|(_, t)| names_a_type(t)),
-        _ => false,
-    }
 }
 
 pub(super) const BINARY_OPS: &[TokenKind] = &[

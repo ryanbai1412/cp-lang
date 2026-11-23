@@ -1,0 +1,4 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"k":{"name":"k","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":4,"label":"let k = 4","stage":"main","values":{"stdout":[],"k":4},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":1,"line":5,"label":"print → 12 9 1000","stage":"main","values":{"stdout":["12 9 1000"],"k":4},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":2,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["12 9 1000"],"k":4},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:
