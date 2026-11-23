@@ -87,6 +87,7 @@ pub(super) fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) ->
                             | "cuts"
                             | "mask"
                             | "size"
+                            | "K"
                     ) =>
             {
                 true
