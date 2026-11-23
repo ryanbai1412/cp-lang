@@ -6821,3 +6821,16 @@ restore the hand-written REPO.md, and give `gen.py` back its list.
   from the checker rather than by name.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/pops.rs` and
   `spec/lints/peek_then_pop/`, and lower the ratchet.
+||||||| parent of eb05131aa (check: a comprehension's hoisted range bounds stay inside its loop)
+
+## 305. Comprehension and table lowering is its own module (2026-11-22)
+
+- **Call.** `open_loops`, `close_loops`, the comprehension guards, `comprehension`,
+  `table` and `build_table` moved from `crates/cpl-ir/src/lower/expr.rs` to
+  `crates/cpl-ir/src/lower/comprehension.rs`; `lower/mod.rs` grows by its one
+  `mod` line, and `expr.rs` shrinks by about 490 (ratchet updated).
+- **Why.** The fix that keeps a comprehension's hoisted temporaries inside its
+  loop pushed `expr.rs` past its cap; the loops and what they hoist are one
+  topic that reads better apart.
+- **Reverse.** Move the module's `impl` back into `expr.rs`.
+

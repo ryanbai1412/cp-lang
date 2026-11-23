@@ -10,6 +10,7 @@
 mod anon_domain;
 mod cache;
 mod call;
+mod comprehension;
 mod expr;
 mod fresh;
 mod keyed;
