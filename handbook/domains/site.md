@@ -181,7 +181,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Productive in under an hour | intro sections, examples that run, time for a cold reader to solve the first practice problem | Gate for the examples; process for the time | `web/scripts/gate.mjs`; **missing**: timed cold run |
 | Learn covers the ground | judged problems per level, Div 2 A to Div 1 C; chapters per topic | Count | `plan/domains/site/metrics.toml` |
 | Practice problems are judged correctly | reference solutions failing a test; starters that pass; problems missing a page, meta entry or sample | Generated suite over every problem | `web/scripts/gate.mjs` |
-| Practice tests are strong | wrong solutions the tests accept | **missing**: mutate each reference solution and require a test to fail | none |
+| Practice tests are strong | wrong solutions the tests accept | [site/R1](../guidelines/site-checklist.md): every one-token mutant of each `ref.cp` must fail a test, unless listed with the reason no test can | `web/scripts/practice-mutants.mjs` (prebuild) |
 | Hints teach before acceptance | problems without a hint linking std docs or a guide | Gate | **missing**: hints are written, not checked |
 | Chapters teach the design | chapters without runnable examples and a "why, compared with X" section | Process: [Judgment rubric](#judgment-rubric) | partial: the gate checks the examples |
 | Design chapters cover the whole language | `spec/core` parts no Language chapter cites | [site/R8](../guidelines/site-checklist.md); Gate | `web/scripts/facts.mjs` |

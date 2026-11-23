@@ -1,0 +1,13 @@
+# Mutants of a practice ref.cp that pass every test in its tests.json, each with why no test can kill it.
+# Checked by web/scripts/practice-mutants.mjs: a new survivor fails the build (add a test that kills it),
+# and so does a line here whose mutant is now killed (delete the line).
+boat-pairs: if i < j and s[i] + s[j] <= x: i += 1  =>  if i <= j and s[i] + s[j] <= x: i += 1  # i == j is the last pass either way
+bus-seats: if inside + on <= c:  =>  if inside + on < c:  # at inside + on == c both branches leave inside = c, refused unchanged
+edit-steps: var d: [0..=s.len, 0..=t.len]Int = 0  =>  var d: [0..=s.len, 0..=t.len]Int = 1  # every cell is written before it is read
+few-kinds: var best = 0  =>  var best = 1  # n >= 1 and k >= 1, so the answer is at least 1
+meeting-rooms: var rooms = 0  =>  var rooms = 1  # n >= 1, so the answer is at least 1
+round-trip: for mask in 1..1 << n:  =>  for mask in 1..=1 << n:  # mask 1 << n has no bit below n set, so the body does nothing
+round-trip: var best: [0..1 << n, T]?Int = None  =>  var best: [0..=1 << n, T]?Int = None  # one unused extra row
+stepping-stones: var cost: [0..n]Int = 0  =>  var cost: [0..=n]Int = 0  # one unused extra cell
+fibonacci-mod: print((step ** n).get(0, 1))  =>  print((step ** n).get(0, 2))  # bug: Mat.get does not bounds-check; killed once it traps
+prime-count: let prime: [0..=top]Int = [0..=top] x => if s.is_prime(x): 1 else: 0  =>  let prime: [0..top]Int = [0..=top] x => if s.is_prime(x): 1 else: 0  # bug: an array's declared domain is not checked against its value; killed once it is

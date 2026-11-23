@@ -98,3 +98,9 @@ name = "deploy_lag_minutes"
 command = "curl -s https://cp-lang.org/version.json  # compare with the newest green main"
 today = "not measured"
 target = "<= 30"
+
+[[metric]]
+name = "practice_mutants_surviving"
+command = "node web/scripts/practice-mutants.mjs  # surviving mutants of practice ref.cp files, all listed as equivalent"
+today = "10 of 403 (8 equivalent, 2 masked by compiler/stdlib bugs)"
+target = "only equivalent mutants"

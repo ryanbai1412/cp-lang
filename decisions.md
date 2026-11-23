@@ -8353,3 +8353,9 @@ tag move fatal again.
 - **Call.** `web/scripts/gen-ref.mjs` fails the site build when a std `example:` line that is not in `web/scripts/doc-examples-failing.txt` can't run as a program, and when a listed line runs again. The list starts with the 35 lines the reference already showed as static code, so `skip_lists` goes from 162 to 197.
 - **Why.** Those 35 were already exempt, just invisibly: a new broken example joined them with no signal, which is how a reader met a doc example that doesn't compile. Listing them makes the exemption counted, and the ratchet keeps it falling.
 - **Reverse.** Delete the list and the check in `gen-ref.mjs`; broken examples go back to being shown static without failing anything.
+
+## 424. Practice tests must kill every mutant of the reference solution, except listed equivalent ones (site, 2026-11-23)
+
+- **Call.** `web/scripts/practice-mutants.mjs` runs in the site prebuild. It makes every one-token mutant of each practice `ref.cp` (comparison flips, `..` against `..=`, `+ 1` dropped, `min` against `max`, digit bumps; lines that read input are skipped) and runs the ones that check on the problem's `tests.json`. A mutant that passes every test fails the build unless `web/scripts/practice-mutants-equivalent.txt` lists it with the reason no test can kill it. A listed mutant that is now killed also fails, so the list stays exact. The first run: 403 mutants, 393 killed, 10 listed; 2 of the 10 survive only because of bugs (an unchecked `Mat.get`, an array's declared domain not checked against its value) and drop off once those are fixed.
+- **Why.** A practice problem whose tests accept an off-by-one teaches the reader that the wrong solution is right. Hand-picked tests miss boundaries; mutants find which boundary a test set never touches.
+- **Reverse.** Delete the stage from `web/scripts/prebuild.mjs`, the script and its list.
