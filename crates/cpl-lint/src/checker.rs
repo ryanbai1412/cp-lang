@@ -5,7 +5,6 @@
 
 use crate::{Allows, Config, Group, Level};
 use cpl_diag::{Code, Diagnostic, Severity};
-use std::path::Path;
 
 /// One spec name of a lint the checker emits.
 pub struct CheckerLint {
@@ -42,7 +41,12 @@ pub(crate) fn checker_lint_named(name: &str) -> Option<&'static CheckerLint> {
 
 /// The checker's lints on `src`, at the levels `config` and the file's own
 /// `with lint(...)` sets. Empty when `src` does not parse.
-pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Diagnostic> {
+#[cfg(test)]
+pub(crate) fn checker_lints(
+    path: Option<&std::path::Path>,
+    src: &str,
+    config: &Config,
+) -> Vec<Diagnostic> {
     checked(path, src, config).lints
 }
 
@@ -55,24 +59,8 @@ pub struct Checked {
     pub problems: Vec<Diagnostic>,
 }
 
-/// The errors `cpl check` reports for `src`, one per root cause, for a
-/// file lints cannot parse.
-pub fn check_errors(path: Option<&Path>, src: &str) -> Vec<Diagnostic> {
-    let key = path
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "<lint>.cp".to_string());
-    let mut db = cpl_check::Database::new();
-    db.set_file(&key, src);
-    let Some(analysis) = db.analyze(&key) else {
-        return Vec::new();
-    };
-    (analysis.diagnostics.iter())
-        .filter(|d| d.severity == Severity::Error)
-        .cloned()
-        .collect()
-}
-
-pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
+#[cfg(test)]
+pub(crate) fn checked(path: Option<&std::path::Path>, src: &str, config: &Config) -> Checked {
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<lint>.cp".to_string());

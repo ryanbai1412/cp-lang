@@ -38,9 +38,9 @@ mod walk;
 
 pub mod cli;
 
-pub use checker::{
-    check_errors, checked, checked_analysis, checker_lints, Checked, CheckerLint, CHECKER_LINTS,
-};
+#[cfg(test)]
+pub(crate) use checker::{checked, checker_lints};
+pub use checker::{checked_analysis, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
@@ -705,17 +705,10 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
     }
 }
 
-/// Type-directed rewrites reported by the checker, applied to a fixed point:
-/// removed syntax (such as `Range.lo`/`.hi` -> `.start`/`.end`, leaving user
-/// struct fields named `lo`/`hi` untouched) and a getter called with `()`.
-pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> (String, usize) {
-    let key = path
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "<fix>.cp".to_string());
-    fix_checked_removed_syntax_in(&mut cpl_check::Database::new(), &key, src)
-}
-
-/// [`fix_checked_removed_syntax`] on `key` in a warm `db`.
+/// Type-directed rewrites the checker reports for `key` in a warm `db`,
+/// applied to a fixed point: removed syntax (such as `Range.lo`/`.hi` ->
+/// `.start`/`.end`, leaving user struct fields named `lo`/`hi` untouched)
+/// and a getter called with `()`.
 pub fn fix_checked_removed_syntax_in(
     db: &mut cpl_check::Database,
     key: &str,
@@ -758,23 +751,26 @@ pub fn fix(src: &str, config: &Config) -> (String, usize) {
 
 /// Like [`fix`], resolving imports relative to `path` when given.
 pub fn fix_at(path: Option<&std::path::Path>, src: &str, config: &Config) -> (String, usize) {
-    let (mut src, mut total) = fix_removed_syntax(src);
+    let key = path
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "<fix>.cp".to_string());
+    fix_in(&mut cpl_check::Database::new(), &key, src, config)
+}
+
+/// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
+pub fn fix_in(
+    db: &mut cpl_check::Database,
+    key: &str,
+    src: &str,
+    config: &Config,
+) -> (String, usize) {
+    let (src, total) = fix_removed_syntax(src);
     if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
         return (src, total);
     }
-    let (checked, checked_applied) = fix_checked_removed_syntax(path, &src);
-    if checked_applied > 0 {
-        src = checked;
-        total += checked_applied;
-    }
-    loop {
-        let (text, applied) = apply_fixes(&src, &lint(&src, config));
-        if applied == 0 {
-            return (src, total);
-        }
-        total += applied;
-        src = text;
-    }
+    let (src, checked) = fix_checked_removed_syntax_in(db, key, &src);
+    let (src, linted) = apply_lint_fixes(db, key, src, config);
+    (src, total + checked + linted)
 }
 
 pub use cpl_diag::apply_fixes;
