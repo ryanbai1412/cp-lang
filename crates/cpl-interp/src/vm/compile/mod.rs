@@ -302,12 +302,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
             let Some(call) = call.filter(|c| c.span != Span::default()) else {
                 break;
             };
-            let pc = match fallback {
-                Some(pc) => pc as u32,
-                None => match self.call_op(start, call) {
-                    Some(pc) if last.is_none_or(|last| last < pc) => pc,
-                    _ => break,
-                },
+            // A call the VM makes, or one a statement of a `do` in `stmt`
+            // makes on the tree-walker, which waits at that fallback op.
+            let at = (self.call_op(start, call).map(|pc| (pc, true)))
+                .or_else(|| self.inner_fallback(start, call).map(|pc| (pc, false)));
+            let (pc, native) = match (fallback, at) {
+                (Some(pc), _) => (pc as u32, false),
+                (None, Some((pc, native)))
+                    if last.is_none_or(|last| last < pc || (!native && last == pc)) =>
+                {
+                    (pc, native)
+                }
+                _ => break,
             };
             // A statement inside `stmt` that noted this call first is one a
             // run from a checkpoint cannot find: `stmt` is.
@@ -320,7 +326,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 call,
                 before: before.clone(),
             });
-            if fallback.is_none() {
+            if native {
                 let Some(result) = self.call_result(pc, call) else {
                     break;
                 };
@@ -329,6 +335,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
             last = Some(pc);
             before.push(call);
         }
+    }
+
+    /// The fallback op from `start` on whose statement makes `call`.
+    fn inner_fallback(&self, start: usize, call: &Expr) -> Option<u32> {
+        let pc = (start..self.ops.len()).find(|&pc| {
+            let Op::FallbackStmt { idx, .. } = self.ops[pc] else {
+                return false;
+            };
+            let mut found = false;
+            cpl_ir::walk::stmt_exprs(self.fallback_stmts[idx as usize], &mut |e| {
+                cpl_ir::walk::deep_expr(e, &mut |inner| found |= std::ptr::eq(inner, call))
+            });
+            found
+        })?;
+        Some(pc as u32)
     }
 
     /// Notes the call op at `pc` of the `yields` fn that feeds the loop
