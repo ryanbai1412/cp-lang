@@ -1112,7 +1112,7 @@ impl Database {
                 let Some(decl) = items[def_index].decls.iter().find(|d| d.name == r.name) else {
                     continue;
                 };
-                if decl.kind != DeclKind::Value {
+                if decl.kind != DeclKind::Value && !scoping::in_place(&items, &scope, def_index) {
                     continue;
                 }
                 let decl_span = decl.span.shift(ranges[def_index].span.start);
@@ -2479,6 +2479,6 @@ fn wide_array(
 
 mod cycles;
 mod fields;
-mod siblings;
+mod scoping;
 #[cfg(test)]
 mod tests;
