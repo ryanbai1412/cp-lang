@@ -282,7 +282,12 @@ packs, enum order) was added to the core for everyone, never
 special-cased for `std/`. Reflection is a loop and not a macro or a
 `comptime` block because it is the one construct a contestant already
 reads as "for each", needs no new keyword, and keeps generated code
-visible to the trace and the formatter.
+visible to the trace and the formatter. Lost
+with it: Scala-style by-name parameters (`d: => T`) and an implicit
+conversion from `T` to `() -> T`, because a call site must say when its
+argument runs and how often. The stdlib ships with the compiler the same
+way: `std/` is embedded as source, minus its `@test` fns (decision 72),
+so `use std.x` resolves in a lone `cpl` binary and in the browser.
 
 **Algebra is operation values, not traits per monoid (decision 3).**
 `SegTree(+)`, `SparseTable(min)` and `Monoid(id, op)` pass the operation.

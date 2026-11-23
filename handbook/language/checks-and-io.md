@@ -258,7 +258,9 @@ under another, so a runtime modulus is a fresh type, `type Z = Mod(p)`.
 divider, not a wrapper: making a solution multitest is adding one line
 and lifting shared setup above it, never re-indenting. Lost: a required
 `fn solve()`, which every contestant writes and which makes "clear the
-globals" a bug class. Each case being a fresh scope removes that class.
+globals" a bug class. Each case being a fresh scope removes that class. Problems that
+judge a function instead of a program put it in a `@grader mod`
+(decision 136), so the top level stays the local driver.
 
 **Reads come from types (chapter 10).** `read<T>()` dispatches on the
 expected type, so the bound in the statement, the array length and the

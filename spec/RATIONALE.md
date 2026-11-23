@@ -14,9 +14,7 @@ Questions from site or any reader: add them to
 
 ## The whole language
 
-- Overview: `core/00-overview.md` (The model, A small program, Layers).
-- The goals and design rules every decision is checked against are in
-  `AGENTS.md`; the mission and audience in `handbook/product/vision.md`.
+- Moved to [handbook/language/overview.md](../handbook/language/overview.md).
 
 ## Values and types (`core/02-values-types.md`)
 
@@ -48,26 +46,19 @@ See [`handbook/language/traits-and-generics.md`](../handbook/language/traits-and
 
 ## Contexts, build modes and checks (`core/09-contexts-checks.md`)
 
-- Decisions 100, 145, 148, 243.
-- Lost: `@allow(name)` (243; `with lint(name: allow)` is the one spelling).
+- Moved to [handbook/language/checks-and-io.md](../handbook/language/checks-and-io.md).
 
 ## Input and output (`core/10-io.md`)
 
-- Decisions 20, 136, 161.
-- Lost: `Graph.read` (R10.2.5; edges are records, one read rule).
+- Moved to [handbook/language/checks-and-io.md](../handbook/language/checks-and-io.md).
 
 ## Modules and the prelude (`core/11-modules-prelude.md`)
 
-- Decisions 72, 94, 150, 241.
-- Lost: an 80-name prelude budget (150; the prelude is exactly the lib
-  chapters' main tables, so membership is a rule, not a negotiation).
+- Moved to [handbook/language/modules-and-powers.md](../handbook/language/modules-and-powers.md).
 
 ## Library powers (`core/12-powers.md`)
 
-- Decisions 2, 3, 28, 141, 142, 146.
-- Lost: Scala-style by-name parameters and implicit `T` to `() -> T`
-  (28; a call site must say when its argument runs). Any power private to
-  the stdlib (AGENTS.md, "no privileged stdlib").
+- Moved to [handbook/language/modules-and-powers.md](../handbook/language/modules-and-powers.md).
 
 ## Lowering to C++ (`core/13-lowering.md`)
 
