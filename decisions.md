@@ -7311,3 +7311,15 @@ and std. The 5 new `lint_std_names` are the method names the shapes read
 (`len`, `add`, `insert`, `prefix`); the fact table removes them. Reverse:
 delete the three records and `rules/hand_ds.rs`.
 
+
+## 336. `xs.items` walks a `Range<Int>`, so std's keyed fns take ranges; `lower/call.rs` +25 (2026-11-23)
+
+`(0..p).argmax(by: i => a[i])` failed inside `std.seq` with "a `for`
+can't walk over a `Items<Range<Int>>`" (BLOCKERS row 13). Decision 289
+already says a range's keys are its elements, so `Items` now takes a
+`Range<Int>`: it counts `k` from 0 and both key and element are `lo + k`,
+for interpreter and C++ alike. That makes every `S: Keyed` std fn
+(`argmax`, `argmin`, ...) work on a range with no change to std. The debt
+ratchet's `--update rs_over_cap` moves `lower/call.rs` 13019 -> 13044.
+Reverse: drop the `lo` field of `Items` and the `Ty::Range` arm of
+`items_of`; ranges then fail the `for` again.

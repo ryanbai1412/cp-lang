@@ -6315,6 +6315,7 @@ impl<'a> Lowerer<'a> {
                     | Ty::Array { .. }
                     | Ty::Str
                     | Ty::StrView
+                    | Ty::Range(_)
             )
         ) {
             return None;
@@ -6337,6 +6338,22 @@ impl<'a> Lowerer<'a> {
     /// The indices and element type `seq.items` goes through; `None`
     /// when `seq` is not a list or an array of one dimension.
     fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
+        // A range's keys are its elements (R04.4.31): `(2..5).items` walks
+        // `(2, 2) (3, 3) (4, 4)`.
+        if matches!(&seq.ty, Ty::Range(of) if **of == Ty::Int) {
+            let (lo, len) = self.range_lo_len(seq.clone(), span);
+            let (index, elem, first, keyed) = (Ty::Int, Ty::Int, 0, false);
+            let (seq, lo) = (seq.clone(), Some(lo));
+            return Some(Items {
+                seq,
+                len,
+                index,
+                first,
+                keyed,
+                elem,
+                lo,
+            });
+        }
         let (dim, elem) = match &seq.ty {
             Ty::List(elem) | Ty::MutView(elem) => (Dim::Int, (**elem).clone()),
             Ty::ListView(elem, key) | Ty::Keyed(elem, key) => (*key, (**elem).clone()),
@@ -6364,6 +6381,7 @@ impl<'a> Lowerer<'a> {
             first,
             keyed,
             elem,
+            lo: None,
         })
     }
 
@@ -6695,6 +6713,11 @@ impl<'a> Lowerer<'a> {
     /// The index and the element `items` has at the counter `k`.
     fn item_at(&mut self, items: &Items, k: Slot, span: Span) -> (Expr, Expr) {
         let k = self.local(k, span);
+        if let Some(lo) = &items.lo {
+            let at = ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(k));
+            let at = self.mk(at, Ty::Int, span);
+            return (at.clone(), at);
+        }
         let (at, stored) = match items.index {
             Ty::Pos(d) if items.keyed => {
                 let key = self.mk(
@@ -12249,6 +12272,8 @@ pub(super) struct Items {
     /// The view names its cells by source keys, not walk positions.
     keyed: bool,
     elem: Ty,
+    /// A range's first element: its cells are `lo + k`, not `seq[k]`.
+    lo: Option<Expr>,
 }
 
 impl Items {
