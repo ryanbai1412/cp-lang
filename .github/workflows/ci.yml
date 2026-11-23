@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         part: [checks, conform, "tests:hash:1/6", "tests:hash:2/6", "tests:hash:3/6", "tests:hash:4/6", "tests:hash:5/6", "tests:hash:6/6"]
-    timeout-minutes: 90
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -104,7 +104,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -135,7 +135,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -166,7 +166,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -184,7 +184,7 @@ jobs:
   jetbrains:
     name: jetbrains
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain

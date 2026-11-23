@@ -1,6 +1,6 @@
 # infra
 
-Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-23: first edge release published (edge-2026-11-23, from 528cddc42); `install.sh` installs it on a clean Ubuntu 24.04; main CI red on lane reds the sheriff is fixing; `land.sh` is rebase, fast checks, push (about 5 s).
+Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-23: first edge release published (edge-2026-11-23, from 528cddc42); `install.sh` installs it on a clean Ubuntu 24.04; version 0.3.0, two channels (edge, stable by hand); main CI red on lane reds the sheriff is fixing; `land.sh` is rebase, fast checks, clippy on touched and dependent crates, push (about 5-10 s).
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md) · gate design: [design/gate-tiers.md](design/gate-tiers.md)
 
@@ -18,6 +18,17 @@ Keep every other domain moving: main green at every commit, a gate fast enough t
 Deferring: a stable `v0.3.0`, per-crate commit-tier test selection, the gate step registry, status-board polish, the 16-core runner.
 
 Next 3: (1) install-smoke on all three OSes after each publish; (2) macOS and Windows in the CI test matrix; (3) main green and CI <= 3 min.
+
+## Milestone 2
+[plan/product/MILESTONE-2.md](../../product/MILESTONE-2.md), the stable release. The complete infra: nobody thinks about landing, CI or releases. Exit criteria:
+1. Main is green at least 95% of the time (7-day window); any red is fixed or reverted within 15 min, and a commit that turns the core gate red and stays red 15 min is auto-reverted.
+2. Landing p95 at most 30 s, never over 1 min; every lane's devex time under 5%.
+3. Main CI p50 at most 3 min end to end on GitHub-hosted runners, on all three OSes, with every deterministic step cached or skipped by input hash.
+4. Two channels: edge from every green tip (hourly cap), stable promoted by hand (`v*` tag or dispatch) with CHANGELOG notes, beta while 0.x; Ryan promotes `v0.3.0`.
+5. Every release passes install-smoke on Linux, macOS and Windows (sh, PowerShell, `cpl self update`, VS Code `.vsix`, Neovim/Vim setup) before it is marked latest; signed checksums; reproducible builds rebuild byte for byte.
+6. The macOS, Windows and editor CI jobs block main again (each after 3 greens in a row).
+
+Next: (1) CI at 3 min (nextest archive shared by shards, compiled-C++ cache, rebalanced shards); (2) auto-revert job for the core gate; (3) install-smoke as a gate on marking a release latest.
 
 ## Covers
 - **Main green**: CI results, triage of any red within 30 min (fix or revert, never weaken a test), flaky tests, stale `devin/*` branches and lock refs.
