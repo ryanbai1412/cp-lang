@@ -163,6 +163,14 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
 
+    def test_stdlib_todo_marks_stubs_in_test_fns(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "spec/std/seq.cp",
+                        "pub fn a() = todo\n@test\nfn t():\n    todo\npub fn b() = todo\n")
+            self.assertEqual(dr.stdlib_todo(root),
+                             ["spec/std/seq.cp:1", "spec/std/seq.cp:4 @test", "spec/std/seq.cp:5"])
+
     def test_cli_update_by_name_keeps_the_rest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

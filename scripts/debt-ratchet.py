@@ -91,12 +91,20 @@ def _git(root: Path, *args: str) -> list[str]:
 
 
 def stdlib_todo(root: Path) -> list[str]:
+    """Each `todo` stub as `path:line`, with ` @test` when it sits in an `@test` fn."""
     out = []
     for sub in ("spec/std", "std", "stdlib"):
         for path_str in sorted(glob.glob(str(root / sub / "*.cp"))):
             p = Path(path_str)
-            out += [f"{_rel(root, p)}:{i}" for i, line in enumerate(_lines(p), 1)
-                    if TODO_STUB_RE.search(line)]
+            in_test = False
+            for i, line in enumerate(_lines(p), 1):
+                if line.strip() == "@test":
+                    in_test = True
+                    continue
+                if in_test and line.strip() and not line[0].isspace() and not line.startswith("fn "):
+                    in_test = False
+                if TODO_STUB_RE.search(line):
+                    out.append(f"{_rel(root, p)}:{i}" + (" @test" if in_test else ""))
     return out
 
 
