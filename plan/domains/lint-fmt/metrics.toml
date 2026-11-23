@@ -59,8 +59,9 @@ note = "a proxy: capitalised string literals; includes unit names GB/MB/TB"
 [[metric]]
 name = "wasm_gates"
 command = "git grep -c 'target_arch = \"wasm32\"' -- crates/cpl-lint"
-today = 8
+today = 4
 target = 0
+note = "per-file counts summed: Cargo.toml 1, rules/bounds.rs 3 (the prover, kept native for cpl.wasm size)"
 
 [[metric]]
 name = "lint_seconds_largest_file"
