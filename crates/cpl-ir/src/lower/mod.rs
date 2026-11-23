@@ -1417,10 +1417,10 @@ impl<'a> Lowerer<'a> {
                     }
                     ast::StmtKind::Trait {
                         name,
+                        generics,
                         body,
                         supers,
                         alias,
-                        ..
                     } => {
                         let tid = self.traits.len();
                         let alias_of = alias.then(|| {
@@ -1432,12 +1432,7 @@ impl<'a> Lowerer<'a> {
                                 })
                                 .collect()
                         });
-                        let mut methods = Vec::new();
-                        for s in &body.stmts {
-                            if let ast::StmtKind::Fn(f) = &s.kind {
-                                methods.push(f);
-                            }
-                        }
+                        let (methods, fields) = fn_value::trait_members(body);
                         let unimplemented = stmt
                             .decorators
                             .iter()
@@ -1458,6 +1453,8 @@ impl<'a> Lowerer<'a> {
                             offset,
                             name: name.text.clone(),
                             methods,
+                            fields,
+                            generic: !generics.is_empty(),
                             unimplemented,
                             alias_of,
                         });

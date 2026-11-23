@@ -53,7 +53,9 @@ impl<'a> Lowerer<'a> {
     /// `if A: Weighted:` on a type with no `impl`: met by shape when every member the trait
     /// leaves without a body is a field of `A` (a record arc `(to: V, w: Int)` is `Weighted`).
     pub(super) fn has_bound_by_shape(&mut self, param: &str, trait_name: &str) -> bool {
-        let Some(GenArg::Ty(ty)) = self.gen_env.get(param).cloned() else {
+        let Some(GenArg::Ty(ty @ (Ty::Record(_) | Ty::Tuple(_)))) =
+            self.gen_env.get(param).cloned()
+        else {
             return false;
         };
         let Some(Sym::Trait(tid)) = self.get_sym(trait_name) else {
@@ -65,6 +67,48 @@ impl<'a> Lowerer<'a> {
             .filter(|m| matches!(m.body, ast::FnBody::None))
             .map(|m| m.name.text.clone())
             .collect();
-        !needed.is_empty() && needed.iter().all(|m| self.field_of(&ty, m).is_some())
+        let info = &self.traits[tid];
+        let (m, offset, generic, fields) =
+            (info.mod_id, info.offset, info.generic, info.fields.clone());
+        let fields_met = fields.iter().all(|&(name, want)| {
+            let Some((_, got)) = self.field_of(&ty, name) else {
+                return false;
+            };
+            if generic {
+                return true;
+            }
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+            );
+            let want = self.resolve_ty(want);
+            (self.cur_mod, self.offset) = saved;
+            got == want
+        });
+        !(needed.is_empty() && fields.is_empty())
+            && fields_met
+            && needed.iter().all(|m| self.field_of(&ty, m).is_some())
     }
+}
+
+/// A trait body's methods, and the fields (`w: Int`) a record meets it with.
+pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str, &ast::Type)>) {
+    let (mut methods, mut fields) = (Vec::new(), Vec::new());
+    for s in &body.stmts {
+        match &s.kind {
+            ast::StmtKind::Fn(f) => methods.push(f),
+            ast::StmtKind::Let {
+                pat:
+                    ast::Pattern {
+                        kind: ast::PatternKind::Name(n),
+                        ..
+                    },
+                ty: Some(t),
+                init: None,
+                ..
+            } => fields.push((n.as_str(), t)),
+            _ => {}
+        }
+    }
+    (methods, fields)
 }

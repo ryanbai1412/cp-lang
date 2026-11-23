@@ -1672,19 +1672,36 @@ impl<'a> Checker<'a> {
                 _ => false,
             },
             _ => match ty {
-                Ty::Record(fields) => {
-                    if let Some(Def::Trait { methods, .. }) = self.global(trait_name).as_deref() {
-                        methods
-                            .iter()
-                            .filter(|m| m.required)
-                            .all(|m| fields.iter().any(|(n, _)| n == &m.name))
-                    } else {
-                        true
-                    }
-                }
+                Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
                 _ => false,
             },
         }
+    }
+
+    /// R08.1.7: a record meets a trait when a field meets each member the trait leaves without a
+    /// body, a field `w: W` or a bodiless `@get fn w(self) -> W` alike, with its type.
+    pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {
+        let Some(Def::Trait {
+            methods,
+            fields: wanted,
+            ..
+        }) = self.global(trait_name).as_deref().cloned()
+        else {
+            return true;
+        };
+        let getters = methods
+            .into_iter()
+            .filter(|m| m.required)
+            .map(|m| match m.ty {
+                Ty::Fn { params, ret } if params.len() <= 1 => (m.name, *ret),
+                _ => (m.name, Ty::Unknown),
+            });
+        let wanted: Vec<(String, Ty)> = getters.chain(wanted).collect();
+        wanted.iter().all(|(name, want)| {
+            fields.iter().any(|(f, got)| {
+                f == name && (matches!(want, Ty::Param(_) | Ty::Unknown) || got.fits(want))
+            })
+        })
     }
 
     fn derives_structural(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {

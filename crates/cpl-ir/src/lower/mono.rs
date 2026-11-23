@@ -94,6 +94,9 @@ pub(super) struct TraitInfo<'a> {
     pub offset: u32,
     pub name: String,
     pub methods: Vec<&'a ast::FnDecl>,
+    /// `trait HasW: w: Int`: the fields a record meets it with; `generic` says they may name its parameters.
+    pub fields: Vec<(&'a str, &'a ast::Type)>,
+    pub generic: bool,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
     /// type with no `impl` of it.
     pub unimplemented: Option<String>,
