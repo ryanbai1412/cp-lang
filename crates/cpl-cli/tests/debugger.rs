@@ -117,11 +117,17 @@ fn run_format_json_is_what_the_editor_overlays() {
         b"3\n1 500 2\n",
     );
     assert_eq!(out.status.code(), Some(3));
-    assert!(
-        text(&out.stdout).contains("\"error\":{\"line\":2,\"message\":\""),
-        "{}",
-        text(&out.stdout)
-    );
+    // The error is the diagnostic `cpl check --format json` would give it
+    // (handbook/guidelines/errors-checklist.md errors/R12).
+    let report = text(&out.stdout);
+    for field in [
+        "\"code\":\"R0",
+        "\"line\":2,",
+        "\"message\":\"",
+        "\"start\":{\"col\":",
+    ] {
+        assert!(report.contains(field), "no {field} in {report}");
+    }
 }
 
 #[test]

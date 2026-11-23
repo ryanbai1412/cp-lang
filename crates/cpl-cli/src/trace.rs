@@ -262,7 +262,7 @@ pub fn run_report(
     recording: &Recording,
     stdout: &[u8],
     millis: u128,
-    error: Option<(u32, &str)>,
+    error: Option<cpl_json::Value>,
 ) -> String {
     let values: Vec<String> = recording
         .lives
@@ -281,11 +281,8 @@ pub fn run_report(
         values.join(","),
         cpl_json::escape_script_safe_string(&String::from_utf8_lossy(stdout))
     );
-    if let Some((line, message)) = error {
-        out += &format!(
-            ",\"error\":{{\"line\":{line},\"message\":{}}}",
-            cpl_json::escape_script_safe_string(message)
-        );
+    if let Some(error) = error {
+        out += &format!(",\"error\":{error}");
     }
     out.push_str("}\n");
     out

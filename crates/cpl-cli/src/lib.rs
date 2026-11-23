@@ -1361,10 +1361,16 @@ fn observe_file(
         *stderr += &render_trap(path, &compiled.text, trap);
     }
     if !args.trace {
-        let error = observed
-            .trap
-            .as_ref()
-            .map(|trap| (lines.line_of(trap.span.start) + 1, trap.message.as_str()));
+        // The trap as `cpl check --format json` gives a diagnostic, plus the
+        // `line` the editor's overlay reads (errors/R12).
+        let error = observed.trap.as_ref().map(|trap| {
+            let mut error = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
+            if let cpl_json::Value::Object(fields) = &mut error {
+                let line = lines.line_of(trap.span.start) + 1;
+                fields.insert("line".into(), cpl_json::Value::Int(line.into()));
+            }
+            error
+        });
         let _ = stdout.write_all(trace::run_report(&recording, &printed, millis, error).as_bytes());
         return code;
     }
