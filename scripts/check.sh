@@ -248,8 +248,8 @@ case "$gate_part" in
     conform)
         [ "$mode" = fast ] || fail "CPL_GATE_PART=conform needs --fast"
         step "script unit tests"
-        bare_home python3 -m unittest "${script_tests[@]}" \
-            || fail "script unit test failure; rerun: python3 -m unittest scripts/test_*.py"
+        bare_home uv run --quiet python -m unittest "${script_tests[@]}" \
+            || fail "script unit test failure; rerun: uv run python -m unittest scripts/test_*.py"
         step "cpl-conform ratchet (all --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
         "$target/debug/cpl-conform" all --check \
