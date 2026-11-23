@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2796 (995 passing). Rules: 573.
+Cases: 2797 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 2796 (995 passing). Rules: 573.
 - R07 (07-sequences.md): 90 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 58 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -603,7 +603,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.2.8 [3+ 0-]: Input lines may end in `\n` or `\r\n` on every platform: `\r` is whitespace to a token rea...
 - R10.2.9 [1+ 0-]: Input the program doesn't need is still read and checked: `let _ = read<[n - 1]1..=n>()` c...
-- R10.3.1 [8+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
+- R10.3.1 [9+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [4+ 0-]: , any other as `Int(v)` (`1..=n` prints 1..n); `"{x:.9}"` sets float precision, `"{x:6}"` ...
 - R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...

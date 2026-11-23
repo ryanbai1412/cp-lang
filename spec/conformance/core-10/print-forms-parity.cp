@@ -1,4 +1,4 @@
-// expect: ok, output "3 1 2\n3,1,2\n1 a\n2 b\nx 1 2.5000000000|\n2 1 3\nabc\n1 2\n3\n0.3333333333\n-4 1"
+// expect: ok, output "3 1 2\n3,1,2\n1 a\n2 b\nx 1 2.5000000000|\n2-1-3\nabc\n1 2\n3\n0.3333333333\n-4 1"
 // rule: 10.3.1
 // Mixed print forms (sep:, end:, pairs, Char lists, nested lists, F64, floor division) print the same in the interpreter and C++.
 let xs = [3, 1, 2]
