@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Measured: spec-blocks 71/185 (30 error, 84 skip), up from 70 after the rebuild-5 fixes.
 - H-ARRAY-WIDEN decided (decision 246): implicit widening is for scalars only; an array is spelled `xs.map(x => Int(x))`, since a hidden O(n) rewrite breaks R05.2.2's O(1) move. Case `core-04/array-elements-do-not-widen.cp` fails until the compiler emits E0302 (compiler worklog).
 - Bug-catch rerun at aa48a8055 (`uv run scripts/conformance-bugcatch.py`, 28 candidates): 11/13 revertible fixes caught (84%), below the 90% target; misses `ae43f536` (trace text only) and `701193ef` (its `min` half still fails on HEAD; its yields half is covered elsewhere). Table in bugcatch.md.
 - Rebuild 5 silent holes: R01.6.1 runs a shared initializer once per name (H-MULTI-NAME-READ, case `core-01/multi-name-read-per-name.cp`); R02.6.2 lets a `type` alias construct (H-ALIAS-CONSTRUCT, `core-02/alias-constructs.cp`); R02.9.3 says std fresh domains count from 0 (H-FRESH-DOMAIN-BASE); R06.4.8 says `let _ =` is still a drop and names `with lint(discarded_result: allow)` (H-DROP-RESULT). All match `cpl run` today. H-ARRAY-WIDEN (does `[V]1..=9` convert to `[V]Int`? `cpl run` accepts it) is held: an implicit O(n) conversion against `Costs are visible`; needs a call before R04.4.24 lists it. Missing-stdlib ones routed.
