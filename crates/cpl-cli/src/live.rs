@@ -31,6 +31,9 @@ pub type Record<'a> = &'a (dyn Fn(Option<usize>) -> Result<String, String> + Syn
 
 /// Serves until interrupted.
 pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
+    // Read before recording: a save from then on, even one made the moment
+    // the serving line is out, differs from it and records again.
+    let recorded = std::fs::read(path).ok();
     let first = match record(None) {
         Ok(document) => document,
         Err(error) => {
@@ -72,7 +75,7 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
                 scope.spawn(move || answer(stream, shown, run, record));
             }
         });
-        watch(path, &shown, record)
+        watch(path, recorded, &shown, record)
     })
 }
 
@@ -82,8 +85,8 @@ fn say(text: std::fmt::Arguments) {
     let _ = std::io::stderr().write_fmt(text);
 }
 
-fn watch(path: &str, shown: &Mutex<Shown>, record: Record) -> ! {
-    let mut last = std::fs::read(path).ok();
+fn watch(path: &str, recorded: Option<Vec<u8>>, shown: &Mutex<Shown>, record: Record) -> ! {
+    let mut last = recorded;
     loop {
         std::thread::sleep(Duration::from_millis(200));
         let now = std::fs::read(path).ok();

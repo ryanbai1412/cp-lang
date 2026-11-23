@@ -95,6 +95,26 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     server.wait().unwrap();
 }
 
+/// A save made as soon as the serving line is out is a save after the
+/// recording the server shows, so it records again.
+#[test]
+fn a_save_right_after_the_serving_line_records_again() {
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("trace_live_early_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("live.tests")).unwrap();
+    let file = dir.join("live.cp");
+    std::fs::write(&file, SOURCE).unwrap();
+    std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
+    let (mut server, base, _) = serve(&[file.as_os_str()]);
+    std::fs::write(&file, SOURCE.replace("total += i", "total += 2 * i")).unwrap();
+    let live = until(&base, r#""version":2"#);
+    let trace = get(&base, "/trace.json");
+    server.kill().unwrap();
+    server.wait().unwrap();
+    assert_eq!(live, r#"{"version":2,"error":null}"#);
+    assert!(trace.contains("total += 2 * i"));
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn trace_at_a_terminal_records_the_pinned_case() {
