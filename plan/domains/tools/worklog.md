@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Hover at 5,000 lines: about 45 ms of each hover is the bounds prover run twice over the whole file (loops, then indexes). Proving only the hovered fn is not equivalent today (coci25c3p4 counterexample), so nothing landed in the LSP; asked lint-fmt for a single call and a per-item prove in their worklog.
 - Landed (this): re-measured the corpus (`python3 plan/domains/tools/measure.py corpus`): check p95 84.5 ms, 5 of 497 C++ files over 32 KB (was 1 of 449); `measure.py` now names each file over 32 KB; README metrics refreshed. Asked perf about the 5 files.
 - Landed (this): contract test `check_json_reports_what_check_prints_on_every_v03_file` (`crates/cpl-cli/tests/lsp_parity.rs`): on every v0.3 file, `cpl check --json` and the text output agree on severity, code, line, column and message.
 - Landed (this): the site builds `cli.json` from `cpl --help --json` and `cpl judges --json` (identical output, compared as JSON); note in the site worklog.
