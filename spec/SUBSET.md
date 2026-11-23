@@ -252,7 +252,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/grid-row-index-and-block-order.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/rev-keeps-keys.cp: stdlib
-- core-07/rev-view-is-not-indexable.cp: compiler
 - core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
@@ -280,8 +279,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/product-result-indexed-by-parts.cp: compiler
 - core-06/lambda-unpacks-tuple-vertex.cp: compiler
 - core-10/print-range-prints-items.cp: compiler
-- core-07/slice-literal-outside-keys-rejected.cp: compiler
-- core-07/run-literal-index-not-a-key.cp: compiler
 - core-02/str-len-and-charset-compose.cp: compiler
 - core-02/list-of-str-is-chars.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
@@ -304,4 +301,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/range-in-brackets-help-names-list.cp: diagnostics
 - std-rand/shuffled-help-names-rng-shuffle.cp: diagnostics
 - core-06/check-multitest-reads-own-shape.cp: tools
+- std-graph/min-mean-cycle-acyclic-is-none.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler

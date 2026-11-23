@@ -3,4 +3,4 @@
 let a = [10, 20, 30, 40]
 let w = a[1..3].rev
 print(w.nth(0))
-print(a[w.keys.first!])
+print(w.first!)
