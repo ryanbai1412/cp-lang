@@ -21,3 +21,16 @@ fn a_branch_on_an_op_value_keeps_only_the_one_taken() {
         "{cpp}"
     );
 }
+
+#[test]
+fn the_start_of_a_range_from_a_literal_is_the_literal() {
+    let cpp = cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "let xs = [i for i in 0..n]\n",
+        "print((0..xs.len).start)\n",
+        "print((0..n * 2).start)\n",
+    ));
+    let solve = &cpp[cpp.find("void solve").unwrap()..];
+    assert!(solve.contains("put_int(0)"), "{cpp}");
+    assert_eq!(solve.matches("::make(").count(), 1, "{cpp}");
+}

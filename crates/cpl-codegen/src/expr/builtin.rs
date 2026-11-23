@@ -441,7 +441,16 @@ impl<'p> Emitter<'p> {
                 let dn = ident(&self.program.domains[d]);
                 Code::primary(format!("cpl::bound_right({}, {dn}_len)", text(0)))
             }
-            Builtin::RangeLo => Code::primary(format!("{}.lo", codes[0].at(PRIMARY))),
+            // `(a..b).lo` with `a` a literal at least 0 is `a`: `b` can neither trap nor
+            // change anything, and the span cannot overflow, so `make` checks nothing.
+            Builtin::RangeLo => match &args[0].kind {
+                ExprKind::Range { lo, hi }
+                    if matches!(lo.kind, ExprKind::Int(v) if v >= 0) && inert(hi) =>
+                {
+                    self.expr(lo)
+                }
+                _ => Code::primary(format!("{}.lo", codes[0].at(PRIMARY))),
+            },
             Builtin::RangeHi => Code::primary(format!("{}.hi", codes[0].at(PRIMARY))),
             Builtin::RangeRev => Code::primary(format!("{}.rev()", codes[0].at(PRIMARY))),
             Builtin::RangeSum => {
@@ -577,5 +586,19 @@ impl<'p> Emitter<'p> {
                 }
             }
         }))
+    }
+}
+
+/// `e` reads values and does nothing else: no call, no I/O, no trap.
+fn inert(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Cast(_, x) => inert(x),
+        ExprKind::Builtin(Builtin::Len, xs) => xs.iter().all(inert),
+        ExprKind::Binary(cpl_ir::BinOp::Add, a, b) => {
+            matches!(a.kind, ExprKind::Int(0)) && inert(b)
+                || matches!(b.kind, ExprKind::Int(0)) && inert(a)
+        }
+        _ => false,
     }
 }
