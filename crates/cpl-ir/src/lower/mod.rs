@@ -11,6 +11,7 @@ mod cache;
 mod call;
 mod expr;
 mod fresh;
+mod keyed;
 mod memo;
 mod mono;
 mod prefix;
@@ -21,11 +22,10 @@ mod typo;
 use crate::*;
 use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
-use prefix::prefix_shape_struct;
-
 use cpl_syntax::ast;
 use cpl_syntax::narrow;
 use mono::*;
+use prefix::prefix_shape_struct;
 use range::*;
 use std::collections::{HashMap, HashSet};
 
