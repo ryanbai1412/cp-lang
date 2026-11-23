@@ -29,7 +29,7 @@
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
 #            and scripts/site-check.sh: the site build (with the
-#            2,100,000-byte gzipped cap on cpl.wasm) and its browser smoke
+#            2,000,000-byte gzipped cap on cpl.wasm) and its browser smoke
 #        11. the VS Code extension tests (editors/vscode: npm test, and its
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed

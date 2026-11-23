@@ -35,8 +35,8 @@ target = 0
 [[metric]]
 name = "wasm_gzip_bytes"
 command = "node web/scripts/wasm-size.mjs"
-today = 1768985
-target = "<= 2100000 (enforced in prebuild)"
+today = 1913207
+target = "<= 2000000 (enforced in prebuild; shrink-only, lowered to size + ~5% after each cut)"
 
 [[metric]]
 name = "search_index_gzip_bytes"

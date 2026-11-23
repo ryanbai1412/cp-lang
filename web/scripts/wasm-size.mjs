@@ -5,7 +5,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-const cap = 2_100_000;
+// A shrink-only ratchet: when a cut leaves more than 10% headroom, lower the
+// cap to the new size plus about 5% in the same commit.
+const cap = 2_000_000;
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const file = process.argv[2] ?? join(repo, 'dist/wasm/cpl.wasm');
 if (!existsSync(file)) {
@@ -20,3 +22,4 @@ if (gz > cap) {
   process.exit(1);
 }
 console.log(line);
+if (gz * 1.1 < cap) console.log(`wasm-size: over 10% headroom; lower the cap to about ${Math.ceil((gz * 1.05) / 1e4) * 1e4}`);
