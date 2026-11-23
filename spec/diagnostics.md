@@ -167,7 +167,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0591 | while_not_empty_pop | `while not q.is_empty:` then `let x = q.pop()!`: `while let x = q.pop():` |
 | L0592 | manual_starts_with | `s[0..p.len] == p`: `s.starts_with(p)`; `s[s.len - p.len..] == p`: `s.ends_with(p)` |
 | L0593 | test_count_loop | `let t = read()` then `for _ in 0..t:` around the program: `@!multitest` |
-| L0594 | map_contains_then_index | `if k in m:` then `m[k]` in the branch: `if let v = m.get(k):` |
+| L0594 | map_contains_then_index | `if k in m:` then `m[k]` in the branch: `if let v = m.get(k):`; `if k not in m: return` then `m[k]`: `let v = m.get(k) else: return` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

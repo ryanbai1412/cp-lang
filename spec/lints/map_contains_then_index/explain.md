@@ -1,3 +1,5 @@
 C++ asks a map twice: `if (m.count(k)) use(m[k]);`, because `operator[]` inserts and `find` returns an iterator. In CP Lang `m.get(k)` returns `?V`, the value or `None`, so the test and the read are one question. `if k in m:` followed by `m[k]` asks it twice: two lookups, and an `m[k]` that traps when an edit moves it out from under its test. `if let v = m.get(k):` asks once and binds the value the branch reads; an `else:` or `elif` stays as it was.
 
 The lint fires on a `Map` or `SortedMap` declared in the file, when the branch reads `m[k]` with the very key it tested. It stays quiet when the branch writes to `m` or `k`, calls a method on `m` or on `m[k]` (the value may change in place), calls a function of the file whose body names `m` (it may change `m`), or binds `m` or `k` anew: there the bound value could differ from what each `m[k]` reads. When the branch starts with `let x = m[k]`, the fix binds `x` directly and deletes that line.
+
+The guard form is the same question asked twice: `if k not in m: return` (or `break`, `continue`) and then `m[k]` below it becomes `let v = m.get(k) else: return`, with the same quiet cases for the statements after the guard.

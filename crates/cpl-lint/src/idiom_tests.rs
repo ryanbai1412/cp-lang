@@ -231,3 +231,27 @@ fn a_running_total_used_whole_keeps_its_loop() {
     );
     assert!(codes(&indexed).contains(&"L0521"), "{:?}", codes(&indexed));
 }
+
+#[test]
+fn a_key_guard_then_index_is_let_else() {
+    // Acceptance run 3, `map-get-index-workaround`: `if key not in pos: return 0`, then `pos[key]` three times.
+    let ret = "fn f(pos: Map<Int, Int>, key: Int) -> Int:\n    if key not in pos: return 0\n    pos[key] * pos[key] + pos[key]\nprint(f(Map(), 1))\n";
+    assert!(codes(ret).contains(&"L0594"), "{:?}", codes(ret));
+    let out = fixed(ret);
+    assert!(
+        out.contains("    let v = pos.get(key) else: return 0\n    v * v + v\n"),
+        "{out}"
+    );
+    assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    let cont = "let m: Map<Int, Int> = Map()\nfor k in 0..5:\n    if k not in m:\n        continue\n    let x = m[k]\n    print(x)\n";
+    let out = fixed(cont);
+    assert!(
+        out.contains("    let x = m.get(k) else: continue\n    print(x)\n"),
+        "{out}"
+    );
+    assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    let write = "var m: Map<Int, Int> = Map()\nfn f(k: Int) -> Int:\n    if k not in m: return 0\n    m[k] += 1\n    m[k]\nprint(f(1))\n";
+    assert!(!codes(write).contains(&"L0594"), "{:?}", codes(write));
+    let other = "fn f(m: Map<Int, Int>, k: Int) -> Int:\n    if k not in m: return 0\n    m[k + 1]\nprint(f(Map(), 1))\n";
+    assert!(!codes(other).contains(&"L0594"), "{:?}", codes(other));
+}

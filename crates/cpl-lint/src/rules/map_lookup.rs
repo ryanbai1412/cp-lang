@@ -1,7 +1,8 @@
 //! `map_contains_then_index` (L0594): `if k in m:` whose branch reads `m[k]`
 //! looks the key up twice and leaves an index that traps once an edit moves
 //! it out from under the test; `if let v = m.get(k):` looks it up once and
-//! binds the value the branch reads.
+//! binds the value the branch reads. The guard form, `if k not in m: return`
+//! then `m[k]` below it, becomes `let v = m.get(k) else: return`.
 
 use crate::walk::{walk_stmt, Bind, Visitor};
 use crate::{File, Finding, MAP_CONTAINS_THEN_INDEX};
@@ -23,25 +24,74 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 }
             }
         }
+        fn stmts(&mut self, stmts: &[Stmt]) {
+            for (i, stmt) in stmts.iter().enumerate() {
+                self.guard(stmt, &stmts[i + 1..]);
+            }
+        }
     }
-    impl Tests<'_> {
-        fn text(&self, span: Span) -> &str {
+    impl<'a> Tests<'a> {
+        fn text(&self, span: Span) -> &'a str {
             span.shift(self.base).text(self.src)
         }
         fn branch(&mut self, cond: &Cond, block: &Block) {
             let Cond::Expr(test) = cond else {
                 return;
             };
-            let ExprKind::Compare { first: lhs, rest } = &test.kind else {
+            let Some((key, map)) = self.membership(test, CmpOp::In) else {
                 return;
             };
-            let [(CmpOp::In, rhs)] = rest.as_slice() else {
+            self.lookup(test.span, key, map, &block.stmts, None);
+        }
+        /// `if k not in m: return` (or `break`, `continue`): the statements
+        /// after it may read `m[k]`.
+        fn guard(&mut self, stmt: &Stmt, after: &[Stmt]) {
+            let StmtKind::Expr(e) = &stmt.kind else {
                 return;
             };
-            let (key, map) = (self.text(lhs.span), self.text(rhs.span));
-            if !is_path(key) || !is_name(map) || !declares_map(self.src, map) {
+            let ExprKind::If {
+                branches,
+                otherwise: None,
+            } = &e.kind
+            else {
+                return;
+            };
+            let [(Cond::Expr(test), body)] = branches.as_slice() else {
+                return;
+            };
+            let [exit] = body.stmts.as_slice() else {
+                return;
+            };
+            if !matches!(
+                exit.kind,
+                StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_)
+            ) {
                 return;
             }
+            let Some((key, map)) = self.membership(test, CmpOp::NotIn) else {
+                return;
+            };
+            // The block's span runs on to the next line's indent; the guard
+            // ends with its exit.
+            let guard = Span::new(stmt.span.start, exit.span.end);
+            let exit = self.text(exit.span).to_string();
+            self.lookup(guard, key, map, after, Some(&exit));
+        }
+        /// `k in m` (or `k not in m`) with `k` a path and `m` a map name.
+        fn membership(&self, test: &Expr, want: CmpOp) -> Option<(&'a str, &'a str)> {
+            let ExprKind::Compare { first: lhs, rest } = &test.kind else {
+                return None;
+            };
+            let [(op, rhs)] = rest.as_slice() else {
+                return None;
+            };
+            let (key, map) = (self.text(lhs.span), self.text(rhs.span));
+            (*op == want && is_path(key) && is_name(map) && declares_map(self.src, map))
+                .then_some((key, map))
+        }
+        /// The `m[k]` reads in `stmts` become one `m.get(k)` lookup that
+        /// replaces `test`: an `if let` test, or with `exit` a `let .. else:`.
+        fn lookup(&mut self, test: Span, key: &str, map: &str, stmts: &[Stmt], exit: Option<&str>) {
             let mut uses = Uses {
                 src: self.src,
                 base: self.base,
@@ -51,7 +101,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 found: Vec::new(),
                 spoiled: false,
             };
-            for stmt in &block.stmts {
+            for stmt in stmts {
                 walk_stmt(&mut uses, stmt);
             }
             if uses.spoiled || uses.found.is_empty() {
@@ -59,8 +109,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
             let found = uses.found;
             let (src, base) = (self.src, self.base);
-            let bound = block
-                .stmts
+            let bound = stmts
                 .first()
                 .filter(|_| found.len() == 1)
                 .and_then(|first| own_line_let(src, base, first, found[0]));
@@ -75,22 +124,32 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 },
             };
             let lookup = format!("let {name} = {map}.get({key})");
-            let mut edits = vec![(test.span.shift(base), lookup.clone())];
+            let (written, message) = match exit {
+                Some(exit) => (
+                    format!("{lookup} else: {exit}"),
+                    format!("`{key} not in {map}` exits, then `{map}[{key}]` looks it up again"),
+                ),
+                None => (
+                    format!("if {lookup}:"),
+                    format!("`{key} in {map}` is tested, then `{map}[{key}]` looks it up again"),
+                ),
+            };
+            let replaced = match exit {
+                Some(_) => written.clone(),
+                None => lookup.clone(),
+            };
+            let mut edits = vec![(test.shift(base), replaced)];
             match bound {
                 Some((_, line)) => edits.push((line, String::new())),
                 None => edits.extend(found.iter().map(|s| (s.shift(base), name.clone()))),
             }
-            let mut diag = Diagnostic::warning(
-                MAP_CONTAINS_THEN_INDEX.code,
-                test.span.shift(base),
-                format!("`{key} in {map}` is tested, then `{map}[{key}]` looks it up again"),
-            )
-            .with_label(found[0].shift(base), "the second lookup")
-            .with_help(format!(
-                "write `if {lookup}:` and read `{name}`: one lookup, and no `{map}[{key}]` left to trap when an edit moves it past the test"
-            ));
+            let mut diag = Diagnostic::warning(MAP_CONTAINS_THEN_INDEX.code, test.shift(base), message)
+                .with_label(found[0].shift(base), "the second lookup")
+                .with_help(format!(
+                    "write `{written}` and read `{name}`: one lookup, and no `{map}[{key}]` left to trap when an edit moves it past the test"
+                ));
             diag.fixes.push(Fix {
-                title: format!("use `if {lookup}:`"),
+                title: format!("use `{written}`"),
                 edits,
             });
             self.out.push(Finding {
