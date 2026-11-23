@@ -84,6 +84,10 @@ spec-check:
 conformance-coverage *args:
     uv run python scripts/conformance-coverage.py {{args}}
 
+# Write plan/STATUS.md from every domain's metrics.toml and the open questions.
+status:
+    uv run python scripts/status.py
+
 # Regenerate every committed generated file (`just gen --check`: fail if stale).
 gen *args:
     uv run python scripts/gen.py {{args}}

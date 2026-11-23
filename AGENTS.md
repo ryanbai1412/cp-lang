@@ -4,7 +4,7 @@ Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
 Then read, in order:
-0. `spec/STATUS.md` and `spec/README.md`: where the 0.3.0 work stands today,
+0. `plan/STATUS.md` (generated: every domain's metrics and open questions) and `spec/README.md`: where the 0.3.0 work stands today,
    how the spec and corpus fit together, the checks to run, and what is open.
    `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`) and the stdlib in
    `std/` are the only normative language sources; where anything else

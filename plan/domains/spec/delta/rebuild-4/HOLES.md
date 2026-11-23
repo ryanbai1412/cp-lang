@@ -1,6 +1,6 @@
 # Rebuild round 4: holes
 
-I read `ryanbai1412/cp-lang` at commit `f6ff5434d19e19fb709400ea0f22df2c0f25e9bb` (`f6ff5434d`), and only `spec/`: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `std/` and `spec/diagnostics.md`. I did not open `spec/delta/`, `spec/conformance/` or anything outside `spec/`, and I did not run the compiler, so every program here is checked against the text alone.
+I read `ryanbai1412/cp-lang` at commit `f6ff5434d19e19fb709400ea0f22df2c0f25e9bb` (`f6ff5434d`), and only `spec/`: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `std/` and `spec/diagnostics.md`. I did not open `plan/domains/spec/delta/`, `spec/conformance/` or anything outside `spec/`, and I did not run the compiler, so every program here is checked against the text alone.
 
 ## Summary
 

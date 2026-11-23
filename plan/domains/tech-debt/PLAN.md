@@ -18,7 +18,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    in the worklog.
    The `std -> std/` move, measured on 2026-11-22: `spec_std_refs` is 300,
    most of them prose (54 in `plan/domains/stdlib`, 41 in the generated
-   `skills/cp-lang`, 25 in `plan/domains/lint-fmt`, 21 in `spec/delta`). Shipped
+   `skills/cp-lang`, 25 in `plan/domains/lint-fmt`, 21 in `plan/domains/spec/delta`). Shipped
    code finds the directory in 7 places: `crates/cpl-check/build.rs:12`,
    `crates/cpl-check/src/db.rs:1248` and `:2212` (which already accepts `std/`),
    `crates/cpl-check/src/prelude.rs:26`, `crates/cpl-lint/src/rules/imports.rs:20`,

@@ -373,6 +373,6 @@ Tooling:
   it"; decision 158), asked for `(V, V).all((u, v) => ...)` (decision 159), and agreed that
   interval pieces are "a nice concept to have" (decision 162).
 - Asked whether the spec is "solid enough that another agent reading it would be able to
-  basically end up with the same language"; the honest answer is in `spec/STATUS.md`.
+  basically end up with the same language"; the honest answer is in `research/archive/spec-status.md`.
 - "please add everything nonsensitive / additional info to the repo and also make sure it's easy
   for agents to onboard onto."

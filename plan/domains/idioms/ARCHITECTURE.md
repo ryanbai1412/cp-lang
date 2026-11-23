@@ -22,7 +22,7 @@ their main user and asks infra before changing them (see QUESTIONS.md).
 | `research/reviews/<id>.md`, `baseline.json`, `scripts/review-check.py` *(infra)* | Cold taste reviews (port and dream score 1-5) and their ratchet, run in the fast gate (`review-check.py --check`). |
 | `research/frictions/` | 173 friction reports (parsed by the gate: each `##` is a friction with Severity/Goal). |
 | `research/design-history/EXEMPLARS-PORTS.md` | The gold bar the taste reviewer scores against (`plan/PORTING.md` cites it). |
-| `spec/delta/` | Non-normative gap logs between dreams and the spec: `hillclimb.md` (every dream/spec diff), `parser-gaps.md` (forms `spec.cp` may fail on), `dream-comparisons.md`, `blind-dreams-first-ten.md`, `rebuild-*`, `0.2.md`. |
+| `plan/domains/spec/delta/` | Non-normative gap logs between dreams and the spec: `hillclimb.md` (every dream/spec diff), `parser-gaps.md` (forms `spec.cp` may fail on), `dream-comparisons.md`, `blind-dreams-first-ten.md`, `rebuild-*`, `0.2.md`. |
 | `crates/cpl-judge` | Judge profiles (785 + 312 test lines, no deps): `Profile` (compiler, flags, OS, stack, thread stack, size limit), `builtins()`, `builtin(name)`, `named_in(source)` (`// judge:`), `resolve(path, source, chosen)` (flag > file > `cp.toml` > `generic`), `project_config`/`Config` (`[judge.<name>]` overrides and `extends`), flag probing with a memo (`CPL_JUDGE_PROBE_DIR`), `TARGET_BYTES` 32 KB / `HARD_BYTES` 64 KB. |
 | `research/scoreboard.json` (corpus suite) | The committed corpus results `cpl-conform all --check` ratchets against. The crate `cpl-conform` runs it; its owner is not named in DOMAINS.md (see QUESTIONS.md). |
 | `research/writable-from-docs*.{json,md}`, `scripts/writable-from-docs.py` *(infra)* | The docs-only eval: a cold model writes programs from the docs; last run 49/55 passed (`latest` in the JSON). Shared with site. |
@@ -42,7 +42,7 @@ their main user and asks infra before changing them (see QUESTIONS.md).
 ## Invariants
 
 - A port sits beside its accepted original (`orig.cpp`); nobody edits `submissions/`.
-- `dream.cp` is written without the checker and is never edited to pass it; `spec.cp` must pass `cpl check` except on forms in `spec/delta/parser-gaps.md`; every dream/spec difference is logged in `spec/delta/hillclimb.md`.
+- `dream.cp` is written without the checker and is never edited to pass it; `spec.cp` must pass `cpl check` except on forms in `plan/domains/spec/delta/parser-gaps.md`; every dream/spec difference is logged in `plan/domains/spec/delta/hillclimb.md`.
 - Reviews score without reading `orig.cpp`; a port without a dream caps at 3.
 - Judge resolution order: `--judge` > `// judge:` > `cp.toml` > `generic`; output is deterministic and under the profile's byte limit.
 - Corpus test floors only fall with a deliberate commit that says why.

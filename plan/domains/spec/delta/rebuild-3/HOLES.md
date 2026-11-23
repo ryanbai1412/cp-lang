@@ -1,6 +1,6 @@
 # Rebuild round 3: holes
 
-I read the spec at commit `e04eb0d70` of `ryanbai1412/cp-lang`, and only `spec/`: `README.md`, `core/`, `lib/`, `tools/`, `std/` and `diagnostics.md` (plus `GLOSSARY.md`, which `spec/README.md` makes normative). I did not open `spec/delta/`, `spec/conformance/`, `spec/idioms/` or anything outside `spec/`, and I did not run the compiler. Each hole below is a place where writing one of the ten programs needed a guess.
+I read the spec at commit `e04eb0d70` of `ryanbai1412/cp-lang`, and only `spec/`: `README.md`, `core/`, `lib/`, `tools/`, `std/` and `diagnostics.md` (plus `GLOSSARY.md`, which `spec/README.md` makes normative). I did not open `plan/domains/spec/delta/`, `spec/conformance/`, `spec/idioms/` or anything outside `spec/`, and I did not run the compiler. Each hole below is a place where writing one of the ten programs needed a guess.
 
 ## Summary
 

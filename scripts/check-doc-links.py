@@ -14,7 +14,7 @@ DEFAULT_DOCS = [
     "README.md",
     "REPO.md",
     "plan/PORTING.md",
-    "spec/STATUS.md",
+    "plan/STATUS.md",
     "spec/conformance/README.md",
 ]
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")

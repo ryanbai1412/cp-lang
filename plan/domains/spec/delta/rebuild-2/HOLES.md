@@ -1,6 +1,6 @@
 # Rebuild round 2: holes
 
-I worked from `spec/` at 239c87c3. I did not open `spec/delta/`, and I read
+I worked from `spec/` at 239c87c3. I did not open `plan/domains/spec/delta/`, and I read
 no other part of the repo. A hole is any place where I had to guess, even
 when the intent was clear.
 

@@ -18,6 +18,14 @@ check = ["scripts/repo-layout.py", "--check"]
 tier = "pre-commit"
 
 [[gen]]
+name = "status"
+files = ["plan/STATUS.md"]
+inputs = ["plan/domains/*/metrics.toml", "plan/QUESTIONS.md"]
+write = ["scripts/status.py"]
+check = ["scripts/status.py", "--check"]
+tier = "pre-commit"
+
+[[gen]]
 name = "skill"
 files = ["skills/cp-lang/stdlib/*.md"]
 inputs = ["std/*.cp"]

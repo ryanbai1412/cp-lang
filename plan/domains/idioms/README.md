@@ -1,6 +1,6 @@
 # idioms
 
-Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog, `research/dryrun`, `corpus/` (ports + new problems), `crates/cpl-judge`, scoreboard (corpus suite), `spec/delta/`. Status (2026-11-22): skill only on branches; 175/305 tracked ports check on v0.3, none judge-proven.
+Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog, `research/dryrun`, `corpus/` (ports + new problems), `crates/cpl-judge`, scoreboard (corpus suite), `plan/domains/spec/delta/`. Status (2026-11-22): skill only on branches; 175/305 tracked ports check on v0.3, none judge-proven.
 Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + today's values), [ARCHITECTURE.md](ARCHITECTURE.md) (code as it is), [worklog.md](worklog.md).
 
 ## Mission
@@ -9,14 +9,14 @@ What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) 
 ## Covers
 **Skill.** The bundled AI skill (`skills/cp-lang/`), the principles, the idiom catalog (which lint and docs build on), blind evals, the dry-run set.
 
-**Corpus.** The ports and their C++ originals, judge profiles (`crates/cpl-judge`), the corpus suite of the scoreboard, bug-replay and revision suites; growing the problem corpus (`meta.json`, `dream.cp`/`spec.cp`), with gaps written up in `spec/delta/`.
+**Corpus.** The ports and their C++ originals, judge profiles (`crates/cpl-judge`), the corpus suite of the scoreboard, bug-replay and revision suites; growing the problem corpus (`meta.json`, `dream.cp`/`spec.cp`), with gaps written up in `plan/domains/spec/delta/`.
 
 ## Not covered (owner instead)
 - Lint rules and their engine: **lint-fmt** (idioms supplies the catalog and the FP corpus).
 - Stdlib APIs the skill documents: **stdlib**; compiler/codegen bugs found by evals: **compiler**.
 - Docs site and `writable-from-docs` publishing: **site** (shared eval).
 - `cpl-conform` runner and `scripts/` (review-check, corpus.py): **infra** (idioms is the main user).
-- Normative spec text: **spec**; idioms only writes `spec/delta/` (non-normative).
+- Normative spec text: **spec**; idioms only writes `plan/domains/spec/delta/` (non-normative).
 
 ## Success criteria for v0.3
 **Skill.** On main and gated; a blind skill-only run of the 20 dry-run problems passes 20/20 with 0 compiler bugs, 0 workarounds and 0 non-idiomatic lint flags; then 18/20 on a fresh, unseen set.

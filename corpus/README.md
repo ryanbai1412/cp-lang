@@ -34,8 +34,8 @@ record as `problems/<problem>/dream.cp` and `problems/<problem>/spec.cp`.
   syntax and library calls that do not exist; that is the point.
 - `spec.cp` is written after comparing the dream with the spec. It must pass
   `cpl check` against `std` (failures only on forms listed in
-  `spec/delta/parser-gaps.md`).
-- Every difference between the two is logged in `spec/delta/hillclimb.md`
+  `plan/domains/spec/delta/parser-gaps.md`).
+- Every difference between the two is logged in `plan/domains/spec/delta/hillclimb.md`
   as a spec change, a rejected wish (with the reason), or a dream bug.
 
 `hillclimb.json` is the reproducible 100-problem set for the spec

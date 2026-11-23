@@ -6879,3 +6879,22 @@ the same reference rewrite in the other direction.
   16 `std` findings and 1 corpus port (noi02p6), 0 in corpus `spec.cp`.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/euclid.rs` and
   `spec/lints/neg_mod_fixup/`.
+||||||| parent of 64e34b5ea (plan: generate plan/STATUS.md; move spec status, delta and release docs)
+
+
+## 309. `plan/STATUS.md` is generated; spec's status, delta and the release plan move (2026-11-22)
+
+Call: `scripts/status.py` (`just status`, a `gen.toml` pre-commit entry)
+writes `plan/STATUS.md` from every `plan/domains/*/metrics.toml` (recorded
+values) and the open entries of `plan/QUESTIONS.md`; AGENTS.md's first read
+points at it. `spec/STATUS.md` (last updated 2026-11-21) goes to
+`research/archive/spec-status.md`, `plan/RESTRUCTURE.md` to
+`research/archive/restructure.md`; the spec lane's working ledger
+`spec/delta/` moves to `plan/domains/spec/delta/` and `plan/RELEASE.md` to
+`plan/domains/infra/RELEASE.md`, with every reference outside history
+rewritten. `plan/OPERATING.md` and `plan/PORTING.md` stay. The three
+tech-debt questions decided by 266-268 move to "Answered".
+`plan/domains/diagnostics/metrics.toml` did not parse (unescaped quotes at
+line 88); fixed as a trivial unblocking edit.
+Reason: the layout doc (decision 303); `spec/` holds only normative rules.
+Reverse: `git mv` each file back and delete `scripts/status.py`.

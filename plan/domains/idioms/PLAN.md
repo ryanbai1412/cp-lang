@@ -14,7 +14,7 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 2. **Measurement repair.** Restore token counting (port it into `cpl-conform` or a small `scripts/` helper with infra's agreement); `cpl-conform corpus --write` so the board matches a fresh run; make `judges.rs` read the scoreboard as JSON instead of slicing strings; add the tracked ports that pass check to the judge proof.
 3. **Blind eval loop.** One cold run per skill change on the 20; then write a fresh unseen 20 (CSES/AtCoder ABC-E/F style, same shape as `research/dryrun/`: ref, gen, tests). Each run records pass, workaround, lint per problem in `research/skill-eval/`.
 4. **Re-ports.** Batches of ~20: migrate `port.cp` to v0.3 (judge proof), then rethink from `dream.cp` in review-score order (18 under 4 first). Each port lands with its friction report and review. Lint warnings on re-ports are triaged; false positives go to lint-fmt as FP cases.
-5. **Corpus growth.** Hill-climb beyond 100 in thin areas (interactive, geometry, strings, flows); every dream/spec gap in `spec/delta/hillclimb.md` becomes a spec proposal or a conformance case.
+5. **Corpus growth.** Hill-climb beyond 100 in thin areas (interactive, geometry, strings, flows); every dream/spec gap in `plan/domains/spec/delta/hillclimb.md` becomes a spec proposal or a conformance case.
 
 ## Why these milestones
 - **M1 (skill on main, blind-measured)** first because Ryan called the skill critical, and every other eval (writable-from-docs, re-ports by agents) runs through it. Landing is mostly done work.
