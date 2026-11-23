@@ -24,6 +24,7 @@ cpl-contest = { path = "crates/cpl-contest" }
 cpl-lsp = { path = "crates/cpl-lsp" }
 cpl-judge = { path = "crates/cpl-judge" }
 cpl-prover = { path = "crates/cpl-prover" }
+mimalloc = "0.1.52"
 
 [profile.release]
 lto = "thin"
