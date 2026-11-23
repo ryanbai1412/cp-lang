@@ -61,7 +61,7 @@ function Fetch($url, $dest) {
 $tmp = Join-Path (Join-Path $cplHome "tmp") ("install-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
-    Say "fetching $base/latest.json"
+    if ($tag) { Say "fetching $base/latest.json" }
     $manifestPath = Join-Path $tmp "latest.json"
     try { Fetch "$base/latest.json" $manifestPath } catch {
         # Until the first stable release, the stable channel installs edge.
