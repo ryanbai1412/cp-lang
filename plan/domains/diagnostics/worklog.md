@@ -473,7 +473,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
 - Dropped the `list_repeat` diagnostics golden: `[x] * n` is n copies since
   compiler's 353a26177 (decision 135), so its E0309 golden was stale and
   cpl-lsp parity was red on it; tests/programs/list_repeat.cp covers it.
-  Routed the `Fenwick2D` E0501 regression (b8eadc858) to stdlib.
+  Retracted the `Fenwick2D` E0501 report: a stale std embedded in my build, gone after `touch crates/cpl-check/build.rs`.
 - Routed from idioms (2026-11-23, ccc02s4): an open-ended range whose start is optional, in value position, says E0501 "can't handle an unbounded range value yet" instead of naming the `?` end: `domain P = 0..3; let c = P.cuts.first!; print((c.next..).take(2).map(e => Int(e)).sum())`. `(c.next!..)` runs, and the same range in a `for` already gives E0302 "found `?P.cuts`". General fix: check range ends (`bad_range_ends`: add `!`) before the E0501 lowering gate, for open-ended ranges too.
 - Lint L0302 `int_shift_overflow_at_bounds` (lints.md bound row; also
   covers `wide_shift`): `x << k` where a declared `k` can shift a bounded
