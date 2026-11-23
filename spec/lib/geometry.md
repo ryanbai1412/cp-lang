@@ -346,7 +346,7 @@ fn solve(lo: Int, hi: Int):
     let left = upper_hull([-pref[i] for i in (lo..md).rev])
     let right = upper_hull([pref[i] for i in md..hi])
     for p in minkowski_upper(left, right):
-        best[p.x - 1].y max= p.y
+        best[p.x - 1] = Pt(p.x, max(best[p.x - 1].y, p.y))
 
 solve(0, n + 1)
 let hull = upper_hull([best[i] for i in 0..n])

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `lib/geometry.md` divide-and-conquer hull example assigned `best[i].y`, but `Pt`'s fields are fixed (R02 fields rule, `spec/std/geometry.cp`); it now rebuilds the `Pt`. spec-blocks geometry 5/19 pass, 0 error (was 1).
 - Measured: spec-blocks 71/185 (30 error, 84 skip), up from 70 after the rebuild-5 fixes.
 - H-ARRAY-WIDEN decided (decision 246): implicit widening is for scalars only; an array is spelled `xs.map(x => Int(x))`, since a hidden O(n) rewrite breaks R05.2.2's O(1) move. Case `core-04/array-elements-do-not-widen.cp` fails until the compiler emits E0302 (compiler worklog).
 - Bug-catch rerun at aa48a8055 (`uv run scripts/conformance-bugcatch.py`, 28 candidates): 11/13 revertible fixes caught (84%), below the 90% target; misses `ae43f536` (trace text only) and `701193ef` (its `min` half still fails on HEAD; its yields half is covered elsewhere). Table in bugcatch.md.
