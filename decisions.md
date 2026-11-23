@@ -6485,3 +6485,32 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Reverse.** (1) holds until `rules/bounds.rs` is deleted. (2) The records
   can be compiled back into Rust consts. (3) A pretty-printer can replace
   `layout.rs` behind the same `format` API.
+||||||| parent of b398d182e (plan(idioms): decide the re-port bar and the skill gate)
+||||||| parent of a702ac46a (plan(idioms): decide the re-port bar and the skill gate)
+
+## 278. The 305 tracked ports move to v0.3 mechanically first, then are re-ported idiomatically (2026-11-22)
+
+- **Decision.** Every tracked `port.cp` is first migrated mechanically to
+  v0.3 (it checks, is judge-covered by `every_v03_port_checks`, and agrees
+  with the accepted C++ on generated input). The full rethink from
+  `dream.cp` to the `plan/PORTING.md` bar follows, worst review score
+  first. Only rethought ports count toward the taste and token targets.
+- **Why.** Ryan's rule to decide reversible calls by their recommendation
+  (former idioms question). The mechanical move is fast and gives judge
+  proof plus lint-fmt's false-positive corpus; the rethink defines
+  idiomatic code and needs that corpus to land safely.
+- **Reverse.** Stop migrating and rethink each port directly; migrated
+  ports stay as baselines.
+
+## 279. An unseen dry-run set gates the skill; the known 20 stay a regression check (2026-11-22)
+
+- **Decision.** Each release writes a fresh set of 20 problems in the
+  dry-run shape (`research/dryrun/`), unseen by whoever edits
+  `skills/cp-lang/`, and a cold skill-only run on it gates the skill. The
+  known 20 are re-run as a regression check. Until the first unseen set
+  exists, the known 20 gate.
+- **Why.** Ryan's rule to decide reversible calls by their recommendation
+  (former idioms question). The known 20 are read by skill writers, so
+  passing them can be overfitting.
+- **Reverse.** Gate on the known 20 only.
+

@@ -82,18 +82,6 @@ Recommendation: (a); lint and the skill need one source of "idiomatic", and it i
 How to reverse it: move the files to `docs/`, drop the cite rule.
 Meanwhile: land them under `spec/idioms/` marked non-normative; lint cites them.
 
-### idioms: the re-port bar for the 305 tracked ports
-Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
-Recommendation: (b) first for all 305, then (a) in review-score order; only (a) counts toward the taste and token targets.
-How to reverse it: stop migrating and go straight to (a); migrated ports stay as baselines.
-Meanwhile: (b) then (a).
-
-### idioms: what gates the skill
-Options: (a) the 20 dry-run problems (known to skill writers, can overfit); (b) a fresh unseen 20 each release, written to the dry-run shape.
-Recommendation: (b) as the gate, (a) as a regression check.
-How to reverse it: gate on (a) only.
-Meanwhile: report both; gate on (a) until the first fresh set exists.
-
 ### stdlib: Q1 what earns a prelude name
 Today 192 names are in every program (`spec/std/prelude.cp`). Decision 150 (core R11.3.2) already dropped the 80-name budget: a name is in exactly when a `lib/` chapter's main tables list it, and the cost is a collision, not a count; `scripts/check.sh` still warns above 80. Usage (`python3 plan/domains/stdlib/measure.py prelude-usage`, table in `plan/domains/stdlib/prelude-usage.md`): of 305 reviewed ports and 100 hill-climb solutions, 5 names are used by at least 5% (`Mod`, `sum`, `Graph`, `Rooted`, `Comb`), 115 by at least one, 77 by none. The ports are v0.2 `port.cp` files, so they undercount v0.3-only names.
 - (a) Keep decision 150: membership by the chapter tables; retire the 80 warning; use the usage table to review what a chapter's main table lists.
