@@ -1,5 +1,2 @@
 # (trait/type/method) with no case yet. Shrink-only: scripts/conformance-traits.py
 # never adds a line without --add-gaps; write the case in traits.toml instead.
-Indexed/Range/at
-Indexed/Range/keys
-Keyed/Range/items

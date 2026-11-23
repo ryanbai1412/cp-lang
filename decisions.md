@@ -6602,3 +6602,15 @@ pushing `refs/archive/<name>`; a branch with no owning lane whose tip is over
 no branch tip is over 48 h old yet.
 Reason: the branch list stays readable and every archived branch restores.
 Reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
+
+## 289. A range's keys are its own elements; `r.nth(k)` reads by position (2026-11-22)
+
+- **Decision.** Ryan: "r[3] should be equal to 3". For `r = 2..5`, `r[x] == x`
+  for `x in r` and traps outside it, `r.keys` is `r`, and `r.items` walks
+  `(2, 2) (3, 3) (4, 4)` (R04.4.31). The positional read is the existing
+  `nth(k)` every slice has (R04b.1.4): `r.nth(0) == 2` (R04.4.32). No new name.
+- **Why.** A `Range<V>` keyed by `Int` positions mixes two index spaces; keys
+  as elements keep ranges the slices of R07.2.14 without the source, so
+  `Range<V>` stays `Indexed<V, V>`. `nth` already means "k steps from the start".
+- **Reverse.** Change R04.4.31 and the three `Range` cases in
+  `spec/conformance/traits.toml` and `core-04/range-key-*.cp` to positions.

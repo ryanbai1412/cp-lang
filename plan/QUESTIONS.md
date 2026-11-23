@@ -137,15 +137,6 @@ Recommendation: A. Arity tells them apart, both are the name a contestant guesse
 How to reverse: B with a `cpl fix` codemod.
 Meanwhile: as ruled in R04.2.20 (on `devin/wip-conformance-matrix`).
 
-### spec: what are a range's keys, its own elements or positions from 0?
-Chapter 7 lists ranges as `Indexed<D, T>` (R07.3.5: `s[i]` in O(1), `s.keys: Range<D>`), but chapter 4's range methods (R04.4.12-21) never say what `r[i]`, `r.keys` or `r.items` mean. Today `let r = 2..5` gives `r[3]` = R0101 "index 3 is outside a range of length 3" (so `r[0]` is 2), and `r.keys`, `r.items` do not compile.
-Option A, identity: `r[x]` is `x` for `x in r` (traps outside), `r.keys` is `r`, `for (k, x) in r.items` walks `(2, 2) (3, 3) (4, 4)`. A range is `V.range[l..r]` without the source: the same keys a slice keeps (R07.2.14), so `Range<V>` stays `Indexed<V, V>` and never mixes positions of `V` with counts.
-Option B, positions: `r[0]` is 2, `r.keys` is `0..r.len`, items walk `(0, 2) (1, 3) (2, 4)`, as Python's `range(2, 5)[0]`. Familiar, but a `Range<V>` keyed by `Int` is the wrong-index-space bug the language exists to stop.
-Option C: drop ranges from the `Indexed` row (they stay `Seq` + `Sized` + `Bidir` + `Contains`); `r[i]` is E0305.
-Recommendation: A, or C if indexing a range has no use; B reintroduces the position-versus-value confusion.
-How to reverse it: the three cases are generated from `spec/conformance/traits.toml`; change their expected output, or drop the `Range` claim of `Indexed`/`Keyed` there and in R07.3.5.
-Meanwhile: the three `Range` lines stay in `spec/conformance/trait-gaps.txt`; no case asserts either reading.
-
 ### perf: does the judge build trap on a bad index, `/ 0` and `assert`?
 Decision 240 (spec) says release has no checks unless kept: `xs[j]` with an unproven `j` is a raw load, `7 / d` with `d == 0` gives 0, `assert` is skipped (cases `spec/conformance/core-09/release-list-index-unchecked.cp`, `release-division-by-zero-fallback.cp`). AGENTS.md goal 5 says the interpreter and the C++ agree "including on input they reject", and the Trap Parity Gate (`crates/cpl-cli/tests/trap_parity.rs`) requires the `-O2`, no `-DLOCAL` judge build to stop on all 36 sites, among them `xs[three]` (site 1), `three / z` (13) and `assert z == 1` (25). Both cannot pass.
 Option A (today): the judge build keeps bounds, division and assert traps; range stores and overflow are checked only under `-DLOCAL`. Cost is a compare per unproven index; ahead-of-loop checks (decisions 242 and on) remove most in loops. Measured remaining cost where they stay: `math/comb` emitted C++ 98 ms -> 81-86 ms with the table checks removed by hand, matched C++ 72-75 ms; `containers/min_heap` 121 ms -> 108 ms, `std::priority_queue` 110 ms (worklog, 2026-11-22).

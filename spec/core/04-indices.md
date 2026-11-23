@@ -213,6 +213,8 @@ the generic meaning comes to for each kind.
 | Form | On `Range<V>` (positions) | On `Range<V.cuts>` (cuts) | Cost |
 |---|---|---|---|
 | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count of cuts; membership of a cut | O(1) (R04.4.12) |
+| `r[x]`, `r.keys`, `r.items` | a range's keys are its own elements: `r[x] == x` for `x in r`, a trap outside it; `r.keys` is `r`; `r.items` walks `(x, x)` | same, over cuts | O(1) (R04.4.31) |
+| `r.nth(k)` | the element `k` steps from `r.first`, 0-based, a trap past the end: the positional read every slice has (R04b.1.4) | same, over cuts | O(1) (R04.4.32) |
 | `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step (R04.4.13) |
 | `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) (R04.4.14) |
 | `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) (R04.4.15) |

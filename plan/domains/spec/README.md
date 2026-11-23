@@ -97,5 +97,4 @@ Each filed in `plan/QUESTIONS.md` with code; the lane works on the default meanw
 1. **Descending sort: key only, or also a `desc:` flag?** Rec: key only (`sorted(by: x => desc(x))`), drop the flag. Default: chapter 7 wins.
 2. **`Subset<B>` and `Pair<V>` as domains: `Int(p)` and print?** Rec: yes to `Int(p)` (mask / rank) and print; no cuts or neighbours. Default: n/a in the matrix.
 3. **`V.count` property beside the Seq method `V.count(f)`?** Rec: keep both (arity tells them apart, both are the guessable name). Default: as ruled (R04.2.20 on the branch).
-4. **A range's keys: its own elements, or positions from 0?** Rec: its own elements (`(2..5)[3]` is 3, as a slice keeps its keys). Default: the 3 `Range` trait cases stay gaps.
 

@@ -955,6 +955,27 @@ print(s)
 """
 out = "xbc"
 
+[case."Indexed/Range/at"]
+code = """
+let r = 2..5
+print(r[3])
+"""
+out = "3"
+
+[case."Indexed/Range/keys"]
+code = """
+let r = 2..5
+print(r.keys.len, r.keys.nth(2))
+"""
+out = "3 4"
+
+[case."Keyed/Range/items"]
+code = """
+let r = 2..5
+for (k, x) in r.items: print(k, x)
+"""
+out = "2 2\\n3 3\\n4 4"
+
 [case."Seq/Range/iter"]
 code = """
 let r = 2..5
