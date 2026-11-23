@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2793 (995 passing). Rules: 573.
+Cases: 2794 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2793 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 58 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -512,7 +512,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.3 [3+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
-- R07.9.6 [4+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
+- R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [4+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [2+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [3+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>`, each list in walk order | \(O(n)\) expected
