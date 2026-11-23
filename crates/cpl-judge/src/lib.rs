@@ -283,7 +283,13 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     if let Some(&seen) = SEEN.get_or_init(Default::default).lock().unwrap().get(&key) {
         return seen;
     }
-    let memo = std::env::var_os("CPL_JUDGE_PROBE_DIR").map(std::path::PathBuf::from);
+    // A yes is kept across runs, so `cpl test` and `cpl stress` don't build two
+    // probe programs on every start; `CPL_JUDGE_PROBE_DIR=` (empty) keeps nothing.
+    let memo = match std::env::var_os("CPL_JUDGE_PROBE_DIR") {
+        Some(dir) if dir.is_empty() => None,
+        Some(dir) => Some(std::path::PathBuf::from(dir)),
+        None => Some(std::env::temp_dir().join("cpl-cache").join("judge-probes")),
+    };
     let ok = probe(compiler, flags, memo.as_deref());
     SEEN.get_or_init(Default::default)
         .lock()
