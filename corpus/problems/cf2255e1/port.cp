@@ -2,9 +2,9 @@
 // is a function on (value, history summary). Negate and clamp only look at the sign, and
 // scale with |value|: before the first assignment a tag maps each sign to a new sign and
 // a history per unit of |value|; after it, the value is a constant and the history is fixed.
-// Tags compose in O(1), so one DualSegTree (range apply, point get) handles every query.
-use std.algebra.MaxSub
-use std.lazy.DualSegTree
+// Tags compose in O(1), so one `SegTree` with `act:` and no fold op (range apply, point get) handles every query.
+use std.algebra.{Action, Monoid}
+use std.algebra.{MaxSub}
 
 type Sign = -1..=1
 
@@ -39,11 +39,16 @@ fn assign(x: Int) -> Tag = tag(s => s, set: (x, MaxSub.empty()))
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-var st = DualSegTree<I, Cell, Tag>(
-    id: identity,
-    compose: (g, f) => then(g, f),
-    apply: (f, c) => run(f, c),
+let unfolded = Monoid<Cell>((0, MaxSub.empty()), (x, _) => x)
+var st = SegTree<I, Cell, Tag>(
     a: [I] i => (a[i], MaxSub.of(a[i])),
+    act: Action<Cell,
+    Tag>(
+        id: identity,
+        compose: (g, f) => then(g, f),
+        apply: (f, c, _) => run(f, c),
+        over: unfolded,
+    ),
 )
 var last: U64 = 0
 fn at(y: U64) -> I = I(Int((y ^ last) % U64(n)) + 1)

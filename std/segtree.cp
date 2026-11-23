@@ -5,6 +5,7 @@ use std.math.{gcd}
 use std.seq.{ends}
 
 struct NoAction
+struct NoOp
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
@@ -23,6 +24,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     act: ?Action<T, F>
     /// What each position holds, for a tree built with `of`.
     pub var source: ?(D -> T)
+    var dual: Bool = false
 
     /// A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity
     /// everywhere when neither is given. `op` is a bare operator (`+`, `*`, `^`, `&`, `|`, `min`,
@@ -42,18 +44,27 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
     pub fn new<M, A>(
-        op: ?M = None,
+        op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
         act: A = NoAction(),
         over: ?Range<Int> = None,
     ) -> SegTree<D, T, F>:
         if over != None: todo
-        let m = Monoid<T>.of(op!)
+        if same(op, NoOp()):
+            // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
+            // values, so `apply` runs on leaves only.
+            assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
+            let seed = if let init = a: init[D.first!] else: fill!
+            let left = Monoid<T>(seed, (x, _) => x)
+            var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
+            st.dual = true
+            return st
+        let m = Monoid<T>.of(op)
         if same(act, NoAction()):
             return SegTree<D, T, F>.build(m, a, fill)
         else:
-            let resolved = Action<T, F>.of(act, op!)
+            let resolved = Action<T, F>.of(act, op)
             return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
 
     fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
@@ -96,7 +107,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         let a = act!
         unchecked:
             if span[p] == 0: return
-            t[p] = a.apply(f, t[p], span[p])
+            if p >= size or not dual: t[p] = a.apply(f, t[p], span[p])
             if p < size:
                 lz[p] = a.compose(f, lz[p])
                 has_lz[p] = true
@@ -145,6 +156,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
                     self.put(h, f)
                 l /= 2
                 h /= 2
+        if dual: return
         for i in 1..=log:
             if ((l0 >> i) << i) != l0: self.pull_node(l0 >> i)
             if ((h0 >> i) << i) != h0: self.pull_node((h0 - 1) >> i)
