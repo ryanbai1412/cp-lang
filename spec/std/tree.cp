@@ -505,7 +505,7 @@ pub struct Rooted<V, Pre>:
     /// empty: never empty
     /// order: `Enter` events in `t.Pre` order; `Exit(v, _)` right after the last event of `v`'s subtree
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.tour.collect() == [Enter(0, None), Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0)), Enter(2, Some(0)), Exit(2, Some(0)), Exit(0, None)]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let want: List<Visit<V, V>> = [Visit.Enter(0, None), Visit.Enter(1, Some(0)), Visit.Enter(3, Some(1)), Visit.Exit(3, Some(1)), Visit.Enter(4, Some(1)), Visit.Exit(4, Some(1)), Visit.Exit(1, Some(0)), Visit.Enter(2, Some(0)), Visit.Exit(2, Some(0)), Visit.Exit(0, None)]; t.tour.collect() == want`
     @get pub fn tour(self) -> yields Visit<V, V>:
         var open: List<V> = []
         for p in Pre:
@@ -2626,14 +2626,14 @@ pub struct Events<V, P>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.enter(1)] == Enter(1, Some(0)) and ev.enter(1) < ev.enter(3)`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); let want: Visit<V, V> = Visit.Enter(1, Some(0)); ev.at[ev.enter(1)] == want and ev.enter(1) < ev.enter(3)`
     pub fn enter(self, v: V) -> P = ent[v]
 
     /// The event that leaves `v`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.exit(3)] == Exit(3, Some(1)) and ev.exit(3) < ev.exit(1)`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); let want: Visit<V, V> = Visit.Exit(3, Some(1)); ev.at[ev.exit(3)] == want and ev.exit(3) < ev.exit(1)`
     pub fn exit(self, v: V) -> P = ext[v]
 
     /// The events inside `v`'s subtree, `enter(v)` through `exit(v)`.
@@ -2642,7 +2642,7 @@ pub struct Events<V, P>:
     /// empty: never empty; 2 * size(v) events
     /// order: `tour` order
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).map(p => ev.at[p]).collect() == [Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0))]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); let want: List<Visit<V, V>> = [Visit.Enter(1, Some(0)), Visit.Enter(3, Some(1)), Visit.Exit(3, Some(1)), Visit.Enter(4, Some(1)), Visit.Exit(4, Some(1)), Visit.Exit(1, Some(0))]; ev.sub(1).map(p => ev.at[p]).collect() == want`
     pub fn sub(self, v: V) -> Range<P> = ent[v].l..ext[v].r
 
     /// A range of events whose vertices met an odd number of times, plus `extra` when present, are
