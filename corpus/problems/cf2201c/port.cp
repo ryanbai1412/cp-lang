@@ -12,7 +12,7 @@ const MOD = 998_244_353
 type Z = Mod<MOD>
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 2..=300_000 = read()
 let s: [0..n]Char = read()
 
 var (ways_open, ways_close, ans): (Z, Z, Z) = (0, 0, 0)

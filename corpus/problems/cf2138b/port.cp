@@ -3,18 +3,18 @@
 // Problem: a permutation a of n <= 5e5 and q <= 5e5 queries l r (multitest, sums <= 5e5). A
 //   subarray is perfect when one allowed swap of b_i and b_{i+2} never sorts it in fewer moves
 //   than adjacent swaps alone; print YES or NO for each a[l..=r].
-// Solution: a subarray is perfect iff it has no decreasing triple x < y < z. For each middle i
-//   the tightest triple takes the nearest greater element to its left and the nearest smaller to
-//   its right (std prev_smaller / next_smaller); bad[l] keeps the least such right end, and
-//   suffix minima make min_bad[l] the first right end that fails a query starting at l.
-//   O(n + q).
+// Solution: a subarray is perfect iff it has no decreasing triple x < y < z (checked against a
+//   BFS over the statement's moves on small subarrays). For each middle i the tightest triple
+//   takes the nearest greater element to its left and the nearest smaller to its right (std
+//   prev_smaller / next_smaller); bad[l] keeps the least such right end, and suffix minima make
+//   min_bad[l] the first right end that fails a query starting at l. O(n + q).
 
 use std.seq.{next_smaller, prev_smaller}
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n
-let a: [I]1..=500_000 = read()
+let a: [I]1..=n = read()
 
 let prev_gt = a.prev_smaller(by: x => desc(x), strict: false)
 let next_lt = a.next_smaller(strict: false)

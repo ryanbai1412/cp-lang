@@ -9,11 +9,12 @@
 //   + 1. Bottom-up, O(n); YES iff dist[v] == 0.
 
 @!multitest
-let (n, k, v_in): (2..=200_000, 1..=200_000, 1..=200_000) = read()
+let n: 3..=500_000 = read()
 domain V = 1..=n
+let (k, start): (1..=n, V) = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
-let t = Rooted(g, root: V(v_in))
+let t = Rooted(g, root: start)
 
 var dist: [V]Int = k + 2
 for u in t.at.rev:
@@ -29,4 +30,4 @@ for u in t.at.rev:
         d min= nd
     dist[u] = d
 
-print(if dist[V(v_in)] == 0: "YES" else: "NO")
+print(if dist[start] == 0: "YES" else: "NO")
