@@ -1,0 +1,8 @@
+error[E0303]: a sort takes its key by name: `by: x => ..`
+  --> sort_key_by_name.cp:2:17
+  |
+2 | print(xs.sorted(x => -x))
+  |                 ^^^^^^^
+  = help: write `by: x => -x`
+
+sort_key_by_name.cp: 1 error
