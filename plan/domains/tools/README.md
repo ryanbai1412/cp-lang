@@ -44,7 +44,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 | LSP unit tests | `cargo test --release -p cpl-lsp --lib` | 77/77 | all pass | - |
 | VS Code unit + grammar tests | `cd editors/vscode && npm test` | 36/37 (stale prelude table) | all pass | M1 |
 | editor smoke tests passing (this VM) | `CPL=target/release/cpl editors/smoke.sh` | see metrics.toml | tier 1 all, in gate | M3 |
-| tools files over the 2,000-line cap | `python3 scripts/debt-ratchet.py --check` | 3 (cli lib.rs 2,552; lsp server.rs 2,111; lsp tests.rs 2,868) | 0 | M1 |
+| tools files over the 2,000-line cap | `python3 scripts/debt-ratchet.py --check` | 0 (cli lib.rs 1,899; lsp server.rs 1,966; lsp tests.rs 2,000) | 0 | M1 |
 | unlanded commits on `devin/wip-editor-lsp` | `git cherry origin/main origin/devin/wip-editor-lsp` | 5 | 0 | M1 |
 
 `measure.py` is `plan/domains/tools/measure.py`. Not measured yet: `explain` sections per port (M2's test).

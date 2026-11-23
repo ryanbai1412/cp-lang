@@ -72,7 +72,7 @@ today = "keyword parity ok; neovim emacs helix zed tree-sitter skipped (no binar
 name = "tools .rs files over 2,000 lines"
 command = "find crates/cpl-cli crates/cpl-contest crates/cpl-doc crates/cpl-json crates/cpl-lsp -name '*.rs' | xargs wc -l | awk '$1>2000 && $2!=\"total\"'"
 target = "0"
-today = "3 (cpl-cli/src/lib.rs 2552, cpl-lsp/src/server.rs 2111, cpl-lsp/src/tests.rs 2868)"
+today = "0 (cpl-cli lib.rs 1899, cpl-lsp server.rs 1966, cpl-lsp tests.rs 2000)"
 
 [[metric]]
 name = "unlanded commits on devin/wip-editor-lsp"
