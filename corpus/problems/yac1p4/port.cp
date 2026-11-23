@@ -25,6 +25,6 @@ for w in worth.rev:
         if let less = open - 1: next[open].union(reach[less])
     reach = next
 
-let totals = reach[Open.first]
+let totals = reach[Open.first!]
 print(totals.len)
 for t in totals.each(): print(t.to_idx - whole)

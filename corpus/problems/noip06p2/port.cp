@@ -26,4 +26,4 @@ for i in Item:
         for j in Money.rev:
             for b in bundles:
                 if let rest = j - b.cost: best[j] max= best[rest] + b.worth
-print(best[Money.last])
+print(best[Money.last!])

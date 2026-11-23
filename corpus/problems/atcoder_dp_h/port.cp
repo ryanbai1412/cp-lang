@@ -12,4 +12,4 @@ for r in Row:
     for c in Col if grid[r, c] == '.':
         if let up = r - 1: ways[r, c] += ways[up, c]
         if let left = c - 1: ways[r, c] += ways[r, left]
-print(ways[Row.last!, Col.last])
+print(ways[Row.last!, Col.last!])

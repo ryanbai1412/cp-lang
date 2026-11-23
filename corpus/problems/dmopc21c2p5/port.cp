@@ -59,6 +59,6 @@ for u in tree.at.rev:
             memo1[u] = res
 
 if k <= n:
-    print(memo0[V.first][k].v)
+    print(memo0[V.first!][k].v)
 else:
     print(0)

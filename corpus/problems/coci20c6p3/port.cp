@@ -34,4 +34,4 @@ for (_, size) in class_size:
                 next[made] += choose[Size(size), Size(take)] * ways[p]
             else: break
     ways = next
-print(ways[Pairs.last])
+print(ways[Pairs.last!])

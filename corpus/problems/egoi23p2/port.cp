@@ -6,7 +6,7 @@ let m: 1..=2e5 = read()
 domain Player = 0..n
 domain Event = 0..m
 
-var winner: [Event]Player = Player.first
+var winner: [Event]Player = Player.first!
 var children: [Event]List<Event> = []
 var rep: [Player]?Event = None
 for e in Event:

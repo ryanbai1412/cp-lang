@@ -100,4 +100,4 @@ for u in tree.at.rev:
         rt = merge_trees(rt, c_rt, 0, n, 0, zero_case)
     roots[u] = rt
 
-print(query_sum(roots[V.first], 0, n, 0, 0))
+print(query_sum(roots[V.first!], 0, n, 0, 0))

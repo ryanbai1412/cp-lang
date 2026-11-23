@@ -41,5 +41,5 @@ for e in E:
             else: extra.push(served)
             at += served
 if fast * (stations - 1) <= limit: reached += 1
-sort(extra, by: s => -s)
+sort(mut extra, by: s => -s)
 print(reached - 1 + sum(extra[i] for i in 0..min(spare, extra.len)))

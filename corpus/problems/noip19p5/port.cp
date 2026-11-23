@@ -42,10 +42,10 @@ else:
 type Cut = Cut<Pos>
 var s: [Cut]Int = [Pos.cuts] c => 0
 for i in Pos: s[i.r] = s[i.l] + a[i]
-var from: [Cut]Cut = [Pos.cuts] c => Pos.cuts.first
+var from: [Cut]Cut = [Pos.cuts] c => Pos.cuts.first!
 fn threshold(j: Cut) -> Int = 2 * s[j] - s[from[j]]
 
-var queue: List<Cut> = [Pos.cuts.first]
+var queue: List<Cut> = [Pos.cuts.first!]
 var head = 0
 for i in Pos:
     let c = i.r

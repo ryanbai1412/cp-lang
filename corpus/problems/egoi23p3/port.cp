@@ -18,7 +18,7 @@ fn step(p: Cell, ch: Char) -> ?Cell:
     None
 
 fn simu(bad: Cell, moves: List<Char>) -> Cell:
-    var pos: Cell = (Row.first, Col.first)
+    var pos: Cell = (Row.first!, Col.first!)
     for ch in moves:
         if let nxt = step(pos, ch):
             if nxt != bad:

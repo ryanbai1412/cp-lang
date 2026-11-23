@@ -9,7 +9,7 @@ domain Pitch = 1..=m
 // The good runs ending at a note number as many as the distinct notes just
 // before it, plus one: anything from 1 to min(position, m). Let each note
 // take all it can while leaving one run for every later note.
-var tune: [Note]Pitch = Pitch.first
+var tune: [Note]Pitch = Pitch.first!
 var left = k
 for i in Note:
     let most = min(i.idx + 1, m)

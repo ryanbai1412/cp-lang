@@ -12,7 +12,7 @@ fn random_tree() -> [E](u: V, v: V):
     [E] e => (V(rand(1, e.label)), V(e.label + 1))
 
 let edges: [E](u: V, v: V) = read(gen: random_tree)
-let tree = Rooted(edges, V.first)
+let tree = Rooted(edges, V.first!)
 
 // A count for every k is a polynomial: the coefficient of x^k is the count.
 // Picking independently in two parts multiplies their polynomials.
