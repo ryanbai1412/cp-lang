@@ -12,10 +12,9 @@ for _ in 0..q:
     raw.push(j)
     rules.push((a: i, b: j, same: e == 1))
 
-let vars = compress(raw)
-type Var = vars.D
+let (domain Var, vars) = compress(raw)
 var cls = Dsu<Var>()
 for r in rules:
     if r.same: cls.unite(vars.at(r.a), vars.at(r.b))
-let ok = all(not cls.same(vars.at(r.a), vars.at(r.b)) for r in rules if not r.same)
+let ok = rules.filter(r => not r.same).all(r => not cls.same(vars.at(r.a), vars.at(r.b)))
 print(if ok: "YES" else: "NO")
