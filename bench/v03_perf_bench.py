@@ -2,7 +2,7 @@
 """Cached, matched-algorithm v0.3 C++ codegen performance benchmark harness.
 
 Measures median runtime ratio (emitted C++ / matched C++ original) across:
-  1. corpus   -- corpus/problems/*/{port.cp,orig.cpp} (max-N via corpus_generators or tests/*.in)
+  1. corpus   -- corpus/problems/*/{port.cp,orig.cpp} (max-N via corpus_generators, gen.py --max, or tests/*.in)
   2. dryrun   -- research/dryrun/v03/p*.cp at large N vs bench/dryrun-matched/p*.cpp
                  (the same algorithm as research/dryrun/p*_ref.cpp with the fast
                  I/O hand-written contest C++ uses), else the _ref.cpp itself
@@ -351,6 +351,15 @@ def collect_items(suites, only, cache_dir):
                             if os.path.exists(out):
                                 os.remove(out)
                     if os.path.exists(out) and os.path.getsize(out) > 0:
+                        return [out]
+                gen = os.path.join(prob_dir, "gen.py")
+                if os.path.exists(gen) and "--max" in open(gen).read():
+                    out = os.path.join(cache_dir, f"corpus_max_{p}.in")
+                    if not (os.path.exists(out) and os.path.getsize(out) > 0):
+                        with open(out, "wb") as fo:
+                            if subprocess.run([sys.executable, gen, "--max"], stdout=fo, timeout=300).returncode:
+                                fo.truncate(0)
+                    if os.path.getsize(out) > 0:
                         return [out]
                 ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
                 return derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir) + (
