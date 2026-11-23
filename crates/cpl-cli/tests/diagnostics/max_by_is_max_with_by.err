@@ -1,0 +1,8 @@
+error[E0203]: Range<0..p> has no `max_by` in the spec: no std module declares it
+  --> max_by_is_max_with_by.cp:3:16
+  |
+3 | let j = (0..p).max_by(i => a[i])
+  |                ^^^^^^
+  = help: write `.max(by: ..)`: options are named arguments, so there is one `max` and no `_by` twin
+
+max_by_is_max_with_by.cp: 1 error

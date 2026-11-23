@@ -1,0 +1,10 @@
+error[E0403]: `a` is not a var, so `a.push(1)` can't change it
+  --> push_to_a_plain_parameter.cp:2:5
+  |
+1 | fn f(a: List<Int>):
+  |      - parameter declared here
+2 |     a.push(1)
+  |     ^
+  = help: a parameter is lent for reading; write `mut a` in the parameter list and `mut` at each call, as in `fn grow(mut xs: List<Int>)` called as `grow(mut a)`
+
+push_to_a_plain_parameter.cp: 1 error

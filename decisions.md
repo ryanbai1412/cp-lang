@@ -7274,3 +7274,14 @@ than `cpl lint --new`, since allocating codes is for people working on the
 linter, not contestants. Allocations made before either lands can still
 collide; `record_codes_are_unique` catches those. Reverse: delete the script.
 
+
+## 335. `check/expr.rs` takes +4 lines for the `_by` twin fix (2026-11-23)
+
+`xs.max_by(f)` (the C++/Rust spelling, BLOCKERS row 31) suggested the
+heap method `max_at`; it now gets `xs.max(by: f)` as a machine fix,
+because options are named arguments. The rule lives in
+`check/advice.rs::by_twin`; the four lines in `check/expr.rs` dispatch it
+at the one site that reports a member the spec doesn't declare, so the
+debt ratchet's `--update rs_over_cap` moves `check/expr.rs` 4236 -> 4240.
+Reverse: move the unknown-member reporting out of `expr.rs` into its own
+module and drop the cap back.

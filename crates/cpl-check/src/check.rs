@@ -441,13 +441,22 @@ impl<'a> Checker<'a> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }
 
-    /// The `let` declaring `name`, and its `let` keyword.
-    fn let_decl(&self, name: &str) -> (Option<Span>, Option<Span>) {
+    /// The declaration of `name` when it is a fn parameter.
+    fn param_span(&self, name: &str) -> Option<Span> {
+        self.local(name)
+            .filter(|l| l.keyword == "param")
+            .map(|l| l.span)
+    }
+
+    /// The `let` declaring `name`, its `let` keyword, and the parameter
+    /// declaring it when it is one.
+    fn let_decl(&self, name: &str) -> (Option<Span>, Option<Span>, Option<Span>) {
         let decl = self
             .local(name)
             .filter(|l| l.keyword == "let")
             .map(|l| l.span);
-        (decl, decl.and_then(|d| let_before(self.src, d)))
+        let param = self.param_span(name);
+        (decl, decl.and_then(|d| let_before(self.src, d)), param)
     }
 
     /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
@@ -949,8 +958,10 @@ impl<'a> Checker<'a> {
                     .map(|l| l.span);
                 let var_at = decl.and_then(|d| let_before(self.src, d));
                 let message = format!("`{root}` is not a var, so it can't be {action}");
+                let param = self.param_span(&root);
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
                     diag.help = Some(format!("declare it with `var {root}` to change it"));
+                    mut_param_help(diag, &root, param);
                     if let Some(decl) = decl {
                         diag.labels.push(cpl_diag::Label {
                             span: decl,
@@ -1070,9 +1081,10 @@ impl<'a> Checker<'a> {
 pub(crate) fn declare_with_var(
     diag: &mut Diagnostic,
     root: &str,
-    (decl, var_at): (Option<Span>, Option<Span>),
+    (decl, var_at, param): (Option<Span>, Option<Span>, Option<Span>),
 ) {
     diag.help = Some(format!("declare it with `var {root}`"));
+    mut_param_help(diag, root, param);
     let Some(decl) = decl else { return };
     diag.labels.push(cpl_diag::Label {
         span: decl,
@@ -1084,6 +1096,19 @@ pub(crate) fn declare_with_var(
             edits: vec![(at, "var".into())],
         });
     }
+}
+
+/// A parameter is lent for reading, and `var` does not apply to it: the
+/// fn and its callers both say `mut` (R8, spec/core/05-ownership.md).
+pub(crate) fn mut_param_help(diag: &mut Diagnostic, root: &str, param: Option<Span>) {
+    let Some(param) = param else { return };
+    diag.help = Some(format!(
+        "a parameter is lent for reading; write `mut {root}` in the parameter list and `mut` at each call, as in `fn grow(mut xs: List<Int>)` called as `grow(mut a)`"
+    ));
+    diag.labels.push(cpl_diag::Label {
+        span: param,
+        message: "parameter declared here".into(),
+    });
 }
 
 /// `xs` of `xs[i]` or `xs.len`: the name a place starts with.

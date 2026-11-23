@@ -1908,8 +1908,12 @@ impl<'a> Checker<'a> {
                 name.text
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
+            let twin = super::advice::by_twin(self.src, &name.text, name.span);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                if let Some(s) = suggestion {
+                if let Some((help, fix)) = twin {
+                    diag.help = Some(help);
+                    diag.fixes.push(fix);
+                } else if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());

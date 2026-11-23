@@ -430,3 +430,29 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         _ => None,
     }
 }
+
+/// `xs.max_by(f)`, the C++/Rust spelling: options are named arguments,
+/// so it is `xs.max(by: f)`. Only for a base std declares with `by:`.
+pub(super) fn by_twin(src: &str, name: &str, span: Span) -> Option<(String, Fix)> {
+    let base = name.strip_suffix("_by").or(name.strip_suffix("_by_key"))?;
+    let base = match base {
+        "max" | "min" | "sort" | "sorted" | "argmax" | "argmin" => base,
+        "position_max" => "argmax",
+        "position_min" => "argmin",
+        _ => return None,
+    };
+    let open = span.end as usize;
+    let mut edits = vec![(span, base.to_string())];
+    if src.get(open..open + 1) == Some("(") && src.get(open + 1..open + 2) != Some(")") {
+        edits.push((Span::new(span.end + 1, span.end + 1), "by: ".into()));
+    } else {
+        return None;
+    }
+    Some((
+        format!("write `.{base}(by: ..)`: options are named arguments, so there is one `{base}` and no `_by` twin"),
+        Fix {
+            title: format!("write `{base}(by: ..)`"),
+            edits,
+        },
+    ))
+}
