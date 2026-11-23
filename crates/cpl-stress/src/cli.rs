@@ -372,6 +372,7 @@ pub fn report_json(
     stages: &[Stage],
     trace: Option<&Path>,
     explained: Option<&Result<Option<Divergence>, String>>,
+    error: Option<&str>,
 ) -> String {
     let Some(failure) = &report.failure else {
         return format!("{{\"status\":\"ok\",\"cases\":{}}}\n", report.cases);
@@ -396,8 +397,9 @@ pub fn report_json(
         Some(Ok(Some(d))) => format!(",\"explain\":{{\"divergence\":{}}}", divergence_json(d)),
         Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
     };
+    let error = error.map_or(String::new(), |error| format!(",\"error\":{error}"));
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[{}],\"saved\":{},\"trace\":{}{explain}}}}}\n",
+        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error},\"stages\":[{}],\"saved\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -694,9 +696,11 @@ pub fn run_with(
         Ok(report) => report,
         Err(error) => return fail(error.to_string()),
     };
-    let saved = report
-        .failure
-        .as_ref()
+    // A case the brute fails on is no test of the solution: it isn't saved.
+    let brute_failed =
+        |failure: &crate::run::Failure| matches!(failure.verdict, crate::Verdict::BruteError(_));
+    let saved = (report.failure.as_ref())
+        .filter(|failure| !brute_failed(failure))
         .and_then(|failure| save(&args.file, failure).ok());
     // The failing case again, both sides in the debug interpreter: the
     // `debug(...)`s they share, and with `--trace` the two traces.
@@ -708,7 +712,10 @@ pub fn run_with(
         |failure: &crate::run::Failure| !matches!(failure.verdict, crate::Verdict::TimeLimit);
     let traced = match (&report.failure, tracer) {
         (Some(failure), Some(tracer))
-            if args.fast.is_none() && in_file && (args.explain || finished(failure)) =>
+            if args.fast.is_none()
+                && in_file
+                && !brute_failed(failure)
+                && (args.explain || finished(failure)) =>
         {
             Some(tracer(
                 &args.file,
@@ -724,6 +731,7 @@ pub fn run_with(
         _ => (&[][..], None),
     };
     let explained = match (&report.failure, &traced) {
+        (Some(failure), _) if brute_failed(failure) => None,
         (Some(_), Some(Ok(traced)))
             if (part_brute.is_some()
                 || (args.explain && matches!(judge, Judge::Interactor(_))))
@@ -768,6 +776,18 @@ pub fn run_with(
         }
         _ => None,
     };
+    // The trap a debug run stops at, in the shape `cpl check --format json` gives.
+    let trap_json = (report.failure.as_ref())
+        .filter(|_| args.json && args.fast.is_none())
+        .and_then(|failure| match failure.verdict {
+            crate::Verdict::RuntimeError(_) => {
+                crate::explain::trap_report(&args.file, &failure.input, false, true)
+            }
+            crate::Verdict::BruteError(_) if own_brute.is_some() => {
+                crate::explain::trap_report(&args.file, &failure.input, true, true)
+            }
+            _ => None,
+        });
     if args.json {
         let _ = write!(
             stdout,
@@ -777,7 +797,8 @@ pub fn run_with(
                 saved.as_deref(),
                 stages,
                 trace_path.as_deref(),
-                explained.as_ref()
+                explained.as_ref(),
+                trap_json.as_deref(),
             )
         );
         return report.failure.is_some() as u8;
@@ -867,6 +888,27 @@ pub fn run_with(
                 );
             }
         }
+        crate::Verdict::BruteError(why) => {
+            let brute_name = brute.as_ref().map_or("brute", |b| b.name.as_str());
+            let trap = (own_brute.is_some() && args.fast.is_none())
+                .then(|| crate::explain::trap_report(&args.file, &failure.input, true, false))
+                .flatten();
+            let _ = match trap {
+                Some(trap) => writeln!(
+                    stdout,
+                    "  the brute {brute_name} failed, so there is nothing to compare with:\n{}",
+                    indent(trap.trim_end())
+                ),
+                None => writeln!(
+                    stdout,
+                    "  the brute {brute_name} failed, so there is nothing to compare with: {why}"
+                ),
+            };
+            let _ = writeln!(
+                stdout,
+                "  fix the brute, or narrow the input it is meant for, then `cpl stress` again"
+            );
+        }
         crate::Verdict::RuntimeError(why) => match &trapped {
             Some(explained) => {
                 let _ = writeln!(
@@ -945,12 +987,13 @@ pub fn run_with(
                 "  after a fix: `cpl test {file}` reruns it, then `cpl stress {file}` again"
             );
         }
-        None => {
+        None if !brute_failed(failure) => {
             let _ = writeln!(
                 stderr,
                 "warning: the case could not be saved next to {name}"
             );
         }
+        None => {}
     }
     1
 }

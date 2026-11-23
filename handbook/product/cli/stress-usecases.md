@@ -104,9 +104,9 @@ Evidence: `crates/cpl-cli/tests/seeded_bugs.rs` (`cold-lower-bound-stuck`)
 
 ### stress/U18: the brute is the one that fails
 Need: not be told the solution is wrong when the brute crashed.
-Design: stress stops, names the brute and shows the input.
+Design: the case fails as `brute RE`, shrunk like any other, and the brute's trap is shown as `cpl run` shows one: code, line, locals, help. It isn't saved as a test of the solution.
 Milestone: M1-critical. Status: supported
-Evidence: `crates/cpl-stress/src/tests.rs` (`a_failing_brute_stops_the_run_with_the_input`)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_brute_that_traps_is_blamed_with_its_line_and_locals_and_not_saved`); `crates/cpl-stress/src/tests.rs` (`a_failing_brute_is_a_failing_case_blamed_on_the_brute`)
 
 ### stress/U19: never blame the solution for an input it rightly rejects
 Need: every case is one the problem allows.
@@ -134,15 +134,15 @@ Evidence: `crates/cpl-stress/src/tests.rs` (`random_trees_include_paths_and_star
 
 ### stress/U23: stress from the editor
 Need: run stress and read the case without leaving the editor.
-Design: a Stress lens and command; `--format json` for the editor to show the case and the explanation.
-Milestone: M1-differentiating. Status: supported
-Evidence: integration `editors/vscode/test/integration/suite.ts` (Stress lens saves a case)
+Design: a Stress lens and command; `--format json` for the editor to show the case, the explanation, and a runtime error as the same diagnostic `cpl check --format json` gives.
+Milestone: M1-differentiating. Status: partial (the JSON is tested; the lens test is TypeScript the gate can't run)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_runtime_error_in_the_json_report_is_a_diagnostic`); `editors/vscode/test/integration/suite.ts` (Stress lens saves a case)
 
 ### stress/U24: stress in the browser
 Need: stress a solution without installing CP Lang.
 Design: the playground's Stress tab, the same engine in the page.
-Milestone: M1-differentiating. Status: partial (engine tested, browser tab not)
-Evidence: `play/U8` in `handbook/product/site/playground-usecases.md`
+Milestone: M1-differentiating. Status: partial (the engine matches the CLI; the browser tab isn't tested, and a time-out isn't explained in the browser)
+Evidence: `crates/cpl-wasm/tests/parity.rs` (`stress_matches_cpl_stress_json`); `play/U8` in `handbook/product/site/playground-usecases.md`
 
 ### stress/U25: no C++ compiler on the machine
 Need: stress still works on a fresh machine.
@@ -154,7 +154,7 @@ Evidence: integration `crates/cpl-cli/tests/debugger.rs` (`with_no_cpp_compiler_
 Need: a `@cache` field gives the same answer cold.
 Design: stress reruns with caches cold and compares, with no brute needed.
 Milestone: later. Status: supported
-Evidence: gap (no test names it)
+Evidence: conformance `spec/conformance/core-09/stress-cache-cold-disagrees.cp`
 
 ### stress/U27: one spelling for "the slow version of"
 Need: write the brute without wondering which decorator it is.

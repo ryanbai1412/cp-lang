@@ -122,3 +122,57 @@ fn a_wrong_answer_goes_from_a_crash_and_a_counterexample_to_a_clean_stress() {
     assert_eq!(code, Some(0), "{clean}");
     assert!(clean.contains("200 cases agree"), "{clean}");
 }
+
+/// Off the happy path: the brute is the one that is wrong (`stress/U18`).
+#[test]
+fn a_brute_that_traps_is_blamed_with_its_line_and_locals_and_not_saved() {
+    let path = scratch("brute-traps");
+    let source = format!(
+        "{READS}{RIGHT}
+@alt(program)
+fn brute():
+    let n: 1..=10 = read()
+    let a: [n]0..=9 = read()
+    var m = 0
+    for i in 0..n: m = max(m, a[i + 1])
+    print(m)
+"
+    );
+    std::fs::write(&path, source).unwrap();
+    let (code, report) = cpl(&["stress".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(1), "{report}");
+    for said in [
+        "brute RE",
+        "that is: n = 1",
+        "failed, so there is nothing to compare with",
+        "error[R0101]",
+        "c.cp:13:",
+        "locals: ",
+    ] {
+        assert!(report.contains(said), "no {said:?} in:\n{report}");
+    }
+    assert!(!report.contains("Code("), "{report}");
+    assert!(!report.contains("could not be saved"), "{report}");
+    assert!(saved(&path).is_empty(), "{report}");
+}
+
+/// The editor's lens reads a runtime error as `cpl check --format json` gives it (`stress/U23`).
+#[test]
+fn a_runtime_error_in_the_json_report_is_a_diagnostic() {
+    let path = scratch("json-trap");
+    std::fs::write(&path, format!("{READS}print(a[n])\n")).unwrap();
+    let (code, report) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--format".as_ref(),
+        "json".as_ref(),
+    ]);
+    assert_eq!(code, Some(1), "{report}");
+    for said in [
+        r#""verdict":"RE","error":{"code":"R0101""#,
+        r#""start":{"col":7,"line":3"#,
+        r#""locals: n = 1"#,
+    ] {
+        assert!(report.contains(said), "no {said:?} in:\n{report}");
+    }
+}

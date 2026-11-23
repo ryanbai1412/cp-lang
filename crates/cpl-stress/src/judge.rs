@@ -36,6 +36,8 @@ pub enum Verdict {
     TimeLimit,
     /// The solution's peak memory went past the problem's limit.
     MemoryLimit,
+    /// The brute, not the solution, failed on the case: why.
+    BruteError(String),
 }
 
 impl Verdict {
@@ -51,6 +53,7 @@ impl Verdict {
             Verdict::RuntimeError(_) => "RE",
             Verdict::TimeLimit => "TLE",
             Verdict::MemoryLimit => "MLE",
+            Verdict::BruteError(_) => "brute RE",
         }
     }
 }
@@ -207,7 +210,7 @@ impl Drop for Scratch {
 }
 
 /// What a failed run of the solution is called.
-fn failure(outcome: &Outcome) -> Option<Verdict> {
+pub(crate) fn failure(outcome: &Outcome) -> Option<Verdict> {
     match outcome.exit {
         Exit::Code(0) => None,
         Exit::TimedOut => Some(Verdict::TimeLimit),

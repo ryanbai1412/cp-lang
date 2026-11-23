@@ -529,21 +529,20 @@ fn a_generator_program_can_make_the_inputs() {
 }
 
 #[test]
-fn a_failing_brute_stops_the_run_with_the_input() {
+fn a_failing_brute_is_a_failing_case_blamed_on_the_brute() {
     let source = Source::Typed(spec());
-    let error = stress(
+    let report = stress(
         &source,
         &sh("cat"),
         Some(&sh("exit 1")),
         &Judge::Tokens,
         &options(5),
     )
-    .unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .starts_with("the brute script failed on this input"),
-        "{error}"
+    .unwrap();
+    let failure = report.failure.expect("the brute fails");
+    assert_eq!(
+        failure.verdict,
+        Verdict::BruteError("exit code 1".to_string())
     );
 }
 

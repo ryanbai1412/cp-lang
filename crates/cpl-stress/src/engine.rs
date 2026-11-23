@@ -74,9 +74,14 @@ impl Engine for ProcessEngine<'_> {
                     .run(input, self.limit * 10)
                     .map_err(|e| io(brute, e))?;
                 if !outcome.ok() {
-                    return Err(StressError(format!(
-                        "the brute {} failed on this input ({:?}), so there is nothing to compare with:\n{input}",
-                        brute.name, outcome.exit
+                    let why = match crate::judge::failure(&outcome) {
+                        Some(Verdict::RuntimeError(why)) => why,
+                        _ => "it ran past ten times the time limit".to_string(),
+                    };
+                    return Ok(Some((
+                        Verdict::BruteError(why),
+                        String::new(),
+                        String::new(),
                     )));
                 }
                 Some(outcome.stdout)
@@ -224,9 +229,10 @@ impl Engine for InterpEngine {
             ) {
                 Ok(out) => Some(out),
                 Err((_, trap)) => {
-                    return Err(StressError(format!(
-                        "the brute failed on this input ({}):\n{input}",
-                        trap.message
+                    return Ok(Some((
+                        Verdict::BruteError(trap.message),
+                        String::new(),
+                        String::new(),
                     )));
                 }
             },
@@ -327,6 +333,7 @@ impl SourceStressResult {
             &self.stages,
             None,
             self.explained.as_ref(),
+            None,
         )
     }
 }

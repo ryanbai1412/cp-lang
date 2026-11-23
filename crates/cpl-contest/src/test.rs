@@ -171,7 +171,7 @@ pub fn render(results: &[CaseResult]) -> String {
                     out.push_str(&format!("     peak memory {} MB\n", kb.div_ceil(1024)));
                 }
             }
-            Some(Verdict::Accepted | Verdict::TimeLimit) => {}
+            Some(Verdict::Accepted | Verdict::TimeLimit | Verdict::BruteError(_)) => {}
         }
     }
     let passed = results.iter().filter(|r| r.passed()).count();

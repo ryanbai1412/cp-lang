@@ -17,6 +17,13 @@ use std::path::Path;
 const LIMIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
+    trap_report(path, input, false, false)
+}
+
+/// Where a debug run of the file's solution, or with `brute` of its own
+/// `@alt(program)` fn, stops on `input`: the trap with its locals, rendered
+/// as `cpl run` prints it or, with `json`, as `cpl check --format json` does.
+pub fn trap_report(path: &Path, input: &str, brute: bool, json: bool) -> Option<String> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
@@ -32,7 +39,10 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
     {
         return None;
     }
-    let program = cpl_ir::lower(&analysis).ok()?;
+    let program = match brute {
+        false => cpl_ir::lower(&analysis).ok()?,
+        true => cpl_ir::lower_brute(&analysis, &cpl_ir::brute(&analysis)?.0).ok()?,
+    };
     // Alone, an interactive solution only ever sees its input end.
     if program.interactive {
         return None;
@@ -66,5 +76,8 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
     if let Some(locals) = locals {
         diagnostic = diagnostic.with_note(format!("locals: {locals}"));
     }
-    Some(cpl_diag::render(&diagnostic, &name, &text, &lines))
+    Some(match json {
+        true => cpl_diag::json::diagnostic(&diagnostic, &lines).to_string(),
+        false => cpl_diag::render(&diagnostic, &name, &text, &lines),
+    })
 }

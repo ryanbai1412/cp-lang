@@ -132,6 +132,7 @@ fn attempt(engine: &dyn Engine, input: &str) -> Result<Tried, StressError> {
         Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _))) if !engine.has_brute() => {
             Ok(Tried::Stopped)
         }
+        Ok(Some((Verdict::BruteError(_), _, _))) if engine.stops(input) => Ok(Tried::Stopped),
         Ok(wrong) => Ok(Tried::Judged(wrong)),
         Err(_) if engine.stops(input) => Ok(Tried::Stopped),
         Err(e) => Err(e),
