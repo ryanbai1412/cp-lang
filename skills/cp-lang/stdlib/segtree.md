@@ -88,13 +88,15 @@ Fields: `n: Int`.
 
 ## `struct MergeSeg<D>`
 
-\(O(q \log \lvert D \rvert)\) space.
+One set of positions of `D` in a `MergeSegs<D>` pool: a handle, so copying it is O(1).
 
-Fields: `heap: List<D>`.
+## `struct MergeSegs<D>`
 
-- `fn singleton(x: D) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\); A set of positions of `D` holding only `x`, stored as a sparse binary tree over `D`.; traps: when `x` is outside `D`
-- `fn merge(self, other: MergeSeg<D>) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\) amortized per node absorbed; The union of `self` and `other`.
-- `fn first_alive(mut self, alive: D -> Bool) -> ?D` — \(O(\log \lvert D \rvert)\) amortized; The smallest position `x` in the set with `alive(x)`, or `None`.
+A pool of mergeable sets of positions of `D`, each stored as a sparse binary segment tree whose nodes the sets share.
+
+- `fn singleton(mut self, x: D) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\) time and new nodes; The set holding only `x`.
+- `fn merge(mut self, a: MergeSeg<D>, b: MergeSeg<D>) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\) amortized per position, over a sequence of merges whose; The union of `a` and `b`.
+- `fn first_alive(mut self, mut s: MergeSeg<D>, alive: D -> Bool) -> ?D` — \(O(\log \lvert D \rvert)\) amortized; The smallest position `x` in `s` with `alive(x)`, or `None`.
 
 ## Example
 
