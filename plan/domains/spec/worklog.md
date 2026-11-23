@@ -5,6 +5,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 ## 2026-11-22
 - Routed to stdlib: keyed `monotone_minima` (lib/search-dp table and D&C example vs `dp.cp` Int counts). All 31 spec-block errors now have an owner request or a held question.
 - Prelude gate also reads Markdown table rows: 106 gaps (was 86 from fenced `fn` lines only); stdlib told.
+- From perf: decision 240 (release drops bounds, division and assert checks) conflicts with the Trap Parity Gate (`crates/cpl-cli/tests/trap_parity.rs`, sites 1, 13, 25 need the no-`-DLOCAL` build to stop) and AGENTS.md goal 5. Filed "perf: does the judge build trap on a bad index, `/ 0` and `assert`?" in plan/QUESTIONS.md; codegen keeps the traps meanwhile, so `release-list-index-unchecked.cp` and `release-division-by-zero-fallback.cp` stay failing.
 - R05.2.1 reject gap: a closure outliving its captured variable is accepted and has no fitting code; asked diagnostics for one and compiler to reject. No case until a code exists.
 - Routed to stdlib: `runs(link:)` vs `runs_linked`, free `pow(x, k, op:)`, labelled `each(sum: +, hi: max)` (spec-block errors in lib/sequence-patterns and lib/ops-ranges).
 - `Potentials<V>(op)` (lib/ops-ranges) vs `PotentialDsu<V>` (lib/containers, spec/std): asked stdlib which API stays before aligning the chapters.

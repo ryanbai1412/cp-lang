@@ -267,4 +267,12 @@ Recommendation: A, or C if indexing a range has no use; B reintroduces the posit
 How to reverse it: the three cases are generated from `spec/conformance/traits.toml`; change their expected output, or drop the `Range` claim of `Indexed`/`Keyed` there and in R07.3.5.
 Meanwhile: the three `Range` lines stay in `spec/conformance/trait-gaps.txt`; no case asserts either reading.
 
+### perf: does the judge build trap on a bad index, `/ 0` and `assert`?
+Decision 240 (spec) says release has no checks unless kept: `xs[j]` with an unproven `j` is a raw load, `7 / d` with `d == 0` gives 0, `assert` is skipped (cases `spec/conformance/core-09/release-list-index-unchecked.cp`, `release-division-by-zero-fallback.cp`). AGENTS.md goal 5 says the interpreter and the C++ agree "including on input they reject", and the Trap Parity Gate (`crates/cpl-cli/tests/trap_parity.rs`) requires the `-O2`, no `-DLOCAL` judge build to stop on all 36 sites, among them `xs[three]` (site 1), `three / z` (13) and `assert z == 1` (25). Both cannot pass.
+Option A (today): the judge build keeps bounds, division and assert traps; range stores and overflow are checked only under `-DLOCAL`. Cost is a compare per unproven index; ahead-of-loop checks (decisions 242 and on) remove most in loops. Measured remaining cost where they stay: `math/comb` emitted C++ 98 ms -> 81-86 ms with the table checks removed by hand, matched C++ 72-75 ms; `containers/min_heap` 121 ms -> 108 ms, `std::priority_queue` 110 ms (worklog, 2026-11-22).
+Option B (decision 240): release drops them; a wrong index is C++ undefined behaviour as in hand-written C++, the gate's index, division and assert sites move to `-DLOCAL` only.
+Recommendation: A. A wrong answer the judge reports as RE with a message we wrote is easier to explain than a silent WA, the cost left is in three stdlib types that can use `unchecked:` (requests filed with stdlib), and B gives up goal 5's promise.
+How to reverse it: guard the tests in `cpl::at`, `ck` and the division helpers in `crates/cpl-codegen/src/runtime.rs` with `#ifdef LOCAL` (as `check_range` already is) and move the gate's sites to `known_traps.cp`.
+Meanwhile: A; codegen keeps release traps, the two conformance cases stay failing, and the gate stays as it is.
+
 ## Answered
