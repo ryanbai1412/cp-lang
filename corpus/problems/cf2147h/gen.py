@@ -5,7 +5,7 @@ rng = random.Random(seed)
 t = rng.randint(1, 3)
 print(t)
 for _ in range(t):
-    n = rng.randint(1, max(1, 2 * size + 2))
+    n = rng.randint(1, min(50, 2 * size + 2))
     pairs = [(u, v) for u in range(1, n + 1) for v in range(u + 1, n + 1)]
     rng.shuffle(pairs)
     m = rng.randint(0, len(pairs))

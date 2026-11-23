@@ -196,7 +196,7 @@ GCC and LLVM's differential testing against a reference.
 | Solutions are short | contestant tokens, median and max against the C++ | generated over every port | `scripts/ports-page.py --tokens` |
 | A change of requirement stays local | chunks touched when one requirement changes (end position, extra DP dimension, map for array) | process: the revision probe | `missing` as a suite |
 | Ports don't hand-roll what std or the language provides | ports flagged by the hand-rolled-std lint family | `handbook/guidelines/idiomatic-code-checklist.md#r3`; lint, ratchet | `crates/cpl-lint/src/corpus_tests.rs` (`corpus_warnings_only_go_down`, run in the commit tier for staged ports) |
-| Ports keep the statement's constraints as types | ports whose read types match the statement's bounds; max-bound input runs | `handbook/guidelines/idiomatic-code-checklist.md#r5`; `missing` (bounds in `meta.json` and a generated max-bound run) | `plan/domains/idioms/header-audit.md` (manual work list) |
+| Ports keep the statement's constraints as types | ports whose read types match the statement's bounds; max-bound input runs | `handbook/guidelines/idiomatic-code-checklist.md#r5`; `corpus/generators.py` (`no-max`; the `--max` input runs through the C++) | `plan/domains/idioms/header-audit.md` (manual work list) |
 | Every port has the standard header (Source, Problem, Solution) | ports with all three | `handbook/process/porting.md#the-header`; generated count | `corpus/header.py` |
 | Every port has a dream and a review | ports newer than the baseline without either | gate | `scripts/review-check.py --check` |
 | Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | `handbook/guidelines/idiomatic-code-checklist.md#r11`; gate on format; process on content | `research/frictions/` (parsed in the gate) |
@@ -212,7 +212,7 @@ GCC and LLVM's differential testing against a reference.
 | Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages-checklist.md#r1`; generated | `scripts/corpus-tests.py verify`; `corpus/audit.py` (`answer-is-input`, `no-reference`, ratchet `corpus/audit-known.txt`) |
 | Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages-checklist.md#r3`; differential: two accepted submissions that differ on a test | `corpus/audit.py` (`needs-checker`); `cpl-conform corpus` judges by `checker.py` |
 | Interactive problems run with an interactor | interactive ports with an interactor and generator | `handbook/guidelines/problem-packages-checklist.md#r4`; hand-written per problem | `corpus/problems/<id>/interactor.py`; `corpus/audit.py` (`interactor-no-gen`) |
-| Generators produce valid inputs | generated inputs accepted by a validator | `handbook/guidelines/problem-packages-checklist.md#r5`; `missing` (a validator per problem, as Polygon requires) | `missing` |
+| Generators produce valid inputs | generated inputs accepted by a validator | `handbook/guidelines/problem-packages-checklist.md#r5`; generated: the port's read types validate `gen.py` output | `corpus/generators.py` (ratchet `corpus/generators-known.txt`) |
 | The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `corpus/differential.py` over `corpus/sets/v03.txt` (`cpl run` against the Codeforces C++ on every test; ratchet `corpus/differential-known.txt`) |
 | Corpus edits keep working ports working | ports whose verdicts change in a commit that edits them | differential before and after | commit-tier `cpl check` and lint ratchet on staged ports; verdict diff: `missing` |
 
@@ -309,3 +309,4 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the package rows name `corpus/audit.py`.
 - 2026-11-23: invariants and the judgment rubric folded in from the idioms plan folder.
 - 2026-11-23: the interpreter-and-C++ row names `corpus/differential.py`.
+- 2026-11-23: the generator and max-bound rows name `corpus/generators.py`.

@@ -45,14 +45,14 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** generated inputs satisfy every constraint in the statement.
 **Why:** an invalid input tests a case the judge never gives.
 **Example:** a validator that rejects `n = 0` when the statement says `1 <= n`.
-**Enforced by:** `missing` (a validator per problem).
+**Enforced by:** `corpus/generators.py` (`gen-fails`, `invalid-input`, `invalid-test`): the port's `read` types are the validator.
 
 ### problem-packages/R6
 
 **Rule:** the package has an input at the statement's bounds, shaped to be slowest for the obvious solution, judged on the C++ build.
 **Why:** the time limit is exercised, not assumed.
 **Example:** `max.py` in an acceptance judge.
-**Enforced by:** `research/acceptance/judge.py`; corpus: `missing`.
+**Enforced by:** `research/acceptance/judge.py`; corpus: `corpus/generators.py` (`no-max`, and the `--max` input must pass the port's C++).
 
 ### problem-packages/R7
 
