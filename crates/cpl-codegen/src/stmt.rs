@@ -783,7 +783,7 @@ impl<'p> Emitter<'p> {
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched = match walk::path_root(seq) {
+                let untouched_by_body = |seq: &Expr| match walk::path_root(seq) {
                     Some((false, local)) => {
                         !effects.locals.contains(&local) || fields_untouched(seq, body)
                     }
@@ -796,6 +796,10 @@ impl<'p> Emitter<'p> {
                     }
                     None => false,
                 };
+                let untouched = untouched_by_body(seq);
+                let lent = self
+                    .lent_coalesce(seq)
+                    .filter(|(m, _, _)| untouched_by_body(m));
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
                 if !rev && self.sink_loop(id, seq, &var, &cpp, &first, body, out) {
@@ -853,6 +857,8 @@ impl<'p> Emitter<'p> {
                         ),
                     );
                     held
+                } else if let Some((map, key, default)) = lent {
+                    self.loop_over_lent(map, key, default, out)
                 } else if opened {
                     self.line(out, "{");
                     self.indent += 1;

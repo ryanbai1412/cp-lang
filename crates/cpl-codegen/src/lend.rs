@@ -272,3 +272,55 @@ impl<'p> Emitter<'p> {
         }
     }
 }
+
+impl<'p> Emitter<'p> {
+    /// `m.get(k) ?? d` over a plain map with a non-scalar value: the map, key and default.
+    pub(crate) fn lent_coalesce<'e>(
+        &self,
+        seq: &'e Expr,
+    ) -> Option<(&'e Expr, &'e Expr, &'e Expr)> {
+        let ExprKind::Binary(BinOp::Coalesce, got, default) = &seq.kind else {
+            return None;
+        };
+        match &got.kind {
+            ExprKind::Builtin(cpl_ir::Builtin::MapGet, args)
+                if self.closure_id.is_none()
+                    && !seq.ty.is_scalar()
+                    && got.ty != seq.ty
+                    && matches!(
+                        args.first().map(|m| &m.kind),
+                        Some(ExprKind::Local(_) | ExprKind::Global(_))
+                    ) =>
+            {
+                Some((&args[0], &args[1], &**default))
+            }
+            _ => None,
+        }
+    }
+
+    /// Opens a scope holding `m.get(k) ?? d` by reference, so `for v in` walks the entry in place.
+    pub(crate) fn loop_over_lent(
+        &mut self,
+        map: &Expr,
+        key: &Expr,
+        default: &Expr,
+        out: &mut String,
+    ) -> String {
+        self.line(out, "{");
+        self.indent += 1;
+        self.need("map_lend");
+        let (m, k) = (self.expr(map).text, self.expr(key).text);
+        let (entry, own, held) = (self.temp(), self.temp(), self.temp());
+        self.line(
+            out,
+            &format!("const auto {entry} = cpl::map_lend({m}, {k});"),
+        );
+        self.line(out, &format!("std::decay_t<decltype(*{entry})> {own};"));
+        let d = self.expr(default).text;
+        self.line(
+            out,
+            &format!("const auto& {held} = {entry} ? *{entry} : ({own} = {d});"),
+        );
+        held
+    }
+}

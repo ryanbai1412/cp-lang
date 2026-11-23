@@ -32,3 +32,10 @@ c[0] = []
 var grown = c.get(7) ?? [1]
 grown.push(2)
 print(before.len, c[0].len, grown.len)
+var w = Map<Int, List<Int>>()
+w[0] = [1, 2, 3]
+var t = 0
+for k in 0..2:
+    for v in w.get(k) ?? [7]: t += v
+for v in w.get(0) ?? []: w[0] = [v * 10]
+print(t, w[0])

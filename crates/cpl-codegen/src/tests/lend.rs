@@ -103,3 +103,33 @@ fn coalesced_map_get_points_into_the_map_unless_it_changes() {
         "a changed binding keeps the copy: {copied}"
     );
 }
+
+#[test]
+fn for_over_map_get_or_default_walks_the_entry_unless_the_body_changes_the_map() {
+    let lent = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1, 2, 3]\n",
+        "var s = 0\n",
+        "for k in 0..3:\n",
+        "    for v in m.get(k) ?? []: s += v\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("cpl::map_lend(m, k)"),
+        "expected a lent entry: {lent}"
+    );
+    assert!(
+        !lent.contains("map_get("),
+        "a read-only walk must not copy the list: {lent}"
+    );
+    let copied = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1, 2, 3]\n",
+        "for v in m.get(0) ?? []: m[0] = [v]\n",
+        "print(m[0])\n",
+    ));
+    assert!(
+        copied.contains("cpl::map_get(m, 0)"),
+        "a changed map keeps the copy: {copied}"
+    );
+}
