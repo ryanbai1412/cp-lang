@@ -3,6 +3,7 @@
   "defaultOpen": true,
   "pages": [
     "index",
+    "syntax-and-layout",
     "values",
     "ownership-and-mutation",
     "functions-and-closures",

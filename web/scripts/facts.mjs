@@ -50,4 +50,12 @@ readFileSync(guide, 'utf8').split('\n').forEach((text, i) => {
 
 for (const p of problems) console.error(`facts: ${p}`);
 console.log(`facts: ${files.length} files, ${problems.length} contradictions`);
+// Every spec/core chapter is taught by some Language chapter.
+const langDir = join(web, 'content/learn/language');
+const lang = readdirSync(langDir).filter((f) => f.endsWith('.mdx')).map((f) => readFileSync(join(langDir, f), 'utf8')).join('\n');
+for (const f of readdirSync(join(root, 'spec/core')).filter((f) => f.endsWith('.md'))) {
+  const name = f.replace(/\.md$/, '');
+  if (!lang.includes(`<Spec file="core/${name}"`)) say(join(root, 'spec/core', f), 1, `no Language chapter cites core/${name}`);
+}
+
 process.exit(problems.length ? 1 : 0);

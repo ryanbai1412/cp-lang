@@ -1,0 +1,102 @@
+---
+title: "Syntax and layout"
+description: "Indentation blocks, one spelling per idea, case that tells a type from a value, Euclidean division, one-way comparison chains, and why each won."
+---
+
+CP Lang reads like Python and compiles like C++. This chapter is the surface: how a file is laid
+out, how names and literals are spelled, and how operators bind. The normative rules are
+<Spec file="core/01-lexical-grammar">chapter 1 of the spec</Spec>; the whole model in one page is
+<Spec file="core/00-overview" section="The model">the overview</Spec>.
+
+## Blocks are indentation after `:`
+
+A line ending in `:` opens a block; the block is the lines indented under it. A short body may
+follow the `:` on the same line, and `;` separates simple statements on one line
+(<Spec file="core/01-lexical-grammar" section="1.2 Layout">§1.2</Spec>).
+
+```cp run input="3\n4 -1 6\n"
+let n: 1..=10 = read()
+let a: [n]Int = read()
+var best: ?Int = None
+for x in a: best min= x
+let total = a.fold(+)
+if total > 0:
+    print("sum {total}, min {best ?? 0}")
+else: print("non-positive")
+```
+
+Inside brackets, newlines are ignored, so long calls wrap freely. A line indented under an
+expression continues it when it starts with `.`, `??`, `and`, `or` or a binary operator, so a
+method chain wraps without a trailing backslash or extra parentheses.
+
+## Names: case is grammar
+
+Types, domains, traits and enum variants are `PascalCase`; values, functions and fields are
+lowercase (<Spec file="core/01-lexical-grammar" section="1.3 Names">§1.3</Spec>). So a pattern
+reads without a lookup: `match h: Big => ...` tests a variant, `match h: big => ...` binds a name,
+and `SegTree<0..=4e9>(+, a)` opens type arguments with no turbofish because `SegTree` is
+capitalized. A `let N = ...` is an error that says why: `N` would read as a type.
+
+## Literals say what they mean
+
+`2e5`, `1e9 + 7` and `4e18` are exact `Int`s, the way constraints are written in statements; a
+literal's type is the singleton range of its value, which widens through arithmetic
+(<Spec file="core/01-lexical-grammar" section="1.4 Literals">§1.4</Spec>). Every string literal
+interpolates (`"Case #{t}: {ans}"`), and `r"..."` is raw.
+
+## Operators
+
+The precedence table is C's with three changes: `**` is power, `^` is only xor, and `??` binds
+loosest of the binary operators (<Spec file="core/01-lexical-grammar" section="1.5 Operators and precedence">§1.5</Spec>).
+
+```cp run
+print(7 / -2, 7 % -2, -7 % 3)
+let (a, b, c) = (1, 2, 3)
+print(yes(0 <= a < b <= c))
+```
+
+`/` and `%` are Euclidean: `%` is never negative, so `-7 % 3` is `2` and a hash or a cyclic index
+needs no `((x % m) + m) % m`. Comparisons chain as in Python, but only in one direction.
+
+```cp run rejects=E0111
+let (a, b, c) = (1, 2, 3)
+print(yes(a < b > c))
+```
+
+## One spelling per idea
+
+Every idea has one spelling, and the common other ones are errors that name it
+(<Spec file="core/01-lexical-grammar" section="1.11 Rejected spellings">§1.11</Spec>): `#` comments
+are `//`, `xs ++ ys` is `xs + ys`, `x ^ k` meaning power is `x ** k`, `{k: v}` is `[k: v]`.
+
+```cp run rejects=E0004
+let x = 1 # two
+print(x)
+```
+
+## Why it's designed this way
+
+**Indentation, not braces.** Braces cost a line per block and let the visible structure disagree
+with the parsed one (the dangling `if` without braces). Python's layout is the most familiar
+shape for contest pseudocode, and editorials are written in it; the costs are tabs and
+continuation lines, so tabs in indentation are an error and continuation has a rule rather than a
+backslash. The alternative considered was optional braces; it gives two spellings for every block,
+which the one-spelling rule forbids.
+
+**Case as grammar.** Without it, `match h: big => ...` needs a symbol lookup to know whether
+`big` is a constant or a fresh binding, and a typo silently binds. Haskell enforces the same rule,
+and Rust lints for it, for the same reason. <Decision n={157} /> applies it to `Some` and `None` too, so there
+is no lowercase exception.
+
+**Euclidean `/` and `%`.** C++ truncates toward zero, so `-7 % 3 == -1` and every negative index
+or hash needs a fix-up. Floor division (Python) gives a non-negative `%` for a positive divisor
+only; Euclidean division gives it for every divisor and agrees with floor division in the common
+case (<Decision n={347} />).
+
+**One-way comparison chains.** `0 <= i < j <= n` says an invariant the way a statement does, so
+CP Lang keeps Python's chains. `a < b > c` is legal Python and almost always a slip, so a chain
+must point one way (<Decision n={130} />).
+
+**Rejected spellings are errors with fixes, not aliases.** Accepting `++` or `#` as synonyms
+would leave two spellings in every codebase; rejecting them silently would cost a confused
+minute. An error that names the accepted form costs one keystroke (<Decision n={98} />).
