@@ -16,10 +16,10 @@ export default function Page() {
     <main className="container mx-auto max-w-5xl px-4 py-10 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-[0.9em]">
       <h1 className="text-3xl font-semibold tracking-tight">Lints</h1>
       <p className="mt-3 max-w-3xl text-muted-foreground">
-        {all.length} lints, each with the code it flags, the rewrite and the reason. <code>cpl lint</code> and the
-        editor show them; none ever fails <code>cpl build</code> or <code>cpl run</code>. Set a lint's level in{' '}
-        <code>cp.toml</code> under <code>[lints]</code>, or silence one in code with <code>with lint(name: allow)</code>
-        .
+        {all.length} lints, each with the code it flags, the rewrite and the reason. <code>cpl lint</code>, the editor
+        and the playground show them; none ever fails <code>cpl build</code> or <code>cpl run</code>. Set a lint's level
+        in <code>cp.toml</code> under <code>[lints]</code>, or silence one in code with{' '}
+        <code>with lint(name: allow)</code>.
       </p>
       <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <a className="underline" href="#by-group">

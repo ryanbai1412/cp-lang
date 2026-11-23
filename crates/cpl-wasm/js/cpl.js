@@ -77,6 +77,11 @@ export class Cpl {
     return this.#call("cpl_check", { ...options, source });
   }
 
+  /** `cpl lint`: the lint warnings in `source` at default levels, with their fixes. */
+  lint(source, options = {}) {
+    return this.#call("cpl_lint", { ...options, source });
+  }
+
   /** `cpl run`: checks `source`, then runs it with `stdin` as its input. */
   run(source, stdin = "", options = {}) {
     return this.#running("cpl_run", source, stdin, options);
@@ -236,7 +241,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "run", "trace", "replay", "stress", "build", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "build", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { InlineMd } from '@/components/inline-md';
 import { Badge } from '@/components/ui/badge';
 import { highlight } from '@/lib/highlight';
@@ -12,7 +12,8 @@ const repo = 'https://github.com/ryanbai1412/cp-lang/tree/main/spec/lints';
 const levels = { deny: 'deny: `cpl lint` exits 1', warn: 'warn', allow: 'off by default' };
 
 export function generateStaticParams() {
-  return lints().map((l) => ({ name: l.name }));
+  // `/lints/L0501` forwards to `/lints/search_loop`, so a diagnostic can link by its code.
+  return lints().flatMap((l) => [{ name: l.name }, { name: l.code }]);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -23,6 +24,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function Page({ params }: Props) {
   const { name } = await params;
+  const byCode = lints().find((x) => x.code === name);
+  if (byCode) redirect(`/lints/${byCode.name}`);
   const l = lints().find((x) => x.name === name);
   if (!l) notFound();
   const [before, after, near] = await Promise.all([

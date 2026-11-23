@@ -49,6 +49,16 @@ export function toCmDiagnostics(diagnostics: Diagnostic[], length: number): CmDi
     severity: d.severity === 'note' ? 'info' : d.severity,
     source: d.code,
     message: [d.message, d.help ? `help: ${d.help}` : null].filter(Boolean).join('\n'),
+    actions: [
+      ...d.fixes.map((f) => ({
+        name: f.title,
+        apply: (view: EditorView) =>
+          view.dispatch({ changes: f.edits.map((e) => ({ from: e.start, to: e.end, insert: e.text })) }),
+      })),
+      ...(/^L\d{4}$/.test(d.code)
+        ? [{ name: 'Why?', apply: () => window.open(`/lints/${d.code}`, '_blank', 'noopener') }]
+        : []),
+    ],
   }));
 }
 
@@ -65,7 +75,9 @@ const checkLinter = (onLoad: boolean) => linter(
     const source = view.state.doc.toString();
     try {
       const outcome = await cpl.check(source);
-      return toCmDiagnostics(outcome.diagnostics, source.length);
+      // Lints wait for a program that checks, as `cpl lint` does.
+      const lints = outcome.ok ? (await cpl.lint(source)).diagnostics : [];
+      return toCmDiagnostics([...outcome.diagnostics, ...lints], source.length);
     } catch {
       return [];
     }

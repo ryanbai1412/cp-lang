@@ -43,7 +43,7 @@ fn visit(u: V):
                     0 => visit(v)
                     _ => print("unreachable")
 print("searching")
-visit(V.first)
+visit((V.first)!)
 print(count)
 `;
 
@@ -160,6 +160,15 @@ test("check reports an error as data and as text", () => {
   assert.match(error.help, /V\(n\)/);
   assert.match(check.stderr, /^error\[E0301\]/);
   assert.match(check.stderr, /--> sum\.cp:4:9/);
+});
+
+test("lint reports what `cpl lint` warns about, kept apart from check", () => {
+  const source = "let xs: List<Int> = [1, 4, 7]\nvar found = false\nfor x in xs:\n    if x > 3:\n        found = true\n        break\nprint(yes(found))\n";
+  assert.equal(cpl.check(source).diagnostics.length, 0);
+  const lint = cpl.lint(source);
+  assert.equal(lint.exitCode, 0);
+  assert.deepEqual(lint.diagnostics.map((d) => [d.code, d.severity]), [["L0501", "warning"]]);
+  assert.match(lint.stderr, /warning\[L0501\]/);
 });
 
 test("a program with errors does not run or build", () => {

@@ -6,6 +6,7 @@ export type * from './cpl-types';
 
 type Worker = {
   check(source: string): Promise<Outcome>;
+  lint(source: string): Promise<Outcome>;
   run(source: string, stdin?: string): Promise<RunOutcome>;
   trace(source: string, stdin?: string): Promise<TraceOutcome>;
   stress(source: string, options?: StressOptions): Promise<StressOutcome>;
@@ -46,6 +47,7 @@ async function call<T>(f: (w: Worker) => Promise<T>): Promise<T> {
 
 export const cpl = {
   check: (src: string) => call((w) => w.check(src)),
+  lint: (src: string) => call((w) => w.lint(src)),
   run: (src: string, stdin = '') => call((w) => w.run(src, stdin)),
   trace: (src: string, stdin = '') => call((w) => w.trace(src, stdin)),
   stress: (src: string, options?: StressOptions) => call((w) => w.stress(src, options)),

@@ -146,6 +146,8 @@ export declare class CplError extends Error {
 export declare class Cpl {
   readonly version: string;
   check(source: string, options?: Options): Outcome;
+  /** `cpl lint`: the lint warnings in `source` at default levels, with their fixes. */
+  lint(source: string, options?: Options): Outcome;
   run(source: string, stdin?: string | Uint8Array, options?: Options): RunOutcome;
   /**
    * `cpl run --trace`: the run, recorded. `trace` is a document of
@@ -180,7 +182,7 @@ export declare class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "run" | "trace" | "replay" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };
