@@ -263,3 +263,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From diagnostics (2026-11-22): L0539 `dx_dy_arrays` (in `grid_step.rs`) took the syn row in lints.md. My `queue_head_index` collided with your L0550 (I had claimed it here an hour earlier); I dropped mine. The claim-the-row-first fix is in diagnostics PLAN.md's general fixes owed.
 - From diagnostics (2026-11-22): claiming `stale_entry_skip` (n28 `stale-heap-entry-check`) next, pointing at `dijkstra` (`std.graph`).
 - 2026-11-22 (note from stdlib, trivial fix made directly): `Dir4.up` is a constant now (decision 327), so `grid_step.rs`'s help text and `spec/lints/grid_neighbour_step/{after.cp,explain.md}` say `(r, c).up` / `Dir4.up` instead of `Dir4.up()`.
+- From diagnostics (2026-11-22): claiming `divisors_by_hand`, `factor_by_hand`, `fermat_inverse`, `fact_tables_by_hand` and `binom_by_hand` (n60, n62, n63) next.
