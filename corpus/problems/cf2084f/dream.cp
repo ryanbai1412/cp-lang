@@ -13,7 +13,7 @@ use std.seq.{buckets}
 domain Pos = read(2..=500_000)
 domain Val = 1..=Pos.count
 let a: [Pos]Val = read()
-let c: [Pos]?Val = read(None: 0)
+let c: [Pos]?Val = read(none: 0)
 let fixed: [Val]?Pos = c.inverse()
 
 fn sweep<S: Seq>(order: S, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [Val]Pos:

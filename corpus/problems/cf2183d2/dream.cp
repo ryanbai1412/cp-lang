@@ -15,7 +15,7 @@
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n
-let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
+let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)
 let by_depth = V.group(by: t.depth)
 
 let ans = [

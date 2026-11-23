@@ -20,7 +20,7 @@ enum Side = Odd | Even
 @!multitest
 let n: 1..=500_000 = read()
 domain P = 1..=n
-let a: [P]?(1..=n) = read(None: 0)
+let a: [P]?(1..=n) = read(none: 0)
 let half = n / 2
 let at = a.inverse()
 fn side(p: P) -> Side = if p.label % 2 == 0: Even else: Odd

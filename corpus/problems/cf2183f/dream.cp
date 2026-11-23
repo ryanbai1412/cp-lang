@@ -10,11 +10,11 @@ type Z = Mod<998244353>
 let n = read(1..=5000)
 domain V = 1..=n
 let s: [V]Char = read()
-let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
 
 var f = Prefix<t.Pre, t.Pre, Z>.filling(order: FillOrder.Reverse)
 for u in t.at.rev:
     for v in t.at.rev:
-        let val = if s[u] == s[v]: 1 + f.sum(t.below(u), t.below(v)) else: 0
+        let val = if s[u] == s[v]: 1 + f.fold(t.below(u), t.below(v)) else: 0
         f.set(t.pos(u), t.pos(v), val)
-print([f.sum(t.sub(i), t.sub(i)) for i in V])
+print([f.fold(t.sub(i), t.sub(i)) for i in V])

@@ -24,7 +24,7 @@ let n: 2..=300_000 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
-let root = V.last
+let root = V.last!
 let t = Rooted(g, root:)
 
 let max_leaf = max(u for u in V if g.deg(u) == 1)!
@@ -41,7 +41,7 @@ var dp = Prefix<V, Z>.filling()
 for u in V:
     let val = if u == max_leaf: Z(1)
     elif u > max_leaf:
-        if let pv = prv_val[u], pv < u: dp.sum(pv.next!..u) else: Z(0)
+        if let pv = prv_val[u], pv < u: dp.fold(pv.next!..u) else: Z(0)
     else: Z(0)
     dp.set(u, val)
-print(dp[root])
+print(dp.fold(root..=root))

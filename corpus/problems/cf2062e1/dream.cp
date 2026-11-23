@@ -7,10 +7,11 @@ with io(base: 1)
 
 @!multitest
 domain V = read(1..=4e5)
-let w: [V]1..=V.count = read()
-let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first)
+domain W = 1..=V.count
+let w: [V]W = read()
+let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first!)
 
-let by_w = V.group(by: v => w[v])
+let by_w = buckets(w)
 
 fn win() -> ?V:
     var heavier_lca: ?V = None
@@ -21,4 +22,4 @@ fn win() -> ?V:
             heavier_lca = if let l = heavier_lca: t.lca(l, v) else: v
     None
 
-print(win() ?? 0)
+if let v = win(): print(v) else: print(0)
