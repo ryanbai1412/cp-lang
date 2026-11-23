@@ -21,17 +21,17 @@ for i in 0..n:
             a[r, c] = given[r, c]
             continue
         var v = TOP
-        if let below = r + 1: v = a[below, c]
-        if let right = c + 1: v = min(v, a[r, right])
+        if let below = Row.at(r + 1): v = a[below, c]
+        if let right = Col.at(c + 1): v = min(v, a[r, right])
         a[r, c] = v - 1
 
 fn valid() -> Bool:
     for r in Row:
         for c in Col:
             if a[r, c] <= 0 or a[r, c] > 1000000000000000000: return false
-            if let right = c + 1:
+            if let right = Col.at(c + 1):
                 if a[r, c] >= a[r, right]: return false
-            if let below = r + 1:
+            if let below = Row.at(r + 1):
                 if a[r, c] >= a[below, c]: return false
     true
 

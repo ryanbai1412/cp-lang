@@ -12,7 +12,7 @@ let g: [Row, Col]Char = read()
 
 const DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 fn step(p: Cell, d: (Int, Int)) -> ?Cell:  // WISH L1: p.step(d) over Dir4
-    if let r = p.0 + d.0 and let c = p.1 + d.1:
+    if let r = Row.at(p.0 + d.0) and let c = Col.at(p.1 + d.1):
         return (r, c)
     return None
 

@@ -17,7 +17,7 @@ for most in a:
     var window: Z = 0  // ways[g - most ..= g]
     for g in Given:
         window += ways[g]
-        if let gone = g - (most + 1): window -= ways[gone]
+        if let gone = Given.at(g - (most + 1)): window -= ways[gone]
         next[g] = window
     ways = next
 print(ways[Given.last!])

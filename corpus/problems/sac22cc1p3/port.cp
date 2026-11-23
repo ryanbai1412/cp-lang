@@ -17,7 +17,7 @@ fn run_left() -> Bool:
         for c in Col:
             if g[r, c] != 'W': continue
             var at = c
-            while let l = at - 1:
+            while let l = Col.at(at - 1):
                 if g[r, l] != '.': break
                 g[r, l] = 'W'
                 g[r, at] = '.'
@@ -30,11 +30,11 @@ fn fall() -> Bool:
     var moves: List<(Row, Col)> = []
     for r in Row:
         for c in Col:
-            if let below = r + 1:
+            if let below = Row.at(r + 1):
                 if g[r, c] == 'W' and g[below, c] == '.': moves.push((r, c))
     for p in moves:
         g[p.0, p.1] = '.'
-        g[(p.0 + 1)!, p.1] = 'W'
+        g[Row.at(p.0 + 1)!, p.1] = 'W'
     moves.len > 0
 
 for _ in 0..q:
@@ -45,7 +45,7 @@ for _ in 0..q:
             for c in Col:
                 if g[r, c] == 'X':
                     g[r, c] = '.'
-                    if let below = r + 1: g[below, c] = 'X'
+                    if let below = Row.at(r + 1): g[below, c] = 'X'
         var moving = true
         while moving:
             let a = run_left()

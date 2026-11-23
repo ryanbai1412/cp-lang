@@ -14,13 +14,13 @@ var r = Row(n / 2)
 var c = Col(n / 2)
 for ch in moves:
     if ch == 'L':
-        if let x = c - 1: c = x
+        if let x = Col.at(c - 1): c = x
     elif ch == 'R':
-        if let x = c + 1: c = x
+        if let x = Col.at(c + 1): c = x
     elif ch == 'U':
-        if let x = r - 1: r = x
+        if let x = Row.at(r - 1): r = x
     elif ch == 'D':
-        if let x = r + 1: r = x
+        if let x = Row.at(r + 1): r = x
     else:
         for i in Row:
             for j in Col:

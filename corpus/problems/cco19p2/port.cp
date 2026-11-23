@@ -57,5 +57,5 @@ var out: [Row, Col]Char = '.'
 for r in Row:
     for c in Col:
         if g[r, c] == '#':
-            out[(r + drop[S(shape[r, c])]!)!, c] = '#'
+            out[Row.at(r + drop[S(shape[r, c])]!)!, c] = '#'
 for r in Row: print(out[r, ..])

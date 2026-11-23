@@ -16,13 +16,13 @@ fn wall(p: Cell) -> Bool: g[p] == '+' or g[p] == '-' or g[p] == '|'
 // between them is open.
 fn doors(p: Cell) -> List<Cell>:
     var out: List<Cell> = []
-    if let a = p.0 - 1 and let b = p.0 - 2:
+    if let a = Row.at(p.0 - 1) and let b = Row.at(p.0 - 2):
         if not wall((a, p.1)): out.push((b, p.1))
-    if let a = p.0 + 1 and let b = p.0 + 2:
+    if let a = Row.at(p.0 + 1) and let b = Row.at(p.0 + 2):
         if not wall((a, p.1)): out.push((b, p.1))
-    if let a = p.1 - 1 and let b = p.1 - 2:
+    if let a = Col.at(p.1 - 1) and let b = Col.at(p.1 - 2):
         if not wall((p.0, a)): out.push((p.0, b))
-    if let a = p.1 + 1 and let b = p.1 + 2:
+    if let a = Col.at(p.1 + 1) and let b = Col.at(p.1 + 2):
         if not wall((p.0, a)): out.push((p.0, b))
     out
 

@@ -16,7 +16,7 @@ fn around(p: Cell) -> List<Cell>:  // WISH L1: p.around() over Dir8
     var out: List<Cell> = []
     for dr in -1..=1:
         for dc in -1..=1:
-            if let r = p.0 + dr and let c = p.1 + dc: out.push((r, c))
+            if let r = Row.at(p.0 + dr) and let c = Col.at(p.1 + dc): out.push((r, c))
     out
 
 // Can he deliver everything standing only on ground between lo and hi?
