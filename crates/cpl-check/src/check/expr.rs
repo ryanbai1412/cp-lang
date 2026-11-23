@@ -2168,7 +2168,9 @@ impl<'a> Checker<'a> {
                 _ => {}
             }
         }
-        if name.text == "pow" {
+        let own_pow =
+            matches!(&base_ty, Ty::Named { .. }) && !self.implements_trait(&base_ty, "Pow");
+        if name.text == "pow" && !own_pow {
             let message = "power uses `**`, not `.pow(...)`".to_string();
             let fix = self.pow_fix(expr, name);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
