@@ -9,8 +9,8 @@ const P = 1000000007
 type Z = Mod<P>
 let n: 1..=2e5 = read()
 let k: 0..=1e9 = read()
-let a_in: [n]1..=1e9 = read()
-let b_in: [n]1..=1e9 = read()
+let a_in: [n]1..=2e9 = read()
+let b_in: [n]1..=2e9 = read()
 let a = a_in.sorted()
 let b = b_in.sorted()
 

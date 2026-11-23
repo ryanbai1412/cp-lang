@@ -11,8 +11,7 @@ const P = 1000000007
 type Z = Mod<P>
 
 let n: 1..=5000 = read()
-let k: 1..=5000 = read()
-assert k <= n
+let k: 1..=n = read()
 
 // ways[c]: permutations of the items so far with c cycles. Item i either
 // starts a cycle of its own or goes right after one of the i - 1 before it.

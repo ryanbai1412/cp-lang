@@ -6,8 +6,7 @@
 //   while they do not, pay the cheapest in the heap. O(n log n).
 // original: corpus/submissions/4575278.cpp
 let n: 1..=2e5 = read()
-let people: [n](need: 0..=n, price: 1..=1e9) = read()
-assert all(p.need <= n for p in people)
+let people: [n](need: 0..=n, price: 0..=1e4) = read()
 
 var by_need: [0..=n]List<Int> = []
 for p in people: by_need[p.need].push(p.price)

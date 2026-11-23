@@ -7,7 +7,7 @@
 //   pairs). That relation is a DAG and a council is a chain in it, so the answer is the
 //   longest path, memoised per letter: O(N * K^2) to build, O(K^2) to search.
 // cp: 0.1 8ef64b9+dirty
-let n: 1..=1000 = read()
+let n: 1..=1e4 = read()
 let k: 1..=26 = read()
 domain L = 'A'..'A' + k
 let orders: [n]Str = read()  // WISH: read each word as a `Perm<L>` (filed with stdlib)
