@@ -216,7 +216,7 @@ impl Bounds {
                 if let Some(range) = self.range(ty) {
                     self.input(name, range);
                 }
-                if let Some(size) = super::array_size(base, ty, self) {
+                if let Some(size) = super::proven::array_size(base, ty, self) {
                     self.set_size(name, size);
                 }
             }

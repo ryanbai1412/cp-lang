@@ -32,7 +32,8 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 | `src/lib.rs` | 1,046 | `Level`, `Lint`, the `LINTS` registry (38 consts with code, name, default, title, summary, explanation, trigger, fix text); `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `@allow` and `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
 | `src/config.rs` | 153 | `Config` from `cp.toml [lints]` (levels by name) plus `memory_mb` |
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |
-| `src/rules/mod.rs` | 2,144 | `run`: calls each rule module in turn; shared helpers (scopes, names, spans) |
+| `src/rules/mod.rs` | 34 | `run`: calls each rule module in turn |
+| `src/rules/proven/mod.rs`, `cost.rs` | 1,889, 238 | the `Proven*` analyses (value ranges, indexes, loops, sizes, per-fn iteration counts) the CLI and LSP read; checker facts, to move to `cpl-check` |
 | `src/rules/bounds.rs` | 1,089 | Value ranges from declared input bounds; a second copy of what the checker proves |
 | `src/rules/taste/mod.rs` | 1,890 | L05xx idiom lints over statement sequences (search loop, folds, push loops, ...) each as its own pattern match |
 | `src/rules/taste/{search,range_tree,string_algo,stdlib_algo}.rs` | 237, 501, 619, 1,199 | the `hand_rolled_*` and `sorted_range_method` matchers, one family per file |

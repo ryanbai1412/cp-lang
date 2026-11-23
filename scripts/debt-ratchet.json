@@ -20,7 +20,6 @@
     "crates/cpl-cli/src/lib.rs": 2386,
     "crates/cpl-lint/src/tests.rs": 2384,
     "crates/cpl-codegen/src/emit.rs": 2214,
-    "crates/cpl-lint/src/rules/mod.rs": 2146,
     "crates/cpl-lsp/src/server.rs": 2046,
     "crates/cpl-check/src/check/call.rs": 2032
   },
