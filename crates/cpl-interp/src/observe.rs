@@ -54,6 +54,11 @@ pub(crate) trait Observer {
     fn assignments(&self) -> bool {
         false
     }
+    /// Whether a step at call depth `depth` would be kept: what a step
+    /// costs before the observer sees it (`impl Show` calls) is paid only then.
+    fn keeps_step(&self, _depth: usize) -> bool {
+        true
+    }
     /// Global `id`, or a part of it, was written where no step is kept:
     /// true when the observer has taken note and wants no view.
     fn quiet_write(&mut self, _place: &Place, _depth: usize) -> bool {
@@ -170,6 +175,9 @@ impl Observer for Tracer {
     fn assignments(&self) -> bool {
         self.assignments
     }
+    fn keeps_step(&self, depth: usize) -> bool {
+        self.recording(depth)
+    }
     fn quiet_write(&mut self, place: &Place, depth: usize) -> bool {
         Tracer::quiet_write(self, place, depth)
     }
@@ -253,7 +261,9 @@ impl<O: Observer> Interp<'_, '_, O> {
             return;
         }
         if let Some(mut tracer) = self.tracer.take() {
-            self.fill_shown();
+            if tracer.keeps_step(self.call_frames.len()) {
+                self.fill_shown();
+            }
             let locals = relifetime(std::mem::take(&mut self.view_locals));
             let view = self.view_in(locals);
             record(&mut tracer, &view);

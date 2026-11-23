@@ -25,5 +25,5 @@
 {"id":24,"line":25,"label":"let (lk, lv) = mv.last!","stage":"main","values":{"stdout":["20 30 NO 20 25 30 30 25 20","10 20 10 20 25 30 50","YES -1 -1","1 NO YES"],"st":[10,20,25,30,50],"hs":[9],"mp":[[2,20],[5,50],[8,80],[12,120]],"fk":5,"fv":50,"lk":8,"lv":80},"locals":{"x":50,"x":30,"x":20,"x":20,"x":50,"k":12},"frames":[{"fn":"main","line":25}]},
 {"id":25,"line":26,"label":"print → 5 50 8 80 NO 55 88 8 5","stage":"main","values":{"stdout":["20 30 NO 20 25 30 30 25 20","10 20 10 20 25 30 50","YES -1 -1","1 NO YES","5 50 8 80 NO 55 88 8 5"],"st":[10,20,25,30,50],"hs":[9],"mp":[[2,20],[5,50],[8,80],[12,120]],"fk":5,"fv":50,"lk":8,"lv":80},"locals":{"x":50,"x":30,"x":20,"x":20,"x":50,"k":12,"k":8,"v":80,"k":5},"checkpoint":"print 5","frames":[{"fn":"main","line":26}]},
 {"id":26,"line":27,"label":"let (pk, _) = mp.range(..5).last!","stage":"main","values":{"stdout":["20 30 NO 20 25 30 30 25 20","10 20 10 20 25 30 50","YES -1 -1","1 NO YES","5 50 8 80 NO 55 88 8 5"],"st":[10,20,25,30,50],"hs":[9],"mp":[[2,20],[5,50],[8,80],[12,120]],"fk":5,"fv":50,"lk":8,"lv":80,"pk":2},"locals":{"x":50,"x":30,"x":20,"x":20,"x":50,"k":12,"k":8,"v":80,"k":5},"frames":[{"fn":"main","line":27}]},
-... 16 more lines, 16513 bytes, fnv64 49dd6b0d4c6c3160
+... 16 more lines, 7899 bytes, fnv64 d2cc7e86ea9dbae6
 stderr:

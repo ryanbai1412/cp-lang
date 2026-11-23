@@ -746,7 +746,7 @@ impl Tracer {
         }
     }
 
-    fn recording(&self, depth: usize) -> bool {
+    pub(crate) fn recording(&self, depth: usize) -> bool {
         if self.finishing {
             return true;
         }

@@ -1,6 +1,6 @@
 "variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"a":{"name":"a","type":"[I]Int","kind":"array","labels":[0,1,2]},"pre":{"name":"pre","type":"Prefix\u003cI, Int>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":4,"label":"let n: 1..=9 = read()","stage":"main","values":{"stdout":[],"n":3},"locals":{},"frames":[{"fn":"main","line":4}]},
 {"id":1,"line":6,"label":"let a: [I]-9..=9 = read()","stage":"main","values":{"stdout":[],"n":3,"a":[9,9,-1]},"locals":{},"frames":[{"fn":"main","line":6}]},
-{"id":2,"line":7,"label":"let pre = a.scan(+)","stage":"main","values":{"stdout":[],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17]}},"locals":{},"frames":[{"fn":"main","line":7}]},
-{"id":3,"line":8,"label":"print → 0 17","stage":"main","values":{"stdout":["0 17"],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17]}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":8}]},
-{"id":4,"line":8,"label":"the program ended","stage":"main","values":{"stdout":["0 17"],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17]}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":8}]}]}}}
+{"id":2,"line":7,"label":"let pre = a.scan(+)","stage":"main","values":{"stdout":[],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17],"sums":true}},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":3,"line":8,"label":"print → 0 17","stage":"main","values":{"stdout":["0 17"],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17],"sums":true}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":8}]},
+{"id":4,"line":8,"label":"the program ended","stage":"main","values":{"stdout":["0 17"],"n":3,"a":[9,9,-1],"pre":{"p":[0,9,18,17],"sums":true}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":8}]}]}}}
 stderr:

@@ -7,6 +7,9 @@ use crate::observe::Observer;
 use crate::value::{OptVal, TupleVal, Value};
 use crate::*;
 
+/// Loop rounds and calls one `show` call gets while tracing.
+const SHOW_ROUNDS: u64 = 1 << 16;
+
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// Stops the run before a call would overflow the interpreter's own
     /// stack: the program's recursion is the interpreter's.
@@ -171,8 +174,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.trace_shown.clear();
         }
         let tracer = self.tracer.take();
+        let (stop, countdown) = (self.stop.take(), self.countdown);
         let (stack, frames) = (self.stack.len(), self.call_frames.len());
         for (f, value) in wanted {
+            // A `show` that doesn't finish soon is skipped, and the value
+            // shown field by field: a trace never waits on one.
+            self.stop = Some(Stop::after_rounds(SHOW_ROUNDS));
+            self.countdown = crate::stop::EVERY;
             let arg = match value {
                 Value::Int(x) if !self.on_vm(f) => Value::Tuple(TupleVal::OneInt(x)),
                 ref other => other.clone(),
@@ -189,6 +197,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         }
         self.tracer = tracer;
+        (self.stop, self.countdown) = (stop, countdown);
     }
 
     fn holds_show(&mut self, ty: &Ty) -> bool {
@@ -233,6 +242,10 @@ fn holds_show(program: &Program, ty: &Ty, seen: &mut Vec<Ty>) -> bool {
 /// order the trace shows them. A long array is shown by its count, not
 /// its cells, so they are skipped.
 fn wanted_shows(program: &Program, value: &Value, ty: &Ty, out: &mut Vec<(FnId, Value)>) {
+    // A variable a call is changing has no value to show yet.
+    if matches!(value, Value::Unit | Value::Moved) {
+        return;
+    }
     if let Some(f) = program.show_fn(ty) {
         out.push((f, value.clone()));
         return;

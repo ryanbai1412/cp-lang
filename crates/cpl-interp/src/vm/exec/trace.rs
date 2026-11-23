@@ -208,7 +208,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             let mut path = std::mem::take(&mut self.trace_path);
             path.clear();
             path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
-            self.fill_shown();
+            let depth = self.call_frames.len();
+            if (self.tracer.as_ref()).is_some_and(|t| t.keeps_step(depth)) {
+                self.fill_shown();
+            }
             let mut tracer = self.tracer.take().expect("traced");
             let view = crate::trace::View {
                 program: self.program,
