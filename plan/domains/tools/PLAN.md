@@ -46,6 +46,9 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 
 | Instance (local fix) | General fix | Owner |
 |---|---|---|
+| `build-wasm.sh` ran `wasm-opt` when installed: binaryen 132 rejected rustc's bulk-memory output, and when it ran the file gzipped larger | done: no optional size step, so the bytes match on every machine | tools |
+| `cpl.wasm` is 1,912,009 B gz; std text is 166 KB of it | std modules past the prelude fetched by the playground when a program `use`s them (a module-provider hook in `cpl-check`, as `CPL_STD_DIR` is natively) | site + tools |
+| The interpreter is built twice in wasm (traced and untraced, 395 KB raw) | one interpreter with a dynamic observer in the wasm build, if debug-mode speed allows | debugger |
 | Windows CI: editor tests split CRLF repo files (normalized in the test) | `.gitattributes` `* text=auto eol=lf`, with `-text` on the CRLF test fixtures, so every checkout is LF | infra |
 | Built C++ prints `\r\n` on Windows, the interpreter `\n` (cpl-cli tests normalize) | Done: binary stdout under `_WIN32` in runtime.rs's `out` piece; the profiler now inserts its tally before the first namespace, not after the last `#include` | tools (perf reviews) |
 | VS Code test compared `diagnostic.code` to a string; the server's new `codeDescription` link made it an object | an LSP-level diagnostics test in cpl-lsp already pins `codeDescription`; editor tests should assert on the protocol fields they need, not VS Code's shape of them | tools |

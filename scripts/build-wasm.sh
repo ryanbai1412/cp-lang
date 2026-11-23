@@ -44,11 +44,9 @@ cargo build -p cpl-wasm --target "$target" --profile wasm \
 
 mkdir -p "$out"
 built="$(cargo metadata --format-version 1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/$target/wasm/cpl_wasm.wasm"
-if command -v wasm-opt >/dev/null; then
-    wasm-opt -Os "$built" -o "$out/cpl.wasm"
-else
-    cp "$built" "$out/cpl.wasm"
-fi
+# No wasm-opt: binaryen 132's -Oz output gzips 16 KB larger than rustc's,
+# and an optional step made the shipped bytes depend on the machine.
+cp "$built" "$out/cpl.wasm"
 cp "$root"/crates/cpl-wasm/js/* "$out/"
 
 for file in "$out"/*; do

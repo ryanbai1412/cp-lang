@@ -44,8 +44,8 @@ $ scripts/build-wasm.sh
 only `cargo` and the `wasm32-unknown-unknown` target. There is no
 `wasm-bindgen` or `wasm-pack` step, because the module's interface is a
 dozen plain functions (`src/abi.rs`) and `js/cpl.js` is written by hand
-against them. If `wasm-opt` is installed the script runs it, and the file
-gets a little smaller; without it the build is the same otherwise.
+against them. It runs no `wasm-opt`: its output gzips larger than rustc's
+`opt-level = "z"`, and the bytes stay the same on every machine.
 
 `scripts/build-wasm.sh --out DIR` builds into another directory, and
 `--smoke` runs the Node test below after building.
