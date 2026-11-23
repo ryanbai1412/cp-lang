@@ -88,6 +88,16 @@ fn a_leading_block_set_off_by_a_blank_line_documents_the_module() {
 }
 
 #[test]
+fn a_files_inner_doc_comment_is_the_modules_doc() {
+    let module = extract(
+        "//! Ordered multisets.\n//! With order statistics.\n\nuse std.seq.{remove}\n\n/// A handle.\nstruct H(i: Int)\n",
+        "bag.cp",
+    );
+    assert_eq!(module.doc, "Ordered multisets.\nWith order statistics.");
+    assert_eq!(module.items[0].doc, "A handle.");
+}
+
+#[test]
 fn every_declaration_is_listed_in_source_order_with_its_kind() {
     let module = lib();
     let listed: Vec<(Kind, &str)> = module

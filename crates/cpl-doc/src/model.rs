@@ -496,7 +496,20 @@ pub fn extract(src: &str, path: &str) -> Module {
     // attached to the first declaration.
     let mut doc = String::new();
     let mut module_examples = Vec::new();
-    if let Some((first, _)) = extractor.docs.comments.first() {
+    // `//!` lines before the first declaration say what the module is for.
+    let before_items =
+        |span: &&Span| first_item_line.is_none_or(|line| extractor.docs.line_of(span.start) < line);
+    let inner: Vec<&str> = lexed
+        .comments
+        .iter()
+        .filter(before_items)
+        .filter_map(|span| span.text(src).strip_prefix("//!"))
+        .map(|body| body.strip_prefix(' ').unwrap_or(body).trim_end())
+        .collect();
+    if !inner.is_empty() {
+        doc = inner.join("\n").trim().to_string();
+        module_examples = examples(&doc, 0);
+    } else if let Some((first, _)) = extractor.docs.comments.first() {
         let leading = src
             .lines()
             .take(*first as usize)
