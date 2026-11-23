@@ -6,7 +6,7 @@ Modular arithmetic and counting.  `Mod<P>` is a number modulo a constant `P`: th
 
 In prelude (no `use` needed): `Comb`, `Mod`.
 
-## `struct Mod<P>(v: 0..P)`
+## `struct Mod<P>(pub v: 0..P)`
 
 An integer modulo the constant `P`, always stored in `0..P`.
 

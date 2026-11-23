@@ -68,7 +68,7 @@ O(1) per element.
 
 O(n) build, O(1) slice hash.
 
-Fields: `bases: (Int, Int)`, `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
+Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 
 - `fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash` — O(n); A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.; traps: when a given base is outside `2..M`
 - `fn push<T: Hashable>(mut self, x: T)` — O(1) amortized; Appends `x` to the end of the hashed sequence.

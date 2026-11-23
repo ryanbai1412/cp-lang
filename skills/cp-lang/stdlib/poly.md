@@ -6,7 +6,7 @@ Formal power series operations over NTT-friendly `Mod<P>`.  Series are plain `Li
 
 In prelude (no `use` needed): `eval`.
 
-## `struct Poly<T>(c: List<T>)`
+## `struct Poly<T>(pub c: List<T>)`
 
 O(n) storage.
 

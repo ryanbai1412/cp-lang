@@ -10,8 +10,6 @@ In prelude (no `use` needed): `Mat`.
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
-Fields: `data: List<T>`.
-
 - `fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — O(rows * cols) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
 - `fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`

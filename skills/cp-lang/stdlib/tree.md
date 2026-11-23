@@ -10,8 +10,6 @@ In prelude (no `use` needed): `JumpTree`, `KruskalTree`, `LcaTable`, `Lift`, `Pr
 
 A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 
-Fields: `tin: [V]Pre`.
-
 - `fn new(next: Next<V>, root: V) -> Rooted<V, _>` — O(n + m) for m listed arcs, without recursion; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
 - `fn from_parents(par: [V]?V) -> Rooted<V, _>` — O(n); Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key is the root.; traps: when the parents have a cycle; `try_from_parents` is for input that may
 - `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>` — O(n); `from_parents` for parents that may not form a forest: `None` when they have a cycle.

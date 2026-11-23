@@ -20,7 +20,7 @@ An associative operation with an identity: the pair `(id, op)`, written `Monoid<
 - `fn of<M>(m: M) -> Monoid<T>` — O(1); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
 - `fn monoid(self) -> Monoid<T>` — O(1); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
 
-## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)`
+## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, pub over: Monoid<T>)`
 
 A lazy update `F` on values `T` folded with `over`.
 
@@ -35,7 +35,7 @@ A lazy update `F` on values `T` folded with `over`.
 
 A folded value that can be read from the other end.
 
-## `struct MaxSub(has: Bool, best: Int, total: Int, pub pre: Int, pub suf: Int)`
+## `struct MaxSub(has: Bool, pub best: Int, total: Int, pub pre: Int, pub suf: Int)`
 
 Maximum non-empty subarray summary (Kadane monoid).
 

@@ -78,7 +78,7 @@ O(1) value type.
 - `fn dist2(self, o: Vec) -> F64` — O(1); The squared Euclidean distance from `self` to `o`.
 - `fn dist(self, o: Vec) -> F64` — O(1); The Euclidean distance from `self` to `o`.
 
-## `struct Circle(pub c: Vec, r: F64)`
+## `struct Circle(pub c: Vec, pub r: F64)`
 
 O(1) value type.
 
