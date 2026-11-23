@@ -712,6 +712,7 @@ impl<'a> Lowerer<'a> {
                     return self.call_gen_fn(gfid, gargs, Some(recv_arg), args, span);
                 }
             }
+            return self.no_generic_method(&val.ty, name, span);
         }
 
         let name = match &base.kind {

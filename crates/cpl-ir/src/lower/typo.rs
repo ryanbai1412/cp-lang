@@ -494,6 +494,18 @@ impl<'a> Lowerer<'a> {
         self.err_expr(whole.span)
     }
 
+    /// `x.m<T>()` where `x`'s type has no generic method `m`.
+    pub(super) fn no_generic_method(&mut self, ty: &Ty, name: &ast::Name, span: Span) -> Expr {
+        if !matches!(ty, Ty::Error) {
+            let message = format!("no method `{}` on `{}`", name.text, self.show(ty));
+            self.error(codes::UNKNOWN_FIELD, span, message);
+            if let (Some(last), "parse") = (self.diags.last_mut(), name.text.as_str()) {
+                last.help = Some("`parse` reads a value from a `Str`".to_string());
+            }
+        }
+        self.err_expr(span)
+    }
+
     /// `read<List<Int>>(n)`: the type says how many, `read<[n]Int>()`.
     pub(super) fn read_count_arg(&mut self, count: &ast::Expr, elem: &Ty, span: Span) {
         let new = format!("read<[{}]{}>()", self.source(count.span), self.show(elem));
