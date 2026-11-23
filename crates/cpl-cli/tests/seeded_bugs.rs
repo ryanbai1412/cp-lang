@@ -203,7 +203,7 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
 /// How many seeded bugs `cpl stress --explain` points at the very line
 /// the bug was planted on, the line ending in `// planted`. Raise it when
 /// the explanation gets better; it may never drop.
-const NAMED: usize = 23;
+const NAMED: usize = 25;
 
 /// The lines a `cpl stress --explain` report blames: where the debug run
 /// stopped, and where the solution first gave a value the brute did not.

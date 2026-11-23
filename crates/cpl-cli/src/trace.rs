@@ -434,19 +434,40 @@ fn made(
         .filter(|name| mentions(text, name))
         .collect();
     names.sort();
-    let mut changed = Vec::new();
-    let mut stale = Vec::new();
-    for name in names {
+    // The last step before `upto` that changed `name`: its index, line and value.
+    let last_change = |name: &str, upto: usize| {
         let mut prev = before.get(name);
         let mut at = None;
-        for (line, values) in &steps {
+        for (k, (line, values)) in steps[..upto].iter().enumerate() {
             let now = values.get(name);
             if let Some(value) = now.filter(|_| now != prev) {
-                at = Some((*line, value.clone()));
+                at = Some((k, *line, value.clone()));
             }
             prev = now;
         }
-        if let Some((at, value)) = at.filter(|(at, _)| *at != line) {
+        at
+    };
+    let mut changed = Vec::new();
+    let mut stale = Vec::new();
+    let mut reads = Vec::new();
+    for name in names {
+        let at = last_change(name, steps.len());
+        if let Some((k, at, value)) = at.filter(|(_, at, _)| *at != line) {
+            // One step further back: what that line reads, where it last changed.
+            let mut read: Vec<&String> = (steps[k].1.keys())
+                .filter(|n| *n != name && mentions(text_of(at), n))
+                .collect();
+            read.sort();
+            for n in read {
+                if let Some((_, from, v)) =
+                    last_change(n, k).filter(|(_, l, _)| ![at, line].contains(l))
+                {
+                    reads.push((
+                        from,
+                        format!("`{n}`, which line {at} reads, last changed here, to {v}"),
+                    ));
+                }
+            }
             changed.push((at, format!("`{name}` last changed here, to {value}")));
             // Still as declared: the lines that write it never changed it.
             if text_of(at).trim_start().starts_with(&format!("var {name}")) {
@@ -459,8 +480,12 @@ fn made(
         }
     }
     changed.sort();
+    reads.sort();
     out.extend(changed.into_iter().take(3));
     out.extend(stale);
+    out.extend(reads.into_iter().take(2));
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|(line, _)| seen.insert(*line));
     out
 }
 
