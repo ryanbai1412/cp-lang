@@ -238,7 +238,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/chain-takes-any-number.cp: stdlib
 - core-04/grid-row-view-keys-are-columns.cp: compiler
 - core-04/grid-col-view-keys-are-rows.cp: compiler
-- core-07/map-view-drop-skips-dropped.cp: compiler
 - core-06/dijkstra-from-unpacks-tuple-vertex.cp: compiler
 - core-04/grid-rows-is-a-getter.cp: stdlib
 - core-09/release-division-by-zero-fallback.cp: compiler
