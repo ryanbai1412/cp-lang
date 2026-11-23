@@ -1663,8 +1663,7 @@ impl<'a> Checker<'a> {
             {
                 let ty = self.quietly(|c| c.infer(e));
                 if self.is_heap_type(&ty) {
-                    if let Some(mut place) = self.place(base) {
-                        place.steps.clear();
+                    if let Some(place) = self.place(e) {
                         return vec![("element", place, true, false)];
                     }
                 }

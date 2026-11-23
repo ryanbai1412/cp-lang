@@ -1100,6 +1100,21 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
 }
 
 #[test]
+fn a_let_bound_element_lends_only_that_element() {
+    let lent = |body: &str| {
+        check(&format!(
+            "var rows = [[1, 2], [3]]\nlet r = rows[0]\n{body}\nprint(r.len)\n"
+        ))
+    };
+    assert!(lent("rows[1].push(5)").is_empty());
+    for body in ["rows[0].push(5)", "rows.pop()", "rows = []"] {
+        let diags = lent(body);
+        assert_eq!(diags.len(), 1, "{body}: {diags:#?}");
+        assert_eq!(diags[0].code.0, "E0602");
+    }
+}
+
+#[test]
 fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
     let lent = |body: &str| check(&format!("{ARRAY}{body}"));
     assert_eq!(
