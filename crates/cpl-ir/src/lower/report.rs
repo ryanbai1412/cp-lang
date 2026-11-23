@@ -113,7 +113,16 @@ impl<'a> Lowerer<'a> {
         let message = format!("a `{}` can't be turned into a `{to}`", self.show(from));
         self.error(codes::TYPE_MISMATCH, span, message);
         let Ty::Struct(s) = from else { return };
+        let into = matches!(to, "Int" | "F64").then(|| {
+            format!(
+                "or give it a conversion: `impl Into<{to}> for {}: fn into(self) -> {to}`",
+                self.structs[*s].def.name
+            )
+        });
         let [(field, ty)] = &self.structs[*s].def.fields[..] else {
+            if let Some(into) = into {
+                self.help(into.replacen("or give", "give", 1));
+            }
             return;
         };
         let fits = matches!(

@@ -429,6 +429,7 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Ord",
     "Eq",
     "Show",
+    "Into",
     "Read",
     "Gen",
     "Shrink",

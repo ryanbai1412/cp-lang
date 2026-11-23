@@ -2668,10 +2668,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 );
             }
-            _ => {
-                self.bad_conversion(to, &from, span);
-                return self.err_expr(span);
-            }
+            _ => return self.convert_by_impl(to, value, span),
         };
         self.mk(ExprKind::Cast(cast, Box::new(value)), ty, span)
     }

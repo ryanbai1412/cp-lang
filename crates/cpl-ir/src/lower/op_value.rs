@@ -7,6 +7,67 @@ use super::mono::BareOp;
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// Records `impl Add<R>` (and the other operators) and `impl Into<T>`
+    /// by the type they take or give, so several can coexist on one struct:
+    /// `a + b` picks by `b`'s type, `Int(x)`/`F64(x)` by `T` (decision 390).
+    pub(super) fn register_op_impl(
+        &mut self,
+        sid: StructId,
+        fn_id: FnId,
+        trait_name: Option<&str>,
+        method: &str,
+        rhs: Option<Ty>,
+    ) -> bool {
+        let binop = matches!(
+            (trait_name, method),
+            (Some("Add"), "add")
+                | (Some("Sub"), "sub")
+                | (Some("Mul"), "mul")
+                | (Some("Div"), "div")
+                | (Some("Rem"), "rem")
+        );
+        let into = matches!((trait_name, method), (Some("Into"), "into")) && rhs.is_some();
+        if !binop && !into {
+            return false;
+        }
+        let rhs_resolved = rhs.clone().unwrap_or(Ty::Struct(sid));
+        let idx_n = self.structs[sid].op_methods.len();
+        if into {
+            self.sigs[fn_id].name = format!("{}_into{idx_n}", self.sigs[fn_id].name);
+        } else if rhs.is_some() && rhs_resolved != Ty::Struct(sid) {
+            self.sigs[fn_id].name = format!("{}_op{idx_n}", self.sigs[fn_id].name);
+        } else {
+            self.structs[sid].methods.insert(method.to_string(), fn_id);
+        }
+        let entry = (method.to_string(), rhs_resolved, fn_id);
+        self.structs[sid].op_methods.push(entry);
+        true
+    }
+
+    /// `Int(x)` or `F64(x)` on a struct: its `impl Into<Int>` or
+    /// `impl Into<F64>`, else E0302 naming the impl to write.
+    pub(super) fn convert_by_impl(&mut self, to: &str, value: Expr, span: Span) -> Expr {
+        let want = match to {
+            "Int" => Some(Ty::Int),
+            "F64" => Some(Ty::Float),
+            _ => None,
+        };
+        let into = match (&value.ty, want) {
+            (Ty::Struct(sid), Some(want)) => self.structs[*sid]
+                .op_methods
+                .iter()
+                .find(|(m, t, _)| m == "into" && *t == want)
+                .map(|(_, t, id)| (*id, t.clone())),
+            _ => None,
+        };
+        let Some((id, ty)) = into else {
+            self.bad_conversion(to, &value.ty, span);
+            return self.err_expr(span);
+        };
+        self.queue_fn(id);
+        self.mk(ExprKind::Call(id, vec![Arg::Value(value)]), ty, span)
+    }
+
     /// The empty struct that stands for `op` as a value.
     fn op_type(&mut self, op: BareOp) -> StructId {
         if let Some(&(_, id)) = self.op_types.iter().find(|(o, _)| *o == op) {

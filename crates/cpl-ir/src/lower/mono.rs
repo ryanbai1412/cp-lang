@@ -1338,28 +1338,9 @@ impl<'a> Lowerer<'a> {
                                 imp_rhs_ty.as_ref(),
                                 imp_out_ty.as_ref(),
                             );
-                            let is_binop_impl = matches!(
-                                (imp_trait.as_deref(), f.name.text.as_str()),
-                                (Some("Add"), "add")
-                                    | (Some("Sub"), "sub")
-                                    | (Some("Mul"), "mul")
-                                    | (Some("Div"), "div")
-                                    | (Some("Rem"), "rem")
-                            );
-                            if is_binop_impl {
-                                let rhs_resolved = imp_rhs_ty.clone().unwrap_or(Ty::Struct(sid));
-                                if imp_rhs_ty.is_some() && rhs_resolved != Ty::Struct(sid) {
-                                    let idx_n = self.structs[sid].op_methods.len();
-                                    self.sigs[fn_id].name =
-                                        format!("{}_op{idx_n}", self.sigs[fn_id].name);
-                                } else {
-                                    self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
-                                }
-                                self.structs[sid].op_methods.push((
-                                    f.name.text.clone(),
-                                    rhs_resolved,
-                                    fn_id,
-                                ));
+                            let (tr, rhs) = (imp_trait.as_deref(), imp_rhs_ty.clone());
+                            if self.register_op_impl(sid, fn_id, tr, &f.name.text, rhs) {
+                                // Dispatched by its operand's type, not by name.
                             } else if let Some(tname) = imp_trait
                                 .as_ref()
                                 .filter(|_| self.structs[sid].methods.contains_key(&f.name.text))
