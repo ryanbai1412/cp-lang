@@ -565,8 +565,11 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
         !arg.starts_with('-')
             && (arg.ends_with(".cp") || path.exists() || path.with_extension("cp").is_file())
     };
-    let asks_help = args.iter().any(|arg| matches!(*arg, "-h" | "--help"));
-    let newest = match takes_file && !asks_help && !args.iter().any(names_file) {
+    // `--last` (`cpl report`) names its input another way.
+    let needs_none = args
+        .iter()
+        .any(|arg| matches!(*arg, "-h" | "--help" | "--last"));
+    let newest = match takes_file && !needs_none && !args.iter().any(names_file) {
         true => newest_source(std::path::Path::new(".")),
         false => None,
     };

@@ -311,8 +311,9 @@ pub fn exec<S: AsRef<str>>(
             let mut errors = Vec::new();
             let code = tool(command).unwrap()(&args, stdout, &mut errors);
             *stderr += &String::from_utf8_lossy(&errors);
-            if command == "test" && !args.iter().any(|a| a.starts_with("--")) {
-                *stderr += &next_after_test(&args[0], code);
+            let flags = args.iter().any(|a| a.starts_with("--"));
+            if let Some(file) = args.first().filter(|_| command == "test" && !flags) {
+                *stderr += &next_after_test(file, code);
             }
             code
         }

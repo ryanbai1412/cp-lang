@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): two cpl-cli reds on 362be989a. 85110c115 indexed `args[0]` for a bare `cpl test` (`tooling_commands_reach_their_crates` panicked); it now uses `args.first()`. f865aaf18 handed the newest `.cp` file to `cpl report --last`, which then refused a file and `--last` together (`ice_hook_saves_crash_bundle...`); `--last` now counts as naming the input.
 - Sheriff (infra): 3503f1169's `.and_then(|n| Checks::parse(n))` is a clippy `redundant_closure` error that fails CI's checks job; now `.and_then(Checks::parse)`.
 - Sheriff (infra): 5d027e69c made `cpl build` default to `--checks none`, but the playground's build kept `Checks::default()`, so `cpl-wasm::parity build_matches_cpl_build` failed on `allow_runs.cp` (CI run 45116031954). The wasm build now passes `Checks::None` too. Moving the default into cpl-codegen would keep the two from drifting again.
 - From lint-fmt: `cpl_fmt::format_with(src, &cpl_fmt::Style::discover(path).0)` formats in the project's `cp.toml [fmt]` style (indent and line width, decisions.md 297). LSP format (`crates/cpl-lsp/src/server.rs:863`) still uses `format`, the default style; switching it to the project's style is yours.
