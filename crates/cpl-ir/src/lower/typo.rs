@@ -203,6 +203,23 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Python's `sorted(xs, reverse=True)`: CP Lang's sort says `desc: true`.
+    pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {
+        let Some(name) = args
+            .iter()
+            .find_map(|a| a.name.as_ref().filter(|n| n.text == "reverse"))
+        else {
+            return false;
+        };
+        let message = "a sort takes `desc: true` for largest first, not `reverse:`";
+        self.error(codes::WRONG_ARG_COUNT, name.span, message);
+        let edit = self.span(name.span);
+        if let Some(last) = self.diags.last_mut() {
+            last.fix("write `desc`", edit, "desc");
+        }
+        true
+    }
+
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {

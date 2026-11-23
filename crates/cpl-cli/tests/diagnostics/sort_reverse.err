@@ -1,0 +1,8 @@
+error[E0303]: a sort takes `desc: true` for largest first, not `reverse:`
+  --> sort_reverse.cp:2:17
+  |
+2 | print(xs.sorted(reverse: true))
+  |                 ^^^^^^^
+  = help: write `desc`
+
+sort_reverse.cp: 1 error
