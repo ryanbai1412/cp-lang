@@ -2103,7 +2103,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            "sqrt" | "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" => {
+            "sqrt" | "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" | "exp" | "ln" | "hypot" => {
                 self.float_fn(name, args, span)
             }
             // A program that flushes is read by someone who answers: it

@@ -447,6 +447,18 @@ inline double fsqrt(double x) {
 ",
     },
     Piece {
+        name: "fln",
+        needs: &["out"],
+        code: "\
+inline double fln(double x) {
+#ifdef LOCAL
+    if (x < 0.0) { cpl::flush(); fprintf(stderr, \"ln(%g) of a negative number\\n\", x); exit(3); }
+#endif
+    return std::log(x);
+}
+",
+    },
+    Piece {
         name: "farc",
         needs: &["out"],
         code: "\

@@ -3745,7 +3745,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | Builtin::Cos
             | Builtin::Tan
             | Builtin::Asin
-            | Builtin::Acos => float_fn::eval(op, first.float(), values.next(), span)?,
+            | Builtin::Acos
+            | Builtin::Exp
+            | Builtin::Ln
+            | Builtin::Hypot => float_fn::eval(op, first.float(), values.next(), span)?,
             Builtin::Flush => {
                 let _ = self.sink.write_all(&self.out);
                 let _ = self.sink.flush();

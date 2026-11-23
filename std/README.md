@@ -222,7 +222,7 @@ The stdlib needs no compiler knowledge beyond the following, each a
 public feature user libraries get too.
 
 Intrinsics (functions not written in the language): `popcount`, `ctz`,
-`bit_width`, `bit_ceil`, `isqrt`, `sqrt`, `atan2`, `sin`, `cos`, `tan`, `asin`, `acos`, `floor`, `trunc`,
+`bit_width`, `bit_ceil`, `isqrt`, `sqrt`, `atan2`, `sin`, `cos`, `tan`, `asin`, `acos`, `exp`, `ln`, `hypot`, `floor`, `trunc`,
 `ceil`, `round`, `rand`, `flush`, `read`, `print`, `debug`, `sort`,
 `sorted`, `swap`, `min`, `max`, `abs`, `sum`, `prod`, `count`, `all`,
 `any`, `first`. The folds take a walk, `count(x > 2 for x in xs)`; the

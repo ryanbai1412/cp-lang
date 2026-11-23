@@ -7860,5 +7860,10 @@ Decision 1.5 locked the `F64` intrinsics, but only `sqrt` and `atan2` existed, s
 take and give `F64` radians and compile to `std::sin` and friends; `asin`/`acos`
 trap outside `-1..=1` in checked runs, as `sqrt` traps on a negative, instead of
 returning NaN. Their lowering moved with `sqrt`/`atan2` into `lower/float_fn.rs`,
-and the 5 names raise the `ir_builtin_names` ratchet from 87 to 92. `exp`, `ln` and
-`hypot` from 1.5 are still missing. Reverse: write them in std over a C++ escape.
+and the 5 names raise the `ir_builtin_names` ratchet from 87 to 92. Reverse: write
+them in std over a C++ escape.
+
+Amended (2026-11-23): `exp`, `ln` and `hypot` from 1.5 join them the same way, raising
+the ratchet to 95. `ln` traps on a negative number in checked runs; `ln(0.0)` is
+`-inf`, which the 1.5 rule already traps once printed or compared. `std.poly`'s free
+`exp(a, n)` still wins where it is imported.

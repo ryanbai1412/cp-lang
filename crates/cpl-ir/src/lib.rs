@@ -744,6 +744,10 @@ pub enum Builtin {
     Tan,
     Asin,
     Acos,
+    /// `exp`, `ln` of an `F64`, and `hypot(x, y)`, the length of `(x, y)`.
+    Exp,
+    Ln,
+    Hypot,
     /// `flush()`: what was printed so far is written out now.
     Flush,
     Floor,
