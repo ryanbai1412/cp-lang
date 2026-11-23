@@ -241,6 +241,15 @@ impl<'p> Emitter<'p> {
                         names.push(name);
                         continue;
                     }
+                    if let (true, Ty::Fn(_, ret)) =
+                        (self.devirt.unbuilt_field(*id, field_idx), field_ty)
+                    {
+                        self.need("no_fn");
+                        let ret = self.ty(ret);
+                        out.push_str(&format!("    cpl::NoFn<{ret}> {name};\n"));
+                        names.push(name);
+                        continue;
+                    }
                     self.need_ty(field_ty);
                     let mut cpp = self.ty(field_ty);
                     let cells = self.rows.get(&(*id, field_idx));

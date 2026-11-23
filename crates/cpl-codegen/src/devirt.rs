@@ -37,6 +37,9 @@ pub enum ClosureMode {
     StaticLocalAuto,
     /// A fn field nothing reads: dropped, whatever was stored in it.
     Unread,
+    /// A fn field of a struct the program never builds: no value holds
+    /// it, so it is an empty `cpl::NoFn` and its calls never run.
+    Unbuilt,
     /// Genuinely dynamic fn value: falls back to `std::function`.
     DynamicStdFunction { reason: String },
 }
@@ -79,6 +82,7 @@ pub(crate) struct Devirt<'p> {
     reassigned_params: BTreeSet<(FnId, usize)>,
     recursive_fns: BTreeSet<FnId>,
     unread_fields: BTreeSet<(usize, usize)>,
+    unbuilt: BTreeSet<usize>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
     /// What fn field `(fn, index)` of every struct `fn` returns holds.
     returned: BTreeMap<(FnId, usize), Held>,
@@ -113,6 +117,7 @@ impl<'p> Devirt<'p> {
             reassigned_params: BTreeSet::new(),
             recursive_fns: recursive_fns(program),
             unread_fields: BTreeSet::new(),
+            unbuilt: unbuilt(program),
             dead_locals: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
@@ -998,6 +1003,15 @@ impl<'p> Devirt<'p> {
         self.unread_fields.contains(&(struct_id, index))
     }
 
+    /// Fn field `index` of a struct no expression builds, and so no value
+    /// holds: see [`unbuilt`].
+    pub fn unbuilt_field(&self, struct_id: usize, index: usize) -> bool {
+        self.unbuilt.contains(&struct_id)
+            && matches!(self.program.structs[struct_id].fields[index].1, Ty::Fn(..))
+            && !self.unread_field(struct_id, index)
+            && !self.field_elidable(struct_id, index)
+    }
+
     /// `xs.push(v)` onto a local list, with `v` running nothing: left out
     /// when the list is a dropped local.
     pub(crate) fn skippable_push(&self, e: &Expr) -> Option<usize> {
@@ -1484,6 +1498,31 @@ fn keeps_fields(e: &Expr) -> bool {
     }
 }
 
+/// The structs with a fn field that no expression of the program builds.
+/// A struct value is only ever made by a literal (every other value of it
+/// is a copy of one), so none of these exists when the program runs.
+fn unbuilt(program: &Program) -> BTreeSet<usize> {
+    let mut unbuilt: BTreeSet<usize> = (0..program.structs.len())
+        .filter(|&s| {
+            program.structs[s]
+                .fields
+                .iter()
+                .any(|f| matches!(f.1, Ty::Fn(..)))
+        })
+        .collect();
+    let mut blocks = vec![&program.setup, &program.main];
+    blocks.extend(program.fns.iter().map(|f| &f.body));
+    blocks.extend(program.closures.iter().map(|c| &c.body));
+    for block in blocks {
+        walk::deep_exprs(block, &mut |e| {
+            if let (ExprKind::Tuple(_), Ty::Struct(s)) = (&e.kind, &e.ty) {
+                unbuilt.remove(s);
+            }
+        });
+    }
+    unbuilt
+}
+
 fn is_fn_or_opt_fn(ty: &Ty) -> bool {
     match ty {
         Ty::Fn(..) => true,
@@ -1608,6 +1647,8 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
             let site = format!("struct {}.{}", s.name, fname);
             let mode = if devirt.unread_fields.contains(&(sid, idx)) {
                 ClosureMode::Unread
+            } else if devirt.unbuilt_field(sid, idx) {
+                ClosureMode::Unbuilt
             } else if matches!(fty, Ty::Opt(_)) {
                 ClosureMode::DynamicStdFunction {
                     reason: "optional fn field that is read".to_string(),

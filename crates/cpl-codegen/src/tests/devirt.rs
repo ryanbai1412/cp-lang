@@ -76,3 +76,21 @@ fn an_optional_fn_param_every_call_fills_alike_is_called_directly() {
         "{out}"
     );
 }
+
+#[test]
+fn a_fn_field_of_a_struct_never_built_is_no_std_function() {
+    let out = cpp(concat!(
+        "struct Op(f: (Int, Int) -> Int)\n",
+        "struct Tree(xs: List<Int>, op: ?Op)\n",
+        "fn grow(mut t: Tree, x: Int):\n",
+        "    let o = t.op!\n",
+        "    t.xs.push(o.f(x, x))\n",
+        "var t = Tree(xs: [], op: None)\n",
+        "let n = read::<Int>()\n",
+        "if n > 100:\n",
+        "    grow(mut t, n)\n",
+        "print(t.xs.len, n)\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+    assert!(out.contains("cpl::NoFn<ll> f;"), "{out}");
+}

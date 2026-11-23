@@ -140,6 +140,10 @@ pub(crate) fn explain_file(
                     ("static_local_auto", "local auto lambda".to_string())
                 }
                 cpl_codegen::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
+                cpl_codegen::ClosureMode::Unbuilt => (
+                    "unbuilt",
+                    "its struct is never built, never called".to_string(),
+                ),
                 cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
                     ("dynamic_std_function", reason.clone())
                 }

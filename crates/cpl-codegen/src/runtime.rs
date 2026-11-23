@@ -1314,6 +1314,17 @@ inline ll bit_ceil(ll x) { if (x > (1LL << 62)) fail(\"integer overflow: `bit_ce
 ",
     },
     Piece {
+        name: "no_fn",
+        needs: &["fail"],
+        code: "\
+// The fn field of a struct the program never builds: no value of the
+// struct exists, so it is never called.
+template <class R> struct NoFn {
+    template <class... A> [[noreturn]] R operator()(A&&...) const { fail(\"a fn field of a struct that is never built was called\"); }
+};
+",
+    },
+    Piece {
         name: "count_query",
         needs: &["fail"],
         code: "\
