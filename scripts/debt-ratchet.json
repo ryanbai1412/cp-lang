@@ -131,5 +131,20 @@
   "skip_lists": 162,
   "dead_code_allows": 6,
   "external_crates": 5,
-  "corpus_test_files": 2763
+  "corpus_test_files": 2763,
+  "uncited_rules": 0,
+  "register_rows_by_domain": {
+    "compiler": 5,
+    "debugger": 33,
+    "diagnostics": 40,
+    "idioms": 21,
+    "infra": 17,
+    "lint-fmt": 33,
+    "perf": 8,
+    "site": 19,
+    "spec": 21,
+    "stdlib": 43,
+    "tech-debt": 2,
+    "tools": 38
+  }
 }

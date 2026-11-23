@@ -237,6 +237,21 @@ class DebtRatchetTest(unittest.TestCase):
                 "handbook/domains/x.md:17 missing: k",
             ])
 
+    def test_register_rows_by_domain_only_go_down(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            row = ["## Quality register", "| A | M | C |", "|---|---|---|"]
+            self._write(root, "handbook/domains/a.md", "\n".join(row + ["| x | m | `missing` |", "| y | m | `missing` |", ""]))
+            self._write(root, "handbook/domains/b.md", "\n".join(row + [""]))
+            by = dr.register_rows_by_domain(root)
+            self.assertEqual(by, {"a": 2, "b": 0})
+            grew = dr.evaluate({"register_rows_by_domain": by}, {"register_rows_by_domain": {"a": 1}})[0]
+            self.assertEqual(len(grew), 1)
+            self.assertIn("a.md", grew[0])
+            self.assertEqual(dr.evaluate({"register_rows_by_domain": by}, {"register_rows_by_domain": {"a": 3, "b": 0}})[0], [])
+            self.assertEqual(dr.improved({"register_rows_by_domain": by}, {"register_rows_by_domain": {"a": 3}}),
+                             ["register_rows_by_domain"])
+
     def test_uncited_rules_needs_an_existing_heading_anchor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -2,6 +2,7 @@
 # The site's own gate: rebuild the browser compiler, build web/ (which holds
 # cpl.wasm to its gzipped size cap and runs the snippet gate), check its
 # internal links, then run the browser smoke tests against web/out.
+# Enforces site/R1 (every program on a page is checked) and site/R5 (links).
 #
 #   scripts/site-check.sh             skip when nothing it reads has changed
 #   scripts/site-check.sh --no-cache  always run

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`cpl fmt` is idempotent and meaning-preserving on every tracked .cp file.
+"""`cpl fmt` is idempotent and meaning-preserving on every tracked .cp file (lints/R22).
 
     scripts/fmt_check.py [--cpl PATH] [--jobs N] [--list] [--snippets]
 

@@ -70,13 +70,13 @@ the rule.
   (`handbook/<doc>.md#<heading>`). A lint is how a checklist rule is
   enforced.
 - **Measured.** `python3 scripts/debt-ratchet.py --list uncited_rules`
-  lists lints and gates that cite no existing heading. The count is
-  reported now and becomes a gate once domains have folded their rules.
+  lists lints and gates that cite no existing rule. The count is gated at
+  0, so a new lint or gate cites its rule before it lands.
 
 ## Accountability
 
-- **Every row names a real check.** Empty rows are counted per domain and
-  go down.
+- **Every row names a real check.** Empty rows are counted per domain,
+  shown in `plan/STATUS.md`, and each domain's count only goes down.
 - **Every lint and gate cites its rule.** See
   [Rules live in guidelines](#rules-live-in-guidelines).
 - **Skips only shrink.** Ignored tests, xfails, allowlists and lists of

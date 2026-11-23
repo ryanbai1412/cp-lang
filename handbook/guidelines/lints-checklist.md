@@ -201,3 +201,12 @@ analysis its warm checker database already holds.
 Reason: lint runs on every keystroke in the editor.
 Example: the language server lints the database it already has for hover.
 Enforced by: the `own_databases` ratchet in `scripts/debt-ratchet.py`.
+
+### R22: Formatting is idempotent and keeps meaning
+
+`cpl fmt` run twice changes nothing the second time, and a formatted file
+checks and runs exactly as the original did.
+Reason: a formatter that changes behaviour, or never settles, can't run on save.
+Example: formatting a corpus port leaves its `cpl check` codes and its output on
+the sample input unchanged.
+Enforced by: `scripts/fmt_check.py` over every tracked `.cp` file.

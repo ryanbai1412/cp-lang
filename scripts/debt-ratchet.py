@@ -743,11 +743,19 @@ COUNTERS = {
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
     "spec_std_refs": ("spec/std references", spec_std_refs, False),
-    # Shown, not gated: a register that lists a missing check is better than one that hides it.
+    # The total is shown; `register_rows_by_domain` gates each domain's count.
     "register_rows": ("quality-register rows naming no existing check", register_rows, False),
     "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
-    "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, False),
+    "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, True),
 }
+
+
+def register_rows_by_domain(root: Path) -> dict[str, int]:
+    """Each domain's count of register rows naming no existing check; each only goes down."""
+    counts = {d.stem: 0 for d in sorted((root / "handbook/domains").glob("*.md")) if d.stem != "README"}
+    for row in register_rows(root):
+        counts[Path(row.split(":", 1)[0]).stem] += 1
+    return counts
 
 
 def rs_over_cap(root: Path, max_rs_lines: int) -> dict[str, int]:
@@ -765,6 +773,7 @@ def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict
     for name, (_, fn, gated) in COUNTERS.items():
         if gated:
             data[name] = len(fn(root))
+    data["register_rows_by_domain"] = register_rows_by_domain(root)
     data["crate_edges"] = crate_edges(root)
     data["a4_edges"] = a4_edges(root)
     data["rs_near_cap"] = sorted(_near_cap(root, max_rs_lines))
@@ -777,6 +786,9 @@ def improved(actual: dict, baseline: dict) -> list[str]:
     if actual.get("rs_file_size_allowlist") != baseline.get("rs_file_size_allowlist", actual.get("rs_file_size_allowlist")):
         names.append("rs_over_cap")
     names += [n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and int(actual.get(n, 0)) < int(baseline[n])]
+    if any(n < baseline.get("register_rows_by_domain", {}).get(d, n)
+           for d, n in actual.get("register_rows_by_domain", {}).items()):
+        names.append("register_rows_by_domain")
     if set(baseline.get("crate_edges", [])) - set(actual.get("crate_edges", [])):
         names.append("crate_edges")
     if set(baseline.get("rs_near_cap", [])) - set(actual.get("rs_near_cap", [])):
@@ -818,6 +830,15 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             )
         elif cur < base:
             notes.append(f"{label}: improved from {base} to {cur}")
+
+    # A domain not in the baseline yet (a new charter) is not checked.
+    for d, cur in sorted(actual.get("register_rows_by_domain", {}).items()):
+        base = baseline.get("register_rows_by_domain", {}).get(d)
+        if base is not None and cur > base:
+            errors.append(f"handbook/domains/{d}.md: quality-register rows naming no existing check increased "
+                          f"from {base} to {cur} (only goes down; `--list register_rows` shows them)")
+        elif base is not None and cur < base:
+            notes.append(f"handbook/domains/{d}.md: register rows naming no check improved from {base} to {cur}")
 
     if "crate_edges" in baseline and "crate_edges" in actual:
         known, now = set(baseline["crate_edges"]), set(actual["crate_edges"])
