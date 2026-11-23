@@ -1,15 +1,12 @@
-// Codeforces 2159 E: Super-Sum.
-// Online queries for the sum of the first `k + 1` coefficients of `p^n`,
-// `p(x) = a * x^2 + b * x + c`, with inputs xored by the previous answer.
-// Split `n = i * B + j` with `B = 1200` (~sqrt(N) balancing O((N / B) * N)
-// big-table work against O(Q * B) query work for N, Q <= 3e5):
-//   p^n = p^(i * B) * p^j,
-//   answer(n, k) = sum_{z=0}^{min(2j, k)} [x^z] p^j * prefix(p^(i * B))[min(2 * i * B, k - z)].
-// (Clamping `k - z` to `2 * i * B = deg(p^(i * B))` saturates at the full sum
-// of `p^(i * B)` when `k - z` exceeds its degree.)
-// Because p has degree 2, `p * f' = m * p' * f` gives every coefficient of
-// `f = p^m` in O(m) total time (faster than O(m log m) NTT):
-//   c * z * f[z] = b * (m - z + 1) * f[z - 1] + a * (2m - z + 2) * f[z - 2].
+// Source: Codeforces 2159 E, Super-Short-Polynomial-San,
+//   https://codeforces.com/contest/2159/problem/E
+// Problem: a, b, c in 1..1e9+6; q <= 3e5 online queries (n, k), each xored with the previous
+//   answer, 0 <= n <= 3e5, 0 <= k <= 2n: print the sum of the coefficients of x^0..x^k in
+//   (a x^2 + b x + c)^n modulo 1e9+7.
+// Solution: Split n = i * B + j with B = 1200, so p^n = p^(iB) * p^j, and the answer is the sum
+//   over z <= min(2j, k) of [x^z] p^j times a prefix sum of p^(iB) up to min(2iB, k - z).
+//   Because p has degree 2, p * f' = m p' f gives every coefficient of f = p^m in O(m). The
+//   tables of p^j and of prefix sums of p^(iB) are filled lazily: O(N^2 / B + Q B).
 
 type Z = Mod<1_000_000_007>
 const N = 300_000

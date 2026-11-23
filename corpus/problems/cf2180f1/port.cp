@@ -1,12 +1,14 @@
-// Codeforces 2180 F1: Control Car (Easy Version).
-// Follow the car through an unbounded grid, choosing each corner only when the
-// car first needs it. In a cell, two inherited corners matter: the floor is
-// shut when the bottom-left corner points right, the right wall when the
-// top-right one points down. The fresh bottom-right corner decides the move:
-// pointing left shuts the floor, pointing up shuts the wall. A fall hands it
-// on as the top-right corner below, a slide as the bottom-left corner on the
-// right, and the other corner of the new cell is fresh. The car stops inside
-// the n x m grid iff it stops in a cell (i, j) with i < n, j < m.
+// Source: Codeforces 2180 F1, Control Car (Easy Version),
+//   https://codeforces.com/contest/2180/problem/F1
+// Problem: multitest (t <= 1e4): each of the (n+1)(m+1) corners of an n x m grid (n, m <= 5000)
+//   points up, down, left or right, drawing a unit wall. A car starts in the top-left cell and
+//   moves down if no wall blocks it, else right if it can, else stops; print how many of the
+//   4^((n+1)(m+1)) orientations make it stop inside the grid, modulo 1e9+7.
+// Solution: Follow the car through an unbounded grid, choosing each corner only when the car
+//   first needs it, so a stop in cell (i, j) fixes 2(i + j) + 3 corners. A row-major DP keeps,
+//   for each cell, the weighted ways to arrive split by whether the floor and the right wall
+//   are already shut; stops are weighted 4^-(corners chosen) and summed as 2D prefix sums, so
+//   a query is 4^((n+1)(m+1)) * stopped[n-1, m-1]. One table for the largest n, m: O(NM).
 type Z = Mod<1_000_000_007>
 
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()

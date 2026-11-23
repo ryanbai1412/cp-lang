@@ -1,4 +1,13 @@
-// CCC 2004 S5, Super Plumber (sentinel-terminated 0 0 multi-test + mixed cell alphabet, buildable today-form)
+// Source: CCC 2004 Senior #5, Super Plumber, https://dmoj.ca/problem/ccc04s5
+// Problem: multitest, ending with "0 0": an m x n grid (2 <= m, n <= 100) of '*' obstacles,
+//   coins '1'..'9' and '.'. Moving only right, up or down, never revisiting a cell, go from the
+//   bottom-left to the bottom-right corner; print the largest total of coins collected.
+// Solution: A path enters each column once and runs straight up or down in it before moving
+//   right. Go column by column from the right: dp[r] is the best total from entering column c
+//   at row r, the max over rows reachable straight up or down without crossing '*' of the coins
+//   on the way plus the next column's dp there (a virtual column past the end allows only the
+//   bottom row). O(m^2 n) per test.
+// Buildable today-form.
 // original: corpus/submissions/4806811.cpp
 fn solve_case(rows: Int, cols: Int):
     domain R = 0..rows

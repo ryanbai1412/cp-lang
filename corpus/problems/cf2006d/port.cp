@@ -1,15 +1,13 @@
-// Codeforces 2006 D: Iris and Adjacent Products.
-// For any threshold `i <= sqrt(k)`, every large value (`b > k / i`) can only
-// sit beside small values (`b <= i`), so `need` large values require at least
-// `need - 1` small separators; seeding `cnt[Side.Small, Level(1)] = 1` adds
-// that +1 virtual separator so `have = actual_small + 1` and the deficit is
-// `need - have`. Each change turns one large element into a small one (closing
-// the deficit by 2), except if `len + 1 > need + have` (i.e. at least one
-// middle element exists outside both sets, or equivalently when the boundary
-// parity forces an extra step), adding `+1` inside the ceiling:
-//   changes >= ceil((need - have + Int(len + 1 > need + have)) / 2).
-// Values `b > sqrt(k)` matter only through `k / b`, so both sides are
-// histograms over `Level = 1..=isqrt(k)` maintained by Mo's algorithm.
+// Source: Codeforces 2006 D, Iris and Adjacent Products,
+//   https://codeforces.com/contest/2006/problem/D
+// Problem: multitest: an array b of n values in 1..k (n, q <= 1e5 summed, k <= 1e6). For each
+//   of q subarrays b[l..r] print the fewest elements to change (to any value in 1..k) so that
+//   some rearrangement has every adjacent product <= k.
+// Solution: For every threshold i <= sqrt(k), a value > k / (i + 1) can only sit beside values
+//   <= i, so the large values need about as many small separators; each change turns a large
+//   value small and closes the gap by 2, and the answer is the max deficit over i. Values
+//   > sqrt(k) matter only through k / b, so a Small and a Big histogram over 1..=isqrt(k) are
+//   kept by Mo's algorithm and scanned per query: O(n sqrt(q) + q sqrt(k)).
 
 use std.mo.{mo}
 

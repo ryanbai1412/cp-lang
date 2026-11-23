@@ -1,12 +1,12 @@
-// CCO 2021 P2, Weird Numeral System: a base k and a set of d allowed
-// digits, which may be negative. For each of q numbers print digits, most
-// significant first, whose base-k value is the number, or IMPOSSIBLE.
-//
-// The last digit b of x must agree with x modulo k, and the rest of the
-// digits then spell (x - b) / k. Search that graph breadth first from x to
-// 0, remembering for each number reached the digit that led to it; the
-// digits are bounded, so the numbers shrink towards a small range and 100
-// rounds are plenty. Reading the digits back from 0 spells the answer.
+// Source: CCO 2021 Day 1 P2 (CCO '21 P2), Weird Numeral System, https://dmoj.ca/problem/cco21p2
+// Problem: a base K (2 <= K <= 1e6) and D <= 5001 distinct digits a_i with |a_i| <= M <= 2500.
+//   For each of Q <= 5 numbers n (|n| <= 1e18) print digits, most significant first, whose
+//   base-K value is n (any such; 0 needs at least one digit), or IMPOSSIBLE.
+// Solution: The last digit b of x must be congruent to x mod K, and the other digits then
+//   spell (x - b) / K. Bucket the digits by residue and search that graph breadth first from x
+//   to 0, recording for each number reached the digit that led to it (a map); the numbers
+//   shrink to |y| <= M / (K - 1) + 1 within about 60 steps and 100 rounds suffice. Walking back
+//   from 0 reads the digits, most significant first.
 // input: k q d m, the d digits, then the q numbers (m, the digit bound, is unused)
 // original: corpus/submissions/4543410.cpp
 let (k, q, d, m): (Int, Int, Int, Int) = read()
