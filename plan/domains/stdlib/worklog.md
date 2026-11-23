@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): `vscode_sync` red: f2e826c80 added `RangeFenwick`/`XorFenwick` and da6ce583b removed `runs_linked` without updating `editors/vscode` (run 45100333302); infra synced the table and grammar. Run `cargo nextest run -p cpl-cli --test vscode_sync` when public stdlib names change.
 - From infra (sheriff): d8cdded47 and neighbours left `skills/cp-lang/stdlib/{fenwick,segtree,sparse}.md` stale (run 45098999493); infra regenerated them. Run `uv run python scripts/skill-gen.py` after changing `spec/std` docs.
 - Done by lint-fmt (decision 243): all 123 `@allow(unproven_list_index)` in `spec/std` are now `with lint(unproven_list_index: allow)` as the fn body's first line; 18 expression-bodied fns became block bodies with `return`. `@allow` is now E0503, so new code uses the `with lint` line. Same 450 `cpl lint spec/std` warnings before and after.
 - Request from lint-fmt (2026-11-22): new lint L0210 `compound_self_ref` finds 72 `x = x + e` places in `spec/std` that are `x += e`. `cpl lint --fix spec/std` rewrites them; `fixes_never_add_checker_errors` shows the fix adds no checker error. Lowering the count in `crates/cpl-lint/corpus_warnings.txt` (std L0210 72) with `CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_warnings` locks it in.

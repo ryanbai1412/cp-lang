@@ -57,7 +57,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Pair', 'Palindromes', 'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PermKind', 'PermNode',
     'PermTree', 'PersistentArray', 'PersistentDsu', 'PersistentLazySegTree', 'PersistentSegTree', 'Plane3',
     'Poly', 'PotentialDsu', 'PreferredPaths', 'Prefix', 'PrefixXorBasis', 'PrimePowerComb', 'Pt', 'Pt3',
-    'RangeKth', 'Ratio', 'Rebased', 'Rect', 'RelaxedConvolve', 'Rev', 'Reversible', 'Reweighted', 'Ring',
+    'RangeFenwick', 'RangeKth', 'Ratio', 'Rebased', 'Rect', 'RelaxedConvolve', 'Rev', 'Reversible', 'Reweighted', 'Ring',
     'RingRange', 'RingSlice', 'Rng', 'RollbackArray', 'RollingHash', 'RollingHash61', 'Rooted', 'Rope',
     'SegTree', 'SegTree2D', 'Selective', 'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Settle', 'Sieve',
     'Sign', 'SimpleGraph', 'Slice', 'SortedBag', 'SortedMap', 'SortedRange', 'SortedSet', 'SosOver',
@@ -65,7 +65,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Step', 'SubproductTree', 'SubseqStep', 'Subset', 'SuffixArray', 'SuffixAutomaton', 'SuffixTreeEdge',
     'Sweep', 'SweepAdd', 'Target', 'TimeStep', 'TimeTree', 'Track', 'Tracked', 'Tree', 'Trie', 'TwoSat',
     'Undo', 'Undoing', 'Vec', 'Vec3', 'Version', 'VirtualTree', 'Visit', 'Walk', 'WaveletMatrix', 'Weighted',
-    'WeightedNext', 'Window', 'Wire', 'XorBasis', 'XorTrie',
+    'WeightedNext', 'Window', 'Wire', 'XorBasis', 'XorFenwick', 'XorTrie',
 ];
 
 /**
@@ -135,7 +135,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'present', 'prev_same', 'prev_smaller', 'prim', 'prime_count', 'primes_in', 'primitive_root',
     'prod_linear', 'product', 'project', 'prufer', 'push', 'radix_sort', 'rank_real', 'ray_hits_segment',
     'reach_sets', 'record_highs', 'rects_union_area', 'reflect', 'rekey', 'replace', 'resized', 'rfind',
-    'rsearch', 'runs_linked', 'same_dir', 'sample_points_shift', 'scc_times', 'search', 'seg_dist',
+    'rsearch', 'same_dir', 'sample_points_shift', 'scc_times', 'search', 'seg_dist',
     'segment_intersect', 'segments_meet', 'shift_and', 'sieve_multiplicative', 'sign_eps', 'simplex',
     'skip_while', 'smallest_topo', 'smawk', 'solve_real', 'sort', 'sorted', 'sorted_diff',
     'sorted_intersect', 'sorted_union', 'sos', 'span', 'spanning_forest', 'spanning_tree', 'spans',
