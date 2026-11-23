@@ -928,15 +928,17 @@ pub(crate) enum Copied {
 }
 
 const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
-const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
-const CHANGED: &str = "the name is changed later, so it owns its value";
-const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
-const PLACE_CHANGES: &str = "what it reads may change while the name lives";
 
 impl Emitter<'_> {
     /// Records the copy a `let slot = init` emitted as `T name = text;`
     /// makes, when `init` names a place holding a heap value.
-    pub(crate) fn note_let_copy(&mut self, slot: usize, init: &Expr, text: &str) {
+    pub(crate) fn note_let_copy(
+        &mut self,
+        slot: usize,
+        init: &Expr,
+        text: &str,
+        tail: Option<&Tail>,
+    ) {
         let place = matches!(
             init.kind,
             ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..)
@@ -950,15 +952,7 @@ impl Emitter<'_> {
         {
             return;
         }
-        let why = if self.closure_id.is_some() {
-            IN_CLOSURE
-        } else if self.facts.stores((self.fn_id, false, slot)) > 1 {
-            CHANGED
-        } else if whole {
-            WHOLE
-        } else {
-            PLACE_CHANGES
-        };
+        let why = self.copy_reason(slot, init, tail, whole);
         self.copies.push(Copied::Let(init.span, why));
     }
 

@@ -65,3 +65,25 @@ print(best.gap, best.id, Int(a), Int(b))
         "`min=` compares with what `best` was, so that is copied, not lent:\n{out}"
     );
 }
+
+fn copy_reasons(source: &str) -> Vec<&'static str> {
+    crate::explain_copies(&lower(source))
+        .into_iter()
+        .map(|(_, _, why)| why)
+        .collect()
+}
+
+#[test]
+fn a_copy_names_the_reason_the_table_found() {
+    assert_eq!(
+        copy_reasons(
+            "fn f(rows: List<List<Int>>) -> Int:
+    var own = rows[0]
+    own.push(5)
+    own.len
+print(f([[1], [2]]))
+"
+        ),
+        [crate::uses::SET_AGAIN]
+    );
+}

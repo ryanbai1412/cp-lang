@@ -265,6 +265,10 @@ pub(crate) const SOURCE_CALLED: &str = "a call while the name lives may change w
 pub(crate) const SOURCE_MAY_CHANGE: &str = "what it reads may change while the name lives";
 pub(crate) const SOURCE_READ_WHOLE: &str =
     "what it reads is read whole, so may move, while the name lives";
+/// Why a `let` the table finds no change for still copies.
+pub(crate) const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
+pub(crate) const NAME_MOVED: &str = "the name is moved later, so it owns its value";
+pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
 
 impl crate::emit::Emitter<'_> {
     /// Where the code being written binds its locals.
@@ -293,6 +297,28 @@ impl crate::emit::Emitter<'_> {
                 _ => false,
             }
             && self.source_change(slot, init, tail).is_none()
+    }
+
+    /// Why the `let` of `slot` from `init` copies, for `cpl explain`: the
+    /// table's reason ([`Emitter::source_change`]) when it has one.
+    pub(crate) fn copy_reason(
+        &self,
+        slot: usize,
+        init: &Expr,
+        tail: Option<&Tail>,
+        whole: bool,
+    ) -> &'static str {
+        if self.closure_id.is_some() {
+            return IN_CLOSURE;
+        }
+        if let Some(why) = self.source_change(slot, init, tail) {
+            return why;
+        }
+        match (self.spent.contains(&slot), whole) {
+            (true, _) => NAME_MOVED,
+            (false, true) => WHOLE,
+            (false, false) => SOURCE_MAY_CHANGE,
+        }
     }
 
     pub(crate) fn source_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
