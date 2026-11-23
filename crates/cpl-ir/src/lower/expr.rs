@@ -4993,7 +4993,7 @@ impl<'a> Lowerer<'a> {
                     } = &base.kind
                     {
                         if let Some(Sym::GenStruct(gid)) = self.sym(gbase) {
-                            let resolved = self.resolve_gen_args(gargs);
+                            let resolved = self.resolve_gen_args_for_struct(gid, gargs);
                             let sid = self.instantiate_struct(gid, resolved);
                             if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
                                 let lo = self.int_lit(0, span);

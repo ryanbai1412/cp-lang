@@ -7,6 +7,7 @@
 //! projections and generators, and emits one concrete [`Program`] shared by
 //! `cpl-interp` and `cpl-codegen`.
 
+mod anon_domain;
 mod cache;
 mod call;
 mod expr;
@@ -707,6 +708,7 @@ struct Lowerer<'a> {
     /// Interned anonymous product domains for `(Row, Col)` / `(r: Row, c: Col)` generic args (§2.16).
     pub(super) anon_product_domains: HashMap<Vec<(Option<String>, ProductFactor)>, DomainId>,
     pub(super) anon_product_domain_set: HashSet<DomainId>,
+    anon_range_domains: HashMap<(ModId, String), DomainId>,
     aliases: Vec<(ModId, &'a ast::Type, u32)>,
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
@@ -840,6 +842,7 @@ impl<'a> Lowerer<'a> {
             enum_to_sum_domain: HashMap::new(),
             anon_product_domains: HashMap::new(),
             anon_product_domain_set: HashSet::new(),
+            anon_range_domains: HashMap::new(),
             aliases: Vec::new(),
             gen_aliases: Vec::new(),
             globals: Vec::new(),

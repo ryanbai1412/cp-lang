@@ -632,6 +632,9 @@ impl<'a> Lowerer<'a> {
         args.iter()
             .enumerate()
             .map(|(i, t)| {
+                if let Some(d) = self.anon_range_domain(decl, i, t) {
+                    return GenArg::Domain(d);
+                }
                 if matches!(
                     &t.kind,
                     ast::TypeKind::Tuple(items) if !items.is_empty()
@@ -642,7 +645,7 @@ impl<'a> Lowerer<'a> {
                     let is_domain_param = decl
                         .generics
                         .get(i)
-                        .is_some_and(|g| struct_uses_param_as_domain(decl, &g.text));
+                        .is_some_and(|g| anon_domain::struct_uses_param_as_domain(decl, &g.text));
                     if !is_domain_param {
                         return GenArg::Ty(self.resolve_ty(t));
                     }
@@ -4432,7 +4435,7 @@ fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
     }
 }
 
-fn ty_mentions(t: &ast::Type, name: &str) -> bool {
+pub(super) fn ty_mentions(t: &ast::Type, name: &str) -> bool {
     match &t.kind {
         ast::TypeKind::Named { name: n, args } => {
             n.text == name || args.iter().any(|a| ty_mentions(a, name))
@@ -4457,114 +4460,4 @@ fn ty_mentions(t: &ast::Type, name: &str) -> bool {
 /// each operator gets its own instance and the body can tell `+` from `max`.
 pub(super) fn op_param_key(name: &str) -> String {
     format!("__op_param_{name}")
-}
-
-fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) -> bool {
-    fn ty_uses_domain(ty: &ast::Type, name: &str) -> bool {
-        match &ty.kind {
-            ast::TypeKind::Array { index, elem } => {
-                index.iter().any(|i| ty_mentions(i, name)) || ty_uses_domain(elem, name)
-            }
-            ast::TypeKind::Named { args, .. } => args.iter().any(|a| ty_uses_domain(a, name)),
-            ast::TypeKind::OwnDomain { elem, .. }
-            | ast::TypeKind::Optional(elem)
-            | ast::TypeKind::Yields(elem) => ty_uses_domain(elem, name),
-            ast::TypeKind::Tuple(items) => items.iter().any(|i| ty_uses_domain(i, name)),
-            ast::TypeKind::Record(fields) => fields.iter().any(|(_, f)| ty_uses_domain(f, name)),
-            ast::TypeKind::Fn { params, ret } => {
-                params.iter().any(|p| ty_uses_domain(p, name)) || ty_uses_domain(ret, name)
-            }
-            _ => false,
-        }
-    }
-    fn expr_uses_domain(e: &ast::Expr, name: &str) -> bool {
-        match &e.kind {
-            ast::ExprKind::Field { base, name: m }
-                if matches!(&base.kind, ast::ExprKind::Name(n) if n == name)
-                    && matches!(
-                        m.text.as_str(),
-                        "count"
-                            | "len"
-                            | "all"
-                            | "first"
-                            | "last"
-                            | "start"
-                            | "end"
-                            | "cuts"
-                            | "mask"
-                            | "size"
-                    ) =>
-            {
-                true
-            }
-            ast::ExprKind::Field { base, .. } => expr_uses_domain(base, name),
-            ast::ExprKind::Call { callee, args } => {
-                expr_uses_domain(callee, name)
-                    || args.iter().any(|a| expr_uses_domain(&a.value, name))
-            }
-            ast::ExprKind::Binary { lhs, rhs, .. } => {
-                expr_uses_domain(lhs, name) || expr_uses_domain(rhs, name)
-            }
-            ast::ExprKind::Unary { expr, .. }
-            | ast::ExprKind::Paren(expr)
-            | ast::ExprKind::Unwrap(expr) => expr_uses_domain(expr, name),
-            ast::ExprKind::Block(b) => b.stmts.iter().any(|s| stmt_uses_domain(s, name)),
-            ast::ExprKind::If {
-                branches,
-                otherwise,
-            } => {
-                branches
-                    .iter()
-                    .any(|(_, b)| b.stmts.iter().any(|s| stmt_uses_domain(s, name)))
-                    || otherwise
-                        .as_ref()
-                        .is_some_and(|b| b.stmts.iter().any(|s| stmt_uses_domain(s, name)))
-            }
-            ast::ExprKind::Lambda { body, .. } => expr_uses_domain(body, name),
-            ast::ExprKind::List(items) | ast::ExprKind::Tuple(items) => {
-                items.iter().any(|i| expr_uses_domain(i, name))
-            }
-            ast::ExprKind::Index { base, indices } => {
-                expr_uses_domain(base, name) || indices.iter().any(|i| expr_uses_domain(i, name))
-            }
-            _ => false,
-        }
-    }
-    fn stmt_uses_domain(s: &ast::Stmt, name: &str) -> bool {
-        match &s.kind {
-            ast::StmtKind::Fn(f) => {
-                f.params
-                    .iter()
-                    .any(|p| p.ty.as_ref().is_some_and(|t| ty_uses_domain(t, name)))
-                    || f.ret.as_ref().is_some_and(|t| ty_uses_domain(t, name))
-                    || match &f.body {
-                        ast::FnBody::Expr(e) => expr_uses_domain(e, name),
-                        ast::FnBody::Block(b) => b.stmts.iter().any(|s| stmt_uses_domain(s, name)),
-                        _ => false,
-                    }
-            }
-            ast::StmtKind::Let { ty, init, .. } => {
-                ty.as_ref().is_some_and(|t| ty_uses_domain(t, name))
-                    || init.as_ref().is_some_and(|e| expr_uses_domain(e, name))
-            }
-            ast::StmtKind::Expr(e) => expr_uses_domain(e, name),
-            ast::StmtKind::Return(Some(e)) | ast::StmtKind::Yield { value: e, .. } => {
-                expr_uses_domain(e, name)
-            }
-            ast::StmtKind::For { iter, body, .. } => {
-                matches!(&iter.kind, ast::ExprKind::Name(n) if n == name)
-                    || expr_uses_domain(iter, name)
-                    || body.stmts.iter().any(|b| stmt_uses_domain(b, name))
-            }
-            ast::StmtKind::While { body, .. } => {
-                body.stmts.iter().any(|b| stmt_uses_domain(b, name))
-            }
-            ast::StmtKind::Assign { target, value, .. } => {
-                expr_uses_domain(target, name) || expr_uses_domain(value, name)
-            }
-            _ => false,
-        }
-    }
-    decl.fields.iter().any(|f| ty_uses_domain(&f.ty, name))
-        || decl.methods.iter().any(|m| stmt_uses_domain(m, name))
 }

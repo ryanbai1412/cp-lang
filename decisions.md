@@ -6192,3 +6192,23 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   adds time to a deterministic program.
 - **Reverse.** Return the wall time from `run_once` and take
   `statistics.median` again in `bench/v03_perf_bench.py`.
+
+## 255. A range passed where a struct's type argument is a domain is an anonymous domain (2026-11-22)
+
+- **Decision.** `Dsu<0..n>()` means what `domain V = 0..n; Dsu<V>()` means:
+  when a struct's type parameter is used as a domain (indexes a field or a
+  method's array), a range written in its place is an unnamed domain over
+  that range. The same range text in one module names one domain, so
+  `var d: Dsu<0..n> = Dsu<0..n>()` agrees with itself. A parameter used only
+  as a value keeps the bounded integer type (`Cell<0..=9>`).
+- **Why.** Q2's recommended default (a). It extends decision 159: an inline
+  `(V, V)` is already an anonymous product domain, so an inline range is the
+  same idea one level down. It keeps one-line examples one line (174 std doc
+  examples write `Dsu<0..3>`, `SegTree<0..4, Int>`), and a name used once
+  protects nothing. Arrays still cannot mix two anonymous domains by
+  accident: each distinct range text is its own domain.
+- **Reverse.** Restore the E0204 check `range_as_type_arg` in
+  `crates/cpl-check/src/check/types.rs` (and its call in `check/expr.rs`),
+  delete `crates/cpl-ir/src/lower/anon_domain.rs` and its call in
+  `resolve_gen_args_for_struct`, and migrate written uses with a `cpl fix`
+  rewrite to `domain V = <range>`.

@@ -541,7 +541,7 @@ impl<'a> Lowerer<'a> {
                         return self.call_gen_fn(gfid, gargs, None, args, span);
                     }
                     Some(Sym::GenStruct(gid)) => {
-                        let gargs = self.resolve_gen_args(types);
+                        let gargs = self.resolve_gen_args_for_struct(gid, types);
                         return self.call_gen_struct(gid, gargs, args, hint, span);
                     }
                     _ => {}
@@ -760,7 +760,7 @@ impl<'a> Lowerer<'a> {
         let lookup = prefix_shape_struct(name, types.len()).unwrap_or(name);
         match self.get_sym(lookup) {
             Some(Sym::GenStruct(gid)) => {
-                let gargs = self.resolve_gen_args(types);
+                let gargs = self.resolve_gen_args_for_struct(gid, types);
                 self.call_gen_struct(gid, gargs, args, hint, span)
             }
             Some(Sym::GenFn(gfid)) => {
@@ -5058,7 +5058,7 @@ impl<'a> Lowerer<'a> {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
                 let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
                 if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
-                    let gargs = self.resolve_gen_args(gtypes);
+                    let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
                         return self.eval_struct_const(sid, sc, span);
@@ -7595,7 +7595,7 @@ impl<'a> Lowerer<'a> {
                     if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
                         return call;
                     }
-                    let gargs = self.resolve_gen_args(gtypes);
+                    let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
                         return self.method_call(fn_id, None, args, span);

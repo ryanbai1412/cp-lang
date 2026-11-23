@@ -281,9 +281,6 @@ impl<'a> Checker<'a> {
             ExprKind::Field { base, name } => self.field(expr, base, name),
             ExprKind::Generic { base, args } => {
                 let base_ty = self.infer(base);
-                if let ExprKind::Name(name) = &base.kind {
-                    self.range_as_type_arg(name, args);
-                }
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 // `Prefix<T>`, `Prefix<R, C, T>`, `Diff<R, C, T>`: shape-dispatched
                 // struct families resolve to their internal specialization.
