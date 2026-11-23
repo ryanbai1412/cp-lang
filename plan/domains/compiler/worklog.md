@@ -603,3 +603,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 
 
 2026-11-23: a use of such a generator other than a fed `for` (`List(gen())`, `gen().count()`, a loop in a closure) still collected closures over a finished frame. IR now reports each as E0603 (`pushed::escaping_yields`, run when lowering finishes), the error `return`ing such a closure already gets. Case `core-07/yielded-closure-collected-escapes`.
+
+- 2026-11-23 (tech-debt) interp: checkpoints in interactive programs.
+  `record_live_on_this_thread` records from live input and returns the
+  transcript (`Input::bytes` -> `Clock::read`) that resumes read as fixed
+  input; all sink writes go through `Interp::write_out`, which keeps
+  `Clock::printed` right across interactive flushes. Design:
+  plan/domains/debugger/design/trace-replay.md "Interactive programs".

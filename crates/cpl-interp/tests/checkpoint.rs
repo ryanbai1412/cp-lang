@@ -153,6 +153,23 @@ print(g)
 print(run(g))
 ";
 
+/// A program that flushes as it goes is interactive: it prints for someone
+/// who answers.
+const INTERACTIVE: &str = "fn step(acc: Int, k: Int) -> Int:
+    var a = acc
+    var j = 0
+    while j < 3000:
+        a = (a * 31 + k + j) % 1000003
+        j += 1
+    return a
+var acc = 1
+for k in 0..40:
+    acc = step(acc, k)
+    print(k, acc)
+    flush()
+print(acc)
+";
+
 const FEED: &str = "fn evens(n: Int) -> yields Int:
     for i in 0..n:
         if i % 2 == 0:
@@ -237,6 +254,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
         (FEED, &b""[..]),
+        (INTERACTIVE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -267,6 +285,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
         (FEED, &b""[..]),
+        (INTERACTIVE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -333,6 +352,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (CLOSURE, &b""[..], 3000),
         (MUT, &b""[..], 3000),
         (FEED, &b""[..], 3000),
+        (INTERACTIVE, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -396,6 +416,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
         (FEED, &b""[..]),
+        (INTERACTIVE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
@@ -435,7 +456,17 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE, MUT, FEED] {
+    for source in [
+        LONG,
+        DEEP,
+        ONE_CALL,
+        SHARED,
+        SEQ,
+        CLOSURE,
+        MUT,
+        FEED,
+        INTERACTIVE,
+    ] {
         let program = program(source);
         let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
             &program,
@@ -460,7 +491,7 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 
 #[test]
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
-    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT, FEED] {
+    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT, FEED, INTERACTIVE] {
         let (program, whole, _) = record(source, b"");
         let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
             &program,
@@ -640,5 +671,49 @@ fn a_window_from_step_n_is_the_whole_traces_steps_from_n() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn an_interactive_runs_checkpoints_resume_on_what_it_was_sent() {
+    let source = "let q: Int = read()
+var acc = 1
+for k in 0..q:
+    let x: Int = read()
+    var j = 0
+    while j < 4000:
+        acc = (acc * 31 + x + j) % 1000003
+        j += 1
+    print(acc)
+    flush()
+";
+    let program = program(source);
+    let mut sent: Vec<Vec<u8>> = (0..12)
+        .map(|k| format!("{}\n", k * 7 + 1).into_bytes())
+        .collect();
+    sent.push(b"12\n".to_vec());
+    let io = Io::live(Box::new(move || sent.pop()));
+    let mut whole = Vec::new();
+    let (observed, taken, read) = cpl_interp::checkpoint::record_live_on_this_thread(
+        &program,
+        io,
+        &mut whole,
+        LIMITS,
+        1,
+        usize::MAX,
+    );
+    assert!(observed.trap.is_none(), "{:?}", observed.trap);
+    assert!(read.starts_with(b"12\n"), "{read:?}");
+    assert!(taken.len() > 4, "{} checkpoints", taken.len());
+    for from in &taken {
+        let mut rest = Vec::new();
+        let resumed = resume_on_this_thread(&program, &read, from, &mut rest, LIMITS, None);
+        assert!(resumed.trap.is_none(), "{:?}", resumed.trap);
+        assert_eq!(
+            rest,
+            whole[from.printed as usize..],
+            "from {}",
+            from.printed
+        );
     }
 }

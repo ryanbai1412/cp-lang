@@ -190,6 +190,8 @@ pub(crate) struct Clock {
     frames: Vec<Suspended>,
     /// How many of `frames`, outermost first, have their [`Snap`] worked out.
     known: usize,
+    /// At the end of a recorded run, every byte of input it was given.
+    pub(crate) read: Vec<u8>,
     /// The test cases still to run after the current one.
     pub(crate) cases_left: Option<i64>,
     /// In a run from a checkpoint, the call (by address) the caller waits
@@ -230,6 +232,7 @@ impl Default for Clock {
             taken: Vec::new(),
             frames: Vec::new(),
             known: 0,
+            read: Vec::new(),
             cases_left: None,
             pending: None,
             returned: Vec::new(),
@@ -339,6 +342,30 @@ pub fn record_last_on_this_thread(
     let (observed, clock) =
         crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt);
     (observed, clock.taken)
+}
+
+/// [`record_last_on_this_thread`] on an input that arrives as the program
+/// runs, as an interactive solution's does from its judge. Also gives every
+/// byte the run was sent: a run from one of its checkpoints is given that
+/// as its input, and sends nothing to the judge again.
+pub fn record_live_on_this_thread(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    every: u64,
+    keep: usize,
+) -> (Observed, Vec<Checkpoint>, Vec<u8>) {
+    let every = every.max(1);
+    let ckpt = Clock {
+        every,
+        next_at: every,
+        keep: keep.max(1),
+        ..Clock::default()
+    };
+    let (observed, clock) =
+        crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt);
+    (observed, clock.taken, clock.read)
 }
 
 /// The traced run counting its steps and recording none, with a checkpoint
@@ -660,7 +687,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Option<Checkpoint> {
         // In a fed loop's body, the frames the fn's yield waits in are not
         // what a resume makes again.
-        if self.fed_bodies > 0 || self.peer.is_some() || self.program.interactive {
+        if self.fed_bodies > 0 || self.peer.is_some() {
             return None;
         }
         let edge = chunk.back_edges.iter().find(|e| e.pc as usize == pc)?;

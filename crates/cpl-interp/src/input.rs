@@ -48,6 +48,11 @@ impl<'a> Input<'a> {
         }
     }
 
+    /// Every byte that has arrived so far.
+    pub(crate) fn bytes(&self) -> &[u8] {
+        &self.data
+    }
+
     /// The same stream, called `name` in messages.
     pub fn named(self, name: &'static str) -> Input<'a> {
         Input { name, ..self }

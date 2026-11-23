@@ -323,3 +323,28 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   differed or trapped before the lending fix); fixture `MUT` is in the
   counted and `Timeline` tests.
 
+
+## Interactive programs (2026-11-23, tech-debt for compiler)
+
+A program that flushes (or reads after printing) now takes checkpoints like
+any other; `checkpoint_here` no longer refuses `program.interactive`.
+
+- **Input.** The judge's bytes arrive as the run goes, so a resume cannot
+  ask for them again. `checkpoint::record_live_on_this_thread(program, io,
+  ..)` records from an `Io::live` source and also returns every byte the run
+  was sent (`Clock::read`, from `Input::bytes`). A resume is given that
+  transcript as fixed input, so it reads exactly what the live run read and
+  sends nothing to the judge.
+- **Output.** Every place that hands `out` to the sink (`flush()`, a read
+  after a print, the end of a test case, a large buffer) goes through
+  `Interp::write_out`, which counts the bytes into `Clock::printed`. Before,
+  the interactive flushes skipped that count, so a checkpoint's `printed`
+  was short by everything already flushed.
+- **Tests.** `INTERACTIVE` (a fn loop that prints and flushes each round)
+  is in the window, resumed-tail, resume, `Timeline::starts()` spread and
+  counted-resume tests; `an_interactive_runs_checkpoints_resume_on_what_it_was_sent`
+  feeds a solution its queries one line at a time through `Io::live` and
+  resumes from every checkpoint on the transcript.
+- **Not done here.** Wiring `cpl run --trace` windows on an interactive file
+  (cpl-cli `interact.rs`) to these checkpoints is debugger's. Checkpoints
+  inside a feed-loop body are still owed (see Feed loops).

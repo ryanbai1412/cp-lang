@@ -471,6 +471,9 @@ fn run_from<O: Observer>(
         recording,
         profile: interp.profiler.take().map(|profiler| profiler.finish()),
     };
+    if interp.ckpt.on() {
+        interp.ckpt.read = interp.input.bytes().to_vec();
+    }
     (observed, interp.ckpt)
 }
 
@@ -836,9 +839,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 // solution how many test cases there are.
                 Ok((count, _)) if program.announce_tests => {
                     self.out.extend_from_slice(format!("{count}\n").as_bytes());
-                    let _ = self.sink.write_all(&self.out);
-                    let _ = self.sink.flush();
-                    self.out.clear();
+                    self.write_out(true);
                     Some(count)
                 }
                 Ok((count, _)) => Some(count),
@@ -926,10 +927,19 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     fn flush_if_large(&mut self) {
         if self.out.len() >= 1 << 16 {
-            self.ckpt.printed += self.out.len() as u64;
-            let _ = self.sink.write_all(&self.out);
-            self.out.clear();
+            self.write_out(false);
         }
+    }
+
+    /// Sends what was printed on, and with `flush` makes it go out now; a
+    /// checkpoint counts it as printed.
+    fn write_out(&mut self, flush: bool) {
+        self.ckpt.printed += self.out.len() as u64;
+        let _ = self.sink.write_all(&self.out);
+        if flush {
+            let _ = self.sink.flush();
+        }
+        self.out.clear();
     }
 
     // ----- statements -----
@@ -3502,9 +3512,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.traced(|tracer, view| tracer.printed(view, span, &text));
         }
         if self.program.interactive {
-            let _ = self.sink.write_all(&self.out);
-            let _ = self.sink.flush();
-            self.out.clear();
+            self.write_out(true);
         } else {
             self.flush_if_large();
         }
@@ -3665,9 +3673,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | Builtin::Ln
             | Builtin::Hypot => float_fn::eval(op, first.float(), values.next(), span)?,
             Builtin::Flush => {
-                let _ = self.sink.write_all(&self.out);
-                let _ = self.sink.flush();
-                self.out.clear();
+                self.write_out(true);
                 Value::Unit
             }
             Builtin::Floor | Builtin::Ceil | Builtin::Round => {
@@ -4914,9 +4920,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // A read that waits shows what was printed first, as the C++
         // does: a judge answers only what it has seen.
         if !self.out.is_empty() && self.input.starved() {
-            let _ = self.sink.write_all(&self.out);
-            let _ = self.sink.flush();
-            self.out.clear();
+            self.write_out(true);
         }
         let fail = |error: input::InputError| -> Box<Trap> {
             Box::new(Trap {
