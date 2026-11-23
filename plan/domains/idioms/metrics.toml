@@ -19,14 +19,14 @@ note = "Known-20 regression baseline: round 3, a cold agent given only skills/cp
 
 [[metric]]
 name = "skill_check"
-command = "python3 scripts/skill-gen.py --check  # on main once landed; today run in a worktree of origin/devin/skill-v2"
-today = "skill absent on main; on devin/skill-v2: ok, 48 files, 75 cp blocks verified"
+command = "uv run python scripts/skill-gen.py --check --cpl target/debug/cpl  # in the fast gate (scripts/check.sh)"
+today = "ok on main, 50 files, 76 cp blocks verified"
 target = "on main, in the fast gate, 0 drift, every cp block checks"
 
 [[metric]]
 name = "ports_check_v03"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/port.cp; done"
-today = "272/305"
+today = "275/305"
 target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 
 [[metric]]
@@ -38,19 +38,19 @@ target = "tracked, not a gate: each failing dream is a logged gap in spec/delta/
 [[metric]]
 name = "ports_judge_proven"
 command = "cargo test --release -p cpl-cli --test judges -- --include-ignored every_ --nocapture  # every_v03_port_checks + the judges matrix"
-today = "272/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; each was also validated against orig.cpp on samples and 30 generated cases (interactive ones through interactor.py)"
+today = "275/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; each was also validated against orig.cpp on samples and 30 generated cases (interactive ones through interactor.py)"
 target = "305/305 tracked ports compile with every judge's flags and pass their tests under the profile"
 
 [[metric]]
 name = "corpus_suite"
 command = "target/release/cpl-conform corpus"
-today = "12/100 pass (40 error, 1 trap, 46 untested, 1 wrong); committed research/scoreboard.json still says 7"
+today = "14/100 pass (38 error, 1 trap, 46 untested, 1 wrong); research/scoreboard.json rewritten from this run"
 target = "100/100 hill-climb spec.cp pass; untested 0 (every problem has tests)"
 
 [[metric]]
 name = "port_lint_warnings"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do f=corpus/problems/$p/port.cp; cpl check $f >/dev/null 2>&1 && cpl lint $f 2>&1; done | grep -o 'warning\\[L[0-9]*\\]' | sort | uniq -c"
-today = "23 warnings over 175 files (L0208 12, L0414 6, L0101 3, L0209 1, L0204 1), not yet triaged true/false"
+today = "21 warnings over the 275 v0.3 ports after cpl lint --fix (L0414 13, L0101 4, L0203 3, L0412 1); 5 are false positives, filed with lint-fmt"
 target = "0 false positives on the re-ported corpus (lint-fmt's FP gate)"
 
 [[metric]]
