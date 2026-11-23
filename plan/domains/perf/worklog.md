@@ -307,3 +307,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - stdlib: `FastProduct for Int` takes two NTT primes when `max|a|·max|b|·min(len)` is under 8e16 (three only past it): cf2201e idiomatic 2.45x -> 1.86x, and its tuned variant (one convolution of cells 0/1/`base`, as the reference's single Goldilocks NTT) 1.08x.
 - corpus: tuned variants for cf2201e (1.08x) and cf2084h (1.19-1.25x on its gen input, gap logged in PLAN.md).
 - corpus: cf2268e tuned variant (one forward NTT per bit, the dot taken in the transform domain): 1.03x against the idiomatic 2.20x; cf2115f1 is 1.09x, under the bar. Left over 1.1x in this set: cf2255e1/e2 (2.1x) and cf2084h tuned (1.19-1.25x).
+- codegen: `let b = o!` (the user's checked `!`) now lends the payload like `let b = o[i]` (`const Big& b = cpl::have(o)`); only the unchecked unwrap after a test lent before. Regression `let_of_a_checked_unwrap_lends_the_payload`.

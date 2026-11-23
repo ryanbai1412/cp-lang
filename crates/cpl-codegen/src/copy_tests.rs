@@ -222,3 +222,19 @@ fn a_let_of_a_local_list_element_is_a_lend() {
     ));
     assert!(cpp.contains("const std::vector<ll>& prev = "), "{cpp}");
 }
+
+#[test]
+fn let_of_a_checked_unwrap_lends_the_payload() {
+    let out = cpp("struct Big(xs: List<Int>, k: Int)
+struct Box:
+    var o: ?Big
+    fn peek(self) -> Int:
+        let b = o!
+        b.xs.len + b.k
+print(Box(Some(Big([1, 2, 3], 4))).peek())
+");
+    assert!(
+        out.contains("const Big& b = cpl::have(self.o);"),
+        "`let b = o!` only reads `o`, so it must not copy the payload:\n{out}"
+    );
+}

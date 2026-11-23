@@ -934,7 +934,7 @@ impl Emitter<'_> {
     pub(crate) fn note_let_copy(&mut self, slot: usize, init: &Expr, text: &str) {
         let place = matches!(
             init.kind,
-            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(_, false)
+            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..)
         );
         let whole = matches!(init.kind, ExprKind::Local(s) if !self.locals()[s].name.is_empty())
             || matches!(init.kind, ExprKind::Global(_));

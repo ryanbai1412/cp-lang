@@ -1198,7 +1198,7 @@ impl<'p> Emitter<'p> {
         }
         let temp = |slot: usize| self.locals()[slot].name.is_empty();
         match init.kind {
-            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(_, false) => {}
+            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..) => {}
             // The optional an `if let` or `while let` tests.
             ExprKind::Local(_) | ExprKind::Global(_) if temp(slot) => {}
             _ => return false,
@@ -1777,7 +1777,7 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
 /// anything, so reading them again gives the same cell.
 pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
     match &e.kind {
-        ExprKind::Unwrap(base, false) | ExprKind::Field(base, _) => place_root(base),
+        ExprKind::Unwrap(base, _) | ExprKind::Field(base, _) => place_root(base),
         ExprKind::Index(base, indices) if indices.iter().all(writes_nothing) => place_root(base),
         _ => walk::path_root(e),
     }

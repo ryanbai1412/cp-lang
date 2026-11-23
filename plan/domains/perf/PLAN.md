@@ -41,6 +41,7 @@ Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Mile
 
 Local fixes that landed, and the mechanism that would remove the whole class.
 
+- `let a = act!` in `SegTree.put`/`push` still copies the whole `Action` (its `std::function`s and identity tag) on every call: `a.apply(..)` is a call through a fn value, so the rest of the block is opaque and the place may change. General fix (codegen): effect summaries for fn values, so a call through a value that captures nothing `mut` keeps a lent place lent. Owner: perf.
 | Instance | General fix | Owner |
 |---|---|---|
 | cf2268e: the idiomatic `convolve(a, [a[n - i] for i in 0..=n])` then a weighted sum costs three NTTs per bit (2.2x); the tuned variant uses one forward `ntt` and `sum_j W_j A_j A_(-j) / L` (1.03x), as the reference does | a `std.ntt` autocorrelation (`correlate(a)`, one transform, `A_j A_(-j)`) and a transform-domain dot product, so the idiomatic port is the one-NTT program | stdlib |
