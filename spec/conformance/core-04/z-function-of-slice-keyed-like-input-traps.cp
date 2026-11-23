@@ -1,4 +1,4 @@
-// expect: R0101 at 4
+// expect: R0101 at 3
 // rule: 04a.11.4
 let s = "abab"
 let z = z_function(s[2..])

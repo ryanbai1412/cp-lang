@@ -342,7 +342,7 @@ query (`pref_min[v]`) is the common one and needs no `.r`.
 |---|---|---|
 | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` source; works on views | \(O(n \log n)\), \(O(n)\), \(O(n)\), \(O(n)\) (R07.11.1) |
 | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates (R07.11.2) |
-| `s.group(by: k)` | `Map<K, List<T>>` | \(O(n)\) expected (R07.11.3) |
+| `s.group(by: k)` | `Map<K, List<T>>`, each list in walk order | \(O(n)\) expected (R07.11.3) |
 | `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected (R07.11.4) |
 | `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | \(O(n \log n)\) (R07.11.5) |
 
@@ -362,7 +362,7 @@ place) are different jobs, not twins.
 | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | \(O(1)\) per element (R07.12.2) |
 | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)\) per step (R07.12.3) |
 | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\) (R07.12.4) |
-| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true; the range equal to `x` | \(O(\log n)\) (R07.12.5) |
+| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true (an `Int` on a `List`); the range equal to `x` | \(O(\log n)\) (R07.12.5) |
 | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized \(O(1)\) (R07.12.6) |
 | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | \(O(n)\) (R07.12.7) |
 | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | \(O(\log n)\) (R07.12.8) |

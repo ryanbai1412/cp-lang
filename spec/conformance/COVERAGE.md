@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2726 (995 passing). Rules: 573.
+Cases: 2731 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2726 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 162 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 99 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -515,14 +515,14 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.6 [3+ 3-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [4+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [2+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
-- R07.11.3 [2+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | \(O(n)\) expected
+- R07.11.3 [3+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>`, each list in walk order | \(O(n)\) expected
 - R07.11.4 [3+ 0-]: | `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected
 - R07.11.5 [1+ 0-]: | `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | \(O(n...
 - R07.12.1 [1+ 0-]: | `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | \(O(1)\)...
 - R07.12.2 [1+ 0-]: | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order...
 - R07.12.3 [1+ 0-]: | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)...
 - R07.12.4 [1+ 0-]: | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\)
-- R07.12.5 [1+ 0-]: | `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone...
+- R07.12.5 [2+ 0-]: | `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone...
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
@@ -991,6 +991,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/alias-walks-as-aliased-type.cp
 - core-02/generic-variant-compares-with-typed-side.cp
 - core-02/list-of-str-is-chars.cp
+- core-02/optional-min-assign-skips-none.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
 - core-02/str-from-slice-copies.cp

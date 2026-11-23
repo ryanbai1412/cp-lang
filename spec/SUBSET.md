@@ -172,8 +172,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-01/compound-assign-key-evaluated-once.cp: compiler
 - core-01/bool-caret-names-ne.cp: diagnostics
 - core-01/continuation-leading-or.cp: compiler
-- core-01/let-else-falls-through.cp: compiler
-- core-01/let-else-some-pattern-top-level.cp: compiler
 - core-01/list-repeat-times-n.cp: compiler
 - core-01/lone-cr-in-string-is-error.cp: compiler
 - core-01/scientific-fraction-is-int.cp: compiler
@@ -190,7 +188,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/unwrap-shadow-below-multitest.cp: compiler
 - core-02/bare-variant-needs-expected-enum.cp: compiler
 - core-02/counted-array-never-grows.cp: compiler
-- core-02/move-into-ctor-receiver-then-use.cp: compiler
 - core-02/read-str-of-alphabet-type-arg.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
@@ -206,7 +203,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/inline-product-domain-is-seq.cp: compiler
 - core-04/keyed-counter-is-not-a-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
-- core-04/literal-position-in-list-outside.cp: compiler
 - core-04/nested-slice-below-view-start-traps.cp: compiler
 - core-04/pair-symmetric.cp: compiler
 - core-04/palindromes-longest-at-key.cp: stdlib
@@ -278,10 +274,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
 - core-10/print-view-honours-sep.cp: compiler
+- std-graph/bfs-over-named-product-domain.cp: compiler
 - core-02/str-len-and-charset-compose.cp: compiler
 - core-02/list-of-str-is-chars.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
-- core-01/for-filter-on-inner-clause.cp: compiler
 - core-10/tuple-dependent-bound-in-block.cp: compiler
 - std-seq/min-of-empty-list-is-none.cp: compiler
 - core-11/mod-uses-sibling.cp: compiler

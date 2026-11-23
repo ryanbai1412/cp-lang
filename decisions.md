@@ -8032,3 +8032,10 @@ tag move fatal again.
   mean something else here.
 - **Reverse.** Accept the old member names again in `index_size` and the
   IR's `count`/`ord`/`nth` lookups, and drop `library_domain_member`.
+
+## 387. Rebuild round 26: group order, `partition_point` on a list; routes (spec, 2026-11-23)
+
+- **Decision.** Each list of `group(by:)` keeps walk order (H11), and
+  `partition_point` on a `List` gives an `Int` cut (H12). Everything else
+  in the round's 14 holes was a correct guess, pinned by cases, or a route.
+- **Reverse.** Leave group order unspecified.

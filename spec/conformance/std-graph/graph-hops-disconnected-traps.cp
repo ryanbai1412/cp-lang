@@ -1,4 +1,4 @@
-// expect: R0401 at 5
+// expect: R0401 at 4
 domain V = 0..3
 domain E = 0..1
 let es: [E](u: V, v: V) = [(u: 0, v: 1)]

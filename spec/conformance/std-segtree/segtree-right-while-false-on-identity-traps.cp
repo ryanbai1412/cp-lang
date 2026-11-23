@@ -1,4 +1,4 @@
-// expect: R0401 at 4 (checked)
+// expect: R0401 at 3 (checked)
 // rule: std.segtree.SegTree.right_while
 domain D = 0..2
 let s = SegTree<D, Int>(+, fill: 1)
