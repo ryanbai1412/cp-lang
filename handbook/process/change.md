@@ -23,6 +23,11 @@ don't need is normal.
    compiler, means the general mechanism is missing. If the general fix is
    too big for now, make the local fix and record the general one in the
    owning domain's plan.
+   If the general fix is a rule people must follow, write it as an item in
+   the guideline or checklist that owns that kind of work
+   (`handbook/guidelines/`), with its reason and an example, and have the
+   lint or test that enforces it cite that item. A rule stated only in a
+   lint, a script or a register row is a one-off; fold it into a guideline.
 4. **Decide.** Within your domain, decide and log it. Across domains, or
    for something costly to reverse, follow `ownership.md` and, if needed,
    write an RFC.
@@ -47,9 +52,10 @@ A user finds that `xs.max()` returns `T` on some sequences and `?T` on
 others.
 
 - **Layer:** the standard library's API, so stdlib owns it.
-- **General fix:** every search and extremum returns `?T`. That's a naming
-  and return convention in `handbook/guidelines/std-api.md`, enforced by the
-  API-consistency lint, not a fix to `max` alone.
+- **General fix:** every search and extremum returns `?T`. That's an item in
+  the return conventions of `handbook/guidelines/std-api.md`; the
+  API-consistency lint enforces it and cites the item. It is not a fix to
+  `max` alone.
 - **Contract:** the convention is written down, the signatures change, their
   docs and examples change, and a `cpl fix` rule rewrites existing code.
 - **What should have caught it:** the API-consistency lint. Its rule set
