@@ -309,125 +309,99 @@ impl Clock {
     }
 }
 
-/// The untraced run, with a checkpoint about every `every` loop rounds and
-/// calls, at a round of a loop of main's or of a fn's.
-pub fn record_on_this_thread(
-    program: &Program,
-    input: &[u8],
-    output: &mut (dyn Write + Send),
-    limits: Limits,
-    every: u64,
-) -> (Observed, Vec<Checkpoint>) {
-    record_last_on_this_thread(program, input, output, limits, every, usize::MAX)
+/// The checkpoints a run takes, or the one it starts from: what
+/// [`observe_on_this_thread`] takes beside a run's trace.
+#[derive(Clone, Default)]
+pub struct Checkpoints {
+    /// Take one about every this many loop rounds and calls, at a round of
+    /// a loop of main's or of a fn's; 0 takes none.
+    pub every: u64,
+    /// Keep only the last this many, so a run's memory stays bounded by
+    /// that many copies of its state however long it runs; 0 keeps all.
+    pub keep: usize,
+    /// Past this many, every other one goes and the rest stay twice as far
+    /// apart, so they cover the whole run in bounded memory; 0 never thins.
+    pub spread: usize,
+    /// Start here instead of at the program's start, on the same program
+    /// and input: the run prints what the whole run printed after
+    /// `from.printed` bytes, and a trace holds what the whole run's trace
+    /// holds from there on.
+    pub from: Option<Checkpoint>,
 }
 
-/// The same run keeping only the last `keep` checkpoints, so a run's memory
-/// stays bounded by `keep` copies of its state however long it runs.
-pub fn record_last_on_this_thread(
-    program: &Program,
-    input: &[u8],
-    output: &mut (dyn Write + Send),
-    limits: Limits,
-    every: u64,
-    keep: usize,
-) -> (Observed, Vec<Checkpoint>) {
-    let every = every.max(1);
-    let ckpt = Clock {
-        every,
-        next_at: every,
-        keep: keep.max(1),
-        ..Clock::default()
-    };
-    let io = Io::fixed(input);
-    let (observed, clock) =
-        crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt);
-    (observed, clock.taken)
+impl Checkpoints {
+    /// One about every `every` loop rounds and calls, the last `keep` kept.
+    pub fn taking(every: u64, keep: usize) -> Checkpoints {
+        Checkpoints {
+            every: every.max(1),
+            keep,
+            ..Checkpoints::default()
+        }
+    }
+
+    /// The run from `from` to its end.
+    pub fn resuming(from: &Checkpoint) -> Checkpoints {
+        Checkpoints {
+            from: Some(from.clone()),
+            ..Checkpoints::default()
+        }
+    }
 }
 
-/// [`record_last_on_this_thread`] on an input that arrives as the program
-/// runs, as an interactive solution's does from its judge. Also gives every
-/// byte the run was sent: a run from one of its checkpoints is given that
-/// as its input, and sends nothing to the judge again.
-pub fn record_live_on_this_thread(
+/// What a checkpointed run leaves.
+pub struct Checkpointed {
+    /// What any run leaves.
+    pub observed: Observed,
+    /// The checkpoints it took, in order.
+    pub taken: Vec<Checkpoint>,
+    /// With checkpoints taken, every byte of input the run was given, as an
+    /// interactive solution's arrives from its judge: a run from one of them
+    /// is given this as its input, and sends nothing to the judge again.
+    pub sent: Vec<u8>,
+}
+
+/// [`crate::observe_on_this_thread`], taking checkpoints or starting from
+/// one as `want` says: the one entry for a run with checkpoints.
+pub fn observe_on_this_thread(
     program: &Program,
     io: Io,
     output: &mut (dyn Write + Send),
     limits: Limits,
-    every: u64,
-    keep: usize,
-) -> (Observed, Vec<Checkpoint>, Vec<u8>) {
-    let every = every.max(1);
-    let ckpt = Clock {
-        every,
-        next_at: every,
-        keep: keep.max(1),
-        ..Clock::default()
-    };
-    let (observed, clock) =
-        crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt);
-    (observed, clock.taken, clock.read)
-}
-
-/// The traced run counting its steps and recording none, with a checkpoint
-/// about every `every` loop rounds and calls, each stamped with the steps
-/// before it. Past `spread` checkpoints, every other one goes and the rest
-/// stay twice as far apart, so they cover the whole run in bounded memory.
-pub fn count_on_this_thread(
-    program: &Program,
-    input: &[u8],
-    limits: Limits,
-    config: trace::TraceConfig,
-    every: u64,
-    spread: usize,
-) -> (Observed, Vec<Checkpoint>) {
-    let every = every.max(1);
-    let ckpt = Clock {
-        every,
-        next_at: every,
-        spread: spread.max(1),
-        ..Clock::default()
-    };
-    let config = trace::TraceConfig {
-        from_step: Some(usize::MAX),
-        last_steps: None,
-        ..config
-    };
-    let tracer = Some(Box::new(trace::Tracer::new(config, program)));
-    let io = Io::fixed(input);
-    let (observed, clock) = crate::run_from(
-        program,
-        io,
-        &mut std::io::sink(),
-        limits,
-        tracer,
-        false,
-        ckpt,
-    );
-    (observed, clock.taken)
-}
-
-/// The run from `from` to its end, on the same program and input: it prints
-/// what the whole run printed after `from.printed` bytes, and with `trace`,
-/// records what the whole run's trace holds from there on.
-pub fn resume_on_this_thread(
-    program: &Program,
-    input: &[u8],
-    from: &Checkpoint,
-    output: &mut (dyn Write + Send),
-    limits: Limits,
     trace: Option<trace::TraceConfig>,
-) -> Observed {
-    let ckpt = Clock {
-        resume: Some(from.clone()),
-        ..Clock::default()
-    };
-    let io = Io::fixed(input);
-    match trace {
+    want: Checkpoints,
+) -> Checkpointed {
+    let ckpt = Clock::of(want);
+    let (observed, clock) = match trace {
         Some(config) => {
             let tracer = Some(Box::new(trace::Tracer::new(config, program)));
-            crate::run_from(program, io, output, limits, tracer, false, ckpt).0
+            crate::run_from(program, io, output, limits, tracer, false, ckpt)
         }
-        None => crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt).0,
+        None => crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt),
+    };
+    let (taken, sent) = clock.into_taken();
+    Checkpointed {
+        observed,
+        taken,
+        sent,
+    }
+}
+
+impl Clock {
+    pub(crate) fn of(want: Checkpoints) -> Clock {
+        let all = |n: usize| if n == 0 { usize::MAX } else { n };
+        Clock {
+            every: want.every,
+            next_at: want.every,
+            keep: all(want.keep),
+            spread: all(want.spread),
+            resume: want.from,
+            ..Clock::default()
+        }
+    }
+
+    /// The checkpoints taken and, when any were asked for, the input read.
+    pub(crate) fn into_taken(self) -> (Vec<Checkpoint>, Vec<u8>) {
+        (self.taken, self.read)
     }
 }
 

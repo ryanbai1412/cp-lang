@@ -4,7 +4,7 @@
 #[path = "../tests/common/mod.rs"]
 mod common;
 use common::program;
-use cpl_interp::checkpoint::record_on_this_thread;
+use cpl_interp::checkpoint::Checkpoints;
 use cpl_interp::{observe_on_this_thread, Io, Limits};
 
 const LIMITS: Limits = Limits {
@@ -51,9 +51,15 @@ fn measure(name: &str, source: &str) {
                 let started = std::time::Instant::now();
                 let mut out = Vec::new();
                 let taken = match every {
-                    Some(every) => record_on_this_thread(&program, b"", &mut out, LIMITS, every)
-                        .1
-                        .len(),
+                    Some(every) => {
+                        let want = Checkpoints::taking(every, 0);
+                        let io = Io::fixed(b"");
+                        cpl_interp::checkpoint::observe_on_this_thread(
+                            &program, io, &mut out, LIMITS, None, want,
+                        )
+                        .taken
+                        .len()
+                    }
                     None => {
                         observe_on_this_thread(&program, Io::fixed(b""), &mut out, LIMITS, None);
                         0

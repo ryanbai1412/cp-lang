@@ -3,10 +3,7 @@
 //! steps the whole recording would have held there.
 
 use super::{Recording, TraceConfig, Tracer};
-use crate::checkpoint::{
-    count_on_this_thread, record_last_on_this_thread, record_live_on_this_thread,
-    resume_on_this_thread, Checkpoint,
-};
+use crate::checkpoint::{observe_on_this_thread as checkpointed, Checkpoint, Checkpoints};
 use crate::stop::Limits;
 use crate::{observe_on_this_thread, run_observed, Io, Observed};
 use cpl_ir::Program;
@@ -135,14 +132,9 @@ pub fn resumed_tail_every(
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let (mut whole, taken) = record_last_on_this_thread(
-            program,
-            input,
-            &mut **output,
-            limits,
-            every,
-            CHECKPOINTS_KEPT,
-        );
+        let want = Checkpoints::taking(every, CHECKPOINTS_KEPT);
+        let run = checkpointed(program, Io::fixed(input), &mut **output, limits, None, want);
+        let (mut whole, taken) = (run.observed, run.taken);
         whole.recording = tail_from(program, input, &taken, &config, steps, limits);
         whole
     })
@@ -166,8 +158,11 @@ fn tail_from(
             let io = Io::fixed(input);
             return observe_on_this_thread(program, io, &mut ignored, limits, trace).recording;
         };
-        let resumed =
-            resume_on_this_thread(program, input, from, &mut ignored, limits, trace).recording;
+        let want = Checkpoints::resuming(from);
+        let io = Io::fixed(input);
+        let resumed = checkpointed(program, io, &mut ignored, limits, trace, want)
+            .observed
+            .recording;
         if resumed
             .as_ref()
             .is_some_and(|rec: &Recording| rec.len() >= steps)
@@ -198,10 +193,10 @@ pub fn sent(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Vec<u
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .take()
             .expect("only the thread that starts takes the input");
-        let (whole, _, read) =
-            record_live_on_this_thread(program, io, &mut **output, limits, u64::MAX, 1);
-        *sent.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = read;
-        whole
+        let want = Checkpoints::taking(u64::MAX, 1);
+        let run = checkpointed(program, io, &mut **output, limits, None, want);
+        *sent.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = run.sent;
+        run.observed
     });
     sent.into_inner()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -233,8 +228,15 @@ pub fn interactive(
             Some(_) => (CHECKPOINT_EVERY, CHECKPOINTS_KEPT),
             None => (u64::MAX, 1),
         };
-        let (mut whole, taken, sent) =
-            record_live_on_this_thread(program, io, &mut **output, limits, every, keep);
+        let run = checkpointed(
+            program,
+            io,
+            &mut **output,
+            limits,
+            None,
+            Checkpoints::taking(every, keep),
+        );
+        let (mut whole, taken, sent) = (run.observed, run.taken, run.sent);
         whole.recording = match tail {
             Some(steps) => tail_from(program, &sent, &taken, &config, steps, limits),
             None => {
@@ -276,12 +278,28 @@ impl Timeline {
         limits: crate::Limits,
         every: u64,
     ) -> Timeline {
-        let config = config.clone();
-        let (counted, taken) =
-            count_on_this_thread(program, input, limits, config, every, TIMELINE_KEPT);
+        // Traced to count the steps, keeping none.
+        let config = TraceConfig {
+            from_step: Some(usize::MAX),
+            last_steps: None,
+            ..config.clone()
+        };
+        let want = Checkpoints {
+            spread: TIMELINE_KEPT,
+            ..Checkpoints::taking(every, 0)
+        };
+        let io = Io::fixed(input);
+        let counted = checkpointed(
+            program,
+            io,
+            &mut std::io::sink(),
+            limits,
+            Some(config),
+            want,
+        );
         Timeline {
-            taken,
-            steps: counted.recording.map_or(0, |rec| rec.skipped),
+            taken: counted.taken,
+            steps: counted.observed.recording.map_or(0, |rec| rec.skipped),
         }
     }
 
@@ -314,8 +332,10 @@ impl Timeline {
             from_step: Some(from - start.steps),
             ..config
         };
+        let want = Checkpoints::resuming(start);
+        let io = Io::fixed(input);
         let mut window =
-            resume_on_this_thread(program, input, start, &mut ignored, limits, Some(config));
+            checkpointed(program, io, &mut ignored, limits, Some(config), want).observed;
         if let Some(rec) = &mut window.recording {
             rec.skipped += start.steps;
         }

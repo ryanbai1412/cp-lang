@@ -3,11 +3,57 @@
 
 mod common;
 use common::program;
-use cpl_interp::checkpoint::{
-    record_last_on_this_thread, record_on_this_thread, resume_on_this_thread, Checkpoint,
-};
+use cpl_interp::checkpoint::{Checkpoint, Checkpoints};
 use cpl_interp::trace::{Recording, TraceConfig};
-use cpl_interp::{observe_on_this_thread, Io, Limits};
+use cpl_interp::{observe_on_this_thread, Io, Limits, Observed};
+use std::io::Write;
+
+/// The untraced run with a checkpoint about every `every` loop rounds and calls.
+fn record_on_this_thread(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    every: u64,
+) -> (Observed, Vec<Checkpoint>) {
+    record_last_on_this_thread(program, input, output, limits, every, 0)
+}
+
+/// The same, keeping only the last `keep` checkpoints.
+fn record_last_on_this_thread(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    every: u64,
+    keep: usize,
+) -> (Observed, Vec<Checkpoint>) {
+    let want = Checkpoints::taking(every, keep);
+    let run = cpl_interp::checkpoint::observe_on_this_thread(
+        program,
+        Io::fixed(input),
+        output,
+        limits,
+        None,
+        want,
+    );
+    (run.observed, run.taken)
+}
+
+/// The run from `from` to its end.
+fn resume_on_this_thread(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    from: &Checkpoint,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    trace: Option<TraceConfig>,
+) -> Observed {
+    let want = Checkpoints::resuming(from);
+    let io = Io::fixed(input);
+    cpl_interp::checkpoint::observe_on_this_thread(program, io, output, limits, trace, want)
+        .observed
+}
 
 const LIMITS: Limits = Limits {
     stack_bytes: 1 << 20,
@@ -484,14 +530,24 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
     for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT, FEED, INTERACTIVE] {
         let (program, whole, _) = record(source, b"");
-        let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
+        let counting = TraceConfig {
+            from_step: Some(usize::MAX),
+            last_steps: None,
+            ..config(source)
+        };
+        let want = Checkpoints {
+            spread: 64,
+            ..Checkpoints::taking(64, 0)
+        };
+        let run = cpl_interp::checkpoint::observe_on_this_thread(
             &program,
-            b"",
+            Io::fixed(b""),
+            &mut std::io::sink(),
             LIMITS,
-            config(source),
-            64,
-            64,
+            Some(counting),
+            want,
         );
+        let (counted, taken) = (run.observed, run.taken);
         assert!(counted.trap.is_none(), "{:?}", counted.trap);
         assert!(taken.iter().any(|c| c.depth() > 0), "{source}");
         for from in &taken {
@@ -673,14 +729,11 @@ for k in 0..q:
     sent.push(b"12\n".to_vec());
     let io = Io::live(Box::new(move || sent.pop()));
     let mut whole = Vec::new();
-    let (observed, taken, read) = cpl_interp::checkpoint::record_live_on_this_thread(
-        &program,
-        io,
-        &mut whole,
-        LIMITS,
-        1,
-        usize::MAX,
+    let want = Checkpoints::taking(1, 0);
+    let run = cpl_interp::checkpoint::observe_on_this_thread(
+        &program, io, &mut whole, LIMITS, None, want,
     );
+    let (observed, taken, read) = (run.observed, run.taken, run.sent);
     assert!(observed.trap.is_none(), "{:?}", observed.trap);
     assert!(read.starts_with(b"12\n"), "{read:?}");
     assert!(taken.len() > 4, "{} checkpoints", taken.len());

@@ -65,7 +65,7 @@ What this domain uses from the shared core: `cpl_ir::Program` and `cpl_interp` h
 
 ## Known debt
 
-- **Trace entries outside the one entry.** `checkpoint::{record,record_live,count,resume}_on_this_thread`, `trace::resumed_tail` and `Timeline::record_on_this_thread` each run a traced program their own way. They fold into `observe_on_this_thread` as `TraceConfig` fields: checkpoint cadence and how many to keep, the checkpoint to resume from, steps to keep from the end, and the transcript to record; each returns its checkpoints in `Observed`.
+- **Window runs outside the one entry.** A run with checkpoints goes through `cpl_interp::checkpoint::observe_on_this_thread`, the same entry plus a `Checkpoints` (cadence, how many to keep, how to thin them, the one to resume from); it returns `Checkpointed` (the `Observed`, the checkpoints, the input read) because a checkpoint holds `Rc`s and cannot cross threads in `Observed`. `trace::resumed_tail`, `trace::interactive` and `Timeline`/`Replay` are compositions of several such runs, not entries of their own.
 
 - **Trace lives in a compiler-owned crate.** `crates/cpl-interp/src/trace.rs`, `trace/log.rs`, `replay.rs` (4186 lines) should be `crates/cpl-trace` behind an observer interface; today the tracer reaches into `Interp` internals (`lib.rs` 394, 627, 854-920).
 - **Two trace engines.** `CPL_TRACE_ENGINE=tree` (`crates/cpl-interp/src/lib.rs` ~772) exists only for `tests/trace_engines.rs`; and the VM path is `#[cfg(not(target_arch = "wasm32"))]` (~786), so browser traces always tree-walk.
