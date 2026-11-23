@@ -157,10 +157,10 @@ pub(crate) fn explain_file(
         }
     }
     if entries.is_empty() && view_ops.is_empty() {
-        if !dropped.is_empty() {
-            return 0;
+        if dropped.is_empty() {
+            let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
-        let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
+        not_shown_yet(stdout);
         return 0;
     }
     if !entries.is_empty() {
@@ -222,7 +222,25 @@ pub(crate) fn explain_file(
             let _ = writeln!(stdout, "  {line}:{col}  {desc}");
         }
     }
+    not_shown_yet(stdout);
     0
+}
+
+/// The sections `spec/tools/explain.md` promises that need the compiler's
+/// representation query (plan/QUESTIONS.md tools-3), named so nobody
+/// mistakes their absence for "nothing to report".
+const NOT_SHOWN_YET: &[&str] = &[
+    "types: bytes and niches",
+    "arrays and peak memory",
+    "specializations chosen",
+    "checks left per build",
+];
+
+fn not_shown_yet(stdout: &mut dyn Write) {
+    let _ = writeln!(stdout, "Not shown yet:");
+    for section in NOT_SHOWN_YET {
+        let _ = writeln!(stdout, "  {section}");
+    }
 }
 
 pub(crate) fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, String)> {

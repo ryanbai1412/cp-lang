@@ -22,3 +22,8 @@ peak bytes, `wide_array` and padding notes with fixes), memory total
 against the profile, specializations and the laws or bounds that chose
 them, remaining checks per build, contexts and generic instances with
 output bytes, unsafe-tier sites. `--json` for tools.
+
+Today `cpl explain <file>` prints closure lowering, dropped fields and
+views, then lists the sections it cannot fill yet under `Not shown yet:`
+(types, arrays and peak memory, specializations, checks); they wait on
+the compiler's representation query (plan/QUESTIONS.md tools-3).

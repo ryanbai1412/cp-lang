@@ -545,6 +545,32 @@ fn explain_shows_a_code_and_rejects_an_unknown_one() {
         .any(|e| e.at(&["code"]).as_str() == Some("E0302")));
 }
 
+/// A file's explanation names the representation sections it can't fill
+/// yet (plan/QUESTIONS.md tools-3), on a file with closures and on one
+/// with none.
+#[test]
+fn explain_a_file_names_the_sections_not_shown_yet() {
+    let dir = scratch("explain_not_shown");
+    std::fs::write(
+        dir.join("f.cp"),
+        "let xs = [3, 1, 2]\nprint(xs.map(x => x * 2))\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("plain.cp"), "print(1)\n").unwrap();
+    for file in ["f.cp", "plain.cp"] {
+        let out = cpl(&dir, &["explain", file]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let stdout = text(&out.stdout);
+        assert!(
+            stdout.ends_with(
+                "Not shown yet:\n  types: bytes and niches\n  arrays and peak memory\n  \
+                 specializations chosen\n  checks left per build\n"
+            ),
+            "{file}: {stdout}"
+        );
+    }
+}
+
 /// Help fits an 80-column terminal. `stress` is the debugger domain's, which
 /// has the request (plan/domains/debugger/worklog.md).
 #[test]
