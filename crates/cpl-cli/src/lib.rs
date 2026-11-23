@@ -119,6 +119,7 @@ pub fn exec<S: AsRef<str>>(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
+    let args = commands::long_forms(args);
     let usage = args.first().and_then(|c| command_usage(c.as_ref()));
     let mut usage_error = |message: String| {
         *stderr += &format!("cpl: {message}\n\n{}", usage.unwrap_or(main_usage()));

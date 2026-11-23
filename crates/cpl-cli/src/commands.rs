@@ -253,6 +253,7 @@ commands:
 
 const FOOTER: &str = "
 `cpl <command> --help` describes a command's options.
+`cpl b`, `cpl r` and `cpl t` are `build`, `run` and `test`; `-c` is `--copy`.
 
 options:
   -V, --version    print the version
@@ -391,7 +392,7 @@ options:
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)
-  --copy            also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
+  -c, --copy        also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
                     xsel or clip, else the command in CPL_CLIPBOARD)
   --json            print one JSON object once it is written: its `path`,
                     `bytes`, the `limit` and `judge`, and `sizes`, each
@@ -431,7 +432,7 @@ built with the judge's flags on its stack, as `cpl test` does. Exits 0 when
 the file is ready: it built and no case failed.
 
 options:
-  --copy            when ready, also put the C++ on the clipboard, as
+  -c, --copy        when ready, also put the C++ on the clipboard, as
                     `cpl build --copy` does
   --json            print one JSON object: `ready`, and the `build` and
                     `test` reports `cpl build --json` and `cpl test --json`
@@ -515,6 +516,31 @@ options:
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
+/// Short forms typed mid-contest: `cpl b -c` is `cpl build --copy`.
+const SHORT_COMMANDS: &[(&str, &str)] = &[("b", "build"), ("r", "run"), ("t", "test")];
+const SHORT_OPTIONS: &[(&str, &str, &str)] =
+    &[("build", "-c", "--copy"), ("submit", "-c", "--copy")];
+
+/// `args` with each short command and option replaced by its long form.
+pub(crate) fn long_forms<S: AsRef<str>>(args: &[S]) -> Vec<String> {
+    let mut long: Vec<String> = args.iter().map(|arg| arg.as_ref().to_string()).collect();
+    if let Some(first) = long.first_mut() {
+        if let Some((_, name)) = SHORT_COMMANDS.iter().find(|(short, _)| short == first) {
+            *first = name.to_string();
+        }
+    }
+    let command = long.first().cloned().unwrap_or_default();
+    for arg in long.iter_mut().skip(1) {
+        let short = SHORT_OPTIONS
+            .iter()
+            .find(|(c, short, _)| *c == command && short == arg);
+        if let Some((_, _, name)) = short {
+            *arg = name.to_string();
+        }
+    }
+    long
+}
+
 pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a str> {
     let json = COMMANDS.iter().find(|c| c.name == command).map(|c| &c.json);
     if json == Some(&Json::Format) {
@@ -610,7 +636,38 @@ pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a 
 
 #[cfg(test)]
 mod tests {
-    use super::{Json, COMMANDS};
+    use super::{long_forms, Json, COMMANDS};
+
+    #[test]
+    fn short_forms_name_their_long_forms() {
+        assert_eq!(
+            long_forms(&["b", "a.cp", "-c"]),
+            ["build", "a.cp", "--copy"]
+        );
+        assert_eq!(long_forms(&["submit", "-c"]), ["submit", "--copy"]);
+        assert_eq!(long_forms(&["r", "a"]), ["run", "a"]);
+        assert_eq!(long_forms(&["t", "a"]), ["test", "a"]);
+        assert_eq!(
+            long_forms(&["run", "-c"]),
+            ["run", "-c"],
+            "`-c` is `--copy` only where it copies"
+        );
+        for (short, long) in super::SHORT_COMMANDS {
+            assert!(
+                COMMANDS.iter().any(|c| c.name == *long)
+                    && !COMMANDS.iter().any(|c| c.name == *short)
+            );
+        }
+        for (command, _, long) in super::SHORT_OPTIONS {
+            let options = COMMANDS
+                .iter()
+                .find(|c| c.name == *command)
+                .unwrap()
+                .options
+                .unwrap();
+            assert!(options.contains(long), "{command} {long}");
+        }
+    }
 
     #[test]
     fn a_parsed_command_accepts_its_own_json_spelling() {

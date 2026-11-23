@@ -1190,3 +1190,24 @@ fn run_names_a_sample_to_run_and_judge() {
         text(&out.stderr)
     );
 }
+
+/// `cpl b` is `cpl build`, with the same help and the same file.
+#[test]
+fn b_is_build() {
+    let dir = scratch("b");
+    std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
+    assert_eq!(
+        cpl(&dir, &["b", "--help"]).stdout,
+        cpl(&dir, &["build", "--help"]).stdout
+    );
+    let out = cpl(&dir, &["b", "a"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir.join("a.cpp").is_file());
+    let out = cpl(&dir, &["b", "a", "-x"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));
+    assert!(
+        text(&out.stderr).contains("unknown option `-x` for `build`"),
+        "{}",
+        text(&out.stderr)
+    );
+}
