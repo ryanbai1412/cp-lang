@@ -659,7 +659,12 @@ pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// traps: never
 /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))])[1] == [0, 2]`
 pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
+    var deg: [V]Int = 0
+    for (u, v) in edges:
+        deg[u] += 1
+        deg[v] += 1
     var adj: [V]List<V> = []
+    for v in V: adj[v].reserve(deg[v])
     for (u, v) in edges:
         adj[u].push(v)
         adj[v].push(u)
