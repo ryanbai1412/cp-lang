@@ -1996,3 +1996,15 @@ fn every_literal_word_parses_as_a_literal() {
         );
     }
 }
+
+#[test]
+fn an_indent_where_a_value_was_wanted_is_the_indent_error() {
+    for src in [
+        "@!multitest\n    let n: Int = read()\nprint(n)\n",
+        "fn f(c: Char) -> Int:\n    match c:\n        'a' => 1\n            _ => 2\n",
+    ] {
+        let d = one_diag(src);
+        assert_eq!(d.code.0, "E0006", "{src:?}: {d:#?}");
+        assert!(!d.fixes.is_empty(), "{src:?}: {d:#?}");
+    }
+}

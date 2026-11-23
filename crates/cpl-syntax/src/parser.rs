@@ -335,6 +335,20 @@ impl<'a> Parser<'a> {
 
     /// Reports "expected `what`, found <current token>".
     fn error_expected(&mut self, code: Code, what: &str, fix: Option<&str>) {
+        // An indented line where a value or name was wanted: the indent is the mistake.
+        if self.at(T::Indent) {
+            let span = Span::point(self.span().start);
+            self.error(
+                Diagnostic::error(
+                    codes::UNEXPECTED_INDENT,
+                    span,
+                    "this line is indented, but no block starts above it",
+                )
+                .with_help("remove the extra indentation, or end the line above with `:`"),
+            );
+            self.dedent_fix();
+            return;
+        }
         let span = self.error_span();
         let found = self.peek().describe();
         let mut diag = Diagnostic::error(code, span, format!("expected {what}, found {found}"));

@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
 
     /// Offers to move an unexpectedly indented run of lines back to the
     /// indentation of the line above it, keeping the run's own nesting.
-    fn dedent_fix(&mut self) {
+    pub(super) fn dedent_fix(&mut self) {
         let mut depth = 0;
         let mut end = None;
         for t in &self.tokens[self.pos..] {
