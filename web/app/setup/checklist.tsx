@@ -86,6 +86,11 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
           VSCodium) open Extensions → ⋯ → Install from VSIX… and pick the file.
           Marketplace and Open VSX installs <Soon />.
         </p>
+        <p className="mt-3">
+          In a folder VS Code hasn&apos;t been told to trust (Restricted Mode),
+          a <code>.cp</code> file is highlighted but gets no diagnostics,
+          completion or runs: trust the folder and the server starts.
+        </p>
         <Downloads asset="vscode" label="Download cp-lang.vsix" />
         <p className="mt-3">
           Or from a terminal (on Windows, the same two lines in PowerShell):
@@ -216,10 +221,11 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
       <>
         <SetupCmd editor="jetbrains" />
         <p>
-          IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another
-          commercial JetBrains IDE, 2024.3 or later: the free Community editions
-          lack the language server API the plugin uses. Marketplace install{" "}
-          <Soon />.
+          Any JetBrains IDE, 2024.3 or later. The commercial ones run{" "}
+          <code>cpl lsp</code> through their own language server client; free
+          IntelliJ IDEA and the Community editions run it through the LSP4IJ
+          plugin, which <code>cpl setup jetbrains</code> installs too.
+          Marketplace install <Soon />.
         </p>
         <Downloads asset="jetbrains" label="Download cp-lang-jetbrains.zip" />
         <p className="mt-3">Or from a terminal (on Windows, in PowerShell):</p>
@@ -233,7 +239,10 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
           as it is, and restart. A <code>.cp</code> file gets diagnostics,
           completion, go to definition and formatting from <code>cpl lsp</code>;
           set the path to <code>cpl</code> under Settings → Tools → CP Lang if
-          it is not on the <code>PATH</code>.
+          it is not on the <code>PATH</code>. Open the folder as a project:
+          a file opened on its own goes to LightEdit mode, which has no
+          language server, and an untrusted project opens in Safe Mode until
+          you choose Trust Project.
         </p>
       </>
     ),

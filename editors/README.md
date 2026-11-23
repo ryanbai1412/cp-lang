@@ -46,6 +46,11 @@ extension (`cpl new --listen`) and creates `a.cp` with its samples beside the
 open file; `CP: Add a Test from the Selection or Clipboard` saves the next case
 (`cpl test --add -`) and runs it.
 
+A folder VS Code hasn't been told to trust opens in Restricted Mode: `.cp`
+files are highlighted, but the extension doesn't run `cpl`, so there are no
+diagnostics, completion or runs, and it says so. Trust the folder (the
+Restricted Mode banner, or Manage Workspace Trust) and the server starts.
+
 Or build it from this repo (no marketplace needed):
 
 ```sh
@@ -179,6 +184,11 @@ file gets a run configuration on its first sample (`cpl run`, `cpl test` or
 (Ctrl+Alt+T) opens `cpl run --trace --format html` in the CP Lang Trace tool
 window. The file marks the line of the step the trace shows, and a click on a
 line in the trace moves the caret there.
+Open the folder as a project, not the file on its own: `idea a.cp` opens it
+in LightEdit mode, which has no project for `cpl lsp`, so the file gets
+highlighting only and a notice that offers to open its folder as a project.
+A project the IDE hasn't been told to trust opens in Safe Mode; choose Trust
+Project.
 `./gradlew test` runs the lexer tests and a smoke test in a headless IDE
 against `target/debug/cpl` (or `$CPL`).
 
