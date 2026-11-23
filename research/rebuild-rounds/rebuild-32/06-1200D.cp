@@ -1,0 +1,48 @@
+// cf1200d White Lines: each non-white row r is whitened by the clicks (i, j) with
+// i in r - k + 1..=r and j in last_B - k + 1..=first_B; columns likewise. Add each
+// such rectangle to a 2D difference array and take the best click.
+let n: 1..=2000 = read()
+let k: 1..=n = read()
+domain R = 1..=n
+domain C = 1..=n
+let g = read<[R, C]Char>()
+
+let P = n - k + 1
+domain D = 1..=n + 1
+var diff: [D, D]Int = 0
+var base = 0
+var rects = List<(Int, Int, Int, Int)>()
+
+for r in g.rows.keys:
+    let row = g[r]
+    if let first = row.keys.find(c => row[c] == 'B'):
+        let last = row.keys.rev.find(c => row[c] == 'B')!
+        rects.push((Int(r) - k + 1, Int(r), Int(last) - k + 1, Int(first)))
+    else: base += 1
+
+for c in g.cols.keys:
+    let col = g[.., c]
+    if let first = col.keys.find(r => col[r] == 'B'):
+        let last = col.keys.rev.find(r => col[r] == 'B')!
+        rects.push((Int(last) - k + 1, Int(first), Int(c) - k + 1, Int(c)))
+    else: base += 1
+
+for (i1, i2, j1, j2) in rects:
+    let lo_i = max(i1, 1)
+    let hi_i = min(i2, P)
+    let lo_j = max(j1, 1)
+    let hi_j = min(j2, P)
+    if lo_i <= hi_i and lo_j <= hi_j:
+        diff[D(lo_i), D(lo_j)] += 1
+        diff[D(lo_i), D(hi_j + 1)] -= 1
+        diff[D(hi_i + 1), D(lo_j)] -= 1
+        diff[D(hi_i + 1), D(hi_j + 1)] += 1
+
+for i in D:
+    for j in D:
+        if let pi = i.prev: diff[i, j] += diff[pi, j]
+        if let pj = j.prev: diff[i, j] += diff[i, pj]
+        if let pi = i.prev and let pj = j.prev: diff[i, j] -= diff[pi, pj]
+
+domain Click = 1..=P
+print(base + max(max(diff[D(Int(i)), D(Int(j))] for j in Click)! for i in Click)!)
