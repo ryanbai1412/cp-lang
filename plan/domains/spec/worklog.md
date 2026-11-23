@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R09.6.1: a trap's call trace names frames as the source does (`Box.at`), never lowered names; tool case `core-09/trap-trace-source-names.cp` passes. Aimed at bugcatch miss `ae43f536`; bugcatch rerun on it follows.
 - Library-file cases: `cpl-conform` and `conformance-coverage.py` skip `.cp` files below a folder with a `lib.toml`; `core-11/library/` imports `kit` through a `cp.toml`. R11.3.1 gets its reject case (a library calling prelude `gcd` without `use` is E0201) and an accept case; both pass. Rule gaps 2 (`uv run scripts/conformance-coverage.py --check`; `cargo nextest run -p cpl-conform` 11/11).
 - R01.1.3 (doc-comment labels) joins `permits.txt`: `scripts/spec-stub.py --check` enforces the labels on std, no program can fail it. Rule gaps 3 (`uv run scripts/conformance-coverage.py --check`); R11.3.1 needs a library-file case, which the one-file runner can't express yet.
 - Measured: conformance 2130/2297 (167 fail); spec-blocks 80/185 (32 error, 73 skip).

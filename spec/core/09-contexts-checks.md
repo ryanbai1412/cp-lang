@@ -146,3 +146,8 @@ profile (default 1 GB). There is no depth inference or counting; a
 stack overflow crashes as in C++, and the checked runtime prints the
 call trace. Runtime-sized arrays and static arrays over 4 KB never go on
 the stack.
+
+A trap's call trace names each frame as the source does (`Box.at` for
+a method of the generic `Box<T>`), innermost first, never by a lowered
+or mangled name, so it reads against the file (`tools/trace-debug.md`).
+(R09.6.1)

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2300 (995 passing). Rules: 536.
+Cases: 2302 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2300 (995 passing). Rules: 536.
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 25 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 26 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 35 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,12 +48,12 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 88 | 88 (100%) | 23 | 23 (100%) | 88 (100%) |
 | R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
-| R09 | 25 | 25 (100%) | 13 | 13 (100%) | 25 (100%) |
+| R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 17 | 17 (100%) | 8 | 8 (100%) | 17 (100%) |
 | R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 536 | 535 (99%) | 204 | 203 (99%) | 534 (99%) |
+| all | 537 | 536 (99%) | 205 | 204 (99%) | 535 (99%) |
 
 ## Rules
 
@@ -556,6 +556,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.5.2 [1+ 1-]: **trapped**: not proved; checked builds trap, release assumes it.
 - R09.5.3 [1+ 0-]: **promised**: the author states it and tooling samples it: `law` declarations, `@cache` co...
 - R09.5.4 [1+ 0-]: **unsafe**: `@trusted:` blocks and `@cpp` inline C++. These are the only places a contesta...
+- R09.6.1 [1+ 1-]: A trap's call trace names each frame as the source does (`Box.at` for a method of the gene...
 
 ### R10: 10-io.md
 
