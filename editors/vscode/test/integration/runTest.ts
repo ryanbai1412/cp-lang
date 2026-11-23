@@ -38,7 +38,11 @@ async function main(): Promise<void> {
             ],
         });
         // As a desktop launcher starts it: a home with only the installer's
-        // `.cpl/bin/cpl`, no setting, and a PATH without `cpl`.
+        // `.cpl/bin/cpl`, no setting, and a PATH without `cpl`. Not on macOS,
+        // where VS Code under a fresh HOME waits on CI with no output.
+        if (process.platform === 'darwin') {
+            return;
+        }
         const windows = process.platform === 'win32';
         const home = path.join(scratch, 'home');
         const installed = path.join(home, '.cpl', 'bin', windows ? 'cpl.exe' : 'cpl');
