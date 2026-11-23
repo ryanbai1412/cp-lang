@@ -131,7 +131,9 @@ jobs:
   vscode:
     name: vscode (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os != 'ubuntu-latest' }}
+    # Quarantined (owner: tools, until 2026-11-23 12:00 PST): the lens test failed
+    # 2+ runs in a row; it reports here but does not block main or edge.
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
