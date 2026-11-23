@@ -38,9 +38,9 @@ Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion
 
 ### complete/U7: an argument's name in an open call
 Need: give an option like `by:` without remembering its spelling or its place.
-Design: in `f(..` at the start of an argument, each parameter not given yet as `name:`, the named-only ones first; a struct's fields in its constructor.
-Milestone: M1-critical. Status: partial (only `.` triggers completion, so the names come after a first letter, not on `(` or `,`)
-Evidence: `crates/cpl-lsp/src/tests/complete.rs` (`completion_offers_the_open_calls_argument_names_not_given_yet`); integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases named/std-empty, named/user-fn, named/ctor, named/ctor-second
+Design: in `f(..` at the start of an argument, each parameter not given yet as `name:`, the named-only ones first; a struct's fields in its constructor. Typing `(` or `,` offers them, and only them.
+Milestone: M1-critical. Status: supported
+Evidence: `crates/cpl-lsp/src/tests/complete.rs` (`completion_offers_the_open_calls_argument_names_not_given_yet`, `a_typed_paren_comma_or_brace_completes_only_what_belongs_there`); integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases named/std-empty, named/user-fn, named/ctor, named/ctor-second
 
 ### complete/U8: a name in scope
 Need: reuse a local, a parameter or a fn without retyping it in full.
@@ -110,8 +110,8 @@ Evidence: integration `web/tests/intelligence.mjs`
 
 ### complete/U19: in VS Code
 Need: completion as soon as the extension is installed.
-Design: the extension starts `cpl lsp`; `.` triggers completion, word characters trigger VS Code's own suggestions.
-Milestone: M1-critical. Status: partial (only `.` is a trigger character)
+Design: the extension starts `cpl lsp`; `.`, `(`, `,` and `{` trigger completion, word characters trigger VS Code's own suggestions.
+Milestone: M1-critical. Status: supported
 Evidence: integration `editors/vscode/smoke.sh`; `editors/vscode/test/integration/suite.ts`
 
 ### complete/U20: in Neovim, Vim and JetBrains

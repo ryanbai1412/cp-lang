@@ -63,7 +63,7 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
         assert.deepEqual(init.capabilities.renameProvider, { prepareProvider: true });
         assert.equal(init.capabilities.documentSymbolProvider, true);
         assert.equal(init.capabilities.inlayHintProvider, true);
-        assert.deepEqual(init.capabilities.completionProvider, { triggerCharacters: ['.'] });
+        assert.deepEqual(init.capabilities.completionProvider, { triggerCharacters: ['.', '(', ',', '{'] });
         assert.deepEqual(init.capabilities.signatureHelpProvider, {
             triggerCharacters: ['(', ','],
             retriggerCharacters: [','],

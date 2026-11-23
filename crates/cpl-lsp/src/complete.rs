@@ -150,7 +150,10 @@ fn ident_before(text: &str, end: usize) -> &str {
 
 // ---------------------------------------------------------------- completion
 
-pub fn completion(cursor: &Cursor, std: &mut StdLib) -> Vec<Value> {
+/// `trigger` is the character the client completes on without a typed
+/// letter: `(` and `,` offer only the open call's argument names, `{` only
+/// the items of a `use`, so neither pops up the whole scope.
+pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> Vec<Value> {
     let text = &*cursor.analysis.text;
     let offset = (cursor.offset as usize).min(text.len());
     let line = &text[text[..offset].rfind('\n').map_or(0, |i| i + 1)..offset];
@@ -161,6 +164,11 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib) -> Vec<Value> {
     let head = &line[..line.len() - word.len()];
     if let Some(path) = line.trim_start().strip_prefix("use ") {
         return use_completion(cursor, std, path, word);
+    }
+    match trigger {
+        Some('(' | ',') => return argument_names(cursor, std, offset),
+        Some('{') => return Vec::new(),
+        _ => {}
     }
     let expected = expected_type(cursor, std, offset - word.len());
     let rank = |entry: &Entry, sort: u8| match &expected {
@@ -227,7 +235,12 @@ fn argument_names(cursor: &Cursor, std: &mut StdLib, offset: usize) -> Vec<Value
             u8::from(!param.named_only),
         );
         if let Value::Object(members) = &mut item {
-            members.insert("insertText".to_string(), format!("{label} ").into());
+            let space = if text[..offset].ends_with(',') {
+                " "
+            } else {
+                ""
+            };
+            members.insert("insertText".to_string(), format!("{space}{label} ").into());
         }
         out.push(item);
     }

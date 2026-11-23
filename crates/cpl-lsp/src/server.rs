@@ -406,7 +406,11 @@ impl Server {
                     analysis: &analysis,
                     offset,
                 };
-                let items = complete::completion(&cursor, &mut self.std);
+                let trigger = params
+                    .at(&["context", "triggerCharacter"])
+                    .as_str()
+                    .and_then(|c| c.chars().next());
+                let items = complete::completion(&cursor, &mut self.std, trigger);
                 Ok(Reply::result(obj([
                     ("isIncomplete", false.into()),
                     ("items", Value::Array(items)),
@@ -1039,7 +1043,10 @@ fn capabilities() -> Value {
                 ("hoverProvider", true.into()),
                 (
                     "completionProvider",
-                    obj([("triggerCharacters", vec![".".into()].into())]),
+                    obj([(
+                        "triggerCharacters",
+                        vec![".".into(), "(".into(), ",".into(), "{".into()].into(),
+                    )]),
                 ),
                 (
                     "signatureHelpProvider",

@@ -1,7 +1,7 @@
 # Completion
 
 > 25 minutes in. You have the edges in `es: List<Edge>`, and the next line
-> needs them sorted by weight. You type `es.so`, pick `sorted`, and type `(b`.
+> needs them sorted by weight. You type `es.so`, pick `sorted`, and type `(`.
 
 `by:` is offered first, with its type, `by: T -> K`. You accept it and
 write `e => e.w`. On the next line you want the heaviest edge's target:
@@ -41,8 +41,6 @@ the corpus, recall is a ratchet below 100%
 
 - In a type position, values are listed beside the types and ranked
   above them.
-- Only `.` triggers completion, so argument names and `use` items need a
-  first letter typed.
 - The value after `by:` isn't ranked by the parameter's type.
 
 **Against the usual setup.** A C++ contestant has clangd, which completes

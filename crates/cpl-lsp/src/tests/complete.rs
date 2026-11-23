@@ -255,7 +255,12 @@ fn the_server_advertises_completion_and_signature_help() {
         caps.at(&["completionProvider", "triggerCharacters"])
             .as_array()
             .unwrap_or(&[]),
-        [Value::from(".")]
+        [
+            Value::from("."),
+            Value::from("("),
+            Value::from(","),
+            Value::from("{")
+        ]
     );
     assert_eq!(
         caps.at(&["signatureHelpProvider", "triggerCharacters"])
@@ -586,4 +591,49 @@ fn completion_works_after_a_dot_in_an_optional_an_interpolation_and_a_use() {
     assert!(items.is_empty(), "`{{` is a literal brace: {items:?}");
     let items = completions("use std.graph.|\n");
     assert!(labels(&items).contains(&"Graph"), "{items:?}");
+}
+
+fn triggered(src: &str, trigger: &str) -> Vec<String> {
+    let context = obj([
+        ("triggerKind", 2.into()),
+        ("triggerCharacter", trigger.into()),
+    ]);
+    ask_at_with("textDocument/completion", src, obj([("context", context)]))
+        .at(&["items"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .map(|item| {
+            item.at(&["insertText"])
+                .as_str()
+                .or(item.at(&["label"]).as_str())
+                .unwrap()
+                .to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn a_typed_paren_comma_or_brace_completes_only_what_belongs_there() {
+    let names = triggered("let xs = [3, 1]\nprint(xs.sorted(|))\n", "(");
+    assert!(names.contains(&"by: ".to_string()), "{names:?}");
+    assert!(
+        !names.contains(&"xs".to_string()),
+        "no scope names on `(`: {names:?}"
+    );
+    let names = triggered(
+        "fn f(a: Int, scale: Int = 1) -> Int = a\nprint(f(1,|))\n",
+        ",",
+    );
+    assert_eq!(
+        names,
+        [" scale: "],
+        "after `,` the name comes with its space"
+    );
+    assert!(triggered("print(|)\n", "(")
+        .iter()
+        .all(|n| n.ends_with(": ")));
+    let items = triggered("use std.graph.{|\n", "{");
+    assert!(items.iter().any(|i| i == "Graph"), "{items:?}");
+    assert!(triggered("let s = \"{|\"\n", "{").is_empty());
 }
