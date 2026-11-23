@@ -169,6 +169,7 @@ pub mod codes {
     pub const VAR_LAMBDA_RECURSION: Code = Code("E0406");
     pub const DUPLICATE_VARIANT_TAG: Code = Code("E0407");
     pub const ASSIGN_INTO_RANGE: Code = Code("E0408");
+    pub const FN_FALLS_THROUGH: Code = Code("E0409");
 
     pub const UNSUPPORTED: Code = Code("E0501");
     /// A warning: a statement that only works out a value.

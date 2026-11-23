@@ -602,6 +602,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0409"),
+        title: "Fn can end without a value",
+        summary: "A fn that gives a value has a path through its body that reaches the end without one.",
+        explanation: "The last statement of a fn that gives a value must give one or leave on every path: an `if` needs an `else`, a loop that can end needs a value after it, and every `match` arm needs one too.",
+        trigger: "fn f(x: Int) -> Int:\n    if x > 0:\n        return 1\nprint(f(1))\n",
+        fix: "fn f(x: Int) -> Int:\n    if x > 0:\n        return 1\n    0\nprint(f(1))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0701"),
         title: "Ambiguous trait method",
         summary: "Two traits implemented for this type define a method with the same name.",

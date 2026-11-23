@@ -2587,9 +2587,8 @@ impl<'a> Checker<'a> {
             self.memo_fits(f, params, self_ty, generator, unit, memo, is_array);
         }
         // `@memo` refuses a `mut` parameter itself (E0311).
-        if self_ty.is_none() && !memo_fn && !matches!(f.body, FnBody::None) {
-            self.unchanged_mut_params(f);
-        }
+        let plain = self_ty.is_none() && !memo_fn && !matches!(f.body, FnBody::None);
+        self.after_fn_body(f, ret, generator, plain);
         self.pop_scope();
         if receiver.is_some() && matches!(self_ty, Some(Ty::Named { .. })) {
             self.pop_scope();

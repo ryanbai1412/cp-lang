@@ -64,6 +64,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0406 | var_lambda_recursion | a `var`-bound lambda cannot call itself |
 | E0407 | duplicate_variant_tag | two variants of one enum read as the same token; give one a different `@tag` |
 | E0408 | assign_into_range *(0.3)* | `r[i] = x`: `r` is a `Range`, which has no storage to write; copy it with `List(r)` first (R07.2.5) |
+| E0409 | fn_falls_through | `f` gives an `Int`, but this `if` has no `else`: a path through the body ends without a value |
 | E0501 | unsupported | `yield` outside a generator |
 | E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
 | E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, `@allow(x)` is `with lint(x: allow)`) |
