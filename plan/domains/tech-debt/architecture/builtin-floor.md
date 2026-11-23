@@ -47,3 +47,13 @@ documented answer is 0.
 
 A move that regresses the gate stays a builtin and is logged as debt
 here with the measured ratio.
+
+## Measured
+
+- `choose2`: moved (`ab626a6ef`). Conformance 2141/2310 -> 2142/2311 (the new case).
+- `isqrt`: tried and backed out; it stays a builtin for now. With `spec/std/math.cp`'s body,
+  30M calls took 0.26 s against 0.07 s for the builtin (3.7x, three runs each, `g++ -O2`).
+  Generated C++ grew from 2,334 to 3,631 bytes. Conformance went from 2143/2313 to 2122/2311.
+  The body divides (`cpl::ediv`) and goes through `cpl::fsqrt`/`cpl::to_int`; the runtime helper
+  multiplies. Next try: a body that multiplies, then re-measure. Also, `x.isqrt` needs a
+  `self` parameter, and that change may account for the conformance drop (not yet checked).

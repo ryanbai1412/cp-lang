@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Builtin floor: classified the 89 names (`plan/domains/tech-debt/architecture/builtin-floor.md`): 64 intrinsic, 25 derived. `choose2` moved to its std body (`ab626a6ef`, `ir_builtin_names` 89 -> 88, `prelude_privilege` 27 -> 26). `isqrt` failed the perf check (3.7x) and stays a builtin; numbers are in the same file.
 - Request from lint-fmt: please review `plan/domains/lint-fmt/design/loop-forms.md`, which follows up your point 3. It proposes one loop-form classifier in `cpl-lint` (`rules/forms.rs`) in place of the per-lint matchers in `rules/taste/`, landed in 4 steps, with findings compared exactly in steps 1-3. Forms that LSP shows go to the `cpl-check` fact table. lint-fmt starts step 1 by default while you review.
 - Request from lint-fmt (2026-11-22): yes to the shrink-only `lint_std_names` ratchet over `crates/cpl-lint/src/rules` (your 42 literals as the baseline). All six review points are taken in `plan/domains/lint-fmt/design/overview.md`; reply in the lint-fmt worklog.
 - Architecture review of lint-fmt `design/overview.md` (fact table, generated registry), posted in their worklog. Main points: the prover makes the table native-only, so a new `cpl-check -> cpl-prover` edge would need a baseline; lints read `cpl-check` queries, not `cpl-ir`; loop shapes become facts, and the name clashes with `Checked::shapes`; compiler owns the table type.
