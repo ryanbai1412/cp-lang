@@ -18,6 +18,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 
+mod calls;
 mod diagnostics;
 mod nav;
 mod proven;
@@ -868,6 +869,7 @@ impl Server {
             "cpl/testPanic" => panic!("deliberate test panic"),
             _ => self
                 .navigate(method, params)
+                .or_else(|| self.calls(method, params))
                 .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
         }
     }
@@ -1084,6 +1086,7 @@ fn capabilities() -> Value {
                 ("definitionProvider", true.into()),
                 ("typeDefinitionProvider", true.into()),
                 ("implementationProvider", true.into()),
+                ("callHierarchyProvider", true.into()),
                 (
                     "documentLinkProvider",
                     obj([("resolveProvider", false.into())]),

@@ -86,3 +86,62 @@ fn diagnostics_can_be_pulled_too() {
     assert_eq!(pulled.len(), pushed.len());
     assert_eq!(pulled[0].at(&["code"]), pushed[0].at(&["code"]));
 }
+
+const CALLS: &str = "\
+fn sq(x: Int) -> Int = x * x
+fn twice(x: Int) -> Int = sq(x) + sq(x)
+fn solve() -> Int = twice(3)
+print(solve() + sq(2))
+";
+
+fn call_item(server: &mut Server, line: u32, character: u32) -> Value {
+    let items = at(server, "textDocument/prepareCallHierarchy", line, character);
+    let items = items.as_array().unwrap_or(&[]).to_vec();
+    assert_eq!(items.len(), 1, "{items:?}");
+    items[0].clone()
+}
+
+fn calls(server: &mut Server, method: &str, item: &Value) -> Vec<(String, usize)> {
+    let reply = server.handle(&request(8, method, obj([("item", item.clone())])));
+    let side = if method.ends_with("incomingCalls") {
+        "from"
+    } else {
+        "to"
+    };
+    reply[0]
+        .at(&["result"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .map(|call| {
+            let name = call.at(&[side, "name"]).as_str().unwrap_or("").to_string();
+            (
+                name,
+                call.at(&["fromRanges"])
+                    .as_array()
+                    .map_or(0, <[Value]>::len),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn call_hierarchy_shows_callers_and_callees() {
+    let (mut server, diagnostics) = open(CALLS);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let sq = call_item(&mut server, 0, 4);
+    assert_eq!(sq.at(&["name"]).as_str(), Some("sq"));
+    let incoming = calls(&mut server, "callHierarchy/incomingCalls", &sq);
+    assert_eq!(
+        incoming,
+        [("twice".to_string(), 2), ("top level".to_string(), 1)]
+    );
+    // From a call site too.
+    let twice = call_item(&mut server, 2, 21);
+    assert_eq!(twice.at(&["name"]).as_str(), Some("twice"));
+    let outgoing = calls(&mut server, "callHierarchy/outgoingCalls", &twice);
+    assert_eq!(outgoing, [("sq".to_string(), 2)]);
+    // A value is not a call hierarchy item.
+    let items = at(&mut server, "textDocument/prepareCallHierarchy", 0, 23);
+    assert_eq!(items, Value::Null);
+}
