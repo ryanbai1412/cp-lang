@@ -277,6 +277,8 @@ sources or a block nested inside it, and after them. It may never be:
   storage belongs to the caller); (R05.7.9)
 - stored in a top-level `var`. (R05.7.10)
 
+<!-- given:
+  domain V = 0..8 -->
 ```python
 let ws = read<[V]Int>()
 var st = SegTree((i, j) => if ws[i] <= ws[j]: i else: j, [V] v => v)   // fine: st dies before ws
@@ -634,6 +636,11 @@ grow(mut b)
 <details><summary>Answer</summary>No. <code>b</code> is a <code>let</code>, not a mutable place (R3).</details>
 
 **6.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
 ```python
 let w = a[l..r]
 print(w.sum())
@@ -672,6 +679,9 @@ for x in rows[i]: rows[i].push(x)
 <details><summary>Answer</summary>No. <code>rows[i]</code> is read-lent to the loop (R12).</details>
 
 **11.**
+<!-- given:
+  var rows = List(List(1, 2), List(3))
+  let i = 0 -->
 ```python
 for k in rows[i].keys: rows[i].push(rows[i][k])
 ```
@@ -684,6 +694,11 @@ swap(mut a[i], mut a[j])
 <details><summary>Answer</summary>No. Nothing proves <code>i != j</code> (R9). Fix: <code>if i != j:</code> or <code>a.swap_at(i, j)</code>.</details>
 
 **13.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(7) -->
 ```python
 fn solve(mut lo: [V]Int, mut hi: [V]Int) = todo
 let m = l.next(5)!
@@ -701,6 +716,10 @@ p += 1
 <details><summary>Answer</summary>No. <code>a</code> is <code>mut</code>-lent to <code>p</code> until line 4 (R7). Without line 4 it compiles.</details>
 
 **15.**
+<!-- given:
+  var a = List(1, 2)
+  var cnt = List(0, 0, 0)
+  let i = 0 -->
 ```python
 a.push(a.len)
 cnt[a[i]] += 1
@@ -708,6 +727,11 @@ cnt[a[i]] += 1
 <details><summary>Answer</summary>Yes. Arguments and indices are evaluated before the target is lent (R11). (Assume <code>a</code> is a <code>List&lt;Int&gt;</code> here and <code>cnt</code> a <code>var</code> map.)</details>
 
 **16.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
 ```python
 fn inc(mut x: Int) -> Int:
     x += 1
@@ -742,6 +766,9 @@ fn adder(k: Int) -> (Int -> Int) = x => x + k
 <details><summary>Answer</summary>Yes. <code>k</code> is plain, so it is copied in; the lambda is owned (§10).</details>
 
 **20.**
+<!-- given:
+  domain V = 0..8
+  let i = V(1) -->
 ```python
 let ws = read<[V]Int>()
 var st = SegTree((x, y) => if ws[x] <= ws[y]: x else: y, [V] v => v)
@@ -775,6 +802,10 @@ for step in dfs(g, from: [s], seen: mut seen):
 <details><summary>Answer</summary>No. <code>seen</code> is <code>mut</code>-lent to the generator for the whole walk, so even reading it is excluded (R12). Fix: let the generator report it, or materialize the walk with <code>List(...)</code> first.</details>
 
 **24.**
+<!-- given:
+  domain V = 0..8
+  let g: [V]List<V> = [[1], [2], [], [], [], [], [], []]
+  let s = V(0) -->
 ```python
 var seen: [V]Bool = false
 let walk = dfs(g, from: [s], seen: mut seen)
@@ -784,6 +815,7 @@ let n2 = walk.count()
 <details><summary>Answer</summary>Yes, with a lint: the second walk reruns the DFS against the <code>seen</code> the first one filled, so <code>n2</code> is 0 (R12).</details>
 
 **25.**
+<!-- given: use std.math.{divisors} -->
 ```python
 let gs = List(divisors(12), divisors(30))
 for d in gs[0]: print(d)
@@ -823,6 +855,9 @@ both(mut p.left, mut p.left)
 <details><summary>Answer</summary>Line 4 compiles (different fields, R9); line 5 doesn't (the same place twice).</details>
 
 **30.**
+<!-- given:
+  domain V = 0..4
+  let g: [V]List<(to: V, w: Int)> = [[(to: V(1), w: 1)], [], [], []] -->
 ```python
 var depth: [V]Int = 0
 fn visit(v: V, from: ?V):
@@ -847,6 +882,11 @@ print(f())
 <details><summary>Answer</summary>No. <code>xs</code> is captured by <code>f</code>, which is alive until line 4, so it can't move (§10).</details>
 
 **32.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
 ```python
 let evens = a.filter(x => x % 2 == 0)
 let total = evens.sum()
@@ -863,6 +903,11 @@ for x in evens(a): a[l] += x
 <details><summary>Answer</summary>No. The result borrows <code>a</code> for the loop, and the body writes <code>a</code> (R12).</details>
 
 **34.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
 ```python
 var a2 = a.clone()
 for x in a.filter(x => x > 0): a2[l] += x
@@ -870,6 +915,12 @@ for x in a.filter(x => x > 0): a2[l] += x
 <details><summary>Answer</summary>Yes. The loop lends <code>a</code>; the body writes the separate <code>a2</code>.</details>
 
 **35.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5)
+  let queries = [(V(0), V(2))] -->
 ```python
 var best: ?[V]Int = None
 for (l2, r2) in queries:
