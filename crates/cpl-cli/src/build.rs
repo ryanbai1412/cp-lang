@@ -81,9 +81,9 @@ pub(crate) fn build_file(
         &target,
     ) {
         Ok(fitted) => {
-            *stderr += &fitted
-                .note(path, &format!("{aim}-byte target"), &profile.name)
-                .unwrap_or_default();
+            if let Some(note) = fitted.note(path, &format!("{aim}-byte target"), &profile.name) {
+                *stderr += &size_warning(&note, path, &compiled.text);
+            }
             if size || json {
                 let source = fitted.header.then_some(compiled.text.as_str());
                 sizes = cpl_codegen::sizes(&compiled.program, name, source, &target, &fitted);
@@ -114,13 +114,14 @@ pub(crate) fn build_file(
     if cpp.len() > profile.warn_at() {
         let near = format!("{} bytes, near ", profile.warn_at());
         let over = if cpp.len() > aim { "" } else { &near };
-        *stderr += &format!(
-            "cpl: warning: the C++ for `{path}` is {} bytes, over {over}the {aim}-byte target and {}% of the {limit}-byte limit of judge `{}`; \
-             `--size` says where the bytes go\n",
+        let warning = format!(
+            "the C++ for `{path}` is {} bytes, over {over}the {aim}-byte target and {}% of the {limit}-byte limit of judge `{}`; \
+             `--size` says where the bytes go",
             cpp.len(),
             cpp.len() * 100 / limit,
             profile.name
         );
+        *stderr += &size_warning(&warning, path, &compiled.text);
     }
     if copy {
         match copy_to_clipboard(&cpp) {
@@ -182,6 +183,27 @@ pub(crate) fn build_file(
             EXIT_USAGE
         }
     }
+}
+
+/// A size warning, as a W0201 diagnostic on the program's first line,
+/// below the stamp and header comments.
+fn size_warning(message: &str, path: &str, text: &str) -> String {
+    let message = message.trim_start_matches("cpl: ").trim_end();
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let code = line.trim();
+        if !code.is_empty() && !code.starts_with("//") {
+            break;
+        }
+        at += line.len();
+    }
+    let at = if at == text.len() { 0 } else { at as u32 };
+    let warning = cpl_diag::Diagnostic::warning(
+        cpl_diag::codes::SIZE_NEAR_LIMIT,
+        cpl_diag::Span::new(at, at),
+        message,
+    );
+    cpl_diag::render_all(&[warning], path, text)
 }
 
 /// Removes `--judge <name>` from `rest`, returning the name.

@@ -99,7 +99,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | Code | Name | |
 |---|---|---|
 | W0101 | unused_value | a result is dropped (see `@droppable`) |
-| W0201 | size_near_limit *(0.3)* | output C++ above 32 KB, or half of a smaller `source_kb` (R13.1.1) |
+| W0201 | size_near_limit | output C++ above 32 KB, or half of a smaller `source_kb` (R13.1.1) |
 
 ## Lints
 

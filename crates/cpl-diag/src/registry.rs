@@ -662,6 +662,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("W0201"),
+        title: "Submission near the size limit",
+        summary: "`cpl build` wrote C++ past the 32 KB target, or past three quarters of it, of the judge's source limit.",
+        explanation: "Above the target `cpl build` first leaves out comments, the source header and indentation; `cpl build --size` shows which parts of the program the bytes go to.",
+        trigger: include_str!("../../../spec/conformance/core-13/build-warns-near-size-limit.cp"),
+        fix: "print(1)\n",
+        mode: "build",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0314"),
         title: "Match is not exhaustive",
         summary: "A `match` on an enum or optional has no arm for some variant.",
