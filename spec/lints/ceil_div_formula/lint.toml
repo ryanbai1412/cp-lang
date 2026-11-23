@@ -1,0 +1,5 @@
+code = "L0526"
+level = "warn"
+group = "idiom"
+title = "Hand-written ceiling division"
+summary = "`(a + b - 1) / b`: the ceiling is `ceil_div(a, b)`"

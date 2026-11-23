@@ -322,7 +322,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | fast_pow_by_hand | square-and-multiply loop | `a ** e` / `pow_mod` | fix | #1 | loop | |
 | pow_method | `a.pow(e)` | `a ** e` | fix | #13 | syn | ✓pow_method |
 | float_sqrt_for_int | `Int(sqrt(x))` | `isqrt(x)` (also P0: float error) | fix | #1 | ty | |
-| ceil_div_formula | `(a + b - 1) / b` | `ceil_div(a, b)` (correct for negatives) | fix? | #1 | syn | |
+| ceil_div_formula | `(a + b - 1) / b` | `ceil_div(a, b)` (correct for negatives) | fix? | #1 | syn | ✓ceil_div_formula |
 | divisors_by_hand | `for i in 1..=sqrt(n)` pushing `i` and `n / i` | `divisors(n)` / `each_divisor` | fix | #1 | loop | |
 | factor_by_hand | trial division loop | `factor(n)` | fix | #1 | loop | |
 | phi_by_hand | totient from factors | `phi` / `phi_table` | fix | #1 | loop | |

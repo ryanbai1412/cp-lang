@@ -276,3 +276,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - `find`/`rfind` on a list: the builtin `xs.find(x)` gives the index of an element equal to `x`; `std.seq.find(p)` gives the first element `p` holds for. Same name, two meanings; to settle before any move.
   - `prefix`: the std `prefix` bodies are `Fenwick` methods; no free-function body yet.
 - 2026-11-22: an integer literal now fills a `Cut<D>` parameter as it fills `D.cuts` (R04.2.18; `literal_position` in `cpl-check/src/check/expr.rs` knew only the `D.cuts` spelling). Docs 2495 -> 2505 pass (the 10 `Prefix` examples), 2 conformance cases in `core-04/literal-cut-param*.cp`; `conformance docs --check` 0 regressions.
+- 2026-11-22 (lint-fmt): L0526 flags `spec/std/math.cp:896` `(a + p - 1) / p * p` → `ceil_div(a, p) * p` (`cpl lint --fix` applies it). Optional; lower the L0526 line in `crates/cpl-lint/corpus_warnings.txt` if you take it.

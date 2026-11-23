@@ -1,0 +1,5 @@
+let n: 1..=100 = read()
+let k: 1..=10 = read()
+let m: 0..=10 = read()
+print((n + k - 2) / k, (n + k - 1) / 2, (n + k) / k)
+if m > 0: print((n + m - 1) / m)

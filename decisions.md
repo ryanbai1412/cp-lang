@@ -6834,3 +6834,15 @@ restore the hand-written REPO.md, and give `gen.py` back its list.
   topic that reads better apart.
 - **Reverse.** Move the module's `impl` back into `expr.rs`.
 
+
+## 306. L0526 `ceil_div_formula` fixes only a provably positive divisor (2026-11-22)
+
+- **Decision.** `(a + b - 1) / b` warns with a fix to `ceil_div(a, b)` when
+  `b` is a positive literal, or a name or field whose checked type is a range
+  starting at 1 or more (fact table); otherwise there is no finding.
+- **Why.** For `b > 0` both spellings agree for every `a` (`/` rounds down
+  for a positive divisor), so the fix keeps meaning; for other `b` the hand
+  formula is wrong and the rewrite would change output. One finding on
+  `spec/std` (`math.cp` segmented sieve) and none in corpus `spec.cp`.
+- **Reverse.** Delete `crates/cpl-lint/src/rules/ceil.rs` and
+  `spec/lints/ceil_div_formula/`.

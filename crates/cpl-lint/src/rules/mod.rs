@@ -4,6 +4,7 @@
 mod answers;
 mod assign;
 mod bounds;
+mod ceil;
 mod fields;
 mod floats;
 mod imports;
@@ -28,6 +29,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(assign::check(file));
     findings.extend(answers::check(file));
     findings.extend(pops::check(file));
+    findings.extend(ceil::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));
