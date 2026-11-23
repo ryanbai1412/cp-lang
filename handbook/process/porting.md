@@ -106,36 +106,15 @@ the rest, longest first.
 
 ## Taste checklist
 
-A port fails review if any of these hold and the gap is not reported:
+A port fails review if it breaks a rule in
+`handbook/guidelines/idiomatic-code.md` and the gap is not reported in its
+friction file. Its checklist is the one to self-review against.
 
-- It does not read like the editorial: the invariant, recurrence or
-  algorithm is buried in index bookkeeping.
-- It hand-rolls a standard algorithm or structure (DFS for a tree path,
-  diameter, a search loop with a `?T` flag where `find`/`first`/`any`
-  belongs, a manual run-length loop).
-- It keeps two copies of one fact in sync by hand (symmetric matrices,
-  parallel arrays, sentinel bookkeeping).
-- It discards results (`let _ =`) or threads state a closure could own.
-- It mixes index spaces through raw `Int` where a domain would keep them
-  apart, or pads with sentinels where a type or `?T` says it.
-- A fact is not in one place: the bound, base or modulus is repeated.
-- It is slower than the C++ by more than 1.1x on a max input without a
-  performance friction filed.
-- It drops a statement constraint today's types can hold
-  (`let x: Int = read()` for `1 <= x <= 1e7`, `-1` sentinels for
-  `-1 <= a_i < n`).
-- A friction claims the language lacks something without a run showing it
-  fails.
-- It adds lint warnings: `cpl lint` on the port must not raise the corpus
-  warning counts, which only go down.
-
-A dream fails review, and caps at 3, if it keeps the C++ construction where
-the editorial names an object or rule, hides a side effect in an expression
-(`first(xs, x => try_add(x))`), writes a loop or formula twice, leaves a
-constant or closing formula the header does not derive, or mixes
-spellings. The spellings are the spec's: `@!multitest` only, `Mod<p>`,
-`read<T>`, `struct`, `Some(x)`/`None`, and methods for sequence operations
-(`xs.sum()`, `xs.any(p)`, `xs.sorted()`).
+A dream fails review, and caps at 3, if it breaks one of those rules: it
+keeps the C++ construction where the editorial names an object or rule
+(`#read-like-the-editorial`), hides a side effect (`#no-hidden-effects`),
+writes a fact twice (`#each-fact-in-one-place`), or mixes spellings
+(`#one-spelling-per-idea`).
 
 ## Review
 
@@ -164,3 +143,4 @@ The review lives in `research/reviews/<id>.md` (format and score scale in
 ## Changes
 
 - 2026-11-23: first version, absorbing `plan/PORTING.md`.
+- 2026-11-23: the taste rules moved to `handbook/guidelines/idiomatic-code.md`.

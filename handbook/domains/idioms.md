@@ -120,8 +120,8 @@ GCC and LLVM's differential testing against a reference.
 | A model writes correct CP Lang from the skill alone | blind pass rate on a fresh unseen 20, first attempt, with no workaround | process: a cold agent per release; generated judging | `research/dryrun/v03/loop.sh`, `research/skill-eval/`; per-release unseen set: `missing` |
 | A model or person writes correct code from the docs alone | writable-from-docs tasks passing | process: cold model; generated judging | `scripts/writable-from-docs.py`, `research/writable-from-docs.json` (shared with site) |
 | Every skill example compiles and is current | skill `cp` blocks passing `cpl check`; generated stdlib pages in sync | generated suite | `scripts/skill-gen.py --check` in `scripts/check.sh` |
-| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `missing` (a generated scan against the spec's removed-spelling list) | `missing` |
-| Showcase ports read like the editorial | taste-review median and count under 3 and under 4 | process: cold review per port; ratchet on the count under 4 | `scripts/review-check.py --check` |
+| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code.md#one-spelling-per-idea`; `missing` (a generated scan against the spec's removed-spelling list) | `missing` |
+| Showcase ports read like the editorial | taste-review median and count under 3 and under 4 | `handbook/guidelines/idiomatic-code.md#read-like-the-editorial`; process: cold review per port; ratchet on the count under 4 | `scripts/review-check.py --check` |
 | The idiom catalog covers what newcomers write | marked newcomer spots a lint flags | generated suite | `corpus/newcomer/score.py`, `crates/cpl-cli/tests/newcomer.rs` |
 | Every idiom in the catalog has an example that checks and a lint or a reason | catalog entries with a checked example and a linked lint | `missing` | `missing` |
 
@@ -145,11 +145,11 @@ GCC and LLVM's differential testing against a reference.
 |---|---|---|---|
 | Solutions are short | contestant tokens, median and max against the C++ | generated over every port | `scripts/ports-page.py --tokens` |
 | A change of requirement stays local | chunks touched when one requirement changes (end position, extra DP dimension, map for array) | process: the revision probe | `missing` as a suite |
-| Ports don't hand-roll what std or the language provides | ports flagged by the hand-rolled-std lint family | lint, ratchet | `crates/cpl-lint/src/corpus_tests.rs` (`corpus_warnings_only_go_down`, run in the commit tier for staged ports) |
-| Ports keep the statement's constraints as types | ports whose read types match the statement's bounds; max-bound input runs | `missing` (bounds in `meta.json` and a generated max-bound run) | `plan/domains/idioms/header-audit.md` (manual work list) |
-| Every port has the standard header (Source, Problem, Solution) | ports with all three | generated count | `corpus/header.py` |
+| Ports don't hand-roll what std or the language provides | ports flagged by the hand-rolled-std lint family | `handbook/guidelines/idiomatic-code.md#use-the-standard-structure-or-algorithm`; lint, ratchet | `crates/cpl-lint/src/corpus_tests.rs` (`corpus_warnings_only_go_down`, run in the commit tier for staged ports) |
+| Ports keep the statement's constraints as types | ports whose read types match the statement's bounds; max-bound input runs | `handbook/guidelines/idiomatic-code.md#constraints-are-types`; `missing` (bounds in `meta.json` and a generated max-bound run) | `plan/domains/idioms/header-audit.md` (manual work list) |
+| Every port has the standard header (Source, Problem, Solution) | ports with all three | `handbook/process/porting.md#the-header`; generated count | `corpus/header.py` |
 | Every port has a dream and a review | ports newer than the baseline without either | gate | `scripts/review-check.py --check` |
-| Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | gate on format; process on content | `research/frictions/` (parsed in the gate) |
+| Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | `handbook/guidelines/idiomatic-code.md#a-gap-is-a-claim-that-needs-a-run`; gate on format; process on content | `research/frictions/` (parsed in the gate) |
 | Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | `missing` (a generated diff against `plan/domains/spec/delta/hillclimb.md`) | `missing` |
 
 ### Correctness of the corpus (J6, J7)
@@ -159,10 +159,10 @@ GCC and LLVM's differential testing against a reference.
 | Every port checks on the current language | ports failing `cpl check` | ratchet, list only shrinks | `scripts/port-check.sh` (`corpus/port-check-failing.txt`) in `scripts/check.sh`; per staged port in the commit tier |
 | Every port agrees with its accepted C++ | ports matching `orig.cpp` on samples plus generated inputs | differential | `crates/cpl-cli/tests/judges.rs` (`every_v03_port_checks`) over `corpus/sets/v03.txt`; generated-input agreement on every commit: `missing` (done by hand per port today) |
 | The hill-climb problems pass | `cpl-conform corpus` passes, judged by checker where one exists | generated suite, ratchet | `cpl-conform corpus`, `research/scoreboard.json` via `cpl-conform all --check` |
-| Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | generated | `scripts/corpus-tests.py make` and `verify`; a check that no `.out` equals its `.in` or drifts from `orig.cpp`: `missing` |
-| Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `missing` (a generated detector: two accepted submissions that differ on a test) | `missing` |
-| Interactive problems run with an interactor | interactive ports with an interactor and generator | hand-written per problem | `corpus/problems/<id>/interactor.py`; coverage count: `missing` |
-| Generators produce valid inputs | generated inputs accepted by a validator | `missing` (a validator per problem, as Polygon requires) | `missing` |
+| Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages.md#answers-come-from-an-accepted-solution`; generated | `scripts/corpus-tests.py make` and `verify`; a check that no `.out` equals its `.in` or drifts from `orig.cpp`: `missing` |
+| Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages.md#several-valid-answers-need-a-checker`; `missing` (a generated detector: two accepted submissions that differ on a test) | `missing` |
+| Interactive problems run with an interactor | interactive ports with an interactor and generator | `handbook/guidelines/problem-packages.md#interactive-problems-need-an-interactor`; hand-written per problem | `corpus/problems/<id>/interactor.py`; coverage count: `missing` |
+| Generators produce valid inputs | generated inputs accepted by a validator | `handbook/guidelines/problem-packages.md#inputs-are-valid`; `missing` (a validator per problem, as Polygon requires) | `missing` |
 | The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `missing` across the whole corpus (compiler owns the mechanism; idioms owns running it on the corpus) |
 | Corpus edits keep working ports working | ports whose verdicts change in a commit that edits them | differential before and after | commit-tier `cpl check` and lint ratchet on staged ports; verdict diff: `missing` |
 
@@ -170,7 +170,7 @@ GCC and LLVM's differential testing against a reference.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | generated benchmark | perf's corpus bench; per-port max input for every tracked port: `missing` |
+| Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code.md#as-fast-as-the-c`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; per-port max input for every tracked port: `missing` |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
 | Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); 32 KB count: `missing` as a ratchet |
 | A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |
@@ -192,7 +192,7 @@ GCC and LLVM's differential testing against a reference.
 | Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `scripts/port-check.sh`; byte-for-byte rebuild across releases: `missing` |
 | Adding a port is cheap and the bar is clear | porting checklist; time per port | process | `handbook/process/porting.md` |
 | Concurrent corpus work can't turn main red | staged ports checked and linted before landing | gate | commit tier (`scripts/check.sh`) |
-| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `missing` (architecture: shared with `cpl test` and `cpl stress`) | `missing` |
+| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages.md#one-format`; `missing` (architecture: shared with `cpl test` and `cpl stress`) | `missing` |
 | Generated reports are current | stale `research/PORTS.md`, `plan/STATUS.md`, `BLOCKERS.md` | generated, checked in the gate | `scripts/gen.py` |
 | Nothing private enters the corpus | home paths, session links, unknown hosts | gate | pre-commit public-history scan |
 
@@ -218,3 +218,4 @@ GCC and LLVM's differential testing against a reference.
 
 - 2026-11-23: first version, folding in the stable parts of
   `plan/domains/idioms/README.md` and `plan/domains/idioms/ARCHITECTURE.md`.
+- 2026-11-23: mechanism cells cite the rule in `handbook/guidelines/idiomatic-code.md` or `problem-packages.md`.

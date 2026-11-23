@@ -110,6 +110,8 @@ How far along each milestone is, and what blocks it, stays in `plan/`.
 | `guidelines/lints.md` | When a lint is warranted, how it teaches, configuration, fix quality | lint-fmt |
 | `guidelines/performance.md` | Matched-algorithm comparison, runtime and size bars (including the tuned max), behavior never changes | perf |
 | `guidelines/writing.md` | Writing for an outsider: docs, commit messages, reports | coordinator |
+| `guidelines/idiomatic-code.md` | How ports, dreams, skill pages and examples read: editorial first, std over hand-rolled, each fact once, constraints as types, one spelling; checklist | idioms |
+| `guidelines/problem-packages.md` | Tests with trusted answers, checkers, interactors, validators, max inputs, one package format; checklist | idioms |
 
 ### Language: why the language is shaped this way
 
