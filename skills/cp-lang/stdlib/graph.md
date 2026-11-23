@@ -112,8 +112,6 @@ A conjunction of two-literal clauses over the variables `X`.
 
 The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that `missing.out(u)` does not reach.
 
-- `fn out(self, u: V) -> yields V` — \(O(\lvert V \rvert + \deg u)\); Every `v != u` that `missing.out(u)` does not reach.
-
 ## `struct Functional<V>`
 
 \(O(n)\) build: the functional graph `v -> next[v]` (every vertex one out-arc).
@@ -157,7 +155,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C)` — \(O(n + m)\); The strongly connected components, as a fresh domain `C` and each vertex's component.
 - `fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the target vertex itself.
 - `fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways, each arc the target vertex itself.
-- `fn components<V>(g: Next<V>) -> (domain C, comp: [V]C)` — \(O(n + m)\); The connected components of an undirected graph, as a fresh domain `C` and each vertex's component.
+- `fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C)` — \(O(n + m)\); The connected components of an undirected graph, as a fresh domain `C` and each vertex's component.
 - `fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>` — \(O(n + m)\); The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a` of `u` that leaves its component.
 - `fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C)` — \(O(n + m)\), iterative Tarjan low-link; The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C` and each vertex's component.; traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 - `fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool` — \(O(n + m)\), iterative; Which vertices are cut vertices: removing one (and its arcs) leaves more components than before.; traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
@@ -173,7 +171,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool` — \(O(n + m)\); Which edges are bridges: removing one disconnects its ends.; traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 - `fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>` — \(O(n + m)\); A walk that uses every edge exactly once (Hierholzer's algorithm), or `None` if there is None.; traps: when `edges` is empty and `V` is empty
 - `fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>` — \(O(n + m)\) total, \(O(1)\) per step; A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v` is discovered, `Again(from, via)` for an arc into an already discovered vertex, and `Exit(v, via:)` when `v` is finished.
-- `fn reachable<V, S: Seq>(g: Next<V>, from: S) -> yields V` — \(O(n + m)\) total, \(O(1)\) per step; Every vertex reachable from `from`, each once, sources included.
+- `fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V` — \(O(n + m)\) total, \(O(1)\) per step; Every vertex reachable from `from`, each once, sources included.
 - `fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = None) -> Paths<V, Int, G.Arc>` — \(O(n + m + \mathit{max\_w} + \mathit{d\_max})\); Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from every vertex of `from` at distance 0.; traps: on a weight outside `0..=max_w`, when it is read
 - `fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W` — \(O(n m \log m)\); All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source joined to every vertex, then a Dijkstra per vertex on the reweighted arcs.
 - `fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>` — \(O((n + m) \log n + k \log k)\); The lengths of the `k` shortest walks from any vertex of `from` to `to` (Eppstein).; traps: on a negative weight
