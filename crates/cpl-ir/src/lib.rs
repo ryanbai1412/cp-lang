@@ -688,7 +688,6 @@ pub enum Builtin {
     WrapSub,
     WrapMul,
     Sqrt,
-    Isqrt,
     Atan2,
     /// `flush()`: what was printed so far is written out now.
     Flush,

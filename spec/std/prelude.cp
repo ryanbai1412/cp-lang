@@ -79,12 +79,14 @@ use std.math.{
     floor_quotients,
     gcd,
     inf,
+    isqrt,
     lcm,
     phi,
     pow_mod,
     sign,
     to_str,
 }
+use std.math.{Ratio, Sieve, bit, ceil_div, choose2, digits, divmod, fixed, floor_quotients, gcd, inf, lcm, phi, pow_mod, sign, to_str}
 use std.mod.{Comb, Mod}
 use std.opt.{is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}

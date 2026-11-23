@@ -51,10 +51,6 @@ impl<'p> Emitter<'p> {
                 self.need("fsqrt");
                 Code::primary(format!("cpl::fsqrt({})", text(0)))
             }
-            Builtin::Isqrt => {
-                self.need("bits");
-                Code::primary(format!("cpl::isqrt({})", text(0)))
-            }
             Builtin::Flush => {
                 self.need("out");
                 Code::primary("(cpl::flush(), fflush(stdout))".to_string())

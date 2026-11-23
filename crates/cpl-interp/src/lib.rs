@@ -3789,20 +3789,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Value::Float(x.sqrt())
             }
-            Builtin::Isqrt => {
-                let x = first.int();
-                if x < 0 {
-                    return trap(span, format!("isqrt({x}) of a negative number"));
-                }
-                let mut r = (x as f64).sqrt() as i64;
-                while (r as i128 + 1) * (r as i128 + 1) <= x as i128 {
-                    r += 1;
-                }
-                while (r as i128) * (r as i128) > x as i128 {
-                    r -= 1;
-                }
-                Value::Int(r)
-            }
             Builtin::Flush => {
                 let _ = self.sink.write_all(&self.out);
                 let _ = self.sink.flush();

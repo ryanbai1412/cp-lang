@@ -29,22 +29,22 @@ pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, 
 /// The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.
 ///
 /// cost: O(1)
-/// traps: when `x < 0`
+/// traps: when `self < 0`
 /// example: `isqrt(15) == 3`
 /// example: `isqrt(16) == 4`
 /// example: `isqrt(0) == 0`
 /// example: `isqrt(9_223_372_036_854_775_807) == 3_037_000_499`
-pub fn isqrt(x: Int) -> Int:
-    assert x >= 0
-    var r = floor(sqrt(F64(x)))
-    while r > 0 and r > x / r: r -= 1
-    while r + 1 <= x / (r + 1): r += 1
+@get pub fn isqrt(self: Int) -> Int:
+    assert self >= 0, "isqrt({self}) of a negative number"
+    var r = trunc(sqrt(F64(self)))
+    while r < 3_037_000_499 and (r + 1) * (r + 1) <= self: r += 1
+    while r * r > self: r -= 1
     r
 
 /// The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.
 ///
 /// cost: O(1)
-/// traps: when `x < 0`
+/// traps: when `self < 0`
 /// example: `ceil_sqrt(15) == 4`
 /// example: `ceil_sqrt(16) == 4`
 /// example: `ceil_sqrt(0) == 0`
@@ -395,7 +395,7 @@ pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///
 /// cost: O(1)
-/// traps: when `x < 0`
+/// traps: when `self < 0`
 /// example: `bit_len(0) == 0`
 /// example: `bit_len(5) == 3`
 /// example: `bit_len(8) == 4`

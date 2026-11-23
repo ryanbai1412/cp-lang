@@ -573,7 +573,7 @@ impl<'a> Checker<'a> {
                     "len" | "first" | "last" | "rev" | "bounds" | "cuts"
                 )
             }
-            t if t.is_int() => matches!(name.text.as_str(), "abs" | "isqrt" | "ord" | "sqrt"),
+            t if t.is_int() => matches!(name.text.as_str(), "abs" | "ord" | "sqrt"),
             Ty::Float => matches!(
                 name.text.as_str(),
                 "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"

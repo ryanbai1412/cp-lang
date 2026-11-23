@@ -2089,14 +2089,6 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "isqrt" => match self.one_arg(name, args, &Ty::Int, span) {
-                Some(value) => self.mk(
-                    ExprKind::Builtin(Builtin::Isqrt, vec![value]),
-                    Ty::Int,
-                    span,
-                ),
-                None => self.err_expr(span),
-            },
             "atan2" => match self.positional_any(name, args, 2, span) {
                 Some(exprs) => {
                     let y = self.expect(exprs[0], &Ty::Float);
@@ -6086,11 +6078,6 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            (Ty::Int, "isqrt") => self.mk(
-                ExprKind::Builtin(Builtin::Isqrt, vec![value]),
-                Ty::Int,
-                span,
-            ),
             (Ty::Float, "floor" | "ceil" | "round") => {
                 let op = match name.text.as_str() {
                     "floor" => Builtin::Floor,

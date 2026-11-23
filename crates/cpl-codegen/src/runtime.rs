@@ -1197,7 +1197,6 @@ inline ll ctz(ll x) { return x == 0 ? 64 : (ll)__builtin_ctzll((uint64_t)x); }
 inline ll clz(ll x) { return x == 0 ? 64 : (ll)__builtin_clzll((uint64_t)x); }
 inline ll bit_width(ll x) { return x == 0 ? 0 : 64 - (ll)__builtin_clzll((uint64_t)x); }
 inline ll bit_ceil(ll x) { if (x > (1LL << 62)) fail(\"integer overflow: `bit_ceil` does not fit in an `Int` (64 bits)\"); return x <= 1 ? 1 : (1LL << (64 - __builtin_clzll((uint64_t)(x - 1)))); }
-inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 3037000499LL && (r + 1) * (r + 1) <= x) r++; while (r * r > x) r--; return r; }
 ",
     },
     Piece {

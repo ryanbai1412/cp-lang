@@ -323,7 +323,7 @@ fn int_fn(arity: usize) -> Ty {
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
-        "bit_ceil" | "isqrt" => int_fn(1),
+        "bit_ceil" => int_fn(1),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `Subset<D>` is the subsets of a domain. Both are lowered
         // by `cpl-ir`.
@@ -357,7 +357,6 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("ctz", _) => "The number of 0 bits below the lowest 1 bit, in O(1).",
         ("bit_width", _) => "The number of bits needed to write the value, in O(1).",
         ("bit_ceil", _) => "The smallest power of two that is at least the value, in O(1).",
-        ("isqrt", _) => "The largest `r` with `r * r <= n`, in O(1).",
         ("swap", _) => "Exchanges the values of two `mut` places, in O(1) whatever their size.",
         ("some", _) => "The value as a present `?T`, in O(1).",
         _ => return None,
@@ -479,7 +478,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "ctz",
     "bit_width",
     "bit_ceil",
-    "isqrt",
     "sqrt",
     "atan2",
     "flush",
