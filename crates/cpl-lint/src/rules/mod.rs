@@ -9,6 +9,7 @@ mod euclid;
 mod fields;
 mod floats;
 mod imports;
+mod isqrt;
 mod lists;
 mod literals;
 mod memo;
@@ -34,6 +35,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));
+    findings.extend(isqrt::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));

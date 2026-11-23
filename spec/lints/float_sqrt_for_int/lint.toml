@@ -1,0 +1,5 @@
+code = "L0529"
+level = "warn"
+group = "correctness"
+title = "Integer square root through F64"
+summary = "`floor(sqrt(n))` on an `Int`: the exact root is `n.isqrt`"

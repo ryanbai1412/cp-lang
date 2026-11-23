@@ -6,13 +6,14 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, NEG_MOD_FIXUP, PEEK_THEN_POP,
-    REVERSE_INDEX, UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, NEG_MOD_FIXUP,
+    PEEK_THEN_POP, REVERSE_INDEX, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 7] = [
+const TYPED: [cpl_diag::Code; 8] = [
+    FLOAT_SQRT_FOR_INT.code,
     REVERSE_INDEX.code,
     NEG_MOD_FIXUP.code,
     CEIL_DIV_FORMULA.code,
@@ -74,6 +75,9 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
             None => true,
             Some(ty) => matches!(ty, Some(Ty::Range { lo: Some(lo), .. }) if *lo >= 1),
         },
+        c if c == FLOAT_SQRT_FOR_INT.code => {
+            matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
+        }
         c if c == NEG_MOD_FIXUP.code => match label() {
             None => true,
             Some(ty) => matches!(ty, Some(Ty::Int | Ty::I128 | Ty::Range { .. })),
