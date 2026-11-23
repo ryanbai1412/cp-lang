@@ -875,6 +875,27 @@ print(below(5), below(3))
 }
 
 #[test]
+fn vm_mut_arg_lent_from_a_grid_cell_writes_back() {
+    let src = "\
+struct Acc:
+    xs: List<Int>
+
+fn add(mut a: Acc, x: Int):
+    a.xs.push(x)
+
+var grid: [3, 3]Acc = [3, 3] (i, j) => Acc(xs: [])
+for i in 0..3:
+    for j in 0..3:
+        add(mut grid[i, j], i * 3 + j)
+        add(mut grid[j, i], 9)
+print(grid[1, 2].xs, grid[2, 2].xs)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "5 9 8 9\n");
+}
+
+#[test]
 fn vm_one_int_struct_custom_ord_cmp() {
     let src = "\
 use std.heap.{MaxHeap}
