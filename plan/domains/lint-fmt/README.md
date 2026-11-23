@@ -84,7 +84,7 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 | Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 4 | 0 |
 | Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
 | Fmt time, same file | `time cpl fmt --check spec/std/tree.cp` | 0.00 s | < 0.05 s |
-| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 559 / 5,080 | 0 outside exempt tests |
+| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 560 / 5,157 | 0 outside exempt tests |
 | Not idempotent | same | 0 | 0 |
 | Meaning changes | same | 0 | 0 |
 | Corpus `spec.cp` not fmt-clean | `cpl fmt --check corpus/problems/*/spec.cp` | 28 / 100 | 0 |
