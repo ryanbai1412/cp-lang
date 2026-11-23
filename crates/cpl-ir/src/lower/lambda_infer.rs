@@ -4,6 +4,10 @@
 
 use super::*;
 
+/// A trait an argument must implement, with its arguments known: `Feed<(w: Int)>`.
+#[derive(Clone, Debug)]
+pub(super) struct WantBound(String, Vec<Ty>);
+
 impl<'a> Lowerer<'a> {
     /// Unify each annotated parameter of the lambda `arg` with its slot in the fn type `pat`.
     pub(super) fn unify_lambda_params(
@@ -196,5 +200,116 @@ pub(super) fn unwrap_optional(ty: &ast::Type) -> &ast::Type {
     match &ty.kind {
         ast::TypeKind::Optional(inner) => inner,
         _ => ty,
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// What an argument for `pty` must implement, when `pty` is a bare generic not bound yet whose
+    /// trait bound has every argument known: `st: St` with `St: Feed<T>` once `T` is bound.
+    pub(super) fn want_bound(
+        &mut self,
+        pty: &ast::Type,
+        decl: &ast::FnDecl,
+        tpl_mod: ModId,
+        tpl_offset: u32,
+        inferred: &GenEnv,
+    ) -> Option<WantBound> {
+        let name = bare_name(pty)?;
+        if inferred.contains_key(name) {
+            return None;
+        }
+        let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
+        let bound = decl.bounds.iter().find(|b| b.name.text == name)?;
+        for tr in &bound.traits {
+            let ast::TypeKind::Named { name: tn, args } = &tr.kind else {
+                continue;
+            };
+            let unbound = |t: &ast::Type| {
+                gen_names
+                    .iter()
+                    .any(|g| !inferred.contains_key(g) && ty_mentions(t, g))
+            };
+            if args.is_empty() || args.iter().any(unbound) {
+                continue;
+            }
+            let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+            let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+            let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+            let tys: Vec<Ty> = args.iter().map(|t| self.resolve_ty(t)).collect();
+            self.cur_mod = saved_mod;
+            self.offset = saved_offset;
+            self.gen_env = saved_env;
+            if !tys.contains(&Ty::Error) {
+                return Some(WantBound(tn.text.clone(), tys));
+            }
+        }
+        None
+    }
+
+    /// A generic call's starting bindings: its owner's, its explicit arguments, and what its
+    /// result must implement. `acc(0, f)` where a `Feed<X>` is wanted, with
+    /// `impl Feed<T> for Acc<S, T>` and `acc` returning `Acc<S, T>`, binds its `T` to `X`
+    /// before its lambdas are probed.
+    pub(super) fn seed_gens(
+        &self,
+        owner_env: GenEnv,
+        explicit: &[GenArg],
+        decl: &ast::FnDecl,
+        want: Option<WantBound>,
+    ) -> GenEnv {
+        let mut env = owner_env;
+        for (name, val) in decl.generics.iter().zip(explicit) {
+            env.insert(name.text.clone(), val.clone());
+        }
+        let (Some(WantBound(trait_name, want_args)), Some(ret)) = (want, decl.ret.as_ref()) else {
+            return env;
+        };
+        let ast::TypeKind::Named {
+            name: rn,
+            args: rargs,
+        } = &ret.kind
+        else {
+            return env;
+        };
+        for imp in &self.impls {
+            let ast::TypeKind::Named {
+                name: on,
+                args: oargs,
+            } = &imp.target.kind
+            else {
+                continue;
+            };
+            if imp.trait_name.as_deref() != Some(trait_name.as_str())
+                || imp.trait_args.len() != want_args.len()
+                || on.text != rn.text
+                || oargs.len() != rargs.len()
+            {
+                continue;
+            }
+            for (o, r) in oargs.iter().zip(rargs) {
+                let (Some(o), Some(r)) = (bare_name(o), bare_name(r)) else {
+                    continue;
+                };
+                if env.contains_key(r) || !decl.generics.iter().any(|g| g.text == r) {
+                    continue;
+                }
+                if let Some(j) = imp.trait_args.iter().position(|t| bare_name(t) == Some(o)) {
+                    let arg = match &want_args[j] {
+                        Ty::Pos(d) => GenArg::Domain(*d),
+                        t => GenArg::Ty(t.clone()),
+                    };
+                    env.insert(r.to_string(), arg);
+                }
+            }
+            break;
+        }
+        env
+    }
+}
+
+fn bare_name(t: &ast::Type) -> Option<&str> {
+    match &t.kind {
+        ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
+        _ => None,
     }
 }

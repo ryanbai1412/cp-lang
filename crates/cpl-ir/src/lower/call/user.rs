@@ -373,7 +373,7 @@ impl<'a> Lowerer<'a> {
                         self.min_max(name == "max", args, span)
                     }
                     Some(Sym::GenFn(gfid)) => {
-                        self.call_hint = hint.cloned();
+                        self.call_hint.0 = hint.cloned();
                         self.call_gen_fn(gfid, Vec::new(), None, args, span)
                     }
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),

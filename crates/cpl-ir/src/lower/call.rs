@@ -763,7 +763,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     Arg::Value(value)
                 };
-                self.call_hint = hint.cloned();
+                self.call_hint.0 = hint.cloned();
                 return self.call_gen_fn(gfid, Vec::new(), Some(recv), args, span);
             }
         }

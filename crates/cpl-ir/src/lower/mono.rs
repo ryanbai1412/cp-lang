@@ -1623,7 +1623,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let hint = self.call_hint.take();
+        let (hint, want) = std::mem::take(&mut self.call_hint);
         let tpl_mod = self.gen_fns[gfid].mod_id;
         let tpl_offset = self.gen_fns[gfid].offset;
         let owner_env = self.gen_fns[gfid].owner_env.clone();
@@ -1658,10 +1658,7 @@ impl<'a> Lowerer<'a> {
             None => args,
         };
 
-        let mut inferred: GenEnv = owner_env.clone();
-        for (name, val) in gen_names.iter().zip(&explicit) {
-            inferred.insert(name.clone(), val.clone());
-        }
+        let mut inferred = self.seed_gens(owner_env.clone(), &explicit, decl, want);
 
         // Match call args to ast_params.
         let mut matched: Vec<Option<&ast::Arg>> = vec![None; ast_params.len()];
@@ -1768,6 +1765,7 @@ impl<'a> Lowerer<'a> {
                 self.unify_lambda_params(pty, &arg.value, tpl_mod, &gen_names, &mut inferred);
                 continue;
             }
+            self.call_hint.1 = self.want_bound(pty, decl, tpl_mod, tpl_offset, &inferred);
             if let Some(concrete) =
                 self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
             {
@@ -2837,6 +2835,7 @@ impl<'a> Lowerer<'a> {
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
         let probed = self.expr(e, hint.as_ref());
+        self.call_hint.1 = None;
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
