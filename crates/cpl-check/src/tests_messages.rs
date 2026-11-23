@@ -599,3 +599,18 @@ fn a_typo_is_never_offered_a_fn_whose_self_is_another_type() {
         d.help
     );
 }
+
+#[test]
+fn a_missing_member_with_no_close_name_lists_what_the_type_has() {
+    let src = "struct P:\n    x: Int\n    fn up(self) -> Int = self.x + 1\nlet p = P(1)\nprint(p.down())\n";
+    let d = one(src);
+    assert_eq!(d.code.0, "E0203");
+    assert_eq!(d.help.as_deref(), Some("its fields are `x`"));
+    let d = one("let s = scan([3, 1, 2], +)\nprint(s.min())\n");
+    let help = d.help.unwrap_or_default();
+    assert!(help.starts_with("its methods are `all`, `at`"), "{help}");
+    assert!(
+        !help.contains("`new`") && !help.contains("`filling`"),
+        "{help}"
+    );
+}

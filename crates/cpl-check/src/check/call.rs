@@ -1162,7 +1162,12 @@ impl<'a> Checker<'a> {
                                         let message = format!(
                                             "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
                                         );
-                                        self.error(codes::MISSING_IMPL, call.span, message);
+                                        let help = self.unmet_bound_help(&bound_ty);
+                                        if let Some(diag) =
+                                            self.error(codes::MISSING_IMPL, call.span, message)
+                                        {
+                                            diag.help = help;
+                                        }
                                     }
                                 }
                             }

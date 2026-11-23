@@ -228,10 +228,71 @@ impl Checker<'_> {
                 let fields = super::expr::list_names(&field_names);
                 diag.help = Some(format!("its fields are {fields}"));
             }
-            None => {}
+            None => {
+                let names = self
+                    .public_receivers(&owner)
+                    .unwrap_or_else(|| methods.iter().map(|(m, _)| m.clone()).collect());
+                if let Some(list) = method_list(&names) {
+                    if let Some(d) = self.sink.last_mut() {
+                        d.help = Some(format!("its methods are {list}"));
+                    }
+                }
+            }
         }
     }
 
+    /// `a `T` is not a `Trait``, then what `T` does have, for an unmet bound.
+    pub(super) fn unmet_bound_help(&mut self, ty: &Ty) -> Option<String> {
+        let Ty::Named { name, .. } = ty else {
+            return None;
+        };
+        let names = self.public_receivers(name);
+        method_list(&names?).map(|list| format!("a `{ty}` offers {list}"))
+    }
+
+    /// The public methods a value of struct `owner` calls: `self` methods
+    /// and getters, not constructors.
+    fn public_receivers(&mut self, owner: &str) -> Option<Vec<String>> {
+        let Some(Def::Struct {
+            receivers,
+            mutators,
+            getters,
+            ..
+        }) = self.type_def(owner).as_deref().cloned()
+        else {
+            return None;
+        };
+        let names = receivers.into_iter().chain(mutators).chain(getters);
+        Some(
+            names
+                .filter(|m| !self.env.is_private_field(owner, m))
+                .collect(),
+        )
+    }
+}
+
+/// Up to ten public method names, sorted, then how many more: the help for
+/// a member or bound a type lacks, so the reader sees what it does have.
+fn method_list(names: &[String]) -> Option<String> {
+    const SHOWN: usize = 10;
+    let mut names: Vec<String> = names
+        .iter()
+        .filter(|m| !m.starts_with('_'))
+        .cloned()
+        .collect();
+    names.sort();
+    names.dedup();
+    let more = names.len().saturating_sub(SHOWN);
+    names.truncate(SHOWN);
+    let list = super::expr::list_names(&names);
+    match more {
+        _ if names.is_empty() => None,
+        0 => Some(list),
+        n => Some(format!("{list} and {n} more")),
+    }
+}
+
+impl Checker<'_> {
     /// The `None` literal; where `none` is bound, the lowercase word is that name.
     pub(super) fn none_literal(&mut self, span: Span) -> Ty {
         let bound = self.local("none").is_some() || self.global("none").is_some();
