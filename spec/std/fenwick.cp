@@ -64,7 +64,7 @@ pub struct Fenwick<D, T>:
     /// example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
     /// example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
     pub fn fold(self, r: Range<D>) -> T:
-        self.prefix(r.end) - self.prefix(r.start)
+        self.prefix(r.r) - self.prefix(r.l)
 
     /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
     /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
