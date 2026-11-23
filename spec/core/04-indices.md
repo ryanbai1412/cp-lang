@@ -27,6 +27,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step (R04.2.1) |
 | `V.count` | number of positions | O(1) (R04.2.2) |
 | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its positions in walk order (product domains row-major), so every `Seq` method applies to it; `V.count` with no call is still the number of positions | as the `Seq` method (R04.2.20) |
+| `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its whole range, `V.first!..=V.last!`, so `fn tally(ls: Range<Pos>)` takes `tally(Pos)` | O(1) (R04.2.21) |
 | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it isn't | O(1) (R04.2.3) |
 | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1) (R04.2.4) |
 | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) (R04.2.5) |

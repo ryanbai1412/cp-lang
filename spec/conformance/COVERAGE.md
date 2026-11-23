@@ -7,21 +7,21 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2337 (995 passing). Rules: 539.
+Cases: 2340 (995 passing). Rules: 540.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 65 rules, 98 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 100 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 26 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 33 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -41,7 +41,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
 | R02 | 51 | 51 (100%) | 26 | 26 (100%) | 51 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 65 | 65 (100%) | 16 | 15 (93%) | 64 (98%) |
+| R04 | 66 | 66 (100%) | 16 | 15 (93%) | 65 (98%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 539 | 538 (99%) | 207 | 205 (99%) | 536 (99%) |
+| all | 540 | 539 (99%) | 207 | 205 (99%) | 537 (99%) |
 
 ## Rules
 
@@ -200,6 +200,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
 - R04.2.20 [3+ 0-] *happy-path only*: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
+- R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
 - R04.2.5 [1+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
@@ -220,7 +221,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [2+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
-- R04.4.1 [4+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
+- R04.4.1 [5+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.29 [1+ 0-]: **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out: `for k in a....
 - R04.4.5 [1+ 2-]: Only the literal `a..b` does it. A stored cut range never becomes a piece: `let s = j..i; ...
@@ -546,7 +547,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.3.3 [1+ 1-]: | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming val...
 - R09.3.4 [2+ 1-]: | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wrap...
 - R09.3.5 [1+ 1-]: | `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value
-- R09.3.6 [2+ 1-]: | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 ...
+- R09.3.6 [2+ 2-]: | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 ...
 - R09.3.7 [2+ 1-]: | `assert c` | n/a | trap with the message | skipped
 - R09.3.8 [2+ 1-]: | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none
 - R09.3.9 [2+ 0-]: | `law` promises | n/a | stress samples them | none
@@ -739,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 3 case(s)
+- R0001 Runtime trap: 4 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)
@@ -771,9 +772,9 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 156: `for j in ..i:`
-  - line 246: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 267: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 157: `for j in ..i:`
+  - line 247: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 268: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 5 with a case, 4 spec-only, 4 neither
   - line 70: `fn solve(r: Range<V>) -> Int:`
   - line 98: `let z = z_function(s[l..])`

@@ -6679,3 +6679,13 @@ Reason: stale generated files were main's most common red, and the commit
 tier only checked skill pages, so the other five went stale unseen.
 Reverse: restore the `skill-gen.py --drift` step in `scripts/check.sh` and
 delete `scripts/gen.py`.
+
+## 295. A range-backed domain named as a value is its whole `Range<V>` (2026-11-22)
+
+- **Decision.** `domain Pos = 1..=5; fn tally(ls: Range<Pos>) -> Int` takes
+  `tally(Pos)`, and `Pos` there is `Pos.first!..=Pos.last!` (R04.2.21). It is
+  the value's type, not a seventh implicit conversion (R04.4.22 stays closed).
+- **Why.** The compiler has accepted it since 75567c82 and ports rely on it,
+  but no rule said so, so the bug-catch run found no case guarding it.
+- **Reverse.** Drop R04.2.21 and `core-04/domain-is-its-range.cp`; callers
+  write `Pos.first!..=Pos.last!`.
