@@ -31,7 +31,7 @@ bench-zero-cost *args:
     cargo build --release -p cpl-cli
     target/release/cpl bench --zero-cost bench/zero-cost {{args}}
 
-# Run only the corpus runtime benchmark suite (writes bench/corpus-p95-results.json).
+# Run only the corpus runtime benchmark suite (writes research/perf/corpus-p95-results.json).
 bench-corpus *args:
     cargo build --release -p cpl-cli
     target/release/cpl bench --corpus {{args}}

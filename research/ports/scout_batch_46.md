@@ -41,4 +41,4 @@ What that does and does not cover:
 - `sac22cc2p3`'s input shape was inferred from the original's reader (`2^k - 1` fork lines over `2^(k+1) - 1` nodes), not from the statement.
 - Inputs are small and medium only. No max-N timing or memory runs were done, and branch coverage of the generators was not measured.
 
-Friction found in the v2 spec and the prototype is in `research/friction-backlog-batch-46-dmoj-contests-2.md`.
+Friction found in the v2 spec and the prototype is in `research/archive/frictions/friction-backlog-batch-46-dmoj-contests-2.md`.

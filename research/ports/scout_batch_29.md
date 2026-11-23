@@ -3,7 +3,7 @@
 Ten submissions from `corpus/submissions/`, rethought in CP Lang. None is
 in `proto/ports/`, an earlier scout batch or a `blind_critic_*` directory.
 The friction they showed is in
-[`research/friction-backlog-batch-29-nt-linalg.md`](../../../research/friction-backlog-batch-29-nt-linalg.md)
+[`research/archive/frictions/friction-backlog-batch-29-nt-linalg.md`](../../../research/archive/frictions/friction-backlog-batch-29-nt-linalg.md)
 (items `O1`...).
 
 A search of the unported accepted submissions found no Möbius or

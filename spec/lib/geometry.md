@@ -52,7 +52,7 @@ Reference libraries surveyed:
   - `cf2138f.cp` (`research/frictions/cf2138f.md`) hand-rolls a `F64` vector
     type `V` with `len`, `Add`, `Sub`, and scalar `times`/`over`.
   - `etsr23r3p2.cp` asks for `F64` points and `reflect(p, a, b)`.
-  - `dmopc20c7p2.cp` (`research/ugly-code-friction-audit-3.md` section 9)
+  - `dmopc20c7p2.cp` (`research/archive/frictions/ugly-code-friction-audit-3.md` section 9)
     needs `Pt` to have lexicographic `Ord`, `Hash`, `Read`, and `Show` (`x y`).
   - `cheerio1s3.cp` uses `Pt` and `cross` for an exact slope sweep.
 

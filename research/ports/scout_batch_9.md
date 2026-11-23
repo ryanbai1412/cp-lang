@@ -9,7 +9,7 @@ for it.
 Like batch 4, every file here builds with today's prototype and agrees
 with its original. Where the prototype forced an awkward line, the port
 keeps that line, and
-[`research/friction-backlog-batch-9.md`](../../../research/friction-backlog-batch-9.md)
+[`research/archive/frictions/friction-backlog-batch-9.md`](../../../research/archive/frictions/friction-backlog-batch-9.md)
 quotes it next to the line we would rather write.
 
 Each port names its original on the `// original:` line of its header.

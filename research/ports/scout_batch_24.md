@@ -7,7 +7,7 @@ This batch ports 10 unported, hard data-structure and offline-query problems fro
 3. Inspect the original AC C++ submission in `corpus/submissions/` to verify exact I/O and compare algorithmic choices (9/10 matched I/O on the first pass; `cco18p5` had plain rather than XOR-encrypted updates and was adjusted after checking `4801867.cpp`).
 4. Write a runnable port under `proto/ports/scout_batch_24/today/<code>.cp` executing via `python3 proto/cp.py lib-run` and differentially test all 10 against the compiled C++ originals via `proto/ports/scout_batch_24/check.py` (200/200 randomized + edge-case tests passing).
 
-Full design analysis and concrete code snippets live in `research/friction-backlog-batch-24-advanced-ds.md`.
+Full design analysis and concrete code snippets live in `research/archive/frictions/friction-backlog-batch-24-advanced-ds.md`.
 
 ## Problems & Dual LOC Summary
 

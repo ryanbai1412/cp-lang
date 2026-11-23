@@ -7,7 +7,7 @@ prime-mask DP, expected-value/probability DP, and WQS/event-sweep DP with Li
 Chao trees.
 
 The findings are written up in
-[`research/friction-backlog-batch-14.md`](../../../research/friction-backlog-batch-14.md)
+[`research/archive/frictions/friction-backlog-batch-14.md`](../../../research/archive/frictions/friction-backlog-batch-14.md)
 under item numbers `P1` through `P14`.
 
 ## Layout

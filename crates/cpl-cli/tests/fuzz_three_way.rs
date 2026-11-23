@@ -16,7 +16,7 @@
 //!
 //! An input that fails on HEAD is its own test, marked
 //! `#[ignore = "KNOWN WA-TRAP: ..."]` and written up in
-//! `research/fuzz-three-way-findings.md`; run those with
+//! `research/archive/audits/fuzz-three-way-findings.md`; run those with
 //! `cargo test -p cpl-cli --test fuzz_three_way -- --ignored`.
 
 use std::hash::{Hash, Hasher};

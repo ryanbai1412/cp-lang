@@ -1,6 +1,6 @@
 # Scout Batch 41 — Hard Olympiad & NCCC Classics (`oly*`, `nccc*`)
 
-Ten previously unported corpus problems from the `oly*`, `cerc*`, `ecna*`, `icpc*`, `naq*`, `nac*`, `waterloo*`, `mcipc*`, `utso*`, and `nccc*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`, commit `3723dca`). Findings are in `research/friction-backlog-batch-41-oly-icpc.md`.
+Ten previously unported corpus problems from the `oly*`, `cerc*`, `ecna*`, `icpc*`, `naq*`, `nac*`, `waterloo*`, `mcipc*`, `utso*`, and `nccc*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`, commit `3723dca`). Findings are in `research/archive/frictions/friction-backlog-batch-41-oly-icpc.md`.
 
 **Bucket coverage note:** `corpus/submissions/info.json` contains zero problems for `cerc*`, `ecna*`, `icpc*`, `naq*`, `nac*`, `waterloo*`, and `mcipc*`, and its only `utso*` problem (`utso15p5`) is already ported. Across `oly*` and `nccc*`, there are exactly 10 unported AC submissions in the entire corpus — 7 in C++17 and 3 in Java (`nccc8s1`, `nccc8s2`, `nccc8s4`) — so this batch covers all 10 with zero overlap against parallel scouts.
 

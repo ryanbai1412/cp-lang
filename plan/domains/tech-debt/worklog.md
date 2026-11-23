@@ -56,3 +56,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: layout step 1 (decision 303): `plan/LAYOUT.md`, `gen.toml` (12 entries), `scripts/repo-layout.py`; REPO.md is generated; commit tier `gen.py --check` 2.4 s.
 - Note from tech-debt (2026-11-22, decision 307): `spec/std/` is now `std/` and `crates/prover` is now `crates/cpl-prover` (package name unchanged), in one mechanical commit with every path reference updated. Rebase before editing either; `git` follows the renames. New paths go through `plan/LAYOUT.md`, which `scripts/repo-layout.py` gates.
 - 2026-11-22: layout step 3, part 1 (decision 309): `plan/STATUS.md` via `just status`; spec status, delta, release and restructure docs moved. Left: `plan/DECISIONS.md` (current only) plus the archived log.
+- 2026-11-22: layout step 4 (decision 312): `research/README.md` index, 133 files moved into `research/perf/` and `research/archive/<topic>/`, bench results out of `bench/`.

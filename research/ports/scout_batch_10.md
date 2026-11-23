@@ -3,7 +3,7 @@
 Ten string-algorithm submissions from `corpus/submissions/`, rethought in
 CP Lang for a Stage-1 friction pass. None of them is in `proto/ports/` or an
 earlier scout batch. The friction they showed is in
-[`research/friction-backlog-batch-10.md`](../../../research/friction-backlog-batch-10.md)
+[`research/archive/frictions/friction-backlog-batch-10.md`](../../../research/archive/frictions/friction-backlog-batch-10.md)
 (items `T1`...).
 
 Every port here runs today on the reference interpreter and is checked

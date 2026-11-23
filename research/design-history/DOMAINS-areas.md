@@ -1160,7 +1160,7 @@ Full-mode `--check` ratchets any >= 10 ms port whose runtime ratio regresses > 1
 columns without re-running. Constructive-problem checker hook
 (`checkers/NAME.py INPUT OUTPUT ANSWER`) is live in `proto/ports/ecnerwala/gate.sh`,
 `proto/ports/ecnerwala/README.md`, and `scripts/scoreboard.py`. Legacy: 30 `wave2` ports and
-DMOJ registry (`bench/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp`
+DMOJ registry (`research/perf/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp`
 has 5 open traps; 16 ports exceed the <= 1.5x runtime ceiling; 57 ports exceed the 10x
 interpreter-ratio bar; static `sizeof` / `-O2` assembly zero-cost metrics are not yet wired
 into the scoreboard.

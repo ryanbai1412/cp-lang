@@ -18,7 +18,7 @@ contest problems written against it.
 
 Facts checked directly in this repository (`stdlib/strings.cp`,
 `examples/local-lib/str/`, `proto/ports/ecnerwala/ucup5s05f_orig.cpp`,
-`proto/ports/scout_batch_10/`, `research/friction-backlog-batch-10.md`) are
+`proto/ports/scout_batch_10/`, `research/archive/frictions/friction-backlog-batch-10.md`) are
 verified; external library inventories (KACTL, AtCoder Library, CP-Algorithms)
 are standard public references.
 
@@ -35,7 +35,7 @@ KACTL ships `KMP` (`pi`, `match`) and `Zfunc`; AtCoder Library ships
 `z_algorithm`. In our corpus, `ctsc06p1` sums `m^b` over all borders,
 `noip20p2` uses `z_function` to count `(AB)^k C` splits, and `btoi19p5` wants
 the longest prefix of a pattern ending at each text position (`T5` in
-`research/friction-backlog-batch-10.md`).
+`research/archive/frictions/friction-backlog-batch-10.md`).
 
 **Lyndon words and cyclic rotations.** Lexicographically smallest cyclic shift
 and Duval's Lyndon factorization. KACTL ships `MinRotation` (Booth/Duval,

@@ -7,7 +7,7 @@ directory
 written, passed the same check, and was dropped because batch 23 landed
 with it while this batch was in progress. The friction they showed
 is in
-[`research/friction-backlog-batch-28-hard-dp.md`](../../../research/friction-backlog-batch-28-hard-dp.md)
+[`research/archive/frictions/friction-backlog-batch-28-hard-dp.md`](../../../research/archive/frictions/friction-backlog-batch-28-hard-dp.md)
 (items `D1`...).
 
 The brief asked for bitmask/SOS, digit, interval, convex-hull and knapsack

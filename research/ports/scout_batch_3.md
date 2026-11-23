@@ -5,9 +5,9 @@ corpus, re-solved the way we would like to write them. This is a Stage-1
 critique pass, like [`scout_batch_1/`](../scout_batch_1/): the files in
 this folder are design sketches, and every line the prototype rejects
 today is marked `// WISH Gn` (an item in
-[`research/friction-backlog-batch-3.md`](../../../research/friction-backlog-batch-3.md))
+[`research/archive/frictions/friction-backlog-batch-3.md`](../../../research/archive/frictions/friction-backlog-batch-3.md))
 or `// WISH Fn` (an item of batch 1 that came up again, in
-[`research/friction-backlog.md`](../../../research/friction-backlog.md)).
+[`research/archive/frictions/friction-backlog.md`](../../../research/archive/frictions/friction-backlog.md)).
 
 None of the ten sketches builds with `proto/cpc` yet. What is different
 from batch 1 is the [`today/`](today/) folder: for nine of the ten it holds

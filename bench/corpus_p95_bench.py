@@ -11,7 +11,7 @@ across 200+ corpus ports, with every emitted file under 64 KB.
     python3 bench/corpus_p95_bench.py --check          # exit 1 unless p95 < 1.1x over 200+ ports and all files < 64 KB
 
 One port is measured per problem. The candidates come from
-bench/corpus-500-registry.json (refresh it with bench/corpus_registry.py), the
+research/perf/corpus-500-registry.json (refresh it with bench/corpus_registry.py), the
 canonical port first. A port is measured when
 
   1. `cpl build` accepts it and g++ compiles both it and its original,
@@ -33,17 +33,18 @@ Timing: `--runs` runs of each binary, alternating, with an unlimited stack;
 the ratio is median wall time over median wall time. Peak RSS is a separate
 run under /usr/bin/time. Nothing tracked is written except the two outputs:
 
-    bench/corpus-p95-results.json   every candidate, measured or not, and why
-    bench/corpus-p95-report.md      percentiles and the top-20 tail offenders
+    research/perf/corpus-p95-results.json   every candidate, measured or not, and why
+    research/perf/corpus-p95-report.md      percentiles and the top-20 tail offenders
 """
 import argparse, concurrent.futures, json, math, os, platform, re, resource, shutil, signal, statistics, subprocess, sys, tempfile, threading, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCH = os.path.join(ROOT, "bench")
+RESULTS = os.path.join(ROOT, "research", "perf")
 CPL = os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
-REGISTRY = os.path.join(BENCH, "corpus-500-registry.json")
-OUT_JSON = os.path.join(BENCH, "corpus-p95-results.json")
-OUT_MD = os.path.join(BENCH, "corpus-p95-report.md")
+REGISTRY = os.path.join(RESULTS, "corpus-500-registry.json")
+OUT_JSON = os.path.join(RESULTS, "corpus-p95-results.json")
+OUT_MD = os.path.join(RESULTS, "corpus-p95-report.md")
 SIZE_LIMIT = 64 * 1024
 TARGET_P95, TARGET_PORTS = 1.1, 200
 FLOOR_S = 0.010          # below this on both sides a ratio is process start-up noise
@@ -125,7 +126,7 @@ def candidates(only):
     if only:
         found = set(by_problem) | {os.path.basename(p["path"])[:-3] for ports in by_problem.values() for p in ports}
         if only - found:
-            sys.exit(f"--ports: no measurable port for {', '.join(sorted(only - found))} (see bench/corpus-500-registry.json)")
+            sys.exit(f"--ports: no measurable port for {', '.join(sorted(only - found))} (see research/perf/corpus-500-registry.json)")
     for name, ports in by_problem.items():
         ports.sort(key=lambda p: (p["path"] != canonical.get(name), FORM_RANK.get(p["form"], 9), p["path"]))
     return by_problem
@@ -311,7 +312,7 @@ def report(meta, s, rows):
                 "A port under `needs a hand-written generator` reads inside a loop or function, where `cpl bench` has no types to derive a maximum-size input from: "
                 "give it a generator in `SPECS` in `corpus_generators.py` or `rust_max_n_audit.py` and the next sweep measures it."]
     out += ["", "The reason for each file is its `skip` field in the JSON.", ""]
-    triage_path = os.path.join(BENCH, "triage-analysis.md")
+    triage_path = os.path.join(RESULTS, "triage-analysis.md")
     if len(done) >= 50 and os.path.exists(triage_path):
         with open(triage_path) as tf:
             out += ["", tf.read().rstrip(), ""]

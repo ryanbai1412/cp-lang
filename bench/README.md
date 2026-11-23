@@ -23,7 +23,7 @@ temp directory and never write to tracked files. `rust_max_n_audit.py` exits
 non-zero if any port fails, so it can gate CI. To add a port, append a row to
 `SPECS` with a generator `gen(path, big, ctx)` that writes the judge-limit
 input when `big` is true and a medium one for the sanitizer run otherwise.
-Results and findings: `research/max-n-judge-audit-2-rust.md`.
+Results and findings: `research/perf/max-n-judge-audit-2-rust.md`.
 
 ## Corpus p95 benchmark
 
@@ -45,7 +45,7 @@ match: the judge-limit generators of `rust_max_n_audit.py` where one exists,
 otherwise the worst cases `cpl bench` derives from the port's typed `read()`s.
 A full sweep rewrites two files:
 
-- [`corpus-p95-report.md`](corpus-p95-report.md): median, p90, p95, p99 and
+- [`corpus-p95-report.md`](../research/perf/corpus-p95-report.md): median, p90, p95, p99 and
   worst runtime and peak-RSS ratios, the largest emitted file, the top 20
   runtime offenders, and what kept each unmeasured problem out.
 - `corpus-p95-results.json`: every candidate port, with its numbers or the

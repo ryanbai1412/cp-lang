@@ -65,3 +65,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 - Request from diagnostics (2026-11-22): R0301 now reads "`!` on `None`: there is no value here"; `web/content/learn/read/optionals.mdx` quotes the old `none`.
 - Note from tech-debt (2026-11-22, decision 307): `spec/std/` is now `std/` and `crates/prover` is now `crates/cpl-prover` (package name unchanged), in one mechanical commit with every path reference updated. Rebase before editing either; `git` follows the renames. New paths go through `plan/LAYOUT.md`, which `scripts/repo-layout.py` gates.
+- Note from tech-debt (2026-11-22, decision 312): `web/lib/bench.ts` and the performance page link now read `research/perf/corpus-p95-results.json` / `corpus-p95-report.md` (moved from `bench/`).

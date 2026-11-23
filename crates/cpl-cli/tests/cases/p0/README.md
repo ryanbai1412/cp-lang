@@ -14,7 +14,7 @@ One case per silent-wrong-answer bug the scouts and blind critics found in the p
 
 ## Synthesis #2 (`s2_*`)
 
-One case per kernel rule of `research/language-architecture-synthesis-2.md`, plus the format specifiers. Each
+One case per kernel rule of `research/archive/architecture/language-architecture-synthesis-2.md`, plus the format specifiers. Each
 `s2_x.cp` must print `s2_x.out` on both paths (cpc under ASan + UBSan, and cpi); an `s2_x_trap.cp` must stop
 with a runtime error on both. The spellings the synthesis rejects are `../bad/s2_*.cp`.
 
@@ -28,7 +28,7 @@ with a runtime error on both. The spellings the synthesis rejects are `../bad/s2
 
 ## Synthesis #3 (`s3_*`)
 
-One case per leap in `research/language-architecture-synthesis-3.md` (`0.2.2`). Positive cases print `s3_x.out` on both `cpc` (ASan + UBSan) and `cpi` (except `*_cpc` for cpc-only containers); `*_trap` must trap at runtime on both. Negative cases in `../bad/s3_*.cp` lock all four anti-spookiness invariants, strict nominal domain safety on `.get(?I)`, no scalar broadcast, and `const struct` / `if const` checks.
+One case per leap in `research/archive/architecture/language-architecture-synthesis-3.md` (`0.2.2`). Positive cases print `s3_x.out` on both `cpc` (ASan + UBSan) and `cpi` (except `*_cpc` for cpc-only containers); `*_trap` must trap at runtime on both. Negative cases in `../bad/s3_*.cp` lock all four anti-spookiness invariants, strict nominal domain safety on `.get(?I)`, no scalar broadcast, and `const struct` / `if const` checks.
 
 - `s3_multibind_shapes`: homogeneous `let n, m: T = read()`, `var lo, hi: Int = (0, m)`, and `[n]Int` / `[n - 1](...)` input shapes.
 - `s3_narrow_n1`: strictly local syntactic Rule N1 narrowing (`if x != none`, diverging `if x == none: return`, `and`/`or`, `while cur != none`, redundant `!` tolerance).

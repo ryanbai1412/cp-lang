@@ -6,7 +6,7 @@ them. This is a Stage-1 critique pass, in the form of
 [`scout_batch_3/`](../scout_batch_3/): the files in this folder are design
 sketches, and every line the prototype rejects today is marked
 `// WISH Kn`, an item in
-[`research/friction-backlog-batch-5.md`](../../../research/friction-backlog-batch-5.md).
+[`research/archive/frictions/friction-backlog-batch-5.md`](../../../research/archive/frictions/friction-backlog-batch-5.md).
 A marker with another letter is an item of an earlier batch that came up
 again (`F` batch 1, `G` batch 3, `B6` batch 4). A bare `Kn` without `WISH`
 marks a line that is accepted today and misbehaves. (`H` is batch 8's

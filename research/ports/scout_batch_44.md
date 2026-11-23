@@ -37,4 +37,4 @@ All 10 ports pass 30/30 cases (300/300 total) against the compiled original C++ 
 - `dmopc21c2p3` is interactive and the corpus has no statement, so the judge (answer = distance between the guess and the hidden value in the tree where the parent of `x` is `x >> 1`) is inferred from the original's protocol. `check.py` drives the original C++ with that judge, and the original's own `assert(missed % 2 == 0)` holds throughout, which supports the inference. The port and the original must both pin down every hidden value in under 32,000 queries.
 - `dmopc21c4p2` is tested with values up to 20,000 instead of the original's 5,000,000, because building the sieve in the tree-walking interpreter is too slow beyond that.
 
-See `research/friction-backlog-batch-44-dmopc-20-23.md` for the friction analysis.
+See `research/archive/frictions/friction-backlog-batch-44-dmopc-20-23.md` for the friction analysis.

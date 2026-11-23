@@ -4,7 +4,7 @@ Ten constructive, ad-hoc, grid-simulation and implementation-heavy
 submissions from the corpus, re-solved in CP Lang. This is a Stage-1
 critique pass. Nothing in `proto/cpc/` or `crates/` was changed for it.
 What the ports taught us is in
-[`research/friction-backlog-batch-12.md`](../../../research/friction-backlog-batch-12.md).
+[`research/archive/frictions/friction-backlog-batch-12.md`](../../../research/archive/frictions/friction-backlog-batch-12.md).
 
 Nine of the ten build today and agree with their originals:
 

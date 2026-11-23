@@ -1,6 +1,6 @@
 # Blind critic 4: v2.1 one-page cheat-sheet contest-pressure & pivot audit
 
-Eight genuinely hard, previously unported IOI and DMOPC problems (including two messy ad-hoc / heuristic-and-constructive problems), each drafted blind from `docs/one-page-cheat-sheet.md` alone (`*_draft.cp`, preserved verbatim before inspecting `proto/cpc/`, `research/`, `decisions.md`, or `stdlib/`), then ported into runnable `proto/cpc` forms (`<problem>.cp`) and differentially verified against the original accepted C++ submissions. Full findings and recommendations live in [`research/blind-critic-4-v21-audit.md`](../../../research/blind-critic-4-v21-audit.md).
+Eight genuinely hard, previously unported IOI and DMOPC problems (including two messy ad-hoc / heuristic-and-constructive problems), each drafted blind from `docs/one-page-cheat-sheet.md` alone (`*_draft.cp`, preserved verbatim before inspecting `proto/cpc/`, `research/`, `decisions.md`, or `stdlib/`), then ported into runnable `proto/cpc` forms (`<problem>.cp`) and differentially verified against the original accepted C++ submissions. Full findings and recommendations live in [`research/archive/blind-evals/blind-critic-4-v21-audit.md`](../../archive/blind-evals/blind-critic-4-v21-audit.md).
 
 - `ioi11p5` (Dancing Elephants): sqrt-bucket decomposition with periodic rebuilds and online move queries. Original `3469626.cpp`.
 - `ioi22p1` (Fish): sparse 2-state column DP over sorted per-column fish prefix sums (also Drill 1: failing full-pier greedy -> 2-state sparse DP pivot). Original `4785724.cpp`.

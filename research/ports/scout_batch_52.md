@@ -39,9 +39,9 @@ python3 proto/ports/scout_batch_52/test_batch_52.py --cases 50
 Results on current `main`:
 
 - Real Rust `cpl check` on ideal v2.2 ports: **15/15 PASS**.
-- Real Rust `cpl build` on ideal v2.2 ports: **0/15 PASS** (blocked by compiler lowering gaps cataloged in `research/friction-backlog-batch-52-v22-olympiad.md`).
+- Real Rust `cpl build` on ideal v2.2 ports: **0/15 PASS** (blocked by compiler lowering gaps cataloged in `research/archive/frictions/friction-backlog-batch-52-v22-olympiad.md`).
 - Real Rust `cpl build` + `g++ -O2 -fsanitize=address,undefined` differential verification of `today/` ports vs original C++17: **15/15 PASS (750/750 cases, 50 per problem)**.
 
 ## Dual LOC Summary
 
-Across all 15 problems, ideal CP Lang v2.2 cuts **2,531 raw C++ LOC** down to **871 LOC (-65.6%)** and **1,999 library-stripped C++ LOC** down to **871 LOC (-56.4%)**. See `research/friction-backlog-batch-52-v22-olympiad.md` for per-problem breakdowns and concrete language/compiler findings.
+Across all 15 problems, ideal CP Lang v2.2 cuts **2,531 raw C++ LOC** down to **871 LOC (-65.6%)** and **1,999 library-stripped C++ LOC** down to **871 LOC (-56.4%)**. See `research/archive/frictions/friction-backlog-batch-52-v22-olympiad.md` for per-problem breakdowns and concrete language/compiler findings.

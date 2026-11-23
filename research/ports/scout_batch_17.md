@@ -8,7 +8,7 @@ Nothing in `proto/cpc/` or `crates/` was changed.
 The statements come from memory of the published tasks (IOI, APIO, Baltic OI,
 NOI, the AtCoder DP contest). `dmoj.ca/api/v2/problem/<code>` returns only the
 name, limits and tags, and the statement pages sit behind a bot challenge.
-[`research/friction-backlog-batch-17-statement-first.md`](../../../research/friction-backlog-batch-17-statement-first.md)
+[`research/archive/frictions/friction-backlog-batch-17-statement-first.md`](../../../research/archive/frictions/friction-backlog-batch-17-statement-first.md)
 has the findings.
 
 Every file builds with today's prototype and agrees with its original:

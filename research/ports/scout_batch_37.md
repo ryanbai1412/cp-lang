@@ -1,6 +1,6 @@
 # Scout Batch 37 — Hard IOI, NOI and NOIP Contest Classics
 
-Ten previously unported corpus problems from the `ioi*`, `noi*` and `noip*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`). Findings are in `research/friction-backlog-batch-37-ioi-noi.md`.
+Ten previously unported corpus problems from the `ioi*`, `noi*` and `noip*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`). Findings are in `research/archive/frictions/friction-backlog-batch-37-ioi-noi.md`.
 
 Each problem has two files:
 

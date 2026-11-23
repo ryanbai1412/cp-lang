@@ -25,4 +25,4 @@ python3 proto/ports/scout_batch_47/verify.py
 
 All 10/10 runnable `today/` ports compile cleanly via `proto/cp.py build` (on temporary copies) + `g++ -std=c++17 -O2 -fsanitize=address,undefined -fno-sanitize-recover=all` and pass 531 differential, constructive, and live interactive test runs against their original accepted C++ submissions.
 
-See `research/friction-backlog-batch-47-ccc-cco-2.md` for full dual-LOC analysis and v2 design friction findings.
+See `research/archive/frictions/friction-backlog-batch-47-ccc-cco-2.md` for full dual-LOC analysis and v2 design friction findings.

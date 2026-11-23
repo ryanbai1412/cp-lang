@@ -34,9 +34,9 @@ The code as it is on main (read 2026-11-22). Updated in the same commit as any s
 |---|---|
 | `crates/cpl-contest/src/bench.rs` | `cpl bench` dispatch, single-file worst-case bench. |
 | `crates/cpl-contest/src/zero_cost.rs` | `cpl bench --zero-cost`: `bench/zero-cost/<pair>/{abstract,direct}.cp` + `hand.cpp`, 1.05x bar, kernel asm comparison. |
-| `crates/cpl-contest/src/corpus_bench.rs` | `cpl bench --corpus`: `corpus/problems/*` vs `orig.cpp`, writes `bench/corpus-p95-results.json`. |
+| `crates/cpl-contest/src/corpus_bench.rs` | `cpl bench --corpus`: `corpus/problems/*` vs `orig.cpp`, writes `research/perf/corpus-p95-results.json`. |
 
-Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last report `bench/corpus-p95-report.md`), `rust_max_n_audit.py`, `rust_latency_audit.py` (toolchain latency against the P0 budgets: check, run, build, LSP, stress), per-area suites (`bench/trees/`, `bench/ranges/`, ...).
+Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last report `research/perf/corpus-p95-report.md`), `rust_max_n_audit.py`, `rust_latency_audit.py` (toolchain latency against the P0 budgets: check, run, build, LSP, stress), per-area suites (`bench/trees/`, `bench/ranges/`, ...).
 
 ## Interfaces other domains use
 
@@ -48,7 +48,7 @@ Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last r
 | `emit_profiled` | `cpl profile` / `cpl cover` (`crates/cpl-cli/src/profile.rs`) | `crates/cpl-cli/tests/profile.rs` |
 | `explain_closures`, `explain_dropped_fields`, `ClosureMode` | `cpl explain` (`crates/cpl-cli/src/lib.rs`) | `crates/cpl-cli` tests |
 | `Target` (stamp, thread stack, windows) | built from `cpl-judge` profiles; `TARGET_BYTES` 32 KB / `HARD_BYTES` 64 KB in `crates/cpl-judge/src/lib.rs` | `crates/cpl-judge/src/tests.rs` |
-| `bench/corpus-p95-results.json` schema | site (`web/lib/bench.ts`) | `corpus_bench::schema_tests` (both the writer and the committed file, checked against the TS interfaces) |
+| `research/perf/corpus-p95-results.json` schema | site (`web/lib/bench.ts`) | `corpus_bench::schema_tests` (both the writer and the committed file, checked against the TS interfaces) |
 
 What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `NarrowLayout`/`IntWidth`/`ElemLoc`, `pushed::{Feeds, FnSummary}`, `sites::user_stmts`, `walk`.
 
@@ -69,4 +69,4 @@ What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `Narrow
 - `src/ranges.rs` and `src/niche.rs` duplicate fact/layout reasoning that `plan/ARCHITECTURE.md` B3 step 6 moves into `cpl-ir` (shared with the interpreter and `prover`).
 - IR-shape recognizers (`map_remove_do` in `src/expr.rs`) pattern-match lowered blocks; a lowering change silently loses the fast path. They need contract tests in `cpl-ir` or an explicit IR node.
 - Benchmarks are scattered across two Rust runners and four Python scripts in `bench/` with different suites and bars; none runs in `scripts/check.sh`, so perf and size can regress silently.
-- `bench/corpus-p95-report.md` is a 0.2 run at `6145b0b`; nothing current replaces it.
+- `research/perf/corpus-p95-report.md` is a 0.2 run at `6145b0b`; nothing current replaces it.

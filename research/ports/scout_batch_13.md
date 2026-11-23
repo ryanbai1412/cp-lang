@@ -4,7 +4,7 @@ Ten binary-search, two-pointer and divide-and-conquer submissions from the
 corpus, re-solved in CP Lang. This is a Stage-1 critique pass. Nothing in
 `proto/cpc/` or `crates/` was changed for it. What the ports taught us is
 in
-[`research/friction-backlog-batch-13.md`](../../../research/friction-backlog-batch-13.md).
+[`research/archive/frictions/friction-backlog-batch-13.md`](../../../research/archive/frictions/friction-backlog-batch-13.md).
 
 Each problem has a sketch in this folder: the port as it should read. The
 sketches do not build; a `// WISH R3` comment marks a line that needs

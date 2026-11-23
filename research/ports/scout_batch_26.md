@@ -6,7 +6,7 @@ reachability (Kruskal) tree, a mergeable DP, an auxiliary (virtual) tree
 and one interactive problem. This is a Stage-1 critique pass. Nothing in
 `proto/cpc/`, `crates/` or `stdlib/` was changed for it. What the ports
 taught us is in
-[`research/friction-backlog-batch-26-trees.md`](../../../research/friction-backlog-batch-26-trees.md).
+[`research/archive/frictions/friction-backlog-batch-26-trees.md`](../../../research/archive/frictions/friction-backlog-batch-26-trees.md).
 
 Each port was written from the statement first (DMOJ API metadata plus the
 published contest text), then the original was read for the exact input

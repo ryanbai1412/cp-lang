@@ -8,7 +8,7 @@ while this batch was in progress; it is kept because it uses a different
 algorithm (one stack instead of a segment tree), and coci21c1p1 was added
 so that ten ports are new. The friction they showed
 is in
-[`research/friction-backlog-batch-35-coci-coi.md`](../../../research/friction-backlog-batch-35-coci-coi.md)
+[`research/archive/frictions/friction-backlog-batch-35-coci-coi.md`](../../../research/archive/frictions/friction-backlog-batch-35-coci-coi.md)
 (items `K1`...).
 
 The brief asked for ten hard problems. The bucket did not have ten hard

@@ -10,7 +10,7 @@ written and passed the same check, and were dropped because batches 32,
 cco05p6 and btoi16p1 took their place, which makes the batch easier than
 planned. One overlap remains: batch 37 landed with ioi09p5 minutes
 before this batch was pushed, so that problem now has two ports. The friction they showed is in
-[`research/friction-backlog-batch-33-classics.md`](../../../research/friction-backlog-batch-33-classics.md)
+[`research/archive/frictions/friction-backlog-batch-33-classics.md`](../../../research/archive/frictions/friction-backlog-batch-33-classics.md)
 (items `C1`...).
 
 ```sh

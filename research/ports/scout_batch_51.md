@@ -1,6 +1,6 @@
 # Scout Batch 51 — APIO, EGOI, CCO & CCC Classics against CP Lang v2.1
 
-Ten unported, full-score accepted Olympiad submissions from `corpus/submissions/` ported idiomatically to the locked **CP Lang v2.1** spec (`docs/one-page-cheat-sheet.md` at `e7e6794`, `research/language-architecture-v2.1.md`), paired with runnable `today/` implementations verified against the original C++17 submissions.
+Ten unported, full-score accepted Olympiad submissions from `corpus/submissions/` ported idiomatically to the locked **CP Lang v2.1** spec (`docs/one-page-cheat-sheet.md` at `e7e6794`, `research/archive/architecture/language-architecture-v2.1.md`), paired with runnable `today/` implementations verified against the original C++17 submissions.
 
 ## Problem Roster
 
@@ -25,4 +25,4 @@ Run differential verification (326 seeded random and edge-case tests across all 
 python3 proto/ports/scout_batch_51/check.py
 ```
 
-Detailed v2.1 ergonomic findings and remaining friction live in `research/friction-backlog-batch-51-v21-olympiads.md`.
+Detailed v2.1 ergonomic findings and remaining friction live in `research/archive/frictions/friction-backlog-batch-51-v21-olympiads.md`.

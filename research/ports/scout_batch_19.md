@@ -2,7 +2,7 @@
 
 Stage-1 scouting batch targeting 10 previously unported problems from `corpus/` (zero overlap with existing ports, `scout_batch_1`–`scout_batch_18`, `blind_critic_1`, or `blind_critic_2`) across three under-exercised contest surfaces: interactive protocols (stdio and IOI graders), multi-answer constructive outputs requiring custom checkers, and unusual I/O formats (sentinel-terminated multi-test streams, mixed cell alphabets, recursive grammar strings, and verbatim line-oriented input).
 
-Full ergonomic friction analysis and unified core-syntax proposals live in `research/friction-backlog-batch-19-interactive-checker.md`.
+Full ergonomic friction analysis and unified core-syntax proposals live in `research/archive/frictions/friction-backlog-batch-19-interactive-checker.md`.
 
 ## Layout
 

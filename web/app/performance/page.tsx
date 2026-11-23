@@ -104,7 +104,7 @@ export default function Page() {
       <p className="mt-10 text-xs text-muted-foreground">
         Run at <code>{meta.commit}</code> with cpl {meta.cpl_version}, {meta.gxx}, {meta.runs} timed runs per binary,{' '}
         {meta.cpu} ({meta.cores} cores). {summary.measured} of {meta.problems} problems measured. Source:{' '}
-        <a className="underline" href={`${site.github}/blob/main/bench/corpus-p95-report.md`}>bench/corpus-p95-report.md</a>.
+        <a className="underline" href={`${site.github}/blob/main/research/perf/corpus-p95-report.md`}>research/perf/corpus-p95-report.md</a>.
       </p>
     </main>
   );

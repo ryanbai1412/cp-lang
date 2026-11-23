@@ -4,7 +4,7 @@ Ten previously unported corpus problems, each solved twice:
 
 - `<problem>.cp` is the ideal port against the locked v2 spec
   (`docs/one-page-cheat-sheet.md`). These files are not executed; they are the
-  evidence for `research/friction-backlog-batch-32-bsearch-sweep.md`, and every
+  evidence for `research/archive/frictions/friction-backlog-batch-32-bsearch-sweep.md`, and every
   rough spot is marked in place with a `WISH X<n>` comment.
 - `today/<problem>.cp` is a runnable version for the reference interpreter
   (`python3 proto/cp.py lib-run`). It uses only what `proto/cpi` and `stdlib/`

@@ -3,7 +3,7 @@
 //! `@checker` and `@interactor` under `@!multitest`.
 //!
 //! The programs in `tests/debugger/` are Codeforces Round 1132 solutions
-//! from `research/blind-contest-sim-2.md`, two of them with a bug planted;
+//! from `research/archive/blind-evals/blind-contest-sim-2.md`, two of them with a bug planted;
 //! `sum_planted.cp` is a sum with a bug planted for `--explain`.
 
 use std::ffi::OsStr;

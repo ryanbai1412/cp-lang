@@ -35,4 +35,4 @@ python3 proto/ports/scout_batch_36/verify.py
 
 Nine ports compile through `proto/cp.py build` + `g++ -std=c++17 -O2 -fsanitize=address,undefined` and pass 1,040 differential test cases with zero ASan/UBSan diagnostics; `today/cco19p4.cp` (floating-point `Float` + `sqrt`) runs through `proto/cp.py lib-run` and matches `3617807.cpp` within `1e-5` across 45 cases (1,085 total cases).
 
-See `research/friction-backlog-batch-36-ccc-cco.md` for detailed friction findings and concrete code examples.
+See `research/archive/frictions/friction-backlog-batch-36-ccc-cco.md` for detailed friction findings and concrete code examples.

@@ -3,7 +3,7 @@
 Ten hard data-structure and offline-query submissions from the corpus,
 re-solved on top of `stdlib/`. This is a Stage-1 critique pass: nothing in
 `crates/` or `proto/cpc/` was changed, and what the ports taught us is in
-[`research/friction-backlog-batch-7.md`](../../../research/friction-backlog-batch-7.md).
+[`research/archive/frictions/friction-backlog-batch-7.md`](../../../research/archive/frictions/friction-backlog-batch-7.md).
 
 Like batch 2, these files run. They are written for the reference
 interpreter (`proto/cpi/`), and each one is checked against its original:

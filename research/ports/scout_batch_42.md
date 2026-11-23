@@ -37,4 +37,4 @@ python3 proto/ports/scout_batch_42/check.py
 python3 proto/ports/scout_batch_42/loc.py
 ```
 
-Latest run: all 10 ports pass 30/30 randomized differential cases (300/300 total), plus 10/10 brute-only small-value cases on `mccc6s3` and 10/10 brute-only negative/extreme-coordinate cases on `occ19g4`. See `research/friction-backlog-batch-42-mixed-classics.md` for the full friction analysis.
+Latest run: all 10 ports pass 30/30 randomized differential cases (300/300 total), plus 10/10 brute-only small-value cases on `mccc6s3` and 10/10 brute-only negative/extreme-coordinate cases on `occ19g4`. See `research/archive/frictions/friction-backlog-batch-42-mixed-classics.md` for the full friction analysis.

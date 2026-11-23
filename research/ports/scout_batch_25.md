@@ -2,7 +2,7 @@
 
 Stage-1 scouting batch over 10 previously unported problems from `corpus/` (no overlap with the ports that existed when it was picked, `scout_batch_1`–`scout_batch_24`, or `blind_critic_*`; see the note on two later overlaps below): a 64-bit Gray code, three-key ranking, sorted-window greedy, a bit-reversal construction, top-bit recursion, exchange-argument greedy, fracturing search over a heap, bitset subset sum with reconstruction, a constructive whiteboard strategy, and an XOR step on a graph.
 
-The friction analysis is in `research/friction-backlog-batch-25-greedy-bitwise.md`.
+The friction analysis is in `research/archive/frictions/friction-backlog-batch-25-greedy-bitwise.md`.
 
 ## Layout
 

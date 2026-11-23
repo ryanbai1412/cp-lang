@@ -4,7 +4,7 @@ Ten greedy, sorting, two-pointer, sweep-line and coordinate-compression
 submissions from the corpus, re-solved in CP Lang. This is a Stage-1
 critique pass: nothing in `proto/cpc/` or `crates/` was changed for it, and
 what the ports taught us is in
-[`research/friction-backlog-batch-6.md`](../../../research/friction-backlog-batch-6.md).
+[`research/archive/frictions/friction-backlog-batch-6.md`](../../../research/archive/frictions/friction-backlog-batch-6.md).
 
 Each problem is here twice.
 

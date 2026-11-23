@@ -42,8 +42,8 @@ g++ 11 rejects; `gate.sh` falls back to `zig c++` (clang 20) for those.
 upstream, because the archived file does not compile without it.
 
 What was skipped and every piece of friction found is in
-`research/ecnerwala-corpus-wave-1.md` (13 ports, upstream 2026-10-17 and
-later) and `research/ecnerwala-corpus-wave-2.md` (21 ports, back to August
+`research/archive/ecnerwala/ecnerwala-corpus-wave-1.md` (13 ports, upstream 2026-10-17 and
+later) and `research/archive/ecnerwala/ecnerwala-corpus-wave-2.md` (21 ports, back to August
 2026).
 
 Five power-series ports (`ucup5s06a`, `ucup5s05f`, `ucup5s03a`, `cf2268e`,
@@ -51,4 +51,4 @@ Five power-series ports (`ucup5s06a`, `ucup5s05f`, `ucup5s03a`, `cf2268e`,
 `lib.toml` here names the library and `math` is a link to that folder.
 `ucup5s06a` needs `INTERP_TIMEOUT=200 proto/ports/ecnerwala/gate.sh ucup5s06a`,
 because `cpl run` takes 78 s on its n = 100000 sample. What still blocks the
-rest of the corpus, with counts, is in `research/ecnerwala-100pct-roadmap.md`.
+rest of the corpus, with counts, is in `research/archive/ecnerwala/ecnerwala-100pct-roadmap.md`.

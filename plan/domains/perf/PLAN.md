@@ -18,7 +18,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 ## Why these milestones
 
-- M1 first because nothing perf-related is in the gate: every number in this folder can regress silently today, and the last full report (`bench/corpus-p95-report.md`) is a 0.2 run. Without a ratchet, M2/M3 wins don't stick.
+- M1 first because nothing perf-related is in the gate: every number in this folder can regress silently today, and the last full report (`research/perf/corpus-p95-report.md`) is a 0.2 run. Without a ratchet, M2/M3 wins don't stick.
 - M2 before M3 because zero-cost pairs isolate one abstraction each; the tail programs are mostly the same causes (indirect calls, checks, allocation) at scale.
 - M3 is the AGENTS.md goal 3 test, on programs that matter for v0.3.
 

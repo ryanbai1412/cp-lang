@@ -25,4 +25,4 @@ Run the differential harness against all 10 compiled original C++ submissions (3
 python3 proto/ports/scout_batch_43/check.py
 ```
 
-Dual LOC summary across all 10 problems (non-blank, non-comment lines): **1,455** raw C++ LOC -> **798** library-stripped C++ LOC -> **376** v2 CP Lang LOC (**74.2%** raw reduction, **52.9%** library-stripped reduction), and **509** runnable `today/` LOC (**65.0%** raw reduction, **36.2%** library-stripped reduction). Detailed analysis and friction findings live in `research/friction-backlog-batch-43-etsr.md`.
+Dual LOC summary across all 10 problems (non-blank, non-comment lines): **1,455** raw C++ LOC -> **798** library-stripped C++ LOC -> **376** v2 CP Lang LOC (**74.2%** raw reduction, **52.9%** library-stripped reduction), and **509** runnable `today/` LOC (**65.0%** raw reduction, **36.2%** library-stripped reduction). Detailed analysis and friction findings live in `research/archive/frictions/friction-backlog-batch-43-etsr.md`.

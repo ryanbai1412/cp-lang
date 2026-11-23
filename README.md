@@ -84,7 +84,7 @@ prints `3` for the input `3 11` / `1 5 7`.
   and `-` absorb `none`, `min`, `max`, `min=` and `max=` skip it. In the
   emitted C++ a `?Int` is still a 16-byte `std::optional<long long>`;
   packing it into 8 bytes is an open item in
-  [the perf tail profile](research/perf-tail-profile-2.md).
+  [the perf tail profile](research/perf/perf-tail-profile-2.md).
 - **`@memo`.** Write the recurrence as a function. The compiler uses a
   flat table when the parameters are small indices and a salted hash table
   otherwise.
@@ -96,12 +96,12 @@ prints `3` for the input `3 11` / `1 5 7`.
   and `Iterable`.
 
 The reasoning behind each choice is in
-[`research/language-architecture-v2.2.md`](research/language-architecture-v2.2.md)
+[`research/archive/architecture/language-architecture-v2.2.md`](research/archive/architecture/language-architecture-v2.2.md)
 and [`decisions.md`](decisions.md).
 
 ## Measured on real submissions
 
-[`bench/corpus-500-report.md`](bench/corpus-500-report.md) tracks ports of
+[`research/perf/corpus-500-report.md`](research/perf/corpus-500-report.md) tracks ports of
 Ryan's accepted contest submissions:
 
 - **579 unique problems** are ported (971 `.cp` files), out of 747 with
@@ -183,7 +183,7 @@ same compiler. It checks, runs and builds the whole standard library and
 the sample library. `crates/cpl-cli/tests/corpus.rs` checks the corpus
 ports and the prototype's tests; the files it does not pass yet are listed
 there as `PENDING` or `NOT_BUILT`, and
-[`research/friction-queue.md`](research/friction-queue.md) says what each
+[`research/archive/frictions/friction-queue.md`](research/archive/frictions/friction-queue.md) says what each
 one waits on. The example above runs in the interpreter and as
 emitted C++.
 The docs site labels every snippet as either runnable or specification.
@@ -201,7 +201,7 @@ The docs site labels every snippet as either runnable or specification.
 - `corpus/`: canonical problem ports (`corpus/problems/<id>/port.cp`, `dream.cp`,
   `meta.json`), shared libraries (`corpus/lib/`), and raw accepted submissions
   (`corpus/submissions/`).
-- `research/friction-queue.md`: every open friction item from the ports,
+- `research/archive/frictions/friction-queue.md`: every open friction item from the ports,
   clustered, with the next syntax batches.
 - `std/`: the standard library, written in CP Lang.
   `std/README.md` is the tour.

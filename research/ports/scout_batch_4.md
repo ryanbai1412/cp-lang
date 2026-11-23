@@ -8,7 +8,7 @@ tree DP. This is a Stage-1 critique pass. Nothing in `proto/cpc/` or
 Unlike batch 1, every file here builds with today's prototype and agrees
 with its original. Where the prototype forced an awkward line, the port
 keeps that line, and
-[`research/friction-backlog-batch-4.md`](../../../research/friction-backlog-batch-4.md)
+[`research/archive/frictions/friction-backlog-batch-4.md`](../../../research/archive/frictions/friction-backlog-batch-4.md)
 quotes it next to the line we would rather write.
 
 Each port names its original on the `// original:` line of its header.

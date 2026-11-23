@@ -12,7 +12,7 @@ medium input. Tracked files are never written: everything goes to a temp dir.
     python3 bench/rust_max_n_audit.py --ports dpl,noi22p5 --runs 5
     python3 bench/rust_max_n_audit.py --json out.json --list
 
-Write-up: research/max-n-judge-audit-2-rust.md
+Write-up: research/perf/max-n-judge-audit-2-rust.md
 """
 import argparse, json, os, random, resource, signal, statistics, subprocess, sys, tempfile, threading, time
 

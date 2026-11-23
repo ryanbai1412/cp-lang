@@ -4,7 +4,7 @@ Eight corpus problems with no earlier port, each written first from
 `docs/one-page-cheat-sheet.md` alone (`*_draft.cp`, kept as written; seven of the eight do not
 build on `proto/cpc`), then turned into a port that builds on the prototype and agrees with the
 original submission (`<problem>.cp`). The findings are in
-[`research/blind-critic-3-cheatsheet-test.md`](../../../research/blind-critic-3-cheatsheet-test.md).
+[`research/archive/blind-evals/blind-critic-3-cheatsheet-test.md`](../../archive/blind-evals/blind-critic-3-cheatsheet-test.md).
 
 - `noip19p2` (tree + bracket matching, originally a segment tree over the root path): rethought as a stack of open brackets along the DFS path. Original 5127828.
 - `coci21c2p5` (compression + range-add/max tree + two pointers + binary lifting). Original 4143748.

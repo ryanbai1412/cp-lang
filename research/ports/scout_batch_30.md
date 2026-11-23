@@ -25,4 +25,4 @@ Run the differential test harness (80 small + 20 medium random cases per problem
 python3 proto/ports/scout_batch_30/check.py
 ```
 
-All 10 emitted C++17 binaries passed `-fsanitize=address,undefined` with zero errors. See `research/friction-backlog-batch-30-multi-topic.md` for full analysis.
+All 10 emitted C++17 binaries passed `-fsanitize=address,undefined` with zero errors. See `research/archive/frictions/friction-backlog-batch-30-multi-topic.md` for full analysis.

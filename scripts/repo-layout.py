@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LAYOUT = ROOT / "plan" / "LAYOUT.md"
-HEADER = re.compile(r"[Gg]enerated (?:by|from)\b[^\n]*(?:scripts/|\.mjs|tree-sitter|just )")
+HEADER = re.compile(r"(?m)^\W{0,8}[Gg]enerated (?:by|from)\b[^\n]*(?:scripts/|\.mjs|tree-sitter|just )")
 TEXT = {".md", ".txt", ".json", ".mdx", ".c", ".toml", ".cp", ".yml"}
 
 

@@ -1,6 +1,6 @@
 # Scout Batch 40 — Canadian and DMOJ Classics (`cheerio*`, `tle*`)
 
-Five previously unported corpus problems from the `ecoo*`, `dwite*`, `vm7wc*`, `tle*`, `gfssoc*`, `mwc*`, `valentines*` and `cheerio*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`). Findings are in `research/friction-backlog-batch-40-canadian-dmoj.md`.
+Five previously unported corpus problems from the `ecoo*`, `dwite*`, `vm7wc*`, `tle*`, `gfssoc*`, `mwc*`, `valentines*` and `cheerio*` prefix bucket, rethought in CP Lang against the locked v2 spec (`docs/one-page-cheat-sheet.md`). Findings are in `research/archive/frictions/friction-backlog-batch-40-canadian-dmoj.md`.
 
 The batch was asked for ten problems. The bucket holds only ten codes in `corpus/submissions/info.json`, and five of them were not eligible:
 

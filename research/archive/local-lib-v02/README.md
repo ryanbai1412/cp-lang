@@ -30,7 +30,7 @@ YES
 ## What is in it, and why it is not in `std`
 
 The standard library holds what most contests need most of the time. The
-locked **CP Lang 0.2.2** architecture (`research/language-architecture-v2.2.md`)
+locked **CP Lang 0.2.2** architecture (`research/archive/architecture/language-architecture-v2.2.md`)
 keeps `std` small enough to know by heart by placing specialized
 structures and algorithms — including the 11 0.2.2 relocations (`MonoDeque`,
 `Steps`, `TwoSat`, `Mat`, `palindromes`, `shortest`/`walk_back`, `mst`,

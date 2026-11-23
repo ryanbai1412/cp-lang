@@ -42,7 +42,7 @@ export interface Bench {
 }
 
 export function bench(): Bench {
-  return JSON.parse(readFileSync(join(process.cwd(), '../bench/corpus-p95-results.json'), 'utf8'));
+  return JSON.parse(readFileSync(join(process.cwd(), '../research/perf/corpus-p95-results.json'), 'utf8'));
 }
 
 export function histogram(values: number[], edges: number[]) {

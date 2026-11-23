@@ -50,7 +50,7 @@ const PENDING: &[&str] = &[
 
 /// Files the checker takes and lowering does not: until `cpl check` ran
 /// lowering too, it called these clean while `cpl run` and `cpl build`
-/// rejected them (`research/anti-slop-audit-1.md`, finding 1). Each is a
+/// rejected them (`research/archive/audits/anti-slop-audit-1.md`, finding 1). Each is a
 /// gap in `cpl-ir` or the standard library, listed so that it is seen. A
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.

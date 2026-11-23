@@ -30,4 +30,4 @@ The script copies each `today/*.cp` to a temporary directory, builds it with `pr
 
 Generator limits that come from the original, not from the port: `egoi22p5` keeps counts inside 32 bits, and `egoi23p6` stops at `n = 30` because the original puts its DP table on the stack.
 
-The dual LOC numbers and the friction found are in `research/friction-backlog-batch-48-olympiads-2.md`.
+The dual LOC numbers and the friction found are in `research/archive/frictions/friction-backlog-batch-48-olympiads-2.md`.

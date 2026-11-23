@@ -2,7 +2,7 @@
 
 VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, type-aware completion, signature help, inlay hints, go-to-definition, find-references, rename, document symbols and quick fixes), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
 
-The language surface follows `docs/one-page-cheat-sheet.md`, `research/language-architecture-v2.2.md`, and `decisions.md` §16–§19; editor UX follows `plan/60-editor.md`.
+The language surface follows `docs/one-page-cheat-sheet.md`, `research/archive/architecture/language-architecture-v2.2.md`, and `decisions.md` §16–§19; editor UX follows `plan/60-editor.md`.
 
 ## Install and develop
 

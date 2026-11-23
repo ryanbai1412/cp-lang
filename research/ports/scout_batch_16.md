@@ -14,7 +14,7 @@ for a Stage-1 friction pass over two blind spots:
 
 None of the ten is in `proto/ports/` or an earlier scout batch. The
 friction they showed is in
-[`research/friction-backlog-batch-16.md`](../../../research/friction-backlog-batch-16.md)
+[`research/archive/frictions/friction-backlog-batch-16.md`](../../../research/archive/frictions/friction-backlog-batch-16.md)
 (items `M1`... for the bare core, `Q1`... for stress generation).
 
 Seven ports run today on the reference interpreter and are checked against

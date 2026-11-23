@@ -16,7 +16,7 @@ submissions inspected to verify I/O details, build runnable `today/` ports,
 run randomized differential tests, and compare algorithms and max-N risks.
 
 The full prose-and-snippet findings live in
-[`research/friction-backlog-batch-18-statement-first.md`](../../../research/friction-backlog-batch-18-statement-first.md).
+[`research/archive/frictions/friction-backlog-batch-18-statement-first.md`](../../../research/archive/frictions/friction-backlog-batch-18-statement-first.md).
 
 ## Problems
 

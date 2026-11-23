@@ -7,7 +7,7 @@
 //!   - when `perf.cp` exists beside `spec.cp`/`port.cp`, uses it as the tuned
 //!     variant, verifies it passes the problem's tests, and requires <= 1.1x
 //!
-//! Writes `bench/corpus-p95-results.json` in the schema `web/lib/bench.ts`
+//! Writes `research/perf/corpus-p95-results.json` in the schema `web/lib/bench.ts`
 //! consumes.
 
 use std::io::Write;
@@ -20,7 +20,7 @@ use cpl_json::escape_string as json_string;
 use crate::zero_cost::emit_cpp;
 
 const DEFAULT_CORPUS_DIR: &str = "corpus/problems";
-const DEFAULT_OUT_JSON: &str = "bench/corpus-p95-results.json";
+const DEFAULT_OUT_JSON: &str = "research/perf/corpus-p95-results.json";
 const DEFAULT_RUNS: usize = 5;
 const FLOOR_S: f64 = 0.010;
 const BAR_P50: f64 = 1.0;

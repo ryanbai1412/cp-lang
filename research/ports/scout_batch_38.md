@@ -25,4 +25,4 @@ python3 proto/ports/scout_batch_38/check.py
 
 Nine ports compile and run through `proto/cpc` (`proto/cp.py build` + `g++ -O2`), and `today/dpf.cp` runs through `proto/cpi` (`proto/cp.py lib-run`) because `proto/cpc` does not yet index `Str`. During differential testing on `apio09p1`, the harness caught a real out-of-bounds heap read (`ans[n]` when `k == 1`) in the accepted C++ submission `5536569.cpp`; `check.py` therefore validates `k == 1` against an exact brute-force oracle and `k >= 2` against both brute force and `5536569.cpp`.
 
-See `research/friction-backlog-batch-38-olympiads.md` for full dual LOC measurements and v2 friction analysis.
+See `research/archive/frictions/friction-backlog-batch-38-olympiads.md` for full dual LOC measurements and v2 friction analysis.

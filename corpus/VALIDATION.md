@@ -27,7 +27,7 @@ Picked to cover the language, not at random:
 - the largest, which stress the 64 KB budget and program structure;
 - recent first (2023-2024), since they reflect the user's current style.
 
-`research/mine.py` and friends find candidates by these criteria.
+`research/archive/scripts/mine.py` and friends find candidates by these criteria.
 
 ### The test oracle
 
@@ -171,7 +171,7 @@ The compiler itself needs:
 ## 8.7 Friction
 
 Every awkward spot found while porting is written down in
-`research/friction.md` with the submission that showed it, and becomes a
+`research/archive/frictions/friction.md` with the submission that showed it, and becomes a
 design change, a stdlib addition, or a recorded decision not to change.
 Design changes are logged in `decisions.md` with the motivating port.
 Friction is the signal the user cares most about: "any awkwardness and

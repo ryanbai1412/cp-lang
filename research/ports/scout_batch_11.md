@@ -6,7 +6,7 @@ recurrence found from small cases, CRT, sieves, a Mobius sum, modular
 counting and polynomial interpolation. This is a Stage-1 critique pass.
 Nothing in `proto/cpc/` or `crates/` was changed for it. What the ports
 taught us is in
-[`research/friction-backlog-batch-11.md`](../../../research/friction-backlog-batch-11.md).
+[`research/archive/frictions/friction-backlog-batch-11.md`](../../../research/archive/frictions/friction-backlog-batch-11.md).
 
 Every file here runs today and agrees with its original:
 

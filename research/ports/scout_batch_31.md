@@ -11,7 +11,7 @@ Each problem has two files:
   `Str`, parallel tuple assignment and the stdlib searches. These are design
   sketches; places where the spec had no obvious answer carry a `// FRICTION`
   marker that matches an item in
-  `research/friction-backlog-batch-31-grids-sim.md`.
+  `research/archive/frictions/friction-backlog-batch-31-grids-sim.md`.
 - `today/<problem>.cp` is the same algorithm in the subset the prototype runs
   now, checked against the original C++.
 

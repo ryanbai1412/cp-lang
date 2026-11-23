@@ -3,7 +3,7 @@
 Ten hard graph, tree and range-query submissions from the corpus, re-solved
 on top of `stdlib/`. This is a Stage-1 critique pass: nothing in `crates/`
 or `proto/cpc/` was changed, and what the ports taught us is in
-[`research/friction-backlog-batch-2.md`](../../../research/friction-backlog-batch-2.md).
+[`research/archive/frictions/friction-backlog-batch-2.md`](../../../research/archive/frictions/friction-backlog-batch-2.md).
 
 Unlike batch 1, these files run. They are written for the reference
 interpreter (`proto/cpi/`), which is the only prototype that accepts

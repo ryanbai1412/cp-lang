@@ -319,8 +319,8 @@ Tooling:
 - **Prototype:** a Python compiler in `proto/cpc/`, since deleted. It was partial: no
   generators and no rollback, it still parses `pure fn`, and it still runs
   multitest through `fn solve()`.
-- **Research:** `research/NOTES.md` has the data and
-  `research/RECOMMENDATIONS.md` has proposals for borrows, generators, domain
+- **Research:** `research/archive/NOTES.md` has the data and
+  `research/archive/RECOMMENDATIONS.md` has proposals for borrows, generators, domain
   strictness and checks.
 - **Approved on 2026-11-20:** `plan/19-index-and-lends.md` (1.10): one
   mechanism for `domain`, `Str`, `Grid` and `Perm`, projections (`lends`),

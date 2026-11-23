@@ -7,7 +7,7 @@ biconnected components / bridges / articulation points, SCC condensation +
 virtual trees, and rollback bipartite connectivity. None overlaps
 `proto/ports/` or any other scout batch (`scout_batch_1`–`scout_batch_16` or
 `blind_critic_1`). The friction backlog is in
-[`research/friction-backlog-batch-15.md`](../../../research/friction-backlog-batch-15.md)
+[`research/archive/frictions/friction-backlog-batch-15.md`](../../../research/archive/frictions/friction-backlog-batch-15.md)
 (items `N1`–`N11`).
 
 Every port runs today on the reference interpreter (`proto/cp.py lib-run`) and

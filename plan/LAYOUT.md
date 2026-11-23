@@ -92,7 +92,7 @@ Each crate has a `README.md`: job, invariants, where its tests are. No `.rs` fil
 | `bench/*.py` | Corpus-wide timing harnesses and generators. |
 | `bench/goal_tests/`, `bench/repros/` | Goal-test harnesses and perf repros. |
 
-Results belong in `research/perf/` (see Moves).
+Results are not stored here: they go to `research/perf/`.
 
 ## `examples/`: runnable example programs
 
@@ -159,7 +159,9 @@ Results belong in `research/perf/` (see Moves).
 
 | Path | Job |
 |---|---|
+| `research/README.md` | Index: what each folder holds and whether it is current. |
 | `research/PORTS.md` | Generated port table. |
+| `research/perf/` | Corpus runtime results and perf reports. |
 | `research/scoreboard.json` | Conformance and diff ratchet baseline. |
 | `research/reviews/` | Taste reviews and their baseline. |
 | `research/frictions/`, `research/retros/`, `research/design-history/` | Friction log, retros, design debates. |
@@ -170,6 +172,4 @@ Results belong in `research/perf/` (see Moves).
 | Today | Target | Step |
 |---|---|---|
 | `decisions.md` | `plan/DECISIONS.md` (current) + `research/archive/decisions-log.md` | 3 |
-| `bench/*-results.json`, `bench/*-report.md`, `bench/*-registry.json`, `bench/triage-analysis.md`, `research/perf/` | `research/perf/` | 4 |
-| ~140 flat `research/*.md` | topic folders and `research/archive/`, indexed by `research/README.md` | 4 |
 | 11 crates without `README.md` | one each | 5 |

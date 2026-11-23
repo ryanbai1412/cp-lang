@@ -8,7 +8,7 @@ here is the DMOJ API metadata (name, limits, types) plus the well-known
 contest task.
 
 The findings are in
-[`research/friction-backlog-batch-20-statement-first.md`](../../../research/friction-backlog-batch-20-statement-first.md)
+[`research/archive/frictions/friction-backlog-batch-20-statement-first.md`](../../../research/archive/frictions/friction-backlog-batch-20-statement-first.md)
 under item numbers `W1` through `W16`.
 
 ## The ports

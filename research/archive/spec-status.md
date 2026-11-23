@@ -11,7 +11,7 @@ Ryan's plan, in order (his words are in `plan/agent-context.md`):
 1. **Write the whole spec.** Done as a draft: `spec/README.md` indexes 14 core
    chapters, the library chapters in `lib/`, the tool contracts in `tools/`,
    and about 1,700 documented signatures in `std/` (bodies are `todo`).
-2. **One independent review.** Done: `research/spec-review-0.3.0.md`. Its findings were
+2. **One independent review.** Done: `research/archive/architecture/spec-review-0.3.0.md`. Its findings were
    folded in and logged in `decisions.md`.
 3. **Hill-climb against 100 problems.** Done once over all 100 in
    `corpus/hillclimb.json`. Each has a blind `dream.cp` and a `spec.cp`

@@ -3,7 +3,7 @@
 Corpus submissions re-solved the way we would like to write them. This is
 a Stage-1 critique pass: the files are design sketches, not regression
 ports. Every line that the prototype rejects today is marked `// WISH Fn`,
-and `Fn` is an item in [`research/friction-backlog.md`](../../../research/friction-backlog.md).
+and `Fn` is an item in [`research/archive/frictions/friction-backlog.md`](../../../research/archive/frictions/friction-backlog.md).
 
 The batch had ten sketches. The first Stage-2 sprint landed what eight of
 them needed, and those moved up to `proto/ports/`, where

@@ -4,7 +4,7 @@ Eleven game-theory, counting, modular-arithmetic, bitset and
 meet-in-the-middle submissions from the corpus, re-solved in CP Lang. This is a Stage-1 critique pass. Nothing
 in `proto/cpc/` or `crates/` was changed for it. What the ports taught us
 is in
-[`research/friction-backlog-batch-8.md`](../../../research/friction-backlog-batch-8.md).
+[`research/archive/frictions/friction-backlog-batch-8.md`](../../../research/archive/frictions/friction-backlog-batch-8.md).
 
 Every file here runs today and agrees with its original:
 

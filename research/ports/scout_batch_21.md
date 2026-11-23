@@ -4,7 +4,7 @@ Ten geometry, sweepline, probability and expected-value submissions from
 the corpus, re-solved in CP Lang. This is a Stage-1 critique pass. Nothing
 in `proto/cpc/` or `crates/` was changed for it. What the ports taught us
 is in
-[`research/friction-backlog-batch-21.md`](../../../research/friction-backlog-batch-21.md).
+[`research/archive/frictions/friction-backlog-batch-21.md`](../../../research/archive/frictions/friction-backlog-batch-21.md).
 
 Every port runs today on the reference interpreter (`proto/cp.py
 lib-run`), which has `Float`, and `check.py` compares each one with its

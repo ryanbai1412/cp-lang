@@ -34,4 +34,4 @@ python3 proto/ports/scout_batch_34/check.py dmopc21c2p6 60
 
 All 10 ports pass 30/30 cases (300/300 total) against the compiled original C++ submissions. For `dmopc20c6p6`, `check.py` compiles `5200785.cpp` with `-DLOCAL` and compares the recovered capacity vector `A c_1 ... c_n` while `today/dmopc20c6p6.cp` also asserts `cap == hidden` and `queries <= 4 * n`.
 
-See `research/friction-backlog-batch-34-usaco-dmopc.md` for the full friction analysis and multi-feature collision notes.
+See `research/archive/frictions/friction-backlog-batch-34-usaco-dmopc.md` for the full friction analysis and multi-feature collision notes.

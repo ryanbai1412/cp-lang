@@ -9,13 +9,13 @@ Suggested order: state and effects (5) first, since several open items in
 2, 4 and 6 depend on the borrow rules.
 
 **Update, 2026-11-20 (Wave 2 — v2 Spec Lock).** Stage 2 Wave 2 reconciled Wave 1
-(`research/language-architecture-synthesis.md`), Stage 3's 18 subtraction cuts
-(`research/subtraction-audit-1.md`), Stage 4's 7 syntax bakeoff winners
-(`research/syntax-bakeoff-1.md`), Stage 5's debug/pivot and cheat-sheet audits
-(`research/blind-critic-2-debug-pivot.md`, `research/blind-critic-3-cheatsheet-test.md`),
-Stage 6's max-N judge audit (`research/max-n-judge-audit-1.md`), the bug-fix
+(`research/archive/architecture/language-architecture-synthesis.md`), Stage 3's 18 subtraction cuts
+(`research/archive/audits/subtraction-audit-1.md`), Stage 4's 7 syntax bakeoff winners
+(`research/archive/architecture/syntax-bakeoff-1.md`), Stage 5's debug/pivot and cheat-sheet audits
+(`research/archive/blind-evals/blind-critic-2-debug-pivot.md`, `research/archive/blind-evals/blind-critic-3-cheatsheet-test.md`),
+Stage 6's max-N judge audit (`research/perf/max-n-judge-audit-1.md`), the bug-fix
 sprint (`6f113c3`, `7d1c976`), and scout batches 15 and 17–22 into one
-contradiction-free **CP Lang v2 spec** (`research/language-architecture-v2.md`
+contradiction-free **CP Lang v2 spec** (`research/archive/architecture/language-architecture-v2.md`
 and `docs/one-page-cheat-sheet.md`). §16 locks the v2 decisions and lists the
 rows revised below.
 
@@ -50,13 +50,13 @@ G7, G8):
 | 1.1 | `Int` width and range | Settled | 64-bit, `MIN = -(2^63-1)`, `LLONG_MIN` is the `?Int` niche | | plan/00-vision.md G9 |
 | 1.2 | Range types pick storage width | Settled | `0..=1e9` stores in 4 bytes; `Packed<...>` only when explicit | | plan/13-abstraction.md M7b |
 | 1.3 | Optionals and niches | Revised 2026-11-20 (v2.2) | `?T`, niche when the type has a spare value, else a flag; **`?T` does NOT implement `Ord`** (`==`/`!=` auto-lift `T` to `?T`). **Tropical Optional Rule:** `min`/`max`/`min=`/`max=` skip `none` (mixed `(T, ?T) -> T`); binary `+`/`-` and unary `-` on `?Int`/`?F64` absorb `none` (`*`/`/`/`%`/`sum`/`+=`/`-=` never lift); diverging RHS (`return`/`break`/`continue`) supported on `??`; unparenthesized `??` mixed with arithmetic is an error; explicit poison-failure check required when `none` means failure inside `min=` | 1.1, 1.5 | §16.9, §18.1, §19.5, §19.10 |
-| 1.4 | Structs, records, enums | Revised 2026-11-20 (v2) | auto constructors, payload enums, exhaustive `match`; `with` struct update deleted (use `var` copy + field assign); `Ord` derived only when all fields are `Ord` | | §16, research/language-architecture-v2.md |
-| 1.5 | Float semantics | Locked v2 (2026-11-20) | `F64` (8-B IEEE double, no `long double`); quiet-NaN niche (`?F64` is 8 B; NaN & Inf trap locally, making `<` total in checked runs); `1e18` stays `Int`, `.` marks `F64`; integer literals unify, `Int` vars need `F64(x)`; `Int(x)` refused on `F64` (use `floor`/`ceil`/`round`/`trunc`); bare `print(x)` of `F64` is an error (use `"{x:.6f}"`, never `-0.00`); `==`/`!=` lint toward `close(a, b, eps)`/`sign(x, eps)` (exempting `== 0.0`); intrinsics `sqrt`/`sin`/`cos`/`tan`/`atan2`/`exp`/`ln`/`hypot`/`PI` | 1.3 | §16.1, research/friction-backlog-batch-21.md |
-| 1.6 | Strings | Revised 2026-11-20 (v2) | **ASCII only** (`Char` = 1 byte, zero UTF-8, non-ASCII literal is an error). Default `Str` is a flat `0..len`-indexed ASCII byte sequence (`s[i]`, `s[l..r]`, `s.push`, `s + t`, `s * k`, `s.starts_with(x, at: i)`, `s.split_once`, `s.parse_int`). Opt-in `[domain S]Char = read()` stays for multi-string nominal-domain DP | 2.14 | §16, research/syntax-bakeoff-1.md Fork 4 |
-| 1.7 | Numeric types (`Int`, `U64`, `I128`, `F64`) | Revised 2026-11-20 (v2) | **4 numeric types only**: `Int` (symmetric 64-bit; range types pack to 1/2/4 B), `U64` (wrapping 64-bit), `I128` (explicit 128-bit), `F64`. `I32`, `I64`, `U8`, `U32` deleted | 1.1, 1.2 | §16, research/subtraction-audit-1.md Cut 8 |
+| 1.4 | Structs, records, enums | Revised 2026-11-20 (v2) | auto constructors, payload enums, exhaustive `match`; `with` struct update deleted (use `var` copy + field assign); `Ord` derived only when all fields are `Ord` | | §16, research/archive/architecture/language-architecture-v2.md |
+| 1.5 | Float semantics | Locked v2 (2026-11-20) | `F64` (8-B IEEE double, no `long double`); quiet-NaN niche (`?F64` is 8 B; NaN & Inf trap locally, making `<` total in checked runs); `1e18` stays `Int`, `.` marks `F64`; integer literals unify, `Int` vars need `F64(x)`; `Int(x)` refused on `F64` (use `floor`/`ceil`/`round`/`trunc`); bare `print(x)` of `F64` is an error (use `"{x:.6f}"`, never `-0.00`); `==`/`!=` lint toward `close(a, b, eps)`/`sign(x, eps)` (exempting `== 0.0`); intrinsics `sqrt`/`sin`/`cos`/`tan`/`atan2`/`exp`/`ln`/`hypot`/`PI` | 1.3 | §16.1, research/archive/frictions/friction-backlog-batch-21.md |
+| 1.6 | Strings | Revised 2026-11-20 (v2) | **ASCII only** (`Char` = 1 byte, zero UTF-8, non-ASCII literal is an error). Default `Str` is a flat `0..len`-indexed ASCII byte sequence (`s[i]`, `s[l..r]`, `s.push`, `s + t`, `s * k`, `s.starts_with(x, at: i)`, `s.split_once`, `s.parse_int`). Opt-in `[domain S]Char = read()` stays for multi-string nominal-domain DP | 2.14 | §16, research/archive/architecture/syntax-bakeoff-1.md Fork 4 |
+| 1.7 | Numeric types (`Int`, `U64`, `I128`, `F64`) | Revised 2026-11-20 (v2) | **4 numeric types only**: `Int` (symmetric 64-bit; range types pack to 1/2/4 B), `U64` (wrapping 64-bit), `I128` (explicit 128-bit), `F64`. `I32`, `I64`, `U8`, `U32` deleted | 1.1, 1.2 | §16, research/archive/audits/subtraction-audit-1.md Cut 8 |
 | 1.8 | Bit operations & power | Locked v2 (2026-11-20) | `&`, `\|`, `^` (XOR), `~`, `<<`, `>>`, plus `&=`, `\|=`, `^=`, `<<=`, `>>=`; `**` is power (never `^`); `popcount`, `ctz`, `clz`, `bit_len`; shifts reaching bit 63 on `Int` suggest `U64` | 1.7 | §16, docs/one-page-cheat-sheet.md |
 | 1.9 | Integer division and modulo | Settled 2026-11-20 | **Euclidean everywhere**: `a / b` and `a % b` satisfy `a == (a / b) * b + a % b` with `0 <= a % b < abs(b)`, so `a % b` is never negative, for negative `a` and for negative `b`. (`//` is not an operator: it starts a comment.) When the range checker proves `a >= 0` and `b > 0`, both lower to the native C++ `/` and `%` with no extra code; otherwise to the two-instruction fix-up (`cp_ediv` / `cp_emod`). `Int` is symmetric (1.1), so `Int.MIN / -1 == Int.MAX` and only `b == 0` stops the program | 1.1 | plan/11-values-and-types.md |
-| 1.10 | `??=` null-coalescing assignment | Locked v2 (2026-11-20) | `place ??= expr` evaluates `expr` lazily only when `place` is `none`, stores it, and lends the value (`(m[k] ??= []).push(x)`). No silent auto-vivification on method calls | 1.3 | §16, research/language-architecture-v2.md |
+| 1.10 | `??=` null-coalescing assignment | Locked v2 (2026-11-20) | `place ??= expr` evaluates `expr` lazily only when `place` is `none`, stores it, and lends the value (`(m[k] ??= []).push(x)`). No silent auto-vivification on method calls | 1.3 | §16, research/archive/architecture/language-architecture-v2.md |
 
 ## 2. Index spaces
 
@@ -68,26 +68,26 @@ G7, G8):
 | 2.4 | Slices | Settled, revised 2026-11-20 | `a[s]` is a library projection that lends a slice. A slice is indexed by the positions of its array (`V`), with a window check unless proven; **`Sub<V>` is removed**. The window is a value, the slice is a lend: fns return ranges, callers apply them | 5.12 | plan/19-index-and-lends.md §4.2 |
 | 2.5 | Product and fresh domains | Settled, revised 2026-11-20 | `(A, B)` is an `Index` everywhere (`for p in Cell`, `[Cell]T`, `Dsu<Cell>`, `bfs`, `@memo`), and `a[i, j]` is sugar for `a[(i, j)]`; `domain D` in a signature or binding introduces a fresh index type that can't leave its block (`compress`, `scc`, `freeze`) | 2.16 | plan/19-index-and-lends.md §3.2, §4.3 |
 | 2.6 | Domains that depend on a value | Open | e.g. "children of `v`" as a domain; deferred — `tree.children(v)` covers the common case without dependent domain syntax | 3.x | design-v2 C2 |
-| 2.7 | Growable arenas & `freeze()` | Revised 2026-11-20 (v2) | **`Pool<T>`, `Pool<Node<_>>`, `PoolMap`, and `Handle` deleted.** Use `type Id = 0..=MAX` (4-byte handle + 4-byte niche `?Id`) with `List<Node>`, `.push_id(x)`, `??=`, and `xs.freeze() -> (domain D, [D]T)` | 1.2, 2.5 | §16, research/subtraction-audit-1.md Cut 6 |
-| 2.8 | Conversions between related domains | Settled, revised 2026-11-20 | strict, **no implicit conversion at all**: every conversion is a named method (`v.l`, `pre.vertex`, `V(x)`) | 2.4 | research/RECOMMENDATIONS.md §3, plan/19-index-and-lends.md §4.2 |
+| 2.7 | Growable arenas & `freeze()` | Revised 2026-11-20 (v2) | **`Pool<T>`, `Pool<Node<_>>`, `PoolMap`, and `Handle` deleted.** Use `type Id = 0..=MAX` (4-byte handle + 4-byte niche `?Id`) with `List<Node>`, `.push_id(x)`, `??=`, and `xs.freeze() -> (domain D, [D]T)` | 1.2, 2.5 | §16, research/archive/audits/subtraction-audit-1.md Cut 6 |
+| 2.8 | Conversions between related domains | Settled, revised 2026-11-20 | strict, **no implicit conversion at all**: every conversion is a named method (`v.l`, `pre.vertex`, `V(x)`) | 2.4 | research/archive/RECOMMENDATIONS.md §3, plan/19-index-and-lends.md §4.2 |
 | 2.9 | Stepping positions | Revised 2026-11-21 (v0.3) | `v.next` / `v.prev` (`?V`) and `v.next(k)` / `v.prev(k)`, the same on cuts. `v + k` is an `Int`; getting back is explicit (`v.next`, `V(x)`, `V.at(x)`). `V.wrap(x)` for rings | | spec/core/04-indices.md R04.3 |
 | 2.10 | Self-reading tables | Leaning | allowed only for cells provably filled already | | plan/12-domains-and-sequences.md §4 |
-| 2.11 | Escape hatch from domain checks | Settled | explicit and greppable: `a.raw[i]` with an `Int` index; never implicit. `a.raw` is a library projection lending the same storage indexed by `0..K`. With `unchecked:` (7.1) and raw intrinsics these are the contest escape hatches of G15 | 2.1 | research/RECOMMENDATIONS.md §3 |
+| 2.11 | Escape hatch from domain checks | Settled | explicit and greppable: `a.raw[i]` with an `Int` index; never implicit. `a.raw` is a library projection lending the same storage indexed by `0..K`. With `unchecked:` (7.1) and raw intrinsics these are the contest escape hatches of G15 | 2.1 | research/archive/RECOMMENDATIONS.md §3 |
 | 2.12 | `Name<` generics vs less-than | Leaning | capitalized name and a tentative type-argument parse closed by `>`; otherwise a comparison (`INF < x`) | | compiler/03-parsing.md, plan/17-syntax.md |
-| 2.13 | Generic type arguments & inference | Locked v2 (2026-11-20) | Bidirectional unification of non-closure args (`from:`, `root:`, `g`) before closures removes ~90% of explicit type args; `f::<T>()` is the unambiguous fallback (`f<T>()` stays an error). Generic fn definitions always write `<D>` explicitly (implicit single-letter generics deleted) | 2.12 | §16, research/syntax-bakeoff-1.md Fork 2 |
+| 2.13 | Generic type arguments & inference | Locked v2 (2026-11-20) | Bidirectional unification of non-closure args (`from:`, `root:`, `g`) before closures removes ~90% of explicit type args; `f::<T>()` is the unambiguous fallback (`f<T>()` stays an error). Generic fn definitions always write `<D>` explicitly (implicit single-letter generics deleted) | 2.12 | §16, research/archive/architecture/syntax-bakeoff-1.md Fork 2 |
 | 2.14 | `[domain]T` packages | Revised 2026-11-20 (v2) | an array stored with a fresh index type of its own; binding one opens it as `[x.Idx]T`. Serves opt-in `[domain S]Char` and jagged rows (`List<[domain]Int>`); default `Str` is `0..len`-indexed ASCII bytes (1.6) | 1.6, 2.5 | §16, plan/19-index-and-lends.md §4.4 |
 | 2.15 | Indexing is a trait | Settled 2026-11-20 | `a[i]` is `Indexed<I>.at`, a projection; `[I]T` is sugar for the library struct `Array<I, T>`, and grids and permutations are library code over it | 3.5, 5.12 | plan/19-index-and-lends.md §3.3, §7 |
-| 2.16 | Algebraic `Index` derivation | Locked v2 (2026-11-20) | 5 strictly O(1), `Copy` finite shapes derive `Index` automatically: `Bool`, unit/payload `enum` (computed on demand, solving typed `FlowGraph<Node>`), `?T` (`T: Index`), bounded ranges `lo..hi`/`lo..=hi` (structural equality for identical bounds in scope), and tuples/records `(A, B)`, plus `Subset<D>`. `[D]E: Index` deleted | 2.1, 3.5 | §16, research/subtraction-audit-1.md Cut 5 |
+| 2.16 | Algebraic `Index` derivation | Locked v2 (2026-11-20) | 5 strictly O(1), `Copy` finite shapes derive `Index` automatically: `Bool`, unit/payload `enum` (computed on demand, solving typed `FlowGraph<Node>`), `?T` (`T: Index`), bounded ranges `lo..hi`/`lo..=hi` (structural equality for identical bounds in scope), and tuples/records `(A, B)`, plus `Subset<D>`. `[D]E: Index` deleted | 2.1, 3.5 | §16, research/archive/audits/subtraction-audit-1.md Cut 5 |
 
 ## 3. Abstraction mechanisms
 
 | # | Decision | Status | Current lean | Depends on | Where |
 |---|---|---|---|---|---|
-| 3.1 | Traits vs operation values | Revised 2026-11-20 (v2) | Bare operators (`+`, `*`, `^`, `&`, `\|`, `min`, `max`, `gcd`), `(id, op)` pairs, `desc(x)`, and `Action` (for `LazySegTree`); contestant algebraic wrapper zoo (`Sum`/`Max`/`Order`/`Semiring`/etc.) deleted | | §16, research/subtraction-audit-1.md Cut 15 |
+| 3.1 | Traits vs operation values | Revised 2026-11-20 (v2) | Bare operators (`+`, `*`, `^`, `&`, `\|`, `min`, `max`, `gcd`), `(id, op)` pairs, `desc(x)`, and `Action` (for `LazySegTree`); contestant algebraic wrapper zoo (`Sum`/`Max`/`Order`/`Semiring`/etc.) deleted | | §16, research/archive/audits/subtraction-audit-1.md Cut 15 |
 | 3.2 | Specialization | Settled | per type and per fn identity; runtime-chosen code is an error | | plan/13-abstraction.md M3 |
-| 3.3 | `dyn` escape hatch | Deleted 2026-11-20 (v2) | Removed from the language (`0` uses across 299 ports); static specialization only | 3.2 | §16, research/subtraction-audit-1.md Cut 9 |
+| 3.3 | `dyn` escape hatch | Deleted 2026-11-20 (v2) | Removed from the language (`0` uses across 299 ports); static specialization only | 3.2 | §16, research/archive/audits/subtraction-audit-1.md Cut 9 |
 | 3.4 | Laws | Settled | declared on operation types, checked by `cpl test` and debug runs | | plan/13-abstraction.md M4 |
-| 3.5 | Core & library traits (7 + 2) | Revised 2026-11-20 (v2.2) | **7 core auto-derived traits** (`Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, `Read`; `Copy` internalized into compiler value semantics) + **2 library-author traits** (`Indexed` unified with `IndexedMut`, and `Iterable`; `Gen` dropped). Internal stdlib hooks (`Reversible`, `Neighbours`, `Target`) remain normal library traits outside the core | | §16, §19.2, research/language-architecture-v2.2.md |
+| 3.5 | Core & library traits (7 + 2) | Revised 2026-11-20 (v2.2) | **7 core auto-derived traits** (`Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, `Read`; `Copy` internalized into compiler value semantics) + **2 library-author traits** (`Indexed` unified with `IndexedMut`, and `Iterable`; `Gen` dropped). Internal stdlib hooks (`Reversible`, `Neighbours`, `Target`) remain normal library traits outside the core | | §16, §19.2, research/archive/architecture/language-architecture-v2.2.md |
 | 3.6 | Implicit representation choices | Settled | only when no worse on any op or memory, and visible (G9) | | plan/00-vision.md G9 |
 | 3.7 | Structural field bounds | Leaning | `A has to: V` as a general feature, not graph-specific | | plan/13-abstraction.md G9 |
 | 3.8 | Associated types, consts and frozen lets | Settled 2026-11-20 | yes. Associated types (`Indexed.Elem`, `Seq.bounds`). An associated size is `const K = 10` when known at compile time and **`let K = n`** when frozen from a run-time value where the impl is declared; **`const K = n` with a run-time `n` is an error**, so `const` stays strictly compile-time (7.10). Sizing by a `var` is an error | 7.10 | plan/19-index-and-lends.md §3.1 |
@@ -100,14 +100,14 @@ G7, G8):
 | # | Decision | Status | Current lean | Depends on | Where |
 |---|---|---|---|---|---|
 | 4.1 | Blocks as expressions, `match`, `?` | Settled | indentation blocks, `=>` arms, `?` on optionals | | plan/17-syntax.md |
-| 4.2 | Generators | Settled, revised 2026-11-19 | inlined; the compiler picks push or pull per use: push for a plain `for`, pull for `zip` or when stored as `Iterator<T>` (so a non-recursive generator can be stored); a recursive generator where pull is needed is an error suggesting `List(g)`; no hidden explicit stacks | | research/RECOMMENDATIONS.md §2, plan/12-domains-and-sequences.md §5 |
+| 4.2 | Generators | Settled, revised 2026-11-19 | inlined; the compiler picks push or pull per use: push for a plain `for`, pull for `zip` or when stored as `Iterator<T>` (so a non-recursive generator can be stored); a recursive generator where pull is needed is an error suggesting `List(g)`; no hidden explicit stacks | | research/archive/RECOMMENDATIONS.md §2, plan/12-domains-and-sequences.md §5 |
 | 4.3 | Sequence views, windows & search | Revised 2026-11-20 (v2.2) | Imperative `Deque<T>` + explicit `while` for two-pointers (`slide_until`, `sliding_min`/`sliding_max`, `bsearch_first_some`, `rotate_right`, `prod`, `floor_div` deleted; `MonoDeque` demoted to `examples/local-lib/`). **6 canonical search names:** `bsearch_first`/`bsearch_last`, sorted `.first_ge`/`.last_le` (sequences -> index `?Int`/`?D`, `Set`/`SortedBag` -> `?K`, `Map` -> `?(K, V)`), linear `first`/`find`/`min_by`/`max_by`. Signed `rotate_left`, `next_permutation`/`prev_permutation`, `xs.adjacent`, `a.items`, `sort(..., by: desc)`, `Rng`/`rand`/`shuffle` | 2.3, 4.2 | §16, §19.7, §19.9, §19.10 |
-| 4.4 | `zip` of two generators | Settled 2026-11-19 | push the outer, pull the inner; only non-recursive generators can be pulled | 4.2 | research/RECOMMENDATIONS.md §2 |
-| 4.5 | `do:` blocks & brace blocks | Deleted 2026-11-20 (v2) | `do:`, `{ ... ; ... }`, `;`, `<=>`, and `.field` shorthand deleted; indented block works directly after `=>` | | §16, research/subtraction-audit-1.md Cut 9 |
+| 4.4 | `zip` of two generators | Settled 2026-11-19 | push the outer, pull the inner; only non-recursive generators can be pulled | 4.2 | research/archive/RECOMMENDATIONS.md §2 |
+| 4.5 | `do:` blocks & brace blocks | Deleted 2026-11-20 (v2) | `do:`, `{ ... ; ... }`, `;`, `<=>`, and `.field` shorthand deleted; indented block works directly after `=>` | | §16, research/archive/audits/subtraction-audit-1.md Cut 9 |
 | 4.6 | Labeled `break` | Settled 2026-11-19 | `break 'outer` / `continue 'outer` | | §8 |
 | 4.7 | Exhaustiveness for range patterns | Open | `match x: 0 => .., 1..=9 => ..` checked against `x`'s range type | 1.2 | |
 | 4.8 | Views as read-only array arguments | Settled 2026-11-20 | a lent row or slice is a `[B]T` to the callee, with no adapter; a fn that wants any indexable thing opts in with `A: Indexed<V, Elem = T>`; concrete `[V]T` parameters stay concrete | 3.2 | plan/19-index-and-lends.md §3.3, §3.5 |
-| 4.9 | Control-flow & expression uniformity | Locked v2 (2026-11-20) | One inline-`if` (`if c: a else: b`), `elif` only, `match` bare `Pattern => expr`, `if let`/`match` expressions, `for ... if`, `while let ... and`, value-copying destructuring `let (a, b) = xs[i]`, `var (a, b) = ...`, parallel `(a, b) = (b, a)`, uniform `?T` optionality, line continuation after binary ops/`=`/open brackets | | §16, research/language-architecture-v2.md |
+| 4.9 | Control-flow & expression uniformity | Locked v2 (2026-11-20) | One inline-`if` (`if c: a else: b`), `elif` only, `match` bare `Pattern => expr`, `if let`/`match` expressions, `for ... if`, `while let ... and`, value-copying destructuring `let (a, b) = xs[i]`, `var (a, b) = ...`, parallel `(a, b) = (b, a)`, uniform `?T` optionality, line continuation after binary ops/`=`/open brackets | | §16, research/archive/architecture/language-architecture-v2.md |
 
 ## 5. State and effects
 
@@ -116,13 +116,13 @@ G7, G8):
 | 5.1 | Ownership model | Settled | variables own, params borrow, no pointers, `mut` at both ends | | plan/17-syntax.md |
 | 5.2 | Copies and moves | Settled | big values need `.copy()`; last-use moves are implicit | | plan/17-syntax.md |
 | 5.3 | Precise borrow rules | Settled 2026-11-19, revised 2026-11-20 (v2.2) | lexical exclusivity: no stored and no returned borrows (so no lifetimes); fields borrow separately; two lends of one projection are separate when `@law disjoint` is proven from flow facts (5.13; auto-derived for trivial single-index forwarding); copyable element reads release borrows immediately before enclosing calls; **`a[idx].f = rhs`, `??=`, and compound assignments evaluate all index expressions and `rhs` before borrowing the mutable place in `a`**; `for mut` and `.absorb()` deleted; `.swap(i, j)`, O(1) `swap`, `.take()`, and mutable subslices handle same-container/small-to-large cleanly | 5.1 | §18.4, §19.4, §19.8 |
-| 5.4 | Inline closures reusing a caller's `mut` borrow | Revised 2026-11-20 (v2.2) | yes: closure args and `lends`/`yield` carry inline-desugaring semantics automatically; `inline` keyword deleted | 5.3 | §19.1, research/RECOMMENDATIONS.md §1 |
+| 5.4 | Inline closures reusing a caller's `mut` borrow | Revised 2026-11-20 (v2.2) | yes: closure args and `lends`/`yield` carry inline-desugaring semantics automatically; `inline` keyword deleted | 5.3 | §19.1, research/archive/RECOMMENDATIONS.md §1 |
 | 5.5 | Moves out of arrays | Settled 2026-11-20 | `swap`, `take` (leaves default) and `pair_mut` are library fns over `at`, allowed by its `disjoint` law; no partial moves | 5.13 | plan/19-index-and-lends.md §3.6 |
-| 5.6 | Pools and handles | Deleted 2026-11-20 (v2) | Replaced by `type Id = 0..=MAX` + `List<Node>` + `.push_id(x)` + `.freeze()` (see 2.7) | 2.7 | §16, research/subtraction-audit-1.md Cut 6 |
-| 5.7 | `defer` | Deleted 2026-11-20 (v2.2) | Removed (1/642 ports, active bug in search-and-keep backtracking); use explicit 1-line `dsu.undo_to(snap)` or `cur.pop()` | | §19.1, research/subtraction-audit-2-v21.md §2.1 |
+| 5.6 | Pools and handles | Deleted 2026-11-20 (v2) | Replaced by `type Id = 0..=MAX` + `List<Node>` + `.push_id(x)` + `.freeze()` (see 2.7) | 2.7 | §16, research/archive/audits/subtraction-audit-1.md Cut 6 |
+| 5.7 | `defer` | Deleted 2026-11-20 (v2.2) | Removed (1/642 ports, active bug in search-and-keep backtracking); use explicit 1-line `dsu.undo_to(snap)` or `cur.pop()` | | §19.1, research/archive/audits/subtraction-audit-2-v21.md §2.1 |
 | 5.8 | `Rollback`, `undo`, `with` | Revised 2026-11-20 (v2.2) | `undo`, `with`, and `defer` deleted; rollback is a plain 2-method struct API (`let snap = dsu.mark(); ...; dsu.undo_to(snap)`) | 5.7 | §16, §19.1 |
 | 5.9 | `@memo` control | Revised 2026-11-20 (v2.2) | Bare `@memo` only (`@memo(flat)`/`@memo(hash)` deleted): auto-dispatches flat niche-packed `[Params]?R` for any value return type up to `2^24` (`2^26` for `?Bool`/`Bool`), else salted flat hash; nested `@memo` scoped to enclosing fn/loop iteration; permits `ask(...)` and deterministic extern `@grader fn` oracles (exact 1 call per arg tuple); forbids mutated captured `var`s and `read()`/`print()` | 2.16 | §16, §19.3, §19.9 |
-| 5.10 | Nested `fn` mutation (`mut fn` deleted) | Revised 2026-11-20 (v2) | **`mut fn` deleted.** Any nested `fn` declared after a `var` reads/writes it directly; the compiler tracks captured borrows automatically and forbids escaping | 5.3 | §16, research/subtraction-audit-1.md Cut 3 |
+| 5.10 | Nested `fn` mutation (`mut fn` deleted) | Revised 2026-11-20 (v2) | **`mut fn` deleted.** Any nested `fn` declared after a `var` reads/writes it directly; the compiler tracks captured borrows automatically and forbids escaping | 5.3 | §16, research/archive/audits/subtraction-audit-1.md Cut 3 |
 | 5.11 | Keeping the borrow rules understandable | Settled 2026-11-19 (the method; the rules stay open to change) | fresh agents repeatedly search for the smallest programs where a borrow rule surprises; each one changes the rule or its error message and is kept as a test | 5.3 | plan/agent-context.md |
 | 5.12 | Projections: `lends` (tail expression) | Revised 2026-11-20 (v2.2) | `fn row(self, r: A) lends mut [B]T` lends via its tail expression or `return mut place` (`lend` keyword deleted). Post-lend write-back lets `SegTree`/`LazySegTree` repair invariants after mutations | 5.3, 5.4 | §16, §19.1 |
 | 5.13 | `@law disjoint` | Revised 2026-11-20 (v2.2) | `law` demoted from hard keyword to `@law` (`@law disjoint(i, j) = i != j`); trivial single-index forwarding (`mut self.data[i.to_idx]`) auto-derives `disjoint`. Two live lends of one projection on one receiver, one `mut`, need the law proven from flow facts (`if`, `while`, `assert`, value ranges) | 3.4, 5.12 | §19.1, plan/19-index-and-lends.md §3.6 |
@@ -138,7 +138,7 @@ G7, G8):
 | 6.4 | Modules beyond `pub` | Open | re-exports, private-to-folder, name clashes | | plan/40-tooling.md |
 | 6.5 | Parts and purity | Settled | any fn is a part; tools record I/O; no `pure` keyword | | plan/15-program-structure.md §4 |
 | 6.6 | Brutes, checkers, interactors | Revised 2026-11-20 (v2.2) | `@brute`, `@checker` (inherits input bindings, uses `read_output()` + `assert`), `@interactor fn judge(sol: Interactor):` (`read()` = hidden test, `sol.recv()` = sol stdout, `sol.send(...)` = sol stdin; paired with `ask(..., limit: K)`, and `print()` auto-flushes whenever `ask()` is used) | 3.11 | §16, §19.8 |
-| 6.7 | Staying under 64 KB | Locked v2.2 (2026-11-20) | Tree-shake all runtime/stdlib helpers and strip `CP_GEN`/`debug`/`@brute` in judge builds (target 4–10 KB typical, always < 64 KB) | 3.2 | §16, §19.1, research/max-n-judge-audit-1.md |
+| 6.7 | Staying under 64 KB | Locked v2.2 (2026-11-20) | Tree-shake all runtime/stdlib helpers and strip `CP_GEN`/`debug`/`@brute` in judge builds (target 4–10 KB typical, always < 64 KB) | 3.2 | §16, §19.1, research/perf/max-n-judge-audit-1.md |
 | 6.8 | Grader-style (IOI) problems | Revised 2026-11-20 (v2.2) | `@grader` without new keywords: bodyless `@grader fn` = extern oracle (callable inside `@memo`), `@grader fn` with body = exported entry, top-level `var` or `@grader struct` = stateful grader; array params may size off sibling `Int` params left or right. `@grader const` and uninitialized file-scope grader domains deleted | 3.11, 6.1 | §16, §18.10, §19.3, §19.9 |
 | 6.9 | Top-level `var` | Locked v2 (2026-11-20) | allowed; any nested `fn` declared after a `var` reads/writes it directly (5.10) | 5.10 | §16 |
 
@@ -146,14 +146,14 @@ G7, G8):
 
 | # | Decision | Status | Current lean | Depends on | Where |
 |---|---|---|---|---|---|
-| 7.1 | Checks & predicates (`assert`) | Revised 2026-11-20 (v2.2) | **One predicate keyword (`assert`):** always checked (local + judge; lints on `mut`; feeds proven flow facts). `assume` deleted (use typed `read()` bounds, `read(gen:)`, `@checker`, and `debug(...)`). Domain indexing never checked; `List`/`Str`/`a.raw` checked unless proven or in `unchecked:` | 7.9 | §16, §19.1, research/syntax-bakeoff-2-v21.md |
-| 7.2 | Overflow in release builds | Settled 2026-11-19 | proven safe: no check; provably reachable: a warning with the bound; unknown: trapped in local builds, unchecked in the judge build | 1.1 | research/RECOMMENDATIONS.md §4, plan/30-compiler.md |
+| 7.1 | Checks & predicates (`assert`) | Revised 2026-11-20 (v2.2) | **One predicate keyword (`assert`):** always checked (local + judge; lints on `mut`; feeds proven flow facts). `assume` deleted (use typed `read()` bounds, `read(gen:)`, `@checker`, and `debug(...)`). Domain indexing never checked; `List`/`Str`/`a.raw` checked unless proven or in `unchecked:` | 7.9 | §16, §19.1, research/archive/architecture/syntax-bakeoff-2-v21.md |
+| 7.2 | Overflow in release builds | Settled 2026-11-19 | proven safe: no check; provably reachable: a warning with the bound; unknown: trapped in local builds, unchecked in the judge build | 1.1 | research/archive/RECOMMENDATIONS.md §4, plan/30-compiler.md |
 | 7.3 | Trace data contract | Open | spans, typed values, writes old → new, call tree, test and part boundaries | 6.5 | plan/50-debugging.md |
 | 7.4 | Zero-cost & max-N judge guarantees | Locked v2.2 (2026-11-20) | No `using namespace std;` + wrap user code in `namespace cp_user { ... }`; 8-B `?Int`/`?F64`, 4-B `Mod<P>` (`P <= 2^31-1`), 4-B `I32` stamps in opt-in `std.marks.Marks<D>`, `vector<uint8_t>` never `vector<bool>`, lexically scoped `@memo` with runtime flat (`<= 2^24`, `2^26` for tri-state `?Bool`) vs salted flat hash dispatch, lazy `Rooted` LCA + CSR `kids`, index-before-place-borrow lowering preventing `vector` UAF | 1.3, 5.9 | §16, §18.2, §19.6, §19.8 |
 | 7.5 | C++ interop | Open | `@cpp` blocks with checks at the boundary | 1.1 | |
 | 7.6 | Remaining syntax | Locked v2.2 (2026-11-20) | **34 reserved keywords** (30 contestant + 4 lib-author); single lambda `x => expr`; single inline-`if` `if c: a else: b`; `else if` -> `elif` diagnostic; `"{val:.6f}"` format specifiers | | §16, §19.1, docs/one-page-cheat-sheet.md |
 | 7.7 | TLE / MLE / overflow estimates | Revised 2026-11-20 (v2.2) | from typed input bounds and domain sizes; **warnings only**, never errors; suppressed inside `@brute`, `@gen`, `@checker`, `@interactor` | 6.3, 7.2 | §16, §19.1 |
-| 7.8 | Typed input drives generators and shrinkers | Revised 2026-11-20 (v2) | Dependent bounds (incl. record fields) + `Perm<V>` / `Tree<V>` + `read(gen:)` (with `witness` & coupled tuple reads) + `@gen` + automatic choice-stream shrinking. **`stress ... by ...` DSL and `Distinct`/`Sorted` wrappers deleted** | 6.6 | §16, research/syntax-bakeoff-1.md Fork 6 |
+| 7.8 | Typed input drives generators and shrinkers | Revised 2026-11-20 (v2) | Dependent bounds (incl. record fields) + `Perm<V>` / `Tree<V>` + `read(gen:)` (with `witness` & coupled tuple reads) + `@gen` + automatic choice-stream shrinking. **`stress ... by ...` DSL and `Distinct`/`Sorted` wrappers deleted** | 6.6 | §16, research/archive/architecture/syntax-bakeoff-1.md Fork 6 |
 | 7.9 | Contracts | Revised 2026-11-20 (v2.2) | Unified into `assert` (always checked), typed `read()` bounds, `read(gen:)`, and `@checker`; `assume`, `requires`, `ensures`, `invariant`, and `read() where` deleted | 7.1 | §16, §19.1 |
 | 7.10 | Compile-time `const` | Settled 2026-11-19 | adopted, with a size warning for large baked tables | 6.7 | plan/18-key-features.md §3 |
 | 7.11 | REPL on a loaded test | Deferred 2026-11-19 | not now; cheap to add once the debug interpreter exists | | plan/18-key-features.md §4 |
@@ -163,7 +163,7 @@ G7, G8):
 | 7.15 | Sample local library | Settled 2026-11-19 | a fresh one, inspired by popular contest libraries, not a port of `ryanbai1412/cp-library`; it also proves G8 and tests library pinning (G11) | 6.4 | plan/40-tooling.md |
 | 7.16 | `test` and `doc` for libraries | Settled 2026-11-19 | `cpl test` and `cpl doc` work the same on the stdlib and on a user's own library | 6.4 | plan/45-dev-tools.md |
 | 7.17 | How conciseness is measured | Settled 2026-11-19 | two numbers per port: % fewer lines than the original, and % fewer than the original with library-able code stripped | | plan/80-validation.md §8.1 |
-| 7.18 | Honest `cpl stress` & `debug(...)` | Locked v2 (2026-11-20) | One `cpl stress` command defaulting to in-file `@brute`/`@checker`/`@interactor`, escalating sizes (default up to 20), comparing line-by-line unless `@checker` (plus `--close <eps>` for floats), always compiling with `-DLOCAL`, shrinking every failure via choice streams, replaying `debug(...)` side-by-side, and printing max size, rejection rate (>50% warning), diff mode, and output diversity | 6.6, 7.8 | §16, research/blind-critic-2-debug-pivot.md |
+| 7.18 | Honest `cpl stress` & `debug(...)` | Locked v2 (2026-11-20) | One `cpl stress` command defaulting to in-file `@brute`/`@checker`/`@interactor`, escalating sizes (default up to 20), comparing line-by-line unless `@checker` (plus `--close <eps>` for floats), always compiling with `-DLOCAL`, shrinking every failure via choice streams, replaying `debug(...)` side-by-side, and printing max size, rejection rate (>50% warning), diff mode, and output diversity | 6.6, 7.8 | §16, research/archive/blind-evals/blind-critic-2-debug-pivot.md |
 | 7.19 | Grids, trees & collection verbs | Revised 2026-11-20 (v2.2) | `type Cell = (Row, Col)` + `std.grid` (`p.adj4`, `p.adj8`, `Dir4`, `p.step`, `p.ray`, `g.transposed`; `.flipped_*` deleted, `Dir8` demoted); `Rooted<V>` with value-owned `t.Pre`, `t.pos(v)`, `from_parents`, `t.tour`, `.fold_path`/`.apply_path` + `Reversible`, `.ancestor`, `.postorder`, `.lift_while -> ?V`, `.virtual_tree`; unified container verbs (`.len`/`.is_empty`, `.take()`, `List.insert`/`remove`, `Map.remove -> ?V`, `m[k] f= x` auto-insert, `SegTree`/`LazySegTree` `.all` & `Action(id, (new_f, old_f), (f, val, span), over:)`; `.absorb()` deleted; `Marks<D>` demoted to opt-in 32-bit `std.marks`; 11 near-zero structures moved to `examples/local-lib/`) | 2.16, 3.1 | §16, §18.5, §19.4, §19.6, §19.7, §19.9 |
 
 ## 8. Approved on 2026-11-19
@@ -183,7 +183,7 @@ be justified.
 shrinkers, contracts and `const` are in (7.8 to 7.10). The REPL is deferred
 (7.11).
 
-**Research recommendations** (research/RECOMMENDATIONS.md). All four are
+**Research recommendations** (research/archive/RECOMMENDATIONS.md). All four are
 adopted:
 
 - no stored borrows in structs, with the borrow rules that go with it (5.3,
@@ -272,7 +272,7 @@ confirmed by Ryan yet; each is small and local to change.
 
 ## 11. Leaning since 2026-11-20: the ergonomics audit
 
-A read of all 30 ports as code (`research/ergonomics-audit.md`) changed
+A read of all 30 ports as code (`research/archive/audits/ergonomics-audit.md`) changed
 the prototype in the ways below. They are implemented in `proto/cpc/`,
 eleven ports use them, and `crates/cpl-cli/tests/cases/ergo/` locks them. None is
 confirmed by Ryan yet, so each is **Leaning**. Per the rules at the top of
@@ -376,7 +376,7 @@ prefix and suffix pass (a `reroot` combinator is the next candidate).
 
 ## 13. Leaning since 2026-11-20: scout batch 1
 
-The first scout batch (`research/friction-backlog.md`) re-solved ten
+The first scout batch (`research/archive/frictions/friction-backlog.md`) re-solved ten
 corpus problems and listed what the prototype made awkward. The changes
 below are implemented in `proto/cpc/`, eight of the ten sketches now pass
 against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
@@ -573,16 +573,16 @@ scouts expected and is locked by a test under `crates/cpl-cli/tests/cases/`.
 
 ## 16. CP Lang v2 Spec Lock (2026-11-20 — Language Architect Wave 2)
 
-Wave 2 synthesizes Wave 1 (`research/language-architecture-synthesis.md`),
-Stage 3's 18 subtraction cuts (`research/subtraction-audit-1.md`), Stage 4's
+Wave 2 synthesizes Wave 1 (`research/archive/architecture/language-architecture-synthesis.md`),
+Stage 3's 18 subtraction cuts (`research/archive/audits/subtraction-audit-1.md`), Stage 4's
 7 syntax bakeoff verdicts on the 25-problem benchmark suite
-(`research/syntax-bakeoff-1.md`), Stage 5's debug/pivot and cheat-sheet audits
-(`research/blind-critic-2-debug-pivot.md`, `research/blind-critic-3-cheatsheet-test.md`),
-Stage 6's max-N judge audit (`research/max-n-judge-audit-1.md`), the bug-fix
+(`research/archive/architecture/syntax-bakeoff-1.md`), Stage 5's debug/pivot and cheat-sheet audits
+(`research/archive/blind-evals/blind-critic-2-debug-pivot.md`, `research/archive/blind-evals/blind-critic-3-cheatsheet-test.md`),
+Stage 6's max-N judge audit (`research/perf/max-n-judge-audit-1.md`), the bug-fix
 sprint (`6f113c3`, `7d1c976`), and scout batches 15 and 17–22 into one
 contradiction-free **CP Lang v2 spec**.
 Full before/after snippets and the prototype implementation checklist live in
-`research/language-architecture-v2.md`; `docs/one-page-cheat-sheet.md` is the
+`research/archive/architecture/language-architecture-v2.md`; `docs/one-page-cheat-sheet.md` is the
 canonical contestant reference. Every item below replaces earlier leans where
 they conflicted and is locked as the single source of truth for the prototype
 and Rust compiler sprints.
@@ -842,11 +842,11 @@ writing the library against the spec, where the spec left room:
 ## 18. CP Lang v2.1 Unification & Concept-Budget Guard (2026-11-20 — Language Architect Wave 3)
 
 Wave 3 synthesizes all 21 scout friction backlogs across Batches 21–41
-(`research/friction-backlog-batch-21.md` through `batch-41-oly-icpc.md`,
+(`research/archive/frictions/friction-backlog-batch-21.md` through `batch-41-oly-icpc.md`,
 covering 200+ hard ported problems) against locked v2 (§16), the max-N
 prototype pass (`c8e381f`), and the aligned `stdlib/` + `examples/local-lib/`
 (§17). Full before/after examples and the next-sprint checklist live in
-`research/language-architecture-v2.1.md`; `docs/one-page-cheat-sheet.md`
+`research/archive/architecture/language-architecture-v2.1.md`; `docs/one-page-cheat-sheet.md`
 is synchronized to match. **Zero keywords (40), zero numeric types (4),
 zero traits (7 + 2, as revised in 3.5), and zero `@` decorators (7 + 2) are added.**
 
@@ -962,7 +962,7 @@ zero traits (7 + 2, as revised in 3.5), and zero `@` decorators (7 + 2) are adde
   hunting (`O2`); and place constructive generators (`perm`, `surjection`,
   `bounded_product`, `tree`, `connected`, `dag`, `functional`, `simple_graph`,
   `str_of`, `rand_points`, `rand_disjoint_rects`, `rand_convex`) in `std.gen`.
-- **18.12 Concept-budget rejections (permanent; see `research/language-architecture-v2.1.md` §3).**
+- **18.12 Concept-budget rejections (permanent; see `research/archive/architecture/language-architecture-v2.1.md` §3).**
   Explicitly rejected to protect the 40-keyword / 4-numeric-type / 1-page
   budget: `Pool<Node>`/`Node.Id`/`SegPool`, `I32`/`U32`, `undo`/`Journaled`,
   `static let`/`@once`, `ModR`, `domain A | B` sum-domain syntax, `min=`/`max=`
@@ -981,14 +981,14 @@ zero traits (7 + 2, as revised in 3.5), and zero `@` decorators (7 + 2) are adde
 
 ## 19. Locked CP Lang v2.2 Architecture (Wave 4 — Ultra-Lean 34-Keyword Spec, 2026-11-20)
 
-Wave 4 synthesizes **Subtraction Audit #2** (`research/subtraction-audit-2-v21.md`,
+Wave 4 synthesizes **Subtraction Audit #2** (`research/archive/audits/subtraction-audit-2-v21.md`,
 `d6b3c4c`, 642 canonical `.cp` ports), **Syntax Bakeoff #2**
-(`research/syntax-bakeoff-2-v21.md`, `a9ca4f8`, 20 hard multi-topic ports +
+(`research/archive/architecture/syntax-bakeoff-2-v21.md`, `a9ca4f8`, 20 hard multi-topic ports +
 611-port incidence census), **Blind Critic #4**
-(`research/blind-critic-4-v21-audit.md`, `02f6137`, 8 blind 2 AM Olympiad/ICPC
+(`research/archive/blind-evals/blind-critic-4-v21-audit.md`, `02f6137`, 8 blind 2 AM Olympiad/ICPC
 drafts + 3 pivot/WA drills), and **Batches 47–51** (50 hard CCC/CCO, IOI,
 NOI/NOIP, APIO, and EGOI ports) into **CP Lang v2.2**
-(`research/language-architecture-v2.2.md`, `docs/one-page-cheat-sheet.md`).
+(`research/archive/architecture/language-architecture-v2.2.md`, `docs/one-page-cheat-sheet.md`).
 (This edit also removes a stray merge-conflict trailer left at the end of §18.)
 
 - **19.1 Six keywords cut: 40 -> 34 reserved keywords (3.11, 5.4, 5.7, 5.12, 5.13, 7.1, 7.6, 7.9; Subtraction Audit #2 §§2.1–2.2, Syntax Bakeoff #2 Tension 5).**
@@ -1240,7 +1240,7 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   outside `0..64`, a negative power and `U64` division by zero stop the program with exit status 3 in the
   submitted release binary too. A modulus above `3_037_000_499` multiplies in 128 bits, so
   `Mod<4_000_000_007>` no longer overflows. The release binary is what the judge runs, and a silent wrong
-  answer there is worse than a crash; the perf tail profile (`research/perf-tail-profile-2.md`) measured
+  answer there is worse than a crash; the perf tail profile (`research/perf/perf-tail-profile-2.md`) measured
   no cost from the always-on division checks. Unproven `Int` overflow stays a local-only trap (7.x).
 
 - **21.7 Two silent-empty cases are errors.** A domain named inside a tuple `read()`, such as
@@ -3007,7 +3007,7 @@ Reverse: delete the step from `scripts/check.sh`.
   `SuffixArray<T>(s)` builds `sa`, `rank`, `lcp`, and a sparse table for O(1) `lcp_between` and
   `compare`, O(|pat| log n) `matches`/`count`, and O(log n) `lcp_range`. Reason: visible costs
   (no secret O(n log n) work behind `suffix_array`) while eliminating repeated binary search and
-  RMQ boilerplate (`research/friction-backlog-batch-10.md` T4). Reverse: drop `SuffixArray<T>`.
+  RMQ boilerplate (`research/archive/frictions/friction-backlog-batch-10.md` T4). Reverse: drop `SuffixArray<T>`.
 - **39.3 `manacher(s)` returns `Palindromes(odd, even)` with O(1) `is_palindrome(l, r)`.**
   Keeping `odd` and `even` as public fields preserves direct radius access while adding
   `is_palindrome(l, r)`, `count`, and `longest` so callers never re-derive the center formula.
@@ -6371,7 +6371,7 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   both sides >= 10 ms at max-N, unmatched pairs (`bench/unmatched.txt`)
   left out. Bars, as Ryan set them: p50 < 1.1x, p95 < 1.2x, max < 1.5x,
   and max < 1.1x after constant-factor tuning in the language. The 0.2
-  343-port sweep (`bench/corpus-p95-report.md`) is no longer a target.
+  343-port sweep (`research/perf/corpus-p95-report.md`) is no longer a target.
   Option (a) of the perf question, taken by its recommendation.
 - **Why.** The worst program is the one a contestant hits; the 0.2 sweep
   measures ports that are being deleted.
@@ -6924,3 +6924,21 @@ Reverse: `git mv` each file back and delete `scripts/status.py`.
   `spec.cp`; the 67 other `[n - 1 - i]` sites in corpus/std are left alone.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/reverse.rs` and
   `spec/lints/reverse_index/`.
+
+## 312. `research/` has an index and topic folders; bench results live in `research/perf/` (2026-11-22)
+
+Call: the 124 flat `research/*.md` and 5 loose `research/*.py` files are
+sorted by name into `research/perf/` (tail profiles, max-n audits, build
+timings) and `research/archive/{frictions,ecnerwala,blind-evals,architecture,audits,scripts}/`;
+`PORTS.md`, `MIGRATION.md` and the writable-from-docs eval stay at the top,
+indexed by the new `research/README.md`. The seven result files in `bench/`
+(`corpus-500-*`, `corpus-p95-*`, `triage-analysis.md`,
+`zero-cost-results.json`) move to `research/perf/`; `bench/corpus_p95_bench.py`,
+`cpl bench` (`cpl-contest/src/corpus_bench.rs`) and the site's
+`web/lib/bench.ts` now read and write them there. 133 moves; every path
+mention and relative Markdown link to a moved file (127 files, history
+included) is rewritten. `repo-layout.py` now reads a "Generated by" header
+only at the start of a line.
+Reason: the layout doc (decision 303): `bench/` holds code only, and a
+reader finds current evidence without wading through 124 dated files.
+Reverse: `git mv` the files back (the list is this commit's renames).

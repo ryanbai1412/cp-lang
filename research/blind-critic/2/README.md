@@ -3,7 +3,7 @@
 Six corpus problems that had no port (plus two that turned out to have one), each written the way a contest goes wrong: a first draft that is too slow
 or subtly wrong (`*_draft.cp`, `*_draft2.cp`), then the solution it was debugged or pivoted
 into (`<problem>.cp`). The drafts are kept on purpose and are not accepted solutions. The
-findings are in [`research/blind-critic-2-debug-pivot.md`](../../../research/blind-critic-2-debug-pivot.md).
+findings are in [`research/archive/blind-evals/blind-critic-2-debug-pivot.md`](../../archive/blind-evals/blind-critic-2-debug-pivot.md).
 
 - `dpq` (Flowers): an O(n²) DP, pivoted to a max `SegTree` over heights. Original 4131861.
 - `noi15p4` (Homer's Epic): k-ary Huffman without zero padding, then with it. Original 5032756.

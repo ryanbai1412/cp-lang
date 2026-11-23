@@ -3,7 +3,7 @@
 Ten string, automaton and parsing submissions from `corpus/submissions/`,
 rethought in CP Lang. None is in `proto/ports/`, an earlier
 scout batch or a `blind_critic_*` directory. The friction they showed is in
-[`research/friction-backlog-batch-22-strings.md`](../../../research/friction-backlog-batch-22-strings.md)
+[`research/archive/frictions/friction-backlog-batch-22-strings.md`](../../../research/archive/frictions/friction-backlog-batch-22-strings.md)
 (items `X1`...).
 
 Batch 10 took the corpus's accepted KMP, Z-function, suffix-array and

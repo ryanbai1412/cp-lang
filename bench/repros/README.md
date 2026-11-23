@@ -1,6 +1,6 @@
 # Compiler Correctness & Performance-Tail Minimal Repros (CP Lang 0.2.2)
 
-Minimal standalone `.cp` reproducers surfaced during the Max-N Truth & Perf-Tail Triage across the 308-port corpus benchmark (`bench/corpus-p95-report.md`).
+Minimal standalone `.cp` reproducers surfaced during the Max-N Truth & Perf-Tail Triage across the 308-port corpus benchmark (`research/perf/corpus-p95-report.md`).
 
 Verify all repros with:
 

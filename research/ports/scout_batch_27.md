@@ -5,7 +5,7 @@ problem statements: shortest paths over states, planar duals and rigid
 pieces, a Kruskal-style merge tree, DSU, a functional graph and a DAG of
 deadlines. This is a Stage-1 critique pass. Nothing in `proto/cpc/` or
 `crates/` was changed for it. What the ports taught us is in
-[`research/friction-backlog-batch-27-graphs.md`](../../../research/friction-backlog-batch-27-graphs.md).
+[`research/archive/frictions/friction-backlog-batch-27-graphs.md`](../../../research/archive/frictions/friction-backlog-batch-27-graphs.md).
 
 Every port runs today on the reference interpreter (`proto/cp.py
 lib-run`) with the real `stdlib/`, and `check.py` compares each one with
