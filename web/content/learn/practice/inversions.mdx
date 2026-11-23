@@ -1,0 +1,23 @@
+---
+title: Inversions
+description: "Level C. Teaches Fenwick over a value domain: count earlier larger values in O(n log n)."
+level: C
+chapter: 8
+teaches: "`Fenwick<V, Int>`, `add`, `fold(x..)`"
+---
+
+You are given a permutation of 1 … n (1 ≤ n ≤ 2·10⁵). Count the pairs i < j with aᵢ > aⱼ.
+
+**Input:** n, then the permutation. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`3 1 4 2` | `3` |
+
+<Judge id="inversions">
+
+- Checking every pair is about 2·10¹⁰ steps at the limit. Instead, walk left to right and count how many earlier values are larger than the current one.
+- Make the values a domain, `domain V = 1..=n`, and keep a `Fenwick<V, Int>` of the values seen so far; see [`Fenwick`](/docs/ref/std/fenwick).
+- `seen.fold(x..)` counts the seen values from `x` up, and `seen.add(x, 1)` records `x`. The answer can reach about 2·10¹⁰, which fits in an `Int`.
+
+</Judge>

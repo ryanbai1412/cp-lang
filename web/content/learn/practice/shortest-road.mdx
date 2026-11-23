@@ -1,0 +1,23 @@
+---
+title: Shortest road
+description: "Level B. Teaches dijkstra over Graph.undirected with weighted edge records, and ?Int for unreachable."
+level: B
+chapter: 9
+teaches: "`Graph.undirected`, `dijkstra(..., from:)`, `?Int` distances"
+---
+
+A country has n towns (1 ≤ n ≤ 2·10⁵) and m two-way roads (0 ≤ m ≤ 2·10⁵). Road i joins towns uᵢ and vᵢ and takes wᵢ minutes (1 ≤ wᵢ ≤ 10⁹). Print the fewest minutes from town 1 to town n, or −1 if there is no route.
+
+**Input:** n and m, then m lines `u v w`. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2 5`<br/>`2 4 1`<br/>`1 3 2`<br/>`3 4 1` | `3` |
+
+<Judge id="shortest-road">
+
+- Read the roads as records: `let es: [0..m](u: V, v: V, w: 1..=1e9) = read()`. `Graph.undirected(es)` uses the `w` field as the weight; see [`Graph`](/docs/ref/std/graph).
+- `dijkstra(g, from: [(V(1), 0)])` returns the distances, each a `?Int`: `None` means unreachable, so `?? -1` prints the answer with no `INF`.
+- A path can cost up to about 2·10¹⁴, which fits in an `Int`.
+
+</Judge>

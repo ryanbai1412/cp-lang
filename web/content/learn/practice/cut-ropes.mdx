@@ -1,0 +1,23 @@
+---
+title: Cut ropes
+description: "Level C. Teaches binary search on the answer with last_true over a range."
+level: C
+chapter: 6
+teaches: "`(lo..=hi).last_true(p)`, a monotone predicate, `?? 0`"
+---
+
+You have n ropes (1 ≤ n ≤ 2·10⁵) of lengths a₁ … aₙ (1 ≤ aᵢ ≤ 10⁹). You need k pieces (1 ≤ k ≤ 2·10⁵) of the same whole-number length, cut from the ropes; leftovers are thrown away. Print the longest possible piece length, or 0 if even length 1 gives fewer than k pieces.
+
+**Input:** n and k, then the n lengths. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `3 5`<br/>`10 7 5` | `3` |
+
+<Judge id="cut-ropes">
+
+- The number of pieces of length L, `a.map(x => x / L).fold(+)`, only falls as L grows. So "at least k pieces" is true up to some L and false after it.
+- `(1..=1e9).last_true(p)` finds the last L where `p` holds in O(log 10⁹) calls, with no `lo`, `hi` or `mid` to get wrong; see [`last_true`](/docs/ref/std/seq).
+- It returns `None` when even L = 1 fails, so `?? 0` prints the answer.
+
+</Judge>

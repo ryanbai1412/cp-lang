@@ -1,0 +1,23 @@
+---
+title: Knapsack
+description: "Level B. Teaches a 0/1 knapsack DP over capacities with max= and a reversed range."
+level: B
+chapter: 10
+teaches: "`[0..=cap]Int` DP table, `max=`, `(a..=b).rev`"
+---
+
+You have n items (1 ≤ n ≤ 100). Item i weighs wᵢ (1 ≤ wᵢ ≤ 10⁵) and is worth vᵢ (1 ≤ vᵢ ≤ 10⁹). Choose items of total weight at most W (1 ≤ W ≤ 10⁵), each at most once, to maximize the total worth. Print that maximum.
+
+**Input:** n and W, then n lines `w v`. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `3 5`<br/>`2 3`<br/>`3 4`<br/>`4 5` | `7` |
+
+<Judge id="knapsack">
+
+- `best[c]` is the most worth that fits in capacity c; [Dynamic programming](/learn/read/dynamic-programming) builds tables like this one. Start it at 0 for every c: `var best: [0..=cap]Int = 0`.
+- For each item, update `best[c] max= best[c - w] + v` for c from `cap` down to `w`. Going down with `(w..=cap).rev` uses each item once; going up would reuse it.
+- n·W is 10⁷ steps, and the worth can reach 10¹¹, which fits in an `Int`.
+
+</Judge>
