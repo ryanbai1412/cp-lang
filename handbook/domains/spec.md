@@ -156,7 +156,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | The spec says what changed between versions | normative changes with no changelog line | `missing` | — |
 | Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | rule ids for compatibility with cases | `missing` | — |
 | Each chapter teaches its model first | supported chapters with no model paragraph | process | `spec/core/` |
-| Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` with no rationale in `handbook/language/` | `missing` | — |
+| Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` that no handbook doc names | ratchet: the count only goes down ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | `scripts/spec-decisions-explained.py`, `scripts/check.sh` |
 | The suite is fast enough to run on every land | wall time of `cpl-conform conformance spec-blocks` | metric only, `missing` as a gate | `plan/domains/spec/metrics.toml` |
 
 ### Building the `missing` rows
