@@ -4,10 +4,10 @@
 let (n, q): (3..=2e5, 1..=2e5) = read()
 domain V = 1..=n
 let p = read<[V]V>()
-let s = read<Str of "LR">()
+let s: Str of "LR" = read()
 var right = [V] i => s[Int(i) - 1] == 'R'
-let pm = p.scan(max)
-let need = [V] i => Int(pm[i.r]) > Int(i)
+let pm = ([V] i => Int(p[i])).scan(max)
+let need = [V] i => pm[i.r] > Int(i)
 
 fn blocked(i: V) -> Bool = i < V.last! and need[i] and not right[i] and right[i.next!]
 

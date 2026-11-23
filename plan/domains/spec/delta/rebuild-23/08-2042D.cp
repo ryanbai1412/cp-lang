@@ -9,12 +9,12 @@ let same = seg.tally(by: g => (g.l, g.r))
 
 fn min_cover_r(g: [U](l: Int, r: Int)) -> [U]?Int:
     let (domain C, rs) = compress([g[i].r for i in U])
-    var st = SegTree<C, Int>(min, fill: Int.max)
+    var st = SegTree<C, Int>(min, fill: Int.MAX)
     var out: [U]?Int = None
     for i in U.sorted(by: i => (g[i].l, desc(g[i].r))):
         let c = rs.at(g[i].r)
         let best = st.fold(c..)
-        if best != Int.max: out[i] = best
+        if best != Int.MAX: out[i] = best
         st.set(c, min(st.get(c), g[i].r))
     out
 

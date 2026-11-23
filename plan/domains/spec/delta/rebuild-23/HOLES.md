@@ -108,3 +108,83 @@ wrappers are *documented* only.
 |------|--------|---------------|--------|------------|-----------------|-------------------|
 | 03-2037F-rev | also print the leftmost p that reaches k (range query: return a position, not a yes/no) | 15 diff lines (5 hunks; 2 are the header comment and the fn rename) | 2 real (`enough` -> `spot` returning `?Int`; the final print) | yes: how to turn the tree's first position with value >= k into a position. `right_while` returns a `Cut<D>`, and the cut-to-position step is not spelled out, so used a linear scan over `P` (O(n log n), fine here) | the binary search now calls `spot(q)` twice (once inside `first_true`, once to print) | none |
 | 09-2018C-rev | also print the smallest optimal leaf depth d (end position instead of value) | 9 diff lines (3 hunks; 1 is the comment) | 1 real (the final loop) | small: `max=` has no argmax form, so it became `if kept > best:` with two assignments | `best` and `at` updated together by hand | none |
+
+## After running
+
+Built with `cargo build -p cpl-cli` (debug; release also built and used for
+the runs) at `490eff925`. Every failure below was re-run on `origin/main`
+`915821cf9` and still reproduces. Samples come from the Codeforces pages.
+
+### Per-file status
+
+Status is after the fixes listed under Failures. "first" is what the cold
+draft did before any fix.
+
+| File | first `cpl check` | samples (`cpl run`) | `cpl test` | `cpl build` + g++ -O2 + samples | stress (200 vs brute, run + C++) | max input, C++ |
+|------|-------------------|---------------------|------------|---------------------------------|----------------------------------|----------------|
+| 01-2045H | ok | 3/3 (sample 1 prints `A BA CU S`, also valid) | 3/3 with `@check` | ok, same output | 200/200 (checker: valid split, max count) | 0.25 s, 149 MB (\|S\| = 5000, `A`^5000 and random AB) |
+| 02-2014H | ok | 1/1 | 1/1 | ok | 200/200 (minimax brute) | 0.01 s (n = q = 2e5) |
+| 03-2037F | ok | 1/1 | 1/1 | ok | 200/200 | 0.87 s (n = 1e5, m = 1e9) |
+| 03-2037F-rev | ok | 1/1 (no reference) | n/a | ok, run = C++ | 200/200 (brute: min q, leftmost p) | 0.92 s |
+| 04-2027D2 | F1 | 1/1 | 1/1 | ok | 200/200 (enumerates all op sequences) | 0.06 s (n = 3e5, m = 1), 0.02 s (m = 3e5), 0.01 s (548 x 547) |
+| 05-2025E | ok | 5/5 | 5/5 | ok | 200/200 (subset + matching brute, nm <= 8) | 0.06 s (500 500) |
+| 06-2030D | F2, F4 | 1/1 | 1/1 | ok | 200/200 (BFS over permutations) | 0.00 s (n = q = 1e5) |
+| 07-2039D | ok | 1/1 | 1/1 | ok | 200/200 (lexicographic DFS) | 0.01 s (3 x n = 1e5, S = 1..n) |
+| 08-2042D | F3 | 1/1 | 1/1 | ok | 200/200 | 0.19 s (n = 2e5) |
+| 09-2018C | ok | 1/1 | 1/1 | ok | 200/200 (BFS over leaf removals) | 0.08 s (n = 5e5 path and random) |
+| 09-2018C-rev | ok | 1/1 (no reference) | n/a | ok, run = C++ | not stressed | 0.07 s |
+| 10-2045M | ok | 3/3 (order-free compare) | 2/3: sample 2 prints `S2 E3` for `E3 S2` (any order is accepted) | ok | 200/200 | 0.00 s (200 x 200 dense and sparse) |
+
+Totals: 12/12 files check, build and match their samples; 2200 stress cases
+(10 problems plus 03-rev) with interpreter, C++ and brute all agreeing. No
+crash or mismatch, so no sanitizer run was triggered; an extra
+`-fsanitize=address,undefined` pass on every sample was clean. Nothing ran
+over 1 s; 03-2037F is the closest (0.87 s, limit 4 s). The 2045M max input
+is not adversarial: random grids end each beam quickly.
+
+### Failures
+
+| ID | File | Class | Smallest reproduction | Result | Fix in the solution |
+|----|------|-------|-----------------------|--------|---------------------|
+| F1 | 04 | implementation bug | `let none = 5` / `var ans = none` / `print(ans)` | E0806 "`ans` needs a type annotation because `None` has no element type": the binding is accepted but the use resolves to `None`. Core spec does not reserve `none` (see L2) | renamed to `worst` |
+| F2 | 06 | implementation bug | `let s = read<Str of "LR">()` | E0107 at `of`, then a cascade E0305 "`s` is a Bool". `let s: Str of "LR" = read()` works. Already logged from round 20 | annotated form |
+| F3 | 08 | reader error (+ diag bug) | `print(Int.max)` | E0201 "doesn't know the name `Int` here ... a top-level `let` is visible only after the line that sets it". The name is `Int.MAX` (std/algebra.cp); the hint is unrelated to the cause | `Int.MAX` |
+| F4 | 06 | implementation bug | `domain V = 1..=3` / `let p = read<[V]V>()` / `print(p.scan(max))` | E0501 "can't handle `.MIN` of a domain as a value yet" (labelled a std gap) | `([V] i => Int(p[i])).scan(max)` |
+| F5 | 01 | implementation bug | `var w: List<Str> = []`, push `"ab"`, `"c"`, then `print(w.rev, sep: "\n")` | prints `c ab`: `sep:` ignored for a `.rev` view, in run and in C++; `print(w, sep: "\n")` is right. 10-io says `print(xs, sep: "\n")` overrides | `for w in words.rev: print(w)` |
+| F6 | 01 `@check` | implementation bug | `spec/conformance/core-06/check-read-output-type-argument.cp` | `read_output<Int>()` is E0501 "not in scope during lowering"; the spec's own case fails. Already logged from round 21 (A7) | `let cnt: Int = read_output()` |
+| F7 | 01 `@check` | reader error | `ws.join("")` | E0302 with the right hint: `join` is called on the separator (07-sequences) | `"".join(ws)` |
+| F8 | 01 `@check` | implementation bug | `spec/conformance/core-06/check-bool-false-rejects.cp` with `cpl judge f in out` | exits 0 (accepts); expected 3. A `@check fn ok() -> Bool` returning `false` is accepted by `cpl judge` and `cpl test`, so the first 01 checker accepted `4 A BA C SU` for `ABACUS`. Known tools gap | `assert` form, which rejects (checked on two bad outputs) |
+
+Totals: 6 implementation bugs (F1, F2, F4, F5, F6, F8; F2, F6 and F8 were
+already logged), 2 reader errors (F3, F7), 0 spec holes on their own. F3 also
+has a misleading diagnostic. No wrong answers: every failure was a compile or
+tool error, except F5 (wrong output format, caught by the sample) and F8 (a
+checker that accepts everything).
+
+### Pre-run guesses vs outcome
+
+- Confirmed by running: H1-H11, H13-H16, H18-H23, H26, H27 (the user-struct
+  monoid works; only the name `none` broke, F1).
+- Wrong: H12 (the `[i.r]` index of a scan is right, but `max` scan of `[V]V`
+  is F4), H17 (`Int.max` is `Int.MAX`, F3), H25 (`.rev` prints, but
+  `sep:` is lost, F5).
+- H24 was avoided (plain `Str` read) and not tested.
+- The drafting notes had an H28 (`first_true` over `1..=1e9` needs a monotone
+  predicate) that did not make the table above; it holds (03 stress passes)
+  and is not counted.
+
+### Found late
+
+| ID | Class | M1 | Location | What happened |
+|----|-------|----|----------|---------------|
+| L1 | found-late | in | core/02-values scalars; std/algebra.cp uses `T.MAX` | integer extremes are not documented in the core chapters; the spelling only shows in std code, and the spec prefers `?T` to sentinels (F3) |
+| L2 | found-late | in | core/01-lexical keywords | lowercase `none` behaves as a removed spelling of `None` in the implementation, but the core spec neither reserves it nor says what binding it does (F1) |
+| L3 | found-late | partial (SUBSET lists the `@check` cases as a tools gap) | spec/lib/random-stress.md checkers | an "output in any order" answer (10-2045M) has no cheap `cpl test` check: a unary `@check` sees only input and output, so it must re-solve; exact compare fails on a valid order |
+
+Updated counts: silent 24, contradiction 1, missing-stdlib 2, found-late 3;
+total 30, 28 inside M1 (L3 counted as outside).
+
+### Revision tests after running
+
+Both revisions compiled first time and match the C++ build; 03-rev passes
+200 brute cases. No edit beyond the ones recorded in the table above.

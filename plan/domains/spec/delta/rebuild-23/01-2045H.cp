@@ -36,4 +36,13 @@ repeat cnt:
     j = i
     i = k
 print(cnt)
-print(words.rev, sep: "\n")
+for w in words.rev: print(w)
+
+@check
+fn ok():
+    let s = read<Str>()
+    let cnt: Int = read_output()
+    var ws: List<Str> = []
+    repeat cnt: ws.push(read_output())
+    assert "".join(ws) == s
+    assert all(ws[t] < ws[t + 1] for t in 0..cnt - 1)
