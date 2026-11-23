@@ -315,9 +315,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 match self.slot_loc(*slot) {
                     SlotLoc::I(dst, _) => {
                         if let Some(expr) = init {
+                            let start = self.ops.len();
                             let r = self.compile_expr_i(expr);
-                            if r != dst {
-                                self.emit(Op::MoveI { dst, src: r }, expr.span);
+                            let fresh = self.ops.len() > start;
+                            match self.ops.last_mut() {
+                                Some(Op::FromOrd { dst: last, .. }) if fresh && *last == r => {
+                                    *last = dst
+                                }
+                                _ if r != dst => {
+                                    self.emit(Op::MoveI { dst, src: r }, expr.span);
+                                }
+                                _ => {}
+                            }
+                            self.in_dom.retain(|f| f.0 != dst);
+                            let dom = self.in_dom.iter().find(|f| f.0 == r && r != dst);
+                            if let Some(&(_, dom, _)) = dom {
+                                self.in_dom.push((dst, dom, Some(*slot)));
                             }
                         } else {
                             self.emit(Op::ConstImmI { dst, val: 0 }, Span::default());
@@ -456,6 +469,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if !self.try_compile_assign(place, *op, value) {
                     self.emit_fallback_stmt(stmt);
                 }
+                self.in_dom
+                    .retain(|f| f.2.is_none_or(|s| !Self::place_mentions_slot(place, s)));
+                if let (false, slot) = cpl_ir::walk::root(place) {
+                    self.assigned_locals.push(slot);
+                }
             }
             Stmt::If(cond, then_b, else_b) => {
                 if let Some(b) = Self::const_bool(cond) {
@@ -484,6 +502,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::While(id, cond, body) => {
+                self.in_dom.clear();
                 let head = self.ops.len() as u32;
                 let j_exit = self.emit_branch_if_false(cond);
                 self.loops.push(LoopTargets {
@@ -510,6 +529,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::For(id, slot, iter, body) => {
+                self.in_dom.clear();
                 if !self.try_compile_for(stmt, *id, *slot, iter, body) {
                     self.emit_fallback_stmt(stmt);
                 }
@@ -777,6 +797,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
         true
     }
 
+    /// The variable of `for k in 0..len(d)` is a position of `d` for the
+    /// whole body unless the body might resize `d` or assigns `k`; then each
+    /// `FromOrd` of it in the body is a plain move.
+    fn drop_checks_of_positions(
+        &mut self,
+        r_var: u16,
+        dom: u16,
+        slot: Slot,
+        body_pc: u32,
+        (clears, assigned): (u32, usize),
+    ) {
+        if self.dom_clears != clears || self.assigned_locals[assigned..].contains(&slot) {
+            return;
+        }
+        for op in &mut self.ops[body_pc as usize..] {
+            if let Op::FromOrd { dst, src, dom: d } = *op {
+                if src == r_var && d == dom {
+                    *op = Op::MoveI { dst, src };
+                }
+            }
+        }
+    }
+
     pub(super) fn try_compile_for(
         &mut self,
         stmt: &'p Stmt,
@@ -838,6 +881,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                 }
                 let body_pc = self.ops.len() as u32;
+                let marks = (self.dom_clears, self.assigned_locals.len());
                 self.loops.push(LoopTargets {
                     id,
                     breaks: Vec::new(),
@@ -847,6 +891,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
                 let step_pc = self.ops.len() as u32;
+                if let (ExprKind::Int(0), ExprKind::DomainLen(d), false) =
+                    (&lo.kind, &hi.kind, *closed)
+                {
+                    self.drop_checks_of_positions(r_var, *d as u16, slot, body_pc, marks);
+                }
                 for c in lt.continues {
                     self.patch(c, step_pc);
                 }

@@ -89,6 +89,16 @@ pub(super) struct Compiler<'p, 'f> {
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
+    /// Registers known to hold a position of a domain, so a `FromOrd` of
+    /// one needs no check: the register, the domain, and the local it holds
+    /// if any. Cleared wherever a domain could be resized (a call, a
+    /// fallback) and at each loop, whose back edge could bring a resize.
+    in_dom: Vec<(u16, u16, Option<Slot>)>,
+    /// How many ops so far could resize a domain, and the locals assigned
+    /// so far: a range loop over `0..len(d)` whose body adds to neither
+    /// keeps its variable a position of `d`.
+    dom_clears: u32,
+    assigned_locals: Vec<Slot>,
     pub(in crate::vm) traced: bool,
     trace_points: Vec<TracePoint<'p>>,
     /// The `for` whose body is compiled next, whose variable each round reports.
@@ -163,6 +173,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
+            in_dom: Vec::new(),
+            dom_clears: 0,
+            assigned_locals: Vec::new(),
             traced: false,
             trace_points: Vec::new(),
             traced_loop_var: None,
@@ -1141,6 +1154,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(in crate::vm) fn emit(&mut self, op: Op, span: Span) -> usize {
+        if matches!(
+            op,
+            Op::CallVmI { .. }
+                | Op::CallVmMix { .. }
+                | Op::CallClosure { .. }
+                | Op::CallVmFeed { .. }
+                | Op::FeedYieldI { .. }
+                | Op::FeedYieldV { .. }
+                | Op::FeedYieldExtend { .. }
+                | Op::FeedTree { .. }
+                | Op::FallbackStmt { .. }
+                | Op::FallbackExprI { .. }
+                | Op::FallbackExprV { .. }
+        ) {
+            self.in_dom.clear();
+            self.dom_clears += 1;
+        }
         let pc = self.ops.len();
         self.ops.push(op);
         self.spans.push(span);

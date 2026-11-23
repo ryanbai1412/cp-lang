@@ -1,7 +1,9 @@
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use cpl_ir::{Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, PlaceKind, Ty, UnOp};
+use cpl_ir::{
+    Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, PlaceKind, Stmt, Ty, UnOp,
+};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_i(&mut self, expr: &'p Expr) -> u16 {
@@ -470,15 +472,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Cast(Cast::FromOrd(d), inner) => {
                 let src = self.compile_expr_i(inner);
+                let dom = *d as u16;
+                if self.in_dom.iter().any(|f| (f.0, f.1) == (src, dom)) {
+                    return src;
+                }
                 let dst = self.alloc_i();
-                self.emit(
-                    Op::FromOrd {
-                        dst,
-                        src,
-                        dom: *d as u16,
-                    },
-                    span,
-                );
+                self.emit(Op::FromOrd { dst, src, dom }, span);
+                self.in_dom.push((dst, dom, None));
+                let held = match inner.kind {
+                    ExprKind::Local(slot) => Some(slot),
+                    _ => None,
+                };
+                self.in_dom.push((src, dom, held));
                 dst
             }
             ExprKind::Builtin(Builtin::BoundStepL(d), args) if args.len() == 2 => {
@@ -1142,10 +1147,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     for (i, a) in args.iter().enumerate() {
                         let Arg::Value(ae) = a else { unreachable!() };
                         if let Some(kind) = ScalarKind::of_ty(&f.locals[i].ty, self.program) {
+                            let fresh = self.next_i;
                             let src = self.compile_expr_i(ae);
-                            let reg = self.alloc_i();
-                            self.emit(Op::MoveI { dst: reg, src }, span);
-                            map.push(SlotLoc::I(reg, kind));
+                            // A parameter is never assigned, so it reads its
+                            // argument where it already is, unless a later
+                            // argument could still change that register.
+                            if src >= fresh || i + 1 == args.len() {
+                                map.push(SlotLoc::I(src, kind));
+                            } else {
+                                let reg = self.alloc_i();
+                                self.emit(Op::MoveI { dst: reg, src }, span);
+                                map.push(SlotLoc::I(reg, kind));
+                            }
                         } else if let ExprKind::Local(slot) = &ae.kind {
                             let SlotLoc::V(r) = self.slot_loc(*slot) else {
                                 unreachable!()
@@ -1164,11 +1177,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     let dst = self.alloc_i();
                     let prev_slots = self.inline_slots.replace(map);
                     let prev_ret = self.inline_ret.replace((dst, Vec::new()));
-                    for s in &f.body.stmts {
+                    let (tail, body) = match f.body.stmts.split_last() {
+                        Some((Stmt::Return(Some(e)) | Stmt::Give(e), rest)) => (Some(e), rest),
+                        _ => (None, &f.body.stmts[..]),
+                    };
+                    for s in body {
                         self.compile_stmt(s);
                     }
-                    let end_pc = self.ops.len() as u32;
+                    // The last statement's value falls through to the end, so
+                    // it needs no jump, nor a move when nothing else returns.
+                    let tail = tail.map(|e| self.compile_expr_i(e));
                     let (_, jumps) = self.inline_ret.take().unwrap();
+                    let dst = match tail {
+                        Some(r) if jumps.is_empty() => r,
+                        Some(r) => {
+                            if r != dst {
+                                self.emit(Op::MoveI { dst, src: r }, span);
+                            }
+                            dst
+                        }
+                        None => dst,
+                    };
+                    let end_pc = self.ops.len() as u32;
                     self.inline_ret = prev_ret;
                     self.inline_slots = prev_slots;
                     for j in jumps {

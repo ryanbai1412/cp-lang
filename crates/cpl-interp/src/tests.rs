@@ -1168,3 +1168,56 @@ print(x, y)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "3 8\n");
 }
+
+const SUB: &str = "
+struct Sub(bits: Int)
+
+impl Index for Sub:
+    let count = 1 << 4
+    @get fn ord(self) -> Int = bits
+    fn nth(k: Int) -> Sub = Sub(k)
+";
+
+#[test]
+fn vm_a_walk_over_a_library_domain_matches_the_same_walk_over_ints() {
+    let walk = format!(
+        "{SUB}
+var dp: [Sub]Int = 0
+for k in 0..Sub.count:
+    let s = Sub.nth(k)
+    dp[s] = s.bits * s.bits % 7
+for i in 0..4:
+    for k in 0..Sub.count:
+        let s = Sub.nth(k)
+        if (s.bits >> i) & 1 == 1:
+            dp[s] = (dp[s] + dp[Sub.nth(s.bits ^ (1 << i))]) % 1000000007
+for s in Sub: print(dp[s])
+"
+    );
+    let ints = "
+var dp: [16]Int = 0
+for k in 0..16: dp[k] = k * k % 7
+for i in 0..4:
+    for k in 0..16:
+        if (k >> i) & 1 == 1:
+            dp[k] = (dp[k] + dp[k ^ (1 << i)]) % 1000000007
+for k in 0..16: print(dp[k])
+";
+    assert_eq!(outcome(&walk, ""), outcome(ints, ""));
+}
+
+#[test]
+fn vm_a_checked_position_does_not_vouch_for_its_neighbour() {
+    let source = format!(
+        "{SUB}
+var t = 0
+for k in 0..Sub.count:
+    let s = Sub.nth(k)
+    let u = Sub.nth(k + 1)
+    t += s.bits + u.bits
+print(t)
+"
+    );
+    let msg = failure(&source, "");
+    assert!(msg.contains("has no position 16"), "unexpected trap: {msg}");
+}
