@@ -92,7 +92,7 @@ use std.math.{
     to_str,
 }
 use std.mod.{Comb, Mod}
-use std.opt.{is_none_or, is_some_and}
+use std.opt.{and_then, is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
 use std.search.{
     bsearch_real,
