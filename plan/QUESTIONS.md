@@ -79,6 +79,14 @@ Recommendation: (a), the "no privileged stdlib" rule in AGENTS.md; the perf gate
 How to reverse it: a moved name goes back into the builtin table; its std body stays as the reference.
 Meanwhile: move nothing; std bodies become the reference the builtins are tested against, and the list is classified with tech-debt.
 
+### stdlib: Q4 one `split` for strings and sequences
+`lib/sequence-patterns.md` gives `a.split(sep: p)` with a predicate, on lists and `Str` alike (`line.split(sep: c => c == ' ')`), as views. `std/strings.cp` also has `s.split(',') -> List<Str>`, and since free functions don't overload by argument type, the `Str` one wins, so `"ab cd".split(sep: c => c == ' ')` fails (std-seq/split-on-separator-predicate). Corpus use: 5 `s.split(',')`, 0 `Str` predicate splits.
+- (a) One `split(sep:)` taking either a value or a predicate, through a `Sep<T>` trait implemented by `T` (equality) and `T -> Bool`. It works on every `Indexed` and yields views; `Str` pieces compare and print as strings.
+- (b) Keep both and rename the `Str` one (`s.split_at_char(',')`).
+Recommendation: (a), one spelling per idea; it waits on views of `Str` comparing equal to `Str`.
+How to reverse it: restore `split(self: Str, sep: Char) -> List<Str>` in std/strings.cp.
+Meanwhile: both stay; the predicate case keeps failing on `Str`.
+
 ### idioms: the re-port bar for the 305 tracked ports
 Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
 Recommendation: (b) first for all 305, then (a) in review-score order; only (a) counts toward the taste and token targets.
