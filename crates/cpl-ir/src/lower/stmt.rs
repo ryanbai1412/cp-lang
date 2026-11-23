@@ -6,7 +6,7 @@ mod slice_place;
 use super::*;
 
 /// What writing through `x!` says when `x` is `none`; reading it says so too.
-const NO_VALUE: &str = "`!` on `none`: there is no value here";
+const NO_VALUE: &str = "`!` on `None`: there is no value here";
 
 impl<'a> Lowerer<'a> {
     pub(super) fn block(&mut self, block: &ast::Block, tail: Tail) -> Block {

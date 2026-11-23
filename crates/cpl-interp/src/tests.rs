@@ -112,7 +112,7 @@ fn division_and_remainder_are_euclidean() {
 fn unwrapping_none_stops_the_program() {
     assert_eq!(
         failure("var m: ?Int = none\nprint(m!)\n", ""),
-        "`!` on `none`: there is no value here @ m!"
+        "`!` on `None`: there is no value here @ m!"
     );
 }
 

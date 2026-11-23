@@ -114,12 +114,12 @@ fn golden_bounds_domain_and_container_errors_include_values() {
         (
             "var xs: List<Int> = []\nprint(xs.pop()!)\n",
             "",
-            "`!` on `none`: there is no value here",
+            "`!` on `None`: there is no value here",
         ),
         (
             "var o: ?Int = none\nprint(o!)\n",
             "",
-            "`!` on `none`: there is no value here",
+            "`!` on `None`: there is no value here",
         ),
         (
             "let n: Int = read()\ndomain V = 1..=n\nlet v: V = read()\nprint(v)\n",
@@ -879,7 +879,7 @@ fn every_runtime_code_traps_with_the_message_the_spec_shows() {
             "R0301",
             "let x: ?Int = None\nprint(x!)\n",
             "",
-            "`!` on `none`: there is no value here",
+            "`!` on `None`: there is no value here",
         ),
         (
             "R0401",

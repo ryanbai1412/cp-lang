@@ -38,7 +38,7 @@ the 64 KB a judge accepts, `cpl build` leaves the source out and says so;
 if the C++ alone is over, it refuses. Building twice gives the same bytes.
 
 `cpl run` checks what the C++ does not: an index out of range, a division
-by zero, an `Int` overflow, `!` on `none`, input outside its declared
+by zero, an `Int` overflow, `!` on `None`, input outside its declared
 range, recursion that never ends. Each stops the program with exit
 status 3 and an error that points at the source. A failed `assert` does
 the same in both. A `Bool` prints as `YES` or `NO`, as it does in the

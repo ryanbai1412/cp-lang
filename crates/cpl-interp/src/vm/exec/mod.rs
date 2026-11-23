@@ -853,7 +853,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::UnwrapOptI { dst, val, some } => {
                     if regs_i[some as usize] == 0 {
-                        return trap(spans[cur_pc], "`!` on `none`: there is no value here");
+                        return trap(spans[cur_pc], "`!` on `None`: there is no value here");
                     }
                     regs_i[dst as usize] = regs_i[val as usize];
                 }

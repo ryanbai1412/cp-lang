@@ -763,7 +763,7 @@ fn slices_in_and_out_of_range() {
     assert_agree(three_way("slices", SLICES, &cases));
 }
 
-// ---- Optionals: `!` on `none`, `??`, `max` and `min` over all-`none` ----
+// ---- Optionals: `!` on `None`, `??`, `max` and `min` over all-`none` ----
 
 const OPTIONALS: &str = "\
 let n: 0..=4 = read()

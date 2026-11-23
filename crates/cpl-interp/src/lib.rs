@@ -2,7 +2,7 @@
 //!
 //! This is `cpl run`. It walks the same [`cpl_ir::Program`] that the C++
 //! back end prints, and it checks what the submission build doesn't:
-//! indices, input ranges, integer overflow, `!` on `none`, and a variable
+//! indices, input ranges, integer overflow, `!` on `None`, and a variable
 //! used while a call is still changing it. A failed check is a [`Trap`]
 //! with the source span, never a crash of the interpreter.
 //!
@@ -2132,9 +2132,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Unwrap(value, _) => match self.eval(value)? {
                 Value::Opt(opt) => match opt.unwrap_owned() {
                     Some(v) => v,
-                    None => return trap(span, "`!` on `none`: there is no value here"),
+                    None => return trap(span, "`!` on `None`: there is no value here"),
                 },
-                _ => return trap(span, "`!` on `none`: there is no value here"),
+                _ => return trap(span, "`!` on `None`: there is no value here"),
             },
             ExprKind::RangeCheck {
                 value,

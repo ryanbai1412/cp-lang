@@ -489,11 +489,11 @@ template <class S> inline void reserve(S& s, ll n) {
         needs: &["fail"],
         code: "\
 template <class O> decltype(auto) have(O& o) {
-    if (!o.has_value()) fail(\"`!` on `none`: there is no value here\");
+    if (!o.has_value()) fail(\"`!` on `None`: there is no value here\");
     return *o;
 }
 template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 0> auto have(O&& o) {
-    if (!o.has_value()) fail(\"`!` on `none`: there is no value here\");
+    if (!o.has_value()) fail(\"`!` on `None`: there is no value here\");
     return std::move(*o);
 }
 ",

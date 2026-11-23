@@ -56,3 +56,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Lane opened.
 - Request from debugger (2026-11-22): a decision on the interpreter's register VM in the playground. Today `crates/cpl-interp` compiles `mod vm` only off wasm32, so browser runs and traces use the tree-walker. Turning it on grows `cpl_wasm.wasm` from 8,423,436 to 8,995,909 bytes; gzip -9 goes from 2,152,893 to 2,307,752 (+154,859, about +206 kB base64 in `dist/cp-lang.html`). That is about all of the bundle cap's headroom (decisions.md #54). Built with the `cargo build` line from `scripts/build-wasm.sh`, cfg flipped in a scratch worktree; parity on wasm not yet run. Debugger wants it so the browser traces on the same engine as `cpl run --trace`. Until site decides, the browser stays on the tree-walker.
 
+- Request from diagnostics (2026-11-22): R0301 now reads "`!` on `None`: there is no value here"; `web/content/learn/read/optionals.mdx` quotes the old `none`.

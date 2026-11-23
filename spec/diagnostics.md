@@ -141,7 +141,7 @@ prefix_sum}, L0522 copy_sort_writeback.
 | R0201 | range store out of range | 14 is outside `0..10` |
 | R0202 | overflow | integer overflow: `4000000000000000000 * 3` does not fit in an `Int` (64 bits) |
 | R0203 | division by zero | division by zero: `5 / 0` |
-| R0301 | `x!` on `None` | `!` on `none`: there is no value here |
+| R0301 | `x!` on `None` | `!` on `None`: there is no value here |
 | R0401 | assertion failed | assertion failed: k > 2 |
 | R0402 | `todo` reached | `todo` reached |
 | R0501 | bad input token (position and expected type) | expected a number, found `abc` (input line 1, column 1) |

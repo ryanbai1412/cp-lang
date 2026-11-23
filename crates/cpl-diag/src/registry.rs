@@ -774,7 +774,7 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("R0001"),
         title: "Runtime trap",
-        summary: "The program trapped at run time (out-of-bounds index, overflow, division by zero, failed `assert`, or `!` on `none`).",
+        summary: "The program trapped at run time (out-of-bounds index, overflow, division by zero, failed `assert`, or `!` on `None`).",
         explanation: "Interpreter and sanitized C++17 trap identically with the source location and local values. Fix the invariant or guard the operation before unwrapping or indexing.",
         trigger: "let s = 70\nprint(1 << s)\n",
         fix: "let s = 7\nprint(1 << s)\n",
