@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ioi05p2.cp
+// Source: IOI 2005, Mountains, https://dmoj.ca/problem/ioi05p2
+// Problem: a track of n <= 1e9 rails with slopes d_i, all 0 at first, then up to 1e5 commands
+//   ending in E: "I a b D" sets d_a..=d_b to D; "Q h" prints how many rails a car starting at
+//   height 0 passes before the track would rise above h (heights stay in [0, 1e9]).
+// Solution: read every command first and compress rails to the cut points a and b + 1. A lazy
+//   SegTree over the pieces keeps (total rise, max prefix rise) under slope assignment. A ride
+//   binary-searches the first piece whose prefix max exceeds h, then divides the height left
+//   by that piece's slope for the rails it covers. O(q log^2 q).
 // original: corpus/submissions/5032753.cpp
 
 let n: Int = read()

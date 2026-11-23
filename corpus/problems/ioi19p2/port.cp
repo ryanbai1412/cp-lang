@@ -1,9 +1,14 @@
+// Source: IOI 2019 Day 1 P2, Split the Attractions, https://dmoj.ca/problem/ioi19p2
+// Problem: a connected graph, n <= 1e5 vertices, m <= 2e5 edges, and a + b + c = n. Split the
+//   vertices into sets of sizes a, b, c, at least two of them connected; print each vertex's
+//   set (1, 2, 3), or all zeros if impossible. Here stdin gives n m a b, then the edges.
+// Solution: make the two smallest sets connected; the largest takes the rest. Take a spanning
+//   tree and its centroid hub; a Dsu groups the hub's branches, then merges groups along edges
+//   avoiding the hub while both are smaller than the small set. A group that reaches that size
+//   holds it (a BFS patch from inside it); the hub with everything else stays connected and
+//   fits the middle set (a BFS patch from the hub). No such group: all zeros. O((n + m) α(n)).
 // original: proto/ports/scout_batch_9/harness/ioi19p2.cpp
 // checker: proto/ports/scout_batch_9/harness/ioi19p2_check.cpp
-// IOI 2019 Split the Attractions: a connected map of attractions. Split
-// them into three parts of given sizes (a, b and the rest) so that at
-// least two of the parts are connected. Print each attraction's part, or
-// all zeros.
 let n: 3..=1e5 = read()
 let m: n - 1..=2e5 = read()
 let a: 1..=n - 2 = read()

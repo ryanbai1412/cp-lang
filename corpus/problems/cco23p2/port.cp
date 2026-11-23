@@ -1,6 +1,13 @@
-// CCO '23 P2 — Real Mountains (CP Lang 0.2.2): `compress`, `Mod<1_000_003>`, and
-// `SortedBag` (`first`/`last`/`first_gt`) replace manual compression, `% MOD`, and
-// a 30-line hand-rolled segment tree with `INF` sentinel.
+// Source: CCO 2023 Day 1 P2, Real Mountains, https://dmoj.ca/problem/cco23p2
+// Problem: heights h_1..h_N (N <= 1e6, h_i <= 1e9). An edit picks i < j < k with
+//   h_i > h_j < h_k, costs h_i + h_j + h_k and increments h_j. Print the minimum total cost
+//   to make h unimodal (nondecreasing, then nonincreasing), mod 1e6 + 3.
+// Solution: column i must end at cap_i = min(prefix max, suffix max). Sweep the compressed
+//   heights upwards, keeping the columns still below their cap in a SortedBag. Lifting them
+//   from level x costs x per column plus the least heights above x left of the first and right
+//   of the last (one column), or (2sz - 3)(x + 1) plus those and the least above x overall
+//   (sz >= 2). Level sums use x(x+1)/2; the least-above-x terms are deferred to a prefix and a
+//   suffix sweep of successor queries on a SortedBag. O(N log N).
 // original: corpus/submissions/5579928.cpp
 
 type Z = Mod<1_000_003>

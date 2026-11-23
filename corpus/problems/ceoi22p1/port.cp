@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ceoi22p1.cp
+// Source: CEOI 2022 Day 1, Abracadabra, https://dmoj.ca/problem/ceoi22p1
+// Problem: a permutation deck of even N <= 2e5 cards. A shuffle merges the bottom and top
+//   halves, always dropping the smaller bottom card and then the rest of the other hand.
+//   Answer Q <= 1e6 queries (t <= 1e9, i): the i-th card from the bottom after t shuffles.
+// Solution: cut the deck into runs, each led by a prefix maximum up to the next greater card;
+//   a shuffle sorts the runs by leader, and only the run crossing the middle changes: its
+//   tail splits off into new runs (by next-greater links). A Fenwick tree indexed by leader
+//   holds run lengths; first_ge finds the run at a position. Sort queries by t and shuffle
+//   until the middle falls between runs (at most N shuffles). O((N + Q) log N + Q log Q).
 // original: corpus/submissions/4728849.cpp
 
 let (n, q): (Int, Int) = read()
