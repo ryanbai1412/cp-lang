@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2382 (995 passing). Rules: 557.
+Cases: 2384 (995 passing). Rules: 558.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -46,7 +46,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
-| R02 | 51 | 51 (100%) | 26 | 26 (100%) | 51 (100%) |
+| R02 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 66 | 66 (100%) | 16 | 16 (100%) | 66 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 557 | 551 (98%) | 214 | 211 (98%) | 550 (98%) |
+| all | 558 | 552 (98%) | 215 | 212 (98%) | 551 (98%) |
 
 ## Rules
 
@@ -151,6 +151,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.5.2 [1+ 1-]: Records `(lo: Int, hi: V)` are anonymous structs with named fields. Two record types are e...
 - R02.5.3 [1+ 0-]: Record update copies with replacements: `a with to: u` or `(..a, to: u)`.
 - R02.5.4 [2+ 1-]: Row types `R: (u: V, v: V, ..)` accept any record with at least those fields, and `..R wit...
+- R02.5.5 [2+ 1-]: A record pattern names fields: `(u: a, v: b)` binds `a` and `b`, and `(u:, v:)` is shortha...
 - R02.6.1 [1+ 1-]: Fields are fixed after construction unless declared `var`; assigning a non-`var` field is ...
 - R02.6.2 [2+ 1-]: Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`; fields with defau...
 - R02.6.3 [1+ 1-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
@@ -162,7 +163,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.2 [2+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
-- R02.7.6 [4+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
+- R02.7.6 [3+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
 - R02.7.5 [1+ 0-]: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
 - R02.8.1 [3+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`; an ...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
@@ -729,7 +730,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 38 case(s)
+- E0302 Type mismatch: 39 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)

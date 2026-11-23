@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R02.5.5 record patterns (`(u: a, v: b)`, shorthand `(u:, v:)`, `..` for the rest) from round 6 H-RECORD-PATTERN; 3 cases (2 accept, 1 reject E0302), all pass.
 - Round 6 silent holes the compiler already answers, pinned with passing cases: H-TAG-RANGE-READ and H-TUPLE-READ (R10.2.3), H-GEN-SORTED (R07.7.4), H-DECL-ORDER (R11.1.1). Also answered by text: H-FOR-IF, H-TUPLE-FIELD, H-Z-ZERO, H-MOD-FILL. Open: H-RECORD-PATTERN `(u:, v:)` works but has no rule; H-PRINT-POSITIONS wording ("the file's base") needs an example.
 - Chapter overviews: "The model in one paragraph" added to core chapters 01, 02, 06, 08, 09, 10, 11 and 13; every core chapter now opens with one (Ryan's in-depth chapters ask).
 - `spec/RATIONALE.md`: per area, the overview chapter, decision ids and the alternatives that lost, for site's in-depth chapters (Ryan, via coordinator 21:34). Milestone 1 criteria: judge-profile ids dropped from the milestone (Ryan 21:36), rationale added as criterion 7.

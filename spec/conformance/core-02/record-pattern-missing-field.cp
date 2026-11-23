@@ -1,4 +1,4 @@
-// expect: E0302 at 2
+// expect: E0302 at 3
 // rule: 02.5.5
 // A record pattern that leaves a field out without `..` is an error.
 let e = (u: 1, v: 2, w: 9)
