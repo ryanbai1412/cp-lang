@@ -1,14 +1,12 @@
-// UCup 4 Stage 25 (Zagreb) C — Non-3-Divisible Directed Cycle in Pair Graph
-//
-// Each input triple `(a, b, c)` consists of three distinct integers in
-// `1..=10^9`, so its 6 permutations yield directed transitions
-// `(x, y) -> (y, z)` between ordered pairs with `x != y` and `y != z`.
-//
-// Intern all seen ordered pairs with `std.marks.Interner<(Int, Int)>`, compute
-// the graph's SCCs, pick the first vertex `rep[c]` of each SCC as its BFS
-// root, and run an intra-SCC BFS. An SCC contains a directed cycle whose
-// length is not divisible by 3 iff some intra-SCC edge `(u, v)` violates
-// `dist[v] == dist[u] + 1 (mod 3)`.
+// Source: The 4th Universal Cup, Stage 25 (Grand Prix of Zagreb), problem C (Crooked Cycles),
+//   qoj.ac/contest/3773/problem/18403
+// Problem: m unordered triples of distinct numbers (m, values <= 2e5, sum of m <= 2e5,
+//   multitest). A cycle v_1..v_k has every three cyclically consecutive numbers form a liked
+//   triple; it is crooked if 3 does not divide k. Print whether a crooked cycle exists.
+// Solution: a cycle is a closed walk on ordered pairs, each triple's 6 orders giving edges
+//   (x, y) -> (y, z). Intern the pairs, take SCCs, and BFS each SCC from one root inside it;
+//   an SCC has a cycle of length not divisible by 3 iff some edge inside it breaks
+//   dist[v] = dist[u] + 1 (mod 3). O(m) plus hashing.
 
 use std.marks.{Interner}
 
