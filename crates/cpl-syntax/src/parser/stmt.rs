@@ -295,7 +295,24 @@ impl<'a> Parser<'a> {
                 return;
             }
             let found = self.peek();
-            let span = self.span();
+            let mut span = self.span();
+            // `...`, lexed `..` then `.`: an elided body, which cp spells `todo`.
+            let prev = self
+                .pos
+                .checked_sub(1)
+                .map(|i| self.rel(self.tokens[i].span));
+            let ellipsis = found == T::Dot && self.prev_kind() == Some(T::DotDot);
+            if let (true, Some(prev)) = (ellipsis, prev.filter(|p| p.end == span.start)) {
+                span = Span::new(prev.start, span.end);
+                let message = "`...` is not an expression; write `todo` for an unwritten part";
+                let diag = Diagnostic::error(codes::UNEXPECTED_TOKEN, span, message)
+                    .with_help("`todo` has every type and traps when it runs")
+                    .with_fix("replace with `todo`", span, "todo");
+                self.error(diag);
+                self.skip_line();
+                self.eat(T::Newline);
+                return self.end_recovery(start);
+            }
             let mut diag = Diagnostic::error(
                 if found.is_closer() {
                     codes::UNMATCHED_CLOSER
