@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of mccc5j5.cp
+// Source: Mock CCC '23 Contest 1 J5 (Calculus Problem), https://dmoj.ca/problem/mccc5j5
+// Problem: N <= 1e6 problems worth d_0..d_{N-1} points and Q <= 5e5 people (m_j < N,
+//   k_j <= 1e6); person j can solve problem i iff m_j xor i <= k_j. For each person print the
+//   most points of a problem they can solve.
+// Solution: a max segment tree over 2^bits leaves (bits covers N - 1, every m and every k) is
+//   a binary trie of the indices. Walk the path of i = m xor k from the root; wherever k has a
+//   1 bit, the sibling subtree has m xor i < k on every leaf, so take its max; the leaf at the
+//   end is m xor i = k itself. O(2^bits) build, O(bits) per query.
 // original: corpus/submissions/5333196.cpp
 
 let (n, q): (Int, Int) = read()

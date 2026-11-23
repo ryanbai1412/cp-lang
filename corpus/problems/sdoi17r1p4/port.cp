@@ -1,11 +1,11 @@
-// SDOI 2017 Ball Dance: n boys and n girls; pairing boy i with girl j gives
-// numerator a[i][j] and denominator b[i][j]. Find a perfect bipartite matching
-// maximizing sum(a) / sum(b), printed to 6 decimal places.
-//
-// Fractional programming: ratio >= r iff max_matching(a[i][j] - r * b[i][j]) >= 0.
-// Binary search `r` scaled by 10^7 using `std.flow.max_weight_matching`
-// (O(n^3) Hungarian), replacing the original's 90-line `__int128` dense flow.
-// Bounding `hi` by `max(a) * SCALE` avoids 128-bit arithmetic completely.
+// Source: SDOI 2017 Round 1 (新生舞会, Freshman Ball), https://dmoj.ca/problem/sdoi17r1p4
+//   (not public; statement read on Luogu as P3705)
+// Problem: n <= 100 boys and n girls; pairing boy i with girl j gives a[i][j] and b[i][j]
+//   (both 1..1e4). Over perfect matchings, maximise sum a / sum b; print it to 6 decimals.
+// Solution: fractional programming: the ratio exceeds r iff the max-weight perfect matching
+//   with weights a - r b is positive. Binary search r scaled by SCALE = 1e7 (integer weights
+//   SCALE a - mid b, hi = max(a) * SCALE) with `max_weight_matching` (Hungarian, O(n^3)),
+//   about 37 rounds; print lo / 1e7 rounded to 6 decimals by hand.
 // original: corpus/submissions/5466798.cpp
 use std.flow.{max_weight_matching}
 

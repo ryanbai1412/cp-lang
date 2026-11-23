@@ -1,5 +1,11 @@
-// CCO 2022 Alternating Heights, as it builds today: Kahn's algorithm and the
-// binary search for the furthest end are written out (F1, K6).
+// Source: CCO '22 P1 (Alternating Heights), https://dmoj.ca/problem/cco22p1
+// Problem: a line A_1..A_N of students 1..K (N <= 3000, K <= N, students may repeat) and
+//   Q <= 1e6 queries x < y: can distinct heights give h[A_x] > h[A_x+1] < h[A_x+2] > ...
+//   up to A_y? Print YES or NO for each.
+// Solution: a range works iff the taller-than graph of its adjacent pairs is acyclic
+//   (`consistent`: Kahn's algorithm, O(N + K)), and a range that works still works shrunk.
+//   So binary-search, for each x, the furthest y that works (`reach[x]`): O(N^2 log N) in
+//   all, then O(1) per query.
 // original: corpus/submissions/4801881.cpp
 let n: 2..=3000 = read()
 let k: 2..=n = read()

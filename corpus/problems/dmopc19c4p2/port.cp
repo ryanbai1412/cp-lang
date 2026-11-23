@@ -1,8 +1,10 @@
-// DMOPC '19 Contest 4 P2: a token and a hole share an n x n board (the 15
-// puzzle with one tile that matters). One move slides the hole one step, or
-// swaps the token into the hole when they are adjacent. Fewest moves until
-// the token stands on the target.
-// Runnable on proto/cpc today.
+// Source: DMOPC '19 Contest 4 P2 (Pleasant Present), https://dmoj.ca/problem/dmopc19c4p2
+// Problem: an N x N grid, N <= 15, where all but 2 cells hold magnets; a marble starts on one
+//   empty cell. Each second either the marble moves to an adjacent empty cell or a magnet slides
+//   into the adjacent empty cell. Print the fewest seconds to get the marble to (r_e, c_e).
+// Solution: the state is (marble cell, hole cell), the 15 puzzle with one tile that matters.
+//   A move slides the hole one step, or swaps marble and hole when they are adjacent. BFS over
+//   the N^4 states with a [Row, Col, Row, Col] distance table: O(N^4).
 // original: corpus/submissions/5323330.cpp
 let n: 2..=16 = read()
 domain Row = 1..=n

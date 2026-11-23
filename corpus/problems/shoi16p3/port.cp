@@ -1,10 +1,13 @@
-// SHOI 2016 P3, Class Ranking: m students, n courses. In course i scores
-// are 1..=top[i] and B is ranked rank[i] (rank - 1 students strictly
-// above). Exactly k students score no higher than B in every course. The
-// number of score tables, modulo 1e9+7.
-// The original builds Faulhaber polynomials with a hand-written Poly type
-// (70 lines). Here: the per-course count is a polynomial in top[i] of
-// degree at most m, so it is brute-forced at 0..=m + 1 and interpolated.
+// Source: SHOI 2016 / JLOI 2016 (成绩比较, Grade Comparison), https://dmoj.ca/problem/shoi16p3
+//   (not public; statement read on Luogu as P3270)
+// Problem: m <= 100 students including B, n <= 100 courses. Course i scores are 1..top[i]
+//   (top <= 1e9) and B ranks rank[i] there (rank - 1 students strictly above him). Exactly k
+//   students score no higher than B in every course. Count the score tables modulo 1e9+7.
+// Solution: per course, the scores alone count sum_{s=1..top} s^below (top - s)^above, a
+//   polynomial in top of degree <= m: brute-force it at 0..=m + 1 and `lagrange_at` top.
+//   Then still[j] = ways with j students still at or below B so far; a course keeps `keep` of
+//   them at or below and fills its other below - keep slots from the m - 1 - j already out:
+//   still'[keep] += still[j] C(j, keep) C(m - 1 - j, below - keep) ways. O(n m^2 log m).
 // original: corpus/submissions/5445693.cpp
 use std.poly.{lagrange_at}
 

@@ -1,4 +1,10 @@
-// SAC '22 CC2 P3 (today/ runnable subset) — original: corpus/submissions/4121049.cpp
+// Source: SAC '22 Code Challenge 2 P3 (Rating Choices), https://dmoj.ca/problem/sac22cc2p3
+// Problem: N <= 17 contests and rating R <= 1e9. A directed binary tree: 2^N - 1 lines u v w D
+//   say that at node u you take the contest (go to v, gain D, |D| <= 1e4) or skip it (go to
+//   w). Starting at node 1, print the maximum rating after the last choice.
+// Solution: tree DP. BFS from node 1 gives an order with parents first; in reverse,
+//   best[u] = max(D + best[v], best[w]), leaves 0. Print R + best[1]: O(2^N).
+// original: corpus/submissions/4121049.cpp
 
 let k: 1..=19 = read()
 let r: 0..=1_000_000_000 = read()
