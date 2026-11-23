@@ -113,12 +113,19 @@ impl Visitor for Scopes<'_> {
                 // The statement's span starts at its decorators, if any.
                 let text = stmt.span.text_at(self.src, self.base);
                 let at = text.find("var").unwrap_or(0) as u32 + stmt.span.start + self.base;
-                self.vars.push(VarStmt {
-                    keyword: Span::new(at, at + 3),
-                    names: Vec::new(),
-                    changed: false,
-                });
-                self.current_var = Some(self.vars.len() - 1);
+                let keyword = Span::new(at, at + 3);
+                // `var a, b: Int = 4` is one `let` per name under one keyword.
+                match self.vars.iter().position(|v| v.keyword == keyword) {
+                    Some(shared) => self.current_var = Some(shared),
+                    None => {
+                        self.vars.push(VarStmt {
+                            keyword,
+                            names: Vec::new(),
+                            changed: false,
+                        });
+                        self.current_var = Some(self.vars.len() - 1);
+                    }
+                }
             }
             StmtKind::Assign { target, op, value } => {
                 self.leaks_across_tests(stmt, target, *op, value);

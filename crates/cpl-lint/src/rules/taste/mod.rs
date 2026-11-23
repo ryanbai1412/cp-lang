@@ -1140,6 +1140,15 @@ impl<'a> Taste<'a> {
         let ExprKind::Field { name, .. } = &expr.kind else {
             return;
         };
+        // `t.preorder(v)` is the subtree walk from `v`, not the array.
+        let end = (expr.span.end + self.base) as usize;
+        if self
+            .src
+            .get(end..)
+            .is_some_and(|after| after.starts_with('('))
+        {
+            return;
+        }
         let to = match name.text.as_str() {
             "preorder" => "at",
             "postorder" | "post_order" => "at.rev",
@@ -1608,7 +1617,16 @@ impl<'a> Taste<'a> {
                 Some(format!("count({} for {p} in {it})", c.unwrap_or_default())),
             ),
             AssignOp::Binary(BinOp::Add) if !numeric(i) => return,
-            AssignOp::Binary(BinOp::Add) if i == "0" && c.is_none() && v == p => {
+            // A stepped range kept as a value doesn't run yet (E0501); a generator over it does.
+            AssignOp::Binary(BinOp::Add)
+                if i == "0"
+                    && c.is_none()
+                    && v == p
+                    && !matches!(
+                        iter.kind,
+                        ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
+                    ) =>
+            {
                 ("sum", Some(format!("{}.sum()", receiver(&it))))
             }
             AssignOp::Binary(BinOp::Add) => (
@@ -1623,6 +1641,10 @@ impl<'a> Taste<'a> {
             AssignOp::Min => ("min", None),
             _ => return,
         };
+        // `let sum = sum(..)` names itself.
+        if name == call {
+            return;
+        }
         let mut diag = Diagnostic::warning(
             LOOP_REDUCTION.code,
             self.pair_span(decl.span, next.span),

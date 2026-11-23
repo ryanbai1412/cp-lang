@@ -796,6 +796,8 @@ mod std_tests;
 mod corpus_tests;
 
 #[cfg(test)]
+mod behaviour_tests;
+#[cfg(test)]
 mod fix_tests;
 
 #[cfg(test)]

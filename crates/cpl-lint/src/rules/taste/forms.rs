@@ -45,6 +45,16 @@ impl<'a> AccLoop<'a> {
         else {
             return None;
         };
+        // `repeat n:` is a `for _ in 0..n` whose pattern and range nobody wrote.
+        if matches!(pat.kind, PatternKind::Wildcard) && pat.span.end - pat.span.start > 1 {
+            return None;
+        }
+        // `for x in fields(a)` is unrolled at compile time: no sequence to fold.
+        if let ExprKind::Call { callee, .. } = &iter.kind {
+            if matches!(&callee.kind, ExprKind::Name(n) if n == "fields") {
+                return None;
+            }
+        }
         Some(AccLoop {
             name,
             init,
