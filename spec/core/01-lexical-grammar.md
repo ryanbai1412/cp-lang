@@ -478,7 +478,11 @@ primary     := literal | NAME | path generic_args? | '(' expr ')' | tuple
 Call arguments: positional first, named after in any order, each
 parameter at most once; parameters after `;` are named-only. A generator
 argument (`expr for clause`) is a lazy sequence, the free fold form of
-decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`. A `mut`
+decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`,
+`max(g[.., c].count('#') for c in Col)!`; each is the method fold of the
+same sequence (`max` gives `?T`). A generator is only ever a call
+argument: `(f(x) for x in xs).max()` is E0103, with `max(f(x) for x in xs)`
+as the fix. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
 for the receiver of a method call. (R01.10.1)
 

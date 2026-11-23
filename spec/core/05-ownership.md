@@ -322,7 +322,7 @@ error unless the compiler proves them apart.**
   literals). Two slices need the ranges proven apart:
   `solve(mut a[l..m], mut a[m..r])` is fine. (R05.8.2)
 - Different projections of one receiver always conflict
-  (`g.row(r)` and `g.col(c)`). (R05.8.3)
+  (`g[r]` and `g[.., c]` of one grid). (R05.8.3)
 - A container's length can't change while any place in it is lent:
   `let x = mut xs[i]` then `xs.push(..)` is an error. (R05.8.4)
 

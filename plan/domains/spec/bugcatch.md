@@ -112,3 +112,7 @@ Every runnable `ok` case built at `-O1` under ASan, UBSan and `_GLIBCXX_DEBUG` a
 ## Adversarial round A4 (2026-11-23)
 
 New commits: 6347f91fb (leading-operator continuation), 084b5e680 (VM skips proven FromOrd checks), 1a4e53f33 (typed `read_output` in `@check`), ea9a2324a (E0316/E0317). 18 probes under ASan, UBSan and `_GLIBCXX_DEBUG`, release and `--checks traps`. The FromOrd skip held: `Sub.nth(16)`, `Sub(s.bits + 1)`, a `0..=count` walk and a helper fn all trap in the interpreter and in the traps build. Bug: a blank or comment line between a line and its continuation gives E0006 (compiler; R01.2.4 now says they are skipped). Continuation with `.`, `??`, `and`/`or`, `>>`, `-1`, inside a lambda and after `yield` agrees. 1 case added.
+
+## Round 17, partial (2026-11-23)
+
+So far 1 caught, 1 missed, 1 with no behaviour to catch. Missed: `02e44dcc1`, which rejects a lone `\r` anywhere. The existing cases covered code and strings, which an earlier path already rejects; a lone `\r` in a comment wasn't covered, and `core-01/lone-cr-in-comment-is-error` now covers it. `0fbf88e3c` (ranged sums typed `Int`) counted as having no behaviour because its case, `core-03/window-plus-over-ranged-is-int`, landed after the fix. The script measures each fix with the cases from its own commit, so that's an artefact of the measurement, not a miss.

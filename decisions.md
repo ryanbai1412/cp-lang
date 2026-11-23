@@ -8188,3 +8188,14 @@ tag move fatal again.
 - **Why.** Six M1 conformance cases (core-06/gen-*) need `gen`. Library fns keep the drawing code in CP Lang that interp and C++ already agree on, instead of new IR.
 - **Reverse.** Drop `lower/call/gen.rs` and the four std fns. `gen` then reports E0201 again.
 
+
+## 399. Max over a generator is `max(e for x in s)`; grid rows and columns are `g[r]` and `g[.., c]` (spec, 2026-11-23)
+
+- **Decision.** No new form. Ryan's grid program had two frictions.
+  - `max(g[.., c].count('#') for c in Col)` was E0303, although R01.10.1 and decision 53 already make a generator argument the free form of the method fold. The spec now says so for `min` and `max` too: `max(e for x in s)` is `s.map(x => e).max()`, a `?T`, so it is written `max(...)!` or `?? d`.
+  - The parenthesized `(e for x in s).max()` stays E0103. A generator is only ever a call argument, and its help writes the call.
+- **Grid example.** R05.8.3's example used `g.row(r)` and `g.col(c)`, which don't exist. It now uses `g[r]` and `g[.., c]`, the one spelling; no other uses in spec/ or docs/.
+- **Cases.**
+  - core-01/generator-arg-free-fold: `min`, `max`, `sum`, `count` and the empty case. Compiler known gap.
+  - core-01/paren-generator-is-error: passes.
+- **Reverse.** Make `(e for ...)` a primary lazy sequence; that adds a second spelling of the comprehension's laziness.

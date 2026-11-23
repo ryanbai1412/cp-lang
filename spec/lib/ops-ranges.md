@@ -79,7 +79,9 @@ affine composition) just works.
 | `gcd` | `Monoid`, `Commutative`, `Idempotent` | `0` |
 | `and`, `or` | `Monoid`, `Commutative`, `Selective` | `true`, `false` |
 
-Free `min` and `max` take any number of arguments: `max(a, b, c)`.
+Free `min` and `max` take any number of arguments, `max(a, b, c)`, or one
+generator, `max(f(x) for x in xs)`, which is `xs.map(f).max()`: `?T`,
+`None` when empty, so it reads `max(...)!` or `max(...) ?? d`.
 
 A bounded `Int` (`0..=1e9`) has a far end, so `min` and `max` are monoids
 on it with no sentinel. An unbounded `Int` has no far end, so `min` on it is
