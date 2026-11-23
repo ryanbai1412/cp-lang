@@ -92,7 +92,7 @@ means no real check exists yet. Targets and current numbers are in
 | Docs point at code that exists | Paths named in architecture docs that are gone | Ratchet | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
 | Handbook reads for an outsider | Shared-history phrases, commit hashes | Lint | `scripts/check-handbook.py` |
 | Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
-| Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `missing` |
+| Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
 | Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector | `missing` |
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing | `missing` |

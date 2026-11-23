@@ -130,5 +130,6 @@
     "crates/cpl-lsp/src/tests.rs",
     "crates/cpl-syntax/src/parser/expr.rs",
     "crates/cpl-syntax/src/tests.rs"
-  ]
+  ],
+  "skip_lists": 141
 }

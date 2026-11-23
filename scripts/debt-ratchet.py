@@ -478,6 +478,61 @@ def stale_arch_paths(root: Path) -> list[str]:
     return [f"{where} {p}" for where, p in found if p not in ignored]
 
 
+SKIP_NAME_RE = re.compile(r"SKIP|XFAIL|KNOWN|ALLOW|NOT_|DIFFER|PENDING|IGNORE|WORSE|EXEMPT|FAIL|GAP")
+SKIP_CONST_RE = re.compile(
+    r"^\s*(?:pub(?:\([a-z]+\))?\s+)?(?:const|static)\s+([A-Z][A-Z0-9_]*)\s*:\s*&(?:'static\s+)?\[[^=]*=\s*&\[",
+    re.M)
+SKIP_FILE_RE = re.compile(r"(gaps|failing|allow|xfail|skip)[^/]*\.txt$")
+
+
+def _array_items(text: str) -> int:
+    """Top-level items of a Rust array literal whose `[` was just consumed."""
+    depth, items, pending, i = 0, 0, False, 0
+    while i < len(text):
+        c = text[i]
+        if text.startswith("//", i):
+            i = text.find("\n", i) % (len(text) + 1)
+            continue
+        if c == '"':
+            j = i + 1
+            while j < len(text) and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            i, pending = j + 1, True
+            continue
+        if c in "([{":
+            depth, pending = depth + 1, True
+        elif c in ")]}":
+            if depth == 0:
+                return items + pending
+            depth -= 1
+        elif c == "," and depth == 0:
+            items, pending = items + pending, False
+        elif not c.isspace():
+            pending = True
+        i += 1
+    return items + pending
+
+
+def skip_lists(root: Path) -> list[str]:
+    """Entries in lists that exempt something from a check.
+
+    Rust `const`/`static` arrays named like SKIP, XFAIL, KNOWN_*, NOT_BUILT or
+    *_DIFFERS, and tracked `*gaps*.txt`, `*failing*.txt`, `*allow*.txt`,
+    `*xfail*.txt` and `*skip*.txt` files (one entry per non-comment line).
+    """
+    found = []
+    for p in _rs_files(root):
+        text = p.read_text(encoding="utf-8")
+        for m in SKIP_CONST_RE.finditer(text):
+            if SKIP_NAME_RE.search(m.group(1)):
+                found += [f"{_rel(root, p)} {m.group(1)}"] * _array_items(text[m.end():])
+    tracked = _git(root, "ls-files", "*.txt")
+    for rel in (r for r in tracked if SKIP_FILE_RE.search(r) and not r.startswith("research/")):
+        lines = [l for l in _lines(root / rel) if l.strip() and not l.lstrip().startswith("#")]
+        found += [rel] * len(lines)
+    return found
+
+
 REGISTER_SPAN_RE = re.compile(r"`([^`]+)`")
 REGISTER_COMMANDS = {"cargo", "cpl", "cpl-conform", "just"}
 
@@ -537,6 +592,7 @@ COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
     "rust_ignore": ("Rust #[ignore] attributes", rust_ignore, True),
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
+    "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),

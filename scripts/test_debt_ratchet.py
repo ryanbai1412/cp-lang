@@ -153,6 +153,22 @@ class DebtRatchetTest(unittest.TestCase):
                         "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
             self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
 
+    def test_skip_lists_count_entries_of_exemption_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/a/tests/t.rs", "\n".join([
+                "const NOT_BUILT: &[&str] = &[", '    "x.cp", // why', '    "y,z.cp",', "];",
+                'const KNOWN_WORSE: &[(&str, &str)] = &[("a", "b"), ("c", "d")];',
+                'const CASES: &[&str] = &["kept"];', ""]))
+            self._write(root, "spec/rule-gaps.txt", "# header\nR1\n\nR2\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(sorted(dr.skip_lists(root)), [
+                "crates/a/tests/t.rs KNOWN_WORSE", "crates/a/tests/t.rs KNOWN_WORSE",
+                "crates/a/tests/t.rs NOT_BUILT", "crates/a/tests/t.rs NOT_BUILT",
+                "spec/rule-gaps.txt", "spec/rule-gaps.txt",
+            ])
+
     def test_register_rows_counts_missing_and_unknown_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
