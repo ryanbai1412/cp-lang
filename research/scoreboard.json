@@ -1924,7 +1924,7 @@
         "noi02p1": "untested",
         "noi02p3": "error",
         "noi05p4": "untested",
-        "noi06p3": "error",
+        "noi06p3": "pass",
         "noi07p1": "error",
         "noi08p5": "pass",
         "noi09p4": "error",
@@ -1956,7 +1956,7 @@
       "causes": [
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 8,
+          "count": 9,
           "examples": [
             "ccc20s4",
             "cco21p5",
@@ -1967,21 +1967,13 @@
         },
         {
           "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
-          "count": 5,
+          "count": 6,
           "examples": [
             "btoi15p3",
             "btoi17p2",
             "noi07p1",
-            "sdoi17r1p2",
-            "yac6p4"
-          ]
-        },
-        {
-          "cause": "E0302: can't compare a `<id>` with a `<id>`",
-          "count": 2,
-          "examples": [
-            "noip20p3",
-            "sac22cc2p5"
+            "noip09p4",
+            "sdoi17r1p2"
           ]
         },
         {
@@ -2035,20 +2027,6 @@
           ]
         },
         {
-          "cause": "E0302: `<id>` does not implement `<id>`",
-          "count": 1,
-          "examples": [
-            "noi06p3"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` is a type, and a value is needed here",
-          "count": 1,
-          "examples": [
-            "noip09p4"
-          ]
-        },
-        {
           "cause": "E0302: `<id>` requires elements of an index domain or bounded range, not `<id>`",
           "count": 1,
           "examples": [
@@ -2060,6 +2038,13 @@
           "count": 1,
           "examples": [
             "btoi20p3"
+          ]
+        },
+        {
+          "cause": "E0302: can't compare a `<id>` with a `<id>`",
+          "count": 1,
+          "examples": [
+            "sac22cc2p5"
           ]
         },
         {
@@ -2148,13 +2133,13 @@
         }
       ],
       "counts": {
-        "error": 37,
-        "pass": 29,
+        "error": 36,
+        "pass": 30,
         "trap": 1,
         "untested": 32,
         "wrong": 1
       },
-      "passed": 29,
+      "passed": 30,
       "total": 100
     },
     "diff": {

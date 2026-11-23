@@ -1,4 +1,4 @@
-// NOI 2006 P3 (CP Lang 0.2.2): independent envelope DP using Tropical Optionals
+// NOI 2006 P3 (CP Lang 0.3): independent envelope DP using Tropical Optionals
 // `?Int` + `min=` (zero `INF` sentinels).
 // original: corpus/submissions/3868871.cpp
 let n: 1..=100_000 = read()
@@ -9,7 +9,7 @@ for i in Col:
     let (ai, bi): (Int, Int) = read()
     a[i] = ai
     b[i] = bi
-let mx_a = max(a[i] for i in Col)!
+let mx_a = a.max()!
 for i in Col: a[i] = mx_a - a[i]
 
 fn cands_at(arr: [Col]Int, i: Int) -> List<Int>:
