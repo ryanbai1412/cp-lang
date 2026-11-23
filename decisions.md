@@ -5993,7 +5993,7 @@ so the lint-time target becomes the 500 ms front-end budget: every semantic
 lint will read checker facts anyway (design/overview.md). Reverse: drop the
 `checker_lints` call in `crates/cpl-lint/src/cli.rs`.
 
-## 240. Release leaves `List` and slice bounds unchecked (2026-11-22)
+## 240. Chapter 13's release column follows chapter 9 (2026-11-22)
 `spec/core/13-lowering.md` said `xs[i]` on `List`/`Str` and slices keep
 their bounds check in release ("same"), while R09.2.2 and R09.3.2, the
 one list of checks that other chapters link to, say release skips every
@@ -6001,7 +6001,11 @@ check unless `bounds` is kept with `release_checks:` or `with checks(...)`,
 and R13.1.4 calls an unchecked index on an invalid program as unsafe as
 the C++. Chapter 9 wins: chapter 13's two rows now say release has no
 check unless `bounds` is kept. Valid programs give the same answers
-either way, and the hot path loses a compare per index. Case:
-`spec/conformance/core-09/release-list-index-unchecked.cp`. Reverse: make
-R09.3.2's release column "trap" for `List` indexes and restore "same" in
+either way, and the hot path loses a compare per index. The same holds
+for four more rows that said "same": range stores truncate (R09.3.3),
+`x!` reads the niche (R09.3.5), division by zero gives 0 (R09.3.6) and
+reads are unchecked unless `reads` is kept. Cases:
+`spec/conformance/core-09/release-list-index-unchecked.cp`,
+`spec/conformance/core-09/release-division-by-zero-fallback.cp`. Reverse:
+change R09.3.2-R09.3.6's release column to "trap" and restore "same" in
 chapter 13.

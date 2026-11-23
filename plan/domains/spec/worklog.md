@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Decision 240 widened: chapter 13's release column now follows chapter 9 for range stores, `x!`, division by zero and reads too. `core-09/release-division-by-zero-fallback.cp` fails (release traps); compiler and perf requests filed.
 - Decision 240: chapter 13 said release keeps `List`/slice bounds checks, against R09.2.2/R09.3.2; chapter 13 now follows chapter 9. Case `core-09/release-list-index-unchecked.cp` fails (codegen emits `cpl::at`); perf request filed.
 - R09.1.3: `core-09/user-context-lexical-without-uses.cp` fails: a top-level fn without `uses` follows a user context's caller value (`io` does not). Compiler request filed.
 - R02.4.7: `core-02/question-extent-let-stays-optional.cp` and `core-02/question-not-early-return.cp` fail: `let v = o?` is typed `Int` and a `None` reads as `0` (silent wrong answer). Compiler request filed.

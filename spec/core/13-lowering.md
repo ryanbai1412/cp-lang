@@ -122,8 +122,8 @@ Rules every row follows:
 | Form | Lowers to | Time | Alloc | Debug checks | Release checks |
 |---|---|---|---|---|---|
 | `Int` arithmetic | `int64_t` ops | O(1) | none | overflow traps | wraps |
-| range type `lo..=hi` storage | narrowest of `int32_t`/`uint32_t`/`int64_t` | O(1) | none | store into a range-typed place traps if out of range | same |
-| `/`, `%` | floor/Euclidean helper (one extra branch) | O(1) | none | division by zero traps | same |
+| range type `lo..=hi` storage | narrowest of `int32_t`/`uint32_t`/`int64_t` | O(1) | none | store into a range-typed place traps if out of range | truncates to the width (R09.3.3) |
+| `/`, `%` | floor/Euclidean helper (one extra branch) | O(1) | none | division by zero traps | defined fallback 0 (R09.3.6) |
 | `**` | square-and-multiply | O(log k) | none | overflow traps | wraps |
 | `Mod<P>` ops | `uint32_t` with constant-divisor reduction | O(1); `inv` O(log P) | none | none | none |
 | chained comparison | one comparison per link, operands evaluated once (§130) | O(links) | none | none | none |
@@ -134,7 +134,7 @@ Rules every row follows:
 |---|---|---|---|---|---|
 | `?Int`, `?V`, `?range` | niche value in the same word (`Int` excludes `INT64_MIN`) | O(1) | none | none | none |
 | `?T` for other `T` | value + flag | O(1) | none | none | none |
-| `x!` | load | O(1) | none | traps on `none` unless flow facts prove it | same |
+| `x!` | load | O(1) | none | traps on `none` unless flow facts prove it | reads the niche as a value (R09.3.5) |
 | `x ?? y`, `?`, `none + x` | branch | O(1) | none | none | none |
 
 ## Index spaces and collections
@@ -185,7 +185,7 @@ Rules every row follows:
 
 | Form | Lowers to | Time | Alloc | Debug | Release |
 |---|---|---|---|---|---|
-| `read<T>()` | buffered fast reader, typed parse | O(input) | none beyond the value | declared bounds checked | same |
+| `read<T>()` | buffered fast reader, typed parse | O(input) | none beyond the value | declared bounds checked | unchecked unless `reads` is kept (chapter 9) |
 | `print(...)` | buffered writer | O(output) | none | none | none |
 
 ## Debt (forms that cost more than their row)
