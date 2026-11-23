@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `core-11/binary-min-beside-imported-seq-min.cp` (fails E0606; compiler): with seq's `min` imported, `min(3, 1)` is still the builtin. It is the program that reaches 701193ef's path, so bugcatch can catch it once the checker is fixed.
 - Decision 241: an inline `mod` in a program sees the prelude (R11.3.1 was silent); case fails E0201, routed to compiler.
 - R01.10.2 (underivable programs are E0103: `var x: Int`, `fn f() lends T`, `enum Dir: N, E`) and R10.3.7 (`?T` is not `Show`) written down, with one accept case each; 0 rule-less core cases left. `var-needs-initializer` still fails (no diagnostic; routed to compiler earlier).
 - `// rule:` lines on 6 rule-less core cases (11 to 5 left: three E0103 spellings and `?T` not `Show` have no rule id in the chapter text yet); `diagnostics/planned-domain-list.cp` gives E0504 a reject case (1 code left, E0903, routed to diagnostics).
