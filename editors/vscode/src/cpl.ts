@@ -91,6 +91,15 @@ export function installHint(platform: NodeJS.Platform = process.platform): strin
         : 'Install it with `curl -fsSL https://cp-lang.org/install.sh | sh` (it goes in `~/.cpl/bin`), or point `cp.server.path` at the binary.';
 }
 
+/** Why CP Lang doesn't run `cpl` in a folder VS Code hasn't been told to trust. */
+export const RESTRICTED =
+    'This folder is in Restricted Mode, so CP Lang highlights .cp files but does not run `cpl`: no diagnostics, completion or runs. Trust the folder to turn them on.';
+
+/** What to tell the contestant when there is no `cpl` to run. */
+export function missingCpl(trusted: boolean, platform: NodeJS.Platform = process.platform): string {
+    return trusted ? `Couldn't find \`cpl\`. ${installHint(platform)}` : RESTRICTED;
+}
+
 export interface CplResult {
     /** The exit status, or null when the process was killed or never started. */
     code: number | null;

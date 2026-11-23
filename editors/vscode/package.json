@@ -35,6 +35,13 @@
     "Snippets"
   ],
   "main": "./out/src/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode CP Lang highlights .cp files but does not run `cpl`; trust the folder for diagnostics, completion and runs.",
+      "restrictedConfigurations": ["cp.server.path", "cp.server.args", "cp.stress.args"]
+    }
+  },
   "activationEvents": [],
   "contributes": {
     "languages": [

@@ -5,7 +5,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
-import { installHint, runCpl } from './cpl';
+import { missingCpl, runCpl } from './cpl';
 import { parseTestReport, TestCase } from './results';
 
 export type Outcome = 'passed' | 'failed' | 'errored' | 'skipped';
@@ -127,7 +127,7 @@ export class TestPanel implements vscode.Disposable {
                 }
             };
             if (!binary) {
-                const message = new vscode.TestMessage(`Couldn't find \`cpl\`. ${installHint()}`);
+                const message = new vscode.TestMessage(missingCpl(vscode.workspace.isTrusted));
                 items.forEach(item => record(item, 'errored', message));
                 continue;
             }

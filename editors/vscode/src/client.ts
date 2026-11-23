@@ -14,7 +14,7 @@ import {
     State,
 } from 'vscode-languageclient/node';
 import { inAttribute, registerDecoratorCompletion, registerFallbackCompletion } from './completion';
-import { installHint, resolveServer } from './cpl';
+import { installHint, RESTRICTED, resolveServer } from './cpl';
 import { registerFallbackInlayHints } from './inlayHints';
 
 export const SELECTOR = [
@@ -24,6 +24,9 @@ export const SELECTOR = [
 
 /** The `cpl` binary the settings point at, or undefined when it can't be found. */
 export function serverBinary(): string | undefined {
+    if (!vscode.workspace.isTrusted) {
+        return undefined;
+    }
     const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
     return resolveServer(configured, {
         pathEnv: process.env.PATH ?? '',
@@ -199,6 +202,16 @@ export class CpClient implements vscode.Disposable {
             return;
         }
         this.warnedMissing = true;
+        if (!vscode.workspace.isTrusted) {
+            this.setStatus('cpl: Restricted Mode', vscode.LanguageStatusSeverity.Warning, RESTRICTED);
+            const trust = 'Manage Workspace Trust';
+            void vscode.window.showWarningMessage(RESTRICTED, trust).then(choice => {
+                if (choice === trust) {
+                    void vscode.commands.executeCommand('workbench.trust.manage');
+                }
+            });
+            return;
+        }
         const choose = 'Set the Path';
         void vscode.window
             .showWarningMessage(

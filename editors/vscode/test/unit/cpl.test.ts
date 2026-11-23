@@ -1,7 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as path from 'node:path';
 import { test } from 'node:test';
-import { installHint, resolveServer, runCpl } from '../../src/cpl';
+import { installHint, missingCpl, RESTRICTED, resolveServer, runCpl } from '../../src/cpl';
 
 function resolve(configured: string, files: string[], platform: NodeJS.Platform = 'linux'): string | undefined {
     return resolveServer(configured, {
@@ -103,4 +103,15 @@ test('a missing cpl points at the installer and where it puts cpl, not at a sour
     for (const hint of [unix, windows]) {
         assert.doesNotMatch(hint, /cargo/);
     }
+});
+
+test('an untrusted folder is told to trust, not to install cpl', () => {
+    assert.equal(missingCpl(false, 'linux'), RESTRICTED);
+    assert.match(RESTRICTED, /Restricted Mode/);
+    assert.match(RESTRICTED, /[Tt]rust the folder/);
+    assert.match(missingCpl(true, 'linux'), /install\.sh/);
+    // Restricted Mode keeps the extension, so .cp is still CP Lang, not Plain Text.
+    const manifest = require('../../../package.json');
+    assert.equal(manifest.capabilities.untrustedWorkspaces.supported, 'limited');
+    assert.ok(manifest.capabilities.untrustedWorkspaces.restrictedConfigurations.includes('cp.server.path'));
 });
