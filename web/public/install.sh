@@ -88,7 +88,13 @@ tmp="$(mktemp -d "$home/tmp/install.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 say "fetching $base/latest.json"
-fetch "$base/latest.json" "$tmp/latest.json" || die "could not download $base/latest.json"
+if ! fetch "$base/latest.json" "$tmp/latest.json"; then
+    # Until the first stable release, the stable channel installs edge.
+    [ -z "$tag" ] || die "could not download $base/latest.json"
+    base="$releases/download/edge"
+    say "no stable release yet; fetching $base/latest.json"
+    fetch "$base/latest.json" "$tmp/latest.json" || die "could not download $base/latest.json"
+fi
 manifest="$(tr -d '\n\r' <"$tmp/latest.json")"
 field() { printf '%s' "$1" | sed -n "s/.*\"$2\": *\"\\([^\"]*\\)\".*/\\1/p"; }
 toolchain="$(field "$manifest" toolchain)"

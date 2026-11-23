@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- First edge release (edge, edge-2026-11-23, from 528cddc42) via an `edge-now-*` tag. `install.sh` with no flags 404'd on `releases/latest` because no stable release exists; both installers now fall back to edge. Checked on a clean ubuntu:24.04 container: `cpl 0.2.2 (edge, 528cddc4)` installs and runs.
 - release.yml: pushing an `edge-now-*` tag releases edge from the newest green main commit, since `workflow_dispatch` returns HTTP 403 to agents and main has been red since the edge trigger landed.
 - CI run 45116485617 failed in every gate job before building, and the `dev` target/ save then cached a 457-byte target/. A save now runs only when target/ holds a build (`target/*/deps`).
 - CI speed, step 2: every Rust job restores the newest target/ its group (dev, clippy, release) saved on main, and scripts/ci-mtime.sh back-dates unchanged sources so cargo rebuilds only what changed. Replaces sccache, which can't cache test binaries (bin crates): with it, every shard still spent about 90 s compiling. The C++ cache falls back to any part's newest entry, and the site keeps `.next/cache`. Baseline on run 45115109916, six shards: compile ~90 s per shard, tests 45-131 s, slowest shard 4/6 at ~250 s, site ~270 s (88 s release cpl, 56 s snippet gate, 48 s next build).

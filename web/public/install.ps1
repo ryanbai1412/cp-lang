@@ -58,7 +58,13 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
     Say "fetching $base/latest.json"
     $manifestPath = Join-Path $tmp "latest.json"
-    try { Fetch "$base/latest.json" $manifestPath } catch { Die "could not download $base/latest.json: $_" }
+    try { Fetch "$base/latest.json" $manifestPath } catch {
+        # Until the first stable release, the stable channel installs edge.
+        if ($tag) { Die "could not download $base/latest.json: $_" }
+        $base = "$releases/download/edge"
+        Say "no stable release yet; fetching $base/latest.json"
+        try { Fetch "$base/latest.json" $manifestPath } catch { Die "could not download $base/latest.json: $_" }
+    }
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
     $toolchain = [string]$manifest.toolchain
     if ($toolchain -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { Die "the release manifest names no valid toolchain" }
