@@ -2,7 +2,7 @@
 
 # std.heap
 
-Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap`, `MinMaxHeap`.  Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek` shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next). Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
+Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one `MeldHeaps` pool), `MinMaxHeap`.  Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek` shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next). Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
 
 In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
@@ -102,6 +102,27 @@ Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: 
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MeldHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 - `fn drain(mut self) -> List<T>` — \(O(n \log n)\); Pop and return all elements in ascending order, leaving `self` empty.
+
+## `struct Meld<T>`
+
+One heap in a `MeldHeaps<T>` pool: a handle, so copying it is \(O(1)\).
+
+- `@get fn len(self) -> Int` — \(O(1)\); Number of elements in the heap.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+
+## `struct MeldHeaps<T>`
+
+A pool of meldable min-heaps (leftist) that keep their nodes in one shared list.
+
+- `fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>` — \(O(1)\); An empty pool, optionally ordered by key extractor `by:`.
+- `fn of(mut self, xs: List<T>) -> Meld<T>` — \(O(n)\); A new heap in the pool holding `xs`.
+- `fn top(self, h: Meld<T>) -> ?T` — \(O(1)\); The smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
+- `fn push(mut self, mut h: Meld<T>, x: T)` — \(O(\log n)\); Push `x` into `h`.; traps: when `h` is a stale copy (see `Meld`)
+- `fn push_all(mut self, mut h: Meld<T>, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push every element of `items` into `h`.; traps: when `h` is a stale copy (see `Meld`)
+- `fn pop(mut self, mut h: Meld<T>) -> ?T` — \(O(\log n)\); Remove and return the smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
+- `fn meld(mut self, a: Meld<T>, b: Meld<T>) -> Meld<T>` — \(O(\log n)\), no copying; The heap holding `a` and `b`, as `MergeSegs.merge` is.; traps: when `a` or `b` is a stale copy (see `Meld`), or both are the same heap
+- `fn add_all(mut self, h: Meld<T>, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element of `h` (for additive types).; traps: when `h` is a stale copy (see `Meld`); overflow wraps in release, traps in debug
+- `fn drain(mut self, mut h: Meld<T>) -> List<T>` — \(O(n \log n)\); Pop all of `h` in ascending order, leaving it empty.; traps: when `h` is a stale copy (see `Meld`)
 
 ## `struct MaxHeap<T>`
 
