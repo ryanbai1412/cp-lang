@@ -47,9 +47,15 @@ impl Loader for FsLoader {
         library_root(start, root_name).and_then(|root| {
             let path = root.join(&relative);
             let text = std::fs::read_to_string(&path).ok()?;
-            Some((path.to_string_lossy().into_owned(), text))
+            Some((module_key(&path), text))
         })
     }
+}
+
+/// A loaded file's path with `/` separators on every OS, so module lookups
+/// that match on `/x.cp` also work on Windows.
+fn module_key(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 /// The modules of `std` as they were when the compiler was built, by
@@ -221,6 +227,18 @@ fn library_name(manifest: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_library_file_key_uses_forward_slashes() {
+        assert_eq!(
+            module_key(Path::new(r"C:\kit\geo\poly.cp")),
+            "C:/kit/geo/poly.cp"
+        );
+        assert_eq!(
+            module_key(Path::new("/kit/geo/poly.cp")),
+            "/kit/geo/poly.cp"
+        );
+    }
 
     #[test]
     fn file_uris_name_the_os_path() {
