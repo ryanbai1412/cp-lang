@@ -119,7 +119,7 @@ impl<'a> Lowerer<'a> {
         // A std `fn f(self: T)` whose `T` this receiver isn't would only
         // trade this error for a mismatch (errors/R7).
         let heads: &[&str] = match ty {
-            Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Keyed(..) => &["List"],
+            Ty::List(_) | Ty::ListView(..) | Ty::MutView(..) | Ty::Keyed(..) => &["List"],
             Ty::Array { .. } => &["["],
             Ty::Str | Ty::StrView => &["Str"],
             Ty::Int | Ty::I128 | Ty::U64 => &["Int"],
