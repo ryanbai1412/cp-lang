@@ -706,13 +706,8 @@ pub struct MinMaxHeap<T>:
 pub struct MeldHeap<T>:
     var _len: Int = 0
     var _root: Int = -1
-    _keys: List<T> = []
-    _add: List<?T> = []
-    _kids: List<(Int, Int)> = []
-    _rank: List<Int> = []
+    _nodes: List<MeldNode<T>> = []
     lt: ?((T, T) -> Bool) = None
-    // How a pending offset combines; set by the first `add_all`, so a heap of a non-`Add` T has none.
-    _plus: ?((T, T) -> T) = None
 
     /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
     ///
@@ -733,13 +728,16 @@ pub struct MeldHeap<T>:
     /// example: `MeldHeap.of([4, 2, 3]).peek == Some(2)`
     pub fn of(xs: List<T>) -> MeldHeap<T>:
         var h: MeldHeap<T> = MeldHeap()
+        h._len = xs.len
+        if xs.len == 1:
+            h._root = h.node(xs[0])
+            return h
         var q = [h.node(x) for x in xs]
         var i = 0
         while i + 1 < q.len:
             q.push(h.merge(q[i], q[i + 1]))
             i += 2
         if q.len > 0: h._root = q.last!
-        h._len = xs.len
         h
 
     /// Number of elements currently in the heap.
@@ -764,7 +762,7 @@ pub struct MeldHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MeldHeap.of([4, 2]); h.add_all(1); h.peek == Some(3)`
-    @get pub fn peek(self) -> ?T = if _root < 0: None else: Some(_keys[_root])
+    @get pub fn peek(self) -> ?T = if _root < 0: None else: Some(_nodes[_root].key)
 
     /// The smallest element, or `None` if empty (alias for `peek`).
     ///
@@ -807,10 +805,9 @@ pub struct MeldHeap<T>:
         if _root < 0: return None
         let t = _root
         self.push_down(t)
-        let (a, b) = _kids[t]
-        _root = self.merge(a, b)
+        _root = self.merge(_nodes[t].l, _nodes[t].r)
         _len -= 1
-        Some(_keys[t])
+        Some(_nodes[t].key)
 
     /// Meld `other` into `self` (consuming `other`).
     ///
@@ -824,28 +821,23 @@ pub struct MeldHeap<T>:
     /// example: `var a = MeldHeap.of([4, 2]); a.meld(MeldHeap.of([3, 1])); a.drain() == [1, 2, 3, 4]`
     pub fn meld(mut self, other: MeldHeap<T>):
         if other._root < 0: return
-        if let q = other._plus: _plus = Some(q)
         _len += other._len
-        if other._keys.len <= _keys.len:
-            self.graft(other._keys, other._add, other._kids, other._rank, other._root)
+        if other._nodes.len <= _nodes.len:
+            self.graft(other._nodes, other._root)
             return
-        let (keys, add, kids, rank, root) = (_keys, _add, _kids, _rank, _root)
-        _keys = other._keys
-        _add = other._add
-        _kids = other._kids
-        _rank = other._rank
+        let (nodes, root) = (_nodes, _root)
+        _nodes = other._nodes
         _root = other._root
-        self.graft(keys, add, kids, rank, root)
+        self.graft(nodes, root)
 
-    fn graft(mut self, keys: List<T>, add: List<?T>, kids: List<(Int, Int)>, rank: List<Int>, root: Int):
+    fn graft(mut self, nodes: List<MeldNode<T>>, root: Int):
         if root < 0: return
-        let base = _keys.len
-        for i in 0..keys.len:
-            let (a, b) = kids[i]
-            _keys.push(keys[i])
-            _add.push(add[i])
-            _kids.push((if a < 0: a else: a + base, if b < 0: b else: b + base))
-            _rank.push(rank[i])
+        let base = _nodes.len
+        for n in nodes:
+            var m = n
+            if m.l >= 0: m.l += base
+            if m.r >= 0: m.r += base
+            _nodes.push(m)
         _root = self.merge(_root, root + base)
 
     /// Meld `other` into `self`, leaving `other` empty.
@@ -871,9 +863,8 @@ pub struct MeldHeap<T>:
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
     pub fn add_all(mut self, delta: T) where T: Add:
         if _root < 0: return
-        _plus = Some((a, b) => a + b)
-        _keys[_root] += delta
-        _add[_root] = Some(plus(_add[_root], delta))
+        _nodes[_root].key += delta
+        _nodes[_root].add = Some(plus(_nodes[_root].add, delta))
 
     /// Remove all elements.
     ///
@@ -883,10 +874,7 @@ pub struct MeldHeap<T>:
     pub fn clear(mut self):
         _len = 0
         _root = -1
-        _keys = []
-        _add = []
-        _kids = []
-        _rank = []
+        _nodes = []
 
     /// Move contents out in \(O(1)\), leaving `self` empty.
     ///
@@ -897,12 +885,8 @@ pub struct MeldHeap<T>:
         let out = MeldHeap(
             _len:,
             _root:,
-            _keys:,
-            _add:,
-            _kids:,
-            _rank:,
+            _nodes:,
             lt:,
-            _plus:,
         )
         self.clear()
         out
@@ -924,39 +908,46 @@ pub struct MeldHeap<T>:
         a < b
 
     fn node(mut self, x: T) -> Int:
-        _keys.push(x)
-        _add.push(None)
-        _kids.push((-1, -1))
-        _rank.push(1)
-        _keys.len - 1
+        _nodes.push(MeldNode(x, None, -1, -1, 1))
+        _nodes.len - 1
 
-    fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _rank[t]
+    fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _nodes[t].rank
 
     // A node's pending add is already in its own key; it still owes its children.
-    // Only `add_all` makes an offset pending, and it sets `_plus`.
     fn push_down(mut self, t: Int):
-        if let p = _plus:
-            if let d = _add[t]:
-                let (a, b) = _kids[t]
-                for c in [a, b]:
+        if T: Add:
+            if let d = _nodes[t].add:
+                for c in [_nodes[t].l, _nodes[t].r]:
                     if c >= 0:
-                        _keys[c] = p(_keys[c], d)
-                        var e = d
-                        if let x = _add[c]: e = p(x, d)
-                        _add[c] = Some(e)
-                _add[t] = None
+                        _nodes[c].key += d
+                        _nodes[c].add = Some(plus(_nodes[c].add, d))
+                _nodes[t].add = None
 
     fn merge(mut self, a: Int, b: Int) -> Int:
         if a < 0: return b
         if b < 0: return a
-        let x = if self.less(_keys[b], _keys[a]): b else: a
-        let y = if x == a: b else: a
+        let (x, y) = if self.less(_nodes[b].key, _nodes[a].key): (b, a) else: (a, b)
         self.push_down(x)
-        let (l, r) = _kids[x]
-        let m = self.merge(r, y)
-        _kids[x] = if self.rank_of(l) < self.rank_of(m): (m, l) else: (l, m)
-        _rank[x] = self.rank_of(_kids[x].1) + 1
+        let l = _nodes[x].l
+        let m = self.merge(_nodes[x].r, y)
+        let (rl, rm) = (self.rank_of(l), self.rank_of(m))
+        if rl < rm:
+            _nodes[x].l = m
+            _nodes[x].r = l
+            _nodes[x].rank = rl + 1
+        else:
+            _nodes[x].r = m
+            _nodes[x].rank = rm + 1
         x
+
+// One leftist-heap node: its key with every offset above it applied, the offset it still owes
+// its children, and its children and rank.
+struct MeldNode<T>:
+    var key: T
+    var add: ?T
+    var l: -2_147_483_648..=2_147_483_647
+    var r: -2_147_483_648..=2_147_483_647
+    var rank: 0..=127
 
 fn plus<T: Add>(a: ?T, d: T) -> T:
     if let x = a: return x + d
