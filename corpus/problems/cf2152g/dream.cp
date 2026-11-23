@@ -4,9 +4,6 @@
 // subtree, so a lazy segment tree over preorder maintains `(ends, first, last)`
 // for both the active monster set and its complement, swapping on subtree flip.
 
-use std.lazy.{Flip}
-use std.algebra.{flip}
-
 @!multitest
 domain V = read(1..=250_000)
 let monster: [V]Bool = read()

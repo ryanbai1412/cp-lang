@@ -14,7 +14,7 @@
 // Sort queries offline by `t`, maintain active run lengths in `Fenwick<Card, Int>`,
 // and locate position `i` with `bit.first_ge`.
 
-use std.seq.{inverse, next_greater}
+use std.seq.{next_greater}
 
 let (n, q): (2..=200_000, 1..=1_000_000) = read()
 domain Pos = 1..=n

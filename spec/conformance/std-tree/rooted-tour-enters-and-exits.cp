@@ -1,5 +1,4 @@
 // expect: ok, output "6 3 3"
-use std.graph.{Visit}
 domain V = 0..3
 let adj: [V]List<V> = [[1], [0, 2], [1]]
 let t = Rooted(adj, root: 0)

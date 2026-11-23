@@ -1,7 +1,4 @@
 // expect: ok, output "YES YES 0..3 3..6 2..3 3..5\n2 3\nYES\n\n1\n1 2\n1 2 3\n1 3\n2\n2 3\n3\n0\n1\n1\nYES\n1\n7"
-use std.bag.{SortedBag, SortedSet, SortedMap}
-use std.hashmap.{Counter}
-use std.window.{track}
 print(yes((0..5).halve() == Some((0..2, 2..5))), yes((3..4).halve() == None), (0..6).halve(), (2..=4).halve())
 domain D = 0..5
 let (a, b) = D.all.halve()!

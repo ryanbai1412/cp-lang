@@ -1,5 +1,5 @@
 // expect: ok, output "5 2 6 5\n2 YES 3\n10 4\n12\n5\n1 11 12 14 0\n4 5 5\n0 5\n8 0\n16\n11"
-use std.prefix.{Prefix, Diff, SweepAdd, ArithDiff, prefix_excl}
+use std.prefix.{SweepAdd, ArithDiff, prefix_excl}
 domain D = 0..3
 let p = Prefix<D, Int>([D] v => 1 + Int(v))
 print(p.fold(D(1)..=D(2)), p.fold(D(1)..=D(1)), p.all, p.suffix(D.cuts.nth(1)))

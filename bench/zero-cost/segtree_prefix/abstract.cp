@@ -1,6 +1,3 @@
-use std.segtree.{SegTree}
-use std.prefix.{Prefix}
-
 fn kernel(n: Int, q: Int, a: List<Int>, qs: List<(Int, Int, Int)>) -> Int:
     domain V = 0..n
     var init: [V]Int = 0

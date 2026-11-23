@@ -12,7 +12,6 @@
 // that is itself valid on diagonal `j` (so k <= wrap_limit(j)), which is
 // already counted as a single cyclic shift.
 
-use std.mod.{Mod}
 use std.prefix.SweepAdd
 
 type Z = Mod<998_244_353>

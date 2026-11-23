@@ -1,6 +1,5 @@
 // String matching: text s and pattern p (lowercase, lengths <= 1e6). Print the number
 // of occurrences of p in s, then their 1-based starts, via the prefix function of p#s.
-use std.strings.{prefix_function}
 let s = read<Str>()
 let p = read<Str>()
 let t = p + "#" + s

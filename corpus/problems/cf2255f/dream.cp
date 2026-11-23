@@ -10,7 +10,6 @@
 // Weighting each `ways[k]` by `1 / C(2k, k) = inv_fact(2k) * fact(k)^2` and
 // multiplying by `2 * (n - 1)!` yields the answer in O(n log^2 n).
 
-use std.ntt.{convolve}
 use std.poly.{compose, pow, prod_linear}
 
 type Z = Mod<998_244_353>

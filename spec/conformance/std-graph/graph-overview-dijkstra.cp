@@ -1,8 +1,6 @@
 // expect: ok, output "5 -1"
 // rule: std.graph.dijkstra
 
-use std.graph.{Graph, dijkstra}
-
 domain V = 1..=3
 domain E = 0..3
 let es: [E](u: V, v: V, w: Int) = [(u: V(1), v: V(2), w: 4), (u: V(2), v: V(3), w: 1), (u: V(1), v: V(3), w: 10)]

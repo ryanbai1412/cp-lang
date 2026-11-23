@@ -10,8 +10,6 @@
 // its match, so spending budget `k` on the longest distances leaves the largest
 // `d` whose suffix `d..=n` exceeds `k` (or 0 if all units are deleted).
 
-use std.seq.rotated_left
-
 struct Deposit:
     amount: Int
     at: Int

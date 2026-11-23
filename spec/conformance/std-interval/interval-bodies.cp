@@ -1,5 +1,5 @@
 // expect: ok, output "2 1 2\n1 2 1\n2 3 2\n2\n1\n2 1 YES\n3\n0\n1 4\n2 3 YES NO YES NO\nYES YES\n3 YES 2 7\nYES 2\n1 2\n3 10"
-use std.interval.{IntervalMap, IntervalSet}
+use std.interval.{IntervalSet}
 domain D = 0..3
 let a: [D]Int = [D] v => [1, 1, 2][Int(v)]
 var m = IntervalMap<D, Int>.from(a)

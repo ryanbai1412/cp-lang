@@ -1,5 +1,4 @@
 // expect: ok, output "YES NO Impossible ans=YES\n8 10 1000000007\nYES"
-use std.io.{yes}
 use std.search.{gallop_first}
 fn show<T>(o: ?T) -> Str = match o:
     Some(x) => "{x}"

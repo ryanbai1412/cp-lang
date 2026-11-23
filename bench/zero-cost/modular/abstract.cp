@@ -1,5 +1,3 @@
-use std.mod.{Mod}
-
 type Z = Mod<998244353>
 
 fn kernel(n: Int, reps: Int, a: List<Int>) -> Int:

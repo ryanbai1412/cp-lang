@@ -5,7 +5,6 @@
 // Solution: with the prefix function pi, depth[j] = depth[pi[j - 1]] + 1 counts the borders of
 //   prefix j, itself included. A second KMP pointer `half` follows the longest border, falling
 //   back along pi until 2 half <= i + 1; then num = depth[half]. Amortised O(|S|).
-use std.strings.{prefix_function}
 
 type Z = Mod<1_000_000_007>
 @!multitest

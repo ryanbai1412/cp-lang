@@ -1,5 +1,4 @@
 // expect: ok, output "YES\nYES\n4 9"
-use std.lazy.{Flip}
 print(yes(Flip.op(+).op(Flip(1, 0), Flip(0, 1)).now == 1))
 print(yes(Flip.op(+).id.flipped == 0))
 let m = Flip<Int>.op(max)

@@ -1,5 +1,3 @@
-use std.strings.{z_function, prefix_function}
-
 let n = 1_000_000
 var s = List.filled(n, 0)
 var x = 123456789

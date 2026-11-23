@@ -1,5 +1,5 @@
 // expect: ok, output "1 2 4 4\n1 none 0 none none 2 none 1 none 1\n0\nYES"
-use std.seq.{lis, cartesian_tree}
+use std.seq.{cartesian_tree}
 domain T5 = 0..5
 domain T3 = 0..3
 let a: [T5]Int = [3, 1, 2, 2, 5]

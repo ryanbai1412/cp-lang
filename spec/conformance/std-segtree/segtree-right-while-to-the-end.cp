@@ -1,6 +1,5 @@
 // expect: ok, output "YES"
 // rule: std.segtree.SegTree.right_while
-use std.segtree.{SegTree}
 domain D = 0..4
 let s = SegTree<D, Int>(+, fill: 1)
 let first = D.cuts.first!

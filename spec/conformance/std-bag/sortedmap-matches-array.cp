@@ -1,5 +1,4 @@
 // expect: ok, output "0 YES\n2 1 a 3 c a none YES NO\n3 c none 1 a none 1 2 3 c none\n1 a\n3 c 3 c\n1 a 1 3 a c\nYES a\n4 40 4 40 4 40 2\n1 10 6 60 0 none none\n5 7 YES\n1 2\n5 3\nYES"
-use std.bag.{SortedMap}
 use std.rand.{Rng}
 fn show<T>(o: ?T) -> Str = match o:
     Some(x) => "{x}"

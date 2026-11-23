@@ -10,8 +10,6 @@
 // `t_old` order and draining the newest eligible bucket `<= t_old` always leaves
 // the most flexible supply behind for tighter demands.
 
-use std.interval.IntervalMap
-
 @!multitest
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n

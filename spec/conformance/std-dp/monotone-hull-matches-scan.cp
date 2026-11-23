@@ -1,5 +1,4 @@
 // expect: ok, output "0 1 -2 2\n0 1\nYES\nYES\nYES"
-use std.dp.{MonotoneHull, Line}
 use std.rand.{Rng}
 var h = MonotoneHull<Int>(min)
 h.add(Line(2, 0), tag: 0)

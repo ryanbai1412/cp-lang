@@ -1,5 +1,5 @@
 // expect: ok, output "2 1 0 2\n1 3\n1..3 3..3 0..0\n2 none 0\nYES"
-use std.seq.{perm_rank, perm_unrank, partition_point, equal_range, partial_inverse}
+use std.seq.{perm_rank, perm_unrank, partial_inverse}
 domain T3 = 0..3
 domain T4 = 0..4
 let p: [T3]T3 = [T3(1), T3(0), T3(2)]

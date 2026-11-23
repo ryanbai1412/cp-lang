@@ -7,8 +7,6 @@
 //   vertices and edges, weighting edges +1 and vertices -1: a piece is a subtree with even
 //   inner vertices and e - v + 1 = diff + 1 odd ends, so it adds choose2(diff + 1). O(n a(n)).
 
-use std.math.{choose2}
-
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n

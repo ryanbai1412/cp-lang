@@ -7,7 +7,6 @@
 //   `find_all(t)` binary-searches it in O(|t| log n) and yields their starts, which are sorted
 //   to take the k-th: O(|t| log n + occ log occ) per query.
 // original: corpus/submissions/4214399.cpp
-use std.strings.{SuffixArray}
 
 let s: Str = read()
 let q: Int = read()

@@ -2,7 +2,6 @@
 // count stays on the nodes of the range it was added to (no push down), and
 // each node keeps the first and last uncovered cut below it and their gap sum,
 // all in flat arrays over a power-of-two layout.
-use std.math.choose2
 
 @!multitest
 let n: 2..=100_000 = read()

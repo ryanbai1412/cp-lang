@@ -1,6 +1,5 @@
 // expect: ok, output "YES YES YES YES\n9 1 3\n7\n6\n26 6\n7\n7 3 2"
 use std.persistent.{PersistentSegTree, PersistentArray, PersistentLazySegTree}
-use std.algebra.{Action, Monoid}
 domain N = 0..4
 domain M = 0..3
 let z: [N]Int = [0, 0, 0, 0]

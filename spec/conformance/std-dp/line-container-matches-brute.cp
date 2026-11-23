@@ -1,5 +1,4 @@
 // expect: ok, output "4 3 YES 2\n0 1 YES\nYES"
-use std.dp.{Line, LineContainer}
 var c = LineContainer(max)
 c.add(Line(1, 0))
 c.add(Line(-1, 4))

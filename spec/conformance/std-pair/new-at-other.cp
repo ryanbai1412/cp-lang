@@ -1,5 +1,4 @@
 // expect: ok, output "YES YES YES\nYES YES\nYES"
-use std.pair.{Pair}
 domain V = 0..4
 let p = Pair<V>.new(V(3), V(1))
 print(yes(p.lo == V(1)), yes(p.hi == V(3)), yes(p.other(V(3)) == V(1)))

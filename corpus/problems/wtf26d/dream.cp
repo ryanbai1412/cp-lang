@@ -21,8 +21,6 @@
 // value `>= p[min_p]` can then move freely into this block in decreasing order,
 // and shrinking `right_end = p_thresh.prev` keeps all blocks pairwise disjoint.
 
-use std.seq.inverse
-
 struct Cond(max_p: Pos, max_v: Val)
 
 // Monotone stack of active (max_p, max_v) constraints: both fields decrease.

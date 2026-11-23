@@ -6,8 +6,6 @@
 // S; I assume it is `s.keys`, i.e. Int here), H-PRELUDE-MEMBERSHIP (not in
 // std/prelude.cp, so imported).
 
-use std.strings.{z_function}
-
 let t = read<Str>()
 let p = read<Str>()
 let s = p + "#" + t

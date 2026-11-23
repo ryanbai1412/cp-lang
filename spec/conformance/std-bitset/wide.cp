@@ -1,5 +1,4 @@
 // expect: ok, output "130 2 69 129 YES"
-use std.bitset.{Bitset}
 domain W = 0..130
 var a = Bitset<W>.full()
 var x = Bitset<W>.new()

@@ -8,7 +8,6 @@
 // Fine-Wilf: a period dividing delta is a multiple of the primitive period p,
 // and exists below delta only if p divides delta. So the lengths are the
 // multiples of g dividing delta, g = p if p | delta else delta.
-use std.strings.{period}
 
 let (n, m): (1..=10_000_000, 2..=10_000_000) = read()
 let (s, t): (Str, Str) = read()

@@ -3,7 +3,6 @@
 // Increasing and prime nodes multiply their children. Down a decreasing chain,
 // ends(v)[k] counts v's ways with k single-vertex right children still free to
 // climb; each such child adds a slot and lets every open one move up.
-use std.mod.{Mod}
 use std.seq.{Perm}
 use std.tree.{PermKind, PermTree}
 

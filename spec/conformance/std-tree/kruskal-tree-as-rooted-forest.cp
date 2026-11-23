@@ -1,5 +1,4 @@
 // expect: ok, output "YES 1 3\n4 5\nYES YES"
-use std.tree.{kruskal_tree}
 domain V = 0..4
 let es: [0..3](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 2, v: 3, w: 3), (u: 1, v: 1, w: 1)]
 let (domain N, kt) = kruskal_tree(es, w: e => es[e].w)

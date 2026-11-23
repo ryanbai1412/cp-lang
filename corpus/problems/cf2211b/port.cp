@@ -9,8 +9,6 @@
 //   straight to it, so each divisor gives exactly one: f = divisors(|x - y|), or 1 when
 //   x = y (no inner prefix sum is 0). O(sqrt(|x - y|)) plus the output.
 
-use std.math.{divisors}
-
 const MOD = 676_767_677
 type Z = Mod<MOD>
 

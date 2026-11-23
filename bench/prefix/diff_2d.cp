@@ -1,5 +1,3 @@
-use std.prefix.{Diff}
-
 let (h, w, q, seed): (Int, Int, Int, Int) = read()
 domain R = 0..h
 domain C = 0..w

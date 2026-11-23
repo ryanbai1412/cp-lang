@@ -1,5 +1,4 @@
 // expect: ok, output "3 3 YES 1 8 3 2 8 YES"
-use std.bitset.{Bitset}
 domain D = 0..10
 let b = Bitset<D>.of([D(1), D(3), D(8)])
 let e = Bitset<D>.new()

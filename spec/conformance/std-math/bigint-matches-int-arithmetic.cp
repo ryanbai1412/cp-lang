@@ -1,5 +1,5 @@
 // expect: ok, output "-42 -123 0\n123456789012345678901234567890 0 -7\n265252859812191058636308480000000\n-2148548181881987 107129627388040257"
-use std.math.{BigInt, gcd}
+use std.math.{BigInt}
 print(BigInt.from_int(-42).to_str(), BigInt.from_str("-000123").to_str(), BigInt.from_str("-0").to_str())
 print(BigInt.from_str("123456789012345678901234567890").to_str(), BigInt.from_int(0).to_str(), BigInt.from_int(-7).to_str())
 assert BigInt.from_int(-7).divmod(BigInt.from_int(3)) == (BigInt.from_int(-3), BigInt.from_int(2))

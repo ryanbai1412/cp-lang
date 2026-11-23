@@ -1,6 +1,4 @@
 // expect: ok, output "YES"
-use std.hashmap.{Counter}
-use std.window.{track}
 domain D = 0..9
 fn distinct(xs: List<Int>) -> Int:
     var seen = [0..4] _ => false

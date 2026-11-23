@@ -1,5 +1,4 @@
 // expect: ok, output "3 3 1 -1"
-use std.bag.{SortedMap}
 var m: SortedMap<Int, Int> = SortedMap()
 m.set(1, 10)
 m.set(3, 30)

@@ -1,5 +1,5 @@
 // expect: ok, output "1 2 1\n40 none\n2 1\nac b"
-use std.seq.{dedup, first_some, tally, group}
+use std.seq.{first_some}
 var a = [1, 1, 2, 1, 1]
 a.dedup()
 print(a)

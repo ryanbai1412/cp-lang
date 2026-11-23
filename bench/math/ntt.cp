@@ -1,5 +1,4 @@
 // Matched benchmark: convolve<998244353> on two length-262144 polynomials.
-use std.ntt.{convolve}
 
 type Z = Mod<998_244_353>
 

@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.hashmap.{Counter}
 var a = Counter.of(['x', 'y'])
 var b = Counter.of(['y', 'z'])
 a.absorb(mut b)

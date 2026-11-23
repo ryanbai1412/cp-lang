@@ -1,5 +1,5 @@
 // expect: ok, output "YES\nYES YES\nYES YES\nYES YES\nYES YES YES\nYES YES"
-use std.strings.{RollingHash, HashVal}
+use std.strings.{HashVal}
 print(yes(HashVal(1, 2).hash_token == 2147483650))
 var h = RollingHash("ab")
 h.push('a')

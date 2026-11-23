@@ -1,5 +1,4 @@
 // expect: ok, output "NO\n0 2 1"
-use std.graph.{topo}
 domain V = 0..3
 let cyc: [V]List<V> = [[V(1)], [V(2)], [V(1)]]
 print(yes(topo(cyc) != None))

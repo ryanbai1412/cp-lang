@@ -1,5 +1,3 @@
-use std.window.{Window}
-
 // Matched sliding-window bench: 2M sliding-window minimums (window size 1000).
 // `Window(min)` keeps a monotone deque for a selective op, as the C++ does.
 let n = 2000000

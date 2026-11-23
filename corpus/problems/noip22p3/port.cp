@@ -8,7 +8,7 @@
 //   rooted block tree counts held sets below each bridge and adds the sets whose highest
 //   block is b, minus those held through one child alone. O(n + m).
 // original: corpus/submissions/5445683.cpp
-use std.graph.{two_edge_components, condense}
+use std.graph.{two_edge_components}
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=5e5 = read()

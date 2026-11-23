@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.tree.{kruskal_tree}
 var ok = true
 for trial in 0..30:
     domain V = 0..8

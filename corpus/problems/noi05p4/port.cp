@@ -8,7 +8,6 @@
 //   memoised E(cat, mouse) = 1 + the average of E over the mouse's deg + 1 choices after the
 //   cat's two steps, or 1 if a step catches it. O(n (n + e)).
 // original: corpus/submissions/5032733.cpp
-use std.graph.{Graph}
 
 let n: 1..=1000 = read()
 let e: 1..=1000 = read()

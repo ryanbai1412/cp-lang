@@ -1,6 +1,5 @@
 // expect: ok, output "YES"
 use std.persistent.{PersistentLazySegTree, PersistentArray, Version}
-use std.algebra.{Action, Monoid}
 use std.rand.{Rng}
 domain N = 0..9
 let assign_sum = Action<Int, ?Int>(None, (f, g) => f ?? g, (f, x, span) => if let v = f: v * span else: x, Monoid<Int>(0, (a, b) => a + b))

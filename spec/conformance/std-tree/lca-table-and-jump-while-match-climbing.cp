@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.tree.{LcaTable}
 fn climb<V>(par: [V]?V, v: V) -> List<V>:
     var out: List<V> = [v]
     while let p = par[out[out.len - 1]]: out.push(p)

@@ -1,5 +1,5 @@
 // expect: ok, output "6 0 YES NO YES NO\nYES YES\n9 YES YES YES 32 YES -3 6 -3 9 YES 6 3\nYES YES YES YES YES\nYES YES YES YES"
-use std.geometry.{Pt, Vec, Circle, HalfPlane, Rect, Pt3, Vec3, Plane3, Location, ByAngleFrom, angle_less, arg, lower_hull_idx, upper_hull_idx, pick_interior, pick_boundary, turn_eps, angle_between, invert, incenter, close, line_plane_intersect, sphere_dist}
+use std.geometry.{Vec, Circle, HalfPlane, Rect, Pt3, Vec3, Plane3, ByAngleFrom, angle_less, arg, lower_hull_idx, upper_hull_idx, pick_interior, pick_boundary, turn_eps, angle_between, invert, incenter, close, line_plane_intersect, sphere_dist}
 let pi = atan2(0.0, -1.0)
 print(Rect(0..3, 0..2).area, Rect(3..1, 0..2).area, yes(Rect(0..0, 0..5).is_empty), yes(Rect(0..1, 0..1).is_empty), yes(Rect(0..3, 0..2).contains(Pt(2, 1))), yes(Rect(0..3, 0..2).contains(Pt(3, 1))))
 print(yes(Rect(0..3, 0..3).intersect(Rect(1..5, 2..4)) == Some(Rect(1..3, 2..3))), yes(Rect(0..1, 0..1).intersect(Rect(1..2, 0..1)) == None))

@@ -1,5 +1,5 @@
 // expect: ok, output "3"
-use std.dsu.{Dsu, Mark}
+use std.dsu.{Mark}
 domain V = 0..3
 var d = Dsu<V>()
 let outer: Mark = d.mark()

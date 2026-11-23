@@ -3,8 +3,6 @@
 // orders in 2^(n−1) good ways. Add values from m down to 1: an open set (all values above y) with gcd g takes y
 // iff gcd(y, g) < g, doubling its weight. By Möbius, the weight landing on h | y is Σ_{d | y/h} μ(d)·above[h·d]
 // (above[x] = the open sets whose gcd x divides), less the sets whose gcd is h already.
-use std.math.{Sieve}
-use std.mod.{Mod}
 
 @!multitest
 type Z = Mod<998_244_353>

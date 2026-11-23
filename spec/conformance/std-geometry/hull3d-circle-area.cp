@@ -1,5 +1,5 @@
 // expect: ok, output "YES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES\nYES YES\nYES"
-use std.geometry.{Pt, any_segments_meet, Pt3, Vec, Circle, circle_polygon_area, any_segments_meet_idx, convex_hull_3d, convex_hull_3d_idx}
+use std.geometry.{any_segments_meet, Pt3, Vec, Circle, circle_polygon_area, any_segments_meet_idx, convex_hull_3d, convex_hull_3d_idx}
 print(yes(convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]))
 print(yes(convex_hull_3d([Pt3(0, 0, 0), Pt3(4, 0, 0), Pt3(0, 4, 0), Pt3(0, 0, 4), Pt3(1, 1, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]))
 print(yes(convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0)]) == []))

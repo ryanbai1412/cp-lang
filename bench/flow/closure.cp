@@ -1,5 +1,4 @@
 // Maximum closure: 50000 vertices with profits in [-10^6, 10^6], 300000 random needs.
-use std.flow.{max_closure}
 
 domain V = 0..50000
 var seed = 1

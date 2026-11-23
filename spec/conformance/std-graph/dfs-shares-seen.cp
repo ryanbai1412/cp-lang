@@ -1,5 +1,4 @@
 // expect: ok, output "2 0 true"
-use std.graph.{dfs}
 // `seen:` is read and updated in place, so a second walk over it finds nothing.
 domain V = 0..3
 let g: [V]List<V> = [[1], [], []]

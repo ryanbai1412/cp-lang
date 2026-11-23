@@ -1,5 +1,5 @@
 // expect: ok, output "YES NO NO NO"
-use std.graph.{Graph, cut_vertices}
+use std.graph.{cut_vertices}
 domain V = 0..4
 domain E = 0..3
 let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(0), v: V(2)), (u: V(0), v: V(3))]

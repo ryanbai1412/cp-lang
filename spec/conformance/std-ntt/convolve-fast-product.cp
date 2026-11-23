@@ -2,7 +2,7 @@
 // `convolve`'s product over a `FastProduct` type (NTT for `Mod<P>`) equals the plain loop; a modulus
 // without the power of two, and a type that declines (`None`), fall back to the loop. A user type
 // joins the same way.
-use std.ntt.{convolve, FastProduct}
+use std.ntt.{FastProduct}
 type Z = Mod<998244353>
 type W = Mod<1000000007>
 let n = 200

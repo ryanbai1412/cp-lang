@@ -1,6 +1,5 @@
 // Every way a program can stop with a runtime error, one per `which`.
 // `z` is read as 0 and `three` as 3, so nothing is known before the run.
-use std.segtree.{SegTree}
 let which: Int = read()
 let z: Int = read()
 let three: Int = read()

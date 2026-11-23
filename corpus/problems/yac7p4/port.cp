@@ -11,7 +11,6 @@
 // original: corpus/submissions/5705324.cpp
 // Uses a SegTree over Euler preorder positions to support first_ge/min active tin
 // since proto/cpc Set<T> lacks ordered first/first_ge.
-use std.math.{bit_len}
 
 let n: 1..=200_000 = read()
 let m: 1..=200_000 = read()

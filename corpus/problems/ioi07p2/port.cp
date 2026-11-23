@@ -9,8 +9,6 @@
 //   still-dry group has the outside next to its north (else east) wall; BFS over faces from
 //   there, one hour per wall crossed. O((n + w) log n) for the sort and DSU.
 // original: corpus/submissions/5133897.cpp
-use std.dsu.{Dsu}
-use std.geometry.{Pt}
 
 let n: 2..=1e5 = read()
 domain P = 1..=n

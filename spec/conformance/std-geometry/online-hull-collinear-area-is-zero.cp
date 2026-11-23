@@ -1,5 +1,5 @@
 // expect: ok, output "0"
-use std.geometry.{OnlineHull, Pt}
+use std.geometry.{OnlineHull}
 var h = OnlineHull()
 h.add(Pt(0, 0))
 h.add(Pt(1, 1))

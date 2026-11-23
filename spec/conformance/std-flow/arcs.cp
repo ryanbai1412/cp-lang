@@ -1,5 +1,5 @@
 // expect: ok, output "YES\nYES\nYES\nYES\nYES\nYES\nYES\nYES"
-use std.flow.{FlowGraph, CostFlow}
+use std.flow.{CostFlow}
 domain V2 = 0..2
 domain V3 = 0..3
 domain V4 = 0..4

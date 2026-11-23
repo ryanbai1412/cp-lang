@@ -1,5 +1,5 @@
 // expect: ok, output "2 NO\n0 YES\n2 NO\n0 YES\nYES YES NO YES YES\n3 YES NO\nYES NO\n4\n1\nYES NO"
-use std.marks.{Marks, MarkMap, SparseSet}
+use std.marks.{MarkMap, SparseSet}
 domain D = 0..5
 var m = Marks<D>()
 m.add(D(1))

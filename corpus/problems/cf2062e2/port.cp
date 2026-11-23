@@ -10,7 +10,6 @@
 //   over preorder mark x, g(x) and lca(x, g(x)) so inclusion-exclusion counts dangerous replies
 //   with both outside sub(u). O(n log n).
 
-use std.seq.{buckets}
 enum Mark: Reply | Target | Meet
 
 @!multitest

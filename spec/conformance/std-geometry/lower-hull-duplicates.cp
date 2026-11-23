@@ -1,4 +1,4 @@
 // expect: ok, output "3\n4"
-use std.geometry.{Pt, lower_hull}
+use std.geometry.{lower_hull}
 print(lower_hull([Pt(0, 0), Pt(0, 0), Pt(1, -1), Pt(2, 0), Pt(2, 0)]).len)
 print(lower_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0), Pt(3, 0)], collinear: true).len)

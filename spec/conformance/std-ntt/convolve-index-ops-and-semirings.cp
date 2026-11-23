@@ -2,8 +2,7 @@
 // rule: std.ntt.convolve
 // Bitwise `on:` ops go through their transforms and agree with the plain loop; `subset` is an
 // `IndexOp`; a `min`-plus `shape: Both` merge agrees with the O(n m) loop.
-use std.ntt.{convolve, subset, Curved}
-use std.algebra.{Semiring}
+use std.ntt.{subset}
 let a = [3, 1, 4, 1, 5, 9, 2, 6]
 let b = [2, 7, 1, 8, 2, 8, 1, 8]
 print(convolve([1, 2], [3, 4], on: ^))

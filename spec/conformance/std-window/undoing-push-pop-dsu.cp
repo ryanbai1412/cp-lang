@@ -1,7 +1,5 @@
 // expect: ok, output "2 2 3 2"
 // rule: 08.1.2
-use std.window.{undoing, Undoing}
-use std.dsu.{Dsu}
 domain V = 0..4
 var u: Undoing<Dsu<V>, (V, V)> = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1))
 u.push((V(0), V(1)))

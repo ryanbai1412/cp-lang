@@ -12,9 +12,6 @@
 //     `rotated_left(1)` gives every vertex a slot distinct from its own.
 // Remaining vertices at depth `d` take the remaining slots unused at depth `d`.
 
-use std.seq.rotated_left
-use std.tree.Rooted
-
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n

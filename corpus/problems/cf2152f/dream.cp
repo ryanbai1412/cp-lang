@@ -10,7 +10,6 @@
 // take before they meet, summed up that tree: it is the tree distance from i
 // to i + 1, plus `taken[c]`. A query climbs the pair tree while it stays left
 // of r, then finishes each walk of the last pair in the greedy tree.
-use std.tree.{JumpTree}
 
 @!multitest
 let (n, z) = read<(Int, Int)>()

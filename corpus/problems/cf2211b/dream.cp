@@ -11,8 +11,6 @@
 //   sums drop monotonically across `0..=(y - x)`, so each divisor `d | (y - x)`
 //   yields exactly one partition (`cnt = divisors(y - x).len`, O(sqrt(|x - y|))).
 
-use std.math.{divisors}
-
 const MOD = 676_767_677
 type Z = Mod<MOD>
 

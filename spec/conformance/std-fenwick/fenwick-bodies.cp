@@ -1,5 +1,5 @@
 // expect: ok, output "6 5 2 5 0\n3 YES 0\n9\n0\n2 1 2\n0\n0"
-use std.fenwick.{Fenwick, Fenwick2D, DualFenwick}
+use std.fenwick.{DualFenwick}
 domain D = 0..3
 let a: [D]Int = [D] v => 1 + Int(v)
 var f = Fenwick<D, Int>(a: Some(a))

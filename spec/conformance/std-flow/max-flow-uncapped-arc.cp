@@ -1,5 +1,4 @@
 // expect: ok, output "5"
-use std.flow.{FlowGraph}
 domain V = 0..3
 var g = FlowGraph<V>()
 g.add(V(0), V(1), None)

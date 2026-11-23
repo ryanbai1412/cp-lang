@@ -2,7 +2,6 @@
 // rule: std.seq.prod
 // `prod` is the std body in `std.seq`, not a compiler builtin: the method,
 // the free call, a generator, an empty list, a ranged array and `Mod<P>`.
-use std.mod.{Mod}
 type Z = Mod<998244353>
 print([2, 3, 4].prod(), prod([2, 3, 4]), prod(x for x in 1..=5))
 let e: List<Int> = []

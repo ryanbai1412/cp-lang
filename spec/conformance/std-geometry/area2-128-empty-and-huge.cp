@@ -1,5 +1,5 @@
 // expect: ok, output "0 YES"
-use std.geometry.{area2_128, Pt}
+use std.geometry.{area2_128}
 let empty: List<Pt> = []
 let big = 1_000_000_000_000
 let sq = [Pt(0, 0), Pt(big, 0), Pt(big, big), Pt(0, big)]

@@ -1,5 +1,5 @@
 // expect: ok, output "ok\n2 3 5\n9 16\n2 3 5\n0 1 1 2"
-use std.poly.{bostan_mori, transposed_mul, pow_mod_poly, chirp_z, sample_points_shift, power_sums, stirling1_col, stirling2_col, stirling1_row, stirling2_row, inv, eval, lagrange_at}
+use std.poly.{bostan_mori, transposed_mul, pow_mod_poly, chirp_z, sample_points_shift, power_sums, stirling1_col, stirling2_col, stirling1_row, stirling2_row, inv, lagrange_at}
 type Z = Mod<998_244_353>
 fn mulmod(a: List<Z>, b: List<Z>, m: List<Z>) -> List<Z>:
     let d = m.len - 1

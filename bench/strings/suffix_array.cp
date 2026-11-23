@@ -1,5 +1,3 @@
-use std.strings.{SuffixArray}
-
 let n = 200_000
 var s = List.filled(n, 0)
 var x = 135792468

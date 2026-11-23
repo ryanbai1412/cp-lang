@@ -1,5 +1,4 @@
 // expect: ok, output "3 YES"
-use std.graph.{scc}
 domain V = 0..3
 let g: [V]List<V> = [[V(1)], [V(2)], []]
 let (domain C, comp) = scc(g)

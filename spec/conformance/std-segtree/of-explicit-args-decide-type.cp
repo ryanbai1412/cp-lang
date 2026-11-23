@@ -1,5 +1,4 @@
 // expect: ok, output "0\n7"
-use std.segtree.{SegTree}
 domain V = 0..5
 let t = SegTree<V, Int>.of(max, v => 0)
 print(t.all)

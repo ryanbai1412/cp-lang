@@ -1,5 +1,5 @@
 // expect: ok, output "YES 10 0 3\nYES\nYES NO NO\nYES 1 0\nYES\nYES"
-use std.seq.{inversions, zip_exact, is_permutation}
+use std.seq.{zip_exact, is_permutation}
 print(yes(inversions([3, 1, 2]) == 2), inversions([5, 4, 3, 2, 1]), inversions([1, 1, 1]), inversions([2, 1, 2, 1]))
 print(yes(zip_exact([1, 2], [3, 4]).collect() == [(1, 3), (2, 4)]))
 print(yes(is_permutation([1, 2, 2], [2, 1, 2]) == true), yes(is_permutation([1, 2], [1, 1])), yes(is_permutation([1], [1, 1])))

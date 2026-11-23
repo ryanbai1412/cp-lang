@@ -1,6 +1,5 @@
 // expect: ok, output "YES"
 // rule: std.fenwick.Fenwick.first_ge
-use std.fenwick.{Fenwick}
 domain D = 0..3
 var f = Fenwick<D, Int>()
 for v in D: f.add(v, Int(v) + 1)

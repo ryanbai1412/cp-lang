@@ -1,5 +1,5 @@
 // expect: ok, output "YES YES YES YES YES\nYES YES YES YES YES\n1 -1 0 YES\nYES YES YES YES YES"
-use std.geometry.{Pt, Vec, Circle, HalfPlane, Rect, Pt3, Vec3, Plane3, Location, ByAngleFrom, angle_less, arg, lower_hull_idx, upper_hull_idx, pick_interior, pick_boundary, turn_eps, angle_between, invert, incenter, close, line_plane_intersect, sphere_dist}
+use std.geometry.{Vec, Circle, HalfPlane, Rect, Pt3, Vec3, Plane3, ByAngleFrom, angle_less, arg, lower_hull_idx, upper_hull_idx, pick_interior, pick_boundary, turn_eps, angle_between, invert, incenter, close, line_plane_intersect, sphere_dist}
 let pi = atan2(0.0, -1.0)
 print(yes(Vec(3.0, 4.0).norm2 == 25.0), yes(Vec(3.0, 4.0).len == 5.0), yes(Vec(1.0, 2.0).perp == Vec(-2.0, 1.0)), yes(Vec(1.0, 2.0).perp_cw == Vec(2.0, -1.0)), yes(Vec(1.0, 0.0).angle == 0.0 and Vec(-1.0, 0.0).angle == pi and Vec(0.0, 1.0).angle == pi / 2.0))
 print(yes(Vec(3.0, 4.0).unit == Vec(0.6, 0.8)), yes(Vec(1.0, 2.0).dot(Vec(3.0, 4.0)) == 11.0), yes(Vec(1.0, 2.0).cross(Vec(3.0, 4.0)) == -2.0), yes(Vec(0.0, 0.0).dist2(Vec(3.0, 4.0)) == 25.0), yes(Vec(0.0, 0.0).dist(Vec(3.0, 4.0)) == 5.0))

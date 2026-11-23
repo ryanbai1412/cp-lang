@@ -1,6 +1,5 @@
 // expect: ok, output "2 3 12 7\n6 0 1\n2 3\nYES\n0\nYES\nYES\n12.0000000000 4.0000000000 0.0000000000"
-use std.matrix.{Mat, simplex, sparse_det, sparse_solve}
-use std.mod.{Mod}
+use std.matrix.{simplex, sparse_det, sparse_solve}
 domain R = 0..2
 domain C = 0..3
 let m = Mat([R, C] (r, c) => 10 * Int(r) + Int(c))

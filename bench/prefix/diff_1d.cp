@@ -1,5 +1,3 @@
-use std.prefix.{Diff}
-
 let (n, q, seed): (Int, Int, Int) = read()
 domain D = 0..n
 let mask = n - 1

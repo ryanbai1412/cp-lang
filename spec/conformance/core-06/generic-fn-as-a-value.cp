@@ -2,8 +2,6 @@
 // rule: 06.1.5
 // A generic fn named as a value is the closure that calls it: `by: desc` is `by: x => desc(x)`,
 // also where the parameter is optional (`?(T -> K)`), and a user's generic fn works the same.
-use std.algebra.{desc}
-use std.heap.{Heap}
 fn pick<T, K>(x: T, by: ?(T -> K) = None) -> Int = 1
 fn pick2<T, K>(x: T, by: T -> K) -> Int = 2
 fn twice<T>(x: T) -> (T, T) = (x, x)

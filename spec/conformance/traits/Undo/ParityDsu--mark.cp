@@ -1,5 +1,4 @@
 // expect: ok, output "YES NO"
-use std.dsu.{ParityDsu}
 domain V = 0..3
 var d = ParityDsu<V>()
 d.unite(V(0), V(1))

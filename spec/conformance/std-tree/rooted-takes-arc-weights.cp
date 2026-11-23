@@ -2,8 +2,7 @@
 // rule: 08.2.9
 // `Rooted` over a graph whose arcs carry `w` takes edge lengths from them, as every graph
 // algorithm does (`arc_len`); plain vertex arcs count 1. A record arc meets `Weighted` by shape.
-use std.graph.{Graph, arc_len}
-use std.tree.{Rooted}
+use std.graph.{arc_len}
 domain V = 1..=3
 domain E = 1..=2
 let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 2, w: 5), (u: 2, v: 3, w: 12)]

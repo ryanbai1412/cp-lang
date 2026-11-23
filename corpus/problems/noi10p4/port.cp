@@ -7,7 +7,6 @@
 //   everything that must precede it, then give the unmarked flights the latest slots their
 //   deadlines allow, going down from slot n; u takes the highest slot left free. O(n (n + m)).
 // original: corpus/submissions/5670273.cpp
-use std.graph.{topo}
 
 let (n, m): (Int, Int) = read()
 domain Plane = 1..=n

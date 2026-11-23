@@ -1,5 +1,3 @@
-use std.seq.{rotate_left, rotate_right}
-
 let n = 200_000
 var v: List<Int> = [0 for _ in 0..n]
 var seed = 987654321

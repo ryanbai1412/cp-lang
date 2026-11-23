@@ -1,6 +1,5 @@
 // expect: ok, output "YES\nYES YES\nYES\nYES\nYES YES\nYES YES YES YES\nYES YES\nYES YES"
-use std.matrix.{Mat, XorBasis, MatPow}
-use std.mod.{Mod}
+use std.matrix.{XorBasis, MatPow}
 type Z = Mod<7>
 let rr = Mat<Z>.from_rows([[Z(2), Z(4)], [Z(1), Z(2)]]).rref()
 print(yes(rr.rank == 1 and rr.pivots == [0] and rr.mat.get(0, 1) == Z(2) and rr.mat.get(1, 1) == Z(0)))

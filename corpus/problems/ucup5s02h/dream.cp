@@ -14,7 +14,6 @@
 // weakest on x" for increasing x. A charge no weaker than the newest and
 // farther away never wins, so charges strictly decrease, and the weakest one
 // only moves right as x does.
-use std.dsu.{ParityDsu}
 use std.math.{Frac}
 
 struct Charge(x: Int, q: Int, pin: ?Side)

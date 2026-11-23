@@ -1,5 +1,4 @@
 // expect: ok, output "YES YES\nYES YES\nYES YES\nYES YES\nYES YES\nYES\nYES YES YES\nYES YES"
-use std.tree.{Lift}
 domain V = 0..4
 let par: [V]?(V, Int) = [None, Some((V(0), 5)), Some((V(1), 2)), Some((V(1), 7))]
 let l = Lift(par, op: (x, y) => x + y, identity: 0)

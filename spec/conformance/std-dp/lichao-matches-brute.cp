@@ -1,5 +1,4 @@
 // expect: ok, output "-1\n1 1 -4\nYES"
-use std.dp.{LiChao, Line}
 use std.rand.{Rng}
 var t = LiChao<Line, Int>(min, over: 0..=10)
 print(t.at(5) ?? -1)

@@ -7,7 +7,6 @@
 // generations in order with hashed persistent multisets gives O(1) equality
 // and O(log n) comparison, assigning dense ranks generation by generation.
 
-use std.tree.Rooted
 use std.persistent.PMultiset
 
 @!multitest

@@ -9,7 +9,6 @@
 //   O(k^2) per call.
 // original: corpus/submissions/4733047.cpp (grader function count_tastiness)
 // stdin here: q, then per call `k x` and a[0..k).
-use std.math.{bit_len}
 let q: 1..=1000 = read()
 
 // `1 << (i + 1)` with a loop index is emitted as a 32-bit C++ shift today

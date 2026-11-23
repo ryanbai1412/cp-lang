@@ -1,5 +1,5 @@
 // expect: ok, output "2 10 YES YES\n20 4 YES YES\n120 5"
-use std.sparse.{SparseTable, DisjointSparseTable}
+use std.sparse.{DisjointSparseTable}
 domain D = 0..3
 let a: [D]Int = [D] v => [4, 6, 10][Int(v)]
 let s = SparseTable(gcd, a)

@@ -1,5 +1,4 @@
 // expect: ok, output "YES\nYES\nYES\nYES\n-2\n4\n10 1 5"
-use std.beats.{BeatsSegTree}
 domain N = 0..3
 domain M = 0..1
 let a: [N]Int = [5, 1, 4]

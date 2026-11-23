@@ -1,6 +1,5 @@
 // The shortest distance from vertex 1 to vertex n over undirected weighted
 // roads, or -1 when n can't be reached. A bug is planted in the relaxation.
-use std.heap.{MinHeap}
 
 let (n, m): (2..=6, 1..=8) = read()
 domain V = 1..=n

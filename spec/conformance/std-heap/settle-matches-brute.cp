@@ -1,5 +1,4 @@
 // expect: ok, output "2 none\nNO a 2 YES\nb 3 none 2\na 5\nYES"
-use std.heap.{Settle}
 use std.rand.{Rng}
 fn show<T>(o: ?T) -> Str = match o:
     Some(x) => "{x}"

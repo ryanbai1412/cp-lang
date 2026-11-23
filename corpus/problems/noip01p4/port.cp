@@ -8,7 +8,6 @@
 //   cheapest of the 16 corner pairs.
 // original: corpus/submissions/5086731.cpp
 use std.geometry.{dot}  // WISH F1
-use std.graph.{floyd_warshall}
 
 let n: 1..=100 = read()
 let air: 1..=1000 = read()

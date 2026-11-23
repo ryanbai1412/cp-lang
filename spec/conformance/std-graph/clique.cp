@@ -1,6 +1,5 @@
 // expect: ok, output "0 1 2 3 4\n5\n0 3 5\n3\n0\n1"
 use std.graph.{max_clique, chromatic_number}
-use std.bitset.{Bitset}
 domain V = 0..5
 var k5: [V]Bitset<V> = [Bitset.empty() for _ in V]
 for a in V:

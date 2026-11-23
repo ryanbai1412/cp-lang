@@ -13,7 +13,6 @@
 // cost — matching the Manhattan lower bound without re-sorting cycles.
 
 use std.flow.min_weight_matching
-use std.seq.inverse
 
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
     var ops: List<(D, D)> = []

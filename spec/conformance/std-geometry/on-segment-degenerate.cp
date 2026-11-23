@@ -1,3 +1,3 @@
 // expect: ok, output "YES NO NO"
-use std.geometry.{Pt, on_segment}
+use std.geometry.{on_segment}
 print(yes(on_segment(Pt(2, 2), Pt(2, 2), Pt(2, 2))), yes(on_segment(Pt(2, 2), Pt(2, 2), Pt(2, 2), strict: true)), yes(on_segment(Pt(1, 2), Pt(0, 0), Pt(2, 2))))

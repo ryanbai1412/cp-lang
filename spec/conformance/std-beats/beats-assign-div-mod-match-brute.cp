@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.beats.{BeatsSegTree}
 use std.rand.{Rng}
 domain N = 0..30
 var rng = Rng(3)

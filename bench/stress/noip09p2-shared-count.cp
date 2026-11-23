@@ -2,7 +2,6 @@
 // leak: the count lives above the `@!multitest` divider, so it is never
 // reset between tests.
 // class: multitest-leak
-use std.math.{divisors}
 
 var found = 0
 fn hankson(a0: Int, a1: Int, b0: Int, b1: Int) -> Int:

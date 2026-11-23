@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.graph.{Visit}
 var ok = true
 for trial in 0..30:
     domain V = 0..20

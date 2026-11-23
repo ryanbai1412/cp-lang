@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.tree.{JumpTree}
 domain V = 0..40
 var j = JumpTree<V>()
 var par: [V]?V = [V] _ => None

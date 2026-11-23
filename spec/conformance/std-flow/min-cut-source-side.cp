@@ -1,5 +1,4 @@
 // expect: ok, output "YES YES NO NO"
-use std.flow.{FlowGraph}
 domain V = 0..4
 var g = FlowGraph<V>()
 g.add(V(0), V(1), Some(4))

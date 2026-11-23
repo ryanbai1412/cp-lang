@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.graph.{Graph}
 use std.tree.{spanning_tree}
 var ok = true
 for trial in 0..30:

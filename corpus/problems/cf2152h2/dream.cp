@@ -11,7 +11,6 @@
 // the breakpoints while F(b) < b - D, then re-enter F where the line l - D
 // meets it, splitting the slope jump across the two integers around the
 // crossing. The answer for l is F_V(l).
-use std.dsu.{Dsu}
 use std.heap.{MeldHeap}
 
 @!multitest

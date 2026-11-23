@@ -5,9 +5,6 @@
 // v2.2 SortedBag replaces ~90 lines of custom lazy-deletion multi-PQ bookkeeping.
 // original: corpus/submissions/5669058.cpp
 
-use std.bag.{SortedBag}
-use std.seq.{next_permutation}
-
 @multitest
 let (n, k, l): (Int, Int, Int) = read()
 domain I = 0..n

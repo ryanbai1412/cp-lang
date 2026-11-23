@@ -1,5 +1,4 @@
 // expect: ok, output "4 6 6 0 3\n2 2 0 2 0 YES NO\n3 2 2 2\n2 0 1 0 1\n0 1 2\n1 2 3\n2 3 0\n3 0 1\nNO 1 2 0"
-use std.prefix.{Prefix}
 domain D = 0..3
 let a: [D]Int = [D] v => 1 + Int(v)
 let p = Prefix<D, Int>(a)

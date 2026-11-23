@@ -1,6 +1,5 @@
 // expect: ok, output "0 0 1 4 4"
 // rule: 05.10.11
-use std.dsu.Dsu
 
 domain V = 0..8
 var d = Dsu<V>()

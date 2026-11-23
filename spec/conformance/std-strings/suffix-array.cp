@@ -1,5 +1,5 @@
 // expect: ok, output "YES YES YES YES\nYES YES YES\nYES YES YES YES\nYES YES YES YES\nYES YES YES\nYES YES YES"
-use std.strings.{SuffixArray, suffix_array}
+use std.strings.{suffix_array}
 let b = SuffixArray("banana")
 print(yes(b.sa == [5, 3, 1, 0, 4, 2]), yes(b.lcp == [1, 3, 0, 0, 2]), yes(b.len == 6), yes(SuffixArray("").is_empty))
 print(yes(b.lcp_between(1, 3) == 3), yes(b.lcp_between(2, 2) == 4), yes(b.lcp_between(0, 6) == 0))

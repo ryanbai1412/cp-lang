@@ -1,5 +1,4 @@
 // expect: ok, output "2 4 0 2"
-use std.tree.{Rooted}
 domain V = 0..4
 let adj: [V]List<V> = [[V(1)], [V(0)], [V(3)], [V(2)]]
 let t = Rooted.forest(adj, from: [V(0), V(2)])

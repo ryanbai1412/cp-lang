@@ -1,6 +1,6 @@
 // expect: ok, output "3 16 YES YES YES YES\n2 4"
 // rule: 08.1.1
-use std.geometry.{OnlineHull, Pt, Location, polygon_triangulate}
+use std.geometry.{OnlineHull, polygon_triangulate}
 var h = OnlineHull()
 let _ = h.add(Pt(0, 0))
 let _ = h.add(Pt(4, 0))

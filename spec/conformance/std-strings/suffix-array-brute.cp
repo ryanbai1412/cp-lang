@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.strings.{SuffixArray}
 var x = 12345
 var w = List<Int>()
 for i in 0..300:

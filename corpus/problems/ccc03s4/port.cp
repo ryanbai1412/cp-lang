@@ -4,7 +4,6 @@
 // Solution: each distinct non-empty substring is a prefix of some suffix; in suffix-array order
 //   suffix i adds its length minus its LCP with the previous suffix, so the count is
 //   n(n+1)/2 - sum(lcp) (`SuffixArray.distinct()`). Add 1 for the empty string. O(n) per string.
-use std.strings.{SuffixArray}
 
 @!multitest
 let s: Str = read()

@@ -1,6 +1,5 @@
 // expect: ok, output "2 1\nYES"
 use std.persistent.{PersistentSegTree}
-use std.algebra.{Monoid}
 use std.rand.{Rng}
 domain P = 0..3
 let xs: [P]Int = [1, 2, 3]

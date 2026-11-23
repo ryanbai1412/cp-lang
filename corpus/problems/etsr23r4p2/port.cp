@@ -6,7 +6,6 @@
 // Precompute the totient chain [p, phi(p), ..., 1] and each element's tower
 // up to stabilization, then serve range shifts with a `SegTree` whose action shifts each node's
 // tower table.
-use std.math.{phi}
 
 fn pow_capped(base: Int, exp: Int, m: Int) -> (over: Bool, val: Int):
     if m == 1: return (true, 0)

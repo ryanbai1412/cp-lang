@@ -1,5 +1,5 @@
 // expect: ok, output "0 1 2 2 3 2 4\n0 1 2 3\n0 1 -1 -1 0 -1 1\n32 0\n32 1 0 -1 1 0\n10 27\n303963552392 212"
-use std.math.{DirichletSum, Sieve, dirichlet_convolve, divisors, dirichlet_inv, sum_mobius, sum_multiplicative, sum_phi}
+use std.math.{DirichletSum, dirichlet_convolve, dirichlet_inv, sum_mobius, sum_multiplicative, sum_phi}
 print(dirichlet_convolve([0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], 6))
 print(dirichlet_convolve([0, 1, 2, 3], [0, 1, 0, 0], 3))
 print(dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6))

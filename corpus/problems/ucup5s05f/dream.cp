@@ -5,7 +5,6 @@
 // multipoint evaluation:
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
 use std.poly.{SubproductTree, inv, prod_linear}
-use std.ntt.{convolve}
 use std.strings.{suffix_tree_edges}
 
 type Z = Mod<998_244_353>

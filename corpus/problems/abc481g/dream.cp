@@ -22,8 +22,6 @@
 // right half by `rp_min - lp_min` computes `G(x)` in `O(n log^2 n)`. Prefix
 // sums of `G` starting from `2^n * events[0].val` yield `ans[0..n]`.
 
-use std.ntt.{convolve}
-
 type Z = Mod<998_244_353>
 
 enum End: Low | High

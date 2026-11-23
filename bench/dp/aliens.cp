@@ -1,4 +1,3 @@
-use std.dp.aliens
 // The most a contestant gets from exactly k disjoint nonempty subarrays:
 // that total is concave in k, so pay λ per subarray and let `aliens` find λ.
 let (n, k): (1..=1e6, 1..=1e6) = read()

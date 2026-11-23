@@ -1,5 +1,4 @@
 // expect: ok, output "14 23"
-use std.segtree.{SegTree}
 domain D = 0..3
 var w: [D]Int = [1, 2, 3]
 var s = SegTree<D, Int>.of(+, i => w[i])

@@ -1,5 +1,5 @@
 // expect: ok, output "YES"
-use std.geometry.{hull_extreme, Pt}
+use std.geometry.{hull_extreme}
 let sq = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
 let oct = [Pt(1, 0), Pt(2, 0), Pt(3, 1), Pt(3, 2), Pt(2, 3), Pt(1, 3), Pt(0, 2), Pt(0, 1)]
 var ok = true

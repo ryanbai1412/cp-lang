@@ -11,7 +11,6 @@
 // is uncovered). The live "some impostor" intervals starting at v are a sliding
 // window over the statements, so `ends[v]` keeps their shortest right end, and
 // `shortest` is a min tree over those.
-use std.window.{Window}
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n

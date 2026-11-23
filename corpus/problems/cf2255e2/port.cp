@@ -9,7 +9,6 @@
 //   each sign to a new sign plus a history per unit of |value|; after an assignment the value
 //   and the added history are constants. Tags compose in O(1): a SegTree with range apply and
 //   point get, plus a `record` tag on the whole array after each operation, O((n + q) log n).
-use std.algebra.{Action, Monoid}
 use std.algebra.{MaxSub}
 
 type Sign = -1..=1

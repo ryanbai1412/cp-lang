@@ -1,6 +1,4 @@
 // expect: ok, output "6 3\n0 0"
-use std.matrix.{Mat}
-use std.mod.{Mod}
 type Z = Mod<1_000_000_007>
 let adj = [[Z(0), Z(1), Z(1)], [Z(1), Z(0), Z(1)], [Z(1), Z(1), Z(0)]]
 let w = Mat<Z>.of(adj) ** 4

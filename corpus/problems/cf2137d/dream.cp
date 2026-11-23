@@ -6,8 +6,6 @@
 // partition each `groups[x]` into chunks of size `x` and assign a fresh label
 // to each chunk.
 
-use std.seq.{chunks}
-
 @!multitest
 let n: 1..=200_000 = read()
 let b: [0..n]1..=n = read()

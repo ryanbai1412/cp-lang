@@ -1,6 +1,5 @@
 // expect: ok, output "YES"
 // `Functional(nx)` calls `Functional.new`; every query agrees with walking `nx`.
-use std.graph.{Functional}
 var ok = true
 for trial in 0..40:
     domain V = 0..8

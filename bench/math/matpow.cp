@@ -1,5 +1,4 @@
 // Matched benchmark: 80x80 Mat<Mod<998244353>> ** 10^18.
-use std.matrix.{Mat}
 
 type Z = Mod<998_244_353>
 

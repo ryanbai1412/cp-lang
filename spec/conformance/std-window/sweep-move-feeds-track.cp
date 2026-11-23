@@ -1,5 +1,4 @@
 // expect: ok, output "YES\nYES 3\n6 3\nYES 9 3\nYES 1"
-use std.window.{Sweep}
 domain D = 0..5
 struct Sum(total: Int, n: Int):
     fn push(mut self, x: D):

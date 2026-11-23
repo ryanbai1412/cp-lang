@@ -9,9 +9,6 @@
 //   backward from t, and count each component (or inner path of a tree edge) both reach.
 //   O(n + m) setup, O(k log n) per query.
 
-use std.graph.{Graph, scc}
-use std.tree.{Rooted}
-
 let (n, m, q, kv): (Int, Int, Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m

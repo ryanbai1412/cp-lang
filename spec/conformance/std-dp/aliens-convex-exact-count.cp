@@ -1,5 +1,4 @@
 // expect: ok, output "YES 0 9 16\n0 -5 -8 -9 -7 -3"
-use std.dp.{aliens}
 fn best(lam: Int) -> (val: Int, count: Int):
     var b = (val: 3 * 3, count: 0)
     for c in 1..=10:

@@ -1,5 +1,5 @@
 // expect: ok, output "none none 1 1 none none\nnone none 0 2 none none\n0..1 0..3 2..3\n3 0 none none\n0 2 4\n-1 6\nnone 0 none 2 3 1 2 none 4 none"
-use std.seq.{prev_smaller, next_smaller, prev_same, next_same, spans, first_gt, last_lt, record_highs, perm_sign, perm_order}
+use std.seq.{prev_smaller, next_smaller, prev_same, next_same, spans, record_highs, perm_sign, perm_order}
 domain T3 = 0..3
 domain T4 = 0..4
 domain T5 = 0..5

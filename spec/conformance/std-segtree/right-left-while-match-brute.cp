@@ -1,5 +1,4 @@
 // expect: ok, output "0 3040"
-use std.segtree.{SegTree}
 use std.rand.{Rng}
 var rng = Rng(7)
 var bad = 0

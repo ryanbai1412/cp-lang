@@ -1,6 +1,5 @@
 // A call whose operands are ordered passes a unit-typed argument (a stateless
 // fn value), and printing a view of a struct with its own `show`.
-use std.ntt.{convolve}
 fn twice(v: Int) -> Int = v * 2
 var x = List<Int>()
 for i in 0..4: x.push(i + 1)

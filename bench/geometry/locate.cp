@@ -1,5 +1,3 @@
-use std.geometry.{Location, locate}
-
 let (n, q): (Int, Int) = read()
 var poly: List<Pt> = []
 for _ in 0..n:

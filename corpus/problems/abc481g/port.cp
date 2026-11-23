@@ -7,8 +7,6 @@
 //   ans[k] - ans[k-1] = [x^k] sum_t dv_t 2^(n-q_t) x^(p_t) (1 + x)^(q_t). Divide and conquer
 //   over the gaps, factoring out x^p_min (1 + x)^q_min, with NTT products: O(n log^2 n).
 
-use std.ntt.{convolve}
-
 type Z = Mod<998_244_353>
 
 enum End: Low | High

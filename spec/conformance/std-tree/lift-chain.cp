@@ -1,5 +1,4 @@
 // expect: ok, output "YES YES YES\nYES YES"
-use std.tree.{Lift}
 domain V = 0..1000
 var par: [V]?(V, Int) = None
 for v in V:

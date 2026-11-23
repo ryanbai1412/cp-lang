@@ -6,8 +6,6 @@
 // every cyclic edge `(x, y)` pays `max(x, y)` exactly once except one edge
 // incident to the global maximum `a.max()`, which stays unmerged at the end.
 
-use std.seq.{cyclic_pairs}
-
 @!multitest
 let n: 2..=200_000 = read()
 let a: [0..n]0..=10 ** 9 = read()

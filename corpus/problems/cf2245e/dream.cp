@@ -6,9 +6,6 @@
 // `edges - vertices`. A glued piece with `e` edges and `v` vertices has
 // `extra = e - v + 1 = diff + 1` free slots and contributes `choose2(extra)`.
 
-use std.dsu.{DsuOf}
-use std.math.{choose2}
-
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n

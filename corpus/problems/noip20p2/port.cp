@@ -7,7 +7,6 @@
 //   odd i and after 2w for even i. at_most[d] counts prefixes A of length < w with F(A) <= d,
 //   grown by one prefix per w. O(26 n).
 // original: corpus/submissions/5445673.cpp
-use std.strings.{z_function}
 
 domain Letter = 'a'..='z'
 

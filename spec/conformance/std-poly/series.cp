@@ -1,7 +1,6 @@
 // expect: ok, output "YES YES\nYES YES\nYES YES YES YES\nYES"
 use std.poly.{inv}
-use std.poly.{eval, taylor_shift, lagrange_at, interpolate}
-use std.mod.{Mod}
+use std.poly.{taylor_shift, lagrange_at, interpolate}
 type Z = Mod<998244353>
 let a1: List<Z> = [1, -1]
 let a2: List<Z> = [2]

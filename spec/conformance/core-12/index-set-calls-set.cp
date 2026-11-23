@@ -2,7 +2,6 @@
 // rule: W8
 // A struct whose place protocol is `set` (IndexSet) takes `x[k] = v` as `x.set(k, v)` and
 // `x[k] op= v` as `x.set(k, x[k] op v)`; a user type gets this exactly as std's `Deque` does.
-use std.deque.{Deque}
 struct Box(xs: List<Int>):
     pub fn at(self, i: Int) -> Int = xs[i]
     pub fn set(mut self, i: Int, v: Int):

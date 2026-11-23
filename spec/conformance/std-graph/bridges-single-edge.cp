@@ -1,5 +1,5 @@
 // expect: ok, output "YES"
-use std.graph.{Graph, bridges}
+use std.graph.{bridges}
 domain V = 0..2
 domain E = 0..1
 let es: [E](u: V, v: V) = [(u: V(0), v: V(1))]

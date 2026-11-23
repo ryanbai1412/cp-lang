@@ -1,7 +1,6 @@
 // expect: ok, output "6 6 7"
 // rule: 04.2.11
 // `[P]T` over `type P = (A, B)` is `[A, B]T`, so it binds `V = P` in a `[V]T` parameter, and `[P, P]T` binds `[V, V]T` with each `V` the whole cell, not `A` and `B` one by one.
-use std.graph.{floyd_warshall}
 domain A = 0..2
 domain B = 0..3
 type P = (A, B)

@@ -1,6 +1,5 @@
 // expect: ok, output "YES\nYES"
 use std.poly.{interpolate, eval_all, inv}
-use std.mod.{Mod}
 type Z = Mod<998244353>
 let xs: List<Z> = [Z(i) for i in 0..100]
 let ys: List<Z> = [Z(i * i * i + 7) for i in 0..100]

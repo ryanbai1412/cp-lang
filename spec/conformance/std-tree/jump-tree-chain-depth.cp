@@ -1,5 +1,4 @@
 // expect: ok, output "3 YES"
-use std.tree.{JumpTree}
 domain V = 0..4
 var j = JumpTree<V>()
 j.add(V(1), V(0))

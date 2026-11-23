@@ -1,5 +1,3 @@
-use std.bitset.{Bitset}
-
 // Matched Bitset bench: 200k-bit subset-sum knapsack + 1000 shift_or + &-chain popcounts.
 domain B = 0..200001
 var weights: List<Int> = []

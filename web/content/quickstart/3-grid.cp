@@ -1,5 +1,3 @@
-use std.grid.{adj4}
-
 let (h, w): (1..=1000, 1..=1000) = read()
 domain Row = 1..=h
 domain Col = 1..=w

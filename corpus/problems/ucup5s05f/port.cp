@@ -4,7 +4,6 @@
 // p(x) = prod(1 - s x), then convert power sums to binomial sums via transposed
 // multipoint evaluation:
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
-use std.ntt.{convolve}
 use std.poly.{inv, prod_linear}
 use std.strings.{suffix_array}
 

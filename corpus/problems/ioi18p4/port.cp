@@ -10,7 +10,6 @@
 // original: corpus/submissions/4724581.cpp (grader function create_circuit)
 // stdin here: M n, then A[0..n).
 // stdout: three lines, C[0..=M], X and Y (each X/Y line starts with the count).
-use std.math.{bit_len}
 let m: 1..=100000 = read()
 let n: 1..=200000 = read()
 domain Seq = 0..n

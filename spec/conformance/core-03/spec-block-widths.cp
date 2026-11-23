@@ -1,7 +1,6 @@
 // expect: ok, output "3 6"
 // rule: 03.5.1
 // input: "3\n1 3 2\n"
-use std.segtree.{SegTree}
 let n = read<1..=2e5>()
 domain V = 0..n
 let a = read<[V]1..=1e9>()           // 4 B per element

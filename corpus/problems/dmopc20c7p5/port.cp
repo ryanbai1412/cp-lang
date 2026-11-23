@@ -5,8 +5,6 @@
 //   its cities, so the answer is the maximum-weight closure of that dependency graph
 //   (`std.flow.max_closure`, a min cut) over N + M nodes.
 
-use std.flow.{max_closure}
-
 let n: 1..=5_000 = read()
 let m: 0..=250_000 = read()
 domain Item = 1..=n

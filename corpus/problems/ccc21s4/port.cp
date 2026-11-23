@@ -5,7 +5,6 @@
 // Solution: the best trip rides to some S_i, gets off and walks: (i - 1) + dist(S_i, N), with
 //   dist from one BFS from N over reversed walkways. A min SegTree over route positions
 //   refreshes the two swapped ones each day: O(N + W + D log N).
-use std.graph.{bfs}
 
 let n: 3..=2e5 = read()
 let w: 0..=2e5 = read()

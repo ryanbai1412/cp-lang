@@ -1,5 +1,3 @@
-use std.grid.{adj4}
-
 @!multitest
 
 let (h, w): (1..=1000, 1..=1000) = read()

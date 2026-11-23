@@ -1,5 +1,5 @@
 // expect: ok, output "1 3 YES\nYES YES\n1 3"
-use std.pair.{Pair, symmetric}
+use std.pair.{symmetric}
 domain V = 0..4
 let p = Pair<V>(V(3), V(1))
 print(Int(p.lo), Int(p.hi), yes(p == Pair<V>(V(1), V(3))))

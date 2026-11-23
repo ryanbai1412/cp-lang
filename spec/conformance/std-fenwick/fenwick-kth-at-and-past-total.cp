@@ -1,6 +1,5 @@
 // expect: ok, output "YES"
 // rule: std.fenwick.Fenwick.kth
-use std.fenwick.{Fenwick}
 domain D = 0..3
 var f = Fenwick<D, Int>()
 f.add(D(0), 1)

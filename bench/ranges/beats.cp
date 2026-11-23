@@ -1,5 +1,3 @@
-use std.beats.{BeatsSegTree}
-
 let n = 50_000
 let q = 100_000
 domain I = 0..n

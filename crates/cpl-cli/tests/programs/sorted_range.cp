@@ -1,5 +1,3 @@
-use std.bag.SortedSet
-
 var b = SortedBag<Int>()
 for x in [5, 2, 5, 1, 2, 5, 9, -3]:
     let _ = b.add(x)

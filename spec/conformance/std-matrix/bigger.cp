@@ -1,6 +1,4 @@
 // expect: ok, output "YES\nYES\nYES\nYES\nYES"
-use std.matrix.{Mat}
-use std.mod.{Mod}
 type Z = Mod<998244353>
 let m = Mat<Z>.from_rows([[Z(2), Z(7), Z(1), Z(8)], [Z(2), Z(8), Z(1), Z(8)], [Z(3), Z(1), Z(4), Z(1)], [Z(5), Z(9), Z(2), Z(6)]])
 let cp = m.char_poly()

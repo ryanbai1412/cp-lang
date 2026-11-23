@@ -1,6 +1,3 @@
-use std.sparse.{SparseTable}
-use std.segtree.{SegTree}
-
 struct Box<D>:
     a: [D]Int
 

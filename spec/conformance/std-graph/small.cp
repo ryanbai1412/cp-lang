@@ -1,6 +1,5 @@
 // expect: ok, output "0 0 1 1\n0 0 0 1 0 1 1 1\n0 1 2\n2 1\n0 2\n2 1\nYES\n0 1 2\n3 1"
 use std.graph.{de_bruijn, directed_of_pairs, undirected_of_pairs, adjacency, prim, max_clique, chromatic_number}
-use std.bitset.{Bitset}
 print(de_bruijn(2, 2))
 print(de_bruijn(2, 3))
 print(de_bruijn(3, 1))

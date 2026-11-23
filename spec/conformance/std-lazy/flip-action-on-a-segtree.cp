@@ -1,6 +1,6 @@
 // expect: ok, output "1"
 // rule: std.segtree.SegTree
-use std.lazy.{Flip, flip_action}
+use std.lazy.{flip_action}
 domain I = 0..4
 let act = flip_action<Int>(+)
 var st = SegTree<I, Flip<Int>, Bool>(act.over, [I] i => if i.ord % 2 == 0: Flip(1, 0) else: Flip(0, 1), act: act)

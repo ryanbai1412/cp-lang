@@ -9,8 +9,7 @@
 //   Cyclic NTT correlations of the +-1 signs and of the known flags give, for all shifts at
 //   once, agreements and known pairs. Answer = sum over f | m of ways(m / f) * prod (1 - r)
 //   over primes r | f (mu * id Moebius weights): O(m d(m) + sigma(m) log m).
-use std.math.{divisors, factor}
-use std.ntt.{convolve}
+use std.math.{factor}
 
 type Z = Mod<998_244_353>
 
