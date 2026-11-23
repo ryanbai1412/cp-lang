@@ -7971,3 +7971,16 @@ always on a manual run), and always run the LSP handshake against their own
   (already rule 16 of the precedence table), now shown in 1.7. `cpl build`
   writes `d.cpp` beside the source; `-o -` gives stdout.
 - **Reverse.** Have the interactor send the count itself.
+
+## 383. Every OS builds the JetBrains plugin only when it changes; Gradle is uncached (infra, 2026-11-23)
+
+Amends 380. With IU 2025.3 added for the free-IDE LSP4IJ test, Linux's Gradle
+cache grew to 8.33 GB of the repo's 10 GB and evicted Rust's target/ caches
+(2.7 GB to 1.0 GB), and the Linux jetbrains job, at 486 s, set CI's wall time.
+Rule: on every OS, the plugin's Gradle build, tests, free-IDE test and
+verifyPlugin run only when `editors/jetbrains/`, `crates/cpl-lsp/`, the Gradle
+mirror script or ci.yml changed since main's last green CI run (or on a PR's
+diff, or always on a manual run); every OS always runs the LSP handshake.
+Gradle is not cached; cold runs resolve through the Maven mirror and retry with
+backoff. Reverse: restore setup-java's `cache: gradle` and the Linux-always
+branch of the `plugin` step.

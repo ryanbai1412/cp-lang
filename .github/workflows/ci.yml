@@ -218,13 +218,12 @@ jobs:
     permissions:
       contents: read
       actions: read
-    # Milestone 1 requires JetBrains, so it blocks main. Linux restores Gradle
-    # from the setup-java cache; each OS's cache is ~3.3 GB of the repo's 10 GB,
-    # which evicted the Rust target/ caches and took Windows 435 s to restore,
-    # so Windows and macOS download and back off on a Maven Central 429.
-    # The Gradle build and tests are JVM code, the same on every OS, so macOS
-    # and Windows run them only when the plugin changed since main's last
-    # green run; every OS still runs the handshake against its own cpl.
+    # Milestone 1 requires JetBrains, so it blocks main. Gradle is not cached:
+    # with three IDEs its home is 8+ GB of the repo's 10 GB and evicted the
+    # Rust target/ caches; cold runs resolve through the Maven mirror and back
+    # off on a 429. The plugin's Gradle build and tests run only when the
+    # plugin, its build inputs or `cpl lsp` changed since main's last green
+    # run; every OS still runs the handshake against its own cpl.
     steps:
       - uses: actions/checkout@v4
       - name: Does this change touch the plugin?
@@ -236,17 +235,15 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           build=true
-          if [ "$RUNNER_OS" != Linux ]; then
-            case $EVENT in
-              pull_request) base=$PR_BASE ;;
-              push) base=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>/dev/null || true) ;;
-              *) base= ;;
-            esac
-            if [ -n "$base" ] && files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$GITHUB_SHA" --jq '.files[].filename' 2>/dev/null) \
-              && [ "$(printf '%s\n' "$files" | wc -l)" -lt 300 ] \
-              && ! printf '%s\n' "$files" | grep -qE '^(editors/jetbrains/|scripts/gradle-mirror|\.github/workflows/ci\.yml)'; then
-              build=false
-            fi
+          case $EVENT in
+            pull_request) base=$PR_BASE ;;
+            push) base=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>/dev/null || true) ;;
+            *) base= ;;
+          esac
+          if [ -n "$base" ] && files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$GITHUB_SHA" --jq '.files[].filename' 2>/dev/null) \
+            && [ "$(printf '%s\n' "$files" | wc -l)" -lt 300 ] \
+            && ! printf '%s\n' "$files" | grep -qE '^(editors/jetbrains/|crates/cpl-lsp/|scripts/gradle-mirror|\.github/workflows/ci\.yml)'; then
+            build=false
           fi
           echo "plugin build since ${base:-(none)}: $build"
           echo "build=$build" >> "$GITHUB_OUTPUT"
@@ -260,8 +257,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: ${{ runner.os == 'Linux' && 'gradle' || '' }}
-          cache-dependency-path: editors/jetbrains/*.gradle*
       - name: Build cpl
         run: cargo build -p cpl-cli
       - name: Plugin build and tests
@@ -275,7 +270,7 @@ jobs:
           done
           exit 1
       - name: Free IntelliJ IDEA gets a diagnostic and a completion through LSP4IJ
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
         working-directory: editors/jetbrains
         shell: bash
         run: |
@@ -285,7 +280,7 @@ jobs:
           done
           exit 1
       - name: Plugin verifies against IntelliJ IDEA Community and Ultimate
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
         working-directory: editors/jetbrains
         shell: bash
         run: ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
