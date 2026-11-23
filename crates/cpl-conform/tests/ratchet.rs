@@ -214,6 +214,11 @@ fn spec_blocks_markers_above_a_fence() {
     let blocks = extract_marked_blocks(md);
     assert_eq!(blocks[0].0, "let q = 1\n  q\n");
     assert_eq!(blocks[0].1, Marker::SpecOnly("listed".into()));
+    let md = "<!-- given: let a = [1] -->\n<!-- rejects: E0603 -->\n```cp\nf(a)\n```\n";
+    assert_eq!(
+        extract_marked_blocks(md)[0].1,
+        Marker::GivenRejects("let a = [1]".into(), "E0603".into())
+    );
 }
 
 #[test]

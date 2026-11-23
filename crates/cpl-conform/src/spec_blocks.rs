@@ -27,7 +27,8 @@ pub struct SpecBlock {
 /// `<!-- rejects: E0608 -->` comment ending on the line right above a fence.
 /// `given` code (top-level lines, one per line) is prepended when the block
 /// runs; a spec-only block that fails to check is a skip, not an error; a
-/// `rejects` block passes only when checking it reports that code.
+/// `rejects` block passes only when checking it reports that code. A `given`
+/// comment stacked right above a `rejects` one gives that block its setup.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Marker {
     #[default]
@@ -35,20 +36,21 @@ pub enum Marker {
     SpecOnly(String),
     Given(String),
     Rejects(String),
+    /// A `given:` comment stacked right above a `rejects:` one.
+    GivenRejects(String, String),
 }
 
-fn marker_above(before: &str) -> Marker {
-    let Some(body) = before
+fn comment_above(before: &str) -> Option<(&str, &str)> {
+    let body = before
         .trim_end_matches([' ', '\t'])
-        .strip_suffix('\n')
-        .and_then(|b| b.trim_end_matches([' ', '\t']).strip_suffix("-->"))
-    else {
-        return Marker::None;
-    };
-    let Some(open) = body.rfind("<!--") else {
-        return Marker::None;
-    };
-    let inner = body[open + 4..].trim_start();
+        .strip_suffix('\n')?
+        .trim_end_matches([' ', '\t'])
+        .strip_suffix("-->")?;
+    let open = body.rfind("<!--")?;
+    Some((body[open + 4..].trim_start(), &body[..open]))
+}
+
+fn parse_marker(inner: &str) -> Marker {
     if let Some(r) = inner.strip_prefix("spec-only:") {
         Marker::SpecOnly(r.split_whitespace().collect::<Vec<_>>().join(" "))
     } else if let Some(c) = inner.strip_prefix("rejects:") {
@@ -58,6 +60,19 @@ fn marker_above(before: &str) -> Marker {
         Marker::Given(lines.join("\n"))
     } else {
         Marker::None
+    }
+}
+
+fn marker_above(before: &str) -> Marker {
+    let Some((inner, rest)) = comment_above(before) else {
+        return Marker::None;
+    };
+    match parse_marker(inner) {
+        Marker::Rejects(code) => match comment_above(rest).map(|(up, _)| parse_marker(up)) {
+            Some(Marker::Given(given)) => Marker::GivenRejects(given, code),
+            _ => Marker::Rejects(code),
+        },
+        m => m,
     }
 }
 
@@ -161,7 +176,9 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
 fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool)) {
     let vpath = format!("<spec-block:{}>", block.id);
     let source = match &block.marker {
-        Marker::Given(prelude) => format!("{prelude}\n{}", block.code),
+        Marker::Given(prelude) | Marker::GivenRejects(prelude, _) => {
+            format!("{prelude}\n{}", block.code)
+        }
         _ => block.code.clone(),
     };
     let (spec_diag, spec_failed) = runner::check_spec(db, &vpath, &source);
@@ -173,7 +190,7 @@ fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool
         };
         return (block.id.clone(), (skip, strict_ok));
     }
-    if let Marker::Rejects(code) = &block.marker {
+    if let Marker::Rejects(code) | Marker::GivenRejects(_, code) = &block.marker {
         let hit = spec_failed && spec_diag.contains(&format!("[{code}]"));
         let outcome = CaseOutcome {
             status: if hit { "pass" } else { "error" }.into(),
