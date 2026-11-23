@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2656 (995 passing). Rules: 568.
+Cases: 2658 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
@@ -851,7 +851,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 7 case(s)
+- R0001 Runtime trap: 8 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 9 case(s)
@@ -953,8 +953,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **pair** (5/5 named by a case)
 - **persistent** (34/39 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`, `PMultiset.cmp`
-- **poly** (53/57 named by a case)
-  - uncovered: `exp`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`
+- **poly** (54/57 named by a case)
+  - uncovered: `prod_linear`, `Poly.transposed_mul`, `Poly.exp`
 - **prefix** (46/56 named by a case)
   - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
@@ -975,7 +975,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2179 of 2307 std items are named by a case.
+2180 of 2307 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -984,4 +984,6 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/range-type-arguments-index-a-2d-segtree.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-09/asin-outside-domain-trap.cp
+- core-09/exp-ln-hypot.cp
+- core-09/ln-of-negative-trap.cp
 - core-09/trig-intrinsics.cp
