@@ -1,5 +1,13 @@
-// Yet Another Contest 6 P3 (interactive), as it builds today: the four
-// candidate cells are plain numbers checked by hand (K16).
+// Source: Yet Another Contest 6 P3 (No More Cell Phone Messaging),
+//   https://dmoj.ca/problem/yac6p3
+// Problem: interactive, non-adaptive: two distinct hidden cells (A, B), (C, D) of an N x M grid
+//   (N, M <= 1e9). Query "? X Y" returns min(|X - A| + |Y - B|, |X - C| + |Y - D|); after at
+//   most 5 queries print "! A B C D" (either order).
+// Solution: the four corners give min(x + y), min(y - x), min(x - y) and max(x + y) over the
+//   two cells. Either the min-sum cell also has the min y - x (the other then has the max sum
+//   and the min x - y) or the pairing is crossed; a fifth query at the first pairing's
+//   candidate cell tells which, and each cell follows from its sum and difference. O(1).
+// As it builds today: the four candidate cells are plain numbers checked by hand (K16).
 // original: corpus/submissions/5149597.cpp; judge: yac6p3_judge.py
 let n: 1..=1e9 = read()
 let m: 1..=1e9 = read()

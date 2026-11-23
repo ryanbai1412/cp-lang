@@ -1,6 +1,10 @@
-// CCO 2024 Treasure Hunt: starting at v, walk to any u and collect a[u] minus
-// the road tolls paid. Best value at v = max over u of a[u] - dist(u, v):
-// one Dijkstra from every vertex at once, u starting at "distance" -a[u].
+// Source: CCO 2024 P1 (Treasure Hunt), https://dmoj.ca/problem/cco24p1
+// Problem: an undirected graph of N <= 1e6 islands, island i holding v_i coins, and M <= 1e6
+//   routes of cost c_i (0 <= v_i, c_i <= 1e9). For every start x print the best net profit,
+//   the max over y of v_y - dist(x, y) (y = x allowed).
+// Solution: the answer at x is -min over y of (-v_y + dist(y, x)), a shortest path from a
+//   virtual source joined to each y by weight -v_y. So one Dijkstra seeds every vertex at
+//   -v_y and relaxes as usual (route costs are nonnegative). O((N + M) log N).
 let n: 1..=1e6 = read()
 let m: 0..=1e6 = read()
 domain V = 1..=n

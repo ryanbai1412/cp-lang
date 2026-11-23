@@ -1,5 +1,10 @@
-// SAC '22 Code Challenge 3 P4: a tree whose edges get cut one at a time.
-// Between cuts, report the distance from u to v, or -1 once they are apart.
+// Source: SAC '22 Code Challenge 3 P4 (Finding Friends), https://dmoj.ca/problem/sac22cc3p4
+// Problem: a tree on N <= 1e5 vertices and Q <= 2e5 queries: "1 u v" prints the distance from
+//   u to v in edges, or -1 if they are no longer connected; "2 u v" deletes the edge u-v.
+//   Every edge is deleted exactly once.
+// Solution: answer the queries backwards, where deletions become unions in a DSU that tells
+//   whether u and v are still connected. If they are, their path is the original tree path:
+//   depth(u) + depth(v) - 2 depth(lca(u, v)) on the tree rooted at 1. O((N + Q) log N).
 let n: 2..=2e5 = read()
 let q: 1..=2e5 = read()
 domain V = 1..=n

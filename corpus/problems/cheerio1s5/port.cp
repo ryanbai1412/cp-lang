@@ -1,4 +1,12 @@
-// Cheerio Contest 1 S5, clearing blocks around chosen H's (buildable today-form)
+// Source: Cheerio Contest 1 S5 (Coin Game), https://dmoj.ca/problem/cheerio1s5
+// Problem: a row of N <= 400 coins, each H or T; make K moves (1 <= K <= number of H's), each
+//   flipping an H to T and scoring the length of the run of tails holding that coin after
+//   the flip. Print the maximum total score.
+// Solution: the flipped coins form blocks between unflipped H's; in a block the last flip
+//   scores the whole block and splits it into two blocks cleared before. Interval DP
+//   clear[l, r] = max over H at i of (r - l) + clear[l, i] + clear[i + 1, r], O(N^3); then
+//   best[i, used] picks consecutive blocks over s[i..] holding at most K H's, O(N^2 K).
+// Written in today's buildable form.
 // original: corpus/submissions/5339756.cpp
 let s: [domain S]Char = read()
 let k: 0..=1000 = read()

@@ -1,5 +1,12 @@
-// NOI 2006 Profit, as it runs today on the reference interpreter (`cp.py lib-run`):
-// the network's vertices are one numbered domain with offsets kept by hand (K11).
+// Source: NOI 2006 P4 (Maximum Profit), https://dmoj.ca/problem/noi06p4
+// Problem: N <= 5000 candidate stations with build costs P_i and M <= 50000 user groups;
+//   group i pays C_i if both stations A_i and B_i are built. Print the maximum of the total
+//   payments minus the total build cost.
+// Solution: a maximum-weight closure as a min cut: source -> group (C_i), group -> its two
+//   stations (capacity 1e9, never cut), station -> sink (P_i). A cut either drops a group or
+//   pays for its stations, so the answer is sum C_i minus the max flow of the network.
+// As it runs today on the reference interpreter (`cp.py lib-run`): the network's vertices
+// are one numbered domain with offsets kept by hand (K11).
 // original: corpus/submissions/5032812.cpp
 
 let n: 1..=5000 = read()
