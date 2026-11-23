@@ -209,3 +209,40 @@ jobs:
           TOOLCHAIN: ${{ needs.plan.outputs.toolchain }}
           TAGS: ${{ needs.plan.outputs.tags }}
         run: scripts/release/publish.sh dist "$CHANNEL" "$VERSION" "$COMMIT" "$DATE" "$TOOLCHAIN" "$TAGS"
+
+  # The one-line installers on clean runners of all three OSes, against what
+  # publish just released: `cpl` installs, runs a program (CRLF too) and builds C++.
+  install-smoke:
+    needs: [plan, publish]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
+          sparse-checkout: web/public
+      - name: sh install.sh (curl -fsSL https://cp-lang.org/install.sh | sh)
+        if: runner.os != 'Windows'
+        run: sh web/public/install.sh ${{ needs.plan.outputs.channel == 'edge' && '--edge' || '' }} && echo "$HOME/.cpl/bin" >>"$GITHUB_PATH"
+      - name: install.ps1 (irm https://cp-lang.org/install.ps1 | iex)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ([scriptblock]::Create((Get-Content -Raw web/public/install.ps1))) ${{ needs.plan.outputs.channel == 'edge' && '-Edge' || '' }}
+          "$HOME\.cpl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: cpl runs and builds
+        shell: bash
+        env:
+          COMMIT: ${{ needs.plan.outputs.commit }}
+        run: |
+          cpl --version | tee version.txt
+          grep -q "${COMMIT:0:8}" version.txt
+          printf 'print(1 + 2)\n' >hello.cp
+          test "$(cpl run hello.cp | tr -d '\r')" = 3
+          printf 'print(2)\r\nprint(4 * 4)\r\n' >crlf.cp
+          test "$(cpl run crlf.cp | tr -d '\r' | tr '\n' ' ')" = '2 16 '
+          cpl build hello.cp -o - | grep -q 'int main'

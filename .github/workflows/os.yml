@@ -1,0 +1,53 @@
+name: os
+
+# ci runs the whole gate on Linux; this runs the workspace tests on macOS and
+# Windows, with GCC there too (Homebrew's on macOS, MinGW on Windows), as on
+# the judges. A separate workflow, so its longer cold builds don't hold back
+# ci's result or the edge release that follows it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: os-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  os:
+    name: tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: GCC as g++
+        if: runner.os == 'macOS'
+        run: |
+          gxx=$(ls "$(brew --prefix)"/bin/g++-[0-9]* | sort -V | tail -1)
+          mkdir -p ~/gcc-bin && ln -sf "$gxx" ~/gcc-bin/g++ && echo ~/gcc-bin >>"$GITHUB_PATH"
+      - name: Compiler versions
+        run: g++ --version | head -1 && rustc --version
+      - name: Workspace tests
+        run: cargo nextest run --workspace --no-fail-fast
