@@ -10,6 +10,8 @@ pub struct CorpusProblem {
     pub id: String,
     pub spec_path: PathBuf,
     pub tests: Vec<(PathBuf, PathBuf)>,
+    /// `checker.py <in> <out> <ans>`, exit 0 accepts; judges instead of the token diff.
+    pub checker: Option<PathBuf>,
 }
 
 pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
@@ -53,10 +55,12 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
                     (in_path, ans_path)
                 })
                 .collect();
+            let checker = Some(prob_dir.join("checker.py")).filter(|c| c.is_file());
             CorpusProblem {
                 id,
                 spec_path,
                 tests,
+                checker,
             }
         })
         .collect()
@@ -139,10 +143,22 @@ pub fn run_one(db: &mut Database, prob: &CorpusProblem) -> CaseOutcome {
                 detail: first,
             };
         }
-        let got_text = String::from_utf8_lossy(&run.stdout);
-        let got_tokens = got_text.split_whitespace();
-        let want_tokens = want_text.split_whitespace();
-        if !got_tokens.eq(want_tokens) {
+        let accepted = match &prob.checker {
+            Some(checker) => match run_checker(checker, in_path, ans_path, &run.stdout) {
+                Ok(ok) => ok,
+                Err(detail) => {
+                    return CaseOutcome {
+                        status: "error".into(),
+                        detail,
+                    }
+                }
+            },
+            None => {
+                let got_text = String::from_utf8_lossy(&run.stdout);
+                got_text.split_whitespace().eq(want_text.split_whitespace())
+            }
+        };
+        if !accepted {
             let name = in_path
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
@@ -158,6 +174,25 @@ pub fn run_one(db: &mut Database, prob: &CorpusProblem) -> CaseOutcome {
         status: "pass".into(),
         detail: String::new(),
     }
+}
+
+fn run_checker(checker: &Path, input: &Path, ans: &Path, out: &[u8]) -> Result<bool, String> {
+    static SEQ: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let out_path = std::env::temp_dir().join(format!("cpl-corpus-{}-{n}.out", std::process::id()));
+    std::fs::write(&out_path, out).map_err(|e| format!("cannot write output: {e}"))?;
+    let status = std::process::Command::new("python3")
+        .arg(checker)
+        .arg(input)
+        .arg(&out_path)
+        .arg(ans)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    let _ = std::fs::remove_file(&out_path);
+    status
+        .map(|s| s.success())
+        .map_err(|e| format!("cannot run {}: {e}", checker.display()))
 }
 
 pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
