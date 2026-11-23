@@ -243,3 +243,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 09:05 port: nccc9s4 `let (domain C, vals) = compress(a)` in place of the removed `vals.D`; 60/60 vs the AC C++.
 - 09:05 port: sdoi17r2p4 `Rooted(Graph.undirected(letters), Word.first!)`, `w` arcs, `dijkstra(g, from: [(start, 0)])`, `pos(...).ord`; 60/60 vs the AC C++ on 1-3 tests each. Routed: inline `Graph.directed` over an anonymous edge domain fails to unify (compiler) and `Graph.directed` rejects a `List` (stdlib).
 - 09:06 port: cf2201d `seg.all` in place of the unbounded `seg.fold(V.first..)`; 60/60 vs orig.cpp on its gen.py. noip19p5 stays blocked on `scout.wide` (`Wide.square` doesn't resolve `base`).
+- 09:07 port: noi17p2 `RollingHash.new(xs, bases: rh.bases)` in place of the removed `with_bases`; 60/60 vs the AC C++ on generated valid join/cut/query sequences.

@@ -19,7 +19,7 @@ let rh = RollingHash.new(List.filled(longest, 0))
 
 struct Block(hash: HashVal, len: Int)
 let empty_block = Block(HashVal(0, 0), 0)
-let one = [Block(RollingHash.with_bases([d], rh.bases).all, 1) for d in 0..=6]
+let one = [Block(RollingHash.new([d], bases: rh.bases).all, 1) for d in 0..=6]
 
 fn concat(a: Block, b: Block) -> Block = Block(rh.combine(a.hash, b.hash, b.len), a.len + b.len)
 
@@ -68,7 +68,7 @@ repeat q:
             (behind[u], ahead[v]) = (None, None)
         _ =>
             let (s, k): (Str, Int) = read()
-            let hash = RollingHash.with_bases([c - '0' for c in s], rh.bases)
+            let hash = RollingHash.new([c - '0' for c in s], bases: rh.bases)
             var ways = Z(1)
             for i in 0..=s.len - k:
                 ways *= Z(blocks.get(hash.slice(i, i + k)) ?? 0)

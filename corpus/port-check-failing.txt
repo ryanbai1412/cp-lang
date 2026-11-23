@@ -41,7 +41,6 @@ noi07p4
 noi10p4
 noi15p2
 noi15p5
-noi17p2
 noi21p1
 noi21p2
 noi21p3
