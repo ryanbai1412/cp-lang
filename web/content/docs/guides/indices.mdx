@@ -149,20 +149,20 @@ The imported `p.adj4` yields in-bounds orthogonal neighbors. `std.grid` also dec
 
 ## Coordinate compression with `compress(all)`
 
-Coordinate compression produces a fresh nominal domain `xs.D` together with value lookup and inverse mapping:
+Coordinate compression produces a fresh nominal domain `C` together with value lookup and inverse mapping:
 
-```cp status=spec
+```cp
 let all_coords = [30, 10, 20]
 let queries = [10, 30]
-let xs = compress(all_coords)
-var bit = Fenwick<xs.D, Int>()
+let (domain C, comp) = compress(all_coords)
+var bit = Fenwick<C, Int>()
 var ans = 0
 
 for x in queries:
-    let id = xs.at(x)      // exact lookup -> xs.D
-    let original = xs[id]  // original value at id
+    let id = comp.at(x)      // exact lookup -> C
+    let original = comp[id]  // original value at id
     bit.add(id, 1)
-    if let ge = xs.first_ge(x):  // lower bound -> ?xs.D
+    if let ge = comp.first_ge(x):  // lower bound -> ?C
         ans += bit.prefix(ge.l)
 print(ans)
 ```
