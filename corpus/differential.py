@@ -9,6 +9,11 @@ differently (AGENTS.md goal 5: the interpreter and the C++ agree on every
 program, including on input they reject). A case the interpreter can't
 finish in TIMEOUT seconds is skipped and counted, never a finding.
 
+The same builds give two more findings: `over-32kb <id> -`, a Codeforces
+build over the 32 KB every solution should fit (goal 5), and
+`removed-spelling <file> -`, a port, dream or spec that `cpl migrate --check`
+would rewrite (idiomatic-code/R8).
+
 Known findings live in corpus/differential-known.txt, which only shrinks.
 
   python3 corpus/differential.py [ids...]   print findings
@@ -16,13 +21,15 @@ Known findings live in corpus/differential-known.txt, which only shrinks.
   --update                                  rewrite the list
   --cpl PATH                                default: target/release/cpl
 """
-import argparse, concurrent.futures, glob, hashlib, os, subprocess, sys, threading
+import argparse, concurrent.futures, glob, hashlib, json, os, subprocess, sys, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KNOWN = os.path.join(ROOT, "corpus", "differential-known.txt")
 CACHE = os.path.join(ROOT, "target", "corpus-differential")
 TIMEOUT = 20
 SKIPPED = []
+TARGET_BYTES = 32 * 1024
+BYTES = {}
 COMPARED = []
 
 
@@ -49,7 +56,9 @@ def native(pid, port, cpl):
     cpp = os.path.join(CACHE, f"{pid}.{os.getpid()}.{threading.get_ident()}.cpp")
     if subprocess.run([cpl, "build", "--judge", "codeforces", port, "-o", cpp], capture_output=True).returncode:
         return None
-    key = hashlib.sha256(open(cpp, "rb").read()).hexdigest()[:16]
+    src = open(cpp, "rb").read()
+    BYTES[pid] = len(src)
+    key = hashlib.sha256(src).hexdigest()[:16]
     exe = os.path.join(CACHE, key)
     if not os.path.exists(exe):
         tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}.tmp"
@@ -59,6 +68,14 @@ def native(pid, port, cpl):
         os.replace(tmp, exe)
     os.remove(cpp)
     return exe
+
+
+def removed_spellings(ids, cpl):
+    files = [f for p in ids for n in ("port.cp", "dream.cp", "spec.cp")
+             if os.path.exists(f := os.path.join(ROOT, "corpus", "problems", p, n))]
+    r = subprocess.run([cpl, "migrate", "--check", "--json", *files], capture_output=True, text=True)
+    return sorted(f"removed-spelling {os.path.relpath(os.path.join(ROOT, f['path']), ROOT)} -"
+                  for f in json.loads(r.stdout)["files"] if f["changed"] or f["diagnostics"])
 
 
 def v03():
@@ -91,7 +108,7 @@ def check(pid, cpl):
     exe = native(pid, port, cpl)
     if not exe:
         return [f"no-build {pid} -"]
-    found = []
+    found = [f"over-32kb {pid} -"] if BYTES.get(pid, 0) > TARGET_BYTES else []
     for inp in ins:
         interp = run([cpl, "run", port], inp)
         if interp is None:
@@ -115,6 +132,7 @@ def main(argv=None):
     ids = a.ids or v03()
     with concurrent.futures.ThreadPoolExecutor(a.j) as pool:
         found = sorted(f for fs in pool.map(lambda p: check(p, a.cpl), ids) for f in fs)
+    found += removed_spellings(ids, a.cpl)
     return ratchet("differential", KNOWN, found, a, f"{len(ids)} ports, {len(COMPARED)} cases compared, {len(SKIPPED)} slow cases skipped")
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ fn feasible(v: Int) -> Bool:
     let pre = (a & v).prefix_fold(xor)
     let class = [I.bounds] c => min(pre[c], pre[c] ^ v)
     let at = c => if pre[c] != class[c]: Ends(None, Span(c, c)) else: Ends(Span(c, c), None)
-    I.bounds.sorted(by: c => (class[c], c)).chunk_by(c => class[c]).any(cuts =>
+    I.cuts.sorted(by: c => (class[c], c)).chunk_by(c => class[c]).any(cuts =>
         cuts.cartesian(
             gap: (l, r) => peak.fold(l..r),
             leaf: at,

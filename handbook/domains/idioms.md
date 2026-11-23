@@ -170,7 +170,7 @@ GCC and LLVM's differential testing against a reference.
 | A model writes correct CP Lang from the skill alone | blind pass rate on a fresh unseen 20, first attempt, with no workaround | process: a cold agent per release; generated judging | `research/dryrun/v03/loop.sh`, `research/skill-eval/`; per-release unseen set: `missing` |
 | A model or person writes correct code from the docs alone | writable-from-docs tasks passing | process: cold model; generated judging | `scripts/writable-from-docs.py`, `research/writable-from-docs.json` (shared with site) |
 | Every skill example compiles and is current | skill `cp` blocks passing `cpl check`; generated stdlib pages in sync | generated suite | `scripts/skill-gen.py --check` in `scripts/check.sh` |
-| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code-checklist.md#r8`; `missing` (a generated scan against the spec's removed-spelling list) | `missing` |
+| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code-checklist.md#r8`; generated: `cpl migrate --check` knows every removed spelling | `scripts/skill-gen.py --check` (skill code blocks); `corpus/differential.py` (`removed-spelling`, v03 ports, dreams and specs); skill prose: `missing` |
 | Showcase ports read like the editorial | taste-review median and count under 3 and under 4 | `handbook/guidelines/idiomatic-code-checklist.md#r2`; process: cold review per port; ratchet on the count under 4 | `scripts/review-check.py --check` |
 | The idiom catalog covers what newcomers write | marked newcomer spots a lint flags | generated suite | `corpus/newcomer/score.py`, `crates/cpl-cli/tests/newcomer.rs` |
 | Every idiom in the catalog has an example that checks and a lint or a reason | catalog entries with a checked example and a linked lint | `missing` | `missing` |
@@ -222,7 +222,7 @@ GCC and LLVM's differential testing against a reference.
 |---|---|---|---|
 | Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; per-port max input for every tracked port: `missing` |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
-| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); 32 KB count: `missing` as a ratchet |
+| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `corpus/differential.py` (`over-32kb`, ratchet `corpus/differential-known.txt`) |
 | A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |
 | What passed locally passes on the judge | ports whose local verdict differs from the judge's | process: a sample of real submissions, by Ryan only | `missing` |
 
@@ -310,3 +310,4 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: invariants and the judgment rubric folded in from the idioms plan folder.
 - 2026-11-23: the interpreter-and-C++ row names `corpus/differential.py`.
 - 2026-11-23: the generator and max-bound rows name `corpus/generators.py`.
+- 2026-11-23: the spelling and 32 KB rows name `corpus/differential.py`.

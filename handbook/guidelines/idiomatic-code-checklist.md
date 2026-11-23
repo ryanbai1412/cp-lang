@@ -66,7 +66,7 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 **Rule:** use the spec's one spelling per idea.
 **Why:** a reader or model learns one form; a second spelling teaches a removed one.
 **Example:** `@!multitest`, `Some(x)`, `None`, `Mod<P>`, `.items`, `xs.sum()`; free form over a generator (`sum(f(x) for x in xs)`) and two values (`min(a, b)`).
-**Enforced by:** `cpl check` errors on removed spellings; a scan of the skill and docs text: `missing`.
+**Enforced by:** `cpl check` errors on removed spellings (E0503), so `scripts/skill-gen.py --check` covers the skill's code blocks; `corpus/differential.py` (`removed-spelling`) covers every v03 port, dream and spec, which need not check; a scan of prose in the skill and docs: `missing`.
 
 ### idiomatic-code/R9
 
