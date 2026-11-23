@@ -1,5 +1,12 @@
-// ABC481 F — Evil Shortest Path
-// Directed weighted graph + O(N+M) layered lexicographic BFS + Mod<998244353> + @brute(main)
+// Source: AtCoder ABC481 F (Evil Shortest Path), https://atcoder.jp/contests/abc481/tasks/abc481_f
+// Problem: a directed graph, N, M <= 2e5, each edge with a digit 1..9, and every vertex
+//   reachable from 1. For each v = 2..N, the smallest number spelled by the digits of a walk
+//   from 1 to v, modulo 998244353.
+// Solution: with nonzero digits, fewer edges is smaller, so take BFS layers, and within a
+//   layer the lexicographically smallest digit string. Keep each layer as an ordered list
+//   of groups of vertices sharing the same smallest string; a group sends its unvisited
+//   out-neighbours to buckets by digit 1..9, and the buckets in order form the next layer's
+//   groups. A vertex's value is its group's value * 10 + digit: O(N + M).
 
 type Z = Mod<998_244_353>
 

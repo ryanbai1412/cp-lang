@@ -1,6 +1,10 @@
-// Educational DP Z, Frog 3: stones 1..n at increasing heights. A jump from
-// stone j to a later stone i costs (h[i] - h[j])^2 + c. Cheapest way to reach
-// stone n from stone 1.
+// Source: AtCoder Educational DP Contest Z (Frog 3), https://atcoder.jp/contests/dp/tasks/dp_z
+// Problem: n <= 2e5 stones with heights 1 <= h_1 < ... < h_n <= 1e6. A jump from stone i to
+//   any later stone j costs (h_j - h_i)^2 + C, C <= 1e12. Print the cheapest way from stone
+//   1 to stone n.
+// Solution: cost[i] = C + h[i]^2 + min over j < i of (cost[j] + h[j]^2) - 2 h[j] h[i], the
+//   lowest of a set of lines at x = h[i]. A Li Chao tree over the stones keeps, per node, the
+//   line that wins at its middle stone, so lines are only compared at stones: O(n log n).
 // original: corpus/submissions/4133674.cpp
 let n: 2..=2e5 = read()
 let c: 1..=1e12 = read()

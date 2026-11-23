@@ -1,20 +1,15 @@
-// Codeforces 2229 I: rerooted max-plus tree knapsack.
-// Rooted anywhere, the score is the sum over a in S of w(a) * |S in subtree(a)|:
-// a's weight counts once for every chosen node at or below it.
-//
-// down[v][i]: the best total of the terms of subtree(v)'s nodes when exactly i
-// of S lie inside. Children join by max-plus convolution, then v is chosen or
-// not: f[i] max= f[i - 1] + w(v) * i. Every count 0..=size is reachable, so
-// down has no "impossible" entry.
-//
-// up[v][i]: rerooted at v, the best total of the terms of the nodes outside
-// subtree(v), given i of S inside; none where impossible. At the root it is
-// "all k inside". The part a child c contributes is split off a functional
-// by the transposed convolution split(f, b)[i] = max over j of f[i + j] + b[j].
-// For each child c of v: split off c's siblings (the later ones are already
-// gone, the earlier ones are their prefix join), then v itself, whose subtree
-// rerooted at c holds the k - i chosen nodes outside subtree(c). With every
-// child split off, up[v][1] + w(v) * k is the answer with v as the root.
+// Source: Codeforces 2229I (The Endians), https://codeforces.com/contest/2229/problem/I
+// Problem: a tree of n <= 4000 nodes (sum n <= 4000, multitest) with weights w_i <= 1e9, and
+//   k. Rooted at x, choose S of k nodes containing x; f(i) sums the weights of chosen nodes
+//   on the path from i to the root, and the score is the sum of f(i) over i in S. Print the
+//   best score for every root x.
+// Solution: the score is the sum over a in S of w(a) * |S in subtree(a)|. down[v][i], the
+//   best total over subtree(v) with i chosen inside, is a max-plus knapsack over the
+//   children, then f[i] max= f[i - 1] + w(v) * i for choosing v: O(n^2). Rerooting, up[v][i]
+//   is the best total of the nodes outside subtree(v) given i chosen inside; a child's part
+//   is removed by the transposed convolution split(f, b)[i] = max_j f[i + j] + b[j] (later
+//   siblings, then the stored prefix join of earlier ones, then v itself with k - i chosen
+//   outside). With all children split off, up[v][1] + w(v) * k is the answer at root v.
 @!multitest
 let (n, k): (2..=4000, Int) = read()
 domain V = 1..=n

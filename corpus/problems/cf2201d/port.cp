@@ -1,17 +1,16 @@
-// Codeforces 2201 D: maintain each value's span `[first, last]` at its first
-// position `first` in a segment tree, tracking the maximum span `mx` and the
-// number of contiguous subarrays of positions whose spans all equal `mx`.
-//
-// `SegNode(mx, pref, suff, all, cnt)` invariant over a segment of leaves:
-// - `mx`: maximum span in the segment (0 if no value repeats here).
-// - `pref` / `suff`: length of the longest prefix / suffix of leaves with span `== mx`.
-// - `all`: true iff every leaf in the segment has span `== mx`.
-// - `cnt`: number of non-empty subarrays in the segment whose leaves all equal `mx`.
-// On `join(x, y)`, any child with max `< max(x.mx, y.mx)` contributes no
-// `mx`-leaves and is replaced by `empty()`. A valid subarray then lies wholly
-// in `l` (`l.cnt`), wholly in `r` (`r.cnt`), or crosses the midpoint by pairing
-// one of the `l.suff` trailing `mx`-leaves with one of the `r.pref` leading
-// `mx`-leaves (`l.suff * r.pref`).
+// Source: Codeforces 2201D (Binary Not Search and Queries),
+//   https://codeforces.com/contest/2201/problem/D
+// Problem: an array a of n <= 2e5 values in 1..n gets q <= 1e5 point assignments. After each,
+//   print k_max, the largest k such that two different length-k windows i < j hold the same
+//   multiset, and f, the number of such (i, j, k) with k = k_max (0 0 if none). Sums of n
+//   and q over a multitest are bounded the same way.
+// Solution: k_max is the largest span last(v) - first(v) of a value (windows i and i + 1
+//   differ only in a[i] and a[i + k]), and the optimal tuples are the runs of consecutive
+//   positions that are each the first occurrence of a value with that span. A SegTree over
+//   positions holds each value's span at its first occurrence; a node keeps the max span,
+//   its prefix and suffix runs, whether all leaves reach it and the count of such runs. Each
+//   value's positions sit in an ordered Set; an update resyncs the old and the new value:
+//   O(log n) per query.
 
 struct SegNode(mx: Int, pref: Int, suff: Int, all: Bool, cnt: Int):
     fn empty() -> SegNode = SegNode(0, 0, 0, false, 0)

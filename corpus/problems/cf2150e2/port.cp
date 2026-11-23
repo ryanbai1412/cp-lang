@@ -1,19 +1,15 @@
-// Codeforces 2150 E2: Hidden Single (Hard Version, interactive).
-// An array of length `2n - 1` holds every value in `1..=n` twice except one
-// hidden single `v*` that appears once. Shuffling positions with a fixed seed
-// breaks adversarial clustering so expected queries stay within the
-// `2n + 2 log n` budget.
-//
-// Split `Pos = 0..2n - 1` at `mid = (2n - 1) / 2` and record each value's
-// left-half weight `left_w[v]` in `0..=2` (its right-half weight is
-// `2 - left_w[v]`):
-//   - present in both halves -> `left_w[v] = 1`;
-//   - absent on left -> `left_w[v] = 0`; absent on right -> `left_w[v] = 2`.
-// Every normal value contributes its true count to each half while `v*`
-// contributes 2 to its half despite occupying 1 slot, so the half whose weight
-// sum exceeds its length contains `v*` (with weight 2). Bisecting each
-// candidate in that half splits every normal pair across sub-halves, while
-// `v*` narrows to a single position.
+// Source: Codeforces 2150E2 (Hidden Single (Version 2)),
+//   https://codeforces.com/contest/2150/problem/E2
+// Problem: interactive, multitest (t <= 20), n = 300. A hidden array of length 2n - 1 holds
+//   every value 1..n twice except one, which appears once. A query "? x |S| S..." answers
+//   whether value x occurs at some position in S. Print "! y", the single value, using at
+//   most 925 queries per test.
+// Solution: shuffle the positions with a fixed seed, then cut them in two halves. Asking
+//   each value in the left half, and in the right half when it is on the left, gives its
+//   left count 0, 1 or 2 (about 2n queries). The half whose counts sum to more than its
+//   length holds the single; only values seen twice there are candidates. Bisect each
+//   candidate: a sub-range without it is dropped, and a value present in both sub-halves
+//   is a split pair, not the single, so most candidates die in a query or two.
 
 @!interactive
 use std.rand.Rng

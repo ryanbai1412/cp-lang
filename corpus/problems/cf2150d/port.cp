@@ -1,23 +1,14 @@
-// Codeforces 2150 D: Attraction Theory.
-// Valid final configurations occupy a contiguous interval [L, R] of length
-// `l` in 1..=n, with 1 base person per cell plus `extras = n - l` extra people
-// placed as `k = extras / 2` pairs across the `l` cells and 0, 1, or 2
-// singletons on the endpoints:
-//   - `place_ways(b, m) = C(b - 1 + m, m)` counts splits of `m` pairs into `b`
-//     cells (stars and bars).
-//   - `place_weight(b, m) = (m / b) * C(b - 1 + m, m) = C(b - 1 + m, b)` sums
-//     one cell's pair count over all splits (0 when `m <= 0`).
-// For length `l >= 2`, decomposing by endpoint singletons gives each cell's
-// interior weight `mid_w` and each endpoint's extra `end_bonus`:
-//   - odd `extras = 2k + 1`: 1 singleton on L or R (2 symmetric choices) and
-//     `k` pairs (2 people each) => `mid_w = 2 * ways(l, k) + 4 * weight(l, k)`,
-//     `end_bonus = ways(l, k)`.
-//   - even `extras = 2k`: either (0 singletons, `k` pairs) or (both ends get a
-//     singleton, `k - 1` pairs) => `mid_w = ways(l, k) + ways(l, k - 1) +
-//     2 * (weight(l, k) + weight(l, k - 1))`, `end_bonus = ways(l, k - 1)`.
-// Across all `n - l + 1` intervals of length `l`, cell `c` is an interior cell
-// in `min(c, l - 2, n - l + 1, n - 1 - c)` intervals — a trapezoid of height
-// `cap = min(l - 2, n - l + 1)` summed in O(1) via `pref` and `pref_i`.
+// Source: Codeforces 2150D (Attraction Theory), https://codeforces.com/contest/2150/problem/D
+// Problem: n people stand at 1..n. Placing an attraction at x moves everyone one step toward
+//   x. Over all distinct position arrays reachable by any sequence of placements, sum
+//   score(p) = sum of a[p_i], modulo 998244353. n, sum n <= 2e5, a_i <= 1e9. Multitest.
+// Solution: a reachable array fills an interval of length l, one person per cell plus the
+//   n - l extras as pairs on any cells and at most one singleton on each end (by parity):
+//   interior cells hold odd counts. For each l >= 2, stars and bars give the number of
+//   arrays C(l - 1 + k, k) and one cell's total pair count C(l - 1 + k, l), hence a weight
+//   per interior cell (mid_w) and an end bonus. Over the n - l + 1 shifts a cell is
+//   interior a trapezoid number of times, summed in O(1) from prefix sums of a and c*a[c]:
+//   O(n) per test after factorials; l = 1 adds n * sum(a).
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
