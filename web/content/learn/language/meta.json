@@ -5,6 +5,7 @@
     "index",
     "values",
     "ownership-and-mutation",
+    "functions-and-closures",
     "domains-and-index-spaces",
     "types-widths-proofs",
     "optionals",

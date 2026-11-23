@@ -1,0 +1,114 @@
+---
+title: "Functions and closures"
+description: "Parameters are lent for the call, mut is marked at both ends, lambdas may recurse, captures act as call-time arguments, and there is one function per name."
+---
+
+A `fn` lends its parameters for the call, and a parameter it mutates is marked `mut` where it is
+declared and where it is called. A lambda is an expression; bound with `let`, it may call itself.
+There is no overloading: one name is one function. The normative rules are
+<Spec file="core/06-control-functions">chapter 6 of the spec</Spec>; ownership of what a function
+borrows is <a href="/learn/language/ownership-and-mutation">ownership and mutation</a>.
+
+## Parameters are lent; `mut` shows at the call
+
+A body is one `= expr` or a block whose last expression is its value; `return` is for early exits.
+A parameter the function may change is `mut` in the signature and again at the call, so a reader of
+the call site sees what can change:
+
+```cp run input="5\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+var seen: [V]Bool = false
+fn mark(v: V, mut seen: [V]Bool):
+    seen[v] = true
+mark(V(2), mut seen)
+print(V.count(v => seen[v]))
+```
+
+Arguments may be named, parameters may have defaults, and parameters after `;` are named-only.
+Options are always named arguments (`by:`), never `_by` twins:
+
+```cp run
+fn clamp(x: Int; lo: Int = 0, hi: Int = 9) -> Int = min(max(x, lo), hi)
+print(clamp(12), clamp(-3), clamp(12, hi: 20))
+```
+
+(<Spec file="core/06-control-functions" section="6.1 Functions">§6.1</Spec>)
+
+## Lambdas and nested functions are one thing
+
+Nested `fn`s and lambdas follow the same rules and differ only in spelling. A `let`-bound lambda may
+call itself; when recursion leaves the return type open, annotate it:
+
+```cp run
+let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)
+print(fact(10))
+```
+
+A lambda with k parameters, passed where a function of one k-tuple is expected, unpacks it, so
+`(i, x) =>` over `.items` needs no `((i, x)) =>`:
+
+```cp run
+let a = [5, 2, 8, 1]
+print(List(a.items.filter((i, x) => i % 2 == 0 and x > 1)))
+```
+
+## Captures act as call-time arguments
+
+A closure holds no borrow between calls. Each call lends what the closure reads and mutably lends what
+it writes, for that call only. So a closure may update a captured `var`, two closures may capture the
+same one, and the borrow rules are checked at each call site:
+
+```cp run
+var calls = 0
+let sq = (x: Int) =>
+    calls += 1
+    x * x
+print(sq(3) + sq(4), calls)
+```
+
+A captured variable can't be moved while the closure is alive, and a closure can't outlive what it
+captures. Every call through a known function value is specialized: there is no `std::function` and
+no indirect call in the C++ (<Spec file="core/06-control-functions" section="6.2 Nested functions and lambdas">§6.2</Spec>).
+
+## Decorators: a closed set
+
+`@memo(array)` caches a function in a dense table over its parameters' bounded types, allocated on
+the first call. The storage is spelled, never picked: `@memo(map)` uses a hash map instead.
+
+```cp run input="40\n"
+let n: 1..=40 = read()
+@memo(array)
+fn fib(i: 0..=n) -> Int = if i < 2: i else: fib(i - 1) + fib(i - 2)
+print(fib(n))
+```
+
+The cache lives as long as the declaring block, so below `@!multitest` it is per test case. A memo
+function may not do I/O or write to what it captured. The other decorators are `@get` (an \(O(1)\)
+read without parentheses), the tool roles (`@test`, `@alt`, `@gen`, `@check`, `@interactor`) and
+the unsafe tier (`@trusted`, `@cpp`); user libraries declare their own as ordinary generic functions
+(<Spec file="core/06-control-functions" section="6.4 Decorators">§6.4</Spec>).
+Generators (`-> yields T`) are in <a href="/learn/language/sequences-and-views">sequences and views</a>.
+
+## Why it's designed this way
+
+**`mut` at both ends.** Mutation surprises are a P0 bug class. Marking the call costs four
+characters and makes every possible change visible where it happens, which a C++ `vector<int>&`
+does not.
+
+**No overloading.** <Decision n={127} /> chose one name, one signature, so a call never depends on
+which overload inference happens to pick, and an error names one function instead of listing
+candidates. It also allowed recursive lambdas. <Decision n={60} /> made options named arguments
+instead of `sort_by`-style twins, and <Decision n={324} /> settled variadic named arguments.
+
+**Lambda and nested fn are the same.** <Decision n={144} /> removed the difference so a helper can
+move between the two spellings without changing what it may capture. <Decision n={159} /> lets
+a lambda unpack a tuple argument without changing the callee's signature, which is why it isn't
+overloading.
+
+**Captures borrow per call.** The rejected alternative, a closure holding its borrows for its whole
+life as in Rust, would forbid the everyday pattern of a DFS helper and the main loop both updating
+`seen`. Borrowing per call keeps that legal and still checks every conflicting use.
+
+**Specialized calls.** A comparator or fold operation must cost what an inlined C++ lambda costs, so
+function values are never type-erased.
