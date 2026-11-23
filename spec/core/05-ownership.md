@@ -953,7 +953,7 @@ fn visit(v: V, from: ?V):
             depth[u] = depth[v] + 1
             visit(u, v)
 visit(V.first!, None)
-print(depth.max())
+print(depth.max()!)
 visit(V.first!, None)
 ```
 <details><summary>Answer</summary>Yes. A nested fn after a <code>var</code> may write it; the capture is borrowed only during each call (§10, R10).</details>
