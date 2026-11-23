@@ -1685,6 +1685,22 @@ print(acc)
 }
 
 #[test]
+fn mapped_let_read_whole_maps_once_not_per_read() {
+    let out = cpp("let s: Str = read()
+let blocks = s.runs().map(r => r.len)
+var t = 0
+for k in 0..blocks.len: t += blocks[k] + blocks.first! + blocks.last!
+print(t)
+");
+    let solve = out.split("void solve()").nth(1).expect("solve() emitted");
+    let body = solve.split("for (ll k").nth(1).expect("loop emitted");
+    assert!(
+        !body.contains("push_back"),
+        "`.first` on a mapped `let` must not rebuild the mapped list in the loop:\n{solve}"
+    );
+}
+
+#[test]
 fn first_gt_and_last_lt_on_views_do_not_copy() {
     let out = cpp("use std.seq.{first_gt, last_lt}
 let xs = [1, 2, 3, 3, 5, 7, 9]

@@ -871,7 +871,7 @@ impl<'a> Lowerer<'a> {
                 // calls `f(xs[i])` without eagerly mapping the whole sequence.
                 if !*mutable && ty.is_none() {
                     if let (Some(init_expr), ast::PatternKind::Name(vname)) = (init, &pat.kind) {
-                        if let Some(view) = self.map_view_from_expr(init_expr, out) {
+                        if let Some(view) = self.map_view_if_indexed(init_expr, vname, rest, out) {
                             let slot = self.temp(Ty::Unit);
                             if let Some(scope) = self.cx.scopes.last_mut() {
                                 scope.insert(vname.clone(), slot);

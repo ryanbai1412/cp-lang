@@ -1338,6 +1338,20 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts: pre_stmts }), out_ty, span)
     }
 
+    /// `let name = xs.map(f)` as a lazy view, when `rest` only indexes it (see [`only_indexed`]).
+    pub(in crate::lower) fn map_view_if_indexed(
+        &mut self,
+        expr: &ast::Expr,
+        name: &str,
+        rest: &[ast::Stmt],
+        out: &mut Vec<Stmt>,
+    ) -> Option<MapView> {
+        if !only_indexed(name, rest) {
+            return None;
+        }
+        self.map_view_from_expr(expr, out)
+    }
+
     pub(in crate::lower) fn map_view_from_expr(
         &mut self,
         expr: &ast::Expr,
@@ -1712,4 +1726,39 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Give(res));
         })
     }
+}
+
+/// Every read of `name` in `rest` is `name[i]`, `name.len` or `name.is_empty`, which a lazy
+/// `MapView` answers in O(1); any other read (`.first`, a loop, a call) would map the whole
+/// list again each time, so the `let` maps it once instead.
+fn only_indexed(name: &str, rest: &[ast::Stmt]) -> bool {
+    struct Reads<'n> {
+        name: &'n str,
+        all: usize,
+        cheap: usize,
+    }
+    impl cpl_syntax::visit::Visitor for Reads<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            let named = |b: &ast::Expr| matches!(&b.kind, ast::ExprKind::Name(n) if n == self.name);
+            match &e.kind {
+                ast::ExprKind::Name(n) if n == self.name => self.all += 1,
+                ast::ExprKind::Index { base, .. } if named(base) => self.cheap += 1,
+                ast::ExprKind::Field { base, name }
+                    if named(base) && matches!(name.text.as_str(), "len" | "is_empty") =>
+                {
+                    self.cheap += 1
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut reads = Reads {
+        name,
+        all: 0,
+        cheap: 0,
+    };
+    for stmt in rest {
+        cpl_syntax::visit::walk_stmt(stmt, &mut reads);
+    }
+    reads.all == reads.cheap
 }
