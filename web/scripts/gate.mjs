@@ -201,13 +201,20 @@ else {
   const started = Date.now();
   const todo = snippets.map((s, k) => k).filter((k) => cli[k] && slots[k]?.status === 'runs' && !/^\s*use lib\b/m.test(snippets[k].source));
   const spawnWorker = () => new Worker(join(web, 'scripts/wasm-worker.mjs'), { workerData: { dir: wasmDir } });
-  // The page stops a program after its time limit; a program the CLI ran that
-  // the browser cannot finish in 20 s differs.
+  // A worker that gives no answer in 20 s is replaced, and the program counts
+  // as too slow for the browser.
   const ask = (w, msg) =>
     new Promise((resolve) => {
-      const timer = setTimeout(() => resolve({ error: 'timeout: no answer in 20 s' }), 20000);
-      w.once('message', (m) => (clearTimeout(timer), resolve(m)));
-      w.once('error', (e) => (clearTimeout(timer), resolve({ error: String(e) })));
+      const done = (r) => {
+        clearTimeout(timer);
+        w.off('message', done);
+        w.off('error', failed);
+        resolve(r);
+      };
+      const failed = (e) => done({ error: String(e) });
+      const timer = setTimeout(() => done({ error: 'timeout: no answer in 20 s' }), 20000);
+      w.on('message', done);
+      w.on('error', failed);
       w.postMessage(msg);
     });
   let at = 0;
