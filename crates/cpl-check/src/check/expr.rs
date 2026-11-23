@@ -1375,9 +1375,12 @@ impl<'a> Checker<'a> {
                 let primitive = |t: &Ty| t.is_numeric() || matches!(t, Ty::Bool | Ty::Str);
                 let clear = primitive(&left) && primitive(&right);
                 if clear {
-                    let into_string = (op == BinOp::Add)
-                        .then(|| self.string_fix(lhs, rhs))
-                        .flatten();
+                    let into_string = match (op, &left, &right) {
+                        (BinOp::Add, ..) => self.string_fix(lhs, rhs),
+                        (BinOp::Mul, Ty::Str, r) if r.is_int() => self.repeat_fix(lhs, rhs),
+                        (BinOp::Mul, l, Ty::Str) if l.is_int() => self.repeat_fix(rhs, lhs),
+                        _ => None,
+                    };
                     let message = format!(
                         "`{}` can't combine {} and {}",
                         op.text(),

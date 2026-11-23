@@ -1319,7 +1319,7 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
                 } else if !self.reported_an_error() {
-                    let message = format!("`cpl run` doesn't know the name `{name}` here");
+                    let message = format!("no value named `{name}` here");
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("a top-level `let` is visible only after the line that sets it");
                 }

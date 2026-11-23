@@ -21,7 +21,31 @@ pub(super) fn bad_operands(
     }
 }
 
+/// Whether `text` is one parenthesized expression, `(a + b)`, not `(a) + (b)`.
+fn wrapped(text: &str) -> bool {
+    let mut depth = 0;
+    for (i, c) in text.char_indices() {
+        depth += i32::from(c == '(') - i32::from(c == ')');
+        if depth == 0 {
+            return c == ')' && i == text.len() - 1;
+        }
+    }
+    false
+}
+
 impl Checker<'_> {
+    /// `"ab" * 3` is Python's repetition, which is `"ab".repeat(3)` here.
+    pub(super) fn repeat_fix(&self, s: &Expr, n: &Expr) -> Option<(Span, String)> {
+        let (st, nt) = (self.text(s.span), self.text(n.span));
+        let st = if st.contains(' ') && !wrapped(st) {
+            format!("({st})")
+        } else {
+            st.to_string()
+        };
+        let whole = Span::new(s.span.start.min(n.span.start), s.span.end.max(n.span.end));
+        Some((whole, format!("{st}.repeat({nt})")))
+    }
+
     /// `x.inv` names a method that does work, so it is called with `()`,
     /// as R07.1.7 asks of built-in members.
     pub(super) fn uncalled_method(
