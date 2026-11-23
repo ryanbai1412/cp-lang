@@ -16,7 +16,7 @@ for _ in 0..q:
     let y = next_rng() % n
     queries.push(I(min(x, y))..=I(max(x, y)))
 
-var freq: [vmax]Int = 0
+var freq: [vmax]0..=n = 0
 var distinct = 0
 fn add_pos(p: I):
     unchecked:
