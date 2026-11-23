@@ -131,6 +131,9 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
+- core-07/range-folds-are-ranges-own.cp: stdlib
+- core-08/extension-concrete-and-generic-ambiguous.cp: compiler
+- core-12/user-seq-gets-folds.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
 - core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/spec-block-enums.cp: compiler
@@ -207,7 +210,6 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-09/uses-not-inferred-top-level.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
-- core-11/constant-domain-hoists.cp: compiler
 - core-11/inline-mod-sees-prelude.cp: compiler
 - core-11/inline-mod-use-std.cp: compiler
 - core-11/mod-uses-sibling.cp: compiler

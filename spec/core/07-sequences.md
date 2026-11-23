@@ -279,6 +279,20 @@ since the second walk reruns against what the first wrote.
 | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n) (R07.9.4) |
 | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n) (R07.9.5) |
 
+**A fold costs what the receiver's type says.** The costs above are the
+generic walks every `Seq` gets. They are default methods of the
+capability trait that provides them (`Seq`, `Sized`, `Bidir`,
+`Indexed`), so a type with a faster way overrides the method in its
+`impl`, written in CP Lang with its own documented cost. A range's `impl`
+gives `sum()`, `min()`, `max()` and `count()` as closed forms, so
+`(3..m).step(2).sum()` is O(1). In the same way `Prefix.fold` is O(1)
+and `Bitset.len` is a popcount. Ordinary method resolution picks the
+method (R08.1.4), generic code included, and the compiler never pattern
+matches a pipeline. User types get the same power. Parentheses still
+mean "may do work" (decision 140), and the cost is the one the resolved
+method documents; hover and `cpl explain` name that method and its cost
+(decision 326). (R07.9.6)
+
 Position queries are folds over `a.keys`, because the keys are a range of
 positions. `argmin`/`argmax` are kept as the named form of the first
 line below (first on ties); there are no `first_at` or `order` twins:

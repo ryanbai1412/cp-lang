@@ -101,6 +101,45 @@ pub fn run_interp(program: &cpl_ir::Program, path: &str, text: &str, input: &[u8
     }
 }
 
+/// Seconds a case may run, from `CPL_CONFORM_CASE_TIMEOUT` (default 20).
+pub fn case_timeout() -> u64 {
+    std::env::var("CPL_CONFORM_CASE_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(20)
+}
+
+/// `run_interp` on its own thread, `Err` once it runs past `case_timeout()`. A timed-out
+/// run is abandoned, not stopped: the interpreter has no way to interrupt it.
+pub fn run_interp_bounded(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    input: &[u8],
+) -> Result<RunOutput, String> {
+    let limit = case_timeout();
+    let (program, path, text, input) = (
+        program.clone(),
+        path.to_string(),
+        text.to_string(),
+        input.to_vec(),
+    );
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .stack_size(64 << 20)
+        .spawn(move || {
+            let _ = tx.send(run_interp(&program, &path, &text, &input));
+        })
+        .map_err(|e| format!("could not start the interpreter: {e}"))?;
+    match rx.recv_timeout(std::time::Duration::from_secs(limit)) {
+        Ok(run) => Ok(run),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            Err(format!("the interpreter timed out after {limit}s"))
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => panic!("the interpreter panicked"),
+    }
+}
+
 pub fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
     let lines = LineIndex::new(text);
     let diagnostic = trap.to_diagnostic(path, &lines);

@@ -47,7 +47,7 @@ impl Backend<'_> {
             Backend::Linked(db) => {
                 let compiled = runner::compile_program(db, path, text)
                     .map_err(|CompileError::Diagnostics(d)| d)?;
-                let run = runner::run_interp(&compiled.program, path, text, input);
+                let run = runner::run_interp_bounded(&compiled.program, path, text, input)?;
                 Ok(Ran {
                     stdout: run.stdout,
                     trapped: run.trap.is_some(),
@@ -76,10 +76,7 @@ fn cli(cpl: &Path, args: &[&str], input: &[u8]) -> Result<(i32, String, String),
     use std::io::{Read, Write};
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
-    let limit = std::env::var("CPL_CONFORM_CASE_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(20);
+    let limit = runner::case_timeout();
     let mut child = Command::new(cpl)
         .args(args)
         .stdin(Stdio::piped())

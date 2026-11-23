@@ -61,4 +61,7 @@ Each local fix, and the mechanism that would remove its whole class.
 | Rebuild 7: `Str(len:)` is E0504 inside a supported subset row | `conformance-subset.py` fails a supported row whose rule text names a form the compiler reports as E0504 | spec |
 | Rebuild 7: answered rules guessed anyway (lambda tuple unpack R06.1.4, range precedence R01.5, blank lines R10.2.8) | each core chapter overview lists the rules a newcomer guesses, generated from rebuild HOLES files | spec |
 | Rebuild 6-7: a spec fact and a std doc fact that disagree (`tally` type, `desc` flag) | `conformance-signatures.py` compares spec tables' result types with `std/*.cp` signatures for every row that names one | spec |
-
+| `range_sum` compiler intrinsic for `(a..b).step(k).sum()` | folds are overridable trait defaults; the type's impl gives its cost (decision 326) | compiler (traits in std, delete intrinsic), stdlib (range overrides) |
+| inherent `m` beside an implemented trait's `m` (R08.1.4, `core-08/inherent-before-trait.cp`): concrete and generic calls differ | lint an inherent method that shares a name with a method of a trait the type implements, suggesting the override | lint-fmt |
+| `core-07/range-folds-are-ranges-own.cp` hung `cpl-conform` for 19 min: the in-process interpreter ignored `CPL_CONFORM_CASE_TIMEOUT` | `runner::run_interp_bounded` bounds conformance runs; next, `corpus.rs`, `docs.rs` and `diff.rs` use it too. A timed-out run is abandoned, so the real fix is interpreter fuel or an interrupt flag | spec (callers), compiler/interp (interrupt) |
+| `(a..b).step(k).len` and `.min()` allocate GBs as they walk | a check that no view adapter allocates per element (R07.2.8), as a perf probe over every adapter | stdlib |
