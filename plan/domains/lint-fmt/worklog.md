@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- syntax (trivial unblock, noted in the compiler worklog): a type argument closed by the first half of `>>` ended one byte early, so L0412 printed `Map<X, SortedBag<X>` (`cco20p5/spec.cp:23`). `Parser::prev_end` now ends just past that half; test `a_nested_value_type_is_quoted_whole` in `rules/types.rs`. Ratchet bless also took std L0503 3 -> 4 and L0509 8 -> 9: stdlib test code from `2a84465a4` (`tree.cp:1541`, both edge orders) and `11ade1c98` (`tree.cp:1409`, `sort(mut kept, ..)`), real findings, filed with stdlib.
 - Triage: the 14 corpus `spec.cp` L0209 are real and `--fix` is check-neutral (filed with idioms); the 11 `spec/std` L0507 are real push-only loops (e.g. `mo.cp:211` is `[None] * q`, `poly.cp:797`, `hashmap.cp:417`). No lint change.
 - Request from tools: `cpl lint bad.cp` on a file with a type error (`let x: Int = "a"`) prints `1 file checked, 0 warnings, 0 errors` and exits 0, while `cpl check` reports E0302 and exits 1. Either report the checker errors (and exit 1, as a denied lint does) or say the file was not linted because it does not check; "0 errors" reads as clean.
 - Triage: the 6 corpus `spec.cp` L0207 warnings are real (decision 111); `cpl lint --fix` clears them without changing any `cpl check` output. Filed with idioms, who own the files.

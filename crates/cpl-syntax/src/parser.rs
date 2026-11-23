@@ -189,8 +189,14 @@ impl<'a> Parser<'a> {
         self.span().start
     }
 
-    /// Where the previous token ended.
+    /// Where the previous token ended; after the first half of a `>>` that
+    /// closes two type-argument lists, just past that half.
     fn prev_end(&self) -> u32 {
+        if self.half_shr {
+            if let Some(t) = self.tokens.get(self.pos) {
+                return self.rel(t.span).start + 1;
+            }
+        }
         match self.pos.checked_sub(1).and_then(|i| self.tokens.get(i)) {
             Some(t) => self.rel(t.span).end,
             None => self.tokens.first().map_or(0, |t| self.rel(t.span).start),

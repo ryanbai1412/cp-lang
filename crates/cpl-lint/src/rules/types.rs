@@ -575,4 +575,17 @@ mod tests {
         let walk = "fn top(w: Int) -> ?Int = iterate(from: Some(w), step: v => None).last()\n";
         assert!(codes(walk).is_empty());
     }
+
+    #[test]
+    fn a_nested_value_type_is_quoted_whole() {
+        let src = "domain X = 0..4\nvar m = Map<X, List<X>>()\nprint(m.len)\n";
+        let messages: Vec<String> = crate::lint(src, &crate::Config::default())
+            .into_iter()
+            .map(|d| d.message)
+            .collect();
+        assert!(
+            messages.contains(&"`Map<X, List<X>>` is keyed by the domain `X`".to_string()),
+            "{messages:?}"
+        );
+    }
 }
