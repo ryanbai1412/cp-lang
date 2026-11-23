@@ -5,11 +5,9 @@
 use std::collections::BTreeSet;
 
 /// In the spec, not in the binary.
-const SPEC_ONLY: &[&str] = &[
-    "debug", "fetch", "interact", "locate", "migrate", "selftest", "trace",
-];
+const SPEC_ONLY: &[&str] = &["fetch", "locate", "migrate"];
 /// In the binary, not in the spec.
-const CLI_ONLY: &[&str] = &["check", "dap", "fix", "judge", "replay", "report", "self"];
+const CLI_ONLY: &[&str] = &[];
 
 fn spec_commands() -> BTreeSet<String> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../spec/tools/cli.md");
