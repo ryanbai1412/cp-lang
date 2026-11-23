@@ -665,6 +665,7 @@ if [ "$mode" = full ]; then
     step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
     uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
+    uv run scripts/conformance-metamorphic.py --check || fail "a meaning-preserving edit changed a case's output; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
