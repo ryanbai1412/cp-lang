@@ -69,8 +69,9 @@ here with the measured ratio.
   Generated C++ grew from 2,334 to 3,631 bytes. Conformance went from 2143/2313 to 2122/2311.
   The body divides (`cpl::ediv`) and goes through `cpl::fsqrt`/`cpl::to_int`; the runtime helper
   multiplies. Next try: a body that multiplies, then re-measure. Also, `x.isqrt` needs a
-  `self` parameter. The conformance drop was not the change: the checkout had no release `cpl`, which
-  the CLI cases need.
+  `self` parameter. The conformance drop is most likely not the change:
+  that checkout had no release `cpl`, and the CLI cases fail without one (18 such failures in the
+  first `minmax` run, none after building it). Not re-run for `isqrt`.
   Retry with a multiplying body (no division): 0.25-0.33 s against 0.16-0.19 s for the builtin,
   interleaved runs on a noisy machine (about 1.7-2x), so it stays a builtin. What is left is the checked
   `F64 -> Int` conversion (`cpl::to_int(double)` range check) and `std::floor`; the runtime helper
