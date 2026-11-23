@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 11 (new problems): 18 holes (r10: 15), 12 silent, 5 contradiction, 1 missing-stdlib; 17 inside the subset. All triaged (decision 359): 11 sentences in core, a `min_k`/`max_k` row, Rooted's `root:` in containers.md, the std-compress row note, 15 cases (2 fail, stdlib). Bug-catch r11: 6009436c2 (let-bound element lends only it) missed, now 2 cases.
 - Spec-block sweep (87/185 pass): all 10 errors in supported core chapters are compiler/std gaps, 8 already pinned by core-05 exercise/spec-block cases; the 2 new ones got cases (`V.cuts.range`, rebased `Str` indexing). The other 17 errors are in documented lib chapters. Rebuild round 11 started on ten new Codeforces problems.
 - Bug-catch round 10 final: 5 of 7 caught. Misses: 28ca9a329 (type alias walk, case added earlier) and 20dc0294f (`.items` on a temporary evaluated once; `core-07/items-of-temporary-evaluates-once.cp`). Its parity test pins range `.items` as positions, against the range-key decision; routed to compiler.
 - Decision 358 (coordinator): fields and methods are private to their module unless `pub` (R11.1.4, grammar `field` takes `pub`); 5 cases, 4 fail until compiler parses `pub` fields and adds the E0207 check. Handed to compiler (check) and stdlib (`pub` marking, first). Bug-catch round 10: 5 of 6 finished fixes caught; the miss (28ca9a329, type alias walk) now has a case.

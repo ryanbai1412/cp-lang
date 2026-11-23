@@ -7613,3 +7613,17 @@ records. User traits and libraries get it the same. Cases
 `cli/tests/parity/rooted_arc_weights.cp`. Reverse: drop the
 `has_bound_by_shape` call in `ExprKind::HasBound` lowering and `arc_len`
 falls back to 1 on records. `lower/expr.rs` +1 line (`--update rs_over_cap`).
+
+## 359. Rebuild-11 rulings: `if let` else, ring receiver, wrap of negatives (2026-11-23)
+
+Rebuild round 11 found readers guessing at these. `if let x = e, cond: A
+else: B` runs `B` when the binder fails or any condition is false (one
+header, one failure path, like Rust's let-chains). The ring is an array
+view, `a.ring.step(i, d)`, as std declares it; a bare domain wraps with
+`V.wrap(i.ord + d)`, so there is one ring concept, not a domain one too.
+`V.wrap` is Euclidean like `%`. Also stated: folds take generators,
+`print` takes any `Seq`, range-typed values read as `Int`, a `fn` below the
+multitest divider captures the case's names, a counted array's count is
+any expression, and a runtime `Mod(m)` may be read per case. Reverse: each
+is one sentence in R01.7.1, R04.2.13, R07.1.2, R10.1.1, R10.2.1, R10.3.1,
+R03.1.7 or R03.5.1.

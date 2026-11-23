@@ -127,7 +127,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 | std-bag | library: bag | supported | 49 pass |
 | std-beats | library: beats | documented | stdlib: outside the Milestone 1 contest staples |
 | std-bitset | library: bitset | supported | 15 pass |
-| std-compress | library: compress | documented | stdlib: outside the Milestone 1 contest staples |
+| std-compress | library: compress | documented | stdlib: wrappers returning `compress`'s fresh domain; `compress` itself is R07.11.5 (supported, std-seq) |
 | std-deque | library: deque | supported | 22 pass |
 | std-derive | library: derive | documented | stdlib: outside the Milestone 1 contest staples |
 | std-dp | library: dp | supported | 21 pass, 1 known gaps |
@@ -251,6 +251,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
+- core-07/list-scan-indexed-by-count.cp: stdlib
+- core-07/tally-missing-key-is-zero.cp: stdlib
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler

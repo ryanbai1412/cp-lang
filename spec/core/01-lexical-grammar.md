@@ -262,7 +262,8 @@ match d: L => -1, R => 1            // one-line match
 
 - `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is
   the value-position form. `if x is p:` in a header gets a lint with a
-  fix to the `let` form (decision 111). (R01.7.1)
+  fix to the `let` form (decision 111). An `else:` runs when any binder
+  fails to match or any comma condition is false. (R01.7.1)
 - `for` and `while` take an `else:` that runs when the loop ended
   without `break`; a labelled break from an inner loop skips the inner
   `else` (decision 125). Labels are `'name:` before the loop. (R01.7.2)

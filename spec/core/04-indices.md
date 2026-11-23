@@ -38,10 +38,10 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | \(O(1)\) (R04.2.9) |
 | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | \(O(1)\) (R04.2.10) |
 | `let (r, c) = p`, `p.0` | a position of a product domain is a tuple of factor positions: tuple patterns and `.0`/`.1` work on it, named factors too | \(O(1)\) (R04.2.10) |
-| `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.after` walks the positions after `v` | \(O(1)\) (R04.2.19) |
+| `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.after` walks the positions after `v`; each is a `Range<D>` and goes wherever one is taken | \(O(1)\) (R04.2.19) |
 | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | \(O(1)\) (R04.2.11) |
 | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164); `Int(p)` is its rank in that order (`{0, 1}` is 0) and `print(p)` writes the rank (decision 291) | \(O(1)\) (R04.2.12) |
-| `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | \(O(1)\) (R04.2.13) |
+| `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last position): rings and cyclic shifts | \(O(1)\) (R04.2.13) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\) (R04.2.14) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |
 | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free (R04.2.16) |
@@ -66,8 +66,8 @@ appear (decision 162).
 `v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `c.shift(r)` is
 the cuts at distances `r` after cut `c`, clipped to the domain and possibly empty
 (chords of length `lo..=hi` from `c` end in `c.shift(lo..=hi)`). `D.mask(xs)` is the
-`[D]Bool` marking the positions a sequence yields. `D.ring.step(x, d)` steps `d`
-positions with wraparound. `.next` is
+`[D]Bool` marking the positions a sequence yields. `a.ring.step(i, d)` steps `d`
+positions of `a` with wraparound (a domain alone: `V.wrap(i.ord + d)`). `.next` is
 `.next(k = 1)`: only methods marked `@get` (which promises \(O(1)\)) read without
 parentheses, and an `@get` method may take defaulted parameters. A plain
 method always needs `()`, so nothing costly hides behind a bare name.
@@ -86,7 +86,9 @@ domain is explicit (`v.next`, `V(x)`). (R04.3.3) Arrays over an anonymous range
 
 `Range<D>` is a contiguous run of a domain `D`. `V.cuts` is a domain like
 any other, so there are two kinds you meet in practice, and every method
-below is generic over `D`: it means the same thing on both.
+below is generic over `D`: it means the same thing on both. In expression
+position `a..=b` is a range value whatever its bounds (`(0..=1e9).first_true(f)`);
+the same text after `:` is a range type (chapter 2).
 
 | | `Range<V>`: over positions | `Range<V.cuts>`: over cuts |
 |---|---|---|

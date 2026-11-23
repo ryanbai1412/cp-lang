@@ -12,7 +12,8 @@ ends, `.first`/`.last` are optional.
    \(O(1)\) `.len`; `Bidir` walks backwards; `Indexed` adds \(O(1)\) `s[i]` and
    `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay \(O(1)\) (slices, `.rev`,
    `map`, `take`/`drop`, `zip`); `filter`, `take_while` and generators are
-   `Seq`. (R07.1.2)
+   `Seq`, so every fold (`sum`, `max`, `count`, ...) takes them, `yields`
+   members such as `c.values` included. (R07.1.2)
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
    walked twice (sharper when it holds a `mut` lend) and side-effecting
@@ -281,6 +282,7 @@ since the second walk reruns against what the first wrote.
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
 | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\) (R07.9.3) |
+| `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
 | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)\) (R07.9.5) |
 
@@ -313,7 +315,7 @@ a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of
 ## Scans are prefix sums over cuts
 
 `a.scan(op)` gives a `Prefix<D, T>`: n + 1 exclusive folds indexed by `D`'s
-cuts. Walking backwards gives suffix folds, indexed by the same cuts:
+cuts (a `List`'s cuts are `Int`s: `xs.scan(+)[k]` folds the first `k`). Walking backwards gives suffix folds, indexed by the same cuts:
 
 <!-- spec-only: expression tour, one form per line -->
 ```python

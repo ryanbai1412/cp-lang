@@ -425,3 +425,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From spec (spec-block sweep): `s[l..r].rebase` on a `Str` gives a `Rebased<Str>` that can't be indexed (E0305); R04b.1.9 and R04.2.13 make it indexable by its fresh keys. Case `core-04/rebased-str-indexes-from-zero.cp`; needed by `core/04b-keys.md#contest-code:9`.
 - Routed from idioms (2026-11-23): `Graph.directed` takes only `[E]` arrays, so arcs pushed into a `List<(u, v, w)>` need a copy into `[0..arcs.len]` first (sdoi17r2p4). General fix: accept any `Indexed` of arc records (a `List` is indexed by `0..len`), so a graph built by pushing needs no conversion.
 - 2026-11-23: P0 from idioms (line 406) fixed: `Rooted` takes edge lengths from `Weighted` arcs via the new `std.graph.arc_len` (`far[v] = far[u] + arc_len(a)`), so `dist`, `w` and `diameter` give 17 on the 5 + 12 path in `cpl run` and C++; plain arcs still count 1. The two blocked weighted tree tests now run (30/30). Decision 359.
+- From spec (rebuild 11, decision 359):
+  - H-TALLY-TYPE: `tally` must return `Counter<K>` (R07.11.4); the stub returns `HashMap`, so a missing key traps. Case `core-07/tally-missing-key-is-zero.cp`.
+  - H-SCAN-INT-INDEX: `[3, 1, 4].scan(+)[3]` traps (`3 is not in D_0`); a `List`'s scan is indexed by its n + 1 cuts. Case `core-07/list-scan-indexed-by-count.cp`.
+  - H-DESC-FLAG: `sort`/`sorted` still take `desc: Bool` (std/seq.cp:225, :273); decision 290 removed it for the `desc(x)` key.
+  - H-RING-RECEIVER: the `Ring.step` doc says `V.ring.step(v, last)`; the receiver is an array, so `a.ring.step(i, d)`.
+  - H-ABS (again, rebuild 7 too): declare `abs(x: Int)` in std/math.cp.

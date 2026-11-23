@@ -682,7 +682,7 @@ use std.interval.{IntervalMap}
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
-let tree = Rooted(Graph.undirected(edges), V.first!)
+let tree = Rooted(Graph.undirected(edges), root: V.first!)
 
 let init_slime: [0..m]V = read()
 var cur = init_slime[m - 1]

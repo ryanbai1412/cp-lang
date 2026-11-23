@@ -1,4 +1,4 @@
-// expect: E0207 at 10
+// expect: E0207 at 11
 // rule: 11.1.4
 // A method without `pub` is private to its module; the fix adds `pub`.
 mod m:

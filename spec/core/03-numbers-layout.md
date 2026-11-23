@@ -101,7 +101,9 @@ To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every
 node write is then a range store under decision 148: checked builds trap
 with the node and the value, release truncates. A `Fenwick`, a `Prefix` and a `.sum()` over
 range-typed elements accumulate the same way: `Fenwick(a)` with
-`a: [V]1..=1e9` holds `Int` sums, never values of `1..=1e9`. (R03.1.7)
+`a: [V]1..=1e9` holds `Int` sums, never values of `1..=1e9`. Likewise a value of a range
+type is an `Int` wherever it is read: `max(lo - k, s.l)` with `s.l:
+0..=1e9` is an `Int`. (R03.1.7)
 
 ### Seeing and steering it
 
@@ -278,7 +280,8 @@ linear. (R03.4.2)
 `?Mod<P>` is free (`P` is spare) and `SegTree(+, a.map(Z))` stores 4-byte
 nodes. Multiplication widens to u64 (or `I128` for moduli above `2^32`,
 which the profile must allow). A runtime modulus is a scoped type
-(`type Z = Mod(p)` with `p` read once) using Barrett reduction, one local edit
+(`type Z = Mod(p)` with `p` read once per scope, so once per case below a
+multitest divider; `Mod(1)` is valid and holds only 0) using Barrett reduction, one local edit
 from the constant form. (R03.5.1)
 
 ## 6. Examples
