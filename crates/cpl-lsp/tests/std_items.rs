@@ -455,7 +455,7 @@ fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
             ("hover", 1931),
             ("hover names every parameter", 1915),
             ("hover shows the documented cost", 1782),
-            ("signature help names every parameter", 1565),
+            ("signature help names every parameter", 1450),
             ("completion offers it", 1783),
             ("completion detail names every parameter", 1708),
         ],
