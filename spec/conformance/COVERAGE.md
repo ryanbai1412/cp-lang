@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2364 (995 passing). Rules: 549.
+Cases: 2365 (995 passing). Rules: 549.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -227,7 +227,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [4+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
-- R04.2.18 [4+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
+- R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [2+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
