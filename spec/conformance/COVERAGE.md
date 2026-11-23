@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2838 (995 passing). Rules: 576.
+Cases: 2839 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -140,7 +140,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
-- R02.2.1 [3+ 2-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
+- R02.2.1 [3+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [2+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [4+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
@@ -873,7 +873,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0001 Runtime trap: 11 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
-- R0201 Range store out of range: 9 case(s)
+- R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 10 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
