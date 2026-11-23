@@ -17,5 +17,6 @@ fn smallest_slow(b: List<Int>) -> Int:
 
 @!multitest
 let n: 2..=1e5 = read()
-let b: [0..n]1..=1e9 = read()
+// Small values keep every lcm inside `Int`, as the problem's answer is.
+let b: [0..n]1..=30 = read()
 print(smallest([x for x in b]))

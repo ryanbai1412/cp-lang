@@ -184,19 +184,20 @@ fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
     let file = scratch("bound_lint");
     std::fs::write(
         &file,
-        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\nprint(a * b)\n",
+        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\n\
+         if a % 1000 == 37:\n    print(a * b)\n",
     )
     .unwrap();
     let (code, text) = cpl(&[OsStr::new("stress"), file.as_os_str()]);
     assert_eq!(code, Some(0), "{text}");
     assert!(
         text.contains(
-            "`cpl lint` names inputs at the bounds that fail (L0306 at line 3): `cpl lint --save"
+            "`cpl lint` names inputs at the bounds that fail (L0306 at line 4): `cpl lint --save"
         ),
         "{text}"
     );
     let (_, saved) = cpl(&[OsStr::new("lint"), OsStr::new("--save"), file.as_os_str()]);
-    let witness = file.with_extension("tests").join("lint-L0306-3.in");
+    let witness = file.with_extension("tests").join("lint-L0306-4.in");
     let input = std::fs::read(&witness).unwrap_or_else(|e| panic!("{saved}: {e}"));
     let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("run")
@@ -249,4 +250,26 @@ print(best())
         "json".as_ref(),
     ]);
     assert!(json.contains("\"code\":\"R0101\""), "{json}");
+}
+
+/// Stress is a checked build: a case that overflows fails as RE with
+/// the diagnostic `cpl run` gives, instead of wrapping (`stress/U34`).
+#[test]
+fn stress_traps_an_overflow_as_cpl_run_does() {
+    let file = scratch("overflow");
+    std::fs::write(
+        &file,
+        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\nprint(a * b)\n\n\
+         @gen\nfn at_bounds():\n    print(9223372037)\n    print(1000000000)\n",
+    )
+    .unwrap();
+    let (code, text) = cpl(&[
+        OsStr::new("stress"),
+        file.as_os_str(),
+        OsStr::new("--cases"),
+        OsStr::new("1"),
+    ]);
+    assert_eq!(code, Some(1), "{text}");
+    assert!(text.contains("FAIL on case 1 (seed 1): RE"), "{text}");
+    assert!(text.contains("error[R0202]: integer overflow"), "{text}");
 }

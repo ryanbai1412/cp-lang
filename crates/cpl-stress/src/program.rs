@@ -267,8 +267,9 @@ enum Part {
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
-/// A counterexample that crashes is one stress must see.
-const TRAPS: cpl_codegen::Checks = cpl_codegen::Checks::Traps;
+
+/// A counterexample that crashes, or overflows, is one stress must see.
+const LOCAL: cpl_codegen::Checks = cpl_codegen::Checks::LOCAL;
 
 fn emit_cpp(
     source: &Path,
@@ -503,7 +504,7 @@ impl Program {
                 argv.push(name.clone());
                 argv
             }
-            "cp" => build_judged(path, None, Part::Solution, TRAPS)?,
+            "cp" => build_judged(path, None, Part::Solution, LOCAL)?,
             _ => {
                 // Relative paths need `./` to be found.
                 let canonical = path
@@ -560,7 +561,7 @@ impl Program {
     pub fn resolve_source(path: &Path, text: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: path.shown(),
-            argv: build_judged(path, Some(text), Part::Solution, TRAPS)?,
+            argv: build_judged(path, Some(text), Part::Solution, LOCAL)?,
             env: Vec::new(),
         })
     }
@@ -570,7 +571,7 @@ impl Program {
     pub fn resolve_cold_cache(path: &Path) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (@cache cold)", path.shown()),
-            argv: build_judged(path, None, Part::ColdCache, TRAPS)?,
+            argv: build_judged(path, None, Part::ColdCache, LOCAL)?,
             env: Vec::new(),
         })
     }
@@ -580,7 +581,7 @@ impl Program {
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.shown()),
-            argv: build_judged(path, None, Part::Brute, TRAPS)?,
+            argv: build_judged(path, None, Part::Brute, LOCAL)?,
             env: Vec::new(),
         })
     }
@@ -590,7 +591,7 @@ impl Program {
     pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.shown()),
-            argv: build_judged(path, None, Part::Gen(size), TRAPS)?,
+            argv: build_judged(path, None, Part::Gen(size), LOCAL)?,
             env: Vec::new(),
         })
     }

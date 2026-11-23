@@ -17,6 +17,11 @@ pub enum Checks {
 }
 
 impl Checks {
+    /// What every local run checks, as the debug interpreter does: `cpl
+    /// test`, `cpl stress` and their builds of brutes and generators. A
+    /// program that traps under `cpl run` traps under each of them.
+    pub const LOCAL: Checks = Checks::All;
+
     pub const NAMES: [&'static str; 3] = ["none", "traps", "all"];
 
     pub fn parse(name: &str) -> Option<Checks> {

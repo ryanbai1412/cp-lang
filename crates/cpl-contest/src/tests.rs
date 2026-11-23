@@ -1120,3 +1120,35 @@ fn a_problems_checker_py_judges_its_cases_unless_the_file_declares_one() {
     }
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+/// `cpl run` traps on an overflow (R0202); a local build of the same file
+/// must trap too, in `cpl test` and in stress's solution, brute and generator.
+#[test]
+fn test_and_stress_trap_on_overflow_as_run_does() {
+    let dir = std::env::temp_dir().join(format!("cpl-overflow-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("main.tests")).unwrap();
+    let port = dir.join("main.cp");
+    std::fs::write(
+        &port,
+        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\nprint(a * b)\n",
+    )
+    .unwrap();
+    let input = "1000000000000 1000000000\n";
+    std::fs::write(dir.join("main.tests/1.in"), input).unwrap();
+    let ran = Program::resolve(&port)
+        .unwrap()
+        .run(input, Duration::from_secs(20))
+        .unwrap();
+    assert!(
+        ran.stdout.is_empty() && ran.stderr.contains("overflow"),
+        "{ran:?}"
+    );
+    let (code, out, _) = cli(test::run, &[port.to_str().unwrap()]);
+    assert_eq!(code, 1, "{out}");
+    assert!(
+        out.contains("RE") && !out.contains("passed\n") || out.contains("0/1"),
+        "{out}"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}

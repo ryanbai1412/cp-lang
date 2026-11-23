@@ -197,3 +197,9 @@ Need: a lint warning in the brute or interactor never reaches the report or the 
 Design: helpers are checked for errors only; their warnings go to `cpl lint`.
 Milestone: M1-critical. Status: gap
 Evidence: gap
+
+### stress/U34: a case that traps under `cpl run` fails stress too
+Need: trust that a counterexample to an overflow or a range store is found, not wrapped into a plausible answer.
+Design: stress builds with every check `cpl run` has, so the case fails as RE with the same R0202 diagnostic.
+Milestone: M1-critical. Status: supported
+Evidence: `crates/cpl-cli/tests/wrong_answer.rs` `stress_traps_an_overflow_as_cpl_run_does`
