@@ -164,3 +164,11 @@ Each practice problem's page holds hints inside its `<Judge>`, shown under **Hin
 - **Why:** a learner stuck on a problem needs the next idea and where to read it, not the answer; a hint without a link leaves them guessing which page teaches it.
 - **Example:** *At most* hints that the values at most x are a prefix, names `first_gt`, and links the Sorting and searching chapter.
 - **Enforced by:** `web/scripts/gate.mjs` (site prebuild) fails on a problem whose hints link nowhere.
+
+## site/R20: Unit coverage of site code never falls
+
+`pnpm --dir web test` measures the statements, branches, functions and lines of `web/lib`, `web/components` and `web/scripts` its unit tests run, and fails below the floor in `web/vitest.config.mts`. The floor only rises.
+
+- **Why:** most site code is checked only through browser tests and the build; without a floor, new logic lands with no unit test and the share that has one shrinks unseen.
+- **Example:** a new parser in `web/scripts/` with no `*.test.mjs` lowers line coverage and fails the unit tests until it has one or the floor is lowered in review.
+- **Enforced by:** `web/vitest.config.mts` coverage thresholds (site build's unit tests).

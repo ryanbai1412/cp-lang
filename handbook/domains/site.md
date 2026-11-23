@@ -244,7 +244,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Editors load fast | `cpl.wasm` bytes gzipped | [site/R7](../guidelines/site-checklist.md); Re-architecture: codegen, Explain and Stress live in the lazily loaded `cpl-build.wasm`; shrink-only cap that prints the top contributors when it fails | `web/scripts/wasm-size.mjs` in prebuild |
 | Client types match the wasm API | stale `web/lib/cpl-types.ts` | Generated from the wasm build each build | `web/scripts/wasm.mjs` |
 | The site check is fast | `site build` CI job seconds; per-stage seconds | Stage timings and a named kill for a stage that hangs | `web/scripts/prebuild.mjs`; **missing**: a budget on the job time |
-| Site code is tested | unit coverage of `web/lib`, `web/components`, `web/scripts` | Hand-written unit suites | `pnpm --dir web test`; **missing**: coverage measurement |
+| Site code is tested | unit coverage of `web/lib`, `web/components`, `web/scripts` | [site/R20](../guidelines/site-checklist.md): unit tests measure coverage and fail below a floor that only rises; 7.8% of statements today | `web/vitest.config.mts` (`pnpm --dir web test`) |
 | Adding a page or problem is mechanical | steps to add a practice problem; pieces the gate does not check | Recipe plus gate | [Adding a practice problem](#adding-a-practice-problem), `web/scripts/gate.mjs` |
 
 ## Suites and tools
