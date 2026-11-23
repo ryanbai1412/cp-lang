@@ -1,17 +1,17 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-ir/src/lower/call.rs": 13044,
+    "crates/cpl-ir/src/lower/call.rs": 13045,
     "crates/cpl-ir/src/lower/stmt.rs": 6427,
     "crates/cpl-ir/src/lower/mod.rs": 5999,
     "crates/cpl-ir/src/lower/expr.rs": 5554,
-    "crates/cpl-interp/src/lib.rs": 5545,
-    "crates/cpl-ir/src/lower/mono.rs": 4497,
-    "crates/cpl-check/src/check/expr.rs": 4240,
+    "crates/cpl-interp/src/lib.rs": 5544,
+    "crates/cpl-ir/src/lower/mono.rs": 4508,
+    "crates/cpl-check/src/check/expr.rs": 4239,
     "crates/cpl-check/src/check/stmt.rs": 3276,
     "crates/cpl-check/src/check/lends.rs": 2834,
     "crates/cpl-check/src/db.rs": 2489,
-    "crates/cpl-interp/src/trace.rs": 2378
+    "crates/cpl-interp/src/trace.rs": 2298
   },
   "stdlib_todo": 51,
   "rust_ignore": 16,

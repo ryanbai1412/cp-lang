@@ -1738,6 +1738,17 @@ impl<'a> Lowerer<'a> {
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         let mut op_params: Vec<(String, BareOp)> = Vec::new();
         for (param, arg) in ast_params.iter().zip(&matched) {
+            // An omitted `over: M = (+)` binds `M` to the operator its default names.
+            if let (Some(ast::TypeKind::Named { name, args }), None, Some(default)) =
+                (param.ty.as_ref().map(|t| &t.kind), arg, &param.default)
+            {
+                if let Some(op) = (args.is_empty() && gen_names.contains(&name.text))
+                    .then(|| self.detect_bare_op(default))
+                    .flatten()
+                {
+                    inferred.entry(name.text.clone()).or_insert(GenArg::Op(op));
+                }
+            }
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
                 continue;
             };

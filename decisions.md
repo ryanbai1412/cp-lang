@@ -7472,3 +7472,14 @@ Completion, hover and signature help on a type from another module (std included
 ## 352. Run and test stay client commands, not `workspace/executeCommand` (2026-11-23)
 
 `cpl lsp` does not advertise `executeCommandProvider`. Its run, test and stress lenses carry `cpl.exec` with the `cpl` arguments, and each editor runs that in its own terminal (VS Code, Neovim and JetBrains all register it). Reason: the output belongs in a terminal the contestant can read and type into, not in the server's log, and a server-advertised `cpl.exec` would collide with the command VS Code's extension already registers. Reverse: advertise `executeCommandProvider` with `cpl.run` and `cpl.test`, run them from the server and report through `window/showMessage`.
+
+## 350. `lower/call.rs` and `lower/mono.rs` grow for defaulted operator arguments (stdlib, 2026-11-23)
+
+An omitted `over: M = (+)` now binds `M` to the operator its default
+names, the same as passing `over: +`, so `Monoid.of` sees `+` rather than
+a fn value (32 std doc examples). The binding sits in `mono.rs`'s
+generic-inference pass and the `()` default in `call.rs`'s default-arg
+lowering, the two places that already handle a passed bare operator, so
+the ratchet's `--update rs_over_cap` lets `call.rs` grow by 5 lines and
+`mono.rs` by 11. Reverse: drop the two branches; `Action.new` and
+friends then need `over:` passed explicitly.

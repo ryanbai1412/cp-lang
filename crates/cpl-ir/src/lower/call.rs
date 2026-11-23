@@ -1365,7 +1365,12 @@ impl<'a> Lowerer<'a> {
                         let sm = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
                         let saved = std::mem::replace(&mut self.offset, self.sigs[id].offset);
                         let se = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
-                        let value = self.expect(default, &param.ty);
+                        let value =
+                            if param.ty == Ty::Unit && self.detect_bare_op(default).is_some() {
+                                self.mk(ExprKind::Unit, Ty::Unit, default.span)
+                            } else {
+                                self.expect(default, &param.ty)
+                            };
                         self.cur_mod = sm;
                         self.offset = saved;
                         self.gen_env = se;
