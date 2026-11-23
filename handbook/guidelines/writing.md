@@ -36,26 +36,39 @@ A short process or guideline document may need only a summary, the rules
 with their reasons, and a checklist. Keep the order: why first, details
 last.
 
-## Guidelines and checklists
+## Two layers: the picture and the exhaustive reference
 
-Rules come in pairs of documents, so that people can understand them and
-machines can enforce them:
+Every topic is described twice, for two different jobs:
 
-- **The guideline** (`handbook/guidelines/<topic>.md`) explains the rules
-  at a high level, in prose: what we are trying to achieve, the few ideas
-  behind the rules, and examples of good and bad. Read it once to learn how
-  to think about the topic.
-- **The checklist** (`handbook/guidelines/<topic>-checklist.md`) spells
-  out every rule, exhaustively and systematically. Each rule has a stable
-  identifier such as `std-api/R12`, one sentence stating it, its reason in a
-  line, a short example, and what enforces it: a lint, a test, a gate, or
-  `review` where nothing mechanical can decide.
+- **The high-level document** gives the picture: what we are trying to
+  achieve, the few ideas behind the details, examples of good and bad, and
+  how to decide a case nobody wrote down. People read it once to learn how
+  to think about the topic, and use it when making decisions.
+- **The exhaustive reference** enumerates every rule or case,
+  systematically, each with a stable identifier. Tests, lints and reviews
+  cite it, so it is what machines enforce and what settles a precise
+  question.
 
-A lint or test that enforces a rule cites its identifier, and a domain's
-quality register points to checklist rules instead of restating them. A
-rule that exists only in code, or only in a register, belongs in a
-checklist. When two rules say nearly the same thing, merge them into one
-more general rule.
+| Topic | High-level document | Exhaustive reference | Enforced by |
+|---|---|---|---|
+| The language | `handbook/language/` | `spec/`, rules like `R04.4.30` | Conformance cases citing each rule |
+| A kind of work | `handbook/guidelines/<topic>.md` | `handbook/guidelines/<topic>-checklist.md`, rules like `std-api/R12` | Lints and tests citing each rule |
+| A domain | The overview of `handbook/domains/<domain>.md` | Its quality register, under `# Reference` | The check named in each row |
+| A component | `handbook/design/<component>.md` | Its interface contracts | Contract tests |
+
+The two layers change together. A rule added to the reference that the
+high-level document can't explain means the picture is missing an idea; a
+new idea in the high-level document that changes no rule is not yet real.
+When they disagree, that is a bug: the high-level document says what we
+meant, and the reference is fixed to match, or the intent is revisited.
+
+In a checklist, each rule has its identifier, one sentence stating it, its
+reason in a line, a short example, and what enforces it: a lint, a test, a
+gate, or `review` where nothing mechanical can decide. A lint or test that
+enforces a rule cites its identifier, and a quality register points to
+rules instead of restating them. A rule that exists only in code, or only
+in a register, belongs in a checklist. When two rules say nearly the same
+thing, merge them into one more general rule.
 
 ## Style
 
