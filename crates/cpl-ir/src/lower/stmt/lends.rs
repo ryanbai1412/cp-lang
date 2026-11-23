@@ -27,6 +27,50 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `g[u]` on a struct with an `at` method and no `get` is `g.at(u)` (R05.6.3).
+    pub(in crate::lower) fn struct_at(
+        &self,
+        sid: StructId,
+        base: &ast::Expr,
+        indices: &[ast::Expr],
+    ) -> Option<ast::Expr> {
+        let [index] = indices else {
+            return None;
+        };
+        if matches!(index.kind, ast::ExprKind::Range { .. }) {
+            return None;
+        }
+        let info = &self.structs[sid];
+        let has_at = info.methods.contains_key("at") || info.projections.contains_key("at");
+        if self.counter_key.contains_key(&sid) || !has_at {
+            return None;
+        }
+        let span = Span::new(base.span.start, index.span.end + 1);
+        let name = ast::Name {
+            text: "at".into(),
+            span: index.span,
+        };
+        let callee = ast::Expr {
+            kind: ast::ExprKind::Field {
+                base: Box::new(base.clone()),
+                name,
+            },
+            span,
+        };
+        let arg = ast::Arg {
+            name: None,
+            mutable: false,
+            value: index.clone(),
+        };
+        Some(ast::Expr {
+            kind: ast::ExprKind::Call {
+                callee: Box::new(callee),
+                args: vec![arg],
+            },
+            span,
+        })
+    }
+
     pub(super) fn free_lends_mut_fn(&self, name: &str) -> Option<(u32, &'a ast::FnDecl)> {
         self.mod_items(self.cur_mod)
             .find_map(|(offset, stmt)| match &stmt.kind {

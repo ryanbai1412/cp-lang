@@ -283,6 +283,9 @@ impl<'a> Lowerer<'a> {
                             span,
                         );
                     }
+                    if let Some(call) = self.struct_at(sid, base, indices) {
+                        return self.expr(&call, hint);
+                    }
                 }
                 if indices.len() == 1
                     && matches!(indices[0].kind, ast::ExprKind::Range { .. })
