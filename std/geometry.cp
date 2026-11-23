@@ -2762,10 +2762,9 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     walk
 
 fn least_rotation(cyc: List<Int>) -> List<Int>:
-    with lint(unproven_list_index: allow)
-    let m = cyc.len
     // `<` on lists is lexicographic; `best min= rot` would take the cellwise minimum.
-    with lint(chmin_chmax_if: allow)
+    with lint(unproven_list_index: allow, chmin_chmax_if: allow)
+    let m = cyc.len
     var best: List<Int> = copy(cyc)
     for s in 1..m:
         let rot = [cyc[(s + i) % m] for i in 0..m]
