@@ -3,13 +3,15 @@
 //! order. A record's `lint.toml` holds `code`, `level`, `group`, `title`,
 //! `summary` and `rule` (the checklist rule it enforces, as `<topic>/R<n>`,
 //! which `handbook/guidelines/<topic>-checklist.md` must define), each a one-line basic
-//! string, and `no_fix` when the lint has no machine fix: why not.
+//! string, and `no_fix` when the lint has no machine fix: why not. The
+//! optional `family` and `practice` place it in the idiom catalog
+//! (`spec/idioms/lints.md`), for the site's lint pages.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
-const OPTIONAL: [&str; 1] = ["no_fix"];
+const OPTIONAL: [&str; 3] = ["no_fix", "family", "practice"];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
     ("trigger", "before.cp"),
