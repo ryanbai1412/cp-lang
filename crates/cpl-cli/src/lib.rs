@@ -170,7 +170,7 @@ pub fn exec<S: AsRef<str>>(
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
             Ok(args) => {
-                let typed = || std::io::IsTerminal::is_terminal(&std::io::stdin());
+                let typed = nothing_piped;
                 if let Some(test) = samples_instead(&args, typed()) {
                     if test.len() == 1 {
                         *stderr += "cpl: no input named or piped: running the samples \
@@ -862,6 +862,30 @@ fn run_release_judged(
 /// The `cpl test` arguments `cpl run` stands for: every sample when no
 /// input is named and stdin is a terminal, one sample when the input is a
 /// sample's name rather than a file.
+/// Stdin is a terminal, or a device such as `/dev/null` (a script, an
+/// editor task or CI), so nothing was piped in to run on.
+fn nothing_piped() -> bool {
+    let stdin = std::io::stdin();
+    if std::io::IsTerminal::is_terminal(&stdin) {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::fd::AsFd;
+        use std::os::unix::fs::FileTypeExt;
+        let device = stdin
+            .as_fd()
+            .try_clone_to_owned()
+            .ok()
+            .and_then(|fd| std::fs::File::from(fd).metadata().ok())
+            .is_some_and(|m| m.file_type().is_char_device());
+        if device {
+            return true;
+        }
+    }
+    false
+}
+
 fn samples_instead(args: &RunArgs, typed: bool) -> Option<Vec<String>> {
     if args.trace || args.live || args.release || args.brute || args.format.is_some() {
         return None;

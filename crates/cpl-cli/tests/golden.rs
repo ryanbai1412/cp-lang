@@ -1358,3 +1358,69 @@ fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
         .is_file());
     assert!(!dir.join("data/JetBrains/consentOptions").exists());
 }
+
+/// The contest flow from a Competitive Companion problem to the clipboard:
+/// `new --companion`, `run` (every sample), `test --add`, `stress`, `b -c`.
+#[cfg(unix)]
+#[test]
+fn contest_flow_from_companion_to_clipboard() {
+    let dir = scratch("contest-flow");
+    std::fs::write(
+        dir.join("p.json"),
+        r#"{"name":"A. Sum","group":"Codeforces Round","url":"https://codeforces.com/problemset/problem/1/A","memoryLimit":256,"timeLimit":1000,"tests":[{"input":"1 2\n","output":"3\n"},{"input":"5 7\n","output":"12\n"}],"testType":"single","input":{"type":"stdin"},"output":{"type":"stdout"}}"#,
+    )
+    .unwrap();
+    let out = cpl(&dir, &["new", "--companion", "p.json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir.join("a.tests/2.out").is_file());
+
+    std::fs::write(
+        dir.join("a.cp"),
+        "let (a, b): (1..=9, 1..=9) = read()\nprint(a + b)\n\n@alt(program)\nfn brute():\n    let (a, b): (1..=9, 1..=9) = read()\n    var s = a\n    for _ in 0..b: s += 1\n    print(s)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["run", "a"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).contains("2/2 passed"),
+        "{}",
+        text(&out.stdout)
+    );
+
+    std::fs::write(dir.join("mine.in"), "9 9\n").unwrap();
+    std::fs::write(dir.join("mine.out"), "18\n").unwrap();
+    let out = cpl(
+        &dir,
+        &["test", "a", "--add", "mine.in", "--expect", "mine.out"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.tests/3.out")).unwrap(),
+        "18\n"
+    );
+    let out = cpl(&dir, &["t", "a"]);
+    assert!(
+        text(&out.stdout).contains("3/3 passed"),
+        "{}",
+        text(&out.stdout)
+    );
+
+    let out = cpl(&dir, &["stress", "a", "--cases", "50"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).contains("50 cases agree"),
+        "{}",
+        text(&out.stdout)
+    );
+
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["b", "a", "-c"])
+        .current_dir(&dir)
+        .env("CPL_CLIPBOARD", "cat > clip")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let cpp = std::fs::read_to_string(dir.join("a.cpp")).unwrap();
+    assert_eq!(std::fs::read_to_string(dir.join("clip")).unwrap(), cpp);
+    assert!(cpp.len() < 64 * 1024);
+}
