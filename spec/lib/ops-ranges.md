@@ -21,6 +21,11 @@ but only one that is never worse (the algorithm and its answers stay the
 same). `cpl explain` shows which strategy it picked. **You name
 the structure; the laws pick its strategy.**
 
+<!-- given:
+  domain V = 0..8
+  let a: [V]Int = 0
+  let l = V(1)
+  let r = V(5) -->
 ```python
 var st = SegTree(max, a)                    // point set, range max
 var lz = SegTree(+, a, act: add)            // range add, range sum (lazy)
@@ -35,6 +40,7 @@ let ps = Prefix(a)                          // static: O(1) range sums
 
 ### The traits
 
+<!-- spec-only: excerpt of spec/std -->
 ```python
 pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
@@ -122,6 +128,11 @@ summary needs a hand-written struct unless it carries real logic.
 | `Monoid(id:, op:)`, `Group(id:, op:, inv:)` | from lambdas | none until stated |
 | `.commutative()`, `.idempotent()` | state a law on an inline value | adds it |
 
+<!-- given:
+  domain V = 0..8
+  let a: [V]Int = 0
+  let l = V(1)
+  let r = V(5) -->
 ```python
 var st = SegTree(each(+, max, min), a.map(x => (x, x, x)))   // sum, max, min at once
 let (s, hi, lo) = st.fold(l..r)
@@ -156,6 +167,7 @@ An order is the other operation value every contest program passes around:
 `sort`, `min`/`max`/`argmax`, heaps, ordered sets, `bsearch` over sorted
 data and Dijkstra all take one. One trait and one argument cover them all.
 
+<!-- spec-only: excerpt of spec/std -->
 ```python
 pub trait Ord:
     fn cmp(self, b: Self) -> Ordering
@@ -295,6 +307,11 @@ The pair is written with the ops themselves, so the names
 `min_plus`/`max_plus`/`bool_ring` go. Every number type is a
 `Semiring(+, *)` by default, so `over:` is only ever written for the others.
 
+<!-- given:
+  domain V = 0..3
+  let d: [V, V]?Int = None
+  let adj: [V, V]Int = 0
+  let k = 2 -->
 ```python
 let m = Mat(over: Semiring(min, +), d)          // d: [V, V]?Int
 let k_steps = pow(m, k)                         // shortest walk of exactly k arcs
@@ -413,6 +430,7 @@ tags apply doesn't matter.
 **How a library writes it.** A generic body can test a bound, and the test
 is decided when the fn is instantiated:
 
+<!-- spec-only: excerpt of spec/std -->
 ```python
 pub fn apply(mut self, r: Range<D>, f: F):
     if A.Tags: Commutative<F>:
@@ -568,6 +586,7 @@ A law is a promise; the tools make it cheap to check:
   `step(d, w) >= d`, `Ord`'s antisymmetry on the compared pair.
 ## 16. Examples from the dreams
 
+<!-- spec-only: fragments of ported solutions -->
 ```python
 // cf2096f: range add, range min, test for zero
 var cover = SegTree<V, Int>(min, fill: 0, act: add)
