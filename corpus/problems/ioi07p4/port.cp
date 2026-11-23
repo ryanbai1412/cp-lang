@@ -1,7 +1,10 @@
-// IOI 2007 Miners: n food shipments (meat, fish or bread) arrive in order and
-// each goes to one of two mines. A mine digs 1, 2 or 3 units of coal on a
-// shipment: the number of different foods among it and the mine's previous
-// two. Send the shipments so that the most coal is dug.
+// Source: IOI 2007, Miners, https://dmoj.ca/problem/ioi07p4
+// Problem: N <= 1e5 food shipments, each M, F or B, in order; each goes to one of two mines.
+//   A mine digs 1, 2 or 3 coal per shipment: the number of distinct foods among it and that mine's
+//   previous two. Print the most coal both mines can dig in total.
+// Solution: only each mine's last two foods matter, so most[a, b, c, d] (0 = none yet, else a
+//   food) is the best total so far. Each shipment goes to mine one or two, shifting that mine's
+//   pair and adding coal(older, old, new). O(4^4 N).
 // original: corpus/submissions/5033986.cpp
 let n: 1..=1e5 = read()
 domain Ship = 1..=n

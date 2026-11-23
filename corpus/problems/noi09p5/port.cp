@@ -1,4 +1,11 @@
-// NOI '09 P5 - Pipe Marbles (runnable on proto/cp.py lib-run today)
+// Source: NOI 2009 P5, Pipe Marbles, https://dmoj.ca/problem/noi09p5
+// Problem: two pipes of n and m A/B marbles (n, m <= 500); a move shoots the rightmost marble of
+//   either into the output. If output sequence i arises from a_i move orders, print sum a_i^2
+//   mod 1024523.
+// Solution: sum a_i^2 counts pairs of games with the same output, so run two games in lockstep:
+//   dp[i, j] after k marbles has game one i taken from pipe one and game two j, and each step
+//   both take an equal marble (4 choices). Reading the pipes from the left instead pairs the
+//   reversed outputs, the same count. O((n + m) n^2), one layer kept.
 
 type Z = Mod<1024523>
 

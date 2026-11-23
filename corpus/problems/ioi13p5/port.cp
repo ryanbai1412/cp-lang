@@ -1,5 +1,13 @@
-// IOI 2013 Robots, as it builds today: sizes are negated for the min-heap and
-// the cursor over the sorted toys is an index (K9, K10, K6).
+// Source: IOI 2013, Robots, https://dmoj.ca/problem/ioi13p5
+// Problem: T <= 1e6 toys with weight and size; A weak robots carry toys of weight strictly below
+//   their limit, B small robots toys of size strictly below theirs (A, B <= 5e4, values <= 2e9).
+//   Each robot puts away one toy per minute. Print the fewest minutes for all toys, or -1.
+// Solution: binary search the minutes m. Check: weak robots by rising limit each take the m
+//   largest-size toys among those light enough (a heap of sizes, toys sorted by weight); then
+//   small robots by falling limit each take the m largest left, failing when one is too big.
+//   O(T log^2 T).
+// As it builds today: sizes are negated for the min-heap and the cursor over the sorted toys is
+//   an index (K9, K10, K6).
 // original: corpus/submissions/4688418.cpp (a grader-style `putaway`; check.sh adds a main)
 let a: 0..=5e4 = read()
 let b: 0..=5e4 = read()

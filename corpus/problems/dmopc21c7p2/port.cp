@@ -1,4 +1,10 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c7p2.cp
+// Source: DMOPC '21 Contest 7 P2, Knitting Scarves, https://dmoj.ca/problem/dmopc21c7p2
+// Problem: the scarf starts as colours 1..N (N <= 1e6). Q <= 5e5 steps each cut the segment from
+//   colour L to colour R and paste it right after colour K (K = 0: at the front; K is outside the
+//   segment). Print the final order.
+// Solution: keep the scarf as a doubly linked list over the colours with head sentinel 0 and a
+//   tail sentinel; each step splices L..R out and back in after K by relinking four
+//   neighbours, skipped when it already follows K. Walk the list to print. O(N + Q).
 // original: corpus/submissions/4452915.cpp
 
 let (n, q): (Int, Int) = read()

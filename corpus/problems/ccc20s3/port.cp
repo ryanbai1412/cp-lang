@@ -1,5 +1,9 @@
-// CCC 2020 S3 Searching for Strings: count the distinct substrings of the
-// haystack that are rearrangements of the needle.
+// Source: CCC 2020 S3, Searching for Strings, https://dmoj.ca/problem/ccc20s3
+// Problem: lowercase needle N and haystack H, |N|, |H| <= 2e5. Count the distinct permutations
+//   of N that occur as a substring of H.
+// Solution: slide a window of length |N| over H keeping letter-count differences and how many are
+//   nonzero; when all match, the window is a permutation, and its rolling hash goes into a set.
+//   The answer is the set's size: O(|H|) expected, up to hash collisions.
 use std.strings.{HashVal}
 
 domain Letter = 'a'..='z'

@@ -1,5 +1,10 @@
-// CCO 2017 P2 Cartesian Conquest (CP Lang 0.2.2): Euclidean step-jumping DP
-// using Tropical Optionals `(?Int, ?Int)` with `min=`/`max=` (zero `INF` sentinel).
+// Source: CCO 2017 Day 1 P2, Cartesian Conquest, https://dmoj.ca/problem/cco17p2
+// Problem: districts are integer k x 2k rectangles added one at a time, the empire always a
+//   rectangle. For an N x M empire (N, M <= 1e8), print the fewest and the most districts.
+// Solution: the last district is a full strip along one side, so dp(n, m) peels k strips n x jump
+//   (jump = n / 2 or 2n) off the m side and recurses on the (m - k jump) x n rest. The rest must
+//   be <= 2n to peel again, so only a few k are tried; four n x n/2 strips may also be one
+//   n x 2n district. Euclid-like depth, memoised on (n, m); answer combines dp(N, M), dp(M, N).
 // original: corpus/submissions/6416978.cpp
 let (n0, m0): (1..=100_000_000, 1..=100_000_000) = read()
 

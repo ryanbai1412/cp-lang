@@ -1,5 +1,11 @@
-// JOI 2016 Open Skyscraper: count the orders of n buildings in which
-// neighbouring heights differ by at most `limit` in total.
+// Source: JOI Open 2016, Skyscraper, https://dmoj.ca/problem/joi16op3
+// Problem: N <= 100 distinct heights <= 1000. Count the orders of the buildings whose sum of
+//   |neighbour height differences| is <= L (L <= 1000), mod 1e9+7.
+// Solution: insert buildings from the shortest up into a row of groups. ways[g, c, e] has g
+//   groups, e of them pinned to an end of the row, and cost c charged as if every open side
+//   already met the current height; each new building pays (h - level) per open side, then starts
+//   a group, extends one or joins two, optionally at an end. The answer is one group with both
+//   ends: O(N^2 L).
 // original: corpus/submissions/4226622.cpp
 const P = 1000000007
 type Z = Mod<P>

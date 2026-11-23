@@ -1,4 +1,9 @@
-// Runnable port (proto/cp.py lib-run) of mccc4j4.cp
+// Source: Mock CCC '22 Contest 2 J4, Hockey Bracket, https://dmoj.ca/problem/mccc4j4
+// Problem: N <= 2000 countries in N / S groups of size S play every pair in their group once
+//   (win 3, tie 1 each). Given the groups, the (S - 1) N / 2 results (W, L, T for the first)
+//   and K, print the K-th placed country of each group (points down, then lower number first).
+// Solution: add up the points, sort each group by (-points, number) and take entry K.
+//   O(N log N + matches).
 // original: corpus/submissions/4264934.cpp
 
 let (n, m): (Int, Int) = read()
