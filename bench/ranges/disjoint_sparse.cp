@@ -2,7 +2,7 @@ use std.sparse.{DisjointSparseTable}
 
 let n = 100_000
 domain I = 0..n
-let a = [I] i => (i.to_idx * 37 + 13) % 1000
+let a = [I] i => (i.ord * 37 + 13) % 1000
 let dst = DisjointSparseTable<I, Int>(+, a)
 var s = 0
 var x = 9876543

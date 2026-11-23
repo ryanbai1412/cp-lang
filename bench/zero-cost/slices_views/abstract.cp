@@ -1,7 +1,7 @@
 fn kernel(n: Int, q: Int, a: List<Int>, qs: List<(Int, Int)>) -> Int:
     domain V = 0..n
     var arr: [V]Int = 0
-    for i in V: arr[i] = a[i.to_idx]
+    for i in V: arr[i] = a[i.ord]
     var acc = 0
     for (l, r) in qs:
         var s = 0

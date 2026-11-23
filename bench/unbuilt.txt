@@ -1,0 +1,25 @@
+# Bench programs that do not build, with why, until they do.
+# bench/sizes.py --check fails on a bench program that does not build and is
+# not listed, or one listed that builds. One per line: path, then why.
+bench/dp/aliens.cp  # `aliens` takes a fn(L) -> (val: L, count: Int) for `solve`, but `0..=2 * 10 ** 6` is a Range<0..=2 * 10 ** 6>
+bench/dp/monge.cp  # `monge_path` takes a List<N> for `nodes`, but `n + 1` is an Int
+bench/dp/mono.cp  # `std.window` has no `MonoDeque`, and not in the stdlib (yet)
+bench/geometry/circle_intersect.cp  # `circle_intersect` takes 3 arguments (a, b, eps), but 4 were given
+bench/geometry/circle_tangents.cp  # `circle_tangents` takes a Circle for `circle`, but `c1` is a Vec
+bench/geometry/circles_union_area.cp  # expected `List<m1_Circle>`, found `List<(c: m1_Vec, r: F64)>`
+bench/geometry/min_enclosing_circle.cp  # a `m1_Circle` can't be taken apart into 2 names
+bench/graph/bfs01.cp  # `bfs01` has no parameter named `w`
+bench/graph/dijkstra.cp  # `dijkstra` has no parameter named `w`
+bench/prefix/fill_1d_fwd.cp  # FillPrefix<D, Mod<998244353>> has no field or method `sum`
+bench/prefix/fill_1d_rev.cp  # FillPrefix<D, Mod<998244353>> has no field or method `sum`
+bench/prefix/fill_2d_fwd.cp  # FillPrefix<R, C, Mod<998244353>> has no field or method `sum`
+bench/prefix/fill_2d_rev.cp  # FillPrefix<R, C, Mod<998244353>> has no field or method `sum`
+bench/prefix/prefix_1d.cp  # Prefix<D, Int> has no field or method `sum`
+bench/prefix/prefix_2d.cp  # Prefix<R, C, Int> has no field or method `sum`
+bench/repros/perf_05_std_function_segtree.cp  # `std.lazy` has no `LazySegTree`, and not in the stdlib (yet)
+bench/seq/scan_in_place.cp  # `std.seq` has no `scan_in_place`, and not in the stdlib (yet)
+bench/seq/slice_nth_element.cp  # `std.seq` has no `nth_element`, and not in the stdlib (yet)
+bench/trees/lazy_lct_bench.cp  # no `AddSum` in scope, and not in the stdlib (yet)
+bench/trees/root_bench.cp  # expected `V`, found `?V`
+bench/trees/tree_bench.cp  # expected `V`, found `?V`
+bench/trees/virtual_bench.cp  # VirtualTree<_, _> has no field or method `up`

@@ -2,11 +2,11 @@ fn kernel(n: Int, reps: Int, a: List<Int>) -> Int:
     domain V = 0..n
     var arr: [V]Int = 0
     for i in V:
-        arr[i] = a[i.to_idx]
+        arr[i] = a[i.ord]
     var acc = 0
     for _ in 0..reps:
         for i in V:
-            acc = (acc + arr[i] * (i.to_idx + 1)) ^ (acc >> 3)
+            acc = (acc + arr[i] * (i.ord + 1)) ^ (acc >> 3)
     acc
 
 let n: Int = read()

@@ -40,7 +40,9 @@ reason.
 Reason: silently dropped rows hide the worst cases.
 Example: a port that fails `cpl build` is a bug or a row in
 `bench/unmatched.txt`.
-Enforced by: `bench/v03_perf_bench.py` build/run/skip counts.
+Enforced by: `bench/v03_perf_bench.py` build/run/skip counts;
+`bench/sizes.py --check` fails on a bench program that stops building
+unless `bench/unbuilt.txt` lists it with why.
 
 ## Bars
 

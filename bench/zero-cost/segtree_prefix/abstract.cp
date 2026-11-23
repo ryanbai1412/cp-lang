@@ -1,7 +1,7 @@
 fn kernel(n: Int, q: Int, a: List<Int>, qs: List<(Int, Int, Int)>) -> Int:
     domain V = 0..n
     var init: [V]Int = 0
-    for i in V: init[i] = a[i.to_idx]
+    for i in V: init[i] = a[i.ord]
     let pf = Prefix.new(init)
     var st = SegTree<V, Int>(+, init)
     var acc = 0
