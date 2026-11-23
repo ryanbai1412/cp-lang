@@ -207,12 +207,24 @@ impl HandDs<'_> {
             let Some(l) = loop_var(pat) else {
                 return false;
             };
-            body.stmts.first().is_some_and(|s| match &s.kind {
-                StmtKind::Let {
-                    init: Some(init), ..
-                } => squash(self.text(init.span)) == format!("{l}+{len}-1"),
-                _ => false,
-            })
+            let Some(Stmt {
+                kind:
+                    StmtKind::Let {
+                        pat,
+                        init: Some(init),
+                        ..
+                    },
+                ..
+            }) = body.stmts.first()
+            else {
+                return false;
+            };
+            let Some(r) = loop_var(pat) else {
+                return false;
+            };
+            let table = squash(self.text(body.span));
+            squash(self.text(init.span)) == format!("{l}+{len}-1")
+                && (table.contains(&format!("[{l},{r}]")) || table.contains(&format!("[{l}][{r}]")))
         });
         if !hit {
             return;
