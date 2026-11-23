@@ -1,4 +1,11 @@
-// CCO '01 P4 — Two-Egg Drop (Interactive) (today form for proto/cpc)
+// Source: CCO 2001 P4 (Breaking Level, Standard I/O), https://dmoj.ca/problem/cco01p4io
+// Problem: interactive. A tower of N <= 100 levels has a breaking level H: an object breaks
+//   when dropped from H or higher. With two samples and at most D drops (GetN, GetD, Drop t
+//   answering 1 if it breaks), find H and print Decide H.
+// Solution: dp(len), the fewest drops that always settle len + 1 candidate levels: drop the
+//   first sample i levels up; if it breaks, test the i levels below one by one with the
+//   second, else recurse above. dp(len) = min over i of max(i, dp(len - i - 1)) + 1, O(N^2)
+//   with the best i remembered, then follow it. Asserts dp(N) <= D.
 // original: corpus/submissions/5034487.cpp
 let n: 1..=100 = ask("GetN")
 let d: 1..=100 = ask("GetD")

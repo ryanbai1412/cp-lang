@@ -1,7 +1,13 @@
-// NOI 2005 P1, Gorgeous Waltz: a piano stands on a ballroom floor with
-// furniture (x). In each of q stretches of time the floor tilts one way
-// and the piano may slide at most one cell per second that way, or be
-// held still. Print the longest total slide.
+// Source: NOI 2005 P1 (Gorgeous Waltz), https://dmoj.ca/problem/noi05p1
+// Problem: an N x M grid (N, M <= 200) with furniture 'x' and a piano at (x, y). Times 1..=T
+//   (T <= 40000) form K <= 200 intervals, each tilting the ship N, S, W or E; each second the
+//   piano slides one cell that way or is held, never into furniture or off the grid. Print
+//   the longest total slide.
+// Solution: DP per interval, not per second: far[p] is the longest slide ending at p. In an
+//   interval of len seconds the piano moves 0..=len cells along its line without crossing
+//   furniture, so next[p] = max(far[q] + dist(q, p)) over q at most len behind p. Walk each
+//   row or column in the tilt direction with a monotone deque of (far - place), reset at
+//   furniture. O(K N M).
 // original: corpus/submissions/5032738.cpp
 let n: 1..=200 = read()
 let m: 1..=200 = read()

@@ -1,4 +1,12 @@
-// YAC 6 P5 (today/ runnable subset) — original: corpus/submissions/5149823.cpp
+// Source: Yet Another Contest 6 P5 (No More Coyotes), https://dmoj.ca/problem/yac6p5
+// Problem: N <= 1e6 sheep at (X, Y) (|X|, |Y| <= 1e9), each seeing one quadrant V in 0..=3
+//   (0: x >= and y >= its own, 1: x >=, y <=, 2: x <=, y <=, 3: x <=, y >=). A move is a unit
+//   step or a 90 degree turn (V +- 1 mod 4). Print the fewest moves so every sheep sees all.
+// Solution: V is a pair of bits, one per axis, and a turn flips one of them, so the axes are
+//   independent. On one axis the sheep seeing larger coordinates must share the minimum and
+//   the others the maximum: sort, try every split into a low and a high group, gather each at
+//   its median (prefix sums) and pay a turn per sheep facing the wrong way (cadd). Sum the two
+//   axes; O(N log N).
 
 let n: 1..=200_000 = read()
 var xs: List<(Int, Int)> = []

@@ -1,11 +1,12 @@
-// IOI 2000 Walls: walls between towns cut the country into m regions; each
-// region is listed by the towns on its border, in order round it. Club
-// members live in k of the towns and may start in any region touching their
-// town. Pick the meeting region that minimises the total number of walls
-// crossed, and print that total and the region.
-//
-// Two regions are neighbours when they list the same wall, so the map of
-// regions is found by remembering, per wall, the first region that named it.
+// Source: IOI 2000 P4 (Walls), https://dmoj.ca/problem/ioi00p4
+// Problem: a plane graph of N <= 250 towns and walls; each of the M <= 200 regions is given by
+//   the towns round its border (the outer region last). L <= 30 club members live in given
+//   towns and may start in any region touching their town. Print the least total of walls
+//   crossed to meet in one region, and such a region.
+// Solution: two regions are adjacent when their borders share a wall (two consecutive
+//   towns), found by remembering the first region naming each wall. Floyd-Warshall on the
+//   regions, then a region's total sums, per member, the distance to the nearest region at
+//   the member's town. O(M^3).
 // original: corpus/submissions/4682453.cpp
 let (m, n, k): (2..=200, 3..=250, 1..=30) = read()
 domain Region = 1..=m

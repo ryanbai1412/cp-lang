@@ -1,15 +1,13 @@
-// BOI 2015 P2, Editor: n operations on a text. A positive number types
-// that character: an operation of level 0. A negative number -L is an undo
-// of level L: it reverts the latest still-active operation of level below
-// L, which may itself be an undo (and is then redone). After every
-// operation print the last character of the text, 0 if it is empty.
-//
-// The state after operation i is a chain of active operations. Typing
-// puts i on top of the previous chain. An undo of level L finds the
-// topmost operation u below level L in the previous chain and continues
-// with whatever was active just before u; binary lifting over "next lower
-// in my chain" finds both in O(log n), because levels along a chain's
-// jump pointers only get lower.
+// Source: BOI 2015 P2 (Editor), https://dmoj.ca/problem/btoi15p2
+// Problem: n <= 3e5 operations a_i (|a_i| <= n, a_i != 0): a_i > 0 is an edit setting the
+//   state to a_i (level 0), -L an undo of level L that undoes the latest active operation of
+//   level < L (re-activating what that one undid, recursively). After each operation print
+//   the state set by the last active edit, 0 if none.
+// Solution: the active operations after step i form a chain. An edit puts i on top of chain
+//   i - 1; an undo of level L finds the topmost u of level < L in chain i - 1 and continues
+//   with the chain from just before u. Binary lifting over "next lower operation in my chain"
+//   finds it in O(log n), as levels only fall along the jumps; the answer is the topmost
+//   edit, below(i, 1). O(n log n).
 // original: corpus/submissions/5640898.cpp
 let n: Int = read()
 domain Op = 0..n

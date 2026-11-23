@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ceoi22p5.cp
+// Source: CEOI 2022 P5 (Measures), https://dmoj.ca/problem/ceoi22p5
+// Problem: N people on a line, then M more added one at a time (N, M <= 2e5; D and positions
+//   <= 1e9). After each addition print the least time for all, moving at speed 1, to stand
+//   pairwise at least D apart, as an exact decimal without trailing zeros.
+// Solution: in sorted order the answer is max(0, max over i < j of ((j - i) D - (x_j - x_i)) / 2).
+//   Rank all N + M people by position offline; a segment tree over ranks keeps, for the people
+//   present, the count, max(r D - x), max(x + r' D) (r, r' = how many lie left / right in the
+//   node) and the best pair inside, merged by shifting with counts. Positions are doubled so
+//   the halves stay integral. O((N + M) log(N + M)).
 // original: corpus/submissions/4733784.cpp
 let (n, m, gap1): (Int, Int, Int) = read()
 let total = n + m

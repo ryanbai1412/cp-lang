@@ -1,8 +1,12 @@
-// NOI 2007 P6: given a tree on n >= 3 vertices, place pebbles on all leaves
-// except one chosen root leaf and pull them deepest-first along parent edges
-// until every vertex has been merged into the root.
-// Root the tree at its first leaf via Rooted(adj, root), then run a deepest-
-// first greedy walk using a negated MinHeap over (depth, vertex).
+// Source: NOI 2007 P6, https://dmoj.ca/problem/noi07p6
+// Problem: a tree on N <= 1000 cities hides a thief who moves arbitrarily fast; a detective in
+//   his city or on his road catches him. Steps: L x lands a detective at x, B x recalls one,
+//   M x y moves one along an edge. Print S, the fewest detectives that surely catch him, the
+//   step count T <= 20000 and the plan; partial score when S is above the optimum.
+// Solution: not optimal, it uses S = leaves - 1. Root the tree at its first leaf, land a
+//   detective on every other leaf, then sweep deepest first with a heap on (depth, vertex):
+//   each vertex, once everything below it is clear, sends one detective to its parent and the
+//   others stay behind as guards. O(n log n).
 // original: corpus/submissions/3756979.cpp
 let n: 3..=1000 = read()
 domain Node = 1..=n
