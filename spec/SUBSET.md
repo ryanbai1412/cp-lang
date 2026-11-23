@@ -275,6 +275,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/user-context-lexical-without-uses.cp: compiler
 - core-09/uses-not-inferred-top-level.cp: compiler
 - core-10/print-list-of-pairs-one-line.cp: compiler
+- core-09/deep-recursion-trap.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
