@@ -14,8 +14,17 @@ ROOT = Path(__file__).resolve().parent.parent
 FAKE_GH = """#!/bin/sh
 echo "$*" >>"$FAKE_GH/calls.log"
 case "$1 $2" in
-  "release view") [ -d "$FAKE_GH/releases/$3" ] ;;
+  "release view")
+    [ -d "$FAKE_GH/releases/$3" ] || exit 1
+    case "$*" in *--json*) ls "$FAKE_GH/releases/$3" ;; esac ;;
   "release delete") rm -rf "$FAKE_GH/releases/$3" ;;
+  "release delete-asset") rm "$FAKE_GH/releases/$3/$4" ;;
+  "release edit") ;;
+  "release upload")
+    [ -z "$FAKE_GH_FAIL_UPLOAD" ] || exit 1
+    tag="$3"; shift 3
+    for a in "$@"; do case "$a" in -*) ;; *) cp "$a" "$FAKE_GH/releases/$tag/" ;; esac; done ;;
+  "api -X") ;;
   "release create")
     tag="$3"; shift 3; mkdir -p "$FAKE_GH/releases/$tag"
     for a in "$@"; do case "$a" in -*) break ;; *) cp "$a" "$FAKE_GH/releases/$tag/" ;; esac; done ;;
@@ -65,9 +74,9 @@ class ReleaseScriptsTest(unittest.TestCase):
         self.assertIn("already released", r.stderr)
         self.assertEqual(self.run_script("plan.sh", "nightly").returncode, 2)
 
-    def publish(self, dist, toolchain, tags):
+    def publish(self, dist, toolchain, tags, ok=True):
         r = self.run_script("publish.sh", str(dist), "edge", "0.3.0", "a" * 40, "2026-11-22", toolchain, tags)
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.returncode == 0, ok, r.stderr)
 
     def test_edge_replaces_the_rolling_release_and_leaves_dated_ones(self):
         dist = Path(self.tmp.name) / "dist"
@@ -85,14 +94,32 @@ class ReleaseScriptsTest(unittest.TestCase):
         self.assertFalse((releases / "edge" / "editors.tar.gz.sha256").exists())
 
         (dist / "cpl-x86_64-unknown-linux-musl.tar.gz").write_bytes(b"two")
+        (dist / "editors.tar.gz").unlink()
         self.publish(dist, "edge-2026-11-22-bbbbbbbb", "edge")
         rolling = json.loads((releases / "edge" / "latest.json").read_text())
         self.assertEqual(rolling["toolchain"], "edge-2026-11-22-bbbbbbbb")
         self.assertEqual((releases / "edge" / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"two")
+        self.assertFalse((releases / "edge" / "editors.tar.gz").exists())
         self.assertEqual((releases / "edge-2026-11-22" / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"one")
         calls = (self.gh / "calls.log").read_text().splitlines()
         self.assertEqual(sum(c.startswith("release create edge-2026-11-22 ") for c in calls), 1)
-        self.assertIn("release delete edge --cleanup-tag --yes", calls)
+        self.assertFalse([c for c in calls if c.startswith("release delete edge")])
+        self.assertIn(f"api -X PATCH repos/{{owner}}/{{repo}}/git/refs/tags/edge -f sha={'a' * 40} -F force=true", calls)
+        uploads = [c for c in calls if c.startswith("release upload edge ")]
+        self.assertIn("latest.json", uploads[-1])
+        self.assertNotIn("latest.json", uploads[-2])
+
+    def test_a_failed_edge_upload_leaves_the_old_edge_installable(self):
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        (dist / "cpl-x86_64-unknown-linux-musl.tar.gz").write_bytes(b"one")
+        self.publish(dist, "edge-2026-11-22-aaaaaaaa", "edge")
+        (dist / "cpl-x86_64-unknown-linux-musl.tar.gz").write_bytes(b"two")
+        self.env["FAKE_GH_FAIL_UPLOAD"] = "1"
+        self.publish(dist, "edge-2026-11-22-bbbbbbbb", "edge", ok=False)
+        edge = self.gh / "releases" / "edge"
+        self.assertEqual(json.loads((edge / "latest.json").read_text())["toolchain"], "edge-2026-11-22-aaaaaaaa")
+        self.assertEqual((edge / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"one")
 
 
 if __name__ == "__main__":

@@ -345,6 +345,24 @@ jobs:
           gh workflow run ci.yml --ref main
           failed
 
+  # Alerts when the rolling edge release can't be installed from; it reports
+  # an outage and never turns main red.
+  edge:
+    name: edge installable (not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: edge/latest.json and its archives download
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          base="https://github.com/$REPO/releases/download/edge"
+          curl -fsSL --retry 3 "$base/latest.json" -o latest.json
+          curl -fsSL --retry 3 "$base/SHA256SUMS" -o SHA256SUMS
+          for a in $(awk '{print $2}' SHA256SUMS); do curl -fsIL --retry 3 -o /dev/null "$base/$a" || { echo "::error::edge is missing $a"; exit 1; }; done
+          echo "edge: $(jq -r .toolchain latest.json), $(wc -l <SHA256SUMS) archives"
+
   # Timing budgets report here and never turn main red (decision 225).
   timing:
     name: wall-clock budgets (not blocking)
