@@ -48,7 +48,7 @@ def is_fix(subj):
 
 def is_perf(sha):
     """A `Domain: perf` commit changes speed, not output."""
-    return re.search(r"^Domain: perf\b", git("log", "-1", "--format=%b", sha).stdout, re.M) is not None
+    return re.search(r"^Domain: perf\b", git("log", "-1", "--format=%b", sha).stdout, re.MULTILINE) is not None
 
 
 def candidates(limit):
