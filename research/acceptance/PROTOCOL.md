@@ -81,10 +81,12 @@ One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
 ## After a run
 1. Add the JSON, run `research/acceptance/blockers.py`, and commit both with the
    run's transcript summary in `runs/<date>-<n>.md`.
-2. Copy the judged solutions to `solutions/<run>/<os>/<id>.cp`, and any draft that exposed a
-   blocker to `solutions/<run>/repro/<id>-<what>.cp`. `regress.py` rebuilds them all with
-   `--judge codeforces` and judges them, so a later change that breaks one shows up; a
-   blocker is marked fixed (`"status": "fixed"` plus a `recheck` note) only once its repro is AC.
+2. Copy the judged solutions to `solutions/<run>/<os>/<id>.cp`. A draft that exposed a
+   blocker goes to `open-repros/<run>/<id>-<what>.cp` while the blocker is open, and moves to
+   `solutions/<run>/repro/` once its fix lands and the draft is AC. CI's `acceptance` job
+   runs `regress.py`, which rebuilds everything under `solutions/` with `--judge codeforces`
+   and judges it, so anything there that is not AC turns main red. A blocker is marked fixed
+   (`"status": "fixed"` plus a `recheck` note) only once its repro is AC.
 3. Append each lane's new or changed rows to its `worklog.md` as a request.
 4. Record the headline (steps passed, minutes per step) in the idioms `metrics.toml`.
 
