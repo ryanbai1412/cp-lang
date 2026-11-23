@@ -71,5 +71,5 @@ target = "/ <= 800000 with 0 of it cpl.wasm; /docs/guides/tour <= 900000"
 [[metric]]
 name = "phone_routes_fit"
 command = "pnpm --dir web phone  # set CDP=<devtools url> to drive a running Chrome"
-today = "10/10 routes fit 390 px, nothing past the right edge"
-target = "10/10"
+today = "12/12 routes fit 390 px, nothing past the right edge"
+target = "every route in web/tests/phone.mjs"
