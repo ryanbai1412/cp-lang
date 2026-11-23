@@ -1,6 +1,7 @@
 name: ci
 on:
-  workflow_dispatch:
+  push:
+    branches: ["devin/*-win-checker-debug"]
 
 permissions:
   contents: read
