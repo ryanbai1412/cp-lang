@@ -1856,6 +1856,7 @@ impl<'a> Lowerer<'a> {
         // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
         // `G: Next<V>`).
         self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
+        self.fn_graph_vertex_domains(&decl.bounds, tpl_mod, &mut inferred);
 
         // Propagate domain param `V` from a bound `Graph<V, E>` (or any struct with a domain param),
         // and arc element type `A` from a bound `next: N` when `N` is a `Graph<V, E>` or fn.
@@ -2047,7 +2048,11 @@ impl<'a> Lowerer<'a> {
                         if let Some(param) = self.one_param(lparams, vertex.as_ref()) {
                             // `peel(v => adj[v])`: with nothing else to say what a
                             // vertex is, it is what the lambda indexes with `v`.
-                            let dom_ty = vertex.or_else(|| self.indexed_by_param(&param, lbody));
+                            let ann = vertex.is_none().then(|| self.annotated_param_ty(expr));
+                            let annotated = matches!(ann, Some(Some(_)));
+                            let dom_ty = vertex
+                                .or(ann.flatten())
+                                .or_else(|| self.indexed_by_param(&param, lbody));
                             if let (Some(Ty::Pos(d)), false) = (&dom_ty, inferred.contains_key("V"))
                             {
                                 if gen_names.iter().any(|g| g == "V") {
@@ -2064,6 +2069,19 @@ impl<'a> Lowerer<'a> {
                                         name.text.clone(),
                                         GenArg::Ty(Ty::Fn(vec![vty], Box::new(ret_ty))),
                                     );
+                                    if annotated {
+                                        self.unify_bounds(
+                                            &decl.bounds,
+                                            tpl_mod,
+                                            &gen_names,
+                                            &mut inferred,
+                                        );
+                                        self.fn_graph_vertex_domains(
+                                            &decl.bounds,
+                                            tpl_mod,
+                                            &mut inferred,
+                                        );
+                                    }
                                 }
                             }
                             continue;
@@ -3136,6 +3154,9 @@ impl<'a> Lowerer<'a> {
                     if let Some((_, fty)) = rfields.iter().find(|(fnm, _)| fnm == field_name) {
                         self.unify_ast_ty(&args[0], fty, tpl_mod, gen_names, env);
                     }
+                }
+                (_, Ty::Fn(ps, _)) if self.fn_meets_trait_over(&name.text, tpl_mod, ps) => {
+                    self.unify_ast_ty(&args[0], &ps[0], tpl_mod, gen_names, env);
                 }
                 (_, concrete_seq)
                     if args.len() == 1

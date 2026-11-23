@@ -27,7 +27,11 @@ impl<'a> Checker<'a> {
 
     /// `grid[p]` or `d[p, q]` with `p, q: Cell = (Row, Col)`: each product
     /// position stands for its factor indices.
+    /// A key the checker could not infer (`[_]K`) takes any indices; lowering checks them.
     pub(crate) fn indexes_by_factors(&mut self, got: &[Ty], index: &[Ty]) -> bool {
+        if index.contains(&Ty::Unknown) {
+            return true;
+        }
         let flat = self.flat_index(got.to_vec());
         flat.len() == index.len()
             && flat

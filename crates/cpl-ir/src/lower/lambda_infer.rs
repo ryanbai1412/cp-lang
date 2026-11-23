@@ -94,4 +94,82 @@ impl<'a> Lowerer<'a> {
             _ => None,
         }
     }
+
+    /// True for a fn `(U) -> …` given where `G: Tr<V, …>` is wanted and the
+    /// trait's method takes a `V` after `self`, as `Next<V>`'s `out(self, u: V)`:
+    /// the fn is that method, so `V` is `U`.
+    pub(super) fn fn_meets_trait_over(&self, name: &str, tpl_mod: ModId, ps: &[Ty]) -> bool {
+        let Some(Sym::Trait(tid)) = self.mod_syms[tpl_mod].get(name) else {
+            return false;
+        };
+        ps.len() == 1
+            && self.traits[*tid]
+                .methods
+                .iter()
+                .any(|m| m.params.len() == 2)
+    }
+
+    /// A fn graph's vertices are what it takes: over `((R, C)) -> …` they are
+    /// the inline product domain `(R, C)`, as in `components::<(R, C)>`, and
+    /// over `(Cell) -> …` they are `Cell`, even where `from:` gave its parts
+    /// tuple first (decision 159).
+    pub(super) fn fn_graph_vertex_domains(
+        &mut self,
+        bounds: &[ast::Bound],
+        tpl_mod: ModId,
+        inferred: &mut GenEnv,
+    ) {
+        for b in bounds {
+            let Some(GenArg::Ty(Ty::Fn(ps, _))) = inferred.get(&b.name.text).cloned() else {
+                continue;
+            };
+            for tr in &b.traits {
+                let ast::TypeKind::Named { name, args } = &tr.kind else {
+                    continue;
+                };
+                let Some(ast::TypeKind::Named {
+                    name: v,
+                    args: vargs,
+                }) = args.first().map(|a| &a.kind)
+                else {
+                    continue;
+                };
+                if !vargs.is_empty() || !self.fn_meets_trait_over(&name.text, tpl_mod, &ps) {
+                    continue;
+                }
+                if !matches!(inferred.get(&v.text), None | Some(GenArg::Ty(Ty::Tuple(_)))) {
+                    continue;
+                }
+                let d = match &ps[0] {
+                    Ty::Pos(d) => *d,
+                    Ty::Tuple(items) => {
+                        let factors = items
+                            .iter()
+                            .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+                            .collect::<Option<Vec<_>>>();
+                        match factors.filter(|f| f.len() > 1) {
+                            Some(factors) => self.intern_anon_product_domain(factors),
+                            None => continue,
+                        }
+                    }
+                    _ => continue,
+                };
+                inferred.insert(v.text.clone(), GenArg::Domain(d));
+            }
+        }
+    }
+
+    /// The type a one-parameter lambda's annotation gives its parameter.
+    pub(super) fn annotated_param_ty(&mut self, arg: &ast::Expr) -> Option<Ty> {
+        let ast::ExprKind::Lambda { param_tys, .. } = &arg.kind else {
+            return None;
+        };
+        let [Some(ann)] = param_tys.as_slice() else {
+            return None;
+        };
+        let saved = self.diags.len();
+        let ty = self.resolve_ty(ann);
+        self.diags.truncate(saved);
+        (ty != Ty::Error).then_some(ty)
+    }
 }
