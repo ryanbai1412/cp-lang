@@ -15,11 +15,11 @@ fn cost(r: Row, c: Col) -> Int:
     total
 
 fn row_turns(r: Row) -> Bool:
-    if let s = r + 1: return cost(s, Col.first!) >= cost(r, Col.first!)
+    if let s = Row.at(r + 1): return cost(s, Col.first!) >= cost(r, Col.first!)
     true
 let r = Row.first_where(r => row_turns(r))!
 fn col_turns(c: Col) -> Bool:
-    if let d = c + 1: return cost(r, d) >= cost(r, c)
+    if let d = Col.at(c + 1): return cost(r, d) >= cost(r, c)
     true
 let c = Col.first_where(c => col_turns(c))!
 let best = cost(r, c)

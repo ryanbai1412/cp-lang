@@ -8,13 +8,13 @@ type Cell = (Row, Col)
 
 fn step(p: Cell, ch: Char) -> ?Cell:
     if ch == '<':
-        if let c = p.1 - 1: return (p.0, c)
+        if let c = Col.at(p.1 - 1): return (p.0, c)
     elif ch == '>':
-        if let c = p.1 + 1: return (p.0, c)
+        if let c = Col.at(p.1 + 1): return (p.0, c)
     elif ch == '^':
-        if let r = p.0 - 1: return (r, p.1)
+        if let r = Row.at(p.0 - 1): return (r, p.1)
     elif ch == 'v':
-        if let r = p.0 + 1: return (r, p.1)
+        if let r = Row.at(p.0 + 1): return (r, p.1)
     None
 
 fn simu(bad: Cell, moves: List<Char>) -> Cell:

@@ -22,7 +22,7 @@ fn random_stops() -> [E]1..=stations:
     at[E.last!] = stations
     at
 let express: [E]1..=stations = read(gen: random_stops)  // Between two express stops, a stop serves the stations from itself up to
-assert all(express[e] < express[f] for e in E if let f = e + 1)
+assert all(express[e] < express[f] for e in E if let f = E.at(e + 1))
 // where the local train runs out of time, and the next stop is best put right
 // after those. Each stop serves no more than the one before it, so the best
 // k - n further stops are simply the k - n that serve the most.
@@ -30,7 +30,7 @@ let spare = k - n
 var reached = 0            // served by the express stops themselves
 var extra: List<Int> = []  // served by each further stop
 for e in E:
-    if let f = e + 1:
+    if let f = E.at(e + 1):
         let from = express[e]
         var at = from  // the next stop of this stretch
         for stop in 0..=spare:

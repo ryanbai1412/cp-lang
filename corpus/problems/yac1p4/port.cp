@@ -21,8 +21,8 @@ for w in worth.rev:
     var next = [Open] _ => Bitset<Lifted>.new()
     for open in Open:
         next[open].union(reach[open].shifted(w))
-        if let more = open + 1: next[open].union(reach[more].shifted(2 * w))
-        if let less = open - 1: next[open].union(reach[less])
+        if let more = Open.at(open + 1): next[open].union(reach[more].shifted(2 * w))
+        if let less = Open.at(open - 1): next[open].union(reach[less])
     reach = next
 
 let totals = reach[Open.first!]

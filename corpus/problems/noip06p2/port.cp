@@ -25,5 +25,5 @@ for i in Item:
                 bundles.push((bundles[t].cost + items[e].price, bundles[t].worth + worth(e)))
         for j in Money.rev:
             for b in bundles:
-                if let rest = j - b.cost: best[j] max= best[rest] + b.worth
+                if let rest = Money.at(j - b.cost): best[j] max= best[rest] + b.worth
 print(best[Money.last!])

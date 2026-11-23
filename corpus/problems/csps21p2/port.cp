@@ -28,13 +28,13 @@ for l in Pos.rev:
                 for i in l..r:
                     if i > l and not ok(s[i], '*'): all_star = false
                 if all_star: wrap[l, r] += 1
-            if let r1 = r - 1:
+            if let r1 = Pos.at(r - 1):
                 for i in l..r:
                     if i == l: continue
                     if i.idx - l.idx - 1 > k: break
                     wrap[l, r] += seq[i, r1]
                     if not ok(s[i], '*'): break
-            if let l1 = l + 1:
+            if let l1 = Pos.at(l + 1):
                 for i in (l..r).rev:
                     if i == l: continue
                     if r.idx - i.idx - 1 > k: break
@@ -43,7 +43,7 @@ for l in Pos.rev:
         for j in l..r:
             if j.idx - l.idx > k: break
             if j > l and not ok(s[j], '*'): break
-            if let j1 = j + 1: star_seq[l, r] += seq[j1, r]
+            if let j1 = Pos.at(j + 1): star_seq[l, r] += seq[j1, r]
         var total = wrap[l, r]
         for i in l..r: total += wrap[l, i] * star_seq[i, r]
         seq[l, r] = total

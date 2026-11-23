@@ -12,8 +12,8 @@ for (a, b) in deals:
     trade[a, b] = true
     trade[b, a] = true
 
-fn cw(c: City) -> City: (c + 1) ?? City.first!
-fn ccw(c: City) -> City: (c - 1) ?? City.last!
+fn cw(c: City) -> City: City.at(c + 1) ?? City.first!
+fn ccw(c: City) -> City: City.at(c - 1) ?? City.last!
 
 // A route that never crosses itself always covers an arc of the circle, and
 // grows it by one city at either end. finish(l, r, at_r): the arc from l
