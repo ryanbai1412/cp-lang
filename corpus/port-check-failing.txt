@@ -19,12 +19,10 @@ ioi05p2
 ioi05p6
 ioi11p2
 ioi13p4
-ioi14p2
 ioi14p6
 ioi18p1
 mccc4j5
 noi07p4
-noi15p2
 noi15p5
 noi21p1
 noi21p3

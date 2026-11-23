@@ -4,7 +4,7 @@
 //
 // Both operations clamp a height to an interval, and clamps compose into a
 // clamp. So this is a range update with no range query: push the clamps
-// down a lazy tree and read each leaf at the end.
+// down a segment tree's range action and read each leaf at the end.
 
 let (n, k): (Int, Int) = read()
 domain Col = 0..n
@@ -18,7 +18,7 @@ let clamps = Action<Int, Clamp>(
     over: max,
 )
 
-var wall = LazySegTree<Col, Int, Clamp>(clamps, [Col] c => 0)
+var wall = SegTree(max, [Col] c => 0, act: clamps)
 for _ in 0..k:
     let (op, l, r, h): (Int, Col, Col, Int) = read()
     wall.apply(l..=r, if op == 1: (lo: h, hi: Int.MAX) else: (lo: 0, hi: h))
