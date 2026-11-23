@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2540 (995 passing). Rules: 566.
+Cases: 2541 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 55 rules, 135 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 55 rules, 136 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 68 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -76,7 +76,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R01: 01-lexical-grammar.md
 
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
-- R01.1.2 [2+ 1-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
+- R01.1.2 [2+ 2-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
 - R01.1.3 [2+ 0-]: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
 - R01.1.4 [1+ 2-]: A source line may end in `\n` or `\r\n` on every platform. The `\r` is part of the line en...
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
@@ -723,7 +723,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0104 Expected indented block: 2 case(s)
 - E0105 Expected type: 2 case(s)
 - E0106 Expected pattern: 1 case(s)
-- E0107 Unexpected token: 8 case(s)
+- E0107 Unexpected token: 9 case(s)
 - E0108 Expected identifier: 1 case(s)
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
