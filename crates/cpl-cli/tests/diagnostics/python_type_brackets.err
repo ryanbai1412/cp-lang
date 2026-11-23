@@ -1,0 +1,15 @@
+error[E0105]: CP Lang writes type arguments in `<>`: `List<...>`, not `List[...]`
+  --> python_type_brackets.cp:1:13
+  |
+1 | let xs: List[Int] = [1]
+  |             ^
+  = help: `[...]` is a list or an index; a type's arguments go in `<>`
+
+error[E0105]: CP Lang spells the type `Map`, not `dict`
+  --> python_type_brackets.cp:2:8
+  |
+2 | let m: dict[str, int] = [:]
+  |        ^^^^
+  = help: built-in types are capitalized: `Int`, `Str`, `List<T>`
+
+python_type_brackets.cp: 2 errors

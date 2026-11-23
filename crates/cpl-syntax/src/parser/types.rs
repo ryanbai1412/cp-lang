@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
                 let mut args = if self.at(T::Lt) {
                     self.type_args()
                 } else {
-                    Vec::new()
+                    self.bracket_type_args(&name.text)
                 };
                 // `Rooted<V>.Pre`: a domain owned by another type.
                 while self.at(T::Dot)
@@ -461,7 +461,7 @@ impl<'a> Parser<'a> {
                 let args = if self.at(T::Lt) {
                     self.type_args()
                 } else {
-                    Vec::new()
+                    self.bracket_type_args(ours)
                 };
                 TypeKind::Named { name, args }
             }
@@ -728,6 +728,40 @@ impl<'a> Parser<'a> {
             "Vec" | "ArrayList" | "Vector" if self.peek_n(1) == T::Lt => Some("List"),
             name => foreign_type(name),
         }
+    }
+
+    /// `List[Int]`, Python's generic brackets: read as `List<Int>`, with
+    /// one error that turns the brackets into `<>`.
+    fn bracket_type_args(&mut self, name: &str) -> Vec<Type> {
+        if !self.at(T::LBracket) || !matches!(name, "List" | "Map" | "Set" | "HashMap" | "HashSet")
+        {
+            return Vec::new();
+        }
+        let open = self.span();
+        self.bump();
+        let mut args = Vec::new();
+        while !self.at(T::RBracket) && !self.at_line_end() {
+            args.push(self.ty());
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        let close = self.span();
+        if !self.eat(T::RBracket) {
+            return args;
+        }
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TYPE,
+            open,
+            format!("CP Lang writes type arguments in `<>`: `{name}<...>`, not `{name}[...]`"),
+        )
+        .with_help("`[...]` is a list or an index; a type's arguments go in `<>`");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "write `<...>`".into(),
+            edits: vec![(open, "<".into()), (close, ">".into())],
+        });
+        self.error(diag);
+        args
     }
 
     /// Parses `where T: Ord, U: Add + Mul` if it is here.

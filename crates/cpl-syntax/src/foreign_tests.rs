@@ -86,3 +86,14 @@ fn a_rust_vec_type_is_one_error_with_list() {
             .is_empty()
     );
 }
+
+#[test]
+fn pythons_type_brackets_are_one_error_with_angles() {
+    let d = parse_file("let xs: List[Int] = [1]\nprint(xs)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
+    assert_eq!(edits, ["<", ">"]);
+    assert!(parse_file("let xs: List<Int> = [1]\nprint(xs[0])\n")
+        .diagnostics
+        .is_empty());
+}
