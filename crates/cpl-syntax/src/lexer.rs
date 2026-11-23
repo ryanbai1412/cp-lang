@@ -137,7 +137,7 @@ impl<'a> Lexer<'a> {
                     if self.openers.is_empty() {
                         if self.last_kind().is_some_and(TokenKind::continues_line) {
                             self.operator_continuation_line(at);
-                        } else {
+                        } else if !self.leading_operator_continues() {
                             self.end_line(at);
                             self.line_start();
                         }
@@ -300,6 +300,46 @@ impl<'a> Lexer<'a> {
             self.end_line(at);
             self.pos = saved;
             self.line_start();
+        }
+    }
+
+    /// R01.2.4: a line indented deeper than the logical line above, which
+    /// does not end in `:`, continues it when it starts with `.`, `??`,
+    /// `and`, `or` or a binary operator. Leaves `pos` after the indentation
+    /// when it continues, and where it was otherwise.
+    fn leading_operator_continues(&mut self) -> bool {
+        use TokenKind::*;
+        if matches!(
+            self.last_kind(),
+            Option::None | Some(Colon | Eq | FatArrow | Newline | Indent | Dedent)
+        ) {
+            return false;
+        }
+        let (saved, tabs) = (self.pos, self.tab_lines.len());
+        let continues = self
+            .measure_indent()
+            .is_some_and(|width| width > self.line_indent && self.line_starts_operator());
+        if !continues {
+            self.pos = saved;
+            self.tab_lines.truncate(tabs);
+        }
+        continues
+    }
+
+    fn line_starts_operator(&self) -> bool {
+        let at = |i: usize| self.peek_at(i);
+        let word = |w: &str| {
+            self.src[self.pos..].starts_with(w)
+                && !at(w.len()).is_ascii_alphanumeric()
+                && at(w.len()) != b'_'
+        };
+        match (at(0), at(1)) {
+            (b'.', b) => b != b'.' && !b.is_ascii_digit(),
+            (b'?', b'?') => true,
+            (b'-', b'>') | (b'=', b'>') => false,
+            (b'=', b'=') | (b'!', b'=') => true,
+            (b'+' | b'-' | b'*' | b'/' | b'%' | b'&' | b'|' | b'^' | b'<' | b'>', _) => true,
+            _ => word("and") || word("or"),
         }
     }
 

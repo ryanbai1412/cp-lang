@@ -60,13 +60,6 @@ print(a.len)
 ",
 };
 
-pub const CONTINUED_LINE: Planned = Planned {
-    feature: "a line continued by an indented line that starts with an operator",
-    see: Some("spec/core/01-lexical-grammar.md §1.2"),
-    now: "wrap the expression in parentheses, inside which it can span lines",
-    example: "let a = 1\n    + 2\nprint(a)\n",
-};
-
 pub const VALUE_BLOCK: Planned = Planned {
     feature: "a value on the indented lines after `=`",
     see: None,
@@ -250,7 +243,6 @@ pub const PLANNED: &[&Planned] = &[
     &LOWER_VARIANT_PATTERN,
     &RECORD_DECL,
     &TRAILING_LAMBDA,
-    &CONTINUED_LINE,
     &VALUE_BLOCK,
     &START_EXCLUSIVE_RANGE,
     &DOMAIN_PARAM,

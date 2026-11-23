@@ -6,17 +6,6 @@ impl<'a> Parser<'a> {
     /// Parses one statement into `out`. An unexpectedly indented run of
     /// lines is reported once and its statements are kept at this level.
     pub(super) fn stmt_into(&mut self, out: &mut Vec<Stmt>) {
-        let continues = |k: TokenKind| {
-            matches!(k, T::Dot | T::QuestionQuestion | T::And | T::Or)
-                || super::expr::BINARY_OPS.contains(&k)
-        };
-        if self.at(T::Indent) && continues(self.peek_n(1)) {
-            let start = self.start();
-            self.skip_indented();
-            let span = self.span_from(start);
-            self.planned(span, &crate::planned::CONTINUED_LINE);
-            return;
-        }
         if self.at(T::Indent) {
             let span = Span::point(self.span().start);
             self.error(

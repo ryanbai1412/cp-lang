@@ -1485,17 +1485,14 @@ let total = a +
     let gen_src = "var xs: List<Int> = []\n    let bad = 1\n";
     assert_eq!(codes(gen_src), vec!["E0006"]);
 
-    // Breaking *before* a binary operator in a condition gives a clear hint.
-    let lead = "if a == 1\n    and b == 2:\n    f()\n";
-    let parsed = parse_file(lead);
-    assert!(
-        parsed.diagnostics.iter().any(|d| d
-            .help
-            .as_deref()
-            .is_some_and(|h| h.contains("wrap it in `(...)`"))),
-        "{:?}",
-        parsed.diagnostics
-    );
+    // R01.2.4: a deeper line that starts with an operator continues the line.
+    let lead = "if a == 1\n    and b == 2:\n    f()\nlet x = a\n    + b\n    .c\n    ?? d\n";
+    assert_eq!(codes(lead), Vec::<&str>::new());
+    assert_eq!(stmts(lead).len(), 2);
+
+    // At the same indent, a leading operator does not continue.
+    let lead = "if a == 1\nand b == 2:\n    f()\n";
+    assert!(!codes(lead).is_empty());
 }
 
 #[test]
