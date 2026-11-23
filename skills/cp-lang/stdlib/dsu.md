@@ -65,16 +65,16 @@ Fields: `up: [V]V`.
 - `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](ParityDsu.undo_to).
 - `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)
 
-## `struct PotentialDsu<V>`
+## `struct PotentialDsu<V, W = Int>`
 
 Weighted (potential / difference-constraint) union-find over domain `V` with `Mark` rollback.
 
-Fields: `up: [V]V`, `pot: [V]Int`, `log: List<(V, Bool)>`.
+Fields: `g: Group<W>`, `up: [V]V`, `pot: [V]W`, `log: List<(V, Bool)>`.
 
-- `fn new<G>(op: ?G = None) -> PotentialDsu<V>` — \(O(n)\); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
-- `fn find(self, v: V) -> (root: V, offset: Int)` — \(O(\log n)\); The representative of `v`'s set and `val[v] - val[root]`.
-- `fn unite(mut self, a: V, b: V, w: Int) -> Bool` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == w`.
-- `fn diff(self, a: V, b: V) -> ?Int` — \(O(\log n)\); `val[b] - val[a]` when `a` and `b` are in the same set, else `None`.
+- `fn new<G>(op: G = (+)) -> PotentialDsu<V, W>` — \(O(n)\); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
+- `fn find(self, v: V) -> (root: V, offset: W)` — \(O(\log n)\); The representative of `v`'s set and `val[v] - val[root]`.
+- `fn unite(mut self, a: V, b: V, diff: W) -> Bool` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == diff`.
+- `fn diff(self, a: V, b: V) -> ?W` — \(O(\log n)\); `val[b] - val[a]` when `a` and `b` are in the same set, else `None`.
 - `fn same(self, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `a` and `b` are in the same set, so that their difference is known.
 - `fn size(self, v: V) -> Int` — \(O(\log n)\); The number of positions in `v`'s set, `v` included.
 - `@get fn components(self) -> Int` — \(O(1)\); The number of sets.
