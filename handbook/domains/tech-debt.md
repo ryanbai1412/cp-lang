@@ -144,7 +144,7 @@ means no real check exists yet. Targets and current numbers are in
 | Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |
 | Every feature works in every tool | Syntax forms that some tool's suite never runs | Generated form-by-tool matrix (compiler-changes/R12); std items not yet in it | `crates/cpl-cli/tests/tool_matrix.rs` |
 | Every builtin with two engine paths agrees at its edges | Built-in members that disagree between the interpreter and sanitized C++ on empty, extreme or repeated values | Generated differential cases from the member catalog; known bugs in `KNOWN_EDGE_DIFFERS` | `crates/cpl-cli/tests/differential.rs` (`builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges`) |
-| Stdlib privilege gone, not hidden | Std items that compile only because the compiler knows their name | Re-architecture: build std as a user library in a test | `missing` |
+| Stdlib privilege gone, not hidden | Std names the compiler, backend or lints match by string | Shrink-only ratchets now (compiler-changes/R1); re-architecture target: std builds as a user library | `ir_builtin_names`, `prelude_privilege`, `backend_std_names`, `lint_std_names` |
 | Facts are generated, not written twice | Hand-written lists (lints, crates, metrics, std items) that a generator could produce | Ratchet with a detector | `missing` |
 | Generated files are fresh | Committed generated files that differ from regenerating them | Regenerate and diff in the gate | `scripts/regen.sh` |
 | Decisions stay findable | Decision numbers used twice | Ratchet | `scripts/debt-ratchet.py` (`decision_dup_numbers`) |
@@ -152,7 +152,7 @@ means no real check exists yet. Targets and current numbers are in
 | No unfinished std | Std functions whose body is a stub | Ratchet | `scripts/debt-ratchet.py` (`stdlib_todo`) |
 | Dead code is deleted | `allow(dead_code)` attributes; items no caller reaches are not yet counted | Ratchet | `scripts/debt-ratchet.py` (`dead_code_allows`) |
 | Suites cover the code they own | Line and branch coverage per crate | Coverage matrix | `missing` |
-| Tests are deterministic | Tests that pass and fail on the same tree | Rerun-on-fail detector | `missing` |
+| Tests are deterministic | Tests that pass and fail on the same tree | Rerun-on-fail detector: every red main test is rerun at the failing commit and reported flaky if it passes; reported, not yet counted | `scripts/culprit.py`, `.github/workflows/culprit.yml` |
 | Few, vetted third-party crates | Third-party packages in `Cargo.lock` | Ratchet: a new one fails the gate until `--update` and a `decisions.md` line | `scripts/debt-ratchet.py` (`external_crates`) |
 | An everyday change touches one obvious place | Files, crates and minutes for a cold agent on a fixed change | Process: cold change-cost probes | process |
 | Landed diffs add no new debt | Duplicates, special cases, single-use helpers per review | Process: hourly review of landed diffs | process |
