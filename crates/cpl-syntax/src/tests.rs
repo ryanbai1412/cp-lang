@@ -1263,6 +1263,10 @@ fn removed_spellings_say_what_replaces_them() {
         ("if a: print(1)\nelse if b: print(2)\n", "elif"),
         ("@memo(hash)\nfn f(x: Int) -> Int = x\n", "bare `@memo`"),
         (
+            "@allow(float_equality)\nfn f(x: F64) -> Bool = x == 0.5\n",
+            "with lint(float_equality: allow)",
+        ),
+        (
             "@multitest(count: 3)\nfn solve(): print(1)\n",
             "for _ in 0..tests",
         ),

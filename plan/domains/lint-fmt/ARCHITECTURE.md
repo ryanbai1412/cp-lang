@@ -103,8 +103,6 @@ The `Proven*` API is the checker's job living in the wrong crate; it moves to
 - **One file per family.** `rules/taste/mod.rs` is still 1,890 lines of
   independent sequence matchers; a new idiom family gets its own file under
   `rules/taste/`.
-- **Two spellings of allow.** `@allow(name)` and `with lint(name: allow)` both
-  work (`src/lib.rs`); the spec keeps only `with lint`.
 - **Codemods in the linter.** `cpl fix`'s removed-syntax rewrites live in
   `src/lib.rs`, not in a migration module.
 - **Fmt cannot reorder.** Sorted `use` lines and the line-1 stamp

@@ -1,7 +1,7 @@
 //! The lints the checker emits, the 0.3 table of `spec/diagnostics.md`.
 //! The checker finds them and `cpl-diag` explains them; this table only
-//! names them, so `cp.toml [lints]`, `with lint(name: allow)` and
-//! `@allow(name)` set their level and `cpl lint` reports them.
+//! names them, so `cp.toml [lints]` and `with lint(name: allow)` set
+//! their level and `cpl lint` reports them.
 
 use crate::{with_parsed, Allows, Config, Level};
 use cpl_diag::{Code, Diagnostic, Severity};
@@ -39,7 +39,7 @@ pub(crate) fn checker_lint_named(name: &str) -> Option<&'static CheckerLint> {
 }
 
 /// The checker's lints on `src`, at the levels `config` and the file's own
-/// `with lint(...)` and `@allow(...)` set. Empty when `src` does not parse.
+/// `with lint(...)` sets. Empty when `src` does not parse.
 pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Diagnostic> {
     checked(path, src, config).lints
 }

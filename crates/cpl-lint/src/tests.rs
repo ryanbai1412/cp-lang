@@ -325,26 +325,26 @@ fn bounds_follow_consts_and_arithmetic() {
 }
 
 #[test]
-fn allow_covers_the_item_it_decorates_and_nothing_else() {
-    let src = "@allow(var_never_reassigned)\nvar a = 1\nvar b = 2\nprint(a, b)\n";
+fn a_lint_context_covers_what_follows_it_and_nothing_else() {
+    let src = "var b = 2\nwith lint(var_never_reassigned: allow)\nvar a = 1\nprint(a, b)\n";
     let found = only(src);
     assert_eq!(found.span.text(src), "var");
     assert_eq!(found.message, "`b` is declared `var` but never changed");
-    // On a fn it covers the whole body.
-    let body = "let n = 1\n@allow(shadows_top_level)\nfn f(n: Int):\n    for n in 0..3:\n        print(n)\nf(n)\n";
+    // As the first line of a fn it covers the whole body.
+    let body = "let n = 1\nfn f(n: Int):\n    with lint(shadows_top_level: allow)\n    for n in 0..3:\n        print(n)\nf(n)\n";
     assert_eq!(codes(body), Vec::<&str>::new());
 }
 
 #[test]
 fn an_unknown_lint_name_is_reported_with_the_closest_one() {
-    let found = only("@allow(float_equalty)\nlet x = 1\nprint(x)\n");
+    let found = only("with lint(float_equalty: allow)\nlet x = 1\nprint(x)\n");
     assert_eq!(found.code, UNKNOWN_LINT.code);
     assert_eq!(found.message, "there is no lint called `float_equalty`");
     assert_eq!(
         found.help.as_deref(),
         Some("did you mean `float_equality`?")
     );
-    let far = only("@allow(zzz)\nlet x = 1\nprint(x)\n");
+    let far = only("with lint(zzz: allow)\nlet x = 1\nprint(x)\n");
     assert_eq!(
         far.help.as_deref(),
         Some("`cpl lint --list` prints every lint")

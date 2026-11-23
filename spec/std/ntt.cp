@@ -273,7 +273,6 @@ pub const subset = Disjoint()
 /// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: lcm) == [0, 1, 3, 3]`
 /// example: `convolve([0, 1, 3], [0, 2, 5], over: Semiring(min, +), shape: Both) == [0, 1, 3, 5, 8]`
 /// example: `let e: List<Int> = []; convolve([1, 2], e) == []`
-@allow(unproven_list_index)
 pub fn convolve<T, O, R>(
     a: List<T>,
     b: List<T>,
@@ -282,6 +281,7 @@ pub fn convolve<T, O, R>(
     shape: ?Curved = None,
     cyclic: Bool = false,
 ) -> List<T>:
+    with lint(unproven_list_index: allow)
     let na = a.len
     let nb = b.len
     if cyclic:
@@ -509,8 +509,8 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     assert a[0] == Mod<P>(1), "subset_log needs `a[0] == 1`"
     ranked(a, false)
 
-@allow(unproven_list_index)
 fn add_block<P>(mut c: List<Mod<P>>, x: List<Mod<P>>, xs: Int, y: List<Mod<P>>, ys: Int, w: Int, at: Int):
+    with lint(unproven_list_index: allow)
     let ylen = min(w, y.len - ys)
     if ylen <= 0: return
     let xa = [x[xs + t] for t in 0..w]
@@ -522,8 +522,8 @@ fn add_block<P>(mut c: List<Mod<P>>, x: List<Mod<P>>, xs: Int, y: List<Mod<P>>, 
         for t in 0..prod.len:
             if base + t >= at: c[base + t] = c[base + t] + prod[t]
 
-@allow(unproven_list_index)
 fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let n = a.len + b.len - 1
     if min(a.len, b.len) <= 32:
@@ -546,8 +546,8 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     fa.truncate(n)
     fa
 
-@allow(unproven_list_index)
 fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
+    with lint(unproven_list_index: allow)
     let n = a.len
     let k = ctz(n)
     var f = List.filled((k + 1) * n, Mod<P>(0))

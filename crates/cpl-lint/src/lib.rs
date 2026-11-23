@@ -11,8 +11,8 @@
 //! ```
 //!
 //! [`lint`] is the whole interface: source and a [`Config`] in, diagnostics
-//! out. Levels come from `[lints]` in `cp.toml` and from `@allow(name)` on
-//! an item.
+//! out. Levels come from `[lints]` in `cp.toml` and from
+//! `with lint(name: allow)`.
 
 /// Where std lives, relative to the repository root: the one place
 /// `cpl-lint` names it.
@@ -84,7 +84,7 @@ impl Level {
     }
 }
 
-/// One lint: its stable code, the name `@allow` and `cp.toml` use, and
+/// One lint: its stable code, the name `with lint` and `cp.toml` use, and
 /// what it looks for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Lint {
@@ -138,7 +138,7 @@ pub const UNKNOWN_LINT: Lint = lint!(
     unknown_lint,
     Warn,
     "Unknown lint name",
-    "`@allow` or `cp.toml` names a lint that does not exist",
+    "`with lint` or `cp.toml` names a lint that does not exist",
 );
 pub const POSITION_ARITHMETIC: Lint = lint!(
     "L0101",
@@ -786,50 +786,22 @@ impl Fns {
     }
 }
 
-/// The `@allow(name)` decorators of a file.
+/// The `with lint(name: allow)` contexts of a file.
 struct Allows {
-    /// The statement each one covers and the lint it turns off.
+    /// The span each one covers and the lint it turns off.
     regions: Vec<(Span, &'static str)>,
     unknown: Vec<Finding>,
 }
 
 impl Allows {
     fn collect(file: &File) -> Allows {
-        struct Collector {
-            base: u32,
-            out: Allows,
-        }
-        impl Visitor for Collector {
-            fn stmt(&mut self, stmt: &Stmt) {
-                for decorator in stmt.decorators.iter().filter(|d| d.name.text == "allow") {
-                    // A decorator sits above the statement it covers.
-                    let covered = stmt.span.to(decorator.span).shift(self.base);
-                    for arg in &decorator.args {
-                        let ExprKind::Name(name) = &arg.value.kind else {
-                            continue;
-                        };
-                        match any_lint_named(name) {
-                            Some(name) => self.out.regions.push((covered, name)),
-                            None => self
-                                .out
-                                .unknown
-                                .push(unknown_lint(name, arg.value.span.shift(self.base))),
-                        }
-                    }
-                }
-            }
-        }
-        let mut collector = Collector {
-            base: 0,
-            out: Allows {
-                regions: Vec::new(),
-                unknown: Vec::new(),
-            },
+        let mut out = Allows {
+            regions: Vec::new(),
+            unknown: Vec::new(),
         };
-        file.walk(&mut collector, |c, base| c.base = base);
         let mut contexts = Contexts {
             base: 0,
-            out: &mut collector.out,
+            out: &mut out,
         };
         let mut leading = Vec::new();
         for (base, stmt) in file.top_level() {
@@ -845,7 +817,7 @@ impl Allows {
             let start = stmt.span.shift(base).start;
             contexts.allow(stmt, Span::new(start, u32::MAX));
         }
-        collector.out
+        out
     }
 }
 

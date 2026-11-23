@@ -1083,8 +1083,8 @@ pub struct DynamicOrderTree<D, T>:
 pub struct MergeSeg<D>:
     heap: List<D>
 
-    @allow(unproven_list_index)
     fn push_raw(mut self, x: D):
+        with lint(unproven_list_index: allow)
         heap.push(x)
         var i = heap.len - 1
         while i > 0:
@@ -1097,8 +1097,8 @@ pub struct MergeSeg<D>:
             else:
                 break
 
-    @allow(unproven_list_index)
     fn pop_min(mut self):
+        with lint(unproven_list_index: allow)
         let n = heap.len
         if n <= 1:
             heap.clear()
@@ -1151,8 +1151,8 @@ pub struct MergeSeg<D>:
     /// traps: never
     /// example: `var m = MergeSeg<0..10>.singleton(3).merge(MergeSeg<0..10>.singleton(7)); m.first_alive(x => x > 5) == Some(7)`
     /// example: `var m = MergeSeg<0..10>.singleton(3).merge(MergeSeg<0..10>.singleton(7)); m.first_alive(x => x > 5); m.first_alive(x => true) == Some(7)`
-    @allow(unproven_list_index)
     pub fn first_alive(mut self, alive: D -> Bool) -> ?D:
+        with lint(unproven_list_index: allow)
         while heap.len > 0:
             let x = heap[0]
             if alive(x): return Some(x)

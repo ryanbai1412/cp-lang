@@ -280,12 +280,12 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// traps: when `best` returns a position outside the range it was given
 /// example: `let a = [3, 1, 2]; split_best([0..3], range: g => g, best: (_, r) => r.map(i => (a[i], i)).max()!).collect() == [3, 2, 1]`
 /// example: `split_best([0..0], range: g => g, best: (_, r) => (0, r.start)).collect() == []`
-@allow(unproven_list_index)
 pub fn split_best<G, D, T: Ord>(
     groups: Seq<G>,
     range: G -> Range<D>,
     best: (G, Range<D>) -> (T, D),
 ) -> yields T:
+    with lint(unproven_list_index: allow)
     var g_list: List<G> = []
     var r_list: List<Range<D>> = []
     var p_list: List<D> = []

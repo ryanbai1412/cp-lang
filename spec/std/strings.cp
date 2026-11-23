@@ -12,7 +12,6 @@ pub fn repeat(self: Str, n: Int) -> Str:
     assert n >= 0, "`repeat` needs a count of 0 or more"
     Str(self[i % self.len] for i in 0..n * self.len)
 
-@allow(unproven_list_index)
 /// True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test):
 /// the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they
 /// run past the end. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); `at`
@@ -25,13 +24,13 @@ pub fn repeat(self: Str, n: Int) -> Str:
 /// example: `"banana".starts_with("nan", at: 2) == true`
 /// example: `[1, 2, 3].starts_with([2]) == false`
 pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool:
+    with lint(unproven_list_index: allow)
     assert 0 <= at and at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
     if at + pat.len > self.len: return false
     for i in 0..pat.len:
         if self.nth(at + i) != pat.nth(i): return false
     true
 
-@allow(unproven_list_index)
 /// True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of
 /// `pat` in order. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); only the
 /// values are compared, never the keys.
@@ -42,6 +41,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// example: `[1, 2, 3].ends_with([2, 3]) == true`
 /// example: `"banana".ends_with("nab") == false`
 pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
+    with lint(unproven_list_index: allow)
     let d = self.len - pat.len
     if d < 0: return false
     for i in 0..pat.len:
@@ -375,7 +375,6 @@ pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
 /// example: `"3 4".parse<Int>() == None`
 pub fn parse<T: Read>(self: Str) -> ?T = todo
 
-@allow(unproven_list_index)
 /// The Z-array of `s`: `z[i]` is the length of the longest common prefix of `s` and the
 /// suffix starting at `i`; `z` at the first key is `s.len`.
 ///
@@ -388,6 +387,7 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 /// traps: never
 /// example: `z_function("aabxaab") == [7, 1, 0, 0, 3, 1, 0]`
 pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
+    with lint(unproven_list_index: allow)
     let n = s.len
     var z = List.filled(n, 0)
     if n > 0: z[0] = n
@@ -401,7 +401,6 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
             r = i + z[i]
     z.rekey(s.keys)
 
-@allow(unproven_list_index)
 /// The prefix function (failure function) of `s`: `p[i]` is the length of the longest
 /// proper prefix of `s` up to and including `i` that is also a suffix of it.
 ///
@@ -412,7 +411,9 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
-pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = failure_lengths(s).rekey(s.keys)
+pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
+    with lint(unproven_list_index: allow)
+    return failure_lengths(s).rekey(s.keys)
 
 fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
@@ -423,7 +424,6 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
         p[i] = k
     p
 
-@allow(unproven_list_index)
 /// The start key of every occurrence of `pat` in `self`, overlapping ones included
 /// (Knuth-Morris-Pratt).
 ///
@@ -438,6 +438,7 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
 /// example: `"aaaa".find_all("aa").collect() == [0, 1, 2]`
 /// example: `"ab".find_all("").collect() == [0, 1, 2]`
 pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
+    with lint(unproven_list_index: allow)
     if pat.is_empty:
         for k in self.keys: yield k
         yield self.keys.end
@@ -451,7 +452,6 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
             yield self.keys.nth(i + 1 - k)
             k = p[k - 1]
 
-@allow(unproven_list_index)
 /// The length of the longest common prefix of `self` and `other`, comparing values in order
 /// from the first key of each. Works on any `Indexed` pair.
 ///
@@ -460,12 +460,12 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
 /// traps: never
 /// example: `"abcd".common_prefix_len("abxd") == 2`
 pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+    with lint(unproven_list_index: allow)
     let lim = min(self.len, other.len)
     var i = 0
     while i < lim and self.nth(i) == other.nth(i): i += 1
     i
 
-@allow(unproven_list_index)
 /// The length of the longest common suffix of `self` and `other`, comparing values in order
 /// from the last key of each. Works on any `Indexed` pair.
 ///
@@ -474,6 +474,7 @@ pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// traps: never
 /// example: `"xbcd".common_suffix_len("abcd") == 3`
 pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+    with lint(unproven_list_index: allow)
     let (na, nb) = (self.len, other.len)
     let lim = min(na, nb)
     var i = 0
@@ -491,7 +492,6 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// example: `period("abc") == 3`
 pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_lengths(s).last
 
-@allow(unproven_list_index)
 /// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence.
 ///
 /// cost: O(n)
@@ -500,12 +500,12 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 /// example: `is_palindrome("abba") == true`
 /// example: `is_palindrome([1, 2]) == false`
 pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
+    with lint(unproven_list_index: allow)
     let n = s.len
     for i in 0..n / 2:
         if s.nth(i) != s.nth(n - 1 - i): return false
     true
 
-@allow(unproven_list_index)
 /// The length of every non-empty proper border of `s` (a prefix that is also a suffix,
 /// shorter than `s`). Works on any `Indexed` sequence.
 ///
@@ -516,6 +516,7 @@ pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
 /// example: `borders("abacaba").collect() == [3, 1]`
 /// example: `borders("aaa").collect() == [2, 1]`
 pub fn borders<S: Indexed>(s: S) -> yields Int:
+    with lint(unproven_list_index: allow)
     if s.is_empty: return
     let pi = failure_lengths(s)
     var k = pi[s.len - 1]
@@ -523,7 +524,6 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
         yield k
         k = pi[k - 1]
 
-@allow(unproven_list_index)
 /// For each key `i` of `self`, the length of the longest prefix of `pat` that ends at `i`
 /// (the KMP matcher's state after reading `self[i]`).
 ///
@@ -536,6 +536,7 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
 /// traps: never
 /// example: `"abab".prefix_matches("ab") == [1, 2, 1, 2]`
 pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int:
+    with lint(unproven_list_index: allow)
     var res = List.filled(self.len, 0)
     if pat.is_empty: return res.rekey(self.keys)
     let p = failure_lengths(pat)
@@ -547,7 +548,6 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
         res[i] = k
     res.rekey(self.keys)
 
-@allow(unproven_list_index)
 /// The length of the longest suffix of `a` that is also a prefix of `b`, at most
 /// `min(|a|, |b|)`; how far `b` can slide onto the end of `a`.
 ///
@@ -557,6 +557,7 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 /// example: `overlap("abcab", "abd") == 2`
 /// example: `overlap("abc", "abc") == 3`
 pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
+    with lint(unproven_list_index: allow)
     let keep = min(a.len, b.len)
     if keep == 0: return 0
     let pi = failure_lengths([b.nth(i) for i in 0..keep])
@@ -566,7 +567,6 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
         if a.nth(i) == b.nth(k): k += 1
     k
 
-@allow(unproven_list_index)
 /// The start key of each factor of the Lyndon factorization of `s` (Duval): the unique way
 /// to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
 ///
@@ -576,6 +576,7 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
 /// traps: never
 /// example: `lyndon_factorization("banana") == [0, 1, 3, 5]`
 pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>:
+    with lint(unproven_list_index: allow)
     let n = s.len
     var starts: List<K> = []
     var i = 0
@@ -592,7 +593,6 @@ pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>:
                 i += step
     starts
 
-@allow(unproven_list_index)
 /// The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
 ///
 /// cost: O(n)
@@ -602,6 +602,7 @@ pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>:
 /// example: `min_rotation("baca") == Some(3)`
 /// example: `min_rotation("abab") == Some(0)`
 pub fn min_rotation<S: Indexed, K>(s: S) -> ?K:
+    with lint(unproven_list_index: allow)
     let n = s.len
     if n == 0: return None
     var (a, b) = (0, 1)
@@ -660,8 +661,8 @@ pub struct KmpAutomaton<A>:
     /// empty: an empty `pat` gives one state, `0`, which matches everywhere
     /// traps: when an element of `pat` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").len == 4`
-    @allow(unproven_list_index)
     pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A>:
+        with lint(unproven_list_index: allow)
         let k = A.K
         var p: List<Int> = []
         for a in pat:
@@ -699,8 +700,8 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.step(3, 'b') == 2 and k.step(0, 'b') == 0`
-    @allow(unproven_list_index)
     pub fn step(self, state: Int, a: A) -> Int:
+        with lint(unproven_list_index: allow)
         assert 0 <= state and state < pi.len, "KmpAutomaton.step: state out of range"
         let c = a.to_idx
         assert 0 <= c and c < alpha, "KmpAutomaton.step: character outside alphabet"
@@ -712,8 +713,8 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.link(3) == 1 and k.link(2) == 0`
-    @allow(unproven_list_index)
     pub fn link(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
         assert 0 <= state and state < pi.len, "KmpAutomaton.link: state out of range"
         pi[state]
 
@@ -726,8 +727,8 @@ pub struct KmpAutomaton<A>:
     /// order: increasing start
     /// traps: when an element of `text` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").find_all("ababa").collect() == [0, 2]`
-    @allow(unproven_list_index)
     pub fn find_all<S: Seq>(self, text: S) -> yields Int:
+        with lint(unproven_list_index: allow)
         let m = pi.len - 1
         if m == 0:
             var pos = 0
@@ -804,17 +805,16 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// example: `manacher("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = odd.is_empty
 
-    @allow(unproven_list_index)
     /// The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.
     ///
     /// cost: O(1)
     /// traps: when `i` is outside `0..self.len`
     /// example: `manacher("abacaba").longest_at(3) == 7`
     pub fn longest_at(self, i: Int) -> Int:
+        with lint(unproven_list_index: allow)
         assert 0 <= i and i < odd.len, "`longest_at(i)` needs `0 <= i < len`"
         2 * odd[i] - 1
 
-    @allow(unproven_list_index)
     /// The length of the longest even-length palindrome centred on the cut `i` (between
     /// positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.
     ///
@@ -822,6 +822,7 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// traps: when `i` is outside `0..=self.len`
     /// example: `manacher("abba").longest_between(2) == 4`
     pub fn longest_between(self, i: Int) -> Int:
+        with lint(unproven_list_index: allow)
         assert 0 <= i and i <= odd.len, "`longest_between(i)` needs `0 <= i <= len`"
         if i == odd.len: 0 else: 2 * even[i]
 
@@ -873,7 +874,6 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
                     best_r = i + even[i]
         (l: best_l, r: best_r)
 
-@allow(unproven_list_index)
 /// The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with
 /// `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]`
 /// one. Works on any `Indexed` sequence; positions count from 0.
@@ -884,6 +884,7 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
 /// example: `manacher("abba").count() == 6`
 /// example: `manacher("aba").odd == [1, 2, 1]`
 pub fn manacher<S: Indexed>(s: S) -> Palindromes:
+    with lint(unproven_list_index: allow)
     let n = s.len
     var odd = List.filled(n, 0)
     var even = List.filled(n, 0)
@@ -944,8 +945,8 @@ fn induced_sort(
                 bkt[c] -= 1
                 sa[bkt[c]] = p
 
-@allow(unproven_list_index)
 fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
+    with lint(unproven_list_index: allow)
     let n = vec.len
     var sa = List.filled(n, 0)
     if n <= 1: return sa
@@ -1002,8 +1003,8 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     induced_sort(vec, counts, is_l, sorted_lms, mut sa)
     sa
 
-@allow(unproven_list_index)
 fn sa_order<S: Indexed>(s: S) -> List<Int>:
+    with lint(unproven_list_index: allow)
     let n = s.len
     if n <= 1: return [i for i in 0..n]
     var vec = List.filled(n + 1, 0)
@@ -1155,8 +1156,8 @@ pub struct SuffixArray:
     /// traps: never
     /// example: `SuffixArray("banana").rank_range("ana") == 1..3`
     /// example: `SuffixArray("banana").rank_range("c") == 4..4`
-    @allow(unproven_list_index)
     pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>:
+        with lint(unproven_list_index: allow)
         let n = sa.len
         let m = pat.len
         if m == 0: return 0..n
@@ -1196,8 +1197,8 @@ pub struct SuffixArray:
     /// order: suffix-array order (by rank), not by position
     /// traps: never
     /// example: `SuffixArray("banana").find_all("ana").collect() == [3, 1]`
-    @allow(unproven_list_index)
     pub fn find_all<P: Indexed>(self, pat: P) -> yields Int:
+        with lint(unproven_list_index: allow)
         for r in self.rank_range(pat): yield sa[r]
 
     /// The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
@@ -1246,8 +1247,8 @@ pub struct SuffixArray:
         if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
         if rank[l1] < rank[l2]: -1 else: 1
 
-    @allow(unproven_list_index)
     fn arg_min(self, lo: Int, hi: Int) -> Int:
+        with lint(unproven_list_index: allow)
         let b = log[hi - lo]
         let m = lcp.len
         let x = rmq[b * m + lo]
@@ -1338,8 +1339,8 @@ pub struct SuffixTreeEdge(
 /// order: bottom-up: each edge comes after every edge below it, subtrees in rank order
 /// traps: never
 /// example: `suffix_tree_edges("aa") == [SuffixTreeEdge(0, 1, 1, 1, 1..2), SuffixTreeEdge(1, 2, 0, 1, 0..2)]`
-@allow(unproven_list_index)
 pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
+    with lint(unproven_list_index: allow)
     let n = s.len
     if n == 0: return []
     let sa_obj = SuffixArray.new(s)
@@ -1373,7 +1374,6 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
                 st_sum.push(bottom)
     out
 
-@allow(unproven_list_index)
 /// Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)`
 /// is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that
 /// cannot be extended left or right with the same period. Positions count from 0.
@@ -1385,6 +1385,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
 /// example: `lyndon_runs("aabaab") == [(0, 2, 1), (0, 6, 3), (3, 5, 1)]`
 /// example: `lyndon_runs("abc") == []`
 pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
+    with lint(unproven_list_index: allow)
     let n = s.len
     if n < 2: return []
     let fwd = [s.nth(i) for i in 0..n]
@@ -1453,7 +1454,6 @@ pub struct RollingHash:
     pow1: List<Int>
     pow2: List<Int>
 
-    @allow(unproven_list_index)
     /// A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.
     ///
     /// Modulo `M1 = 1_000_000_007` with base `b1` and `M2 = 1_000_000_009` with base `b2`, the
@@ -1466,6 +1466,7 @@ pub struct RollingHash:
     /// traps: when a given base is outside `2..M`
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
     pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
+        with lint(unproven_list_index: allow)
         let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         let n = seq.len
         var p1 = List.filled(n + 1, 0)
@@ -1569,8 +1570,8 @@ pub struct RollingHash:
     /// example: `let h = RollingHash("abc"); h.all == h.get(0..3)`
     @get pub fn all(self) -> HashVal = self.slice(0, p1.len - 1)
 
-    @allow(unproven_list_index)
     fn raw_slice(self, l: Int, r: Int) -> HashVal:
+        with lint(unproven_list_index: allow)
         let d = r - l
         unchecked:
             return HashVal(
@@ -1579,8 +1580,8 @@ pub struct RollingHash:
             )
         HashVal(0, 0)
 
-    @allow(unproven_list_index)
     fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
+        with lint(unproven_list_index: allow)
         unchecked:
             if ((p1[a + len] - p1[b + len]) - (p1[a] - p1[b]) * pow1[len]) % 1_000_000_007 != 0:
                 return false
@@ -1682,7 +1683,6 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     pow_r2: List<Int>
     pow_c2: List<Int>
 
-    @allow(unproven_list_index)
     /// A 2D polynomial prefix hash of the grid whose cell `(r, c)` has the token `code(r, c)`,
     /// for every `r` in `R` and `c` in `C`; call it as `Hash2D<R, C>(code)`.
     ///
@@ -1694,6 +1694,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// traps: when a given base is outside `2..M`
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => c.to_idx % 2); h.rect(R(0)..=R(1), C(0)..=C(1)) == h.rect(R(0)..=R(1), C(2)..=C(3))`
     pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>:
+        with lint(unproven_list_index: allow)
         let (br1, bc1) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         let br2 = (br1 ^ 324508639) % (RH_M2 - 2) + 2
         let bc2 = (bc1 ^ 715827883) % (RH_M2 - 2) + 2
@@ -1734,7 +1735,6 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
                 pow_c2[j + 1] = pow_c2[j] * bc2 % RH_M2
         Hash2D((br1, bc1), stride, pre1, pre2, pow_r1, pow_c1, pow_r2, pow_c2)
 
-    @allow(unproven_list_index)
     /// The hash of the rectangle `rows` x `cols`; equal rectangles of equal shape hash equal.
     /// A rectangle with no rows or no columns hashes to `HashVal(0, 0)`.
     ///
@@ -1743,6 +1743,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// traps: never (the ranges are typed by `R` and `C`)
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.to_idx); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
+        with lint(unproven_list_index: allow)
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
         let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
         assert (0 <= r1 and r1 <= r2 and r2 < pow_r1.len)
@@ -1799,8 +1800,8 @@ pub struct RollingHash61:
     /// empty: an empty hash; `push` can grow it
     /// traps: when a given base is outside `2..2^61 - 1`
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..4)`
-    @allow(unproven_list_index)
     pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61:
+        with lint(unproven_list_index: allow)
         let b = base ?? U64(rand(1 << 20, 1 << 29))
         assert U64(2) <= b and b < RH61_MOD, "RollingHash61: base must be in 2..2^61 - 1"
         var pre: List<U64> = [U64(0)]
@@ -1829,8 +1830,8 @@ pub struct RollingHash61:
     /// example: `RollingHash61("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = pre.len == 1
 
-    @allow(unproven_list_index)
     fn slice61(self, l: Int, r: Int) -> Hash61:
+        with lint(unproven_list_index: allow)
         assert 0 <= l and l <= r and r <= pre.len - 1, "RollingHash61: range out of bounds"
         if l == r: return Hash61(U64(0))
         Hash61(rh61_sub(pre[r], rh61_mul(pre[l], pow[r - l])))
@@ -1858,8 +1859,8 @@ pub struct RollingHash61:
     /// cost: O(1) amortized (the power table grows past `len` on demand)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash61("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    @allow(unproven_list_index)
     pub fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61:
+        with lint(unproven_list_index: allow)
         assert b_len >= 0, "RollingHash61.combine: negative length"
         var p = if b_len < pow.len: pow[b_len] else: U64(1)
         if b_len >= pow.len:
@@ -1876,8 +1877,8 @@ pub struct RollingHash61:
     /// cost: O(1) amortized
     /// traps: never
     /// example: `var h = RollingHash61("ab"); h.push('a'); h.push('b'); h.get(0..2) == h.get(2..4)`
-    @allow(unproven_list_index)
     pub fn push<T: Hashable>(mut self, x: T):
+        with lint(unproven_list_index: allow)
         let tv = rh61_tok(x.hash_token)
         let n = pre.len - 1
         pre.push(rh61_add(rh61_mul(pre[n], base), tv))
@@ -1965,8 +1966,8 @@ pub struct DynamicHash<D>:
     /// empty: an empty hash
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
-    @allow(unproven_list_index)
     pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>:
+        with lint(unproven_list_index: allow)
         let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         assert 2 <= b1 and b1 < RH_M1 and 2 <= b2 and b2 < RH_M2, "`DynamicHash` bases must be in `2..M`"
         let n = seq.len
@@ -2044,8 +2045,8 @@ pub struct DynamicHash<D>:
     /// empty: an empty `r` gives `HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abba"); h.rev_get(0..2) == h.get(2..4)`
-    @allow(unproven_list_index)
     pub fn rev_get(self, r: Range<D>) -> HashVal:
+        with lint(unproven_list_index: allow)
         if r.is_empty: return HashVal(0, 0)
         let (l, e) = (r.start.ord, r.end.ord)
         let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1) + RH_M1) % RH_M1
@@ -2060,15 +2061,15 @@ pub struct DynamicHash<D>:
     /// example: `let h = DynamicHash("abca"); h.is_palindrome(1..2) and not h.is_palindrome(0..4)`
     pub fn is_palindrome(self, r: Range<D>) -> Bool = self.get(r) == self.rev_get(r)
 
-    @allow(unproven_list_index)
     fn span(self, l: Int, e: Int) -> HashVal:
+        with lint(unproven_list_index: allow)
         let n = tok1.len
         let s1 = (dh_sum(bwd1, e, RH_M1) - dh_sum(bwd1, l, RH_M1) + RH_M1) % RH_M1
         let s2 = (dh_sum(bwd2, e, RH_M2) - dh_sum(bwd2, l, RH_M2) + RH_M2) % RH_M2
         HashVal(s1 * inv1[n - e] % RH_M1, s2 * inv2[n - e] % RH_M2)
 
-    @allow(unproven_list_index)
     fn put(mut self, i: Int, t: Int):
+        with lint(unproven_list_index: allow)
         let n = tok1.len
         let x1 = if 0 <= t and t < RH_M1 - 1: t + 1 else: t % (RH_M1 - 1) + 1
         let x2 = if 0 <= t and t < RH_M2 - 1: t + 1 else: t % (RH_M2 - 1) + 1
@@ -2089,15 +2090,15 @@ fn dh_pow(b: Int, e: Int, m: Int) -> Int:
         k /= 2
     r
 
-@allow(unproven_list_index)
 fn dh_add(mut tree: List<Int>, i: Int, d: Int, m: Int):
+    with lint(unproven_list_index: allow)
     var j = i + 1
     while j < tree.len:
         tree[j] = (tree[j] + d) % m
         j += j & -j
 
-@allow(unproven_list_index)
 fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
+    with lint(unproven_list_index: allow)
     var (s, j) = (0, e)
     while j > 0:
         s = (s + tree[j]) % m
@@ -2144,8 +2145,8 @@ pub struct SuffixAutomaton<A>:
         for a in s: sam.push(a)
         sam
 
-    @allow(unproven_list_index)
     fn add_empty_state(mut self, length: Int, is_prefix: Bool) -> Int:
+        with lint(unproven_list_index: allow)
         let id = links.len
         for _ in 0..alpha: next.push(-1)
         links.push(-1)
@@ -2154,8 +2155,8 @@ pub struct SuffixAutomaton<A>:
         prefix.push(is_prefix)
         id
 
-    @allow(unproven_list_index)
     fn clone_state(mut self, src: Int, length: Int) -> Int:
+        with lint(unproven_list_index: allow)
         let id = links.len
         let base = src * alpha
         for j in 0..alpha: next.push(next[base + j])
@@ -2165,13 +2166,13 @@ pub struct SuffixAutomaton<A>:
         prefix.push(false)
         id
 
-    @allow(unproven_list_index)
     /// Appends the letter `a` to the string the automaton recognises the substrings of.
     ///
     /// cost: O(1) amortized (O(|A|) for a cloned state)
     /// traps: never (`a` is an `A`)
     /// example: `var m = SuffixAutomaton<Char>(); m.push('a'); m.push('b'); m.distinct() == 3`
     pub fn push(mut self, a: A):
+        with lint(unproven_list_index: allow)
         let c = a.to_idx
         letters[c] = Some(a)
         let cur = self.add_empty_state(max_len[last] + 1, true)
@@ -2209,7 +2210,6 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
     @get pub fn len(self) -> Int = links.len
 
-    @allow(unproven_list_index)
     /// The state reached from `state` by the letter `a`, or `None` when that extension is not a
     /// substring.
     ///
@@ -2217,10 +2217,10 @@ pub struct SuffixAutomaton<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.step(0, 'b') == Some(4) and m.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
+        with lint(unproven_list_index: allow)
         let t = next[state * alpha + a.to_idx]
         if t == -1: None else: t
 
-    @allow(unproven_list_index)
     /// The suffix link of `state`: the state of its longest suffix that lies in another state;
     /// `None` at the root.
     ///
@@ -2228,29 +2228,28 @@ pub struct SuffixAutomaton<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.link(3) == Some(4) and m.link(0) == None`
     pub fn link(self, state: Int) -> ?Int:
+        with lint(unproven_list_index: allow)
         let p = links[state]
         if p == -1: None else: p
 
-    @allow(unproven_list_index)
     /// The length of the longest substring in `state`; `0` at the root.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `SuffixAutomaton<Char>.of("abb").longest(3) == 3`
-    pub fn longest(self, state: Int) -> Int = max_len[state]
+    pub fn longest(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return max_len[state]
 
-    @allow(unproven_list_index)
     /// The length of the shortest substring in `state`, `longest(link) + 1`; `0` at the root.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `SuffixAutomaton<Char>.of("abb").shortest(3) == 2`
-    pub fn shortest(
-        self,
-        state: Int,
-    ) -> Int = if links[state] == -1: 0 else: max_len[links[state]] + 1
+    pub fn shortest(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return if links[state] == -1: 0 else: max_len[links[state]] + 1
 
-    @allow(unproven_list_index)
     /// The 0-based position where the first occurrence of `state`'s substrings ends; `-1` at the
     /// root. A clone keeps the position of the state it was cloned from.
     ///
@@ -2258,9 +2257,10 @@ pub struct SuffixAutomaton<A>:
     /// ties: the earliest occurrence; later ones are not tracked
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.first_pos(4) == 1 and m.first_pos(3) == 2`
-    pub fn first_pos(self, state: Int) -> Int = first_end[state]
+    pub fn first_pos(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return first_end[state]
 
-    @allow(unproven_list_index)
     /// The state holding `word`, or `None` when `word` is not a substring; the root for an empty
     /// `word`.
     ///
@@ -2270,6 +2270,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.find("bb") == Some(3) and m.find("ba") == None`
     pub fn find<S: Seq>(self, word: S) -> ?Int:
+        with lint(unproven_list_index: allow)
         var at = 0
         for a in word:
             let t = next[at * alpha + a.to_idx]
@@ -2297,7 +2298,6 @@ pub struct SuffixAutomaton<A>:
             for v in 1..links.len: total += max_len[v] - max_len[links[v]]
         total
 
-    @allow(unproven_list_index)
     /// Every state, by non-decreasing `longest` (counting sort), so each state comes after its
     /// suffix link; iterate it backwards to push values up the links.
     ///
@@ -2308,6 +2308,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").topo_order() == [0, 1, 4, 2, 3]`
     pub fn topo_order(self) -> List<Int>:
+        with lint(unproven_list_index: allow)
         let m = links.len
         let top = [max_len[v] for v in 0..m].max() ?? 0
         var cnt = List.filled(top + 1, 0)
@@ -2320,7 +2321,6 @@ pub struct SuffixAutomaton<A>:
             order[cnt[l]] = v
         order
 
-    @allow(unproven_list_index)
     /// For each state, the number of end positions of its substrings in the automaton's
     /// string; the root counts every position, `n`.
     ///
@@ -2330,6 +2330,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").occ_counts() == [3, 1, 1, 1, 2]`
     pub fn occ_counts(self) -> List<Int>:
+        with lint(unproven_list_index: allow)
         let order = self.topo_order()
         var occ = [if prefix[v]: 1 else: 0 for v in 0..links.len]
         unchecked:
@@ -2338,7 +2339,6 @@ pub struct SuffixAutomaton<A>:
                 occ[links[v]] += occ[v]
         occ
 
-    @allow(unproven_list_index)
     /// A longest common substring of the automaton's string and `other`, as `(len, end)` with
     /// `other[end - len..end]` the substring (positions in `other`, from 0).
     ///
@@ -2348,6 +2348,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: when an element of `other` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").lcs("xbbx") == (2, 3)`
     pub fn lcs<S: Seq>(self, other: S) -> (len: Int, end: Int):
+        with lint(unproven_list_index: allow)
         var (v, l, best_len, best_end, i) = (0, 0, 0, 0, 0)
         for a in other:
             let c = a.to_idx
@@ -2416,8 +2417,8 @@ pub struct SuffixAutomaton<A>:
     /// traps: when `k < 0`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(3) == Some(['b'])`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(5, distinct: false) == Some(['b', 'b'])`
-    @allow(unproven_list_index)
     pub fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A>:
+        with lint(unproven_list_index: allow)
         assert k >= 0, "kth_substring requires k >= 0"
         let m = links.len
         let order = self.topo_order()
@@ -2464,8 +2465,8 @@ pub struct SuffixAutomaton<A>:
 /// empty: `0` for no words; one word gives its length
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
-@allow(unproven_list_index)
 pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
+    with lint(unproven_list_index: allow)
     if words.is_empty: return 0
     let b1 = rand(1 << 20, 1 << 29)
     let b2 = rand(1 << 20, 1 << 29)
@@ -2552,7 +2553,6 @@ pub struct PalindromicTree<A>:
         for a in s: let _ = pt.push(a)
         pt
 
-    @allow(unproven_list_index)
     /// Appends the letter `a` and returns the state of the longest palindromic suffix of the
     /// new string, creating it if it is new.
     ///
@@ -2560,6 +2560,7 @@ pub struct PalindromicTree<A>:
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('a') == 3`
     pub fn push(mut self, a: A) -> Int:
+        with lint(unproven_list_index: allow)
         let c = a.to_idx
         let pos = self.size()
         chars.push(a)
@@ -2591,11 +2592,12 @@ pub struct PalindromicTree<A>:
 
     fn size(self) -> Int = front.len + chars.len
 
-    @allow(unproven_list_index)
-    fn at(self, i: Int) -> A = if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]
+    fn at(self, i: Int) -> A:
+        with lint(unproven_list_index: allow)
+        return if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]
 
-    @allow(unproven_list_index)
     fn grow(mut self, cur: Int, c: Int, link_to: Int):
+        with lint(unproven_list_index: allow)
         unchecked:
             let nw = slink.len
             let nw_len = plen[cur] + 2
@@ -2623,24 +2625,25 @@ pub struct PalindromicTree<A>:
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
     @get pub fn distinct(self) -> Int = slink.len - 2
 
-    @allow(unproven_list_index)
     /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.pal_len(4) == 3 and t.pal_len(0) == -1`
-    pub fn pal_len(self, state: Int) -> Int = plen[state]
+    pub fn pal_len(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return plen[state]
 
-    @allow(unproven_list_index)
     /// The state of the longest proper palindromic suffix of `state`'s palindrome. A one-letter
     /// palindrome links to the even root `1`; both roots link to the odd root `0`.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.link(4) == 2 and t.link(2) == 1 and t.link(1) == 0`
-    pub fn link(self, state: Int) -> Int = slink[state]
+    pub fn link(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return slink[state]
 
-    @allow(unproven_list_index)
     /// The state of `a + P + a` where `P` is `state`'s palindrome, or `None` when that is not in
     /// the tree. From the odd root it gives the one-letter palindrome `a`.
     ///
@@ -2648,19 +2651,20 @@ pub struct PalindromicTree<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.step(3, 'a') == Some(4) and t.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
+        with lint(unproven_list_index: allow)
         let t = next[state * alpha + a.to_idx]
         if t == -1: None else: t
 
-    @allow(unproven_list_index)
     /// The difference `pal_len(state) - pal_len(link(state))`, the period that groups
     /// palindromic suffixes into series; `0` at both roots.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `PalindromicTree<Char>.of("aba").diff(4) == 2`
-    pub fn diff(self, state: Int) -> Int = diff_val[state]
+    pub fn diff(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return diff_val[state]
 
-    @allow(unproven_list_index)
     /// The nearest state up the suffix links whose `diff` differs from `state`'s: `link(state)`
     /// when the diffs differ, else `series_link(link(state))`. Following it from any state
     /// reaches a root in O(log n) steps. Both roots give `0`.
@@ -2669,9 +2673,10 @@ pub struct PalindromicTree<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `PalindromicTree<Char>.of("aba").series_link(4) == 2`
     /// example: `PalindromicTree<Char>.of("aaaa").series_link(5) == 1`
-    pub fn series_link(self, state: Int) -> Int = ser_link[state]
+    pub fn series_link(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return ser_link[state]
 
-    @allow(unproven_list_index)
     /// For each state, how many times its palindrome occurs in the pushed string, overlaps
     /// included; `0` at both roots. The entries from `2` sum to `manacher(s).count()`.
     ///
@@ -2680,6 +2685,7 @@ pub struct PalindromicTree<A>:
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").occ_counts() == [0, 0, 2, 1, 1]`
     pub fn occ_counts(self) -> List<Int>:
+        with lint(unproven_list_index: allow)
         var occ = [cnt[v] for v in 0..cnt.len]
         unchecked:
             for v in (2..cnt.len).rev:
@@ -2841,17 +2847,16 @@ pub struct Trie<A>:
     /// example: `var t = Trie<Char>(); t.add("a"); t.remove("a"); t.is_empty`
     @get pub fn is_empty(self) -> Bool = pass[0] == 0
 
-    @allow(unproven_list_index)
     /// The child of `node` along `a`, or `None` when it was never created.
     ///
     /// cost: O(1)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.step(0, 'a') == Some(1) and t.step(1, 'z') == None`
     pub fn step(self, node: Int, a: A) -> ?Int:
+        with lint(unproven_list_index: allow)
         let t = next[node * alpha + a.to_idx]
         if t == -1: None else: t
 
-    @allow(unproven_list_index)
     /// The node of `word`, or `None` when no stored word starts with `word`
     /// (`count_prefix(word) == 0`).
     ///
@@ -2861,6 +2866,7 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.find("a") == Some(1) and t.find("b") == None`
     pub fn find<S: Seq>(self, word: S) -> ?Int:
+        with lint(unproven_list_index: allow)
         var at = 0
         for a in word:
             let t = next[at * alpha + a.to_idx]
@@ -2868,7 +2874,6 @@ pub struct Trie<A>:
             at = t
         at
 
-    @allow(unproven_list_index)
     /// Inserts one copy of `word` and returns its terminal node; `count(word)` and
     /// `count_prefix(p)` for every prefix `p` of `word` grow by one.
     ///
@@ -2877,6 +2882,7 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab") == 2`
     pub fn add<S: Seq>(mut self, word: S) -> Int:
+        with lint(unproven_list_index: allow)
         var at = 0
         pass[0] += 1
         for a in word:
@@ -2892,7 +2898,6 @@ pub struct Trie<A>:
         ends[at] += 1
         at
 
-    @allow(unproven_list_index)
     /// Removes one copy of `word`, reversing one `add`, and returns `true`; returns `false` and
     /// changes nothing when `count(word) == 0`.
     ///
@@ -2901,6 +2906,7 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.remove("ab") and not t.remove("ab")`
     pub fn remove<S: Seq>(mut self, word: S) -> Bool:
+        with lint(unproven_list_index: allow)
         let node = self.find(word)
         if node == None or ends[node!] == 0: return false
         var at = 0
@@ -2911,7 +2917,6 @@ pub struct Trie<A>:
         ends[at] -= 1
         true
 
-    @allow(unproven_list_index)
     /// The number of copies of exactly `word` stored.
     ///
     /// cost: O(|word|)
@@ -2919,10 +2924,10 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.count("ab") == 2 and t.count("a") == 0`
     pub fn count<S: Seq>(self, word: S) -> Int:
+        with lint(unproven_list_index: allow)
         let node = self.find(word)
         if node == None: 0 else: ends[node!]
 
-    @allow(unproven_list_index)
     /// The number of stored words (with multiplicity) that start with `prefix`.
     ///
     /// cost: O(|prefix|)
@@ -2930,24 +2935,27 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.count_prefix("a") == 2`
     pub fn count_prefix<S: Seq>(self, prefix: S) -> Int:
+        with lint(unproven_list_index: allow)
         let node = self.find(prefix)
         if node == None: 0 else: pass[node!]
 
-    @allow(unproven_list_index)
     /// The number of stored words that end at `node`.
     ///
     /// cost: O(1)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); let v = t.add("ab"); t.ends_at(v) == 1`
-    pub fn ends_at(self, node: Int) -> Int = ends[node]
+    pub fn ends_at(self, node: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return ends[node]
 
-    @allow(unproven_list_index)
     /// The number of stored words that pass through or end at `node`; at the root, all of them.
     ///
     /// cost: O(1)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.pass_at(1) == 2`
-    pub fn pass_at(self, node: Int) -> Int = pass[node]
+    pub fn pass_at(self, node: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return pass[node]
 
     /// True when at least one copy of exactly `word` is stored: `count(word) > 0`.
     ///
@@ -3026,7 +3034,6 @@ pub struct AhoCorasick<A>:
     lens: List<0..=2_000_000_000>
     pat_state: List<0..=2_000_000_000>
 
-    @allow(unproven_list_index)
     /// The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`. Pattern
     /// `p` is `patterns[p]`. States are the trie nodes of the patterns, numbered in creation
     /// order with the root `0`; equal patterns share a state.
@@ -3036,6 +3043,7 @@ pub struct AhoCorasick<A>:
     /// traps: when an element of a pattern is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
+        with lint(unproven_list_index: allow)
         let k = A.K
         var goto: List<-1..=2_000_000_000> = List.filled(k, -1)
         var ends: List<List<0..=2_000_000_000>> = [[]]
@@ -3093,34 +3101,36 @@ pub struct AhoCorasick<A>:
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     @get pub fn len(self) -> Int = fail.len
 
-    @allow(unproven_list_index)
     /// The state after reading `a` in `state`: the longest pattern prefix that is a suffix of
     /// what has been read. Total, so it never fails.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.step(2, 'b') == 3 and ac.step(1, 'a') == 1`
-    pub fn step(self, state: Int, a: A) -> Int = goto[state * alpha + a.to_idx]
+    pub fn step(self, state: Int, a: A) -> Int:
+        with lint(unproven_list_index: allow)
+        return goto[state * alpha + a.to_idx]
 
-    @allow(unproven_list_index)
     /// The failure link of `state`: the state of its longest proper suffix that is a pattern
     /// prefix; `0` at the root.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.link(2) == 3 and ac.link(0) == 0`
-    pub fn link(self, state: Int) -> Int = fail[state]
+    pub fn link(self, state: Int) -> Int:
+        with lint(unproven_list_index: allow)
+        return fail[state]
 
-    @allow(unproven_list_index)
     /// True when some pattern ends at `state` itself or at a state up its failure links:
     /// `words_at(state)` is non-empty.
     ///
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["ab", "b"]); ac.hit(2) and not ac.hit(1)`
-    pub fn hit(self, state: Int) -> Bool = not ends[state].is_empty or exit[state] != -1
+    pub fn hit(self, state: Int) -> Bool:
+        with lint(unproven_list_index: allow)
+        return not ends[state].is_empty or exit[state] != -1
 
-    @allow(unproven_list_index)
     /// Every pattern that ends at `state` or up its failure links, by index.
     ///
     /// cost: O(output)
@@ -3128,6 +3138,7 @@ pub struct AhoCorasick<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).words_at(2) == [1, 2]`
     pub fn words_at(self, state: Int) -> List<Int>:
+        with lint(unproven_list_index: allow)
         var found: List<Int> = []
         var at = state
         while at != -1:
@@ -3135,7 +3146,6 @@ pub struct AhoCorasick<A>:
             at = exit[at]
         found
 
-    @allow(unproven_list_index)
     /// Every occurrence of every pattern in `text`, as `(at, pattern)` with `at` the 0-based
     /// start: exactly the pairs with `text[at..at + patterns[pattern].len] == patterns[pattern]`.
     ///
@@ -3146,6 +3156,7 @@ pub struct AhoCorasick<A>:
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).find_all("ab").collect() == [(0, 0), (0, 1), (1, 2)]`
     pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
+        with lint(unproven_list_index: allow)
         var state = 0
         var i = 0
         for a in text:
@@ -3156,7 +3167,6 @@ pub struct AhoCorasick<A>:
                 for w in ends[at]: yield (at: i - lens[w], pattern: w)
                 at = exit[at]
 
-    @allow(unproven_list_index)
     /// For each pattern, how many times it occurs in `text`, overlaps included: the number of
     /// `find_all` pairs with that index.
     ///
@@ -3166,6 +3176,7 @@ pub struct AhoCorasick<A>:
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).counts("abb") == [1, 1, 2]`
     pub fn counts<S: Seq>(self, text: S) -> List<Int>:
+        with lint(unproven_list_index: allow)
         var visits = List.filled(fail.len, 0)
         var state = 0
         for a in text:
@@ -3280,8 +3291,8 @@ struct AcBuckets<A>:
     acs: List<AhoCorasick<A>>
     hits: List<List<Int>>
 
-    @allow(unproven_list_index)
     fn add(mut self, word: List<A>):
+        with lint(unproven_list_index: allow)
         var group: List<List<A>> = [word]
         while not pats.is_empty and pats[pats.len - 1].len == group.len:
             for w in pats[pats.len - 1]: group.push(w)
@@ -3296,8 +3307,8 @@ struct AcBuckets<A>:
         acs.push(ac)
         hits.push(hit)
 
-    @allow(unproven_list_index)
     fn count<S: Seq>(self, text: S) -> Int:
+        with lint(unproven_list_index: allow)
         var total = 0
         for b in 0..acs.len:
             var state = 0

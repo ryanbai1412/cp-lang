@@ -229,6 +229,23 @@ impl<'a> Parser<'a> {
                 ));
             }
         }
+        if !directive && name.text == "allow" && self.speculating == 0 {
+            let lints: Vec<String> = args
+                .iter()
+                .map(|a| format!("{}: allow", a.value.span.text(self.src)))
+                .collect();
+            let with = format!("with lint({})", lints.join(", "));
+            self.sink.push(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "`@allow` was removed in CP Lang 0.3; lints are contexts",
+                )
+                .with_help(format!(
+                    "write `{with}` as the first line of the body, or around the statement"
+                )),
+            );
+        }
         // Decorator arguments v2.2 took away.
         let removed = match name.text.as_str() {
             "memo" => args.iter().find_map(|arg| match &arg.value.kind {

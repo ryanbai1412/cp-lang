@@ -9,7 +9,7 @@ impl Show2 for Int:
 fn both<T: Show2>(x: T) -> Str = x.show2()
 fn key<T: Hash>(x: T) -> U64 = x.hash()
 
-@allow(unread_field)
+with lint(unread_field: allow)
 struct P(a: Int)
 
 print(both(1), both(true))

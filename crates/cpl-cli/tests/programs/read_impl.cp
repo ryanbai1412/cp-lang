@@ -6,7 +6,7 @@ impl Read for Cell:
         let c: Int = read()
         return Cell(r - 1, c - 1)
 
-@allow(unread_field)
+with lint(unread_field: allow)
 struct Move(at: Cell, d: Char)
 
 let n: Int = read()

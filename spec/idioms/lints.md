@@ -1061,7 +1061,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | getter_parens | `.len()`, `.first()`, `.rev()` | no parentheses | fix | #13 | syn | ✓getter_parens |
 | is_in_cond_header | `if x is ...` headers that should bind with `let` | `if let p = x` form | fix | #13 | syn | ✓is_in_cond_header |
-| unknown_lint | `@allow` names a lint that doesn't exist | the right name | warn | #13 | syn | ✓unknown_lint |
+| unknown_lint | `with lint(...)` names a lint that doesn't exist | the right name | warn | #13 | syn | ✓unknown_lint |
 | deprecated_spelling | any spelling a codemod retired | the current spelling | fix | #13 | syn | |
 | shouting_constants | `MAXN`, `MOD` names for types/domains | `Z`, a domain name | doc | #13 | | |
 | single_letter_domain_clash | two domains whose names differ by case | rename | warn | B6 | syn | |

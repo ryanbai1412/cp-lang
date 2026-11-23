@@ -472,8 +472,8 @@ pub struct CostFlow<V>:
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), -2); g.add(1, 0, Some(1), 1); g.cancel_cycles() == -1`
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), 2); g.cancel_cycles() == 0`
-    @allow(unproven_list_index)
     pub fn cancel_cycles(mut self) -> Int:
+        with lint(unproven_list_index: allow)
         let n = head.len
         if n == 0: return 0
         var total = 0

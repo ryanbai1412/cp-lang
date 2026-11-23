@@ -42,13 +42,13 @@ sit in a save hook; only a lint set to `deny` exits 1.
 - `unproven_list_index` (L0414): `xs[i]` on a `List` inside two or more
   nested loops, where `i` is not the variable of `for i in 0..xs.len` or
   `for i in xs.indices`.
-- `unknown_lint` (L0001): `@allow` names a lint that does not exist.
+- `unknown_lint` (L0001): `with lint(...)` names a lint that does not exist.
 
 ## Levels
 
 Each lint runs at `allow`, `warn` or `deny`. The nearest `cp.toml` at or
-above the file sets them, and `@allow(name)` turns one off for the item
-under it:
+above the file sets them, and `with lint(name: allow)` turns one off for the
+rest of its block, or for the block under it:
 
 ```toml
 [lints]
@@ -58,7 +58,7 @@ memory_mb = 64            # what memo_key_space checks against; 256 by default
 ```
 
 ```
-@allow(unread_field)
+with lint(unread_field: allow)
 struct Event:
     time: Int
     kind: Int             // only read when events are sorted
@@ -73,7 +73,7 @@ initializer) and stays quiet when it cannot tell. A file with a syntax
 error gets no lints, because the part the parser could not read may hold
 the assignment or the read a lint would say is missing.
 
-- `src/lib.rs`: the lint table, `lint`, `@allow`, `apply_fixes`.
+- `src/lib.rs`: the lint table, `lint`, `with lint`, `apply_fixes`.
 - `src/config.rs`: `[lints]` in `cp.toml`.
 - `src/walk.rs`: the tree walk the rules share; it reports scopes and
   bindings, so a rule that follows names keeps a stack and nothing else.

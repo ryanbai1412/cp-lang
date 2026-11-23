@@ -15,7 +15,7 @@ usage: cpl lint [--fix] [--taste] [path]...
 Reports code that is legal but probably wrong, slow or unidiomatic. A
 directory stands for every .cp file under it; no path at all means the
 current directory. Levels come from [lints] in the nearest cp.toml and
-from @allow(name) on an item.
+from with lint(name: allow) in the code.
 
 options:
   --fix     apply the fixes that are safe to apply, then report what is left

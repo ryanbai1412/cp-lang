@@ -1,5 +1,5 @@
 //! The rules. Each is a function from a parsed file to what it found, in
-//! file positions; `lint` applies levels and `@allow` afterwards.
+//! file positions; `lint` applies levels and `with lint` afterwards.
 
 mod assign;
 mod bounds;

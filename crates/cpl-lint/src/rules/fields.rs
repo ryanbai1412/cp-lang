@@ -158,7 +158,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 format!("field `{}` of `{}` is never read", field.name, field.owner),
             )
             .with_help(format!(
-                "remove it, or add `@allow(unread_field)` to `{}` if it is only read as part of the whole value (printed, compared, sorted)",
+                "remove it, or put `with lint(unread_field: allow)` above `{}` if it is only read as part of the whole value (printed, compared, sorted)",
                 field.owner
             ));
             Finding {

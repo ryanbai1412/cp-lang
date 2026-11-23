@@ -839,8 +839,8 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.at(30) == C.last!`
-@allow(unproven_list_index)
 pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>):
+    with lint(unproven_list_index: allow)
     var raw: List<T> = [x for x in all]
     raw.sort()
     var uniq: List<T> = []
@@ -861,8 +861,8 @@ pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>):
 /// order: pieces left to right; `piece` is keyed by the fresh domain `P`
 /// traps: when a cut lies outside the range
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
-@allow(unproven_list_index)
 pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
+    with lint(unproven_list_index: allow)
     let a = self.start
     let b = self.end
     if self.is_empty:
@@ -3121,8 +3121,8 @@ pub enum Anchor = Start | End
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
-@allow(unproven_list_index)
 pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>:
+    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: List<Slice<[D]T>> = []
@@ -3157,8 +3157,8 @@ pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
 /// example: `[1, 2, 3].minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
-@allow(unproven_list_index)
 pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T>:
+    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: List<?Slice<[D]T>> = []
