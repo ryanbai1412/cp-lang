@@ -646,7 +646,6 @@ impl Program {
     /// Runs the program on `input` for at most `limit`.
     pub fn run(&self, input: &str, limit: Duration) -> std::io::Result<Outcome> {
         let start = Instant::now();
-        eprintln!("DEBUG run spawn {:?}", self.argv);
         let mut child = self
             .to_command()
             .stdin(Stdio::piped())
@@ -688,10 +687,7 @@ impl Program {
                     Err(_) => break Exit::Signal,
                 }
             };
-            eprintln!("DEBUG run exit {:?} after {:?}; joining pipes", exit, start.elapsed());
-            let joined = (out.join().unwrap(), err.join().unwrap(), exit, peak);
-            eprintln!("DEBUG run joined after {:?}", start.elapsed());
-            joined
+            (out.join().unwrap(), err.join().unwrap(), exit, peak)
         });
         Ok(Outcome {
             // LF everywhere: a Windows program's `\r\n` never reaches a compare, report or saved case.
@@ -761,7 +757,15 @@ pub(crate) fn kill_group(pid: u32) {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
-    #[cfg(not(unix))]
+    // `py -3` runs the script in a child python.exe, which `Child::kill`
+    // leaves running with the pipes open.
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    #[cfg(not(any(unix, windows)))]
     let _ = pid;
 }
 

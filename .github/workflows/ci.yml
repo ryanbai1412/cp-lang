@@ -26,4 +26,4 @@ jobs:
       - name: The checker test
         timeout-minutes: 15
         shell: bash
-        run: cargo test -p cpl-contest a_problems_checker_py -- --nocapture --test-threads=1
+        run: cargo test -p cpl-contest -p cpl-stress
