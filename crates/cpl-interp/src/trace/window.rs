@@ -160,8 +160,7 @@ pub struct Timeline {
 
 impl Timeline {
     /// One run of `program` on `input`, counting the steps `config` would
-    /// record. Multitest runs take no checkpoints: their windows trace from
-    /// the start.
+    /// record.
     pub fn record_on_this_thread(
         program: &Program,
         input: &[u8],
@@ -170,19 +169,8 @@ impl Timeline {
         every: u64,
     ) -> Timeline {
         let config = config.clone();
-        let (counted, taken) = if program.multitest {
-            let config = TraceConfig {
-                from_step: Some(usize::MAX),
-                last_steps: None,
-                ..config
-            };
-            let io = Io::fixed(input);
-            let mut ignored = std::io::sink();
-            let counted = observe_on_this_thread(program, io, &mut ignored, limits, Some(config));
-            (counted, Vec::new())
-        } else {
-            count_on_this_thread(program, input, limits, config, every, TIMELINE_KEPT)
-        };
+        let (counted, taken) =
+            count_on_this_thread(program, input, limits, config, every, TIMELINE_KEPT);
         Timeline {
             taken,
             steps: counted.recording.map_or(0, |rec| rec.skipped),
