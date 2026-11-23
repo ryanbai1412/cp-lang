@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R02.1.3: lists of and returns of distinct closures check clean and emit `std::function`; routed to compiler (reject), diagnostics (code) and perf. No case until a code exists.
 - Accept cases `core-05/cache-plain-copy-closure-before-lend.cp` (R05.10.9, R05.10.12) and `core-03/range-proof-within-fn.cp` (R03.4.2), both pass.
 - Decision 240 widened: chapter 13's release column now follows chapter 9 for range stores, `x!`, division by zero and reads too. `core-09/release-division-by-zero-fallback.cp` fails (release traps); compiler and perf requests filed.
 - Decision 240: chapter 13 said release keeps `List`/slice bounds checks, against R09.2.2/R09.3.2; chapter 13 now follows chapter 9. Case `core-09/release-list-index-unchecked.cp` fails (codegen emits `cpl::at`); perf request filed.
