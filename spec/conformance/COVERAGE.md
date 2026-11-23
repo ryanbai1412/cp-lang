@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2221 (995 passing). Rules: 531.
+Cases: 2226 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -19,11 +19,11 @@ Cases: 2221 (995 passing). Rules: 531.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 74 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 88 rules, 107 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R07 (07-sequences.md): 88 rules, 108 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 72 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 28 cases; 0 uncovered, 1 happy-path only, 2 negative only
+- R11 (11-modules-prelude.md): 15 rules, 29 cases; 0 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 25 cases; 0 uncovered, 3 happy-path only, 0 negative only
 
@@ -417,7 +417,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
 - R07.2.9 [1+ 1-]: | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filte...
-- R07.2.10 [2+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
+- R07.2.10 [3+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
 - R07.2.11 [1+ 2-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
 - R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in O(1): slices...
@@ -580,7 +580,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [2+ 0-] *happy-path only*: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [2+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
-- R11.3.3 [2+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
+- R11.3.3 [3+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.4 [2+ 1-]: A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and `p.adj4` find the method...
 - R11.3.5 [2+ 0-]: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
 - R11.4.1 [1+ 0-]: The first line of a solution is a compiler stamp, added by the formatter: `// cpl 0.3.0`. ...
@@ -827,7 +827,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (107/124 named by a case)
+- **graph** (106/123 named by a case)
   - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
@@ -863,12 +863,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (148/171 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `Rooted.sub_at`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (150/172 named by a case)
+  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2118 of 2245 std items are named by a case.
+2119 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
