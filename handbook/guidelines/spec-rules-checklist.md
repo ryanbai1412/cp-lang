@@ -63,6 +63,16 @@ release notes are generated from that file. Example: `D.bounds` is
 `D.cuts` appears as a breaking-changes line. Enforced by
 `scripts/spec-changelog.py`.
 
+### spec-rules/R8. Every tool feature has a rule id
+
+A tool feature in `spec/tools/` (a trace column, a debugger command, an
+explain section) is a promise like a language rule, so it gets an
+`(Rnn.n.n)` id and a case that cites it. Without an id no case can name
+it, and the coverage gate can't tell it is untested. Example: "`debug(x)`
+prints with a source location in checked builds and is removed from
+submissions" needs an id, a run case, and a build case that `lacks:` it.
+Enforced by `scripts/spec-tool-rules.py`, whose count only goes down.
+
 ## Checklist
 
 - [ ] The most general rule, with the special cases it replaces removed (spec-rules/R1)
@@ -74,6 +84,7 @@ release notes are generated from that file. Example: `D.bounds` is
 - [ ] `handbook/language/` updated if the model changed (spec-rules/R6)
 - [ ] A case for the rule (`guidelines/conformance.md`)
 - [ ] Every removed spelling has a changelog line (spec-rules/R7)
+- [ ] A new tool feature has a rule id and a case (spec-rules/R8)
 
 ## Changes
 
