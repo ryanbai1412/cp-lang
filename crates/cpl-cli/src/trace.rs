@@ -450,6 +450,7 @@ fn made(
     let mut changed = Vec::new();
     let mut stale = Vec::new();
     let mut reads = Vec::new();
+    let mut guarded = Vec::new();
     for name in names {
         let at = last_change(name, steps.len());
         if let Some((k, at, value)) = at.filter(|(_, at, _)| *at != line) {
@@ -458,6 +459,28 @@ fn made(
                 .filter(|n| *n != name && mentions(text_of(at), n))
                 .collect();
             read.sort();
+            for g in guards(&lines, at) {
+                let mut checked: Vec<&String> = (steps[k].1.keys())
+                    .filter(|n| *n != name && mentions(text_of(g), n))
+                    .collect();
+                checked.sort();
+                for n in checked {
+                    let Some((_, from, _)) =
+                        last_change(n, k).filter(|(_, l, _)| ![at, line, g].contains(l))
+                    else {
+                        continue;
+                    };
+                    guarded.push((
+                        from,
+                        format!(
+                            "`{n}`, which line {g} checks before line {at} runs, last changed here"
+                        ),
+                    ));
+                    if let Some(cond) = guards(&lines, from).into_iter().find(|&c| c < from) {
+                        guarded.push((cond, format!("line {from} runs only when this holds")));
+                    }
+                }
+            }
             for n in read {
                 if let Some((_, from, v)) =
                     last_change(n, k).filter(|(_, l, _)| ![at, line].contains(l))
@@ -484,8 +507,42 @@ fn made(
     out.extend(changed.into_iter().take(3));
     out.extend(stale);
     out.extend(reads.into_iter().take(2));
+    out.extend(guarded.into_iter().take(2));
     let mut seen = std::collections::HashSet::new();
     out.retain(|(line, _)| seen.insert(*line));
+    out
+}
+
+/// The 1-based lines whose test decides whether line `at` runs: the
+/// `if` it is nested in and the `if ...: continue` (or `break`, `return`)
+/// lines before it in its loop, nearest first.
+fn guards(lines: &[&str], at: u32) -> Vec<u32> {
+    let indent = |text: &str| text.len() - text.trim_start().len();
+    let Some(mut depth) = lines.get(at as usize - 1).map(|text| indent(text)) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for k in (0..at as usize - 1).rev() {
+        let text = lines[k];
+        let head = text.trim_start();
+        if head.is_empty() || head.starts_with("//") {
+            continue;
+        }
+        if indent(text) == depth
+            && head.starts_with("if ")
+            && [": continue", ": break", ": return"]
+                .iter()
+                .any(|exit| head.contains(exit))
+        {
+            out.push(k as u32 + 1);
+        } else if indent(text) < depth {
+            if !(head.starts_with("if ") || head.starts_with("elif ")) {
+                break;
+            }
+            out.push(k as u32 + 1);
+            depth = indent(text);
+        }
+    }
     out
 }
 
