@@ -20,7 +20,6 @@
 // `start`, merging all `n` positions in exact budget.
 
 use std.math.{choose}
-use std.seq.{chunk_by}
 
 const LAYER_COST = 1000
 
@@ -77,9 +76,10 @@ let placed = zip(positions, cheapest_tuples(best))
 
 var layer_ops: [0..best.d]List<(Pos, Int)> = [0..best.d] _ => []
 for cl in 0..best.d:
-    for group in placed.chunk_by((a, b) => a.1[..cl] == b.1[..cl]):
+    for run in placed.runs(link: (a, b) => a.1[..cl] == b.1[..cl]):
+        let group = run.keys
         let start = placed[group.first!].0
-        for idx in group if idx > group.first! and placed[idx].1[cl] != placed[idx.prev!].1[cl]:
+        for idx in group if idx > group.first! and placed[idx].1[cl] != placed[idx - 1].1[cl]:
             let pos = placed[idx].0
             layer_ops[cl].push((pos, start - pos))
 

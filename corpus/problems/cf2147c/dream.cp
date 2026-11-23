@@ -1,6 +1,6 @@
 // Codeforces 2147 C: Rabbits.
 // Adjacent equal characters (`00` or `11`) decouple the string into independent
-// maximal alternating runs (`chunk_by((a, b) => a != b)`):
+// maximal alternating runs (`runs(link: (a, b) => a != b)`):
 // - If a run starts or ends with `'0'`, that endpoint `'0'` sits at a string
 //   boundary or next to another `'0'`, so every `'0'` in the run can point
 //   toward that free end without conflict.
@@ -9,8 +9,7 @@
 //   neighbour across an interior `'1'`, which is possible iff `k` is even —
 //   i.e., `r.len % 4 != 3`.
 @!multitest
-use std.seq.{chunk_by}
 let _n: 1..=200_000 = read()
 let s: Str = read()
-let ok = all(s[r.start] != '1' or r.len % 4 != 3 for r in s.chunk_by((a, b) => a != b))
+let ok = all(r.first! != '1' or r.len % 4 != 3 for r in s.runs(link: (a, b) => a != b))
 print(if ok: "YES" else: "NO")
