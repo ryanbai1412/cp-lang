@@ -13,12 +13,14 @@
 use std.marks.{Arena, Id}
 use std.rand.{Rng}
 
-struct Node(l: Id<Node>, r: Id<Node>, cnt: 0..=400_000, h: U64)
+const MAX_N = 400_000
+struct Node(l: Id<Node>, r: Id<Node>, cnt: 0..=MAX_N, h: U64)
 
 @!multitest
-let n: 1..=400_000 = read()
+let n: 1..=MAX_N = read()
 domain V = 1..=n
 domain Gen = 0..n
+domain Key = 0..n
 let kids: [V]?(l: V, r: V) = read<[V](0..=n, 0..=n)>().map(
     (l, r) => if l == 0: None else: Some((V(l), V(r)))
 )
@@ -32,38 +34,37 @@ fn place(v: V) -> Gen:
 place(V.first!)
 
 var rng = Rng.new(2135)
-let weight: [0..n]U64 = [0..n] _ => rng.next()
+let weight: [Key]U64 = [Key] _ => rng.next()
 var pool = Arena<Node>.new(cap: 20 * n)
 let empty = pool.alloc(Node(Id(0), Id(0), 0, U64(0)))
 
-fn insert(t: Id<Node>, lo: Int, hi: Int, k: 0..n) -> Id<Node>:
+fn insert(t: Id<Node>, span: Range<Key>, k: Key) -> Id<Node>:
     let at = pool[t]
-    let mid = (lo + hi) / 2
     var (l, r) = (at.l, at.r)
-    if hi - lo > 1:
-        if k < mid: l = insert(at.l, lo, mid, k) else: r = insert(at.r, mid, hi, k)
+    if let (left, right) = span.halve():
+        if left.contains(k): l = insert(at.l, left, k) else: r = insert(at.r, right, k)
     pool.alloc(Node(l, r, at.cnt + 1, at.h + weight[k]))
 
 fn less(a0: Id<Node>, b0: Id<Node>) -> Bool:
-    var (a, b, lo, hi) = (pool[a0], pool[b0], 0, n)
-    while hi - lo > 1 and a.h != b.h and a.cnt > 0 and b.cnt > 0:
-        let mid = (lo + hi) / 2
+    var (a, b, span) = (pool[a0], pool[b0], Key.all)
+    while a.h != b.h and a.cnt > 0 and b.cnt > 0:
+        let (left, right) = span.halve() else: break
         if pool[a.r].h != pool[b.r].h:
-            (a, b, lo) = (pool[a.r], pool[b.r], mid)
+            (a, b, span) = (pool[a.r], pool[b.r], right)
         else:
-            (a, b, hi) = (pool[a.l], pool[b.l], mid)
+            (a, b, span) = (pool[a.l], pool[b.l], left)
     a.cnt < b.cnt
 
 var set: [V]Id<Node> = empty
-var key: [V]0..n = 0
+var key: [V]Key = Key.first!
 var order: List<V> = []
 for vs in by_gen:
     for v in vs:
-        if let (l, r) = kids[v]: set[v] = insert(set[l], 0, n, key[r])
+        if let (l, r) = kids[v]: set[v] = insert(set[l], Key.all, key[r])
     let ranked = vs.sorted(
         cmp: (a, b) => if pool[set[a]].h == pool[set[b]].h: a < b else: less(set[a], set[b])
     )
     for run in ranked.runs(by: v => pool[set[v]].h):
-        for v in run: key[v] = order.len
+        for v in run: key[v] = Key(order.len)
         order.extend(run)
 print(order)
