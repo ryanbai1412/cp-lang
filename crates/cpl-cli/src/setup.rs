@@ -384,6 +384,7 @@ fn jetbrains_ides() -> Vec<Ide> {
             .map(PathBuf::from)
     };
     let home = cpl_check::home_dir();
+    let fresh = never_started_ides(home.as_deref(), &var);
     type Folder = Box<dyn Fn(&str) -> Option<PathBuf>>;
     let (config, plugins, log): (Option<PathBuf>, Folder, Folder) = if cfg!(windows) {
         let roaming = var("APPDATA").map(|d| d.join("JetBrains"));
@@ -423,11 +424,12 @@ fn jetbrains_ides() -> Vec<Ide> {
             }),
         )
     };
-    let Some(entries) = config.and_then(|c| std::fs::read_dir(c).ok()) else {
-        return Vec::new();
-    };
-    let mut names: Vec<String> = entries
+    let mut names: Vec<String> = config
+        .and_then(|c| std::fs::read_dir(c).ok())
+        .into_iter()
+        .flatten()
         .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .chain(fresh)
         .filter(|name| {
             let digits = name.trim_start_matches(|c: char| c.is_ascii_alphabetic());
             digits.len() < name.len()
@@ -436,6 +438,7 @@ fn jetbrains_ides() -> Vec<Ide> {
         })
         .collect();
     names.sort();
+    names.dedup();
     names
         .into_iter()
         .filter_map(|name| {
@@ -444,6 +447,87 @@ fn jetbrains_ides() -> Vec<Ide> {
                 log: log(&name),
                 name,
             })
+        })
+        .collect()
+}
+
+/// The folder names (`IntelliJIdea2025.3`) of the IDEs installed where
+/// JetBrains, Toolbox, snap or an unpacked archive put them, or whose launcher
+/// is on the PATH. An IDE gets its config folder only when it first starts,
+/// and its `product-info.json` names it before then.
+fn never_started_ides(home: Option<&Path>, var: &dyn Fn(&str) -> Option<PathBuf>) -> Vec<String> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Some(path) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path) {
+            for launcher in [
+                "idea",
+                "idea.sh",
+                "idea64.exe",
+                "pycharm",
+                "pycharm.sh",
+                "pycharm64.exe",
+                "clion",
+                "clion.sh",
+                "clion64.exe",
+            ] {
+                let Ok(real) = std::fs::canonicalize(dir.join(launcher)) else {
+                    continue;
+                };
+                // `<install>/bin/idea.sh`, or `X.app/Contents/MacOS/idea`.
+                if let Some(install) = real.parent().and_then(Path::parent) {
+                    roots.push(install.to_path_buf());
+                }
+            }
+        }
+    }
+    let mut parents: Vec<PathBuf> = Vec::new();
+    if cfg!(windows) {
+        parents.extend(var("ProgramFiles").map(|d| d.join("JetBrains")));
+        if let Some(local) = var("LOCALAPPDATA") {
+            parents.push(local.join("Programs"));
+            parents.push(local.join("JetBrains/Toolbox/apps"));
+        }
+    } else if cfg!(target_os = "macos") {
+        parents.push("/Applications".into());
+        parents.extend(home.map(|h| h.join("Applications")));
+    } else {
+        parents.extend(["/opt".into(), "/usr/local".into(), "/snap".into()]);
+        if let Some(home) = home {
+            parents.push(home.to_path_buf());
+            parents.push(home.join("Downloads"));
+            parents.push(home.join(".local/share/JetBrains/Toolbox/apps"));
+        }
+    }
+    let children = |dir: &Path| -> Vec<PathBuf> {
+        std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .filter_map(|e| Some(e.ok()?.path()))
+            .filter(|p| p.is_dir())
+            .collect()
+    };
+    for parent in &parents {
+        for child in children(parent) {
+            // Toolbox and snap keep each version a level down.
+            roots.extend(
+                children(&child)
+                    .into_iter()
+                    .chain(Some(child.join("current"))),
+            );
+            roots.push(child);
+        }
+    }
+    roots
+        .iter()
+        .filter_map(|root| {
+            let info = [
+                root.join("product-info.json"),
+                root.join("Contents/Resources/product-info.json"),
+            ]
+            .into_iter()
+            .find_map(|f| std::fs::read_to_string(f).ok())?;
+            let info = cpl_json::parse(&info).ok()?;
+            Some(info.get("dataDirectoryName")?.as_str()?.to_string())
         })
         .collect()
 }
@@ -461,7 +545,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
         None => jetbrains_ides(),
     };
     if ides.is_empty() {
-        return Err("no JetBrains IDE found (open one once first), or pass --dir PLUGINS".into());
+        return Err("no JetBrains IDE found: none has started yet, has its launcher (`idea`, `idea.sh`) on the PATH, or is in a usual install folder; pass --dir PLUGINS, or start the IDE once".into());
     }
     let (old, ides): (Vec<Ide>, Vec<Ide>) = ides.into_iter().partition(Ide::too_old);
     let old: Vec<&str> = old.iter().map(|ide| ide.name.as_str()).collect();

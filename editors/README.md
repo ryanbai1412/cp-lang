@@ -154,13 +154,15 @@ Emacs's own entry, which calls `.cp` C++.
 
 ## JetBrains IDEs (2024.3 or later)
 
-One step, once `cpl` is installed and the IDE has been opened once:
+One step, once `cpl` is installed (the IDE need not have been started yet):
 
 ```sh
 cpl setup jetbrains
 ```
 
-It unpacks the edge release's plugin into every installed IDE's plugins folder
+It unpacks the edge release's plugin into every installed IDE's plugins folder,
+finding an IDE by its config folder or, before its first start, by the
+`product-info.json` of its install
 (`--zip FILE` installs a file you have, `--dir DIR` one plugins folder); restart
 the IDE. Or build it: `cd editors/jetbrains && ./gradlew buildPlugin` writes
 `build/distributions/cp-lang-jetbrains-<version>.zip`; install it with
