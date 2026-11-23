@@ -332,3 +332,71 @@ impl Checker<'_> {
         (!own).then(|| args[0].clone())
     }
 }
+
+/// The bound a generic fn's later `Indexed` parameter has when its body
+/// reads it only by walk position (`.len`, `.nth(k)`, `.is_empty`): it
+/// also takes the `.rev` of an `Indexed`, so `zip(a, a.rev)` pairs mirrors
+/// (R07.6.4). The first parameter keys the result and stays `Indexed`.
+/// Only the checker writes it: no program can name it.
+pub(crate) const INDEXED_BY_WALK: &str = "Indexed (or its .rev)";
+
+pub(crate) fn by_walk_bounds(
+    f: &ast::FnDecl,
+    mut bounds: Vec<(String, Vec<String>)>,
+) -> Vec<(String, Vec<String>)> {
+    for (param, traits) in &mut bounds {
+        let typed: Vec<(usize, &ast::Param)> = f
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| {
+                matches!(p.ty.as_ref().map(|t| &t.kind),
+                    Some(ast::TypeKind::Named { name, args }) if args.is_empty() && name.text == *param)
+            })
+            .collect();
+        let by_walk = !typed.is_empty()
+            && typed
+                .iter()
+                .all(|(i, p)| *i > 0 && read_by_walk(&f.body, &p.name.text));
+        if by_walk {
+            for t in traits.iter_mut().filter(|t| *t == "Indexed") {
+                *t = INDEXED_BY_WALK.to_string();
+            }
+        }
+    }
+    bounds
+}
+
+/// Every use of the name `param` in `body` is `.len`, `.nth` or `.is_empty`.
+fn read_by_walk(body: &ast::FnBody, param: &str) -> bool {
+    struct Uses<'p> {
+        param: &'p str,
+        all: usize,
+        by_walk: usize,
+    }
+    impl cpl_syntax::visit::Visitor for Uses<'_> {
+        fn expr(&mut self, e: &Expr) {
+            match &e.kind {
+                ExprKind::Name(n) if n == self.param => self.all += 1,
+                ExprKind::Field { base, name }
+                    if matches!(&base.kind, ExprKind::Name(n) if n == self.param)
+                        && matches!(name.text.as_str(), "len" | "nth" | "is_empty") =>
+                {
+                    self.by_walk += 1
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut uses = Uses {
+        param,
+        all: 0,
+        by_walk: 0,
+    };
+    match body {
+        ast::FnBody::Block(b) => cpl_syntax::visit::walk_block(b, &mut uses),
+        ast::FnBody::Expr(e) => cpl_syntax::visit::walk_expr(e, &mut uses),
+        ast::FnBody::None => return false,
+    }
+    uses.all > 0 && uses.all == uses.by_walk
+}

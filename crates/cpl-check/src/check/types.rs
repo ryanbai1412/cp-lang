@@ -1045,7 +1045,7 @@ impl<'a> Checker<'a> {
                     Def::Fn {
                         ty,
                         generics: f.generics.iter().map(|g| g.text.clone()).collect(),
-                        bounds: extract_bounds(&f.bounds),
+                        bounds: super::views::by_walk_bounds(f, extract_bounds(&f.bounds)),
                         lends: f.lends.is_some(),
                         row_bounds,
                         trait_bounds,
@@ -1675,6 +1675,7 @@ impl<'a> Checker<'a> {
             "Seq" => ty.is_seq(),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
+            super::views::INDEXED_BY_WALK => ty.rev_source().unwrap_or(ty).is_indexed(),
             "Bidir" => ty.is_bidir(),
             "Keyed" => ty.is_keyed(),
             "IndexedMut" => ty.is_indexed_mut(),
