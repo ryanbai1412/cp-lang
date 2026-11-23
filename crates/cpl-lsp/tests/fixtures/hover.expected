@@ -6,7 +6,7 @@ help: write `V.map(v => min(n, 50) * 2).max()`, or `max(0, V.map(v => min(n, 50)
 26:1-32:1 L0520 a hand-rolled binary search: this is `first_true`
 help: `let lo = (..).first_true(mid => ..)`: the predicate must be monotone along the range
 35:5-35:14 L0210 `w` is written in terms of itself; this is `w /= ...`
-help: write `w /= 2`
+help: write `w /= 2`; `/=` names the place once, so the read and the write cannot drift apart
 52:5-56:5 L0520 a hand-rolled binary search: this is `first_true`
 help: `let left = (..).first_true(at => ..)`: the predicate must be monotone along the range
 60:9-60:22 L0505 `u` is only used as `g[u]`

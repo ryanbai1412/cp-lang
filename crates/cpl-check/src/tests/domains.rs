@@ -971,13 +971,18 @@ fn an_index_of_the_arrays_own_domain_is_proven_by_its_type() {
         }
         out
     };
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../corpus/problems/atcoder_dp_l/port.cp"
-    );
-    let port = std::fs::read_to_string(path).unwrap();
+    // Inline, not read from the corpus: ports get rewritten and must not move this test.
+    let port = "let n: 1..=3000 = read()
+domain I = 0..n
+let a: [I]1..=1e9 = read()
+@memo
+fn lead(l: I, r: I) -> Int:
+    if l >= r: return a[l]
+    max(a[l] - lead(l + 1, r), a[r] - lead(l, r - 1))
+print(lead(I.first!, I.last!))
+";
     assert_eq!(
-        proofs(&port),
+        proofs(port),
         [
             "a[l] l: I, the index space of a",
             "a[l] l: I, the index space of a",

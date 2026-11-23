@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Main red on d2b892815 (run 45127685540), fixed: fmt bug on log-inv-all.cp (reverted lint-fmt dd77ac10f, operator-chain breaking); VS Code tables missing `Each` from compiler 8d1f34d46 (regenerated; regen.sh now runs language-data.js so CI heals it); cpl-check domains test read the corpus port idioms rewrote in 7215e16fd (source inlined); lsp hover.expected re-blessed for the L0210 help reword. General fixes owed in PLAN.
 - Lane check-in (all 11 lanes): no land.sh or hook blocks; top sinks fixed here: `debt-ratchet --check` now measures origin/main in a scratch worktree and fails only on debt this change adds (main's own debt is a warning; CI on main, where HEAD is main, still fails); `decision_dup_numbers` is informational, not gated (renumber races cost lanes ~10 min); `port-check.sh` defaults to the newest of debug/release `cpl`.
 - land.sh rebases with `--autostash`, so uncommitted edits in the worktree (often regenerated files) no longer stop a land with "cannot pull with rebase".
 - `jetbrains-gradle-429-blocker`: the jetbrains CI job and the release editors job cache Gradle dependencies (`setup-java` `cache: gradle`), and plugins resolve from the Gradle Plugin Portal before Maven Central, so a Maven Central 429 no longer fails the plugin build once the cache is warm.

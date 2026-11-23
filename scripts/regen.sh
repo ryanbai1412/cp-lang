@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regenerates the files main keeps in sync with spec/ and skills/: the bundled
-# skill pages, spec/conformance/COVERAGE.md, pnpm-lock.yaml, and fixed entries
+# skill pages, spec/conformance/COVERAGE.md, pnpm-lock.yaml, VS Code's name tables, and fixed entries
 # dropped from spec/conformance/prelude-gaps.txt (a new gap still fails the gate). CI's
 # regen job runs it on every main push and commits what changed, so a direct
 # `git push` needs no local step. Prints the changed paths.
@@ -16,4 +16,5 @@ if [ -f scripts/conformance-prelude.py ] && py scripts/conformance-prelude.py 2>
     run py scripts/conformance-prelude.py --update
 fi
 ! command -v pnpm >/dev/null || run pnpm install --lockfile-only --silent
-git status --porcelain -- skills spec/conformance pnpm-lock.yaml | cut -c4-
+! command -v node >/dev/null || run node editors/vscode/scripts/language-data.js
+git status --porcelain -- skills spec/conformance pnpm-lock.yaml editors/vscode/src/languageData.ts editors/vscode/syntaxes | cut -c4-

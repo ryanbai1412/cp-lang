@@ -45,6 +45,8 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 | A std/*.cp edit forces a 60 s release rebuild because std is embedded (2026-11-22) | Dev builds read std/ from disk | tools / compiler |
 | cpl.wasm at 2,098,812 of its 2,100,000 B gz cap (2026-11-22) | Cap set from a size budget per feature, with headroom, or cut size | site |
 | Queued main CI runs get cancelled by newer pushes, so platform fixes take 15-20 min to verify (2026-11-22) | A dispatchable per-SHA platform run, outside the main concurrency group | infra |
+| `cpl-check` domains test read `corpus/problems/atcoder_dp_l/port.cp`; idioms' rewrite broke it (2026-11-23) | Tests embed their source; no test reads a corpus port idioms may rewrite | compiler |
+| A lint help rewording broke `cpl-lsp` hover.expected (2026-11-23) | LSP fixtures snapshot lint codes and spans, not lint prose already tested in cpl-lint | tools |
 | A std change raised the corpus lint baseline (L0204/L0206/L0210/L0509) | The commit tier lints the touched `std/*.cp` against the baseline in seconds | infra (wiring), lint-fmt (check) |
 | `IndexOp` in `std/ntt.cp` missing from the VS Code tables | Generate the std names in `languageData.ts` and the grammar from `std/` in regen, instead of a hand list checked by a test | tools |
 | L0206 fired on a user `rev` method | Getter lints read the receiver's checked type, not a syntactic guess | lint-fmt |
