@@ -605,6 +605,10 @@ uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
 uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
 
+step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
+uv run --quiet python scripts/std-api-lint.py --max 6 \
+    || fail "a std signature breaks a std-api rule; see above"
+
 step "prelude exports what its fns return (scripts/prelude-signatures.py)"
 uv run --quiet python scripts/prelude-signatures.py \
     || fail "a prelude fn returns a std type the prelude does not export; see above"

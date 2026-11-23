@@ -73,7 +73,7 @@ A search, min, max, `first`, `last` or `pop` that can find nothing returns `?T`;
 
 - **Why:** a sentinel type-checks and silently corrupts the answer.
 - **Example:** `[].max()` is `None`; a `Counter` reading 0 for an unseen key is not a sentinel, since 0 is its true count.
-- **Enforced by:** `missing` (API-consistency lint: `Int` results named like searches).
+- **Enforced by:** `scripts/std-api-lint.py` (a numeric result whose doc gives `-1`, `INF` or `len` for nothing; shrink-only, in `scripts/check.sh`).
 
 ### R5. A fold of a monoid is `T`; without an identity it is `?T`
 
@@ -91,7 +91,7 @@ An option is a named argument with a default, never a `_by`, `_key` or `_with` v
 
 - **Why:** one fn to learn; adding an option is a local edit.
 - **Example:** `a.sort(by: r => -r.score)`, `bfs(g, from: s)`, `dijkstra(g, from: s, step: max)`.
-- **Enforced by:** `scripts/spec-vocab.py` (`_by` names); `scripts/conformance-sigs.py --check` (spec named arguments std lacks).
+- **Enforced by:** `scripts/std-api-lint.py` (`f_by`, `f_key`, `f_with` beside `f`; shrink-only, in `scripts/check.sh`); `scripts/conformance-sigs.py --check` (spec named arguments std lacks).
 
 ### R7. `by:` takes one element and returns its key
 
