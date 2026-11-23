@@ -6,6 +6,7 @@
 //! under `[libs]`, or else a folder with a `lib.toml` that says
 //! `name = "<that name>"`, found by walking up from the importing file.
 
+use cpl_diag::{codes, Diagnostic, Span};
 use std::path::{Path, PathBuf};
 
 /// Finds and reads modules. The language server and the tests replace the
@@ -69,8 +70,30 @@ pub fn std_modules() -> &'static [(&'static str, &'static str)] {
     BUNDLED
 }
 
+/// The error for `use` of a module that isn't there, at `whole`.
+pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
+    let dotted = parts.join(".");
+    let near = nearest_std(parts);
+    let help = match (parts[0].as_str(), &near) {
+        (_, Some(m)) => format!("did you mean `{m}`?"),
+        ("std", None) => "the standard library's modules are the files of `spec/std/`".to_string(),
+        (lib, None) => format!(
+            "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
+        ),
+    };
+    let message = match parts[0] == "std" {
+        true => format!("no module `{dotted}`, and not in the stdlib (yet)"),
+        false => format!("no module `{dotted}`"),
+    };
+    let mut diag = Diagnostic::error(codes::UNRESOLVED_MODULE, whole, message).with_help(help);
+    if let Some(m) = near {
+        diag.fix(format!("use `{m}`"), whole, m);
+    }
+    diag
+}
+
 /// `std.segtre` as `std.segtree`: the closest stdlib module to a missing one.
-pub(crate) fn nearest_std(module: &[String]) -> Option<String> {
+fn nearest_std(module: &[String]) -> Option<String> {
     let [std, name] = module else { return None };
     let names = BUNDLED.iter().map(|(known, _)| *known);
     (std == "std")

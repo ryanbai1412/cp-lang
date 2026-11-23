@@ -1246,32 +1246,7 @@ impl Database {
         }
         let Some(loaded) = found else {
             if diags.is_empty() {
-                let dotted = parts.join(".");
-                let near = crate::modules::nearest_std(&parts);
-                let help = match (first.text.as_str(), &near) {
-                    (_, Some(m)) => format!("did you mean `{m}`?"),
-                    ("std", None) => {
-                        "the standard library's modules are the files of `spec/std/`".to_string()
-                    }
-                    (lib, None) => format!(
-                        "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
-                    ),
-                };
-                diags.push(
-                    Diagnostic::error(
-                        codes::UNRESOLVED_MODULE,
-                        whole,
-                        if first.text == "std" {
-                            format!("no module `{dotted}`, and not in the stdlib (yet)")
-                        } else {
-                            format!("no module `{dotted}`")
-                        },
-                    )
-                    .with_help(help),
-                );
-                if let (Some(m), Some(diag)) = (near, diags.last_mut()) {
-                    diag.fix(format!("use `{m}`"), whole, m);
-                }
+                diags.push(crate::modules::missing(&parts, whole));
             }
             scope.has_imports = true;
             return;
