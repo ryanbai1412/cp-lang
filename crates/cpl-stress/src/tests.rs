@@ -247,6 +247,20 @@ fn outputs_are_compared_by_token() {
 }
 
 #[test]
+fn yes_and_no_match_in_any_case() {
+    assert_eq!(first_difference("Yes\nNO\n", "YES\nno\n"), None);
+    assert_eq!(
+        first_difference("Yes\n", "No\n").as_deref(),
+        Some("first difference at line 1, token 1: expected `Yes`, got `No`")
+    );
+    assert_eq!(
+        first_difference("Yes 1\n", "YES 2\n").as_deref(),
+        Some("first difference at line 1, token 2: expected `1`, got `2`")
+    );
+    assert!(first_difference("abc\n", "ABC\n").is_some());
+}
+
+#[test]
 fn a_run_captures_output_exit_time_and_memory() {
     let outcome = sh("cat; echo oops >&2; exit 3")
         .run("hello\n", Duration::from_secs(10))

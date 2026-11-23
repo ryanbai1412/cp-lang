@@ -7289,3 +7289,12 @@ module and drop the cap back.
 ## 337. The browser compiler bundles std without its comments (2026-11-22)
 
 `cpl.wasm` had reached 2,098,812 of its 2,100,000-byte gzip cap. `cpl-check`'s build script now blanks whole-line `//` comments in the std it embeds when the target is wasm32, bringing it to 1,907,069 bytes gzipped (-191,743). Std's doc comments were about half of the embedded std's compressed size, and nothing the browser build runs reads them: the site has no hover, and the checker's name scans already skip comments. Each comment becomes an empty line, so std line numbers stay the same on every target. Cost: wasm hover on a std item shows no doc text; the native LSP and `cpl doc` are unchanged. Reverse: drop the `wasm32` branch in `crates/cpl-check/build.rs`, or ship the docs as a separate lazily fetched file if browser hover returns.
+
+## 338. `cpl test` and `cpl stress` match yes/no answers in any case (tools, 2026-11-23)
+
+`YES`, `Yes` and `yes` are one token when comparing output, as Codeforces
+(the milestone's target judge) accepts yes/no in any case and `yes(b)`
+prints `YES`. The acceptance run lost minutes to a sample printing `Yes`.
+Only the words yes and no fold; every other token stays exact. AtCoder
+wants the exact case, so a judge-aware comparison is the maximal version.
+Reverse: drop `same_token` in cpl-stress judge.rs.

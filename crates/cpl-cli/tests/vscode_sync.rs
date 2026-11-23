@@ -175,7 +175,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     let missing: Vec<&String> = shipped.difference(&listed).collect();
     assert!(
         missing.is_empty(),
-        "editors/vscode/src/languageData.ts and syntaxes/cp.tmLanguage.json do not list {missing:?}: add each to the table for its kind and to the grammar rule of the same name"
+        "editors/vscode/src/languageData.ts and syntaxes/cp.tmLanguage.json do not list {missing:?}: run `npm run language-data` in editors/vscode, which regenerates both"
     );
     let phantom: Vec<&String> = listed.difference(&shipped).collect();
     assert!(

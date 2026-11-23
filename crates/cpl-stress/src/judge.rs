@@ -93,6 +93,19 @@ pub fn declared(src: &str) -> Vec<Declared> {
     out
 }
 
+/// Whether two output tokens match. `YES`, `Yes` and `yes` are one answer, as
+/// Codeforces (the target judge) accepts yes/no in any case.
+fn same_token(expected: &str, got: &str) -> bool {
+    expected == got
+        || ["yes", "no"]
+            .iter()
+            .any(|word| expected.eq_ignore_ascii_case(word) && got.eq_ignore_ascii_case(word))
+}
+
+fn same_tokens(expected: &[&str], got: &[&str]) -> bool {
+    expected.len() == got.len() && expected.iter().zip(got).all(|(a, b)| same_token(a, b))
+}
+
 /// Where two outputs first differ, counting tokens.
 pub fn first_difference(expected: &str, got: &str) -> Option<String> {
     let mut expected_lines = expected.lines();
@@ -109,7 +122,7 @@ pub fn first_difference(expected: &str, got: &str) -> Option<String> {
         if a.is_none() && b.is_none() {
             return None;
         }
-        if a_tokens == b_tokens {
+        if same_tokens(&a_tokens, &b_tokens) {
             continue;
         }
         // Lines can be split differently and still hold the same tokens.
@@ -123,13 +136,13 @@ pub fn first_difference(expected: &str, got: &str) -> Option<String> {
             .copied()
             .chain(got_lines.flat_map(str::split_whitespace))
             .collect();
-        if rest_a == rest_b {
+        if same_tokens(&rest_a, &rest_b) {
             return None;
         }
         let token = rest_a
             .iter()
             .zip(&rest_b)
-            .take_while(|(x, y)| x == y)
+            .take_while(|(x, y)| same_token(x, y))
             .count();
         let show = |tokens: &[&str]| {
             tokens

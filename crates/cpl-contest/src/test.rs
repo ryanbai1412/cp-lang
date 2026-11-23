@@ -179,6 +179,10 @@ pub fn render(results: &[CaseResult]) -> String {
         unchecked => out.push_str(&format!(" ({unchecked} had no expected output)")),
     }
     out.push('\n');
+    let compared = |r: &CaseResult| matches!(&r.verdict, Some(Verdict::Wrong(why)) if why.starts_with("first difference"));
+    if results.iter().any(compared) {
+        out.push_str("  if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`\n");
+    }
     out
 }
 
