@@ -5,6 +5,34 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// A member that another version or language has and CP Lang spells
+    /// differently: reported, with the fix where there is one.
+    pub(super) fn member_advice(&mut self, base_ty: &Ty, name: &cpl_syntax::ast::Name) -> bool {
+        if name.text == "bsearch_first" {
+            let message =
+                "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`";
+            self.error(codes::REMOVED_SYNTAX, name.span, message.to_string());
+            return true;
+        }
+        // `p.first`, `p.second`: C++'s pair, where a tuple numbers its parts.
+        let Ty::Tuple(parts) = base_ty else {
+            return false;
+        };
+        let part = ["first", "second", "third"]
+            .iter()
+            .position(|p| *p == name.text);
+        let Some(i) = part.filter(|&i| i < parts.len()) else {
+            return false;
+        };
+        let last = parts.len() - 1;
+        let message = format!("a tuple has no `.{}`: its parts have numbers", name.text);
+        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+            diag.help = Some(format!("the parts of this tuple are `.0` to `.{last}`"));
+            diag.fix(format!("change to `.{i}`"), name.span, i.to_string());
+        }
+        true
+    }
+
     /// `let N = 5` as `const N = 5`: only a literal can be a constant as is.
     pub(super) fn const_fix(&self, keyword: &str, name: Span, init: Option<&Expr>) -> Option<Fix> {
         let literal = |e: &Expr| {

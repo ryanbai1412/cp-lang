@@ -125,3 +125,15 @@ fn pythons_conversions_say_how_ours_are_written() {
         "{d:?}"
     );
 }
+
+#[test]
+fn a_pairs_first_and_second_name_the_tuple_parts() {
+    assert_eq!(
+        fixed("let p = (1, 2)\nprint(p.first, p.second)\n"),
+        "let p = (1, 2)\nprint(p.0, p.second)\n"
+    );
+    let d = check("let p = (1, 2)\nprint(p.first, p.second)\n");
+    assert_eq!(d.len(), 2, "{d:?}");
+    assert!(d[0].message.starts_with("a tuple has no `.first`"), "{d:?}");
+    assert_eq!(d[1].fixes[0].edits[0].1, "1", "{d:?}");
+}

@@ -1873,11 +1873,7 @@ impl<'a> Checker<'a> {
             self.error(codes::REMOVED_SYNTAX, name.span, message);
             return Ty::Error;
         }
-        if name.text == "bsearch_first" {
-            let message =
-                "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`"
-                    .to_string();
-            self.error(codes::REMOVED_SYNTAX, name.span, message);
+        if self.member_advice(&base_ty, name) {
             return Ty::Error;
         }
 
