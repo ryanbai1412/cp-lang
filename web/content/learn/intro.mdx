@@ -51,7 +51,7 @@ the obvious reductions, and a lambda is `x => ...`:
 ```cp run input="5\n3 1 4 1 5\n"
 let n: 1..=2e5 = read()
 let a: [0..n]1..=1e9 = read()
-print(a.sum(), a.max(), a.count(x => x % 2 == 1))
+print(a.sum(), a.max()!, a.count(x => x % 2 == 1))
 print(if a.any(x => x > 4): "YES" else: "NO")
 ```
 
