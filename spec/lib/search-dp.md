@@ -149,8 +149,8 @@ sum-over-subsets transforms, \(O(2^n \cdot n)\); with `op` inverse, `unfold_*`.
 - **The storage is spelled, never picked for you.** `@memo(array)` is a
   dense table: every parameter must be a domain, `Bool`, enum or ranged
   Int, else it's a compile error naming the parameter. Memory is the
-  product of the sizes (here 19 × 2 × 163 slots), allocated when the
-  enclosing block starts; `cpl explain` prints it. `@memo(map)` is a hash
+  product of the sizes (here 19 × 2 × 163 slots), allocated on the first
+  call; `cpl explain` prints it. `@memo(map)` is a hash
   map over any hashable arguments: \(O(\text{states visited})\) memory, a hash per call.
 - **Bare `@memo` is an error** whose fix offers `array` when every
   parameter is bounded and `map` otherwise. An array spends memory on
@@ -161,7 +161,10 @@ sum-over-subsets transforms, \(O(2^n \cdot n)\); with `op` inverse, `unfold_*`.
   every state).
 - Recursion depth follows the judge profile's stack; `@memo` adds nothing
   per frame beyond the call.
-- `ways.clear()` empties the cache (multitest).
+- The cache lives as long as the declaring block (R06.4.1): below
+  `@!multitest` it starts empty each test with no code, and above it one
+  cache serves every test. `ways.clear()` empties it sooner, for a test that
+  runs one memo over several inputs.
 
 ## Speed-ups: same cost function, one edit
 

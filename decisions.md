@@ -7443,3 +7443,11 @@ L0557 flagged only `fact[a] * inv(fact[b]) * inv(fact[a - b])`, one table. Ports
 ## 346. A scientific literal with an exact integer value is an `Int`, whatever its mantissa (2026-11-23)
 
 R01.4.1 said an exponent literal denoting an exact integer is `Int`; R01.4.2 said floats "need a fraction", so `1.5e5` read both ways (rebuild 8, H-SCI-LITERAL), and Codeforces writes bounds as `1.5e5` and `2.5e5`. Rule: with an exponent, the value decides (`1.5e5` is `Int`, `2.5e-1` is a float); without one, a `.` makes a float (`2.0`). Reason: the statement's bound is copied as written, and no float literal changes meaning. Reverse: R01.4.2 back to "a fraction makes a float" and drop core-01/scientific-fraction-is-int.cp.
+
+## 347. `/` and `%` are Euclidean, which is floor division for a positive divisor (2026-11-23)
+
+R01.5.2 said "`/` is floor division and `%` is never negative", which cannot both hold for a negative divisor (`7 / -2` is -4 by floor, but then `7 % -2` is -1); `std/math.cp` said Euclidean (rebuild 8, H-DIV-SEMANTICS). Both builds compute Euclidean today (`7 / -2 == -3`, `7 % -2 == 1`). Reason: keeps the never-negative `%` that indexing and modular code rely on, and changes nothing for positive divisors. Reverse: make `/` floor and let `%` take the divisor's sign, and update core-01/division-negative-divisor.cp.
+
+## 348. `List(s)` converts one sequence; values make a list as a literal (2026-11-23)
+
+Chapter 5 built lists as `List(1, 2)` while R07.8.1 makes `List(s)` a conversion, so `List(xs)` read as a copy or as a list of one list (rebuild 8, H-LIST-CTOR). Rule: `List(s)` takes exactly one sequence; `[a, b]` is the list of values, `[xs]` the list of one list. Chapter 5's examples now use literals. Reason: one spelling per idea, and the conversion is the one `Set(s)` and `Str(s)` already share. Reverse: allow a variadic `List(a, b)` and say a single sequence argument converts.

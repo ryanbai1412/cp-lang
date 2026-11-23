@@ -364,3 +364,11 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - `count-of-bools-counts-all` (hesitation, step `design`): Still as in run 1: `.count()` on a list of Bools returns the length (3), not the number of trues (2); you need `.count(x => x)`. Evidence: 'print([true, false, true].count())' -> 3
 
 - From perf (2026-11-23, review afterwards): `std/mod.cp` `impl Add for Mod<P>` now computes `r = a.v + b.v - P` and adds `P` back when negative, instead of comparing the sum against `P`; same values, one sum in the generated C++ (cf2183e 1.385x -> 1.321x). The select is not yet proven `0..P`, so it carries a `check_range` (no-op outside `LOCAL`); request filed with compiler in perf's PLAN.md.
+
+### Request from spec (rebuild 8, 2026-11-23): Prefix and stub mismatches a cold reader hit
+- Bug, silent WA: `pre[v]` at a position returns `a[v]`, not the fold through `v` (R07.1.6); `[1,2,3].scan(+)` gives `1 2 3` at positions 0..2, both builds. Case: std-prefix/scan-at-position-folds-through.cp.
+- Bug: `a.scan(max)` over a bounded element type with no `from:` overflows in the interpreter (`3 - -9223372036854775807`) and gives `MIN 1 1` in release; R07.9.2 gives `max` an identity on a bounded type. Case: std-prefix/scan-max-of-bounded.cp. `std/prefix.cp:19` should list `max` with the identities.
+- Stub: `std/prefix.cp:31-33` declares `Prefix<D, T>` with `var p: [D.cuts]T`, but sums are `Int` (R03.1.7), which the implementation already does (std-prefix/scan-sums-are-int.cp passes at 3e9). Declare the fold type as the widened sum.
+- Stub: `zip(a, b)` is declared `-> yields (T, U)` (`std/seq.cp:570`), but R07.4.10 makes it `Indexed` keyed by `a`; `zip(a, b)[i]` is E0302 today.
+- Docs: `std/README.md:233` says a function's sum is only `sum(f(x) for x in xs)`, while `std/seq.cp:34` offers `sum(of:)`. Pick one (spec's examples use the generator form).
+- Docs: `std/README.md:224` calls `sort`, `sum`, `count`, `min`, `max`, `first` intrinsics while `std/seq.cp` gives them CP bodies; R11.3 says no built-in list. Drop the word or the list.

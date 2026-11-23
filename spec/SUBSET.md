@@ -270,6 +270,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
 - std-grid/step-on-product-domain-position.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
+- std-prefix/scan-at-position-folds-through.cp: stdlib
+- std-prefix/scan-max-of-bounded.cp: stdlib
 - std-segtree/dual-add-point-read.cp: stdlib
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-tree/from-prufer-empty-code-is-one-edge.cp: stdlib

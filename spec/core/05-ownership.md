@@ -103,7 +103,7 @@ a deep copy. (R05.2.2)
 
 <!-- rejects: E0608 -->
 ```python
-var xs = List(1, 2)
+var xs = [1, 2]
 let ys = xs                 // xs moves into ys
 print(xs.len)               // error: xs moved on the line above; write xs.clone() there
 ```
@@ -169,7 +169,7 @@ static fn and follows R4/R5 below (chapter 2.6 has the one rule).
 <!-- rejects: E0608 -->
 ```python
 struct Holder: xs: List<Int>
-var a = List(1, 2)
+var a = [1, 2]
 let h = Holder(a)          // a moves into h
 print(a.len)               // error: a was moved into h on line 3; write Holder(a.clone())
 ```
@@ -296,7 +296,7 @@ let ws = read<[V]Int>()
 var st = SegTree((i, j) => if ws[i] <= ws[j]: i else: j, [V] v => v)   // fine: st dies before ws
 ```
 <!-- given:
-  var rows = List(List(1, 2), List(3))
+  var rows = [[1, 2], [3]]
   let i = 0 -->
 <!-- rejects: E0603 -->
 ```python
@@ -343,7 +343,7 @@ at each call, not for the closure's whole life, so a closure that writes
 `cnt` can be called, then `cnt` read, then the closure called again.
 
 <!-- given:
-  var xs = List(3, 1, 2) -->
+  var xs = [3, 1, 2] -->
 <!-- rejects: E0602 -->
 ```python
 xs.sort(by: x => xs.len - x)
@@ -410,7 +410,7 @@ for step in dfs(g, from: [s], seen: mut seen):
     seen[s] = true          // error: seen is lent `mut` to the dfs for the whole loop
 ```
 <!-- given:
-  var xs = List(3, 1, 2) -->
+  var xs = [3, 1, 2] -->
 <!-- rejects: E0602 -->
 ```python
 for x in xs: xs.push(x)          // error: xs is read-lent to the loop
@@ -635,7 +635,7 @@ declares them; `a` and `rows` are `var`s. Answers follow each one.
 
 **1.**
 ```python
-var xs = List(1, 2)
+var xs = [1, 2]
 let ys = xs
 print(ys.len)
 ```
@@ -644,7 +644,7 @@ print(ys.len)
 **2.**
 <!-- rejects: E0608 -->
 ```python
-var xs = List(1, 2)
+var xs = [1, 2]
 let ys = xs
 print(xs.len + ys.len)
 ```
@@ -705,7 +705,7 @@ print(w.sum())
 
 **8.**
 <!-- given:
-  var rows = List(List(1, 2), List(3))
+  var rows = [[1, 2], [3]]
   let i = 0 -->
 <!-- rejects: E0602 -->
 ```python
@@ -717,7 +717,7 @@ print(row.len)
 
 **9.**
 <!-- given:
-  var rows = List(List(1, 2), List(3))
+  var rows = [[1, 2], [3]]
   let i = 0 -->
 <!-- rejects: E0603 -->
 ```python
@@ -729,7 +729,7 @@ for row in rows:
 
 **10.**
 <!-- given:
-  var rows = List(List(1, 2), List(3))
+  var rows = [[1, 2], [3]]
   let i = 0 -->
 <!-- rejects: E0602 -->
 ```python
@@ -739,7 +739,7 @@ for x in rows[i]: rows[i].push(x)
 
 **11.**
 <!-- given:
-  var rows = List(List(1, 2), List(3))
+  var rows = [[1, 2], [3]]
   let i = 0 -->
 ```python
 for k in rows[i].keys: rows[i].push(rows[i][k])
@@ -788,7 +788,7 @@ p += 1
 
 **15.**
 <!-- given:
-  var a = List(1, 2)
+  var a = [1, 2]
   var cnt = List(0, 0, 0)
   let i = 0 -->
 ```python
@@ -850,7 +850,7 @@ st[i] = i
 **21.**
 <!-- rejects: E0602 -->
 ```python
-var xs = List(3, 1, 2)
+var xs = [3, 1, 2]
 xs.sort(by: x => xs.len - x)
 ```
 <details><summary>Answer</summary>No. <code>sort</code> holds <code>xs</code> <code>mut</code> for the call, and the closure argument reads <code>xs</code> (R10).</details>
@@ -956,7 +956,7 @@ visit(V.first!, None)
 **31.**
 <!-- rejects: E0607 -->
 ```python
-var xs = List(1, 2)
+var xs = [1, 2]
 let f = () => xs.len
 let ys = xs
 print(f())

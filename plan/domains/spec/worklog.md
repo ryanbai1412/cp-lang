@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild 8 triage, part 2: `/` and `%` are Euclidean (decision 347; R01.5.2 contradicted itself for a negative divisor); `List(s)` converts one sequence and chapter 5 uses list literals (decision 348); search-dp's memo text now matches R06.4.1 (first-call allocation, per-test lifetime). Four std-prefix cases: two pass (`Int` sums past `1e9`), two fail and found real bugs, routed to stdlib: `pre[v]` returns `a[v]` (silent WA), and `scan(max)` with no `from:` overflows.
 - Bug-catch round 9 in release mode: 0 of 2 caught; both fixes are out of reach by design (an optimisation, and a trap at `--checks none`). Written up in bugcatch.md; rate stays 23 of 25 behavioural fixes.
 - Rebuild round 8 (`e254eb449`): 23 holes, down from round 7's 33; all inside the subset. Files in delta/rebuild-8. First triage: `1.5e5` is `Int` (decision 346, R01.4.2 reworded); `or`/`and` continuation lines are E0504 in the compiler. Two failing cases, routed to compiler, listed as known gaps. Scuza and 1703F fail on `pre[c]`, the known gap core-07/prefix-scan-cuts.cp.
 - Rebuild round 8 started at `e254eb449`: ten new Codeforces problems, same brief as round 7. The target is fewer holes than round 7's 33.
