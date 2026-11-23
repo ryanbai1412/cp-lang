@@ -1892,7 +1892,7 @@
         "dmopc21c2p1": "pass",
         "dmopc21c4p1": "untested",
         "dmopc21c4p2": "pass",
-        "dmopc21c5p2": "untested",
+        "dmopc21c5p2": "pass",
         "dmopc21c9p1": "untested",
         "dmpg16g2": "error",
         "egoi22p3": "untested",
@@ -1920,7 +1920,7 @@
         "mccc4j1": "pass",
         "mccc4j4": "error",
         "nccc10s4": "trap",
-        "nccc8s3": "untested",
+        "nccc8s3": "pass",
         "noi02p1": "untested",
         "noi02p3": "error",
         "noi05p4": "untested",
@@ -2157,12 +2157,12 @@
       ],
       "counts": {
         "error": 38,
-        "pass": 21,
+        "pass": 23,
         "trap": 2,
-        "untested": 38,
+        "untested": 36,
         "wrong": 1
       },
-      "passed": 21,
+      "passed": 23,
       "total": 100
     },
     "diff": {

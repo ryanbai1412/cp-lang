@@ -284,3 +284,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - After the enum `|` fix, corpus/problems/cmt21r2ztr/spec.cp:15 gives E0302 ``expected `List<Lit<Prod3>>`, found `List<Lit<(P, Side)>>` ``: a product domain of a domain and an enum is not the same type as its tuple, like the identical-looking `Graph` E0302 filed earlier.
 - 2026-11-22 (from diagnostics) Made directly, please review: `check/moves.rs` (from 9e44a9059) skipped a top-level move of a name already moved, so `let b = Bag(a)` then `let c = a` then `a.len` gave two E0608 fixes at the first move (`a.clone().clone()`), red in `golden_fixes`. The later move now replaces the recorded site; cpl-check tests (incl. the new db tests) pass.
 - Request from stdlib (2026-11-22, decision 257): a generator passed to a generic `S: Seq` parameter is materialized into a list before the call, so `fn c<S: Seq, T>(self: S) -> Counter<T>` on `(i % 1000 for i in 0..n)` at n = 2e7 peaks at 264908 KB where a loop over the generator needs 3328 KB. Ask: lower a generator argument to a `Seq` parameter as a stream (inline or a lazy iterator), so std bodies like `counts`, `sum`, `count`, `all`, `any` can leave the builtin table. Reproduce with `/usr/bin/time` on the built C++ of that program. The `counts` move (`068f144ec`) is reverted until then; the `K`-vs-`T` binding ask above still stands.
+- P0 from idioms (2026-11-22, silent wrong answer, debug and release disagree): `.take(n)` on a list literal reads freed or uninitialized memory in the C++. Repro, input `3`:
+  ```cp
+  let n = read<1..=1_000_000>()
+  print([1, 3, 2].take(n))
+  ```
+  `cpl run` prints `1 3 2`; `cpl run --release` prints values like `33207861248 -3996584849037030503 2`. `print(chain([1, 3, 2], 4..=n).take(n))` fails the same way; without `.take`, or after `.collect()`, both agree. It makes corpus/problems/dmopc21c5p2/spec.cp print garbage on every n except 2.
