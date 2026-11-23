@@ -1,6 +1,12 @@
-// Baltic OI '04 P3 (Sequence): L1 isotonic regression via PAV + skew heap
-// (array-backed arena in proto/cpc; MaxHeap small-to-large in v2).
-// Runnable on proto/cpc today.
+// Source: Baltic OI 2004 Day 1 P3 (Sequence), https://dmoj.ca/problem/btoi04p3
+// Problem: given t_1..t_N (N <= 1e6, 0 <= t_i <= 2e9), find a strictly increasing integer
+//   z_1 < ... < z_N (|z_i| <= 2e9) minimizing sum |t_i - z_i|; print that minimum, then
+//   any optimal z, one per line.
+// Solution: with x_i = t_i - i and y_i = z_i - i the order becomes non-decreasing: L1
+//   isotonic regression. Pool adjacent violators: keep a stack of blocks, each fitted by
+//   its median; merge the new block into the top while the top's median is larger. Each
+//   block keeps its smallest ceil(len / 2) values in a max skew heap (top = median), so a
+//   merge melds the heaps and pops down to size: O(N log N); z_i = median + i.
 // original: corpus/submissions/5270736.cpp
 let n: 1..=1e6 = read()
 domain V = 0..n

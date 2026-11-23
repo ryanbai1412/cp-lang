@@ -1,13 +1,12 @@
-// CCC 2019 S4 Tourism: visit n attractions in order, at most k per day, in
-// the fewest days possible (ceil(n / k)); each day scores its best attraction.
-// Maximise the total score.
-//
-// Cut the line into blocks of k. With the fewest days, the d-th day must end
-// inside block d, so day d starts at j + 1 in block d - 1 and ends at i in
-// block d. Its score is max(tail[j], head[i]) where tail[j] is the best of
-// j+1.. to the end of j's block and head[i] the best from the start of i's
-// block to i. A maximum of two maxima splits into two suffix maxima over j:
-//   best[i] = max( max_j (best[j] + tail[j]),  max_j best[j] + head[i] ).
+// Source: CCC 2019 Senior S4 (Tourism), https://dmoj.ca/problem/ccc19s4
+// Problem: N attractions visited in order, at most K per day (1 <= K <= N <= 1e6), in the
+//   fewest days, ceil(N / K). A day scores the largest a_i (<= 1e9) it visits; print the
+//   largest possible total score.
+// Solution: cut the line into blocks of K. With the fewest days, day d ends at a cut i
+//   inside block d and starts after a cut j of block d - 1 with j >= i - K. Its score is
+//   max(tail[j], head[i]), tail[j] the best from j + 1 to the end of j's block and head[i]
+//   the best from i's block start to i, so best[i] = max(max_j best[j] + tail[j],
+//   max_j best[j] + head[i]): two suffix maxima over the previous block's cuts, O(N).
 // original: corpus/submissions/6032792.cpp
 let n: 1..=1e6 = read()
 let k: 1..=1e6 = read()

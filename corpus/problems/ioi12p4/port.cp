@@ -1,6 +1,12 @@
-// IOI 2012 Ideal City: n blocks on a grid form a city that is connected and
-// has no holes. The distance between two blocks is the fewest steps between
-// them through blocks. Sum it over all pairs, modulo 10^9.
+// Source: IOI 2012 Day 2 (Ideal City), https://dmoj.ca/problem/ioi12p4
+// Problem: N <= 1e5 blocks on grid cells (coordinates below 2^31) form an ideal city: the
+//   blocks are connected and so are the empty cells (no holes). The distance of two blocks is
+//   the fewest hops through adjacent blocks. Print the sum over all pairs, modulo 1e9.
+// Solution: count steps along each axis separately. Cut every column into runs of
+//   touching blocks; without holes, runs that touch side by side form a tree, and a
+//   shortest path crosses exactly the tree edges between its ends' runs. So an edge with w
+//   blocks on one side is crossed by w * (N - w) pairs; do the same with the axes swapped:
+//   O(N log N) for the sort and the run map.
 // original: proto/ports/scout_batch_17/harness/ioi12p4_main.cpp (wraps corpus/submissions/4951048.cpp)
 let n: 1..=1e5 = read()
 domain Block = 0..n

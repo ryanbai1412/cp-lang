@@ -1,10 +1,12 @@
-// IOI '09 P7 - Regions (25pt): n employees form a tree under employee 1, each
-// from one of r home regions. Each query (r1, r2), answered online, asks for
-// the number of pairs (a, b) with a from r1, b from r2 and a an ancestor of b.
-// A region with more than sqrt(n) employees is "big": one sweep of the tree
-// in preorder counts, for every other region at once, the pairs it tops.
-// A small r1 walks its own members and counts the r2 members inside each
-// subtree range by binary search over r2's preorder positions.
+// Source: IOI 2009 Day 2 (Regions), https://dmoj.ca/problem/ioi09p7
+// Problem: a tree of N <= 2e5 employees rooted at 1 (each one's supervisor is more senior),
+//   each from one of R <= 25000 regions. Answer Q <= 2e5 queries (r1, r2) online: the number
+//   of pairs (e1, e2) with e1 from r1, e2 from r2 and e1 a proper ancestor of e2.
+// Solution: lay the tree out in preorder and list each region's preorder positions. A
+//   region with more than sqrt(N) members is big: one sweep, counting each node's ancestors
+//   in it, answers it against every r2 at once and is cached. A small r1 walks its members
+//   and counts r2's positions inside each subtree range by binary search, memoized per
+//   (r1, r2): O(N sqrt N + Q sqrt N log N).
 // original: corpus/submissions/5032754.cpp
 
 let (n, r, q): (1..=2e5, 1..=25000, 1..=2e5) = read()

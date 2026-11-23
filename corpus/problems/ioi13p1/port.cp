@@ -1,6 +1,12 @@
-// IOI 2013 Dreaming: n billabongs and m trails form a forest. Add trails of
-// length l until it is one tree, so that the longest walk between two
-// billabongs is as short as possible. Print that length.
+// Source: IOI 2013 Day 1 (Dreaming), https://dmoj.ca/problem/ioi13p1
+// Problem: a forest of N <= 1e5 billabongs and M <= N - 1 trails of length <= 1e4. Add new
+//   trails of length L <= 1e4 until it is one tree, keeping the longest travel time between
+//   two billabongs as small as possible, and print that time.
+// Solution: in each tree, the farthest node a from anywhere and the farthest b from a end
+//   every node's longest walk, so three walks give each node's eccentricity, the diameter
+//   and the radius (the smallest eccentricity). Hang every centre off the centre of largest
+//   radius: the answer is the max of all diameters, r1 + r2 + L and r2 + r3 + 2L for the
+//   radii sorted down: O(N + T log T) for T trees.
 // original: proto/ports/scout_batch_17/harness/ioi13p1_main.cpp (wraps corpus/submissions/4687433.cpp)
 let n: 1..=1e5 = read()
 let m: 0..n = read()

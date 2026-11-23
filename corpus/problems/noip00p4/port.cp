@@ -1,6 +1,14 @@
-// NOIP 2000 Square Number Picking: send two down/right paths across an n x n
-// grid to collect the largest weight sum (each cell counted once). Solved by
-// enumerating path subsets on the grid and combining disjoint halves via SOS DP.
+// Source: NOIP 2000 Senior P4 (Square Number Picking), https://dmoj.ca/problem/noip00p4
+//   (not public on DMOJ; statement from Luogu P1004)
+// Problem: an N x N grid (N <= 9) with positive numbers (<= 30) in some cells, given as
+//   lines x y v up to a 0 line. Walk twice from the top-left to the bottom-right corner
+//   moving only down or right; a cell's number is taken the first time it is passed.
+//   Print the largest total taken.
+// Solution: a path is identified by its set of numbered cells: build the distinct sets
+//   from each cell to the corner, back to front, as bitmasks over the m numbered cells.
+//   Close "is inside some path" under subsets (superset-OR SOS) and take, for every mask,
+//   the best path weight inside it (subset-max SOS); the answer is the max over masks s
+//   inside a path of weight(s) + best path inside the complement: O(2^m m), m <= 20 here.
 // original: corpus/submissions/5067920.cpp
 let n: 1..=9 = read()
 var cell_id: [0..n, 0..n]Int = -1
