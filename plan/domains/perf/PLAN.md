@@ -41,6 +41,7 @@ Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Mile
 
 Local fixes that landed, and the mechanism that would remove the whole class.
 
+- cf2187f1 (idiomatic 1.12x): `std.tree`'s `PermTree.new` documents O(n) but finds intervals with a lazy `SegTree` (O(n log n)). The tuned `perf.cp` writes orig.cpp's O(n) one-pass build (nearest earlier smaller/larger values) by hand. General fix (stdlib): build `PermTree` with that O(n) pass, or document its real cost. Owner: stdlib.
 - ioi10p3 (idiomatic 1.53x): `prefix([Row, Col] (i, j) => ...)` builds a fresh `ll` 0/1 grid and then an `ll` prefix grid on every call. The tuned `perf.cp` writes one reused, narrow table by hand. General fix (codegen): splice a table lambda straight into the prefix build (no source grid) and narrow the prefix cells to the source's range times the domain size. Owner: perf.
 - cf2255d: `for x in read<[n]T>()` reads the whole list into a vector before the loop (1486 page faults vs 130 for C++; 0.55x anyway). General fix (codegen): a loop over a `read` of a list reads each element as it walks. Owner: perf.
 - A struct array field over a constant range keeps `cpl::Row<ll, K>` cells even when its elements are ranged (`[Sign]Sign` stays `ll`, not `int8_t`): the row path in `layout.rs` wins over `narrow_elems`. General fix (codegen): row cells take the element's narrow width, with checked casts on store and brace-free initializers. Owner: perf.
