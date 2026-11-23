@@ -1,0 +1,6 @@
+let n: Int = read()
+let best: ?Int = None
+if n != 0:
+    print(n)
+if best != None:
+    print(1)

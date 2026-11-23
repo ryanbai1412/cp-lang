@@ -1145,12 +1145,31 @@ impl<'a> Checker<'a> {
             "{what} needs a Bool, but `{quoted}` is {}",
             ty.widen().with_article()
         );
+        let zero = match ty {
+            Ty::Optional(_) => Some("None"),
+            t if t.is_numeric() => Some("0"),
+            _ => None,
+        };
+        let simple = matches!(
+            expr.kind,
+            ExprKind::Name(_)
+                | ExprKind::Field { .. }
+                | ExprKind::Call { .. }
+                | ExprKind::Index { .. }
+        );
         if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
-            diag.help = Some(match ty {
-                Ty::Optional(_) => format!("compare it: `{quoted} != none`"),
-                t if t.is_numeric() => format!("compare it: `{quoted} != 0`"),
-                _ => "write a comparison".to_string(),
-            });
+            let Some(zero) = zero else {
+                diag.help = Some("write a comparison".to_string());
+                return;
+            };
+            diag.help = Some(format!("compare it: `{quoted} != {zero}`"));
+            if simple {
+                diag.fix(
+                    format!("compare with `!= {zero}`"),
+                    Span::point(expr.span.end),
+                    format!(" != {zero}"),
+                );
+            }
         }
     }
 
