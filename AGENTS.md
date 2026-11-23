@@ -3,6 +3,12 @@
 Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
+Start with `plan/product/`: `VISION.md` (who CP Lang is for and why),
+`EXPERIENCE.md` (the journeys we owe them) and `MILESTONE-1.md` (the
+milestone every lane works toward). Product docs say what users get, `spec/`
+says what the language is. When choosing what to do next, unblock a step of
+the milestone's acceptance scenario first.
+
 Then read, in order:
 0. `plan/STATUS.md` (generated: every domain's metrics and open questions) and `spec/README.md`: where the 0.3.0 work stands today,
    how the spec and corpus fit together, the checks to run, and what is open.
@@ -22,8 +28,11 @@ under `research/design-history/`.
 
 ## The mission
 
-Minimize the time from an algorithmic idea to an accepted submission the
-contestant understands and trusts. Quick to write and to revise, common
+Make turning an algorithmic idea into a correct, efficient, accepted
+solution as fast, natural, and enjoyable as possible. We build for
+experienced competitive programmers (about Codeforces 1500+) who would make
+CPL their primary language for contests, upsolving and training, in place
+of a C++ setup tuned over years. Quick to write and to revise, common
 mistakes hard to write, failures easy to explain, with the speed and control
 of hand-written C++ and a predictable path onto the judge.
 

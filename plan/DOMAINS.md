@@ -1,5 +1,7 @@
 # CP Lang domains: one domain = one lane = one owner
 
+Every domain serves the current milestone in `plan/product/MILESTONE-1.md`; each domain README says what the milestone needs from it.
+
 Paths (2026-11-22, decision 307): the stdlib lives in `std/` (was `spec/std/`) and the prover in `crates/cpl-prover` (was `crates/prover`); `plan/LAYOUT.md` is the layout every lane follows.
 
 Domains are grouped by how much Ryan is involved and how the lane is managed. The segment decides how a lane starts, what Ryan sees, and what counts as evidence.
