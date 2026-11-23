@@ -149,7 +149,14 @@ fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
 fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
     let path = program(name, src);
     let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args([OsStr("build"), path.as_os_str(), OsStr("-o"), OsStr("-")])
+        .args([
+            OsStr("build"),
+            path.as_os_str(),
+            OsStr("--checks"),
+            OsStr("traps"),
+            OsStr("-o"),
+            OsStr("-"),
+        ])
         .output()
         .expect("cpl build runs");
     if !built.status.success() {

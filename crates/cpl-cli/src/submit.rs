@@ -32,6 +32,7 @@ pub(crate) fn submit(
     let mut built = Vec::new();
     let options = BuildOptions {
         json,
+        checks: crate::build::JUDGE_CHECKS,
         ..BuildOptions::default()
     };
     let code = build_file(path, &options, &mut built, stderr);

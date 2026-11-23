@@ -319,7 +319,7 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
         ));
     }
 
-    let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+    let built = cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]);
     if built.code != 0 {
         return Err(format!(
             "`cpl build` exited with {}:\n{}",
@@ -332,7 +332,7 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
             built.stdout.len()
         ));
     }
-    if built.stdout != cpl_cli::run(&["build", &path, "-o", "-"]).stdout {
+    if built.stdout != cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]).stdout {
         return Err("two builds of one source differ".into());
     }
     let source = std::fs::read_to_string(program).map_err(|e| e.to_string())?;
@@ -517,7 +517,7 @@ print(known[if flag: true else: false][0])
             *expected,
             "{name}: interpreter output mismatch"
         );
-        let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+        let built = cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]);
         assert_eq!(built.code, 0, "{name}: cpl build failed:\n{}", built.stderr);
         let (stdout, code) = compile_and_run(
             &format!("gap_{name}"),
@@ -612,7 +612,7 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     interpreted.args(["run", &path]);
     assert_eq!(asked_live(interpreted), expected, "`cpl run`");
 
-    let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+    let built = cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]);
     assert_eq!(built.code, 0, "{}", built.stderr);
     // Nothing is flushed line by line: a program that reads and then
     // prints stays as fast as it was.
@@ -648,7 +648,7 @@ fn interactive_writes_each_print_out_at_once() {
     let mut interpreted = Command::new(env!("CARGO_BIN_EXE_cpl"));
     interpreted.args(["run", &path]);
     assert_eq!(asked_live(interpreted), ["! ready"], "`cpl run`");
-    let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+    let built = cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]);
     assert_eq!(built.code, 0, "{}", built.stderr);
     let binary = sanitized_binary(&built.stdout).unwrap();
     assert_eq!(asked_live(Command::new(binary)), ["! ready"], "the C++");
@@ -699,7 +699,10 @@ fn arrays_for_one_domain_that_start_apart_are_refused_by_its_written_name() {
     let source = "fn dot<D: Index>(a: [D]Int, b: [D]Int) -> Int:\n    var s = 0\n    for i in D: s += a[i] * b[i]\n    s\nlet a: [0..3]Int = 1\nlet b: [1..=3]Int = 2\nprint(dot(a, b))\n";
     std::fs::write(&path, source).unwrap();
     let path = path.to_string_lossy().into_owned();
-    for command in [vec!["run", &path], vec!["build", &path, "-o", "-"]] {
+    for command in [
+        vec!["run", &path],
+        vec!["build", &path, "--checks", "traps", "-o", "-"],
+    ] {
         let ran = cpl_cli::run(&command);
         assert_ne!(ran.code, 0, "{command:?}");
         assert!(
@@ -741,7 +744,7 @@ print(inv[V(2)]!.label)
         "expected duplicate image message, got: {}",
         ran.stderr
     );
-    let built = cpl_cli::run(&["build", &path_str, "-o", "-"]);
+    let built = cpl_cli::run(&["build", &path_str, "--checks", "traps", "-o", "-"]);
     assert_eq!(built.code, 0, "{}", built.stderr);
     let binary = sanitized_binary(&built.stdout).unwrap();
     let cpp = Command::new(&binary).output().unwrap();
@@ -789,7 +792,7 @@ print(h, s[0], s[n - 1], g[Row(1), Col(2)])
     }
     let good = format!("{n}\n{long}\nab c\ndef\n");
     let short = format!("{n}\n{}\n", &long[..1000]);
-    let built = cpl_cli::run(&["build", &path_str, "-o", "-"]);
+    let built = cpl_cli::run(&["build", &path_str, "--checks", "traps", "-o", "-"]);
     assert_eq!(built.code, 0, "{}", built.stderr);
     let binary = sanitized_binary(&built.stdout).unwrap();
     for (input, ok) in [(good, true), (short, false)] {
@@ -971,7 +974,7 @@ print(a[n - 1], b[n / 2])
     let cp_str = cp_path.to_string_lossy().into_owned();
     let cpp_path = dir.join("killer.cpp");
     let cpp_str = cpp_path.to_string_lossy().into_owned();
-    let built = cpl_cli::run(&["build", &cp_str, "-o", &cpp_str]);
+    let built = cpl_cli::run(&["build", &cp_str, "--checks", "traps", "-o", &cpp_str]);
     assert_eq!(built.code, 0, "build stderr: {}", built.stderr);
 
     let bin_path = dir.join("killer");

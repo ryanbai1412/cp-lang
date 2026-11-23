@@ -201,10 +201,23 @@ pub(crate) fn take_judge<'a>(
     }
 }
 
-/// `--checks <level>`, taken out of `rest`; the default where it is absent.
-pub(crate) fn take_checks(rest: &mut Vec<&str>) -> Result<cpl_codegen::Checks, String> {
+/// What a judge build checks unless `--checks` says: hand-written C++'s
+/// checks, since on the judge a crash and a wrong answer cost the same
+/// (decisions.md 283).
+pub(crate) const JUDGE_CHECKS: cpl_codegen::Checks = cpl_codegen::Checks::None;
+
+/// `--checks <level>`, taken out of `rest`. Where it is absent,
+/// [`JUDGE_CHECKS`], or `traps` for a `--checked` build, which is built to
+/// stop where the program goes wrong.
+pub(crate) fn take_checks(
+    rest: &mut Vec<&str>,
+    checked: bool,
+) -> Result<cpl_codegen::Checks, String> {
     let Some(at) = rest.iter().position(|arg| *arg == "--checks") else {
-        return Ok(cpl_codegen::Checks::default());
+        return Ok(match checked {
+            true => cpl_codegen::Checks::Traps,
+            false => JUDGE_CHECKS,
+        });
     };
     let level = rest
         .get(at + 1)

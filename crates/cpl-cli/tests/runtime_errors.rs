@@ -329,7 +329,14 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
     let exe = dir.join("a.bin");
     fs::write(&file, source).unwrap();
     let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+        .args([
+            "build",
+            file.to_str().unwrap(),
+            "--checks",
+            "traps",
+            "-o",
+            cpp.to_str().unwrap(),
+        ])
         .output()
         .expect("cpl build");
     assert!(
@@ -438,7 +445,14 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
         let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .args([
+                "build",
+                file.to_str().unwrap(),
+                "--checks",
+                "traps",
+                "-o",
+                cpp.to_str().unwrap(),
+            ])
             .output()
             .expect("cpl build");
         assert!(
@@ -507,7 +521,14 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
         let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .args([
+                "build",
+                file.to_str().unwrap(),
+                "--checks",
+                "traps",
+                "-o",
+                cpp.to_str().unwrap(),
+            ])
             .output()
             .expect("cpl build");
         assert!(
@@ -643,7 +664,14 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
         let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .args([
+                "build",
+                file.to_str().unwrap(),
+                "--checks",
+                "traps",
+                "-o",
+                cpp.to_str().unwrap(),
+            ])
             .output()
             .expect("cpl build");
         assert!(
@@ -724,7 +752,14 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
         let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .args([
+                "build",
+                file.to_str().unwrap(),
+                "--checks",
+                "traps",
+                "-o",
+                cpp.to_str().unwrap(),
+            ])
             .output()
             .expect("cpl build");
         assert!(

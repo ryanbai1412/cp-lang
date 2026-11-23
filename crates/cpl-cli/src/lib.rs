@@ -227,7 +227,7 @@ pub fn exec<S: AsRef<str>>(
                 Ok(judge) => judge,
                 Err(message) => return usage_error(message),
             };
-            let checks = match build::take_checks(&mut rest) {
+            let checks = match build::take_checks(&mut rest, checked) {
                 Ok(checks) => checks,
                 Err(message) => return usage_error(message),
             };

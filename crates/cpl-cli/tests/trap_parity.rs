@@ -1,6 +1,7 @@
 //! The Trap Parity Gate: every way a program stops with a runtime error
 //! (`R0001`, status 3) under `cpl run` stops the C++ of `cpl build` too,
-//! compiled the way a judge compiles it: `-O2`, no `-DLOCAL`, no sanitizer.
+//! at `--checks traps`, compiled the way a judge compiles it: `-O2`, no
+//! `-DLOCAL`, no sanitizer.
 //!
 //! `trap_parity.cp` holds one site per `which`. Site 0 is the control and
 //! must print. A site added to the interpreter gets a line there, and
@@ -39,7 +40,7 @@ fn judge_build(source: &Path) -> PathBuf {
     let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("build")
         .arg(source)
-        .arg("-o")
+        .args(["--checks", "traps", "-o"])
         .arg(&cpp)
         .output()
         .unwrap();

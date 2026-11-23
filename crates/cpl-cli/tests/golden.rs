@@ -873,7 +873,12 @@ fn build_checks_names_what_the_judge_build_still_checks() {
         assert_eq!(json.at(&["checks"]).as_str(), Some(level));
     }
     let default = cpl(&dir, &["build", "a.cp", "-o", "-"]);
-    assert!(text(&default.stdout).contains("division by zero"));
+    let none = cpl(&dir, &["build", "a.cp", "--checks", "none", "-o", "-"]);
+    assert_eq!(
+        text(&default.stdout),
+        text(&none.stdout),
+        "`none` is the default"
+    );
     for args in [&["--checks", "some"][..], &["--checks"]] {
         let out = cpl(&dir, &[&["build", "a.cp"][..], args].concat());
         assert_eq!(out.status.code(), Some(EXIT_USAGE.into()), "{args:?}");

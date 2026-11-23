@@ -6545,3 +6545,20 @@ Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
   ran 0.31-0.46 s and was rewritten before landing.
 - **Reverse.** Revert the commit; the std body then stays as the
   reference the builtin is tested against.
+
+
+## 283. The judge build keeps no traps unless `--checks` asks (2026-11-22)
+
+- **Decision.** `cpl build` and `cpl submit` write C++ at `--checks none` by
+  default: no index, `/ 0` or `assert` trap, with a zero divisor giving 0 so
+  the program keeps no undefined behaviour there. `--checks traps` is the
+  opt-in "fast but still traps" build, `--checks all` adds the local build's
+  checks (`-DLOCAL`). `--checked` stays the sanitizer build. `cpl run
+  --release` and `cpl stress` still build at `traps`, so a local crash is
+  seen; the Trap Parity Gate builds at `traps`.
+- **Why.** Ryan (2026-11-22): "by default when releasing to the judge we
+  should assume that RE vs WA doesn't really matter"; the traps cost hot-loop
+  time and bytes that hand-written C++ does not pay. Names agreed in perf's
+  and spec's worklogs.
+- **Reverse.** Set `JUDGE_CHECKS` in `crates/cpl-cli/src/build.rs` to
+  `Checks::Traps`.

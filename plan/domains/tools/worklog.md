@@ -124,3 +124,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request from tech-debt (2026-11-22, decision 293): corpus `.ans` files are derivable from the accepted C++ for 64 problems. `cases_in` (`crates/cpl-contest/src/problem.rs`) and `corpus_bench.rs` need to read answers from a shared cache under `target/` before they can stop being committed; a missing `.ans` today makes a `cpl test` case run-only.
 
 - `cpl build --checks none|traps|all` (and `checks` in `--json`), on `cpl_codegen::Checks`. `cargo test -p cpl-codegen` 130 passed, `--test golden` 32, `--test trap_parity` 5 (new: a `none` build divides by zero into 0).
+- Judge builds default to `--checks none` (decisions.md 283); `--checked` builds at `traps`; trap parity, runtime_errors, differential and fuzz_three_way build at `--checks traps`. `cargo test -p cpl-cli`: runtime_errors 21, differential 18, fuzz_three_way 18, cli 46, trap_parity 5, golden 29, lib 32 passed.
