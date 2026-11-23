@@ -130,6 +130,9 @@ capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
 | Builtin names string-matched in lowering | `M ir_builtin_names` | 86 (was 89) | <= 66, the floor (decision 266) |
 | Std type names in IR/interp/codegen | `M backend_std_names` | 17 | 0 |
 | Duplicated fn bodies across files | `M dup_fn_bodies` | 4 | 0 |
+| Near-identical fns across crates | `M near_dup_fns` | 10 | 0 |
+| Tool sites re-deriving checker facts | `M consumer_rederived` | 61 | 0 |
+| Rust files within 100 lines of the cap | `M rs_near_cap` | 14 | none new |
 | Shipped crate edges | `M crate_edges` | 75 | no unreviewed new edge |
 | Layer violations (shipped) | `M layer_violations` | 1 (`cpl-lint -> cpl-prover`) | 0 |
 | Second interpreter engine | `M tree_walker` | 1 | 0 |

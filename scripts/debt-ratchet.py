@@ -11,6 +11,9 @@ saying why. Lower counts pass and print a hint to tighten the baseline.
   crate_edges             shipped `[dependencies]` between workspace crates; a
                           new edge fails until the baseline and plan/ARCHITECTURE.md
                           both list it
+  rs_near_cap             `.rs` files in the last 100 lines under the cap; a file
+                          entering the band fails (one shrinking into it from over
+                          the cap does not)
   stdlib_todo ...         one count per entry in COUNTERS
 
 Usage:
@@ -24,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import glob
 import hashlib
 import json
@@ -33,6 +37,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -69,6 +74,21 @@ FORBIDDEN_EDGES = {
 }
 BACK_ENDS = ("cpl-ir", "cpl-interp", "cpl-codegen")
 DUP_MIN_LINES = 6
+# Near copies: Jaccard similarity of 4-token shingles (numbers folded to `0`),
+# between fns in different crates; exact copies count under dup_fn_bodies.
+NEAR_DUP_MIN = 0.75
+NEAR_DUP_COMMON = 30  # a shingle in more fns than this is boilerplate, not evidence
+TOKEN_RE = re.compile(r'"(?:\\.|[^"\\])*"|\d[\w.]*|\w+|\S')
+# Tools that read facts through cpl-check rather than recompute them.
+CONSUMERS = ("cpl-lint", "cpl-lsp", "cpl-cli", "cpl-stress", "cpl-codegen", "cpl-wasm")
+CORE_TYPES = {"Int", "Str", "Bool", "F64", "Char", "List", "Map", "Set", "Mod"}
+# Comparing text against a type name (`== "List"`, `"Int" =>`, `starts_with("Map")`).
+TYPE_CMP_RE = re.compile(
+    r'(?:[=!]=\s*|(?:starts_with|ends_with|strip_prefix)\(|matches!\([^,]*,\s*)"([A-Z]\w*)'
+    r'|"([A-Z]\w*)"\s*(?:=>|\|)'
+)
+ECODE_RE = re.compile(r'"(E\d{4})')
+NEAR_CAP_LINES = 100
 
 
 def _rs_files(root: Path, *subdirs: str, tests: bool = True):
@@ -173,7 +193,12 @@ def backend_std_names(root: Path) -> list[str]:
             for i, line in enumerate(_lines(p), 1) for m in STD_TYPE_RE.finditer(line)]
 
 
-def _fn_bodies(root: Path):
+@functools.lru_cache(maxsize=4)
+def _fn_bodies(root: Path) -> tuple:
+    return tuple(_walk_fn_bodies(root))
+
+
+def _walk_fn_bodies(root: Path):
     """(path, line, name, body) for every non-test fn; body is trimmed, comment-free."""
     for p in _rs_files(root, tests=False):
         src = _lines(p)
@@ -205,6 +230,61 @@ def dup_fn_bodies(root: Path) -> list[str]:
         if len({x[0] for x in g}) > 1:
             first = g[0]
             out += [f"{p}:{ln} {name} ({n} lines) = {first[0]}:{first[1]}" for p, ln, name, n in g[1:]]
+    return out
+
+
+def near_dup_fns(root: Path) -> list[str]:
+    """Each pair of near-identical fns (>= DUP_MIN_LINES, similarity >= NEAR_DUP_MIN) in different crates."""
+    fns = []
+    for p, ln, name, body in _fn_bodies(root):
+        if len(body) < DUP_MIN_LINES:
+            continue
+        toks = ["0" if t[0].isdigit() else t for t in TOKEN_RE.findall(" ".join(body))]
+        shingles = {zlib.crc32(" ".join(toks[i : i + 4]).encode()) for i in range(len(toks) - 3)}
+        rel = _rel(root, p)
+        fns.append((rel, ln, name, rel.split("/")[1], shingles, "\n".join(body)))
+    df: dict[int, int] = defaultdict(int)
+    for f in fns:
+        for s in f[4]:
+            df[s] += 1
+    # Candidates share one of each other's 8 smallest uncommon shingles (a bottom-k sketch).
+    buckets = defaultdict(list)
+    for i, f in enumerate(fns):
+        for s in sorted(x for x in f[4] if df[x] <= NEAR_DUP_COMMON)[:8]:
+            buckets[s].append(i)
+    pairs = {(a, b) for ids in buckets.values() for k, a in enumerate(ids) for b in ids[k + 1 :]
+             if fns[a][3] != fns[b][3]}
+    out = []
+    for a, b in pairs:
+        (pa, la, na, _, sa, ba), (pb, lb, nb, _, sb, bb) = fns[a], fns[b]
+        if ba == bb or min(len(sa), len(sb)) < NEAR_DUP_MIN * max(len(sa), len(sb)):
+            continue
+        sim = len(sa & sb) / len(sa | sb)
+        if sim >= NEAR_DUP_MIN:
+            out.append((-sim, f"{pb}:{lb} {nb} ~ {pa}:{la} {na} ({sim:.2f})"))
+    return [x for _, x in sorted(out)]
+
+
+def consumer_rederived(root: Path) -> list[str]:
+    """Sites where a tool recomputes what cpl-check provides: text compared against a
+    type name, or a hard-coded checker error code. Own databases count under own_databases."""
+    types = set(CORE_TYPES)
+    for p in sorted((root / "std").glob("*.cp")):
+        types.update(re.findall(r"^\s*pub\s+(?:struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+    out = []
+    for crate in CONSUMERS:
+        for p in _rs_files(root, f"crates/{crate}/src", tests=False):
+            rel = _rel(root, p)
+            if rel.endswith("_tests.rs"):
+                continue
+            for i, line in enumerate(_lines(p), 1):
+                code = line.strip()
+                if code.startswith("#[cfg(test)]"):
+                    break
+                if code.startswith("//"):
+                    continue
+                out += [f"{rel}:{i} type {a or b}" for a, b in TYPE_CMP_RE.findall(code) if (a or b) in types]
+                out += [f"{rel}:{i} code {c}" for c in ECODE_RE.findall(code)]
     return out
 
 
@@ -326,14 +406,19 @@ def plan_delta_lines(root: Path) -> list[str]:
             for i, _ in enumerate(_lines(root / f), 1)]
 
 
-def rs_near_cap(root: Path) -> list[str]:
-    """`.rs` files within 100 lines under the cap: split them on a seam before they reach it."""
-    out = []
+def _near_cap(root: Path, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict[str, int]:
+    out = {}
     for p in _rs_files(root, "crates"):
         n = len(_lines(p))
-        if DEFAULT_MAX_RS_LINES - 100 < n <= DEFAULT_MAX_RS_LINES:
-            out.append(f"{_rel(root, p)} {n}")
-    return sorted(out)
+        if max_rs_lines - NEAR_CAP_LINES < n <= max_rs_lines:
+            out[_rel(root, p)] = n
+    return dict(sorted(out.items()))
+
+
+def rs_near_cap(root: Path) -> list[str]:
+    """`.rs` files within 100 lines under the cap: split them on a seam before they reach it.
+    A file entering the band fails the check (see `evaluate`)."""
+    return [f"{rel} {n}" for rel, n in _near_cap(root).items()]
 
 
 def vm_fallbacks(root: Path) -> list[str]:
@@ -403,6 +488,8 @@ COUNTERS = {
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
+    "near_dup_fns": ("near-identical fns across crates", near_dup_fns, True),
+    "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
@@ -440,6 +527,7 @@ def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict
             data[name] = len(fn(root))
     data["crate_edges"] = crate_edges(root)
     data["a4_edges"] = a4_edges(root)
+    data["rs_near_cap"] = sorted(_near_cap(root, max_rs_lines))
     return data
 
 
@@ -451,6 +539,8 @@ def improved(actual: dict, baseline: dict) -> list[str]:
     names += [n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and int(actual.get(n, 0)) < int(baseline[n])]
     if set(baseline.get("crate_edges", [])) - set(actual.get("crate_edges", [])):
         names.append("crate_edges")
+    if set(baseline.get("rs_near_cap", [])) - set(actual.get("rs_near_cap", [])):
+        names.append("rs_near_cap")
     return names
 
 
@@ -502,6 +592,17 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
         for edge in sorted(known - now):
             notes.append(f"crate edge {edge} removed")
 
+    if "rs_near_cap" in baseline and "rs_near_cap" in actual:
+        known, now = set(baseline["rs_near_cap"]), set(actual["rs_near_cap"])
+        # A capped file shrinking into the band is progress, not a new near-cap file.
+        for rel in sorted(now - known - set(allowlist)):
+            errors.append(
+                f"{rel}: entered the last {NEAR_CAP_LINES} lines under the {max_lines}-line cap "
+                f"(split it on a seam now; a deliberate entry is `--update rs_near_cap` and a decisions.md line)"
+            )
+        for rel in sorted(known - now):
+            notes.append(f"{rel}: left the near-cap band")
+
     return errors, warnings, notes
 
 
@@ -520,6 +621,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
     old_allow = old.get("rs_file_size_allowlist", {})
     raised += [rel for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
                if cap > old_allow.get(rel, 0)]
+    if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
+        raised.append("rs_near_cap")
     if not raised:
         return []
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
@@ -539,8 +642,9 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     allow = eff.setdefault("rs_file_size_allowlist", {})
     for rel, lines in upstream.get("rs_file_size_allowlist", {}).items():
         allow[rel] = max(allow.get(rel, 0), lines)
-    if "crate_edges" in eff and "crate_edges" in upstream:
-        eff["crate_edges"] = sorted(set(eff["crate_edges"]) | set(upstream["crate_edges"]))
+    for key in ("crate_edges", "rs_near_cap"):
+        if key in eff and key in upstream:
+            eff[key] = sorted(set(eff[key]) | set(upstream[key]))
     return eff
 
 

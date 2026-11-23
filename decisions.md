@@ -8274,3 +8274,8 @@ tag move fatal again.
 
 - **Call.** A `_by` twin (`min_by`, `max_by`, `argmax_by`, `sort(ed)_by`, `is_sorted_by`, `runs_by`, `group_by`, and `_by_key`), as a method or a free call, is E0203 or E0201 with the one fix `xs.base(by: f)`. L0510 matched the same names by syntax, so it only repeated the error; its `run_ranges_by` and `first_ge_by` rewrites named functions std no longer has. Retired with its record, as L0515 was (decision 406).
 - **Reverse.** Restore `spec/lints/by_twin/` and `by_twin` in `rules/taste/mod.rs`.
+## 411. Ratchet near copies, re-derived checker facts and near-cap entries (tech-debt, 2026-11-23)
+
+- **Counted.** `near_dup_fns` (10): fn pairs in different crates whose 4-token shingles (numbers folded) have Jaccard similarity >= 0.75, exact copies left to `dup_fn_bodies`. `consumer_rederived` (61): non-test lines in cpl-lint, cpl-lsp, cpl-cli, cpl-stress, cpl-codegen and cpl-wasm that compare text against a core or `std/` type name or hard-code an `E####` code; their own `Database::new()` already counts under `own_databases`. Both start at today's count and only go down.
+- **`rs_near_cap` gates entries.** It stays a list (14 files); a file entering the last 100 lines under the cap fails the check, one shrinking into the band from over the cap does not. `crate_edges` already refuses an edge missing from the baseline and A4, so it needs nothing new.
+- **Reverse.** Drop the two counters from `COUNTERS` and the `rs_near_cap` branch in `evaluate`.

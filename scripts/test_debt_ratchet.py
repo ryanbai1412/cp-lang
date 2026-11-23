@@ -309,6 +309,47 @@ class DebtRatchetTest(unittest.TestCase):
                 f.write("## 9. lint_std_names grows by one for X (2026-11-23)\n")
             self.assertEqual(dr.unexplained_bumps(root, raised, ref="HEAD"), [])
 
+    def test_near_dup_fns_pairs_near_copies_across_crates(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            body = "".join(f"    let x{i} = y.get({i}).unwrap_or(z{i}) + w{i};\n" for i in range(8))
+            self._write(root, "crates/cpl-a/src/a.rs", "fn one() {\n" + body + "}\n")
+            self._write(root, "crates/cpl-b/src/b.rs", "fn two() {\n" + body.replace("(3)", "(4)") + "}\n")
+            self._write(root, "crates/cpl-b/src/c.rs", "fn same_crate() {\n" + body + "}\n")
+            self._write(root, "crates/cpl-c/src/c.rs", "fn exact() {\n" + body + "}\n")
+            other = "".join(f"    if q{i} > {i} {{ return; }}\n" for i in range(8))
+            self._write(root, "crates/cpl-d/src/d.rs", "fn other() {\n" + other + "}\n")
+            got = [x.split(" (")[0] for x in dr.near_dup_fns(root)]
+            # Numbers fold to `0`, so `(3)` vs `(4)` is an exact token match but not an exact body.
+            self.assertEqual(got, ["crates/cpl-b/src/b.rs:1 two ~ crates/cpl-a/src/a.rs:1 one",
+                                   "crates/cpl-c/src/c.rs:1 exact ~ crates/cpl-b/src/b.rs:1 two"])
+
+    def test_consumer_rederived(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "std/heap.cp", "pub struct Heap<T> {}\n")
+            self._write(root, "crates/cpl-lsp/src/a.rs",
+                        'let db = Database::new();\n// Database::new()\nif t == "Heap" || t == "Foo" {}\n'
+                        'match n { "Int" | "Str" => 1, "ok" => 2 }\nlet c = "E0302";\nprint("List");\n'
+                        '#[cfg(test)]\nmod tests { let db = Database::new(); }\n')
+            self._write(root, "crates/cpl-lsp/src/b_tests.rs", "let db = Database::new();\n")
+            self._write(root, "crates/cpl-check/src/c.rs", 'let db = Database::new(); t == "Int";\n')
+            self.assertEqual(dr.consumer_rederived(root), [
+                "crates/cpl-lsp/src/a.rs:3 type Heap",
+                "crates/cpl-lsp/src/a.rs:4 type Int", "crates/cpl-lsp/src/a.rs:4 type Str",
+                "crates/cpl-lsp/src/a.rs:5 code E0302"])
+
+    def test_a_file_entering_the_near_cap_band_fails(self) -> None:
+        baseline = {"rs_near_cap": ["a.rs"], "rs_file_size_allowlist": {"big.rs": 2400}}
+        actual = {"rs_near_cap": ["big.rs", "new.rs"], "rs_file_size_allowlist": {}}
+        errs, _, notes = dr.evaluate(actual, baseline)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("new.rs", errs[0])
+        self.assertIn("a.rs: left the near-cap band", notes)
+        self.assertIn("rs_near_cap", dr.improved(actual, baseline))
+        eff = dr.inherited_baseline(baseline, {"rs_near_cap": ["new.rs"]})
+        self.assertEqual(dr.evaluate(actual, eff)[0], [])
+
 
 if __name__ == "__main__":
     unittest.main()

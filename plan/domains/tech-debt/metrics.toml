@@ -52,6 +52,27 @@ target = "0"
 milestone = "M3"
 
 [[metric]]
+name = "near_dup_fns"
+command = "python3 scripts/debt-ratchet.py --show near_dup_fns"
+today = 10
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "consumer_rederived"
+command = "python3 scripts/debt-ratchet.py --show consumer_rederived"
+today = 61
+target = "0: tools read types, diagnostics and std names from cpl-check"
+milestone = "M3"
+
+[[metric]]
+name = "rs_near_cap"
+command = "python3 scripts/debt-ratchet.py --show rs_near_cap"
+today = 14
+target = "no file enters the last 100 lines under the cap"
+milestone = "M2"
+
+[[metric]]
 name = "crate_edges"
 command = "python3 scripts/debt-ratchet.py --show crate_edges"
 today = 75

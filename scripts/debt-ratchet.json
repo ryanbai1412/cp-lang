@@ -112,5 +112,23 @@
   "vm_fallbacks": 141,
   "own_databases": 36,
   "cpp_deep_copies": 101,
-  "cpp_std_functions": 777
+  "cpp_std_functions": 777,
+  "near_dup_fns": 10,
+  "consumer_rederived": 61,
+  "rs_near_cap": [
+    "crates/cpl-check/src/check/types.rs",
+    "crates/cpl-codegen/src/expr.rs",
+    "crates/cpl-codegen/src/runtime.rs",
+    "crates/cpl-codegen/src/scope.rs",
+    "crates/cpl-codegen/src/stmt.rs",
+    "crates/cpl-codegen/src/tests.rs",
+    "crates/cpl-interp/src/vm/compile/mod.rs",
+    "crates/cpl-interp/src/vm/exec/mod.rs",
+    "crates/cpl-ir/src/lower/call/value_method.rs",
+    "crates/cpl-lint/src/rules/proven/mod.rs",
+    "crates/cpl-lsp/src/server.rs",
+    "crates/cpl-lsp/src/tests.rs",
+    "crates/cpl-syntax/src/parser/expr.rs",
+    "crates/cpl-syntax/src/tests.rs"
+  ]
 }

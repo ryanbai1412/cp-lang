@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- Ratchet (decision 411): `near_dup_fns` 10 (cross-crate fn pairs at >= 0.75 shingle similarity; 3 are `collect` copies of `crates/cpl-cli/src/migrate.rs`), `consumer_rederived` 61 (tool lines comparing text against a type name, 15 in `crates/cpl-lint/src/typed.rs`, 12 in `crates/cpl-stress/src/spec/build.rs`), and `rs_near_cap` (14 files) now fails a file entering the band. `crate_edges` already refused unlisted edges. `python3 -m unittest scripts/test_debt_ratchet.py`: 22 OK.
+
 ## 2026-11-22
 - Sheriff (infra): df46c75fd put `has_drive` and `bundled_std_file` after `mod tests` in `cpl-lsp/src/uri.rs`, clippy's items_after_test_module, so `cpl-lsp` (lib test) failed to compile on main; the test module now sits at the end.
 - Checkpoint (M1, 2h): landed layout steps 4-6 (b7eb96a3c, e4d8ee5a0, 17a85682f), sanitizer diff (511293775), shadowing cases (174a33b67), LSP URIs (492a43167). `cpl-conform diff` on main: 1758/1902, 1 mismatch (dmopc21c5p2, routed), 143 skip. Skip triage (`cpl check` on each skipped case): 135 "does not compile yet" (E0302 37, E0203 30, E0201 6, E0603/E0204 4 each, rest <=3; 46 are `matrix/`, 38 corpus), 8 interpreter traps (release-mode trap cases, compared by design only on output). None hides a divergence: a skip means the checker gap already fails `cpl-conform conformance`, owned by compiler. Gap to note for compiler/perf: trap cases are not compared at all, though AGENTS.md goal 5 wants agreement on rejected input too. Also: my aac7e0da8/b5b4a1183 left `|||||||` lines in decisions.md (infra removed them); I now grep all three marker kinds after every decisions.md rebase. Next: Windows/macOS path audit of cpl-cli, then plan/DECISIONS.md.
