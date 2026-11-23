@@ -54,6 +54,14 @@ opt-level = 1
 [profile.dev.package.cpl-conform]
 opt-level = 1
 
+# Every editor request maps spans to lines and walks the outline; the
+# std-item suite asks thousands of them.
+[profile.dev.package.cpl-diag]
+opt-level = 1
+
+[profile.dev.package.cpl-lsp]
+opt-level = 1
+
 # Traces render every step's values as JSON; unoptimized, the checks in its
 # string building take most of a traced test's time.
 [profile.dev.package.cpl-json]

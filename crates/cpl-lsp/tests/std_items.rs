@@ -315,6 +315,18 @@ struct Tally {
 }
 
 impl Tally {
+    fn add(&mut self, other: Tally) {
+        for (what, n) in other.pass {
+            *self.pass.entry(what).or_default() += n;
+        }
+        for (what, n) in other.all {
+            *self.all.entry(what).or_default() += n;
+        }
+        for (what, fails) in other.fails {
+            self.fails.entry(what).or_default().extend(fails);
+        }
+    }
+
     fn check(&mut self, what: &'static str, ok: bool, who: &str, why: impl FnOnce() -> String) {
         *self.all.entry(what).or_default() += 1;
         if ok {
@@ -422,6 +434,32 @@ fn run(lsp: &mut Lsp, case: &Case, tally: &mut Tally) {
     }
 }
 
+/// Runs the cases on one server per core, dealt round-robin since a
+/// module's cases cost alike, and adds up the tallies.
+fn run_all(cases: &[Case]) -> Tally {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let tallies: Vec<Tally> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|first| {
+                scope.spawn(move || {
+                    let mut lsp = Lsp::new();
+                    let mut tally = Tally::default();
+                    for case in cases.iter().skip(first).step_by(threads) {
+                        run(&mut lsp, case, &mut tally);
+                    }
+                    tally
+                })
+            })
+            .collect();
+        workers.into_iter().map(|w| w.join().unwrap()).collect()
+    });
+    let mut all = Tally::default();
+    for tally in tallies {
+        all.add(tally);
+    }
+    all
+}
+
 fn report(name: &str, tally: &Tally, floors: &[(&str, usize)]) {
     for (what, fails) in &tally.fails {
         for f in fails.iter().take(400) {
@@ -443,11 +481,7 @@ fn report(name: &str, tally: &Tally, floors: &[(&str, usize)]) {
 #[test]
 fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut lsp = Lsp::new();
-    let mut tally = Tally::default();
-    for case in std_cases(&root) {
-        run(&mut lsp, &case, &mut tally);
-    }
+    let tally = run_all(&std_cases(&root));
     report(
         "std",
         &tally,
@@ -464,11 +498,7 @@ fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
 
 #[test]
 fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
-    let mut lsp = Lsp::new();
-    let mut tally = Tally::default();
-    for case in builtin_cases() {
-        run(&mut lsp, &case, &mut tally);
-    }
+    let tally = run_all(&builtin_cases());
     report(
         "builtin",
         &tally,
