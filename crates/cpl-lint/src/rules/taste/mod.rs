@@ -1544,11 +1544,11 @@ impl<'a> Taste<'a> {
                 "write `{text}`; one call says what the loop computes, with no starting value to get wrong"
             ),
             None if sentinel(i) => {
-                let seq = sequence(&it, &p, &v, c.as_deref());
+                let seq = sequence(&it, p, v, c);
                 format!("write `{seq}.{call}() ?? {i}`")
             }
             None => {
-                let seq = sequence(&it, &p, &v, c.as_deref());
+                let seq = sequence(&it, p, v, c);
                 format!("write `{seq}.{call}()`, or `{call}({i}, {seq}.{call}() ?? {i})` if `{i}` can win or the loop can run zero times")
             }
         });
