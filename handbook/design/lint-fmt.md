@@ -50,6 +50,38 @@ source text
   -> sort `use` runs -> verify: re-lex, same tokens, or refuse
 ```
 
+## Why some rules exist
+
+Two lints exist because the corpus wrote one idea several ways, and the
+language picked one. The lint and its `cpl fix` codemod are how old code
+reaches the chosen spelling.
+
+**One name per tree traversal (decision 63).** Ports spelled preorder five
+ways: `t.Pre`, `t.preorder`, `t.postorder`, `tree.post_order` and
+`t.preorder.rev`. Now `for p in t.Pre` loops over positions, and vertex loops
+read the stored preorder array: `for v in t.at` visits parents first and
+`for v in t.at.rev` children first. Each is built from general mechanisms (an
+array is iterable, `.rev` is a view), so nothing new needs learning, and the
+loop reads `at` in place where `preorder` built a list. `tree_order` (L0511)
+rewrites `.preorder` to `.at` and `.postorder` to `.at.rev`. Alternatives that
+lost:
+- Keep `preorder` and `postorder` as getters. That gives two names for one
+  array, and each call copies it.
+- Make `t.Pre` yield vertices. That would need a special iteration rule in the
+  core for one type.
+- A true postorder with siblings in order. Contest code rarely needs one; it
+  stays `t.at.rev` until a port shows otherwise.
+
+**Filters are `if`, power is `**` (decision 70).** Comprehension filters
+appeared as `for x in xs if p` 543 times and as `where p` 38 times. Power
+appeared as `a ** b`, `a.pow(b)` and once as `a ^ b`, though `^` is xor. Now
+filters are `if`, which most code already used and which matches Python.
+Power is `**`, and `^` means only xor. `cpl fix` rewrites `where` filters to
+`if` and `.pow(e)` to `** e`. Alternatives that lost:
+- Keep `where` as a parser alias. That leaves two spellings for one idea.
+- Keep `.pow` as a method. That leaves a second form of `**`.
+- Use `^` for power. That clashes with xor, and C++ habit reads it as xor.
+
 ## Reference
 
 ### Modules
