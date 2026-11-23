@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"q_cnt":{"name":"q_cnt","type":"Int","kind":"scalar"},"last":{"name":"last","type":"Op","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let (n, q_cnt): (1..=5, 1..=5) = read()","stage":"main","values":{"stdout":[],"n":5,"q_cnt":5},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":13,"label":"print → del 2 1","stage":"main","values":{"stdout":["del 2 1"],"n":5,"q_cnt":5},"locals":{"op":6,"p":1,"id":2},"checkpoint":"print 1","frames":[{"fn":"main","line":13}]},
+{"id":2,"line":12,"label":"print → ins 4 2","stage":"main","values":{"stdout":["del 2 1","ins 4 2"],"n":5,"q_cnt":5},"locals":{"op":3,"p":2,"r":4,"id":2},"checkpoint":"print 2","frames":[{"fn":"main","line":12}]},
+{"id":3,"line":14,"label":"let last: Op = read()","stage":"main","values":{"stdout":["del 2 1","ins 4 2"],"n":5,"q_cnt":5,"last":9},"locals":{"op":3,"p":2,"r":4,"id":2},"frames":[{"fn":"main","line":14}]},
+{"id":4,"line":17,"label":"print → del 5","stage":"main","values":{"stdout":["del 2 1","ins 4 2","del 5"],"n":5,"q_cnt":5,"last":9},"locals":{"op":3,"p":2,"r":4,"id":2,"id":5},"checkpoint":"print 3","frames":[{"fn":"main","line":17}]},
+{"id":5,"line":16,"label":"the program ended","stage":"main","values":{"stdout":["del 2 1","ins 4 2","del 5"],"n":5,"q_cnt":5,"last":9},"locals":{"op":3,"p":2,"r":4,"id":2,"id":5},"checkpoint":"end","frames":[{"fn":"main","line":16}]}]}}}
+stderr:

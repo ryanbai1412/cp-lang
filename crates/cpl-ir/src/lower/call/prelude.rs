@@ -1596,6 +1596,14 @@ impl<'a> Lowerer<'a> {
                 });
                 Spec::Call(Box::new(call))
             }
+            // A payload enum that is a sum domain reads by its tag too. (R10.2.3)
+            Spec::Plain(Ty::Pos(d)) if self.sum_enums.contains_key(&d) => {
+                let id = self.sum_enums[&d].enum_id;
+                match self.tagged_read(id, Ty::Pos(d)) {
+                    Some(call) => Spec::Call(Box::new(call)),
+                    None => Spec::Plain(Ty::Pos(d)),
+                }
+            }
             Spec::Plain(Ty::Enum(id)) => match self.enum_read(id) {
                 Some(call) => Spec::Call(Box::new(call)),
                 None => Spec::Plain(Ty::Enum(id)),
@@ -1614,6 +1622,11 @@ impl<'a> Lowerer<'a> {
 
     /// An enum read from its tag token, then that variant's fields. (R10.2.3)
     pub(in crate::lower) fn enum_read(&mut self, id: EnumId) -> Option<Expr> {
+        self.tagged_read(id, Ty::Enum(id))
+    }
+
+    /// `id`'s variants read by tag, as a `ty`: the enum, or its sum domain.
+    fn tagged_read(&mut self, id: EnumId, ty: Ty) -> Option<Expr> {
         let span = Span::default();
         let variants = self.enums[id].variants.clone();
         let mut fields = Vec::with_capacity(variants.len());
@@ -1625,7 +1638,10 @@ impl<'a> Lowerer<'a> {
             .map(|tag| self.enums[id].token(tag).to_string())
             .collect();
         let name = self.enums[id].name.clone();
-        let ty = Ty::Enum(id);
+        let sum = match ty {
+            Ty::Pos(d) => Some(d),
+            _ => None,
+        };
         Some(self.do_expr(Some(&ty), span, |lw, out| {
             let token = lw.temp(Ty::Str);
             let read = lw.mk(
@@ -1662,11 +1678,11 @@ impl<'a> Lowerer<'a> {
                     body.push(Stmt::Let(slot, Some(value)));
                     values.push(lw.local(slot, span));
                 }
-                body.push(Stmt::Give(lw.mk(
-                    ExprKind::Variant(tag, values),
-                    ty.clone(),
-                    span,
-                )));
+                let value = match sum {
+                    Some(d) => lw.encode_sum_variant(d, tag, values, span),
+                    None => lw.mk(ExprKind::Variant(tag, values), ty.clone(), span),
+                };
+                body.push(Stmt::Give(value));
                 let cond = cond.expect("a variant has a name");
                 out.push(Stmt::If(cond, Block { stmts: body }, Block::default()));
             }
