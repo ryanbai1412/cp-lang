@@ -23,6 +23,25 @@ impl<'a> Lowerer<'a> {
             let place = lw.place(base);
             lw.mk(ExprKind::Mutate(op, Box::new(place), args), result, span)
         };
+        // `(lo..hi).rev.find(p)` walks down from `hi` and stops at the first
+        // hit, as `rfind` does, instead of listing the whole range first.
+        if let (
+            ast::ExprKind::Field {
+                base: inner,
+                name: rev,
+            },
+            "find" | "rfind",
+            [test],
+        ) = (&base.kind, method, args)
+        {
+            if rev.text == "rev"
+                && test.name.is_none()
+                && matches!(self.probe_ty_silent(inner), Some(Ty::Range(_)))
+            {
+                let range = self.expr(inner, None);
+                return self.find_first(range, elem, &test.value, method == "find", span);
+            }
+        }
         match (&ty, method) {
             (Ty::Pos(d), "with") if self.subset_base(*d).is_some() => {
                 let base_d = self.subset_base(*d).unwrap();

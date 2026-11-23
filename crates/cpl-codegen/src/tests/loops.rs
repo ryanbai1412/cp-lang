@@ -61,3 +61,15 @@ fn explain_names_each_table_stored_as_a_hash_table() {
     let report = crate::explain::report("t.cp", source, &program);
     assert!(report.contains("[hashed] Map<Int, _>"), "{report}");
 }
+
+#[test]
+fn a_reversed_range_find_stops_at_the_first_hit() {
+    let out = cpp("var xs = [1, 2, 3, 4]
+xs.push(5)
+print((0..xs.len).rev.find(i => xs[i] > 2)!)
+");
+    assert!(
+        !out.contains("-> std::vector<ll> {"),
+        "`(0..n).rev.find(p)` must not list the range first:\n{out}"
+    );
+}
