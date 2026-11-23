@@ -378,8 +378,9 @@ pub fn report_json(
         failure.seed,
         json_string(failure.described.as_deref().unwrap_or(failure.input.trim_end())),
         json_string(&failure.input),
-        json_string(&failure.expected),
-        json_string(&failure.got),
+        // A Windows build writes CRLF; the report reads the same on every OS.
+        json_string(&failure.expected.replace("\r\n", "\n")),
+        json_string(&failure.got.replace("\r\n", "\n")),
         json_string(failure.verdict.code()),
         stages.join(","),
         path(saved),

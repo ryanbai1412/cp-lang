@@ -367,8 +367,10 @@ fn an_interactive_multitest_counts_queries_per_test_case() {
         text(&out.stderr)
     );
     // A binary search that skips the answer is caught and shrunk.
+    // A Windows checkout may have CRLF lines.
     let source = std::fs::read_to_string(&path)
         .unwrap()
+        .replace("\r\n", "\n")
         .replace("hi = mid\n", "hi = mid - 1\n");
     let bad = scratch("interactive-bad", "guess.cp", &source);
     let out = cpl(
@@ -461,7 +463,9 @@ fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) -> String
 }
 
 fn source(path: &str) -> String {
-    std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).unwrap()
+    std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(path))
+        .unwrap()
+        .replace("\r\n", "\n")
 }
 
 #[test]

@@ -35,9 +35,12 @@ fn run_stderr(source: &str, input: &str) -> (i32, String) {
     let out = child.wait_with_output().expect("cpl exits");
     let code = out.status.code().unwrap_or(-1);
     let err = String::from_utf8_lossy(&out.stderr).into_owned();
-    let prefix = format!("{}/", dir.display());
+    let dir_name = dir.display().to_string();
     let _ = fs::remove_dir_all(&dir);
-    (code, err.replace(&prefix, ""))
+    let err = err
+        .replace(&format!("{dir_name}/"), "")
+        .replace(&format!("{dir_name}\\"), "");
+    (code, err)
 }
 
 #[test]
