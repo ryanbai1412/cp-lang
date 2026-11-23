@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block triage: every core error now has a case. New: decision 362 (a top-level `var` is a local of the file body; core/04b's examples relied on it), 3 cases (2 fail, compiler); exercise 33's marker E0608 -> E0602. Bug-catch r11 misses so far 6009436c, 11382d5f, e1daa8b8, d648e671, d420e7c8: each has a case.
 - Reviewed stdlib's 359 (shape satisfaction in `if A: Trait`): kept as R08.1.7, one relation with bounds; decision 361, 4 cases (3 fail, compiler). Renumbered spec's 359 to 360. cpl-conform: `has:`/`lacks:` now apply to in-process diagnostic cases (they were silently ignored); case `core-01/unindented-nested-header-one-error.cp` from bug-catch r11 miss 11382d5f.
 - Rebuild round 11 (new problems): 18 holes (r10: 15), 12 silent, 5 contradiction, 1 missing-stdlib; 17 inside the subset. All triaged (decision 360): 11 sentences in core, a `min_k`/`max_k` row, Rooted's `root:` in containers.md, the std-compress row note, 15 cases (2 fail, stdlib). Bug-catch r11: 6009436c2 (let-bound element lends only it) missed, now 2 cases.
 - Spec-block sweep (87/185 pass): all 10 errors in supported core chapters are compiler/std gaps, 8 already pinned by core-05 exercise/spec-block cases; the 2 new ones got cases (`V.cuts.range`, rebased `Str` indexing). The other 17 errors are in documented lib chapters. Rebuild round 11 started on ten new Codeforces problems.

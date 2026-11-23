@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2541 (995 passing). Rules: 566.
+Cases: 2544 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2541 (995 passing). Rules: 566.
 - R04 (04-indices.md): 68 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 151 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 137 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 85 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -376,9 +376,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [7+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
-- R05.7.8 [1+ 3-]: returned, except from a fn declared `lends` (§6);
+- R05.7.8 [2+ 3-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
-- R05.7.10 [2+ 2-]: stored in a top-level `var`.
+- R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
 - R05.8.2 [4+ 5-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
@@ -768,7 +768,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 12 case(s)
 - E0602 Variable mutated while lent: 34 case(s)
-- E0603 Lent value escapes its scope: 17 case(s)
+- E0603 Lent value escapes its scope: 18 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 21 case(s)
@@ -891,11 +891,11 @@ prepends it.
 - 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
   - line 170: `struct Holder: xs: List<Int>`
-  - line 518: `let d = build_dsu(edges)`
-  - line 637: `var xs = [1, 2]`
-  - line 646: `var xs = [1, 2]`
-  - line 852: `var xs = [3, 1, 2]`
-  - line 958: `var xs = [1, 2]`
+  - line 520: `let d = build_dsu(edges)`
+  - line 640: `var xs = [1, 2]`
+  - line 649: `var xs = [1, 2]`
+  - line 855: `var xs = [3, 1, 2]`
+  - line 961: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 200: `fn divisors(n: Int) -> yields Int:`
@@ -930,8 +930,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (110/123 named by a case)
-  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
+- **graph** (111/123 named by a case)
+  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`
 - **grid** (27/27 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -973,7 +973,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2165 of 2292 std items are named by a case.
+2166 of 2292 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

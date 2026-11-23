@@ -7660,3 +7660,16 @@ reads the IDE log for whether CP Lang loaded. `verifyPlugin` runs against
 Community and Ultimate in CI; a required dependency Community lacks fails it.
 Reverse: drop the LSP4IJ config and require Ultimate again, or move every IDE
 to LSP4IJ.
+
+## 362. A top-level `var` is a local of the file body (2026-11-23)
+
+R05.7.10 said nothing lent may be stored in a top-level `var`, yet the
+spec's own examples (core/04b `var rest = a[..]`, `words.push(s[l..j])`,
+core/05 `var st = SegTree(...)` over `ws`) do exactly that in the file body,
+and contest code lives there. The file body is a fn (decision 6.1), so its
+own statements follow R8's block rule like any fn's locals; the ban is on
+a fn storing a lent value into a top-level `var`, where it would outlive
+the call. Cases `core-05/file-body-var-holds-lent`,
+`core-05/fn-stores-lent-in-top-level-var`,
+`core-05/lent-var-reassigned-from-itself`. Reverse: restore the blanket ban
+and rewrite those examples with `.clone()`.

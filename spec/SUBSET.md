@@ -175,7 +175,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-01/list-repeat-times-n.cp: compiler
 - core-01/lone-cr-in-string-is-error.cp: compiler
 - core-01/scientific-fraction-is-int.cp: compiler
-- core-01/match-guard-sees-tuple-bindings.cp: compiler
 - core-02/enum-method-is-variant.cp: compiler
 - core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
@@ -232,6 +231,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/lent-generator-blocks-overlapping-write.cp: compiler
 - core-05/slices-proved-apart.cp: compiler
 - core-05/spec-block-segtree-of-ws.cp: compiler
+- core-05/file-body-var-holds-lent.cp: compiler
+- core-05/lent-var-reassigned-from-itself.cp: compiler
 - core-06/alt-main-is-removed.cp: compiler
 - core-06/brute-main-is-removed.cp: compiler
 - core-06/checker-is-removed.cp: compiler

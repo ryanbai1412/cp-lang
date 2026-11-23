@@ -287,7 +287,9 @@ sources or a block nested inside it, and after them. It may never be:
 - returned, except from a fn declared `lends` (§6); (R05.7.8)
 - stored into anything reached through a parameter (a `mut` parameter's
   storage belongs to the caller); (R05.7.9)
-- stored in a top-level `var`. (R05.7.10)
+- stored in a top-level `var` by a fn. The file body is itself a fn
+  (§11), so its own statements treat a top-level `var` as a local, under
+  the block rule above. (R05.7.10)
 
 <!-- given:
   domain V = 0..8 -->
@@ -525,7 +527,8 @@ for v in V: print(d.find(v))        // fine: find takes read self
 The file body is a fn (decision 6.1). Top-level `let`s are visible to
 every fn; a top-level `var` is visible to fns declared after it, which may
 write it. R10 treats such a fn's use of a top-level `var` as part of every
-call to it. Nothing lent may be stored in a top-level `var` (R8).
+call to it. No fn may store anything lent in a top-level `var` (R8); the file
+body's own statements may, under R8's block rule, since it is their block.
 
 ## 12. How to evaluate a snippet
 

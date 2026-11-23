@@ -470,3 +470,7 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   - A bodiless `impl Named for T` must be met by T's field `name` for a bodiless `@get fn name` (`core-08/getter-trait-struct-opt-in.cp`: E0303 today).
   - General fix: route bounds, params and `HasBound` through one `satisfies(ty, trait)`.
 - Routed from idioms (2026-11-23): a domain with a runtime bound fails a generic `K: Domain` bound. `let n = read(); domain W = 1..=n; let w: [V]W = read(); buckets(w)` fails E0606 "`W` does not implement `Domain`", while the same code over `domain W = 1..=3` runs. Blocks cf2062e1, cf2062e2 and cf2084f; `dfs_tree` over a runtime domain failing E0005 (coi06p2, stdlib row) is likely the same gap. General fix: every declared domain satisfies `Domain` whatever its bound, with a conformance case per std fn that takes `K: Domain`.
+- From spec (decision 362, R05.7.8/R05.7.10): E0603 judges a lent value by the block that made it, not by its sources. R8 allows storage declared after every source in the same or an enclosing block.
+  - `words.push(s[l..j])` in a `while` body, `words` declared after `s`: E0603 today (`core-05/file-body-var-holds-lent.cp`; spec-block `core/04b-keys.md#contest-code:2`).
+  - `var rest = a[..]` then `rest = rest.drop(1)` in a loop: E0603 today (`core-05/lent-var-reassigned-from-itself.cp`; `#contest-code:5`).
+  - General fix: record each lent value's sources and check the store target's declaration against theirs; a loop item stays lent from its iteration (`spec-block-keep-loop-row` stays E0603).
