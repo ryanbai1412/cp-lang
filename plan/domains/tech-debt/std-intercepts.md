@@ -5,7 +5,7 @@ hand-written code instead of the std body. Delete a row when its general fix
 lands; delete the file at zero. Evidence: edge programs run with `cpl run`
 against `cpl build` C++ at `-O2`, under ASan/UBSan, and with `--checks all`.
 
-**Count: 22** (19 in IR lowering, 3 in codegen, 0 in the interpreter, which
+**Count: 21** found, 20 open (17 in IR lowering, 3 in codegen, 0 in the interpreter, which
 only evaluates the IR forms below). Not counted: the storage, I/O, bits and
 numeric floor (`abs`, `sqrt`, `floor`, `popcount`, `swap`, `len`, `nth`/`at`/`get`
 on core types, `shuffle`, kept for its seeded stream), and `drop`/`take`/
@@ -33,10 +33,9 @@ That is the judge-build traps question with Ryan, not an intercept bug.
 | 13 | `xs.reach(while:, cyclic:)` two-pointer -> `Builtin::Reach` / `cpl::reach` | perf, history | not probed | std body | stdlib + compiler |
 | 14 | `xs.adjacent` (`lower_adjacent`): built as a list | history | not probed | std view body | stdlib + compiler |
 | 15 | `gcd`, `min`, `max` named as fn values -> `BareOp` (lower/mono.rs) | perf (no fn value) | agree (`gcd(0, 0)`, negatives, `MIN`) | std fns as values; devirt makes them direct calls | compiler |
-| 16 | free `bit(k)` lowering arm (call.rs `"bit"`) is dead: std's `Int.bit(self, i)` takes the name | history | **both reject `bit(k)`** (E0303) | delete the arm; spec and std say which `bit` exists | compiler |
-| 17 | the List method table hides std.seq's `try_at(self, val)` | lowering's fixed method list | **both reject `[1, 2, 3].try_at(5)`** (E0203 "no method that `cpl run` knows") | method lookup falls through to std for any name it doesn't own | compiler |
-| 18 | `Map`/`HashMap`/`Set`/`HashSet` constructors and types by name (call.rs, mod.rs, mono.rs, stmt.rs; 17 sites in `backend_std_names`) | std `HashMap` mapped onto the core map | not probed | `HashMap` is a std struct over core storage, or a core type with no std name | compiler |
-| 19 | `Bitset` by generic name in lowering (`is_bitset_of`, `instantiate_bitset`) | serves 10 and 20 | - | goes with 10 and 20 | compiler |
-| 20 | `(a & b ...).count`/`.len`/`.is_empty` on std `Bitset` -> one word loop, matched by mangled fn-name suffix `_count`/`_bitand`... (codegen expr/builtin.rs `try_fused_bitset_op`) | perf: no temporaries | agree (`count` 17/67, `is_empty`) | general temporary elision (expression fusion over any struct of words), or std `count_and(a, b)` | perf |
-| 21 | std `Bitset` over a small static domain -> fixed `std::array` words, matched by struct name `Bitset` (codegen scope.rs, names.rs) | perf | not probed | a fixed-size array type std can declare (`[K]U64` over a const domain) | perf + compiler |
-| 22 | `IntervalMap.assign` -> `cpl::interval_assign` in C++ only; the interpreter runs the std body (codegen emit.rs `is_interval_map_assign`) | perf: one map iterator | agree on 2,000 random assigns with `on_old`, vs an array | ordered-map cursor API (seek, erase range) so the std body is as fast | perf + stdlib |
+| 16 | free `bit(k)` lowering arm (call.rs `"bit"`) was dead: std's `Int.bit(self, i)` takes the name | history | both reject `bit(k)` (E0303) | deleted with this table's fix commit; delete the row when no doc names `bit(k)` | done |
+| 17 | `Map`/`HashMap`/`Set`/`HashSet` constructors and types by name (call.rs, mod.rs, mono.rs, stmt.rs; 17 sites in `backend_std_names`) | std `HashMap` mapped onto the core map | not probed | `HashMap` is a std struct over core storage, or a core type with no std name | compiler |
+| 18 | `Bitset` by generic name in lowering (`is_bitset_of`, `instantiate_bitset`) | serves 10 and 19 | - | goes with 10 and 19 | compiler |
+| 19 | `(a & b ...).count`/`.len`/`.is_empty` on std `Bitset` -> one word loop, matched by mangled fn-name suffix `_count`/`_bitand`... (codegen expr/builtin.rs `try_fused_bitset_op`) | perf: no temporaries | agree (`count` 17/67, `is_empty`) | general temporary elision (expression fusion over any struct of words), or std `count_and(a, b)` | perf |
+| 20 | std `Bitset` over a small static domain -> fixed `std::array` words, matched by struct name `Bitset` (codegen scope.rs, names.rs) | perf | not probed | a fixed-size array type std can declare (`[K]U64` over a const domain) | perf + compiler |
+| 21 | `IntervalMap.assign` -> `cpl::interval_assign` in C++ only; the interpreter runs the std body (codegen emit.rs `is_interval_map_assign`) | perf: one map iterator | agree on 2,000 random assigns with `on_old`, vs an array | ordered-map cursor API (seek, erase range) so the std body is as fast | perf + stdlib |

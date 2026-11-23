@@ -2121,17 +2121,6 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span)
             }
-            "bit" => match self.one_arg(name, args, &Ty::Int, span) {
-                Some(k) => {
-                    let one = self.int_lit(1, span);
-                    self.mk(
-                        ExprKind::Binary(BinOp::Shl, Box::new(one), Box::new(k)),
-                        Ty::Int,
-                        span,
-                    )
-                }
-                None => self.err_expr(span),
-            },
             "swap" => {
                 if args.len() != 2 {
                     self.error(codes::WRONG_ARG_COUNT, span, "`swap` takes 2 arguments");
