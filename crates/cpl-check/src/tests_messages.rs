@@ -333,3 +333,18 @@ fn an_uppercase_value_is_renamed_with_every_use() {
         "{taken:?}"
     );
 }
+
+#[test]
+fn a_pair_over_runs_gets_each_value_and_its_count() {
+    for src in [
+        "let xs = [1, 1, 2]\nfor (x, n) in runs(xs): print(x, n)\n",
+        "let xs = [1, 1, 2]\nfor (x, n) in xs.runs(): print(x, n)\n",
+    ] {
+        let d = check(src);
+        assert_eq!(d.len(), 1, "{d:?}");
+        let (span, text) = &d[0].fixes[0].edits[0];
+        let mut fixed = src.to_string();
+        fixed.replace_range(span.start as usize..span.end as usize, text);
+        assert!(check(&fixed).is_empty(), "{fixed}: {:?}", check(&fixed));
+    }
+}

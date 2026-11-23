@@ -5,6 +5,35 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
+    /// Advice on a `for` header: a counter over a slice, and a pair pattern
+    /// over `runs`, whose runs are slices (not `(value, count)` pairs).
+    pub(super) fn loop_advice(&mut self, pat: &cpl_syntax::ast::Pattern, iter: &Expr, span: Span) {
+        self.counter_over_slice(iter, span);
+        let cpl_syntax::ast::PatternKind::Tuple(names) = &pat.kind else {
+            return;
+        };
+        let ExprKind::Call { callee, args } = &iter.kind else {
+            return;
+        };
+        let runs = match &callee.kind {
+            ExprKind::Name(n) => n == "runs" && args.len() == 1,
+            ExprKind::Field { name, .. } => name.text == "runs" && args.is_empty(),
+            _ => false,
+        };
+        if !runs || names.len() != 2 || args.iter().any(|a| a.name.is_some()) {
+            return;
+        }
+        let message = "each run is a slice, so it can't be taken apart into 2 names".to_string();
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, pat.span, message) {
+            let pair = ".map(r => (r.first!, r.len))";
+            diag.help = Some(format!(
+                "for each value and its count, walk `runs(..){pair}`"
+            ));
+            let end = Span::new(iter.span.end, iter.span.end);
+            diag.fix(format!("write `{pair}`"), end, pair);
+        }
+    }
+
     /// E0203 for `name` on a value with these fields and methods: the closest
     /// member, or `len == 0` for an `is_empty` the type spells with `len`.
     pub(super) fn unknown_member(

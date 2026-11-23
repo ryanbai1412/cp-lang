@@ -1775,7 +1775,7 @@ impl<'a> Checker<'a> {
                         self.check_cache_lend_body(body, &field.text);
                     }
                 }
-                self.counter_over_slice(iter, stmt.span);
+                self.loop_advice(pat, iter, stmt.span);
                 if matches!(
                     iter.kind,
                     ExprKind::Range {
