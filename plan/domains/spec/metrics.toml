@@ -91,7 +91,7 @@ target = "< 5"
 [[metric]]
 name = "reverted compiler fixes caught (probe P2)"
 command = "uv run scripts/conformance-bugcatch.py  # writes the table in plan/domains/spec/bugcatch.md"
-today = "11/13 revertible fixes (84%) at aa48a8055, suite timeout counts as caught; 15 of 28 candidates no longer revert or build; misses ae43f536 (trace text) and 701193ef (IR lowering, C++ path only)"
+today = "13/13 revertible fixes (100%) at be8afa3e9, suite timeout counts as caught; 15 of 28 candidates no longer revert or build"
 target = ">= 90%"
 
 [[metric]]

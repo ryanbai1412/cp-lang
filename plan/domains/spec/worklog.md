@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Bug-catch rerun at be8afa3e9 (builds `cpl` so tool cases run): 13 of 13 revertible fixes caught (100%), up from 11/13; `trap-trace-source-names` catches ae43f536, `generator-expression-body-generic` catches 701193ef. 15 of 28 candidates still don't revert or build on HEAD, so they are unmeasured, not caught. [bugcatch.md](bugcatch.md).
 - From infra (sheriff): reverted 1a632121c (library-file cases). Main CI run 45102568095 failed `cpl-cli::lsp_parity`: on `core-11/library/library-has-no-prelude.cp` the LSP (and a one-file `cpl check`) report E0201 at 5:7, but `cpl check` over all v0.3 files at once reports nothing, so a batched check loses the library module's no-prelude error. Reland with the batch-check fix (tools/compiler) in the same commit; `cargo nextest run -p cpl-cli --test lsp_parity` must pass.
 - Routed to diagnostics: E0302 printing two identical types (`List<Int>`) on `a.windows(k).fold(+)`.
 - Routed to stdlib: `min(by:)`/`max(by:)` as operation values (`lib/ops-ranges.md`) have no std definition.
