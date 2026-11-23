@@ -1577,8 +1577,18 @@ pub struct SortedMap<K, V>:
         before: ?K = None,
         while ok: (K, V) -> Bool
     ) -> List<(K, V)>:
-        let gone = ks.drain(after:, before:, while: k => ok(k, vals.get(k)!))
-        let out: List<(K, V)> = [(k, vals.remove(k)!) for k in gone]
+        assert not (
+            after != None and before != None
+        ), "drain takes either after: or before:, not both"
+        var out: List<(K, V)> = []
+        while true:
+            let next = if let b = before: ks.range_last(None, false, Some(b), false)
+                elif let a = after: ks.range_first(Some(a), false, None, false)
+                else: ks.first
+            let k = next ?? break
+            if not ok(k, vals.get(k)!): break
+            let _ = ks.remove(k)
+            out.push((k, vals.remove(k)!))
         out
 
     /// Split off and return all entries with key `>= k`.
