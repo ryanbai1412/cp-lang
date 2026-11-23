@@ -49,7 +49,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Page weight, gzipped | `pnpm --dir web page-weight` | `/` 783,489 B, no cpl.wasm (was 2,560,698 B); `/docs/guides/tour` 829,726 B | `/` ≤ 800,000 B and no cpl.wasm; tour ≤ 900,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |
-| Learn content | `ls web/content/learn/read web/content/practice` | 3 chapters, 7 problems | 8, 15 | M3 |
+| Learn content | `ls web/content/learn/read web/content/practice` | 8 chapters, 15 problems | 8, 15 | M3 |
 
 ## Judgment rubric
 
@@ -75,7 +75,7 @@ Probes (cold agent, pass/fail + time):
 3. Search index: done, 2.7 MB -> 487 KB gzipped (reference pages index headings, intro and core table rows); 13 KB of headroom left.
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
 5. Guide code blocks live (Run) when they run; today they are static.
-6. Learn: 5 more chapters, 8 more problems.
+6. Learn: done at the proposed size (8 chapters, 15 problems); next is a cold read of chapters 4-8 against the rubric.
 7. `cpl doc` HTML in the site's design; trace viewer links back.
 
 ## Ryan's role
@@ -95,4 +95,4 @@ Filed in [plan/QUESTIONS.md](../../QUESTIONS.md); the default is what I build me
 
 1. **Landing examples that don't run yet.** Default: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge. Applied (reversible, `runsFirst` in `web/lib/landing.ts`): every landing tab group now opens on a program that runs.
 2. **Guide code blocks become live runners.** Default: yes, for blocks whose status is `runs`. Applied (reversible: drop `remarkLive` from `web/source.config.ts`): every guide block that runs has "Open in playground"; the 79 that print something also have Run ([screenshot](screenshots/guide-runner.jpg)).
-3. **Learn for v0.3: breadth or depth.** Default: 8 short chapters + 15 original problems, not a full course.
+3. **Learn for v0.3: breadth or depth.** Default: 8 short chapters + 15 original problems, not a full course. Applied (reversible: revert the two Learn commits, or trim `web/content/learn/read/meta.json` and `practice/meta.json`).

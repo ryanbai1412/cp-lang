@@ -1,0 +1,110 @@
+---
+title: "Functions, records and match"
+description: "fn, mut parameters, records, enum and match."
+---
+
+A contest solution is mostly one flow from input to output, and
+functions are where you name a step. This chapter covers the four
+pieces that carry most of that: functions, `mut` parameters, records
+and `enum` with `match`.
+
+## Functions
+
+A function has typed parameters and a return type. A one-line body
+goes after `=`; a longer one is an indented block whose last line is
+the result.
+
+```cp run input="3 4\n"
+fn sq(x: Int) -> Int = x * x
+fn hyp2(a: Int, b: Int) -> Int:
+    let s = sq(a) + sq(b)
+    s
+let (a, b): (Int, Int) = read()
+print(hyp2(a, b))
+```
+
+Functions can be declared anywhere in the file and can call
+themselves. A function written inside another one sees the outer
+function's variables, which is how a DFS reads the graph without
+passing it along:
+
+```cp run input="4\n"
+let n: 1..=20 = read()
+fn ways(k: Int) -> Int:
+    if k <= 1: 1 else: ways(k - 1) + ways(k - 2)
+print(ways(n))
+```
+
+`if ... else` is an expression: its value is the branch taken.
+
+## Changing an argument: `mut`
+
+Arguments are values. A function that changes one says so in its
+signature, and so does the caller, so you can see at the call which
+data may change:
+
+```cp run input="3\n5 1 4\n"
+let n: 1..=100 = read()
+var a: [0..n]Int = read()
+fn double_all(mut xs: [0..n]Int):
+    for i in 0..n: xs[i] *= 2
+double_all(mut a)
+print(a)
+```
+
+Without `mut` at the call, this does not compile.
+
+## Records
+
+A record type groups named fields. It reads from input field by field,
+so the input format is the type:
+
+```cp run input="3\nana 30 7\nbo 50 2\ncy 30 9\n"
+type Player = (name: Str, score: Int, time: Int)
+let n: 1..=1000 = read()
+let ps: [0..n]Player = read()
+var best = 0
+for i in 0..n:
+    let (p, b) = (ps[i], ps[best])
+    if (p.score, -p.time) > (b.score, -b.time): best = i
+print(ps[best].name, ps[best].score)
+```
+
+Tuples compare field by field, so `(score, -time)` is "higher score,
+then less time". The loop keeps the index of the best player, not a
+copy: a record taken from `ps` in a loop is lent from `ps`, and storing
+it in an outer `var` does not compile (`ps[i].copy()` would make one).
+
+## Enums and match
+
+When a value is one of a few kinds, each with its own data, write an
+`enum`. `match` takes it apart, and the compiler checks that every kind
+is handled:
+
+```cp run
+enum Shape:
+    Square(side: Int)
+    Rect(w: Int, h: Int)
+    Dot
+fn area(s: Shape) -> Int:
+    match s:
+        Square(k) => k * k
+        Rect(w, h) => w * h
+        Dot => 0
+print(area(Square(3)), area(Rect(2, 5)), area(Dot))
+```
+
+`match` also works on numbers and characters, with `_` for "anything
+else". That is the usual way to act on an operation read from input.
+
+## Problem: Plus or times
+
+A number x starts at 1. Apply q operations `+ y` or `* y` (0 ≤ y ≤ 10⁹) in order, and print x modulo 10⁹ + 7. For `+ 4`, `* 3`, `+ 1` the answer is `16`.
+
+<Judge id="plus-or-times">
+
+`apply(x, op, y)` is one `match` on the character; the remainder is taken after every step.
+
+</Judge>
+
+Next: [Strings and output](/learn/read/strings-and-output).

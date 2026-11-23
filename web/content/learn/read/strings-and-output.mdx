@@ -1,0 +1,84 @@
+---
+title: "Strings and output"
+description: "Str and Char, building text, interpolation and print options."
+---
+
+`Str` is a sequence of ASCII bytes indexed by `0..s.len`; `Char` is one
+byte. There is no Unicode decoding behind a subscript, so `s[i]` is
+O(1) and is exactly the i-th character of the input.
+
+## Reading and indexing
+
+`read()` into a `Str` reads one whitespace-separated token.
+
+```cp run input="banana\n"
+let s: Str = read()
+print(s.len, s[0], s[s.len - 1])
+print(s.count(c => c == 'a'))
+print(yes(s.starts_with("ban")), s.find("an") ?? -1)
+```
+
+A character minus `'a'` is its position in the alphabet, and
+`'a' + k` goes back:
+
+```cp run input="hello\n"
+let s: Str = read()
+var cnt: [0..26]Int = 0
+for c in s: cnt[c - 'a'] += 1
+for k in 0..26 if cnt[k] > 0:
+    print('a' + k, cnt[k])
+```
+
+## Building text
+
+A `var` string is a buffer. `push` appends a character, `+=` appends a
+string, and `"{...}"` puts any value into text:
+
+```cp run input="3\nabc\n"
+let k: 1..=10 = read()
+let s: Str = read()
+var out = ""
+for c in s:
+    for _ in 0..k: out.push(c.upper)
+out += " ({s.len * k} letters)"
+print(out)
+```
+
+Integers have no `.to_str()`; write `"{n}"`.
+
+## print
+
+`print` puts a space between its arguments and ends the line. Its named
+arguments cover the usual output shapes:
+
+```cp run
+let xs = [3, 1, 4]
+let d: [0..3]?Int = [Some(0), None, Some(2)]
+print(xs)
+print(xs, sep: "\n")
+print(d, none: "-1")
+print("a", "b", end: "")
+print("|")
+print(yes(xs.len == 3), "{3.14159:.2f}", "{7:03}")
+```
+
+- A list or array prints on one line, separated by spaces.
+- `sep:` and `end:` change the separators; `none:` says how to print a
+  missing value.
+- `yes(b)` prints `YES` or `NO`; `print` does not take a bare `Bool`.
+- Format specs follow Python: `:.2f`, `:03`.
+
+Output is buffered and flushed at the end, so printing 2·10⁵ lines is
+fast without any setup.
+
+## Problem: Run length
+
+Replace each maximal run of equal letters in a word by the letter and the run's length: `aaabcc` becomes `a3b1c2`.
+
+<Judge id="run-length">
+
+`out.push(c)` and `out += "{len}"` build the answer in one pass.
+
+</Judge>
+
+More like this: [Mirror word](/learn/practice/mirror-word). Next: [Sorting and searching](/learn/read/sorting-and-searching).

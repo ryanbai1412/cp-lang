@@ -1,0 +1,107 @@
+---
+title: "Sorting and searching"
+description: "List, sorted, sort(by:), first_ge and friends, binary search on the answer."
+---
+
+Most Div 2 B and C problems sort something, then search it. This
+chapter covers the growable `List`, sorting with a key, the four
+lookups on sorted data, and binary search over an answer.
+
+## Lists
+
+An array over a domain has a fixed size. A `List<T>` grows:
+
+```cp run input="6\n4 -1 7 0 -3 2\n"
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+var pos: List<Int> = []
+for x in a if x > 0: pos.push(x)
+print(pos.len, pos)
+print([x * x for x in a if x < 0])
+```
+
+`[expr for x in seq if cond]` builds a list in one line.
+
+## Sorting
+
+`xs.sorted()` returns a sorted copy; `xs.sort()` sorts a `var` in
+place. To sort by something else, give a key with `by:`. A tuple key
+compares its parts in order, and a negated number sorts descending:
+
+```cp run input="4\nana 30\nbo 50\ncy 30\ndee 10\n"
+let n: 1..=1000 = read()
+var rows: [0..n](name: Str, score: Int) = read()
+rows.sort(by: r => (-r.score, r.name))
+for r in rows: print(r.name, r.score)
+```
+
+`by:` takes a key, never a comparator, so there is no `a < b`
+function that is subtly not a strict order.
+
+## Searching sorted data
+
+On sorted data, four methods find a position by binary search in
+O(log n). Each is named for what it returns, and returns `None` when
+there is no such element:
+
+| Call | Returns the index of |
+|---|---|
+| `b.first_ge(x)` | the first element ≥ x |
+| `b.first_gt(x)` | the first element > x |
+| `b.last_le(x)` | the last element ≤ x |
+| `b.last_lt(x)` | the last element < x |
+
+```cp run input="5\n5 1 4 1 9\n3\n1\n4\n10\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+let b = a.sorted()
+let q: 1..=2e5 = read()
+for _ in 0..q:
+    let x: 1..=1e9 = read()
+    let below = b.first_ge(x) ?? n
+    let upto = b.first_gt(x) ?? n
+    print(below, upto - below)
+```
+
+This prints, for each x, how many values are smaller than x and how
+many equal it. `?? n` covers "every value is smaller".
+
+## Binary search on the answer
+
+When "can it be done with k?" is false and then true as k grows, the
+smallest good k is `(lo..=hi).first_true(ok)`; `last_true` finds the
+largest k for which a condition holds. Both return `?Int`:
+
+```cp run input="5 3\n7 2 5 10 8\n"
+let (n, k): (1..=2e5, 1..=2e5) = read()
+let a: [0..n]1..=1e9 = read()
+// fewest pieces if no piece may sum above `cap`
+fn pieces(cap: Int) -> Int:
+    var count = 1
+    var cur = 0
+    for x in a:
+        if cur + x > cap:
+            count += 1
+            cur = 0
+        cur += x
+    count
+let best = (a.max()!..=a.sum()).first_true(cap => pieces(cap) <= k)
+print(best!)
+```
+
+Splitting `7 2 5 10 8` into at most 3 consecutive pieces, the largest
+piece sum can be kept down to 14 (`7 2 5 | 10 | 8`). The search range
+starts at `a.max()!`, where every element fits in a piece of its own,
+so `pieces` never meets an element above `cap`.
+
+## Problem: At most
+
+For each of q queries x, print how many of n given integers are at most x. For `5 1 4 1 9` and x = 4 the answer is `3`.
+
+<Judge id="at-most">
+
+Sort once; the answer is `b.first_gt(x) ?? n`.
+
+</Judge>
+
+More like this: [Closest values](/learn/practice/closest-values). Next: [The standard library](/learn/read/standard-library).

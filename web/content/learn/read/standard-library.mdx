@@ -1,0 +1,83 @@
+---
+title: "The standard library"
+description: "Map, Set, heaps, gcd, Sieve, Mod, and how to find the rest."
+---
+
+The library is written in CP Lang itself, and the common parts are in
+scope without an import. This chapter is a short tour of what a Div 2
+problem reaches for, and of where to look up the rest.
+
+## Maps, sets and heaps
+
+```cp run input="5\n2 7 2 1 8\n"
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+var cnt: Map<Int, Int> = Map()
+for x in a: cnt[x] += 1
+var seen: Set<Int> = Set()
+for x in a: seen.add(x)
+print(cnt[2], cnt.get(5) ?? 0, seen.len, yes(7 in seen))
+var h = MinHeap<(Int, Str)>()
+h.push((3, "c"))
+h.push((1, "a"))
+print(h.pop()!)
+```
+
+- `cnt[x] += 1` works on a missing key: it starts from 0, so there is no
+  "is it there yet?" branch. Reading a missing key with `cnt[k]` traps
+  and says so; `cnt.get(k)` gives a `?Int` instead.
+- `x in s` tests membership. `Map` and `Set` are hash-based; the
+  ordered versions, with neighbour lookups like `first_ge`, are
+  `SortedMap` and `SortedSet`.
+- `pop()` returns `?T`, `None` on an empty heap. `MaxHeap` is the other
+  direction.
+
+## Number theory
+
+```cp run input="12 18\n"
+use std.math.{gcd, lcm, Sieve}
+let (x, y): (1..=1e9, 1..=1e9) = read()
+print(gcd(x, y), lcm(x, y))
+let sv = Sieve(30)
+print(sv.primes)
+print(yes(sv.is_prime(29)), yes(sv.is_prime(27)))
+```
+
+`use std.math.{...}` names what a program takes from a module, which is
+how a reader of the solution knows where `Sieve` comes from.
+
+## Arithmetic modulo a prime
+
+"Print the answer modulo 998244353" is a type. `Mod<P>` is an integer
+modulo `P`; every operation reduces, so no `% MOD` can be forgotten:
+
+```cp run input="30\n"
+const MOD = 998_244_353
+type Z = Mod<MOD>
+let k: 0..=1e9 = read()
+let z = Z(2) ** k
+print(z, (z * z.inv()).v)
+```
+
+`.inv()` is the inverse, and `.v` is the plain `Int` in `0..P`. `Mod`
+has no `<`: comparing two remainders is almost always a bug.
+
+## Finding the rest
+
+- The [library guide](/docs/guides/stdlib) lists the families:
+  graphs, trees, segment trees and Fenwick trees, strings, geometry.
+- Each [reference page](/docs/ref/std) gives every function's
+  signature, its cost and an example that runs.
+- Search (Ctrl K) finds a method by its bare name, such as `last_true`.
+
+## Problem: Prime ranges
+
+Answer q queries: how many primes lie between l and r, for 1 ≤ l ≤ r ≤ 10⁵? For `1 10` the answer is `4`.
+
+<Judge id="prime-ranges">
+
+Build `Sieve(N)` once above the queries, then a prefix count makes each query one subtraction.
+
+</Judge>
+
+Next: [Stress testing and the trace debugger](/learn/read/stress-and-trace).

@@ -1,1 +1,1 @@
-{ "title": "Read", "defaultOpen": true, "pages": ["first-program", "arrays-and-index-spaces", "optionals"] }
+{"title": "Read", "defaultOpen": true, "pages": ["first-program", "arrays-and-index-spaces", "optionals", "functions-and-records", "strings-and-output", "sorting-and-searching", "standard-library", "stress-and-trace"]}
