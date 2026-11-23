@@ -109,3 +109,9 @@ name = "wasm_gzip_bytes"
 command = "scripts/build-wasm.sh --out /tmp/wasmout && gzip -9c /tmp/wasmout/cpl.wasm | wc -c"
 today = "1761196 gzipped (5784283 raw); trace, replay and stress are in the one module"
 target = "<= 2000000 (site cap), trace/stress lazy-loadable"
+
+[[metric]]
+name = "explain_names_planted_line"
+command = "cargo nextest run -p cpl-cli --test seeded_bugs explain_names --no-capture"
+today = "29/29 seeded bugs named at their planted line (2026-11-23)"
+target = "every seeded bug, and the same share on mutants nobody tuned for"
