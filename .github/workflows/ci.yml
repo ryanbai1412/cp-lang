@@ -458,6 +458,11 @@ jobs:
         with:
           name: web-out
           path: web/out
+      # The browser tests compare the page with `cpl` (site/R6).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpl-ci
+          path: target/ci/cpl
           retention-days: 1
       - name: Save target/ (release)
         id: stamp
@@ -499,9 +504,16 @@ jobs:
         with:
           name: web-out
           path: web/out
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpl-ci
+          path: target/ci
       - name: Browser tests
         timeout-minutes: 6
         working-directory: web
+        env:
+          CPL: ${{ github.workspace }}/target/ci/cpl
         run: |
+          chmod +x "$CPL"
           pnpm exec playwright install --with-deps chromium
           node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs lint-fixes.mjs a11y.mjs
