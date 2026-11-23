@@ -29,6 +29,23 @@ pub fn refine_with_analysis(diags: &mut Vec<Diagnostic>, analysis: &Analysis) {
     }
 }
 
+/// Lints a checked file the way `cpl lint` does: no lints on a file with
+/// syntax errors, and the findings its facts rule out are dropped. The
+/// editor and the playground call this on the analysis they already have.
+pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnostic> {
+    if analysis.has_syntax_errors {
+        return Vec::new();
+    }
+    let items: Vec<_> = analysis
+        .items
+        .iter()
+        .map(|i| (i.offset, &i.syntax.parsed))
+        .collect();
+    let mut diags = crate::lint_parsed(&analysis.text, &items, config);
+    refine_with_analysis(&mut diags, analysis);
+    diags
+}
+
 /// `diags` less the findings the facts of `src` rule out; `src` is checked
 /// only when a finding needs it.
 pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {

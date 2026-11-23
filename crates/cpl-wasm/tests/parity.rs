@@ -358,3 +358,36 @@ fn slow():
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Every lint record's `before.cp` warns in the playground exactly as
+/// `cpl lint` does, and its `after.cp` is clean there too.
+#[test]
+fn the_playground_lints_like_cpl_lint() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/lints");
+    let mut records: Vec<PathBuf> = std::fs::read_dir(&root)
+        .expect("spec/lints")
+        .map(|e| e.expect("entry").path())
+        .collect();
+    records.sort();
+    assert!(records.len() >= 40, "only {} lint records", records.len());
+    let mut playground = Playground::new();
+    for record in records {
+        for case in ["before.cp", "after.cp"] {
+            let path = record.join(case);
+            let source = std::fs::read_to_string(&path).expect("record file");
+            let codes = |diags: &[cpl_diag::Diagnostic]| -> Vec<String> {
+                diags.iter().map(|d| d.code.0.to_string()).collect()
+            };
+            let want = codes(&cpl_lint::lint(&source, &cpl_lint::Config::default()));
+            let got: Vec<String> = playground
+                .lint(case, &source)
+                .get("diagnostics")
+                .and_then(Value::as_array)
+                .expect("diagnostics")
+                .iter()
+                .map(|d| text(d, "code").to_string())
+                .collect();
+            assert_eq!(got, want, "{}", path.display());
+        }
+    }
+}

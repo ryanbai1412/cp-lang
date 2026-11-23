@@ -99,17 +99,7 @@ pub(super) fn lints(_uri: &str, _analysis: &cpl_check::Analysis) -> Vec<Diagnost
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn lints(uri: &str, analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
-    if analysis.has_syntax_errors {
-        return Vec::new();
-    }
-    let items: Vec<(u32, &cpl_syntax::ParsedItem)> = analysis
-        .items
-        .iter()
-        .map(|i| (i.offset, &i.syntax.parsed))
-        .collect();
-    let mut diags = cpl_lint::lint_parsed(&analysis.text, &items, &lint_config(uri));
-    cpl_lint::refine_with_analysis(&mut diags, analysis);
-    diags
+    cpl_lint::lint_analysis(analysis, &lint_config(uri))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

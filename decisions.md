@@ -6948,3 +6948,15 @@ Reverse: `git mv` the files back (the list is this commit's renames).
 - **Call.** Each rule section of `spec/core/` and `spec/tools/` is *supported*, *documented* or *gap* for Milestone 1. A supported section may still have failing cases only when each is listed under Known gaps with its owner; the check fails on an unlisted failure and on a listed case that now passes. First freeze: 92 supported, 3 documented (R11.4 migration, the R12 user-library powers), 86 known-gap cases, owners guessed from the case's folder (core to compiler, `std-*` to stdlib).
 - **Why.** The milestone asks for a subset with gaps "clearly identified rather than disguised"; per-case gaps keep a section with 41 passing and 6 failing cases promised without hiding the 6, and the list can only drift by failing the check.
 - **Reverse.** Delete `spec/SUBSET.md` and `scripts/conformance-subset.py`; or move rows between statuses.
+
+## 313. The playground lints through its own `lint` call, not `check` (2026-11-22)
+Milestone 1 wants newcomers taught CPL idioms in the browser (J2), and the
+playground editor showed no lints: wasm `check` runs only the checker.
+`Playground::lint` (`crates/cpl-wasm/src/lib.rs`, exported as `cpl_lint()`)
+returns lint findings and fixes at default levels through
+`cpl_lint::lint_analysis`, the same entry the LSP now uses, so browser,
+editor and `cpl lint` agree (`the_playground_lints_like_cpl_lint` in
+`crates/cpl-wasm/tests/parity.rs`). It is a separate call because `check`
+must match `cpl check` byte for byte. New crate edge `cpl-wasm -> cpl-lint`
+(already reached through `cpl-lsp`). Reverse: drop the method, the export and
+the edge; the site falls back to checker diagnostics only.

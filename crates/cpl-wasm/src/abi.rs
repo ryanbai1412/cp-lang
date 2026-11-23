@@ -6,7 +6,7 @@
 //!
 //! 1. For each argument, `cpl_input(slot, len)` returns where to write
 //!    `len` bytes: the file name, the source text, the standard input.
-//! 2. One command runs on what was written: `cpl_check()`, `cpl_run(stack)`,
+//! 2. One command runs on what was written: `cpl_check()`, `cpl_lint()`, `cpl_run(stack)`,
 //!    `cpl_trace(stack)`, `cpl_replay(step, frame, stack)`,
 //!    `cpl_hover(offset)`, ...
 //! 3. `cpl_output_ptr(slot)` and `cpl_output_len(slot)` say where the
@@ -129,6 +129,12 @@ pub extern "C" fn cpl_version() {
 #[no_mangle]
 pub extern "C" fn cpl_check() {
     command(|playground, name, text, _, _| playground.check(name, text).to_string());
+}
+
+/// Lints `TEXT`.
+#[no_mangle]
+pub extern "C" fn cpl_lint() {
+    command(|playground, name, text, _, _| playground.lint(name, text).to_string());
 }
 
 /// Runs `TEXT` on `STDIN`, stopping it when its calls take more than

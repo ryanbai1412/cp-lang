@@ -102,6 +102,17 @@ impl Playground {
         outcome(code, &diagnostics, source, stderr, [])
     }
 
+    /// `cpl lint`: the lint warnings for `source` at default levels, with
+    /// their fixes, as `check` reports diagnostics. Empty when `source` has
+    /// a syntax error. Kept apart from `check` so that matches `cpl check`.
+    pub fn lint(&mut self, name: &str, source: &str) -> Value {
+        self.db.set_file(name, source);
+        let analysis = self.db.analyze(name).expect("the file was just set");
+        let diagnostics = cpl_lint::lint_analysis(&analysis, &cpl_lint::Config::default());
+        let stderr = rendered(&diagnostics, name, source);
+        outcome(0, &diagnostics, source, stderr, [])
+    }
+
     /// `cpl run`: checks `source`, then runs it in the debug interpreter
     /// with `input` as its standard input.
     pub fn run(&mut self, name: &str, source: &str, input: &[u8]) -> Run {

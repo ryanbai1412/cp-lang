@@ -224,7 +224,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, scoreboard |
 | `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
-| `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen` and `cpl-lsp`; no logic of its own |
+| `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen`, `cpl-lint` and `cpl-lsp`; no logic of its own |
 
 ## A5. First-class concerns
 

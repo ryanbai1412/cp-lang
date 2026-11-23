@@ -188,6 +188,7 @@ dependencies = [
  "cpl-ir",
  "cpl-json",
  "cpl-judge",
+ "cpl-lint",
  "cpl-lsp",
  "cpl-stress",
 ]
