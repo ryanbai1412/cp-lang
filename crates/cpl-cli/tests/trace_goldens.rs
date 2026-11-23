@@ -157,3 +157,138 @@ fn every_program_records_its_saved_trace() {
         differ.join("\n")
     );
 }
+
+/// What `program` prints to standard output, run untraced.
+fn printed(program: &Path) -> String {
+    let stdin = match std::fs::File::open(program.with_extension("in")) {
+        Ok(file) => Stdio::from(file),
+        Err(_) => Stdio::null(),
+    };
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["run", program.to_str().unwrap()])
+        .env_remove("CPL_TRACE_ENGINE")
+        .stdin(stdin)
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n")
+}
+
+/// A JSON array of strings at the start of `json`, and the rest after it.
+fn strings(json: &str) -> Option<(Vec<String>, &str)> {
+    let mut chars = json.strip_prefix('[')?.char_indices();
+    let mut lines = Vec::new();
+    loop {
+        match chars.next()? {
+            (at, ']') => return Some((lines, &json[at + 2..])),
+            (_, ',') => {}
+            (_, '"') => {
+                let mut line = String::new();
+                loop {
+                    match chars.next()?.1 {
+                        '"' => break,
+                        '\\' => match chars.next()?.1 {
+                            'n' => line.push('\n'),
+                            't' => line.push('\t'),
+                            'r' => line.push('\r'),
+                            'u' => {
+                                let hex: String = chars.by_ref().take(4).map(|(_, c)| c).collect();
+                                line.push(char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?);
+                            }
+                            c => line.push(c),
+                        },
+                        c => line.push(c),
+                    }
+                }
+                lines.push(line);
+            }
+            _ => return None,
+        }
+    }
+}
+
+/// What a traced run had printed by its end: the output of each test
+/// case's last step, case after case. `None` if the trace was cut short.
+fn traced_stdout(document: &str) -> Option<Vec<String>> {
+    if document.contains("\"truncated\":true") {
+        return None;
+    }
+    let mut cases: Vec<(&str, Vec<String>)> = Vec::new();
+    let mut rest = document;
+    while let Some(at) = rest.find("\"stage\":\"") {
+        rest = &rest[at + "\"stage\":\"".len()..];
+        let stage = &rest[..rest.find('"')?];
+        let Some(values) = rest[stage.len()..].strip_prefix("\",\"values\":{\"stdout\":") else {
+            continue;
+        };
+        let (lines, after) = strings(values)?;
+        match cases.last_mut() {
+            Some((last, kept)) if *last == stage => *kept = lines,
+            _ => cases.push((stage, lines)),
+        }
+        rest = after;
+    }
+    Some(cases.into_iter().flat_map(|(_, lines)| lines).collect())
+}
+
+/// Tracing never changes what a program does: every program prints the
+/// same lines traced as untraced.
+#[test]
+fn a_traced_run_prints_what_an_untraced_run_prints() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
+    let mut programs: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "cp"))
+        .collect();
+    programs.sort();
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let chunks: Vec<_> = programs.chunks(programs.len().div_ceil(threads)).collect();
+    let differ: Vec<String> = std::thread::scope(|scope| {
+        let workers: Vec<_> = chunks
+            .iter()
+            .map(|chunk| {
+                scope.spawn(move || {
+                    let mut differ = Vec::new();
+                    for program in *chunk {
+                        let name = program.file_name().unwrap().to_string_lossy().to_string();
+                        let untraced: Vec<String> =
+                            printed(program).lines().map(str::to_string).collect();
+                        let mut cpl = Command::new(env!("CARGO_BIN_EXE_cpl"));
+                        cpl.args([
+                            "run",
+                            program.to_str().unwrap(),
+                            "--trace",
+                            "--format",
+                            "json",
+                        ]);
+                        cpl.env_remove("CPL_TRACE_ENGINE");
+                        cpl.stdin(match std::fs::File::open(program.with_extension("in")) {
+                            Ok(file) => Stdio::from(file),
+                            Err(_) => Stdio::null(),
+                        });
+                        let document = String::from_utf8_lossy(&cpl.output().unwrap().stdout)
+                            .replace("\r\n", "\n");
+                        match traced_stdout(&document) {
+                            Some(traced) if traced == untraced => {}
+                            Some(traced) => differ.push(format!(
+                                "{name}: traced {traced:?}\n  untraced {untraced:?}"
+                            )),
+                            None => {}
+                        }
+                    }
+                    differ
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|worker| worker.join().unwrap())
+            .collect()
+    });
+    assert!(
+        differ.is_empty(),
+        "{} programs print differently when traced:\n{}",
+        differ.len(),
+        differ.join("\n")
+    );
+}

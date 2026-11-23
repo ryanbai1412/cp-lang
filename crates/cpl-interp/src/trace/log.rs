@@ -187,6 +187,11 @@ pub(super) struct Log {
     /// By step, in order: most steps have none.
     notes: Vec<(u32, Note)>,
     out: Vec<Text>,
+    /// Whether each piece of [`Log::out`] goes on the line before it: a
+    /// `print` that ended without a newline leaves its line open.
+    joins: Vec<bool>,
+    /// Whether the last piece printed left its line open.
+    open: bool,
     /// The state after the last change: what the tracer compares with.
     now: State,
     /// Variables drawn as trees: their [`Delta::Tree`] forms are their values.
@@ -219,6 +224,7 @@ impl Log {
             + self.ints.len() * std::mem::size_of::<i64>()
             + self.entries.len() * std::mem::size_of::<Entry>()
             + self.out.len() * std::mem::size_of::<Text>()
+            + self.joins.len()
             + self.snapshot_bytes
     }
 
@@ -490,13 +496,24 @@ impl Log {
         }
     }
 
-    pub fn print(&mut self, line: &str) {
-        let text = self.keep(line);
-        self.out.push(text);
-        self.push(Delta::Print);
+    /// The program printed `text`: each line is a piece, and the first
+    /// goes on the line the last print left open.
+    pub fn print(&mut self, text: &str) {
+        for piece in text.split_inclusive('\n') {
+            let line = piece.strip_suffix('\n').unwrap_or(piece);
+            let line = line.strip_suffix('\r').unwrap_or(line);
+            let kept = self.keep(line);
+            self.out.push(kept);
+            self.joins.push(std::mem::take(&mut self.open));
+            self.push(Delta::Print);
+        }
+        if !text.is_empty() {
+            self.open = !text.ends_with('\n');
+        }
     }
 
     pub fn new_case(&mut self) {
+        self.open = false;
         self.push(Delta::Case);
     }
 
@@ -684,6 +701,7 @@ impl Log {
         self.frame_runs.shrink_to_fit();
         self.notes.shrink_to_fit();
         self.out.shrink_to_fit();
+        self.joins.shrink_to_fit();
     }
 
     fn note(&self, step: usize) -> Option<&Note> {
@@ -767,10 +785,13 @@ impl Log {
             .iter()
             .map(|t| t.map(|t| moved(t, &mut log)))
             .collect();
-        for line in &self.out[state.out.0 as usize..] {
+        let from = state.out.0 as usize;
+        for (i, line) in self.out[from..].iter().enumerate() {
             let text = moved(*line, &mut log);
             log.out.push(text);
+            log.joins.push(i > 0 && self.joins[from + i]);
         }
+        log.open = self.open;
         start.out = (0, state.out.1 - state.out.0);
         log.snapshots.push(Snapshot {
             step: 0,
@@ -918,15 +939,20 @@ impl Log {
     /// A variable's value in `state`, as JSON.
     pub fn value_in(&self, state: &State, var: usize) -> Option<String> {
         if var == STDOUT {
+            let (from, to) = (state.out.0 as usize, state.out.1 as usize);
+            let mut lines: Vec<String> = Vec::new();
+            for (i, line) in self.out[from..to].iter().enumerate() {
+                match lines.last_mut() {
+                    Some(open) if self.joins[from + i] => open.push_str(self.get(*line)),
+                    _ => lines.push(self.get(*line).to_string()),
+                }
+            }
             let mut json = String::from("[");
-            for (i, line) in self.out[state.out.0 as usize..state.out.1 as usize]
-                .iter()
-                .enumerate()
-            {
+            for (i, line) in lines.iter().enumerate() {
                 if i > 0 {
                     json.push(',');
                 }
-                super::string(&mut json, self.get(*line));
+                super::string(&mut json, line);
             }
             json.push(']');
             return Some(json);

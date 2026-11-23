@@ -1145,9 +1145,7 @@ impl Tracer {
         if !self.recording(view.depth) {
             return;
         }
-        for line in text.lines() {
-            self.rec.log.print(line);
-        }
+        self.rec.log.print(text);
         self.prints += 1;
         let shown: String = text.trim_end().chars().take(60).collect();
         let name = format!("print {}", self.prints);
