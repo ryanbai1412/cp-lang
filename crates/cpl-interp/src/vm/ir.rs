@@ -1286,12 +1286,17 @@ pub(crate) enum Op {
     CallVmFeed {
         spec: u16,
     },
+    /// `back`: when not 0, the yield is of local `back - 1`, which takes
+    /// the loop variable's value after the body, as the tree-walker's
+    /// does, so the body can steer the fn (`st.prune()`).
     FeedYieldI {
         src: u16,
         kind: ScalarKind,
+        back: u16,
     },
     FeedYieldV {
         src: u16,
+        back: u16,
     },
     FeedYieldExtend {
         src: u16,

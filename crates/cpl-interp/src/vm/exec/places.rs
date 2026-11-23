@@ -968,7 +968,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
                 }
             }
-            Op::FeedYieldI { src, kind } => {
+            Op::FeedYieldI { src, kind, back } => {
                 let raw = regs_i[src as usize];
                 let ctx = fed.as_deref_mut().expect("FeedYieldI outside fed call");
                 match ctx.var_loc {
@@ -1000,13 +1000,23 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 self.base = saved_base;
                 match body_res? {
+                    ExecExit::FeedNext if back != 0 => {
+                        let val = read_slot(
+                            &ctx.var_loc,
+                            &vm_regs_i[ctx.caller_base_i..],
+                            ctx.caller_regs_v,
+                        );
+                        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        write_slot(&chunk.slot_map[back as usize - 1], regs_i, regs_v, val);
+                    }
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
                 }
             }
-            Op::FeedYieldV { src } => {
-                let val = if src >= chunk.num_local_v as u16 {
+            Op::FeedYieldV { src, back } => {
+                let moved = back != 0 && chunk.slot_map[back as usize - 1] == SlotLoc::V(src);
+                let val = if moved || src >= chunk.num_local_v as u16 {
                     std::mem::replace(&mut regs_v[src as usize], Value::Unit)
                 } else {
                     regs_v[src as usize].clone()
@@ -1027,6 +1037,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 self.base = saved_base;
                 match body_res? {
+                    ExecExit::FeedNext if back != 0 => {
+                        let val = read_slot(
+                            &ctx.var_loc,
+                            &vm_regs_i[ctx.caller_base_i..],
+                            ctx.caller_regs_v,
+                        );
+                        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        write_slot(&chunk.slot_map[back as usize - 1], regs_i, regs_v, val);
+                    }
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),

@@ -280,12 +280,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if matches!(place.kind, PlaceKind::Local(s) if s == acc) {
                         match (*op, args.as_slice()) {
                             (Mutation::Push, [arg]) => {
+                                let back = match arg.kind {
+                                    ExprKind::Local(slot) => slot as u16 + 1,
+                                    _ => 0,
+                                };
                                 if let Some(kind) = ScalarKind::of_ty(&arg.ty, self.program) {
                                     let src = self.compile_expr_i(arg);
-                                    self.emit(Op::FeedYieldI { src, kind }, expr.span);
+                                    self.emit(Op::FeedYieldI { src, kind, back }, expr.span);
                                 } else {
                                     let src = self.compile_expr_v(arg);
-                                    self.emit(Op::FeedYieldV { src }, expr.span);
+                                    self.emit(Op::FeedYieldV { src, back }, expr.span);
                                     if src >= self.num_local_v {
                                         self.emit(Op::ClearV { reg: src }, expr.span);
                                     }
@@ -618,7 +622,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let f = &self.program.fns[fn_id];
         if *cid != fn_id
             || !self.fed_ok[fn_id]
-            || matches!(&f.ret, Ty::List(elem) if matches!(**elem, Ty::Struct(_)))
             || f.locals.len() > 512
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()

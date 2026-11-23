@@ -373,34 +373,33 @@ pub(super) struct FedCtx<'a, 'p> {
 }
 
 pub(super) fn store_fed_val(ctx: &mut FedCtx<'_, '_>, vm_regs_i: &mut [i64], val: Value) {
-    match ctx.var_loc {
-        SlotLoc::I(r, _) => {
-            vm_regs_i[ctx.caller_base_i + r as usize] = ScalarKind::unbox_val(&val);
-        }
+    let regs_i = &mut vm_regs_i[ctx.caller_base_i..];
+    write_slot(&ctx.var_loc, regs_i, ctx.caller_regs_v, val);
+}
+
+/// Puts `val` in the local at `loc`: [`read_slot`]'s inverse.
+pub(super) fn write_slot(loc: &SlotLoc, regs_i: &mut [i64], regs_v: &mut [Value], val: Value) {
+    match *loc {
+        SlotLoc::I(r, _) => regs_i[r as usize] = ScalarKind::unbox_val(&val),
         SlotLoc::OptI {
             val: r_v,
             some: r_s,
             ..
         } => {
             let (v, s) = ScalarKind::unbox_opt(&val);
-            vm_regs_i[ctx.caller_base_i + r_v as usize] = v;
-            vm_regs_i[ctx.caller_base_i + r_s as usize] = s;
+            regs_i[r_v as usize] = v;
+            regs_i[r_s as usize] = s;
         }
         SlotLoc::SmallTuple { base, len, .. } => match &val {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 for k in 0..len as usize {
-                    vm_regs_i[ctx.caller_base_i + base as usize + k] =
-                        ScalarKind::unbox_val(&fs[k]);
+                    regs_i[base as usize + k] = ScalarKind::unbox_val(&fs[k]);
                 }
             }
-            Value::Tuple(TupleVal::OneInt(v)) => {
-                vm_regs_i[ctx.caller_base_i + base as usize] = *v;
-            }
+            Value::Tuple(TupleVal::OneInt(v)) => regs_i[base as usize] = *v,
             _ => {}
         },
-        SlotLoc::V(r) => {
-            ctx.caller_regs_v[r as usize] = val;
-        }
+        SlotLoc::V(r) => regs_v[r as usize] = val,
     }
 }
 
