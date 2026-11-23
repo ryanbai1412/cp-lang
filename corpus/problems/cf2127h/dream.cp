@@ -52,13 +52,13 @@ let m: 0..=600_000 = read()
 domain V = 1..=n
 
 // Undirected edge table: keyed by unordered {u, v}, automatically orienting Edge.
-var edges: UndirectedMap<V, Edge> = UndirectedMap()
+var edges: Map<(V, V), Edge> = Map()
 var adj: [V]Set<V> = Set<V>()
 var vert: [V]Vert = 0
 
 for _ in 0..m:
     let (u, v): (V, V) = read()
-    edges[u, v] = unit_edge
+    edges[minmax(u, v)] = unit_edge
     adj[u].add(v)
     adj[v].add(u)
 
@@ -77,8 +77,8 @@ while let cur = ready.pop_front():
         let v = adj[cur].pop_last()!
         adj[u].remove(cur)
         adj[v].remove(cur)
-        let merged = series(edges.remove(u, cur)!, vert[cur], edges.remove(cur, v)!)
-        edges[u, v] = edges.get(u, v).map(old => parallel(old, merged)) ?? merged
+        let merged = series(edges.remove(minmax(u, cur))!, vert[cur], edges.remove(minmax(cur, v))!)
+        edges[minmax(u, v)] = edges.get(minmax(u, v)).map(old => parallel(old, merged)) ?? merged
         adj[u].add(v)
         adj[v].add(u)
         try_queue(u)
@@ -86,7 +86,7 @@ while let cur = ready.pop_front():
     elif adj[cur].len == 1:
         let host = adj[cur].pop_first()!
         adj[host].remove(cur)
-        vert[host] = absorb_leaf(vert[host], edges.remove(host, cur)!, vert[cur])
+        vert[host] = absorb_leaf(vert[host], edges.remove(minmax(host, cur))!, vert[cur])
         try_queue(host)
     else:
         print(vert[cur][Deg(2)])
