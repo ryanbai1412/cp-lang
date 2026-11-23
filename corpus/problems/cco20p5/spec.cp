@@ -11,7 +11,7 @@ domain X = 1..=1e6
 struct Gap(end_l: ?X, start_r: ?X, span: ?Int)
 
 fn join(a: Gap, b: Gap) -> Gap:
-    let across = if a.end_l is Some(l) and b.start_r is Some(r): Some(Int(r) - Int(l)) else: None
+    let across = if let Some(l) = a.end_l, Some(r) = b.start_r: Some(Int(r) - Int(l)) else: None
     Gap(
         end_l: [a.end_l, b.end_l].filter_map(x => x).max(),
         start_r: [a.start_r, b.start_r].filter_map(x => x).min(),
@@ -43,18 +43,18 @@ for op in read<[q]Op>():
         Add(l, r) =>
             lefts_ending.get_or_insert(r).add(l)
             rights_starting.get_or_insert(l).add(r)
-            by_end.add((r: r, l: desc(l)))
-            by_start.add((l: desc(l), r: r))
+            by_end.add((r:, l: desc(l)))
+            by_start.add((l: desc(l), r:))
             lens.add(Int(r) - Int(l))
             refresh(l, r)
         Remove(l, r) =>
             lefts_ending[r].remove(l)
             rights_starting[l].remove(r)
-            by_end.remove((r: r, l: desc(l)))
-            by_start.remove((l: desc(l), r: r))
+            by_end.remove((r:, l: desc(l)))
+            by_start.remove((l: desc(l), r:))
             lens.remove(Int(r) - Int(l))
             refresh(l, r)
-    if gaps.fold(X.range).span is Some(s):
+    if let Some(s) = gaps.fold(X.range).span:
         print(s)
     else:
         let (a, b) = (by_end.first!, by_start.first!)

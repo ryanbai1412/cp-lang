@@ -10,4 +10,4 @@ var walk = List(Rooted(root: V.first!, next: in_colour(c)).euler_tour())
 walk.pop()
 for v in V:
     print(walk.len)
-    print(walk.rotated_left(walk.keys.first(i => walk[i] == v)!))
+    print(walk.rotated_left(walk.keys.find(i => walk[i] == v)!))

@@ -13,7 +13,7 @@ fn tracks(k: Int) -> Int:
         made += chains.drain_range(k..).count()
         var spare = 0
         while let x = chains.pop_first():
-            if chains.take_first(y => x + y >= k) is Some(_):
+            if let Some(_) = chains.take_first(y => x + y >= k):
                 made += 1
             else:
                 spare = x

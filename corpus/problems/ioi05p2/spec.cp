@@ -11,7 +11,7 @@ enum Cmd:
     @tag("E") End
 let cmds = read_all<Cmd>(until: c => c == Cmd.End)
 let (domain P, piece) = Rail.pieces(
-    cuts: cmds.flat_map(c => if c is Cmd.Set(a, b, _): [a.l, b.r] else: [])
+    cuts: cmds.flat_map(c => if let Cmd.Set(a, b, _) = c: [a.l, b.r] else: [])
 )
 type Rise = (rise: Int, peak: Int, len: Int)
 let track = Monoid<Rise>(
@@ -21,7 +21,7 @@ let track = Monoid<Rise>(
 let slope = Action<Rise, ?Int>(
     id: None,
     compose: (old, new) => new ?? old,
-    apply: (d, x, _) => if d is Some(v): (
+    apply: (d, x, _) => if let Some(v) = d: (
         rise: v * x.len,
         peak: max(0, v * x.len),
         len: x.len,

@@ -15,7 +15,7 @@ fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if u != v and fits(
     v,
 ] else: None
 fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
-    let c = d.closure(over: over)!
+    let c = d.closure(over:)!
     (V, V).all((u, v) => u == v or c[u, v] == want[u, v])
 if not (
     closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow) and closes_to(
@@ -31,10 +31,7 @@ if not (
     print("NO")
 else:
     let edges = [
-        (u: u, v: v, w: w!) for (u, v) in V.pairs() if fits(u, v) for w in [
-            wide[u, v],
-            narrow[u, v],
-        ]
+        (u:, v:, w: w!) for (u, v) in V.pairs() if fits(u, v) for w in [wide[u, v], narrow[u, v]]
     ]
     let low = kruskal(edges).take
     let high = kruskal(edges, by: e => desc(e.w)).take

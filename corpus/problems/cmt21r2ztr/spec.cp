@@ -6,11 +6,11 @@ enum Side: Below | Above
 let (n, m) = read<(1..=100_000, 1..=100_000)>()
 domain V = 1..=n
 let qs = read<[m](i: V, j: V, k: V, x: 1..=1_000_000_000)>()
-let (domain P, pins) = compress(qs.flat_map(q => [q.i, q.j, q.k].map(v => (v: v, x: q.x))))
+let (domain P, pins) = compress(qs.flat_map(q => [q.i, q.j, q.k].map(v => (v:, x: q.x))))
 fn on(p: P, s: Side) = Lit((p, s), true)
 var sat = TwoSat<(P, Side)>()
 for q in qs:
-    let ps = [q.i, q.j, q.k].map(v => pins.at((v: v, x: q.x)))
+    let ps = [q.i, q.j, q.k].map(v => pins.at((v:, x: q.x)))
     for s in Side:
         sat.at_most_one(ps.map(p => on(p, s)).collect())
 for p in P:

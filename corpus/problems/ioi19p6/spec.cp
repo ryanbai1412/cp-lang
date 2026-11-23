@@ -41,10 +41,10 @@ fn min_distance(
         for i in starting[b]:
             active.add((y: walks[i].y, walk: i))
         for i in starting[b] + ending[b]:
-            stops.push((b: b, y: walks[i].y))
+            stops.push((b:, y: walks[i].y))
             on[i].push(b)
             if let Some(under) = active.last_true(a => a.y < walks[i].y):
-                stops.push((b: b, y: under.y))
+                stops.push((b:, y: under.y))
                 on[under.walk].push(b)
         for i in ending[b]:
             active.remove((y: walks[i].y, walk: i))

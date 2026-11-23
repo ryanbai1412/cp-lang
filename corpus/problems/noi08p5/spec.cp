@@ -27,7 +27,7 @@ for op in read<[q]Op>():
     match op:
         Add(t, c, l, r, d) =>
             let at = ((if d == 1: l else: cycle - l) - t) % cycle
-            cloud[c] = (at: at, len: r - l)
+            cloud[c] = (at:, len: r - l)
             put(at, r - l, 1)
         Ask(t, l, r) =>
             let base = (-t) % cycle

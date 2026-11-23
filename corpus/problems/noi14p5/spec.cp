@@ -31,7 +31,7 @@ for v in Value:
     if lo[r] <= col and col <= hi[r]:
         path.push(v)
         for above in ..r:
-            hi[above] = min(hi[above], col)
+            hi[above] min= col
         for below in r.next..:
-            lo[below] = max(lo[below], col)
+            lo[below] max= col
 print(path)

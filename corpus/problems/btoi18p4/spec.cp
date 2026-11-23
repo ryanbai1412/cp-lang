@@ -20,13 +20,13 @@ fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
             break
         if l > reach + 1:
             return false
-        reach = max(reach, h)
+        reach max= h
     reach >= part.hi
 
 let whole = (lo: 1, hi: n)
 var holder: [Wire]?Wire = []
 var reach: ?(end: Int, by: Wire) = None
-let copies = [(start: lo[w] + s, end: hi[w] + s, w: w) for w in Wire for s in [0, n]]
+let copies = [(start: lo[w] + s, end: hi[w] + s, w:) for w in Wire for s in [0, n]]
 for c in copies.sorted(by: c => (c.start, desc(c.end))):
     match reach:
         Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)

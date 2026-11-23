@@ -15,7 +15,7 @@ for op in read<[q]Op>():
     match op:
         Paint(x) =>
             for (lost, gained) in paths.access(x):
-                if lost is Some(top):
+                if let Some(top) = lost:
                     colours.apply(t.sub(top), 1)
                 colours.apply(t.sub(gained), -1)
         Path(x, y) =>
