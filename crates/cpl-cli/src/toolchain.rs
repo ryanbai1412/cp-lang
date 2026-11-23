@@ -370,7 +370,18 @@ fn install(home: &Path, selector: &Selector, log: &mut String) -> Result<String,
     let scratch = tmp.join(stamp);
     std::fs::create_dir_all(scratch.join("unpack"))
         .map_err(|e| format!("could not create {}: {e}", scratch.shown()))?;
-    let result = install_into(home, &dir_url, &scratch, selector, log);
+    let mut result = install_into(home, &dir_url, &scratch, selector, log);
+    let no_release = |e: &String| {
+        e.starts_with(&format!("could not download {dir_url}/latest.json"))
+            && (e.contains("404") || e.contains("(37)"))
+    };
+    if *selector == Selector::Channel("stable") && result.as_ref().is_err_and(no_release) {
+        // Until the first stable release, stable installs edge, as the
+        // installer does.
+        *log += "cpl: no stable release yet, so stable gets edge\n";
+        let edge = Selector::Channel("edge");
+        result = install_into(home, &format!("{base}/download/edge"), &scratch, &edge, log);
+    }
     let _ = std::fs::remove_dir_all(&scratch);
     result
 }
@@ -618,7 +629,7 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
     let args: Vec<&str> = args.iter().copied().filter(|a| *a != "--json").collect();
     let mut out = String::new();
     let result = match args.as_slice() {
-        [] | ["-h" | "--help"] => {
+        [] | [.., "-h" | "--help"] => {
             out += SELF_USAGE;
             Ok(())
         }

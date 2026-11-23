@@ -345,6 +345,27 @@ fn self_update_switches_channels_and_rolls_back_offline() {
 }
 
 #[test]
+fn self_update_gets_edge_until_there_is_a_stable_release() {
+    let world = World::new("edge-only");
+    world.publish(
+        "edge-2026-11-21-aaaaaaaa",
+        "edge",
+        &["edge", "edge-2026-11-21"],
+    );
+    std::fs::copy(CPL, world.launcher()).unwrap();
+    let out = world.cpl(&["self", "update"], &[]);
+    assert_eq!(ok(&out), "stable installed: edge-2026-11-21-aaaaaaaa\n");
+    let said = String::from_utf8_lossy(&out.stderr);
+    assert!(said.contains("no stable release yet"), "{said}");
+    assert_eq!(
+        ok(&world.cpl(&["self", "update"], &[])),
+        "stable is up to date: edge-2026-11-21-aaaaaaaa\n"
+    );
+    let help = ok(&world.cpl(&["self", "update", "--help"], &[]));
+    assert!(help.starts_with("usage: cpl self"), "{help}");
+}
+
+#[test]
 fn a_download_that_fails_its_checksum_installs_nothing() {
     let world = World::new("checksum");
     world.publish("0.4.0", "stable", &["v0.4.0"]);
