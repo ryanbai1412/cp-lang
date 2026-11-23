@@ -31,7 +31,6 @@ const view = (o) => o.status === 'fail'
   : o.status === 'ok' ? { status: 'ok', cases: o.cases } : { status: 'error' };
 
 let bad = 0, found = 0;
-const tle = [];
 const slow = [];
 for (const [i, f] of files.entries()) {
   const copy = join(tmp, `${i}-${basename(f)}`);
@@ -45,12 +44,6 @@ for (const [i, f] of files.entries()) {
   }
   let a, b;
   try { a = view(JSON.parse(cliOut)); } catch { a = { status: 'error' }; }
-  // The browser stops a run after 5 s of wall clock, so shrinking a time limit
-  // there takes minutes; those programs are compared by the CLI's suites only.
-  if (a.verdict === 'TLE') {
-    tle.push(f);
-    continue;
-  }
   const t1 = Date.now();
   const run = spawnSync(process.execPath, [join(web, 'scripts/stress-worker.mjs'), copy, JSON.stringify(opts), wasmDir], { encoding: 'utf8', timeout: BROWSER_LIMIT_MS });
   if (run.error?.code === 'ETIMEDOUT') {
@@ -66,6 +59,6 @@ for (const [i, f] of files.entries()) {
   } else if (a.status === 'fail') found++;
 }
 for (const f of slow) console.log(`stress-parity: slow in the browser (over ${BROWSER_LIMIT_MS / 1000} s for ${opts.cases} cases): ${f}`);
-const compared = files.length - tle.length - slow.length;
-console.log(`stress-parity: ${compared - bad} of ${compared} @alt programs agree (${found} counterexamples found alike); ${tle.length} whose counterexample is a time limit not run in the browser, ${slow.length} too slow there`);
+const compared = files.length - slow.length;
+console.log(`stress-parity: ${compared - bad} of ${compared} @alt programs agree (${found} counterexamples found alike); ${slow.length} too slow there`);
 process.exit(bad ? 1 : 0);
