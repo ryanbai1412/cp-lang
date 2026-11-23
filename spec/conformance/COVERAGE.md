@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3067 (1092 passing). Rules: 583.
+Cases: 3069 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -939,8 +939,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 11 case(s)
-- R0101 Index out of range: 23 case(s)
-- R0102 Value outside a domain: 5 case(s)
+- R0101 Index out of range: 24 case(s)
+- R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 3 case(s)
@@ -1083,6 +1083,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-03/mod-array-fills-from-int-literal.cp
 - core-04/char-from-idx.cp
 - core-04/domain-subsets-needs-no-import.cp
+- core-04/from-ord-after-a-checked-one-still-traps.cp
+- core-04/global-2d-str-array-col-past-end-traps.cp
 - core-04/library-domain-cxx-names-apart.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-04/literal-range-table-int-keys.cp
