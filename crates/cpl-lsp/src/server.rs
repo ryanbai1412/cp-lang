@@ -765,6 +765,37 @@ impl Server {
                         ),
                     ]));
                 }
+                let organize = only.is_empty()
+                    || only.iter().filter_map(Value::as_str).any(|kind| {
+                        "source.organizeImports".starts_with(kind)
+                            || kind.starts_with("source.organizeImports")
+                    });
+                if let Some((span, text)) = organize
+                    .then(|| crate::imports::organize(&analysis.text))
+                    .flatten()
+                {
+                    actions.push(obj([
+                        ("title", "organize imports".into()),
+                        ("kind", "source.organizeImports".into()),
+                        (
+                            "edit",
+                            obj([(
+                                "changes",
+                                Value::Object(BTreeMap::from([(
+                                    uri.to_string(),
+                                    vec![obj([
+                                        (
+                                            "range",
+                                            range_json(span, &analysis.text, &analysis.lines),
+                                        ),
+                                        ("newText", text.into()),
+                                    ])]
+                                    .into(),
+                                )])),
+                            )]),
+                        ),
+                    ]));
+                }
                 Ok(Reply::result(Value::Array(actions)))
             }
             // The type of each `let`, `var`, loop variable and lambda
@@ -1131,7 +1162,12 @@ fn capabilities() -> Value {
                     "codeActionProvider",
                     obj([(
                         "codeActionKinds",
-                        vec!["quickfix".into(), "source.fixAll.cpl".into()].into(),
+                        vec![
+                            "quickfix".into(),
+                            "source.fixAll.cpl".into(),
+                            "source.organizeImports".into(),
+                        ]
+                        .into(),
                     )]),
                 ),
             ]),

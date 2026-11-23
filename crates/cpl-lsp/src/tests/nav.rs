@@ -145,3 +145,39 @@ fn call_hierarchy_shows_callers_and_callees() {
     let items = at(&mut server, "textDocument/prepareCallHierarchy", 0, 23);
     assert_eq!(items, Value::Null);
 }
+
+#[test]
+fn organize_imports_is_a_source_action() {
+    let (mut server, _) =
+        open("use std.rand.{Rng}\nuse std.deque.{Deque}\nlet d = Deque<Int>()\nprint(d.len())\n");
+    let params = obj([
+        ("textDocument", doc()),
+        ("range", obj([("start", pos(0, 0)), ("end", pos(0, 0))])),
+        (
+            "context",
+            obj([
+                ("diagnostics", Vec::<Value>::new().into()),
+                ("only", vec!["source.organizeImports".into()].into()),
+            ]),
+        ),
+    ]);
+    let reply = server.handle(&request(9, "textDocument/codeAction", params));
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]).to_vec();
+    let [organize] = actions.as_slice() else {
+        panic!("{actions:?}")
+    };
+    assert_eq!(
+        organize.at(&["kind"]).as_str(),
+        Some("source.organizeImports")
+    );
+    let edits = organize
+        .at(&["edit", "changes", URI])
+        .as_array()
+        .unwrap_or(&[])
+        .to_vec();
+    assert_eq!(
+        edits[0].at(&["newText"]).as_str(),
+        Some("use std.deque.{Deque}\n")
+    );
+    assert_eq!(edits[0].at(&["range", "end"]), &pos(2, 0));
+}

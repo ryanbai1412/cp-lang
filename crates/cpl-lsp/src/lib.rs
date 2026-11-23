@@ -9,6 +9,7 @@
 //! (`plan/60-editor.md`).
 
 mod complete;
+mod imports;
 mod outline;
 mod rename;
 mod server;
