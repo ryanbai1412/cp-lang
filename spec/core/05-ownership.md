@@ -115,7 +115,8 @@ print(k + j)                // fine
 ```
 
 `let b = a` where `a` is used again is the error above, never a silent
-copy (decision 128). Moving out of a place that stays alive, such as an
+copy (decision 128): a copy of a heap value is O(n), and an O(n) step
+must look like one (`a.clone()`). Moving out of a place that stays alive, such as an
 element, is `xs[i].take()`, which exists only where the type has an empty
 value to leave behind: `None` in a `?T`, the empty `List`, `Str`, map or
 set. For anything else, `xs[i].replace(x)` returns the old value.

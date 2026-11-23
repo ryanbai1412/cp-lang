@@ -289,9 +289,10 @@ Laws:
 
 ### 3.5 Coordinate compression
 
-`compress(all)` sorts and deduplicates `all`, returning a `Compressed<D, T>`
-whose fresh domain `xs.D` keeps compressed indices disjoint from raw values and
-from any other compression:
+`let (domain C, comp) = compress(all)` sorts and deduplicates `all`, binding a
+fresh domain `C` and a `Compressed<C, T>` table `comp` (core R07.11.5); `C`
+keeps compressed indices disjoint from raw values and from any other
+compression:
 
 ```cp
 pub struct Compressed<D, T>(vals: [D]T):
@@ -311,10 +312,10 @@ pub fn compress<T>(all: List<T>)
 ```
 
 Laws:
-- `xs.vals` is strictly increasing.
-- `xs.try_at(v) == Some(i)` iff `xs[i] == v`.
-- `xs.first_ge(v)` and `xs.last_lt(v)` partition `xs.D` at `v`; `xs.first_gt(v)`
-  and `xs.last_le(v)` partition `xs.D` after `v`.
+- `comp.vals` is strictly increasing.
+- `comp.try_at(v) == Some(i)` iff `comp[i] == v`.
+- `comp.first_ge(v)` and `comp.last_lt(v)` partition `C` at `v`; `comp.first_gt(v)`
+  and `comp.last_le(v)` partition `C` after `v`.
 
 ### 3.6 Permutations
 

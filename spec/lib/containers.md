@@ -191,7 +191,8 @@ for `HashMap`.
 Three complementary patterns appear across contests:
 
 - **Offline coordinate compression (`std.seq.compress` -> `Compressed<D, T>`).**
-  Sorts values, deduplicates, and returns a fresh domain `xs.D`. Today it has
+  `let (domain C, comp) = compress(xs)` sorts values, deduplicates, and binds
+  a fresh domain `C` with the table `comp` (R07.11.5). Today it has
   `get`, `slice`, `len`, `at`, `first_ge`, `last_le`. It lacks `first_gt`,
   `last_lt` (the rest of the 4-name sorted lookup family), `try_at(val) -> ?D`,
   `contains(val) -> Bool`, and `range(lo, hi) -> Range<D>` (turning value bounds

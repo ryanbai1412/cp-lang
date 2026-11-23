@@ -3,8 +3,9 @@
 Status: draft for 0.3.0, aligned with Ryan 2026-11-21 (decision 149). Scope: how numbers stay small in memory
 without the contestant thinking about bytes, and how `?T` costs nothing
 for ints, structs, records, enums and arrays. Modular arithmetic, floats
-and overflow semantics are summarized where they touch layout; their
-detailed rules stay in `design/spec/11-types.md`.
+and overflow semantics are summarized where they touch layout: overflow
+in section 4, modular numbers in section 5, what each build checks in
+`09-contexts-checks.md`, and the `Mod<P>` library in `lib/math.md`.
 
 ## The model in one paragraph
 
@@ -56,7 +57,9 @@ bytes, never slower), and `cpl explain` prints every layout.
   overflow, so valid programs pay nothing on the judge. (R03.1.4)
 - **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is
   one byte per element, `[V]0..=4e9` four. Decision 1.7 keeps the number
-  types to `Int`, `U64`, `I128` and `F64`; a byte of text is `Char`. (R03.1.5)
+  types to `Int`, `U64`, `I128` and `F64`: the range already says how many
+  bytes a slot needs, so a second integer family would only add casts and
+  overflow at a narrower width. A byte of text is `Char`. (R03.1.5)
 - **Narrow arithmetic when proven.** Semantically every operation is in
   `Int`. When the range proof shows an expression and its operands fit in
   32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
