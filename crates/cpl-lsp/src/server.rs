@@ -1834,7 +1834,8 @@ pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
             }
         }
     }
-    String::from_utf8(out).ok()
+    let path = String::from_utf8(out).ok()?;
+    Some(crate::uri::os_path(path, cfg!(windows)))
 }
 
 /// The run, stress and trace lenses of the file at `path`, each a title and

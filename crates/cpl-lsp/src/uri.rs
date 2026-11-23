@@ -6,9 +6,68 @@ pub(crate) fn uri_of_path(path: &str) -> String {
     }
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(file) = bundled_std_file(path) {
-        return format!("file://{}", file.display());
+        return file_uri(&file.to_string_lossy());
     }
-    format!("file://{path}")
+    file_uri(path)
+}
+
+/// `file://` and `path` with `\` as `/`, a `/` before a Windows drive
+/// (`C:`), and every byte outside the URI path characters `%XX`-escaped,
+/// so a path with a space or a drive letter round-trips through the editor.
+fn file_uri(path: &str) -> String {
+    let path = path.replace('\\', "/");
+    let mut out = String::from("file://");
+    if has_drive(&path) {
+        out.push('/');
+    }
+    for b in path.bytes() {
+        if b.is_ascii_alphanumeric() || b"/-._~:".contains(&b) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
+fn has_drive(path: &str) -> bool {
+    let b = path.as_bytes();
+    b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
+}
+
+/// A decoded `file://` path as the OS spells it: on Windows the URI's
+/// `/C:/x.cp` is `C:/x.cp`.
+pub(crate) fn os_path(path: String, windows: bool) -> String {
+    if windows && path.starts_with('/') && has_drive(&path[1..]) {
+        path[1..].to_string()
+    } else {
+        path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_uris_escape_spaces_and_mark_drives() {
+        assert_eq!(
+            file_uri("/home/a/my code/x.cp"),
+            "file:///home/a/my%20code/x.cp"
+        );
+        assert_eq!(
+            file_uri("C:\\Users\\a b\\x.cp"),
+            "file:///C:/Users/a%20b/x.cp"
+        );
+        assert_eq!(file_uri("/bench/solution.cp"), "file:///bench/solution.cp");
+    }
+
+    #[test]
+    fn windows_uri_paths_drop_the_slash_before_the_drive() {
+        assert_eq!(os_path("/C:/Users/x.cp".into(), true), "C:/Users/x.cp");
+        assert_eq!(os_path("/C:/Users/x.cp".into(), false), "/C:/Users/x.cp");
+        assert_eq!(os_path("/home/x.cp".into(), true), "/home/x.cp");
+    }
 }
 
 /// A standard library module built into the compiler (`std/heap.cp`),
