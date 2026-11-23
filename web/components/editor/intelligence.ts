@@ -1,6 +1,6 @@
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult, snippet } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
-import { EditorView, hoverTooltip, keymap, ViewPlugin } from '@codemirror/view';
+import { EditorView, hoverTooltip, keymap, tooltips, ViewPlugin } from '@codemirror/view';
 import { started } from '@/lib/cpl';
 import { LspDoc } from '@/lib/lsp';
 
@@ -111,7 +111,7 @@ export function intelligence(prefix: string, editable: boolean): Extension {
       if (!h || !body.trim()) return null;
       const from = (h.range && fromLsp(view, h.range.start)) ?? pos;
       const to = (h.range && fromLsp(view, h.range.end)) ?? pos;
-      return { pos: from, end: to, above: true, create: () => ({ dom: markdown(body) }) };
+      return { pos: from, end: to, create: () => ({ dom: markdown(body) }) };
     },
     { hideOnChange: true },
   );
@@ -154,6 +154,8 @@ export function intelligence(prefix: string, editable: boolean): Extension {
   }
 
   return [
+    // In the page body, so an editor that scrolls its own content can't clip them.
+    tooltips({ parent: document.body }),
     server,
     hover,
     editable ? autocompletion({ override: [complete] }) : [],
