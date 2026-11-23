@@ -49,6 +49,11 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual((s["all"], s["conform_cases"]), (False, ["spec/conformance/lints/tree-order.cp"]))
         self.assertTrue(self.sel("spec/conformance/COVERAGE.md")["all"])
 
+    def test_corpus_programs_select_the_tests_that_read_them(self):
+        s = self.sel("corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp")
+        self.assertEqual((s["all"], s["packages"]), (False, []))
+        self.assertEqual(s["data_filter"], "(package(cpl-lint) & test(/corpus_warnings/))")
+
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
 

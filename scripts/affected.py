@@ -28,6 +28,9 @@ PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "worklog.md", "research/*",
 EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
                ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
+# Data files and the nextest filter of the tests that read them.
+DATA_TESTS = [(f"corpus/problems/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
+              for leaf in ("spec.cp", "port.cp")]
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
@@ -65,8 +68,8 @@ def script_test(path):
 
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
-           "script_tests": [], "site": False, "conform_cases": []}
-    packages, tests = set(), set()
+           "script_tests": [], "site": False, "conform_cases": [], "data_filter": ""}
+    packages, tests, data = set(), set(), []
     for path in paths:
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
@@ -78,6 +81,9 @@ def select(paths, dirs):
             packages.add(crate)
         elif editor:
             packages.add(editor)
+        elif expr := next((e for p, e in DATA_TESTS if fnmatch.fnmatch(path, p)), None):
+            if expr not in data:
+                data.append(expr)
         elif matches(path, PROSE):
             continue
         elif matches(path, EVERY_CRATE):
@@ -93,6 +99,7 @@ def select(paths, dirs):
             break
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
+    sel["data_filter"] = " | ".join(f"({e})" for e in data)
     return sel
 
 
@@ -128,6 +135,7 @@ def main(argv):
     print("script_tests=" + " ".join(sel["script_tests"]))
     print(f"site={int(sel['site'])}")
     print("conform_cases=" + " ".join(sel["conform_cases"]))
+    print("data_filter=" + sel["data_filter"])
     return 0
 
 

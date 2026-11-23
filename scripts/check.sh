@@ -370,6 +370,10 @@ if [ "$mode" = commit ]; then
         cargo nextest run --workspace --profile commit --no-fail-fast \
             -E "($sel_filter) & not ($slow_filter)"
     fi
+    if [ -n "${sel_data_filter:-}" ]; then
+        step "tests that read the touched data files: $sel_data_filter"
+        cargo nextest run --workspace --no-fail-fast -E "($sel_data_filter) & not ($slow_filter)"
+    fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"
