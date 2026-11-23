@@ -21,7 +21,7 @@ import {
 } from '@/lib/landing';
 
 const starts = [
-  { href: '/learn/start', icon: GraduationCap, title: 'Solve your first problem', text: 'Two minutes, in the browser, no install.' },
+  { href: '/learn/intro', icon: GraduationCap, title: 'Learn it in 30 minutes', text: 'One page, every example runs in the browser.' },
   { href: '/learn/from/cpp', icon: Code2, title: 'Coming from C++, Python, Java or Rust', text: 'Six problems, side by side with what you know.' },
   { href: '/docs', icon: BookOpen, title: 'Look something up', text: 'Guides, the language reference and the library.' },
 ];
@@ -157,8 +157,8 @@ export default async function Home() {
           </ul>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <Link href="/learn/start">
-                Start with a problem <ArrowRight />
+              <Link href="/learn/intro">
+                Learn it in 30 minutes <ArrowRight />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>

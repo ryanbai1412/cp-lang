@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "---Start here---",
+    "intro",
     "[Your first program in five minutes](/learn/start)",
     "[Coming from C++](/learn/from/cpp)",
     "[Coming from Python](/learn/from/python)",

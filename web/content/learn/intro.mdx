@@ -1,0 +1,333 @@
+---
+title: "CP Lang in 30 minutes"
+description: "The whole language model for someone who already competes in C++: input, ranges, index spaces, optionals, the library, multitest, stress testing and submission."
+---
+
+You already know the algorithms. This page teaches how CP Lang writes them, in about
+30 minutes. Every example runs in the page on the real compiler: press **Run**, edit
+the code or the input, and run it again. **Open in playground** takes any example to the
+full editor, with its C++17 output, Stress and Trace.
+
+When you finish, solve a few [practice problems](/learn/practice) in the browser, then
+[install `cpl`](/setup) to work in your own editor and submit to Codeforces or AtCoder.
+
+## 1. A program is its statements
+
+There is no `main`, no includes and no fast-I/O setup. The statements run from top to
+bottom, `read()` reads the type you ask for, and `print` separates its arguments with
+spaces:
+
+```cp run input="3 4\n"
+let (a, b): (Int, Int) = read()
+print(a + b)
+```
+
+`let` binds a value that never changes and `var` one that does. `Int` is a 64-bit signed
+integer. Blocks are indented, as in Python, and `if`, `for` and `while` end their header
+with `:`. A short body can stay on the same line.
+
+## 2. Constraints are types
+
+Write the statement's bounds as the type. `1..=2e5` is the integers from 1 to 200,000;
+`[0..n]1..=1e9` is an array of `n` values, each from 1 to 10^9. The bounds are checked
+when the input is read, they pick the smallest storage width, and they let the compiler
+prove that sums don't overflow:
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+var total = 0
+var big = 0
+for x in a:
+    total += x
+    if x > big: big = x
+print(total, big)
+print("sum {total}, largest {big}")
+```
+
+`..` excludes its end and `..=` includes it. `"{total}"` interpolates. Arrays come with
+the obvious reductions, and a lambda is `x => ...`:
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+print(a.sum(), a.max(), a.count(x => x % 2 == 1))
+print(if a.any(x => x > 4): "YES" else: "NO")
+```
+
+`if` is an expression, so it can sit inside `print`. Read a value outside its range, or
+index outside an array, and the program stops with a *trap* that names the line and the
+values, instead of running on with garbage.
+
+## 3. Index spaces
+
+Most statements number things from 1: vertices, positions, days. Declare the numbering
+once with `domain`, and every array over it is indexed by that domain:
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+var best = V(1)
+for v in V:
+    if a[v] > a[best]: best = v
+print(best, a[best])
+print(a[V(3)])
+```
+
+`a[V(3)]` is the third element, with no `- 1` anywhere. A `V` can't index an array over a
+different domain, so mixing up vertices and edges, or rows and columns, is a compile
+error. `V(3)` turns a plain number into a position, and `V(0)` traps.
+
+Prefix sums live on the *cuts* between positions: a domain of `n` positions has `n + 1`
+cuts, and position `v` sits between cuts `v.l` and `v.r`. The off-by-one disappears:
+
+```cp run input="5\n3 1 4 1 5\n2\n1 3\n2 5\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+var pre: [V.cuts]Int = 0
+for v in V:
+    pre[v.r] = pre[v.l] + a[v]
+let q: 1..=2e5 = read()
+for _ in 0..q:
+    let (l, r): (V, V) = read()
+    print(pre[r.r] - pre[l.l])
+```
+
+`var pre: [V.cuts]Int = 0` fills the whole array with 0. Grids take two domains,
+`[Row, Col]Int`, indexed `g[r, c]`. More in [Arrays and index spaces](/learn/read/arrays-and-index-spaces).
+
+## 4. Missing is a value
+
+C++ code marks "no answer yet" with `-1` or `INF` and hopes no real value collides. CP
+Lang writes `?Int`: an `Int`, or `None`. `x max= y` is `x = max(x, y)`, and on a `?Int` a
+`None` simply loses. `??` supplies the fallback at the end:
+
+```cp run input="5\n3 1 4 1 5\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+var best: ?Int = None
+for x in a:
+    if x % 2 == 0: best max= x
+print(best ?? -1)
+```
+
+`if let x = opt:` runs its body only when a value is present, and `opt!` unwraps one you
+know exists (it traps on `None`). A BFS keeps `[V]?Int` distances with no `INF`: see
+[Optionals](/learn/read/optionals).
+
+## 5. Functions, `mut` and records
+
+Parameters are read-only borrows. A function that changes its argument says `mut`, and so
+does the caller, so a mutation is never a surprise:
+
+```cp run input="3\n5 1 4\n"
+let n: 1..=100 = read()
+var a: [0..n]Int = read()
+fn double_all(mut xs: [0..n]Int):
+    for i in 0..n: xs[i] *= 2
+double_all(mut a)
+print(a)
+```
+
+A function's last expression is its value: `fn sq(x: Int) -> Int = x * x` is a whole
+function. Functions can be nested and recursive, and they see the variables around them.
+
+Named tuples are records, and `read()` reads them field by field. `sort(by:)` takes a key,
+and tuples compare left to right, so `-r.score` sorts the highest score first:
+
+```cp run input="4\nana 30\nbo 50\ncy 30\ndee 10\n"
+let n: 1..=1000 = read()
+var rows: [0..n](name: Str, score: Int) = read()
+rows.sort(by: r => (-r.score, r.name))
+for r in rows: print(r.name, r.score)
+```
+
+`enum` and `match` are in [Functions, records and match](/learn/read/functions-and-records).
+
+## 6. Strings and output
+
+`Str` holds the text and `Char` one character; `c - 'a'` is a number:
+
+```cp run input="hello\n"
+let s: Str = read()
+var cnt: [0..26]Int = 0
+for c in s: cnt[c - 'a'] += 1
+for k in 0..26 if cnt[k] > 0:
+    print('a' + k, cnt[k])
+```
+
+`for ... if ...:` filters a loop in its header. `print` takes options, so most output
+formats need no loop:
+
+```cp run
+let xs = [3, 1, 4]
+let d: [0..3]?Int = [Some(0), None, Some(2)]
+print(xs)
+print(xs, sep: "\n")
+print(d, none: "-1")
+print("a", "b", end: "")
+print("|")
+print(yes(xs.len == 3), "{3.14159:.2f}", "{7:03}")
+```
+
+`yes(b)` prints `YES` or `NO`. Output is buffered and fast by default.
+
+## 7. Lists, sorting and binary search
+
+`List<T>` grows with `push`. Comprehensions build one in a line:
+
+```cp run input="6\n4 -1 7 0 -3 2\n"
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+var pos: List<Int> = []
+for x in a if x > 0: pos.push(x)
+print(pos.len, pos)
+print([x * x for x in a if x < 0])
+```
+
+Searches on sorted data return the position of the first match, or `None` when there is
+none, instead of an end iterator you might forget to check. `first_ge` and `first_gt` are
+C++'s `lower_bound` and `upper_bound`:
+
+```cp run input="5\n5 1 4 1 9\n3\n1\n4\n10\n"
+let n: 1..=2e5 = read()
+let a: [0..n]1..=1e9 = read()
+let b = a.sorted()
+let q: 1..=2e5 = read()
+for _ in 0..q:
+    let x: 1..=1e9 = read()
+    let below = b.first_ge(x) ?? n
+    let upto = b.first_gt(x) ?? n
+    print(below, upto - below)
+```
+
+Binary search on the answer is the same call on a range of candidates. `first_true` finds
+the smallest value whose test passes, as long as the test is false then true:
+
+```cp run input="5 3\n7 2 5 10 8\n"
+let (n, k): (1..=2e5, 1..=2e5) = read()
+let a: [0..n]1..=1e9 = read()
+// fewest pieces if no piece may sum above `cap`
+fn pieces(cap: Int) -> Int:
+    var count = 1
+    var cur = 0
+    for x in a:
+        if cur + x > cap:
+            count += 1
+            cur = 0
+        cur += x
+    count
+let best = (a.max()!..=a.sum()).first_true(cap => pieces(cap) <= k)
+print(best!)
+```
+
+No `lo`, `hi` or `mid`, so no off-by-one in the loop. More in
+[Sorting and searching](/learn/read/sorting-and-searching).
+
+## 8. The standard library
+
+The containers you reach for in C++ are here, with the same costs. A missing `Map` key
+reads as 0 for `+=`, and `get` returns a `?V`:
+
+```cp run input="5\n2 7 2 1 8\n"
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+var cnt: Map<Int, Int> = Map()
+for x in a: cnt[x] += 1
+var seen: Set<Int> = Set()
+for x in a: seen.add(x)
+print(cnt[2], cnt.get(5) ?? 0, seen.len, yes(7 in seen))
+var h = MinHeap<(Int, Str)>()
+h.push((3, "c"))
+h.push((1, "a"))
+print(h.pop()!)
+```
+
+Modular arithmetic is a type, so a missed `% MOD` can't happen:
+
+```cp run input="30\n"
+const MOD = 998_244_353
+type Z = Mod<MOD>
+let k: 0..=1e9 = read()
+let z = Z(2) ** k
+print(z, (z * z.inv()).v)
+```
+
+Graphs (`bfs`, `dijkstra`, `components`, `topo`), number theory (`gcd`, `Sieve`), segment
+trees, DSU and more are in the [library reference](/docs/ref/std). Search (`Ctrl K`, or
+`⌘K` on a Mac) finds any function by name. The [standard library chapter](/learn/read/standard-library)
+shows how to find what you need when you don't know its name.
+
+## 9. Many test cases
+
+Write the program for one test case, then add `@!multitest` above it. The number of test
+cases is read first, and each case runs in a fresh scope, so nothing leaks from one test
+to the next:
+
+```cp run input="2\n3\n1 2 3\n2\n5 -5\n"
+@!multitest
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+print(a.sum())
+```
+
+Anything above the `@!multitest` line runs once and is shared, which is where a sieve or
+a factorial table goes. Inside a test case, `return` ends that case.
+
+## 10. When you are not sure: stress it
+
+Write the slow, obviously correct version next to the fast one as `@alt(program)`. Here
+the fast solution is the largest `a[j] - a[i]` with `i < j`, keeping the minimum so far:
+
+```cp run input="3\n1 3 6\n"
+let n: 1..=8 = read()
+let a: [0..n]1..=20 = read()
+var best = 0
+var low = a[0]
+for x in a:
+    best max= x - low
+    low min= x
+print(best)
+@alt(program)
+fn slow():
+    var best = 0
+    for i in 0..n:
+        for j in i + 1..n:
+            best max= a[j] - a[i]
+    print(best)
+```
+
+Open it in the playground and press **Stress**: it generates random inputs from the types
+you declared, runs both versions, and shrinks the first disagreement to the smallest
+failing input. Change `best max= x - low` to `best max= x - a[0]` and Stress finds the
+bug in a moment. **Trace** then replays the run step by step. Locally, `cpl stress a.cp`
+does the same. See [Stress testing and the trace debugger](/learn/read/stress-and-trace).
+
+## 11. C++ habits to leave behind
+
+- Write `and`, `or` and `not`, and `elif` rather than `else if`.
+- `x min= y` and `x max= y` replace `x = min(x, y)`.
+- `/` and `%` are Euclidean: the remainder is never negative, so `-7 % 3` is `2`.
+- Change elements through an index (`for i in 0..n: a[i] += 1`); `for x in a` reads.
+- Break out of nested loops with a label: `'outer: for r in Row:` and `break 'outer`.
+
+## 12. Submitting
+
+The judge runs C++, so `cpl build` writes one self-contained, readable C++17 file you
+submit as GNU C++17:
+
+```sh
+cpl run a.cp < in.txt                        # run with the interpreter
+cpl build a.cp --judge codeforces -o a.cpp   # the file you submit
+```
+
+`--judge atcoder` targets AtCoder. In the playground, the **C++17** tab shows the same
+file. [Install `cpl`](/setup) and the VS Code extension to work locally.
+
+## Next
+
+- **Practice:** [Div 2 A/B problems](/learn/practice), judged in the browser.
+- **Go deeper:** the [chapters](/learn/read/first-program), one topic each.
+- **Keep open:** the [cheat sheet](/docs/guides/cheatsheet), the whole language on one page.
