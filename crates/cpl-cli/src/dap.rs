@@ -692,14 +692,14 @@ impl Session {
             source: compiled.text.clone(),
             record_frames: true,
             max_steps: Some(MAX_STEPS),
-            // A program that never ends still lets the editor step through it.
-            time_limit: Some(std::time::Duration::from_secs(10)),
             ..TraceConfig::default()
         };
         let mut printed = Vec::new();
         let observed = cpl_interp::run_observed(
             &compiled.program,
-            cpl_interp::Io::fixed(&self.input),
+            // A program that never ends still lets the editor step through it.
+            cpl_interp::Io::fixed(&self.input)
+                .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10))),
             &mut printed,
             Some(config),
         );

@@ -670,14 +670,15 @@ fn a_traced_run_that_never_ends_stops_at_its_time_limit() {
 fn stops_at_its_time_limit(source: &str) {
     let config = TraceConfig {
         source: source.to_string(),
-        time_limit: Some(std::time::Duration::from_millis(200)),
         ..TraceConfig::default()
     };
     let started = Instant::now();
     let mut out = Vec::new();
     let observed = cpl_interp::run_observed(
         &program(source),
-        cpl_interp::Io::fixed(b""),
+        cpl_interp::Io::fixed(b"").until(cpl_interp::Stop::after(
+            std::time::Duration::from_millis(200),
+        )),
         &mut out,
         Some(config),
     );

@@ -88,9 +88,17 @@ pub struct RunOutput {
 
 /// Runs a lowered program in the debug interpreter on `input`.
 pub fn run_interp(program: &cpl_ir::Program, path: &str, text: &str, input: &[u8]) -> RunOutput {
+    run_interp_io(program, path, text, cpl_interp::Io::fixed(input))
+}
+
+fn run_interp_io(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    io: cpl_interp::Io,
+) -> RunOutput {
     let mut stdout = Vec::new();
-    let observed =
-        cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), &mut stdout, None);
+    let observed = cpl_interp::run_observed(program, io, &mut stdout, None);
     let trap_rendered = match &observed.trap {
         Some(trap) => render_trap(path, text, trap),
         None => String::new(),
@@ -110,71 +118,39 @@ pub fn case_timeout() -> u64 {
         .unwrap_or(20)
 }
 
-/// `run_interp` on its own thread, `Err` once it runs past `case_timeout()`. A timed-out
-/// run is abandoned, not stopped: the interpreter has no way to interrupt it, so on Linux
-/// its thread drops to the lowest CPU priority and stops starving the cases still running.
+/// `run_interp`, `Err` once it runs past `case_timeout()`: the run stops
+/// itself there (`cpl_interp::Stop`), so nothing is left running.
 pub fn run_interp_bounded(
     program: &cpl_ir::Program,
     path: &str,
     text: &str,
     input: &[u8],
 ) -> Result<RunOutput, String> {
-    let limit = case_timeout();
-    let (program, path, text, input) = (
-        program.clone(),
-        path.to_string(),
-        text.to_string(),
-        input.to_vec(),
+    run_interp_within(program, path, text, input, case_timeout())
+}
+
+/// `run_interp` that stops itself after `limit` seconds, `Err` if it had to.
+pub fn run_interp_within(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    input: &[u8],
+    limit: u64,
+) -> Result<RunOutput, String> {
+    let stop = cpl_interp::Stop::after(std::time::Duration::from_secs(limit));
+    let run = run_interp_io(
+        program,
+        path,
+        text,
+        cpl_interp::Io::fixed(input).until(stop),
     );
-    let (tx, rx) = std::sync::mpsc::channel();
-    let (tid_tx, tid_rx) = std::sync::mpsc::channel();
-    std::thread::Builder::new()
-        .stack_size(64 << 20)
-        .spawn(move || {
-            let _ = tid_tx.send(thread_id());
-            let _ = tx.send(run_interp(&program, &path, &text, &input));
-        })
-        .map_err(|e| format!("could not start the interpreter: {e}"))?;
-    match rx.recv_timeout(std::time::Duration::from_secs(limit)) {
-        Ok(run) => Ok(run),
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-            if let Ok(tid) = tid_rx.recv() {
-                deprioritize(tid);
-            }
+    match &run.trap {
+        Some(trap) if trap.message == cpl_interp::OUT_OF_TIME => {
             Err(format!("the interpreter timed out after {limit}s"))
         }
-        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => panic!("the interpreter panicked"),
+        _ => Ok(run),
     }
 }
-
-#[cfg(target_os = "linux")]
-fn thread_id() -> i32 {
-    extern "C" {
-        fn gettid() -> i32;
-    }
-    // SAFETY: gettid takes no arguments and cannot fail.
-    unsafe { gettid() }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn thread_id() -> i32 {
-    0
-}
-
-/// Sets thread `tid` to nice 19; on Linux, `PRIO_PROCESS` with a thread id names one thread.
-#[cfg(target_os = "linux")]
-fn deprioritize(tid: i32) {
-    extern "C" {
-        fn setpriority(which: i32, who: u32, prio: i32) -> i32;
-    }
-    // SAFETY: plain syscall wrapper; a stale tid makes it return an error, which is ignored.
-    unsafe {
-        setpriority(0, tid as u32, 19);
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn deprioritize(_tid: i32) {}
 
 pub fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
     let lines = LineIndex::new(text);
@@ -259,29 +235,4 @@ pub fn truncate_chars(s: &str, max_len: usize) -> String {
     let mut chars = s.chars();
     let out: String = chars.by_ref().take(max_len).collect();
     out
-}
-
-#[cfg(all(test, target_os = "linux"))]
-mod priority_tests {
-    #[test]
-    fn a_deprioritized_thread_runs_at_nice_19() {
-        let (tid_tx, tid_rx) = std::sync::mpsc::channel();
-        let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
-        let handle = std::thread::spawn(move || {
-            tid_tx.send(super::thread_id()).unwrap();
-            done_rx.recv().unwrap();
-        });
-        let tid = tid_rx.recv().unwrap();
-        super::deprioritize(tid);
-        let stat = std::fs::read_to_string(format!("/proc/self/task/{tid}/stat")).unwrap();
-        let fields: Vec<&str> = stat
-            .rsplit_once(')')
-            .unwrap()
-            .1
-            .split_whitespace()
-            .collect();
-        assert_eq!(fields[16], "19", "nice field of {stat}");
-        done_tx.send(()).unwrap();
-        handle.join().unwrap();
-    }
 }

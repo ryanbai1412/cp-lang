@@ -520,6 +520,7 @@ options:
                     a bad index, `/ 0` and `assert` unless `--checks` says
   --checks LEVEL    with --release: what that build traps on, as
                     `cpl build --checks` takes it (none, traps, all)
+  --time-limit MS   stop the run after MS milliseconds
 ";
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every

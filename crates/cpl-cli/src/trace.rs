@@ -49,9 +49,14 @@ pub fn trap_locals(
     input: &[u8],
     trap: &cpl_interp::Trap,
 ) -> Option<String> {
+    // A run stopped from outside would not stop at the same place again.
+    if [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&trap.message.as_str()) {
+        return None;
+    }
     let mut sink = Vec::new();
     let config = cpl_interp::trace::trap_config(source);
-    let io = cpl_interp::Io::fixed(input);
+    let io = cpl_interp::Io::fixed(input)
+        .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
     let observed = cpl_interp::run_observed(program, io, &mut sink, Some(config));
     (observed.trap?.message == trap.message).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
@@ -162,10 +167,10 @@ pub fn against_brute(
     };
     let record = |program: &cpl_ir::Program| {
         let mut sink = Vec::new();
-        let io = cpl_interp::Io::fixed(input.as_bytes());
+        let io = cpl_interp::Io::fixed(input.as_bytes())
+            .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
         let config = cpl_interp::trace::TraceConfig {
             assignments: explain,
-            time_limit: Some(std::time::Duration::from_secs(10)),
             ..config(&source, None)
         };
         cpl_interp::run_observed(program, io, &mut sink, Some(config))

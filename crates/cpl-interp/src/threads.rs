@@ -1,7 +1,7 @@
 //! Where a run runs besides a thread of its own: on the caller's thread,
 //! or on one it gives up on after a time limit.
 
-use crate::{run, run_io, Io, Limits, Trap};
+use crate::{run_io, run_with, Io, Limits, Stop, Trap, OUT_OF_TIME};
 use cpl_ir::Program;
 use std::io::Write;
 
@@ -33,20 +33,18 @@ pub fn run_with_on_this_thread(
     }
 }
 
-/// [`run`] that gives up after `limit`: `None` when the program was still
-/// running. The run goes on, left behind on a thread of its own, so only a
-/// process that ends soon after should give up on one.
+/// [`crate::run`] ended after `limit`: `None` when the program was still
+/// running then. The run stops itself (see [`Stop`]), so nothing is left
+/// behind.
 pub fn run_for(
     program: &Program,
     input: &[u8],
     limit: std::time::Duration,
 ) -> Option<(Vec<u8>, Result<(), Trap>)> {
-    let (program, input) = (program.clone(), input.to_vec());
-    let (done, ran) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        let mut out = Vec::new();
-        let result = run(&program, &input, &mut out);
-        let _ = done.send((out, result));
-    });
-    ran.recv_timeout(limit).ok()
+    let mut out = Vec::new();
+    let io = Io::fixed(input).until(Stop::after(limit));
+    match run_with(program, io, &mut out) {
+        Err(trap) if trap.message == OUT_OF_TIME => None,
+        result => Some((out, result)),
+    }
 }

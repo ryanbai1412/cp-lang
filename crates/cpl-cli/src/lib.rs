@@ -370,6 +370,8 @@ struct RunArgs<'a> {
     /// `--checks LEVEL` with `--release`: the judge build's checks.
     checks: Option<cpl_codegen::Checks>,
     live: bool,
+    /// `--time-limit MS`: how long the run may take before it is stopped.
+    time_limit: Option<std::time::Duration>,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -427,6 +429,7 @@ impl<'a> RunArgs<'a> {
             release: false,
             checks: None,
             live: false,
+            time_limit: None,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -519,6 +522,12 @@ impl<'a> RunArgs<'a> {
                     }
                 }
                 "--live" => args.live = true,
+                "--time-limit" => {
+                    let ms = iter.next().and_then(|ms| ms.parse::<u64>().ok()).ok_or(
+                        "`--time-limit` takes milliseconds: `cpl run a.cp --time-limit 2000`",
+                    )?;
+                    args.time_limit = Some(std::time::Duration::from_millis(ms));
+                }
                 "--format" => match iter.next() {
                     Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
                     Some(other) => {
@@ -975,9 +984,9 @@ fn run_release(
             Err(code) => return code,
         }
     }
-    // No time limit: a day is longer than anyone waits.
-    let day = std::time::Duration::from_secs(86_400);
-    let outcome = match program.run(&String::from_utf8_lossy(input), day) {
+    // With no `--time-limit`, a day: longer than anyone waits.
+    let limit = (args.time_limit).unwrap_or(std::time::Duration::from_secs(86_400));
+    let outcome = match program.run(&String::from_utf8_lossy(input), limit) {
         Ok(outcome) => outcome,
         Err(error) => {
             *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);
@@ -1107,6 +1116,10 @@ fn run_file(
                 (!chunk.is_empty()).then_some(chunk)
             }))
         }
+    };
+    let io = match args.time_limit {
+        Some(limit) => io.until(cpl_interp::Stop::after(limit)),
+        None => io,
     };
     let started = std::time::Instant::now();
     let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
@@ -1433,6 +1446,25 @@ mod tests {
             String::from_utf8_lossy(&out.stdout),
             format!("{path}: 2 fixes applied, no errors\n")
         );
+    }
+
+    #[test]
+    fn run_stops_at_its_time_limit() {
+        let path = temp_file(
+            "forever.cp",
+            "var i = 0\nwhile i >= 0:\n    i = (i + 1) % 2\nprint(i)\n",
+        );
+        let started = std::time::Instant::now();
+        let out = run(&["run", &path, "--time-limit", "200"]);
+        assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
+        assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
+        assert!(
+            out.stderr.contains(cpl_interp::OUT_OF_TIME),
+            "{}",
+            out.stderr
+        );
+        let out = run(&["run", &path, "--time-limit", "soon"]);
+        assert_eq!(out.code, EXIT_USAGE, "{}", out.stderr);
     }
 
     #[test]

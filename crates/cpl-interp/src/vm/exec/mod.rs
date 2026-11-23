@@ -871,7 +871,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     };
                     regs_i[dst as usize] = i64::from(res);
                 }
-                Op::Jmp { target } => pc = target as usize,
+                Op::Jmp { target } => {
+                    if target as usize <= cur_pc {
+                        self.tick(spans[cur_pc])?;
+                    }
+                    pc = target as usize
+                }
                 Op::JmpEscape {
                     brk,
                     id,
@@ -887,41 +892,65 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::JmpIfZero { reg, target } => {
                     if regs_i[reg as usize] == 0 {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpIfNonZero { reg, target } => {
                     if regs_i[reg as usize] != 0 {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpLtI { a, b, target } => {
                     if regs_i[a as usize] < regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpLeI { a, b, target } => {
                     if regs_i[a as usize] <= regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpGtI { a, b, target } => {
                     if regs_i[a as usize] > regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpGeI { a, b, target } => {
                     if regs_i[a as usize] >= regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpEqI { a, b, target } => {
                     if regs_i[a as usize] == regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
                 Op::JmpNeI { a, b, target } => {
                     if regs_i[a as usize] != regs_i[b as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
@@ -929,6 +958,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let next = regs_i[r_i as usize] + 1;
                     regs_i[r_i as usize] = next;
                     if next < regs_i[r_hi as usize] {
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
@@ -936,6 +968,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur < regs_i[r_hi as usize] {
                         regs_i[r_i as usize] = cur + 1;
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
@@ -943,6 +978,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur > regs_i[r_lo as usize] {
                         regs_i[r_i as usize] = cur - 1;
+                        if target as usize <= cur_pc {
+                            self.tick(spans[cur_pc])?;
+                        }
                         pc = target as usize;
                     }
                 }
@@ -1616,13 +1654,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::Trace { idx } => {
                     self.exec_trace(chunk, idx, regs_i, regs_v);
-                    if self
-                        .tracer
-                        .as_mut()
-                        .is_some_and(|tracer| tracer.out_of_time())
-                    {
-                        return trap(spans[cur_pc], crate::trace::OUT_OF_TIME);
-                    }
                 }
                 other => {
                     if let Some(exit) = self.exec_ext_op(

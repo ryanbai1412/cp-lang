@@ -55,16 +55,13 @@ pub struct TraceConfig {
     pub max_steps: Option<usize>,
     /// Skip this many steps before keeping any: a window of a long run.
     pub from_step: Option<usize>,
-    /// Stop the run with [`OUT_OF_TIME`] once it has run this long: for a
-    /// caller that must answer, as DAP and `cpl stress` must.
-    pub time_limit: Option<std::time::Duration>,
 }
 
 /// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
 pub(crate) const STOPPED: &str = "the call to replay returned";
 
-/// The message of the trap that ends a run at [`TraceConfig::time_limit`].
-pub const OUT_OF_TIME: &str = "the run took longer than its time limit";
+/// A traced run is bounded like any other, with [`crate::Io::until`].
+pub use crate::stop::OUT_OF_TIME;
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
 const MAX_STEPS: usize = 20_000;
@@ -439,9 +436,6 @@ fn members(object: &str) -> Vec<(&str, &str)> {
 }
 
 pub(crate) struct Tracer {
-    /// When [`TraceConfig::time_limit`] runs out, and trace points since the clock was read.
-    deadline: Option<std::time::Instant>,
-    ticks: u32,
     lines: LineIndex,
     /// The last span start looked up and its line: a step's span is
     /// looked up more than once.
@@ -546,8 +540,6 @@ impl Tracer {
             }
         }
         let mut tracer = Tracer {
-            deadline: (config.time_limit).map(|limit| std::time::Instant::now() + limit),
-            ticks: 0,
             lines: LineIndex::new(&config.source),
             last_line: std::cell::Cell::new((u32::MAX, 0)),
             library: (program.fns.iter().zip(&program.library_fns))
@@ -658,16 +650,6 @@ impl Tracer {
                 returned: None,
             });
         }
-    }
-
-    /// Whether the run is past its [`TraceConfig::time_limit`]; the clock
-    /// is read once every 4096 asks.
-    pub fn out_of_time(&mut self) -> bool {
-        self.ticks = self.ticks.wrapping_add(1);
-        self.ticks.is_multiple_of(4096)
-            && self
-                .deadline
-                .is_some_and(|d| std::time::Instant::now() >= d)
     }
 
     /// Whether the call that runs now is kept, so its result is wanted.

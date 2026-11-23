@@ -138,13 +138,17 @@ pub struct InterpEngine {
     pub checker: Option<cpl_ir::Program>,
     /// Stack byte limit when running on the calling thread (wasm).
     pub stack_limit: Option<u32>,
+    /// How long one run may take before it is stopped, a time limit verdict.
+    pub limit: Duration,
 }
 
 fn run_ir(
     program: &cpl_ir::Program,
     io: cpl_interp::Io,
     stack_limit: Option<u32>,
+    limit: Duration,
 ) -> Result<String, (String, cpl_interp::Trap)> {
+    let io = io.until(cpl_interp::Stop::after(limit));
     let mut out = Vec::new();
     let res = match stack_limit {
         Some(bytes) => cpl_interp::run_with_on_this_thread(
@@ -206,6 +210,7 @@ impl Engine for InterpEngine {
             &self.fast,
             cpl_interp::Io::fixed(input.as_bytes()),
             self.stack_limit,
+            self.limit,
         )
         .is_err()
     }
@@ -216,6 +221,7 @@ impl Engine for InterpEngine {
                 brute,
                 cpl_interp::Io::fixed(input.as_bytes()),
                 self.stack_limit,
+                self.limit,
             ) {
                 Ok(out) => Some(out),
                 Err((_, trap)) => {
@@ -231,20 +237,21 @@ impl Engine for InterpEngine {
             &self.fast,
             cpl_interp::Io::fixed(input.as_bytes()),
             self.stack_limit,
+            self.limit,
         ) {
             Ok(out) => out,
             Err((out, trap)) => {
-                return Ok(Some((
-                    Verdict::RuntimeError(trap.message),
-                    expected.unwrap_or_default(),
-                    out,
-                )));
+                let verdict = match trap.message.as_str() {
+                    cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
+                    _ => Verdict::RuntimeError(trap.message),
+                };
+                return Ok(Some((verdict, expected.unwrap_or_default(), out)));
             }
         };
         if let Some(checker) = &self.checker {
             let mut printed = Some(got.as_bytes().to_vec());
             let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()));
-            return match run_ir(checker, io, self.stack_limit) {
+            return match run_ir(checker, io, self.stack_limit, self.limit) {
                 Ok(_) => Ok(None),
                 Err((_, trap)) => Ok(Some((
                     Verdict::Wrong(trap.message),
@@ -263,6 +270,8 @@ pub struct InterpChoices {
     pub program: cpl_ir::Program,
     pub name: String,
     pub stack_limit: Option<u32>,
+    /// How long one draw may take before it is stopped.
+    pub limit: Duration,
 }
 
 impl ChoiceSource for InterpChoices {
@@ -271,6 +280,7 @@ impl ChoiceSource for InterpChoices {
             &self.program,
             cpl_interp::Io::fixed(b"").seeded(seed),
             self.stack_limit,
+            self.limit,
         ) {
             Ok(input) => Ok(Drawn {
                 choices: Vec::new(),
@@ -415,6 +425,7 @@ pub fn stress_source(
                 program,
                 name: name.to_string(),
                 stack_limit,
+                limit: options.limit,
             })
         }
         None => None,
@@ -445,6 +456,7 @@ pub fn stress_source(
         brute,
         checker,
         stack_limit,
+        limit: options.limit,
     };
     let mut single = options.clone();
     single.jobs = 1;

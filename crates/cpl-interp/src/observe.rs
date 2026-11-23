@@ -38,10 +38,6 @@ pub(crate) trait Observer {
     fn assignments(&self) -> bool {
         false
     }
-    /// Whether the run is past its time limit, asked at each trace point.
-    fn out_of_time(&mut self) -> bool {
-        false
-    }
     /// Global `id`, or a part of it, was written where no step is kept:
     /// true when the observer has taken note and wants no view.
     fn quiet_write(&mut self, _place: &Place, _depth: usize) -> bool {
@@ -108,9 +104,6 @@ impl Observer for Tracer {
     fn assignments(&self) -> bool {
         self.assignments
     }
-    fn out_of_time(&mut self) -> bool {
-        Tracer::out_of_time(self)
-    }
     fn quiet_write(&mut self, place: &Place, depth: usize) -> bool {
         Tracer::quiet_write(self, place, depth)
     }
@@ -158,20 +151,6 @@ impl<O: Observer> Interp<'_, '_, O> {
             Some(tracer) if tracer.stopped() => crate::trap(span, trace::STOPPED),
             _ => Ok(()),
         }
-    }
-
-    /// A trap once a traced run is past its time limit: the tree-walker
-    /// asks at every block it runs, so every loop round and call.
-    pub(crate) fn in_time(&mut self) -> crate::Res<()> {
-        if self.observed()
-            && self
-                .tracer
-                .as_mut()
-                .is_some_and(|tracer| tracer.out_of_time())
-        {
-            return crate::trap(Span::default(), trace::OUT_OF_TIME);
-        }
-        Ok(())
     }
 
     /// Runs `record` on the tracer, when the run is traced.

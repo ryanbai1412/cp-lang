@@ -13,6 +13,7 @@ mod input;
 mod observe;
 pub mod profile;
 pub mod replay;
+mod stop;
 mod threads;
 pub mod trace;
 mod trap_help;
@@ -33,6 +34,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
+pub use stop::{Limits, Stop, CANCELLED, OUT_OF_TIME};
 pub use threads::{run_for, run_on_this_thread, run_with_on_this_thread};
 use value::{
     show, zero, Array, CaptureVal, ListViewVal, MutViewVal, OptVal, Part, Step, StrViewVal,
@@ -177,15 +179,6 @@ fn memory_for_stack() -> usize {
         .unwrap_or(usize::MAX)
 }
 
-/// How much stack a program's calls may take before the run is stopped.
-/// There is no limit on how deep calls nest: only on the stack they fill.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Limits {
-    /// Bytes of the interpreter's own stack those calls may use: the
-    /// program's recursion is the interpreter's.
-    pub stack_bytes: usize,
-}
-
 /// Runs `program` on `input`, writing what it prints to `output`. Output
 /// printed before a failure is still written.
 ///
@@ -217,6 +210,8 @@ pub struct Io<'a> {
     peer: Option<More<'a>>,
     /// Where `rand` starts, when not the default.
     seed: Option<u64>,
+    /// What ends the run early, if anything.
+    stop: Option<Stop>,
 }
 
 enum Feed<'a> {
@@ -231,6 +226,7 @@ impl<'a> Io<'a> {
             input: Feed::Fixed(input),
             peer: None,
             seed: None,
+            stop: None,
         }
     }
 
@@ -241,6 +237,7 @@ impl<'a> Io<'a> {
             input: Feed::Live(more),
             peer: None,
             seed: None,
+            stop: None,
         }
     }
 
@@ -251,6 +248,7 @@ impl<'a> Io<'a> {
             input: Feed::Fixed(input),
             peer: Some(solution),
             seed: None,
+            stop: None,
         }
     }
 
@@ -421,6 +419,8 @@ fn run_as<O: Observer>(
         current_case: None,
         rng_state: seed.map_or(0x9e3779b97f4a7c15, |seed| seed ^ 0x9e3779b97f4a7c15),
         tracer,
+        stop: io.stop,
+        countdown: stop::EVERY,
         profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),
         feeds: cpl_ir::pushed::Feeds::of(program),
@@ -635,6 +635,9 @@ struct Interp<'p, 'o, O: Observer> {
     rng_state: u64,
     /// Records the trace of the run, when one was asked for.
     tracer: Option<Box<O>>,
+    /// What ends the run early, looked at when `countdown` reaches 0.
+    stop: Option<Stop>,
+    countdown: u32,
     profiler: Option<Box<profile::Profiler>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
@@ -916,7 +919,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     // ----- statements -----
 
     fn block(&mut self, block: &'p Block) -> Res<Flow> {
-        self.in_time()?;
+        self.tick(Span::default())?;
         for stmt in &block.stmts {
             match self.stmt(stmt)? {
                 Flow::Next => {}
@@ -3627,19 +3630,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// Stops the run before a call would overflow the interpreter's own
     /// stack: the program's recursion is the interpreter's.
-    fn stack_left(&self, span: Span, callee: Option<&str>) -> Res<()> {
-        let here = 0u8;
-        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        if used > self.stack_budget {
-            let callee = callee.map_or("a closure".into(), |name| format!("`{name}`"));
-            return trap(
-                span,
-                format!("the stack ran out: {callee} never stops calling itself?"),
-            );
-        }
-        Ok(())
-    }
-
     fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
         let f = &self.program.fns[id];
         self.stack_left(span, Some(&f.name))?;

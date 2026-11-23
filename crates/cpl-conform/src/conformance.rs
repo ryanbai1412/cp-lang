@@ -43,7 +43,7 @@ impl Backend<'_> {
         }
     }
 
-    /// `Err` holds the compile diagnostics.
+    /// `Err` holds the compile diagnostics, or says the run timed out.
     fn run(&mut self, path: &str, text: &str, input: &[u8]) -> Result<Ran, String> {
         match self {
             Backend::Linked(db) => {
@@ -559,7 +559,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     return CaseOutcome {
                         status: "fail".into(),
                         detail: format!(
-                            "wanted trap {code} at {target_line}; got compile error: {}",
+                            "wanted trap {code} at {target_line}; got: {}",
                             runner::truncate_chars(d.trim(), 200)
                         ),
                     };
@@ -640,7 +640,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     return CaseOutcome {
                         status: "fail".into(),
                         detail: format!(
-                            "wanted output {want:?}; got compile error: {}",
+                            "wanted output {want:?}; got: {}",
                             runner::truncate_chars(d.trim(), 200)
                         ),
                     };

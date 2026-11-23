@@ -575,6 +575,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst,
             } => {
                 let f = &self.program.fns[fn_id as usize];
+                self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let callee = compiled.fns[fn_id as usize].as_ref().unwrap();
                 let ab = arg_base as usize;
@@ -630,6 +631,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 ret_mode,
             } => {
                 let f = &self.program.fns[fn_id as usize];
+                self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let callee = compiled.fns[fn_id as usize].as_ref().unwrap();
                 let mut ni = 0usize;
@@ -829,6 +831,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 let def = &self.program.closures[cid];
                 let val = if let Some(callee) = compiled.closures[cid].as_ref() {
+                    self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
                     let mut ni = 0usize;
                     let mut nv = 0usize;
