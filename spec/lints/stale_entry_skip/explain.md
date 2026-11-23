@@ -1,0 +1,3 @@
+C++ Dijkstra pushes a vertex again each time its distance improves and skips the old copies when they surface: `if (d > dist[u]) continue;`. The skip is the line people forget, and without it the loop is still correct but can run in \(O(m^2)\). `dijkstra(g, from: [(s, 0)])` from `std.graph` is the whole loop, over a `Graph.directed(es)` or `Graph.undirected(es)` built from typed edges with a `w` field: it settles each vertex once and returns `Paths`, where `p[v]` is the distance (`none` when unreachable) and `p.path(v)` the route. `until: t` stops once `t` is settled.
+
+The lint fires on `if d > dist[u]: continue` (or `!=`) after `(d, u)` is popped from a heap in a `while`. It has no fix: the graph has to be read as an edge list first.

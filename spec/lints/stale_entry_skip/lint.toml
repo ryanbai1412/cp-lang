@@ -1,0 +1,5 @@
+code = "L0553"
+level = "warn"
+group = "idiom"
+title = "Stale heap entry skipped by hand"
+summary = "`if d > dist[u]: continue` after a heap pop: `dijkstra(g, from:)`"

@@ -2,17 +2,19 @@
 //! `compound_self_ref` (L0210) needs the place's type: on an optional place
 //! `x = x + e` keeps `none` and `x += e` is an error (decision 19.5), so it
 //! stays only where the type is known and not optional. `unproven_list_index`
-//! (L0414) is dropped where the checker proves the index by its type.
+//! (L0414) is dropped where the checker proves the index by its type;
+//! `stale_entry_skip` (L0553) stays only where the popped value is a heap.
 
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN,
-    MANUAL_BIT_TEST, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX, UNPROVEN_LIST_INDEX,
+    MANUAL_BIT_TEST, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX, STALE_ENTRY_SKIP,
+    UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 10] = [
+const TYPED: [cpl_diag::Code; 11] = [
     MANUAL_BIT_TEST.code,
     LAST_VIA_LEN.code,
     FLOAT_SQRT_FOR_INT.code,
@@ -23,6 +25,7 @@ const TYPED: [cpl_diag::Code; 10] = [
     COMPOUND_SELF_REF.code,
     CHMIN_CHMAX_IF.code,
     UNPROVEN_LIST_INDEX.code,
+    STALE_ENTRY_SKIP.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -91,6 +94,8 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
             matches!(label(), Some(Some(Ty::Str | Ty::Array { .. })))
                 || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
         }
+        c if c == STALE_ENTRY_SKIP.code => matches!(label(), Some(Some(Ty::Named { name, .. }))
+            if ["Heap", "MaxHeap", "MinMaxHeap", "ErasableHeap", "MeldHeap"].contains(&name.as_str())),
         c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
         _ => true,
     }

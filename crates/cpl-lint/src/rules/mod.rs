@@ -12,6 +12,7 @@ mod floats;
 mod grid;
 mod grid_step;
 mod hand_loops;
+mod heap_skip;
 mod imports;
 mod isqrt;
 mod lists;
@@ -36,6 +37,7 @@ pub(crate) use proven::*;
 pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     let mut findings = Vec::new();
     findings.extend(adjacency::check(file));
+    findings.extend(heap_skip::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

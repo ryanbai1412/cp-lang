@@ -259,3 +259,4 @@ Landed: brace-block fixes (49b5d592f, e07745558, db6e2ca7b), Milestone 1 section
   - E0208 `let NEG`: "values are lowercase". Fix: rename the binding and its uses to snake_case (cco23p5, noi05p2, ccc02s4hard, cco20p5, cco22p4, cco24p5, ...).
   - E0302 "`V.first` is a ?V" where a V is expected. Fix: `V.first!` (yac7p4, egoi23p3, dmopc21c2p6).
   With these, `cpl fix` would migrate most stale ports in one pass, and the friend's old code too.
+- L0553 `stale_entry_skip` (`rules/heap_skip.rs`, typed in `typed.rs`: kept only when the popped receiver is a heap, so no std name is string-matched): `if d > dist[u]: continue` (or `!=`, `dist[u]!`) after `(d, u)` is popped from a heap in a `while`; help names `dijkstra(g, from: [(s, 0)])` and `Paths`. Newcomer 116/139 (83%), 76/76 fixed clean; `cargo test -p cpl-lint` 131/131, clippy clean.

@@ -9,7 +9,7 @@ dist[1] = 0
 pq.push((0, 1))
 while pq.len > 0:
     let (d, u) = pq.pop()!
-    if d > dist[u]:  // expect: missing stale-heap-entry-check
+    if d > dist[u]:  // expect: stale_entry_skip
         continue
     for (v, c) in adj[u]:
         if dist[u] + c < dist[v]:
