@@ -629,7 +629,7 @@ pub fn old_option_spelling_in_prose(text: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod option_spelling_tests {
-    use super::old_option_spelling;
+    use super::{old_option_spelling, old_option_spelling_in_prose};
 
     #[test]
     fn finds_none_and_some_but_not_the_none_argument() {
