@@ -1,8 +1,11 @@
-//! `var_never_reassigned`, `shadows_top_level` and `state_above_multitest`:
+//! `var_never_reassigned`, `shadows_top_level`, `state_above_multitest` and
+//! `unused_binding`:
 //! each needs to know which binding a name refers to.
 
 use crate::walk::{root_name, Bind, Scope, Visitor};
-use crate::{File, Finding, SHADOWS_TOP_LEVEL, STATE_ABOVE_MULTITEST, VAR_NEVER_REASSIGNED};
+use crate::{
+    File, Finding, SHADOWS_TOP_LEVEL, STATE_ABOVE_MULTITEST, UNUSED_BINDING, VAR_NEVER_REASSIGNED,
+};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Stmt, StmtKind};
 use std::collections::HashMap;
@@ -39,6 +42,11 @@ struct Scopes<'a> {
     divider: Option<u32>,
     /// The top-level statement the walk is in.
     statement: Span,
+    /// Where the innermost `let` statement ends.
+    let_end: u32,
+    /// Each local `let` name in a fn: the name, and the text after its
+    /// statement up to the end of the top-level item, where a read must be.
+    locals: Vec<(String, Span, Span)>,
     findings: Vec<Finding>,
 }
 
@@ -108,6 +116,9 @@ impl Visitor for Scopes<'_> {
         if self.scopes.len() == 1 {
             self.statement = stmt.span.shift(self.base);
         }
+        if let StmtKind::Let { .. } = stmt.kind {
+            self.let_end = stmt.span.end + self.base;
+        }
         match &stmt.kind {
             StmtKind::Let { mutable: true, .. } => {
                 // The statement's span starts at its decorators, if any.
@@ -166,6 +177,10 @@ impl Visitor for Scopes<'_> {
         // A parameter of a top-level fn is that fn's own name for what it is
         // given: `fn sub(a: Pt, b: Pt)` below a `let a` hides nothing a
         // reader would look for.
+        if how == Bind::Let && self.fns > 0 && !top_level && !name.starts_with('_') {
+            let after = Span::new(self.let_end.max(span.end), self.statement.end);
+            self.locals.push((name.to_string(), span, after));
+        }
         let helper_param = how == Bind::Param && self.fns == 1 && self.scopes.len() == 2;
         if !top_level && !helper_param && name != "_" {
             let hidden = self.scopes[0].get(name).map(|id| &self.bindings[*id]);
@@ -279,6 +294,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         current_var: None,
         fns: 0,
         statement: Span::new(0, 0),
+        let_end: 0,
+        locals: Vec::new(),
         divider: file
             .src
             .match_indices("@!multitest")
@@ -299,8 +316,34 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     file.walk(&mut scopes, |scopes, base| scopes.base = base);
 
     let Scopes {
-        vars, mut findings, ..
+        vars,
+        mut findings,
+        locals,
+        ..
     } = scopes;
+    for (name, span, after) in locals {
+        let read = after
+            .text(file.src)
+            .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .any(|word| word == name);
+        if read {
+            continue;
+        }
+        let diag = Diagnostic::warning(
+            UNUSED_BINDING.code,
+            span,
+            format!("`{name}` is never read"),
+        )
+        .with_label(span, "bound here")
+        .with_help(format!(
+            "delete the `let` if its value is not needed, or use `{name}` where it was meant to be; `_` keeps the computation and says the value is dropped"
+        ))
+        .with_fix(format!("rename `{name}` to `_`"), span, "_");
+        findings.push(Finding {
+            lint: &UNUSED_BINDING,
+            diag,
+        });
+    }
     for var in vars
         .iter()
         .filter(|var| !var.changed && !var.names.is_empty())

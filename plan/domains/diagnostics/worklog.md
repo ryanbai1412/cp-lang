@@ -457,3 +457,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `return`/`break`/`continue` in the same block; the fix deletes them.
   `cpl check` and `cpl lint` were both silent on it. Record in
   spec/lints/unreachable_code; 0 hits on corpus and std.
+- Lint L0598 `unused_binding` (lints.md flow row): a local `let` in a fn
+  whose name no later text in its item reads (a textual scan, so it can
+  miss but not misfire); fix renames it to `_`. 0 hits on corpus and
+  newcomer; 4 dead lets in std (graph.cp `full`, `id`; interval.cp `sl`;
+  lazy.cp `ls`) for stdlib, counted in corpus_warnings.txt. The std rises
+  in L0503/L0536/L0549 that test reports are std drift, not this change.

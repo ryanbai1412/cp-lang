@@ -1,0 +1,5 @@
+code = "L0598"
+level = "warn"
+group = "correctness"
+title = "Local let never read"
+summary = "a local `let` whose name is never read: delete it, or use the name where it was meant"

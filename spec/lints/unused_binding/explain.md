@@ -1,0 +1,1 @@
+A local `let` inside a `fn` whose name nothing after it reads is either left over from an edit or a sign that the wrong name is used further down, such as `x` where the new `y` was meant. The fix renames it to `_`, which keeps the computation (it may read input) and says the value is dropped; delete the line instead when nothing in it is needed.

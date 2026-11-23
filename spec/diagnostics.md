@@ -171,6 +171,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0595 | coalesce_test_then_unwrap | `while (e ?? c) > y:` then `let w = e!`: `while let w = e, w > y:` (and `if`) |
 | L0596 | found_flag_pair | `var found = false` set to `true` only beside `best = x`: `var best: ?T = None` |
 | L0597 | unreachable_code | statements after `return`, `break` or `continue` in the same block: delete them |
+| L0598 | unused_binding | a local `let` in a `fn` whose name is never read: delete it, or `_` to keep the computation |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |
