@@ -34,6 +34,21 @@ pub struct Mat<T>:
             for c in C: d.push(a[r, c])
         Mat(R.count, C.count, d)
 
+    /// A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read
+    /// as nested lists. Row `i` is `rows[i]`.
+    ///
+    /// cost: O(rows * cols) time and space
+    /// empty: a `0 x 0` matrix
+    /// traps: when the rows differ in length
+    /// example: `let m = Mat<Int>.of([[1, 2, 3], [4, 5, 6]]); m.get(1, 2) == 6 and m.get(0, 1) == 2`
+    pub fn of(rows: List<List<T>>) -> Mat<T>:
+        let cols = if rows.is_empty: 0 else: rows[0].len
+        var d = List<T>()
+        for row in rows:
+            assert row.len == cols, "Mat.of requires rows of equal length"
+            for x in row: d.push(x)
+        Mat(rows.len, cols, d)
+
     /// A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default
     /// `Semiring(+, *)`).
     ///

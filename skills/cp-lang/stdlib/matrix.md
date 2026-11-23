@@ -13,6 +13,7 @@ A dense `rows x cols` matrix stored flat in row-major order.
 Fields: `rows: Int`, `cols: Int`, `data: List<T>`.
 
 - `fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
+- `fn of(rows: List<List<T>>) -> Mat<T>` — O(rows * cols) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
 - `fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
 - `fn zeros(rows: Int, cols: Int) -> Mat<T>` — O(rows * cols) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
 - `fn identity(n: Int) -> Mat<T>` — O(n^2) time and space; The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.; traps: when `n < 0`
