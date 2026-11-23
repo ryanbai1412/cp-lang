@@ -6,6 +6,7 @@ use cpl_interp::trace::{
     answered_divergence, document, explain_divergence, mentions, named_values, stages,
     stuck_divergence, Divergence, Recording, TraceConfig,
 };
+use cpl_stress::STUCK_STEPS;
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -128,9 +129,6 @@ pub fn versus(
 /// line up with, and its trace is the solution's own run. With `explain`,
 /// every value each run gives a variable is logged too, for the first one
 /// they give differently.
-/// How many steps of a solution that ran out of time to look for a cycle in.
-const STUCK_STEPS: usize = 100_000;
-
 pub fn against_brute(
     path: &Path,
     input: &str,

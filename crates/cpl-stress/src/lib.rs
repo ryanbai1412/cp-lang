@@ -17,7 +17,7 @@ pub mod spec;
 
 pub use engine::{
     stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices,
-    ProcessEngine, SourceStressResult, Wrong,
+    ProcessEngine, SourceStressResult, Wrong, STUCK_STEPS,
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};

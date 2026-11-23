@@ -373,6 +373,50 @@ fn slow():
     let wasm_ok = playground.stress(clean_name, &clean, 20, 1, 6);
     assert_eq!(wasm_ok, String::from_utf8(cli_ok.stdout).unwrap());
 
+    // 3. A solution that never finishes: the same shrunk case, and the
+    //    loop it goes round in named alike.
+    let stuck = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/stress/cold-lower-bound-stuck.cp"),
+    )
+    .unwrap();
+    let stuck_path = dir.join("stuck.cp");
+    std::fs::write(&stuck_path, &stuck).unwrap();
+    let stuck_name = stuck_path.to_str().unwrap();
+    let cli_stuck = cpl_cli::run(&[
+        "stress",
+        stuck_name,
+        "--cases",
+        "5",
+        "--seed",
+        "1",
+        "--size",
+        "8",
+        "--jobs",
+        "1",
+        "--explain",
+        "--format",
+        "json",
+    ]);
+    let cli_json = String::from_utf8(cli_stuck.stdout).unwrap();
+    let mut cli_val = cpl_json::parse(&cli_json).expect("valid CLI JSON");
+    if let Value::Object(members) = &mut cli_val {
+        if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
+            if let Some(saved) = ce.get_mut("saved") {
+                *saved = Value::Null;
+            }
+        }
+    }
+    let wasm_json = playground.stress(stuck_name, &stuck, 5, 1, 8);
+    let wasm_val = cpl_json::parse(&wasm_json).expect("valid wasm JSON");
+    assert_eq!(wasm_val, cli_val, "wasm:\n{wasm_json}\ncli:\n{cli_json}");
+    assert_eq!(
+        wasm_val
+            .at(&["counterexample", "explain", "divergence", "name"])
+            .as_str(),
+        Some("while lo < hi"),
+        "{wasm_json}"
+    );
+
     let _ = std::fs::remove_dir_all(&dir);
 }
 

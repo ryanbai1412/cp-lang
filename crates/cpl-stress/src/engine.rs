@@ -18,7 +18,9 @@ use crate::program::Program;
 use crate::run::{stress_with, InputSource, Options, Report, StressError};
 use crate::spec::InputSpec;
 use cpl_diag::Severity;
-use cpl_interp::trace::{explain_divergence, stages as trace_stages, Divergence, TraceConfig};
+use cpl_interp::trace::{
+    explain_divergence, stages as trace_stages, stuck_divergence, Divergence, TraceConfig,
+};
 use std::time::Duration;
 
 /// One run's result: `None` when the solution is accepted, or
@@ -33,8 +35,17 @@ pub trait Engine: Sync {
     /// True when `input` stops the solution (runtime error / TLE).
     fn stops(&self, input: &str) -> bool;
 
-    /// Runs the brute (if any), solution, and judge on `input`.
-    fn run(&self, input: &str) -> Result<Wrong, StressError>;
+    /// How long one run of the solution may take.
+    fn limit(&self) -> Duration;
+
+    /// Runs the brute (if any), solution, and judge on `input`, the
+    /// solution stopped after `limit` and each helper after ten times it.
+    fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError>;
+
+    /// [`run_within`](Engine::run_within) the engine's own limit.
+    fn run(&self, input: &str) -> Result<Wrong, StressError> {
+        self.run_within(input, self.limit())
+    }
 }
 
 /// Runs an in-file `@gen` function by seed or by replaying a recorded choice list.
@@ -63,16 +74,18 @@ impl Engine for ProcessEngine<'_> {
             .is_ok_and(|outcome| !outcome.ok())
     }
 
-    fn run(&self, input: &str) -> Result<Wrong, StressError> {
+    fn limit(&self) -> Duration {
+        self.limit
+    }
+
+    fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
         let io = |program: &Program, e: std::io::Error| {
             StressError(format!("can't run {}: {e}", program.name))
         };
         let expected = match self.brute {
             Some(brute) => {
                 // A brute is slow by design; it gets ten times the limit.
-                let outcome = brute
-                    .run(input, self.limit * 10)
-                    .map_err(|e| io(brute, e))?;
+                let outcome = brute.run(input, limit * 10).map_err(|e| io(brute, e))?;
                 if !outcome.ok() {
                     let why = match crate::judge::failure(&outcome) {
                         Some(Verdict::RuntimeError(why)) => why,
@@ -90,7 +103,7 @@ impl Engine for ProcessEngine<'_> {
         };
         let judged = self
             .judge
-            .run(self.fast, input, expected.as_deref(), self.limit)
+            .run(self.fast, input, expected.as_deref(), limit)
             .map_err(|e| io(self.fast, e))?;
         if !judged.verdict.accepted() {
             return Ok(Some((
@@ -100,7 +113,7 @@ impl Engine for ProcessEngine<'_> {
             )));
         }
         if let Some(cold) = self.cold {
-            let cold_out = cold.run(input, self.limit * 10).map_err(|e| io(cold, e))?;
+            let cold_out = cold.run(input, limit * 10).map_err(|e| io(cold, e))?;
             if !cold_out.ok() {
                 return Ok(Some((
                     Verdict::Wrong(format!(
@@ -176,19 +189,16 @@ fn run_ir(
 /// How long the traced run that explains a counterexample may take.
 const TRACE_LIMIT: Duration = Duration::from_secs(10);
 
+/// The first steps of a run that never finishes: enough to see it go round.
+pub const STUCK_STEPS: usize = 100_000;
+
 fn observe_ir(
     program: &cpl_ir::Program,
     input: &[u8],
-    source: &str,
     stack_limit: Option<u32>,
-    assignments: bool,
+    config: TraceConfig,
 ) -> cpl_interp::Observed {
     let mut sink = Vec::new();
-    let config = TraceConfig {
-        source: source.to_string(),
-        assignments,
-        ..TraceConfig::default()
-    };
     let io = cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(TRACE_LIMIT));
     match stack_limit {
         Some(bytes) => cpl_interp::observe_on_this_thread(
@@ -219,13 +229,17 @@ impl Engine for InterpEngine {
         .is_err()
     }
 
-    fn run(&self, input: &str) -> Result<Wrong, StressError> {
+    fn limit(&self) -> Duration {
+        self.limit
+    }
+
+    fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
         let expected = match &self.brute {
             Some(brute) => match run_ir(
                 brute,
                 cpl_interp::Io::fixed(input.as_bytes()),
                 self.stack_limit,
-                self.limit,
+                limit,
             ) {
                 Ok(out) => Some(out),
                 Err((_, trap)) => {
@@ -242,7 +256,7 @@ impl Engine for InterpEngine {
             &self.fast,
             cpl_interp::Io::fixed(input.as_bytes()),
             self.stack_limit,
-            self.limit,
+            limit,
         ) {
             Ok(out) => out,
             Err((out, trap)) => {
@@ -256,7 +270,7 @@ impl Engine for InterpEngine {
         if let Some(checker) = &self.checker {
             let mut printed = Some(got.as_bytes().to_vec());
             let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()));
-            return match run_ir(checker, io, self.stack_limit, self.limit) {
+            return match run_ir(checker, io, self.stack_limit, limit) {
                 Ok(_) => Ok(None),
                 Err((_, trap)) => Ok(Some((
                     Verdict::Wrong(trap.message),
@@ -472,25 +486,50 @@ pub fn stress_source(
     single.jobs = 1;
     let report = stress_with(&input_source, &engine, &single)?;
 
+    let config = |assignments: bool| TraceConfig {
+        source: source.to_string(),
+        assignments,
+        ..TraceConfig::default()
+    };
     let mut stages = Vec::new();
     let mut explained = None;
+    let timed_out = |failure: &crate::run::Failure| matches!(failure.verdict, Verdict::TimeLimit);
+    if let (Some(failure), true) = (&report.failure, explain) {
+        if timed_out(failure) {
+            let rec = observe_ir(
+                &engine.fast,
+                failure.input.as_bytes(),
+                stack_limit,
+                TraceConfig {
+                    max_steps: Some(STUCK_STEPS),
+                    stop_when_full: true,
+                    record_frames: true,
+                    ..config(false)
+                },
+            )
+            .recording
+            .unwrap_or_default();
+            explained = Some(stuck_divergence(source, &rec).map(Some).ok_or(format!(
+                "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
+            )));
+        }
+    }
     if let (Some(failure), Some(brute_prog)) = (&report.failure, &engine.brute) {
-        if own_brute.is_some() {
+        let brute_failed = matches!(failure.verdict, Verdict::BruteError(_));
+        if own_brute.is_some() && !timed_out(failure) && !brute_failed {
             let fast_rec = observe_ir(
                 &engine.fast,
                 failure.input.as_bytes(),
-                source,
                 stack_limit,
-                explain,
+                config(explain),
             )
             .recording
             .unwrap_or_default();
             let slow_rec = observe_ir(
                 brute_prog,
                 failure.input.as_bytes(),
-                source,
                 stack_limit,
-                explain,
+                config(explain),
             )
             .recording
             .unwrap_or_default();

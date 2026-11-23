@@ -346,49 +346,53 @@ pub fn stress_with(
                 };
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
+                let fails_as = |verdict: &Verdict| std::mem::discriminant(verdict) == kind;
+                let limits = shrink_limits(engine, matches!(failure.verdict, Verdict::TimeLimit));
                 if let (InputSource::Typed(spec), Made::Typed(case)) = (&current, &case) {
-                    let case = case.clone();
-                    let mut error = None;
-                    let smallest =
-                        shrink(
-                            spec,
-                            &case,
-                            options.shrink_budget,
-                            &mut |candidate| match engine.run(&candidate.render()) {
-                                Ok(Some((verdict, _, _))) => {
-                                    std::mem::discriminant(&verdict) == kind
-                                }
-                                Ok(None) => false,
-                                Err(e) => {
-                                    error.get_or_insert(e);
-                                    false
-                                }
-                            },
-                        );
-                    if smallest != case {
-                        if let Some((verdict, expected, got)) = engine.run(&smallest.render())? {
-                            failure.verdict = verdict;
-                            failure.expected = expected;
-                            failure.got = got;
-                            failure.input = smallest.render();
+                    let mut smallest = case.clone();
+                    for &within in &limits {
+                        let found = shrink(spec, case, options.shrink_budget, &mut |candidate| {
+                            matches!(engine.run_within(&candidate.render(), within),
+                                Ok(Some((verdict, _, _))) if fails_as(&verdict))
+                        });
+                        if found == *case {
+                            break;
+                        }
+                        if let Some((verdict, expected, got)) = engine.run(&found.render())? {
+                            if fails_as(&verdict) {
+                                failure.verdict = verdict;
+                                failure.expected = expected;
+                                failure.got = got;
+                                failure.input = found.render();
+                                smallest = found;
+                                break;
+                            }
                         }
                     }
                     failure.shrunk = Some((case.weight().0, smallest.weight().0));
                     failure.described = Some(smallest.describe(spec));
                 }
                 if let (InputSource::Choices(generator), Made::Drawn(drawn)) = (&current, &case) {
-                    let smallest = choices::shrink_with(
-                        *generator,
-                        drawn,
-                        options.shrink_budget,
-                        &mut |input| matches!(engine.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind),
-                    );
-                    if smallest != *drawn {
-                        if let Some((verdict, expected, got)) = engine.run(&smallest.input)? {
-                            failure.verdict = verdict;
-                            failure.expected = expected;
-                            failure.got = got;
-                            failure.input = smallest.input.clone();
+                    let mut smallest = drawn.clone();
+                    for &within in &limits {
+                        let found = choices::shrink_with(
+                            *generator,
+                            drawn,
+                            options.shrink_budget,
+                            &mut |input| matches!(engine.run_within(input, within), Ok(Some((verdict, _, _))) if fails_as(&verdict)),
+                        );
+                        if found == *drawn {
+                            break;
+                        }
+                        if let Some((verdict, expected, got)) = engine.run(&found.input)? {
+                            if fails_as(&verdict) {
+                                failure.verdict = verdict;
+                                failure.expected = expected;
+                                failure.got = got;
+                                failure.input = found.input.clone();
+                                smallest = found;
+                                break;
+                            }
                         }
                     }
                     let numbers = |input: &str| input.split_whitespace().count();
@@ -411,6 +415,22 @@ pub fn stress_with(
             discarded,
             narrowed,
         });
+    }
+}
+
+/// How much sooner a candidate is stopped while a time limit shrinks:
+/// a stuck run costs a twentieth of the limit, not all of it.
+const TLE_SHRINK_SPLIT: u32 = 20;
+
+/// The limits a failure shrinks under. A time limit shrinks under a short
+/// one first; the case it reaches must still run past the full limit, or
+/// it shrinks again under that.
+fn shrink_limits(engine: &dyn Engine, time_limit: bool) -> Vec<Duration> {
+    let full = engine.limit();
+    if time_limit {
+        vec![full / TLE_SHRINK_SPLIT, full]
+    } else {
+        vec![full]
     }
 }
 

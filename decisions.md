@@ -8410,3 +8410,9 @@ tag move fatal again.
 - **Reversed (2026-11-23).** The VM path is back with one sync per closure call, and the narrower guard that replaced the old one in the meantime (`fn_args_may_see_lent`) is gone with it. `lent_self_closure_writes_local` is the regression.
 
 Reversed (2026-11-23): traced fed loops run on the VM, so both lines are gone from the inventory.
+
+## 433. A time limit shrinks under a twentieth of the limit (debugger, 2026-11-23)
+
+- **Call.** While stress shrinks a TLE, each candidate is stopped after a twentieth of `--time-limit`. The case it reaches must still run past the full limit, or it shrinks again under the full limit. `stress --explain` in the browser names the loop a stuck run goes round, from the same first 100,000 steps the CLI records.
+- **Why.** Every candidate that still times out cost the whole limit: shrinking `bench/stress/cold-lower-bound-stuck.cp` took 40 s in the CLI and about 10 min in the browser. It now takes 15 s in the CLI, and the browser's report matches the CLI's (`cpl-wasm::parity stress_matches_cpl_stress_json`).
+- **Reverse.** Make `shrink_limits` in `crates/cpl-stress/src/run.rs` return only the full limit.
