@@ -107,3 +107,14 @@ fn javas_lambda_arrow_is_one_error_with_fat_arrow() {
         .diagnostics
         .is_empty());
 }
+
+#[test]
+fn javas_new_is_one_error_that_drops_it() {
+    let src = "struct P:\n    x: Int\nlet p = new P(x: 1)\nprint(p.x)\n";
+    let d = parse_file(src).diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "");
+    assert!(parse_file("let new = 1\nprint(new)\n")
+        .diagnostics
+        .is_empty());
+}

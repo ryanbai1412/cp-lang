@@ -1,0 +1,8 @@
+error[E0503]: CP Lang has no `new`: a struct is built by calling its type
+  --> java_new.cp:3:9
+  |
+3 | let p = new P(x: 1)
+  |         ^^^
+  = help: drop `new`: `P(...)`
+
+java_new.cp: 1 error

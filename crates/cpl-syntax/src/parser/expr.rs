@@ -38,6 +38,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expr(&mut self) -> Expr {
+        self.foreign_new();
         let start = self.start();
         if let Some(lambda) = self.foreign_lambda() {
             return lambda;

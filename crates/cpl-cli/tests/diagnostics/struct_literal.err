@@ -3,6 +3,6 @@ error[E0103]: CP Lang builds a struct by calling its type, not with `{ ... }`
   |
 2 | let p = Point { x: 1, y: 2 }
   |               ^^^^^^^^^^^^^^
-  = help: write `P(x: 1, y: 2)`
+  = help: write `Point(x: 1, y: 2)`
 
 struct_literal.cp: 1 error

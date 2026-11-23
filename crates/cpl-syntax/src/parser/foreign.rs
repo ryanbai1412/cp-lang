@@ -184,6 +184,32 @@ impl<'a> Parser<'a> {
             && matches!(&callee.kind, ExprKind::Name(n) if n.starts_with(|c: char| c.is_ascii_uppercase()))
     }
 
+    /// `new P(x: 1)`: Java's and C++'s `new`. One error with the fix that
+    /// drops it; the call after it is read as written.
+    pub(super) fn foreign_new(&mut self) {
+        let Some(next) = self.tokens.get(self.pos + 1).map(|t| t.span) else {
+            return;
+        };
+        let upper = self.peek_n(1) == T::Ident
+            && next
+                .text(self.src)
+                .starts_with(|c: char| c.is_ascii_uppercase());
+        if !(self.at_ident("new") && upper && self.peek_n(2) == T::LParen) {
+            return;
+        }
+        let (kw, name) = (self.span(), self.span_n(1));
+        self.bump();
+        self.recovered(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                kw,
+                "CP Lang has no `new`: a struct is built by calling its type",
+            )
+            .with_help(format!("drop `new`: `{}(...)`", next.text(self.src)))
+            .with_fix("drop `new`", Span::new(kw.start, name.start), ""),
+        );
+    }
+
     /// `P { x: 1 }`, read as the call CP Lang builds a struct with, `P(x: 1)`.
     pub(super) fn struct_literal(&mut self, callee: Expr) -> ExprKind {
         let open = self.span();
@@ -204,17 +230,18 @@ impl<'a> Parser<'a> {
         }
         let close = self.span();
         if self.expect(T::RBrace, "`}` after the struct's fields") {
-            let mut diag = Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                Span::new(open.start, close.end),
-                "CP Lang builds a struct by calling its type, not with `{ ... }`",
-            )
-            .with_help("write `P(x: 1, y: 2)`");
             let first = args
                 .first()
                 .and_then(|a: &Arg| a.name.as_ref())
                 .map(|n| n.span.start);
             let last = args.last().map_or(close.start, |a| a.value.span.end);
+            let fields = first.map_or(String::new(), |f| self.item_text(Span::new(f, last)));
+            let mut diag = Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                Span::new(open.start, close.end),
+                "CP Lang builds a struct by calling its type, not with `{ ... }`",
+            )
+            .with_help(format!("write `{}({fields})`", self.item_text(callee.span)));
             let open = Span::new(callee.span.end, first.unwrap_or(last));
             diag.fixes.push(cpl_diag::Fix {
                 title: "use parentheses".into(),
