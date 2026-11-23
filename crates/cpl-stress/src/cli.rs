@@ -821,6 +821,13 @@ pub fn run_with(
     match saved {
         Some(path) => {
             let _ = writeln!(stdout, "  saved {}", path.display());
+            if !part_alts(&src).is_empty() {
+                let _ = writeln!(
+                    stdout,
+                    "  next: `cpl locate {}` names the first part whose alt disagrees",
+                    args.file.display()
+                );
+            }
         }
         None => {
             let _ = writeln!(

@@ -712,6 +712,14 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
         text.contains("FAIL on case") && !text.contains("thrown away"),
         "{text}"
     );
+    assert!(!text.contains("cpl locate"), "no part to locate: {text}");
+    // A file that pairs a part with its alt is told how to find which part.
+    let part = "fn f(n: Int) -> Int = if n == 3: 0 else: n\n@brute(f)\nfn f_slow(n: Int) -> Int = n\nlet n: 1..=9 = read()\nprint(f(n))\n";
+    let text = stress("narrow-part-wrong", part);
+    assert!(
+        text.contains("next: `cpl locate ") && text.contains("narrow.cp` names the first part"),
+        "{text}"
+    );
 }
 
 /// Wrong on a tree with a vertex of degree 3 whose value is above 50.
