@@ -1,0 +1,4 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"w":{"name":"w","type":"Word","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":8,"label":"let w = Word(\"ab\")","stage":"main","values":{"stdout":[],"w":{"s":"ab"}},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":1,"line":9,"label":"print → ab! ab? 3","stage":"main","values":{"stdout":["ab! ab? 3"],"w":{"s":"ab"}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":9}]},
+{"id":2,"line":9,"label":"the program ended","stage":"main","values":{"stdout":["ab! ab? 3"],"w":{"s":"ab"}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":9}]}]}}}
+stderr:

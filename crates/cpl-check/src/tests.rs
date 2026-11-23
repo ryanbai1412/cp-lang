@@ -1778,6 +1778,12 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
 }
 
 #[test]
+fn an_impl_method_wins_over_a_library_fn_whose_bound_fails() {
+    let src = "use std.algebra.{Reversible}\nstruct Word(s: Str)\nimpl Reversible for Word:\n    fn rev(self) -> Word = Word(s + \"!\")\nprint(Word(\"ab\").rev().s)\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}
+
+#[test]
 fn a_method_call_takes_the_fn_its_receiver_fits_from_any_module() {
     let modules = [
         (

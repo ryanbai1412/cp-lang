@@ -244,6 +244,9 @@ impl<'a> Checker<'a> {
             return None;
         }
         let base_ty = self.quietly(|c| c.infer(base));
+        if self.declares_member(&base_ty, &name.text) {
+            return None;
+        }
         let pick = self.pick_method(&base_ty, &name.text);
         let key = match &pick {
             Pick::One(key, _) => key.clone(),
@@ -352,6 +355,37 @@ impl<'a> Checker<'a> {
 }
 
 impl Checker<'_> {
+    /// Whether the type `base` declares a fn `name` of its own, in its body,
+    /// an impl or a trait it implements: that member, not a top-level fn
+    /// of the name, is what `base.name` calls.
+    fn declares_member(&mut self, base: &Ty, name: &str) -> bool {
+        let Ty::Named { name: owner, .. } = base else {
+            return false;
+        };
+        if let Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) =
+            self.type_def(owner).as_deref()
+        {
+            if methods.iter().any(|(m, _)| m == name) {
+                return true;
+            }
+        }
+        for (trait_name, def) in self.env.impls(owner) {
+            if matches!(&*def, Def::Impl { methods, .. } if methods.iter().any(|(m, _)| m == name))
+            {
+                return true;
+            }
+            let trait_def = (trait_name.as_deref())
+                .and_then(|t| t.split('<').next())
+                .and_then(|t| self.type_def(t));
+            if matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
+                if methods.iter().any(|m| m.name == name))
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Whether `base.name(args)` gives arguments its built-in member's row
     /// doesn't take while a library fn fits the receiver: then the call is
     /// the library's, `xs.fold(f, init: 0)` beside the built-in `xs.fold(+)`.
