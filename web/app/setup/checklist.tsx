@@ -28,11 +28,14 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          A <code>.vsix</code> on the releases page, and Marketplace and Open VSX (Cursor, Windsurf, VSCodium) installs,{' '}
-          <Soon />. Until then, package it from the
-          repository:
+          The extension is on the edge release; Marketplace and Open VSX (Cursor, Windsurf, VSCodium) installs <Soon />.
+          On Windows, run the same two lines in PowerShell.
         </p>
-        <Code>{'cd editors/vscode\nnpm install\nnpm run package\ncode --install-extension cp-lang.vsix'}</Code>
+        <Code>
+          {
+            'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang.vsix\ncode --install-extension cp-lang.vsix'
+          }
+        </Code>
       </>
     ),
   },
@@ -41,8 +44,52 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     name: 'Neovim',
     body: (
       <>
-        <p>Neovim 0.10 or later. Add the folder to the runtime path; it starts `cpl lsp` for every `.cp` buffer.</p>
-        <Code>{"vim.opt.rtp:append('/path/to/cp-lang/editors/neovim')\nvim.g.cpl_path = 'cpl'"}</Code>
+        <p>
+          Neovim 0.10 or later. One command installs the plugin as a package, with nothing to add to your config: every{' '}
+          <code>.cp</code> buffer gets highlighting and <code>cpl lsp</code> (diagnostics, completion, hover, go to
+          definition with <code>vim.lsp.buf.definition()</code>, formatting with <code>vim.lsp.buf.format()</code>), and{' '}
+          <code>:Cpl test</code>, <code>:Cpl stress</code> and <code>:Cpl submit</code> run on the current file.
+        </p>
+        <p className="mt-3">Linux and macOS:</p>
+        <Code>
+          {
+            'mkdir -p ~/.local/share/nvim/site/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.local/share/nvim/site/pack/cpl/start cp-lang-editors/neovim'
+          }
+        </Code>
+        <p className="mt-3">Windows (PowerShell):</p>
+        <Code>
+          {
+            '$d = "$env:LOCALAPPDATA\\nvim-data\\site\\pack\\cpl\\start"; mkdir -Force $d\ncurl.exe -fsSLo "$env:TEMP\\cpl-editors.tar.gz" https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz\ntar -xzf "$env:TEMP\\cpl-editors.tar.gz" --strip-components=1 -C $d cp-lang-editors/neovim'
+          }
+        </Code>
+        <p className="mt-3">Run it again to update. With lazy.nvim, point a spec at the same folder instead.</p>
+      </>
+    ),
+  },
+  {
+    id: 'vim',
+    name: 'Vim',
+    body: (
+      <>
+        <p>
+          The same package gives Vim 8.2 or later the filetype and highlighting. On Windows, use <code>~/vimfiles</code>{' '}
+          for <code>~/.vim</code> and the PowerShell lines from the Neovim tab.
+        </p>
+        <Code>
+          {
+            'mkdir -p ~/.vim/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.vim/pack/cpl/start cp-lang-editors/neovim'
+          }
+        </Code>
+        <p className="mt-3">
+          For diagnostics and completion, install{' '}
+          <a className="underline" href="https://github.com/prabirshrestha/vim-lsp">
+            vim-lsp
+          </a>{' '}
+          and add this to your <code>.vimrc</code>:
+        </p>
+        <Code>
+          {"au User lsp_setup call lsp#register_server({'name': 'cpl', 'cmd': ['cpl', 'lsp'], 'allowlist': ['cp']})"}
+        </Code>
       </>
     ),
   },
@@ -87,10 +134,21 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     id: 'jetbrains',
     name: 'JetBrains',
     body: (
-      <p>
-        Marketplace install <Soon />. Until then, build <code>editors/jetbrains</code> with <code>./gradlew buildPlugin</code>{' '}
-        and install the zip with Settings → Plugins → Install Plugin from Disk (2024.3 or later).
-      </p>
+      <>
+        <p>
+          IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another commercial JetBrains IDE, 2024.3 or later: the
+          free Community editions lack the language server API the plugin uses. Marketplace install <Soon />. Download
+          the plugin from the edge release (on Windows, in PowerShell):
+        </p>
+        <Code>
+          {'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang-jetbrains.zip'}
+        </Code>
+        <p className="mt-3">
+          Then Settings → Plugins → ⚙ → Install Plugin from Disk, pick the zip as it is, and restart. A <code>.cp</code>{' '}
+          file gets diagnostics, completion, go to definition and formatting from <code>cpl lsp</code>; set the path to{' '}
+          <code>cpl</code> under Settings → Tools → CP Lang if it is not on the <code>PATH</code>.
+        </p>
+      </>
     ),
   },
 ];
@@ -102,15 +160,17 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          One line installs a prebuilt binary. It is available from the first release <Soon />:
+          One line installs a prebuilt binary of the edge build, the newest commit of <code>main</code> that passed
+          every check.
         </p>
-        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh'}</Code>
-        <p className="mt-3">
-          That installs the latest stable release. Add <code>--edge</code> for the newest build of <code>main</code> that
-          passed every check:
-        </p>
+        <p className="mt-3">Linux and macOS:</p>
         <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge'}</Code>
-        <p className="mt-3">Until then, or on a platform without a binary, build it with Rust:</p>
+        <p className="mt-3">Windows (PowerShell):</p>
+        <Code>{'& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Edge'}</Code>
+        <p className="mt-3">
+          Then open a new terminal and run <code>cpl --version</code>. <code>cpl self update</code> fetches newer builds
+          later. On a platform without a binary, build it with Rust:
+        </p>
         <Code>{'cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli\ncpl --version'}</Code>
       </>
     ),
@@ -121,8 +181,8 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          Every editor talks to the same language server, <code>cpl lsp</code>: diagnostics as you type, hover, completion,
-          go to definition, rename and quick fixes.
+          Every editor talks to the same language server, <code>cpl lsp</code>: diagnostics as you type, hover,
+          completion, go to definition, rename and quick fixes.
         </p>
         <Tabs defaultValue="vscode" className="mt-3">
           <TabsList className="flex-wrap">
@@ -174,7 +234,9 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     title: 'Set up the contest loop',
     body: (
       <>
-        <p>Create a problem, keep its tests running on every save, stress it against a brute, then check it&apos;s ready.</p>
+        <p>
+          Create a problem, keep its tests running on every save, stress it against a brute, then check it&apos;s ready.
+        </p>
         <Code>{'cpl new a\ncpl watch a\ncpl stress a.cp\ncpl submit a.cp'}</Code>
         <p className="mt-2">
           One-click problem import from Competitive Companion <Soon />.
