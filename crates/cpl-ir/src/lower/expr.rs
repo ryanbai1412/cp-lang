@@ -319,7 +319,8 @@ impl<'a> Lowerer<'a> {
                         .collect();
                     if !whole.is_empty() && !piece_cell && dims.len() == indices.len() {
                         let (dims, elem) = (dims.clone(), (**elem).clone());
-                        return self.collected(elem, span, |lw, out, push| {
+                        let first = self.axis_key(&whole, &dims).map(|_| self.temp(Ty::Int));
+                        let cells = self.collected(elem, span, |lw, out, push| {
                             let base = lw.hold(base_expr, out);
                             let ats: Vec<Slot> = whole
                                 .iter()
@@ -361,6 +362,9 @@ impl<'a> Lowerer<'a> {
                                     lw.axis_part(&indices[axis], dims[axis], len, out)
                                 })
                                 .collect();
+                            if let (Some(at), Some((lo, _))) = (first, parts.first()) {
+                                out.push(lw.set_local(at, lo.clone(), span));
+                            }
                             let value = lw.mk(ExprKind::Index(Box::new(base), cell), ty, span);
                             let mut body = Block {
                                 stmts: vec![push(lw, value)],
@@ -380,6 +384,7 @@ impl<'a> Lowerer<'a> {
                             }
                             out.extend(body.stmts);
                         });
+                        return self.keyed_axis(cells, &whole, &dims, first, span);
                     }
                 }
                 // Runtime `Range<T>` value passed as an index (e.g. `vals[r]` inside `Compressed.get<Range<D>>`).

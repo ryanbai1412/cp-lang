@@ -195,6 +195,57 @@ impl<'a> Lowerer<'a> {
         )
     }
 
+    /// The key of one row or column of a grid: the axis it runs along,
+    /// when that axis is a domain (R04b.1.12).
+    pub(super) fn axis_key(&self, whole: &[usize], dims: &[Dim]) -> Option<Dim> {
+        let [axis] = whole else { return None };
+        Some(dims[*axis]).filter(|d| !matches!(d, Dim::Int | Dim::IntFrom(_) | Dim::Sym(_)))
+    }
+
+    /// The cells of one row or column of a grid, collected into `cells`,
+    /// keyed by [`Self::axis_key`] from the position `first` holds: a row
+    /// keeps the column domain.
+    pub(super) fn keyed_axis(
+        &mut self,
+        cells: Expr,
+        whole: &[usize],
+        dims: &[Dim],
+        first: Option<Slot>,
+        span: Span,
+    ) -> Expr {
+        let (Some(dim), Some(first), Ty::List(elem)) =
+            (self.axis_key(whole, dims), first, cells.ty.clone())
+        else {
+            return cells;
+        };
+        let ty = Ty::Keyed(elem, dim);
+        self.do_expr(Some(&ty.clone()), span, |lw, out| {
+            out.insert(0, Stmt::Let(first, None));
+            let held = lw.temp(cells.ty.clone());
+            out.push(Stmt::Let(held, Some(cells)));
+            let (cells, lo) = (lw.local(held, span), lw.local(first, span));
+            let len = lw.len_of(cells.clone(), span);
+            let hi = lw.int_sum(lo.clone(), len);
+            let keyed = lw.mk(
+                ExprKind::Builtin(Builtin::Rekey, vec![cells, lo, hi]),
+                ty,
+                span,
+            );
+            out.push(Stmt::Give(keyed));
+        })
+    }
+
+    /// `first = value` on a local.
+    pub(super) fn set_local(&mut self, first: Slot, value: Expr, span: Span) -> Stmt {
+        let ty = self.cx.locals[first].ty.clone();
+        let place = Place {
+            kind: PlaceKind::Local(first),
+            ty,
+            span: self.span(span),
+        };
+        Stmt::Assign(place, AssignOp::Set, value)
+    }
+
     /// `s.keys` on a list, view or string: its keys in walk order, `lo..lo + len`.
     pub(super) fn seq_keys(&mut self, value: Expr, span: Span) -> Expr {
         let value = if Self::keyed_view(&value.ty) {
