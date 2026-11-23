@@ -1778,6 +1778,15 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
 }
 
 #[test]
+fn a_fn_value_whose_param_is_wider_does_not_fit_a_narrower_fn_type() {
+    // No subtyping (R02.11.3): `T` into `?T` converts a value, not a fn's parameters.
+    let src = "domain P = 0..3\nfn later(a: ?P, b: ?P) -> ?P = b ?? a\nlet g: (?P, P) -> ?P = later\nprint(Int(g(None, P(1))!))\n";
+    assert_eq!(codes(src), vec!["E0302"]);
+    let wrapped = "domain P = 0..3\nfn later(a: ?P, b: ?P) -> ?P = b ?? a\nlet g: (?P, P) -> ?P = (a, b) => later(a, b)\nprint(Int(g(None, P(1))!))\n";
+    assert_eq!(codes(wrapped), Vec::<&str>::new());
+}
+
+#[test]
 fn a_list_map_lambda_param_takes_the_element_type() {
     let src = "let ys = [1, 2].map(x =>\n    let y = x + 1\n    y\n)\nprint(ys)\n";
     assert_eq!(hover(src, "x =>"), "x: Int");

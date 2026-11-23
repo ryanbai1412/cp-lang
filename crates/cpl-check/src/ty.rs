@@ -406,8 +406,12 @@ impl Ty {
                 {
                     true
                 } else {
+                    // No subtyping (R02.11.3): `T` into `?T` converts a value,
+                    // so a fn taking `?T` is not a fn taking `T`.
                     ap.len() == bp.len()
-                        && ap.iter().zip(bp).all(|(a, b)| b.ty.fits_in(&a.ty, number))
+                        && ap.iter().zip(bp).all(|(a, b)| {
+                            b.ty.fits_in(&a.ty, number) && a.ty.fits_in(&b.ty, number)
+                        })
                         && ar.fits_in(br, number)
                 }
             }

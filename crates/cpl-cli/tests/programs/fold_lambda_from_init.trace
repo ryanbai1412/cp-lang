@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"root":{"name":"root","type":"?Pos","kind":"scalar"},"named":{"name":"named","type":"?Pos","kind":"scalar"},"xs":{"name":"xs","type":"List\u003cInt>","kind":"array"},"best":{"name":"best","type":"?Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let root: ?Pos = Pos.fold((r, p) => later(r, p), None)","stage":"main","values":{"stdout":[],"root":3},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"let named: ?Pos = Pos.fold((r, p) => later(r, p), init: None)","stage":"main","values":{"stdout":[],"root":3,"named":3},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"let xs = [3, 1, 2]","stage":"main","values":{"stdout":[],"root":3,"named":3,"xs":[3,1,2]},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":3,"line":6,"label":"let best: ?Int = xs.fold((m, x) => if x > 1: Some(x) else: m, None)","stage":"main","values":{"stdout":[],"root":3,"named":3,"xs":[3,1,2],"best":2},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":4,"line":7,"label":"print → 3 3 2","stage":"main","values":{"stdout":["3 3 2"],"root":3,"named":3,"xs":[3,1,2],"best":2},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":5,"line":7,"label":"the program ended","stage":"main","values":{"stdout":["3 3 2"],"root":3,"named":3,"xs":[3,1,2],"best":2},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":7}]}]}}}
+stderr:

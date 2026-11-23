@@ -1870,7 +1870,9 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 }
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
-                if let Some(res) = self.try_ufcs_call(method, base, args, span, Some(recv_mark)) {
+                if let Some(res) =
+                    self.try_ufcs_call(method, base, args, span, Some(recv_mark), hint)
+                {
                     return res;
                 }
                 if let Some(message) = typo::builtin_misuse(&ty, method) {

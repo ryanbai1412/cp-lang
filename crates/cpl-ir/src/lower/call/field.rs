@@ -395,7 +395,7 @@ impl<'a> Lowerer<'a> {
                 {
                     self.decode_product_field(d, value, idx, span)
                 } else if let Some(res) =
-                    self.try_ufcs_call(field, base, &[], span, Some(recv_mark))
+                    self.try_ufcs_call(field, base, &[], span, Some(recv_mark), None)
                 {
                     res
                 } else if field == "to" {
@@ -1080,7 +1080,8 @@ impl<'a> Lowerer<'a> {
             ),
             _ => {
                 // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
-                if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span, Some(recv_mark))
+                if let Some(res) =
+                    self.try_ufcs_call(&name.text, base, &[], span, Some(recv_mark), None)
                 {
                     return res;
                 }
@@ -1257,6 +1258,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
         recv_mark: Option<usize>,
+        hint: Option<&Ty>,
     ) -> Option<Expr> {
         let candidates = self.method_syms(name);
         let chosen = (self.resolved_method(name, base, span))
@@ -1298,7 +1300,10 @@ impl<'a> Lowerer<'a> {
         all_args.extend(args.iter().cloned());
         match sym {
             Sym::Fn(fid) => Some(self.user_call(fid, None, &all_args, span)),
-            Sym::GenFn(gfid) => Some(self.call_gen_fn(gfid, Vec::new(), None, &all_args, span)),
+            Sym::GenFn(gfid) => {
+                self.call_hint.0 = hint.cloned();
+                Some(self.call_gen_fn(gfid, Vec::new(), None, &all_args, span))
+            }
             _ => None,
         }
     }
