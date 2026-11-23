@@ -288,6 +288,9 @@ options:
                     file is over the judge's limit)
   --copy            also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
                     xsel or clip, else the command in CPL_CLIPBOARD)
+  --json            print one JSON object once it is written: its `path`,
+                    `bytes`, the `limit` and `judge`, and `sizes`, each
+                    piece's `part`, `name` and `bytes`, as `--size` says them
 
 Over 32 KB it warns; over 64 KB, or the judge's own smaller limit, it fails
 and says where the bytes go. The same file and judge give the same bytes.
@@ -398,7 +401,7 @@ options:
 
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
-const JSON_FLAG: &[&str] = &["check", "fix", "judge", "judges", "explain"];
+const JSON_FLAG: &[&str] = &["check", "fix", "build", "judge", "judges", "explain"];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
@@ -432,7 +435,7 @@ pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a 
     let options: &[&str] = match command {
         "check" | "fix" | "judge" => &["--json"],
         "judges" => &["--json"],
-        "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
+        "build" => &["-o", "--judge", "--checked", "--size", "--copy", "--json"],
         "submit" => &["--copy"],
         "explain" => &["--json"],
         "profile" | "cover" => &["--native", "--format"],

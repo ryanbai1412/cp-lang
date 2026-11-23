@@ -5,7 +5,7 @@ use std::io::Write;
 
 use cpl_json::{obj, Value};
 
-use crate::{build_file, EXIT_ERRORS, EXIT_USAGE};
+use crate::{build_file, BuildOptions, EXIT_ERRORS, EXIT_USAGE};
 
 /// `cpl submit`: `cpl build`, then `cpl test` on what it built.
 pub(crate) fn submit(
@@ -14,7 +14,7 @@ pub(crate) fn submit(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    let code = build_file(path, None, None, false, false, false, stdout, stderr);
+    let code = build_file(path, &BuildOptions::default(), stdout, stderr);
     if code != 0 {
         *stderr += &format!("cpl: `{path}` is not ready to send: it does not build\n");
         return code;

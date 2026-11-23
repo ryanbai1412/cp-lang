@@ -213,26 +213,35 @@ pub fn exec<S: AsRef<str>>(
             let checked = rest.contains(&"--checked");
             let size = rest.contains(&"--size");
             let copy = rest.contains(&"--copy");
+            let json = rest.contains(&"--json");
             let mut rest: Vec<&str> = rest
                 .iter()
                 .copied()
-                .filter(|arg| !matches!(*arg, "--checked" | "--size" | "--copy"))
+                .filter(|arg| !matches!(*arg, "--checked" | "--size" | "--copy" | "--json"))
                 .collect();
             let judge = match take_judge(&mut rest, "build") {
                 Ok(judge) => judge,
                 Err(message) => return usage_error(message),
             };
-            match rest.as_slice() {
-                [file] => build_file(file, None, judge, checked, size, copy, stdout, stderr),
-                [file, "-o", out] | ["-o", out, file] => {
-                    build_file(file, Some(out), judge, checked, size, copy, stdout, stderr)
-                }
-                _ => usage_error(
-                    "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
-                     `cpl build a.cp --checked`"
-                        .into(),
-                ),
-            }
+            let (file, out) =
+                match rest.as_slice() {
+                    [file] => (*file, None),
+                    [file, "-o", out] | ["-o", out, file] => (*file, Some(*out)),
+                    _ => return usage_error(
+                        "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
+                         `cpl build a.cp --checked`"
+                            .into(),
+                    ),
+                };
+            let options = BuildOptions {
+                out,
+                judge,
+                checked,
+                size,
+                copy,
+                json,
+            };
+            build_file(file, &options, stdout, stderr)
         }
         Some("submit") => {
             let copy = rest.contains(&"--copy");
@@ -1104,21 +1113,39 @@ fn observe_file(
     code
 }
 
-/// `cpl build`: one C++17 file, next to the source unless `out` says
-/// where (`-` is standard output).
-#[allow(clippy::too_many_arguments)]
-fn build_file(
+/// What `cpl build` is asked for beyond the file: `out` says where the
+/// C++ goes, next to the source when `None` (`-` is standard output).
+#[derive(Clone, Copy, Default)]
+pub(crate) struct BuildOptions<'a> {
+    pub out: Option<&'a str>,
+    pub judge: Option<&'a str>,
+    pub checked: bool,
+    pub size: bool,
+    pub copy: bool,
+    pub json: bool,
+}
+
+/// `cpl build`: one C++17 file for the judge.
+pub(crate) fn build_file(
     path: &str,
-    out: Option<&str>,
-    judge: Option<&str>,
-    checked: bool,
-    size: bool,
-    copy: bool,
+    options: &BuildOptions,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
+    let BuildOptions {
+        out,
+        judge,
+        checked,
+        size,
+        copy,
+        json,
+    } = *options;
     if checked && out == Some("-") {
         *stderr += "cpl: `--checked` builds a program from the C++ file, so it can't go to standard output\n";
+        return EXIT_USAGE;
+    }
+    if json && (checked || out == Some("-")) {
+        *stderr += "cpl: `--json` prints the report on standard output, so it goes without `--checked` and `-o -`\n";
         return EXIT_USAGE;
     }
     let compiled = match compile(path, stderr) {
@@ -1142,6 +1169,7 @@ fn build_file(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
     };
+    let mut sizes = Vec::new();
     let cpp = match cpl_codegen::emit_within_for(
         &compiled.program,
         name,
@@ -1151,9 +1179,9 @@ fn build_file(
     ) {
         Ok(fitted) => {
             *stderr += &fitted.note(path, limit, &profile.name).unwrap_or_default();
-            if size {
+            if size || json {
                 let source = fitted.header.then_some(compiled.text.as_str());
-                let sizes = cpl_codegen::sizes(
+                sizes = cpl_codegen::sizes(
                     &compiled.program,
                     name,
                     source,
@@ -1161,6 +1189,8 @@ fn build_file(
                     (fitted.comments, fitted.narrow),
                     fitted.cpp.len(),
                 );
+            }
+            if size {
                 *stderr += &size_report(&sizes, limit, &profile.name);
             }
             fitted.cpp
@@ -1215,6 +1245,24 @@ fn build_file(
         None => std::path::Path::new(path).with_extension("cpp"),
     };
     match std::fs::write(&target, &cpp) {
+        Ok(()) if json => {
+            let sizes = sizes.iter().map(|size| {
+                cpl_json::obj([
+                    ("part", size.part.describe().into()),
+                    ("name", size.name.as_str().into()),
+                    ("bytes", size.bytes.into()),
+                ])
+            });
+            let report = cpl_json::obj([
+                ("path", target.display().to_string().into()),
+                ("bytes", cpp.len().into()),
+                ("limit", limit.into()),
+                ("judge", profile.name.to_string().into()),
+                ("sizes", cpl_json::Value::Array(sizes.collect())),
+            ]);
+            let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
+            0
+        }
         Ok(()) => {
             let _ = writeln!(
                 stdout,

@@ -636,3 +636,39 @@ fn judges_rejects_a_judge_it_does_not_know_as_misuse() {
     let out = cpl(&dir, &["judges", "b.cp", "--json"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
 }
+
+#[test]
+fn build_json_says_where_the_bytes_of_the_cpp_go() {
+    let dir = scratch("build-json");
+    std::fs::write(dir.join("a.cp"), "let n: 1..=10 = read()\nprint(n)\n").unwrap();
+    let out = cpl(&dir, &["build", "a.cp", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("cpl build --json is JSON");
+    let bytes = std::fs::read(dir.join("a.cpp")).unwrap().len() as i64;
+    assert_eq!(json.at(&["path"]).as_str(), Some("a.cpp"));
+    assert_eq!(json.at(&["bytes"]).as_i64(), Some(bytes));
+    assert_eq!(json.at(&["judge"]).as_str(), Some("generic"));
+    assert_eq!(json.at(&["limit"]).as_i64(), Some(65536));
+    let sizes = json.at(&["sizes"]).as_array().unwrap();
+    let parts: i64 = sizes
+        .iter()
+        .map(|s| s.at(&["bytes"]).as_i64().unwrap())
+        .sum();
+    assert_eq!(parts, bytes, "the sizes add up to the file");
+    assert!(sizes
+        .iter()
+        .any(|s| s.at(&["part"]).as_str() == Some("your code")));
+    let spelled = cpl(&dir, &["build", "a.cp", "--format", "json"]);
+    assert_eq!(text(&spelled.stdout), text(&out.stdout));
+    for args in [
+        &["build", "a.cp", "--json", "-o", "-"][..],
+        &["build", "a.cp", "--json", "--checked"],
+    ] {
+        let out = cpl(&dir, args);
+        assert_eq!(out.status.code(), Some(EXIT_USAGE.into()), "{args:?}");
+        assert!(
+            text(&out.stderr).contains("`--json` prints the report"),
+            "{args:?}"
+        );
+    }
+}

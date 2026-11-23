@@ -41,4 +41,6 @@ diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 the byte `offset`. `cpl fix --json` prints the same `files`, each also with
 the number of fixes `applied`, its diagnostics those left in the rewritten
 file. `cpl judge --json` prints `{"accepted", "reason", "diagnostic"}`, the
-last two `null` when the judge accepts.
+last two `null` when the judge accepts. `cpl build --json` prints the C++
+file's `path`, `bytes`, the `limit` and `judge` it was built for, and `sizes`:
+each piece's `part`, `name` and `bytes`, adding up to `bytes`.
