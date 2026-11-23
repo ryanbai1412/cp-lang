@@ -8,6 +8,8 @@ Measured 2026-11-22 with `python3 bench/v03_perf_bench.py --suite dryrun,corpus,
 | bench (`bench/*/`) | 54 | 40 | 14 (below; 6 fixed in `bench/` by perf) |
 | corpus (`corpus/problems/*`) | 307 | 120 | 187 (below) |
 
+Pairs that build but compare different algorithms are listed in `bench/unmatched.txt`; the bench times them and leaves them out of p50/max (`cf2101c`, `cf2115a`).
+
 ## bench: 14 pairs that cannot build yet
 
 Fixed by perf in `bench/`: `containers/bitset` (copy via `shifted(0)`; `Bitset` has no `.clone()`), `containers/flatmap` (`FlatMap.new(0, cap:)`), `strings/trie` (`var` fields), `strings/palindromic_tree` and `strings/suffix_automaton` (`occ_counts`), `containers/monodeque` (`Window(min)`, which keeps a monotone deque for a selective op).

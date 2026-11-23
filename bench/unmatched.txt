@@ -1,0 +1,6 @@
+# Corpus pairs whose port and orig.cpp use different algorithms, so their
+# time ratio says nothing about codegen. v03_perf_bench.py still times them
+# but reports them as `unmatched` and leaves them out of p50/max.
+# One per line: problem id, then why. Remove a line once the pair matches.
+cf2101c  port: SortedSet.range(..=x).last (O(log n)); orig: DSU over free values (near O(1))
+cf2115a  port: shortest path over gcd values, O(max * distinct); orig: Mobius count with random hashes, O(V log V) per step

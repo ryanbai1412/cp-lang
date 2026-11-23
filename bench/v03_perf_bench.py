@@ -298,6 +298,18 @@ def derived_inputs(cp, cache_dir):
     return sorted(os.path.join(cap, f) for f in os.listdir(cap) if os.path.getsize(os.path.join(cap, f)) > 0)
 
 
+def load_unmatched():
+    """Pairs listed in bench/unmatched.txt: id -> why port and orig differ in algorithm."""
+    out = {}
+    with open(os.path.join(ROOT, "bench", "unmatched.txt")) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                pid, _, why = line.partition(" ")
+                out[pid] = why.strip()
+    return out
+
+
 def collect_items(suites, only, cache_dir):
     items = []
     if "dryrun" in suites:
@@ -469,6 +481,7 @@ def main():
             built.append(res)
 
     rows = []
+    unmatched = load_unmatched()
     out_p = os.path.join(args.cache, "out_p.txt")
     out_o = os.path.join(args.cache, "out_o.txt")
     for b in built:
@@ -508,11 +521,13 @@ def main():
         med_o = statistics.median(ts_o) * 1000.0
         med_p = statistics.median(ts_p) * 1000.0
         ratio = med_p / med_o if med_o > 0 else 1.0
+        why = unmatched.get(b["name"]) if b["suite"] == "corpus" else None
         rows.append(
             {
                 "suite": b["suite"],
                 "name": b["name"],
-                "status": "ok",
+                "status": "unmatched" if why else "ok",
+                **({"reason": why} if why else {}),
                 "port_ms": round(med_p, 2),
                 "orig_ms": round(med_o, 2),
                 "ratio": round(ratio, 3),
