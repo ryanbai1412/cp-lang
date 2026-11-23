@@ -1,6 +1,10 @@
-// Logičari, in the forms proto/cpc builds today. See ../coci21c1p3.cp.
-// The children lists are built by hand (no Rooted), and `for x in Bool`
-// is spelled as a list.
+// Source: COCI 2021/2022 Contest 1 P3 (Logičari), https://dmoj.ca/problem/coci21c1p3
+// Problem: a connected graph with n <= 1e5 vertices and n edges. Colour the fewest vertices
+//   blue so that every vertex has exactly one blue neighbour; print that count, or -1.
+// Solution: the graph is a tree plus one edge (a, b), found with a DSU. Root the tree at a
+//   and guess the colours of a and b; a tree DP over (vertex, its colour, parent's colour)
+//   counts blues so each vertex gets exactly one blue among its parent, its children and,
+//   for a or b, the other end of the extra edge. O(n) times 4 guesses.
 // original: corpus/submissions/4080960.cpp
 
 let n: Int = read()

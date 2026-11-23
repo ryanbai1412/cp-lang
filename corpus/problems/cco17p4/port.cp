@@ -1,10 +1,10 @@
-// CCO 2017 P4 Rainfall Storage: n pillars of given heights stand in a row in
-// any order you like; rain fills every dip. List every total volume of water
-// that some order can hold.
-// Place pillars from tallest to shortest. A new pillar is no taller than
-// anything standing, so it changes no existing water level, and its own level
-// is the lower of the tallest pillar on each side: any height already placed
-// except the single tallest. So the volumes form a subset-sum over shifts.
+// Source: CCO 2017 P4 (Rainfall Storage), https://dmoj.ca/problem/cco17p4
+// Problem: n <= 500 pillars of heights 1..50 can be arranged in any order and rain fills
+//   every dip. Print, increasing, every total volume of water some arrangement holds.
+// Solution: place pillars from tallest to shortest. A new pillar is no taller than anything
+//   standing, so it changes no existing level, and its own water level can be any height
+//   already placed except the single tallest. So the volumes are a subset sum: each pillar
+//   after the first two adds 0 or (an earlier height - its own). O(n * 50 * 50n) bit DP.
 // original: corpus/submissions/4575277.cpp
 let n: 1..=500 = read()
 domain Pillar = 0..n

@@ -1,4 +1,12 @@
-// Runnable today/ port of IOI '17 P4 (The Big Prize) for real Rust `cpl build`.
+// Source: IOI 2017 P4 (The Big Prize), https://dmoj.ca/problem/ioi17p4
+// Problem: interactive. n <= 2e5 boxes hold prizes of types 1..v, one diamond (type 1),
+//   and more than k^2 of type t when type t - 1 has k. ask(i) returns how many boxes left and
+//   right of i hold a more valuable prize. Find the diamond, ideally in <= 5000 asks.
+// Solution: lollipops are the vast majority, so asking the first 450 boxes meets one and the
+//   largest left + right seen is the count of non-lollipops. Divide and conquer on [l, r]
+//   knowing the non-lollipops left of each end: walk left from mid past non-lollipops to a
+//   lollipop c, then recurse on [l, c - 1] and [mid + 1, r] while their counts differ; a
+//   sum of 0 is the diamond. About sqrt(n) log n asks.
 // Stdin: n, then hidden lollipop types t[0..n] (unique 0 = diamond; smaller = rarer).
 // Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/5659145.cpp

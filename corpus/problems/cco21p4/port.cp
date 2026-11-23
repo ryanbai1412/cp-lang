@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first cco21p4.cp
+// Source: CCO 2021 P4 (Travelling Merchant), https://dmoj.ca/problem/cco21p4
+// Problem: n, m <= 2e5; one-way road i from a to b needs at least r_i money and then pays
+//   p_i >= 0. For every starting city print the least starting money that lets the merchant
+//   travel forever, or -1.
+// Solution: a city with no usable outgoing road is dead: peel dead cities backwards and
+//   relax ans[u] = min(ans[u], max(r, ans[v] - p)) over their incoming roads. Among the
+//   remaining roads the one with the largest r gives its start city r (every road from
+//   there on is affordable); record it, delete the road and peel anew. O((n + m) log m).
 // original: corpus/submissions/6419583.cpp
 
 let (n, m): (Int, Int) = read()

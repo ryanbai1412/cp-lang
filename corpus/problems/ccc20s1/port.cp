@@ -1,6 +1,9 @@
-// Runnable today/ port of CCC '20 S1 (Surmising a Sprinter's Speed) for proto/cpc.
-// Because proto/cpc lacks F64, compares speeds via exact integer cross-multiplication
-// and formats the winning ratio rounded to 5 decimal places into a List<Char>.
+// Source: CCC 2020 S1 (Surmising a Sprinter's Speed), https://dmoj.ca/problem/ccc20s1
+// Problem: n <= 1e5 observations (t, x) of a sprinter, times distinct, |t|, |x| <= 1e9.
+//   Print the largest speed he certainly reached (relative error 1e-5).
+// Solution: sorted by time, the answer is the largest |dx| / dt between neighbours. Compare
+//   the ratios exactly by cross-multiplying (no floats here) and print the winner rounded to
+//   5 decimals by integer arithmetic. O(n log n).
 // original: corpus/submissions/4323572.cpp
 
 fn digit_char(d: Int) -> Char:

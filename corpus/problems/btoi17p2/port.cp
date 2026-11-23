@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first btoi17p2.cp
+// Source: BOI 2017 P2 (Toll), https://dmoj.ca/problem/btoi17p2
+// Problem: n <= 5e4 places, m one-way roads with tolls, each from a to b with
+//   b / k = a / k + 1 (k <= 5). For o <= 1e4 orders (a, b) print the cheapest toll from a
+//   to b, or -1.
+// Solution: roads only join consecutive blocks of k places, so each gap between blocks is a
+//   k x k min-plus matrix and a route is their product. A segment tree over the gaps answers
+//   each order by folding gaps a / k ..= b / k - 1 and reading entry (a % k, b % k).
+//   O(k^3 (n / k + o log n)).
 // original: corpus/submissions/4456186.cpp
 
 let (k, n, m, o): (Int, Int, Int, Int) = read()

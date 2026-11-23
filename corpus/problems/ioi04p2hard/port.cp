@@ -1,5 +1,12 @@
-// IOI 2004 Farmer (hard): walk from (0, 0) through every stop in order,
-// switching between an x-walker and a y-walker.
+// Source: IOI 2004 P2 (Hermes, hard), https://dmoj.ca/problem/ioi04p2hard
+// Problem: from (0, 0), Hermes visits n <= 1e6 junctions (x_i, y_i) in order (|coords| <=
+//   1e9), but serving one only needs reaching its row y = y_i or its column x = x_i. Print
+//   the least total walking distance.
+// Solution: between switches Hermes keeps one coordinate and walks the other from stop to
+//   stop, so dx[i] / dy[i] = least cost of the rest when he holds the x / y of stop i - 1.
+//   Going backwards, the next switch j costs a walk-prefix difference plus |held - coord_j|;
+//   split the absolute value into below/above, and keep the best base -/+ coord per side in
+//   monotone staircase maps keyed by coordinate. O(n log n).
 // original: corpus/submissions/4182973.cpp
 let n: Int = read()
 type Stop = (x: Int, y: Int)

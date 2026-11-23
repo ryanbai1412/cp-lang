@@ -1,15 +1,13 @@
-// IOI 2012 Day 2 P3, Jousting Tournament: n knights stand in a line, n - 1
-// of them with known distinct ranks in a fixed order, and a late knight of
-// rank r may take any position. Then c rounds follow: the knights now at
-// positions s..=e joust and only the strongest stays. Print the position
-// (the smallest, on ties) from which the late knight wins the most rounds.
-//
-// The rounds form a tree: each round is a node whose children are the
-// survivors it merges, and the leaves are the starting positions. The
-// knight at leaf p wins exactly the rounds above p in which every other
-// knight is weaker: going down the tree, a round is won when the late
-// knight beats the strongest fixed knight "beside" the path, and the fixed
-// knights shift by one across the late knight's own position.
+// Source: IOI 2012 P6 (Jousting Tournament), https://dmoj.ca/problem/ioi12p6
+// Problem: n knights in a line, n - 1 of them with known distinct ranks in order; the late
+//   knight of rank r takes any position. Each of c rounds (s, e) keeps only the strongest of
+//   the knights now at positions s..=e. Print the position (smallest on ties) from which the
+//   late knight wins the most rounds. n <= 1e5.
+// Solution: the rounds form a tree over the n starting positions: a Fenwick tree of alive
+//   slots finds the k-th survivor, so each round becomes a node whose children are the
+//   survivors it merges. A late knight under round v (leaves s..e) meets exactly the fixed
+//   knights of gaps s..e-1, so he wins v iff r beats their maximum; carry win counts from
+//   the root down to the leaves. O((n + c) log n).
 // input: n c r, the n - 1 ranks in order, then c lines `s e` (0-based)
 // original: corpus/submissions/4848321.cpp (the grader function GetBestPosition)
 
