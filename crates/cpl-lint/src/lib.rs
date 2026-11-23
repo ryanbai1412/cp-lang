@@ -541,9 +541,12 @@ impl Fns {
     fn defines(&self, lint: &Lint, diag: &Diagnostic, library: bool) -> bool {
         let names_call = NAME_THE_CALL.iter().any(|l| l.code == lint.code);
         let named = |quoted: &str| {
-            let call = format!("{}(", quoted.trim_end_matches('`'));
+            // `count(..)` or the method `xs.count(..)` (decision 53).
+            let name = quoted.trim_matches('`');
+            let calls =
+                |h: &str| h.contains(&format!("`{name}(")) || h.contains(&format!(".{name}("));
             (names_call && diag.message.contains(quoted))
-                || (library && diag.help.as_deref().is_some_and(|h| h.contains(&call)))
+                || (library && diag.help.as_deref().is_some_and(calls))
         };
         self.spans
             .iter()

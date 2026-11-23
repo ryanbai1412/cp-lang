@@ -8,15 +8,16 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
-    COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST,
-    MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP,
-    POW_METHOD, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP,
-    UNPROVEN_LIST_INDEX,
+    COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, LOOP_REDUCTION,
+    MANUAL_BIT_TEST, MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP,
+    PEEK_THEN_POP, POP_MIN_LOOP, POW_METHOD, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME,
+    STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 22] = [
+const TYPED: [cpl_diag::Code; 23] = [
+    LOOP_REDUCTION.code,
     MANUAL_BIT_TEST.code,
     MANUAL_STARTS_WITH.code,
     LAST_VIA_LEN.code,
@@ -74,8 +75,10 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
     }
     match Facts::check("<lint>.cp", src) {
         Some(facts) => refine_with_facts(diags, &facts),
-        None => diags.retain(|d| {
-            d.code == UNPROVEN_LIST_INDEX.code
+        None => diags.retain_mut(|d| {
+            count_spelling(d, None);
+            d.code == LOOP_REDUCTION.code
+                || d.code == UNPROVEN_LIST_INDEX.code
                 || d.code == FLOAT_EQUALITY.code
                 || d.code == POW_METHOD.code
                 || !TYPED.contains(&d.code)
@@ -86,9 +89,42 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
 pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     diags.retain(|d| keep(d, facts));
     for d in diags.iter_mut() {
+        count_spelling(d, Some(facts));
         if !fix_checks(d, facts) {
             d.fixes.clear();
         }
+    }
+}
+
+/// `loop_reduction` (L0504) writes a count as `xs.count(x => ..)`
+/// (decision 53) where the checker types the walked value as a `Seq`, and
+/// labels it with the generator to write anywhere else: a `Map` or a
+/// product domain walks in `for` but has no `Seq` methods.
+fn count_spelling(d: &mut Diagnostic, facts: Option<&Facts>) {
+    if d.code != LOOP_REDUCTION.code || d.labels.is_empty() {
+        return;
+    }
+    let label = d.labels.remove(0);
+    let seq = facts
+        .and_then(|f| f.place_type(label.span))
+        .is_some_and(Ty::is_seq);
+    if seq {
+        return;
+    }
+    let Some(method) = d
+        .help
+        .as_deref()
+        .and_then(|h| h.strip_prefix("write `"))
+        .and_then(|h| h.split_once("`;"))
+        .map(|(m, _)| m.to_string())
+    else {
+        return;
+    };
+    if let Some(help) = &mut d.help {
+        *help = help.replacen(&method, &label.message, 1);
+    }
+    for (_, text) in d.fixes.iter_mut().flat_map(|f| &mut f.edits) {
+        *text = text.replace(&method, &label.message);
     }
 }
 

@@ -19,12 +19,14 @@ mod forms;
 mod range_tree;
 mod search;
 mod stdlib_algo;
+mod stmts;
 mod string_algo;
 mod text;
 use forms::{AccLoop, Form};
 use range_tree::*;
 use search::*;
 use stdlib_algo::*;
+use stmts::*;
 use string_algo::*;
 use text::*;
 
@@ -1611,11 +1613,33 @@ impl<'a> Taste<'a> {
             return;
         }
         let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
+        // The generator a `.count(..)` falls back to where the checker says
+        // the loop walks something that is not a `Seq` (a `Map`).
+        let mut generator = None;
         let (call, text) = match op {
-            AssignOp::Binary(BinOp::Add) if v == "1" && c.is_some() && i == "0" => (
-                "count",
-                Some(format!("count({} for {p} in {it})", c.unwrap_or_default())),
-            ),
+            // Decision 53: one sequence's count is the method; a pattern
+            // that binds more than one name keeps the generator.
+            AssignOp::Binary(BinOp::Add) if v == "1" && c.is_some() && i == "0" => {
+                let c = c.unwrap_or_default();
+                let one_name = !p.is_empty()
+                    && p != "_"
+                    && p.chars().all(|ch| ch.is_alphanumeric() || ch == '_');
+                let stepped = matches!(
+                    iter.kind,
+                    ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
+                );
+                // A lambda can't write what it captures; a generator can.
+                let writes = cond.is_some_and(writes_place);
+                (
+                    "count",
+                    Some(if one_name && !stepped && !writes {
+                        generator = Some(format!("count({c} for {p} in {it})"));
+                        format!("{}.count({p} => {c})", receiver(&it))
+                    } else {
+                        format!("count({c} for {p} in {it})")
+                    }),
+                )
+            }
             AssignOp::Binary(BinOp::Add) if !numeric(i) => return,
             // A stepped range kept as a value doesn't run yet (E0501); a generator over it does.
             AssignOp::Binary(BinOp::Add)
@@ -1663,6 +1687,14 @@ impl<'a> Taste<'a> {
                 format!("write `{seq}.{call}()`, or `{call}({i}, {seq}.{call}() ?? {i})` if `{i}` can win or the loop can run zero times")
             }
         });
+        if let Some(generator) = generator {
+            let delta = self.next_base - self.base;
+            let iter = Span {
+                start: iter.span.start + delta,
+                end: iter.span.end + delta,
+            };
+            diag = diag.with_label(iter, generator);
+        }
         if let Some(edits) = text.and_then(|text| self.fold(init, next, call, text)) {
             diag.fixes.push(Fix {
                 title: format!("use `{call}`"),
@@ -1868,129 +1900,4 @@ fn trim_end(src: &str, base: u32, span: Span) -> u32 {
         end -= 1;
     }
     end
-}
-
-fn var_decl(stmt: &Stmt) -> Option<(&str, &Expr)> {
-    match &stmt.kind {
-        StmtKind::Let {
-            mutable: true,
-            pat:
-                Pattern {
-                    kind: PatternKind::Name(name),
-                    ..
-                },
-            init: Some(init),
-            otherwise: None,
-            guard: None,
-            ..
-        } => Some((name, init)),
-        _ => None,
-    }
-}
-
-/// `stmts` assign no place but `name`: calls (`print`, `seen.add(v)`) may
-/// run, but no other variable or table moves.
-fn only_sets(stmts: &[Stmt], name: &str) -> bool {
-    stmts.iter().all(|s| match &s.kind {
-        StmtKind::Assign { target, .. } => {
-            matches!(&target.kind, ExprKind::Name(n) if n == name)
-        }
-        StmtKind::Break(None) | StmtKind::Continue(None) => true,
-        StmtKind::Let { .. } => true,
-        StmtKind::Expr(Expr {
-            kind: ExprKind::If {
-                branches,
-                otherwise,
-            },
-            ..
-        }) => {
-            branches.iter().all(|(_, b)| only_sets(&b.stmts, name))
-                && otherwise.as_ref().is_none_or(|b| only_sets(&b.stmts, name))
-        }
-        StmtKind::Expr(_) => true,
-        _ => false,
-    })
-}
-
-/// Some block under `stmts` sets `name` and then breaks.
-fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
-    let sets = |s: &Stmt| {
-        matches!(&s.kind, StmtKind::Assign { target, op: AssignOp::Set, .. }
-            if matches!(&target.kind, ExprKind::Name(n) if n == name))
-    };
-    stmts
-        .windows(2)
-        .any(|w| sets(&w[0]) && matches!(w[1].kind, StmtKind::Break(None)))
-        || stmts.iter().any(|s| match &s.kind {
-            StmtKind::Expr(Expr {
-                kind:
-                    ExprKind::If {
-                        branches,
-                        otherwise,
-                    },
-                ..
-            }) => {
-                branches
-                    .iter()
-                    .any(|(_, b)| breaks_after_setting(&b.stmts, name))
-                    || otherwise
-                        .as_ref()
-                        .is_some_and(|b| breaks_after_setting(&b.stmts, name))
-            }
-            StmtKind::Unchecked(b) => breaks_after_setting(&b.stmts, name),
-            _ => false,
-        })
-}
-
-/// `xs.push(e)`: `e`.
-fn pushed_onto<'e>(e: &'e Expr, name: &str) -> Option<&'e Expr> {
-    let ExprKind::Call { callee, args } = &e.kind else {
-        return None;
-    };
-    let ExprKind::Field { base, name: method } = &callee.kind else {
-        return None;
-    };
-    match (&base.kind, &args[..]) {
-        (ExprKind::Name(n), [arg]) if n == name && method.text == "push" && arg.name.is_none() => {
-            Some(&arg.value)
-        }
-        _ => None,
-    }
-}
-
-/// `stmt` holds a `?`.
-fn has_try(stmt: &Stmt) -> bool {
-    struct Tries(bool);
-    impl Visitor for Tries {
-        fn expr(&mut self, expr: &Expr) {
-            self.0 |= matches!(expr.kind, ExprKind::Try(_));
-        }
-    }
-    let mut tries = Tries(false);
-    walk::walk_stmt(&mut tries, stmt);
-    tries.0
-}
-
-/// A test passed to a fold: a one-parameter lambda or a name.
-fn is_test(e: &Expr) -> bool {
-    match &e.kind {
-        ExprKind::Lambda { params, .. } => params.len() == 1,
-        ExprKind::Name(_) | ExprKind::Field { .. } => true,
-        _ => false,
-    }
-}
-
-/// Whether `.m()` binds to all of `e` without parentheses.
-fn postfix(e: &Expr) -> bool {
-    matches!(
-        e.kind,
-        ExprKind::Name(_)
-            | ExprKind::Field { .. }
-            | ExprKind::Call { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::Paren(_)
-            | ExprKind::List(_)
-            | ExprKind::Tuple(_)
-            | ExprKind::Str(_)
-    )
 }

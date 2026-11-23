@@ -305,3 +305,91 @@ fn a_flag_that_says_more_than_a_value_is_set_stays_quiet() {
         assert!(!codes(src).contains(&"L0596"), "{src}\n{:?}", codes(src));
     }
 }
+
+#[test]
+fn a_counting_loop_over_one_sequence_is_its_count_method() {
+    // Decision 53; BLOCKERS `count-two-spellings`: the lint taught
+    // `count(x > 10 for x in a)` beside docs teaching `a.count(x => x > 10)`.
+    let src = "let a: List<Int> = [3, 12, 40]\nvar big = 0\nfor x in a:\n    if x > 10:\n        big += 1\nprint(big)\n";
+    let d = lint_one(src, "L0504");
+    assert!(
+        d.help
+            .as_deref()
+            .unwrap()
+            .contains("`a.count(x => x > 10)`"),
+        "{:?}",
+        d.help
+    );
+    assert!(d.labels.is_empty(), "{:?}", d.labels);
+    assert!(crate::apply_fixes(src, &[d])
+        .0
+        .contains("big = a.count(x => x > 10)\nprint"));
+}
+
+#[test]
+fn a_counting_loop_over_a_map_keeps_the_generator() {
+    let src = "let m: Map<Int, Int> = [1: 2, 30: 4]\nvar big = 0\nfor kv in m:\n    if kv.0 > 10:\n        big += 1\nprint(big)\n";
+    let d = lint_one(src, "L0504");
+    assert!(
+        d.help
+            .as_deref()
+            .unwrap()
+            .contains("`count(kv.0 > 10 for kv in m)`"),
+        "{:?}",
+        d.help
+    );
+    assert!(crate::apply_fixes(src, &[d])
+        .0
+        .contains("big = count(kv.0 > 10 for kv in m)\nprint"));
+}
+
+#[test]
+fn a_counting_loop_over_a_range_counts_the_range() {
+    let src = "let n = 10\nvar even = 0\nfor i in 0..n:\n    if i % 2 == 0:\n        even += 1\nprint(even)\n";
+    let d = lint_one(src, "L0504");
+    assert!(
+        d.help
+            .as_deref()
+            .unwrap()
+            .contains("`(0..n).count(i => i % 2 == 0)`"),
+        "{:?}",
+        d.help
+    );
+}
+
+fn lint_one(src: &str, code: &str) -> Diagnostic {
+    let diags = lint(src, &Config::default());
+    let mut found: Vec<_> = diags.into_iter().filter(|d| d.code.0 == code).collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    found.remove(0)
+}
+
+#[test]
+fn a_counting_test_that_writes_keeps_the_generator() {
+    // crates/cpl-cli/tests/programs/s2_keep_bool.cp: a lambda can't write `hi`.
+    let src = "var hi = 0\nvar grew = 0\nfor x in [3, 1, 4]:\n    if hi max= x: grew += 1\nprint(hi, grew)\n";
+    let d = lint_one(src, "L0504");
+    assert!(
+        d.help
+            .as_deref()
+            .unwrap()
+            .contains("`count(hi max= x for x in [3, 1, 4])`"),
+        "{:?}",
+        d.help
+    );
+}
+
+#[test]
+fn a_counting_loop_over_a_product_domain_keeps_the_generator() {
+    // spec/conformance/core-04/product-alias-walks.cp: a product domain is no `Seq`.
+    let src = "domain R = 0..2\ndomain C = 0..2\ntype Cell = (R, C)\nlet grid: [Cell]Char = '.'\nvar n = 0\nfor p in Cell:\n    if grid[p] == '.':\n        n += 1\nprint(n)\n";
+    let d = lint_one(src, "L0504");
+    assert!(
+        d.help
+            .as_deref()
+            .unwrap()
+            .contains("`count(grid[p] == '.' for p in Cell)`"),
+        "{:?}",
+        d.help
+    );
+}

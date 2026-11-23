@@ -815,7 +815,7 @@ fn loop_reductions_from_cco23p4_and_powers() {
     assert_eq!(taste_codes(count), ["L0504", "L0592"]);
     assert_eq!(
         fixed(count),
-        "fn occ(w: Str, pat: Str) -> Int:\n    let res = count(w.starts_with(pat, at: i) for i in 0..=w.len - pat.len)\n    res\nprint(occ(\"aaa\", \"aa\"))\n"
+        "fn occ(w: Str, pat: Str) -> Int:\n    let res = (0..=w.len - pat.len).count(i => w.starts_with(pat, at: i))\n    res\nprint(occ(\"aaa\", \"aa\"))\n"
     );
     // examples/local-lib/math/powers.cp: the declared type stays.
     let sum = "const P = 7\nlet pw: List<Mod<P>> = [1, 2]\nvar acc: Mod<P> = 0\nfor i in 0..2: acc += pw[i]\nprint(acc)\n";
