@@ -1,10 +1,12 @@
-// NOI 2007 P5, Counting Spanning Trees: vertices 1..=n in a row, an edge
-// between every two at distance at most k (k <= 5, n <= 1e15). The number
-// of spanning trees modulo 65521.
-// The original spends 60 lines on a bitmask DP for the determinant, 30 on
-// Berlekamp-Massey and 40 on a matrix power. Here the small cases are
-// Kirchhoff's theorem as written, and `guess_at` finds and applies the
-// linear recurrence they satisfy.
+// Source: NOI 2007 P5 (Counting Spanning Trees), https://dmoj.ca/problem/noi07p5
+// Problem: vertices 1..=n in a row, an edge between every two at distance at most k
+//   (2 <= k <= 5, k <= n <= 1e15). Print the number of spanning trees modulo 65521.
+// Solution: the counts for k, k + 1, ... vertices satisfy a linear recurrence of bounded
+//   order (a transfer over the last k vertices), so compute small cases with Kirchhoff's
+//   theorem (Laplacian minus a row and column, determinant by elimination mod the prime,
+//   O(size^3)) and let `guess_at` find the recurrence and evaluate it at n, adding terms
+//   until it is confirmed. The original instead hand-writes the transfer DP, Berlekamp-Massey
+//   and a matrix power.
 // original: corpus/submissions/3883675.cpp
 use std.spec.{guess_at}
 

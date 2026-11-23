@@ -1,10 +1,13 @@
-// COCI '25 C3 P3: a bipartite graph on 2n vertices with a unique perfect
-// matching (peelable from degree-1 vertices on side 0). Find the longest
-// alternating path and print its length and vertices (1-based).
-//
-// Two-color the graph with `scout.connectivity.two_color`, then peel degree-1
-// vertices on side 0 to reveal each forced matching edge `(u, partner)` while
-// computing longest-path DP over the resulting DAG of unmatched edges.
+// Source: COCI 2025/2026 Contest 3 P3 (Domjenak), https://dmoj.ca/problem/coci25c3p3
+// Problem: 2N people (N <= 5e5), M <= 1e6 friendships, bipartite, with a unique perfect
+//   matching (the pairs who came together). Told a story, a person passes it to their pair if
+//   the pair hasn't heard it, else to one friend who hasn't. Print the longest chain of
+//   tellers and one such sequence: an alternating path that starts with a pair edge.
+// Solution: with a unique perfect matching some vertex has degree 1; two-colour the graph,
+//   then peel degree-1 vertices on side 0: the lone unmatched neighbour is its pair, and
+//   removing the pair's other edges creates new degree-1 vertices. The peel order is a DAG
+//   of non-pair edges, so dp[v] (the longest chain of pairs ending at v) relaxes along it,
+//   with a parent pointer to rebuild the path. O(N + M).
 // original: corpus/submissions/7730378.cpp
 use scout.connectivity.{two_color}
 

@@ -1,9 +1,13 @@
-// NOI 2020 P1, Delicacy: a walk from city 1 back to city 1 that takes
-// exactly t days; a road takes 1..=5 days, arriving at a city earns its
-// joy, and k festivals add a bonus for being in one city on one day. The
-// most joy, or -1 if no such walk exists.
-// A road of w days becomes w one-day steps, so one day is one max-plus
-// matrix product over 5n states, and the festivals split t into k + 1 jumps.
+// Source: NOI 2020 P1 (Delicacy), https://dmoj.ca/problem/noi20p1
+// Problem: n <= 50 cities with joy c_i, m <= 501 one-way roads taking w <= 5 days. A walk
+//   leaves city 1 on day 0 and must reach city 1 on exactly day T <= 1e9, never waiting; each
+//   arrival (start and end too) earns the city's joy, and k <= 200 festivals (distinct days
+//   t_i) add y_i <= 1e9 for being in city x_i on day t_i. Print the most joy, or -1.
+// Solution: split each city into 5 states (city, days still to travel), so one day is one
+//   max-plus matrix over 5n states. Precompute its 2^b powers (O((5n)^3 log T)); between
+//   consecutive festivals advance the best-joy row vector by the bits of the gap
+//   (O((5n)^2 log T) each) and add the bonus at the festival's city. The walk's answer is
+//   the row at city 1 after day T.
 // original: corpus/submissions/3890258.cpp
 const NONE = -4e18  // "no walk": the zero of max-plus
 

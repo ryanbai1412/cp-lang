@@ -1,13 +1,13 @@
-// IOI 2009 Day 1 P2, Hiring: n candidates, each with a minimum salary s
-// and a qualification q, and a budget w. Everyone hired is paid in
-// proportion to q and at least their own s. Hire as many as possible,
-// and among those as cheaply as possible; print the count and the hired
-// candidates, one per line (any best set is accepted).
-//
-// With pay rate s/q per qualification point set by the most demanding
-// hire, the cheapest k hires are the k smallest q among the candidates
-// that accept the rate. Sweep the rate upwards and keep those in a
-// max-heap, dropping the largest q while the bill is over budget.
+// Source: IOI 2009 Day 1 P2 (Hiring), https://dmoj.ca/problem/ioi09p2
+// Problem: n <= 5e5 candidates, candidate k wants at least S_k and has qualification Q_k
+//   (both <= 2e4); budget W <= 1e10. Hired workers are paid in proportion to Q, each at
+//   least their S, total at most W. Hire as many as possible, then as cheaply as possible;
+//   print the count and the hired candidates (any best set).
+// Solution: the rate per point of Q is set by the hire with the largest S/Q, and the
+//   cheapest hires at that rate are those with the smallest Q. Sweep candidates by S/Q
+//   (exact cross-multiplied order), keep a max-heap of Q, and pop the largest Q while
+//   points * rate is over budget; keep the best (count, then bill) plan. A second sweep
+//   stops at the best plan's rate setter and prints its heap. O(n log n).
 // original: corpus/submissions/5102705.cpp
 
 let (n, w): (Int, Int) = read()

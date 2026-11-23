@@ -1,10 +1,11 @@
-// NOIP 2018 Track Construction: a tree of roads with lengths. Build m
-// tracks, each a path, no road used twice, and make the shortest track as
-// long as possible.
-//
-// Binary search the length k. For one k, go up the tree: every junction
-// gets the chains that end at its children, pairs them into tracks of
-// length at least k, and passes the longest chain left over to its parent.
+// Source: NOIP 2018 Senior P3 (Constructing Tracks), https://dmoj.ca/problem/noip18p3
+// Problem: a tree of n <= 5e4 junctions with road lengths <= 1e4. Build m <= n - 1 tracks,
+//   each a path, no road in two tracks; print the largest possible length of the shortest.
+// Solution: binary search the length k. For one k, go up the tree: each junction gets the
+//   chains ending at its children (plus their up-road; a chain of length >= k is a track),
+//   greedily pairs them into tracks (the shortest unpaired takes the shortest unused partner
+//   that reaches k, found by binary search, used ones skipped by path compression) and
+//   passes the longest unpaired chain to its parent. O(n log n log(sum of lengths)).
 
 let (n, m): (Int, Int) = read()
 domain Junction = 1..=n

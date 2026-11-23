@@ -1,15 +1,13 @@
-// NOI 2004 Cashier: a payroll under four commands. "I x" hires someone at
-// salary x, who walks straight out if x is below the wage floor. "A x"
-// raises every salary by x and "S x" cuts every salary by x, after which
-// everyone below the floor leaves. "F k" asks for the k-th highest salary,
-// or -1 if there are fewer than k staff. At the end print how many people
-// left after a cut.
-//
-// A raise or a cut moves everyone together, so store each salary without
-// the raises given since: pay = base + raise, and the order of the bases
-// never changes. The original keeps them in an order-statistics tree. Here
-// the commands are read twice: once to learn every base that will occur,
-// once to count staff per base in a Fenwick tree.
+// Source: NOI 2004 P1 (The Depressed Cashier), https://dmoj.ca/problem/noi04p1
+// Problem: n <= 3e5 commands and a wage floor. "I x" hires at salary x (gone at once, and
+//   not counted, if below the floor); "A x" raises every salary by x; "S x" cuts every
+//   salary by x, then everyone below the floor leaves; "F k" prints the k-th highest salary
+//   or -1. At most 100 A/S commands. Finally print how many people left.
+// Solution: everyone moves together, so store base = salary - (raise so far); the bases'
+//   order never changes. Read the commands twice: first to collect every base that will
+//   occur, then count staff per base in a Fenwick tree over the sorted bases. A cut drops
+//   the lowest slots while below the floor; "F k" is a Fenwick descent to the
+//   (size - k + 1)-th smallest. O(n log n).
 
 let (q, floor): (Int, Int) = read()
 domain Cmd = 0..q

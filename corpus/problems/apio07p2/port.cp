@@ -1,5 +1,13 @@
-// APIO 2007 Backup, as it builds today: the halving is a recursive function
-// over list offsets, and the merge of two convex cost lists is written out (R7, R8).
+// Source: APIO 2007 P2 (Backup), https://dmoj.ca/problem/apio07p2
+// Problem: n <= 1e5 offices at sorted positions <= 1e9 on a street; join k <= n / 2 disjoint
+//   pairs by cables. Print the least total cable length.
+// Solution: an optimal pairing uses k gaps between neighbours, no two adjacent, so choose k
+//   such gaps of least sum. Divide and conquer over the gaps: a run keeps, for each choice
+//   of which end gaps must stay empty, the convex list of cheapest costs for 0, 1, ... cables.
+//   Two halves combine by merging their slopes (a Minkowski sum) with the middle pair of gaps
+//   not both used, taking the cheaper option entrywise. O(n log n).
+// As it builds today: the halving is a recursive function over list offsets, and the merge
+//   of two convex cost lists is written out (R7, R8).
 // original: corpus/submissions/5532752.cpp
 let n: 2..=1e5 = read()
 let k: 1..=n / 2 = read()

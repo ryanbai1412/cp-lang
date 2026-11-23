@@ -1,5 +1,14 @@
-// NOI 2006 Network Charge (CP Lang 0.2.2): bottom-up tree DP using Tropical
-// Optionals `[0..sz, 0..sz]?Int = none` + `min=` (zero `INF` sentinel).
+// Source: NOI 2006 P1 (Network Charges), https://dmoj.ca/problem/noi06p1
+// Problem: 2^N <= 1024 users are the leaves of a full binary tree; each registered paying A
+//   or B, and switching user i costs C_i. Each pair i < j is charged at their LCA P: if P
+//   has fewer A than B leaves, F_ij per A in the pair, else F_ij per B in the pair. Given
+//   the types, C_i <= 5e5 and F_ij <= 500, print the least total of switches plus charges.
+// Solution: a pair's charge splits into F_ij per leaf of the charged type at P, so fix at
+//   each router a flag (fewer A than B or not) and charge each leaf alone. dp[u, (count of
+//   B under u, flags of u's ancestors)] is the cheapest cost of u's subtree: a leaf pays its
+//   switch plus, per ancestor whose flag it matches, its flow to that ancestor's other half
+//   (row prefix sums); a router splits the count between its children with its own flag
+//   set by the count. O(4^N N) time over all levels.
 // original: corpus/submissions/5032743.cpp
 let m: 1..=10 = read()
 let n = 1 << m
