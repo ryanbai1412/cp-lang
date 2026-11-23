@@ -31,8 +31,10 @@ use std.seq.{ends, RingRange}
 pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
     let m = Monoid<T>.of(f)
     var p: [D.cuts]T = from ?? m.id
+    var acc = from ?? m.id
     for i in D:
-        p[i.r] = m.op(p[i.l], self[i])
+        acc = m.op(acc, self[i])
+        p[i.r] = acc
     Prefix<D, T>.of_cuts(p)
 
 /// Fill direction for an append-only `Prefix.filling(...)` table.
@@ -454,8 +456,10 @@ pub struct _PrefixList < T >:
 pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
     var p: [D.cuts]T = m.id
+    var acc = m.id
     for i in D:
-        p[i.r] = m.op(p[i.l], a[i])
+        acc = m.op(acc, a[i])
+        p[i.r] = acc
     p
 
 /// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
@@ -474,8 +478,10 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
 pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
     var s: [D.cuts]T = m.id
+    var acc = m.id
     for i in D.rev:
-        s[i.l] = m.op(a[i], s[i.r])
+        acc = m.op(a[i], acc)
+        s[i.l] = acc
     s
 
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.

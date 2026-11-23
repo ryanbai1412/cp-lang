@@ -88,7 +88,6 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | cf2165f: port.cp 1.36x on the valid max input; `SegTree.set` always pulls to the root and `fold` copies its range ends through tuples (std/segtree.cp:168, 289), against orig.cpp's point-path max update | a `SegTree.combine(i, x)` (apply `op` at a leaf, stop pulling once a parent is unchanged) for monotone point updates, and a tuned variant using it; logged as an open tuned outlier until then | stdlib (segtree), perf (tuned variant) |
 | cf1984e: `Rooted.reroot` allocates `List.filled(m + 1, id)` for every vertex's prefix folds (std/tree.cp:438) | one prefix buffer of n + 1 reused across vertices (a vertex's children are contiguous in `bfs`), so `reroot` allocates O(1) lists; an invertible-op form (`sub:`) for counts and sums that skips prefix and suffix folds | stdlib (tree) |
 | cf2245a: `s[0..k].count(c)` on `s: [0..n]Char` copies all of `s`, then the slice, before counting; tuned perf.cp loops over indices instead | lower every slice of a 1-D array to an O(1) view (`ListSlice` for integer keys, as `List` and `[Pos]` arrays already do), so no slice copies unless stored | compiler (cpl-ir lowering, interpreter `ListSlice`) |
-| cf2245a: rows timed near process start (orig.cpp under ~5 ms CPU) read as 1.1-1.7x on noise of about 0.5 ms | v03_perf_bench.py reports rows whose orig.cpp CPU is under a floor (e.g. 10 ms) as `noise` instead of a ratio, or times them on a repeated or larger valid input | perf (bench harness) |
 
 ## Next
 
