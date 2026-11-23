@@ -8212,3 +8212,9 @@ tag move fatal again.
   - The other option was that a `.` keeps a literal `F64`. It was rejected because `1.5e5` has to stay an `Int` bound.
   - Case: core-01/int-literal-takes-f64-where-expected. Known gap for compiler.
 - **Reverse.** Require `F64(...)` around integer literals again.
+
+## 401. Retire L0206 `getter_parens` for the checker's E0304 fix (lint-fmt, 2026-11-23)
+
+- **Call.** A built-in getter called with `()` (`xs.len()`, `xs.first()`) is E0304, and E0304's fix drops the `()`. L0206 guessed the same case from syntax, so it only repeated the error. Retired: its record, its catalogue row and the syntax-based sequence guess in `rules/types.rs`.
+- **Fix path.** `cpl fix` applies E0304's fix with the other error fixes. The editor's fix-all (`fix_checked_removed_syntax`) applies it beside the removed-syntax codemods.
+- **Reverse.** Restore `spec/lints/getter_parens/` and the arm in `rules/types.rs`.

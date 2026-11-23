@@ -426,7 +426,7 @@ pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
 }
 
 /// `diags` less the lints at the place of one of `errors`: the error
-/// already names that root cause (E0304 and L0206 on `xs.first()`). A lint
+/// already names that root cause (L0509 beside the E0606 it explains). A lint
 /// with a quick fix stays unless the error carries one too.
 pub(crate) fn drop_repeats(diags: &mut Vec<Diagnostic>, errors: &[Diagnostic]) {
     diags.retain(|d| {
@@ -703,9 +703,9 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
     }
 }
 
-/// Type-directed removed-syntax rewrites reported by the checker (such as
-/// `Range.lo`/`.hi` -> `.start`/`.end`, leaving user struct fields named
-/// `lo`/`hi` untouched), applied to a fixed point.
+/// Type-directed rewrites reported by the checker, applied to a fixed point:
+/// removed syntax (such as `Range.lo`/`.hi` -> `.start`/`.end`, leaving user
+/// struct fields named `lo`/`hi` untouched) and a getter called with `()`.
 pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> (String, usize) {
     let mut src = src.to_string();
     let mut total = 0;
@@ -721,7 +721,14 @@ pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> 
         let codemods: Vec<_> = analysis
             .diagnostics
             .iter()
-            .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
+            .filter(|d| {
+                [
+                    cpl_diag::codes::REMOVED_SYNTAX,
+                    cpl_diag::codes::NOT_CALLABLE,
+                ]
+                .contains(&d.code)
+                    && !d.fixes.is_empty()
+            })
             .cloned()
             .collect();
         let (text, applied) = apply_fixes(&src, &codemods);

@@ -1062,7 +1062,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| getter_parens | `.len()`, `.first()`, `.rev()` | no parentheses | fix | #13 | syn | ✓getter_parens |
+| getter_parens | `.len()`, `.first()`, `.rev()` | no parentheses | fix | #13 | syn | ✓E0304 (checker, with fix) |
 | is_in_cond_header | `if x is ...` headers that should bind with `let` | `if let p = x` form | fix | #13 | syn | ✓is_in_cond_header |
 | unknown_lint | `with lint(...)` names a lint that doesn't exist | the right name | warn | #13 | syn | ✓unknown_lint |
 | deprecated_spelling | any spelling a codemod retired | the current spelling | fix | #13 | syn | |

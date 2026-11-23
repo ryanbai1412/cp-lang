@@ -1,5 +1,5 @@
 use crate::{checker_lints, lint, Config, CHECKER_LINTS};
-use cpl_diag::Severity;
+use cpl_diag::{Diagnostic, Severity};
 
 const PADDED: &str =
     "let a: [200000](w: Int, b: Bool) = [200000].filled((w: 0, b: false))\nprint(a[0].w)\n";
@@ -151,19 +151,27 @@ fn every_checker_lint_has_a_page_record_that_fires_on_before_only() {
 
 #[test]
 fn a_lint_does_not_repeat_the_error_at_its_place() {
-    let src = "let ys = [1, 2]\nprint(ys.first())\n";
-    let mut db = cpl_check::Database::new();
-    db.set_file("probe.cp", src);
-    let analysis = db.analyze("probe.cp").unwrap();
-    assert!(analysis.diagnostics.iter().any(|d| d.code.0 == "E0304"));
-    let mut diags = crate::lint(src, &crate::Config::default());
-    assert!(diags.iter().any(|d| d.code.0 == "L0206"), "{diags:?}");
-    crate::drop_repeats(&mut diags, &analysis.diagnostics);
-    assert!(diags.iter().all(|d| d.code.0 != "L0206"), "{diags:?}");
+    let span = cpl_diag::Span::new(3, 9);
+    let error = Diagnostic::error(cpl_diag::Code("E0304"), span, "read without `()`");
+    let mut fixed_error = error.clone();
+    fixed_error.fix("drop `()`", span, "");
+    let mut found = Diagnostic::warning(cpl_diag::Code("L0509"), span, "same root cause");
+    let mut diags = vec![found.clone()];
+    crate::drop_repeats(&mut diags, std::slice::from_ref(&error));
+    assert!(diags.is_empty(), "{diags:?}");
+    found.fixes.push(cpl_diag::Fix {
+        title: "fix".into(),
+        edits: vec![(span, String::new())],
+    });
+    let mut diags = vec![found];
+    crate::drop_repeats(&mut diags, std::slice::from_ref(&error));
+    assert_eq!(diags.len(), 1, "a lint keeps the quick fix the error lacks");
+    crate::drop_repeats(&mut diags, &[fixed_error]);
+    assert!(diags.is_empty(), "{diags:?}");
 }
 
 #[test]
-fn the_editor_shows_one_finding_with_its_fix_for_a_getter_called() {
+fn a_getter_called_with_parens_is_the_checker_s_with_its_fix() {
     let src = "let ys = [1, 2]\nprint(ys.first())\n";
     let mut db = cpl_check::Database::new();
     db.set_file("probe.cp", src);
@@ -175,5 +183,5 @@ fn the_editor_shows_one_finding_with_its_fix_for_a_getter_called() {
         .unwrap();
     assert!(!error.fixes.is_empty(), "{error:?}");
     let lints = crate::lint_analysis(&analysis, &crate::Config::default());
-    assert!(lints.iter().all(|d| d.code.0 != "L0206"), "{lints:?}");
+    assert!(lints.iter().all(|d| d.span != error.span), "{lints:?}");
 }

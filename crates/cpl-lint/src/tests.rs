@@ -1274,19 +1274,6 @@ fn pow_method_lint_warns_and_fixes_with_parentheses() {
 }
 
 #[test]
-fn getter_parens_lint_warns_and_drops_parens() {
-    let src = "let xs = [1, 2, 3]\nprint(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), xs.first(x => x > 1))\n";
-    assert_eq!(
-        codes(src),
-        vec!["L0206", "L0206", "L0206", "L0206", "L0206", "L0206", "L0509"]
-    );
-    assert_eq!(
-        fixed(src),
-        "let xs = [1, 2, 3]\nprint(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.find(x => x > 1))\n"
-    );
-}
-
-#[test]
 fn fix_rewrites_range_lo_hi_to_start_end_only_on_ranges() {
     let src = "\
 struct Seg(lo: Int, hi: Int)
