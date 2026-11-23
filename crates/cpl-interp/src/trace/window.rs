@@ -4,8 +4,10 @@
 
 use super::{Recording, TraceConfig, Tracer};
 use crate::checkpoint::{
-    count_on_this_thread, record_last_on_this_thread, resume_on_this_thread, Checkpoint,
+    count_on_this_thread, record_last_on_this_thread, record_live_on_this_thread,
+    resume_on_this_thread, Checkpoint,
 };
+use crate::stop::Limits;
 use crate::{observe_on_this_thread, run_observed, Io, Observed};
 use cpl_ir::Program;
 use std::io::Write;
@@ -141,30 +143,86 @@ pub fn resumed_tail_every(
             every,
             CHECKPOINTS_KEPT,
         );
-        let mut back = 1;
-        let recording = loop {
-            let trace = Some(config.clone());
-            let mut ignored = std::io::sink();
-            let Some(from) = taken.len().checked_sub(back).map(|at| &taken[at]) else {
-                let io = Io::fixed(input);
-                break observe_on_this_thread(program, io, &mut ignored, limits, trace).recording;
-            };
-            let resumed =
-                resume_on_this_thread(program, input, from, &mut ignored, limits, trace).recording;
-            if resumed
-                .as_ref()
-                .is_some_and(|rec: &Recording| rec.len() >= steps)
-            {
-                break resumed;
-            }
-            // Twice as far back each time, and the first checkpoint last.
-            back = if back == taken.len() {
-                back + 1
-            } else {
-                (back * 2).min(taken.len())
-            };
+        whole.recording = tail_from(program, input, &taken, &config, steps, limits);
+        whole
+    })
+}
+
+/// The last `steps` steps of the run on `input`, traced again from the
+/// latest of `taken` that reaches back far enough.
+fn tail_from(
+    program: &Program,
+    input: &[u8],
+    taken: &[Checkpoint],
+    config: &TraceConfig,
+    steps: usize,
+    limits: Limits,
+) -> Option<Recording> {
+    let mut back = 1;
+    loop {
+        let trace = Some(config.clone());
+        let mut ignored = std::io::sink();
+        let Some(from) = taken.len().checked_sub(back).map(|at| &taken[at]) else {
+            let io = Io::fixed(input);
+            return observe_on_this_thread(program, io, &mut ignored, limits, trace).recording;
         };
-        whole.recording = recording;
+        let resumed =
+            resume_on_this_thread(program, input, from, &mut ignored, limits, trace).recording;
+        if resumed
+            .as_ref()
+            .is_some_and(|rec: &Recording| rec.len() >= steps)
+        {
+            return resumed;
+        }
+        // Twice as far back each time, and the first checkpoint last.
+        back = if back == taken.len() {
+            back + 1
+        } else {
+            (back * 2).min(taken.len())
+        };
+    }
+}
+
+/// The trace of an interactive run, which talks to its judge through `io`
+/// and prints to `output`. The run goes untraced, keeping what it was sent
+/// and, for `--last`, checkpoints; the steps kept are then traced again
+/// with that transcript as fixed input, so the judge is asked only once.
+pub fn interactive(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+) -> Observed {
+    let io = Mutex::new(Some(io));
+    let output = Mutex::new(output);
+    crate::on_interp_thread(&|limits| {
+        let mut output = output
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let io = io
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+            .expect("only the thread that starts takes the input");
+        let tail = config.last_steps.filter(|_| config.from_step.is_none());
+        let (every, keep) = match tail {
+            Some(_) => (CHECKPOINT_EVERY, CHECKPOINTS_KEPT),
+            None => (u64::MAX, 1),
+        };
+        let (mut whole, taken, sent) =
+            record_live_on_this_thread(program, io, &mut **output, limits, every, keep);
+        whole.recording = match tail {
+            Some(steps) => tail_from(program, &sent, &taken, &config, steps, limits),
+            None => {
+                let config = TraceConfig {
+                    stop_when_full: true,
+                    ..config.clone()
+                };
+                let io = Io::fixed(&sent);
+                let mut ignored = std::io::sink();
+                observe_on_this_thread(program, io, &mut ignored, limits, Some(config)).recording
+            }
+        };
         whole
     })
 }

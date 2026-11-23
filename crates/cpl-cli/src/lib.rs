@@ -1297,7 +1297,10 @@ fn observe_file(
     let quiet = args.format.is_some_and(|format| format != "text");
     let observed = match &compiled.judge {
         Some((_, judge)) => {
-            interact::run_traced(&compiled.program, judge, input, &mut printed, config)
+            let full = args.full_trace
+                || !args.trace
+                || config.last_steps.is_some() && config.from_step.is_some();
+            interact::run_traced(&compiled.program, judge, input, &mut printed, config, full)
         }
         // `--format json` without `--trace` reports each variable's last
         // value, which the untraced run keeps too.

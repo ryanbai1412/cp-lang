@@ -28,7 +28,7 @@ pub use compare::{first_divergence, stages, Divergence, Stage};
 use glob::glob_match;
 pub use log::Steps;
 pub use trap::{shown, trap_config, trap_locals};
-pub use window::{resumed_tail, resumed_tail_every, tail, windowed, Replay, Timeline};
+pub use window::{interactive, resumed_tail, resumed_tail_every, tail, windowed, Replay, Timeline};
 
 /// How a run is recorded.
 #[derive(Clone, Debug, Default)]

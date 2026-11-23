@@ -394,3 +394,39 @@ fn full_without_trace_is_an_error() {
     assert_ne!(code, 0);
     assert!(err.contains("`--full`"), "{err}");
 }
+
+#[test]
+fn an_interactive_trace_by_default_is_the_full_traces_window() {
+    let path = write_temp(
+        "interactive_windowed",
+        "let n: Int = read()\nvar s = 1\nfor r in 0..n:\n    for i in 0..70000:\n        s = (s * 7 + i) % 1009\n    let got: Int = ask(\"?\", s)\n    s = (s + got) % 1009\nprint(\"!\", s)\n\n\
+         @interactor fn judge(sol: Interactor):\n    sol.send(read<Int>())\n    var asked = 0\n    while true:\n        let (c, v): (Char, Int) = sol.recv()\n        if c == '!':\n            return\n        asked += 1\n        sol.send(v * 3 + asked)\n",
+    );
+    let path = path.to_str().unwrap();
+    let traced = |flags: &[&str]| {
+        let args = [&["run", "--trace", "--format", "json"], flags, &[path]].concat();
+        run_cpl(&args, "3\n")
+    };
+    let windowed = traced(&[]);
+    assert_eq!(windowed.0, 0, "{}", windowed.2);
+    assert_eq!(
+        windowed,
+        traced(&["--full"]),
+        "the same run and trace document"
+    );
+    assert!(windowed.1.contains("\"truncated\":true"));
+    let later = traced(&["--from", "150000"]);
+    assert_eq!(later, traced(&["--full", "--from", "150000"]));
+    let lines = |doc: &str| -> Vec<String> {
+        steps_json(doc)
+            .split("\"line\":")
+            .skip(1)
+            .map(|step| step.chars().take_while(char::is_ascii_digit).collect())
+            .collect()
+    };
+    let tail = traced(&["--last", "40"]);
+    let full_tail = traced(&["--full", "--last", "40"]);
+    assert_eq!(tail.2, full_tail.2, "the same judge verdict");
+    assert_eq!(lines(&tail.1), lines(&full_tail.1), "the same last steps");
+    assert_eq!(steps_json(&tail.1).matches("{\"id\":").count(), 40);
+}

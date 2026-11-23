@@ -244,13 +244,16 @@ pub fn run_built(
 }
 
 /// [`run`], recording the solution's side: its trace and what its
-/// `debug(...)`s showed. A failure on either side is the run's.
+/// `debug(...)`s showed. A failure on either side is the run's. Unless
+/// `full`, the run goes untraced and only the steps kept are traced again,
+/// from what the judge sent.
 pub fn run_traced(
     solution: &cpl_ir::Program,
     judge: &cpl_ir::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
     config: cpl_interp::trace::TraceConfig,
+    full: bool,
 ) -> cpl_interp::Observed {
     let wire = Arc::new(Wire::default());
     let end = |side| End {
@@ -276,7 +279,11 @@ pub fn run_traced(
             lines: 0,
         };
         let io = cpl_interp::Io::live(Box::new(|| solution_end.recv()));
-        let mut observed = cpl_interp::run_observed(solution, io, &mut says, Some(config));
+        let mut observed = if full {
+            cpl_interp::run_observed(solution, io, &mut says, Some(config))
+        } else {
+            cpl_interp::trace::interactive(solution, io, &mut says, config)
+        };
         solution_end.close();
         if let (None, Some(trap)) = (&observed.trap, judging.join().unwrap_or(None)) {
             observed.trap = Some(trap);
