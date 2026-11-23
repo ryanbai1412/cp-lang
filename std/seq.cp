@@ -53,36 +53,45 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
     if n == 0: return None
     Some(total / F64(n))
 
-/// The least element by `by`, the first on ties; `None` when empty. A method call (`s.min()`)
+/// Which of several equal best elements an extreme returns: `Ties.First` or `Ties.Last` in
+/// sequence order. `a.max(by: f, ties: Ties.Last)` is the rightmost maximum.
+pub enum Ties = First | Last
+
+/// The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
 /// is argmin. \(O(n)\).
 ///
 /// cost: \(O(n)\)
 /// empty: `None`
-/// ties: the first in sequence order
+/// ties: the first in sequence order; the last with `ties: Ties.Last`
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: p => p.0) == Some((1, 'a'))`
-pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+/// example: `[(1, 'a'), (1, 'b')].min(by: p => p.0, ties: Ties.Last) == Some((1, 'b'))`
+pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+    let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
         if let b = best:
-            if by(x) < by(b): best = Some(x)
+            if by(x) < by(b) or (last and by(x) == by(b)): best = Some(x)
         else: best = Some(x)
     best
 
-/// The greatest element by `by`, the first on ties; `None` when empty.
+/// The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None`
+/// when empty.
 ///
 /// cost: \(O(n)\)
 /// empty: `None`
-/// ties: the first in sequence order
+/// ties: the first in sequence order; the last with `ties: Ties.Last`
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: p => p.0) == Some((2, 'a'))`
-pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
+/// example: `[(2, 'a'), (2, 'b')].max(by: p => p.0, ties: Ties.Last) == Some((2, 'b'))`
+pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+    let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
         if let b = best:
-            if by(x) > by(b): best = Some(x)
+            if by(x) > by(b) or (last and by(x) == by(b)): best = Some(x)
         else: best = Some(x)
     best
 
@@ -2915,15 +2924,17 @@ fn cyclic_pairs_close_the_ring():
 ///
 /// cost: \(O(n)\)
 /// empty: `None`
-/// ties: the first in key order
+/// ties: the first in key order; the last with `ties: Ties.Last`
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
-pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
+/// example: `[3, 9, 2, 9].argmax(ties: Ties.Last) == Some(3)`
+pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+    let last = ties == Ties.Last
     var best: ?D = None
     var high: ?K = None
     for (i, x) in self.items:
         let k = by(x)
-        if high == None or high! < k:
+        if high == None or high! < k or (last and high! == k):
             best = Some(i)
             high = Some(k)
     best
@@ -2932,15 +2943,17 @@ pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
 ///
 /// cost: \(O(n)\)
 /// empty: `None`
-/// ties: the first in key order
+/// ties: the first in key order; the last with `ties: Ties.Last`
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
-pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
+/// example: `[3, 1, 1].argmin(ties: Ties.Last) == Some(2)`
+pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+    let last = ties == Ties.Last
     var best: ?D = None
     var low: ?K = None
     for (i, x) in self.items:
         let k = by(x)
-        if low == None or k < low!:
+        if low == None or k < low! or (last and k == low!):
             best = Some(i)
             low = Some(k)
     best

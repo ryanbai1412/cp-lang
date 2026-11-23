@@ -96,9 +96,9 @@ Evidence: program `spec/conformance/std-seq/seq-u04-extreme-value.cp`.
 
 ### seq/U3: position of the extreme, with a tie rule
 Need: argmax of a score, where the problem says "the leftmost" or "the rightmost".
-Design: `a.keys.max(by: i => a[i], ties: first | last) -> ?I`: argmax is a max over keys; `argmax`/`argmin` stay as its short form.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u03-extreme-position.cp`; `ties:` does not exist on `max`/`min`/`argmax` (E0310).
+Design: `a.argmax(by:, ties: Ties.Last) -> ?I`; `max` and `min` take the same `ties:`. Whether argmax is spelled `a.keys.max(by: i => a[i])` is the index-model proposal.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u03-extreme-position.cp`; widest ties are seq/U69.
 
 ### seq/U32: min and max in one pass
 Need: the spread `max - min` of a list.
@@ -161,7 +161,7 @@ Evidence: program `spec/conformance/std-seq/seq-u63-two-folds-one-pass.cp`.
 ### seq/U7: range folds from one prefix table
 Need: sums of `a[l..r]` in \(O(1)\) after \(O(n)\).
 Design: `a.scan(+)` then `.fold(l..r)`, `.prefix(c)`. A table from another op answers prefix reads, and a range read is an error; today it traps, the goal is a compile error.
-Milestone: M1-critical. Status: partial
+Milestone: M1-critical. Status: partial (a trap until the type error exists)
 Evidence: program `spec/conformance/std-seq/seq-u07-range-fold-table.cp`; trap case `spec/conformance/std-prefix/scan-min-range-fold-traps.cp`; no reject case yet.
 
 ### seq/U8: prefix folds over a slice

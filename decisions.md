@@ -8395,3 +8395,9 @@ tag move fatal again.
 - **Call.** `scripts/check-usecases.py` reads every `handbook/product/**/*-usecases.md` in one format (`### <area>/U<n>: <title>`, then `Need:`, `Design:`, `Milestone: <m>. Status: <s>`, `Evidence:`). It runs in every tier of `scripts/check.sh` and fails on a repeated ID, a new ID that takes a number already used (at HEAD or in `scripts/usecases.json`), a missing field, an unknown status or milestone, or an Evidence path, named test or use case that doesn't exist. A `supported` or `partial` entry whose Evidence names no runnable file counts as `gap`. `plan/STATUS.md` shows per area the two M1 numbers of handbook/rfcs/0002-product-surfaces.md#keeping-it-true: baseline, the M1-critical entries open when the catalogue was first written, which only goes down, and readiness, every open M1-critical entry. The std sequences catalogue moved to the plain field format the other two use.
 - **Why.** A status with nothing that runs drifts from the behaviour: a stress use case was marked supported while broken.
 - **Reverse.** Drop the step from `scripts/check.sh` and the section from `scripts/status.py`.
+
+## 431. Extremes take one `ties:` option (stdlib, 2026-11-23)
+
+- **Call.** `max`, `min`, `argmax` and `argmin` take `ties: Ties = Ties.First`; `Ties.Last` returns the last of equal best elements. `Ties` is an enum in `std/seq.cp`, in the prelude next to `Anchor`.
+- **Why.** "the leftmost/rightmost maximum" is common in statements, and the corpus hand-wrote it with `>=` loops. One option shared by every extreme replaces `_last` variants. A widest-tie rule is a segment fold, not a tie rule (`seq/U69`). Use case `seq/U3` in `handbook/product/std/sequences-usecases.md`.
+- **Reverse.** Drop the parameter and the enum from `std/seq.cp` and `std/prelude.cp`.

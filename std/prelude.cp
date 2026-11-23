@@ -137,6 +137,7 @@ use std.seq.{
     select,
     adjacent,
     Anchor,
+    Ties,
     pairs,
     partition,
     partition_point,
