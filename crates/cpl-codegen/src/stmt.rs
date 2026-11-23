@@ -365,7 +365,7 @@ impl<'p> Emitter<'p> {
         let returns = cpl_ir::pushed::returns(body);
         let call = self.expr(seq).text;
         let name = fn_name(&self.program.fns[*callee].name);
-        let Some(call) = call
+        let Some(call) = (call.strip_prefix("::prog::").unwrap_or(&call))
             .strip_prefix(&format!("{name}("))
             .and_then(|rest| rest.strip_suffix(')'))
         else {
