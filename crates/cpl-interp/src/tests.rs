@@ -1506,3 +1506,25 @@ fn vm_swaps_optional_elements_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_swap_opt_elements.out")
     );
 }
+
+/// A traced `swap` of two cells of a packed grid takes and stores each
+/// cell on the VM, reporting the taken cell before the store.
+#[test]
+fn traced_vm_swaps_grid_cells_itself() {
+    let source = include_str!("../../cpl-cli/tests/programs/vm_traced_swap_grid.cp");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true);
+    let writes = (compiled.main.fallback_stmts.iter())
+        .filter(|s| matches!(s, cpl_ir::Stmt::Let(..) | cpl_ir::Stmt::Assign(..)))
+        .count();
+    assert_eq!(writes, 0, "a traced swap fell back");
+}

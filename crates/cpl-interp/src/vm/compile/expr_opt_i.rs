@@ -851,6 +851,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             },
                             span,
                         );
+                        self.note_take(place, span);
                         return (dst_val, dst_some);
                     }
                 }
@@ -858,6 +859,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     Some(path) => {
                         let dst = self.alloc_v();
                         self.emit(Op::TakePlaceV { dst, path }, span);
+                        self.note_take(place, span);
                         dst
                     }
                     None => self.emit_fallback_expr_v(expr),

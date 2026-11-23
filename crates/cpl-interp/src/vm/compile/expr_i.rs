@@ -998,6 +998,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         if let SlotLoc::I(src, _) = self.slot_loc(*slot) {
                             let dst = self.alloc_i();
                             self.emit(Op::MoveI { dst, src }, span);
+                            self.note_take(place, span);
                             return dst;
                         }
                     }
@@ -1010,6 +1011,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             },
                             span,
                         );
+                        self.note_take(place, span);
                         return dst;
                     }
                     _ => {}
@@ -1021,6 +1023,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     let dst_i = self.alloc_i();
                     self.emit(Op::UnboxI { dst_i, src_v }, span);
                     self.emit(Op::ClearV { reg: src_v }, span);
+                    self.note_take(place, span);
                     return dst_i;
                 }
                 self.emit_fallback_expr_i(expr)

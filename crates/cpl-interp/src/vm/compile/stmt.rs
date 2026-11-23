@@ -116,7 +116,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// A write to `place` the VM reports with raw values: a global, or a
     /// cell of one whose `Int` indices it evaluates again.
-    fn cell_point(&mut self, place: &'p Place) -> Option<TracePoint<'p>> {
+    pub(super) fn cell_point(&mut self, place: &'p Place) -> Option<TracePoint<'p>> {
         let mut indices: Vec<&'p [Expr]> = Vec::new();
         let mut at: &'p Place = place;
         loop {
@@ -163,6 +163,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
+            Stmt::Assign(place, AssignOp::Set, value)
+                if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_take(value) =>
+            {
+                self.compile_traced_take_assign(stmt, place);
+            }
             Stmt::Assign(place, _, value)
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
             {
@@ -348,7 +353,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     /// Whether `stmt` itself was left to the tree-walker, which reports it.
-    fn fell_back(&self, stmt: &Stmt) -> bool {
+    pub(super) fn fell_back(&self, stmt: &Stmt) -> bool {
         self.fallback_stmts
             .last()
             .is_some_and(|f| std::ptr::eq(*f, stmt))
@@ -427,7 +432,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// and the value.
     /// Whether `place` is this generator's yield list, which the tree-walker
     /// drives while a fed loop runs it.
-    fn yields_into(&self, place: &Place) -> bool {
+    pub(super) fn yields_into(&self, place: &Place) -> bool {
         let acc = self.cur_fn.and_then(|f| self.feeds.pushers.get(&f));
         acc.is_some_and(|&acc| cpl_ir::walk::root(place) == (false, acc))
     }
