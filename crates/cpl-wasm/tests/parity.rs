@@ -685,3 +685,27 @@ fn first_mismatch(a: &Value, b: &Value, at: String) -> Option<String> {
         }
     }
 }
+
+/// The browser's stress is the checked build `cpl stress` is: on the
+/// overflow witness of `spec/lints/int_overflow_at_bounds`, both fail the
+/// case as RE, as `cpl run` traps with R0202, instead of wrapping.
+#[test]
+fn stress_traps_an_overflow_as_cpl_stress_does() {
+    let dir = std::env::temp_dir().join(format!("cpl-wasm-overflow-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let source =
+        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\nprint(a * b)\n\n\
+                  @gen\nfn at_bounds():\n    print(9223372037)\n    print(1000000000)\n";
+    let path = dir.join("overflow.cp");
+    std::fs::write(&path, source).unwrap();
+    let name = path.to_str().unwrap();
+    let cli = cpl_cli::run(&[
+        "stress", name, "--cases", "1", "--seed", "1", "--format", "json",
+    ]);
+    assert_eq!(cli.code, 1, "{}", cli.stderr);
+    let cli_json = String::from_utf8(cli.stdout).unwrap();
+    let wasm_json = Playground::new().stress(name, source, 1, 1, 0);
+    for json in [&cli_json, &wasm_json] {
+        assert!(json.contains("\"verdict\":\"RE\""), "no RE in {json}");
+    }
+}
