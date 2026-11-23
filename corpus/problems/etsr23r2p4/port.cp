@@ -31,7 +31,7 @@ for _ in 0..tcs:
                 if lim < mxloc: mxloc = lim
 
         let key = (ci, prv, cm)
-        if key in memo: return memo[key]
+        if let v = memo.get(key): return v
 
         var best: ?Int = None
         for pos in ci..=mxloc:

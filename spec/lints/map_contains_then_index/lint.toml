@@ -1,0 +1,5 @@
+code = "L0594"
+level = "warn"
+group = "idiom"
+title = "Key tested, then indexed again"
+summary = "`if k in m:` then `m[k]`: `if let v = m.get(k):`"

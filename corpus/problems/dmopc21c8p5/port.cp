@@ -28,7 +28,7 @@ var cache = Map<Int, Int>()
 
 fn dp(x: Int) -> Int:
     if x <= base: return sm[Small(x)]!
-    if x in cache: return cache[x]
+    if let val = cache.get(x): return val
     let lo = x / 2 - k / 2 - 1
     var best: ?Int = None
     for i in lo..=(lo + k):

@@ -28,6 +28,7 @@ mod isqrt;
 mod letters;
 mod lists;
 mod literals;
+mod map_lookup;
 mod memo;
 mod mod_div;
 mod mod_reduce;
@@ -70,6 +71,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(answers::check(file));
     findings.extend(pops::check(file));
     findings.extend(while_pop::check(file));
+    findings.extend(map_lookup::check(file));
     findings.extend(test_count::check(file));
     findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));

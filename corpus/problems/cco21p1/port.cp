@@ -37,8 +37,8 @@ for qi in Query:
     let (lo, hi) = if x.to_idx < y.to_idx: (x, y) else: (y, x)
     let key = lo.to_idx * k + hi.to_idx
     var before_lo_hi = 0
-    if key in cache:
-        before_lo_hi = cache[key]
+    if let val = cache.get(key):
+        before_lo_hi = val
     else:
         before_lo_hi = count_before(occ[lo], occ[hi])
         cache[key] = before_lo_hi

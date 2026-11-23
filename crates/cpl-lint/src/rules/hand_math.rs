@@ -36,7 +36,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         let PatternKind::Name(m) = &pat.kind else {
             continue;
         };
-        if let Some((_, f)) = memos.iter().find(|(name, _)| name == m) {
+        if let Some((_, f, lookup)) = memos.iter().find(|(name, ..)| name == m) {
             v.base = base;
             v.warn(
                 &MEMO_BY_HAND,
@@ -46,6 +46,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     "put `@memo(map)` (or `@memo(array)` over bounded parameters) on `fn {f}` and drop `{m}`: the lookup and the store become one attribute"
                 ),
             );
+            if let Some(last) = v.out.last_mut() {
+                last.diag = last
+                    .diag
+                    .clone()
+                    .with_label(*lookup, "the lookup `@memo` replaces");
+            }
         }
     }
     v.out
@@ -56,8 +62,9 @@ struct HandMath<'a> {
     base: u32,
     /// Products already read whole, so their inner parts are skipped.
     products: Vec<Span>,
-    /// (map, fn) for each `if k in map: return map[k]` at the top of a fn.
-    memos: Vec<(String, String)>,
+    /// (map, fn, lookup) for each `if k in map: return map[k]` at the top of
+    /// a fn.
+    memos: Vec<(String, String, Span)>,
     out: Vec<Finding>,
 }
 
@@ -178,7 +185,9 @@ impl HandMath<'_> {
             };
             if let (Some(m), Some((t, _))) = (name(m), index1(r)) {
                 if m == t {
-                    self.memos.push((m.to_string(), decl.name.text.clone()));
+                    let lookup = s.span.shift(self.base);
+                    self.memos
+                        .push((m.to_string(), decl.name.text.clone(), lookup));
                 }
             }
         }

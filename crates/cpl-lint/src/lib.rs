@@ -482,24 +482,36 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
     }
     out.sort_by_key(|d| (d.span.start, d.span.end, d.code));
     out.dedup();
-    let wide: Vec<_> = out.iter().map(|d| (d.code, d.span)).collect();
+    let wide: Vec<_> = out
+        .iter()
+        .map(|d| {
+            (
+                d.code,
+                d.span,
+                d.labels.iter().map(|l| l.span).collect::<Vec<_>>(),
+            )
+        })
+        .collect();
     out.retain(|d| {
         !SUPERSEDED_BY.iter().any(|(inner, outer)| {
             inner.code == d.code
-                && wide.iter().any(|(code, span)| {
+                && wide.iter().any(|(code, span, evidence)| {
                     *code == outer.code
-                        && (span.contains(d.span) || d.labels.iter().any(|l| span.contains(l.span)))
+                        && (span.contains(d.span)
+                            || d.labels.iter().any(|l| span.contains(l.span))
+                            || evidence.iter().any(|e| e.contains(d.span)))
                 })
         })
     });
     out
 }
 
-/// A finding inside a wider one that rewrites the same code better, or whose
-/// labelled evidence is inside it: the wider one is shown alone (`s = s + x`
+/// A finding inside a wider one that rewrites the same code better, inside
+/// the wider one's labelled evidence, or whose own evidence is inside it: the wider one is shown alone (`s = s + x`
 /// in a loop that is one `sum`; `var found = -1` set by a search loop; the
 /// push loop that copies a slice only to sort it and write it back; code
-/// inside a hand-written algorithm the std call replaces whole).
+/// inside a hand-written algorithm the std call replaces whole; the cache
+/// lookup of a memo `@memo` removes).
 const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
     (&SEARCH_LOOP, &PALINDROME_BY_HAND),
     (&PEEK_THEN_POP, &MONOTONE_STACK_BY_HAND),
@@ -516,6 +528,7 @@ const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
     (&SHADOWS_TOP_LEVEL, &SLIDING_MIN_BY_HAND),
     (&LAST_VIA_LEN, &SLIDING_MIN_BY_HAND),
     (&LAST_VIA_LEN, &HAND_ROLLED_PREFIX_SUM),
+    (&MAP_CONTAINS_THEN_INDEX, &MEMO_BY_HAND),
 ];
 
 /// Lints that point to a std structure: a library module is where the
@@ -810,3 +823,6 @@ mod checker_tests;
 
 #[cfg(test)]
 mod fact_tests;
+
+#[cfg(test)]
+mod idiom_tests;

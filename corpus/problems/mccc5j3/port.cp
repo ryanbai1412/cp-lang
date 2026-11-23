@@ -19,8 +19,7 @@ fn first_ge(xs: List<Int>, target: Int) -> Int:
 var ans = 0
 for i in I:
     let need = m - b[i]
-    if need in pos:
-        let xs = pos[need]
+    if let xs = pos.get(need):
         if k == 0:
             ans += xs.len
         else:
