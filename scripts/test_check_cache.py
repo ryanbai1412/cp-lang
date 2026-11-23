@@ -154,33 +154,6 @@ class CheckCacheTest(unittest.TestCase):
             with open(os.path.join(tmp, ".git", "cpl-commit-slow.log"), encoding="utf-8") as f:
                 self.assertIn("slow step", f.read())
 
-    def test_pre_push_hook_rejects_a_main_tip_that_never_passed_the_gate(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        hook = os.path.join(root, ".githooks", "pre-push")
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            git = lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, env=env,
-                                            capture_output=True, text=True).stdout.strip()
-            git("init", "-q")
-            git("config", "user.email", "t@example.com")
-            git("config", "user.name", "t")
-            with open(os.path.join(tmp, "a.md"), "w", encoding="utf-8") as f:
-                f.write("ok\n")
-            git("add", "a.md")
-            git("commit", "-qm", "docs: a")
-            sha, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
-            line = f"refs/heads/x {sha} refs/heads/main {'0' * 40}\n"
-            run = lambda: subprocess.run([hook], cwd=tmp, input=line, capture_output=True,
-                                         text=True, env=env)
-            r = run()
-            self.assertNotEqual(r.returncode, 0)
-            self.assertIn("has not passed scripts/check.sh --fast or --land", r.stderr)
-            with open(os.path.join(tmp, ".git", "cpl-gate-passed"), "w", encoding="utf-8") as f:
-                f.write(tree + "\n")
-            r = run()
-            self.assertEqual(r.returncode, 0, r.stderr)
-
-
     def test_gate_env_pins_target_to_the_checkout(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env_sh = os.path.join(root, "scripts", "gate-env.sh")
@@ -196,365 +169,80 @@ class CheckCacheTest(unittest.TestCase):
                                    cwd=tmp, env=env, capture_output=True, text=True, check=True)
                 self.assertEqual(r.stdout.split("\n")[0], want)
 
-    def test_land_takes_the_lock_gates_pushes_and_releases(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
-            def git(*a, cwd=work):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
-            git("init", "-q", "-b", "main", work, cwd=tmp)
-            git("config", "user.email", "t@example.com")
-            git("config", "user.name", "t")
-            os.makedirs(os.path.join(work, "scripts"))
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write('#!/bin/sh\ngit rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
-            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
-                f.write("ok\n")
-            git("add", "a.md")
-            git("commit", "-qm", "docs: a")
-            git("push", "-q", remote, "HEAD:main")
-            with open(os.path.join(work, "a.md"), "a", encoding="utf-8") as f:
-                f.write("more\n")
-            git("commit", "-qam", "docs: more")
-            empty = git("hash-object", "-t", "tree", "-w", "/dev/null")
-            stale = git("commit-tree", empty, "-m", "land lock: other")
-            git("push", "-q", remote, f"{stale}:refs/locks/land")
-            dead = subprocess.run(
-                ["git", "commit-tree", empty, "-m", "land ticket: gone"], cwd=work, check=True,
-                capture_output=True, text=True,
-                env={**env, "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}).stdout.strip()
-            git("push", "-q", remote, f"{dead}:refs/locks/queue/0000000000000000000-1-gone")
-            orphan = git("commit-tree", empty, "-m", "solo: 1-1-left")
-            git("push", "-q", remote, f"{orphan}:refs/locks/solo/1-1-left")
-            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
-            land = os.path.join(root, "scripts", "land.sh")
-            r = subprocess.run([land, remote], cwd=work, capture_output=True, text=True,
-                               env={**env, "CPL_LAND_GATE": gate, "CPL_LAND_TTL": "0"})
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("taking over stale lock from land lock: other", r.stderr)
-            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
-            self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
-            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
+    def land_repos(self, tmp, env):
+        """A bare remote with one commit on main and a clone of it."""
+        remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
+        def git(*a, cwd=work):
+            return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                  capture_output=True, text=True).stdout.strip()
+        git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
+        git("init", "-q", "-b", "main", work, cwd=tmp)
+        with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
+            f.write("a\n")
+        git("add", "a.md")
+        git("commit", "-qm", "docs: a")
+        git("push", "-q", remote, "HEAD:main")
+        git("remote", "add", "origin", remote)
+        return remote, work, git
 
-    def test_land_pushes_again_when_the_remote_fails_the_push(self):
-        # GitHub sometimes fails a push on its side; with main and the lock
-        # unchanged that costs a push retry, not another gate.
+    def commit(self, git, work, name, body="docs: x\n\nDomain: infra"):
+        with open(os.path.join(work, name), "w", encoding="utf-8") as f:
+            f.write(name + "\n")
+        git("add", name)
+        git("commit", "-qm", body)
+
+    def test_land_rebases_onto_a_moved_main_pushes_and_logs_its_duration(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
         with tempfile.TemporaryDirectory() as tmp:
-            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
-            def git(*a, cwd=work):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
-            git("init", "-q", "-b", "main", work, cwd=tmp)
-            git("config", "user.email", "t@example.com")
-            git("config", "user.name", "t")
-            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
-                f.write("ok\n")
-            git("add", "a.md")
-            git("commit", "-qm", "docs: a")
-            git("push", "-q", remote, "HEAD:main")
-            git("commit", "-q", "--allow-empty", "-m", "docs: more")
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write('#!/bin/sh\necho gated >> "$GATES"\n'
-                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
+            remote, work, git = self.land_repos(tmp, env)
+            other = os.path.join(tmp, "other")
+            git("clone", "-q", remote, other, cwd=tmp)
+            self.commit(lambda *a: git(*a, cwd=other), other, "b.md")
+            git("push", "-q", "origin", "HEAD:main", cwd=other)
+            self.commit(git, work, "c.md")
+            t0 = time.monotonic()
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertLess(time.monotonic() - t0, 10)
+            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
+            self.assertEqual(git("log", "--format=%s", "main", cwd=remote).count("docs: x"), 2)
+            with open(os.path.join(work, ".git", "cpl-land.log"), encoding="utf-8") as f:
+                row = json.loads(f.readline())
+            self.assertEqual((row["domain"], row["tries"]), ("infra", 1))
+            self.assertIsInstance(row["seconds"], int)
+
+    def test_land_retries_when_the_push_is_rejected(self):
+        # A pre-receive hook rejects the first push, as when another lane
+        # lands between our rebase and our push.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
             hook = os.path.join(remote, "hooks", "pre-receive")
             with open(hook, "w", encoding="utf-8") as f:
-                f.write('#!/bin/sh\nif grep -q refs/heads/main && [ ! -e "$FAILED" ]; then\n'
-                        '  touch "$FAILED"; echo "error: unable to write file" >&2; exit 1\nfi\n')
+                f.write(f'#!/bin/sh\n[ -e "{tmp}/once" ] && exit 0\ntouch "{tmp}/once"; exit 1\n')
             os.chmod(hook, 0o755)
-            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
-            gates = os.path.join(tmp, "gates")
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
-                               capture_output=True, text=True,
-                               env={**env, "CPL_LAND_GATE": gate, "GATES": gates,
-                                    "FAILED": os.path.join(tmp, "failed")})
+            self.commit(git, work, "c.md")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("the push failed on the remote's side", r.stderr)
+            self.assertIn("push rejected (try 1 of 5)", r.stderr)
             self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
-            with open(gates, encoding="utf-8") as f:
-                self.assertEqual(f.read().count("gated"), 1)
 
-    def _train(self, gate_body, bad=None, names=("first", "rider")):
+    def test_land_refuses_a_commit_without_a_domain_trailer(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
         with tempfile.TemporaryDirectory() as tmp:
-            remote = os.path.join(tmp, "remote.git")
-            def git(*a, cwd=tmp):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote)
-            seed = os.path.join(tmp, "seed")
-            git("init", "-q", "-b", "main", seed)
-            git("-c", "user.name=t", "-c", "user.email=t@example.com",
-                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
-            git("push", "-q", remote, "HEAD:main", cwd=seed)
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write("#!/bin/sh\n" + gate_body +
-                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
-            lanes = {}
-            for lane in names:
-                path = "bad.md" if lane == bad else {"first": "one.md", "rider": "two.md"}.get(lane, lane + ".md")
-                work = os.path.join(tmp, lane)
-                git("clone", "-q", remote, work)
-                git("config", "user.name", lane, cwd=work)
-                git("config", "user.email", "t@example.com", cwd=work)
-                with open(os.path.join(work, path), "w", encoding="utf-8") as f:
-                    f.write(lane + "\n")
-                git("add", path, cwd=work)
-                git("commit", "-qm", f"docs: {lane}", cwd=work)
-                git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
-                lanes[lane] = work
-            empty = git("hash-object", "-t", "tree", "-w", "/dev/null", cwd=seed)
-            busy = git("commit-tree", empty, "-m", "land lock: other", cwd=seed)
-            git("push", "-q", remote, f"{busy}:refs/locks/land", cwd=seed)
-            land = os.path.join(root, "scripts", "land.sh")
-            procs = {}
-            for lane in names:
-                procs[lane] = subprocess.Popen(
-                    [land, remote], cwd=lanes[lane], stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, text=True,
-                    env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": lane, "CPL_LAND_POLL": "1"})
-                deadline = time.time() + 30
-                while f"-{lane}" not in git("ls-remote", remote, "refs/locks/queue/*"):
-                    self.assertLess(time.time(), deadline, f"{lane} never queued")
-                    time.sleep(0.2)
-            git("push", "-q", remote, ":refs/locks/land", cwd=seed)
-            out = {lane: p.communicate(timeout=120) + (p.returncode,) for lane, p in procs.items()}
-            files = git("ls-tree", "--name-only", "main", cwd=remote).split()
-            self.notes = git("log", "--notes=land", "--format=%N", "main", cwd=remote)
-            return out, files, git("ls-remote", remote, "refs/locks/*")
-
-    def test_land_carries_queued_lanes_in_one_gated_train(self):
-        out, files, locks = self._train("")
-        self.assertEqual(out["first"][2], 0, out["first"][1])
-        self.assertEqual(out["rider"][2], 0, out["rider"][1])
-        self.assertIn("gating a train of 1 rider(s)", out["first"][1])
-        self.assertIn("carried to main in a train", out["rider"][0])
-        self.assertEqual(sorted(files), ["one.md", "two.md"])
-        self.assertEqual(locks, "")
-        logged = [json.loads(l) for l in self.notes.splitlines() if l.startswith("{")]
-        self.assertEqual(sorted(e["lane"] for e in logged), ["first", "rider"])
-        for e in logged:
-            self.assertEqual((e["riders"], e["splits"], e["holder"]), (1, 0, "first"))
-            self.assertGreaterEqual(e["wait_s"], 0)
-
-    def test_land_drops_a_failing_train_and_lands_alone(self):
-        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="rider")
-        self.assertEqual(out["first"][2], 0, out["first"][1])
-        self.assertIn("the train failed the gate", out["first"][1])
-        self.assertNotEqual(out["rider"][2], 0)
-        self.assertEqual(files, ["one.md"])
-        self.assertIn("refs/locks/solo/", locks)
-
-    def test_land_keeps_riders_off_solo_when_the_holder_broke_the_train(self):
-        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="first")
-        self.assertNotEqual(out["first"][2], 0)
-        self.assertIn("the train failed the gate", out["first"][1])
-        self.assertEqual(out["rider"][2], 0, out["rider"][1])
-        self.assertEqual(files, ["two.md"])
-        self.assertNotIn("refs/locks/solo/", locks)
-
-    def test_land_splits_a_failing_train_and_lands_the_passing_prefix(self):
-        lanes = ("first", "rider", "breaker", "after")
-        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="breaker", names=lanes)
-        self.assertEqual(out["first"][2], 0, out["first"][1])
-        self.assertIn("breaker", out["first"][1].split("broke the train")[0].splitlines()[-1])
-        self.assertIn("pushed", out["first"][0])
-        # The lane behind the breaker lands in the same cycle, not on a turn of its own.
-        self.assertIn("with 2 rider(s)", out["first"][0])
-        self.assertIn("gating 2 rider(s) without", out["first"][1])
-        self.assertNotEqual(out["breaker"][2], 0)
-        self.assertEqual(out["after"][2], 0, out["after"][1])
-        self.assertIn("carried to main in a train", out["after"][0])
-        self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
-        self.assertNotIn("-after", locks)
-
-    def test_land_drops_the_rider_the_failure_points_at_without_bisecting(self):
-        lanes = ("first", "rider", "breaker", "after")
-        gate = 'if test -e bad.md; then echo "  --> bad.md:1:1"; exit 1; fi\n'
-        out, files, locks = self._train(gate, bad="breaker", names=lanes)
-        self.assertEqual(out["first"][2], 0, out["first"][1])
-        self.assertIn("the failure points at", out["first"][1])
-        self.assertNotIn("gating the holder with", out["first"][1])
-        self.assertIn("with 2 rider(s)", out["first"][0])
-        self.assertNotEqual(out["breaker"][2], 0)
-        self.assertEqual(out["after"][2], 0, out["after"][1])
-        self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
-
-    def test_land_lock_heartbeat_keeps_live_gate_and_expires_after_max_hold(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote = os.path.join(tmp, "remote.git")
-            def git(*a, cwd=tmp):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote)
-            seed = os.path.join(tmp, "seed")
-            git("init", "-q", "-b", "main", seed)
-            git("-c", "user.name=t", "-c", "user.email=t@example.com",
-                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
-            git("push", "-q", remote, "HEAD:main", cwd=seed)
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write("#!/bin/sh\nsleep 4\n"
-                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
-            work = os.path.join(tmp, "work")
-            git("clone", "-q", remote, work)
-            git("config", "user.name", "holder", cwd=work)
-            git("config", "user.email", "t@example.com", cwd=work)
-            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
-                f.write("a\n")
-            git("add", "a.md", cwd=work)
-            git("commit", "-qm", "docs: a", cwd=work)
-            git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
-            land = os.path.join(root, "scripts", "land.sh")
-            # Gate sleeps 4s with TTL=2s and LOCK_BEAT=1s: heartbeat must refresh
-            # the lock past TTL, then stop once MAX_HOLD=2s is reached.
-            r = subprocess.run(
-                [land, remote], cwd=work, capture_output=True, text=True,
-                env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": "holder",
-                     "CPL_LAND_TTL": "2", "CPL_LAND_LOCK_BEAT": "1",
-                     "CPL_LAND_MAX_HOLD": "2", "CPL_LAND_TRAIN": "0"})
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("lock hold limit (2s) reached", r.stderr)
-            self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
-
-    def test_land_never_pushes_main_after_losing_the_lock(self):
-        # The gate stalls long enough to look dead and another lander takes
-        # the lock: the stale holder's push must fail and it must retry.
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote = os.path.join(tmp, "remote.git")
-            def git(*a, cwd=tmp):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote)
-            work = os.path.join(tmp, "work")
-            git("init", "-q", "-b", "main", work)
-            git("config", "user.name", "holder", cwd=work)
-            git("config", "user.email", "t@example.com", cwd=work)
-            git("commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=work)
-            git("push", "-q", remote, "HEAD:main", cwd=work)
-            git("commit", "-q", "--allow-empty", "-m", "docs: a", cwd=work)
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write("#!/bin/sh\n"
-                        f'if [ ! -e "{tmp}/stolen" ]; then touch "{tmp}/stolen"\n'
-                        f'  t=$(git commit-tree $(git hash-object -t tree /dev/null) -m "land lock: thief")\n'
-                        f'  git push -q --force "{remote}" "$t:refs/locks/land"; fi\n'
-                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
-            git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
-            r = subprocess.run(
-                [os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
-                capture_output=True, text=True, timeout=120,
-                env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": "holder", "CPL_LAND_TTL": "2",
-                     "CPL_LAND_POLL": "1", "CPL_LAND_LOCK_BEAT": "0", "CPL_LAND_TRAIN": "0"})
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("lost the land lock during the gate", r.stderr)
-            self.assertIn("waiting for land lock: thief", r.stderr)
-            self.assertIn("taking over stale lock from land lock: thief", r.stderr)
-            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD", cwd=work))
-            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
-
-    def test_land_queues_fairly_in_arrival_order(self):
-        # With CPL_LAND_TRAIN=0, two queued lanes must land in strict FIFO order.
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote = os.path.join(tmp, "remote.git")
-            def git(*a, cwd=tmp):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote)
-            seed = os.path.join(tmp, "seed")
-            git("init", "-q", "-b", "main", seed)
-            git("-c", "user.name=t", "-c", "user.email=t@example.com",
-                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
-            git("push", "-q", remote, "HEAD:main", cwd=seed)
-            order_log = os.path.join(tmp, "order.log")
-            gate = os.path.join(tmp, "gate.sh")
-            with open(gate, "w", encoding="utf-8") as f:
-                f.write("#!/bin/sh\n"
-                        f'git log -1 --format=%s >> "{order_log}"\n'
-                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
-            os.chmod(gate, 0o755)
-            lanes = {}
-            for lane in ("first", "second"):
-                work = os.path.join(tmp, lane)
-                git("clone", "-q", remote, work)
-                git("config", "user.name", lane, cwd=work)
-                git("config", "user.email", "t@example.com", cwd=work)
-                with open(os.path.join(work, f"{lane}.md"), "w", encoding="utf-8") as f:
-                    f.write(lane + "\n")
-                git("add", f"{lane}.md", cwd=work)
-                git("commit", "-qm", f"docs: {lane}", cwd=work)
-                git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
-                lanes[lane] = work
-            empty = git("hash-object", "-t", "tree", "-w", "/dev/null", cwd=seed)
-            busy = git("commit-tree", empty, "-m", "land lock: other", cwd=seed)
-            git("push", "-q", remote, f"{busy}:refs/locks/land", cwd=seed)
-            land = os.path.join(root, "scripts", "land.sh")
-            procs = {}
-            for lane, poll in (("first", "2"), ("second", "1")):
-                procs[lane] = subprocess.Popen(
-                    [land, remote], cwd=lanes[lane], stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, text=True,
-                    env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": lane,
-                         "CPL_LAND_POLL": poll, "CPL_LAND_TRAIN": "0"})
-                deadline = time.time() + 30
-                while f"-{lane}" not in git("ls-remote", remote, "refs/locks/queue/*"):
-                    self.assertLess(time.time(), deadline, f"{lane} never queued")
-                    time.sleep(0.2)
-            git("push", "-q", remote, ":refs/locks/land", cwd=seed)
-            for lane, p in procs.items():
-                out, err = p.communicate(timeout=60)
-                self.assertEqual(p.returncode, 0, f"{lane}: {err}")
-            with open(order_log, encoding="utf-8") as f:
-                order = [line.strip() for line in f if line.strip()]
-            self.assertEqual(order, ["docs: first", "docs: second"])
-
-    def test_land_stops_with_the_hook_error_when_pre_push_rejects_head(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
-            def git(*a, cwd=work):
-                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
-            git("init", "-q", "-b", "main", work, cwd=tmp)
-            git("config", "user.email", "t@example.com")
-            git("config", "user.name", "t")
-            git("commit", "-q", "--allow-empty", "-m", "docs: seed")
-            git("push", "-q", remote, "HEAD:main")
-            with open(os.path.join(work, "q.md"), "w", encoding="utf-8") as f:
-                f.write("mine\n" + "|" * 7 + " parent of abc\ntheirs\n")
-            git("add", "q.md")
-            git("commit", "-qm", "plan: q")
-            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
-                               capture_output=True, text=True, timeout=60,
-                               env={**env, "CPL_LAND_GATE": "true", "CPL_LAND_POLL": "1"})
+            remote, work, git = self.land_repos(tmp, env)
+            self.commit(git, work, "c.md")
+            self.commit(git, work, "d.md", body="docs: no trailer")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("pre-push: merge conflict markers", r.stderr)
-            self.assertIn("pre-push hook rejects HEAD", r.stderr)
-            self.assertNotIn("heartbeat failed", r.stderr)
-            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
+            self.assertIn("docs: no trailer has no Domain: trailer", r.stderr)
+            self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
     def test_append_only_shared_files_rebase_without_conflicts(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -594,29 +282,6 @@ class CheckCacheTest(unittest.TestCase):
                 self.assertIn("### a: first?", body)
                 self.assertIn("### b: second?", body)
                 self.assertNotIn("<" * 7, body)
-
-    def test_land_rejects_unformatted_rust_before_queuing(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            work = os.path.join(tmp, "work")
-            os.makedirs(os.path.join(work, "src"))
-            def git(*a):
-                return subprocess.run(["git", *a], cwd=work, check=True, env=env,
-                                      capture_output=True, text=True).stdout.strip()
-            git("init", "-q", "-b", "main")
-            git("config", "user.name", "t")
-            git("config", "user.email", "t@example.com")
-            with open(os.path.join(work, "Cargo.toml"), "w", encoding="utf-8") as f:
-                f.write('[package]\nname = "t"\nversion = "0.1.0"\nedition = "2021"\n')
-            with open(os.path.join(work, "src", "lib.rs"), "w", encoding="utf-8") as f:
-                f.write("pub fn   f(x:i32)->i32{x+1}\n")
-            git("add", ".")
-            git("commit", "-qm", "fmt: bad")
-            land = os.path.join(root, "scripts", "land.sh")
-            r = subprocess.run([land, "origin"], cwd=work, capture_output=True, text=True, env=env)
-            self.assertNotEqual(r.returncode, 0)
-            self.assertIn("Rust files are not formatted", r.stderr)
 
 if __name__ == "__main__":
     unittest.main()

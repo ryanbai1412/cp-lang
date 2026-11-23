@@ -1,36 +1,48 @@
 #!/usr/bin/env python3
-"""Queue and train numbers from the land log (git notes under refs/notes/land).
+"""Landing numbers: how long scripts/land.sh took, and who landed what.
 
-    land_stats.py [--hours H] [--json] [--metric NAME]
+    land_stats.py [--hours H] [--json] [--metric NAME] [--log PATH]
 
-scripts/land.sh appends one JSON line per landed lane to the note on the
-commit it landed: lane, landed (unix s), wait_s (queued to pushed, minus the
-gate), gate_s (the train's gate wall time), riders, splits, holder. Only the
-last H hours count (default 24). --metric prints one value, for metrics.toml.
+Durations come from the land log, one JSON line per landing that
+scripts/land.sh appends to .git/cpl-land.log (domain, landed, seconds,
+tries). Landings per domain count the `Domain:` trailers on main (default
+origin/main) over the same window. Only the last H hours count (default 24).
+--metric prints one value, for metrics.toml.
 """
 
 import json
+import os
 import subprocess
 import sys
 import time
 
 
-def notes(ref="refs/notes/land"):
-    out = subprocess.run(["git", "notes", "--ref", ref, "list"],
-                         capture_output=True, text=True).stdout.split()
-    blobs = out[0::2]
-    if not blobs:
-        return []
-    text = subprocess.run(["git", "cat-file", "--batch"], input="\n".join(blobs) + "\n",
-                          capture_output=True, text=True, check=True).stdout
+def log_rows(path=None):
+    if path is None:
+        git_dir = subprocess.run(["git", "rev-parse", "--git-common-dir"],
+                                 capture_output=True, text=True, check=True).stdout.strip()
+        path = os.path.join(git_dir, "cpl-land.log")
     rows = []
-    for line in text.splitlines():
-        line = line.strip()
-        if line.startswith("{"):
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+    except FileNotFoundError:
+        pass
+    return rows
+
+
+def trailer_rows(hours, ref="origin/main"):
+    out = subprocess.run(["git", "log", f"--since={int(hours * 3600)} seconds ago", "--format=%ct %(trailers:key=Domain,valueonly,separator=)", ref],
+                         capture_output=True, text=True).stdout
+    rows = []
+    for line in out.splitlines():
+        ts, _, domain = line.partition(" ")
+        if ts.isdigit():
+            rows.append({"domain": domain.strip() or "none", "landed": int(ts)})
     return rows
 
 
@@ -41,32 +53,28 @@ def pct(values, p):
     return s[min(len(s) - 1, int(p / 100 * len(s)))]
 
 
-def stats(rows, hours, now):
-    rows = [r for r in rows if r.get("landed", 0) >= now - hours * 3600]
-    waits = [r["wait_s"] for r in rows if isinstance(r.get("wait_s"), (int, float))]
-    trains = {(r["landed"], r.get("holder")): r for r in rows}.values()
-    gates = [t["gate_s"] for t in trains if isinstance(t.get("gate_s"), (int, float))]
-    per_lane = {}
-    for r in rows:
-        per_lane[r.get("lane", "?")] = per_lane.get(r.get("lane", "?"), 0) + 1
+def stats(lands, commits, hours, now):
+    def recent(rows):
+        return [r for r in rows if r.get("landed", 0) >= now - hours * 3600]
+    secs = [r["seconds"] for r in recent(lands) if isinstance(r.get("seconds"), (int, float))]
+    per = {}
+    for r in recent(commits):
+        per[r["domain"]] = per.get(r["domain"], 0) + 1
     return {
         "hours": hours,
-        "landings": len(rows),
-        "trains": len(gates),
-        "queue_wait_p50_s": pct(waits, 50),
-        "queue_wait_max_s": max(waits) if waits else None,
-        "train_gate_p50_s": pct(gates, 50),
-        "train_gate_max_s": max(gates) if gates else None,
-        "landings_per_hour": round(len(rows) / hours, 2),
-        "landings_per_hour_by_lane": {k: round(v / hours, 2) for k, v in sorted(per_lane.items())},
+        "landings_logged": len(secs),
+        "land_p50_s": pct(secs, 50),
+        "land_p95_s": pct(secs, 95),
+        "land_max_s": max(secs) if secs else None,
+        "commits_per_hour": round(sum(per.values()) / hours, 2),
+        "commits_per_hour_by_domain": {k: round(v / hours, 2) for k, v in sorted(per.items())},
     }
 
 
 def main(argv):
-    hours = 24.0
-    if "--hours" in argv:
-        hours = float(argv[argv.index("--hours") + 1])
-    s = stats(notes(), hours, time.time())
+    hours = float(argv[argv.index("--hours") + 1]) if "--hours" in argv else 24.0
+    log = argv[argv.index("--log") + 1] if "--log" in argv else None
+    s = stats(log_rows(log), trailer_rows(hours), hours, time.time())
     if "--metric" in argv:
         v = s[argv[argv.index("--metric") + 1]]
         print(json.dumps(v) if isinstance(v, dict) else v)

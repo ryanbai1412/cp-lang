@@ -212,8 +212,8 @@ These decide design questions.
   retros), `ci`, `deps`, `revert`. An optional scope in parentheses
   narrows it.
 - One logical change per commit, each green on its own; a port and its
-  friction report go together. Land on `main` with `scripts/land.sh`,
-  which gates the exact rebased tip; never rewrite pushed history without
+  friction report go together. Land on `main` with `scripts/land.sh`
+  (rebase and push; CI gates every tip and infra keeps main green); never rewrite pushed history without
   Ryan's say-so.
 - `scripts/install-hooks.sh` turns on the hooks: `pre-commit` runs the fast
   check (including the public-history scan: only hosts in

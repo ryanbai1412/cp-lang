@@ -4,7 +4,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-# The land tier: what scripts/land.sh and CI run on every tip.
+# The fast gate: what CI runs on every main tip.
 check:
     scripts/check.sh --fast
 

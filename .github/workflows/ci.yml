@@ -11,8 +11,8 @@ permissions:
 
 # On main a started run always finishes, and at most one more waits: a newer
 # push replaces the waiting run, so CI checks the newest tip next instead of
-# queueing every commit (revert-on-red bisects the range since the last green
-# tip). A newer push to a pull request cancels the older run.
+# queueing every commit; the infra sheriff bisects a red run's range. A newer
+# push to a pull request cancels the older run.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

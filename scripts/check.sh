@@ -5,9 +5,8 @@
 #   scripts/check.sh           same as --fast
 #   scripts/check.sh --commit  what the pre-commit hook runs: the checks the
 #                              staged paths can reach (scripts/affected.py)
-#   scripts/check.sh --land    what scripts/land.sh runs on a train: --fast,
-#                              but only the tests the train's paths reach
-#                              (since $CHECK_BASE, default origin/main)
+#   scripts/check.sh --land    --fast, but only the tests the paths changed
+#                              since $CHECK_BASE (default origin/main) reach
 #   scripts/check.sh --fast    what CI runs on every tip
 #   scripts/check.sh --full    --fast, then the slow suites (15 minutes or more)
 #
@@ -308,7 +307,7 @@ if [ "$mode" = commit ]; then
     step_end
     printf '\nstep times (s):\n'
     printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
-    printf '\ncheck: commit-tier checks passed in %ss; scripts/land.sh runs --land on the rebased tip and CI runs --fast\n' \
+    printf '\ncheck: commit-tier checks passed in %ss; CI runs --fast on every main tip\n' \
         "$(( $(date +%s) - gate_t0 ))"
     exit 0
 fi
@@ -553,13 +552,6 @@ if [ "$mode" = fast ] || [ "$mode" = land ]; then
     mkdir -p "$(dirname "$gate_time_file")"
     printf '{"mode":"%s","elapsed_s":%d,"budget_s":180}\n' "$mode" "$gate_elapsed" >"$gate_time_file"
     printf '\ncheck: all %s checks passed in %ss (budget <= 180s)\n' "$mode" "$gate_elapsed"
-    # .githooks/pre-push lands only trees recorded here, so a rebased tip must
-    # pass again before it reaches main. Unstaged edits mean the checked tree
-    # is not the index tree, so nothing is recorded.
-    if [ -z "$gate_part" ] && git diff --quiet 2>/dev/null; then
-        stamp="$(git rev-parse --git-common-dir)/cpl-gate-passed"
-        { tail -n 199 "$stamp" 2>/dev/null || true; git write-tree; } >"$stamp.tmp" && mv "$stamp.tmp" "$stamp"
-    fi
     # Wall time depends on the machine and on how warm the build is, so an
     # overrun warns and stays recorded in the scoreboard instead of failing.
     [ "$gate_elapsed" -le 180 ] ||

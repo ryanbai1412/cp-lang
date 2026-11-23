@@ -121,18 +121,12 @@ added here.
   the core lanes as implementation tickets with a regression test and a
   `cpl fix` codemod. One spelling per idea: a new spelling replaces the old
   one in the same change, never sits beside it as "provisional".
-- **Pre-push gate.** Every lane pushes straight to `main`, so land with
-  `scripts/land.sh [remote]`: it fetches, rebases, runs
-  `scripts/check.sh --fast` on the exact rebased tip and pushes. Landers take
-  turns through the `refs/locks/land` ref on the remote (a lock older than 20
-  minutes is taken over; waiters queue in arrival order), so `main` holds still during the gate and nobody
-  re-gates against a moving tip; set `CPL_LANE` to name yourself in it. The
-  holder carries up to 8 queued lanes in a train gated once; if the train
-  fails, it binary-searches the longest passing prefix and lands it, and only
-  the lane that broke it is marked to land alone. Never
-  push to `main` any other way. The pre-push hook refuses a `main` tip whose tree has not
-  passed the gate, so two green commits can no longer combine into a red tip. A broken
-  tip on `main` is fixed by whoever broke it, before any other work.
+- **Landing.** Every lane pushes straight to `main` with `scripts/land.sh`:
+  it rebases onto `main`, pushes, and rebases and pushes again if another
+  lane got there first; it runs no gate and takes seconds. Every commit needs
+  a `Domain: <d>` trailer. The pre-commit hook runs the commit tier (at most
+  25 s), CI runs the full gate on every `main` tip, and infra is the sheriff:
+  a red tip is reverted or fixed, and the owner told in its worklog.
 - **Lane review every round.** The coordinator reads every lane's latest
   report each round, not only settled ones, gives each finished lane its next
   piece from its domain's README and worklog, and never leaves a lane idle.

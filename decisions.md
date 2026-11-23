@@ -5925,3 +5925,18 @@ flag a contestant guessed worked on half the commands. `exec` in
 (`commands::json_spelling`) before dispatch, so both work everywhere and no
 command lost a spelling (tools-1 still decides any removal). Reverse: drop
 the rewrite.
+
+## 234. Landing is rebase and push; CI and the sheriff keep main green (2026-11-22)
+
+`scripts/land.sh` was a 550-line queue: a lock ref, FIFO tickets, trains,
+bisecting splits, done/solo markers, a gate on every rebased tip and a
+pre-push stamp, and a lane could wait 15 minutes on it. It is now 33 lines:
+refuse a commit without a `Domain:` trailer, `git pull --rebase`, push, and on
+a rejected push rebase and push again, with no gate after the rebase. Each
+landing logs its seconds to `.git/cpl-land.log` (target p95 <= 30 s,
+`scripts/land_stats.py`). The commit hook runs the commit tier (at most 25 s),
+CI runs `--fast` on every main tip, and infra as sheriff reverts or fixes a
+red tip by hand, so `revert-on-red.yml` and the pre-push stamp are gone. A
+semantic conflict between two green commits can now reach main for one CI
+run. Reverse: restore `scripts/land.sh`, `.github/workflows/revert-on-red.yml`
+and `scripts/revert-on-red.sh` from before this decision's commit.

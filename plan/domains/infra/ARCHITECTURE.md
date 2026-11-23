@@ -12,8 +12,8 @@ tech-debt.
 | Stage cache | `scripts/check_cache.py`, tests `scripts/test_check_cache.py` | Skips a gate stage when the hash of the whole tree minus that stage's excludes (plus tool versions and `CPL_*`/`CARGO_*` env) matches its last pass. Stages: `clippy`, `nextest_doc`, `recovery`, `scoreboard_fast`, `site_gate`. |
 | C++ compile cache | `scripts/cxx-cache.py` (as a `g++` shim), tests `scripts/test_cxx_cache.py` | Reuses a binary built from the same C++ bytes, flags, compiler and system headers; per user, so worktrees start warm. |
 | Gate env | `scripts/gate-env.sh` | Resolves the absolute cargo target dir for `check.sh`. |
-| Land queue | `scripts/land.sh` (373 lines) | The only way onto `main`: FIFO tickets `refs/locks/queue/*` with heartbeats, lock `refs/locks/land` (TTL 120 s, heartbeat 30 s, max hold 480 s), rebase, gate the exact tip, atomic push. The holder carries up to `CPL_LAND_TRAIN`=8 riders, bisects a failing train, marks the breaker `refs/locks/solo/*`, riders get `refs/locks/done/*`. `CPL_LAND_URGENT=1` jumps the queue. |
-| Hooks | `.githooks/pre-commit`, `commit-msg`, `pre-push`; installer `scripts/install-hooks.sh` (`just hooks`) | pre-commit runs the commit tier (`check.sh --commit`: the crates the staged paths reach, via `scripts/affected.py` and nextest profile `commit`); commit-msg enforces `area: summary` from a fixed area list; pre-push refuses a `main` tip whose tree is not in `.git/cpl-gate-passed`, plus markers, JSON validity and a compile check. |
+| Landing | `scripts/land.sh` (33 lines), stats `scripts/land_stats.py` | Rebase onto main, push, rebase and push again on a rejected push; no gate (decisions.md 234). Refuses a commit without a `Domain:` trailer; appends `{domain, landed, seconds, tries}` to `.git/cpl-land.log`. CI on every main tip plus the infra sheriff keep main green. |
+| Hooks | `.githooks/pre-commit`, `commit-msg`, `pre-push`; installer `scripts/install-hooks.sh` (`just hooks`) | pre-commit runs the commit tier (`check.sh --commit`: the crates the staged paths reach, via `scripts/affected.py` and nextest profile `commit`); commit-msg enforces `area: summary` from a fixed area list; pre-commit gives up after 25 s (warns, logs the step to `.git/cpl-commit-slow.log`, allows the commit); pre-push checks markers, JSON validity and a compile check. |
 | Public-history hygiene | `scripts/public-hosts.txt`, `staged_guard` in `scripts/check.sh` | Added lines may link only listed hosts; no secrets patterns, home paths, or words in the local `.git/info/sensitive-words`. Scans the index and `origin/main...HEAD`. |
 | Task runner and pins | `justfile`, `mise.toml`, `rust-toolchain.toml`, `pyproject.toml`/`uv.lock`, `package.json`/`pnpm-workspace.yaml` | One command name per task; one version pin per tool. |
 | CI | `.github/workflows/ci.yml` | On push to main, pull_request, dispatch: job `gate` runs `scripts/check.sh --fast` on `ubuntu-latest`; job `site` builds `web/` with a release `cpl`, typechecks, unit-tests, checks the installers are in `web/out`. |
@@ -27,8 +27,8 @@ tech-debt.
 
 | Interface | Contract | Consumers | Held by |
 |---|---|---|---|
-| `scripts/check.sh --fast` exit code | 0 = landable tree; prints step times; records the tree for pre-push | every domain, `land.sh`, pre-commit, CI | `scripts/test_check_cache.py` (cache), CI |
-| `CPL_LANE=<d> scripts/land.sh [remote]` | lands HEAD on main or exits non-zero; never pushes an ungated tree; success lines `land: pushed ...` / `land: carried to main in a train; HEAD is now ...` | every domain | `scripts/test_check_cache.py` (lock, queue, train tests) |
+| `scripts/check.sh --fast` exit code | 0 = landable tree; prints step times | every domain, pre-commit (`--commit`), CI | `scripts/test_check_cache.py` (cache), CI |
+| `scripts/land.sh [remote]` | lands HEAD on main within seconds or exits non-zero; refuses commits without `Domain:`; success line `land: pushed <sha> to <remote> main in <n>s (try <k>)` | every domain | `scripts/test_check_cache.py` (`test_land_*`) |
 | Stage excludes in `scripts/check_cache.py` `STAGES` | a path excluded from a stage is never read by it (strace evidence) | domains adding inputs to a stage | `scripts/test_check_cache.py` |
 | Commit subject areas (`.githooks/commit-msg`) | the area list in AGENTS.md | every domain | the hook |
 | `scripts/public-hosts.txt` | the only hosts added lines may link | every domain | `staged_guard` |
@@ -37,7 +37,7 @@ tech-debt.
 
 ## Invariants
 
-- Nothing reaches `main` except through `land.sh`, and every pushed tip's tree passed `check.sh --fast` (pre-push enforces it locally; CI re-checks after).
+- Every main tip gets a full `check.sh --fast` in CI (one running, one waiting); a red tip is the sheriff's (infra) to revert or fix. Commits are checked before landing only by the commit tier.
 - A cached stage is skipped only when every input it can read is unchanged; an exclude needs strace evidence (`check_cache.py` header).
 - No test is weakened or removed to make the gate faster; slow tests move to `--full`, never away.
 - CI never uses `pull_request_target`; workflows default to `permissions: contents: read`, and only `release.yml`'s publish job gets `contents: write`.
@@ -50,8 +50,6 @@ tech-debt.
 - **CI is red and its failures are not local failures.** Run 45067797421 (4703550d): 6 failures, 3 of them emitted C++ using `std::exchange` without `<utility>` (passes on the VM's libstdc++, fails on the runner's), 3 timing-sensitive tests (`profile`, `stress ... TLE`) on a 4-vCPU runner. Codegen fix is perf's; the timing tests are a gate-design issue (here).
 - **`check.sh` header is stale**: it says "There is no hosted CI on this repository" and "about 10 s warm"; CI exists and warm is 77 s after a one-line crate edit (metrics.toml).
 - **`check.sh` is a hotspot**: 56 commits in 3 days (`git log --since=3.days -- scripts/check.sh`), mostly other lanes adding steps. No per-step registry, so every lane edits the same file.
-- **`land.sh` has no log**: queue wait, train size, bisects and gate time are printed but not recorded, so "queue wait < 30 min" cannot be measured.
-- **No `Domain:` trailer check** in `land.sh` or `commit-msg`; 0 of the last 50 commits carry one.
 - **`cargo fmt --all --check` is in both `check.sh` and `land.sh`**, while the repo rule says the tree is not globally rustfmt-clean; it passes today, so either the rule or the doc is stale.
 - **`scripts/` mixes infra machinery with other domains' tools** (table above); ownership by directory hides who reviews what.
 - **No CONTRIBUTING.md or SECURITY.md** at the root.
