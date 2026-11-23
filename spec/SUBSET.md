@@ -213,7 +213,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/prod-call-traps.cp: compiler
 - core-04/product-domain-array-is-the-parts-array.cp: compiler
 - core-04/product-domain-grid-reads-and-indexes.cp: compiler
-- core-04/product-type-array-is-the-parts-array.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-key-outside-traps.cp: compiler
 - core-04/range-len-walk-ends.cp: compiler
@@ -276,7 +275,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/print-list-of-pairs-one-line.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
-- core-10/read-counted-rows-of-ranges.cp: compiler
 - core-11/mod-uses-sibling.cp: compiler
 - core-11/prelude-has-components.cp: compiler
 - core-11/runtime-domain-use-before-definition.cp: compiler
