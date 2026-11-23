@@ -1128,11 +1128,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
             },
             SlotLoc::OptI { .. } => unreachable!(),
         }
+        let own = LoopReg::Seq {
+            id,
+            r_idx,
+            held: match global_id {
+                Some(gid) => SeqHeld::Global(gid),
+                None => SeqHeld::Local(local_v.unwrap()),
+            },
+        };
         self.loops.push(LoopTargets {
             id,
             breaks: Vec::new(),
             continues: Vec::new(),
-            resumable: None,
+            resumable: Some(own),
         });
         let saved_pinned = self.pinned_v;
         if let Some(lv) = local_v {
@@ -1145,6 +1153,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         for c in lt.continues {
             self.patch(c, step_pc);
         }
+        self.note_back_edge(self.ops.len(), Some(own));
         if rev {
             self.emit(
                 Op::ForDec {

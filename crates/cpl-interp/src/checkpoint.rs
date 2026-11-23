@@ -22,7 +22,7 @@
 use crate::observe::{Observer, Unobserved};
 use crate::value::Value;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::vm::{Chunk, CompiledProgram, LoopReg};
+use crate::vm::{Chunk, CompiledProgram, LoopReg, SeqHeld, SlotLoc};
 use crate::{trace, trap, Flow, Interp, Io, Limits, Observed, Res};
 use cpl_diag::Span;
 use cpl_ir::{Block, FnId, Iter, LoopId, Program, Stmt};
@@ -40,12 +40,19 @@ enum LoopAt {
         v: i64,
         hi: i64,
     },
+    /// In the round at position `k` (as for `Range`), walking the frame's
+    /// `held` sequence `held`.
+    Seq {
+        id: LoopId,
+        k: i64,
+        held: usize,
+    },
 }
 
 impl LoopAt {
     fn id(self) -> LoopId {
         match self {
-            LoopAt::While(id) | LoopAt::Range { id, .. } => id,
+            LoopAt::While(id) | LoopAt::Range { id, .. } | LoopAt::Seq { id, .. } => id,
         }
     }
 }
@@ -66,6 +73,8 @@ struct FrameAt {
     doms: usize,
     /// What the calls before `site` in its statement returned, by address.
     before: Vec<(usize, Value)>,
+    /// The sequences its `for` loops walk.
+    held: Vec<Value>,
 }
 
 /// A run's state at the start of a round of a loop.
@@ -188,6 +197,9 @@ pub(crate) struct Clock {
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
     pub(crate) range_from: Option<(i64, i64)>,
+    /// In a run from a checkpoint, the sequence the next `for` over one
+    /// walks, and the round it starts from.
+    seq_from: Option<(Value, i64)>,
 }
 
 impl Default for Clock {
@@ -210,6 +222,7 @@ impl Default for Clock {
             printed: 0,
             resume: None,
             range_from: None,
+            seq_from: None,
         }
     }
 }
@@ -755,10 +768,23 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return None;
         }
         if !from_stack {
-            for (held, loc) in locals.iter_mut().zip(&chunk.slot_map) {
-                if !(stacked && crate::vm::undeclared(chunk.traced, loc, held)) {
-                    *held = crate::vm::read_slot(loc, regs_i, regs_v);
+            // A register reads 0 before its local is declared, where the
+            // tree-walker has none: a local with no value yet is taken as
+            // undeclared unless it surely is declared by now.
+            let params = fn_id.map_or(0, |id| self.program.fns[id].params.len());
+            let mut surely = vec![false; n];
+            surely.iter_mut().take(params).for_each(|d| *d = true);
+            let site_stmt = site.map(|s| s.0 as *const Stmt as usize);
+            let ids: Vec<LoopId> = loops.iter().map(LoopReg::id).collect();
+            declared(body, &ids, site_stmt, &mut surely);
+            for (k, (held, loc)) in locals.iter_mut().zip(&chunk.slot_map).enumerate() {
+                if stacked && crate::vm::undeclared(chunk.traced, loc, held) {
+                    continue;
                 }
+                *held = match unset(loc, regs_i, regs_v) && !surely[k] {
+                    true => Value::Unit,
+                    false => crate::vm::read_slot(loc, regs_i, regs_v),
+                };
             }
         }
         if locals
@@ -767,16 +793,42 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         {
             return None;
         }
-        let loops: Vec<LoopAt> = (loops.iter())
-            .map(|l| match *l {
+        let mut held = Vec::new();
+        let mut at = Vec::with_capacity(loops.len());
+        for l in loops {
+            at.push(match *l {
                 LoopReg::While(id) => LoopAt::While(id),
                 LoopReg::Range { id, r_var, r_hi } => LoopAt::Range {
                     id,
                     v: regs_i[r_var as usize],
                     hi: regs_i[r_hi as usize],
                 },
-            })
-            .collect();
+                LoopReg::Seq { id, r_idx, held: h } => {
+                    let seq = match h {
+                        SeqHeld::Local(v) => regs_v.get(v as usize)?,
+                        SeqHeld::Global(g) => self.globals.get(g as usize)?,
+                    };
+                    let walkable = matches!(
+                        seq,
+                        Value::List(_)
+                            | Value::ListView(_)
+                            | Value::Array(_)
+                            | Value::Str(_)
+                            | Value::StrView(_)
+                    );
+                    if !walkable {
+                        return None;
+                    }
+                    held.push(seq.clone());
+                    LoopAt::Seq {
+                        id,
+                        k: regs_i[r_idx as usize],
+                        held: held.len() - 1,
+                    }
+                }
+            });
+        }
+        let loops = at;
         let site =
             site.map(|(s, c)| (s as *const Stmt as usize, c as *const cpl_ir::Expr as usize));
         if !locates(body, &loops, site.map(|s| s.0)) {
@@ -790,6 +842,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             span,
             doms,
             before: Vec::new(),
+            held,
         })
     }
 
@@ -949,6 +1002,20 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.ckpt.range_from = Some((from, hi));
                 self.stmt(stmt)
             }
+            (
+                Stmt::For(id, _, Iter::Seq(_, rev), body),
+                Some(&LoopAt::Seq { k: at_k, held, .. }),
+            ) => {
+                let mut from = at_k;
+                if inside {
+                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
+                        return Ok(left);
+                    }
+                    from = if *rev { at_k - 1 } else { at_k + 1 };
+                }
+                self.ckpt.seq_from = Some((frames[k].held[held].clone(), from));
+                self.stmt(stmt)
+            }
             _ => trap(Span::default(), "the checkpoint does not match the program"),
         }
     }
@@ -965,6 +1032,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return trap(Span::default(), "the checkpoint does not match the program");
         }
         flow
+    }
+
+    /// What a `for` over `seq` walks, and the round it starts from when a
+    /// run from a checkpoint goes on in it: the sequence as it was when the
+    /// loop began.
+    pub(crate) fn seq_held(&mut self, seq: &'p cpl_ir::Expr) -> Res<(Value, Option<i64>)> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some((held, from)) = self.ckpt.seq_from.take() {
+            return Ok((held, Some(from)));
+        }
+        Ok((self.eval(seq)?, None))
     }
 
     /// The call `e` to `id`, or the rest of it when a run from a checkpoint
@@ -1085,11 +1163,84 @@ fn locates(block: &Block, at: &[LoopAt], site: Option<usize>) -> bool {
             ),
             Some(&LoopAt::Range { id: want, .. }),
         ) => *id == want && locates_inside(body, &at[1..], site),
+        (Stmt::For(id, _, Iter::Seq(..), body), Some(&LoopAt::Seq { id: want, .. })) => {
+            *id == want && locates_inside(body, &at[1..], site)
+        }
         _ => false,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+/// Marks in `out` the locals surely declared by the place `at` (loop ids
+/// only), then `site`, in `block`: those the statements before it in each
+/// block on the way declare, and the variables of the loops it is in.
+fn declared(block: &Block, at: &[LoopId], site: Option<usize>, out: &mut [bool]) {
+    let mark = match at.first() {
+        Some(&id) => Mark::Loop(id),
+        None => match site {
+            Some(site) => Mark::Site(site),
+            None => return,
+        },
+    };
+    let Some(i) = block.stmts.iter().position(|s| holds(s, mark)) else {
+        return;
+    };
+    for stmt in &block.stmts[..i] {
+        if let Stmt::Let(slot, _) = stmt {
+            out[*slot] = true;
+        }
+    }
+    let inside = |body: &Block, out: &mut [bool]| {
+        if at.len() > 1 || site.is_some() {
+            declared(body, &at[1..], site, out);
+        }
+    };
+    match &block.stmts[i] {
+        Stmt::If(_, then, otherwise) => {
+            let branch = if block_holds(then, mark) {
+                then
+            } else {
+                otherwise
+            };
+            declared(branch, at, site, out);
+        }
+        Stmt::While(_, _, body) if !at.is_empty() => inside(body, out),
+        Stmt::For(_, slot, _, body) if !at.is_empty() => {
+            out[*slot] = true;
+            inside(body, out);
+        }
+        _ => {}
+    }
+}
+
+/// Whether the registers at `loc` hold nothing yet.
+#[cfg(not(target_arch = "wasm32"))]
+fn unset(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> bool {
+    match *loc {
+        SlotLoc::V(r) => matches!(regs_v[r as usize], Value::Unit),
+        SlotLoc::I(r, _) => regs_i[r as usize] == 0,
+        SlotLoc::OptI { val, some, .. } => regs_i[val as usize] == 0 && regs_i[some as usize] == 0,
+        SlotLoc::SmallTuple { base, len, .. } => regs_i
+            [base as usize..(base + len as u16) as usize]
+            .iter()
+            .all(|&r| r == 0),
     }
 }
 
 /// Inside a loop's body: the innermost frame may stop at the loop itself.
 fn locates_inside(body: &Block, rest: &[LoopAt], site: Option<usize>) -> bool {
     (rest.is_empty() && site.is_none()) || locates(body, rest, site)
+}
+
+/// The positions a `for` over `n` items walks, backwards when `rev`, from
+/// `from` on (by default the first).
+pub(crate) fn rounds(n: usize, rev: bool, from: Option<i64>) -> impl Iterator<Item = usize> {
+    let last = n as i64 - 1;
+    let (first, count) = match (rev, from) {
+        (false, None) => (0, n as i64),
+        (true, None) => (last, n as i64),
+        (false, Some(f)) => (f, n as i64 - f),
+        (true, Some(f)) => (f.min(last), f.min(last) + 1),
+    };
+    (0..count.max(0)).map(move |i| (if rev { first - i } else { first + i }) as usize)
 }

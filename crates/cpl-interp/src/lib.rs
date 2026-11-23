@@ -1292,48 +1292,42 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             Iter::Seq(seq, rev) => {
                 // The loop walks the value as it was when the loop began.
-                let held = self.eval(seq)?;
+                let (held, from) = self.seq_held(seq)?;
                 match &held {
                     Value::List(items) => {
                         let n = items.len();
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(items[k].clone());
                         }
                     }
                     Value::ListView(view) => {
                         let n = view.len;
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(view.get(k).unwrap().clone());
                         }
                     }
                     Value::MutView(mv) => {
                         let items = self.mut_view_to_vec(mv, span)?;
                         let n = items.len();
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(items[k].clone());
                         }
                     }
                     Value::Array(array) => {
                         let n = array.len();
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(array.get_unchecked_val(k));
                         }
                     }
                     Value::Str(bytes) => {
                         let n = bytes.len();
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(Value::Char(bytes[k]));
                         }
                     }
                     Value::StrView(view) => {
                         let n = view.len;
-                        for k in 0..n {
-                            let k = if *rev { n - 1 - k } else { k };
+                        for k in checkpoint::rounds(n, *rev, from) {
                             round!(Value::Char(view.get(k).unwrap()));
                         }
                     }

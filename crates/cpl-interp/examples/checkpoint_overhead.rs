@@ -12,7 +12,7 @@ const LIMITS: Limits = Limits {
 };
 
 /// A loop in main, and a run that is mostly calls, two deep.
-const SOURCES: [(&str, &str); 2] = [
+const SOURCES: [(&str, &str); 3] = [
     (
         "loop",
         "var s = 0\nfor i in 0..10000000:\n    s = (s + i * i) % 1000003\nprint(s)\n",
@@ -22,6 +22,11 @@ const SOURCES: [(&str, &str); 2] = [
         "fn g(x: Int) -> Int = (x * x + 1) % 1009\n\
          fn f(n: Int) -> Int:\n    var s = 0\n    for i in 0..n:\n        s = (s + g(i)) % 1000003\n    return s\n\
          var t = 0\nfor r in 0..1000:\n    t = (t + f(5000)) % 1000003\nprint(t)\n",
+    ),
+    (
+        "seqs",
+        "var a: List<Int> = []\nfor i in 0..10000:\n    a.push(i * 37 % 101)\n\
+         var s = 0\nfor r in 0..500:\n    for x in a:\n        s = (s + x * r) % 1000003\n    for x in a.rev:\n        s = (s * 3 + x) % 1000003\nprint(s)\n",
     ),
 ];
 

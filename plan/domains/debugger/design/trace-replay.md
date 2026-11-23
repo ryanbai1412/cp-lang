@@ -138,8 +138,8 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   every 4096, 65536 or 2^20 ticks. Without checkpoints, `cpl run` of
   `fib(32)` is within 2% of the base commit (best of 9, 647 vs 635 ms).
 - **Not covered (no checkpoint is taken there; the run takes the next one it
-  can):** calls from a feed loop, closure or function value, `for` over a
-  sequence, `var` parameters, interactive programs. The VM still recurses on
+  can):** calls from a feed loop, closure or function value, `var`
+  parameters, interactive programs (`for` over a sequence: below). The VM still recurses on
   the Rust stack; the frames are mirrored as data, not run from it. Step
   numbers to ticks is still owed.
 
@@ -168,3 +168,39 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   timeline tests, and every checkpoint of a counted run resumes to the rest
   of the output. `Timeline::starts()` is checked spread over the whole run
   (first before 1/4, last after 7/8, no gap over 1/4) for each fixture.
+
+## Loops over sequences (2026-11-23, tech-debt for compiler)
+
+- **Shape:** `for x in seq` and `for x in seq.rev` over a list, list view,
+  array or string, in main or any fn, at any depth, e.g. `for c in word:` or
+  `for x in a.rev:` around or inside calls. The VM's sequence loops now have
+  a back edge like range loops (`LoopReg::Seq`: the position register and
+  where the loop holds the sequence, a local register or a global).
+- **Restore:** a checkpoint saves the position and the held sequence itself
+  (`FrameAt::held`, a shallow `Rc` copy), so a loop over a temporary
+  (`for x in f(a)`) resumes on the value the loop began with, as the
+  tree-walker walks it (the body can't change the sequence: E0602). The resumed tree-walker
+  takes that value instead of evaluating the sequence again
+  (`Interp::seq_held`) and starts at the saved round
+  (`checkpoint::rounds`). Sets and maps take no checkpoint yet (the run
+  takes the next one it can).
+- **Found on the way:** a run resumed from an untraced recording showed
+  locals not declared yet (`"c": "\u0000"`, `"x": 0`), because an
+  untraced register reads 0 before its `let`. A local is now taken as
+  undeclared when its registers hold nothing yet, unless it surely is
+  declared (a parameter, a `let` earlier in a block on the way, or the
+  variable of a loop the checkpoint is in). Left over: a local in an
+  earlier loop or branch that holds 0 or `Unit` shows as undeclared after
+  such a resume where the full trace shows it; counted (traced) runs keep
+  every declaration exact. `ForDec` now ticks like `ForInc`.
+- **Tests (`tests/checkpoint.rs`, fixture `SEQ`: a list walked in a fn
+  called from a loop over a list literal, a string loop, and a reverse
+  loop):** the run, traced-run, window, tail and timeline tests, and every
+  checkpoint of a counted run resumes to the rest of the output.
+- **Overhead (`examples/checkpoint_overhead.rs`, new `seqs` workload,
+  release, best of 5):** 1.007x-1.021x the untraced run at a checkpoint every
+  4096, 65536 or 2^20 ticks. cpl.wasm gzipped grows 1,121 bytes (the
+  `rounds` walk), to 1,978,925 under the 1,980,000 cap. Without checkpoints,
+  a 1500-round forward plus reverse walk of a 10^4 list runs 530 ms against
+  538 ms on the base commit (interleaved, best of 9).
+

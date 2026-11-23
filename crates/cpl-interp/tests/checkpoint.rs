@@ -82,6 +82,26 @@ for r in 0..3:
 print(t, tree(900, 3))
 ";
 
+const SEQ: &str = "fn total(a: List<Int>, d: Int) -> Int:
+    var s = 0
+    for x in a:
+        s = (s * 7 + x + d) % 1000003
+    return s
+var a: List<Int> = []
+for i in 0..3000:
+    a.push(i * 37 % 101)
+let word = \"abcabdacab\"
+var t = 0
+for w in [3, 1, 4, 1, 5]:
+    t = (t + total(a, w)) % 1000003
+    for c in word:
+        if c == 'a':
+            t += 1
+for x in a.rev:
+    t = (t * 3 + x) % 1000003
+print(t)
+";
+
 const MULTITEST_RAND: &str = "@!multitest
 let n: Int = read()
 var s = 0
@@ -133,6 +153,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (READS, &input[..]),
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
+        (SEQ, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -159,6 +180,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (CALLS, &b""[..]),
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
+        (SEQ, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -221,6 +243,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (DEEP, &b""[..], 3000),
         (MULTITEST_RAND, MULTITEST_INPUT, 2000),
         (SHARED, &b""[..], 3000),
+        (SEQ, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -280,6 +303,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (LONG, &b""[..]),
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
+        (SEQ, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
@@ -319,7 +343,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    for source in [LONG, DEEP, ONE_CALL, SHARED] {
+    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ] {
         let program = program(source);
         let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
             &program,
@@ -344,7 +368,7 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 
 #[test]
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
-    for source in [ONE_CALL, DEEP, SHARED] {
+    for source in [ONE_CALL, DEEP, SHARED, SEQ] {
         let (program, whole, _) = record(source, b"");
         let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
             &program,

@@ -987,8 +987,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur > regs_i[r_lo as usize] {
                         regs_i[r_i as usize] = cur - 1;
-                        if target as usize <= cur_pc {
-                            self.tick(spans[cur_pc])?;
+                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
+                            self.take_checkpoint(
+                                compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,
+                            );
+                            regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                         }
                         pc = target as usize;
                     }

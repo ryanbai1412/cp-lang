@@ -1522,6 +1522,28 @@ pub(crate) enum LoopReg {
         r_var: u16,
         r_hi: u16,
     },
+    /// `for v in seq` (or `seq.rev`): the position and where the sequence
+    /// is held.
+    Seq {
+        id: cpl_ir::LoopId,
+        r_idx: u16,
+        held: SeqHeld,
+    },
+}
+
+impl LoopReg {
+    pub(crate) fn id(&self) -> cpl_ir::LoopId {
+        match *self {
+            LoopReg::While(id) | LoopReg::Range { id, .. } | LoopReg::Seq { id, .. } => id,
+        }
+    }
+}
+
+/// Where a `for` loop over a sequence holds it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum SeqHeld {
+    Local(u16),
+    Global(u16),
 }
 
 /// A jump back to the top of one of main's loops, where a checkpoint can
