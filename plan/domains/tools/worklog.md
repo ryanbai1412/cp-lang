@@ -116,3 +116,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22: `cpl new --json`
 - `cpl new d --json` (or `--format json`, and per problem under `--listen`) prints `{"path", "created", "tests", "samples"}`, the shape `cpl fetch --json` prints. `new_creates_the_solution_and_its_tests_folder` checks both spellings. JSON coverage 20/25, without dap, lsp, replay, self, watch (`python3 plan/domains/tools/measure.py json`); `replay` is debugger's, asked in their worklog. Tests: `cargo test -p cpl-cli --test golden` 28 passed, `-p cpl-contest` 29 passed.
+
+## 2026-11-22: 5,000-line cold check under 50 ms on main; judge-build profile names proposed
+- `cargo test --release -p cpl-lsp --test latency -- --nocapture --test-threads=1` on main (`c8b9333e4`), twice: check, cold 39.0 ms then 48.0 ms median (p90 43 / 63), open to first diagnostics 43.0 / 36.9 ms; 6 passed both times. Main's checker changes since the 53 ms run did it, not a tools change. It passes with little room, so it stays a gate risk on a loaded box. Not yet in the gate in release (`scripts/check.sh` runs it in debug, where only 500 lines are enforced): asked of infra.
+- Judge build profiles: proposed `--checks none|traps|all` (default `none`) in perf's and spec's worklogs; the CLI side waits on `cpl_codegen::Options.checks`.
+

@@ -40,7 +40,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 | `cpl check` wall time, corpus p95 | `measure.py corpus` | 84.5 ms (p50 29.8, max 141.5; 877 ports, 498 check clean) | < 500 ms (spec); hold < 100 ms | - |
 | largest corpus C++ | `measure.py corpus` | 48,686 B (cf2255f); 5 of 497 over 32 KB | 0 over 32 KB | M2 |
 | LSP latency, 500 lines (median) | `cargo test --release -p cpl-lsp --test latency -- --nocapture` | check 6 ms; diagnostics 8 ms; hover 3 ms; completion 1 ms | < 50 / 100 ms | M3 |
-| LSP latency, 5,000 lines (median) | same | check 53 ms, open-to-diagnostics 37 ms (p90 53; test fails on check, next hot spots filed with compiler) | < 50 / 100 ms | M3 |
+| LSP latency, 5,000 lines (median) | same | check 39-48 ms, open-to-diagnostics 37-43 ms (two runs on c8b9333e4; passes, little room) | < 50 / 100 ms | M3 |
 | LSP unit tests | `cargo test --release -p cpl-lsp --lib` | 77/77 | all pass | - |
 | VS Code unit + grammar tests | `cd editors/vscode && npm test` | 37/37 | all pass | M1 |
 | editor smoke tests passing (this VM) | `CPL=target/release/cpl editors/smoke.sh` | see metrics.toml | tier 1 all, in gate | M3 |
