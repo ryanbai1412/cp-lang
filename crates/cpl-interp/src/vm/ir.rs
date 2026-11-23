@@ -3,7 +3,7 @@ use super::helpers::block_has_by_ref_closure;
 use crate::value::{OptVal, SmallFieldKind, TupleVal, Value};
 use cpl_diag::Span;
 use cpl_ir::{
-    AssignOp, BinOp, Builtin, CmpOp, Expr, ExprKind, FmtArg, FmtPiece, FnId, LoopId, Place,
+    Arg, AssignOp, BinOp, Builtin, CmpOp, Expr, ExprKind, FmtArg, FmtPiece, FnId, LoopId, Place,
     Program, Slot, Stmt, Ty,
 };
 
@@ -805,12 +805,16 @@ pub(crate) enum Op {
     },
     /// A traced chunk's call: the tracer sees it enter and leave, as when
     /// the tree-walker calls. `dst_i` is `u16::MAX` unless it returns a scalar.
+    /// `lends` is `u16::MAX`, or the `lent_calls` entry whose `mut`
+    /// arguments lend their places, their indices in the registers after
+    /// the arguments.
     CallTraced {
         fn_id: u16,
         arg_base_v: u16,
         argc: u8,
         dst_v: u16,
         dst_i: u16,
+        lends: u16,
     },
     CallClosure {
         callee_v: u16,
@@ -1638,6 +1642,8 @@ pub(crate) struct Chunk<'p> {
     pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
+    /// The arguments of each `CallTraced` that has `mut` ones.
+    pub lent_calls: Vec<&'p [Arg]>,
     pub trace_points: Vec<TracePoint<'p>>,
     pub traced: bool,
     pub fill_tys: Vec<&'p Ty>,

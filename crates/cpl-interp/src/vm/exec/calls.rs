@@ -638,16 +638,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 argc,
                 dst_v,
                 dst_i,
+                lends,
             } => {
                 let id = usize::from(fn_id);
                 let f = &self.program.fns[id];
                 let span = spans[cur_pc];
                 self.stack_left(span, Some(&f.name))?;
                 let abv = arg_base_v as usize;
-                let args: Vec<Value> = regs_v[abv..abv + argc as usize]
+                let mut args: Vec<Value> = regs_v[abv..abv + argc as usize]
                     .iter_mut()
                     .map(|r| std::mem::replace(r, Value::Unit))
                     .collect();
+                let lent = chunk.lent_calls.get(usize::from(lends)).copied();
+                let index_regs = abv + argc as usize;
                 let caller = self.base;
                 sync_to_stack(
                     &chunk.slot_map,
@@ -659,10 +662,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 self.show_lent();
-                let base = self.stack.len();
-                self.stack.extend(args);
-                self.stack.resize(base + f.locals.len(), Value::Unit);
-                let returned = self.call_at(id, base, span, None);
+                // Lent once the globals and lent values are back in place.
+                let returned = match self.lend_args(lent, &mut args, regs_v, index_regs) {
+                    Ok(()) => {
+                        let base = self.stack.len();
+                        self.stack.extend(args);
+                        self.stack.resize(base + f.locals.len(), Value::Unit);
+                        self.call_at(id, base, span, None)
+                    }
+                    Err(e) => Err(e),
+                };
                 self.hide_lent();
                 self.leave_fallback(outer);
                 sync_from_stack(
@@ -1155,5 +1164,31 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             _ => unreachable!("non-call op routed to exec_fields_and_calls"),
         }
         Ok(None)
+    }
+}
+
+impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
+    /// The `mut` arguments of a `CallTraced`, lent as the tree-walker lends
+    /// them, their places' indices in `regs_v` from `first` on.
+    fn lend_args(
+        &mut self,
+        lent: Option<&'p [cpl_ir::Arg]>,
+        args: &mut [Value],
+        regs_v: &mut [Value],
+        mut first: usize,
+    ) -> Res<()> {
+        for (i, arg) in lent.into_iter().flatten().enumerate() {
+            let cpl_ir::Arg::Mut(place) = arg else {
+                continue;
+            };
+            let mut exprs = Vec::new();
+            place_indices(place, &mut exprs);
+            let indices = (first..first + exprs.len())
+                .map(|r| std::mem::replace(&mut regs_v[r], Value::Unit))
+                .collect();
+            first += exprs.len();
+            args[i] = self.lend_at(place, indices)?;
+        }
+        Ok(())
     }
 }

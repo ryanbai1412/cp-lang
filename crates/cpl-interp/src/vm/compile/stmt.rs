@@ -260,7 +260,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let f = &self.program.fns[*fn_id];
         let ok = self.traced
             && args.len() == f.params.len()
-            && args.iter().all(|a| matches!(a, Arg::Value(_)))
+            && (args.iter().zip(&f.params)).all(|(a, p)| matches!(a, Arg::Mut(_)) == p.mutable)
             && !self.program.judge_fns.contains(fn_id)
             && ScalarKind::of_opt_ty(&e.ty, self.program).is_none()
             && (ScalarKind::of_ty(&e.ty, self.program).is_some()
@@ -313,13 +313,33 @@ impl<'p, 'f> Compiler<'p, 'f> {
         scalar: bool,
     ) -> u16 {
         let regs: Vec<u16> = args.iter().map(|_| self.alloc_v()).collect();
-        for (arg, &dst) in args.iter().zip(&regs) {
-            let Arg::Value(arg) = arg else {
-                unreachable!("traced_call takes values")
-            };
-            let src = self.compile_expr_v(arg);
-            self.emit(Op::MoveV { dst, src }, arg.span);
+        let mut indices = Vec::new();
+        for arg in args {
+            if let Arg::Mut(place) = arg {
+                place_indices(place, &mut indices);
+            }
         }
+        let index_regs: Vec<u16> = indices.iter().map(|_| self.alloc_v()).collect();
+        // Values first, then the places' indices, as the tree-walker lends.
+        let values = args.iter().zip(&regs).filter_map(|(arg, &dst)| match arg {
+            Arg::Value(arg) => Some((arg, dst)),
+            Arg::Mut(_) => None,
+        });
+        for (e, dst) in values
+            .collect::<Vec<_>>()
+            .into_iter()
+            .chain(indices.into_iter().zip(index_regs))
+        {
+            let src = self.compile_expr_v(e);
+            self.emit(Op::MoveV { dst, src }, e.span);
+        }
+        let lends = match args.iter().any(|a| matches!(a, Arg::Mut(_))) {
+            true => {
+                self.lent_calls.push(args);
+                (self.lent_calls.len() - 1) as u16
+            }
+            false => u16::MAX,
+        };
         let dst_v = self.alloc_v();
         let dst_i = if scalar { self.alloc_i() } else { u16::MAX };
         self.emit(
@@ -329,6 +349,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 argc: args.len() as u8,
                 dst_v,
                 dst_i,
+                lends,
             },
             e.span,
         );

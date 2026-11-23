@@ -6,6 +6,19 @@ use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Block, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
 
+/// The index expressions of `place`, outermost first, in the order the
+/// tree-walker evaluates them.
+pub(crate) fn place_indices<'p>(place: &'p Place, out: &mut Vec<&'p Expr>) {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => {}
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => place_indices(base, out),
+        PlaceKind::Index(base, indices) => {
+            place_indices(base, out);
+            out.extend(indices);
+        }
+    }
+}
+
 pub(super) fn block_has_by_ref_closure(block: &Block, _program: &Program) -> bool {
     Compiler::stmts_have_closure(&block.stmts)
 }
