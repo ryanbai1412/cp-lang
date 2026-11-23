@@ -266,5 +266,4 @@ no-max wtf26b -
 no-max wtf26c -
 no-max wtf26d -
 no-max yac6p4 -
-slow cf2066f --max
 slow cf2147f --max
