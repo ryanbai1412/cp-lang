@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from perf: cf2183e, nest the loops like the original, multiple outside factor (`for j in 1..m: for d in 1..=m / (j + 1): next[(j + 1) * d] += ways[j * d]`). With the port's `d`-outside order the emitted C++ is 6.6 ms against the original's 5.1 ms; in the original's order 4.9 ms (`gen.py 7 8`, fastest of N, hand-edited emitted C++, same output). Evidence in `plan/domains/perf/worklog.md`.
 - Request from perf: cf2124d, once stdlib has a linear select, read the (k-1)-th smallest with it instead of `a.sorted()[k - 2]`, then drop its line from `bench/unmatched.txt`.
 - Request from perf: `cf2268c` port sorts `(class, at, odd)` tuples for each of 18 bits (59% of its time in `std::sort`, `perf record` on the emitted C++); `orig.cpp` buckets classes with a hash map and a counting sort. Listed in `bench/unmatched.txt` until the port matches (1709 ms vs 734 ms, `v03_perf_bench.py --suite corpus --only cf2268c --runs 5`).
 - From lint-fmt: `state_above_multitest` is implemented as L0211 (warn, no fix; a `+= 1` counter is exempt); its row in `spec/idioms/lints.md` is marked done with tier `warn`. Your L0506 false positives on `research/skill-eval/v3/p04,p05,p15.cp`: 0 L0506 on main today.
