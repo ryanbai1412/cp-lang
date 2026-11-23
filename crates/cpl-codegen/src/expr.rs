@@ -297,11 +297,12 @@ impl<'p> Emitter<'p> {
                     })
                     .collect();
                 match &base.ty {
-                    Ty::Array { dims, .. } if dims.len() > 1 && proven(indices) => {
-                        format!("{b}({})", at.join(", "))
-                    }
                     Ty::Array { dims, .. } if dims.len() > 1 => {
-                        format!("{b}.ck({})", at.join(", "))
+                        format!(
+                            "{b}{}({})",
+                            self.grid_ck(&base.kind, indices),
+                            at.join(", ")
+                        )
                     }
                     Ty::Array { .. } | Ty::Str if !proven(indices) => {
                         if self.place_fixed_len(base).is_some() {
@@ -321,7 +322,7 @@ impl<'p> Emitter<'p> {
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_) if self.inside_place(&base.kind, &indices[0]) => {
+                    Ty::List(_) | Ty::MutView(_) if self.inside_place(&base.kind, indices) => {
                         format!("{b}[{}]", at[0])
                     }
                     Ty::List(_) | Ty::MutView(_) => {
@@ -809,7 +810,7 @@ impl<'p> Emitter<'p> {
                 let base_ty = &base.ty;
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
-                    || self.inside_at(crate::bounds::var_of(&base.kind), &indices[0]);
+                    || self.inside_at(crate::bounds::var_of(&base.kind), indices);
                 let checked = !proven(indices) && !raw_list;
                 if (matches!(
                     base_ty,
@@ -2758,7 +2759,7 @@ impl<'p> Emitter<'p> {
 
 /// True when no index is a bare `Int`: each is a position of the
 /// dimension's domain, or an `Int` the writer vouched for in `unchecked:`.
-fn proven(indices: &[Expr]) -> bool {
+pub(crate) fn proven(indices: &[Expr]) -> bool {
     indices.iter().all(|index| {
         index.ty != Ty::Int || matches!(index.kind, ExprKind::Cast(Cast::Raw | Cast::Trust, _))
     })

@@ -1496,7 +1496,7 @@ impl<'p> Emitter<'p> {
                 let mut inside = self.check_ahead(*slot, iter, body, out);
                 inside.extend(
                     walk::inside_list(*slot, iter, body, self.locals())
-                        .map(|(l, i)| ((false, l), i, 0, 0)),
+                        .map(|(l, i)| crate::bounds::Inside::List((false, l), i, 0, 0)),
                 );
                 let pushed = inside.len();
                 self.inside.extend(inside);
