@@ -1857,7 +1857,7 @@
         "apio09p2": "pass",
         "apio09p3": "pass",
         "apio23p1": "pass",
-        "btoi15p3": "wrong",
+        "btoi15p3": "pass",
         "btoi17p2": "pass",
         "btoi17p6": "pass",
         "btoi18p4": "pass",
@@ -1882,7 +1882,7 @@
         "ceoi18p1": "pass",
         "ceoi19pp1": "pass",
         "cheerio1s3": "pass",
-        "cmt21r2ztr": "wrong",
+        "cmt21r2ztr": "pass",
         "coci20c6p3": "pass",
         "coci21c1p1": "pass",
         "coci21c2p4": "pass",
@@ -1955,14 +1955,6 @@
       },
       "causes": [
         {
-          "cause": "wrong output",
-          "count": 2,
-          "examples": [
-            "btoi15p3",
-            "cmt21r2ztr"
-          ]
-        },
-        {
           "cause": "E0204: `<id>` (`<id>`) does not work on the types it was given here: `<id>` is not a type `<id>` knows",
           "count": 1,
           "examples": [
@@ -1979,11 +1971,10 @@
       ],
       "counts": {
         "error": 1,
-        "pass": 96,
-        "trap": 1,
-        "wrong": 2
+        "pass": 98,
+        "trap": 1
       },
-      "passed": 96,
+      "passed": 98,
       "total": 100
     },
     "diff": {
