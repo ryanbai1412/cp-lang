@@ -21,7 +21,64 @@ pub(crate) fn lint(
         stderr,
         Some(&lint_files),
         Some(&|analysis: &cpl_check::Analysis| cpl_ir::reported(analysis)),
+        Some(&save_witnesses),
     )
+}
+
+/// `cpl lint --save`: each witness pinned into the program's reads, the
+/// rest of the input made by `cpl stress`'s generator, saved as
+/// `<file>.tests/lint-<code>-<line>.in` for `cpl test`.
+fn save_witnesses(
+    file: &std::path::Path,
+    src: &str,
+    diagnostics: &[cpl_diag::Diagnostic],
+) -> Vec<String> {
+    let lines = LineIndex::new(src);
+    let mut out = Vec::new();
+    for d in diagnostics.iter().filter(|d| !d.witness.is_empty()) {
+        let line = lines.line_col(d.span.start).line + 1;
+        let named: Vec<String> = d
+            .witness
+            .iter()
+            .map(|(n, v)| format!("{n} = {v}"))
+            .collect();
+        let what = format!(
+            "`{}`, the input {} at line {line} names,",
+            named.join(", "),
+            d.code.0
+        );
+        let mut spec = match cpl_stress::InputSpec::from_source(src) {
+            Ok(spec) => spec,
+            Err(e) => {
+                out.push(format!("note: {what} is not saved: {}", e.message));
+                continue;
+            }
+        };
+        if let Some(w) = d.witness.iter().find(|w| !spec.pin(&w.0, w.1)) {
+            out.push(format!(
+                "note: {what} is not saved: the program does not read `{}` as one integer",
+                w.0
+            ));
+            continue;
+        }
+        let mut rng = cpl_stress::Rng::new(1);
+        let Some(case) = cpl_stress::generate(&spec, &mut rng, cpl_stress::Size::Small(5)) else {
+            out.push(format!(
+                "note: {what} is not saved: no input fits the other declared reads"
+            ));
+            continue;
+        };
+        let dir = file.with_extension("tests");
+        let path = dir.join(format!("lint-{}-{line}.in", d.code.0));
+        match std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(&path, case.render())) {
+            Ok(()) => out.push(format!(
+                "saved {what} as {}; `cpl test` runs it",
+                path.display()
+            )),
+            Err(e) => out.push(format!("error: can't write {}: {e}", path.display())),
+        }
+    }
+    out
 }
 
 /// `cpl fmt`, with `--json` printing the shared diagnostic shape.

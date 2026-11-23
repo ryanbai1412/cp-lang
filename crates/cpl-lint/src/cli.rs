@@ -10,7 +10,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub const USAGE: &str = "\
-usage: cpl lint [--fix] [--taste] [path]...
+usage: cpl lint [--fix] [--taste] [--save] [path]...
 
 Reports code that is legal but probably wrong, slow or unidiomatic. A
 directory stands for every .cp file under it; no path at all means the
@@ -21,6 +21,8 @@ options:
   --fix     apply the fixes that are safe to apply, then report what is left
   --taste   only the taste lints (L05xx, the plan/PORTING.md checklist):
             a line per file with findings, then the total by lint
+  --save    write the input a bound lint names (L0302, L0304, L0305, L0306,
+            L0599) as a case in <file>.tests/, which `cpl test` runs
   --list    print every lint with its code and default level
   --json    print the files and their findings as `cpl check --json` does
 ";
@@ -59,8 +61,13 @@ pub type Json = dyn Fn(&[FileReport]) -> String;
 /// the same list: `cpl-lint` cannot lower to IR, so `cpl-cli` hands it in.
 pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<Diagnostic>;
 
+/// `--save`: writes a test case from each diagnostic's witness and returns
+/// what to tell the user; `cpl-cli` hands it in, as the input generator is
+/// `cpl-stress`'s.
+pub type Save = dyn Fn(&std::path::Path, &str, &[Diagnostic]) -> Vec<String>;
+
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
-    run_with(args, stdout, stderr, None, None)
+    run_with(args, stdout, stderr, None, None, None)
 }
 
 /// `run`, taking `--json` when `json` can print it: `cpl-lint` cannot see
@@ -71,6 +78,7 @@ pub fn run_with(
     stderr: &mut dyn Write,
     json: Option<&Json>,
     check: Option<&Errors>,
+    save: Option<&Save>,
 ) -> u8 {
     let reported_of = |analysis: &cpl_check::Analysis| match check {
         Some(check) => check(analysis),
@@ -82,12 +90,14 @@ pub fn run_with(
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
+    let mut to_save = false;
     let mut paths: Vec<PathBuf> = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--fix" => fix = true,
             "--taste" => taste = true,
             "--json" if json.is_some() => as_json = true,
+            "--save" if save.is_some() => to_save = true,
             "--list" => {
                 for lint in LINTS {
                     let _ = writeln!(
@@ -250,6 +260,11 @@ pub fn run_with(
             .iter()
             .filter(|d| d.severity == Severity::Warning)
             .count();
+        if let Some(save) = save.filter(|_| to_save) {
+            for line in save(file, &src, &diagnostics) {
+                let _ = writeln!(stderr, "{line}");
+            }
+        }
         if as_json {
             let denied = diagnostics.iter().any(|d| d.severity == Severity::Error);
             reports.push(FileReport {

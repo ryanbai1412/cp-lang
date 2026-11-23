@@ -231,3 +231,20 @@ fn a_path_is_shown_as_the_os_spells_it_outside_windows() {
     #[cfg(not(windows))]
     assert_eq!(std::path::Path::new(r"a\b.cp").shown(), r"a\b.cp");
 }
+
+#[test]
+fn json_gives_the_witness_as_names_and_values() {
+    let src = "let b: 0..=9 = read()\n";
+    let d = Diagnostic::warning(Code("L0599"), Span::new(4, 5), "`b` can be 0")
+        .with_witness(vec![("b".into(), 0), ("n".into(), 1 << 70)]);
+    let v = json::diagnostic(&d, &LineIndex::new(src));
+    assert_eq!(
+        field(&v, "witness").to_string(),
+        r#"[{"name":"b","value":0},{"name":"n","value":"1180591620717411303424"}]"#
+    );
+    let plain = Diagnostic::warning(Code("L0599"), Span::new(4, 5), "m");
+    assert_eq!(
+        field(&json::diagnostic(&plain, &LineIndex::new(src)), "witness").to_string(),
+        "[]"
+    );
+}

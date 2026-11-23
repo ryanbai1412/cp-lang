@@ -165,8 +165,8 @@ Evidence: gap
 ### stress/U28: stress passes but the judge says WA at maximum size
 Need: find the overflow or limit bug that only maximum-size input reaches, when small cases all agree.
 Design: the clean report points at `cpl lint`, whose bound lints (L0306, L0302, L0599, L0305) each name a witness input, and stress takes that witness as a case.
-Milestone: M1-critical. Status: gap (diagnostics owns the lint side; no surface hands a witness to stress or test)
-Evidence: gap
+Milestone: M1-critical. Status: partial (the lint side works: `cpl lint --save` writes each witness as `<file>.tests/lint-<code>-<line>.in`, which `cpl test` runs; stress's clean report does not point at it yet)
+Evidence: `crates/cpl-cli/tests/lint_witnesses.rs`
 
 ### stress/U29: the interpreter and the judge's C++ disagree
 Need: know that a difference is a toolchain bug, not a WA, and under which judge profile stress ran.

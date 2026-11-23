@@ -24,7 +24,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
             .with_help(format!(
                 "guard it with `if {text} != 0:`{narrow}, so the input that makes it 0 is handled instead of trapping (R0203)"
-            ));
+            ))
+            .with_witness(super::witness(text, 0));
             Finding {
                 lint: &INT_DIV_POSSIBLE_ZERO,
                 diag,

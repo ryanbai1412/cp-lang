@@ -1,9 +1,11 @@
 //! A bound lint that says an input breaks the program names that input,
-//! and the input really breaks it: each witness the lint prints is pinned
-//! into the program's declared ranges, `cpl-stress` fills in the rest of a
-//! valid input, and `cpl run` must trap on the line the lint flagged.
+//! and the input really breaks it: `cpl lint --save` writes each witness
+//! as a case (the witness pinned into the program's declared reads,
+//! `cpl-stress` filling in the rest), and `cpl run` on it must trap on the
+//! line the lint flagged, as must four more fillings of the same witness.
 //! Rule: `errors/R16`, handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness.
 
+use cpl_json::Value;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -22,115 +24,52 @@ fn cpl(args: &[&str]) -> (Option<i32>, String) {
     (out.status.code(), text)
 }
 
-/// `(code, message, line)` of each warning in `cpl lint`'s output.
-fn warnings(rendered: &str) -> Vec<(String, String, usize)> {
-    let lines: Vec<&str> = rendered.lines().collect();
+fn get<'a>(v: &'a Value, key: &str) -> &'a Value {
+    match v {
+        Value::Object(fields) => fields.get(key).unwrap_or(&Value::Null),
+        _ => &Value::Null,
+    }
+}
+
+fn items(v: &Value) -> &[Value] {
+    match v {
+        Value::Array(items) => items,
+        _ => &[],
+    }
+}
+
+/// A warning's code, line and witness.
+type Warning = (String, i64, Vec<(String, i128)>);
+
+/// Each warning `cpl lint --json` gives.
+fn warnings(json: &str) -> Vec<Warning> {
+    let v = cpl_json::parse(json).unwrap();
     let mut out = Vec::new();
-    for (i, line) in lines.iter().enumerate() {
-        let Some(rest) = line.strip_prefix("warning[") else {
-            continue;
-        };
-        let Some((code, message)) = rest.split_once("]: ") else {
-            continue;
-        };
-        let at = lines.get(i + 1).and_then(|l| l.trim().strip_prefix("--> "));
-        let line_no = at.and_then(|a| a.rsplit(':').nth(1)?.parse().ok());
-        if let Some(line_no) = line_no {
-            out.push((code.to_string(), message.to_string(), line_no));
+    for file in items(get(&v, "files")) {
+        for d in items(get(file, "diagnostics")) {
+            let (Value::String(code), Value::Int(line)) =
+                (get(d, "code"), get(get(d, "start"), "line"))
+            else {
+                continue;
+            };
+            let witness = items(get(d, "witness"))
+                .iter()
+                .filter_map(|w| match (get(w, "name"), get(w, "value")) {
+                    (Value::String(n), Value::Int(v)) => Some((n.clone(), i128::from(*v))),
+                    (Value::String(n), Value::String(v)) => Some((n.clone(), v.parse().ok()?)),
+                    _ => None,
+                })
+                .collect();
+            out.push((code.clone(), *line, witness));
         }
     }
     out
-}
-
-/// The input values a warning names: "with `a = 5, b = 7`", "`b` can be 0",
-/// "when `n` is 0", "its bounds allow 63" after "when `k` is above".
-fn witnesses(message: &str) -> Vec<(String, i128)> {
-    let ticked: Vec<&str> = message.split('`').skip(1).step_by(2).collect();
-    let mut out = Vec::new();
-    if let Some(at) = message.find("with `") {
-        let assigns = message[at + 6..].split('`').next().unwrap_or("");
-        for pair in assigns.split(", ") {
-            if let Some((name, value)) = pair.split_once(" = ") {
-                if let Ok(v) = value.trim().parse() {
-                    out.push((name.trim().to_string(), v));
-                }
-            }
-        }
-    }
-    let number_after = |s: &str| {
-        s.split(|c: char| !c.is_ascii_digit())
-            .find(|w| !w.is_empty())?
-            .parse()
-            .ok()
-    };
-    for (name, after) in ticked.iter().zip(message.split('`').skip(2).step_by(2)) {
-        let named = |v: Option<i128>| v.map(|v| (name.to_string(), v));
-        let found = if let Some(rest) = after
-            .strip_prefix(" can be ")
-            .or(after.strip_prefix(" is "))
-        {
-            if after.starts_with(" is above ") {
-                named(message.split("bounds allow ").nth(1).and_then(number_after))
-            } else {
-                named(number_after(rest).filter(|_| rest.starts_with(|c: char| c.is_ascii_digit())))
-            }
-        } else {
-            None
-        };
-        out.extend(found);
-    }
-    out
-}
-
-/// `src` with the declared range of the read `name` narrowed to `value..=value`.
-fn pin(src: &str, name: &str, value: i128) -> Option<String> {
-    let mut out = String::new();
-    let mut done = false;
-    for line in src.lines() {
-        let mut line = line.to_string();
-        if let Some((pat, rest)) = line
-            .trim_start()
-            .strip_prefix("let ")
-            .and_then(|r| r.split_once(": "))
-        {
-            if let Some((ty, read)) = rest.split_once(" = read") {
-                let names: Vec<&str> = pat.trim_matches(['(', ')']).split(", ").collect();
-                let mut parts: Vec<String> = if names.len() > 1 {
-                    ty.trim_matches(['(', ')'])
-                        .split(", ")
-                        .map(str::to_string)
-                        .collect()
-                } else {
-                    vec![ty.to_string()]
-                };
-                if let Some(at) = names
-                    .iter()
-                    .position(|n| *n == name)
-                    .filter(|_| parts.len() == names.len())
-                {
-                    parts[at] = format!("{value}..={value}");
-                    let ty = if names.len() > 1 {
-                        format!("({})", parts.join(", "))
-                    } else {
-                        parts.remove(0)
-                    };
-                    let indent = &line[..line.len() - line.trim_start().len()];
-                    line = format!("{indent}let {pat}: {ty} = read{read}");
-                    done = true;
-                }
-            }
-        }
-        out += &line;
-        out.push('\n');
-    }
-    done.then_some(out)
 }
 
 #[test]
 fn every_bound_lint_witness_traps_where_the_lint_says() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scratch = std::env::temp_dir().join(format!("cpl-lint-witnesses-{}", std::process::id()));
-    fs::create_dir_all(&scratch).unwrap();
     let mut programs: Vec<_> = fs::read_dir(root.join("spec/lints"))
         .unwrap()
         .map(|e| e.unwrap().path().join("before.cp"))
@@ -139,41 +78,52 @@ fn every_bound_lint_witness_traps_where_the_lint_says() {
     programs.sort();
     let (mut checked, mut wrong) = (0, Vec::new());
     for path in &programs {
+        let _ = fs::remove_dir_all(&scratch);
+        fs::create_dir_all(&scratch).unwrap();
         let src = fs::read_to_string(path).unwrap();
         let file = scratch.join("main.cp");
         fs::write(&file, &src).unwrap();
-        let (_, linted) = cpl(&["lint", file.to_str().unwrap()]);
-        for (code, message, line) in warnings(&linted) {
-            if !TRAPPING.contains(&code.as_str()) {
+        let file = file.to_str().unwrap();
+        let shown = path
+            .strip_prefix(&root)
+            .unwrap_or(path)
+            .display()
+            .to_string();
+        let (_, json) = cpl(&["lint", "--json", file]);
+        let json = json.lines().find(|l| l.starts_with('{')).unwrap_or("{}");
+        let found: Vec<_> = warnings(json)
+            .into_iter()
+            .filter(|(code, ..)| TRAPPING.contains(&code.as_str()))
+            .collect();
+        if found.is_empty() {
+            continue;
+        }
+        let (_, saved) = cpl(&["lint", "--save", file]);
+        for (code, line, witness) in found {
+            let case = scratch.join(format!("main.tests/lint-{code}-{line}.in"));
+            if witness.is_empty() || !case.exists() {
+                wrong.push(format!("{shown}: {code} at line {line} saved no case for its witness {witness:?}:\n{saved}"));
                 continue;
             }
-            let shown = path
-                .strip_prefix(&root)
-                .unwrap_or(path)
-                .display()
-                .to_string();
-            let named = witnesses(&message);
-            let pinned = named
-                .iter()
-                .try_fold(src.clone(), |s, (n, v)| pin(&s, n, *v));
-            let Some(pinned) = pinned.filter(|_| !named.is_empty()) else {
-                wrong.push(format!(
-                    "{shown}: {code} names no input it can pin: {message}"
-                ));
-                continue;
-            };
-            let spec = cpl_stress::InputSpec::from_source(&pinned).unwrap();
             checked += 1;
-            for seed in 1..=5 {
+            let mut spec = cpl_stress::InputSpec::from_source(&src).unwrap();
+            assert!(witness.iter().all(|(n, v)| spec.pin(n, *v)));
+            let mut inputs = vec![fs::read_to_string(&case).unwrap()];
+            for seed in 2..=5 {
                 let mut rng = cpl_stress::Rng::new(seed);
-                let case =
+                let made =
                     cpl_stress::generate(&spec, &mut rng, cpl_stress::Size::Small(5)).unwrap();
-                let input = scratch.join("main.in");
-                fs::write(&input, case.render()).unwrap();
-                let (status, ran) = cpl(&["run", file.to_str().unwrap(), input.to_str().unwrap()]);
-                let at = format!("main.cp:{line}:");
-                if status == Some(0) || !ran.contains("error[R") || !ran.contains(&at) {
-                    wrong.push(format!("{shown}: {code} at line {line} claims {named:?} traps, but with input\n{}it gave\n{ran}", case.render()));
+                inputs.push(made.render());
+            }
+            for input in inputs {
+                let at = scratch.join("main.in");
+                fs::write(&at, &input).unwrap();
+                let (status, ran) = cpl(&["run", file, at.to_str().unwrap()]);
+                if status == Some(0)
+                    || !ran.contains("error[R")
+                    || !ran.contains(&format!("main.cp:{line}:"))
+                {
+                    wrong.push(format!("{shown}: {code} at line {line} claims {witness:?} traps, but with input\n{input}it gave\n{ran}"));
                     break;
                 }
             }

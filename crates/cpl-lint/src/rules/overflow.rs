@@ -32,11 +32,23 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             .with_help(format!(
                 "its declared operands give `{}..={}`; widen an operand to `I128`, compute in `Mod<P>` if the answer is asked modulo `P`, or declare the tighter bounds the statement gives (R0202)",
                 e.lo, e.hi
-            ));
+            ))
+            .with_witness(pairs(witness));
             Finding {
                 lint: &INT_OVERFLOW_AT_BOUNDS,
                 diag,
             }
+        })
+        .collect()
+}
+
+/// The prover's `a = 5, b = 7` as names and values.
+fn pairs(witness: &str) -> Vec<(String, i128)> {
+    witness
+        .split(", ")
+        .filter_map(|pair| {
+            let (name, value) = pair.split_once(" = ")?;
+            Some((name.trim().to_string(), value.trim().parse().ok()?))
         })
         .collect()
 }

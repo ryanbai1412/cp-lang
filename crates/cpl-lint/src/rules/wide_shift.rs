@@ -18,7 +18,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
             .with_help(format!(
                 "if the statement keeps `{text}` at most {safe}, declare that range; otherwise shift a `U64` (`U64(1) << {text}`) or keep the bits in a `Bitset` (`std.bitset`), so the largest input does not trap (R0202)"
-            ));
+            ))
+            .with_witness(super::witness(text, hi));
             Finding {
                 lint: &INT_SHIFT_OVERFLOW_AT_BOUNDS,
                 diag,

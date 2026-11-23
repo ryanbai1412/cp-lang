@@ -116,7 +116,7 @@ A warning drawn from the declared ranges names an input those ranges allow that 
 
 - **Why:** the user wrote the ranges from the statement, so a concrete input inside them is the one argument that convinces; a vague "may overflow" gets ignored.
 - **Example:** L0306 on `a * b` with `a, b: 1..=10**10` says `a = 9223372037, b = 1000000000` overflows; L0307 on `if n >= 1:` with `n: 1..=10` says the range already proves it; L0305 on `a.max()!` stays quiet after `if a.len > 0:`.
-- **Enforced by:** each bound lint's `before.cp` and `near_miss.cp` under `spec/lints/` (codes `L0302` to `L0308`), run by `cargo test -p cpl-lint`; `crates/cpl-cli/tests/lint_witnesses.rs` runs each named input and requires the trap on the flagged line.
+- **Enforced by:** each bound lint's `before.cp` and `near_miss.cp` under `spec/lints/` (codes `L0302` to `L0308`), run by `cargo test -p cpl-lint`; `crates/cpl-cli/tests/lint_witnesses.rs` saves each named input with `cpl lint --save` (from the diagnostic's `witness`, also in its JSON) and requires the trap on the flagged line.
 
 ## Everywhere
 

@@ -53,6 +53,19 @@ pub fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> Value {
         ("help", d.help.as_deref().map_or(Value::Null, text)),
         ("fixes", Value::Array(fixes.collect())),
         (
+            "witness",
+            Value::Array(
+                d.witness
+                    .iter()
+                    .map(|(name, value)| {
+                        let value = i64::try_from(*value)
+                            .map_or_else(|_| text(&value.to_string()), Value::Int);
+                        obj([("name", text(name)), ("value", value)])
+                    })
+                    .collect(),
+            ),
+        ),
+        (
             "page",
             crate::registry::page(d.code.0).map_or(Value::Null, |p| text(&p)),
         ),

@@ -177,7 +177,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
             .with_help(format!(
                 "`{read}` is `None` on an empty {what}: handle it with `if let v = {read}:` or `{read} ?? fallback`, or declare `{end}` so `{name}` is never empty"
-            ));
+            ))
+            .with_witness(super::witness(end, at));
             self.out.push(Finding { lint, diag });
         }
     }

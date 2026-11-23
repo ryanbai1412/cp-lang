@@ -120,3 +120,15 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(read_loop::check(file));
     findings
 }
+
+/// `name = value` as a diagnostic's witness when `text` is a plain name, the
+/// only kind an input can be pinned to.
+pub(crate) fn witness(text: &str, value: i128) -> Vec<(String, i128)> {
+    let plain = text.starts_with(|c: char| c.is_alphabetic() || c == '_')
+        && text.chars().all(|c| c.is_alphanumeric() || c == '_');
+    if plain {
+        vec![(text.to_string(), value)]
+    } else {
+        Vec::new()
+    }
+}

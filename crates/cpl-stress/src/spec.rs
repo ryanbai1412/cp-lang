@@ -550,6 +550,33 @@ impl InputSpec {
                 .is_none_or(|cases| cases.fields.is_empty())
     }
 
+    /// Narrows the read of `name` to `value`, so every case made reads it:
+    /// a lint's witness. False when the program reads no such integer.
+    pub fn pin(&mut self, name: &str, value: i128) -> bool {
+        let fixed = || Shape::Int {
+            lo: int(value),
+            hi: int(value),
+        };
+        for field in &mut self.fields {
+            let Some(at) = field.names.iter().position(|n| n.as_deref() == Some(name)) else {
+                continue;
+            };
+            let count = field.names.len();
+            let part = match &mut field.shape {
+                shape @ Shape::Int { .. } if count == 1 => Some(shape),
+                Shape::Tuple { parts, .. } if parts.len() == count => parts.get_mut(at),
+                _ => None,
+            };
+            if let Some(part) = part.filter(|p| matches!(p, Shape::Int { .. })) {
+                *part = fixed();
+                return true;
+            }
+        }
+        self.cases
+            .as_mut()
+            .is_some_and(|cases| cases.pin(name, value))
+    }
+
     /// Reads the input a program declares: every top-level
     /// `let pattern: Type = read()`, in order.
     pub fn from_source(src: &str) -> Result<InputSpec, SpecError> {

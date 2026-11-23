@@ -273,6 +273,9 @@ pub struct Diagnostic {
     /// What to type next.
     pub help: Option<String>,
     pub fixes: Vec<Fix>,
+    /// Input values that make the problem happen (`n = 0`): `cpl lint
+    /// --save` writes a test case from them.
+    pub witness: Vec<(String, i128)>,
 }
 
 impl Diagnostic {
@@ -286,6 +289,7 @@ impl Diagnostic {
             notes: Vec::new(),
             help: None,
             fixes: Vec::new(),
+            witness: Vec::new(),
         }
     }
 
@@ -321,6 +325,11 @@ impl Diagnostic {
 
     pub fn with_help(mut self, help: impl Into<String>) -> Diagnostic {
         self.help = Some(help.into());
+        self
+    }
+
+    pub fn with_witness(mut self, witness: Vec<(String, i128)>) -> Diagnostic {
+        self.witness = witness;
         self
     }
 
