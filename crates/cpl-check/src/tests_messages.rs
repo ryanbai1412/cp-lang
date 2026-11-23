@@ -107,9 +107,10 @@ fn pythons_range_says_how_a_range_is_written() {
         diags[0]
             .help
             .as_deref()
-            .is_some_and(|h| h.contains("`range(n)` is `0..n`")),
+            .is_some_and(|h| h.contains("`0..3`")),
         "{diags:?}"
     );
+    assert_eq!(diags[0].fixes[0].edits[0].1, "0..3", "{diags:?}");
 }
 
 #[test]

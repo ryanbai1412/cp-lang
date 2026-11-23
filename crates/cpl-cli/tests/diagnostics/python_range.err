@@ -1,0 +1,8 @@
+error[E0201]: no `range` in scope
+  --> python_range.cp:2:10
+  |
+2 | for i in range(n - 1):
+  |          ^^^^^
+  = help: a range is written in CP Lang: `0..n - 1`
+
+python_range.cp: 1 error

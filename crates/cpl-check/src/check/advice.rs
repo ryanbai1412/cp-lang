@@ -62,6 +62,31 @@ impl Checker<'_> {
                 format!("{}.rev", operand(self, xs)),
                 "the reversed view is a member",
             ),
+            ("range", [_] | [_, _]) => {
+                let bound = |c: &Self, a: &Arg| {
+                    let t = c.text(a.value.span);
+                    let plain = t
+                        .chars()
+                        .all(|ch| ch.is_alphanumeric() || " _.+-*/%()[]".contains(ch));
+                    if plain {
+                        t.to_string()
+                    } else {
+                        format!("({t})")
+                    }
+                };
+                let (lo, hi) = match args {
+                    [n] => ("0".to_string(), bound(self, n)),
+                    [a, b] => (bound(self, a), bound(self, b)),
+                    _ => return,
+                };
+                let next = self.text(Span::new(call.span.end, call.span.end + 1));
+                let range = if next == "." {
+                    format!("({lo}..{hi})")
+                } else {
+                    format!("{lo}..{hi}")
+                };
+                (range, "a range is written")
+            }
             ("pow", [a, b]) => (
                 format!("{} ** {}", operand(self, a), operand(self, b)),
                 "power is the operator `**`",
