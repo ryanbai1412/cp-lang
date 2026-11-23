@@ -748,7 +748,7 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log² n)
     /// empty: nothing changes for `a == b` with `edges`
     /// traps: when `a` and `b` are in different trees of a forest
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var seg = SegTree(+, t.reorder([0, 0, 0, 0, 0]), act: add); t.apply_path(3, 2, seg, 5); t.fold_path(3, 2, seg) == 20 and seg.fold(t.sub(1)) == 10`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var seg = SegTree(+, t.reorder([0, 0, 0, 0, 0]), act: add); t.apply_path(3, 2, mut seg, 5); t.fold_path(3, 2, seg) == 20 and seg.fold(t.sub(1)) == 10`
     pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false):
         for c in self.chains(a, b, edges): ds.apply(c.range, tag)
 
@@ -1307,6 +1307,7 @@ fn lca_dist_ancestor_and_step_match_climbing():
                 assert r.jump(a, b, k) == (if k < p.len: Some(p[k]) else: None)
 
 @test
+// blocked: `build` cannot read `a.w` only when the arc type is `Weighted` (compiler worklog)
 fn weighted_dist_adds_the_lengths_on_the_path() = todo
 
 @test
@@ -1333,7 +1334,34 @@ impl Reversible for Word:
     fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
 
 @test
-fn path_updates_and_subtree_folds_over_one_lazy_tree() = todo
+fn path_updates_and_subtree_folds_over_one_lazy_tree():
+    domain V = 0..12
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    var val: [V]Int = [V] v => rand(0, 9)
+    var seg = SegTree(+, r.reorder(val), act: add)
+    for _ in 0..300:
+        let (a, b, x) = (V(rand(0, V.count - 1)), V(rand(0, V.count - 1)), rand(-5, 5))
+        let edges = rand(0, 1) == 1
+        var on = List<V>()
+        for v in slow_path(r, a, b):
+            if not edges or v != r.lca(a, b): on.push(v)
+        match rand(0, 2):
+            0 =>
+                r.apply_path(a, b, mut seg, x, edges:)
+                for v in on: val[v] += x
+            1 =>
+                seg.apply(r.sub(a), x)
+                for v in V:
+                    if r.is_anc(a, v): val[v] += x
+            _ =>
+                var want = 0
+                for v in on: want += val[v]
+                assert r.fold_path(a, b, seg, edges:) == want
+                var below = 0
+                for v in V:
+                    if r.is_anc(a, v): below += val[v]
+                assert seg.fold(r.sub(a)) == below
 
 @test
 fn centroids_leave_no_piece_over_half():
@@ -1366,7 +1394,32 @@ fn excl_fold_folds_the_other_children():
         assert i == kids.len
 
 @test
-fn rerooting_counts_connected_sets_through_every_vertex() = todo
+fn rerooting_counts_connected_sets_through_every_vertex():
+    domain V = 0..10
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let p = 1_000_000_007
+    let times = Monoid<Int>(id: 1, op: (x, y) => x * y % p)
+    let all = r.reroot(times, lift: (x, c, u) => x + 1, finish: (s, v) => s)
+    var count: [V]Int = 0
+    for mask in 1..(1 << V.count):
+        var start: ?V = None
+        var size = 0
+        for v in V:
+            if (mask >> v.to_idx) & 1 == 1:
+                size += 1
+                if start == None: start = Some(v)
+        var seen = 1 << start!.to_idx
+        var st = [start!]
+        while let u = st.pop():
+            for w in adj[u]:
+                if (mask >> w.to_idx) & 1 == 1 and (seen >> w.to_idx) & 1 == 0:
+                    seen |= 1 << w.to_idx
+                    st.push(w)
+        if seen == mask:
+            for v in V:
+                if (mask >> v.to_idx) & 1 == 1: count[v] += 1
+    for v in V: assert all[v] == count[v]
 
 @test
 fn orders_lifting_and_the_virtual_tree():
@@ -1467,6 +1520,7 @@ fn from_parents_tour_pos_and_value_owned_pre():
     assert Rooted.try_from_parents(cyc) == None
 
 @test
+// blocked: `build` cannot read `a.w` only when the arc type is `Weighted` (compiler worklog)
 fn weighted_rooted_bfs_tree_on_cyclic_graph() = todo
 
 @test
