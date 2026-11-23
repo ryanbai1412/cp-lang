@@ -184,7 +184,8 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
   `fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]`,
   `fn pick(a: [V]Int, b: [V]Int) -> lends(a) [V]Int`. It never goes in a
   `var`, field, container, global or escaping closure. Keeping one is
-  `List(w)`. (R07.5.10)
+  `List(w)`. An unnamed temporary lives to the end of its statement, and the temporaries of a
+`for` header live for the whole loop: `for r in a.sorted().runs():` is valid. (R07.5.10)
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
   over `V` (a `mut` one, any `IndexedMut`); it is a template parameter, so
   each call site gets its own fused loop. `List<T>` and `Str` parameters

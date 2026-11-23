@@ -82,9 +82,10 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
   `true` and `false` are lowercase literals. (R01.3.1)
 - Values, functions, fields and modules are `snake_case` or lower camel;
   a `let` or `var` binding with an uppercase first letter is an error
-  ("values are lowercase; `N` would read as a type"). A `const` is named
-  like a variant: `const P = 1e9 + 7`; a lowercase `const` is the same
-  error, since a pattern would read it as a binding (decision 363). (R01.3.2)
+  ("values are lowercase; `N` would read as a type"). A `const` may be
+  named like a variant, `const P = 1e9 + 7`, or lowercase like the operation
+  values `inf` and `add`; a lowercase name in a pattern still binds (R02.7.1),
+  so compare a lowercase `const` with a guard (decision 369). (R01.3.2)
 - So a pattern needs no lookup to read: a capitalized name is a variant
   or constant, a lowercase name binds. `match h: Big => ...` tests the
   variant; `match h: big => ...` binds `big`. (R01.3.3)
@@ -170,7 +171,7 @@ Tightest first:
    `a + (b is P)`; parenthesize the left side)
 2. `**` (right-associative; the right operand may start with unary `-`)
    On `Int`, `x ** k` is the exact power: a negative `k` traps (R0001), and a
-   result past 64 bits traps like `*` (R0202). With literal operands it folds
+   result past 64 bits traps like `*` (R0202). On `Mod<P>`, `x ** k` is the modular power. With literal operands it folds
    at compile time, so `read<1..=2 ** 29>()` has a static bound. (R01.5.8)
 3. unary `-`, `+` (numeric only), `~`
 4. `*`, `/`, `%`
@@ -276,13 +277,15 @@ match d: L => -1, R => 1            // one-line match
 - `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is
   the value-position form. `if x is p:` in a header gets a lint with a
   fix to the `let` form (decision 111). An `else:` runs when any binder
-  fails to match or any comma condition is false. (R01.7.1)
+  fails to match or any comma condition is false. Each binder repeats `let`:
+  `if let a = x, let b = y:`. (R01.7.1)
 - `for` and `while` (there is no `loop`: `while true:` with a `break` is
   the loop that exits in the middle) take an `else:` that runs when the loop ended
   without `break`; a labelled break from an inner loop skips the inner
   `else` (decision 125). Labels are `'name:` before the loop. (R01.7.2)
 - `match` is exhaustive over enums, literal unions, `Bool` and `?T`.
-  Arms may have guards `pat if cond =>`. There are no custom patterns:
+  Arms may have guards `pat if cond =>`; a guarded arm never counts
+  toward exhaustiveness. There are no custom patterns:
   a view is a method returning an enum (decision 132). (R01.7.3)
 - Loops over library generators support `break`, `continue`, `return`,
   labels and `else` exactly like built-in loops (decision 126). (R01.7.4)

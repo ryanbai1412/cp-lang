@@ -398,7 +398,7 @@ operations support it:
 | range apply, range fold | `SegTree(op, a, act:)` | \(O(n)\) | \(O(\log n)\) | tags `Commutative`: no push-down |
 | range apply, point read | `SegTree(a: a, act:)` | \(O(n)\) | \(O(\log n)\) | tags `Commutative`: no push-down |
 | static fold | `SparseTable(op, a)` | \(O(n \log n)\) | \(O(1)\) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
-| static prefix / range sum | `Prefix(a)` | \(O(n)\) | \(O(1)\) | `+` only: `prefix(c)`, `fold(r)`; other ops scan with `a.scan(op)` |
+| static prefix / range sum | `Prefix(a)` | \(O(n)\) | \(O(1)\) | `+` only: `prefix(c)`, `fold(r)`, and on `[R, C]T` rectangle sums `fold(rows, cols)`; other ops scan with `a.scan(op)` |
 | dynamic prefix / range sum | `Fenwick(a)` | \(O(n)\) | \(O(\log n)\) | `+`/`-` only: `fold(r)`; other ops use `SegTree` |
 | sliding window fold | `Window(op)` | | \(O(1)\) amortized | `Selective`: monotone deque; else two stacks |
 | offline range add | `Diff` | | \(O(1)\) per `add(r, x)`, \(O(n)\) finish | `+`/`-` only |

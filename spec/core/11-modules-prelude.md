@@ -78,7 +78,8 @@ built-in list. Rules:
   prelude name; the library spells it otherwise. And a name with two
   plausible meanings across chapters gets one chapter's meaning and the
   others are qualified (`min` and `max` stay the builtins over two or more
-  values; the folds of one sequence are methods). (R11.3.3)
+  values, like `abs`: core builtins with no stub; the folds of one sequence
+  are methods). (R11.3.3)
 - A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and
   `p.adj4` find the method on the receiver's type wherever the type
   came from. Only free names need the prelude or a `use`. (R11.3.4)

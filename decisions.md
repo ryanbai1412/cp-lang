@@ -7759,3 +7759,25 @@ Rebuild round 15 found 14 holes (3 silent, 2 contradiction, 1 missing-stdlib,
   say "short-circuit" where readers search for it (R01.5.7).
 The two contradictions (`tally` type, `sort` `desc:`) were already routed to
 stdlib in rounds 11 and 13. Reverse: edit the named rules and cases.
+
+## 369. Rebuild-16 rulings: lowercase `const`, grid reads, temporaries in `for` (2026-11-23)
+
+Rebuild round 16 found 20 holes (6 silent, 7 contradiction, 1 missing-stdlib,
+6 found-late) on a harder problem mix. Rulings:
+- A `const` may be lowercase (reverses that clause of decision 363). std's
+  `inf` and the operation values `add`, `assign`, `affine` are lowercase
+  consts, and the compiler never rejected them; a lowercase name in a pattern
+  still binds (R02.7.1), so a lowercase const is compared with a guard
+  (R01.3.2). Alternative: rename std's to `INF`, `ADD`; rejected because
+  operation values read as values (`act: add`), and every spec/lib example
+  uses `inf`.
+- `[R, C]T` reads `R.count * C.count` tokens row-major (R10.2.3).
+- The expected type reaches bare variants through tuple annotations and
+  `if`/`match` arms (R02.7.1); a guarded arm never counts toward
+  exhaustiveness (R01.7.3).
+- A `for` header's temporaries live for the whole loop (R07.5.10).
+- A table over a product may take one cell parameter, `[R, C] p =>` (R04.2.11).
+- A joint bound is a checked store, `let nm: 1..=2e5 = n * m` (R03.1.1).
+- `let x = x!` shadows in the per-test region too (R02.4.8, R01.9.1).
+- `Prefix(a)` is the one constructor spelling (chapter 3 said `Prefix(+, a)`).
+Reverse: edit the named rules and cases.

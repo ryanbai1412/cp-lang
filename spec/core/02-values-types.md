@@ -57,7 +57,8 @@ per element. (R02.2.1)
 
 Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has
 exactly those values, reads validate them, and `match` is exhaustive over
-them (decision 135). (R02.2.2)
+them (decision 135). A union mixes only literals: a token that is `-1` or
+in `1..=1e8` reads as `-1..=1e8`. (R02.2.2)
 
 ## 2.3 Strings
 
@@ -113,7 +114,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 - `x!` is the `Unwrap` trait. `?T`, `[D]?T` and `List<?T>` implement it;
   the array forms check every element in one pass and trap naming the
   first gap ("depth[17] is None"). This ends a fill phase:
-  `let depth = depth!`. `.all_some()` is the non-trapping form. (R02.4.8)
+  `let depth = depth!`, in any body, the per-test region below
+  `@!multitest` included (R01.9.1). `.all_some()` is the non-trapping form. (R02.4.8)
 
 ## 2.5 Tuples and records
 
@@ -190,7 +192,8 @@ enum Ev:
 
 - Variants are `PascalCase` names in their enum's scope, like `Some` and
   `None` of `?T` (decision 157). Context resolves bare variant names in
-  patterns and where the expected type is the enum; a lowercase name in
+  patterns and where the expected type is the enum, through a tuple annotation and the
+  arms of an `if` or `match` too (`let (c, s): (Int, Side) = if k > 2: (1, Left) else: (2, Right)`); a lowercase name in
   a pattern always binds. (R02.7.1)
 - `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`,
   `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct

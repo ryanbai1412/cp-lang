@@ -41,7 +41,8 @@ bytes, never slower), and `cpl explain` prints every layout.
 - **Domain widths follow the static bound of the count.** `let n =
   read<1..=2e5>(); domain V = 0..n` gives 4-byte positions; `n: 1..=5000`
   gives 2-byte positions. Every `[V]V` parent array, `List<V>` stack and
-  `[V]0..=V.count` size array shrinks with it. (R03.1.1)
+  `[V]0..=V.count` size array shrinks with it. A joint bound is a checked store: `let nm: 1..=2e5 = n * m`, then
+`domain Val = 1..=nm` gets 4-byte positions. (R03.1.1)
 - **Locals never narrow.** `let x: 0..=1e9 = ...` is a contract checked
   at assignment, but it lives in an i64 register. Narrowing a local saves
   nothing and costs conversions. (R03.1.2)
@@ -85,7 +86,7 @@ decides the element type of the folds:
 | `SegTree(+, b)`, `b: [V]1..=1e4`, `n <= 2e5` | 4-byte nodes | a node sums at most `V.count` inputs: `0..=2e9`, proven |
 | `SegTree<0..=4e9>(+, a)` | 4-byte nodes | you named the node type; node writes are range stores |
 | `SegTree(+, a.map(Z))` | 4-byte nodes | `Mod<P>` is closed under `+` |
-| `Prefix(+, a)` | `[V.cuts]Int` | sums |
+| `Prefix(a)` | `[V.cuts]Int` | sums |
 | `Heap(by: .d)` of `(d: Int, v: V)` | 16 bytes (12 + padding) | each field at its own width |
 
 This is the law machinery of round 5 doing layout work: `Selective`
