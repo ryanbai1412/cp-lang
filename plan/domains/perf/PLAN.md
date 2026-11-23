@@ -51,6 +51,7 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | `s.runs(link: f).all(...)` builds every run and calls `link` through `std::function` | `.all`/`.any` over a `yields` fn feed the body as `cpl_each_` loops do; a `?Fn` argument given a lambda is devirtualised like a `Fn` one | compiler (lowering of `.all`), perf (devirt) |
 | two forwarding closures for one fn named twice as a value (cf2147f `op: merge`), merged in `devirt::same_closures` | lowering makes one closure per (fn, kept params) and reuses it at every place the fn is named (`lower/mono.rs::fn_as_closure`) | compiler |
 | cf2147f needs a hand-written cover tree to reach orig.cpp: `SegTree` with an `Action` always pushes its tags down and keeps `t`, `lz`, `has_lz`, `span` in four arrays | a commutative `Action` whose effect a node can recompute from its own tag (cover counts) skips the push; one node record instead of parallel arrays | stdlib (`std.ds` SegTree) |
+| cf2124h tuned by writing constant bounds (`0..=30_002`) where port.cp has `0..=2 * n` | width inference bounds a range through names and `*` (`lower/range.rs::expr_limits`), so a bound written from the statement's variables narrows as a constant does | compiler |
 | tuned variants found under three names (`perf.cp`, `<stem>.perf.cp`, dry-run `<stem>_w.cp`) | one name, `perf.cp` / `<stem>.perf.cp`; rename the dry-run files | perf |
 
 ## Next
