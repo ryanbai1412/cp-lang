@@ -4,11 +4,15 @@
 
 Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`). - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`. - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `RingSlice`, `Slice`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `partition_point`, `prev_permutation`, `prod`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `sum`, `take_while`, `tally`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `RingSlice`, `Slice`, `Ties`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `partition_point`, `prev_permutation`, `prod`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `sum`, `take_while`, `tally`, `windows`, `zip`.
 
 ## Types & Constants
 
 - `type Perm<V> = [V]V` — Every value of `V` once, in some order.
+
+## `enum Ties`
+
+Which of several equal best elements an extreme returns: `Ties.First` or `Ties.Last` in sequence order.
 
 ## `struct Compressed<D, T>(vals: [D]T)`
 
@@ -143,8 +147,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn prod<S: Seq, T>(self: S) -> T` — \(O(n)\); Product of all elements of `self` (`T.one` when empty).; traps: never (overflow wraps in release, traps in debug)
 - `fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U` — \(O(n)\); Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each element first (`xs.sum(of: x => x * x)`).; traps: never (overflow wraps in release, traps in debug)
 - `fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64` — \(O(n)\); The average of `of` over the elements as `F64`; `None` when empty.
-- `fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T` — \(O(n)\); The least element by `by`, the first on ties; `None` when empty.
-- `fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T` — \(O(n)\); The greatest element by `by`, the first on ties; `None` when empty.
+- `fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+- `fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
 - `fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int` — \(O(n)\); How many elements satisfy `p` (every element without `p`).
 - `fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first match; Whether some element satisfies `p`; stops at the first.
 - `fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first failure; Whether every element satisfies `p`; stops at the first that doesn't.
@@ -274,8 +278,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>` — \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
 - `fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D)` — \(O(n)\), \(O(n)\) memory
-- `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty: `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the longest word.
-- `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
+- `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty: `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the longest word.
+- `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
 - `fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S>` — \(O(n)\); Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
 - `fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions: read the piece as `a[w]`, like [`spans`](spans).; traps: never in release; debug traps when `ok` fails on a single element after a shrink
