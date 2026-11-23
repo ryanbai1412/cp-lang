@@ -1759,4 +1759,6 @@ fn another_languages_type_name_is_one_error_with_ours() {
     let d = parse_file("let a: int = 5\nlet xs: vector<Int> = [a]\nlet r: 0..=n = 1\n").diagnostics;
     let found: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(found, ["Int", "List"], "{d:?}");
+    let d = parse_file("let d: double = 1.5\n").diagnostics;
+    assert_eq!(d[0].fixes[0].edits[0].1, "F64", "{d:?}");
 }

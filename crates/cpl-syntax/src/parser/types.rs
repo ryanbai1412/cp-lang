@@ -700,7 +700,7 @@ fn foreign_type(name: &str) -> Option<&'static str> {
         "int" | "long" | "ll" | "i64" | "i32" | "int64" | "integer" | "usize" => "Int",
         "string" | "str" => "Str",
         "bool" | "boolean" => "Bool",
-        "float" | "double" | "f64" => "Float",
+        "float" | "double" | "f64" => "F64",
         "char" => "Char",
         "vector" | "vec" | "list" => "List",
         "map" | "dict" | "unordered_map" => "Map",
