@@ -2430,6 +2430,11 @@ impl<'a> Lowerer<'a> {
                     self.show(&r.ty)
                 );
                 self.error(codes::BAD_OPERANDS, span, message);
+                if op == Mul && matches!(l.ty, Ty::List(_)) && r.ty == Ty::Int {
+                    if let Some(d) = self.diags.last_mut() {
+                        d.help = Some("`n` copies of `x` are `[n].filled(x)`".into());
+                    }
+                }
                 return self.err_expr(span);
             }
         };
