@@ -17,6 +17,10 @@ suites:
   diff            interpreter vs g++ -O2 -std=c++17 differential, with
                   side-effect variants of corpus ports (variant/*)
   all             all five suites (default if no suite is named)
+  fuzz [START] [COUNT] [--no-cxx]
+                  generated programs (seeds START..START+COUNT, default
+                  0 200) on the interpreter and the C++ at every --checks
+                  level; findings are kept in target/fuzz/<seed>.cp
 
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
@@ -51,6 +55,9 @@ fn main() -> ExitCode {
     let mut scoreboard_path: Option<PathBuf> = None;
     let mut filter: Option<String> = None;
 
+    if args.first().map(String::as_str) == Some("fuzz") {
+        return fuzz(&args[1..]);
+    }
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -283,5 +290,40 @@ fn main() -> ExitCode {
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
+    }
+}
+
+fn fuzz(args: &[String]) -> ExitCode {
+    let cxx = !args.iter().any(|a| a == "--no-cxx");
+    let nums: Vec<u64> = args.iter().filter_map(|a| a.parse().ok()).collect();
+    let start = nums.first().copied().unwrap_or(0);
+    let count = nums.get(1).copied().unwrap_or(200);
+    let keep = find_repo_root()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("target/fuzz");
+    let started = Instant::now();
+    let findings = cpl_conform::fuzz::run(start, count, cxx, &keep);
+    for f in &findings {
+        let first = f
+            .detail
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("");
+        println!("seed {}: {}: {first}", f.seed, f.kind);
+    }
+    println!(
+        "fuzz: {}/{count} generated programs agree ({:.1}s){}",
+        count - findings.len() as u64,
+        started.elapsed().as_secs_f64(),
+        if findings.is_empty() {
+            String::new()
+        } else {
+            format!("; programs in {}", keep.display())
+        }
+    );
+    if findings.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
     }
 }

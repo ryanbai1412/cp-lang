@@ -54,8 +54,8 @@ std names matched in the compiler and constructs the VM can't run yet, and
 only let those counts fall. The rules for changing the compiler, each with
 the check behind it, are in `handbook/guidelines/compiler-changes.md`.
 
-The weakest areas today: nobody generates programs to compare the two
-engines on code no one wrote; nothing checks that checked and unchecked
+The weakest areas today: the program generator covers only `Int` and list
+code; nothing checks that checked and unchecked
 builds agree; std-bound violations and interpreter memory are not measured;
 and incremental re-checking is not counted. The quality register below
 lists every quality with its check.
@@ -164,7 +164,7 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Old solutions keep building (J10) | corpus programs that stop checking after a change | `cpl-conform corpus`; `crates/cpl-cli/tests/judges.rs` ports | enforced |
 | A user library has the powers std has (J10) | std-only mechanisms | `prelude_privilege`, `backend_std_names`, `ir_builtin_names`, `lint_std_names` in `scripts/debt-ratchet.py`; [compiler-changes/R1](../guidelines/compiler-changes-checklist.md#compiler-changesr1) | partial |
 | Suites catch the bugs they claim to | mutation score of the conformance and differential suites | `scripts/mutation-score.py` on the code a diff touches | partial: not yet in the gate |
-| Generated programs find disagreements (as Csmith does for GCC and LLVM) | mismatches per 100k generated programs | a differential program generator, also run at each `--checks` level | missing |
+| Generated programs find disagreements (as Csmith does for GCC and LLVM) | mismatches per 100k generated programs | `cpl-conform fuzz START COUNT` (`crates/cpl-conform/src/gen.rs`) at every `--checks` level; `generated_programs_check_run_and_agree` in the gate; [compiler-changes/R4](../guidelines/compiler-changes-checklist.md#compiler-changesr4) | partial: 40 seeds in the gate, Int and list programs only |
 | Code stays maintainable | owned files over the size cap; duplicated bodies | `rs_over_cap`, `dup_fn_bodies`, `near_dup_fns` ratchets | enforced |
 | Every fix keeps its regression | fixes landed without a case or program | [compiler-changes/R2](../guidelines/compiler-changes-checklist.md#compiler-changesr2) | process |
 

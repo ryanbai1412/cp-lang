@@ -115,7 +115,7 @@ fn fnv1a_hex(data: &[u8]) -> String {
     format!("{h1:016x}{h2:016x}")
 }
 
-enum CppCompileError {
+pub(crate) enum CppCompileError {
     Cxx(String),
     Infra(String),
 }
@@ -169,7 +169,7 @@ fn is_transient_gxx_failure(code: Option<i32>, stderr: &str) -> bool {
         || lower.contains("virtual memory exhausted")
 }
 
-fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> {
+pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> {
     std::fs::create_dir_all(cache_dir)
         .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
@@ -253,7 +253,7 @@ fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> 
     ))
 }
 
-fn run_binary(bin: &Path, input: &[u8]) -> Result<Vec<u8>, String> {
+pub(crate) fn run_binary(bin: &Path, input: &[u8]) -> Result<Vec<u8>, String> {
     let out = runner::run_piped(Command::new(bin), input, runner::case_timeout())
         .map_err(|e| format!("{}: {e}", bin.display()))?;
     if !out.status.success() {
