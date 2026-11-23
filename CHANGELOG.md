@@ -14,7 +14,8 @@ source is `spec/`; `spec/STATUS.md` says how far the work has got.
 - Enum variants are PascalCase: `Some`, `None`, `Anchor.Start`. In a
   pattern, a capitalised name is a variant and a lowercase name binds
   (decision 157).
-- Memoized functions use `@cache` instead of `@memo`.
+- Memoized functions are `@memo(array)` or `@memo(map)`; `@cache` marks a
+  struct field a read may write (decision 145).
 - Decorators go before `pub`: `@get pub fn`.
 - `-> lends T` always has the arrow.
 
@@ -36,7 +37,6 @@ source is `spec/`; `spec/STATUS.md` says how far the work has got.
 
 - `none` becomes `None` and `some` becomes `Some`. The 0.2.2 compiler
   already accepts both spellings.
-- `@memo` becomes `@cache`.
 
 ## 0.2.2 (2026-11-20)
 

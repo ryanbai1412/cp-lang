@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Answered site's `@cache`/`@memo` question: functions keep `@memo(array|map)`, `@cache` is the field form (decision 145); fixed the two wrong `CHANGELOG.md` lines directly, noted to infra.
 - Rlsp.5 names the one-step `cpl setup neovim` / `cpl setup vim` that `cpl` ships, instead of a runtime-path line into a checkout; editors README routed to tools.
 - Decision 324: named arguments to a variadic parameter make a named tuple (R06.1.5), the mechanism behind `each(sum: +, hi: max)`. Three cases, all failing: core one routed to compiler (SUBSET known gap), `each` return type to stdlib.
 - Round 6 H-SEGTREE-NO-OP: `lib/ops-ranges.md` §8 now states what an act-only tree's `st[k]` returns; its case fails in std (E0302), re-routed to stdlib. H-STD-K-COUNT: spec defines `V.count`/`Int(v)`; 404 `D.K`/`to_idx` uses in `std/*.cp` remain stdlib's (routed). All 26 round-6 holes now have a rule, a case or a routed request.
