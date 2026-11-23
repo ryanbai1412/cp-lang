@@ -48,7 +48,7 @@ for q in Q:
 var at = Map<Int, List<Pos>>()
 for p in Pos: at[sig[p]] = (at.get(sig[p]) ?? []) + [p]
 
-var ans: [Pos]Val = Val.first
+var ans: [Pos]Val = Val.first!
 var undo: [Val]?(Pos, Pos) = none
 var probes = List<Pos>()
 for (s, ps) in at:

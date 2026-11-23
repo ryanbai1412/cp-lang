@@ -66,7 +66,7 @@ for pair in 1..=n / 2:
         rounds[r, s].push(a)
         rounds[r, opposite(s)].push(b)
 if n % 2 == 1:
-    for r in Round: rounds[r, Side.Off].push(Coin.last)
+    for r in Round: rounds[r, Side.Off].push(Coin.last!)
 
 print(q)
 for r in Round:

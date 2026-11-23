@@ -31,6 +31,6 @@ let d_ur = ask('R', step)
 for _ in 0..3: ask('L', step)
 let d_ul = ask('L', step)
 
-let ur_pos = max(p.x + p.y for p in anchors)! + d_ur - 4 * step
-let ul_pos = max(-p.x + p.y for p in anchors)! + d_ul - 4 * step
+let ur_pos = anchors.map(p => p.x + p.y).max()! + d_ur - 4 * step
+let ul_pos = anchors.map(p => -p.x + p.y).max()! + d_ul - 4 * step
 print("!", (ur_pos - ul_pos) / 2, (ur_pos + ul_pos) / 2)
