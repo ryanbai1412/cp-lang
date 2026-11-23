@@ -319,3 +319,55 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(a[i], a[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; debug builds trap otherwise.", "a.reach(while: (x, y) => x + y <= 10)", "List<Int>"),
     row!(Array, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring cells.", "a.windows(2)", "List<List<Int>>"),
 ];
+
+/// The members `member_ty` gives a domain (`V.first`) and a position
+/// (`v.next`), for "did you mean" on a misspelled one.
+pub(crate) const DOMAIN_MEMBERS: &[&str] = &[
+    "first",
+    "last",
+    "all",
+    "rev",
+    "mask",
+    "wrap",
+    "nth",
+    "bounds",
+    "cuts",
+    "pairs",
+    "after",
+    "before",
+    "partition",
+    "filter",
+    "sort",
+];
+pub(crate) const POS_MEMBERS: &[&str] = &[
+    "ord", "to_idx", "idx", "label", "prev", "next", "offset", "ahead", "back",
+];
+
+#[cfg(test)]
+mod tests {
+    fn check(src: &str) -> Vec<cpl_diag::Diagnostic> {
+        let mut db = crate::Database::new();
+        db.set_file("a.cp", src);
+        db.diagnostics("a.cp")
+    }
+
+    #[test]
+    fn a_misspelled_domain_member_suggests_the_domain_member() {
+        let d = &check("domain V = 1..=9\nprint(V.mas)\n")[0];
+        assert_eq!(d.code.0, "E0203");
+        assert_eq!(d.help.as_deref(), Some("did you mean `mask`?"));
+        let d = &check("domain V = 1..=9\nfor v in V:\n    print(v.nxt)\n")[0];
+        assert_eq!(d.help.as_deref(), Some("did you mean `next`?"));
+        // Every listed member is one `member_ty` knows.
+        for (owner, members) in [
+            ("V", crate::builtins::DOMAIN_MEMBERS),
+            ("v", crate::builtins::POS_MEMBERS),
+        ] {
+            for m in members {
+                let src = format!("domain V = 1..=9\nfor v in V:\n    let x = {owner}.{m}\n");
+                let found: Vec<_> = check(&src).iter().map(|d| d.code.0).collect();
+                assert!(!found.contains(&"E0203"), "{owner}.{m}: {found:?}");
+            }
+        }
+    }
+}

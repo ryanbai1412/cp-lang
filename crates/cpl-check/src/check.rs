@@ -1032,6 +1032,14 @@ pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
         let methods = prelude::spec_receiver_method_names();
         return closest(name, methods.iter().map(String::as_str));
     }
+    let own_members = match base {
+        Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS,
+        Ty::Pos(_) => crate::builtins::POS_MEMBERS,
+        _ => &[],
+    };
+    if let Some(member) = closest(name, own_members.iter().copied()) {
+        return Some(member);
+    }
     let receiver = match base {
         Ty::Str => Some(Receiver::Str),
         Ty::Array { .. } => Some(Receiver::Array),

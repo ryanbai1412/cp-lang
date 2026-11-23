@@ -24,6 +24,6 @@ error[E0203]: domain R has no `bound` in the spec: no std module declares it
   |
 7 | print(R.bound)
   |         ^^^^^
-  = help: did you mean `count`?
+  = help: did you mean `bounds`?
 
 typo_of_a_position_range_or_domain_member.cp: 4 errors
