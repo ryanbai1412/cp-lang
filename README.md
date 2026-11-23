@@ -192,7 +192,7 @@ The docs site labels every snippet as either runnable or specification.
 
 - `spec/`: the normative 0.3 language, library, tools, and conformance spec.
 - `decisions.md`: every language decision, its status and its reason.
-- `plan/`: operating rules (`plan/OPERATING.md`), domains (`plan/DOMAINS.md`, `plan/domains/`),
+- `plan/`: domain plans, metrics and worklogs (`plan/domains/`),
   architecture (`handbook/design/architecture.md`), and Ryan's notes (`plan/agent-context.md`).
 - `research/`: the evidence behind the decisions (corpus mining, audits,
   design history, and C++ benchmarks).

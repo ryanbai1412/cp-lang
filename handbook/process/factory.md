@@ -88,6 +88,31 @@ These run on a schedule, without anyone asking:
   acceptance scenario on fresh machines and publishes ranked blockers in
   `plan/product/BLOCKERS.md`.
 
+- **Manual inspection** (coordinator): each round, a sample of new ports,
+  dreams and lane commits is read side by side; what it finds becomes a
+  brief edit, a checklist rule or lane work.
+- **Dream gap queue** (idioms): every gap between a port and its dream (the
+  solution as it should read, `handbook/process/porting.md`) is a friction
+  citing the dream's lines. Gaps are clustered into general mechanisms,
+  ranked by how many ports they unblock, and the port/dream token ratio is
+  ratcheted so the gap only closes.
+
+## Standing practices
+
+- **The stdlib grows two ways.** Bottom up, ports find what is missing. Top
+  down, one owner per area (graphs, trees, range structures, strings,
+  number theory, flows, containers, geometry, DP and search, sequences)
+  designs the area as a whole against the contest patterns it must cover,
+  and fixes port frictions inside that design, never as a one-off helper.
+- **Codemods, not hand migration.** A rename or syntax change ships with a
+  `cpl fix` rule that rewrites the whole corpus mechanically. Moving a port
+  toward its dream is a reviewed rewrite, not a codemod.
+- **One spelling per idea.** Syntax has one owner (the spec domain). A new
+  spelling replaces the old one in the same change, with a codemod; it
+  never sits beside it as "provisional".
+- **The corpus is the benchmark.** Runtime against C++, interpreter against
+  C++, emitted bytes and tokens are measured on the ports and ratcheted.
+
 ## Briefing an agent
 
 Give each agent the smallest context that does the job: the goal, the
@@ -106,6 +131,10 @@ next agent starts better than the last. Signs to act on:
 - `Skipped:` lines piling up against one process;
 - the same mistake made by two lanes;
 - landing, CI or release time creeping up.
+
+Every few rounds a fresh agent audits the whole language for coherence,
+because long-running context drifts. Changes to the factory and their
+reasons are recorded in this document's Changes section.
 
 ## Changes
 
