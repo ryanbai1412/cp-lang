@@ -52,3 +52,16 @@ Deferred past both: the rest of workstream 4 (the split, the VM on wasm) and wor
 ## First
 
 Item 2 of the Milestone 1 order: the loop tests on macOS and Windows.
+
+## General fixes owed
+
+Each local fix made so far, and the mechanism that would remove its whole class.
+
+| Instance (local fix) | General fix | Owner |
+|---|---|---|
+| Windows: stress JSON `expected`/`got` carried `\r\n` (`crates/cpl-stress/src/cli.rs` normalizes at serialization) | Normalize line endings once where `crates/cpl-stress/src/program.rs` captures a program's output, so every consumer (compare, report, saved `.out`) sees LF | debugger |
+| Windows: `runtime_errors.rs` strips both `dir/` and `dir\` from diagnostics | Diagnostics render a path relative to the cwd with `/` on every OS, so goldens never see the platform separator | diagnostics |
+| Windows: tests planting bugs by `\n` patterns missed CRLF checkouts (`debugger.rs` reads LF) | `.gitattributes` `*.cp text eol=lf`, so checkouts never carry CRLF into sources | infra |
+| LSP Stress lens matched decorator names as substrings and missed v0.3's `@alt`/`@check` (`crates/cpl-lsp/src/server.rs`) | The lens asks the parsed file for its stress parts (the same part discovery `cpl stress` uses), so a vocabulary change cannot drift between them | tools |
+| No `g++` on the PATH: same-file stress falls back to `cpl run` (`program.rs`), but `@gen` still needs the compiler | Every stress part, `@gen` included, runs through one backend choice (compiled when a compiler exists, interpreted otherwise) | debugger |
+| Neovim test on Windows: `glob` missed the saved case on a mixed-separator temp path (now `readdir`) | Editor tests find saved cases by listing `<file>.tests/`, never by glob; one helper per editor test suite | tools |

@@ -81,7 +81,10 @@ definition, `K` for hover, formatting on every write, the Run, Trace, Test and
 Stress lenses (`<cmd>lua vim.lsp.codelens.run()<cr>` runs the one under the
 cursor) and `:Cpl <command>` (bare `:Cpl` runs `cpl test` on the file). It
 writes the plugin to `stdpath('data')/site/pack/cpl/start/cplang`; run it again
-after `cpl self update`. Settings, all optional:
+after `cpl self update`. With [nvim-dap](https://github.com/mfussenegger/nvim-dap)
+installed, `:DapContinue` on a `.cp` file debugs it through `cpl dap` with no
+setup: breakpoints, stepping, and time travel back with `require('dap').step_back()`
+and `require('dap').reverse_continue()`. Settings, all optional:
 
 ```lua
 vim.g.cpl_path = 'cpl'             -- when cpl is not on the PATH

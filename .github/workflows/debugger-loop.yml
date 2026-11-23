@@ -60,12 +60,16 @@ jobs:
         with:
           neovim: true
           version: v0.10.4
-      - name: Neovim stress loop
+      - name: Neovim stress loop and time travel
         run: |
           cargo build -p cpl-cli
           root=$PWD cpl=$PWD/target/debug/cpl
           if [ "$RUNNER_OS" = Windows ]; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
           nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
+          git clone -q --depth 1 --branch 0.9.0 https://github.com/mfussenegger/nvim-dap "$RUNNER_TEMP/nvim-dap"
+          dap="$RUNNER_TEMP/nvim-dap"
+          if [ "$RUNNER_OS" = Windows ]; then dap=$(cygpath -m "$dap"); fi
+          nvim --headless --clean -l editors/neovim/test/dap_loop.lua "$cpl" "$root" "$dap"
       - name: Vim stress loop
         if: runner.os != 'Windows'
         run: editors/neovim/test/stress_loop_vim.sh "$PWD/target/debug/cpl"

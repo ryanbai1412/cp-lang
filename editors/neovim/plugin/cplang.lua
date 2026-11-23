@@ -84,3 +84,22 @@ vim.api.nvim_create_autocmd('LspAttach', {
         end
     end,
 })
+
+-- Time travel through `cpl dap` when nvim-dap is installed: `:DapContinue` on a `.cp` file
+-- records the run and stops at its first step; step back with `require('dap').step_back()`.
+vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'cp',
+    group = vim.api.nvim_create_augroup('cplang_dap', {}),
+    callback = function()
+        local ok, dap = pcall(require, 'dap')
+        if not ok or dap.adapters.cp ~= nil then return end
+        dap.adapters.cp = { type = 'executable', command = vim.g.cpl_path or 'cpl', args = { 'dap' } }
+        dap.configurations.cp = dap.configurations.cp or {
+            { type = 'cp', request = 'launch', name = 'Debug this file', program = '${file}', stopOnEntry = true },
+            {
+                type = 'cp', request = 'launch', name = 'Debug on an input file', program = '${file}',
+                input = function() return vim.fn.input('Input file: ', vim.fn.expand('%:p') .. '.tests/', 'file') end,
+            },
+        }
+    end,
+})
