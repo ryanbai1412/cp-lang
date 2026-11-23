@@ -3112,7 +3112,15 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// cost: \(O(\log n)\) rounds, each \(O(n)\) plus the call of `cheapest`
 /// empty: an empty `V` gives total 0 and no edges
 /// traps: when `cheapest` returns a list whose length is not the number of components
-/// example: `domain V = 0..2; let r = boruvka(comp => [Some((u: V(0), v: V(1), w: 5)), Some((u: V(0), v: V(1), w: 5))]); r.total == 5 and r.edges == [(u: 0, v: 1)]`
+///
+/// ```cp
+/// domain V = 0..2
+/// let r = boruvka<V, Int, Int>(comp => [
+///     Some((u: V(0), v: V(1), w: 5)),
+///     Some((u: V(0), v: V(1), w: 5)),
+/// ])
+/// r.total == 5 and r.edges == [(u: 0, v: 1)]
+/// ```
 pub fn boruvka<V, C, W>(
     cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>
 ) -> (total: W, edges: List<(u: V, v: V)>):

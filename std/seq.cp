@@ -2067,13 +2067,20 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
         span = span >> 8
     for i in 0..n: self[i] = cur[i].1
 
-/// \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory. Stable counting sort in place by domain or bounded-range key `by:`.
+/// Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
+/// order: one count per position of `K`, then each element goes to its slot.
+///
+/// ```cp
+/// domain K = 0..2
+/// var a = [(k: K(1), s: "b"), (k: K(0), s: "a"), (k: K(1), s: "c")]
+/// a.counting_sort(by: p => p.k)
+/// [p.s for p in a] == ["a", "b", "c"]
+/// ```
 ///
 /// cost: \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory
 /// empty: does nothing
 /// ties: stable
 /// traps: never
-/// example: `var a = ['b', 'a', 'b']; a.counting_sort(by: c => c); a == ['a', 'b', 'b']`
 pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
     let n = self.len
     var start: [K]Int = 0
