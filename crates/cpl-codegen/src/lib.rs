@@ -202,6 +202,7 @@ pub fn emit_profiled(
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     emitter.sites = Some(Vec::new());
+    emitter.devirt = devirt::Devirt::collect_unmerged(&program);
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
     let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
