@@ -560,9 +560,9 @@ def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
 def register_rows(root: Path) -> list[str]:
     """Quality-register rows in handbook/domains/*.md that name no existing check.
 
-    A row's last cell names the test files, scripts, commands or CI jobs that
-    check it, says `missing`, or starts with "process" where no mechanism can
-    decide. Rows marked `missing`, rows naming no check, and rows naming a
+    A row's cells after the metric (mechanism, then check, where or status)
+    name the test files, scripts, commands or CI jobs that check it, say
+    `missing`, or start with "process" where no mechanism can decide. Rows marked `missing`, rows naming no check, and rows naming a
     path that doesn't exist count.
     """
     found = []
@@ -574,13 +574,14 @@ def register_rows(root: Path) -> list[str]:
             if not is_row or header:
                 continue
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            check, where = cells[-1], f"{_rel(root, d)}:{i}"
-            if check.lower().startswith("process"):
+            check, where = " | ".join(cells[2:]), f"{_rel(root, d)}:{i}"
+            status = cells[-1].strip("` ").lower()
+            if status.startswith("process") or (len(cells) > 2 and cells[2].lower().startswith("process")):
                 continue
             named, gone = _register_check(root, check)
             if gone:
                 found.append(f"{where} no such check {', '.join(gone)}: {cells[0]}")
-            elif "`missing`" in check or not named:
+            elif "`missing`" in check or status.startswith("missing") or not named:
                 found.append(f"{where} missing: {cells[0]}")
     return found
 

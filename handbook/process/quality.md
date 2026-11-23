@@ -53,8 +53,10 @@ owns, and by asking how mature projects measure the same thing.
 | Interpreter and C++ agree | Programs whose outputs differ | Differential runs on generated programs | `crates/cpl-cli/tests/fuzz_three_way.rs` |
 | Every builtin agrees at its edges | Builtins with no edge case | Generated differential cases | `missing` |
 
-- The last cell names a real test file, script, command or CI job, or says
-  `missing`, or starts with `process` where nothing mechanical can decide.
+- The cells after the metric name a real test file, script, command or CI
+  job, or say `missing`, or start with `process` where nothing mechanical
+  can decide. A final status column (`enforced`, `partial`, `missing`) is
+  allowed; a row whose status says `missing` counts as missing.
 - Targets and current numbers live in `plan/domains/<domain>/metrics.toml`,
   never in the charter.
 - `python3 scripts/debt-ratchet.py --list register_rows` lists every row

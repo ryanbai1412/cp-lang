@@ -197,11 +197,14 @@ class DebtRatchetTest(unittest.TestCase):
                 "| c | m | `scripts/gone.py` |",
                 "| d | m | process |",
                 "### Sub", "| A | M | C |", "|---|---|---|", "| g | m | `missing` |",
+                "| h | m | `scripts/ok.py` | enforced |",
+                "| k | m | a generator | missing |",
                 "## Suites", "| e | `missing` |", ""]))
             self.assertEqual(dr.register_rows(root), [
                 "handbook/domains/x.md:9 missing: b",
                 "handbook/domains/x.md:10 no such check scripts/gone.py: c",
                 "handbook/domains/x.md:15 missing: g",
+                "handbook/domains/x.md:17 missing: k",
             ])
 
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
