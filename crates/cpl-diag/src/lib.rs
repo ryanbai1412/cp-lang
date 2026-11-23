@@ -4,6 +4,7 @@
 //! the types here, so an error reads the same on the command line and in the
 //! editor (`plan/30-compiler.md` 3.7).
 
+pub mod json;
 pub mod registry;
 mod render;
 mod source;

@@ -201,7 +201,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "watch",
         args: "<problem>",
         summary: &["check, lint and test on every save"],
-        json: Json::None,
+        json: Json::Flag,
         options: None,
     },
     Command {

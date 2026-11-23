@@ -1,7 +1,9 @@
 //! `cpl watch`: check, lint and test on every save.
 
 use crate::problem::{cases_in, find_tests_dir, source_path};
-use crate::test::{ready, render, run_cases};
+use crate::test::{ready, render, results_json, run_cases, CaseResult};
+use cpl_diag::Diagnostic;
+use cpl_json::{obj, Value};
 use cpl_stress::args::Args;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -19,6 +21,11 @@ options:
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --time-limit MS    per case (default: the problem's limit)
+  --json             print each round as one line of JSON: `path`, `passed`,
+                     the `diagnostics` (errors, or the lints when there are
+                     none), `test` as `cpl test --json` prints it (null when
+                     the cases didn't run), why they were `skipped`, and any
+                     `error` that stopped the round
 ";
 
 /// The state of the files a problem is made of: when each last changed.
@@ -52,6 +59,8 @@ impl Stamp {
 pub struct Watch {
     source: PathBuf,
     db: cpl_check::Database,
+    /// Print each round as one line of JSON instead of text.
+    pub json: bool,
 }
 
 impl Watch {
@@ -59,55 +68,71 @@ impl Watch {
         Watch {
             source,
             db: cpl_check::Database::new(),
+            json: false,
         }
     }
 
-    /// One round: errors, then lints, then tests. Returns true when the
-    /// source has no errors and every case passed.
+    /// One round: errors, then lints, then tests, printed as text or, with
+    /// `json`, as one line of JSON. Returns true when the source has no
+    /// errors and every case passed.
     pub fn round(&mut self, args: &[String], out: &mut dyn Write) -> bool {
-        self.try_round(args, out).unwrap_or_else(|message| {
-            let _ = writeln!(out, "  error: {message}");
-            false
-        })
+        let found = self.try_round(args);
+        let passed = found.as_ref().is_ok_and(Round::passed);
+        if self.json {
+            let _ = writeln!(
+                out,
+                "{}",
+                cpl_json::to_string(&self.json_of(&found, passed))
+            );
+            return passed;
+        }
+        match found {
+            Ok(round) => self.render_text(&round, out),
+            Err(message) => {
+                let _ = writeln!(out, "  error: {message}");
+            }
+        }
+        passed
     }
 
-    fn try_round(&mut self, args: &[String], out: &mut dyn Write) -> Result<bool, String> {
+    fn try_round(&mut self, args: &[String]) -> Result<Round, String> {
         let name = self.source.display().to_string();
         let text =
             std::fs::read_to_string(&self.source).map_err(|e| format!("can't read {name}: {e}"))?;
         self.db.set_file(&name, text.as_str());
         let errors = self.db.diagnostics(&name);
+        let round = |diagnostics, errors, test| Round {
+            text: text.clone(),
+            diagnostics,
+            errors,
+            test,
+        };
         if !errors.is_empty() {
-            let _ = write!(out, "{}", cpl_diag::render_all(&errors, &name, &text));
-            let _ = writeln!(out, "  check: {} to fix", plural(errors.len(), "error"));
-            return Ok(false);
+            return Ok(round(errors, true, Tested::Stopped));
         }
-        let _ = writeln!(out, "  check: no errors");
-
         let (config, _) = cpl_lint::Config::discover(&self.source);
         let lints = cpl_lint::lint(&text, &config);
-        if !lints.is_empty() {
-            let _ = write!(out, "{}", cpl_diag::render_all(&lints, &name, &text));
-            let _ = writeln!(out, "  lint: {}", plural(lints.len(), "warning"));
-        }
 
-        let args = Args::parse(args, VALUED, &["--once"])?;
+        let args = Args::parse(args, VALUED, FLAGS)?;
         let dir = args
             .value("--tests")
             .map(PathBuf::from)
             .unwrap_or_else(|| find_tests_dir(&self.source));
         let cases = cases_in(&dir);
         if cases.is_empty() {
-            let _ = writeln!(out, "  test: no cases in {}", dir.display());
-            return Ok(true);
+            let message = format!("no cases in {}", dir.display());
+            return Ok(round(lints, false, Tested::Skipped(message)));
         }
         let ready = match ready(&self.source, &text, &args) {
             Ok(ready) => ready,
             // A solution that can't be run yet is a state, not a failure
             // of the source.
             Err(message) => {
-                let _ = writeln!(out, "  test: skipped: {message}");
-                return Ok(true);
+                return Ok(round(
+                    lints,
+                    false,
+                    Tested::Skipped(format!("skipped: {message}")),
+                ))
             }
         };
         let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits)
@@ -115,10 +140,92 @@ impl Watch {
         if args.value("--fast").is_none() {
             crate::test::explain_runtime_errors(&mut results, &cases, &self.source);
         }
-        let _ = write!(out, "{}", render(&results));
-        Ok(results.iter().all(|result| result.passed()))
+        Ok(round(lints, false, Tested::Ran(results)))
+    }
+
+    fn render_text(&self, round: &Round, out: &mut dyn Write) {
+        let name = self.source.display().to_string();
+        let shown = cpl_diag::render_all(&round.diagnostics, &name, &round.text);
+        let count = round.diagnostics.len();
+        if round.errors {
+            let _ = write!(out, "{shown}");
+            let _ = writeln!(out, "  check: {} to fix", plural(count, "error"));
+            return;
+        }
+        let _ = writeln!(out, "  check: no errors");
+        if count > 0 {
+            let _ = write!(out, "{shown}");
+            let _ = writeln!(out, "  lint: {}", plural(count, "warning"));
+        }
+        match &round.test {
+            Tested::Stopped => {}
+            Tested::Skipped(message) => {
+                let _ = writeln!(out, "  test: {message}");
+            }
+            Tested::Ran(results) => {
+                let _ = write!(out, "{}", render(results));
+            }
+        }
+    }
+
+    fn json_of(&self, found: &Result<Round, String>, passed: bool) -> Value {
+        let text = |s: &str| Value::String(s.to_string());
+        let (diagnostics, test, skipped, error) = match found {
+            Ok(round) => {
+                let lines = cpl_diag::LineIndex::new(&round.text);
+                let diagnostics = round
+                    .diagnostics
+                    .iter()
+                    .map(|d| cpl_diag::json::diagnostic(d, &lines))
+                    .collect();
+                let (test, skipped) = match &round.test {
+                    Tested::Stopped => (Value::Null, Value::Null),
+                    Tested::Skipped(message) => (Value::Null, text(message)),
+                    Tested::Ran(results) => (results_json(results), Value::Null),
+                };
+                (diagnostics, test, skipped, Value::Null)
+            }
+            Err(message) => (Vec::new(), Value::Null, Value::Null, text(message)),
+        };
+        obj([
+            ("path", text(&self.source.display().to_string())),
+            ("passed", Value::Bool(passed)),
+            ("diagnostics", Value::Array(diagnostics)),
+            ("test", test),
+            ("skipped", skipped),
+            ("error", error),
+        ])
     }
 }
+
+/// What one round found.
+struct Round {
+    text: String,
+    /// The errors when there are any, else the lints.
+    diagnostics: Vec<Diagnostic>,
+    errors: bool,
+    test: Tested,
+}
+
+enum Tested {
+    /// Errors stopped the round before the tests.
+    Stopped,
+    /// The cases could not run yet: why, as the text output says it.
+    Skipped(String),
+    Ran(Vec<CaseResult>),
+}
+
+impl Round {
+    fn passed(&self) -> bool {
+        !self.errors
+            && match &self.test {
+                Tested::Ran(results) => results.iter().all(CaseResult::passed),
+                _ => true,
+            }
+    }
+}
+
+const FLAGS: &[&str] = &["--once", "--json"];
 
 fn plural(count: usize, noun: &str) -> String {
     format!("{count} {noun}{}", if count == 1 { "" } else { "s" })
@@ -132,7 +239,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(args, VALUED, &["--once"]).and_then(|args| {
+    let parsed = Args::parse(args, VALUED, FLAGS).and_then(|args| {
         args.file("watch")
             .map(source_path)
             .map(|source| (args, source))
@@ -154,6 +261,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         .map(PathBuf::from)
         .collect();
     let mut watch = Watch::new(source.clone());
+    watch.json = parsed.has("--json");
     let mut seen = Stamp::of(&source, &extra);
     let mut passed = watch.round(args, stdout);
     let _ = stdout.flush();
@@ -167,7 +275,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             continue;
         }
         seen = now;
-        let _ = writeln!(stdout, "\n--- {} changed", source.display());
+        if !watch.json {
+            let _ = writeln!(stdout, "\n--- {} changed", source.display());
+        }
         passed = watch.round(args, stdout);
         // A closed terminal ends the watch.
         if stdout.flush().is_err() {

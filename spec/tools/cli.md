@@ -67,6 +67,11 @@ marks among `stable`, `edge`, `default` and `rollback`; `cpl self channel
 --json` prints `{"default", "toolchain"}`, `toolchain` `null` until it is
 installed; every other `cpl self` command prints `{"ok", "message"}` or
 `{"ok", "error"}`.
+`cpl watch --json` prints each round as one line, `{"path", "passed",
+"diagnostics", "test", "skipped", "error"}`: the errors (or, with none, the
+lints) in `cpl check --json`'s diagnostic shape, `test` as `cpl test --json`
+prints it or `null` when the cases did not run, why they were `skipped`, and
+any `error` that stopped the round (`null` when none).
 `cpl --help --json` prints `{"commands": [{"name", "usage", "summary",
 "json", "help"}]}`: `json` is how the command asks for JSON output
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.

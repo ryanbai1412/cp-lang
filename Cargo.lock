@@ -81,6 +81,9 @@ dependencies = [
 [[package]]
 name = "cpl-diag"
 version = "0.3.0"
+dependencies = [
+ "cpl-json",
+]
 
 [[package]]
 name = "cpl-doc"

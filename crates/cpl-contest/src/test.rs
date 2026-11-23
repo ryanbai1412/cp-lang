@@ -188,6 +188,11 @@ pub fn render(results: &[CaseResult]) -> String {
 
 /// The results as one JSON object, for editors and scripts.
 pub fn render_json(results: &[CaseResult]) -> String {
+    cpl_json::to_string(&results_json(results))
+}
+
+/// [`render_json`]'s object: `cases`, `passed` and `total`.
+pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
     use cpl_json::{obj, Value};
     let text = |s: &str| Value::String(s.to_string());
     let maybe = |s: Option<&str>| s.map_or(Value::Null, text);
@@ -211,11 +216,11 @@ pub fn render_json(results: &[CaseResult]) -> String {
         ])
     });
     let passed = results.iter().filter(|r| r.passed()).count();
-    cpl_json::to_string(&obj([
+    obj([
         ("cases", Value::Array(cases.collect())),
         ("passed", Value::Int(passed as i64)),
         ("total", Value::Int(results.len() as i64)),
-    ]))
+    ])
 }
 
 /// A problem ready to run: its solution, judge, and limits.
