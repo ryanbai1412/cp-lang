@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check R11.3.2: every pub fn in a spec/lib chapter's tables is a prelude name.
 
-A table entry is a top-level `fn name` line in a fenced block of spec/lib/*.md
-whose name spec/std declares as a top-level `pub fn`. Each must be imported by
+A table entry is a top-level `fn name` line in a fenced block of spec/lib/*.md,
+or a Markdown table row starting with a `name(...)` cell, whose name spec/std declares as a top-level `pub fn`. Each must be imported by
 spec/std/prelude.cp. (`scripts/spec-stub.py --check` checks the other way:
 prelude names against the chapters.) Known misses live in
 spec/conformance/prelude-gaps.txt, which may only shrink.
@@ -34,6 +34,7 @@ def table_fns(path):
     text = open(path).read()
     for body in re.findall(r"^```(?:cp|python)\s*\n(.*?)^```", text, re.S | re.M):
         yield from re.findall(r"^fn (\w+)", body, re.M)
+    yield from re.findall(r"^\| `(\w+)[(<]", text, re.M)
 
 
 def misses():
