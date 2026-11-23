@@ -264,6 +264,42 @@ GCC and LLVM's differential testing against a reference.
 | `python3 corpus/header.py` | ports without the standard header |
 | `research/dryrun/v03/loop.sh <problem> <cases>` | a dry-run solution failing check, test, stress or the C++ build |
 
+## Invariants
+
+- A port sits beside its accepted original; nobody edits `corpus/submissions/`.
+- `dream.cp` is written without the checker and never edited to pass it.
+  `spec.cp` passes `cpl check`, except on forms listed in
+  `plan/domains/spec/delta/parser-gaps.md`, and every difference between a
+  dream and its spec is logged in `plan/domains/spec/delta/hillclimb.md`.
+- Reviewers score without reading `orig.cpp`; a port without a dream scores
+  at most 3.
+- Judge resolution is `--judge`, then `// judge:`, then `cp.toml`, then
+  `generic`; the emitted C++ is deterministic and under the profile's byte
+  limit.
+- Corpus floors and ratchets used by other domains' tests only fall in a
+  commit that says why.
+
+## Judgment rubric
+
+Numbers miss taste, so reviews and probes ask five questions:
+
+1. **Says the idea.** Does a reader who knows the editorial find each step
+   named in the code, in its words?
+2. **Every fact once.** Does each constraint, index space and absence appear
+   once, as a type or a name?
+3. **No hacks.** Did the writer route around the language where a general
+   mechanism should exist?
+4. **Revises locally.** When one requirement changes, does the edit stay in
+   one chunk?
+5. **Trust.** Would the contestant submit it without re-reading the C++?
+
+The probes, each run by a cold agent with only the skill: solve a fresh
+set of problems (1-3); port random tracked problems from `orig.cpp` without
+seeing `port.cp`, scored against `research/design-history/EXEMPLARS-PORTS.md`
+(1, 2, 5); solve an unseen problem, then change one requirement and count
+the chunks touched (4); find a planted off-by-one with stress and trace
+(3, 5).
+
 ## Changes
 
 - 2026-11-23: first version, folding in the stable parts of
@@ -271,3 +307,4 @@ GCC and LLVM's differential testing against a reference.
 - 2026-11-23: mechanism cells cite the rule in `handbook/guidelines/idiomatic-code.md` or `problem-packages.md`.
 - 2026-11-23: prose overview first, the tables under `# Reference`; cells cite checklist ids.
 - 2026-11-23: the package rows name `corpus/audit.py`.
+- 2026-11-23: invariants and the judgment rubric folded in from the idioms plan folder.
