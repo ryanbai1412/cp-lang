@@ -1,6 +1,10 @@
-// CCC 2021 S5 Math Homework: find a[1..n] such that gcd(a[l..r]) = x for
-// every requirement, or report that none exists. Each a[i] must be a multiple
-// of every x that covers it, so take the lcm; then just check the gcds.
+// Source: CCC 2021 S5 (Math Homework), https://dmoj.ca/problem/ccc21s5
+// Problem: n <= 150000 and m <= 150000 requirements gcd(A[x..=y]) = z with z <= 16. Print
+//   any A with 1 <= A_i <= 1e9 meeting all of them, or "Impossible".
+// Solution: A_i must be a multiple of every z whose range covers i, and the lcm of those z
+//   (at most lcm(1..16) = 720720) is the smallest choice, so if it fails nothing works. Per
+//   z, a difference array over the cuts marks the covered positions (O(16 n)); then a gcd
+//   SegTree checks every requirement, O(m log n).
 let (n, q): (1..=150000, 1..=100000) = read()
 domain I = 1..=n
 let reqs: [0..q](l: I, r: I, x: 1..=16) = read()

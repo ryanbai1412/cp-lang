@@ -1,4 +1,11 @@
-// cp: 0.1 8ef64b9+dirty
+// Source: Mock CCC '22 Contest 2 J5 (Dominating the Olympics), https://dmoj.ca/problem/mccc4j5
+// Problem: n <= 5000 events, event i takes T_i <= 1e4 minutes and lists its prerequisites
+//   (which may form loops; events that can never start are ignored). With unlimited
+//   parallel clones, print the least time to finish every event that can be done.
+// Solution: an event finishes T after its last prerequisite does, so the answer is the
+//   longest weighted path in the acyclic part. Kahn's topological order driven by a min-heap
+//   of finish times: an event is pushed when its last prerequisite pops (the latest finish,
+//   since pops come in time order), and the last pop is the answer. O((n + R) log n).
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let tasks: [V](time: 0..=1e4, deps: List<V>) = read()

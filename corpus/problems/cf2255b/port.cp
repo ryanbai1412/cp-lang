@@ -1,10 +1,11 @@
-// Codeforces 2255 B — Binary Block Redistribution
-//
-// The number of maximal runs (`blocks[d]`) and total occurrences (`total[d]`)
-// of each binary digit `d in Bit` are invariant. Distributing the `total[d]`
-// identical copies across `blocks[d]` non-empty runs has `C(total[d] - 1, blocks[d] - 1)`
-// ways by stars and bars, and the two digits are independent, so the answer
-// is the product over digits with `blocks[d] > 0`.
+// Source: Codeforces 2255B (A Ribbon for Tomorrow), https://codeforces.com/contest/2255/problem/B
+// Problem: binary string s, n <= 1e6 (sum over tests). An operation picks l <= r with
+//   s[l] = s[r] and reverses s[l..r]. Print how many distinct strings can be reached,
+//   mod 998244353. Multitest.
+// Solution: an operation keeps, per digit, its total count and its number of maximal runs,
+//   and every way to share a digit's total among that many non-empty runs is reachable.
+//   By stars and bars that is C(total - 1, blocks - 1) per digit; the answer is the product
+//   over the digits that occur. One pass over `s.runs()`, O(n).
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

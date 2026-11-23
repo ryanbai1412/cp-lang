@@ -1,4 +1,10 @@
-// TLE '18 P5, longest increasing subsequence (buildable today-form)
+// Source: TLE 2018-19 P5 (Pure Functional Programming), https://dmoj.ca/problem/tle18p5
+// Problem: a sequence of N <= 1000 integers in [0, 1e9] (the judge exposes N and get_item,
+//   and C++ code may not mutate). Print the length of a longest strictly increasing
+//   subsequence, then its elements one per line.
+// Solution: O(N^2) DP: len[i] is the longest increasing subsequence ending at i, prev[i]
+//   the first j < i that gives it. Walk prev back from the first i with the largest len and
+//   print the values reversed.
 // original: corpus/submissions/5876770.cpp
 // The judge header's N and get_item become stdin; print_num becomes print.
 let n: 0..=2000 = read()
