@@ -68,7 +68,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 - `Str of "01?"` is a string whose characters come from the literal's
   alphabet. The alphabet is a domain, so `[Alpha]Int` is a table over it
   and reads validate it. `Str(len: 1..=2e5)` bounds the length, checked
-  on read like a range (decision 134). (R02.3.2)
+  on read like a range (decision 134); the bounds may be runtime values, so
+  `read<Str(len: n..=n)>()` checks an exact length. (R02.3.2)
 - `+` concatenates (allocating; the cost is visible as a new value);
   `s.push(c)` appends in place. (R02.3.3)
 - Interpolation `"{x}"` formats through the `Show` trait (chapter 10).
@@ -268,7 +269,8 @@ type Z = Mod(read<Prime>())         // runtime modulus
 - `let` keeps the computed range of its initializer; an unannotated
   `var` widens to `Int`; `var x: lo..=hi` checks each assignment.
   Range inference goes through arithmetic on `let`s, runs no loop
-  fixpoints and crosses no calls. (R02.10.2)
+  fixpoints and crosses no calls. A local's range type may have runtime
+bounds (`var i: 1..=n = read()`). (R02.10.2)
 - Function signatures are written in full except that a single-capital
   type parameter used in a parameter type may be left undeclared
   (`fn peel(s: [D]Bool)`). (R02.10.3)

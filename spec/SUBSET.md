@@ -182,6 +182,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/spec-block-enums.cp: compiler
 - core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
+- core-02/str-len-runtime-bound.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/a11-rebase-reads-from-zero.cp: compiler
@@ -258,6 +259,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/uses-not-inferred-top-level.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
+- core-10/read-counted-rows-of-ranges.cp: compiler
 - core-11/inline-mod-sees-prelude.cp: compiler
 - core-11/inline-mod-use-std.cp: compiler
 - core-11/mod-uses-sibling.cp: compiler

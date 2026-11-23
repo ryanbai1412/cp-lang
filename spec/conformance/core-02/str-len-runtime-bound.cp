@@ -1,7 +1,7 @@
-// expect: ok, output "3"
-// rule: 02.3.2
+// expect: ok, output "abc"
 // input: "3\nabc\n"
-// `Str(len: n..=n)` with a read `n` is a string of exactly `n` characters, checked on read.
-let n: 1..=10 = read()
-let s: Str(len: n..=n) = read()
-print(s.len)
+// rule: 02.3.2
+// `Str(len: n..=n)` checks an exact runtime length on read.
+let n = read<Int>()
+let s = read<Str(len: n..=n)>()
+print(s)

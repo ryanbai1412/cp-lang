@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2489 (995 passing). Rules: 564.
+Cases: 2495 (995 passing). Rules: 565.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 55 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 55 rules, 130 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 128 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 67 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 68 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -22,7 +22,7 @@ Cases: 2489 (995 passing). Rules: 564.
 - R07 (07-sequences.md): 90 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 84 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 39 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,7 +48,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 55 | 55 (100%) | 29 | 29 (100%) | 55 (100%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 67 | 67 (100%) | 15 | 15 (100%) | 67 (100%) |
+| R04 | 68 | 68 (100%) | 15 | 15 (100%) | 68 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 564 | 563 (99%) | 216 | 216 (100%) | 563 (99%) |
+| all | 565 | 564 (99%) | 216 | 216 (100%) | 564 (99%) |
 
 ## Rules
 
@@ -125,7 +125,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.5 [1+ 1-]: **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T` is the row place. `a...
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 1-]: Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`); anything that does wor...
-- R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
+- R01.9.1 [2+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
 - R01.10.3 [1+ 0-]: expr        := lambda | if_expr | match_expr | binary lambda      := lparams '=>' (expr | ...
 - R01.10.1 [4+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
 - R01.10.2 [1+ 4-]: A program the grammar does not derive is a syntax error, E0103: `var x: Int` with no `= ex...
@@ -180,7 +180,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.9.5 [1+ 0-]: `V.count` is typed by the declared range, which is where storage widths and overflow proof...
 - R02.9.6 [1+ 0-]: Product domains `domain State = (V, K)` and disjoint unions `domain Node = In + Out` are d...
 - R02.10.1 [1+ 2-]: Inference is local. Siblings in one expression (list elements, `if`/`else` branches, `matc...
-- R02.10.2 [1+ 1-]: `let` keeps the computed range of its initializer; an unannotated `var` widens to `Int`; `...
+- R02.10.2 [2+ 1-]: `let` keeps the computed range of its initializer; an unannotated `var` widens to `Int`; `...
 - R02.10.3 [1+ 0-]: Function signatures are written in full except that a single-capital type parameter used i...
 - R02.11.1 [2+ 4-]: No implicit numeric conversions except into a wider range of the same type, `T` into `?T` ...
 - R02.11.2 [1+ 1-]: No implicit copies of heap values (`.clone()`), no implicit allocation behind an \(O(1)\)-...
@@ -215,6 +215,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R04: 04-indices.md
 
+- R04.2.23 [1+ 0-]: A **domain** is a finite, ordered index type. Its members are **positions**, which are `Or...
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
 - R04.2.20 [4+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
@@ -589,7 +590,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [7+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [12+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [14+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -874,9 +875,9 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 158: `for j in ..i:`
-  - line 252: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 273: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 159: `for j in ..i:`
+  - line 253: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 274: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`

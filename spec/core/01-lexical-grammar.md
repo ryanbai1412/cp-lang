@@ -122,7 +122,7 @@ names elsewhere:
 | `is` | `x is pat` in value position (decision 111) |
 | `with` | `with ctx(...):` blocks and `@with` (chapter 9); record update `x with f: v` |
 | `yields` | `-> yields T` on a generator fn (chapter 6) |
-| `repeat` | `repeat k:` at the start of a statement, `k` evaluated once; a block run `k` times, the same as `for _ in 0..k:` |
+| `repeat` | `repeat k:` at the start of a statement, `k` evaluated once; a block run `k` times, the same as `for _ in 0..k:`, with `break`, `continue` and `return` acting as there; write it when the index is unused |
 | `law` | inside a `trait` or `impl` body (chapter 8) |
 | `where` | trait bounds after a signature (chapter 8) |
 | `without` | row types `..R without (u, v)` (chapter 8) |
@@ -327,7 +327,8 @@ extern fn ask(i: Int) -> Int              // provided by the judge
 
 Decorators are `@name` or `@name(args)` on the next item; the set is
 closed and listed in §6.4, plus `@!multitest` as the one file directive. Types, domains and structs may be declared inside a
-function body and use its runtime domains (decision 136). (R01.9.1)
+function body and use its runtime domains (decision 136); the per-test
+region below `@!multitest` is such a body. (R01.9.1)
 
 ## 1.10 Grammar
 
