@@ -79,6 +79,18 @@ def big_stack():
         pass
 
 
+def limit_child(timeout):
+    """A big stack, and a CPU limit so the child dies on its own even when
+    this harness is killed first: an orphan spinning for hours skews every
+    later run on the machine."""
+    big_stack()
+    secs = int(timeout) + 5
+    try:
+        resource.setrlimit(resource.RLIMIT_CPU, (secs, secs + 5))
+    except (OSError, ValueError):
+        pass
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -132,7 +144,7 @@ def run_once(binary, inp, outp, timeout):
             stdin=fi,
             stdout=fo,
             stderr=subprocess.DEVNULL,
-            preexec_fn=big_stack,
+            preexec_fn=lambda: limit_child(timeout),
             start_new_session=True,
         )
         killer = threading.Timer(timeout, lambda: os.killpg(pr.pid, signal.SIGKILL))
