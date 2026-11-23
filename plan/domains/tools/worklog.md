@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): re-measured the corpus (`python3 plan/domains/tools/measure.py corpus`): check p95 84.5 ms, 5 of 497 C++ files over 32 KB (was 1 of 449); `measure.py` now names each file over 32 KB; README metrics refreshed. Asked perf about the 5 files.
 - Landed (this): contract test `check_json_reports_what_check_prints_on_every_v03_file` (`crates/cpl-cli/tests/lsp_parity.rs`): on every v0.3 file, `cpl check --json` and the text output agree on severity, code, line, column and message.
 - Landed (this): the site builds `cli.json` from `cpl --help --json` and `cpl judges --json` (identical output, compared as JSON); note in the site worklog.
 - Landed (this): `cpl explain` with no argument or an unknown code names the problem and shows its usage (it printed a stale usage line, or none); golden `misused` checks for both.

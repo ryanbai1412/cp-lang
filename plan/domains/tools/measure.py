@@ -56,6 +56,8 @@ def corpus():
     print(f"ports {len(rows)}  check-clean {sum(r[1] for r in rows)}  built {len(built)}")
     print(f"check wall p50 {ms[len(ms) // 2]:.1f} ms  p95 {ms[int(len(ms) * .95)]:.1f} ms  max {ms[-1]:.1f} ms")
     print(f"C++ max {big[3]} B ({big[4]})  over 32 KB {sum(r[3] > 32768 for r in built)}  over 64 KB {sum(r[3] > 65536 for r in built)}")
+    for r in sorted((r for r in built if r[3] > 32768), key=lambda r: -r[3]):
+        print(f"  over 32 KB: {r[3]} B {r[4]}")
 
 
 def golden():

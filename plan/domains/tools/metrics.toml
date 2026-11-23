@@ -30,13 +30,13 @@ today = "9/23"
 name = "cpl check wall time over corpus ports, p95"
 command = "python3 plan/domains/tools/measure.py corpus"
 target = "< 100 ms (spec bound 500 ms)"
-today = "78.5 ms (p50 26.7 ms, max 125.9 ms; 877 ports, 450 check clean, 449 build)"
+today = "84.5 ms (p50 29.8 ms, max 141.5 ms; 877 ports, 498 check clean, 497 build; a run just before on the loaded VM gave p95 100.0 ms)"
 
 [[metric]]
 name = "corpus C++ files over 32 KB"
 command = "python3 plan/domains/tools/measure.py corpus"
 target = "0"
-today = "1 of 449 (max 48375 B, cf2255f); 0 over 64 KB"
+today = "5 of 497 (max 48686 B cf2255f, 39803 B cf2066e, 37661 B cf2089e, 36429 B cf2262b, 33677 B cf2150f); 0 over 64 KB"
 
 [[metric]]
 name = "LSP latency, 500-line file, median"

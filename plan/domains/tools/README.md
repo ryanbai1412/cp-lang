@@ -37,12 +37,12 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 | commands with `--help` | `measure.py help` | 23/23 | 23/23 | M1 |
 | end-to-end tests per command | `measure.py golden` | 23/23 have one; help and an unknown-option usage error for all 23; 1-3: 15 (success still missing for those) | each >= 4 | M1 |
 | commands offering `--json` | `measure.py json` | 9/23 | all that print results (~19) | M2 |
-| `cpl check` wall time, corpus p95 | `measure.py corpus` | 78.5 ms (p50 26.7, max 125.9; 877 ports, 450 check clean) | < 500 ms (spec); hold < 100 ms | - |
-| largest corpus C++ | `measure.py corpus` | 48,375 B (cf2255f); 1 of 449 over 32 KB | 0 over 32 KB | M2 |
+| `cpl check` wall time, corpus p95 | `measure.py corpus` | 84.5 ms (p50 29.8, max 141.5; 877 ports, 498 check clean) | < 500 ms (spec); hold < 100 ms | - |
+| largest corpus C++ | `measure.py corpus` | 48,686 B (cf2255f); 5 of 497 over 32 KB | 0 over 32 KB | M2 |
 | LSP latency, 500 lines (median) | `cargo test --release -p cpl-lsp --test latency -- --nocapture` | check 6 ms; diagnostics 8 ms; hover 3 ms; completion 1 ms | < 50 / 100 ms | M3 |
-| LSP latency, 5,000 lines (median) | same | check 67 ms, open-to-diagnostics 161 ms (test fails) | < 50 / 100 ms | M3 |
+| LSP latency, 5,000 lines (median) | same | check 65 ms, open-to-diagnostics 61 ms (test fails on check) | < 50 / 100 ms | M3 |
 | LSP unit tests | `cargo test --release -p cpl-lsp --lib` | 77/77 | all pass | - |
-| VS Code unit + grammar tests | `cd editors/vscode && npm test` | 36/37 (stale prelude table) | all pass | M1 |
+| VS Code unit + grammar tests | `cd editors/vscode && npm test` | 37/37 | all pass | M1 |
 | editor smoke tests passing (this VM) | `CPL=target/release/cpl editors/smoke.sh` | see metrics.toml | tier 1 all, in gate | M3 |
 | tools files over the 2,000-line cap | `python3 scripts/debt-ratchet.py --check` | 0 (cli lib.rs 1,899; lsp server.rs 1,966; lsp tests.rs 2,000) | 0 | M1 |
 | unlanded commits on `devin/wip-editor-lsp` | `git cherry origin/main origin/devin/wip-editor-lsp` | 5 | 0 | M1 |
