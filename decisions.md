@@ -6589,3 +6589,9 @@ Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
   common-mistake errors carry a fix (`cargo test -p cpl-cli --test
   recovery -- --nocapture`), so the bars gate what is already true.
 - **Reverse.** Put 0.05 and 0.88 back in `crates/cpl-cli/tests/recovery.rs`.
+
+## 285. The site's trace viewer links back to the site (2026-11-22)
+
+- **Decision.** The trace viewer on cp-lang.org (`/trace.html`) is the debugger's `tools/trace/index.html` with `data-context="site"`, a brand that links to `/`, and the viewer's own site nav pointed at Home, Learn, Docs and Playground. The site applies this at build time in `web/scripts/gen-debug.mjs`; the tools file is unchanged, and exported traces still reset to standalone.
+- **Why.** The playground's Trace button opens the viewer in a new tab, and that tab had no way back to the site. The viewer already had a site-nav slot for the old `site/` bundle, so the site only fills it in.
+- **Reverse.** Drop the rewrite in `web/scripts/gen-debug.mjs` and write the viewer unchanged.

@@ -35,5 +35,19 @@ globalThis.CpCompiler = {
 </script>`;
 const viewer = readFileSync(join(repo, 'tools/trace/index.html'), 'utf8');
 if (!viewer.includes('</head>')) throw new Error('gen-debug: tools/trace/index.html has no </head>');
-writeFileSync(join(web, 'public/trace.html'), viewer.replace('</head>', `${compiler}\n</head>`));
+// On the site the viewer shows the site's nav and its brand goes home; exported traces reset to standalone.
+const nav = /<nav hidden data-site-nav([^>]*)>[\s\S]*?<\/nav>/;
+const siteNav = `<nav data-site-nav$1>
+    <a href="/">Home</a><a href="/learn">Learn</a><a href="/docs">Docs</a><a href="/play">Playground</a><a href="/trace.html" aria-current="page">Trace</a>
+  </nav>`;
+const brand = '<a class="brand" href="#main">';
+const context = '<html lang="en" data-context="standalone">';
+for (const [what, found] of [['site nav', nav.test(viewer)], ['brand link', viewer.includes(brand)], ['standalone context', viewer.includes(context)]])
+  if (!found) throw new Error(`gen-debug: tools/trace/index.html has no ${what}`);
+const site = viewer
+  .replace(context, '<html lang="en" data-context="site">')
+  .replace(brand, '<a class="brand" href="/">')
+  .replace(nav, siteNav)
+  .replace('</head>', `${compiler}\n</head>`);
+writeFileSync(join(web, 'public/trace.html'), site);
 console.log(`debug: stress output and ${trace}`);

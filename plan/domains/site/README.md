@@ -76,7 +76,7 @@ Probes (cold agent, pass/fail + time):
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
 5. Guide code blocks live: done; every block that prints something has Run.
 6. Learn: 10 chapters, 19 problems (graphs and DP added); next is a cold read of chapters 4-9 against the rubric, and interval DP once `V.ranges` runs (compiler request filed).
-7. `cpl doc` HTML in the site's design: done ([screenshot](screenshots/cpldoc.jpg)); trace viewer links back is next.
+7. `cpl doc` HTML in the site's design: done ([screenshot](screenshots/cpldoc.jpg)); the trace viewer on the site links back: its brand goes to `/`, and at 1100 px and wider it shows the site nav (Home, Learn, Docs, Playground).
 
 ## Ryan's role
 
