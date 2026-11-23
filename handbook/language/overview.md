@@ -253,6 +253,45 @@ layouts, specializations, copies). **Two builds, one meaning:** a valid
 program behaves the same in the interpreter, the checked C++ and the
 release C++.
 
+## Settled decisions
+
+These change only with strong evidence from the corpus. Each links to the
+doc that gives its reasons.
+
+- **Surface syntax.** Indentation blocks, `and`/`or`/`not`, `elif` (never
+  `else if`), `=>` match arms. Ranges are Rust-style: `0..n` is half-open,
+  `0..=n` inclusive. See [control-and-functions.md](control-and-functions.md).
+- **Every integer has a range type.** Ranges come from fixed rules
+  (annotations, reads, `D.count`, interval arithmetic, hulls), with no flow
+  narrowing. An index the compiler can't prove stays checked in the
+  submission and traps. See [values-and-numbers.md](values-and-numbers.md).
+- **Arithmetic.** Overflow traps in checked builds. `/` and `%` are
+  Euclidean, so `-7 / 2` is `-4` and `-7 % 2` is `1`, and `%` is never
+  negative. `Int` excludes the lowest 64-bit value, so `?Int` costs no extra
+  space. `F64` `==` is exact, and `close(a, b, eps:)` is the tolerant
+  compare. See [values-and-numbers.md](values-and-numbers.md).
+- **Optionals.** `?T` absorbs arithmetic (`None + 5` is `None`), and
+  `let ... else` and postfix `?` take the value out. See
+  [values-and-numbers.md](values-and-numbers.md).
+- **Domains from runtime data.** `domain V = 0..n` with a read `n` gets one
+  hidden slot per declaration, saved and restored on recursion. Its values
+  leave their block only through an existential return type. See
+  [indices-and-keys.md](indices-and-keys.md).
+- **Stack and storage.** `main` runs with the judge profile's stack, so
+  there is no depth inference and no depth annotation. Runtime-sized and
+  large arrays live off the stack, and returns move. See
+  [ownership.md](ownership.md).
+- **`Bool` is not printed bare.** Write `print(yes(b))`, so the judge's
+  expected word is always explicit. See [checks-and-io.md](checks-and-io.md).
+- **Pointer structures use typed handles** into a library-owned store,
+  with no pool syntax. See [modules-and-powers.md](modules-and-powers.md).
+- **Generics are checked at their definition,** with errors that libraries
+  can extend. See [traits-and-generics.md](traits-and-generics.md).
+- **Brute force, generators and checkers are ordinary functions** in the
+  same file, not special file sections. `@!multitest` on its own line
+  divides the shared setup from the per-test body. See
+  [checks-and-io.md](checks-and-io.md).
+
 ## Where the precise rules are
 
 | Topic | Spec | Design doc |
@@ -273,3 +312,4 @@ release C++.
 ## Changes
 
 - 2026-11-23: first version.
+- 2026-11-23: settled decisions folded in from the operating notes, corrected to the current spec (Euclidean division, exact `F64` `==`, `@!multitest`).
