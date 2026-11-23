@@ -4,7 +4,7 @@ use crate::names::{cty, dom_ident, fn_name, global_ident, ident, is_plain_enum, 
 use crate::ranges::Facts;
 use crate::runtime::PIECES;
 use crate::walk;
-use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, Program, Stmt, Ty};
+use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, OrdHook, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
@@ -751,7 +751,7 @@ impl<'p> Emitter<'p> {
                                 reachable_enums,
                             );
                         }
-                        for hook in [s.eq_fn, s.lt_fn].into_iter().flatten() {
+                        for hook in [s.eq_fn, s.ord.map(OrdHook::id)].into_iter().flatten() {
                             if reachable.insert(hook) {
                                 fn_work.push(hook);
                             }
@@ -1694,12 +1694,20 @@ impl<'p> Emitter<'p> {
         // A struct with its own `Ord` is ordered by it everywhere: in a
         // sort, a set, a heap and inside a tuple, not only in `a < b`.
         for (id, s) in program.structs.iter().enumerate() {
-            let Some(lt) = s.lt_fn.filter(|lt| reachable.contains(lt)) else {
+            let Some(hook) = s.ord.filter(|h| reachable.contains(&h.id())) else {
                 continue;
             };
-            let (ty, lt) = (self.ty(&Ty::Struct(id)), fn_name(&program.fns[lt].name));
+            let (ty, lt) = (self.ty(&Ty::Struct(id)), order_fn(program, hook));
+            let less = match hook {
+                OrdHook::Lt(_) => format!("{lt}(a, b)"),
+                OrdHook::Cmp(f) => format!(
+                    "{}(a, b) == {}",
+                    fn_name(&program.fns[f].name),
+                    less_variant(program, f)
+                ),
+            };
             out.push_str(&format!(
-                "inline bool operator<(const {ty}& a, const {ty}& b) {{ return {lt}(a, b); }}\n\
+                "inline bool operator<(const {ty}& a, const {ty}& b) {{ return {less}; }}\n\
                  inline bool operator>(const {ty}& a, const {ty}& b) {{ return {lt}(b, a); }}\n\
                  inline bool operator<=(const {ty}& a, const {ty}& b) {{ return !{lt}(b, a); }}\n\
                  inline bool operator>=(const {ty}& a, const {ty}& b) {{ return !{lt}(a, b); }}\n"
@@ -1865,3 +1873,26 @@ template <class T> auto operator>(const T& a, const T& b) -> decltype(a.cpl_tie(
 template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie() >= b.cpl_tie()) { return a.cpl_tie() >= b.cpl_tie(); }
 
 ";
+
+/// What `a < b` calls on a struct with its own `Ord`: its `lt`, or, for a
+/// `cmp`, the `operator<` emitted from it.
+pub(crate) fn order_fn(program: &Program, hook: OrdHook) -> String {
+    match hook {
+        OrdHook::Lt(f) => fn_name(&program.fns[f].name),
+        OrdHook::Cmp(_) => "operator<".to_string(),
+    }
+}
+
+/// `Ordering::Less` as the C++ spells the enum `cmp` returns.
+fn less_variant(program: &Program, cmp: cpl_ir::FnId) -> String {
+    let Ty::Enum(e) = &program.fns[cmp].ret else {
+        return "false".to_string();
+    };
+    let def = &program.enums[*e];
+    let less = def.variants.iter().find(|(name, _)| name == "Less");
+    format!(
+        "{}::{}",
+        ident(&def.name),
+        ident(less.map_or("Less", |v| v.0.as_str()))
+    )
+}

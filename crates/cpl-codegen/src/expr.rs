@@ -1,7 +1,8 @@
 //! Expressions as C++.
 
 use crate::emit::{
-    pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
+    order_fn, pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT,
+    UNARY,
 };
 use crate::names::{
     cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
@@ -708,8 +709,8 @@ impl<'p> Emitter<'p> {
                                 Code::new(format!("!{call}"), UNARY)
                             };
                         }
-                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.lt_fn.is_some() => {
-                            let f = fn_name(&program.fns[sdef.lt_fn.unwrap()].name);
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.ord.is_some() => {
+                            let f = order_fn(program, sdef.ord.unwrap());
                             let (a, b) = (&codes[0].text, &codes[1].text);
                             return match op {
                                 CmpOp::Lt => Code::primary(format!("{f}({a}, {b})")),

@@ -1287,10 +1287,26 @@ pub struct StructDef {
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.
     pub eq_fn: Option<FnId>,
-    /// From `impl Ord for S`: `fn lt(a: S, b: S) -> Bool`.
-    pub lt_fn: Option<FnId>,
+    /// From `impl Ord for S`.
+    pub ord: Option<OrdHook>,
     /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
     pub cached_fields: std::collections::BTreeSet<usize>,
+}
+
+/// A struct's own order: the spec's `fn cmp(a, b) -> Ordering` (R08.1.1),
+/// or `fn lt(a, b) -> Bool`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OrdHook {
+    Lt(FnId),
+    Cmp(FnId),
+}
+
+impl OrdHook {
+    pub fn id(self) -> FnId {
+        match self {
+            OrdHook::Lt(f) | OrdHook::Cmp(f) => f,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -1689,7 +1705,7 @@ impl Program {
         let hook = Some(id);
         self.structs
             .iter()
-            .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&hook))
+            .any(|s| [s.eq_fn, s.ord.map(OrdHook::id), s.show_fn].contains(&hook))
             || self.enums.iter().any(|e| e.show_fn == hook)
     }
 }

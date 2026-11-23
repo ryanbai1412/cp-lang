@@ -28,7 +28,7 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
         Ty::Struct(id) => {
             let s = &program.structs[*id];
             s.eq_fn.is_none()
-                && s.lt_fn.is_none()
+                && s.ord.is_none()
                 && s.cached_fields.is_empty()
                 && s.fields
                     .iter()

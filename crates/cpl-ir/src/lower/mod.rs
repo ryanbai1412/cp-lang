@@ -314,7 +314,7 @@ impl Lowerer<'_> {
                 collect_block_calls(&body.body, &mut newly_called);
             }
             for s in &lw.structs {
-                for hook in [s.def.eq_fn, s.def.lt_fn, s.def.show_fn]
+                for hook in [s.def.eq_fn, s.def.ord.map(OrdHook::id), s.def.show_fn]
                     .into_iter()
                     .flatten()
                 {
@@ -2355,7 +2355,7 @@ impl<'a> Lowerer<'a> {
                 _ => match (trait_name, out_ty, owner_ty) {
                     (_, Some(o), _) => Some(o.clone()),
                     (Some("Show"), _, _) => Some(Ty::Str),
-                    (Some("Eq" | "Ord"), _, _) => Some(Ty::Bool),
+                    (Some("Eq" | "Ord"), _, _) if decl.name.text != "cmp" => Some(Ty::Bool),
                     (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
                     _ => Some(Ty::Unit),
                 },
@@ -2363,7 +2363,7 @@ impl<'a> Lowerer<'a> {
             (None, _) => match (trait_name, out_ty, owner_ty) {
                 (_, Some(o), _) => Some(o.clone()),
                 (Some("Show"), _, _) => Some(Ty::Str),
-                (Some("Eq" | "Ord"), _, _) => Some(Ty::Bool),
+                (Some("Eq" | "Ord"), _, _) if decl.name.text != "cmp" => Some(Ty::Bool),
                 (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
                 _ => None,
             },
@@ -4215,7 +4215,7 @@ impl<'a> Lowerer<'a> {
                 narrow_ints: Default::default(),
                 show_fn: None,
                 eq_fn: None,
-                lt_fn: None,
+                ord: None,
                 cached_fields: Default::default(),
             },
             decl: None,

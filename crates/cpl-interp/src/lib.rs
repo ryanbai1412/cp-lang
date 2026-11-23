@@ -2954,20 +2954,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         use std::cmp::Ordering;
         match ty {
             Ty::Struct(id) => {
-                if let Some(lt_fn) = self.program.structs[*id].lt_fn {
-                    if self
-                        .call_direct(lt_fn, vec![l.clone(), r.clone()], span)?
-                        .bool()
-                    {
-                        return Ok(Ordering::Less);
-                    }
-                    if self
-                        .call_direct(lt_fn, vec![r.clone(), l.clone()], span)?
-                        .bool()
-                    {
-                        return Ok(Ordering::Greater);
-                    }
-                    return Ok(Ordering::Equal);
+                if let Some(hook) = self.program.structs[*id].ord {
+                    return self.user_order(hook, l, r, span);
                 }
                 let fields = self.program.structs[*id].fields.clone();
                 let cached = self.program.structs[*id].cached_fields.clone();

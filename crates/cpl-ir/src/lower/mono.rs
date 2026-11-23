@@ -976,7 +976,7 @@ impl<'a> Lowerer<'a> {
                 narrow_ints: Default::default(),
                 show_fn: None,
                 eq_fn: None,
-                lt_fn: None,
+                ord: None,
                 cached_fields: Default::default(),
             },
             decl: Some(decl),
@@ -1344,12 +1344,12 @@ impl<'a> Lowerer<'a> {
                                 }
                                 self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
                             }
+                            let def = &mut self.structs[sid].def;
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
-                                (Some("Show"), "show") => {
-                                    self.structs[sid].def.show_fn = Some(fn_id)
-                                }
-                                (Some("Eq"), "eq") => self.structs[sid].def.eq_fn = Some(fn_id),
-                                (Some("Ord"), "lt") => self.structs[sid].def.lt_fn = Some(fn_id),
+                                (Some("Show"), "show") => def.show_fn = Some(fn_id),
+                                (Some("Eq"), "eq") => def.eq_fn = Some(fn_id),
+                                (Some("Ord"), "lt") => def.ord = Some(OrdHook::Lt(fn_id)),
+                                (Some("Ord"), "cmp") => def.ord = Some(OrdHook::Cmp(fn_id)),
                                 _ => {}
                             }
                         }

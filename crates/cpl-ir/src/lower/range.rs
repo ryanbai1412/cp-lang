@@ -1101,7 +1101,7 @@ impl<'a> Lowerer<'a> {
         match ty {
             Ty::Struct(id) => {
                 let def = &self.structs[*id].def;
-                def.lt_fn.is_some() || def.fields.iter().any(|(_, t)| self.user_ordered(t))
+                def.ord.is_some() || def.fields.iter().any(|(_, t)| self.user_ordered(t))
             }
             Ty::Tuple(items) => items.iter().any(|t| self.user_ordered(t)),
             Ty::Record(fields) => fields.iter().any(|(_, t)| self.user_ordered(t)),

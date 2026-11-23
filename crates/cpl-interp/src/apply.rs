@@ -5,6 +5,7 @@
 use crate::observe::Observer;
 use crate::value::{TupleVal, Value};
 use crate::*;
+use cpl_ir::OrdHook;
 
 /// The operands of `e`, evaluated in order before [`Interp::apply`], when
 /// every one of them is evaluated, once, as a plain value.
@@ -138,16 +139,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
                 }
                 if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
-                    // One `lt` call per comparison, as the C++ makes, so the
+                    // One `lt` or `cmp` call per comparison, as the C++ makes, so the
                     // profiler counts the same calls in both.
                     if let Ty::Struct(id) = &lhs.ty {
-                        if let Some(lt_fn) = self.program.structs[*id].lt_fn {
+                        if let Some(hook) = self.program.structs[*id].ord {
                             let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) {
                                 (l, r)
                             } else {
                                 (r, l)
                             };
-                            let less = self.call_direct(lt_fn, vec![a, b], span)?.bool();
+                            let less = self.user_less(hook, a, b, span)?;
                             return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) {
                                 less
                             } else {
@@ -243,5 +244,38 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             _ => return trap(span, "internal: no shared evaluation for this expression"),
         })
+    }
+
+    /// Whether `l < r` under a struct's own `Ord`, with one hook call:
+    /// `lt(l, r)`, or `cmp(l, r) == Less`, as the C++ `operator<` makes.
+    pub(crate) fn user_less(&mut self, hook: OrdHook, l: Value, r: Value, span: Span) -> Res<bool> {
+        let (OrdHook::Lt(f) | OrdHook::Cmp(f)) = hook;
+        let got = self.call_direct(f, vec![l, r], span)?;
+        let OrdHook::Cmp(_) = hook else {
+            return Ok(got.bool());
+        };
+        let (Value::Enum(tag, _), &Ty::Enum(e)) = (&got, &self.program.fns[f].ret) else {
+            return trap(span, "`cmp` must return an `Ordering`");
+        };
+        Ok(self.program.enums[e].variants[*tag as usize].0 == "Less")
+    }
+
+    /// How a struct's own `Ord` orders `l` and `r`: built from `<` both
+    /// ways, as C++ orders tuples and sorts, so both run the same calls.
+    pub(crate) fn user_order(
+        &mut self,
+        hook: OrdHook,
+        l: &Value,
+        r: &Value,
+        span: Span,
+    ) -> Res<std::cmp::Ordering> {
+        use std::cmp::Ordering;
+        if self.user_less(hook, l.clone(), r.clone(), span)? {
+            return Ok(Ordering::Less);
+        }
+        if self.user_less(hook, r.clone(), l.clone(), span)? {
+            return Ok(Ordering::Greater);
+        }
+        Ok(Ordering::Equal)
     }
 }
