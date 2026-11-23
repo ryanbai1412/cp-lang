@@ -548,14 +548,14 @@ pub fn factor(x: Int) -> List<(Int, Int)>:
 /// order: ascending; a new `List`, keyed from 0
 /// traps: when `x < 1`
 /// example: `divisors(12) == [1, 2, 3, 4, 6, 12]`
-/// example: `divisors(1) == [1]`
-pub fn divisors(x: Int) -> List<Int>:
+/// example: `divisors(1) == [1] and 12.divisors().len == 6`
+pub fn divisors(self: Int) -> List<Int>:
     var (small, large) = (List<Int>(), List<Int>())
     var d = 1
-    while d * d <= x:
-        if x % d == 0:
+    while d * d <= self:
+        if self % d == 0:
             small.push(d)
-            if d * d != x: large.push(x / d)
+            if d * d != self: large.push(self / d)
         d += 1
     small + large.rev
 
