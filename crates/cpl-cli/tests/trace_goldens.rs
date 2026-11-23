@@ -78,6 +78,7 @@ fn fnv64(bytes: &[u8]) -> u64 {
     })
 }
 
+/// Enforces `debugging/R2` (handbook/guidelines/debugging-checklist.md).
 #[test]
 fn every_program_records_its_saved_trace() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
@@ -232,6 +233,8 @@ fn traced_stdout(document: &str) -> Option<Vec<String>> {
 
 /// Tracing never changes what a program does: every program prints the
 /// same lines traced as untraced.
+///
+/// Enforces `debugging/R1` (handbook/guidelines/debugging-checklist.md).
 #[test]
 fn a_traced_run_prints_what_an_untraced_run_prints() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");

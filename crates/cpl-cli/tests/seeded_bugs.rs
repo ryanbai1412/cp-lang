@@ -228,6 +228,7 @@ fn blamed(report: &str) -> Vec<u32> {
         .collect()
 }
 
+/// Enforces `debugging/R6` (handbook/guidelines/debugging-checklist.md).
 #[test]
 fn explain_names_the_line_each_bug_was_planted_on() {
     let bugs = bugs();

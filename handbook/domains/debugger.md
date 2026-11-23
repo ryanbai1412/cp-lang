@@ -6,24 +6,73 @@
 | Owner | debugger |
 | Describes | `crates/cpl-stress/`, `crates/cpl-interp/src/trace.rs`, `crates/cpl-interp/src/trace/`, `crates/cpl-interp/src/checkpoint.rs`, `crates/cpl-interp/src/replay.rs`, `crates/cpl-cli/src/trace.rs`, `crates/cpl-cli/src/live.rs`, `crates/cpl-cli/src/replay.rs`, `crates/cpl-cli/src/dap.rs`, `crates/cpl-cli/src/interact.rs`, `tools/trace/`, `bench/stress/`, `examples/debugging/` |
 
-## Mission
+The debugger domain turns "wrong answer, and I don't know why" into
+evidence: a small input that fails, the first value that went wrong and the
+line that made it, and a trace you can step through backwards and forwards.
+It owns `cpl stress`, traces, `cpl replay`, the `cpl dap` debug adapter and
+the trace viewer.
 
-Turn "wrong answer, and I don't know why" into evidence in seconds: a
-minimal failing input, the first state that went wrong and the line that
-made it, and a trace you can step through backwards and forwards. The same
-evidence comes from the CLI, every supported editor and the browser, on
-Linux, macOS and Windows, and the same seed always gives the same evidence.
+## What good looks like
 
-Example: a contestant's answer to a merging problem is wrong. They add a
-slow version of the same function marked `@brute(effort)` and run
+A contestant's answer to a merging problem is wrong. They add a slow
+version of the same function marked `@brute(effort)` and run
 `cpl stress effort.cp --explain`. Within a second it prints a three-number
-input on which the two disagree, saves it as a test, and says
-`look at line 8: heap.pop() at line 12 takes the end that the MaxHeap
-declared here keeps`. `cpl stress --trace` opens the run in the viewer at
-that step, and `cpl dap` lets their editor step back from it.
+input on which the two disagree, saves it as a test, and says that
+`heap.pop()` at line 12 takes the end the `MaxHeap` declared at line 8
+keeps. `cpl stress --trace` opens that run in the viewer, and their editor
+can step back from the wrong value through `cpl dap`. It works the same
+from the terminal, every supported editor and the browser, on Linux, macOS
+and Windows, and the same seed always gives the same evidence.
 
-The loop the domain is judged on: **wrong answer → `cpl stress` → minimal
-input → trap or first divergence → trace / step back → edit → rerun.**
+## How it fits together
+
+- **Stress** (`crates/cpl-stress`) reads the file's solution, brute,
+  generator, checker and interactor, draws inputs from the typed `read()`s,
+  judges both sides and shrinks the first failing input.
+- **The trace** (`crates/cpl-interp/src/trace*`) records each step of a run
+  as it executes on the VM: what changed, what printed, which call it is
+  in. Checkpoints let it rebuild a step far from what was kept.
+- **Explain** compares the solution's trace with the brute's and names the
+  first value that differs and the lines behind it.
+- **Replay, the debug adapter and the viewer** read the same recording:
+  replay reruns an edited call, `cpl dap` steps through it in an editor, and
+  `tools/trace/index.html` draws it in one offline page.
+
+The rules every part keeps are in `handbook/guidelines/debugging.md`, and
+the design in `handbook/design/debugger.md`.
+
+## How we know it is good
+
+Every program in the test corpus has a saved trace that each change must
+reproduce, and must print the same output traced as untraced. 29 seeded
+bugs check that stress finds each one and that `--explain` names the line
+it was planted on. Replay, the debug adapter and the viewer have their own
+suites, and a CI workflow runs the whole loop on all three operating
+systems.
+
+The weakest areas are bugs nobody seeded (no mutation suite measures how
+often stress and `--explain` find them), arrays over 20,000 cells (drawn
+as empty), values of types with an `impl Show` (shown by their fields),
+and trace speed (no gate on the overhead). The quality register below
+lists every quality, with its check or `missing`.
+
+## Where to start
+
+- **A wrong or missing explanation:** add the bug to `bench/stress/` as a
+  seeded bug, then work in `crates/cpl-interp/src/trace/compare.rs`.
+- **A trace shows the wrong thing:** add a program to
+  `crates/cpl-cli/tests/programs/`, record its trace with `CPL_BLESS=1`,
+  and check the diff by eye.
+- **Stress can't generate or shrink an input:** `crates/cpl-stress/src/spec.rs`
+  and `shrink.rs`, with a test in `crates/cpl-stress/src/tests.rs`.
+
+---
+
+# Reference
+
+The rest of this document is for looking things up: the exact scope, the
+interfaces other domains rely on, every quality we track and the suites
+that check them.
 
 ## Scope
 
@@ -120,7 +169,7 @@ tests for wording.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Tracing never changes what the program does | programs whose traced output differs from untraced | differential sweep over every program, traced against untraced (`handbook/guidelines/debugging.md` rule 1) | `crates/cpl-cli/tests/trace_goldens.rs` `a_traced_run_prints_what_an_untraced_run_prints` |
+| Tracing never changes what the program does | programs whose traced output differs from untraced | differential sweep over every program, traced against untraced (`debugging/R1`) | `crates/cpl-cli/tests/trace_goldens.rs` `a_traced_run_prints_what_an_untraced_run_prints` |
 | A trace shows the program's real state at every step | values that differ from the state the run had | debug assertion in the tracer ("changed unseen"), saved traces | `crates/cpl-interp/src/trace.rs`, `trace_goldens.rs` |
 | A trace's state changes only when it should | unexplained changes between saved traces | saved traces as the oracle; edits to expected output are flagged for review | `trace_goldens.rs` |
 | No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `trace_goldens.rs` |
@@ -128,7 +177,7 @@ tests for wording.
 | A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over hand-picked programs; `missing` over every saved-trace program | `crates/cpl-interp/tests/checkpoint.rs`; `missing` |
 | Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/vm_fallbacks.rs` |
 | Large values stay visible | values over the trace's size cap shown as `[]` | `missing`: arrays over 20000 cells are drawn empty | `missing` |
-| Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`handbook/guidelines/debugging.md` rule 2); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
+| Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
 | Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
 | Tracing off costs nothing | untraced time before and after the observer | design: untraced runs use a no-op observer | `crates/cpl-interp/src/lib.rs` |

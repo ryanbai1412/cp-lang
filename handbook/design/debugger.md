@@ -133,9 +133,13 @@ One offline HTML file with three sections (`trace-style`, `trace-core`,
 Code extension and the site load the same file. It has no build step and
 makes no network requests.
 
+---
+
+# Reference
+
 ## Rules every change keeps
 
-The rules and their checks are in `handbook/guidelines/debugging.md`.
+The rules are explained in `handbook/guidelines/debugging.md` and listed, with their checks, in `handbook/guidelines/debugging-checklist.md`.
 
 ## Known limits
 

@@ -7,6 +7,8 @@
 //! A fix that removes fallbacks rewrites the list with
 //! `CPL_BLESS_VM_FALLBACKS=1 cargo test -p cpl-cli --test vm_fallbacks`;
 //! blessing refuses to add a line to a non-empty list.
+//!
+//! Enforces `debugging/R4` (handbook/guidelines/debugging-checklist.md).
 
 use std::collections::BTreeSet;
 use std::io::Write;
