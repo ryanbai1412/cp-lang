@@ -1,5 +1,5 @@
 let (n, m): (1..=200000, 0..=200000) = read()
-var par: List<Int> = [i for i in 0..=n]  // expect: missing int-vertex-ids
+var par: List<Int> = [i for i in 0..=n]  // expect: missing int-vertex-ids, copy_comprehension
 fn find(x: Int) -> Int:
     if par[x] == x:
         return x

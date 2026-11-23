@@ -1,5 +1,5 @@
 let (n, m): (1..=100000, 0..=200000) = read()
-var adj: List<List<Int>> = [[] for _ in 0..=n]  // expect: missing adjacency_build_loop
+var adj: List<List<Int>> = [[] for _ in 0..=n]  // expect: manual_adjacency_list
 for _ in 0..m:
     let (u, v): (1..=n, 1..=n) = read()
     adj[u].push(v)

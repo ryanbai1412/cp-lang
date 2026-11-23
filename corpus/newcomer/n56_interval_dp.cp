@@ -5,6 +5,6 @@ for i in 0..n:
     dp[i, i] = a[i]
 for len in 2..=n:  // expect: interval_dp_by_length
     for l in 0..n - len + 1:
-        let r = l + len - 1  // expect: missing manual-interval-end-index
+        let r = l + len - 1  // expect: interval_dp_by_length
         dp[l, r] = max(a[l] - dp[l + 1, r], a[r] - dp[l, r - 1])
 print(dp[0, n - 1])

@@ -3,7 +3,7 @@ let a: [0..n]Int = read()
 var h = MinHeap<Int>()
 for x in a:
     h.push(-x)  // expect: negated_heap
-var top3 = 0
+var top3 = 0  // expect: loop_reduction
 for _ in 0..min(3, n):  // expect: missing manual_heap_drain
     top3 += -(h.pop()!)
 print(top3)

@@ -98,7 +98,8 @@ def main(argv):
             if want.startswith("missing ") and want[8:] in known:
                 want = want[8:]  # the lint has shipped since the mark was written
             if want.startswith("missing "):
-                ok = any(near(line, d) for _, _, d in ds)
+                # No lint teaches it yet; a nearby lint about something else is not a hit.
+                ok = False
             else:
                 wants = want.split("|")
                 for w in wants:
@@ -107,7 +108,7 @@ def main(argv):
                 ok = any(n in wants and near(line, d) for _, n, d in ds)
             if ok:
                 hit += 1
-                used |= {i for i, (_, n, d) in enumerate(ds) if near(line, d) and (n in want.split("|") or want.startswith("missing "))}
+                used |= {i for i, (_, n, d) in enumerate(ds) if near(line, d) and n in want.split("|")}
             else:
                 missed[want] += 1
                 misses.append(f"{f.name}:{line}: {want}")

@@ -7,5 +7,5 @@ for x in a:
     cnt[x] += 1  // expect: state_above_multitest
     best max= cnt[x]
 for x in a:
-    cnt[x] = 0  // expect: missing manual-multitest-reset
+    cnt[x] = 0  // expect: state_above_multitest
 print(best)
