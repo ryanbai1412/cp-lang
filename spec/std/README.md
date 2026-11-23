@@ -2121,6 +2121,8 @@ fn gen<T: Gen>(mut r: Rng) -> T // O(1); T from the type wanted
 fn gen_fields<T>(mut r: Rng) -> T // O(fields)
 ```
 
+Not yet in `derive.cp`: `Hash`/`hash_fields` and `Gen`/`gen`/`gen_fields`
+(both trait names are compiler tables today; `GAPS.md`, Q3).
 `impl Hash for P: fn hash(self) = hash_fields(self)` derives a struct's
 `Hash` from its fields'; `impl Gen for P: fn gen(mut r: Rng) -> P =
 gen_fields(mut r)` derives a stress generator the same way.
