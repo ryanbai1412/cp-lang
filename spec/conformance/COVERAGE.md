@@ -17,7 +17,7 @@ Cases: 2260 (995 passing). Rules: 533.
 - R04 (04-indices.md): 61 rules, 90 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 147 cases; 0 uncovered, 3 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -41,7 +41,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
-| R05 | 43 | 43 (100%) | 23 | 20 (86%) | 40 (93%) |
+| R05 | 43 | 43 (100%) | 23 | 21 (91%) | 41 (95%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
 | R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
 | R08 | 29 | 29 (100%) | 15 | 13 (86%) | 27 (93%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 533 | 532 (99%) | 227 | 195 (85%) | 500 (93%) |
+| all | 533 | 532 (99%) | 227 | 196 (86%) | 501 (93%) |
 
 ## Rules
 
@@ -356,7 +356,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.8.4 [1+ 8-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
 - R05.9.1 [3+ 5-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
-- R05.9.3 [1+ 0-] *happy-path only*: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
+- R05.9.3 [1+ 1-]: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
 - R05.10.1 [4+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
 - R05.10.2 [2+ 3-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...

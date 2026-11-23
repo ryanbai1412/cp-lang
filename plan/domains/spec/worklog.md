@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `core-02/question-not-early-return.cp` also cites R05.9.3 (`x?` never transfers control); it still fails (compiler).
 - R11.4.3's missing accept case waits on `cpl migrate` (unknown command); request in tools/worklog.md.
 - `core-08/trait-message-bound-holds.cp`, R08.1.8's accept case (33 rule gaps): fails, `#on_unimplemented` is E0004 (compiler). Spelling tension to settle with it: R01.9.1 makes decorators `@name` from a closed set, W12 spells library attributes `#lint`/`#on_unimplemented`.
 - `core-11/binary-min-beside-imported-seq-min.cp` (fails E0606; compiler): with seq's `min` imported, `min(3, 1)` is still the builtin. It is the program that reaches 701193ef's path, so bugcatch can catch it once the checker is fixed.
