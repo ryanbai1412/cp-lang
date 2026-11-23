@@ -15,6 +15,7 @@
 //! an item.
 
 mod config;
+pub mod facts;
 mod rules;
 mod walk;
 
