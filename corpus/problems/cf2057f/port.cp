@@ -19,7 +19,7 @@ domain Pos = 0..n
 let a: [Pos]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()
 let window = prefix(a)
-let cuts = compress(a + [2 * x for x in a])
+let (C, cuts) = compress(a + [2 * x for x in a])
 let cap = ks.max() + a.max()
 let by_k = (0..q).sorted(by: i => ks[i])
 
@@ -29,13 +29,13 @@ fn raise(l: 1..=31, x: Int) -> Int:
 
 var ans: [q]Int = a.max()
 for l in 1..=31:
-    var saved = IntervalMap<cuts.D, ?Int>.new(none)
-    let windows = [(s, window.sum(s..=e)) for s in Pos if let e = s + (l - 1)].sorted(by: w => w.1)
+    var saved = IntervalMap<C, ?Int>.new(none)
+    let windows = [(s, window.fold(s..=e)) for s in Pos if let e = s.offset(l - 1)].sorted(by: w => w.1)
     for (s, total) in windows:
-        let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r
-        saved.assign(cuts.at(a[s]).l..end, total)
+        let end = if let p = s.prev: cuts.at(2 * a[p]).l else: C.last!.r
+        saved.assign(cuts.at(a[s]).l..end, some(total))
     var waiting = by_k
-    for (r, opt) in saved.each().rev:
+    for (r, opt) in [x for x in saved.each()].rev:
         if let best = opt:
             let lo = (cuts[r.first!] << (l - 1)) + 1
             let hi = if let nxt = r.last!.next: min(cap, cuts[nxt] << (l - 1)) else: cap
@@ -43,6 +43,6 @@ for l in 1..=31:
             if not xr.is_empty:
                 let floor = raise(l, xr.first!)
                 while let x = waiting.last, ks[x] + best >= floor:
-                    ans[x] max= bsearch_last(xr, h => raise(l, h) <= ks[x] + best)!
+                    ans[x] max= xr.last_true(h => raise(l, h) <= ks[x] + best)!
                     waiting.pop()
 print(ans)
