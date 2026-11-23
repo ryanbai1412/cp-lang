@@ -8,6 +8,7 @@ that no test notices. Mutants that don't build or time out aren't scored.
 
 Usage:
     python3 scripts/mutation-score.py -p cpl-lint [--since REV] [--shard K/N] [-o DIR]
+        [--test-package cpl-lsp ...]   # also run tests of crates that call it
     python3 scripts/mutation-score.py --report DIR   # score a finished run
 """
 
@@ -57,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--since", help="only mutate code changed since this revision")
     parser.add_argument("--shard", help="K/N: run one of N slices of the crate's mutants")
     parser.add_argument("-o", "--output", type=Path, help="where cargo-mutants writes mutants.out")
+    parser.add_argument("--test-package", action="append", default=[],
+                        help="also run this crate's tests, e.g. a caller whose tests cover the mutated code")
     parser.add_argument("-j", "--jobs", default="4")
     parser.add_argument("--report", type=Path, help="only score a finished run in DIR")
     args = parser.parse_args(argv)
@@ -67,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.output or Path(tempfile.mkdtemp(prefix=f"mutants-{args.package}-"))
     cmd = ["cargo", "mutants", "-p", args.package, "-o", str(out), "-j", args.jobs,
            "--no-shuffle", "--baseline", "skip"]
+    if args.test_package:
+        cmd += ["--test-package", ",".join([args.package, *args.test_package])]
     if args.shard:
         cmd += ["--shard", args.shard]
     if args.since:
