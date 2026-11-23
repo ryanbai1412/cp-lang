@@ -31,5 +31,11 @@ Each bug names its class on a `// class:` line: one of the P0 classes of
 `modulus`, `floating-point`) or `logic` for a wrong algorithm.
 `every_seeded_bug_names_its_bug_class` prints the count per class.
 
+Two P0 classes have no seeded bug, on purpose. `io-flush`: a `Wire`
+flushes before every read and at exit (`spec/core/10-io.md`), so a missing
+flush cannot be written. `complexity`: the smallest input that runs past a
+time limit depends on the machine, so it has no `.min` to check; hidden
+complexity is the linter's to warn about.
+
 A new bug is a new pair of files. A stress change that finds a smaller
 counterexample updates the `.min`, with the reason in the commit.

@@ -5,7 +5,7 @@
 [[metric]]
 name = "seeded_bugs_minimal"
 command = "cargo test --release -p cpl-cli --test seeded_bugs -- --nocapture"
-today = "24/24 found and shrunk to the minimal input; by class: off-by-one 5, multitest-leak 5, overflow 3, boundaries 2, mutation 2, sentinel 1, index-space 1, modulus 1, floating-point 1, logic 3 (9 of 11 P0 classes seeded; io-flush and complexity have none)"
+today = "24/24 found and shrunk to the minimal input; by class: off-by-one 5, multitest-leak 5, overflow 3, boundaries 2, mutation 2, sentinel 1, index-space 1, modulus 1, floating-point 1, logic 3 (9 of 11 P0 classes seeded; io-flush is prevented by `Wire` and complexity has no machine-independent minimal input, see bench/stress/README.md)"
 target = "every seeded bug, one or more per P0 class"
 
 [[metric]]
