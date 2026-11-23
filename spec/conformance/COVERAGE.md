@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2378 (995 passing). Rules: 557.
+Cases: 2382 (995 passing). Rules: 557.
 
 ## Summary per chapter
 
@@ -19,11 +19,11 @@ Cases: 2378 (995 passing). Rules: 557.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 88 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 88 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 73 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 37 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R10 (10-io.md): 18 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R11 (11-modules-prelude.md): 15 rules, 38 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -486,7 +486,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` |
 - R07.7.3 [3+ 0-]: | `s.take(k)`, `s.drop(k)` | an O(1) view on an `Indexed`; a `Seq` otherwise | consuming a...
-- R07.7.4 [1+ 0-]: | `chain(a, b)` | `Seq` |
+- R07.7.4 [2+ 0-]: | `chain(a, b)` | `Seq` |
 - R07.7.5 [1+ 0-]: | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step
 - R07.7.6 [1+ 0-]: | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | O(n²) to walk, so a call
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
@@ -582,7 +582,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [6+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [9+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [11+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -598,7 +598,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R11: 11-modules-prelude.md
 
-- R11.1.1 [3+ 1-]: A **program** file is a sequence of statements (chapter 10). It may declare items anywhere...
+- R11.1.1 [4+ 1-]: A **program** file is a sequence of statements (chapter 10). It may declare items anywhere...
 - R11.1.2 [1+ 1-]: A **library** file contains only items (`fn`, `struct`, `enum`, `trait`, `impl`, `type`, `...
 - R11.1.3 [3+ 1-]: An inline module `mod name:` groups items inside any file, for parts a contestant wants to...
 - R11.2.1 [1+ 1-]: Paths are module names, not files on a search path: `std` is the pinned stdlib, `lib` is t...
@@ -890,8 +890,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (203/215 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (204/215 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -905,7 +905,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2150 of 2282 std items are named by a case.
+2151 of 2282 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
