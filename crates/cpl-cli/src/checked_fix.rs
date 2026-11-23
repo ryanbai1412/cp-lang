@@ -68,10 +68,10 @@ pub(crate) fn rank_checked(
     errors: &mut [Diagnostic],
     budget: &mut usize,
 ) {
-    for i in 0..errors.len() {
-        let chosen = choose(db, path, text, &errors[i], budget).cloned();
+    for error in errors.iter_mut() {
+        let chosen = choose(db, path, text, error, budget).cloned();
         if let Some(fix) = chosen {
-            let fixes = &mut errors[i].fixes;
+            let fixes = &mut error.fixes;
             if let Some(at) = fixes.iter().position(|f| *f == fix) {
                 fixes[..=at].rotate_right(1);
             }
