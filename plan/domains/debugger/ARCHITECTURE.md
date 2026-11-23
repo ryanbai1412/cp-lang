@@ -1,5 +1,7 @@
 # debugger architecture
 
+The stable design is in [handbook/design/debugger.md](../../../handbook/design/debugger.md) and the domain charter in [handbook/domains/debugger.md](../../../handbook/domains/debugger.md); this file keeps the module table and known debt until they are folded in.
+
 The code as it is on 2026-11-22 (main `4b8f504f`), read from the source. Kept current in the same commit as any structural change. The planned `crates/cpl-trace` and `web/packages/trace-viewer` do not exist yet; see Known debt.
 
 ## Data flow
