@@ -5,12 +5,14 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
 
 impl Checker<'_> {
-    /// `enumerate(xs)`, `reversed(xs)`, `pow(a, b)`: Python's free
+    /// `enumerate(xs)`, `reversed(xs)`, `pow(a, b)`, `s.charAt(i)`: foreign
     /// functions for what CP Lang spells as a member or an operator, so the
     /// unresolved name gets `xs.items` or `a ** b`.
     pub(super) fn member_for_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
-        let ExprKind::Name(name) = &callee.kind else {
-            return;
+        let (name, at, code) = match &callee.kind {
+            ExprKind::Name(name) => (name, callee.span, codes::UNRESOLVED_NAME),
+            ExprKind::Field { name, .. } => (&name.text, name.span, codes::UNKNOWN_FIELD),
+            _ => return,
         };
         let operand = |c: &Self, a: &Arg| {
             let t = c.text(a.value.span);
@@ -34,13 +36,20 @@ impl Checker<'_> {
                 format!("{} ** {}", operand(self, a), operand(self, b)),
                 "power is the operator `**`",
             ),
+            ("charAt", [i]) => match &callee.kind {
+                ExprKind::Field { base, .. } => (
+                    format!("{}[{}]", self.text(base.span), self.text(i.value.span)),
+                    "a character is an index",
+                ),
+                _ => return,
+            },
             _ => return,
         };
-        let Some(diag) = self.sink.last_mut().filter(|d| {
-            d.code == codes::UNRESOLVED_NAME
-                && d.span == callee.span
-                && args.iter().all(|a| a.name.is_none())
-        }) else {
+        let Some(diag) = self
+            .sink
+            .last_mut()
+            .filter(|d| d.code == code && d.span == at && args.iter().all(|a| a.name.is_none()))
+        else {
             return;
         };
         diag.help = Some(format!("{what} in CP Lang: `{ours}`"));
