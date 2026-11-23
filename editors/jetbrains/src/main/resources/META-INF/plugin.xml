@@ -29,6 +29,7 @@
         <applicationConfigurable parentId="tools" instance="dev.cplang.ide.CplConfigurable"
                                  id="dev.cplang.settings" displayName="CP Lang"/>
         <notificationGroup id="CP Lang" displayType="BALLOON"/>
+        <editorNotificationProvider implementation="dev.cplang.ide.CpLightEditNotice"/>
     </extensions>
 
     <actions>

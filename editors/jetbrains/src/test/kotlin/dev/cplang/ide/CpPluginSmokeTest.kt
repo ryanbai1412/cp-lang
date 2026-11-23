@@ -31,6 +31,15 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         CplSettings.get().state.path = cpl.path
     }
 
+    fun `test a cp file in LightEdit says it gets no language server`() {
+        val notice = com.intellij.ui.EditorNotificationProvider.EP_NAME.getExtensions(project)
+            .filterIsInstance<CpLightEditNotice>().single()
+        assertTrue(notice is com.intellij.ide.lightEdit.LightEditCompatible)
+        myFixture.configureByText("a.cp", "print(1)\n")
+        assertNull(notice.collectNotificationData(project, myFixture.file.virtualFile))
+        assertTrue(CpLightEditNotice.MESSAGE.contains("no diagnostics"))
+    }
+
     fun `test cp files are CP Lang and highlight`() {
         assertSame(CpFileType, FileTypeManager.getInstance().getFileTypeByFileName("a.cp"))
         myFixture.configureByText("a.cp", "fn main():\n    print(1)\n")
