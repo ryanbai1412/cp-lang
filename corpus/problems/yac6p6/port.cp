@@ -1,5 +1,12 @@
-// YAC 6 P6 (CP Lang 0.2.2): 3-diagonal meet-in-the-middle grid DP using Tropical
-// Optionals `?Int` + `min=` (zero `INF` sentinels) and tuple query buckets.
+// Source: Yet Another Contest 6 P6 (No More Snakes and Ladders), https://dmoj.ca/problem/yac6p6
+// Problem: an n x m grid (n, m <= 200) of values <= 1e9. Each of Q <= 1e5 independent queries
+//   gives a subgrid (A, B)..(C, D) and K <= 5: a token walks right/down from (A, B) to (C, D)
+//   and may first set up to K cells to 0; print the least possible sum of the visited cells.
+// Solution: queries with both sides <= 4 run a direct (cell, zeros used) DP. Otherwise the path
+//   crosses the anti-diagonal x + y = C + D - ((C + D) mod 3), at most 3 cells from the end:
+//   bucket the query at each such pivot. Per pivot with queries, one backward DP over its
+//   upper-left region gives the best start-to-pivot cost per zero count, a 3 x 3 forward DP
+//   the pivot-to-end cost; a query takes the best split of K. O(nm K) per pivot, O(K^2) a query.
 // original: corpus/submissions/5150025.cpp
 const MAXK = 5
 domain KDom = 0..=MAXK

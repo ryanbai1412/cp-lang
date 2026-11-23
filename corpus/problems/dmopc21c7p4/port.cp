@@ -1,4 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c7p4.cp
+// Source: DMOPC '21 Contest 7 P4 (Rocket Race), https://dmoj.ca/problem/dmopc21c7p4
+// Problem: n <= 2e5 single-use rockets; rocket i moves a_i forward, then b_i back. Q <= 2e5
+//   events: "0 r" prints the fewest rockets that reach or pass r metres at some moment (going
+//   forward only), or -1; "t x y" replaces rocket t by (x, y). Values <= 1e9.
+// Solution: k rockets reach their best peak by using k - 1 of the largest nets a - b, then the
+//   one with the largest a among the rest, or the chosen ones with the largest b last. All
+//   initial and replacement rockets get fixed slots sorted by net, so a SegTree over slots keeps
+//   max a, max b, net sum and the last net; a binary search over prefixes of the positive nets
+//   finds the shortest that reaches r, else all positives plus the best other a. Updates move a
+//   rocket to its slot. O(log^2 n) per query.
 // original: corpus/submissions/4825739.cpp
 
 struct Node(mxa: Int, mxb: Int, lastd: Int, cnt: Int, sm: Int):

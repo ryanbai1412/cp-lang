@@ -1,17 +1,13 @@
-// NCCC 10 S4: n lines in the plane, each given by two lattice points. Count
-// the simple polygons with n sides that have exactly one side on each line.
-//
-// A corner is a crossing of two lines, and crossings are fractions. Kept as
-// whole-number triples (x, y, w) for the point (x / w, y / w), a crossing
-// is one cross product of the two lines' coefficients, two crossings are
-// the same point when their reduced triples are equal, and their order
-// along a line is one comparison of products. Nothing is ever divided.
-//
-// The count is a walk: from a corner, take any line not used yet, and slide
-// along it either way to another crossing, which becomes the next corner.
-// Every crossing the side passes is spent, so the polygon cannot touch
-// itself. The first side lies on line 0 and runs forwards, which counts
-// each polygon once.
+// Source: Mock CCC '22 2 S4 (Kaguya Wants to Build a Great Wall), https://dmoj.ca/problem/nccc10s4
+// Problem: n <= 12 distinct lines, each given by two lattice points with |coordinate| <= 2000.
+//   Count the distinct simple n-sided polygons with exactly one side (of positive length) on
+//   each line.
+// Solution: corners are crossings of two lines, kept as reduced whole-number triples (x, y, w)
+//   for (x / w, y / w): equal points have equal triples and order along a line is one product
+//   comparison, so nothing is divided. Backtracking walk: from a corner take an unused line and
+//   slide either way to a later crossing, which becomes the next corner; every crossing passed is
+//   spent, so the polygon cannot touch itself. The first side lies on line 0 and runs forwards,
+//   counting each polygon once. Exponential in n, fine for n <= 12.
 // original: corpus/submissions/4225209.cpp
 
 struct Line(a: Int, b: Int, c: Int)  // a x + b y + c = 0

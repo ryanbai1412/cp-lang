@@ -1,4 +1,11 @@
-// OLY 2020 Practice 139, buildable under proto/cpc today. See ../oly20practice139.cp.
+// Source: DMOJ OLY 2020 Practice 139 (Bob's Function), https://dmoj.ca/problem/oly20practice139
+// Problem: f(x, y) = a if a <= x, else b if b <= y, else 0. Given n <= 150000 pairs with
+//   0 <= y_i <= x_i <= 1e9, choose constants a, b to maximise sum f(x_i, y_i); print the maximum.
+// Solution: some x_i is an optimal a (or a is above every x); then the sum is
+//   a * #(x >= a) + b * #(x < a, y >= b), and b is best at one of the y values. Sweep a over the
+//   sorted x; pairs with x < a join one by one, each adding 1 to the count of every y value <= y.
+//   Over compressed y, sqrt blocks of B = 400 keep the lines v * (count + lazy) as an upper hull,
+//   queried at the block's lazy add with a forward-only pointer: O(n sqrt n).
 // original: corpus/submissions/6415690.cpp
 const B = 400
 

@@ -1,4 +1,12 @@
-// YAC 7 P2 (today/ runnable subset) — original: corpus/submissions/5705152.cpp
+// Source: Yet Another Contest 7 P2 (Coprime Grid), https://dmoj.ca/problem/yac7p2
+// Problem: fill an n x m grid with 1..=n*m, each once, so that every cell is coprime with at
+//   least two side-adjacent cells; print the grid, or -1 if impossible. T, n, m <= 100.
+// Solution: consecutive integers are coprime, so number the cells along a Hamiltonian path whose
+//   two ends also touch a coprime cell; a 1 x m grid fails at its ends (one neighbour). With an
+//   even side (made the height, transposing if needed) a snake closes into a cycle back next to
+//   cell 1. With both sides odd, an open path ends at (1, 1), next to 1 and next to 2 (n*m is
+//   odd). O(nm) per test.
+// original: corpus/submissions/5705152.cpp
 
 let t: 1..=100_000 = read()
 
