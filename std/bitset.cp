@@ -363,12 +363,7 @@ pub struct Bitset<D>:
     pub fn shift_or(mut self, k: Int):
         assert k >= 0
         if k == 0: return
-        let (words, bits) = (k / 64, k % 64)
-        if words >= w.len: return
-        for i in (words..w.len).rev:
-            var x = w[i - words] << bits
-            if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
-            w[i] |= x
+        self.or_shifted(k)
         self.trim()
         self.recount()
 
@@ -457,7 +452,9 @@ pub struct Bitset<D>:
                 let carry = (c - 1) / 2
                 cnt[w] -= 2 * carry
                 if 2 * w < D.K: cnt[2 * w] += carry
-            for _ in 0..cnt[w]: reach.shift_or(w)
+            for _ in 0..cnt[w]: reach.or_shifted(w)
+        reach.trim()
+        reach.recount()
         reach
 
     /// Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.
@@ -552,6 +549,18 @@ pub struct Bitset<D>:
     fn recount(mut self):
         n = 0
         for x in w: n += popcount(x)
+
+    // `w |= w << k` for k > 0, leaving bits past `D` and `n` for the caller to fix.
+    fn or_shifted(mut self, k: Int):
+        let (words, bits) = (k / 64, k % 64)
+        if words >= w.len: return
+        unchecked:
+            if bits == 0:
+                for i in (words..w.len).rev: w[i] |= w[i - words]
+            else:
+                for i in (words + 1..w.len).rev:
+                    w[i] |= (w[i - words] << bits) | (w[i - words - 1] >> (64 - bits))
+                w[words] |= w[0] << bits
 
     fn trim(mut self):
         let full_words = (D.K + 63) / 64

@@ -1,6 +1,6 @@
 // Tuned: bitset.cp's knapsack and shift-or loop on raw 64-bit words, as
 // bitset.cpp's std::bitset does it. `Bitset.shift_or` recounts every word after
-// each shift to keep `len` O(1), which doubles the knapsack's work (perf PLAN.md).
+// each shift to keep `len` O(1); `subset_sums` now recounts once at the end.
 const M = 200_001
 const W = (M + 63) / 64
 var weights: List<Int> = []
