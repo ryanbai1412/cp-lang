@@ -71,8 +71,11 @@ function rustStrings(source: string, from: RegExp, end: string): string[] {
 }
 
 /** What edition 0.3 ships, read from the compiler and `std`. */
+// A Windows checkout has CRLF line ends.
+const readText = (file: string) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+
 function shipped() {
-    const prelude = fs.readFileSync(path.join(REPO_ROOT, 'crates', 'cpl-check', 'src', 'prelude.rs'), 'utf8');
+    const prelude = readText(path.join(REPO_ROOT, 'crates', 'cpl-check', 'src', 'prelude.rs'));
     const typeNames = rustStrings(prelude, /const TYPE_NAMES: &\[&str\] = &\[/, '];');
     const builtinValues = new Set([
         ...rustStrings(prelude, /pub fn value\(/, '\n}\n'),
@@ -82,7 +85,7 @@ function shipped() {
     const builtinTypes = new Set([...rustStrings(prelude, /pub fn ty\(/, '\n}\n'), ...typeNames]);
     const stdlib = path.join(REPO_ROOT, 'std');
     const imported = new Set<string>();
-    for (const use of fs.readFileSync(path.join(stdlib, 'prelude.cp'), 'utf8').matchAll(/^use std\.\w+\.\{([^}]*)\}/gm)) {
+    for (const use of readText(path.join(stdlib, 'prelude.cp')).matchAll(/^use std\.\w+\.\{([^}]*)\}/gm)) {
         for (const name of use[1].split(',').map(name => name.trim()).filter(Boolean)) {
             imported.add(name);
         }
@@ -91,7 +94,7 @@ function shipped() {
     // the prelude imports it.
     const declared = new Map<string, string>();
     for (const file of fs.readdirSync(stdlib).filter(name => name.endsWith('.cp'))) {
-        for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
+        for (const line of readText(path.join(stdlib, file)).split('\n')) {
             const decl = /^(?:@get )?pub (?:@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain|context) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
             const getter = /^(?:@get )?pub @get |^@get pub /.test(line);
             // `<fn>_of_pairs`/`<fn>_of_triples` are what `T.fn(list)` resolves to, not names to type.

@@ -30,11 +30,12 @@ function isFile(file: string): boolean {
 export function resolveServer(configured: string, options: ResolveOptions): string | undefined {
     const exists = options.exists ?? isFile;
     const windows = (options.platform ?? process.platform) === 'win32';
+    const paths = windows ? path.win32 : path.posix;
     const names = windows && !/\.exe$/i.test(configured) ? [configured, configured + '.exe'] : [configured];
     const firstIn = (dirs: readonly string[]) => {
         for (const dir of dirs) {
             for (const name of names) {
-                const candidate = path.join(dir, name);
+                const candidate = paths.join(dir, name);
                 if (exists(candidate)) {
                     return candidate;
                 }
@@ -45,7 +46,7 @@ export function resolveServer(configured: string, options: ResolveOptions): stri
     if (configured.trim() === '') {
         return undefined;
     }
-    if (path.isAbsolute(configured)) {
+    if (paths.isAbsolute(configured)) {
         return names.find(exists);
     }
     if (/[\\/]/.test(configured)) {
@@ -53,8 +54,8 @@ export function resolveServer(configured: string, options: ResolveOptions): stri
     }
     const onPath = options.pathEnv.split(windows ? ';' : ':').filter(dir => dir !== '');
     const built = options.workspaceFolders.flatMap(folder => [
-        path.join(folder, 'target', 'release'),
-        path.join(folder, 'target', 'debug'),
+        paths.join(folder, 'target', 'release'),
+        paths.join(folder, 'target', 'debug'),
     ]);
     return firstIn(onPath) ?? firstIn(built);
 }

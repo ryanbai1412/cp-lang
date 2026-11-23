@@ -13,8 +13,8 @@ function resolve(configured: string, files: string[], platform: NodeJS.Platform 
 }
 
 test('a bare name is found on PATH before the workspace build', () => {
-    const built = path.join('/work/cp-lang', 'target', 'debug', 'cpl');
-    const release = path.join('/work/cp-lang', 'target', 'release', 'cpl');
+    const built = path.posix.join('/work/cp-lang', 'target', 'debug', 'cpl');
+    const release = path.posix.join('/work/cp-lang', 'target', 'release', 'cpl');
     assert.equal(resolve('cpl', ['/opt/cp/bin/cpl', built]), '/opt/cp/bin/cpl');
     assert.equal(resolve('cpl', [built, release]), release);
     assert.equal(resolve('cpl', [built]), built);
@@ -25,7 +25,7 @@ test('a bare name is found on PATH before the workspace build', () => {
 test('a path is taken as written', () => {
     assert.equal(resolve('/abs/cpl', ['/abs/cpl']), '/abs/cpl');
     assert.equal(resolve('/abs/cpl', ['/usr/bin/cpl']), undefined);
-    const relative = path.join('/work/cp-lang', 'tools/cpl');
+    const relative = path.posix.join('/work/cp-lang', 'tools/cpl');
     assert.equal(resolve('tools/cpl', [relative]), relative);
 });
 
