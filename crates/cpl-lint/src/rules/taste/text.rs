@@ -65,6 +65,26 @@ pub(super) fn numeric(init: &str) -> bool {
             .starts_with(|c: char| c.is_ascii_digit())
 }
 
+/// Every mention of `name` in `src` after byte `from` reads one element
+/// (`name[..]`) or the length (`name.len`): nothing walks it, passes it on or
+/// prints it whole.
+pub(super) fn only_indexed_after(src: &str, from: usize, name: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let rest = &src[from..];
+    rest.match_indices(name).all(|(at, _)| {
+        let before = rest[..at].chars().next_back();
+        let after = &rest[at + name.len()..];
+        if before.is_some_and(ident) || after.starts_with(ident) {
+            return true;
+        }
+        let after = after.trim_start_matches(' ');
+        after.starts_with('[')
+            || after
+                .strip_prefix(".len")
+                .is_some_and(|t| !t.starts_with(ident))
+    })
+}
+
 /// `text` mentions the identifier `name`.
 pub(super) fn mentions(text: &str, name: &str) -> bool {
     words(text).any(|w| w == name)

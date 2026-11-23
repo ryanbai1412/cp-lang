@@ -5,7 +5,7 @@ domain I = 0..n
 let a: [I]-1e9..=1e9 = read()
 var s: [I]Int = 0
 var run = 0
-for i in I:  // expect: hand_rolled_prefix_sum
+for i in I:  // expect: missing prefix-totals-list
     run += a[i]
     s[i] = run
 if s.any(x => x < 0):

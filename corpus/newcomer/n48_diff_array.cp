@@ -6,7 +6,7 @@ for _ in 0..q:
     d[r] -= x
 var cur = 0
 var out: List<Int> = []
-for i in 0..n:  // expect: hand_rolled_prefix_sum
+for i in 0..n:  // expect: missing prefix-totals-list
     cur += d[i]
     out.push(cur)
 print(out)

@@ -1587,9 +1587,9 @@ fn newcomer_sieve_and_push_copy_sort() {
 
 #[test]
 fn running_totals_teach_prefix() {
-    let push = "let a: List<Int> = read()\nvar cur = 0\nvar out: List<Int> = []\nfor x in a:\n    cur += x\n    out.push(cur)\nprint(out)\n";
-    let store = "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\nvar s: [I]Int = 0\nvar run = 0\nfor i in I:\n    run += a[i]\n    s[i] = run\nprint(s)\n";
-    let last = "let a: List<Int> = read()\nvar ps: List<Int> = [0]\nfor x in a:\n    ps.push(ps.last! + x)\nprint(ps)\n";
+    let push = "let a: List<Int> = read()\nvar cur = 0\nvar out: List<Int> = []\nfor x in a:\n    cur += x\n    out.push(cur)\nprint(out[a.len - 1])\n";
+    let store = "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\nvar s: [I]Int = 0\nvar run = 0\nfor i in I:\n    run += a[i]\n    s[i] = run\nprint(s.len)\n";
+    let last = "let a: List<Int> = read()\nvar ps: List<Int> = [0]\nfor x in a:\n    ps.push(ps.last! + x)\nprint(ps[a.len])\n";
     for src in [push, store, last] {
         assert!(
             taste_codes(src).contains(&"L0521"),

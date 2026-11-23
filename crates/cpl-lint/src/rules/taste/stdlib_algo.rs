@@ -1304,6 +1304,11 @@ impl Taste<'_> {
         if !mentions(added, var) || has_try(stmt) {
             return;
         }
+        // A `Prefix` answers element and range reads but can't be walked,
+        // printed or passed on as a list, so a table used whole keeps its loop.
+        if !only_indexed_after(self.src, (base + stmt.span.end) as usize, table) {
+            return;
+        }
         let diag = Diagnostic::warning(
             HAND_ROLLED_PREFIX_SUM.code,
             stmt.span,
