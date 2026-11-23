@@ -35,16 +35,20 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
         .filter(|d| !d.directive && d.name.text == "lint")
     {
         let span = d.span.shift(offset);
-        let mut error = |message: String, help: &str| {
-            errors.push(
-                Diagnostic::error(codes::BAD_LIBRARY_LINT, span, message)
-                    .with_help(help.to_string()),
-            );
+        let mut label: Option<(Span, String)> = None;
+        let mut error = |message: String, help: &str, label: &mut Option<(Span, String)>| {
+            let mut diag = Diagnostic::error(codes::BAD_LIBRARY_LINT, span, message)
+                .with_help(help.to_string());
+            if let Some((at, text)) = label.take() {
+                diag = diag.with_label(at, text);
+            }
+            errors.push(diag);
         };
         let StmtKind::Fn(f) = &stmt.kind else {
             error(
                 "`@lint` decorates a fn".into(),
                 "put it on the fn whose call the lint suggests",
+                &mut label,
             );
             continue;
         };
@@ -73,6 +77,7 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             error(
                 "`@lint` takes a name, `from:` and `to:`".into(),
                 "write `@lint(my_name, from: \"x * x\", to: \"sq(x)\")`; `from` and `to` are plain strings",
+                &mut label,
             );
             continue;
         };
@@ -82,6 +87,7 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             error(
                 format!("`{which}` of `@lint({name})` is not one expression or statement"),
                 "write CP Lang code that parses on its own, such as `x * x`",
+                &mut label,
             );
             continue;
         };
@@ -92,23 +98,29 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
                 .collect()
         };
         let (in_from, in_to) = (names(&from_toks), names(&to_toks));
-        if let Some(h) = holes
-            .iter()
-            .find(|h| in_from.contains(h) && !in_to.contains(h))
-        {
+        if let Some(p) = f.params.iter().find(|p| {
+            let h = &p.name.text;
+            in_from.contains(h) && !in_to.contains(h)
+        }) {
+            let h = &p.name.text;
+            label = Some((p.name.span.shift(offset), format!("`{h}` is declared here")));
             error(
                 format!("`to` of `@lint({name})` drops `{h}`, which `from` matches"),
                 "use every parameter `from` matches in `to`, so the fix keeps what the code computes",
+                &mut label,
             );
             continue;
         }
-        if let Some(h) = holes
-            .iter()
-            .find(|h| in_to.contains(h) && !in_from.contains(h))
-        {
+        if let Some(p) = f.params.iter().find(|p| {
+            let h = &p.name.text;
+            in_to.contains(h) && !in_from.contains(h)
+        }) {
+            let h = &p.name.text;
+            label = Some((p.name.span.shift(offset), format!("`{h}` is declared here")));
             error(
                 format!("`to` of `@lint({name})` uses `{h}`, which `from` does not match"),
                 "`to` can use only the parameters that `from` matches",
+                &mut label,
             );
             continue;
         }
@@ -119,6 +131,7 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             error(
                 format!("`to` of `@lint({name})` does not call `{}`", f.name.text),
                 "a library lint suggests the fn it decorates",
+                &mut label,
             );
             continue;
         }
