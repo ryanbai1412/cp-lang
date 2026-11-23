@@ -361,7 +361,7 @@ pub const HAND_ROLLED_ANSWER_SEARCH: Lint = lint!(
     hand_rolled_answer_search,
     Warn,
     "Hand-rolled binary search",
-    "manual `while lo < hi` midpoint loop over a predicate: use `bsearch_first`/`bsearch_last`",
+    "manual `while lo < hi` midpoint loop over a predicate: use `r.first_true`/`r.last_true`",
 );
 pub const HAND_ROLLED_PREFIX_SUM: Lint = lint!(
     "L0521",

@@ -30,3 +30,29 @@ fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
     let (out, _) = fix(src, &Config::default());
     assert!(out == src || out.contains("        elif y > 0:\n"), "{out}");
 }
+
+fn checker_errors(src: &str) -> Vec<String> {
+    let mut db = cpl_check::Database::new();
+    db.set_file("probe.cp", src);
+    let analysis = db.analyze("probe.cp").expect("analysis");
+    analysis
+        .diagnostics
+        .iter()
+        .filter(|d| d.severity == cpl_diag::Severity::Error)
+        .map(|d| d.message.clone())
+        .collect()
+}
+
+#[test]
+fn a_hand_rolled_search_becomes_a_search_the_checker_knows() {
+    // spec/std/prefix.cp: the fix once wrote `bsearch_first`, which is not in the stdlib.
+    let src = "fn f(a: List<Int>, k: Int) -> Int:\n    var lo = 0\n    var hi = a.len\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if a[mid] * a[mid] >= k: hi = mid\n        else: lo = mid + 1\n    lo\nfn g(ok: Int -> Bool, n: Int) -> Int:\n    var lo = 0\n    var hi = n - 1\n    while lo < hi:\n        let mid = lo + (hi - lo + 1) / 2\n        if ok(mid): lo = mid\n        else: hi = mid - 1\n    lo\nprint(f([1, 2, 3], 2), g(x => x < 3, 9))\n";
+    assert!(checker_errors(src).is_empty());
+    let (out, applied) = fix(src, &Config::default());
+    assert_eq!(applied, 2, "{out}");
+    assert!(
+        out.contains(".first_true(") && out.contains(".last_true("),
+        "{out}"
+    );
+    assert_eq!(checker_errors(&out), Vec::<String>::new(), "{out}");
+}

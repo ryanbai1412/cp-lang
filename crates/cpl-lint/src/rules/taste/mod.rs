@@ -234,7 +234,7 @@ impl<'a> Taste<'a> {
             return;
         };
         let start = base + stmt.span.start;
-        // An interactive search's queries are counted: `bsearch_*` asks at
+        // An interactive search's queries are counted: `first_true` asks at
         // the ends too.
         if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
             || self.idents.contains("ask")
@@ -247,18 +247,14 @@ impl<'a> Taste<'a> {
         if mentions(pred_text, found.lo) || mentions(pred_text, found.hi) || has_try(stmt) {
             return;
         }
-        let call = if found.up {
-            "bsearch_last"
-        } else {
-            "bsearch_first"
-        };
+        let call = if found.up { "last_true" } else { "first_true" };
         let mut diag = Diagnostic::warning(
             HAND_ROLLED_ANSWER_SEARCH.code,
             stmt.span,
             format!("a hand-rolled binary search: this is `{call}`"),
         )
         .with_help(format!(
-            "`let {lo} = {call}(.., {mid} => ..)`: the predicate must be monotone along the range",
+            "`let {lo} = (..).{call}({mid} => ..)`: the predicate must be monotone along the range",
             lo = found.lo,
             mid = found.mid
         ));
@@ -300,12 +296,12 @@ impl<'a> Taste<'a> {
                     format!("{keyword} {} = {} ?? {b_or}", found.lo, lookup.1)
                 } else if found.up {
                     format!(
-                        "{keyword} {} = bsearch_last({after_a}..={b_text}, {} => {pred}) ?? {a_or}",
+                        "{keyword} {} = ({after_a}..={b_text}).last_true({} => {pred}) ?? {a_or}",
                         found.lo, found.mid
                     )
                 } else {
                     format!(
-                        "{keyword} {} = bsearch_first({a_text}..{b_text}, {} => {pred}) ?? {b_or}",
+                        "{keyword} {} = ({a_text}..{b_text}).first_true({} => {pred}) ?? {b_or}",
                         found.lo, found.mid
                     )
                 };
@@ -1493,7 +1489,7 @@ impl<'a> Taste<'a> {
                 if is_int_key {
                     format!("range({q} + 1..).first")
                 } else {
-                    format!("bsearch_first(x => x > {q})")
+                    format!("first_true(x => x > {q})")
                 }
             }
             ("count_range", [lo, hi]) if lo.name.is_none() && hi.name.is_none() => format!(

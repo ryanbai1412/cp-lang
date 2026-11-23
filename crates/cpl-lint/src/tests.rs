@@ -1351,17 +1351,17 @@ fn hand_rolled_answer_search_becomes_bsearch_or_a_sorted_lookup() {
     assert_eq!(taste_codes(first), ["L0520"]);
     assert_eq!(
         fixed(first),
-        "fn f(a: List<Int>, i: Int, k: Int) -> Int:\n    let lo = bsearch_first(i + 1..a.len, mid => a[mid] >= k - a[i]) ?? a.len  // the first chain at least k\n    lo\nprint(f([1, 2, 3], 0, 3))\n"
+        "fn f(a: List<Int>, i: Int, k: Int) -> Int:\n    let lo = (i + 1..a.len).first_true(mid => a[mid] >= k - a[i]) ?? a.len  // the first chain at least k\n    lo\nprint(f([1, 2, 3], 0, 3))\n"
     );
     // The rounded-up midpoint keeps `lo`: the last true, with `lo` itself as the fallback.
     let last = "fn f(ok: Int -> Bool, n: Int) -> Int:\n    var lo = 0\n    var hi = n - 1\n    while lo < hi:\n        let mid = lo + (hi - lo + 1) / 2\n        if ok(mid): lo = mid\n        else: hi = mid - 1\n    lo\nprint(f(x => x < 3, 9))\n";
     assert_eq!(taste_codes(last), ["L0520"]);
-    assert!(fixed(last).contains("let lo = bsearch_last(1..=n - 1, mid => ok(mid)) ?? 0\n"));
+    assert!(fixed(last).contains("let lo = (1..=n - 1).last_true(mid => ok(mid)) ?? 0\n"));
     // A sorted list compared at `mid` is the list's own lookup; the false branch is negated.
     let sorted = "fn f(xs: List<Int>, t: Int) -> Int:\n    var (lo, hi) = (0, xs.len)\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if xs[mid] < t: lo = mid + 1 else: hi = mid\n    lo\nprint(f([1, 4], 2))\n";
     assert!(fixed(sorted).contains("let lo = xs.first_ge(t) ?? xs.len\n"));
     let negated = "fn f(xs: List<Int>, t: Int) -> Int:\n    var (lo, hi) = (0, xs.len)\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if xs[mid] * 2 <= t: lo = mid + 1 else: hi = mid\n    lo\nprint(f([1, 4], 2))\n";
-    assert!(fixed(negated).contains("bsearch_first(0..xs.len, mid => xs[mid] * 2 > t) ?? xs.len"));
+    assert!(fixed(negated).contains("(0..xs.len).first_true(mid => xs[mid] * 2 > t) ?? xs.len"));
     // `hi` read after the loop: a warning, no rewrite.
     let hi_read = "fn f(ok: Int -> Bool) -> Int:\n    var (lo, hi) = (0, 9)\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if ok(mid): hi = mid else: lo = mid + 1\n    hi\nprint(f(x => x > 3))\n";
     assert_eq!(taste_codes(hi_read), ["L0520"]);
