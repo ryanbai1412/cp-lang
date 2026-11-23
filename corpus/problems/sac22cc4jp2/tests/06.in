@@ -1,0 +1,11 @@
+5 10
+set triangle 2
+set square 2
+set square 5
+set triangle 3
+set circle 2
+set circle 2
+set circle 4
+ask square 3
+ask square 4
+ask triangle 3

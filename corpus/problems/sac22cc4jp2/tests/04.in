@@ -1,0 +1,13 @@
+5 12
+set circle 2
+set square 1
+ask circle 2
+ask triangle 1
+set square 2
+ask circle 2
+ask square 1
+set triangle 5
+ask square 2
+set square 2
+set square 2
+ask circle 2

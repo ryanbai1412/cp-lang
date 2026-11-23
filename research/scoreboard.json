@@ -1942,7 +1942,7 @@
         "sac22cc2p5": "error",
         "sac22cc3jp2": "pass",
         "sac22cc3jp4": "pass",
-        "sac22cc4jp2": "untested",
+        "sac22cc4jp2": "pass",
         "sdoi17r1p2": "error",
         "sdoi17r2p4": "untested",
         "shoi16p1": "error",
@@ -2149,12 +2149,12 @@
       ],
       "counts": {
         "error": 37,
-        "pass": 28,
+        "pass": 29,
         "trap": 1,
-        "untested": 33,
+        "untested": 32,
         "wrong": 1
       },
-      "passed": 28,
+      "passed": 29,
       "total": 100
     },
     "diff": {

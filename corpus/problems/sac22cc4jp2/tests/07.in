@@ -1,0 +1,15 @@
+3 14
+ask triangle 2
+ask square 2
+set triangle 3
+set square 1
+ask triangle 2
+set square 1
+set triangle 1
+ask triangle 2
+ask square 2
+ask triangle 1
+ask square 1
+set square 1
+ask square 3
+ask circle 2
