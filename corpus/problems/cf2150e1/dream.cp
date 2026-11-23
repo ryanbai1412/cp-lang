@@ -46,7 +46,7 @@ fn has(v: Val, lo: Pos.cuts, hi: Pos.cuts) -> Bool:
     read<Int>() == 1
 
 var copies: [Val]Copies = Copies.Both
-var (lo, hi) = (Pos.cuts.first, Pos.cuts.last)
+var (lo, hi) = (Pos.cuts.first!, Pos.cuts.last!)
 var alive = [v for v in Val]
 
 while alive.len > 1:

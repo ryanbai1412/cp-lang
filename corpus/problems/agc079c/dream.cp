@@ -14,18 +14,18 @@
 //
 // Why each branch preserves the invariant (and why `return none` is forced):
 // - Pushing `v` adds a free singleton `Run([v], opp_below: false)`.
-// - Popping `x == top.vals.first` pops from `top`'s side: the next element of
+// - Popping `x == top.vals.first!` pops from `top`'s side: the next element of
 //   `top` shares `x`'s side (`differ: false`), or if `top` was a singleton with
-//   `opp_below`, `x` is opposite to `under.vals.first` (`differ: true`).
+//   `opp_below`, `x` is opposite to `under.vals.first!` (`differ: true`).
 // - Popping any other `x` must take `x` from the opposite end of the deque, so
 //   every run above `x` must sit on the same side as `top` (merged into `l` via
 //   `swallow`). Encountering `l.opp_below` means `l` is already committed
 //   opposite to the run below it, so `x` is trapped strictly inside the deque
 //   (`return none`). Once `l` reaches `x`:
-//   * If `runs` is empty, `x` is exposed iff `x == l.vals.last` (else trapped);
-//     popping it links `x` to the new `l.vals.last` (`differ: false`).
-//   * Otherwise `x == under.vals.first` is opposite `l`: if `under` is a
-//     singleton, `x` is opposite `l.vals.first`, `under` vanishes, and if
+//   * If `runs` is empty, `x` is exposed iff `x == l.vals.last!` (else trapped);
+//     popping it links `x` to the new `l.vals.last!` (`differ: false`).
+//   * Otherwise `x == under.vals.first!` is opposite `l`: if `under` is a
+//     singleton, `x` is opposite `l.vals.first!`, `under` vanishes, and if
 //     `under.opp_below` held then the run beneath `under` is on the same side
 //     as `l` (opposite of opposite), so `l` swallows it; if `under` has >= 2
 //     elements, `x` pops from `under` and `l` stays above it with
@@ -44,7 +44,9 @@ fn flip(s: Side) -> Side = match s:
     Side.Back => Side.Front
     Side.Front => Side.Back
 
-struct Run(vals: LinkedList<Val>, opp_below: Bool)
+struct Run:
+    vals: LinkedList<Val>
+    var opp_below: Bool
 
 @!multitest
 let n: 1..=2e5 = read()
@@ -66,30 +68,30 @@ fn solve() -> ?Int:
     fn pop_top_front(x: Val):
         var top = runs.pop()!
         if top.vals.len == 1:
-            if top.opp_below: parity.unite(x, runs.last!.vals.first, differ: true)
+            if top.opp_below: parity.unite(x, runs.last!.vals.first!, differ: true)
         else:
             top.vals.pop_front()
-            parity.unite(x, top.vals.first, differ: false)
+            parity.unite(x, top.vals.first!, differ: false)
             runs.push(top)
 
     // Pop `x` from whichever end of the deque exposes it, or return false if trapped.
     fn pop_value(x: Val) -> Bool:
-        if runs.last!.vals.first == x:
+        if runs.last!.vals.first! == x:
             pop_top_front(x)
             return true
         var l = runs.pop()!
-        while let r = runs.last, r.vals.first != x:
+        while let r = runs.last, r.vals.first! != x:
             if l.opp_below: return false
             l = swallow(mut l)
         if runs.is_empty:
-            if l.vals.last != x: return false
-            l.vals.pop_back()
-            parity.unite(x, l.vals.last, differ: false)
+            if l.vals.last! != x: return false
+            l.vals.pop()
+            parity.unite(x, l.vals.last!, differ: false)
             runs.push(l)
             return true
         let under = runs.last!
         if under.vals.len == 1:
-            parity.unite(x, l.vals.first, differ: true)
+            parity.unite(x, l.vals.first!, differ: true)
             runs.pop()
             l = if under.opp_below: swallow(mut l) else: Run(l.vals, false)
         else:

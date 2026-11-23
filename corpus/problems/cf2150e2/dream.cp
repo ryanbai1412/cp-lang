@@ -37,17 +37,17 @@ fn has(v: Val, lo: Pos.cuts, hi: Pos.cuts) -> Bool:
 let mid = Pos.cuts.nth((2 * n - 1) / 2)
 var left_w: [Val]0..=2 = 0
 for v in Val:
-    left_w[v] = if not has(v, Pos.cuts.first, mid):
+    left_w[v] = if not has(v, Pos.cuts.first!, mid):
         0
-    elif has(v, mid, Pos.cuts.last):
+    elif has(v, mid, Pos.cuts.last!):
         1
     else:
         2
 
 let (lo, hi, only_here) = if left_w.sum() > mid.ord:
-    (Pos.cuts.first, mid, [Val] v => left_w[v] == 2)
+    (Pos.cuts.first!, mid, [Val] v => left_w[v] == 2)
 else:
-    (mid, Pos.cuts.last, [Val] v => 2 - left_w[v] == 2)
+    (mid, Pos.cuts.last!, [Val] v => 2 - left_w[v] == 2)
 
 fn is_single(v: Val, start: Pos.cuts, stop: Pos.cuts) -> Bool:
     var (l, r) = (start, stop)

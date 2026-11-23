@@ -25,7 +25,7 @@ for i in Ball:
         d = if top.w >= w: Right else: Left
         (start, w) = (top.start, w + top.w)
     if d == Right: stack.push((start, w))
-merges.push(Ball.cuts.last)
+merges.push(Ball.cuts.last!)
 for block in stack.rev: merges.push(block.start)
 
 var merged_at: [Cut]Int = 0
