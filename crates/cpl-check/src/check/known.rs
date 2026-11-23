@@ -37,12 +37,36 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// The type of a call the checker knows as the prelude's, recorded as
+    /// resolving there.
     pub(super) fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ty = self.known_prelude_call(call, callee, args)?;
+        if let ExprKind::Name(name) = &callee.kind {
+            let resolved = Resolved {
+                module: "prelude".into(),
+                name: name.clone(),
+                owner: None,
+            };
+            self.resolved.push((callee.span, resolved));
+        }
+        Some(ty)
+    }
+
+    fn known_prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
         let generator = Self::generator_test(callee, args);
-        let shadowed = name != "zip" && !Self::binary_min_max(callee, args) && !generator;
+        // The core fn wins over a fold of its name, a module's or the
+        // file's own `fn max(self: ..)`, never over a file's `fn max(a, b)`
+        // or `let max` (R11.2.3).
+        let fold = |def: &Def| {
+            matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+                if params.first().is_some_and(|p| p.name == "self"))
+        };
+        let core = (Self::binary_min_max(callee, args) || generator)
+            && (self.env.origin(name).is_some() || self.global(name).is_some_and(|d| fold(&d)));
+        let shadowed = name != "zip" && !core;
         if self.local(name).is_some() || (self.global(name).is_some() && shadowed) {
             return None;
         }

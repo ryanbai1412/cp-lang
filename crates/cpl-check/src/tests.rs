@@ -1744,5 +1744,6 @@ fn a_prelude_math_fn_returns_an_f64() {
     assert!(hovers().any(|h| h.name == "d" && h.ty == crate::Ty::Float));
     let resolved = || items.iter().flat_map(|item| item.check.resolved.iter());
     assert!(resolved().any(|(_, r)| r.name == "sqrt" && r.module == "prelude"));
+    assert!(resolved().any(|(_, r)| r.name == "max" && r.module == "prelude"));
     assert_eq!(codes("let k: Int = sqrt(2.0)\nprint(k)\n"), ["E0302"]);
 }

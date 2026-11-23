@@ -20,6 +20,23 @@ pub(super) fn core_over_std(name: &str, args: &[Arg]) -> bool {
 }
 
 impl Lowerer<'_> {
+    /// Whether the module being lowered declares `name` at its top level as
+    /// something a plain call can take: its own `fn max(a, b)` or `let max`
+    /// wins over the core fn, its fold `fn max(self: ..)` doesn't (R11.2.3).
+    pub(super) fn declares(&self, name: &str) -> bool {
+        self.mod_items(self.cur_mod)
+            .any(|(_, stmt)| match &stmt.kind {
+                ast::StmtKind::Fn(decl) => {
+                    decl.name.text == name
+                        && decl.params.first().is_none_or(|p| p.name.text != "self")
+                }
+                ast::StmtKind::Let { pat, .. } => {
+                    matches!(&pat.kind, ast::PatternKind::Name(n) if n == name)
+                }
+                _ => false,
+            })
+    }
+
     /// `s.max()` or `s.min()`; `optional` gives `?T`, `None` when empty (under
     /// `??` or `!`, and always on a slice, which can be empty: R07.9.3).
     pub(super) fn min_max_reduce(
