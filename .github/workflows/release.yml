@@ -41,6 +41,7 @@ jobs:
   plan:
     if: github.event_name != 'workflow_run' || ((github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled') && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       go: ${{ steps.green.outputs.go }}
       channel: ${{ steps.plan.outputs.channel }}
@@ -277,6 +278,7 @@ jobs:
     needs: [plan, build, editors]
     if: github.event_name != 'workflow_dispatch' || inputs.publish
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:

@@ -218,3 +218,12 @@ went red. *Example:* the hook rejects a stdlib fix; `land.sh` then says
 *Enforced by:* `scripts/land.sh`, tested in `scripts/test_check_cache.py`
 `test_land_refuses_when_nothing_is_ahead_of_main` and
 `test_land_never_regenerates_from_uncommitted_changes`.
+
+### ci/R28
+
+Every GitHub Actions job sets `timeout-minutes`.
+*Why:* an uncapped job runs for GitHub's 6 h default, and on main it holds
+the run slot so no later commit gets a result; a hung Windows CLI job held
+main for 18 min before it had a cap. *Example:* a new `lint` job without
+`timeout-minutes: 10` fails `test_every_job_has_a_timeout`.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
