@@ -193,7 +193,8 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 - `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a
   compile-time constant. `let p: T = e` annotates. Several names may
   share a type: `let n, m: 1..=2e5 = read()`; `var a, b: Int = 0` fills
-  each with the value. (R01.6.1)
+  each with the value. The initializer runs once per name, left to right,
+  so the `read()` above reads two tokens. (R01.6.1)
 - `let p = e else: block` binds or runs the block, which must leave
   (`return`, `break`, `continue` or a trap); a block that can fall
   through is E0112. `p` is any pattern, refutable or not: on a `?T` a

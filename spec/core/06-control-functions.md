@@ -135,8 +135,10 @@ library or by this spec:
 - `@tag(lit)` on an enum variant: the token it reads and prints as
   (chapter 2).
 - `@droppable`: the result may be dropped without the unused-result
-  lint. Dropping a non-unit result is that lint (a warning); dropping a
-  `?T` is an error (see R02.4.7). (R06.4.8)
+  lint. Dropping a non-unit result is that lint (a warning), and
+  `let _ = f()` drops it too; to drop one on purpose, write
+  `with lint(discarded_result: allow)`. Dropping a `?T` is an error (see
+  R02.4.7). (R06.4.8)
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`
