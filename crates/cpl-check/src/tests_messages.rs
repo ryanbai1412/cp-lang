@@ -256,3 +256,10 @@ fn int_of_input_is_one_error_with_the_read_fix() {
     assert_eq!(d.len(), 1, "{d:?}");
     assert!(d[0].help.as_deref().unwrap().contains("read()"), "{d:?}");
 }
+
+#[test]
+fn foreign_strip_names_become_trim() {
+    let d = check("let s = \" a \"\nprint(s.strip(), s.lstrip(), s.trimEnd())\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["trim", "trim_start", "trim_end"], "{d:?}");
+}
