@@ -1655,7 +1655,11 @@ fn weighted_general_matching_matches_brute_force():
     domain V = 0..6
     for _ in 0..40:
         let es = [
-            (u: V.nth(u), v: V.nth((u + rand(1, 5)) % 6), w: rand(0, 20)) for u in [rand(0, 5) for _ in 0..rand(1, 9)]
+            (
+                u: V.nth(u),
+                v: V.nth((u + rand(1, 5)) % 6),
+                w: rand(0, 20),
+            ) for u in [rand(0, 5) for _ in 0..rand(1, 9)]
         ]
         var wt = [V] _ => [V] _ => -1
         for e in es:
@@ -1737,7 +1741,9 @@ fn bounded_flows_match_brute_force():
 fn gomory_hu_tree_gives_every_pairwise_min_cut():
     domain V = 0..6
     for _ in 0..30:
-        let es = [(u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)]
+        let es = [
+            (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)
+        ]
         let tree = gomory_hu(es)
         assert tree.len == 5
         // the min cut between a and b is the lightest tree edge on their path
@@ -1759,14 +1765,18 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
                 var cut = Int.MAX
                 for m in 0..64:
                     if (m >> a.to_idx) & 1 == 1 and (m >> b.to_idx) & 1 == 0:
-                        cut min= sum(e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1))
+                        cut min= sum(
+                            e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1)
+                        )
                 assert seen[b] and light[b] == cut
 
 @test
 fn global_min_cut_matches_brute_force():
     domain V = 0..6
     for _ in 0..30:
-        let es = [(u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)]
+        let es = [
+            (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)
+        ]
         let got = global_min_cut(es)
         var best = Int.MAX
         for m in 1..63:
@@ -1774,7 +1784,6 @@ fn global_min_cut_matches_brute_force():
         assert got.w == best
         assert V.any(v => got.side[v]) and V.any(v => not got.side[v])
         assert sum(e.w for e in es if got.side[e.u] != got.side[e.v]) == best
-
 
 /// O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
 /// A bipartite matching that grows with the graph: edges arrive online and each
@@ -1927,18 +1936,49 @@ pub struct Matching<L, R>:
 /// necessarily perfect: sparse weights through min-cost flow, where `max_weight_matching` needs
 /// every pair's weight. `size:` forces exactly that many pairs, `None` when impossible.
 ///
-/// Without `size`, augmentation stops at the first path that would not strictly improve the
-/// total, so of equal totals the one with fewer pairs comes back. `used[e]` marks the chosen
-/// edges; of parallel edges at most one is used.
+/// One `CostFlow` on L + R + 2 vertices: each edge costs its weight times `L.count + 1`, plus 1,
+/// so without `size` (where an extra zero-cost `s -> t` arc lets pairs go unused) of equal totals
+/// the one with fewer pairs comes back. `used[e]` marks the chosen edges; of parallel edges at
+/// most one is used.
 ///
 /// cost: O(F E log V), F = matching size
 /// ties: the matching successive shortest paths finds, fewer pairs first
 /// order: `mate` keyed by `L`, `used` keyed by `E`
-/// traps: when `size` is negative
+/// traps: when `size` is negative, or a weight times `L.count + 1` overflows
 /// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es) == Some((total: 7, mate: [Some(1), Some(0)], used: [false, true, true]))`
 /// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es, size: Some(1)) == Some((total: 5, mate: [Some(0), None], used: [true, false, false]))`
 /// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es, size: Some(3)) == None and best_matching(es, min: true)!.total == 0`
-pub fn best_matching<L, R, E>(edges: [E](l: L, r: R, w: Int), size: ?Int = None, min: Bool = false) -> ?(total: Int, mate: [L]?R, used: [E]Bool) = todo
+pub fn best_matching<L, R, E>(
+    edges: [E](l: L, r: R, w: Int),
+    size: ?Int = None,
+    min: Bool = false,
+) -> ?(total: Int, mate: [L]?R, used: [E]Bool):
+    if let k = size: assert k >= 0, "`best_matching` needs `size >= 0`"
+    domain N = 0..L.count + R.count + 2
+    let (s, t) = (N(L.count + R.count), N(L.count + R.count + 1))
+    // each pair also costs 1 under a weight scale above any pair count: fewest pairs among best totals
+    let scale = L.count + 1
+    var g = CostFlow<N>()
+    for u in L: g.add(s, N(u.to_idx), Some(1), 0)
+    for v in R: g.add(N(L.count + v.to_idx), t, Some(1), 0)
+    var arc: List<Arc> = []
+    for e in E:
+        let w = if min: edges[e].w else: -edges[e].w
+        arc.push(
+            g.add(N(edges[e].l.to_idx), N(L.count + edges[e].r.to_idx), Some(1), w * scale + 1)
+        )
+    if size == None: g.add(s, t, None, 0)
+    let want = size ?? L.count
+    if g.min_cost_flow(s, t, limit: Some(want)).flow < want: return None
+    var mate: [L]?R = None
+    var used: [E]Bool = false
+    var total = 0
+    for e in E:
+        if g.flow(arc[e.to_idx]) > 0:
+            used[e] = true
+            mate[edges[e].l] = Some(edges[e].r)
+            total += edges[e].w
+    Some((total:, mate:, used:))
 
 /// Gale-Shapley stable matching with proposals from `L`: `pref_l[l]` lists the `R`s `l` accepts,
 /// best first, and likewise `pref_r`. A pair can match only when each lists the other. The result
@@ -2089,7 +2129,10 @@ fn edge_colorings_use_max_degree_proper_colours():
     domain R = 0..4
     domain E = 0..14
     for _ in 0..100:
-        let es: [E](l: L, r: R) = [E] _ => (l: L.nth(rand(0, L.count - 1)), r: R.nth(rand(0, R.count - 1)))
+        let es: [E](l: L, r: R) = [E] _ => (
+            l: L.nth(rand(0, L.count - 1)),
+            r: R.nth(rand(0, R.count - 1)),
+        )
         let (colors, color) = edge_coloring(es)
         var deg = 0
         for l in L: deg = max(deg, [e for e in E if es[e].l == l].len)
@@ -2098,7 +2141,9 @@ fn edge_colorings_use_max_degree_proper_colours():
         for e in E:
             assert 0 <= color[e] and color[e] < colors
             for f in E:
-                if e != f and (es[e].l == es[f].l or es[e].r == es[f].r): assert color[e] != color[f]
+                if e != f and (
+                    es[e].l == es[f].l or es[e].r == es[f].r
+                ): assert color[e] != color[f]
 
 /// A largest set of elements independent in both matroids; with `weight`, the one of largest
 /// total weight among the largest.
@@ -2111,7 +2156,11 @@ fn edge_colorings_use_max_degree_proper_colours():
 /// order: keyed by `E`
 /// traps: never
 /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; matroid_intersection(GraphicMatroid(es), ColorMatroid(col, lim)) == [true, false, true]`
-pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool:
+pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
+    a: A,
+    b: B,
+    weight: ?(E -> Int) = None,
+) -> [E]Bool:
     var (ma, mb) = (a, b)
     var take: [E]Bool = false
     let w = weight ?? (_ => 0)
@@ -2171,7 +2220,14 @@ pub struct GraphicMatroid<V, E>:
     /// traps: never
     /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; var m = GraphicMatroid(es); m.rebuild([true, true, false]); not m.can_add(2) and m.can_swap(0, 2)`
     pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =
-        GraphicMatroid(edges, [E] _ => false, [V] v => v.to_idx, [V] _ => 0, [V] _ => 0, [E] _ => None)
+        GraphicMatroid(
+            edges,
+            [E] _ => false,
+            [V] v => v.to_idx,
+            [V] _ => 0,
+            [V] _ => 0,
+            [E] _ => None,
+        )
 
 impl Matroid<E> for GraphicMatroid<V, E>:
     fn rebuild(mut self, take: [E]Bool):
@@ -2256,8 +2312,12 @@ impl Matroid<E> for ColorMatroid<E, C>:
 /// traps: when some `lo > hi`
 /// example: `let es: [0..2](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 0, hi: 2, cost: -3), (u: 1, v: 0, lo: 0, hi: 5, cost: 1)]; min_cost_circulation(es) == Some((cost: -4, flow: [2, 2]))`
 /// example: `let es: [0..1](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 1, hi: 1, cost: 0)]; min_cost_circulation(es) == None`
-pub fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int):
-    let base = circulation([E] e => (u: arcs[e].u, v: arcs[e].v, lo: arcs[e].lo, hi: arcs[e].hi)) ?? return None
+pub fn min_cost_circulation<V, E>(
+    arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)
+) -> ?(cost: Int, flow: [E]Int):
+    let base = circulation(
+        [E] e => (u: arcs[e].u, v: arcs[e].v, lo: arcs[e].lo, hi: arcs[e].hi)
+    ) ?? return None
     var g = CostFlow<V>()
     var up: List<Arc> = []
     var down: List<Arc> = []
@@ -2327,7 +2387,13 @@ fn min_cost_circulations_match_brute_force():
     for _ in 0..150:
         let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ => do:
             let lo = rand(0, 1)
-            (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)), lo:, hi: lo + rand(0, 2), cost: rand(-4, 4))
+            (
+                u: V.nth(rand(0, 3)),
+                v: V.nth(rand(0, 3)),
+                lo:,
+                hi: lo + rand(0, 2),
+                cost: rand(-4, 4),
+            )
         var best: ?Int = None
         var f: [E]Int = 0
         for code in 0..3 ** E.count:
