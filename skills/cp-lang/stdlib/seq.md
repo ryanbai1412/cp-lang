@@ -65,7 +65,6 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 - `@get fn keys<K>(self) -> Range<K>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn iter(self) -> yields Int` — \(O(1)\) per step; The slice's keys, which are the source's positions: `a[1..]` walks keys from 1.
 
 ## `struct Rebased<S>(pub src: S)`
 
