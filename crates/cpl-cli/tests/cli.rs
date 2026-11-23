@@ -259,7 +259,7 @@ fn the_default_edition_checks_what_the_spec_rejects() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert_eq!(out.status.code(), Some(1), "{stderr}");
     assert!(
-        stderr.contains("`a` has type `?Int`, which does not implement `Print`"),
+        stderr.contains("`a` has type `?Int`, which does not implement `Show`"),
         "{stderr}"
     );
     assert_eq!(stderr.matches("error[").count(), 1, "{stderr}");

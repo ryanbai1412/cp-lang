@@ -72,10 +72,10 @@ impl<'a> Checker<'a> {
                         let snippet = self.quote(arg.value.span);
                         let message = if matches!(ty, Ty::Bool) {
                             format!(
-                                "`{snippet}` has type `Bool`, which does not implement `Print`; use `print(yes({snippet}))`"
+                                "`{snippet}` has type `Bool`, which does not implement `Show`; use `print(yes({snippet}))`"
                             )
                         } else {
-                            format!("`{snippet}` has type `{ty}`, which does not implement `Print`")
+                            format!("`{snippet}` has type `{ty}`, which does not implement `Show`")
                         };
                         self.error(codes::MISSING_IMPL, arg.value.span, message);
                     }
