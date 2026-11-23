@@ -1,10 +1,8 @@
-// Codeforces 2157 A — Dungeon Equilibrium
-//
-// An array is balanced iff every present value `v` occurs exactly `v` times.
-// For each `v in 0..=n` with frequency `freq[v]`:
-// - If `freq[v] < v`, we cannot add copies, so we must delete all `freq[v]`.
-// - If `freq[v] >= v`, keeping `v` copies costs `freq[v] - v` deletions
-//   (always at most deleting all `freq[v]`).
+// Source: Codeforces 2157A (Dungeon Equilibrium), https://codeforces.com/contest/2157/problem/A
+// Problem: n <= 100 values in 0..=n. An array is balanced when every value x in it occurs exactly
+//   x times. Print the fewest deletions that make it balanced. Multitest.
+// Solution: values are independent: with f copies of v, keep v of them when f >= v (delete f - v),
+//   else delete all f (so every 0 goes). Count frequencies and sum the deletions, O(n).
 
 @!multitest
 let n: 1..=100 = read()

@@ -1,9 +1,12 @@
-// Codeforces 2245 A — Prefix R / Suffix L
-//
-// The first `k` characters must all become `'R'` and the last `k` must all
-// become `'L'`. This is impossible iff the prefix and suffix overlap
-// (`n < 2 * k`); otherwise the minimum edits equal the number of mismatched
-// positions in `s[0..k]` and `s[n - k..n]`.
+// Source: Codeforces 2245A (Who Watches the Watchpig?),
+//   https://codeforces.com/contest/2245/problem/A
+// Problem: n <= 100 pigs in a row face L or R; pigs x < y with x facing R and y facing L form a
+//   pair. Given 1 <= k < n, flip the fewest pigs so every pig is in >= k pairs; print that count,
+//   or -1. Multitest.
+// Solution: a pig facing L needs k R's before it and one facing R needs k L's after it, so the
+//   first k must face R and the last k face L. If n >= 2 k that suffices (every middle pig pairs
+//   with one whole end), else print -1. The answer is the mismatches in s[0..k] and s[n - k..n],
+//   O(n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

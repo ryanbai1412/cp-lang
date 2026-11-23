@@ -1,12 +1,11 @@
-// Codeforces 2147 A — Shortest Increasing Path
-//
-// Reach `(x, y)` with alternating `+x`, `+y`, `+x`, ... moves of strictly
-// increasing positive lengths:
-// - If `x < y`: 2 moves `(x, 0)` then `(0, y)` satisfy `0 < x < y` -> `2`.
-// - If `x >= y`: 2 moves are impossible (`x < y` fails). For 3 moves
-//   `(x1, 0), (0, y), (x - x1, 0)` we need `1 <= x1 < y < x - x1`, which is
-//   satisfiable (e.g. `x1 = 1`) iff `y >= 2` and `x - y >= 2` -> `3`,
-//   otherwise impossible (`-1`).
+// Source: Codeforces 2147A (Shortest Increasing Path),
+//   https://codeforces.com/contest/2147/problem/A
+// Problem: walk from (0, 0) to (x, y) (1 <= x, y <= 1e9) with steps along +x, +y, +x, ... in turn,
+//   starting with x, each of positive length strictly longer than the last. Print the fewest
+//   steps, or -1. Multitest.
+// Solution: if x < y, two steps (x, then y). Otherwise two steps fail and three need
+//   x1 < y < x - x1 with x1 >= 1, possible iff y >= 2 and x - y >= 2 (take x1 = 1); longer walks
+//   never help, so else -1. O(1).
 
 @!multitest
 let (x, y): (1..=10 ** 9, 1..=10 ** 9) = read()

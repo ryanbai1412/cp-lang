@@ -1,11 +1,10 @@
-// Codeforces 2124 B — Minimise Sum
-//
-// One operation adds `a[j]` to `a[i]` (`i < j`) and sets `a[j] = 0`, zeroing
-// all prefix minima from `j` onwards. Since `a[0]` can never decrease and
-// `min(a[0], a[1])` only decreases if `a[1]` is zeroed into `a[0]` (yielding
-// `a[0] + a[1] >= a[0] + min(a[0], a[1])`), the prefix-min sum is always at
-// least `a[0] + min(a[0], a[1])`. Operating on `(0, 1)` when `a[1] <= a[0]` or
-// `(1, 2)` when `a[0] < a[1]` (or doing nothing if `n == 2`) achieves this bound.
+// Source: Codeforces 2124B (Minimise Sum), https://codeforces.com/contest/2124/problem/B
+// Problem: n <= 2e5 values in 0..=n. At most once, pick i < j, add a[j] to a[i] and set a[j] = 0.
+//   Print the least possible sum of the prefix minima. Multitest, sum n <= 2e5.
+// Solution: the first minimum a[0] can only grow and the second stays min(a[0], a[1]) unless a[1]
+//   goes into a[0] (then a[0] + a[1] is no smaller), so the sum is >= a[0] + min(a[0], a[1]).
+//   Moving a[1] into a[0] when a[1] <= a[0], else a[2] into a[1], zeroes every later minimum and
+//   meets it. O(1).
 
 @!multitest
 let n: 2..=200_000 = read()
