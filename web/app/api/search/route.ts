@@ -4,14 +4,16 @@ import { components } from 'zbsearch';
 import { source } from '@/lib/source';
 
 // The default word splitter keeps `SortedBag.last_true` whole, so a search for
-// `last_true` missed every method; index each dotted name's parts as well.
+// `last_true` missed every method; index each dotted name's last part as well.
+// The owner's own heading already finds `SortedBag`, and indexing it again per
+// member pushed the index over its size cap.
 const words = components.tokenizer.createTokenizer({ language: 'multilingual' });
 const tokenizer = {
   language: words.language,
   normalizationCache: words.normalizationCache,
   tokenize(raw: string, language?: string, prop?: string, withCache?: boolean) {
     const tokens = words.tokenize(raw, language, prop, withCache);
-    return [...tokens, ...tokens.flatMap((t) => (t.includes('.') ? t.split('.').filter(Boolean) : []))];
+    return [...tokens, ...tokens.flatMap((t) => (t.includes('.') ? t.split('.').filter(Boolean).slice(-1) : []))];
   },
 };
 

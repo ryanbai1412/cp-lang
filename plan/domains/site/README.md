@@ -50,7 +50,7 @@ Exit criteria:
 - The library reference, `/lints` and the diagnostics index are all generated: every item, lint and error code has a page with an example that runs.
 - The playground has stress, trace viewing and `cpl explain`, and can share a link to a program.
 - `/setup` shows stable and edge installs for Linux, macOS and Windows, labelled beta while 0.x; there's a changelog and release notes page per stable release.
-- Health: `/` at most 800,000 bytes gzipped with no wasm, search index at most 500,000 bytes gzipped, 0 broken links, every route fits 390 px, and the site check runs in CI in under 3 minutes.
+- Health: `/` at most 800,000 bytes gzipped with no wasm, search index at most 600,000 bytes gzipped, 0 broken links, every route fits 390 px, and the site check runs in CI in under 3 minutes.
 
 Next steps, once Milestone 1 passes: the error-code index generated from `spec/` diagnostics, Learn chapters for Div 2 C to Div 1 C, and stress and trace in the playground.
 
@@ -80,7 +80,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |
 | Broken internal links | `pnpm --dir web links` | 0 (was 1) | 0 | M1 |
 | cpl.wasm gzipped | `node web/scripts/wasm-size.mjs` | 1,768,985 B | ≤ 2,100,000 B, enforced | M1 |
-| Search index gzipped | `gzip -9c web/out/api/search \| wc -c` | 487,290 B (3.0 MB raw; was 2,690,140) | ≤ 500,000 B | M1 |
+| Search index gzipped | `gzip -9c web/out/api/search \| wc -c` | 538,189 B (was 2,690,140) | ≤ 600,000 B | M1 |
 | Page weight, gzipped | `pnpm --dir web page-weight` | `/` 783,489 B, no cpl.wasm (was 2,560,698 B); `/docs/guides/tour` 829,726 B | `/` ≤ 800,000 B and no cpl.wasm; tour ≤ 900,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |

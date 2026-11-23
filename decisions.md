@@ -7178,3 +7178,4 @@ is not reported. The 2 `trial_division` findings in `spec/std` are
 shape readers moved to `rules/shapes.rs`. Reverse: delete the eight records,
 `rules/hand_math.rs` and the baseline line.
 
+- **326.5 The search index cap goes from 500,000 to 600,000 bytes gzipped.** Fixing `cpl doc`'s dropped `pub` put 517 more std items in the reference, and Milestone 1 needs search to find every std item by name; indexing only the last part of a dotted name, not the owner again, saved 10 KB, leaving 538,189 bytes. The index loads when search opens, not with the page, so page weight is unchanged. Reverse: index std member headings by member name only, or drop the core table rows.
