@@ -1879,7 +1879,7 @@
         "cco21p5": "error",
         "cco24p1": "untested",
         "ceoi17p2": "untested",
-        "ceoi18p1": "untested",
+        "ceoi18p1": "error",
         "ceoi19pp1": "pass",
         "cheerio1s3": "error",
         "cmt21r2ztr": "untested",
@@ -1889,7 +1889,7 @@
         "coci21c2p5": "error",
         "coci21c4p4": "untested",
         "dmopc20c4p4": "pass",
-        "dmopc21c2p1": "untested",
+        "dmopc21c2p1": "pass",
         "dmopc21c4p1": "untested",
         "dmopc21c4p2": "pass",
         "dmopc21c5p2": "untested",
@@ -1993,6 +1993,14 @@
           ]
         },
         {
+          "cause": "E0501: `<id>` has no input format for a `<id>`",
+          "count": 2,
+          "examples": [
+            "ceoi18p1",
+            "shoi16p1"
+          ]
+        },
+        {
           "cause": "E0606: `<id>` requires `<id>`, which `<id>` does not implement",
           "count": 2,
           "examples": [
@@ -2092,13 +2100,6 @@
           ]
         },
         {
-          "cause": "E0501: `<id>` has no input format for a `<id>`",
-          "count": 1,
-          "examples": [
-            "shoi16p1"
-          ]
-        },
-        {
           "cause": "E0501: `<id>` is not in scope during lowering",
           "count": 1,
           "examples": [
@@ -2135,13 +2136,13 @@
         }
       ],
       "counts": {
-        "error": 38,
-        "pass": 14,
+        "error": 39,
+        "pass": 15,
         "trap": 1,
-        "untested": 46,
+        "untested": 44,
         "wrong": 1
       },
-      "passed": 14,
+      "passed": 15,
       "total": 100
     },
     "diff": {
