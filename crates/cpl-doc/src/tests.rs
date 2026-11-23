@@ -543,7 +543,7 @@ mod cli {
         ] {
             let (code, _, stderr) = doc(args);
             assert_eq!(code, 2);
-            assert!(stderr.starts_with(&format!("error: {message}")), "{stderr}");
+            assert!(stderr.starts_with(&format!("cpl: {message}")), "{stderr}");
         }
         let (code, _, stderr) = doc(&["/no/such/dir"]);
         assert_eq!(code, 1);

@@ -140,12 +140,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let (parsed, source) = match parsed {
         Ok(parsed) => parsed,
         Err(message) => {
-            let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+            let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     };
     if !source.is_file() {
-        let _ = writeln!(stderr, "error: there is no file {}", source.display());
+        let _ = writeln!(stderr, "cpl: there is no file {}", source.display());
         return 1;
     }
     let extra: Vec<PathBuf> = VALUED[..3]

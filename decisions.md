@@ -5959,3 +5959,15 @@ comment line or a `use` spanning lines ends a run, so hand-made groups stay.
 Order cannot change meaning: a colliding `use` is an error either way
 (R11.2.3); `scripts/fmt_check.py` finds 0 meaning changes on 5,176 files.
 Reverse: drop the `imports` pass from `format` in `crates/cpl-fmt/src/lib.rs`.
+||||||| parent of 73a8e17ef (tools: start every command's own errors with cpl:)
+
+## 237. A command's own errors start with `cpl:` (2026-11-22)
+
+A usage error or a file the command can't read starts with `cpl:`, as
+the 87 messages in `crates/cpl-cli` already did; `cpl new`, `test`,
+`bench`, `watch` and `doc` said `error:`. One prefix is one thing to scan
+for, and `cpl:` can't be mistaken for a compiler diagnostic
+(`error[E0302]: ...`), which says what is wrong with the program, not
+with the command line. `cpl stress` (debugger) is asked to follow.
+Reverse: replace `"cpl: ` with `"error: ` in the messages of
+`crates/cpl-contest/src` and `crates/cpl-doc/src/cli.rs`.

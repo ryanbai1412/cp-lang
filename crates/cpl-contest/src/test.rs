@@ -263,7 +263,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let (args, source, json) = match parsed {
         Ok(parsed) => parsed,
         Err(message) => {
-            let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+            let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     };
@@ -299,7 +299,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             results.iter().any(|r| !r.passed()) as u8
         }
         Err(message) => {
-            let _ = writeln!(stderr, "error: {message}");
+            let _ = writeln!(stderr, "cpl: {message}");
             1
         }
     }

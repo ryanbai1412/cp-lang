@@ -61,7 +61,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
         };
         if let Err(message) = result {
-            let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+            let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     }
@@ -71,7 +71,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let mut files = Vec::new();
     for path in &paths {
         if let Err(e) = collect(path, &mut files) {
-            let _ = writeln!(stderr, "error: can't read {}: {e}", path.display());
+            let _ = writeln!(stderr, "cpl: can't read {}: {e}", path.display());
             return 1;
         }
     }
@@ -83,7 +83,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         match std::fs::read_to_string(file) {
             Ok(src) => modules.push(extract(&src, &file.display().to_string())),
             Err(e) => {
-                let _ = writeln!(stderr, "error: can't read {}: {e}", file.display());
+                let _ = writeln!(stderr, "cpl: can't read {}: {e}", file.display());
                 return 1;
             }
         }
@@ -97,13 +97,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         return 0;
     }
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
-        let _ = writeln!(stderr, "error: can't create {}: {e}", out_dir.display());
+        let _ = writeln!(stderr, "cpl: can't create {}: {e}", out_dir.display());
         return 1;
     }
     for (name, contents) in html::render(&modules, &options) {
         let path = out_dir.join(&name);
         if let Err(e) = std::fs::write(&path, contents) {
-            let _ = writeln!(stderr, "error: can't write {}: {e}", path.display());
+            let _ = writeln!(stderr, "cpl: can't write {}: {e}", path.display());
             return 1;
         }
     }

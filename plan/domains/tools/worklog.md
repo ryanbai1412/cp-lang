@@ -4,6 +4,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22
 - From infra (sheriff): added `spanning_tree` (stdlib f35ea9799) to `editors/vscode/src/languageData.ts` STDLIB_VALUES and the grammar's stdlib-function rule to make `vscode_sync` green again.
+- Landed (this): one prefix, `cpl:`, for every command's own errors (decision 237): `new`, `test`, `bench`, `watch` and `doc` said `error:`. Asked debugger for `stress`. Re-measured golden counts (`measure.py golden`): fmt, lint, explain, watch and replay at 2.
 - Landed (this): golden tests for `watch` (help, usage error, `--once` pass exit 0 and WA exit 1) and `replay` (help, usage error), `crates/cpl-cli/tests/golden.rs`.
 - Landed (this): hover proves loops and indexes at once on two threads (`crates/cpl-lsp/src/server/proven.rs`); instrumented release run at 5,002 lines: the prover on the hover thread went from about 20 + 22 ms to 26-29 ms; `lsp: hover in the fn being edited` median 41 ms, p90 81 ms (was 50 / 106). Also re-blessed `tests/fixtures/hover.expected` for the L0520 `first_true` wording (failed on origin/main). `front_end_check_is_under_50_ms` still fails (checker, compiler-owned).
 - Hover at 5,000 lines: about 45 ms of each hover is the bounds prover run twice over the whole file (loops, then indexes). Proving only the hovered fn is not equivalent today (coci25c3p4 counterexample), so nothing landed in the LSP; asked lint-fmt for a single call and a per-item prove in their worklog.

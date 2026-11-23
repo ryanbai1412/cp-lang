@@ -426,7 +426,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let (source, scaffold) = match built {
         Ok(built) => built,
         Err(message) => {
-            let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+            let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     };
@@ -436,7 +436,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 /// `cpl new --listen`: every problem the extension sends becomes a file.
 fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     let usage = |stderr: &mut dyn Write, message: String| {
-        let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+        let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
         2
     };
     if args.value("--companion").is_some() || args.value("--constraints").is_some() {
@@ -477,7 +477,7 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
         ));
         if !errors.is_empty() {
             return Err(String::from_utf8_lossy(&errors)
-                .trim_start_matches("error: ")
+                .trim_start_matches("cpl: ")
                 .trim_end()
                 .to_string());
         }
@@ -486,7 +486,7 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
     match heard {
         Ok(()) => code,
         Err(message) => {
-            let _ = writeln!(stderr, "error: {message}");
+            let _ = writeln!(stderr, "cpl: {message}");
             1
         }
     }
@@ -516,7 +516,7 @@ fn report(
             0
         }
         Err(message) => {
-            let _ = writeln!(stderr, "error: {message}");
+            let _ = writeln!(stderr, "cpl: {message}");
             1
         }
     }
