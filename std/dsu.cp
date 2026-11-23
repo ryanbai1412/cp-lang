@@ -618,6 +618,16 @@ pub struct PotentialDsu<V, W = Int>:
                 pot[y] = g.id
                 parts += 1
 
+impl Show for PotentialDsu<V, W>:
+    /// Each position's `root:offset`, in `V` order; read-only.
+    fn show(d):
+        var out = ""
+        for v in V:
+            let (root, offset) = d.find(v)
+            if not out.is_empty: out += " "
+            out += "{root}:{offset}"
+        out
+
 /// Domain-indexed array `[D]T` with `Mark` rollback.
 /// `get`, `set`, and `mark` are \(O(1)\); `undo_to` is \(O(1)\) per undone write.
 pub struct RollbackArray<D, T>:
