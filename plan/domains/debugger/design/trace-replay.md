@@ -28,6 +28,8 @@ come from re-running from the snapshot before n with tracing on for at most K st
 
 ## Risks
 
+- Needs an `Interp` snapshot and restore (stack, globals, heap values, `Io` cursor, call frames) from the shared core; requested in plan/domains/compiler/worklog.md. Until then a prototype can only replay from the start of the run.
+
 - Programs reading input: a snapshot must hold the input cursor (the VM already owns `Io`).
 - Step-back latency: K = 4096 keeps it near today's 21-70 us bound; measure before choosing.
 - Two code paths for values until the delta log is removed; keep the delta path behind the
