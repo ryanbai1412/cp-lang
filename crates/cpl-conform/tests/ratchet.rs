@@ -372,3 +372,15 @@ fn spec_block_ids_survive_an_edited_block() {
         .collect();
     assert_eq!(ids, again);
 }
+
+#[test]
+fn handbook_blocks_are_cp_only() {
+    use cpl_conform::spec_blocks::block_ids;
+    let md = "# Why\n```python\nb = a\n```\n```cp\nprint(1)\n```\n";
+    let ids: Vec<String> = block_ids("handbook/language/a.md", md)
+        .into_iter()
+        .map(|b| b.0)
+        .collect();
+    assert_eq!(ids, ["handbook/language/a.md#why:1"]);
+    assert_eq!(block_ids("core/a.md", md).len(), 2);
+}

@@ -286,9 +286,11 @@
         "core-04/open-from-cut-walks-cuts.cp": "fail",
         "core-04/option-lift-at-compare.cp": "pass",
         "core-04/pair-symmetric.cp": "fail",
+        "core-04/pair-table-takes-two-indices.cp": "fail",
         "core-04/palindromes-longest-at-key.cp": "fail",
         "core-04/piece-into-fold.cp": "fail",
         "core-04/piece-literal.cp": "pass",
+        "core-04/pieces-of-a-domain-take-its-cuts.cp": "fail",
         "core-04/pos-arith-is-int.cp": "fail",
         "core-04/pos-arith-not-position.cp": "pass",
         "core-04/pos-prev-next.cp": "fail",
@@ -486,6 +488,7 @@
         "core-07/grid-row-and-block.cp": "fail",
         "core-07/group.cp": "fail",
         "core-07/in-place-needs-var.cp": "pass",
+        "core-07/in-place-verb-on-a-lent-view.cp": "pass",
         "core-07/in-place-verbs.cp": "pass",
         "core-07/indexed-builtins.cp": "pass",
         "core-07/indexed-param-takes-views.cp": "fail",
@@ -522,7 +525,9 @@
         "core-07/take-drop-clamped.cp": "fail",
         "core-07/take-on-generator.cp": "fail",
         "core-07/tally.cp": "pass",
+        "core-07/view-blocks-a-write-to-its-source.cp": "pass",
         "core-07/view-not-in-var.cp": "pass",
+        "core-07/view-of-a-temporary-outlives-it.cp": "fail",
         "core-07/view-walks.cp": "fail",
         "core-07/while-adapters.cp": "fail",
         "core-07/windows-chunks-keep-keys.cp": "fail",
@@ -1288,12 +1293,7 @@
         "widths/sub-traps-3.cp": "pass",
         "widths/sub-traps-4.cp": "pass",
         "widths/sub-traps-5.cp": "pass",
-        "widths/sub-wraps-when-unchecked.cp": "pass",
-        "core-04/pair-table-takes-two-indices.cp": "fail",
-        "core-04/pieces-of-a-domain-take-its-cuts.cp": "fail",
-        "core-07/view-blocks-a-write-to-its-source.cp": "pass",
-        "core-07/in-place-verb-on-a-lent-view.cp": "pass",
-        "core-07/view-of-a-temporary-outlives-it.cp": "fail"
+        "widths/sub-wraps-when-unchecked.cp": "pass"
       },
       "causes": [
         {
@@ -3408,7 +3408,7 @@
           ]
         },
         {
-          "cause": "cxx_err: In function \u2018ll prog::f()\u2019:",
+          "cause": "cxx_err: In function ‘ll prog::f()’:",
           "count": 1,
           "examples": [
             "conformance/core-01/todo-unreached.cp"
@@ -7423,6 +7423,7 @@
     "spec-blocks": {
       "cases": {
         "core/04-indices.md#arrays-over-domains:1": "skip",
+        "core/04-indices.md#domains:1": "pass",
         "core/04-indices.md#empty-domains:1": "pass",
         "core/04-indices.md#methods:1": "error",
         "core/04-indices.md#methods:2": "pass",
@@ -7430,10 +7431,10 @@
         "core/04-indices.md#open-ended-ranges:1": "pass",
         "core/04-indices.md#the-model-in-one-paragraph:1": "skip",
         "core/04b-keys.md#contest-code:1": "pass",
-        "core/04b-keys.md#contest-code:2": "error",
+        "core/04b-keys.md#contest-code:2": "pass",
         "core/04b-keys.md#contest-code:3": "pass",
         "core/04b-keys.md#contest-code:4": "pass",
-        "core/04b-keys.md#contest-code:5": "error",
+        "core/04b-keys.md#contest-code:5": "pass",
         "core/04b-keys.md#contest-code:6": "skip",
         "core/04b-keys.md#contest-code:7": "skip",
         "core/04b-keys.md#contest-code:8": "skip",
@@ -7472,9 +7473,9 @@
         "core/05-ownership.md#14:30": "pass",
         "core/05-ownership.md#14:31": "pass",
         "core/05-ownership.md#14:32": "pass",
-        "core/05-ownership.md#14:33": "error",
+        "core/05-ownership.md#14:33": "pass",
         "core/05-ownership.md#14:34": "pass",
-        "core/05-ownership.md#14:35": "error",
+        "core/05-ownership.md#14:35": "pass",
         "core/05-ownership.md#14:4": "pass",
         "core/05-ownership.md#14:5": "pass",
         "core/05-ownership.md#14:6": "pass",
@@ -7505,7 +7506,100 @@
         "core/07-sequences.md#slices-which-keys-survive:1": "skip",
         "core/07-sequences.md#terms:1": "skip",
         "core/07-sequences.md#under-the-hood:1": "skip",
+        "handbook/language/checks-and-io.md#contexts-settings-are-lexical:1": "pass",
+        "handbook/language/checks-and-io.md#fast-i-o-buffering-and-interaction:1": "pass",
+        "handbook/language/checks-and-io.md#program-shape-and-multitest:1": "pass",
+        "handbook/language/checks-and-io.md#reading-and-printing:1": "pass",
+        "handbook/language/checks-and-io.md#turning-checks-on-and-off:1": "pass",
+        "handbook/language/checks-and-io.md#two-builds-one-meaning:1": "pass",
+        "handbook/language/checks-and-io.md#worked-examples:1": "pass",
+        "handbook/language/checks-and-io.md#worked-examples:2": "pass",
+        "handbook/language/checks-and-io.md#worked-examples:3": "pass",
+        "handbook/language/control-and-functions.md#lambdas-adapt-their-spelling-never-their-signature-decision-159-decision-324:1": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:1": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:2": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:3": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:4": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:5": "pass",
+        "handbook/language/control-and-functions.md#worked-examples:6": "pass",
+        "handbook/language/indices-and-keys.md#cuts-are-their-own-kind:1": "pass",
+        "handbook/language/indices-and-keys.md#data-shaped-by-its-index-pieces-and-unordered-pairs-decisions-162-164:1": "pass",
+        "handbook/language/indices-and-keys.md#domains-are-types-positions-are-not-integers:1": "pass",
+        "handbook/language/indices-and-keys.md#domains-made-at-run-time-travel-as-values-decision-10:1": "pass",
+        "handbook/language/indices-and-keys.md#grid-cells-are-tuples-of-positions-decision-16:1": "pass",
+        "handbook/language/indices-and-keys.md#identity-everywhere-slices-keep-keys:1": "pass",
+        "handbook/language/indices-and-keys.md#identity-everywhere-slices-keep-keys:2": "pass",
+        "handbook/language/indices-and-keys.md#keys-in-keys-out-pairing-by-order:1": "pass",
+        "handbook/language/indices-and-keys.md#library-types-become-domains-through-impl-index-decision-382:1": "pass",
+        "handbook/language/indices-and-keys.md#materializing-renumbers-first-last-nth:1": "pass",
+        "handbook/language/indices-and-keys.md#the-model:1": "pass",
+        "handbook/language/indices-and-keys.md#worked-examples:1": "pass",
+        "handbook/language/indices-and-keys.md#worked-examples:2": "pass",
+        "handbook/language/indices-and-keys.md#worked-examples:3": "pass",
+        "handbook/language/modules-and-powers.md#a-program-is-one-file-a-library-is-items:1": "pass",
+        "handbook/language/modules-and-powers.md#no-stdlib-privilege:1": "pass",
+        "handbook/language/modules-and-powers.md#powers:1": "pass",
+        "handbook/language/modules-and-powers.md#powers:2": "pass",
+        "handbook/language/modules-and-powers.md#powers:3": "pass",
+        "handbook/language/modules-and-powers.md#the-prelude-is-the-documented-vocabulary:1": "pass",
+        "handbook/language/modules-and-powers.md#the-prelude-is-the-documented-vocabulary:2": "pass",
+        "handbook/language/modules-and-powers.md#worked-examples:1": "pass",
+        "handbook/language/modules-and-powers.md#worked-examples:2": "pass",
+        "handbook/language/overview.md#1:1": "pass",
+        "handbook/language/overview.md#3:1": "pass",
+        "handbook/language/overview.md#4:1": "pass",
+        "handbook/language/overview.md#5:1": "pass",
+        "handbook/language/overview.md#how-math-is-written-decision-335:1": "pass",
+        "handbook/language/overview.md#how-the-ideas-compose:1": "pass",
+        "handbook/language/overview.md#the-problem:1": "pass",
+        "handbook/language/ownership.md#10:1": "pass",
+        "handbook/language/ownership.md#10:2": "pass",
+        "handbook/language/ownership.md#11:1": "pass",
+        "handbook/language/ownership.md#2:1": "pass",
+        "handbook/language/ownership.md#2:2": "pass",
+        "handbook/language/ownership.md#4:1": "pass",
+        "handbook/language/ownership.md#5:1": "pass",
+        "handbook/language/ownership.md#5:2": "pass",
+        "handbook/language/ownership.md#6:1": "pass",
+        "handbook/language/ownership.md#8:1": "pass",
+        "handbook/language/ownership.md#8:2": "pass",
+        "handbook/language/ownership.md#9:1": "pass",
+        "handbook/language/ownership.md#9:2": "pass",
+        "handbook/language/ownership.md#the-model:1": "pass",
+        "handbook/language/ownership.md#worked-examples:1": "pass",
+        "handbook/language/ownership.md#worked-examples:2": "pass",
+        "handbook/language/ownership.md#worked-examples:3": "pass",
+        "handbook/language/sequences.md#laziness-is-explicit-allocation-has-a-name-r07-1-3-r07-1-7-decision-140:1": "pass",
+        "handbook/language/sequences.md#worked-examples:1": "pass",
+        "handbook/language/sequences.md#worked-examples:2": "pass",
+        "handbook/language/sequences.md#worked-examples:3": "pass",
+        "handbook/language/sequences.md#worked-examples:4": "pass",
+        "handbook/language/sequences.md#worked-examples:5": "pass",
+        "handbook/language/sequences.md#worked-examples:6": "pass",
+        "handbook/language/std.md#by-example:1": "pass",
+        "handbook/language/std.md#reading-a-std-doc:1": "skip",
+        "handbook/language/traits-and-generics.md#worked-examples:1": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:2": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:3": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:4": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:5": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:6": "pass",
+        "handbook/language/traits-and-generics.md#worked-examples:7": "pass",
+        "handbook/language/values-and-numbers.md#and-are-euclidean-decision-347:1": "pass",
+        "handbook/language/values-and-numbers.md#checked-builds-trap-release-builds-don-t-pay:1": "pass",
+        "handbook/language/values-and-numbers.md#constructors-generated-ones-store-custom-ones-lend-decision-147:1": "pass",
+        "handbook/language/values-and-numbers.md#inference-is-local-conversions-are-spelled:1": "pass",
+        "handbook/language/values-and-numbers.md#modular-numbers-are-their-own-type:1": "pass",
+        "handbook/language/values-and-numbers.md#narrow-storage-from-ranges-never-from-width-names:1": "pass",
+        "handbook/language/values-and-numbers.md#patterns-are-read-by-case-decisions-157-230-369-111:1": "pass",
+        "handbook/language/values-and-numbers.md#spare-values-make-optionals-free:1": "pass",
+        "handbook/language/values-and-numbers.md#statement-facts-are-types-literal-unions-str-of-field-defaults-decisions-134-135-381:1": "pass",
+        "handbook/language/values-and-numbers.md#statement-facts-are-types-literal-unions-str-of-field-defaults-decisions-134-135-381:2": "pass",
+        "handbook/language/values-and-numbers.md#the-model:1": "pass",
+        "handbook/language/values-and-numbers.md#worked-examples:1": "pass",
+        "handbook/language/values-and-numbers.md#worked-examples:2": "pass",
         "lib/containers.md#2.1:1": "skip",
+        "lib/containers.md#2.1:2": "skip",
         "lib/containers.md#2.2:1": "skip",
         "lib/containers.md#2.3:1": "skip",
         "lib/containers.md#2.4:1": "skip",
@@ -7580,7 +7674,7 @@
         "lib/ops-ranges.md#orders-make-min-and-max-monoids:1": "error",
         "lib/ops-ranges.md#the-model-in-one-paragraph:1": "error",
         "lib/ops-ranges.md#the-traits:1": "skip",
-        "lib/ops-ranges.md#your-own-operation:1": "error",
+        "lib/ops-ranges.md#your-own-operation:1": "pass",
         "lib/ops-ranges.md#your-own-operation:2": "pass",
         "lib/ops-ranges.md#your-own-operation:3": "error",
         "lib/search-dp.md#interval-dp-v-ranges:1": "pass",
@@ -7621,16 +7715,6 @@
           ]
         },
         {
-          "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 4,
-          "examples": [
-            "core/05-ownership.md#14:13",
-            "core/05-ownership.md#14:20",
-            "core/05-ownership.md#7:2",
-            "lib/ops-ranges.md#your-own-operation:1"
-          ]
-        },
-        {
           "cause": "E0201: no `<id>` in scope, and not in the stdlib (yet)",
           "count": 2,
           "examples": [
@@ -7639,11 +7723,11 @@
           ]
         },
         {
-          "cause": "E0603: `<id>` would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "cause": "E0302: expected `<id>`, found `<id>`",
           "count": 2,
           "examples": [
-            "core/04b-keys.md#contest-code:2",
-            "core/04b-keys.md#contest-code:5"
+            "core/05-ownership.md#14:20",
+            "core/05-ownership.md#7:2"
           ]
         },
         {
@@ -7689,7 +7773,7 @@
           ]
         },
         {
-          "cause": "E0302: `<id>` (`<id>`) does not work on the types it was given here: expected `<id>`, found `<id>`",
+          "cause": "E0302: `<id>` (`<id>`) does not work on the types it was given here: expected `<id>` made of views into another sequence (it was built from",
           "count": 1,
           "examples": [
             "lib/sequence-patterns.md#folding-pieces-the-sliding-fold:1"
@@ -7724,28 +7808,21 @@
           ]
         },
         {
-          "cause": "E0603: this assignment would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
+          "cause": "L0610: `<id>` is taken `<id>`, but the fn never changes it",
           "count": 1,
           "examples": [
-            "core/05-ownership.md#14:35"
-          ]
-        },
-        {
-          "cause": "wanted E0608; got no diagnostic",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#14:33"
+            "core/05-ownership.md#14:13"
           ]
         }
       ],
       "counts": {
-        "error": 27,
-        "pass": 87,
-        "skip": 71
+        "error": 22,
+        "pass": 184,
+        "skip": 73
       },
-      "passed": 87,
-      "strict_passed": 87,
-      "total": 185
+      "passed": 184,
+      "strict_passed": 184,
+      "total": 279
     }
   }
 }

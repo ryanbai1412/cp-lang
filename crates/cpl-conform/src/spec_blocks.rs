@@ -46,7 +46,14 @@ fn section_label(heading: &str) -> String {
 
 /// Stable case ids for a file's blocks: `rel#section:k`, the `k`th block under the heading
 /// `section`. Editing a block keeps its id, so the ratchet sees it change, not disappear.
+/// The spec fences CP Lang as `cp` or `python`; the handbook also quotes real Python, so
+/// under `handbook/` only `cp` blocks are CP Lang.
 pub fn block_ids(rel: &str, text: &str) -> Vec<(String, String, Marker)> {
+    let langs: &[&str] = if rel.starts_with("handbook/") {
+        &["cp"]
+    } else {
+        SPEC_LANGS
+    };
     let mut headings = Vec::new();
     let mut offset = 0;
     let mut fenced = false;
@@ -60,7 +67,7 @@ pub fn block_ids(rel: &str, text: &str) -> Vec<(String, String, Marker)> {
         offset += line.len();
     }
     let mut count: HashMap<String, usize> = HashMap::new();
-    scan_blocks(text)
+    scan_blocks(text, langs)
         .into_iter()
         .map(|(open, code, marker)| {
             let at = headings.partition_point(|(o, _)| *o < open);
@@ -152,14 +159,16 @@ pub fn extract_blocks(text: &str) -> Vec<String> {
 
 /// Like `extract_blocks`, with each block's marker.
 pub fn extract_marked_blocks(text: &str) -> Vec<(String, Marker)> {
-    scan_blocks(text)
+    scan_blocks(text, SPEC_LANGS)
         .into_iter()
         .map(|(_, code, m)| (code, m))
         .collect()
 }
 
 /// Each fenced block's opening offset, dedented body and marker.
-fn scan_blocks(text: &str) -> Vec<(usize, String, Marker)> {
+const SPEC_LANGS: &[&str] = &["cp", "python"];
+
+fn scan_blocks(text: &str, langs: &[&str]) -> Vec<(usize, String, Marker)> {
     let mut blocks = Vec::new();
     let mut pos = 0;
     while let Some(rel) = text[pos..].find("```") {
@@ -173,7 +182,7 @@ fn scan_blocks(text: &str) -> Vec<(usize, String, Marker)> {
         let Some(close) = body_start.find("```") else {
             break;
         };
-        if lang == "cp" || lang == "python" {
+        if langs.contains(&lang) {
             let line_start = text[..open].rfind('\n').map_or(0, |i| i + 1);
             let indent = open - line_start;
             let code = dedent(&body_start[..close], indent);
@@ -210,19 +219,32 @@ fn md_files_in(dir: &Path) -> Vec<std::path::PathBuf> {
     out
 }
 
-/// Discovers fenced code blocks in `spec/core/*.md` and `spec/lib/*.md`.
+/// Discovers fenced code blocks in `spec/core/*.md`, `spec/lib/*.md` and the handbook's
+/// language docs, `handbook/language/*.md`, which must say what the spec says
+/// (handbook/guidelines/spec-rules-checklist.md, spec-rules/R6).
 pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
     let spec_dir = root.join("spec");
-    let mut paths = md_files_in(&spec_dir.join("core"));
-    paths.extend(md_files_in(&spec_dir.join("lib")));
+    let mut paths: Vec<(std::path::PathBuf, &Path)> = Vec::new();
+    for dir in ["core", "lib"] {
+        paths.extend(
+            md_files_in(&spec_dir.join(dir))
+                .into_iter()
+                .map(|p| (p, spec_dir.as_path())),
+        );
+    }
+    paths.extend(
+        md_files_in(&root.join("handbook/language"))
+            .into_iter()
+            .map(|p| (p, root)),
+    );
 
     let mut out = Vec::new();
-    for path in paths {
+    for (path, base) in paths {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
         let rel = path
-            .strip_prefix(&spec_dir)
+            .strip_prefix(base)
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");

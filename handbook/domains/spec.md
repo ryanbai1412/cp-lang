@@ -133,7 +133,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Each decision is recorded once | duplicate decision numbers | check | `scripts/next-decision.py --check` |
 | Cases test the language, not the compiler's internals | cases that reach crate internals | design: a case is a `.cp` file run through `cpl` | `crates/cpl-conform/src/conformance.rs` |
 | A cold reader can write correct code from `spec/` alone | holes and contradictions per cold rebuild round | process: rebuild rounds | `research/rebuild-rounds/` |
-| Handbook language docs and the spec say the same thing | disagreements found | `missing`; process today: an edit to either updates both in one commit | — |
+| Handbook language docs and the spec say the same thing ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | handbook `cp` blocks the compiler rejects, or that a `rejects:` marker says it should reject and it accepts | ratchet: every `cp` block in `handbook/language/` runs in the spec-blocks suite with the spec's own blocks; prose claims beyond code are reviewed when a rule changes | `cpl-conform spec-blocks --check`, `crates/cpl-conform/src/spec_blocks.rs` |
 | Handbook docs are written for an outsider | context-dependent phrases, hashes | lint | `scripts/check-handbook.py` |
 | Each rule earns what a contestant must remember | rubric score from a cold reader | process: review against the design rules in `AGENTS.md` | — |
 | A behaviour the user can observe has exactly one specified answer | rules whose text a cold reader had to guess (silent holes per round) | process: rebuild rounds; `missing`: a check that each `std` function a chapter names has a cost, a trap list and an example | `research/rebuild-rounds/` |
