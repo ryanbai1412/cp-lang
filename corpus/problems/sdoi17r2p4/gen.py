@@ -7,7 +7,7 @@ for t in range(T):
     big = S > 5000 and t < 2
     cap = min(S, 50000) if big else min(S, 5000)
     n = cap if big else r.randint(2, max(2, cap))
-    chain = big and t == 1  # a 1 -> 2 -> ... -> n path at max cost and max LCP: sums past 2^31
+    chain = big and t == 1  # a 1 -> 2 -> ... -> n path at max cost and max LCP: sums near 2^31
     m = cap if big else r.randint(n - 1, max(n - 1, cap))
     m = n - 1 if chain else max(m, n - 1)
     k = 20000 if big else r.randint(1, max(1, min(S, 20000)))

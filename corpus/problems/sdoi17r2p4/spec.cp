@@ -5,18 +5,20 @@
 // adjacent pairs between them, so two prefix chains and a cross arc per gap
 // (one pass each way) carry every turn in O(deg) arcs instead of O(deg^2).
 @!multitest
-let (n, m, k) = read<(1..=5e4, 1..=1e5, 1..=2e4)>()
+let (n, m, k) = read<(2..=5e4, 1..=5e4, 1..=2e4)>()
 domain V = 1..=n
 domain Word = 1..=k
 domain Road = [m]
-let roads = read<[Road](u: V, v: V, w: 1..=2e4, word: Word)>()
-let trie = Rooted(Graph.undirected(read<[k - 1](u: Word, v: Word, c: Int)>()), root: Word.first!)
+let roads = read<[Road](u: V, v: V, w: 0..=2e4, word: Word)>()
+let trie = Rooted(Graph.undirected(read<[k - 1](u: Word, v: Word, c: 1..=2e4)>()), root: Word.first!)
 let lca = LcaTable(trie)
 let leave = Graph.directed(roads)
 let enter = leave.transpose()
 
-domain Aux = [8 * m]
-domain Node = Road + Aux
+// Each road, then two chain nodes per road end per pass. Ideally
+// `domain Node = Road + Aux`, but sum domains don't construct yet.
+domain Node = [9 * m]
+let at = (r: Road) => Node(r.idx)
 var arcs = List<(from: Node, arc: (to: Node, w: Int))>()
 var used = 0
 for x in V:
@@ -28,12 +30,12 @@ for x in V:
     ).sorted(by: it => trie.pos(roads[it.road].word))
     for line in [here, List(here.rev)]:
         let t = line.len
-        let (pre, suf) = ((i: Int) => Node(Aux(used + i)), (i: Int) => Node(Aux(used + t + i)))
+        let (pre, suf) = ((i: Int) => Node(m + used + i), (i: Int) => Node(m + used + t + i))
         for (i, it) in line.items:
             if it.enters:
-                arcs.push((from: Node(it.road), arc: (to: pre(i), w: 0)))
+                arcs.push((from: at(it.road), arc: (to: pre(i), w: 0)))
             else:
-                arcs.push((from: suf(i), arc: (to: Node(it.road), w: roads[it.road].w)))
+                arcs.push((from: suf(i), arc: (to: at(it.road), w: roads[it.road].w)))
             if i + 1 < t:
                 let gap = trie.depth(lca.lca(roads[it.road].word, roads[line[i + 1].road].word))
                 arcs.push((from: pre(i), arc: (to: pre(i + 1), w: 0)))
@@ -43,7 +45,7 @@ for x in V:
 
 let dist = dijkstra(
     Graph.of(arcs),
-    from: leave.out(V.first!).map(a => (Node(a.e), roads[a.e].w)),
+    from: leave.out(V.first!).map(a => (at(a.e), roads[a.e].w)),
 ).dist
 for v in V.drop(1):
-    print(enter.out(v).filter_map(a => dist[Node(a.e)]).min()!)
+    print(enter.out(v).filter_map(a => dist[at(a.e)]).min()!)
