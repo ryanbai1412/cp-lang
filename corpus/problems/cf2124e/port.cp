@@ -1,14 +1,12 @@
-// Codeforces 2124 E: Make it Zero.
-// Each operation subtracts `b <= a` whose left/right halves around some cut
-// have equal sum, so `b.sum()` is even and every `b[i] <= b.sum() / 2`.
-// Hence a solution exists iff `tot = a.sum()` is even and `max(a) <= tot / 2`.
-// Let `half = tot / 2` and `mid` be the first index with `pref[0..=mid] >= half`
-// (any element > `half` must sit at `mid`).
-//   - `pref[0..=mid] == half`: 1 operation (`a` itself).
-//   - Otherwise `excess = pref[0..=mid] - half < a[mid] <= half`, so
-//     `pref[0..mid] >= excess`. Taking `excess` from `0..mid` paired with
-//     `excess` at `mid` gives one valid operation `b` whose removal leaves
-//     `a - b` balanced at `mid` (2 operations total).
+// Source: Codeforces 2124E (Make it Zero), https://codeforces.com/contest/2124/problem/E
+// Problem: n <= 5e4 positive a[i] <= 1e12. An operation subtracts some b with 0 <= b[i] <= a[i]
+//   whose prefix up to some cut sums to the rest. Print the fewest operations that make a all
+//   zero and each b, or -1 if impossible. Multitest, sum of n <= 5e4.
+// Solution: every b has an even sum and no entry above half of it, so a needs an even sum and
+//   max(a) <= sum/2, else -1. Let mid be the first index whose prefix sum reaches half: if it
+//   equals half, one operation (b = a). Otherwise the overshoot e is < a[mid]; b takes e
+//   greedily from the left of mid plus e at mid, which leaves a - b balanced right after mid:
+//   two operations, O(n).
 
 @!multitest
 let n: 2..=50_000 = read()

@@ -1,11 +1,11 @@
-// IOI 2014 Day 2 P2, Friend: a network grows one person at a time. Person i
-// is brought in by an earlier host and becomes a friend of the host only
-// (protocol 0), of the host's friends only (1), or of both (2). Pick people
-// with the largest total confidence so that no two picked are friends.
-//
-// Undo the growth from the last person back, folding each person into the
-// host. A person then stands for a group, with two numbers: the best total
-// of the group when the person is in the sample and when they are not.
+// Source: IOI 2014 Day 2 Friend, https://dmoj.ca/problem/ioi14p5
+// Problem: a network of n <= 1e5 people grows from person 0: person i joins via a host h < i as
+//   a friend of the host only (protocol 0), of the host's friends only (1), or of both (2).
+//   Print the largest total confidence (each <= 1e4) of a set with no two friends.
+// Solution: undo the growth from the last person back, folding each person into its host; a
+//   person then stands for a group with two totals, best with that person picked and without.
+//   Protocol 0 merges like a tree edge (not both), 1 like twins with the same friends (both
+//   allowed), 2 like adjacent twins (at most one). O(n).
 // input: n, the n confidences, then `host protocol` for persons 1..n-1
 // original: corpus/submissions/6567598.cpp
 let n: Int = read()

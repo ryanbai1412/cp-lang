@@ -1,7 +1,11 @@
-// NOIP 2009 Optimal Trade: walk from city 1 to city n, buying once and selling
-// once later on the walk. Best profit = max over cities v on such a walk of
-// (dearest price from v on) - (cheapest price up to v). Relaxing prices along
-// roads until nothing changes handles the cycles.
+// Source: NOIP 2009 Senior P3 (Optimal Trade), https://dmoj.ca/problem/noip09p3
+// Problem: n <= 1e5 cities, m <= 5e5 one-way or two-way roads, prices in 1..=100. Walk from city
+//   1 to city n (repeats allowed), buying one item in some city and selling it in a later one;
+//   print the largest profit, or 0 if no trade gains.
+// Solution: profit = max over cities v of (dearest price on some path v -> n) - (cheapest on
+//   some path 1 -> v). Both come from a queue-based relaxation (SPFA-style, by min and by max)
+//   until stable: forward from 1, and on reversed roads from n. A label only improves within
+//   1..=100, so each city re-enters the queue at most 100 times: O(100 (n + m)).
 let (n, m): (1..=1e5, 1..=5e5) = read()
 domain City = 1..=n
 let price: [City]1..=100 = read()

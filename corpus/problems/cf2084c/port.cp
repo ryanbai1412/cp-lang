@@ -1,14 +1,11 @@
-// Codeforces 2084 C: simultaneously swap indices in two permutations a and b
-// until a becomes the reverse of b (or report -1).
-//
-// In any valid final order, every value v paired with b[i] at position i must
-// meet its reverse partner a[n + 1 - i] = b[i] and b[n + 1 - i] = a[i]. So
-// the pairing map a_to_b = b o a^{-1} must be an involution (a_to_b(a_to_b(v))
-// == v) with at most one fixed point (the middle position when n is odd).
-// Zipping the paired couples (i, partner) with mirrored slots from I and I.rev
-// (and placing any fixed point at the center) gives the target permutation
-// `target: [I]I`; each cycle [c0, c1, ..., c_{k-1}] of `target` is realized in
-// k - 1 swaps (c0, c_j).
+// Source: Codeforces 2084C, https://codeforces.com/contest/2084/problem/C
+// Problem: permutations a and b of 1..n, n <= 2e5. In at most n operations, each swapping a[i]
+//   with a[j] and b[i] with b[j] together, make a[i] = b[n+1-i] for every i; print the swaps,
+//   or -1 if impossible. Multitest, sum of n <= 2e5.
+// Solution: column i = (a[i], b[i]) must end opposite the column j with a[j] = b[i], so
+//   partner(i) = (position of b[i] in a) must be an involution with at most one fixed point,
+//   which goes to the middle; otherwise -1. Send the k-th couple to slots k and n+1-k, giving
+//   a target permutation; each of its cycles takes len - 1 swaps with its first element. O(n).
 
 use std.seq.{compose, perm_cycles}
 

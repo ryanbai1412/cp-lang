@@ -1,8 +1,11 @@
-// cp: 0.1 456e4a4+dirty
-// NOI 2016 Intervals: pick m of the n intervals that share a point, with the
-// longest and the shortest picked as close in length as possible.
-// Sorted by length, the picks may as well be a window: slide it, keeping how
-// deeply every coordinate is covered.
+// Source: NOI 2016 Interval, https://dmoj.ca/problem/noi16p4
+// Problem: n <= 5e5 closed intervals [l, r], 0 <= l <= r <= 1e9. Choose m <= 2e5 of them sharing
+//   a common point, minimizing (longest length - shortest length), length = r - l. Print the
+//   minimum, or -1 if no m intervals share a point.
+// Solution: sorted by length, a best choice may as well be a window. Two pointers: for each left
+//   end, extend the window until some point is covered m times, kept by a max/add lazy SegTree
+//   over the compressed endpoints; take the length gap, then drop the left interval.
+//   O(n log n).
 let n: 1..=500000 = read()
 let m: 1..=200000 = read()
 type Span = (l: 0..=1e9, r: 0..=1e9)

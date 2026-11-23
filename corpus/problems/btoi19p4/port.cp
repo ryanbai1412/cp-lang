@@ -1,11 +1,11 @@
-// Baltic OI 2019 Tom's Kitchen: n meals need need[i] hours of work each, and
-// each meal must be worked on by at least k different chefs. A hired chef is
-// paid for all of hours[j]. Hire chefs so every meal can be cooked and the
-// paid-but-unused hours are as few as possible, or say it is impossible.
-// A chef adds variety to at most n meals, an hour each. A set of chefs works
-// exactly when its hours cover the total need and its variety hours
-// sum(min(hours[j], n)) reach n * k. So: for each total of hired hours, the
-// most variety, a 0/1 knapsack.
+// Source: Baltic OI 2019 Day 2 Tom's Kitchen, https://dmoj.ca/problem/btoi19p4
+// Problem: n meals need A[i] hours each, each from at least k different chefs (positive whole
+//   hours each); chef j works at most B[j] hours but is paid for all B[j]. Hire chefs to
+//   minimize paid idle hours, or print "Impossible". n, m, k, A[i], B[j] <= 300.
+// Solution: impossible if some A[i] < k. Else a set of chefs works iff its hours cover sum A and
+//   its sum of min(B[j], n) reaches n * k (a chef gives each meal at least an hour). 0/1
+//   knapsack over total paid hours keeping the largest sum of min(B[j], n); the answer is the
+//   least total >= sum A that reaches n * k, minus sum A. O(m * sum B).
 // original: corpus/submissions/4456166.cpp
 let n: 1..=300 = read()
 let m: 1..=300 = read()

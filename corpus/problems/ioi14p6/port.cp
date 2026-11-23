@@ -1,7 +1,12 @@
-// IOI 2014 Holiday: cities stand in a line, each with a number of
-// attractions. Starting in one city, each day is spent moving to a
-// neighbouring city or visiting the city you are in (once). See the most
-// attractions in d days.
+// Source: IOI 2014 Day 2 Holiday, https://dmoj.ca/problem/ioi14p6
+// Problem: n <= 1e5 cities on a line with attraction[i] <= 1e9 and a start city; each of d <=
+//   2n + n/2 days either moves to a neighbouring city or visits the current one (a city counts
+//   once). Print the most attractions visited.
+// Solution: a best walk goes out one way and back, then out the other way. For one side and t
+//   days, ending at the i-th city passed costs step days per city (2 if coming back, 1 if not)
+//   and visits the best of the first i with the rest; the best i only moves out as t grows, so
+//   monotone_minima finds it, with WaveletMatrix top-k sums: O((n + d) log^2 n). Combine both
+//   sides over every split of the days, visiting the start city or not.
 // original: corpus/submissions/4691210.cpp (a grader function)
 use std.dp.{monotone_minima}
 use std.segtree.{WaveletMatrix}

@@ -1,14 +1,11 @@
-// Codeforces 2147 E — Maximum OR Popcount
-//
-// Each query gives a budget `budget` of +1 increments across `a[0..n]` and
-// asks for the maximum popcount of the bitwise OR of `a`.
-//
-// Raising the OR's popcount by 1 is always cheapest by filling the lowest
-// unset bit `b` (and any still-unset lower bits `x` from `b` down to `0`).
-// Setting bit `x` on the element maximizing `a[idx] & ((1 << x) - 1)` minimizes
-// the carry cost `(1 << x) - (a[idx] & mask)` and preserves all higher bits of
-// the OR. Recording the monotone `(costs, pops)` frontier answers each query
-// by binary search in O(log 31).
+// Source: Codeforces 2147E (Maximum OR Popcount), https://codeforces.com/contest/2147/problem/E
+// Problem: n <= 1e5 numbers a[i] <= 1e9 and q <= 1e5 independent queries b <= 1e9: using at
+//   most b increments (+1 to any element), maximize the popcount of the OR of the array.
+//   Multitest, sums of n and of q <= 1e5.
+// Solution: more ones are cheapest as a full low block: for each unset bit b of the OR, set
+//   every missing bit x from b down to 0 by raising the element with the largest
+//   a & (2^x - 1) until bit x turns on (cost 2^x minus those low bits). Record the running
+//   (cost, popcount) after each b, O(31^2 n) per test; a query binary-searches the costs.
 
 use std.seq.{argmax}
 

@@ -1,13 +1,11 @@
-// Codeforces 2157 C — Meximum Array 2
-//
-// Constraints have `n, k, q <= 100`, so marking each query range directly is
-// O(n * q) <= 10^4. Every position in a `Min` range must be `>= k`, and every
-// position in a `Mex` range cannot equal `k` (while the range must contain all
-// of `0..k`):
-// - Positions in `Min` only (or unconstrained) get `k`.
-// - Positions in both `Min` and `Mex` get `k + 1` (`>= k` and `!= k`).
-// - Positions in `Mex` only cycle through `0..k` (`cnt % k`), guaranteeing
-//   every valid `Mex` range covers `0..k`.
+// Source: Codeforces 2157C (Meximum Array 2), https://codeforces.com/contest/2157/problem/C
+// Problem: n, k <= 100 and q <= 100 constraints (c, l, r): c = 1 means min(a[l..=r]) = k, c = 2
+//   means mex(a[l..=r]) = k. Print any array of values in 0..=1e9 meeting all of them (one is
+//   guaranteed to exist). Multitest.
+// Solution: mark the positions covered by some min range and by some mex range, O(nq). A
+//   min-only or free position gets k; one in both gets k + 1 (>= k and != k); the mex-only
+//   positions, left to right, cycle through 0..k-1, so every mex range holds all of 0..k-1 and
+//   no k.
 
 enum Kind:
     Min
