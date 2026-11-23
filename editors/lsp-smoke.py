@@ -3,8 +3,9 @@
 
 Starts the language server the way EDITOR's setup does (COMMAND is read from
 that setup by its smoke script), then checks the handshake every client makes:
-`initialize` answers with the capabilities the editors rely on, and opening a
-file with a type error publishes that error on its line. For editors that cannot
+`initialize` answers with the capabilities the editors rely on, opening a file
+with a type error publishes that error on its line, and completion, definition
+and formatting answer as the editors' own smoke tests expect. For editors that cannot
 run headless (Helix, Zed), this is the part of the setup a script can drive.
 """
 import json
@@ -44,6 +45,20 @@ def receive():
     return json.loads(server.stdout.read(length))
 
 
+def apply(text, edits):
+    lines = text.split("\n")
+    offset = lambda at: sum(len(line) + 1 for line in lines[:at["line"]]) + at["character"]
+    for e in sorted(edits, key=lambda e: offset(e["range"]["start"]), reverse=True):
+        text = text[:offset(e["range"]["start"])] + e["newText"] + text[offset(e["range"]["end"]):]
+    return text
+
+
+def ask(id, method, uri, line=0, character=0, **params):
+    send({"id": id, "method": method, "params": {
+        "textDocument": {"uri": uri}, "position": {"line": line, "character": character}, **params}})
+    return until(lambda m: m.get("id") == id).get("result")
+
+
 def until(want):
     for _ in range(1000):
         message = receive()
@@ -78,9 +93,27 @@ with tempfile.TemporaryDirectory() as root:
     errors = [d for d in published["params"]["diagnostics"] if d.get("severity") == 1]
     if [d["range"]["start"]["line"] for d in errors] != [2]:
         fail(f"expected one error, on `let s: Str = n`: {published}")
+    # Completion inside `print` lists the prelude and the locals in scope.
+    items = ask(3, "textDocument/completion", uri, 3, 6) or []
+    labels = {item["label"] for item in (items.get("items", []) if isinstance(items, dict) else items)}
+    if not {"print", "n"} <= labels:
+        fail(f"completion lacks print or n: {sorted(labels)[:20]}")
+    # The `n` in `print(n + 1)` is defined by its `let`.
+    found = ask(4, "textDocument/definition", uri, 3, 10)
+    found = found[0] if isinstance(found, list) and found else found
+    if not found or found.get("range", found.get("targetSelectionRange", {})).get("start", {}).get("line") != 1:
+        fail(f"definition of n is {found}")
+    # Formatting gives `cpl fmt`'s layout.
+    messy = pathlib.Path(root, "messy.cp")
+    messy.write_text("let x=1\nprint(x)\n")
+    send({"method": "textDocument/didOpen", "params": {"textDocument": {
+        "uri": messy.as_uri(), "languageId": "cp", "version": 1, "text": messy.read_text()}}})
+    edits = ask(5, "textDocument/formatting", messy.as_uri(), options={"tabSize": 4, "insertSpaces": True})
+    if apply(messy.read_text(), edits or []) != "let x = 1\nprint(x)\n":
+        fail(f"formatting gave {edits}")
     send({"id": 2, "method": "shutdown"})
     until(lambda m: m.get("id") == 2)
     send({"method": "exit"})
     if server.wait(timeout=10) != 0:
         fail(f"exit status {server.returncode}")
-print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3)")
+print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting)")

@@ -47,7 +47,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Edged', 'EdgedNext', 'ErasableHeap', 'EulerTourTree', 'Events', 'Fenwick', 'Fenwick2D', 'FillOrder',
     'FillPrefix', 'Filtered', 'FlatMap', 'Flip', 'FlipAction', 'FlowGraph', 'Functional', 'Graph', 'GraphicMatroid',
     'Group', 'HalfPlane', 'HasId', 'HasInv', 'Hash', 'Hash2D', 'Hash61', 'HashVal', 'Hashable', 'Heap',
-    'HistoricBeatsSegTree', 'Id', 'Idempotent', 'IncrementalBridges', 'IndexedHeap', 'Interner',
+    'HistoricBeatsSegTree', 'Id', 'Idempotent', 'IncrementalBridges', 'IndexOp', 'IndexedHeap', 'Interner',
     'IntervalMap', 'IntervalSet', 'Items', 'JumpTree', 'Keys', 'KmpAutomaton', 'KruskalTree', 'Layers',
     'LazyEulerTourTree', 'LazyLinkCut', 'LazyTreap', 'LcaTable', 'LiChao', 'Lift', 'Line', 'LineContainer',
     'LinearRmq', 'LinkCut', 'LinkedList', 'Lit', 'Location', 'LongPaths', 'Mapped', 'Mark', 'MarkMap',

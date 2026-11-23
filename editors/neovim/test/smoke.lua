@@ -91,7 +91,11 @@ vim.wait(10000, function()
     shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
     return shown:find('Str', 1, true) ~= nil
 end, 100)
-check(shown:find('Str', 1, true) ~= nil, 'the run lens showed ' .. vim.inspect(shown))
+if not shown:find('Str', 1, true) then
+    local direct = vim.system(vim.list_extend({ cpl }, vim.deepcopy(run.arguments or {}))):wait()
+    check(false, ('the run lens showed %s; `cpl %s` gives %d: %s%s'):format(vim.inspect(shown),
+        table.concat(run.arguments or {}, ' '), direct.code, direct.stdout or '', direct.stderr or ''))
+end
 
 -- `:Cpl check` runs on the file in a terminal split and completes command names.
 vim.cmd('wincmd k')
