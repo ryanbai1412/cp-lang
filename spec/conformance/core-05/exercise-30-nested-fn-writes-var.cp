@@ -17,5 +17,5 @@ fn visit(v: V, from: ?V):
             depth[u] = depth[v] + 1
             visit(u, v)
 visit(V.first!, None)
-print(depth.max())
+print(depth.max()!)
 visit(V.first!, None)

@@ -1,4 +1,4 @@
-// expect: R0001 at 5 (checked)
+// expect: R0001 at 4 (checked)
 // `ln` traps on a negative number instead of giving NaN.
 // input: "-1\n"
 let x: F64 = read()
