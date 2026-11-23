@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff, run 45101560927 (300026038): all tests and conform green; `checks` red only on the debt ratchet, `cpl-check/src/db.rs` 2506 -> 2508 from my `ImplNames` alias (d4944645a). Already fixed on main by tools' `db/impls.rs` split (2480 lines); `debt-ratchet.py --check` clean locally on the next tip.
 - Sheriff, run 45100333302 (a6e0c36d2): fixed forward diagnostics 9268be7aa (E0601 law kept, `string_fix` for clippy), tools 966d508b5 clippy (`ImplNames`, `as_chunks`), and stdlib's VS Code drift (`RangeFenwick`, `XorFenwick` added, `runs_linked` dropped); 187 focused cpl-check/cpl-cli tests pass. Also landed a6e0c36d2: the commit tier runs `skill-gen.py --drift` (under 1 s). Owners told. Landed up to caada3574.
 - Sheriff, run 45098999493 (3a87bad01): blessed lint-fmt's L0210 line in the LSP hover fixture and regenerated the stale bundled skill files (fenwick, segtree, sparse; graph and geometry in 5adf4435f). The skill file has gone stale three times today; follow-up: have the commit tier flag `spec/std` doc changes without a skill regen.
 - Sheriff: reverted stdlib 06f75a8b6, 7f339f422, 1d53c2d2f (a3828c705): `Range` members `cpl run` lacks regressed 35 conformance cases (run 45097287889); `cpl-conform all --check` ok after, 117 focused cpl-lint/cpl-cli tests pass. Stdlib told.
