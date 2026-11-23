@@ -148,7 +148,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-04/literal-position-in-list-outside.cp: compiler
 - core-04/nested-slice-below-view-start-traps.cp: compiler
 - core-04/pair-symmetric.cp: compiler
-- core-04/palindromes-longest-at-key.cp: compiler
+- core-04/palindromes-longest-at-key.cp: stdlib
 - core-04/piece-into-fold.cp: compiler
 - core-04/prefix-and-z-function-over-domain-array-and-range.cp: compiler
 - core-04/prod-at-neighbour.cp: compiler
@@ -198,7 +198,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-08/trait-assoc-type-bound.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-division-by-zero-fallback.cp: compiler
-- core-09/release-list-index-unchecked.cp: compiler
+- core-09/release-list-index-unchecked.cp: perf
 - core-09/release-skips-assert.cp: compiler
 - core-09/stress-finds-broken-law.cp: compiler
 - core-09/user-context-lexical-without-uses.cp: compiler
