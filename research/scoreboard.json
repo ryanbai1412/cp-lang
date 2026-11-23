@@ -324,6 +324,7 @@
         "core-04/scalar-fill.cp": "pass",
         "core-04/select-reorders.cp": "pass",
         "core-04/stored-cut-range-not-piece.cp": "pass",
+        "core-04/subset-walk-empty-domain.cp": "pass",
         "core-04/table-over-keys-traps-outside.cp": "pass",
         "core-04/table-over-keys.cp": "pass",
         "core-04/with-domain.cp": "fail",
@@ -459,6 +460,7 @@
         "core-06/two-closures-share-var.cp": "pass",
         "core-06/unknown-arg-name.cp": "pass",
         "core-06/var-lambda-no-recursion.cp": "pass",
+        "core-06/yields-fn-loop-list-and-break.cp": "pass",
         "core-07/adapters-and-chains.cp": "pass",
         "core-07/adjacent.cp": "fail",
         "core-07/bidir.cp": "pass",
@@ -1178,16 +1180,20 @@
         "std-seq/pop-while-all.cp": "pass",
         "std-seq/present-1.cp": "pass",
         "std-seq/reduce-1.cp": "pass",
+        "std-seq/rev-piece-walks-backward.cp": "pass",
         "std-seq/rfind-no-match.cp": "fail",
         "std-seq/ring-span-windows-cyclic-sum.cp": "pass",
         "std-seq/ring-step-next-prev-from.cp": "pass",
         "std-seq/rotate-left-euclidean.cp": "pass",
         "std-seq/select-clip-cuts-nth-reverse.cp": "pass",
         "std-seq/sum-1.cp": "pass",
+        "std-seq/sum-of-rev-piece.cp": "fail",
         "std-seq/take-last-past-len.cp": "fail",
         "std-seq/take_while-1.cp": "pass",
+        "std-seq/tally-unseen-reads-zero.cp": "pass",
         "std-seq/windows-longer-than-list.cp": "fail",
         "std-seq/windows-zero-traps.cp": "fail",
+        "std-seq/zip-rev-shorter-later-arg.cp": "pass",
         "std-slope/concave.cp": "pass",
         "std-slope/hinges.cp": "pass",
         "std-sparse/idempotent-sum-false.cp": "pass",
@@ -1855,11 +1861,11 @@
         }
       ],
       "counts": {
-        "fail": 228,
-        "pass": 1005
+        "fail": 229,
+        "pass": 1010
       },
-      "passed": 1005,
-      "total": 1233
+      "passed": 1010,
+      "total": 1239
     },
     "corpus": {
       "cases": {

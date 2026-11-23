@@ -207,21 +207,26 @@ def render(init, stmts):
 
 
 def run(src: str, leg: str, cxxflags: str | None) -> tuple[int, str, str]:
-    """Run `src` on one leg: `interp`, `cxx` (`cpl run --release`) or `san`
-    (the built C++ compiled with `cxxflags`)."""
+    """Run `src` on one leg: `interp`, `cxx` (`cpl run --release`), `all`
+    (`cpl build --checks all` at -O2: the checked build agrees with the release
+    one on valid programs, AGENTS.md goal 2) or `san` (the built C++ compiled
+    with `cxxflags`)."""
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "g.cp"
         p.write_text(src)
-        if leg != "san":
+        if leg in ("interp", "cxx"):
             cmd = [str(CPL), "run"] + (["--release"] if leg == "cxx" else []) + [str(p)]
             r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                timeout=120)
             return r.returncode, r.stdout, r.stderr
         cpp, exe = Path(d) / "g.cpp", Path(d) / "g"
-        r = subprocess.run([str(CPL), "build", str(p), "-o", str(cpp)], capture_output=True, text=True)
+        checks = ["--checks", "all"] if leg == "all" else []
+        r = subprocess.run([str(CPL), "build", str(p), *checks, "-o", str(cpp)],
+                           capture_output=True, text=True)
         if r.returncode:
             return r.returncode, "", r.stderr
-        r = subprocess.run(["g++", "-std=c++17", *cxxflags.split(), "-o", str(exe), str(cpp)],
+        flags = ["-O2"] if leg == "all" else cxxflags.split()
+        r = subprocess.run(["g++", "-std=c++17", *flags, "-o", str(exe), str(cpp)],
                            capture_output=True, text=True)
         if r.returncode:
             return r.returncode, "", "g++: " + r.stderr[:500]
@@ -232,7 +237,7 @@ def run(src: str, leg: str, cxxflags: str | None) -> tuple[int, str, str]:
 
 def verdict(src, want, cxxflags):
     bad = []
-    for leg in ["interp", "cxx"] + (["san"] if cxxflags else []):
+    for leg in ["interp", "cxx", "all"] + (["san"] if cxxflags else []):
         code, out, err = run(src, leg, cxxflags)
         if code != 0 or out != want:
             bad.append((leg, code, out, err))
