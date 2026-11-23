@@ -197,6 +197,8 @@ jobs:
       # bash, so the first failing command fails the step: Windows' default
       # PowerShell reports only the last command's status.
       - name: CLI tests
+        # Windows took 191 s; a hang here held main's only run slot for 35 min.
+        timeout-minutes: 10
         shell: bash
         run: |
           cargo test -p cpl-cli --lib --test golden --test cli
