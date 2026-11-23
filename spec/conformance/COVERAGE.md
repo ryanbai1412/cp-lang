@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2662 (995 passing). Rules: 568.
+Cases: 2663 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 69 rules, 142 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 69 rules, 143 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -219,7 +219,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.23 [1+ 0-]: A **domain** is a finite, ordered index type. Its members are **positions**, which are `Or...
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
-- R04.2.20 [4+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
+- R04.2.20 [5+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [2+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | \(O(1)\)
