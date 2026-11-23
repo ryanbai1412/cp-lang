@@ -42,6 +42,9 @@ pub(crate) trait Visitor {
     /// A `while` loop, after its scope is entered and before its test is
     /// walked.
     fn while_loop(&mut self, _cond: &Cond) {}
+    /// A branch of an `if`, after its scope is entered and before its test
+    /// is walked.
+    fn if_branch(&mut self, _cond: &Cond) {}
 }
 
 pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
@@ -432,6 +435,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         } => {
             for (cond, block) in branches {
                 v.enter(Scope::Block);
+                v.if_branch(cond);
                 walk_cond(v, cond);
                 walk_stmts(v, &block.stmts);
                 v.exit(Scope::Block);

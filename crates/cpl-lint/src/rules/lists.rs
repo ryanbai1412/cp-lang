@@ -4,8 +4,8 @@
 //!
 //! An index is proven when it is the variable of an enclosing
 //! `for i in 0..xs.len` or `for i in xs.indices` over the same list, or when
-//! the left side of an `and` tests it: `i < xs.len and xs[i] > 0`, and
-//! `not xs.is_empty and xs[xs.len - 1] == 0`.
+//! an enclosing `while` or `if` test, or the left side of an `and`, tests it:
+//! `i < xs.len and xs[i] > 0`, `if not xs.is_empty: xs[xs.len - 1]`.
 
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
@@ -43,8 +43,10 @@ fn is_list_value(expr: &Expr) -> bool {
 /// An open scope.
 struct Open {
     scope: Scope,
-    /// The `(index variable, list)` pair it proves in range.
-    proves: Option<(String, String)>,
+    /// The `(index variable, list)` pairs it proves in range.
+    proves: Vec<(String, String)>,
+    /// The `if` or `while` test its proofs come from, where they do not hold yet.
+    test: Option<Span>,
     /// The names it binds, and whether each is a `List`.
     names: HashMap<String, bool>,
 }
@@ -77,10 +79,11 @@ impl Indexes<'_> {
             .count()
     }
 
-    fn proven(&self, index: &str, list: &str) -> bool {
+    fn proven(&self, at: Span, index: &str, list: &str) -> bool {
         self.scopes
             .iter()
-            .any(|open| matches!(&open.proves, Some((i, xs)) if i == index && xs == list))
+            .filter(|open| !open.test.is_some_and(|test| test.contains(at)))
+            .any(|open| open.proves.iter().any(|(i, xs)| i == index && xs == list))
     }
 
     /// Whether an `and` whose right side holds `at` tests `index` against `list`.
@@ -243,7 +246,8 @@ impl Visitor for Indexes<'_> {
     fn enter(&mut self, scope: Scope) {
         self.scopes.push(Open {
             scope,
-            proves: None,
+            proves: Vec::new(),
+            test: None,
             names: HashMap::new(),
         });
     }
@@ -255,7 +259,7 @@ impl Visitor for Indexes<'_> {
     fn for_loop(&mut self, pat: &Pattern, iter: &Expr) {
         if let (PatternKind::Name(index), Some(list)) = (&pat.kind, indexed_list(iter)) {
             if let Some(top) = self.scopes.last_mut() {
-                top.proves = Some((index.clone(), list.to_string()));
+                top.proves.push((index.clone(), list.to_string()));
             }
         }
     }
@@ -263,16 +267,13 @@ impl Visitor for Indexes<'_> {
     /// `while head < q.len:` walks a list that grows as it is read: the
     /// test is the bounds check.
     fn while_loop(&mut self, cond: &Cond) {
-        let Cond::Expr(test) = cond else { return };
-        let ExprKind::Compare { first, rest } = &unparen(test).kind else {
-            return;
-        };
-        let (ExprKind::Name(index), [(CmpOp::Lt, len)]) = (&unparen(first).kind, rest.as_slice())
-        else {
-            return;
-        };
-        if let (Some(list), Some(top)) = (list_of_len(len), self.scopes.last_mut()) {
-            top.proves = Some((index.clone(), list.to_string()));
+        self.if_branch(cond);
+    }
+
+    fn if_branch(&mut self, cond: &Cond) {
+        if let (Cond::Expr(test), Some(top)) = (cond, self.scopes.last_mut()) {
+            guard_facts(test, &mut top.proves);
+            top.test = Some(test.span.shift(self.base));
         }
     }
 
@@ -303,11 +304,11 @@ impl Visitor for Indexes<'_> {
             return;
         }
         let at = index.span.shift(self.base);
-        if is_last(index, list) && self.guarded(at, LAST, list) {
+        if is_last(index, list) && (self.proven(at, LAST, list) || self.guarded(at, LAST, list)) {
             return;
         }
         match &unparen(index).kind {
-            ExprKind::Name(name) if self.proven(name, list) || self.guarded(at, name, list) => {
+            ExprKind::Name(name) if self.proven(at, name, list) || self.guarded(at, name, list) => {
                 return
             }
             // A slice, not an element.
@@ -414,6 +415,19 @@ mod tests {
         ] {
             assert_eq!(codes(&last(test)), Vec::<&str>::new(), "{test}");
         }
+        // So is an enclosing `if` or `while` test.
+        let body = |test: &str, index: &str| {
+            format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in 0..3:\n        if {test}:\n            total += {index}\nprint(total)\n")
+        };
+        assert_eq!(codes(&body("j < ws.len", "ws[j]")), Vec::<&str>::new());
+        assert_eq!(
+            codes(&body("not ws.is_empty", "ws[ws.len - 1]")),
+            Vec::<&str>::new()
+        );
+        assert_eq!(codes(&body("j < ws.len", "ws[i]")), ["L0414"]);
+        assert_eq!(codes(&body("j < ws.len or i > 0", "ws[j]")), ["L0414"]);
+        let stack = "var st: List<Int> = [0]\nfor i in 0..3:\n    for j in 0..3:\n        while st.len > 0 and st[st.len - 1] > j: st.pop()\n        st.push(j)\n";
+        assert_eq!(codes(stack), Vec::<&str>::new());
         // Near misses: the guard must test the same index and list, before the index.
         assert_eq!(codes(&guard("ws[j] > 0 and j < ws.len")), ["L0414"]);
         assert_eq!(codes(&guard("i < ws.len and ws[j] > 0")), ["L0414"]);
