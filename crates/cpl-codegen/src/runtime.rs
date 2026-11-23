@@ -1297,9 +1297,15 @@ template <class T, size_t K> inline std::array<T, K> filled_array(const T& x) { 
         code: "\
 // `sort(by: key)`: each key is worked out once, in order, before any is
 // compared; equal keys keep their order.
+// A `()` key (a `by:` left at `_ => ()`) makes every key equal.
 template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     using K = std::decay_t<decltype(key(*seq.begin()))>;
     using T = typename S::value_type;
+    if constexpr (std::is_void_v<K>) {
+        for (const auto& x : seq) key(x);
+        (void)desc;
+        return;
+    } else {
     std::vector<K> keys;
     keys.reserve(seq.size());
     for (const auto& x : seq) keys.push_back(key(x));
@@ -1310,6 +1316,7 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     sorted.reserve(order.size());
     for (size_t i : order) sorted.push_back(std::move(seq[i]));
     std::move(sorted.begin(), sorted.end(), seq.begin());
+    }
 }
 ",
     },
