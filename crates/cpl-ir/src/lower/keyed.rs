@@ -132,4 +132,114 @@ impl<'a> Lowerer<'a> {
             span,
         )
     }
+
+    /// `s.keys` on a list, view or string: its keys in walk order, `lo..lo + len`.
+    pub(super) fn seq_keys(&mut self, value: Expr, span: Span) -> Expr {
+        let value = if Self::keyed_view(&value.ty) {
+            self.hold_view(value, span)
+        } else {
+            value
+        };
+        let lo = self.view_first_key(&value, span);
+        let key = value.ty.key_ty();
+        let len = self.len_of(value, span);
+        let hi = self.mk(
+            ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
+            Ty::Int,
+            span,
+        );
+        let (lo, hi) = (Box::new(lo), Box::new(hi));
+        self.mk(ExprKind::Range { lo, hi }, Ty::Range(Box::new(key)), span)
+    }
+
+    /// `a.rev` over a list or view, whose `.keys` are `a`'s walked backwards (R07.4.7).
+    pub(super) fn reversed_list(value: &Expr) -> bool {
+        matches!(&value.kind, ExprKind::Builtin(Builtin::Reversed, args)
+            if matches!(args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(_)))
+    }
+
+    pub(super) fn reversed_keys(&mut self, value: Expr, span: Span) -> Expr {
+        let ExprKind::Builtin(Builtin::Reversed, mut args) = value.kind else {
+            unreachable!("only a reversed list is asked for")
+        };
+        let keys = self.seq_keys(args.remove(0), span);
+        self.reversed_range(keys, span)
+    }
+
+    /// `s.filter(p)` written as a call: its source and its test.
+    pub(super) fn filter_call(e: &ast::Expr) -> Option<(&ast::Expr, &ast::Expr)> {
+        let ast::ExprKind::Call { callee, args } = &e.kind else {
+            return None;
+        };
+        let ast::ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        match args.as_slice() {
+            [test] if name.text == "filter" && test.name.is_none() => Some((base, &test.value)),
+            _ => None,
+        }
+    }
+
+    /// `s.filter(p).items` / `.keys`: keys survive `filter` (R07.3.2), so this walks
+    /// `s.items` and keeps each pair whose element passes, rather than counting
+    /// the kept elements from 0.
+    pub(super) fn filtered_items(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        span: Span,
+    ) -> Option<Expr> {
+        let keys = match name.text.as_str() {
+            "items" => false,
+            "keys" => true,
+            _ => return None,
+        };
+        let (src, test) = Self::filter_call(base)?;
+        if !matches!(
+            self.probe_ty_silent(src),
+            Some(
+                Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::Array { .. }
+            ) | Some(Ty::Str | Ty::StrView)
+        ) {
+            return None;
+        }
+        let items = ast::Expr {
+            kind: ast::ExprKind::Field {
+                base: Box::new(src.clone()),
+                name: ast::Name {
+                    text: "items".into(),
+                    span: name.span,
+                },
+            },
+            span: src.span,
+        };
+        let (iter, pair_ty) = self.iter(&items);
+        let Ty::Tuple(parts) = &pair_ty else {
+            return Some(self.err_expr(span));
+        };
+        let (key_ty, elem_ty) = (parts[0].clone(), parts[1].clone());
+        let pred = self.expect(test, &Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool)));
+        let out_ty = if keys {
+            key_ty.clone()
+        } else {
+            pair_ty.clone()
+        };
+        Some(self.collected(out_ty, span, |lw, out, push| {
+            let pred = lw.hold(pred, out);
+            let item = lw.temp(pair_ty);
+            let lid = lw.fresh_loop();
+            let pair = lw.local(item, span);
+            let elem = lw.mk(ExprKind::Field(Box::new(pair.clone()), 1), elem_ty, span);
+            let call = ExprKind::CallExpr(Box::new(pred), vec![Arg::Value(elem)]);
+            let keep = lw.mk(call, Ty::Bool, span);
+            let kept = if keys {
+                lw.mk(ExprKind::Field(Box::new(pair), 0), key_ty, span)
+            } else {
+                pair
+            };
+            let stmts = vec![push(lw, kept)];
+            let body = vec![Stmt::If(keep, Block { stmts }, Block::default())];
+            out.push(Stmt::For(lid, item, iter, Block { stmts: body }));
+        }))
+    }
 }

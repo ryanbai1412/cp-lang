@@ -2827,7 +2827,7 @@ impl<'a> Lowerer<'a> {
 
     /// `r.rev` kept as a value: the list of what the range goes over, last
     /// first. A loop over `r.rev` never comes here and builds no list.
-    fn reversed_range(&mut self, range: Expr, span: Span) -> Expr {
+    pub(super) fn reversed_range(&mut self, range: Expr, span: Span) -> Expr {
         let Ty::Range(elem) = &range.ty else {
             unreachable!("only a range is asked for")
         };
@@ -5203,6 +5203,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        if let Some(kept) = self.filtered_items(base, name, span) {
+            return kept;
+        }
         let value = self.expr(base, None);
         if let Some((index, ty)) = self.field_of(&value.ty, &name.text) {
             return self.mk(ExprKind::Field(Box::new(value), index), ty, span);
@@ -5506,28 +5509,11 @@ impl<'a> Lowerer<'a> {
             // `xs.items` kept as a value: the list of `(index, element)`.
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
+            (Ty::ListView(..), "keys") if Self::reversed_list(&value) => {
+                self.reversed_keys(value, span)
+            }
             (Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView, "keys") => {
-                let value = if Self::keyed_view(&value.ty) {
-                    self.hold_view(value, span)
-                } else {
-                    value
-                };
-                let lo = self.view_first_key(&value, span);
-                let key = value.ty.key_ty();
-                let len = self.len_of(value, span);
-                let hi = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
-                    Ty::Int,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Range {
-                        lo: Box::new(lo),
-                        hi: Box::new(hi),
-                    },
-                    Ty::Range(Box::new(key)),
-                    span,
-                )
+                self.seq_keys(value, span)
             }
             (Ty::Array { dims, .. }, "keys") if dims.len() == 1 => match dims[0] {
                 // The bounds are ends, not positions: `hi` is one past the last key
@@ -6275,7 +6261,7 @@ impl<'a> Lowerer<'a> {
         let ast::ExprKind::Field { base, name } = &e.kind else {
             return None;
         };
-        if name.text != "items" {
+        if name.text != "items" || Self::filter_call(base).is_some() {
             return None;
         }
         if !matches!(
