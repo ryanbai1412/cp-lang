@@ -349,14 +349,14 @@ pub(crate) fn cast(ty: &str, text: &str) -> String {
     }
 }
 
-/// True for the stdlib `Bitset`, a single `w: List<U64>` of words.
+/// True for the stdlib `Bitset`: its words are its `w: List<U64>`.
 pub(crate) fn is_bitset_ty(ty: &Ty, program: &Program) -> bool {
     let Ty::Struct(sid) = ty else {
         return false;
     };
     let s = &program.structs[*sid];
     s.name.starts_with("Bitset")
-        && s.fields.len() == 1
-        && s.fields[0].0 == "w"
-        && matches!(&s.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
+        && s.fields.iter().any(|(name, ty)| {
+            name == "w" && matches!(ty, Ty::List(elem) if elem.as_ref() == &Ty::U64)
+        })
 }

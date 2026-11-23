@@ -188,8 +188,7 @@ fn small_domain_bitset_keeps_its_words_inline() {
 }
 
 #[test]
-#[ignore = "`(a & b & c).len` builds both sets: no fused popcount yet"]
-fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
+fn a_bitset_expression_counted_once_is_fused_into_one_popcount_loop() {
     let cpp = cpp(SMALL_BITSETS);
     assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
     assert!(
