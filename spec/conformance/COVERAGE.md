@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2546 (995 passing). Rules: 566.
+Cases: 2547 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 55 rules, 136 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 55 rules, 137 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 68 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -86,7 +86,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.5 [1+ 1-]: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
 - R01.3.1 [2+ 3-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
-- R01.3.2 [2+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
+- R01.3.2 [3+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [3+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.

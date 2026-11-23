@@ -51,7 +51,6 @@ Workstreams 1-3 below are landed; 4-6 continue in the order above.
 3. Fix malformed `// rule:` lines; file the `std.*` cite request.
 
 ## General fixes owed
-- Instance: bug-catch misses whose fix only changes a diagnostic's edits (e47f70d3e). General fix: a `// fix:` case directive that applies the edits and checks the result is clean. Owner: spec (cpl-conform).
 
 Each local fix, and the mechanism that would remove its whole class.
 

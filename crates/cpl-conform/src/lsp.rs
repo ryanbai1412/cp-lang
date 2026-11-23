@@ -97,6 +97,7 @@ pub(crate) fn session(
         status: out.status.code().unwrap_or(-1),
         stdout,
         stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        rewritten: String::new(),
     })
 }
 

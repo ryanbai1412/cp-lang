@@ -209,12 +209,14 @@ pub(crate) struct ToolRun {
     pub(crate) status: i32,
     pub(crate) stdout: String,
     pub(crate) stderr: String,
+    /// The case file after the tool ran, for tools that rewrite it (`fix`, `fmt`).
+    pub(crate) rewritten: String,
 }
 
 /// Runs `cpl <sub> <copy of the case> <rest>` on a copy in a scratch directory
 /// (a `{case}` or `{dir}` word in `<rest>` places the copy or the directory instead),
 /// so a tool that rewrites its input (`fmt`) never edits the case. The copy
-/// blanks the `// has:`/`// lacks:` lines so a tool that echoes the source
+/// blanks the `// has:`/`// lacks:`/`// rewritten:` lines so a tool that echoes the source
 /// (`build`) can't match them.
 fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
     use std::io::Write;
@@ -241,7 +243,11 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
         .map(|l| {
             let rest = l.trim_start().strip_prefix("//").map(str::trim_start);
             match rest {
-                Some(r) if r.starts_with("has:") || r.starts_with("lacks:") => {
+                Some(r)
+                    if r.starts_with("has:")
+                        || r.starts_with("lacks:")
+                        || r.starts_with("rewritten:") =>
+                {
                     if l.ends_with('\n') {
                         "//\n"
                     } else {
@@ -304,11 +310,13 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
     let out = child
         .wait_with_output()
         .map_err(|e| format!("cpl failed: {e}"))?;
+    let rewritten = std::fs::read_to_string(&copy).unwrap_or_default();
     let _ = std::fs::remove_dir_all(&dir);
     Ok(ToolRun {
         status: out.status.code().unwrap_or(-1),
         stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
         stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        rewritten,
     })
 }
 
@@ -364,6 +372,15 @@ fn run_tool_case(
             return fail(format!("wanted output without {bad:?}; got: {}", got()));
         }
     }
+    for want in header_values(text, "rewritten:") {
+        let want = unquote(want);
+        if !first.rewritten.contains(&want) {
+            let file = runner::truncate_chars(first.rewritten.trim(), 200);
+            return fail(format!(
+                "wanted the rewritten case to have {want:?}; got: {file}"
+            ));
+        }
+    }
     CaseOutcome {
         status: "pass".into(),
         detail: String::new(),
@@ -386,7 +403,8 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
                     || rest.starts_with("tool:")
                     || rest.starts_with("file:")
                     || rest.starts_with("has:")
-                    || rest.starts_with("lacks:"))
+                    || rest.starts_with("lacks:")
+                    || rest.starts_with("rewritten:"))
             } else {
                 true
             }

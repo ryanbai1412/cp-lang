@@ -35,8 +35,10 @@ line then reads against that run: `ok` is exit status 0, `ok, output
 its line in the output, and `exit N` (tool cases only) wants that exit
 status (`spec/tools/cli.md`). Each `// has: "..."` line names text the
 output must contain and each `// lacks: "..."` line text it must not;
-the copy blanks those two kinds of line so a tool that echoes the source
-can't match them. Each `// file: <path> "..."` line (tool cases only)
+each `// rewritten: "..."` line (tool cases only) text the case file
+must contain after the run, so a case can check the edits `cpl fix` or
+`cpl fmt` made. The copy blanks those three kinds of line so a tool that
+echoes the source can't match them. Each `// file: <path> "..."` line (tool cases only)
 writes one more file, escaped like `// input:`, at that path below the
 scratch directory before the run: a `cp.toml` and a library module, say.
 
