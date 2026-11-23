@@ -45,9 +45,7 @@ mccc4j5
 nccc10s3
 nccc8s1
 nccc9s4
-noi01p5
 noi03p2
-noi07p1
 noi07p4
 noi10p4
 noi15p2

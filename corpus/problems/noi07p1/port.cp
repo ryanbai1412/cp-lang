@@ -1,48 +1,42 @@
-// NOI '07 P1 - Social Network (runnable on proto/cp.py lib-run today)
-let (n, m): (Int, Int) = read()
-let inf = 1000000000000
-let stride = n + 1
-var dist = List.filled(stride * stride, inf)
-var ways = List.filled(stride * stride, 0)
-
-fn cell(i: Int, j: Int) -> Int = i * stride + j
-
-for v in 1..=n:
-    dist[cell(v, v)] = 0
-    ways[cell(v, v)] = 1
-
+// NOI 2007 P1 Social Network: n people, m weighted friendships. For each
+// person v, print the sum over ordered pairs (s, t) of the share of shortest
+// s-t paths that pass through v.
+// Solution: Floyd-Warshall that also counts the shortest paths between every
+// pair; v lies on a shortest s-t path iff dist(s, v) + dist(v, t) == dist(s, t),
+// and then carries ways(s, v) * ways(v, t) of the ways(s, t) paths.
+// original: corpus/submissions/3756474.cpp
+let (n, m): (1..=100, 1..=4500) = read()
+domain V = 1..=n
+var dist: [V, V]?Int = None
+var ways: [V, V]Int = 0
+for v in V:
+    dist[v, v] = Some(0)
+    ways[v, v] = 1
 for _ in 0..m:
-    let (u, v, w): (Int, Int, Int) = read()
-    dist[cell(u, v)] = w
-    dist[cell(v, u)] = w
-    ways[cell(u, v)] = 1
-    ways[cell(v, u)] = 1
+    let (u, v, w): (V, V, 1..=1000) = read()
+    dist[u, v] = Some(w)
+    dist[v, u] = Some(w)
+    ways[u, v] = 1
+    ways[v, u] = 1
 
-for k in 1..=n:
-    for i in 1..=n:
-        let dik = dist[cell(i, k)]
-        if dik == inf: continue
-        for j in 1..=n:
-            let dkj = dist[cell(k, j)]
-            if dkj == inf: continue
-            let cand = dik + dkj
-            let ij = cell(i, j)
-            if cand < dist[ij]:
-                dist[ij] = cand
-                ways[ij] = ways[cell(i, k)] * ways[cell(k, j)]
-            elif cand == dist[ij] and k != i and k != j:
-                ways[ij] += ways[cell(i, k)] * ways[cell(k, j)]
+for k in V:
+    for i in V:
+        let dik = dist[i, k] else: continue
+        for j in V:
+            let dkj = dist[k, j] else: continue
+            let (cand, via) = (dik + dkj, ways[i, k] * ways[k, j])
+            let old = dist[i, j]
+            if old == None or cand < old!:
+                dist[i, j] = Some(cand)
+                ways[i, j] = via
+            elif cand == old! and k != i and k != j:
+                ways[i, j] += via
 
-for v in 1..=n:
-    var total = 0.0
-    for s in 1..=n:
-        if s == v: continue
-        let dsv = dist[cell(s, v)]
-        if dsv == inf: continue
-        for t in 1..=n:
-            if t == v or s == t: continue
-            let dvt = dist[cell(v, t)]
-            let dst = dist[cell(s, t)]
-            if dvt < inf and dsv + dvt == dst:
-                total += F64(ways[cell(s, v)] * ways[cell(v, t)]) / F64(ways[cell(s, t)])
-    print(total)
+for v in V:
+    var share = 0.0
+    for s in V:
+        for t in V:
+            if s == v or t == v or s == t: continue
+            if let a = dist[s, v], let b = dist[v, t], a + b == dist[s, t]!:
+                share += F64(ways[s, v] * ways[v, t]) / F64(ways[s, t])
+    print(share, precision: 3)
