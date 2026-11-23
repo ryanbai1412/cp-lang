@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- New gate `scripts/conformance-prelude.py` (in `scripts/check.sh`): every pub fn in a `spec/lib` chapter's tables must be a prelude name (R11.3.2). 86 gaps today in `prelude-gaps.txt` (flows 11, geometry 36, math 31, strings 8), shrink-only; stdlib request.
 - lint-fmt asked to make `with lint(...)` the one lint-suppression spelling: confirmed (decision 243). R09.4.4 says `@allow(name)` is E0503; case `core-09/allow-attribute-removed.cp` fails today. Requests to compiler, stdlib, idioms, diagnostics, lint-fmt.
 - `lib/containers.md` cf1830-style HLD excerpt now checks: `V.first!` for the root, `V.wrap(read<V>() + tot_ans)` for the cyclic shift (no `cyc` method exists; `V.wrap` is value-based, `V.wrap(6)` on `1..=5` is 1), `t_now.prev` for a `?Time`. spec-blocks 69/185 (32 error, 84 skip).
 - `core/05-ownership.md` quiz 33 named a `Filter<[V]Int, Int -> Bool>` type; spec/std's view is `Filtered<S>`, so the quiz now says that. It still fails (`Filtered` not in scope); stdlib request.

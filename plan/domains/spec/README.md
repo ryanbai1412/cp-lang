@@ -54,6 +54,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 116 (held range triples) | 0 | M2 |
 | Named args in core/lib that std lacks | `conformance-sigs.py --check` | 6 (`sig-gaps.txt`) | 0 | M3 |
+| Chapter-table fns missing from the prelude (R11.3.2) | `conformance-prelude.py --check` | 86 (`prelude-gaps.txt`) | 0 | M3 |
 | Rebuild holes (cold agent) | probe P1 | 20 (round 4; 21 in round 3, 32 in round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | `conformance-bugcatch.py`, [bugcatch.md](bugcatch.md) | 9/10 revertible (90%); 15 of 25 no longer revert or build | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |

@@ -105,3 +105,9 @@ name = "suite wall time, 2 cores"
 command = "/usr/bin/time -f '%e s' target/release/cpl-conform conformance spec-blocks 2>&1 | tail -1"
 today = "8.7 s"
 target = "< 20 s"
+
+[[metric]]
+name = "chapter-table fns missing from the prelude (R11.3.2)"
+command = "uv run scripts/conformance-prelude.py --check"
+today = "86 (flows 11, geometry 36, math 31, strings 8)"
+target = "0"

@@ -465,6 +465,9 @@ uv run scripts/conformance-traits.py --check || fail "trait gate failed; see abo
 step "conformance sigs: named args in spec/core and spec/lib exist in spec/std"
 uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 
+step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
+uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
+
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \
