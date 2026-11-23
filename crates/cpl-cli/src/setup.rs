@@ -622,7 +622,10 @@ mod tests {
         let properties = std::fs::read_to_string(root.join("gradle.properties")).unwrap();
         // `lines()`, not `\n`: a Windows checkout has CRLF.
         let want = format!("lsp4ijVersion = {LSP4IJ}");
-        assert!(properties.lines().any(|line| line.trim_end() == want), "{properties}");
+        assert!(
+            properties.lines().any(|line| line.trim_end() == want),
+            "{properties}"
+        );
     }
 
     #[test]
