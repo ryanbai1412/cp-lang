@@ -48,11 +48,18 @@ def tests(pid):
     return []
 
 
+class Out(tuple):
+    """(exit code, stdout), compared as such; `err` keeps stderr for the report."""
+    err = b""
+
+
 def run(cmd, inp):
     try:
         with open(inp, "rb") as f:
             r = subprocess.run(cmd, stdin=f, capture_output=True, timeout=TIMEOUT)
-        return r.returncode, r.stdout
+        out = Out((r.returncode, r.stdout))
+        out.err = r.stderr
+        return out
     except subprocess.TimeoutExpired:
         return None
 
@@ -165,6 +172,10 @@ def mismatch(interp, cxx):
     if cxx is None:
         return f"interp exit {interp[0]}, c++ timed out twice after {TIMEOUT} s"
     say = f"interp exit {interp[0]}, c++ exit {cxx[0]}"
+    for side, out in (("interp", interp), ("c++", cxx)):
+        err = getattr(out, "err", b"").strip().split(b"\n")[0]
+        if out[0] and err:
+            say += f", {side} stderr {err[:120]!r}"
     a, b = interp[1].split(b"\n"), cxx[1].split(b"\n")
     for i, (x, y) in enumerate(zip(a, b)):
         if x != y:
