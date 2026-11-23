@@ -113,23 +113,34 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// cost: \(O(1)\)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).get(0, 1) == 2`
-    pub fn get(self, r: Int, c: Int) -> T = data[r * cols + c]
+    /// trap: `Mat<Int>.zeros(2, 2).get(0, 2)`
+    /// trap: `Mat<Int>.zeros(2, 2).get(-1, 0)`
+    pub fn get(self, r: Int, c: Int) -> T = data[self.cell(r, c)]
 
     /// Set the entry at `(r, c)` to `val`.
     ///
     /// cost: \(O(1)\)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = Mat<Int>.zeros(2, 2); m.set(1, 0, 5); m.get(1, 0) == 5`
+    /// trap: `var m = Mat<Int>.zeros(2, 2); m.set(2, 0, 5)`
     pub fn set(mut self, r: Int, c: Int, val: T):
-        data[r * cols + c] = val
+        data[self.cell(r, c)] = val
 
     /// The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.
     ///
     /// cost: \(O(1)\)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = Mat<Int>.identity(2); m.at(0, 0) += 4; m.get(0, 0) == 5`
+    /// trap: `var m = Mat<Int>.zeros(2, 2); m.at(0, 2) += 1`
     pub fn at(self, r: Int, c: Int) -> lends mut T:
-        lend mut data[r * cols + c]
+        lend mut data[self.cell(r, c)]
+
+    /// The flat offset of `(r, c)`, trapping unless `r` is in `0..rows` and `c` in `0..cols`:
+    /// every accessor goes through it, so no row spills into the next.
+    fn cell(self, r: Int, c: Int) -> Int:
+        assert 0 <= r and r < rows, "row {r} is outside 0..{rows}"
+        assert 0 <= c and c < cols, "column {c} is outside 0..{cols}"
+        r * cols + c
 
     /// The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
     ///
@@ -941,6 +952,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// cost: \(O(1)\)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.get(0, 1) and not m.get(1, 0)`
+    /// trap: `BitMat(2, 2).get(0, 2)`
     pub fn get(self, r: Int, c: Int) -> Bool:
         assert 0 <= r and r < rows and 0 <= c and c < cols
         bits[r * bit_words(cols) + c / 62].bit((c % 62))

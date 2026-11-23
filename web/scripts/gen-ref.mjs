@@ -110,7 +110,7 @@ const std = JSON.parse(
   }),
 );
 
-const labelNames = ['cost', 'traps', 'empty', 'ties', 'order'];
+const labelNames = ['cost', 'traps', 'trap', 'empty', 'ties', 'order'];
 function splitDoc(doc) {
   const facts = [];
   const examples = [];

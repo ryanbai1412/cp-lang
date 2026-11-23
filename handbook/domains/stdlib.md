@@ -197,7 +197,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Algebraic laws hold | ops in `std/algebra.cp` whose laws are unproved | `crates/cpl-prover/src/laws.rs` |
 | A fold of a monoid is `T`, and any op works with a `?T` fold | std folds or `Window.all` returning `?T` for a monoid; structures rejecting an op with no identity | rule `std-api/R5`; `Monoid.of` examples in `cpl-conform docs`; `missing` for `Window.all` and the `?T` lifting helper |
 | No overflow inside std for inputs in the declared range | std bodies with an unproved intermediate | `missing` (overflow-proof report over std bodies) |
-| Traps fire exactly where documented | `traps:` lines with no trapping case | rule `std-docs/R4`; `missing` (generated trap suite from `traps:` labels) |
+| Traps fire exactly where documented | `traps:` lines with no `trap:` example (`--audit`) | rule `std-docs/R4`; `scripts/std-trap-examples.py` (in `scripts/check.sh`) |
 | Interpreter and C++ agree | `cpl-conform diff` disagreements on std | differential suite `cpl-conform diff`; side-effect variants in `crates/cpl-conform/src/variants.rs` |
 | Prints, walks and hash orders are deterministic | print-order disagreements between engines | `cpl-conform diff` side-effect variants |
 | Every trait method of every claimer works | uncovered (type, trait, method) triples | generated suite `scripts/conformance-traits.py --check`, gap list only shrinks |

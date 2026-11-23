@@ -43,9 +43,15 @@ A fn that can see empty input says what it returns; one that picks among equals 
 
 Every condition that traps is listed in words, in source terms.
 
-- **Why:** a trap the doc didn't mention reads like a compiler bug.
-- **Example:** ``traps: unless `0 <= k < len` ``.
-- **Enforced by:** `missing` (generated trap suite from the `traps:` labels).
+A `trap:` line under it is a one-line program that must trap, so the doc
+cannot claim a check the code skips.
+
+- **Why:** a trap the doc didn't mention reads like a compiler bug, and a
+  documented trap that doesn't fire returns a wrong answer silently.
+- **Example:** ``traps: when `c` is not in `0..cols` `` with
+  ``trap: `Mat<Int>.zeros(2, 2).get(0, 2)` ``.
+- **Enforced by:** `scripts/std-trap-examples.py` runs every `trap:` line;
+  `--audit` lists the `traps:` lines with no `trap:` yet.
 
 ### R5. The rendered doc shows trait bounds and defaults
 
