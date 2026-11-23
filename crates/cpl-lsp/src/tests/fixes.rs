@@ -315,3 +315,34 @@ fn an_error_links_to_its_errors_page() {
         "{diagnostics:?}"
     );
 }
+
+/// The editor's preferred quick fix is the one `cpl fix` applies: the first
+/// candidate that re-checks, not the first listed.
+#[test]
+fn the_preferred_quick_fix_is_the_one_cpl_fix_applies() {
+    let text = "let xs = [3, 1, 2]\nlet m = min(xs.len, 5 == 3\nprint(m)\n";
+    let (mut server, diagnostics) = open(text);
+    let reply = server.handle(&request(
+        5,
+        "textDocument/codeAction",
+        obj([
+            ("textDocument", doc()),
+            ("range", diagnostics[0].at(&["range"]).clone()),
+            (
+                "context",
+                obj([("diagnostics", diagnostics.clone().into())]),
+            ),
+        ]),
+    ));
+    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
+    let preferred: Vec<&str> = actions
+        .iter()
+        .filter(|a| a.at(&["isPreferred"]) == &Value::Bool(true))
+        .filter_map(|a| a.at(&["title"]).as_str())
+        .collect();
+    assert_eq!(
+        preferred,
+        vec!["insert `)` after `xs.len, 5`"],
+        "{actions:?}"
+    );
+}

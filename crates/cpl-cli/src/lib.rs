@@ -3,7 +3,6 @@
 
 mod build;
 mod check;
-mod checked_fix;
 mod commands;
 use commands::{command_usage, unknown_option, usage as main_usage};
 
@@ -23,7 +22,7 @@ mod sha256;
 mod submit;
 use submit::{list_judges, submit};
 pub mod toolchain;
-pub use checked_fix::checked_fix;
+pub use cpl_lsp::checked_fix::checked_fix;
 mod trace;
 mod unit_tests;
 

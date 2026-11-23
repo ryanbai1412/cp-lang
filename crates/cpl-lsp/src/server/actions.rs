@@ -21,6 +21,12 @@ impl Server {
             if diag.span.end < wanted.start || diag.span.start > wanted.end {
                 continue;
             }
+            // The fix `cpl fix` applies: for an error the first candidate
+            // that re-checks, for a lint its first.
+            let preferred = match diag.severity {
+                cpl_diag::Severity::Error => cpl_check_fix(uri, &analysis.text, diag),
+                _ => diag.fixes.first(),
+            };
             for fix in &diag.fixes {
                 let edits: Vec<Value> = fix
                     .edits
@@ -36,6 +42,10 @@ impl Server {
                 actions.push(obj([
                     ("title", fix.title.as_str().into()),
                     ("kind", "quickfix".into()),
+                    (
+                        "isPreferred",
+                        preferred.is_some_and(|p| std::ptr::eq(p, fix)).into(),
+                    ),
                     (
                         "diagnostics",
                         vec![diagnostic_json(diag, uri, &analysis.text, &analysis.lines)].into(),
@@ -109,4 +119,13 @@ impl Server {
         }
         Ok(Reply::result(Value::Array(actions)))
     }
+}
+
+/// `crate::checked_fix` on a scratch database, so the open documents stay as they are.
+fn cpl_check_fix<'d>(
+    uri: &str,
+    text: &str,
+    diag: &'d cpl_diag::Diagnostic,
+) -> Option<&'d cpl_diag::Fix> {
+    crate::checked_fix::checked_fix(&mut cpl_check::Database::new(), uri, text, diag)
 }

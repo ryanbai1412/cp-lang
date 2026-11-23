@@ -448,3 +448,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   line labels that spot "the `)` most likely goes here". Broken ports:
   100% first error right (577), 0 cascades. `RECOVERY_SHOW="wrong line"`
   lists misses. Tests in layout_tests.rs.
+- M2 criterion 8 (same fixes in every tool): the checked-fix ranking moved
+  from cpl-cli into `cpl_lsp::checked_fix`, and the editor's code actions
+  mark the fix `cpl fix` applies as `isPreferred` (re-checked on a scratch
+  database), so Neovim's apply-preferred and VS Code's quick fix take the
+  same candidate as the CLI. Test in cpl-lsp tests/fixes.rs.

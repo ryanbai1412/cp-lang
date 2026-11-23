@@ -3,7 +3,9 @@
 
 use std::io::Write;
 
-use crate::{checked_fix, json_out, EXIT_ERRORS, EXIT_USAGE};
+use crate::{json_out, EXIT_ERRORS, EXIT_USAGE};
+use cpl_lsp::checked_fix;
+pub(crate) use cpl_lsp::checked_fix::errors_in;
 
 /// Checks each file through the shared front end and renders what it
 /// finds.
@@ -69,19 +71,6 @@ pub(crate) fn reported_errors(path: &std::path::Path, text: &str) -> Vec<cpl_dia
     db.set_file(&key, text);
     let analysis = db.analyze(&key).expect("the file was just set");
     let mut out = cpl_ir::reported(&analysis);
-    out.retain(|d| d.severity == cpl_diag::Severity::Error);
-    out
-}
-
-/// The errors `cpl check` reports for `text`, read as the file at `path`.
-pub(crate) fn errors_in(
-    db: &mut cpl_check::Database,
-    path: &str,
-    text: &str,
-) -> Vec<cpl_diag::Diagnostic> {
-    db.set_file(path, text);
-    let analysis = db.analyze(path).expect("the file was just set");
-    let mut out = cpl_ir::check(&analysis);
     out.retain(|d| d.severity == cpl_diag::Severity::Error);
     out
 }

@@ -1,5 +1,5 @@
 //! Choosing among an error's ranked fixes by re-checking, so `cpl fix`
-//! takes the candidate the types agree with
+//! applies, and the editor prefers, the candidate the types agree with
 //! (`plan/domains/diagnostics/design/checked-fix-candidates.md`).
 
 use cpl_diag::{Diagnostic, Fix};
@@ -46,7 +46,7 @@ fn choose<'d>(
             ..diag.clone()
         };
         let (fixed, _) = cpl_lint::apply_fixes(text, std::slice::from_ref(&alone));
-        let errors = crate::check::errors_in(db, path, &fixed);
+        let errors = errors_in(db, path, &fixed);
         if errors.is_empty() {
             return Some(fix);
         }
@@ -61,7 +61,7 @@ fn choose<'d>(
 
 /// `errors` with the checked fix moved first in each, so applying first
 /// fixes applies the checked ones, sharing `MAX_CHECKS` re-checks.
-pub(crate) fn rank_checked(
+pub fn rank_checked(
     db: &mut cpl_check::Database,
     path: &str,
     text: &str,
@@ -77,6 +77,15 @@ pub(crate) fn rank_checked(
             }
         }
     }
+}
+
+/// The errors the front end reports for `text` as `path`.
+pub fn errors_in(db: &mut cpl_check::Database, path: &str, text: &str) -> Vec<Diagnostic> {
+    db.set_file(path, text);
+    let analysis = db.analyze(path).expect("the file was just set");
+    let mut out = cpl_ir::check(&analysis);
+    out.retain(|d| d.severity == cpl_diag::Severity::Error);
+    out
 }
 
 #[cfg(test)]
