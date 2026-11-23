@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3103 (1092 passing). Rules: 583.
+Cases: 3109 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -18,8 +18,8 @@ Cases: 3103 (1092 passing). Rules: 583.
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 209 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 25 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 210 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -442,7 +442,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
 - R06.4.9 [1+ 6-]: `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the library declares, so...
-- R06.5.1 [3+ 1-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
+- R06.5.1 [4+ 1-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
 
 ### R07: 07-sequences.md
 
@@ -482,7 +482,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.5 [5+ 9-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
-- R07.4.7 [4+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
+- R07.4.7 [5+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
 - R07.4.9 [6+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
@@ -940,7 +940,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 25 case(s)
+- R0101 Index out of range: 26 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
@@ -1093,9 +1093,13 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/second-position-of-a-user-index-is-checked-too.cp
 - core-04/subset-type-walk-binds-subsets.cp
 - core-04/subset-walk-empty-domain.cp
+- core-04/three-d-str-cell-append-and-last-dim-trap.cp
 - core-04/trap-in-a-small-fn-names-its-frame.cp
 - core-04/tuple-with-subset-is-a-domain.cp
 - core-05/mut-cell-of-2d-array-as-argument.cp
+- core-05/param-unchanged-by-a-callee-writing-its-source.cp
+- core-05/param-unchanged-by-a-write-to-its-global-source.cp
+- core-05/value-param-beside-a-written-mut-param.cp
 - core-07/in-on-a-list-fixes-to-contains.cp
 - core-07/list-literal-of-range-is-one-element.cp
 - core-07/yielded-closure-writes-generator-local.cp
