@@ -159,7 +159,6 @@ mmcc14p3
 nccc10s2
 nccc10s3
 nccc8s1
-nccc8s3
 nccc8s4
 nccc9s4
 neerc10k

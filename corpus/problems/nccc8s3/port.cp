@@ -8,7 +8,7 @@ domain I = 1..=n
 domain V = 1..=k
 let a: [I]V = read()
 
-var last: [V]I = I.first  // where each number occurs for the last time
+var last: [V]I = I.first!  // where each number occurs for the last time
 for i in I: last[a[i]] = i
 
 // Keep a stack of the numbers chosen so far. A new number pushes out every

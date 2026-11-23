@@ -17,8 +17,8 @@ for i in Q:
     ev_r[i] = r
     max_c max= r + 2
 
-let M = max_c
-let S = M + 5
+let top = max_c
+let width = top + 5
 var seg: [0..4 * q + 5]List<Int> = []
 
 fn add_span(o: Int, l: Int, r: Int, ql: Int, qr: Int, v: Int):
@@ -36,7 +36,7 @@ var st_v: List<Int> = []
 var closed: [Q]Bool = false
 
 for i in Q:
-    let ky = ev_l[i] * S + ev_r[i]
+    let ky = ev_l[i] * width + ev_r[i]
     if is_add[i]:
         let nid = st_t.len
         st_p.push(head.get(ky) ?? -1)
@@ -58,7 +58,7 @@ let INF = 1_000_000_000
 let B = 1_000_005
 let W = 2_000_011
 let PINF = (2 * B) * W + 2 * B
-var bits: [0..2, 0..M + 2]Int = 0
+var bits: [0..2, 0..top + 2]Int = 0
 var h_s: List<Int> = []
 var h_j: List<Int> = []
 var h_v: List<Int> = []
@@ -72,7 +72,7 @@ fn ins(s: Int, l: Int, r: Int, cur: Int) -> Int:
     var nb = cur
     if hi > 0: nb min= r - hi
     var j = r
-    while j <= M:
+    while j <= top:
         if l > bits[s, j]:
             h_s.push(s)
             h_j.push(j)
@@ -92,10 +92,10 @@ fn dfs(o: Int, l: Int, r: Int, dj0: Int, dj1: Int, p0: Int, p1: Int, ml: Int):
     var b2 = ml
     for k in 0..seg[o].len:
         let v = seg[o][k]
-        let cl = v / S
-        let cr = v % S
+        let cl = v / width
+        let cr = v % width
         d0 = ins(0, cl, cr, d0)
-        d1 = ins(1, M - cr, M - cl, d1)
+        d1 = ins(1, top - cr, top - cl, d1)
         b0 min= (cr + B) * W + (-cl + B)
         b1 min= (-cl + B) * W + (cr + B)
         b2 min= cr - cl
