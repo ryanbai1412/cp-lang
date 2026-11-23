@@ -78,7 +78,7 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
         None => diags.retain_mut(|d| {
             count_spelling(d, None);
             d.code == LOOP_REDUCTION.code
-                || d.code == UNPROVEN_LIST_INDEX.code
+                || (d.code == UNPROVEN_LIST_INDEX.code && d.labels.is_empty())
                 || d.code == FLOAT_EQUALITY.code
                 || d.code == POW_METHOD.code
                 || !TYPED.contains(&d.code)
@@ -196,7 +196,12 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         }
         c if c == STALE_ENTRY_SKIP.code => matches!(label(), Some(Some(Ty::Named { name, .. }))
             if ["Heap", "MaxHeap", "MinMaxHeap", "ErasableHeap", "MeldHeap"].contains(&name.as_str())),
-        c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
+        // A label names a list only the checker's type for it shows is one.
+        c if c == UNPROVEN_LIST_INDEX.code => {
+            facts.typed_index(d.span).is_none()
+                && label()
+                    .is_none_or(|ty| matches!(ty, Some(Ty::Named { name, .. }) if name == "List"))
+        }
         c if c == MAP_AS_MULTISET.code => matches!(label(), Some(Some(Ty::Named { name, args }))
             if name == "Map" && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
         c if c == SORT_FOR_EXTREME.code => {

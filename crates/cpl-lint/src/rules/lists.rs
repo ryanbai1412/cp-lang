@@ -49,22 +49,23 @@ struct Open {
     proves: Vec<(String, String)>,
     /// The `if` or `while` test its proofs come from, where they do not hold yet.
     test: Option<Span>,
-    /// The names it binds, and whether each is a `List`.
-    names: HashMap<String, bool>,
+    /// The names it binds, and whether each is a `List` (`None`: only the
+    /// checker's facts can say).
+    names: HashMap<String, Option<bool>>,
 }
 
 struct Indexes<'a> {
     src: &'a str,
     base: u32,
     /// The names bound at the top level, and whether each is a `List`.
-    globals: HashMap<String, bool>,
+    globals: HashMap<String, Option<bool>>,
     scopes: Vec<Open>,
     /// Whether the `let` being walked declares a `List`.
-    binding_list: bool,
+    binding_list: Option<bool>,
     /// Where in the file the `@test` fn being read ends: nothing before it is hot.
     test_ends: u32,
-    /// The parameters of the `fn` about to be entered that are `List`s.
-    list_params: HashSet<String>,
+    /// The parameters of the `fn` about to be entered, and whether each is a `List`.
+    list_params: HashMap<String, Option<bool>>,
     /// The right sides of `and`s, with the `(index, list)` pairs their left side proves.
     guards: Vec<(Span, Vec<(String, String)>)>,
     findings: Vec<Finding>,
@@ -95,15 +96,16 @@ impl Indexes<'_> {
         })
     }
 
-    /// Whether `name`, as seen here, is a `List`: the nearest binding decides.
-    fn is_list(&self, name: &str) -> bool {
+    /// Whether `name`, as seen here, is a `List`: the nearest binding
+    /// decides, and `None` leaves it to the checker's type for the name.
+    fn is_list(&self, name: &str) -> Option<bool> {
         self.scopes
             .iter()
             .rev()
             .find_map(|open| open.names.get(name))
             .or_else(|| self.globals.get(name))
             .copied()
-            .unwrap_or(false)
+            .unwrap_or(Some(false))
     }
 }
 
@@ -209,14 +211,14 @@ fn is_last(index: &Expr, list: &str) -> bool {
 
 impl Visitor for Indexes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        self.binding_list = false;
+        self.binding_list = None;
         match &stmt.kind {
             StmtKind::Let { pat, ty, init, .. } => {
-                let list = match ty {
-                    Some(ty) => is_list_type(ty),
-                    None => init.as_ref().is_some_and(is_list_value),
+                self.binding_list = match ty {
+                    _ if !matches!(pat.kind, PatternKind::Name(_)) => None,
+                    Some(ty) => Some(is_list_type(ty)),
+                    None => init.as_ref().filter(|e| is_list_value(e)).map(|_| true),
                 };
-                self.binding_list = list && matches!(pat.kind, PatternKind::Name(_));
             }
             StmtKind::Fn(decl) => {
                 // A `@test` is not what a judge times.
@@ -226,8 +228,7 @@ impl Visitor for Indexes<'_> {
                 self.list_params = decl
                     .params
                     .iter()
-                    .filter(|param| param.ty.as_ref().is_some_and(is_list_type))
-                    .map(|param| param.name.text.clone())
+                    .map(|param| (param.name.text.clone(), param.ty.as_ref().map(is_list_type)))
                     .collect();
             }
             _ => {}
@@ -236,9 +237,10 @@ impl Visitor for Indexes<'_> {
 
     fn bind(&mut self, name: &str, _span: Span, how: Bind) {
         let list = match how {
-            Bind::Let | Bind::Var => std::mem::take(&mut self.binding_list),
-            Bind::Param => self.list_params.contains(name),
-            Bind::Const | Bind::Pattern => false,
+            Bind::Let | Bind::Var => self.binding_list.take(),
+            Bind::Param => self.list_params.get(name).copied().flatten(),
+            Bind::Pattern => None,
+            Bind::Const => Some(false),
         };
         let names = match self.scopes.last_mut() {
             Some(open) => &mut open.names,
@@ -301,8 +303,9 @@ impl Visitor for Indexes<'_> {
         let (ExprKind::Name(list), [index]) = (&base.kind, indices.as_slice()) else {
             return;
         };
+        let known = self.is_list(list);
         if self.loop_depth() < HOT_DEPTH
-            || !self.is_list(list)
+            || known == Some(false)
             || self.base + expr.span.start < self.test_ends
         {
             return;
@@ -320,12 +323,15 @@ impl Visitor for Indexes<'_> {
             _ => {}
         }
         let written = index.span.shift(self.base).text(self.src);
-        let diag = Diagnostic::warning(
+        let mut diag = Diagnostic::warning(
             UNPROVEN_LIST_INDEX.code,
             expr.span.shift(self.base),
             format!("`{list}[{written}]` is bounds-checked on every pass of a nested loop"),
-        )
-        .with_help(format!(
+        );
+        if known.is_none() {
+            diag = diag.with_label(base.span.shift(self.base), format!("`{list}` is a `List`"));
+        }
+        let diag = diag.with_help(format!(
             "loop over the values (`for x in {list}`) or the indices (`for i in 0..{list}.len`), or index an array by a domain: `[D]T` needs no check"
         ));
         self.findings.push(Finding {
@@ -341,9 +347,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         base: 0,
         globals: HashMap::new(),
         scopes: Vec::new(),
-        binding_list: false,
+        binding_list: None,
         test_ends: 0,
-        list_params: HashSet::new(),
+        list_params: HashMap::new(),
         guards: Vec::new(),
         findings: Vec::new(),
     };

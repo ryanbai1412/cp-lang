@@ -393,3 +393,17 @@ fn a_counting_loop_over_a_product_domain_keeps_the_generator() {
         d.help
     );
 }
+
+#[test]
+fn a_list_only_the_checker_types_is_still_an_unproven_index() {
+    let src = "fn rows(n: Int) -> List<Int>:\n    return [n].filled(0)\nfn word() -> Str:\n    return \"abcde\"\nlet xs = rows(5)\nlet w = word()\nvar t = 0\nfor i in 0..5:\n    for j in 0..5:\n        t += xs[(i + j) % 5]\n        if w[(i + j) % 5] == 'a': t += 1\nprint(t)\n";
+    let mut config = Config::default();
+    config.set(&crate::UNPROVEN_LIST_INDEX, crate::Level::Warn);
+    let diags = lint(src, &config);
+    let found: Vec<_> = diags
+        .iter()
+        .filter(|d| d.code == crate::UNPROVEN_LIST_INDEX.code)
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].message.contains("xs["), "{}", found[0].message);
+}
