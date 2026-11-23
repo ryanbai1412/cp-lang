@@ -246,3 +246,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
          let by_w = buckets(w)                 // E0606: `W` does not implement `Domain`
 
      Blocks `corpus/problems/cf2062e1` and `cf2062e2`.
+- Request from stdlib (2026-11-22): `.collect()` on a `List<T>` is E0203 "a `List<V>` has no method `collect` that `cpl run` knows", though R07.2.11 makes `.collect()` the materialize step for any sequence and a `List` is one. It surfaced through `dfs` on a `[V]List<V>` (`g.out(s)` is the list itself), so `std-graph/dfs-from-nothing-is-empty.cp` failed. std now writes `[a for a in g.out(s)]` (same copy, same cost); the gap remains for user code: `let xs = [1, 2]; print(xs.collect().len)`.

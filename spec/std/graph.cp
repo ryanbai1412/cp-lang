@@ -1897,7 +1897,7 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
         yield Visit.Enter(s, no_via)
         var stk_v = [s]
         var stk_via: List<?G.Arc> = [no_via]
-        var stk_arcs: List<List<G.Arc>> = [g.out(s).collect()]
+        var stk_arcs: List<List<G.Arc>> = [[a for a in g.out(s)]]
         var stk_i = [0]
         while stk_v.len > 0:
             let top = stk_v.len - 1
@@ -1914,7 +1914,7 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
                     yield Visit.Enter(v, Some(a))
                     stk_v.push(v)
                     stk_via.push(Some(a))
-                    stk_arcs.push(g.out(v).collect())
+                    stk_arcs.push([a for a in g.out(v)])
                     stk_i.push(0)
             else:
                 let via = stk_via[top]
