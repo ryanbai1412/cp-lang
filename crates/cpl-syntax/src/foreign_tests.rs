@@ -140,3 +140,11 @@ fn a_c_brace_block_header_becomes_a_colon_block() {
     let one_line = parse_file("let x = 3\nif x > 2 {\n    print(x) }\n").diagnostics;
     assert_eq!(one_line[0].fixes[0].edits.len(), 1);
 }
+
+#[test]
+fn brace_bodied_fn_and_struct_get_the_brace_fix() {
+    let src = "struct P {\n    x: Int\n}\nfn f(p: P) -> Int {\n    return p.x\n}\n";
+    let d = parse_file(src).diagnostics;
+    assert_eq!(d.len(), 2, "{d:?}");
+    assert!(d.iter().all(|d| d.fixes[0].edits.len() == 2), "{d:?}");
+}

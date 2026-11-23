@@ -223,6 +223,30 @@ impl<'a> Parser<'a> {
         None
     }
 
+    /// `fn f() -> Int {` or `struct P {` over an indented body: one error
+    /// with the brace fix, and the body is read as if it had a `:`.
+    pub(super) fn open_brace_body(&mut self, after: &str) -> bool {
+        let Some(edits) = self.brace_header_edits() else {
+            return false;
+        };
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TOKEN,
+            self.span(),
+            format!("expected `:` after {after}, found `{{`"),
+        )
+        .with_help("the body is indented under `:`, with no braces");
+        let title = "write `:` and drop the braces".into();
+        diag.fixes.push(cpl_diag::Fix { title, edits });
+        self.error(diag);
+        self.bump();
+        true
+    }
+
+    /// The `}` that [`Self::open_brace_body`] left after the body.
+    pub(super) fn close_brace_body(&mut self) {
+        self.eat(T::RBrace);
+    }
+
     /// `new P(x: 1)`: Java's and C++'s `new`. One error with the fix that
     /// drops it; the call after it is read as written.
     pub(super) fn foreign_new(&mut self) {
