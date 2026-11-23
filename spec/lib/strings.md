@@ -155,7 +155,6 @@ fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool                  // O(p.l
 fn ends_with(self: Str, p: Str) -> Bool                                 // O(p.len)
 fn search<P>(self: Str, p: P) -> ?Int                                   // O(self.len + p.len)
 fn rsearch<P>(self: Str, p: P) -> ?Int                                  // O(self.len + p.len)
-fn count(self: Str, c: Char) -> Int                                     // O(self.len)
 @get fn lower(self: Char) -> Char                                       // O(1)
 @get fn upper(self: Char) -> Char                                       // O(1)
 @get fn digit(self: Char) -> Int                                        // O(1); traps outside '0'..'9'
