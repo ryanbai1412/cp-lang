@@ -1,0 +1,5 @@
+code = "L0576"
+level = "warn"
+group = "idiom"
+title = "Read the smallest, then remove it"
+summary = "`let x = s.first!` then `s.remove(x)`: `s.pop_first()!` (`std.bag`)"

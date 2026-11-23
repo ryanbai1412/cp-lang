@@ -7378,3 +7378,13 @@ carries a machine fix. The fact table keeps it only on a `Heap` or a
 `MaxHeap`, the two heaps that declare `push_pop`. Matching `push` and
 `pop` by name moves `--update lint_std_names` 172 -> 174. Reverse:
 delete `spec/lints/push_pop_pair/` and `rules/push_pop.rs`.
+
+## 343. `let x = s.first!` then `s.remove(x)` teaches `s.pop_first()!`: L0576 `pop_min_loop`; `lint_std_names` 174 -> 179 (2026-11-23)
+
+Reading an end and then removing it by value finds it twice; `pop_first`
+and `pop_last` (`std.bag`) do it in one call, so the lint carries a
+machine fix that keeps the original `!`. The fact table keeps it only on
+a `SortedBag` or `SortedSet`. Matching `first`, `last`, `remove`,
+`pop_first` and `pop_last` by name moves `--update lint_std_names`
+174 -> 179. Reverse: delete `spec/lints/pop_min_loop/` and
+`rules/pop_end.rs`.

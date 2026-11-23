@@ -219,7 +219,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | order_stat_by_hand | BIT over compressed values for k-th | `SortedBag.kth` / `count_lt` | fix? | #1 | loop | |
 | interval_map_by_hand | split/merge on an ordered map of runs (ODT) | `IntervalMap.assign` / `IntervalSet` | warn | #1 | loop | |
 | interval_union_loop | sort intervals, merge overlapping | `IntervalSet.add` | fix? | #1 | loop | |
-| pop_min_loop | `first` then `remove(first)` | `pop_first()` | fix | #13 | ty | |
+| pop_min_loop | `first` then `remove(first)` | `pop_first()` | fix | #13 | ty | ✓pop_min_loop |
 | domain_keyed_map | `Map`/`Set` keyed by a domain | `[D]?T` / `Marks<D>` | fix? | #3 | ty | ✓domain_keyed_map |
 
 ### S.heap

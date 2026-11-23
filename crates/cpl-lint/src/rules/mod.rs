@@ -29,6 +29,7 @@ mod memo;
 mod mod_div;
 mod mod_reduce;
 mod neg_heap;
+mod pop_end;
 mod pops;
 mod proven;
 mod push_pop;
@@ -56,6 +57,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(fermat::check(file));
     findings.extend(letters::check(file));
     findings.extend(push_pop::check(file));
+    findings.extend(pop_end::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

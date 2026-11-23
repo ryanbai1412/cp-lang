@@ -1,0 +1,1 @@
+`let x = s.first!` then `s.remove(x)` walks the tree twice, once to find the smallest and once to find it again by value. `s.pop_first()` (`std.bag`, on `SortedBag` and `SortedSet`) reads and removes it in one call and is `None` when `s` is empty; `pop_last()` is the same for the largest. The fix keeps the `!` the original had.
