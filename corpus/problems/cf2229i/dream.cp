@@ -16,14 +16,14 @@
 // rerooted at c holds the k - i chosen nodes outside subtree(c). With every
 // child split off, up[v][1] + w(v) * k is the answer with v as the root.
 @!multitest
-let (n, k): (2..=4000, Int) = read()
+let (n, k): (2..=4000, 1..=n) = read()
 domain V = 1..=n
 let w: [V]1..=1_000_000_000 = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted(Graph.undirected(edges), root: V.first)
 let kids: [V]List<V> = [V] u => t.children(u).sorted(by: c => t.size(c))
 
-use std.ntt.{max_plus_convolve, max_plus_correlate}
+use std.ntt.max_plus_correlate
 
 var down: [V]List<Int> = []
 var joined_before: [V]List<List<Int>> = []
@@ -31,13 +31,10 @@ for v in t.at.rev:
     var f = [0]
     for c in kids[v]:
         joined_before[v].push(f.clone())
-        f = max_plus_convolve(f, down[c])
-    down[v] = [
-        if i == 0: f[0] elif i == f.len: f[i - 1] + w[v] * i else: max(
-            f[i],
-            f[i - 1] + w[v] * i,
-        ) for i in 0..=f.len
-    ]
+        f = convolve(f, down[c], over: Semiring(max, +))
+    f.push(0)
+    for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
+    down[v] = f
 
 var ans: [V]Int = 0
 var up: [V]List<?Int> = []
