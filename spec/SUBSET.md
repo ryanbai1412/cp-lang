@@ -243,6 +243,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-06/gen-perm.cp: compiler
 - core-06/gen-rooted-shape.cp: compiler
 - core-06/gen-str-of-alphabet.cp: compiler
+- core-07/fold-with-init.cp: compiler
 - core-07/assign-into-range.cp: compiler
 - core-07/sorted-has-no-desc-flag.cp: stdlib
 - core-07/fold-without-parens-warns.cp: compiler
@@ -270,6 +271,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/stress-finds-broken-law.cp: compiler
 - core-09/user-context-lexical-without-uses.cp: compiler
 - core-09/uses-not-inferred-top-level.cp: compiler
+- core-10/print-list-of-pairs-one-line.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-counted-rows-of-ranges.cp: compiler

@@ -72,7 +72,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   `read<Str(len: n..=n)>()` checks an exact length. (R02.3.2)
 - `+` concatenates (allocating; the cost is visible as a new value); either
   side may be a slice, and the result is a new `Str`: `s[r..] + s[..r]`;
-  `s.push(c)` appends in place. (R02.3.3)
+  `s.push(c)` appends in place, and `s[i] = c` on a `var` string replaces
+  one character (`Str` is `IndexedMut`, R07.3.6). (R02.3.3)
 - Interpolation `"{x}"` formats through the `Show` trait (chapter 10).
 
 ## 2.4 Optionals

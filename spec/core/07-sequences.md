@@ -281,6 +281,7 @@ since the second walk reruns against what the first wrote.
 |---|---|---|
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
 | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
+| `s.fold(f, init: a)` | `Acc`: a left fold into any accumulator, `init` when empty | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\) (R07.9.3) |
 | `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
@@ -345,7 +346,9 @@ query (`pref_min[v]`) is the common one and needs no `.r`.
 | `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | \(O(n \log n)\) (R07.11.5) |
 
 Sorts are stable. Descending is a key, not a flag: `by: x => desc(x.score)`;
-`sort` and `sorted` take no `desc:` argument (decision 366).
+`sort` and `sorted` take no `desc:` argument (decision 366). `sorted()`
+returns a fresh `List` keyed from 0, even from a slice that keeps its
+source's keys.
 Every in-place verb that has a result-named twin follows the same pattern
 (`sort`/`sorted`, `dedup`/`deduped`); `.rev` (view) and `reverse()` (in
 place) are different jobs, not twins.

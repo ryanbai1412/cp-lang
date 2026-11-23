@@ -232,7 +232,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   not inside the block (E0201). (R01.6.2)
 - `var` inside a pattern makes that one binding mutable:
   `for (var left, v) in items:`. (R01.6.3)
-- Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound
+- Assignment `place = e`, destructuring `(a, b) = (b, a)` (its places may be elements of one
+  array: `(p[l], p[r]) = (p[r], p[l])` swaps, since the right side is
+  built first), compound
   assignment `x op= e` for every binary operator and for `min=` /
   `max=`. `p op= e` evaluates the place `p`, keys included, once, on an
   array and on a type with a `set` method alike: `have[a[i]] += 1`.
@@ -296,7 +298,10 @@ match d: L => -1, R => 1            // one-line match
   (decision 127). Given one tuple argument, `(a, b) => e` takes its
   fields: `xs.adjacent.count((x, y) => x == y)`. (R01.8.1)
 - **Comprehensions** `[f(x) for x in xs if p(x)]` build a `List`, or an
-  array when the expected type is `[D]T`. **Tables** `[D] i => e` build
+  array when the expected type is `[D]T`. Several `for` clauses nest like
+  a loop header's (`[(i, j) for i in V, j in V.after(i)]`), and the
+  element may be an `if` expression (`[if c: x else: y for i in 0..k]`).
+  **Tables** `[D] i => e` build
   `[D]T` eagerly; `[(A, B)] (a, b) => e` and `[A, B]` are the same 2-D
   table. (R01.8.2)
 - **Record update** `e with f: v, g: w` and `(..e, f: v)` copy `e` with
