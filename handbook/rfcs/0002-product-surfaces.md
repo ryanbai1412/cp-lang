@@ -5,144 +5,186 @@
 | Owner | coordinator |
 | Status | Draft: under discussion with Ryan |
 | Ryan to review | yes |
-| Changes | `handbook/product/`, new `handbook/process/product-design.md` and checklist, the domain charters |
+| Changes | `handbook/product/`, new `handbook/process/product-design.md`, `handbook/guidelines/writing-product.md`, the domain charters |
 
 ## Summary
 
 We decide what to build top down. Every part of CP Lang a user touches is a
-*surface*. Each surface has a short doc saying how it should feel, and an
-exhaustive list of *use cases*, each with a stable ID and a program that runs
-in CI. The list is written once and then maintained. Gaps show up as unbuilt
-use cases, not as user reports.
+*surface*, grouped into *areas*. For each surface we write how it should feel
+and list every *use case* it must serve, each a stable need with an ID, a
+chosen design and the evidence that the design works. We write this once,
+exhaustively, then keep it current. Gaps show up as listed, unbuilt use
+cases rather than as user reports.
 
 ## Problem
 
-Today we find frictions one at a time and fix them one at a time. A trial
-turns up `.find()` with no index, `max()` sometimes returning `T` and
-sometimes `?T`, and hover missing `by:`. Each gets fixed, but nothing would
-have listed them in advance, so the next trial finds the next batch. We also
-spend little time on what to build before building it.
+Today we find frictions one at a time. A trial turns up `.find()` with no
+index, `max()` sometimes returning `T` and sometimes `?T`, and hover missing
+`by:`. Each gets fixed, but nothing listed them in advance, so the next trial
+finds the next batch. We also spend little time deciding what the ideal
+experience is before building it.
 
 ## Proposal
 
 ### The hierarchy
 
-Five levels. Each level is a refinement of the one above; the last is code.
+1. **Journey:** an end-to-end task a contestant does, crossing surfaces:
+   "I have WA and want to know why". Today's J1 to J10 in
+   `handbook/product/journeys.md`, refined into workflows, each with an
+   owner and its own acceptance cases. Few and not exhaustive.
+2. **Area:** a group of surfaces with one README that summarizes them in prose.
+3. **Surface:** one thing a user touches, with one owner and a short doc.
+4. **Use case:** one need, exhaustively listed per surface, with a stable ID.
+5. **Acceptance case:** the evidence that the design meets the need.
 
-1. **Journey**: a stage of a contestant's life with CP Lang
-   (`handbook/product/journeys.md`, J1 to J10). Exists today.
-2. **Area**: a group of surfaces that serve the same journeys.
-3. **Surface**: one thing a user touches, with one owner.
-4. **Use case**: one thing a user wants to do with that surface, with a stable ID.
-5. **Acceptance program**: the canonical program or command for the use case,
-   run in CI.
+Journeys catch broken compositions (stress finds a counterexample, but
+tracing it takes three commands). Surfaces give fine-grained coverage.
 
-A sketch of the top three levels:
-
-```text
-std (J5, J6)                        owner: stdlib
-  sequences      sort, search, find, scan, runs, windows, join
-  sorted         SortedSet, SortedBag, SortedMap, cursors
-  ranges         SegTree, Fenwick, Sparse, Lazy, Window
-  graphs         Graph, dijkstra, bfs, flow, dsu
-  trees          Rooted, up, lca, reroot
-  strings        z, kmp, suffix array, hashing
-  math           Mod, ntt, poly, matrix, primes
-  grids          domains, Dir4, neighbours
-  io             read, print, multitest, interactors
-cli (J3, J6, J7, J9)                owner: tools
-  check  run  test  build  stress  trace  explain  fmt  fix  new
-editor (J5, J7)                     owner: tools
-  completion  hover  signature help  go to definition  inlay hints  rename
-  quick fixes  per-editor install (VS Code, JetBrains, Neovim)
-site (J1, J2)                       owner: site
-  landing  learn  reference  playground  practice
-debugger (J7)                       owner: debugger
-  traces  breakpoints  replay
-performance (J8)                    owner: perf
-  explain costs  profiles  judge profiles
-```
-
-A use case reads like this:
+### What it looks like
 
 ```text
-### seq/U7: index of the first element that satisfies a condition
-When: scanning input for the first position where a property starts to hold.
-Program: let i = a.find_index(x => x > k)  // ?I, None if no element
-Cost: O(n), stops at the first match. Misuse: a non-Bool closure is E0302 on the closure.
-Status: gap
+handbook/product/
+  vision.md  journeys.md  milestones.md
+  std/
+    README.md               the area: one paragraph per surface
+    sequences.md            the surface doc
+    sequences-usecases.md   its use cases
+    sorted.md  sorted-usecases.md
+    ...
+  cli/       README.md  check.md  run.md  stress.md  trace.md ...
+  editor/    README.md  completion.md  hover.md  goto.md ...
+  site/      README.md  learn.md  reference.md  playground.md ...
+  debugger/  README.md  ...
+  release/   README.md  install.md  channels.md ...
 ```
 
-The acceptance program is the `Program:` line, completed into a runnable file
-in the catalogue's code block, with its expected output.
+Areas and their surfaces:
 
-### When we use it
+| Area | Surfaces | Owner |
+|---|---|---|
+| std | sequences, sorted containers, range structures, graphs, trees, strings, math, grids, io | stdlib |
+| cli | check, run, test, build, stress, trace, explain, fmt, fix, new | tools |
+| editor | completion, hover, signature help, go to definition, inlay hints, rename, quick fixes, install per editor | tools |
+| site | landing, learn, reference, playground, practice | site |
+| debugger | traces, breakpoints, replay | debugger |
+| performance | explain costs, profiles, judge profiles | perf |
+| release | install, channels, upgrades | infra |
 
-- **Once, exhaustively:** every domain lists its surfaces and their use cases.
-  The sources are journeys, how the 877 corpus ports actually use each
-  surface, STL, Python, Rust and AtCoder Library equivalents, and textbook
-  topic lists.
-- **Then as living docs:** a change edits the use case it serves. Adding a
-  std function doesn't touch the surface doc unless it adds a use case.
-- **Feedback tests the map:** every friction is matched to a use-case ID. A
-  friction with no ID is an *escape*, and gets added to the list. The escape
-  rate measures how complete the lists are.
+The language itself keeps `handbook/language/` and `spec/`; its use cases
+are the conformance and corpus programs it already has.
 
-### What a design needs
+An area README, `std/README.md`, opens like this:
+
+> **Sequences** are what you reach for first: arrays, lists, slices and the
+> generators over them. You should be able to search, sort, scan and group
+> one without a loop and without losing track of indices.
+
+A use case, in `std/sequences-usecases.md`:
+
+```text
+### seq/U7: position of the first element that matches
+Need: you are scanning for where a property starts to hold, and need its position, not the value.
+Design: a.find_index(p) -> ?I, where I is a's index domain
+Milestone: M1-critical. Status: gap
+Evidence: program seq-u7.cp; completion offers find_index after `a.fi`
+```
+
+The ID names the need, so the design can change without renumbering. The
+design links to the spec for exact semantics and doesn't restate them.
+
+### How we design a surface
+
+1. **Understand the need:** the journeys it serves, how the 877 corpus ports
+   use it, STL, Python, Rust and AtCoder Library equivalents, textbook topic
+   lists, and trial reports.
+2. **Dream:** write the ideal code or interaction for representative
+   problems before looking at what CP Lang does today.
+3. **Design:** choose the model. Consider the status quo and real
+   alternatives seriously; don't invent a second option to tick a box.
+4. **Validate:** try the design against every use case and many real
+   programs, and look for counterexamples. New needs found here go back
+   into the list.
+5. **Commit:** the use cases, their designs and their acceptance cases.
 
 Depth depends on how uncertain the decision is and how costly it is to
-reverse, not on how much code it takes.
+reverse:
 
 | Level | Example | Needs |
 |---|---|---|
-| A | A bug, or a use case already listed | Nothing extra |
-| B | A new use case, std fn or CLI flag | The use-case entry |
-| C | A new surface, or a model that spans surfaces (indices) | A brief: the ideal code, two or more alternatives, tried on many real programs, reviewed by another lane; Ryan reviews |
+| A | A bug, or a listed use case being built | Nothing extra |
+| B | A new use case, or a changed design | Its use-case entry |
+| C | A new surface, or a model across surfaces (indices) | The five steps, an independent review by another lane, and Ryan's review |
 
-### How it stays true
+### Evidence
 
-- Every acceptance program runs in CI.
-- Every public std fn names a use case it serves (`serves: seq/U7`).
-- Every CLI subcommand and flag, and every LSP capability, appears in a catalogue.
+An acceptance case is one of:
+
+- **program:** a CP Lang file and its expected output, run in CI.
+- **integration:** an editor, CLI or browser fixture, such as completion
+  offering `find_index` after `a.fi`.
+- **comparison:** the design side by side with its alternatives on real
+  programs, recorded once in the surface doc.
+- **trial:** a friction from a user trial, matched to a use case.
+
+Programs and integrations prove behaviour; comparisons and trials are how
+we judge whether the design is good.
+
+### Keeping it true
+
+- Every acceptance case of kind program or integration runs in CI.
+- Every public std fn names the use case or capability it serves (`serves: seq/U7`).
+- Every CLI subcommand and flag, and every LSP capability, appears in some use case.
 - Every journey step has at least one use case.
-- The number of `gap` use cases only goes down. IDs are never reused.
-- The escape rate is reported hourly.
-- Completion, hover and docs tests check the `Program:` spelling.
+- Within the M1 cohort, the count of unsupported use cases only goes down.
+  Use cases discovered later join the next cohort, so finding gaps is
+  rewarded, not punished.
+- IDs are never reused.
+- Every trial friction is matched to a use case; one with no match is an
+  *escape* and is added. Escapes are a signal, not a proof the list is
+  complete, so each catalogue is also reviewed once by an agent that hasn't
+  seen it, and we try held-out problems against it.
 
-### Where it lives
+These prove that the docs and the product are linked. Whether the list is
+complete and the designs are good is what the review, comparisons and
+trials are for.
 
-- `handbook/product/surfaces/<area>/<surface>.md`: the surface doc, under one
-  page of prose. It covers who uses the surface and when, how it should
-  feel, the principles specific to it, alternatives rejected, and non-goals.
-- `handbook/product/surfaces/<area>/<surface>-usecases.md`: the use cases, in
-  the format above.
-- `handbook/process/product-design.md` and its checklist: this process.
-- `spec/` still says precisely what the language and std do. Use cases say
-  what users need to do.
+### Statuses and milestones
 
-### Format
+Status: `supported`, `partial`, `gap`, `deferred` or `non-goal`.
+Milestone, separately: `M1-critical`, `M1-differentiating`, `later`.
 
-Concise. The surface doc is under a page; a use case is about five lines.
-Writing rules are in `handbook/guidelines/writing.md`; a surface-doc
-checklist covers the rest.
+### Writing
+
+Product docs follow `handbook/guidelines/writing-product.md`: start from a
+person in a moment, show the interaction step by step, and name where it
+hurts. A surface doc is under a page and holds current intent only; history
+goes to RFCs.
+
+## Rollout
+
+1. Pilot on three surfaces that stress the process differently: std
+   sequences, `cpl stress`, and editor completion. Each owner writes the
+   surface doc, its use cases and acceptance cases. Another lane reviews it
+   for missing needs and bad designs.
+2. Judge the pilot: did it find needs we'd missed, improve a design, and
+   produce useful tests, for how much time?
+3. Then roll out to every area, with the checks turned on.
 
 ## Cost
 
-About 1 to 2 hours per domain to draft its surfaces, then the cost of
-editing one use case per change. We'll notice it's too much if lanes spend
-more than 10% of their time on these docs.
+About an hour per pilot surface, and one use-case edit per change after
+that. We'll notice it costs too much if lanes spend more than 10% of their
+time on these docs without the pilot finding real gaps.
 
 ## Alternatives
 
-- **Keep fixing frictions as they come.** That is what we do now, and it
-  finds problems only after users hit them.
-- **A product requirements doc per feature.** It covers a feature but never
-  the whole surface, so gaps between features stay invisible.
+- **Keep fixing frictions as they come.** It only finds problems after users hit them.
+- **A requirements doc per feature.** It covers the feature but never the
+  whole surface, so gaps between features stay invisible.
 
 ## Prior art
 
 - **Rust RFCs:** a guide-level explanation comes before the reference.
 - **Amazon's "working backwards":** write the user-facing announcement first.
-- **Shape Up:** decide how much time a piece of work is worth before designing it.
 - **Use-case catalogues and requirements traceability** in safety-critical
   engineering: every requirement has an ID and a test.

@@ -45,7 +45,7 @@ display rule per type that both back ends use.
 
 A rule is written once, with its reason and an example, and everything
 that enforces it points there. Rules come in pairs of documents
-([writing.md](../guidelines/writing.md#guidelines-and-checklists)): a prose
+([writing-docs.md](../guidelines/writing-docs.md#guidelines-and-checklists)): a prose
 guideline `handbook/guidelines/<topic>.md` explains the ideas, and an
 exhaustive `<topic>-checklist.md` states every rule under a stable id such
 as `std-api/R12`, with what enforces it.
