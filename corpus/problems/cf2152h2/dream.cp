@@ -44,10 +44,10 @@ for (u, v, w) in edges.sorted(by: e => -e.w):
     bound[kept] += bound[merged] - 2 * w
     if bound[kept] < set[kept].top!.at: raise(kept, bound[kept])
 
-let breaks = set[dsu.find(V.first!)].drain().flat_map(b => [b.at] * b.cnt)
+let breaks = List(set[dsu.find(V.first!)].drain().flat_map(b => [b.at] * b.cnt))
 let below = prefix(breaks)
 let q: 1..=250_000 = read()
 let asks: [0..q]1..=1e9 = read()
 for l in asks:
-    let k = breaks.count_below(l)
+    let k = breaks.first_ge(l) ?? breaks.len
     print(l * k - below.prefix(k))
