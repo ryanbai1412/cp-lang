@@ -50,19 +50,22 @@ def std_traits():
 
 
 PUB_TYPE = re.compile(r"pub (?:struct|enum|type) (\w+)")
+PRIVATE_TRAIT = re.compile(r"(?m)^trait (\w+)")
 
 
 def std_claims():
-    """(type, trait) for every impl in std on a public type; test-only types are skipped."""
+    """(type, trait) for every impl in std of a trait users can name, on a public type;
+    test-only types and std's private helper traits are skipped."""
     texts = [f.read_text() for f in sorted(STD.glob("*.cp"))]
     public = {m.group(1) for t in texts for m in PUB_TYPE.finditer(t)}
+    private = {m.group(1) for t in texts for m in PRIVATE_TRAIT.finditer(t)}
     claims = set()
     for t in texts:
         for line in t.split("\n"):
             m = IMPL.match(line)
             if m:
                 ty = re.sub(r"<.*", "", m.group(2)).strip()
-                if ty in public:
+                if ty in public and m.group(1) not in private:
                     claims.add((ty, m.group(1)))
     return claims
 
