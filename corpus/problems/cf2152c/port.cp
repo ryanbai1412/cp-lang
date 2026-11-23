@@ -7,7 +7,7 @@
 //   Prefix sums of a_i and of a_i xor (i & 1) answer both checks in O(1) per query.
 
 @!multitest
-let (n, q): (1..=200_000, 1..=200_000) = read()
+let (n, q): (1..=250_000, 1..=250_000) = read()
 domain Pos = 1..=n
 let a: [0..n]0..=1 = read()
 let cnt_a = prefix(a)
