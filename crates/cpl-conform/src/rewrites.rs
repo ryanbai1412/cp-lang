@@ -2,7 +2,8 @@
 //! `cpl fix` (`#fix`) and by `cpl fmt` (`#fmt`), prints exactly what the
 //! original printed on every test input
 //! (`handbook/guidelines/lints-checklist.md`, `lints/R11` and `lints/R22`).
-//! A rewrite that changes nothing is `untested`.
+//! A fix also keeps a formatted file formatted (`lints/R10`). A rewrite that
+//! changes nothing is `untested`.
 
 use std::path::Path;
 
@@ -45,6 +46,10 @@ pub fn run_one(db: &mut Database, prob: &CorpusProblem, how: &str) -> CaseOutcom
     let after = rewrite(db, how, &path, &text);
     if after == text {
         return outcome("untested", format!("`cpl {how}` changes nothing"));
+    }
+    let formatted = |s: &str| cpl_fmt::format(s).ok().as_deref() == Some(s);
+    if how == "fix" && formatted(&text) && !formatted(&after) {
+        return outcome("wrong", "`cpl fix` leaves a formatted file unformatted");
     }
     let Ok(before) = runner::compile_program(db, &path, &text) else {
         return outcome("untested", "the original does not build");
