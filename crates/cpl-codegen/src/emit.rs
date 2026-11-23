@@ -586,8 +586,9 @@ impl<'p> Emitter<'p> {
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {
-                    // g++ warns of a parameter the body never names.
-                    let by = if ty.is_scalar() {
+                    // g++ warns of a parameter the body never names. One
+                    // only a closure reads is still read, a cache by value.
+                    let by = if ty.is_scalar() || self.caches_on_read(ty) {
                         cpp
                     } else {
                         format!("const {cpp}&")
