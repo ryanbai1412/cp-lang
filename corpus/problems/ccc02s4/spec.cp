@@ -9,11 +9,11 @@ fn cost(c: P.cuts, e: P.cuts) -> Int = people[c..e].map(p => p.t).max()! + total
 fn total(c: P.cuts) -> Int:
     if c == P.cuts.last!:
         return 0
-    (c.next..).take(m).map(e => cost(c, e)).min()!
+    (c.next!..).take(m).map(e => cost(c, e)).min()!
 
 print("Total Time:", total(P.cuts.first!))
 var c = P.cuts.first!
 while c != P.cuts.last!:
-    let e = (c.next..).take(m).min(by: e => cost(c, e))!
+    let e = (c.next!..).take(m).min(by: e => cost(c, e))!
     print(people[c..e].map(p => p.name))
     c = e
