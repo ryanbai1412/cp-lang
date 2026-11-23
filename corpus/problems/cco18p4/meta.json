@@ -23,5 +23,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Wire stub; ternary_min is golden-section with probe reuse; @memo(map) on ask."
+ "notes": "Wire; ternary_min is golden-section with probe reuse; scores cached in a HashMap (a memo may not do I/O). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
 }

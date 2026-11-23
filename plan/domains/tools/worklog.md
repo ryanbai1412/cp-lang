@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Request from idioms (2026-11-23, cco18p4): `cpl run --release` holds a `Wire` program's output until stdin ends, so it hangs against a live interactor (the interpreter and the `cpl build` binary talk fine). Repro: `let wire = Wire()` / `let x: Int = wire.ask("?")` / `print(x + 1)` under `(sleep 3; echo 5) | cpl run --release w.cp` prints `?` only after 3 s, with `6`. Ask: stream stdin/stdout to the compiled binary (research/frictions/cco18p4.md).
 - Stress samples laws (R09.3.9): std.algebra's `Commutative`, `Idempotent` and `Selective` declare `law comm`/`idem`/`select`; a stress build (`cpl_ir::lower_sampling_laws`) checks `laws_hold(op, xs)` before each `xs.fold(op)` whose type or traits have laws, and `laws_hold` sees trait laws too. core-09/stress-finds-broken-law passes; `cpl-conform conformance docs --check` 0 regressions. Not yet: `Op`'s `assoc`, `--laws=off`, laws of ops handed to structures (SegTree etc.).
 - `gen(lo..=hi)` / `gen<T>(...)` lower in `crates/cpl-ir/src/lower/call/gen.rs` (decision 398): core-06/gen-* pass (6), `cpl-conform diff core-06/gen` 9/9, interp and g++ print the same for all six forms. Debt: `shape:` skips name resolution in the checker; next is `enum Shape` in std.tree.
 - A literal-bounds `domain V = 0..5` is now shared with `@gen`/`@alt`/`@check` programs as a `const` is (V.count was 0 inside `@gen`).
