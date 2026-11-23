@@ -152,6 +152,10 @@ pub mod codes {
     pub const NON_EXHAUSTIVE_MATCH: Code = Code("E0314");
     /// `read<Bool>()`: `Bool` is not an input token (R10.2.3).
     pub const NOT_A_TOKEN_TYPE: Code = Code("E0315");
+    /// `x: 0..=n` in a struct with `n` read: layout never depends on input (R03.1.3).
+    pub const FIELD_BOUND_FROM_INPUT: Code = Code("E0316");
+    /// `@get fn f(self, k: Int)`: a getter's parameters all need defaults (R02.6.6).
+    pub const GETTER_NEEDS_DEFAULTS: Code = Code("E0317");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

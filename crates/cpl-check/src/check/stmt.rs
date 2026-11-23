@@ -1246,7 +1246,7 @@ impl<'a> Checker<'a> {
                     args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
-                self.bounds_exist(&s.bounds);
+                self.struct_decl_rules(s);
                 self.owned(&s.name.text, &s.methods);
                 for field in &s.fields {
                     let ty = self.field_type(field);
@@ -2029,7 +2029,7 @@ impl<'a> Checker<'a> {
     }
 
     /// Every trait a bound names must exist: `where T: Ord + Bounded`.
-    fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
+    pub(super) fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
         for bound in bounds {
             for trait_ty in &bound.traits {
                 if matches!(trait_ty.kind, ast::TypeKind::Row(_)) {

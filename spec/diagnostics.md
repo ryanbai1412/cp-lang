@@ -53,8 +53,8 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0313 | domain_escapes | a value of fresh type `V` leaves its block |
 | E0314 | non_exhaustive_match | this `match` has no arm for `R` |
 | E0315 | not_a_token_type *(0.3)* | `read<Bool>()`: `Bool` is not a token type; read a `Str` and compare it, or use a type `read` takes (R10.2.3) |
-| E0316 | field_bound_from_input *(0.3)* | `x: 0..=n` in `struct P`: a field's bounds are fixed before input is read, but `n` is read; bound it by a constant or keep the value outside the struct (R03.1.3) |
-| E0317 | getter_needs_defaults *(0.3)* | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
+| E0316 | field_bound_from_input | `x: 0..=n` in `struct P`: a field's bounds are fixed before input is read, but `n` is read; bound it by a constant or keep the value outside the struct (R03.1.3) |
+| E0317 | getter_needs_defaults | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

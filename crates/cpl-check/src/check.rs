@@ -8,6 +8,7 @@
 pub(crate) mod advice;
 pub(crate) use advice::rename_values;
 mod call;
+mod decls;
 mod domain_use;
 mod expr;
 mod known;
