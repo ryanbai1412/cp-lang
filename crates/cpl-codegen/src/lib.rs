@@ -13,6 +13,7 @@ mod lend;
 mod names;
 mod niche;
 mod presize;
+mod prune;
 mod ranges;
 mod rowcache;
 mod runtime;
@@ -114,8 +115,7 @@ pub fn sizes(
     fitted: &Fitted,
 ) -> Vec<Size> {
     let total = fitted.cpp.len();
-    let mut program = program.clone();
-    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    let program = prepared(program);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     let (_, chunks) = emitter.file_with_chunks(name, source);
@@ -165,6 +165,14 @@ fn unmangled(name: &str) -> String {
     name.split('.').map(cut).collect::<Vec<_>>().join(".")
 }
 
+/// `program` with what the emitter decides once for the whole file.
+fn prepared(program: &cpl_ir::Program) -> cpl_ir::Program {
+    let mut program = program.clone();
+    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    prune::prune(&mut program);
+    program
+}
+
 /// [`emit`] for a judge.
 pub fn emit_for(
     program: &cpl_ir::Program,
@@ -172,8 +180,7 @@ pub fn emit_for(
     source: Option<&str>,
     target: &Target,
 ) -> String {
-    let mut program = program.clone();
-    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    let program = prepared(program);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     narrow(&emitter.file(name, source))
@@ -189,8 +196,7 @@ pub fn emit_profiled(
     name: &str,
     target: &Target,
 ) -> (String, Vec<cpl_diag::Span>) {
-    let mut program = program.clone();
-    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    let program = prepared(program);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     emitter.sites = Some(Vec::new());
@@ -399,6 +405,8 @@ pub fn emit_aiming(
 mod copy_tests;
 #[cfg(test)]
 mod devirt_tests;
+#[cfg(test)]
+mod prune_tests;
 #[cfg(test)]
 mod sink_tests;
 #[cfg(test)]

@@ -244,6 +244,17 @@ impl<'p> Emitter<'p> {
         out: &mut String,
         lead: &str,
     ) {
+        if let (Some(taken), true) = (crate::prune::known(cond), lead.trim().is_empty()) {
+            let live = if taken { then } else { otherwise };
+            if !live.stmts.is_empty() {
+                out.push_str(&format!("{lead}{{\n"));
+                self.indent += 1;
+                self.block(live, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
+            return;
+        }
         let fused = found_entry(cond, then);
         // A profiled build counts the step's own line, so it keeps the branch.
         if fused.is_none()
