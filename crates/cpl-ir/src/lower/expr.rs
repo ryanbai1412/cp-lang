@@ -4143,6 +4143,15 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(crate) fn list(&mut self, items: &[ast::Expr], hint: Option<&Ty>, span: Span) -> Expr {
+        // `BeatsSegTree([5, 1, 4])`: a literal given for a `[D]T` whose `D`
+        // stands for a list's positions is that list, and sets `D`'s size.
+        if let Some(want @ Ty::Array { dims, elem }) = hint {
+            if matches!(dims[..], [Dim::Pos(d)] if self.list_domains.contains(&d)) {
+                let list_ty = Ty::List(Box::new(self.plain_ty(elem)));
+                let list = self.list(items, Some(&list_ty), span);
+                return self.coerce(list, want, span);
+            }
+        }
         match hint {
             Some(ty @ (Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem))) => {
                 let values = items.iter().map(|item| self.expect(item, elem)).collect();
