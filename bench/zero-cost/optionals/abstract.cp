@@ -1,8 +1,8 @@
-fn step(x: Int, m: Int) -> ?Int:
+fn step(x: 0..=1e9, m: 1..=1e9) -> ?Int:
     if (x & 3) == 0: return None
     Some((x * 31 + 7) % m)
 
-fn kernel(n: Int, reps: Int, a: List<Int>) -> Int:
+fn kernel(n: Int, reps: 0..=1000, a: List<0..10_000>) -> Int:
     var acc = 0
     for r in 0..reps:
         for i in 0..n:
@@ -13,6 +13,6 @@ fn kernel(n: Int, reps: Int, a: List<Int>) -> Int:
     acc
 
 let n: Int = read()
-let reps: Int = read()
-let a: [0..n]Int = read()
+let reps: 0..=1000 = read()
+let a: [0..n]0..10_000 = read()
 print(kernel(n, reps, a))
