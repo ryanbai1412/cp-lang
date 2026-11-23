@@ -201,7 +201,11 @@ macro_rules! walkers {
                         f(hi);
                         step.$iter().for_each(f);
                     }
-                    Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => f(e),
+                    Iter::RangeVal(e, _)
+                    | Iter::Seq(e, _)
+                    | Iter::Subsets(e)
+                    | Iter::Members(e)
+                    | Iter::Walk { len: e, .. } => f(e),
                     Iter::TreeRange {
                         container, lo, hi, ..
                     } => {

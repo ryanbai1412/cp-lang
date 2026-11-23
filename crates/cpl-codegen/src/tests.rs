@@ -1975,3 +1975,30 @@ fn char_array_reads_fill_in_one_pass() {
         "a [D]Char read should fill the array in one pass:\n{body}"
     );
 }
+
+#[test]
+fn no_library_domain_walk_survives_lowering() {
+    let program = lower(concat!(
+        "struct Sub<B>(bits: Int)\n",
+        "impl Index for Sub<B>:\n",
+        "    let count = 1 << B.count\n",
+        "    @get fn ord(self) -> Int = bits\n",
+        "    fn nth(k: Int) -> Sub<B> = Sub(k)\n",
+        "domain V = 0..3\n",
+        "fn total<D: Domain>() -> Int = Sub<D>.count(s => s.bits > 1)\n",
+        "for s in Sub<V>.rev: print(s.bits)\n",
+        "print(Sub<V>.find(s => s.bits > 2).map(s => s.bits) ?? -1, total<V>())\n",
+        "print([s.bits for s in Sub<V>], Sub<V>.min(by: s => -s.bits)!.bits)\n",
+    ));
+    let mut blocks = vec![&program.main, &program.setup];
+    blocks.extend(program.fns.iter().map(|f| &f.body));
+    blocks.extend(program.closures.iter().map(|c| &c.body));
+    for block in blocks {
+        cpl_ir::walk::deep_stmts(block, &mut |stmt| {
+            assert!(
+                !matches!(stmt, cpl_ir::Stmt::For(_, _, cpl_ir::Iter::Walk { .. }, _)),
+                "an Iter::Walk reached the backends"
+            );
+        });
+    }
+}

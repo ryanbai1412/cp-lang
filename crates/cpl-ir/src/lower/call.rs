@@ -3585,7 +3585,7 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn min_max_by(
+    pub(super) fn min_max_by(
         &mut self,
         is_max: bool,
         seq_ast: &ast::Expr,
@@ -3745,7 +3745,7 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
     }
 
-    fn min_max(&mut self, is_max: bool, args: &[ast::Arg], span: Span) -> Expr {
+    pub(super) fn min_max(&mut self, is_max: bool, args: &[ast::Arg], span: Span) -> Expr {
         let name = if is_max { "max" } else { "min" };
         if let [seq, by_arg] = args {
             if seq.name.is_none()
@@ -4426,7 +4426,12 @@ impl<'a> Lowerer<'a> {
     /// takes a test the same way. Only `count`, `all`, `any` and `first`
     /// take one: they fold what the test says, where a `sum` of a
     /// function is `sum(f(x) for x in xs)`.
-    fn tested_walk(&mut self, name: &str, args: &[ast::Arg], filter: bool) -> Option<ast::Expr> {
+    pub(super) fn tested_walk(
+        &mut self,
+        name: &str,
+        args: &[ast::Arg],
+        filter: bool,
+    ) -> Option<ast::Expr> {
         if !matches!(name, "count" | "all" | "any" | "first") {
             return None;
         }
@@ -4483,7 +4488,7 @@ impl<'a> Lowerer<'a> {
 
     /// `sum(a[v] for v in V)`, `max(xs)`, `any(...)`: a loop that folds
     /// the values into one.
-    fn reduce(&mut self, kind: Reduce, arg: &ast::Expr, span: Span) -> Expr {
+    pub(super) fn reduce(&mut self, kind: Reduce, arg: &ast::Expr, span: Span) -> Expr {
         self.reduce_opt(kind, arg, false, span)
     }
 
@@ -6832,7 +6837,7 @@ impl<'a> Lowerer<'a> {
 
     /// Whether `e` is a test to search with (`x => x > 3`, or a fn value)
     /// rather than a value to search for.
-    fn is_test(&mut self, e: &ast::Expr) -> bool {
+    pub(super) fn is_test(&mut self, e: &ast::Expr) -> bool {
         matches!(e.kind, ast::ExprKind::Lambda { .. })
             || matches!(self.probe_ty_silent(e), Some(Ty::Fn(..)))
     }
@@ -11317,7 +11322,7 @@ impl<'a> Lowerer<'a> {
         self.map_seq(base_expr, elem_ty, &view.func, span)
     }
 
-    fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
+    pub(super) fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         match iter {
             Iter::Seq(seq, false) => self.map_seq(seq, elem_ty, func_ast, span),
@@ -11408,7 +11413,12 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn lower_filter(&mut self, base: &ast::Expr, pred_ast: &ast::Expr, span: Span) -> Expr {
+    pub(super) fn lower_filter(
+        &mut self,
+        base: &ast::Expr,
+        pred_ast: &ast::Expr,
+        span: Span,
+    ) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         if matches!(elem_ty, Ty::Error) {
             return self.err_expr(span);
@@ -11461,7 +11471,12 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn lower_partition(&mut self, base: &ast::Expr, pred_ast: &ast::Expr, span: Span) -> Expr {
+    pub(super) fn lower_partition(
+        &mut self,
+        base: &ast::Expr,
+        pred_ast: &ast::Expr,
+        span: Span,
+    ) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         if matches!(elem_ty, Ty::Error) {
             return self.err_expr(span);
@@ -11533,7 +11548,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn lower_first_or_last_where(
+    pub(super) fn lower_first_or_last_where(
         &mut self,
         base: &ast::Expr,
         pred_ast: &ast::Expr,

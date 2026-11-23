@@ -4237,7 +4237,9 @@ impl<'a> Lowerer<'a> {
                     name == "Bool"
                         || matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
                         || matches!(self.get_sym(name), Some(Sym::Domain(_)))
+                        || self.index_struct(name).is_some()
                 }
+                ast::ExprKind::Generic { .. } => self.index_struct_of(inner).is_some(),
                 ast::ExprKind::Field { base, name } => {
                     let (field_base, field_name, rev) = if name.text == "rev" {
                         match &base.kind {
@@ -4667,56 +4669,9 @@ impl<'a> Lowerer<'a> {
                 let Some(sid) = self.index_struct_of(e) else {
                     unreachable!()
                 };
-                let dom_id = self.structs[sid].index_domain.unwrap();
-                let nth = self.structs[sid].methods.get("nth").copied();
-                // Materialize `[S.nth(i) for i in 0..S.count]` as a sequence.
-                if let Some(from_fn) = nth {
-                    let list_ty = Ty::list(Ty::Struct(sid));
-                    let seq = self.do_expr(Some(&list_ty), span, |lw, out| {
-                        let acc = lw.temp(list_ty.clone());
-                        out.push(Stmt::Let(
-                            acc,
-                            Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                        ));
-                        let idx_slot = lw.temp(Ty::Int);
-                        let lid = lw.open_loop(None);
-                        let call = lw.mk(
-                            ExprKind::Call(from_fn, vec![Arg::Value(lw.local(idx_slot, span))]),
-                            Ty::Struct(sid),
-                            span,
-                        );
-                        let push = lw.mk(
-                            ExprKind::Mutate(
-                                Mutation::Push,
-                                Box::new(Place {
-                                    kind: PlaceKind::Local(acc),
-                                    ty: list_ty.clone(),
-                                    span: lw.span(span),
-                                }),
-                                vec![call],
-                            ),
-                            Ty::Unit,
-                            span,
-                        );
-                        lw.cx.loops.pop();
-                        out.push(Stmt::For(
-                            lid,
-                            idx_slot,
-                            Iter::Range {
-                                lo: lw.int_lit(0, span),
-                                hi: lw.mk(ExprKind::DomainLen(dom_id), Ty::Int, span),
-                                step: None,
-                                rev: false,
-                                closed: false,
-                            },
-                            Block {
-                                stmts: vec![Stmt::Expr(push)],
-                            },
-                        ));
-                        let res = lw.local(acc, span);
-                        out.push(Stmt::Give(res));
-                    });
-                    return (Iter::Seq(seq, false), Ty::Struct(sid));
+                let dom = self.structs[sid].index_domain.unwrap();
+                if let Some(&nth) = self.structs[sid].methods.get("nth") {
+                    return (self.walk(dom, nth, span), Ty::Struct(sid));
                 }
                 error(self)
             }
@@ -4837,6 +4792,19 @@ impl<'a> Lowerer<'a> {
                     },
                     Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
+                    Iter::Walk {
+                        k,
+                        n,
+                        len,
+                        nth,
+                        rev,
+                    } => Iter::Walk {
+                        k,
+                        n,
+                        len,
+                        nth,
+                        rev: !rev,
+                    },
                     Iter::TreeRange {
                         container,
                         lo,

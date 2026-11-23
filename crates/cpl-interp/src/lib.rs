@@ -1057,6 +1057,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn for_loop(&mut self, id: LoopId, slot: usize, iter: &'p Iter, body: &'p Block) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
+            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
@@ -1088,6 +1089,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         };
         match iter {
+            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
             Iter::Range {
                 lo,
                 hi,

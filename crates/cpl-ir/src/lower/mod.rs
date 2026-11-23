@@ -353,11 +353,20 @@ impl Lowerer<'_> {
             };
             first.stmts.splice(0..0, preamble);
         }
-        // A library domain is sized after every definition of a domain it reads.
+        // A library domain's walks become `Int` range loops, and it is sized
+        // after every definition of a domain it reads.
         let mut main = std::mem::take(&mut lw.main_body);
         let mut setup = std::mem::take(&mut lw.setup_body);
         let mut bodies = std::mem::take(&mut lw.bodies);
         let mut closures = std::mem::take(&mut lw.closures);
+        lw.expand_walks(&mut main);
+        lw.expand_walks(&mut setup);
+        for f in bodies.iter_mut().flatten() {
+            lw.expand_walks(&mut f.body);
+        }
+        for c in &mut closures {
+            lw.expand_walks(&mut c.body);
+        }
         lw.size_library_domains(&mut main, true);
         lw.size_library_domains(&mut setup, true);
         for f in bodies.iter_mut().flatten() {
@@ -5564,6 +5573,10 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
                 }
                 Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
                     collect_expr_calls(e, out)
+                }
+                Iter::Walk { len, nth, .. } => {
+                    collect_expr_calls(len, out);
+                    out.push(*nth);
                 }
                 Iter::TreeRange {
                     container, lo, hi, ..

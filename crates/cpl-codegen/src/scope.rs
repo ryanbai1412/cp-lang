@@ -87,6 +87,7 @@ impl Scopes {
             }
             Stmt::For(_, slot, iter, body) => {
                 match iter {
+                    Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                     Iter::Range { lo, hi, step, .. } => {
                         self.expr(lo);
                         self.expr(hi);
@@ -1384,6 +1385,7 @@ pub(crate) fn narrow_elems(
                 }
                 Stmt::For(_, slot, iter, body) => {
                     match iter {
+                        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                         Iter::Seq(e, _) if is_narrowable_seq(&e.ty) => {
                             if let Some((src_loc, depth)) = expr_root(scope, e) {
                                 let inner = peel_layout(narrow.get(&src_loc), depth + 1);

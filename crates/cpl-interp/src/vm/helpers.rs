@@ -245,6 +245,7 @@ pub(super) fn quiet_place(place: &Place, root: (bool, usize)) -> bool {
 /// Where a traced `for` reports its variable, when its iterable is [`quiet`].
 pub(super) fn quiet_iter(iter: &Iter) -> Option<Span> {
     match iter {
+        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
         Iter::Range { lo, hi, step, .. } => {
             (quiet(lo) && quiet(hi) && step.as_ref().is_none_or(quiet)).then_some(lo.span)
         }

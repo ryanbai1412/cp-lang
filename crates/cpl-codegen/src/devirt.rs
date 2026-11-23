@@ -590,6 +590,9 @@ impl<'p> Devirt<'p> {
             }
             Stmt::For(_, _, iter, body) => {
                 match iter {
+                    cpl_ir::Iter::Walk { .. } => {
+                        unreachable!("Iter::Walk is expanded before codegen")
+                    }
                     cpl_ir::Iter::Range { lo, hi, step, .. } => {
                         self.find_escapes_expr(home, lo, false, out);
                         self.find_escapes_expr(home, hi, false, out);
@@ -949,6 +952,9 @@ impl<'p> Devirt<'p> {
             }
             Stmt::For(_, _, iter, body) => {
                 let iter_ok = match iter {
+                    cpl_ir::Iter::Walk { .. } => {
+                        unreachable!("Iter::Walk is expanded before codegen")
+                    }
                     cpl_ir::Iter::Range { lo, hi, step, .. } => {
                         self.expr_captures_unused(lo, cap_slots)
                             && self.expr_captures_unused(hi, cap_slots)

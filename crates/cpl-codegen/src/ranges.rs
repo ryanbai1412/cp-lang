@@ -208,6 +208,7 @@ impl<'p> Facts<'p> {
                     *self.stores.entry(v).or_default() += 1;
                     self.tainted.insert(v);
                     match iter {
+                        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                         Iter::Range {
                             lo,
                             hi,

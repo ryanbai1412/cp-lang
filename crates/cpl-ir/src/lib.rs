@@ -1025,7 +1025,8 @@ impl Stmt {
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) => cond.span,
             Stmt::For(_, _, iter, _) => match iter {
                 Iter::Range { lo, hi, .. } => join(lo.span, hi.span),
-                Iter::RangeVal(e, _)
+                Iter::Walk { len: e, .. }
+                | Iter::RangeVal(e, _)
                 | Iter::Seq(e, _)
                 | Iter::Subsets(e)
                 | Iter::Members(e)
@@ -1069,6 +1070,17 @@ pub enum Iter {
     Subsets(Expr),
     /// The members of a `Subset<D>` bitmask, lowest first.
     Members(Expr),
+    /// The values of a library domain in ordinal order, or backward when
+    /// `rev`: `nth(k)` for each `k` in `0..len`, with `k` in slot `k` and
+    /// `len` read once into slot `n`. Lowering expands it into an `Int`
+    /// range loop before any backend sees it.
+    Walk {
+        k: Slot,
+        n: Slot,
+        len: Expr,
+        nth: FnId,
+        rev: bool,
+    },
     /// Keys (for `Set`) or `(key, value)` pairs (for `Map`) in a bounded range,
     /// walking the underlying ordered tree directly in O(log n + k).
     TreeRange {
@@ -1525,7 +1537,8 @@ impl Program {
                         Iter::RangeVal(e, _)
                         | Iter::Seq(e, _)
                         | Iter::Subsets(e)
-                        | Iter::Members(e) => {
+                        | Iter::Members(e)
+                        | Iter::Walk { len: e, .. } => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
                         Iter::TreeRange {
