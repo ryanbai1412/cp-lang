@@ -107,16 +107,6 @@ pub fn resumed_tail_every(
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if program.multitest {
-            let config = Some(config.clone());
-            return observe_on_this_thread(
-                program,
-                Io::fixed(input),
-                &mut **output,
-                limits,
-                config,
-            );
-        }
         let (mut whole, taken) = record_last_on_this_thread(
             program,
             input,
