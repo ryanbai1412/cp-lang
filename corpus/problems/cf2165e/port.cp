@@ -19,7 +19,7 @@ let n: 2..=300_000 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](V, V)>())
 
-var deg = [V] v => g.deg(v)
+var deg = [V] v => g[v].len
 var degs = SortedBag<Int>.of([deg[v] for v in V])
 var leaves = [v for v in V if deg[v] == 1]
 var alive: [V]Bool = true

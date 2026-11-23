@@ -13,7 +13,7 @@
 let n: 1..=200_000 = read()
 let a: [0..n]0..=10 ** 9 = read()
 
-if any(a[i] < a[i + 1] for i in 0..n - 1) or any(a[i] < n - i - 1 or a[i] > n for i in 0..n):
+if (0..n - 1).any(i => a[i] < a[i + 1]) or (0..n).any(i => a[i] < n - i - 1 or a[i] > n):
     print("NO")
     return
 

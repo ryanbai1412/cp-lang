@@ -45,7 +45,7 @@ var ans = 0
 for i in V:
     sz[i] += 1
     by_depth[i].push(Bucket(1, sz[i]))
-    if i < V.last:
+    if i < V.last!:
         let p = nxt[i]
         assert p != i
         sz[p] += sz[i]

@@ -64,7 +64,7 @@ fn walk_from(start: Int, k: Int) -> Int:
 fn total(end: Int) -> Int =
     if end >= 1: f + walk_from(x + c0, end - 1) else: f + walk_from(y - c0, -end)
 
-let cool = Set<Int>()
+var cool = Set<Int>()
 for i in reach:
     for p in [p0, p1]: cool.add(total(2 * i.ord + p))
 print(sum(Z(v) for v in cool))

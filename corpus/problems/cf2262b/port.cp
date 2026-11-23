@@ -19,7 +19,7 @@ var tops = SortedSet<I>()
 var eaters = SortedSet<I>()
 
 fn recheck(c: I):
-    eaters.set(c, on: tops.range(c.r..).first.map(q => total.sum(c..q) >= a[q]) ?? false)
+    eaters.set(c, on: tops.range(c.r..).first.map(q => total.fold(c..q) >= a[q]) ?? false)
 
 fn insert(i: I):
     total.add(i, a[i])
@@ -34,13 +34,13 @@ fn insert(i: I):
 
 // Where eater c's run ends: grow past every top its sum through `stop` beats.
 fn reach(c: I, stop: I.bounds) -> I.bounds:
-    let nxt = tops.bsearch_first(q => a[q] > total.sum(c.l..stop)).map(q => q.l) ?? I.end
+    let nxt = tops.first_true(q => a[q] > total.fold(c.l..stop)).map(q => q.l) ?? I.end
     if nxt == stop: stop else: reach(c, nxt)
 
 fn forfeits() -> Int:
     var lost = tops.len - 1
     var from = I.first
-    while let c = eaters.range(from..).first:
+    while let c = eaters.range(from!..).first:
         let stop = reach(c, tops.range(c.r..).first.map(q => q.l) ?? I.end)
         lost -= tops.range(c.l..stop).len - 1
         if let s = stop.right: from = s else: break

@@ -27,7 +27,7 @@ let a: [Pos]?Int = [Pos] i => if i.ord < n: given[i.ord] else: none
 fn solve() -> Z:
     let ends = prefix([Pos] i => (a[i] ?? 0) + 1)
     for i in Pos:
-        if ends.sum(..=i) - (i.ord + 1) > i.ord: return 0
+        if ends.fold(..=i) - (i.ord + 1) > i.ord: return 0
 
     fn start(i: Pos) -> Int = ends.prefix(i.l)
     let last = [Pos] i => ends.prefix(i.r) - 1
@@ -40,11 +40,11 @@ fn solve() -> Z:
     var dp: [Pos, 0..states.len]Z = 0
     for i in Pos.rev:
         dp[i, start(i)] = 1
-        for j in i..Pos.last if dp[i, last[j]] != 0:
+        for j in i..Pos.last! if dp[i, last[j]] != 0:
             let v = dp[i, last[j]]
             let nj = j.next!
             for k in start(nj)..states.len if let nk = states[k].next:
                 dp[i, nk] += v * dp[nj, k] * invs[Pos(states[k].owner - i)]
-    dp[Pos.first, last[Pos.last]] * comb.fact(n)
+    dp[Pos.first!, last[Pos.last!]] * comb.fact(n)
 
 print(solve())

@@ -46,7 +46,7 @@ fn put(v: Vol, d: Delta):
         gap.set(v, none)
     if let u = unique.range(..v).last: refresh_gap(u)
 
-fn safe_before(b: Vol) -> Int = total - unique_sum.sum(b..)
+fn safe_before(b: Vol) -> Int = total - unique_sum.fold(b..)
 
 fn identifiable() -> Bool:
     let last = unique.last ?? return true
