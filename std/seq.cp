@@ -879,7 +879,7 @@ pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
 /// order: pieces left to right; `piece` is keyed by the fresh domain `P`
 /// traps: when a cut lies outside the range
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
-pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
+pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
     with lint(unproven_list_index: allow)
     let a = self.l
     let b = self.r
@@ -964,7 +964,7 @@ pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
 /// example: `let (domain I, xs) = [7, 8].with_domain(); xs[I.first!] == 7`
 pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T):
     domain I = 0..self.len
-    (I:, [I] i => self[i.to_idx])
+    (I, [I] i => self[i.to_idx])
 
 /// The cycle of a permutation through `from`: `from`, `perm[from]`, ... until it
 /// returns to `from`. \(O(1)\) to make, \(O(\text{cycle length})\) to walk.
