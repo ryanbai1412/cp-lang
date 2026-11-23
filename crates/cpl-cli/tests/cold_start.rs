@@ -5,8 +5,8 @@
 //! The median of several samples is asserted, and the 90th percentile must
 //! stay within twice the budget, so a descheduled sample doesn't fail it.
 //! The commands come from `cpl --help`, so a new one is covered without an
-//! edit here. Each answers `--help`, and the front-end commands also run on
-//! the largest corpus ports.
+//! edit here. Each answers `--help`, the front-end commands also run on the
+//! largest corpus ports, and `cpl test` on the largest ports with cases.
 //!
 //! The budget describes the optimized build people run: `cargo test
 //! --release` asserts it everywhere. An unoptimized build asserts it for
@@ -86,9 +86,11 @@ fn ports(dir: &Path, out: &mut Vec<(usize, PathBuf)>) {
     }
 }
 
-fn largest_ports() -> Vec<String> {
+/// The largest corpus ports; with `tested`, only those with a `tests/` folder.
+fn largest_ports(tested: bool) -> Vec<String> {
     let mut all = Vec::new();
     ports(&root().join("corpus"), &mut all);
+    all.retain(|(_, path)| !tested || path.with_file_name("tests").is_dir());
     all.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
     all.into_iter()
         .take(LARGEST_PORTS)
@@ -110,7 +112,7 @@ fn every_command_starts_cold_in_under_100_ms() {
         .into_iter()
         .map(|c| (vec![c, "--help".to_string()], true))
         .collect();
-    for port in largest_ports() {
+    for port in largest_ports(false) {
         for cmd in ["check", "lint", "explain"] {
             runs.push((vec![cmd.to_string(), port.clone()], optimized));
         }
@@ -118,6 +120,16 @@ fn every_command_starts_cold_in_under_100_ms() {
             vec!["build".into(), port.clone(), "-o".into(), out.into()],
             optimized,
         ));
+    }
+    // `cpl test` compiles the C++ once per source; the start that counts is
+    // the next run, against the cache, which is every run while you iterate.
+    for port in largest_ports(true) {
+        Command::new(cpl())
+            .args(["test", &port])
+            .current_dir(root())
+            .output()
+            .unwrap();
+        runs.push((vec!["test".into(), port], optimized));
     }
     let mut over = Vec::new();
     for (args, asserted) in &runs {
