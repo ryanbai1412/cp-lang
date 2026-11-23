@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2319 (995 passing). Rules: 537.
+Cases: 2323 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -659,7 +659,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0104 Expected indented block: 1 case(s)
 - E0105 Expected type: 2 case(s)
 - E0106 Expected pattern: 1 case(s)
-- E0107 Unexpected token: 2 case(s)
+- E0107 Unexpected token: 6 case(s)
 - E0108 Expected identifier: 1 case(s)
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
