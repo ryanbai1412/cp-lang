@@ -49,6 +49,7 @@ number. *Fix the remaining failures* is in the domain's plan.
 | change the language | `language/<area>.md`, the spec chapter it leads, `process/change.md` |
 | add or change a std API | `guidelines/std-api.md`, `guidelines/std-docs.md` |
 | write or improve an error message | `guidelines/errors.md` |
+| change the parser, checker, IR, VM or codegen | `guidelines/compiler-changes.md` |
 | add a test suite, or know which test to write | `process/quality.md` |
 | add a conformance case or change a spec rule | `guidelines/conformance.md`, `guidelines/spec-rules.md` |
 | land a commit, or understand a red CI | `process/landing-and-ci.md` |
@@ -107,6 +108,7 @@ How far along each milestone is, and what blocks it, stays in `plan/`.
 |---|---|---|
 | `guidelines/std-api.md` | Naming lexicon, return conventions (`?T`), named options, keys and indices, method vs free form, user journeys per type, review checklist | stdlib |
 | `guidelines/std-docs.md` | Required sections, trait bounds, cost, examples that run, readability; checklist | stdlib |
+| `guidelines/compiler-changes.md` | Fix the class where the spec rule lives, regression with every fix, one program for two engines, bounds, no error inside std, migrate existing programs; checklist | compiler |
 | `guidelines/errors.md` | One error per root cause, at the mistake, naming the rule and a fix that compiles; checklist | diagnostics |
 | `guidelines/lints.md` | When a lint is warranted, how it teaches, configuration, fix quality | lint-fmt |
 | `guidelines/performance.md` | Matched-algorithm comparison, runtime and size bars (including the tuned max), behavior never changes | perf |

@@ -70,17 +70,16 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Quality | Metric | Mechanism | Status |
 |---|---|---|---|
 | Programs mean what the spec says | conformance cases passing, of all | `cpl-conform conformance` over `spec/conformance/` (generated from spec rules) | enforced; `--check` blocks regressions |
-| Interpreter and C++ agree | cases where the two outputs differ; cases skipped | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` over `tests/programs/` | enforced; skips only shrink |
+| Interpreter and C++ agree | cases where the two outputs differ; cases skipped | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` over `crates/cpl-cli/tests/programs/`; rule 4 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | enforced; skips only shrink |
 | Agreement on unusual input | mismatches over seeded degenerate inputs | `crates/cpl-cli/tests/fuzz_three_way.rs` | enforced for its families |
-| Agreement on programs nobody wrote | mismatches over generated programs | a differential program generator | missing |
 | No silent wrong answer | conformance cases with wrong output | `cpl-conform conformance --causes` (`wrong output` group) | enforced as a count |
 | A rejected program names its rule | rejected cases whose expected code matches | `cpl-conform conformance` (expected `error[...]` per case) | enforced |
 | One error per root cause, at the right line | extra or misplaced diagnostics on broken code | `crates/cpl-cli/tests/recovery.rs` | enforced |
 | Front end never panics | panics over arbitrary input | `crates/cpl-cli/tests/recovery.rs`; a parser/checker fuzzer | partial: fuzzer missing |
 | Internal errors never reach a user | `R0001` / internal traps over conformance and corpus | `cpl-conform corpus` and `conformance` (internal traps fail the case) | enforced |
 | Generic std is checked at its definition, so no error starts inside std | errors `cpl check std/<file>.cp` reports; diagnostics whose primary span is in `std/` on any user program | `crates/cpl-cli/tests/std_checks.rs` (count only drops, toward 0); a check that no conformance or corpus diagnostic points into `std/` | partial: the span check is missing |
-| Std bounds mean what they say | generic calls that type-check by unwrapping a type that doesn't meet the bound | trait-bound checks at the call (`cpl-check`), conformance cases such as `core-07` | partial: no suite generates bound violations |
-| No std privilege | std names matched in check, IR and interp | `ir_builtin_names`, `prelude_privilege`, `backend_std_names` ratchets in `scripts/debt-ratchet.py` | enforced; only shrink |
+| Std bounds mean what they say | generic calls that type-check by unwrapping a type that doesn't meet the bound | trait-bound checks at the call (`cpl-check`), conformance cases such as `core-07`; rule 5 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | partial: no suite generates bound violations |
+| No std privilege | std names matched in check, IR and interp | `ir_builtin_names`, `prelude_privilege`, `backend_std_names`, `lint_std_names` ratchets in `scripts/debt-ratchet.py`; rule 1 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | enforced; only shrink |
 | One interpreter engine | VM fallbacks to the tree-walker | `vm_fallbacks` and `tree_walker` ratchets; `CPL_VM_STATS=json` | enforced as a count; target 0, tree-walker deleted |
 | Runs are deterministic | output differences across repeated runs | `crates/cpl-interp/tests/checkpoint.rs`, trace goldens (`crates/cpl-cli/tests/trace_goldens.rs`) | partial |
 | Traps show source values | traps without values or span | `crates/cpl-cli/tests/runtime_errors.rs` | enforced |
@@ -105,11 +104,11 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Interpreter memory fits contest inputs (J6) | peak memory on the largest corpus inputs | none | missing |
 | The C++ builds on every judge profile (J9) | ports that fail to compile or exceed the source limit | `crates/cpl-cli/tests/judges.rs` | enforced |
 | Old solutions keep building (J10) | corpus programs that stop checking after a change | `cpl-conform corpus`; `crates/cpl-cli/tests/judges.rs` ports | enforced |
-| A user library has the powers std has (J10) | std-only mechanisms | the no-privilege ratchets above | partial |
-| Suites catch the bugs they claim to | mutation score of the conformance and differential suites | none (as rustc and LLVM measure with mutation and fuzz campaigns) | missing |
-| Generated programs find disagreements (as Csmith does for GCC and LLVM) | mismatches per 100k generated programs | none | missing |
+| A user library has the powers std has (J10) | std-only mechanisms | `prelude_privilege`, `backend_std_names`, `ir_builtin_names`, `lint_std_names` in `scripts/debt-ratchet.py`; rule 1 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | partial |
+| Suites catch the bugs they claim to | mutation score of the conformance and differential suites | `scripts/mutation-score.py` on the code a diff touches | partial: not yet in the gate |
+| Generated programs find disagreements (as Csmith does for GCC and LLVM) | mismatches per 100k generated programs | a differential program generator, also run at each `--checks` level | missing |
 | Code stays maintainable | owned files over the size cap; duplicated bodies | `rs_over_cap`, `dup_fn_bodies`, `near_dup_fns` ratchets | enforced |
-| Every fix keeps its regression | fixes landed without a case or program | review at landing | process |
+| Every fix keeps its regression | fixes landed without a case or program | the checklist in [compiler-changes](../guidelines/compiler-changes.md#checklist) | process |
 
 ## Suites and tools
 
