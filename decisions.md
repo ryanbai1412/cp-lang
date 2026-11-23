@@ -7796,3 +7796,14 @@ Rebuild round 17 found 12 holes (4 silent, 4 contradiction, 2 missing-stdlib,
 - A record read takes one token per field, `Str` fields too (R10.2.1).
 - std/README.md's binary search text now says `first_true`/`last_true`.
 Reverse: edit the named rules, the prelude list and the cases.
+
+## 371. Rebuild-18 rulings: per-test domains sized from domains (2026-11-23)
+
+Rebuild round 18 (rated 1900-2200, with 200-input stress on every problem)
+found 19 holes (11 silent, 3 contradiction, 3 missing-stdlib, 2 found-late)
+and 2 implementation bugs. Rulings: a domain declared below `@!multitest` may
+size itself from another domain's `.count` (R10.1.1). Already settled and now
+with cases: block `if` is an expression, `i..` outside a slice, `sorted()` on a
+generator, `?T` `==`. Deferred to Milestone 2: a sum domain `V + C` and an
+upper-triangle reader; the idioms are `domain N = 0..n + C.count` and a nested
+read loop. Reverse: edit R10.1.1 and its case.

@@ -190,6 +190,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/unwrap-shadow-below-multitest.cp: compiler
 - core-02/bare-variant-needs-expected-enum.cp: compiler
 - core-02/counted-array-never-grows.cp: compiler
+- core-02/move-into-ctor-receiver-then-use.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
@@ -226,6 +227,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/zip-keyed-by-first.cp: compiler
 - core-04/char-domain-position-to-char.cp: compiler
 - core-04/table-one-cell-parameter.cp: compiler
+- core-04/range-type-binds-generic-domain.cp: compiler
 - core-05/at-assign-needs-var.cp: compiler
 - core-05/closure-capture-blocks-push.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
@@ -262,10 +264,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/tally-is-counter.cp: stdlib
 - core-07/list-scan-indexed-by-count.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
+- core-07/heap-by-desc-lambda.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
-- core-08/trait-assoc-type-bound.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-division-by-zero-fallback.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
@@ -284,6 +286,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics
 - std-dp/ranges-key-first-is-not-optional.cp: stdlib
+- std-dp/backtrack-leaf-start-one-step.cp: stdlib
+- std-dp/backtrack-preorder-depths.cp: stdlib
+- std-dp/backtrack-prune-root.cp: stdlib
 - std-graph/dfs-shares-seen.cp: stdlib
 - std-graph/graph-only-and-transpose.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
@@ -297,3 +302,4 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-tree/from-prufer-empty-code-is-one-edge.cp: stdlib
 - std-tree/from-prufer-round-trip.cp: stdlib
 - std-tree/from-prufer-wrong-length-traps.cp: stdlib
+- std-math/bigint-matches-int-arithmetic.cp: stdlib
