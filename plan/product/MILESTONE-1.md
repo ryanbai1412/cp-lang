@@ -11,7 +11,7 @@ This is more than a proof of concept, a toy interpreter or a demo website. The f
 - **Due:** about 12 hours, by 2026-11-23 09:30 PST. Plan in hours; checkpoints every 2 hours.
 - **Platforms:** Linux, macOS and Windows, all supported and all tested.
 - **Editors:** Neovim/Vim (the first friend's), VS Code and JetBrains, each with a working LSP.
-- **Judge:** Codeforces. We check submissions against a local Codeforces profile; agents never submit to real judges.
+- **Judge:** Codeforces-style problems. The output is one portable C++17 file that standard g++ compiles. No judge-specific features; agents never submit to real judges. Language quality matters more than judge coverage.
 - **Channel:** the edge release is enough. No stable release needed.
 - Deferred work continues in parallel, but milestone blockers come first.
 
@@ -39,7 +39,7 @@ Afterwards they can give meaningful feedback on expressiveness, correctness mech
 - **Editors:** Neovim/Vim, VS Code and JetBrains with highlighting, diagnostics, completion and formatting, so the user never switches between disconnected tools.
 - **Website and learning:** a credible site, a concise intro guide, searchable docs, runnable examples that actually work, and enough practice to teach the core language model.
 - **In-depth language chapters:** one per major part (ownership and mutation, domains and ranges, types and proofs, multitest, checked operations, the judge model), precise enough to predict behaviour, each explaining the design decisions behind it. The first friends are PL enthusiasts who will want to understand it fully.
-- **Submission:** a reliable self-contained C++17 file for Codeforces. Single-test and multitest problems work; other formats work where feasible and are clearly scoped where not.
+- **Submission:** a reliable self-contained C++17 file that standard g++ compiles. Single-test and multitest problems work; other formats work where feasible and are clearly scoped where not.
 - **Debugging:** high-quality diagnostics and runtime errors, print debugging, assertions, and fast reproduction of failing cases. A basic integrated brute/stress workflow is the differentiator to show. Full time-travel debugging is not required.
 - **Release quality:** reproducible builds, installers tested on all three platforms, automated regression checks, and no known serious correctness or submission bugs in supported workflows.
 
