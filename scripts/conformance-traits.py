@@ -89,7 +89,7 @@ def triples(data):
 
 
 def case_text(c):
-    head = [f'// expect: ok, output "{c["out"]}"']
+    head = [f'// expect: ok, output "{c["out"].replace(chr(10), "\\n")}"']
     if "input" in c:
         head.append(f'// input: "{c["input"]}"')
     if "rule" in c:
