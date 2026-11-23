@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Decision 325 (Ryan): cell neighbour getters `p.up`/`down`/`left`/`right` and `Dir4` constants normative in `lib/graphs-trees.md`; rationale examples use `c.adj4`; std-grid cases moved to the constant spelling (fail until stdlib lands it).
 - Portability (M1 exit 6): R01.1.4 CRLF source with case `core-01/crlf-source.cp` (passes; CRLF input was already R10.2.8 with two cases); path separators in `tools/cli.md`; Windows evidence requested from tools.
 - Answered site's `@cache`/`@memo` question: functions keep `@memo(array|map)`, `@cache` is the field form (decision 145); fixed the two wrong `CHANGELOG.md` lines directly, noted to infra.
 - Rlsp.5 names the one-step `cpl setup neovim` / `cpl setup vim` that `cpl` ships, instead of a runtime-path line into a checkout; editors README routed to tools.

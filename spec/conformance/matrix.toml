@@ -139,7 +139,7 @@ code = "$decl\nprint($p)"
 out = "$show"
 
 [index.col.step]
-code = "$decl\nprint($D.count(x => x.step(Dir4.up()) != None))"
+code = "$decl\nprint($D.count(x => x.step(Dir4.up) != None))"
 out = "$up"
 
 [index.col.next]

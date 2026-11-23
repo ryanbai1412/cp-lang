@@ -320,7 +320,9 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 | Form | Meaning | Cost |
 |---|---|---|
 | `Lit(x, value)` | a 2-SAT literal, "x is `value`", for `TwoSat` | O(1) |
-| `p.adj4`, `p.adj8`, `p.ray(d)`, `Dir4`, `Dir8` | grid neighbours of a `(Row, Col)` cell inside the grid; the cells from `p` to the edge in direction `d` | O(1) per cell |
+| `p.up`, `p.down`, `p.left`, `p.right` | the neighbouring cell of a `(Row, Col)` cell, a `?(Row, Col)` that is `None` off the grid; getters, no parens, like `r.prev` | O(1) |
+| `p.adj4`, `p.adj8`, `p.step(d)`, `p.ray(d)` | the neighbours inside the grid; one step in direction `d`; the cells from `p` to the edge in direction `d` | O(1) per cell |
+| `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left`, `Dir4.all()`, `Dir8` | directions are constants, not calls: `p.step(Dir4.up) == p.up` | O(1) |
 | `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree, `top(v, ok:)` tests the merging edges themselves, `up(op, leaf:)` folds leaf values per node; flip the order with `w: e => desc(e.w)` | O(m log m), O(log n) per `reach` |
 
 ## Open

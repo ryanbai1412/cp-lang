@@ -333,10 +333,10 @@ domain is whatever the contestant declared, including a product of domains
 `(Row, Col)` cell today:
 
 ```cp
-let p = bfs(c => [d for d in adj4(c) if wall[d] == false], from: [start])
+let p = bfs(c => c.adj4.filter(d => wall[d] == false), from: [start])
 ```
 
-`std.grid` supplies the moves (`Dir4`, `Dir8`, `step`, `adj4`, `adj8`, `ray`);
+`std.grid` supplies the moves (`p.up`/`down`/`left`/`right`, `Dir4`, `Dir8`, `step`, `adj4`, `adj8`, `ray`);
 the graph library never learns what a grid is. A state with extra
 coordinates is a tuple of domains, and `fixed_cost_paths` takes the moves
 as a value (an enum's `all`) so the transition is written once, as a
@@ -446,7 +446,7 @@ domain Col = 0..m
 let g: [Row, Col]Char = read()
 let at = (c: Char) => first(p for p in (Row, Col) if g[p] == c)!
 
-let p = bfs(c => [d for d in adj4(c) if g[d] != '#'], from: [at('A')])
+let p = bfs(c => c.adj4.filter(d => g[d] != '#'), from: [at('A')])
 if let path = p.path(at('B')):
     print("YES", path.len - 1)
     print(String([dir4_between(a, b).letter for (a, b) in path.adjacent]))

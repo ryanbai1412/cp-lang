@@ -7102,3 +7102,7 @@ or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-
 
 ### Ratchet: stdlib's compiler growth accepted after landing (infra, sheriff)
 6267efde3, f56963d96 and nearby stdlib commits grew five allowlisted files (`cpl-check/src/check/expr.rs` +25, `cpl-ir/src/lower/{call,expr,mod,stmt}.rs` +5/+9/+17/+33 lines) on main with no `--update`, so `debt-ratchet --check` failed every commit. Reverting the interval DP and NTT work costs Milestone 1 more than 89 lines of debt, so the allowlist takes the new sizes; stdlib owes the lines back by splitting those files. Reverse: shrink the files and run `debt-ratchet.py --update rs_over_cap`.
+
+## 325. Cell neighbours are getters; directions are constants (2026-11-22)
+
+Ryan's request: `p.up`, `p.down`, `p.left`, `p.right` on a `(Row, Col)` cell return `?(Row, Col)`, `None` off the grid, and take no parens, like `r.prev` (a cheap, total lookup reads as a property). `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left` become constants, not calls, so `p.step(Dir4.up) == p.up`. Lost: `p.step(Dir4.up())` as the only spelling (two calls for one neighbour) and hand-written `(R.at(r - 1), c)` neighbours (an off-by-one site per move). Spec: `lib/graphs-trees.md` "Also in the prelude". Cases: `std-grid/cell-neighbour-getters.cp`, and the `Dir4` constant spelling in `std-grid/*` and `matrix/index/product--step.cp`. Reverse: restore the `()` on the four `Dir4` names and drop the four getters.
