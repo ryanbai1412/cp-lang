@@ -1,5 +1,11 @@
-// COI 2006 Policija: a connected road map. Each query closes one road or
-// one town and asks whether the police can still drive from town a to b.
+// Source: COI 2006 (Policija), https://dmoj.ca/problem/coi06p2
+// Problem: a connected graph, N <= 1e5 towns and E <= 5e5 roads. Q <= 3e5 queries: can one get
+//   from A to B with (1) the road G1-G2 closed, or (2) town C closed? Print yes or no.
+// Solution: a DFS tree (built by hand: Rooted is breadth-first) with low[v], the earliest
+//   preorder position a non-tree road reaches from v's subtree. A road matters only if it is a
+//   tree edge with low[bottom] > pos[top] and A, B on opposite sides of bottom's subtree.
+//   Closing C cuts off the child subtree of C containing x iff low[child] >= pos[C]; A and B
+//   stay connected iff they land in the same cut-off piece or both outside. O(N + E + Q log N).
 let (n, m): (2..=1e5, 1..=5e5) = read()
 domain Town = 1..=n
 domain Road = 0..m

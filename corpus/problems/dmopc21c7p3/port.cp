@@ -1,4 +1,13 @@
-// DMOPC '21 Contest 7 P3 (buildable today-form)
+// Source: DMOPC '21 Contest 7 P3 (Whack-an-Ishigami), https://dmoj.ca/problem/dmopc21c7p3
+// Problem: N <= 1e6 figures, some up (k_i = 1), and M <= 1e6 distinct links a -> b (a != b):
+//   flipping a also flips b, in a chain reaction; an endless reaction resets the game. A whack
+//   flips one figure. Print the fewest whacks that leave every figure down, or -1.
+// Solution: a figure is flipped once per walk from a whacked figure to it, so on a DAG
+//   flips(v) = whacked(v) + sum of flips over its in-links, and flips must equal k: v is
+//   whacked iff k_v differs from the XOR of k over its in-links, a unique choice. Every whack
+//   so chosen is a lit figure or reachable from one, and every lit figure needs a whack that
+//   reaches it, so the answer is -1 iff a cycle is reachable from a lit figure (iterative DFS
+//   with colours). O(N + M).
 // original: corpus/submissions/4453037.cpp
 let n: 1..=1000000 = read()
 let m: 0..=1000000 = read()

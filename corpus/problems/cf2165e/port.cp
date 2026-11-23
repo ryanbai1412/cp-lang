@@ -1,18 +1,11 @@
-// Codeforces 2165 E: Rainbow Tree.
-// For each edge count `k in 1..=n - 1`, find the minimum chromatic bound
-// `colors` over all `k`-edge subforests obtained by peeling leaf layers from
-// the tree:
-//   - A `k`-edge subforest admits a `c`-coloring iff peeling `floor((c - 1) / 2)`
-//     leaf layers leaves a forest whose remaining edges can be colored in the
-//     remaining 1 (odd `c`) or 2 (even `c`) colors.
-//   - Why a maximum-degree vertex is optimal on the even step (`colors = 2r`):
-//     after `r - 1` peels, adding 1 color beyond `2r - 1` allows one vertex `v`
-//     to absorb a star of `deg(v) - 1` extra incident edges (each using the new
-//     color without creating a monochromatic path), so picking `v` with maximum
-//     remaining degree `degs.last!` maximizes the edge count at `colors = 2r`.
-//   - On the odd step (`colors = 2r + 1`), peeling the entire current leaf
-//     layer adds `leaves.len` edges across the full round, so it covers the
-//     remaining `leaves.len - (max_deg - 1)` edges beyond the even step.
+// Source: Codeforces 2165E (Rainbow Branch), https://codeforces.com/contest/2165/problem/E
+// Problem: a tree on n vertices (multitest, sum n <= 3e5). Colour its edges with exactly k
+//   colours, minimising the most colours on any path; print that minimum for every k = 1..n-1.
+// Solution: find f(c), the most colours usable with at most c per path; the answer for k is
+//   the least c with f(c) >= k. f(1) = 1; an odd budget 2r + 1 gives each edge of the r outer
+//   leaf layers its own colour, so it adds the size of the next layer; an even budget adds a
+//   star of deg - 1 fresh colours at the highest-degree vertex left. Peel layers keeping the
+//   degrees in a SortedBag, O(n log n).
 
 @!multitest
 let n: 2..=300_000 = read()

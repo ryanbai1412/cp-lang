@@ -1,7 +1,14 @@
+// Source: IOI 2020 Day 2 P3 (Stations), https://dmoj.ca/problem/ioi20p6
+// Problem: a tree of n <= 1000 stations. label gives them distinct labels in 0..k (k >= n - 1;
+//   full score needs k = n - 1); find_next_station then gets only the label s of the current
+//   station, the target label t and the sorted labels c of s's neighbours, and must return the
+//   neighbour on the path to t.
+// Solution: DFS numbering, a station at even depth as the walk enters it and one at odd depth
+//   as it leaves, so labels 0..n-1 are a subtree interval with the station's own label at one
+//   end. If s is below all its neighbours, s is entered-numbered: child i owns (c[i-1], c[i]],
+//   starting just above s, and the parent is the last label; otherwise mirror that from the top.
+//   O(n) labelling, O(deg) per hop.
 // original: proto/ports/scout_batch_9/harness/ioi20p6.cpp
-// IOI 2020 Stations: give the n stations of a tree distinct labels below
-// n, so that a packet at station s bound for t can pick its next hop
-// knowing only the labels of s, of t and of s's neighbours.
 // Here: label the tree, then for each query print the station a packet
 // at s bound for t is sent to.
 let n: 2..=1000 = read()

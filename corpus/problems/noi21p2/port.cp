@@ -1,8 +1,13 @@
-// NOI 2021 P2, Path Intersection: a layered graph with as many vertices in
-// the last layer as in the first. Count the ways to pick vertex-disjoint
-// paths from every first-layer vertex to the last layer, each way signed by
-// the parity of its crossings. By the Lindstrom-Gessel-Viennot lemma that is
-// the determinant of the path-count matrix: the product of the layer matrices.
+// Source: NOI 2021 P2 (Intersecting Paths), https://dmoj.ca/problem/noi21p2
+// Problem: T <= 5 tests; a layered DAG with k <= 100 layers, n_1 = n_k <= 100 and
+//   n_1 <= n_i <= 2 n_1, edges only from layer j to j + 1. Over all sets of n_1 vertex-disjoint
+//   paths from layer 1 to layer k, print (#sets with an even number of crossings) - (#odd),
+//   mod 998244353.
+// Solution: the crossing parity of a path set is the parity of the permutation it induces
+//   from the first layer to the last, so by the Lindstrom-Gessel-Viennot lemma the answer is
+//   det of the n_1 x n_1 path-count matrix: the product of the layer adjacency matrices.
+//   Multiply them left to right, O(k n_1 n_i n_{i+1}) with zero entries skipped, then Gaussian
+//   elimination mod p, O(n_1^3).
 // original: corpus/submissions/3893923.cpp
 
 const P = 998244353

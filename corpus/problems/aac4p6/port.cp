@@ -1,4 +1,15 @@
-// AAC 4 P6 (today/ runnable subset) — original: corpus/submissions/4227368.cpp
+// Source: An Animal Contest 4 P6 (Cozy Cottages), https://dmoj.ca/problem/aac4p6
+// Problem: N <= 1e6 cottages on a circle with a_i <= 1e9 elves. Each of K <= 1e9 hours every
+//   non-empty cottage sends exactly one elf to the next cottage, all at once. Print the final
+//   counts.
+// Solution: after min(N, K) hours either no cottage is empty, and then nothing changes any
+//   more, or the elves stand at most one per cottage and the pattern turns one cottage per
+//   hour: simulate m = min(N, K) hours and, if K > N with an empty cottage, rotate by K mod N.
+//   The m hours take one O(N + m) sweep: a deque holds the hours at which no elf enters the
+//   current cottage (seeded by running the elves of cottages N-1, N-2, ... in reverse); each
+//   such hole costs the cottage an elf, and its own a_i elves fill the next a_i holes of the
+//   stream it passes on.
+// original: corpus/submissions/4227368.cpp
 
 let n: 1..=1_000_000 = read()
 let k: 0..=1_000_000_000 = read()

@@ -1,13 +1,13 @@
-// Codeforces 2262 B: Culling Game.
-// Only a prefix maximum ("top") can ever become champion, and every top after
-// the first wins its first fight by forfeit, so the answer is (#tops - 1) minus
-// the tops some champion beats instead of forfeiting to. Call a top c an
-// eater when it beats the next top q, i.e. a[c..q) sums to at least a[q].
-// An eater keeps absorbing tops until the first top above its running sum;
-// each absorbed top is larger than everything before it, so the sum doubles
-// per top absorbed and the walk takes O(log max a) searches. A forfeit to a
-// non-eater changes nothing, so only eaters need walking.
-// Removals are answered backwards, as insertions.
+// Source: Codeforces 2262B (Culling Game), https://codeforces.com/contest/2262/problem/B
+// Problem: n <= 2e5 sorcerers (multitest, sum n <= 2e5), skills a_i <= 1e9. The leftmost is
+//   champion and meets the rest left to right: if his skill s < x he forfeits and x takes
+//   over, else he wins and s += x. For each i = 0..n-1, after removing sorcerers p_1..p_i
+//   (p a permutation), print the number of forfeits.
+// Solution: only a prefix maximum (a top) can become champion, and the answer is (#tops - 1)
+//   minus the tops some champion beats. An eater c beats the next top; it absorbs tops until one
+//   exceeds its running sum, which at least doubles per top, so its walk takes O(log max a)
+//   searches. Answer removals backwards as insertions, with a Fenwick tree of skills and sorted
+//   sets of the tops and the eaters.
 @!multitest
 let n: 1..=200_000 = read()
 domain I = 1..=n

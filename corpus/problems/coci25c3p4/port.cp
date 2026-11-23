@@ -1,7 +1,14 @@
+// Source: COCI 2025/26 Round 3 (Drzava), https://dmoj.ca/problem/coci25c3p4
+// Problem: a tree on n <= 3000 cities whose diameter is below 36 roads. A state is a capital
+//   and a set of other secondary cities, none of which lies on the path from the capital to
+//   another. For every size k = 1..n print the number of states with k cities, mod 1e9 + 7.
+// Solution: per capital the counts form a polynomial (x^j: j secondary cities), and disjoint
+//   parts multiply. A part hanging off an edge either takes its top city alone or picks inside
+//   its children's parts: down[v] = hung(product of the children's down). Rerooting: around[v]
+//   multiplies the children's down with hung(around[parent] / down[v]), dividing out a factor
+//   that starts with 1. Sum around[v] over v. Rooted at vertex 1 the depth is below 36, so the
+//   products cost O(36 n^2) in all.
 // original: corpus/submissions/7730380.cpp
-// COCI 2025/26 contest 3 problem 4: hang a tree from a vertex r and pick k
-// vertices other than r, none of them above another. For every k below n,
-// count the picks, summed over every choice of r.
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=5000 = read()

@@ -1,17 +1,11 @@
-// Codeforces 2084 E: Blossom.
-//
-// mex(segment) = the number of v >= 0 with all of 0..=v inside it, so the
-// answer sums, over v and over segments, the fillings that put every value
-// in 0..=v inside the segment. Let `need` be how many of 0..=v are unplaced
-// and m the number of blanks. A segment with f blanks counts
-// P(f, need) * (m - need)! fillings (the missing values go to its blanks,
-// the rest anywhere), provided it covers the span lo..=hi of the placed
-// values in 0..=v.
-//
-// So keep `covering[f]`, the segments with f blanks covering the span. As v
-// grows the span only widens; when a value at p widens it to lo2..=hi2, the
-// segments that stop covering it start in (lo2, lo] or end in [hi, hi2).
-// Each segment leaves once, so the whole walk is O(n^2) per test.
+// Source: Codeforces 2084E (Blossom), https://codeforces.com/contest/2084/problem/E
+// Problem: a permutation of 0..n-1 with some entries -1 (missing); multitest, sum n <= 5000.
+//   Over every way to fill it in, sum the MEX of all non-empty subsegments, mod 1e9 + 7.
+// Solution: mex(segment) counts the v with all of 0..=v inside it, so sum over v and over
+//   segments the fillings that put 0..=v inside. With `need` of 0..=v unplaced and m blanks, a
+//   segment with f blanks covering the span of the placed ones counts P(f, need) (m - need)!.
+//   Keep covering[f], the segments with f blanks covering the span; as v grows the span widens
+//   and each segment leaves the count once, so O(n^2) per test.
 @!multitest
 use std.mod.{Comb, Mod}
 
