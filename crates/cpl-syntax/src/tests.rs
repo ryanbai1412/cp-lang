@@ -1641,3 +1641,24 @@ fn a_bad_binary_digit_is_named() {
     );
     assert_eq!(codes("let x = 0b101\nprint(x)\n"), Vec::<&str>::new());
 }
+
+#[test]
+fn an_unclosed_paren_offers_each_closer_spot() {
+    let src = "let s = \"abc\"\nlet n = SuffixArray(s.distinct() + 1\nprint(n)\n";
+    let d = one_diag(src);
+    assert_eq!(d.code.0, "E0101");
+    let titles: Vec<_> = d.fixes.iter().map(|f| f.title.as_str()).collect();
+    assert_eq!(
+        titles,
+        [
+            "insert `)`",
+            "insert `)` after `s`",
+            "insert `)` after `s.distinct()`"
+        ]
+    );
+    let after_s = src.find("(s").unwrap() as u32 + 2;
+    assert_eq!(d.fixes[1].edits[0].0, cpl_diag::Span::point(after_s));
+    // Two unclosed openers need two closers: no single-spot candidates.
+    let d = one_diag("let n = f(g(1\nprint(n)\n");
+    assert_eq!(d.fixes.len(), 1, "{:?}", d.fixes);
+}

@@ -463,7 +463,8 @@ impl<'a> Lexer<'a> {
         // Recovery still closes at `close_at`, so the rest of the line stays
         // inside the bracket; only the fix moves to where the closer most
         // likely belongs, as in `let (a, b = p` or `if a[i: ...`.
-        let split = match self.openers.len() == keep + 1 {
+        let single = self.openers.len() == keep + 1;
+        let split = match single {
             true => self.end_of_unclosed(&self.openers[keep], keep),
             false => Option::None,
         };
@@ -487,6 +488,17 @@ impl<'a> Lexer<'a> {
                     Span::point(fix_at as u32),
                     close,
                 );
+                let others = match single {
+                    true => self.closer_candidates(&opener, close_at),
+                    false => Vec::new(),
+                };
+                for (at, piece) in others.into_iter().filter(|c| c.0 != fix_at).take(7) {
+                    diag.fix(
+                        format!("insert `{close}` after `{piece}`"),
+                        Span::point(at as u32),
+                        close,
+                    );
+                }
                 if next_line > close_at {
                     diag = diag
                         .with_label(Span::point(next_line as u32), "a new statement starts here");
@@ -586,6 +598,51 @@ impl<'a> Lexer<'a> {
             }
         }
         Option::None
+    }
+
+    /// Other places the closer may belong, nearest first, then the end of
+    /// the line: before each `.name` or binary operator at depth 0, as in
+    /// `SuffixArray(s.distinct() + 1`. Only types can choose between them.
+    fn closer_candidates(&self, opener: &Opener, close_at: usize) -> Vec<(usize, String)> {
+        use TokenKind::*;
+        let tokens = &self.out.tokens;
+        let Some(at) = tokens
+            .iter()
+            .rposition(|t| t.span == opener.span && t.kind == opener.kind)
+        else {
+            return Vec::new();
+        };
+        let piece = |end: usize| {
+            let text = self.src[opener.span.end as usize..end].trim();
+            let n = text.chars().count();
+            match n > 24 {
+                true => format!("...{}", text.chars().skip(n - 20).collect::<String>()),
+                false => text.to_string(),
+            }
+        };
+        let mut depth = 0usize;
+        let mut out = Vec::new();
+        for i in at + 2..tokens.len() {
+            let t = &tokens[i];
+            if t.span.start as usize >= close_at {
+                break;
+            }
+            match t.kind {
+                LParen | LBracket | LBrace => depth += 1,
+                RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
+                _ if depth > 0 => {}
+                Colon | Eq | OpEq | FatArrow | Arrow | In => return out,
+                Dot | Plus | Minus | Star | Slash | Percent | EqEq | NotEq | Lt | LtEq | Gt
+                | GtEq | Spaceship | DotDot | DotDotEq | And | Or | QuestionQuestion => {
+                    let end = tokens[i - 1].span.end as usize;
+                    out.push((end, piece(end)));
+                }
+                _ => {}
+            }
+        }
+        let end = tokens.last().map_or(close_at, |t| t.span.end as usize);
+        out.push((end, piece(end)));
+        out
     }
 
     fn token(&mut self) {

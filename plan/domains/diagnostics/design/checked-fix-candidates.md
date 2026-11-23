@@ -37,9 +37,10 @@ when the latest spot is the only one that parses.
   (`/usr/bin/time target/debug/cpl check corpus/problems/ccc18s4/spec.cp`:
   0.02 s debug, 0.01 s release), so the worst case stays under a second.
   The LSP never re-checks; it lists candidates in rank order.
-- **Candidates for E0101.** Close before each `.name` or binary operator
-  at depth 0 after the opener's first argument, nearest first, then today's
-  spot. Cap 8.
+- **Candidates for E0101.** Today's spot stays `fixes[0]`; then close
+  before each `.name` or binary operator at depth 0, nearest first, then
+  the end of the line. Cap 8, and none when two openers are unclosed.
+  Emitted since this note (`closer_candidates` in `lexer.rs`).
 
 ## API wanted from tools (owns `cpl-cli`)
 ```rust

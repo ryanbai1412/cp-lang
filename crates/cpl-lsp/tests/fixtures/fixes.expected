@@ -9,3 +9,4 @@ drop `()` to read `xs.len`
 
 == codeAction @ 5:9
 insert `)`
+insert `)` after `n`
