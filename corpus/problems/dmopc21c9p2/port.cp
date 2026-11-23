@@ -1,5 +1,11 @@
-// DMOPC '21 C9 P2 (CP Lang 0.2.2): merge equal adjacent characters while
-// matching prefix against target `b` using `std.deque.Deque`.
+// Source: DMOPC '21 Contest 9 P2 (String Puzzle), https://dmoj.ca/problem/dmopc21c9p2
+// Problem: T puzzles (sum of lengths <= 1e6), each two lowercase strings A and B. One move
+//   replaces two adjacent equal letters by one copy of the next letter ("zz" cannot merge).
+//   Print YES if A can be turned into B, else NO.
+// Solution: each letter of B is merged from a contiguous block of A. Scan A pushing
+//   letters onto a deque and merging the last two while they are equal and not z; whenever
+//   the front equals the next unmatched letter of B, pop it and advance. YES iff the deque
+//   empties with all of B matched. O(|A| + |B|) amortised.
 // original: corpus/submissions/4563973.cpp
 
 @multitest

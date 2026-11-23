@@ -1,5 +1,10 @@
-// AtCoder DP P Independent Set: paint each vertex of a tree white or black
-// with no two adjacent black vertices. Count the paintings.
+// Source: AtCoder Educational DP Contest P (Independent Set),
+//   https://atcoder.jp/contests/dp/tasks/dp_p
+// Problem: a tree on n <= 1e5 vertices. Count the ways to paint each vertex white or black
+//   with no two adjacent vertices black, modulo 1e9 + 7.
+// Solution: tree DP rooted at vertex 1: white[v] / black[v] count paintings of v's subtree
+//   with v white / black; a child c multiplies white[p] by white[c] + black[c] and black[p]
+//   by white[c], children before parents in reverse visit order. O(n).
 type Z = Mod<1_000_000_007>
 let n: 1..=1e5 = read()
 domain V = 1..=n
