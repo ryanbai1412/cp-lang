@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `land.sh` is back to trailer check, rebase, push, retry (35 lines). Regeneration moved to CI's `regen` job (`scripts/regen.sh`), which commits stale skill pages, `COVERAGE.md` and fixed prelude gaps on main and re-dispatches CI, so a bare `git push` is enough (decision 280). The marker and ratchet guards and their 3 tests left `land.sh`.
 - Correction: the site deploy is not blocked on a Cloudflare token; `site.yml` deployed from green CI at 04:28Z (72ef82a1). Earlier entries saying otherwise were wrong.
 - release.yml now runs after every green main CI run (skipped if `edge` was published under an hour ago) and on `v*` tag pushes (stable; the tag must be v<workspace version>). No release had ever been published: the nightly cron never fired and nobody dispatched it.
 - Sheriff: run 45111951302 (72ef82a16) red on stale COVERAGE.md and corpus `span` from stdlib aeccc9b9a (stdlib reverted it in 3b4557519). Regenerated COVERAGE.md.

@@ -244,62 +244,6 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("docs: no trailer has no Domain: trailer", r.stderr)
             self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
-    def test_land_refuses_a_change_that_adds_a_conflict_marker(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote, work, git = self.land_repos(tmp, env)
-            with open(os.path.join(work, "a.md"), "a", encoding="utf-8") as f:
-                f.write("||||||| parent of 1234567 (docs: x)\n")
-            git("commit", "-qam", "docs: x\n\nDomain: infra")
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
-                               capture_output=True, text=True, env=env)
-            self.assertNotEqual(r.returncode, 0)
-            self.assertIn("conflict markers", r.stderr)
-            self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
-
-    def test_land_refuses_only_a_change_that_grows_a_capped_file(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote, work, git = self.land_repos(tmp, env)
-            os.makedirs(os.path.join(work, "scripts"))
-            with open(os.path.join(work, "scripts", "debt-ratchet.py"), "w", encoding="utf-8") as f:
-                f.write("print('debt-ratchet: ERROR: big.rs: grew from 1 to 2 lines'); exit(1)\n")
-            git("add", "scripts")
-            git("commit", "-qm", "factory: ratchet\n\nDomain: infra")
-            self.commit(git, work, "other.rs")
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
-                               capture_output=True, text=True, env=env)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.commit(git, work, "big.rs")
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
-                               capture_output=True, text=True, env=env)
-            self.assertNotEqual(r.returncode, 0)
-            self.assertIn("grows a capped file: big.rs", r.stderr)
-            self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
-
-    def test_land_commits_regenerated_skill_pages(self):
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = hermetic_env()
-        with tempfile.TemporaryDirectory() as tmp:
-            remote, work, git = self.land_repos(tmp, env)
-            os.makedirs(os.path.join(work, "scripts"))
-            os.makedirs(os.path.join(work, "skills"))
-            with open(os.path.join(work, "scripts", "skill-gen.py"), "w", encoding="utf-8") as f:
-                f.write("open('skills/seq.md', 'w').write(open('spec/seq.cp').read())\n")
-            with open(os.path.join(work, "scripts", "conformance-coverage.py"), "w", encoding="utf-8") as f:
-                f.write("")
-            os.makedirs(os.path.join(work, "spec"))
-            self.commit(git, work, os.path.join("spec", "seq.cp"))
-            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
-                               capture_output=True, text=True, env=env)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("regenerated", r.stderr)
-            self.assertEqual(git("show", "main:skills/seq.md", cwd=remote), "spec/seq.cp")
-            self.assertEqual(git("log", "-1", "--format=%(trailers:key=Domain,valueonly)", "main",
-                                 cwd=remote), "infra")
-
     def test_append_only_shared_files_rebase_without_conflicts(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()

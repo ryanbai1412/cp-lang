@@ -3,10 +3,7 @@
 # push (someone landed first) rebase and push again. Nothing is gated here:
 # the commit hook ran the commit tier, CI runs the full gate on every main
 # tip, and the infra sheriff reverts or fixes a red one. Every commit to land
-# needs a `Domain: <d>` trailer, and the change may not add a conflict marker
-# or grow a file the debt ratchet caps.
-# A change under spec/, skills/ or scripts/ gets its generated skill pages and
-# COVERAGE.md regenerated and committed, so they can't go stale on main.
+# needs a `Domain: <d>` trailer. CI's regen job keeps generated files current.
 # Each landing appends one JSON line (domain, seconds, tries) to
 # .git/cpl-land.log; scripts/land_stats.py reads it.
 #
@@ -24,27 +21,6 @@ done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 for try in $(seq "$tries"); do
     git pull -q --rebase "$remote" main
-    if git diff FETCH_HEAD HEAD | grep -qE '^\+(<<<<<<<|\|\|\|\|\|\|\||>>>>>>>)( |$)'; then
-        echo "land: conflict markers in your change: git diff FETCH_HEAD HEAD | grep -nE '^\+(<<<|\|\|\||>>>)'" >&2
-        exit 1
-    fi
-    if [ -f scripts/skill-gen.py ] && ! git diff --quiet FETCH_HEAD HEAD -- spec skills scripts; then
-        python3 scripts/skill-gen.py >/dev/null && python3 scripts/conformance-coverage.py >/dev/null
-        git add -A -- $(ls -d skills spec/conformance/COVERAGE.md 2>/dev/null)
-        if ! git diff --cached --quiet; then
-            git commit -q --no-verify -m "factory: regenerate skill pages and coverage" -m "Domain: $domain"
-            echo "land: regenerated stale skill pages or COVERAGE.md" >&2
-        fi
-    fi
-    if [ -f scripts/debt-ratchet.py ]; then
-        grown=$(python3 scripts/debt-ratchet.py --check 2>&1 |
-            sed -n 's/^debt-ratchet: ERROR: \([^:]*\):.*/\1/p' |
-            grep -Fx -f <(git diff --name-only FETCH_HEAD HEAD) || true)
-        if [ -n "$grown" ]; then
-            echo "land: your change grows a capped file: $grown (python3 scripts/debt-ratchet.py --check)" >&2
-            exit 1
-        fi
-    fi
     if git push -q --no-verify "$remote" HEAD:main; then
         secs=$(( $(date +%s) - t0 ))
         printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
