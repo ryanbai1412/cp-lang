@@ -649,6 +649,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (lo, len, rev) = match &first {
                     Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    Value::Range(lo, hi) => (*lo, (hi - lo).max(0), false),
                     _ => return trap(span, "keys need a slice"),
                 };
                 Value::Int(if op == Builtin::KeyPos {

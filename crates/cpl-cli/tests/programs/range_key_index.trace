@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"r":{"name":"r","type":"Range\u003cInt>","kind":"json"},"d":{"name":"d","type":"Range\u003cInt>","kind":"json"},"s":{"name":"s","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let r = 2..5","stage":"main","values":{"stdout":[],"r":"2..5"},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"print → 3 4","stage":"main","values":{"stdout":["3 4"],"r":"2..5"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":2}]},
+{"id":2,"line":3,"label":"let d = 10..=12","stage":"main","values":{"stdout":["3 4"],"r":"2..5","d":"10..13"},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":3,"line":4,"label":"var s = 0","stage":"main","values":{"stdout":["3 4"],"r":"2..5","d":"10..13","s":0},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":4,"line":6,"label":"s += d[k]","stage":"main","values":{"stdout":["3 4"],"r":"2..5","d":"10..13","s":10},"locals":{"k":10},"frames":[{"fn":"main","line":6}]},
+{"id":5,"line":6,"label":"s += d[k]","stage":"main","values":{"stdout":["3 4"],"r":"2..5","d":"10..13","s":21},"locals":{"k":11},"frames":[{"fn":"main","line":6}]},
+{"id":6,"line":6,"label":"s += d[k]","stage":"main","values":{"stdout":["3 4"],"r":"2..5","d":"10..13","s":33},"locals":{"k":12},"frames":[{"fn":"main","line":6}]},
+{"id":7,"line":7,"label":"print → 33","stage":"main","values":{"stdout":["3 4","33"],"r":"2..5","d":"10..13","s":33},"locals":{"k":12},"checkpoint":"print 2","frames":[{"fn":"main","line":7}]},
+{"id":8,"line":7,"label":"the program ended","stage":"main","values":{"stdout":["3 4","33"],"r":"2..5","d":"10..13","s":33},"locals":{"k":12},"checkpoint":"end","frames":[{"fn":"main","line":7}]}]}}}
+stderr:

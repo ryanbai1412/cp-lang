@@ -408,7 +408,7 @@ impl<'a> Lowerer<'a> {
                         return self.slice_by_range_val(base_expr, range_val, span);
                     }
                 }
-                if indices.len() == 1 && Self::keyed_view(&base_expr.ty) {
+                if indices.len() == 1 && Self::keyed_index(&base_expr.ty) {
                     let view = self.hold_view(base_expr, span);
                     let (indices, ty) = self.index_args(&view.ty, indices, span);
                     let out = self.key_index(view, indices.into_iter().next().unwrap(), ty, span);

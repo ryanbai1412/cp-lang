@@ -1021,7 +1021,7 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// example: `(0..4).splits.map((l, r) => (l.len, r.len)).collect() == [(1, 3), (2, 2), (3, 1)]`
 @get pub fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>):
     for k in 1..self.len:
-        let m = (self[k]..self[k]).l
+        let m = (self.nth(k)..self.nth(k)).l
         yield (self.l..m, m..self.r)
 
 /// \(O(1)\). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
@@ -1034,7 +1034,7 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 @get pub fn mid<D>(self: Range<D>) -> Cut<D>:
     let n = self.len
     if n == 0: return self.r
-    (self[n / 2]..self[n / 2]).l
+    (self.nth(n / 2)..self.nth(n / 2)).l
 
 /// \(O(1)\). The positions in both ranges.
 ///
@@ -1063,9 +1063,9 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     var hi = self.len
     while lo < hi:
         let m = lo + (hi - lo) / 2
-        if ok(self[m]): hi = m
+        if ok(self.nth(m)): hi = m
         else: lo = m + 1
-    if lo < self.len: Some(self[lo]) else: None
+    if lo < self.len: Some(self.nth(lo)) else: None
 
 /// \(O(\log n)\) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
 /// `None` when it never does. Checked builds check the probes agree (R09.2.3).
@@ -1076,8 +1076,8 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: none: a monotone `ok` has one last true position
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
-    let lo = (0..self.len).first_true(m => not (ok(self[m]))) ?? self.len
-    if lo > 0: Some(self[lo - 1]) else: None
+    let lo = (0..self.len).first_true(m => not (ok(self.nth(m)))) ?? self.len
+    if lo > 0: Some(self.nth(lo - 1)) else: None
 
 /// \(O(\log n)\) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
 /// (`r.l` when it always holds, `r.r` when it never does), true then false with `last: true`
@@ -1090,8 +1090,8 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
 pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
     let n = self.len
-    let lo = (0..n).first_true(m => ok(self[m]) != last) ?? n
-    if lo < n: (self[lo]..self[lo]).l else: self.r
+    let lo = (0..n).first_true(m => ok(self.nth(m)) != last) ?? n
+    if lo < n: (self.nth(lo)..self.nth(lo)).l else: self.r
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
@@ -2253,7 +2253,7 @@ pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
 /// example: `(0..3).index_pairs().collect() == [(0, 1), (0, 2), (1, 2)]`
 pub fn index_pairs<D>(self: Range<D>) -> yields (D, D):
     for i in 0..self.len:
-        for j in i + 1..self.len: yield (self[i], self[j])
+        for j in i + 1..self.len: yield (self.nth(i), self.nth(j))
 
 /// \(O(k)\) per permutation. All `k`-permutations of `self` (default `k = self.len`).
 ///

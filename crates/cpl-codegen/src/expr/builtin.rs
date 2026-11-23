@@ -365,10 +365,10 @@ impl<'p> Emitter<'p> {
             | Builtin::PosKey
             | Builtin::KeySlice
             | Builtin::Rekey => {
-                self.need(if matches!(args[0].ty, Ty::StrView) {
-                    "str_view"
-                } else {
-                    "list_view"
+                self.need(match args[0].ty {
+                    Ty::StrView => "str_view",
+                    Ty::Range(_) => "range_at",
+                    _ => "list_view",
                 });
                 let name = match op {
                     Builtin::KeyLo => "key_lo",

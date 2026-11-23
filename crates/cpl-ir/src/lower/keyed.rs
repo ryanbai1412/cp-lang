@@ -130,6 +130,12 @@ impl<'a> Lowerer<'a> {
         )
     }
 
+    /// Whether `x[k]` names a key: a view keeps its source's keys (R04b.1),
+    /// and a range's keys are its own elements (R04.4.31).
+    pub(super) fn keyed_index(ty: &Ty) -> bool {
+        Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if **of != Ty::I128)
+    }
+
     /// `t.Idx` written as a value, `t` a variable holding a rebased view.
     pub(super) fn rebased_sym(&self, owner: &ast::Expr, member: &str) -> Option<Sym> {
         let ast::ExprKind::Name(owner) = &owner.kind else {

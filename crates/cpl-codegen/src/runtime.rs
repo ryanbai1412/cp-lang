@@ -1415,6 +1415,7 @@ template <class T> T pop_val(std::vector<T>& v) { if (v.empty()) fail(\"pop from
         needs: &["fail", "range"],
         code: "\
 template <class T> T range_at(const Range<T>& r, ll i) { if (i < 0 || i >= r.len()) fail(\"index out of range\"); return r[i]; }
+template <class T> ll key_pos(const Range<T>& r, ll k) { ll i = k - (ll)r.lo, n = r.len(); if (i < 0 || i >= n) key_fail(k, (ll)r.lo, n); return i; }
 ",
     },
     Piece {
